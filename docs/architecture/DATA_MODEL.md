@@ -472,11 +472,14 @@ provisioning audit trail (`RBAC_MATRIX.md` §3, `SCH-003`).
 - **Feature IDs:** `SCH-001`.
 
 ### 6.13 `SchoolRosterUploadBatch`, `SchoolRosterUploadRow` — bulk upload audit trail
-**Net-new**, supporting `SCH-002`'s template-download-first bulk upload.
+**Net-new**, supporting `SCH-002`'s template-download-first bulk upload. **Built 2026-09-14** —
+matches this section's original design exactly, plus an `idempotency_key` column added on
+`SchoolRosterUploadBatch` (unique, `API_CONTRACT.md` §0.2's convention: a repeat with the same key
+replays the original batch's report rather than re-processing the file).
 
 - **`SchoolRosterUploadBatch`:** `id`, `school_id`, `uploaded_by_user_id` (the School Coordinator),
-  `uploaded_at`, `total_rows`, `accepted_count`, `rejected_count`, `status`
-  (`processing`/`completed`/`failed`).
+  `idempotency_key` (unique), `uploaded_at`, `total_rows`, `accepted_count`, `rejected_count`,
+  `status` (`processing`/`completed`/`failed`).
 - **`SchoolRosterUploadRow`:** `id`, `batch_id` (FK), `row_number`, `status`
   (`accepted`/`rejected`), `error_message` (nullable — populated only on `rejected`),
   `created_student_id` (FK `SchoolStudent`, nullable — populated only on `accepted`).
@@ -486,9 +489,11 @@ provisioning audit trail (`RBAC_MATRIX.md` §3, `SCH-003`).
 - **Audit:** every batch write is itself an `AuditLog` entry (actor, timestamp, row counts), per
   `RBAC_MATRIX.md` §3's privileged-write audit trail requirement, extended to cover this bulk-write
   case.
-- **OPEN, Contracts-phase, not decided here:** the exact template column schema (which fields the
-  downloadable template contains, required vs. optional, validation rules per field) — that is
-  `API_CONTRACT.md`/Contracts-phase design work, not architecture-level modeling.
+- **RESOLVED as built, 2026-09-14, as technical contract design:** the template column schema is
+  `full_name` (required), `date_of_birth` (optional, ISO `YYYY-MM-DD`), `grade_or_class` (optional),
+  `assigned_teacher_email` (optional — must resolve to an existing `school_teacher` at the uploading
+  Coordinator's own school, or the row is rejected) — mapped directly from `SCH-001`'s own
+  already-built `SchoolStudent` creation fields (`POST /school/students`), not an invented list.
 - **Feature IDs:** `SCH-002`.
 
 ### 6.14 Service-delivery data for school-affiliated students — resolved 2026-09-14, `DEC-ROLE-006`,

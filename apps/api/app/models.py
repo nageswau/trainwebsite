@@ -1004,3 +1004,27 @@ class SchoolActivityAttendance(Base, TimestampMixin):
     school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
     present: Mapped[bool] = mapped_column(Boolean, default=True)
     marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolRosterUploadBatch(Base, TimestampMixin):
+    """SCH-002 bulk roster upload audit trail (DATA_MODEL.md §6.13). Net-new."""
+
+    __tablename__ = "school_roster_upload_batches"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    idempotency_key: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    total_rows: Mapped[int] = mapped_column(Integer, default=0)
+    accepted_count: Mapped[int] = mapped_column(Integer, default=0)
+    rejected_count: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="processing")
+
+
+class SchoolRosterUploadRow(Base, TimestampMixin):
+    __tablename__ = "school_roster_upload_rows"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_roster_upload_batches.id"), index=True)
+    row_number: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20))
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), nullable=True)

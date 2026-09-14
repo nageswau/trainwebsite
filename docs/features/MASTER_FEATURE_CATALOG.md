@@ -1598,7 +1598,7 @@ single-Counselor-role model with five specialized internal roles. `SCH-001`'s de
 
 ### `SCH-002` — School Coordinator bulk student roster upload (template-download-first)
 - **Module:** School  
-- **Description:** [New] Net-new build — School Coordinator downloads a fixed-format template, fills it offline, uploads it; server validates against the template schema and returns a row-level accept/reject report. Resolves `DEC-SCOPE-009`'s original deferral reason (avoiding uncontrolled bulk writes) by construction. Roster only — academic results bulk upload is separate, undecided scope (`DEC-SCOPE-010` part 2, `PENDING`).  
+- **Description:** [New] Net-new build — School Coordinator downloads a fixed-format template, fills it offline, uploads it; server validates against the template schema and returns a row-level accept/reject report. Resolves `DEC-SCOPE-009`'s original deferral reason (avoiding uncontrolled bulk writes) by construction. Roster only — academic results bulk upload is a separate Feature ID (`SCH-006`, in scope, `DEC-ROLE-006`).  
 - **Actors:** primary — School Coordinator; secondary — -  
 - **Traces to:** BR BR-SCH-002 · PRD PRD-SCH-003 · Decisions DEC-SCOPE-010, DEC-SCOPE-011  
 - **Scope/Priority/MoSCoW/Release:** CURRENT / P2 / Should / Wave 4  
@@ -1607,13 +1607,13 @@ single-Counselor-role model with five specialized internal roles. `SCH-001`'s de
 - **Alternate workflow:** A row that fails validation does not block the rest of the batch — each row succeeds or fails independently.  
 - **Error/edge behavior:** Coordinator can only bulk-create/update students within their own institution, never another's, even via a crafted upload row.  
 - **Dependencies/blockers:** `SCH-001`  
-- **UX required:** Y · **API required:** Y · **DB impact:** N · **RBAC/resource-scope:** School Coordinator (own institution only)  
-- **Integration/job/file/audit impact:** File upload/storage (template schema TBD in Contracts)  
+- **UX required:** Y · **API required:** Y · **DB impact:** Y (`SchoolRosterUploadBatch`/`SchoolRosterUploadRow`, `DATA_MODEL.md` §6.13 — corrected 2026-09-14, was `N`) · **RBAC/resource-scope:** School Coordinator (own institution only)  
+- **Integration/job/file/audit impact:** File upload — direct multipart parse (Python `csv` module), not the generic presign-then-store flow; no separate object-storage step needed for structured row processing.  
 - **Security/privacy:** Server-side validation mandatory before any row is committed — never trust the uploaded file's own claims about itself (file type, size, row count) without independent verification.  
 - **Accessibility/responsive:** Responsive. · **Performance:** -  
 - **Required test types:** API, UI, Security  
 - **Complexity:** M  
-- **Implementation status:** NOT STARTED — Contracts, Quality, and UX propagation all complete as of 2026-09-14 (same set as `SCH-001`); no code work has been done. Exact template column schema itself is Contracts-phase design detail, not yet fixed (`DATA_MODEL.md` §6.13).  
+- **Implementation status:** **COMPLETE** (`prompts/13`, 2026-09-14): net-new `SchoolRosterUploadBatch`/`SchoolRosterUploadRow` models + migration `0025_school_roster_upload`, resolving `DATA_MODEL.md` §6.13's open template-column-schema question as technical contract design — mapped directly from `SCH-001`'s own already-built `SchoolStudent` creation fields (`full_name`, `date_of_birth`, `grade_or_class`, `assigned_teacher_email`), not an invented field list. `GET /school/students/roster-template` (CSV download), `POST /school/students/bulk-upload` (Idempotency-Key required, per-row validation, a bad row never blocks the batch), `GET /school/roster-uploads/{batch_id}` all added to `app/api/schools.py`. **Real routing bug found and fixed during build** (not a design defect): FastAPI/Starlette match routes in registration order, so the static `/students/roster-template` path had to be registered *before* the dynamic `/students/{student_id}` route from `SCH-001`, or every request to it 422'd trying to parse "roster-template" as a UUID. Frontend: `SchoolBulkUploadPanel.tsx` (download-then-upload-then-report flow) at `/school/coordinator/students/bulk-upload`, linked from the dashboard and roster pages (not a standalone nav item, matching `SCR-SCH-005`'s own documented entry points). Backend: 10 new pytest cases (`test_sch_002_bulk_roster_upload.py`) — template download, idempotency-key requirement, successful bulk create, a bad row rejected without blocking good rows (`SCH-002-AC04`), teacher assignment via email, cross-institution teacher email rejected, idempotency replay never double-creates, batch-report fetch, cross-institution batch-report denied, non-Coordinator rejected. Full regression: 522/539 passing (same 17 pre-existing, unrelated failures as `SCH-001`/`SCH-003`). E2E: 1 new Playwright case (`sch-002-bulk-roster-upload.spec.ts`) — full download→fill→upload→row-level-report flow, confirmed live against the real stack.  
 - **Acceptance Criteria:** see `FEATURE_ACCEPTANCE_CRITERIA.md#sch-002`  
 
 ### `SCH-003` — School partner onboarding (Admin-created, Coordinator-seeded invites)

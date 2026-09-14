@@ -1,20 +1,22 @@
-"""SCH-003/SCH-001 -- School partner onboarding, and Principal/Coordinator/Teacher/Parent
-role-based access to the student roster and activities.
+"""SCH-003/SCH-001/SCH-002 -- School partner onboarding, Principal/Coordinator/Teacher/
+Parent role-based access to the student roster and activities, and bulk roster upload.
 
 Net-new router. `POST /overseas-admin/schools`/`GET /overseas-admin/schools` (Overseas
 Admin creates the School + seed Coordinator, SCH-003) live in `admin.py`'s `agents_router`
 (`/overseas-admin` namespace, alongside the Agent approval routes) -- this file covers
 everything under the `/school` prefix: the Coordinator-side invite flow and public token
-acceptance (SCH-003), and role-scoped student/activity access (SCH-001), per
-`API_CONTRACT.md` §12A.
+acceptance (SCH-003), role-scoped student/activity access (SCH-001), and template-
+download-first bulk roster upload (SCH-002), per `API_CONTRACT.md` §12A.
 """
 
+import csv
 import hashlib
+import io
 import secrets
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,7 +24,7 @@ from app.api.auth import _set_auth_cookies
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.security import hash_password
-from app.models import AuditLog, School, SchoolAccountInvite, SchoolActivity, SchoolActivityAttendance, SchoolParentLink, SchoolStudent, User, UserRoleAssignment
+from app.models import AuditLog, School, SchoolAccountInvite, SchoolActivity, SchoolActivityAttendance, SchoolParentLink, SchoolRosterUploadBatch, SchoolRosterUploadRow, SchoolStudent, User, UserRoleAssignment
 from app.services.integrations import send_notification
 
 router = APIRouter(prefix="/school", tags=["school"])
@@ -204,6 +206,21 @@ async def list_students(user: User = Depends(get_current_user), db: AsyncSession
     return [_student_out(s) for s in rows]
 
 
+@router.get("/students/roster-template")
+async def roster_template(user: User = Depends(get_current_user)):
+    # Registered before /students/{student_id} below: FastAPI/Starlette match routes in
+    # registration order, so a static "roster-template" segment must be declared ahead of
+    # a dynamic {student_id} path parameter on the same GET prefix, or every request here
+    # would instead 422 trying (and failing) to parse "roster-template" as a UUID.
+    if user.role != "school_coordinator":
+        raise HTTPException(403, "School Coordinator role required")
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(ROSTER_TEMPLATE_HEADERS)
+    writer.writerow(["Jane Doe", "2015-04-12", "Grade 5", ""])
+    return Response(content=buffer.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=school-roster-template.csv"})
+
+
 @router.get("/students/{student_id}")
 async def get_student(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     school_id = _own_school_id(user)
@@ -357,3 +374,116 @@ async def mark_attendance(activity_id: UUID, payload: dict, user: User = Depends
     db.add(AuditLog(user_id=user.id, action="school.attendance_mark", entity_type="school_activity", entity_id=str(activity.id), metadata_json={"count": len(records)}))
     await db.commit()
     return {"activity_id": activity.id, "marked": len(records)}
+
+
+# ---------------------------------------------------------------------------------------
+# SCH-002 -- School Coordinator bulk student roster upload (template-download-first)
+# ---------------------------------------------------------------------------------------
+
+# API_CONTRACT.md §12A flags the exact template column schema as Contracts-phase detail,
+# not fixed by DATA_MODEL.md §6.13 -- resolved here as technical contract design, mapped
+# directly from SCH-001's own already-built SchoolStudent creation fields (POST /school/
+# students), not an invented field list.
+ROSTER_TEMPLATE_HEADERS = ["full_name", "date_of_birth", "grade_or_class", "assigned_teacher_email"]
+
+
+async def _batch_report(db: AsyncSession, batch: SchoolRosterUploadBatch) -> dict:
+    rows = (
+        await db.scalars(select(SchoolRosterUploadRow).where(SchoolRosterUploadRow.batch_id == batch.id).order_by(SchoolRosterUploadRow.row_number.asc()))
+    ).all()
+    return {
+        "id": batch.id,
+        "status": batch.status,
+        "total_rows": batch.total_rows,
+        "accepted_count": batch.accepted_count,
+        "rejected_count": batch.rejected_count,
+        "rows": [{"row_number": r.row_number, "status": r.status, "error_message": r.error_message, "created_student_id": r.created_student_id} for r in rows],
+    }
+
+
+@router.post("/students/bulk-upload", status_code=201)
+async def bulk_upload_students(
+    file: UploadFile = File(...),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if user.role != "school_coordinator":
+        raise HTTPException(403, "School Coordinator role required")
+    if not idempotency_key:
+        raise HTTPException(422, "Idempotency-Key header is required")
+    school_id = _own_school_id(user)
+
+    # A repeat with the same key replays the original batch's result rather than
+    # re-processing the file -- API_CONTRACT.md §0.2's idempotency convention, same shape
+    # as PAY-001's checkout replay.
+    existing_batch = await db.scalar(select(SchoolRosterUploadBatch).where(SchoolRosterUploadBatch.idempotency_key == idempotency_key))
+    if existing_batch:
+        if existing_batch.school_id != school_id:
+            raise HTTPException(403, "This upload batch belongs to a different institution")
+        return await _batch_report(db, existing_batch)
+
+    raw = (await file.read()).decode("utf-8-sig", errors="replace")
+    rows = list(csv.DictReader(io.StringIO(raw)))
+
+    batch = SchoolRosterUploadBatch(school_id=school_id, uploaded_by_user_id=user.id, idempotency_key=idempotency_key, total_rows=len(rows), status="processing")
+    db.add(batch)
+    await db.flush()
+
+    accepted = 0
+    rejected = 0
+    for i, row in enumerate(rows, start=1):
+        full_name = (row.get("full_name") or "").strip()
+        error = None
+        student_dob = None
+        assigned_teacher_user_id = None
+        if not full_name:
+            error = "full_name is required"
+        if not error:
+            dob_raw = (row.get("date_of_birth") or "").strip()
+            if dob_raw:
+                try:
+                    student_dob = date.fromisoformat(dob_raw)
+                except ValueError:
+                    error = f"date_of_birth '{dob_raw}' is not a valid date (expected YYYY-MM-DD)"
+        if not error:
+            teacher_email = (row.get("assigned_teacher_email") or "").strip().lower()
+            if teacher_email:
+                teacher = await db.scalar(select(User).where(User.email == teacher_email, User.role == "school_teacher"))
+                if not teacher or (teacher.profile or {}).get("school_id") != str(school_id):
+                    error = f"assigned_teacher_email '{teacher_email}' is not an existing Teacher at your own school"
+                else:
+                    assigned_teacher_user_id = teacher.id
+        # SCH-002-AC04: a row that fails validation is recorded and skipped -- it never
+        # blocks or discards the rows around it.
+        if error:
+            db.add(SchoolRosterUploadRow(batch_id=batch.id, row_number=i, status="rejected", error_message=error))
+            rejected += 1
+            continue
+        student = SchoolStudent(
+            school_id=school_id, full_name=full_name, date_of_birth=student_dob,
+            grade_or_class=(row.get("grade_or_class") or "").strip() or None,
+            created_by_user_id=user.id, assigned_teacher_user_id=assigned_teacher_user_id,
+        )
+        db.add(student)
+        await db.flush()
+        db.add(SchoolRosterUploadRow(batch_id=batch.id, row_number=i, status="accepted", created_student_id=student.id))
+        accepted += 1
+
+    batch.accepted_count = accepted
+    batch.rejected_count = rejected
+    batch.status = "completed"
+    db.add(AuditLog(user_id=user.id, action="school.roster_bulk_upload", entity_type="school_roster_upload_batch", entity_id=str(batch.id), metadata_json={"total": len(rows), "accepted": accepted, "rejected": rejected}))
+    await db.commit()
+    return await _batch_report(db, batch)
+
+
+@router.get("/roster-uploads/{batch_id}")
+async def get_roster_upload(batch_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "school_coordinator":
+        raise HTTPException(403, "School Coordinator role required")
+    school_id = _own_school_id(user)
+    batch = await db.get(SchoolRosterUploadBatch, batch_id)
+    if not batch or batch.school_id != school_id:
+        raise HTTPException(404, "Upload batch not found")
+    return await _batch_report(db, batch)

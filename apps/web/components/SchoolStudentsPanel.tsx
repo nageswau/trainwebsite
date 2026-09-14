@@ -192,7 +192,7 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
           </div>
           <button className="btn" disabled={busy}>{busy ? "Saving…" : "Add student"}</button>
         </form>
-        <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>Bulk roster upload isn&apos;t available yet -- add students one at a time for now.</p>
+        <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>Adding many students at once? <a href="/school/coordinator/students/bulk-upload">Use bulk upload</a> instead.</p>
       </div>
 
       {message && (
