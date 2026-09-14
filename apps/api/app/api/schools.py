@@ -541,20 +541,25 @@ async def student_timeline(student_id: UUID, user: User = Depends(get_current_us
         "date": student.created_at, "category": "profile", "type": "profile_created",
         "title": "Student profile created", "detail": f"Added to {student.grade_or_class}" if student.grade_or_class else None,
     }]
+    # Distinct loop-variable names per query (career_r/psych_r/result_r, not a shared `r`) --
+    # a reused loop variable across differently-typed queries left MyPy inferring every
+    # loop from the first one's type, misreporting real attributes (assessment_type,
+    # published_at, ...) as missing from the wrong model. Runtime was already correct;
+    # this only fixes static-analysis clarity, found while preparing this branch for CI.
     career_rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id == student.id))).all()
-    for r in career_rows:
-        category, title = CAREER_RECORD_TIMELINE[r.record_type]
-        events.append({"date": r.created_at, "category": category, "type": r.record_type, "title": title, "detail": r.notes})
+    for career_r in career_rows:
+        category, title = CAREER_RECORD_TIMELINE[career_r.record_type]
+        events.append({"date": career_r.created_at, "category": category, "type": career_r.record_type, "title": title, "detail": career_r.notes})
     psych_rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id == student.id))).all()
-    for r in psych_rows:
-        events.append({"date": r.created_at, "category": "psychometric", "type": "psychometric_assigned", "title": "Psychometric assessment assigned", "detail": r.assessment_type})
-        if r.report_url:
-            events.append({"date": r.updated_at, "category": "psychometric", "type": "psychometric_report", "title": "Psychometric report uploaded", "detail": r.assessment_type})
+    for psych_r in psych_rows:
+        events.append({"date": psych_r.created_at, "category": "psychometric", "type": "psychometric_assigned", "title": "Psychometric assessment assigned", "detail": psych_r.assessment_type})
+        if psych_r.report_url:
+            events.append({"date": psych_r.updated_at, "category": "psychometric", "type": "psychometric_report", "title": "Psychometric report uploaded", "detail": psych_r.assessment_type})
     result_rows = (
         await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id == student.id, SchoolAcademicResult.status == "published"))
     ).all()
-    for r in result_rows:
-        events.append({"date": r.published_at, "category": "academic", "type": "result_published", "title": "Academic result published", "detail": f"{r.term} {r.subject} -- {r.grade}" if r.grade else f"{r.term} {r.subject}"})
+    for result_r in result_rows:
+        events.append({"date": result_r.published_at, "category": "academic", "type": "result_published", "title": "Academic result published", "detail": f"{result_r.term} {result_r.subject} -- {result_r.grade}" if result_r.grade else f"{result_r.term} {result_r.subject}"})
     attended_rows = (
         await db.execute(
             select(SchoolActivityAttendance, SchoolActivity)
@@ -1003,6 +1008,8 @@ async def update_psychometric_record(record_id: UUID, payload: dict, user: User 
     db.add(AuditLog(user_id=user.id, action="school.psychometric_record_update", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={}))
     if became_completed:
         student = await db.get(SchoolStudent, record.school_student_id)
+        if student is None:
+            raise HTTPException(404, "Student not found")
         await _notify_student_parents(db, student, title=f"Psychometric report ready for {student.full_name}", body=f"The {record.assessment_type} report for {student.full_name} is now available.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
     return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status}
@@ -1123,6 +1130,8 @@ async def _advance_result(result_id: UUID, target: str, user: User, db: AsyncSes
         # SCH-007: only the Published transition reaches a Parent -- a Draft/Verified step
         # never does, so the gate's existence is not leaked through a notification either.
         student = await db.get(SchoolStudent, result.school_student_id)
+        if student is None:
+            raise HTTPException(404, "Student not found")
         await _notify_student_parents(db, student, title=f"{result.term} {result.subject} result published for {student.full_name}", body=f"{student.full_name}'s {result.academic_year} {result.term} result for {result.subject} is now available.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
     return result

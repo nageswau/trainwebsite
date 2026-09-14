@@ -1,3 +1,4 @@
+import Link from "next/link";
 import PortalShell from "@/components/PortalShell";
 import SchoolServiceDeliverySummary from "@/components/SchoolServiceDeliverySummary";
 import { serverApi } from "@/lib/api";
@@ -38,8 +39,8 @@ export default async function SchoolCoordinatorDashboardPage() {
             <p>{data.student_count} student{data.student_count === 1 ? "" : "s"} on your roster.</p>
           )}
           <div className="field" style={{ flexDirection: "row", gap: 12 }}>
-            <a className="btn" href="/school/coordinator/students">Go to student roster</a>
-            <a className="btn secondary" href="/school/coordinator/students/bulk-upload">Go to bulk upload</a>
+            <Link className="btn" href="/school/coordinator/students">Go to student roster</Link>
+            <Link className="btn secondary" href="/school/coordinator/students/bulk-upload">Go to bulk upload</Link>
             <a className="btn secondary" href="/school/coordinator/activities">Go to activities</a>
             <a className="btn secondary" href="/school/coordinator/reports">Go to reports</a>
           </div>
