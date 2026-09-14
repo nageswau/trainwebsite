@@ -1,6 +1,7 @@
 import PortalShell from "@/components/PortalShell";
 import SchoolTeamPanel from "@/components/SchoolTeamPanel";
 import { serverApi } from "@/lib/api";
+import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
 type TeamPayload = {
@@ -8,10 +9,8 @@ type TeamPayload = {
   pending_invites: { id: string; role: string; email: string; full_name: string; expires_at: string }[];
 };
 
-// SCH-003 (DEC-SCOPE-012): School Coordinator has no dashboard yet (SCH-001 is a
-// separate, not-yet-built Feature ID) -- Team is this role's only screen today, so it
-// stands alone (own single-item nav via PortalShell directly) rather than joining the
-// shared PORTAL_NAV/[section] dispatcher every other role already has.
+// SCH-003 (DEC-SCOPE-012). Part of the Coordinator's own SCHOOL_NAV (lib/navigation.ts),
+// not the shared PORTAL_NAV/[section] dispatcher -- see that file's own note on why.
 export default async function SchoolCoordinatorTeamPage() {
   let user: User;
   let team: TeamPayload;
@@ -29,7 +28,7 @@ export default async function SchoolCoordinatorTeamPage() {
     );
   }
   return (
-    <PortalShell nav={[{ label: "Team", href: "/school/coordinator/team" }]} roleLabel="School Coordinator" userName={user.full_name}>
+    <PortalShell nav={SCHOOL_NAV.coordinator} roleLabel="School Coordinator" userName={user.full_name}>
       <SchoolTeamPanel accounts={team.accounts} pendingInvites={team.pending_invites} />
     </PortalShell>
   );

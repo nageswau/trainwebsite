@@ -30,7 +30,8 @@ test("overseas admin creates a school + seed coordinator, who invites a principa
   await page.fill("#login-email", coordinatorEmail);
   await page.fill("#login-password", "ChangeMe@12345");
   await page.click("button:has-text('Sign in securely')");
-  await page.waitForURL("**/school/coordinator/team");
+  await page.waitForURL("**/school/coordinator/dashboard");
+  await page.goto("/school/coordinator/team");
   await expect(page.getByText(/just you so far/)).toBeVisible();
 
   await page.selectOption("#invite-role", "school_principal");
@@ -61,14 +62,15 @@ test("overseas admin creates a school + seed coordinator, who invites a principa
   await page.goto(`/school/invite/${token}/accept`);
   await page.fill("#invite-password", "Sup3r-Secret-Pass!");
   await page.click('button:has-text("Accept and set up login")');
-  await page.waitForURL("/");
+  // Accepting logs the account in and redirects to its own role dashboard
+  // (ROLE_DASHBOARD_PATH) -- SCH-001 now gives school_teacher a real one.
+  await page.waitForURL("**/school/teacher/dashboard");
 
   await page.goto("/overseas/login");
   await page.fill("#login-email", `sch003-e2e-teacher-${unique}@example.local`);
   await page.fill("#login-password", "Sup3r-Secret-Pass!");
   await page.click("button:has-text('Sign in securely')");
-  // school_teacher has no dashboard yet (SCH-001 not built) -- login itself succeeding
-  // (no error, cookie set) is what this step verifies, not a specific landing page.
+  await page.waitForURL("**/school/teacher/dashboard");
   await expect(page.getByText("Invalid credentials")).not.toBeVisible();
 });
 
@@ -94,7 +96,7 @@ test("a consumed invite token shows an honest, specific message, not a generic b
   await page.fill("#login-email", coordinatorEmail);
   await page.fill("#login-password", "ChangeMe@12345");
   await page.click("button:has-text('Sign in securely')");
-  await page.waitForURL("**/school/coordinator/team");
+  await page.waitForURL("**/school/coordinator/dashboard");
 
   const invited = await page.request.post("/api/v1/school/team/invites", {
     data: { role: "school_parent", full_name: "E2E Parent", email: `sch003-e2e-parent-${unique}@example.local` },
@@ -105,7 +107,7 @@ test("a consumed invite token shows an honest, specific message, not a generic b
   await page.goto(`/school/invite/${token}/accept`);
   await page.fill("#invite-password", "Sup3r-Secret-Pass!");
   await page.click('button:has-text("Accept and set up login")');
-  await page.waitForURL("/");
+  await page.waitForURL("**/school/parent/dashboard");
 
   // Reuse the same (now-consumed) token.
   await page.goto(`/school/invite/${token}/accept`);

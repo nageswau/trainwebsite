@@ -412,12 +412,12 @@ Generated per feature, ID format `<FEATURE-ID>-AC##`. Derived directly from each
 
 ## SCH-001 — School Portal role-based access (Principal/Coordinator/Teacher/Parent)
 
-- **SCH-001-AC01:** Given FND-002; a School partner record exists (provisioning mechanism OPEN, not yet specified)., when the primary actor (Principal, School Coordinator, Teacher, or Parent) performs the main workflow (logs in and sees/acts on only their own institution's data, further scoped per role), then it completes successfully and is visible to the correct actor(s) only.
+- **SCH-001-AC01:** Given FND-002; SCH-003 (a School partner record and the acting account both exist, provisioning mechanism resolved and built — `DEC-SCOPE-012`)., when the primary actor (Principal, School Coordinator, Teacher, or Parent) performs the main workflow (logs in and sees/acts on only their own institution's data, further scoped per role), then it completes successfully and is visible to the correct actor(s) only.
 - **SCH-001-AC02:** Given the error/edge condition, when no role ever sees another institution's data, even via a direct record ID., then the system responds as specified — no silent failure, no partial state.
 - **SCH-001-AC03:** RBAC — an actor outside their own role's scope (Principal/Coordinator: own institution only; Teacher: own institution + assigned students only; Parent: own institution + own child(ren) only) cannot perform or view this feature's action/data, verified at the API layer (not just hidden in UI).
 - **SCH-001-AC04:** Scope boundary — Principal, Teacher, and Parent are strictly read-only; only School Coordinator has create/edit access, and only to students within their own institution, one at a time. Bulk upload is a separate Feature ID (`SCH-002`).
 - **SCH-001-AC05:** Role-name collision check — the `school_teacher` role must never be granted any permission belonging to `trainer` (`DEC-ROLE-002`'s Teacher/Trainer), and the `school_coordinator` role must never be granted any permission belonging to `coordinator` (`DEC-ROLE-003`'s certificate-issuance Coordinator) — verified at the API layer, since the names alone are easy to conflate.
-- **SCH-001-AC06:** Scope boundary — no Career Guidance/Psychometric/Counselling content-creation action is reachable through this feature for any of the four roles; that data, if and when such modules are built, remains the Counselor role's (`DEC-ROLE-005`), out of scope for this Feature ID.
+- **SCH-001-AC06:** Scope boundary — no Career Guidance/Psychometric/Counselling/Academic Results content-creation action is reachable through this feature for any of the four roles; that data belongs to `SCH-004`/`005`/`006`'s own specialized roles (`career_counselor`/`psychometric_team`/`academic_team`, `DEC-ROLE-006` — supersedes this AC's original `DEC-ROLE-005`/Counselor framing), out of scope for this Feature ID.
 
 ## SCH-002 — School Coordinator bulk student roster upload (template-download-first)
 

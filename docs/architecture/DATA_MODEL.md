@@ -11,7 +11,7 @@ No DDL, no ORM classes.
 | Version | 1.1 (APPROVED — GATE-08, user, in-session, 2026-09-01, no changes requested) |
 | Date | 2026-09-01 |
 | Prerequisite | Architecture **APPROVED** (GATE-07, 2026-09-01) |
-| Scope | The 68 `CURRENT` Feature IDs in `docs/features/MASTER_FEATURE_CATALOG.md` as of the 2026-09-01 GATE-08 approval, **plus `SCH-001`–`006` (§6.11–6.18), added 2026-09-14 as dated addenda propagating `DEC-SCOPE-009`/`DEC-SCOPE-011`/`DEC-SCOPE-010`/`DEC-SCOPE-012`/`DEC-ROLE-006`, extended same day with `DEC-SCOPE-013`/`014`/`DEC-ROLE-007` (school-staff portfolio scoping, specialized-role provisioning, results same-actor restriction — §6.14, §6.16) — not a reopening of the GATE-08 approval for the rest of this document.** `BLOCKED` features (`AUTH-003`, `PUB-010`, `ADM-009`–`013`, `EMP-006`, `LMS-001`, `RPT-002`) get **no** entity design here — designing schema for an unconfirmed requirement would itself be an assumption. |
+| Scope | The 68 `CURRENT` Feature IDs in `docs/features/MASTER_FEATURE_CATALOG.md` as of the 2026-09-01 GATE-08 approval, **plus `SCH-001`–`006` (§6.11–6.18), added 2026-09-14 as dated addenda propagating `DEC-SCOPE-009`/`DEC-SCOPE-011`/`DEC-SCOPE-010`/`DEC-SCOPE-012`/`DEC-ROLE-006`, extended same day with `DEC-SCOPE-013`/`014`/`DEC-ROLE-007` (school-staff portfolio scoping, specialized-role provisioning, results same-actor restriction — §6.14, §6.16), and corrected §6.11/§6.12 during `SCH-001`'s actual build (resolved the `SchoolStudent` no-`User`-row schema question and the `school_teacher`/`school_parent` scoping mechanisms as technical contract design; added `SchoolParentLink`/`SchoolActivity`/`SchoolActivityAttendance`) — not a reopening of the GATE-08 approval for the rest of this document.** `BLOCKED` features (`AUTH-003`, `PUB-010`, `ADM-009`–`013`, `EMP-006`, `LMS-001`, `RPT-002`) get **no** entity design here — designing schema for an unconfirmed requirement would itself be an assumption. |
 | Base | Reference implementation's 47 SQLAlchemy models (`docs/evidence/REFERENCE_IMPLEMENTATION_FINDINGS.md` §2–§3), extended per confirmed Decision IDs. "Carries over" = base model reused as-is or with additive columns. "Net-new" = no base equivalent. |
 | Companion | `API_CONTRACT.md`, `RBAC_MATRIX.md`, `INTEGRATION_CONTRACTS.md`, `SECURITY_CONTROLS.md` |
 
@@ -416,41 +416,53 @@ extended same day with provisioning fields per `DEC-SCOPE-012`
   list `EVID-014` §2 proposes (Board, Principal name, partnership package, MoU, BDM assignment, etc.)
   is `DERIVED_BLUEPRINT` only — not confirmed by any decision. Add fields as BRD/PRD confirms them,
   not preemptively from that document.
-- **`SchoolStudent`** — a school-affiliated student's record. **Same open schema question already
-  flagged at §6.2/§6.8 for Agent-referred students applies identically here, not re-decided
-  separately:** does this reference a `User` row created by the School Coordinator with no login
-  credentials (keeping the existing `student_user_id` FK pattern), or a schema with student identity
-  fields carried directly on this table with a nullable `student_user_id`? **Not decided** —
-  `DEC-ROLE-004`'s outstanding schema-mechanism question (`PRD_OPEN_ITEMS.md` item 68) covers this
-  case too.
-- **Fields (assuming the `User`-row pattern, pending the question above):** `student_user_id`,
-  `school_id` (FK `School`), `created_by_user_id` (the School Coordinator who created the record, per
-  `SCH-002-AC02`/audit requirements).
+- **`SchoolStudent`** — a school-affiliated student's record. **RESOLVED 2026-09-14, during `SCH-001`'s
+  build, as technical contract design** (this project's own precedent for such calls — `ADR-011`/
+  `ADR-012`, §0): no `User` row, no `student_user_id` FK at all. `DEC-ROLE-004` already confirms a
+  School-affiliated student never logs in — unlike Agent-referred students, who at least belong to
+  the existing login-capable `overseas_student` identity (`DEC-ROLE-001`), there is no login concept
+  to attach here, so creating a `User` row with unusable credentials just to satisfy a FK pattern
+  designed for authenticating identities would be needless complexity. This resolves this table's own
+  half of `DEC-ROLE-004`'s outstanding schema-mechanism question (`PRD_OPEN_ITEMS.md` item 68) — the
+  Agent-referred-student half of that question (`AgentStudent`/`AGT-002`) is separate and still open.
+- **Fields (as built):** `id`, `school_id` (FK `School`), `full_name`, `date_of_birth` (nullable),
+  `grade_or_class` (nullable), `created_by_user_id` (the School Coordinator who created the record,
+  per `SCH-002-AC02`/audit requirements), `assigned_teacher_user_id` (nullable FK `users.id` — see
+  §6.12's now-resolved assignment mechanism).
 - **Constraint:** a `SchoolStudent` row's `school_id` never changes to a different institution via a
   client-supplied value — always server-derived from the acting Coordinator's own `school_id` scope.
 - **Feature IDs:** `SCH-001`, `SCH-002`.
 
-### 6.12 School role resource scoping (`school_principal`/`school_coordinator`/`school_teacher`/`school_parent`)
-All four School roles need a `school_id` scope column (`UserRoleAssignment` or a dedicated
-`SchoolRoleProfile`, mirroring §6.10's `university_id` pattern exactly) so every School-domain query
-is filtered to "their own institution only," never another's — the same own-institution IDOR class
-as `UNI-001-AC02`/`AGT-002-AC02` (`SCH-001-AC02`). Per `DEC-SCOPE-012`, this same profile also
-records `created_by_user_id` for every account — the Overseas Admin for the seed
-`school_coordinator`, the inviting `school_coordinator` for `school_principal`/`school_teacher`/
-`school_parent` — satisfying the provisioning audit trail (`RBAC_MATRIX.md` §3, `SCH-003`).
+**`SchoolParentLink`, `SchoolActivity`, `SchoolActivityAttendance` — added 2026-09-14, during `SCH-001`'s
+build.** Net-new — no table was proposed anywhere in this document's original §6.11–6.18 listing for
+`SCH-001`'s own "schedule activities, track attendance" main-workflow line, or for the many-to-many
+Parent↔Student link §6.12 below already named as needed but hadn't yet modeled. `SchoolParentLink`
+(`parent_user_id`, `school_student_id`, `linked_by_user_id`, unique per pair) implements the
+many-to-many relationship §6.12 proposes. `SchoolActivity` (`school_id`, `title`, `scheduled_at`,
+`created_by_user_id`) and `SchoolActivityAttendance` (`activity_id`, `school_student_id`, `present`,
+`marked_by_user_id`, unique per activity+student pair) cover the scheduling/attendance workflow.
+**Feature IDs:** `SCH-001`.
 
-- **`school_teacher` additionally needs a per-student assignment scope** ("assigned students only,"
-  `SCH-001-AC03`) — narrower than the whole institution. **Proposed, not fully decided:** a nullable
-  `assigned_teacher_user_id` FK directly on `SchoolStudent` (simplest mechanism, mirrors Trainer's
-  own-batch assignment pattern), rather than a formal Grade/Section construct — `EVID-014`'s
-  Grade/Section model is `DERIVED_BLUEPRINT`, not confirmed. Flag for Contracts-phase confirmation
-  before building.
-- **`school_parent` additionally needs an own-child(ren) scope** ("own child(ren) only,"
-  `SCH-001-AC03`) — a student may have more than one linked parent account and a parent may have more
-  than one linked child, per `EVID-014`'s own "parent has two children, switches between profiles"
-  example (informative only, not authoritative). **Proposed:** a many-to-many
-  `SchoolParentLink(parent_user_id, student_user_id)` table rather than a single FK, to support both
-  directions without forcing a 1:1 assumption neither confirmed nor evidenced against.
+### 6.12 School role resource scoping (`school_principal`/`school_coordinator`/`school_teacher`/`school_parent`)
+**RESOLVED as built, 2026-09-14 (`SCH-001`):** `user.profile["school_id"]` — no dedicated
+`SchoolRoleProfile` table. This confirms the "mirroring §6.10's `university_id` pattern exactly"
+option named below was in fact the one already proven in code (`workflows.py`/`portal.py` already
+read `user.profile.get("university_id")` for `university_rep`, the same shape). Every School-domain
+query is filtered to "their own institution only," never another's — the same own-institution IDOR
+class as `UNI-001-AC02`/`AGT-002-AC02` (`SCH-001-AC02`). Per `DEC-SCOPE-012`, `UserRoleAssignment.
+assigned_by_user_id` records the Overseas Admin for the seed `school_coordinator`, the inviting
+`school_coordinator` for `school_principal`/`school_teacher`/`school_parent` — satisfying the
+provisioning audit trail (`RBAC_MATRIX.md` §3, `SCH-003`).
+
+- **`school_teacher`'s per-student assignment scope** ("assigned students only," `SCH-001-AC03`) —
+  **RESOLVED as built:** the nullable `assigned_teacher_user_id` FK directly on `SchoolStudent`, the
+  option already named below as the simplest mechanism, adopted as the working technical default
+  rather than `EVID-014`'s unconfirmed Grade/Section model.
+- **`school_parent`'s own-child(ren) scope** ("own child(ren) only," `SCH-001-AC03`) — **RESOLVED as
+  built:** the many-to-many `SchoolParentLink` table named below, exactly as proposed — a student may
+  have more than one linked parent, a parent more than one linked child, with no 1:1 assumption
+  forced either direction. Coordinator links a Parent to a Student explicitly (`POST /school/students/
+  {id}/parents`) — no self-service linking exists for either party.
 - **Role-name collision guard (architecture-level, not just naming):** `school_teacher`'s grants must
   never be reachable through the existing `trainer` role check, and `school_coordinator`'s grants must
   never be reachable through the existing `coordinator` role check (`DEC-ROLE-003`, certificate

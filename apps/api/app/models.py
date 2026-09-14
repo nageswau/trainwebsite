@@ -940,3 +940,67 @@ class SchoolAccountInvite(Base, TimestampMixin):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     accepted_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class SchoolStudent(Base, TimestampMixin):
+    """School-affiliated student (SCH-001, DATA_MODEL.md §6.11).
+
+    Resolves DATA_MODEL.md §6.11's open schema question (also tracked under `DEC-ROLE-004`/
+    `PRD_OPEN_ITEMS.md` item 68) as technical contract design, per this document's own
+    precedent (`ADR-011`/`ADR-012`): a School-affiliated student never logs in at all
+    (`DEC-ROLE-004` -- no individual login for School-affiliated students, an EduSphere-wide
+    Student login-scope decision, not specific to this table). Unlike Agent-referred
+    students, who at least belong to the existing overseas_student login-capable identity
+    (`DEC-ROLE-001`), there is no login concept to attach here -- creating a `User` row with
+    unusable credentials just to satisfy a FK pattern designed for authenticating identities
+    would be needless complexity. Identity fields therefore live directly on this table, no
+    `student_user_id` FK.
+    """
+
+    __tablename__ = "school_students"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
+    full_name: Mapped[str] = mapped_column(String(160))
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    grade_or_class: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    # school_teacher assignment (DATA_MODEL.md §6.12: "proposed as the simpler per-student
+    # FK... not confirmed" -- adopted here as the working build default, the documented
+    # leaning, not an invented mechanism).
+    assigned_teacher_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class SchoolParentLink(Base, TimestampMixin):
+    """Many-to-many Parent<->Student link (SCH-001, DATA_MODEL.md §6.12) -- a student may
+    have more than one linked parent, a parent more than one linked child."""
+
+    __tablename__ = "school_parent_links"
+    __table_args__ = (UniqueConstraint("parent_user_id", "school_student_id", name="uq_school_parent_link"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    parent_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    linked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolActivity(Base, TimestampMixin):
+    """School-wide scheduled activity (SCH-001's "schedule activities, track attendance"
+    main workflow). Net-new -- no equivalent exists in `DATA_MODEL.md`'s original §6.11-6.18
+    listing; added during this feature's own build to cover the confirmed workflow line
+    that had no table proposed for it."""
+
+    __tablename__ = "school_activities"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolActivityAttendance(Base, TimestampMixin):
+    __tablename__ = "school_activity_attendance"
+    __table_args__ = (UniqueConstraint("activity_id", "school_student_id", name="uq_school_activity_attendance"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    activity_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_activities.id"), index=True)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    present: Mapped[bool] = mapped_column(Boolean, default=True)
+    marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))

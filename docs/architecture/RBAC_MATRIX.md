@@ -302,8 +302,8 @@ not (`PRD_OPEN_ITEMS.md` item 75). Do not invent a grant for either.
 - ~~School partner record and role-account provisioning mechanism~~ — **RESOLVED**, `DEC-SCOPE-012`
   (2026-09-14): Overseas Admin creates the School + seed Coordinator; Coordinator invites the rest;
   no approval gate. See §2.12.
-- `school_teacher` assignment mechanism (per-student FK vs. a formal Grade/Section construct,
-  `DATA_MODEL.md` §6.12) — proposed as the simpler per-student FK, not confirmed.
+- ~~`school_teacher` assignment mechanism (per-student FK vs. a formal Grade/Section construct)~~ —
+  **RESOLVED as built**, `SCH-001` (2026-09-14): the per-student FK, `DATA_MODEL.md` §6.12.
 - ~~Academic results/marks module~~ — **RESOLVED**, `DEC-SCOPE-010` part 2 + `DEC-ROLE-006`
   (2026-09-14): in scope, `academic_team` owns it, `Draft → Verified → Published` gate. See §2.12.
 - ~~Whether Career Guidance, Psychometric, or Counselling exist as buildable modules~~ —

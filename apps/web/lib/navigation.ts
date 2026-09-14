@@ -16,9 +16,24 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
   agent: "/overseas/agent/dashboard",
   overseas_admin: "/overseas/admin/dashboard",
   super_admin: "/admin",
-  // SCH-003 -- Coordinator has no dashboard yet (SCH-001 is a separate, not-yet-built
-  // Feature ID); Team is the only screen this role has today.
-  school_coordinator: "/school/coordinator/team",
+  // SCH-001 -- all four School roles now have a real dashboard.
+  school_coordinator: "/school/coordinator/dashboard",
+  school_principal: "/school/principal/dashboard",
+  school_teacher: "/school/teacher/dashboard",
+  school_parent: "/school/parent/dashboard",
+};
+
+// SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
+// not the generic PortalPage/[section] `_payload()` dispatcher every other role's console
+// uses) but still share PortalShell's chrome; this is their own nav source, separate from
+// PORTAL_NAV below so the "coordinator"/"principal"/"teacher"/"parent" segments never risk
+// colliding with an unrelated role of the same URL-segment name in another division
+// (RBAC_MATRIX.md §2.12's role-name collision guard, SCH-001-AC05).
+export const SCHOOL_NAV: Record<string, NavItem[]> = {
+  coordinator: ["dashboard", "students", "activities", "team"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/coordinator/${x}` })),
+  principal: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/principal/${x}` })),
+  teacher: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/teacher/${x}` })),
+  parent: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/parent/${x}` })),
 };
 export const IT_PUBLIC:NavItem[] = [
   {label:"Home",href:"/it"},{label:"About",href:"/it/about"},
