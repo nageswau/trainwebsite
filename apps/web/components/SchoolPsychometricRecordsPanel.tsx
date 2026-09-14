@@ -74,27 +74,29 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
         {records.length === 0 ? (
           <p className="muted">No assessments assigned yet.</p>
         ) : (
-          <table className="table">
-            <thead>
-              <tr><th>Student</th><th>Assessment</th><th>Status</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              {records.map((r) => (
-                <tr key={r.id}>
-                  <td>{studentName(r.school_student_id)}</td>
-                  <td>{r.assessment_type}</td>
-                  <td>{r.status}</td>
-                  <td>
-                    {r.status === "assigned" ? (
-                      <button className="btn ghost small" onClick={() => setUploadingId(r.id)}>Attach report</button>
-                    ) : (
-                      <span className="muted" style={{ fontSize: 13 }}>Report attached</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr><th>Student</th><th>Assessment</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                {records.map((r) => (
+                  <tr key={r.id}>
+                    <td>{studentName(r.school_student_id)}</td>
+                    <td>{r.assessment_type}</td>
+                    <td>{r.status}</td>
+                    <td>
+                      {r.status === "assigned" ? (
+                        <button className="btn ghost small" onClick={() => setUploadingId(r.id)}>Attach report</button>
+                      ) : (
+                        <span className="muted" style={{ fontSize: 13 }}>Report attached</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

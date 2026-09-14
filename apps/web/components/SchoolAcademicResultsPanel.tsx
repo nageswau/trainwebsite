@@ -79,41 +79,43 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
         {results.length === 0 ? (
           <p className="muted">No results uploaded yet.</p>
         ) : (
-          <table className="table">
-            <thead>
-              <tr><th>Student</th><th>Subject</th><th>Marks</th><th>Status</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              {results.map((r) => {
-                const isUploader = r.uploaded_by_user_id === currentUserId;
-                return (
-                  <tr key={r.id}>
-                    <td>{studentName(r.school_student_id)}</td>
-                    <td>{r.subject} ({r.academic_year}, {r.term})</td>
-                    <td>{r.marks_obtained}/{r.max_marks}{r.percentage !== null ? ` (${r.percentage}%)` : ""}</td>
-                    <td>{r.status}</td>
-                    <td>
-                      {r.status === "draft" && (
-                        isUploader ? (
-                          <span className="muted" style={{ fontSize: 13 }}>Ask another Academic Team member to verify</span>
-                        ) : (
-                          <button className="btn ghost small" disabled={busy} onClick={() => advance(r.id, "verify")}>Verify</button>
-                        )
-                      )}
-                      {r.status === "verified" && (
-                        isUploader ? (
-                          <span className="muted" style={{ fontSize: 13 }}>Ask another Academic Team member to publish</span>
-                        ) : (
-                          <button className="btn ghost small" disabled={busy} onClick={() => advance(r.id, "publish")}>Publish</button>
-                        )
-                      )}
-                      {r.status === "published" && <span className="muted" style={{ fontSize: 13 }}>-</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr><th>Student</th><th>Subject</th><th>Marks</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                {results.map((r) => {
+                  const isUploader = r.uploaded_by_user_id === currentUserId;
+                  return (
+                    <tr key={r.id}>
+                      <td>{studentName(r.school_student_id)}</td>
+                      <td>{r.subject} ({r.academic_year}, {r.term})</td>
+                      <td>{r.marks_obtained}/{r.max_marks}{r.percentage !== null ? ` (${r.percentage}%)` : ""}</td>
+                      <td>{r.status}</td>
+                      <td>
+                        {r.status === "draft" && (
+                          isUploader ? (
+                            <span className="muted" style={{ fontSize: 13 }}>Ask another Academic Team member to verify</span>
+                          ) : (
+                            <button className="btn ghost small" disabled={busy} onClick={() => advance(r.id, "verify")}>Verify</button>
+                          )
+                        )}
+                        {r.status === "verified" && (
+                          isUploader ? (
+                            <span className="muted" style={{ fontSize: 13 }}>Ask another Academic Team member to publish</span>
+                          ) : (
+                            <button className="btn ghost small" disabled={busy} onClick={() => advance(r.id, "publish")}>Publish</button>
+                          )
+                        )}
+                        {r.status === "published" && <span className="muted" style={{ fontSize: 13 }}>-</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

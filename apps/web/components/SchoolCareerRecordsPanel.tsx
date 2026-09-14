@@ -54,16 +54,18 @@ export default function SchoolCareerRecordsPanel({ records, students }: { record
         {records.length === 0 ? (
           <p className="muted">No career guidance or counselling recorded yet.</p>
         ) : (
-          <table className="table">
-            <thead>
-              <tr><th>Student</th><th>Type</th><th>Notes</th></tr>
-            </thead>
-            <tbody>
-              {records.map((r) => (
-                <tr key={r.id}><td>{studentName(r.school_student_id)}</td><td>{TYPE_LABEL[r.record_type] || r.record_type}</td><td>{r.notes}</td></tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr><th>Student</th><th>Type</th><th>Notes</th></tr>
+              </thead>
+              <tbody>
+                {records.map((r) => (
+                  <tr key={r.id}><td>{studentName(r.school_student_id)}</td><td>{TYPE_LABEL[r.record_type] || r.record_type}</td><td>{r.notes}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

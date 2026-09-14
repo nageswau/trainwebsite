@@ -85,20 +85,22 @@ export default function SchoolBulkUploadPanel() {
             {report.rejected_count > 0 ? `, ${report.rejected_count} rejected` : ""}.
             Rows that succeeded are kept even though others failed.
           </p>
-          <table className="table">
-            <thead>
-              <tr><th>Row</th><th>Result</th><th>Detail</th></tr>
-            </thead>
-            <tbody>
-              {report.rows.map((r) => (
-                <tr key={r.row_number}>
-                  <td>{r.row_number}</td>
-                  <td>{r.status === "accepted" ? "Added" : "Rejected"}</td>
-                  <td>{r.error_message || "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr><th>Row</th><th>Result</th><th>Detail</th></tr>
+              </thead>
+              <tbody>
+                {report.rows.map((r) => (
+                  <tr key={r.row_number}>
+                    <td>{r.row_number}</td>
+                    <td>{r.status === "accepted" ? "Added" : "Rejected"}</td>
+                    <td>{r.error_message || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

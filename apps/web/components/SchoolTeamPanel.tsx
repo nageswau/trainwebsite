@@ -60,31 +60,35 @@ export default function SchoolTeamPanel({ accounts, pendingInvites }: { accounts
         {accounts.filter((a) => a.role !== "school_coordinator").length === 0 ? (
           <p className="muted">It&apos;s just you so far. Invite your Principal, teachers, or parents to give them their own login.</p>
         ) : (
-          <table className="table">
-            <thead>
-              <tr><th>Name</th><th>Email</th><th>Role</th></tr>
-            </thead>
-            <tbody>
-              {accounts.map((a) => (
-                <tr key={a.id}><td>{a.name}</td><td>{a.email}</td><td>{ROLE_LABEL[a.role] || a.role}</td></tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr><th>Name</th><th>Email</th><th>Role</th></tr>
+              </thead>
+              <tbody>
+                {accounts.map((a) => (
+                  <tr key={a.id}><td>{a.name}</td><td>{a.email}</td><td>{ROLE_LABEL[a.role] || a.role}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
       {pendingInvites.length > 0 && (
         <div className="card">
           <h2>Pending invites</h2>
-          <table className="table">
-            <thead>
-              <tr><th>Name</th><th>Email</th><th>Role</th><th>Expires</th></tr>
-            </thead>
-            <tbody>
-              {pendingInvites.map((i) => (
-                <tr key={i.id}><td>{i.full_name}</td><td>{i.email}</td><td>{ROLE_LABEL[i.role] || i.role}</td><td>{new Date(i.expires_at).toLocaleDateString()}</td></tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr><th>Name</th><th>Email</th><th>Role</th><th>Expires</th></tr>
+              </thead>
+              <tbody>
+                {pendingInvites.map((i) => (
+                  <tr key={i.id}><td>{i.full_name}</td><td>{i.email}</td><td>{ROLE_LABEL[i.role] || i.role}</td><td>{new Date(i.expires_at).toLocaleDateString()}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       <div className="action-card">

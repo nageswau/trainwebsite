@@ -110,23 +110,25 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
         {students.length === 0 ? (
           <p className="muted">No students yet.</p>
         ) : (
-          <table className="table">
-            <thead>
-              <tr><th>Name</th><th>Grade/Class</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              {students.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.full_name}</td>
-                  <td>{s.grade_or_class || "-"}</td>
-                  <td style={{ display: "flex", gap: 8 }}>
-                    <button className="btn ghost small" onClick={() => { setEditingId(s.id); setLinkingId(null); }}>Edit</button>
-                    <button className="btn ghost small" onClick={() => { setLinkingId(s.id); setEditingId(null); }}>Link parent</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr><th>Name</th><th>Grade/Class</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                {students.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.full_name}</td>
+                    <td>{s.grade_or_class || "-"}</td>
+                    <td style={{ display: "flex", gap: 8 }}>
+                      <button className="btn ghost small" onClick={() => { setEditingId(s.id); setLinkingId(null); }}>Edit</button>
+                      <button className="btn ghost small" onClick={() => { setLinkingId(s.id); setEditingId(null); }}>Link parent</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

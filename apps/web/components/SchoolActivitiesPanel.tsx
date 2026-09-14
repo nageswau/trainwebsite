@@ -77,20 +77,22 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
         {activities.length === 0 ? (
           <p className="muted">Nothing scheduled yet.</p>
         ) : (
-          <table className="table">
-            <thead>
-              <tr><th>Title</th><th>When</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              {activities.map((a) => (
-                <tr key={a.id}>
-                  <td>{a.title}</td>
-                  <td>{new Date(a.scheduled_at).toLocaleString()}</td>
-                  <td><button className="btn ghost small" onClick={() => startMarking(a.id)}>Mark attendance</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr><th>Title</th><th>When</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                {activities.map((a) => (
+                  <tr key={a.id}>
+                    <td>{a.title}</td>
+                    <td>{new Date(a.scheduled_at).toLocaleString()}</td>
+                    <td><button className="btn ghost small" onClick={() => startMarking(a.id)}>Mark attendance</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
