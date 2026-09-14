@@ -643,7 +643,9 @@ async def main():
             student_a = SchoolStudent(school_id=school.id, full_name="Aarav Mehta", date_of_birth=date(2015, 4, 12), grade_or_class="Grade 5", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id)
             student_b = SchoolStudent(school_id=school.id, full_name="Isha Mehta", date_of_birth=date(2017, 9, 3), grade_or_class="Grade 3", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id)
             student_c = SchoolStudent(school_id=school.id, full_name="Kabir Nair", date_of_birth=date(2016, 1, 20), grade_or_class="Grade 4", created_by_user_id=school_coordinator.id)
-            db.add_all([student_a, student_b, student_c])
+            student_d = SchoolStudent(school_id=school.id, full_name="Priya Shah", date_of_birth=date(2015, 11, 8), grade_or_class="Grade 5", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id)
+            student_e = SchoolStudent(school_id=school.id, full_name="Rohan Gupta", date_of_birth=date(2012, 6, 22), grade_or_class="Grade 8", created_by_user_id=school_coordinator.id)
+            db.add_all([student_a, student_b, student_c, student_d, student_e])
             await db.flush()
             db.add_all(
                 [
@@ -655,13 +657,19 @@ async def main():
             )
 
             activity = SchoolActivity(school_id=school.id, title="Annual Sports Day", scheduled_at=datetime.now(UTC) + timedelta(days=10), created_by_user_id=school_coordinator.id)
-            db.add(activity)
+            past_activity = SchoolActivity(school_id=school.id, title="Career Awareness Session", scheduled_at=datetime.now(UTC) - timedelta(days=15), created_by_user_id=school_coordinator.id)
+            db.add_all([activity, past_activity])
             await db.flush()
             db.add_all(
                 [
                     SchoolActivityAttendance(activity_id=activity.id, school_student_id=student_a.id, present=True, marked_by_user_id=school_coordinator.id),
                     SchoolActivityAttendance(activity_id=activity.id, school_student_id=student_b.id, present=True, marked_by_user_id=school_coordinator.id),
                     SchoolActivityAttendance(activity_id=activity.id, school_student_id=student_c.id, present=False, marked_by_user_id=school_coordinator.id),
+                    SchoolActivityAttendance(activity_id=past_activity.id, school_student_id=student_a.id, present=True, marked_by_user_id=school_coordinator.id),
+                    SchoolActivityAttendance(activity_id=past_activity.id, school_student_id=student_b.id, present=True, marked_by_user_id=school_coordinator.id),
+                    SchoolActivityAttendance(activity_id=past_activity.id, school_student_id=student_c.id, present=True, marked_by_user_id=school_coordinator.id),
+                    SchoolActivityAttendance(activity_id=past_activity.id, school_student_id=student_d.id, present=True, marked_by_user_id=school_coordinator.id),
+                    SchoolActivityAttendance(activity_id=past_activity.id, school_student_id=student_e.id, present=False, marked_by_user_id=school_coordinator.id),
                 ]
             )
 
@@ -678,13 +686,19 @@ async def main():
                 status="verified", uploaded_by_user_id=academic1.id, verified_by_user_id=academic2.id, verified_at=datetime.now(UTC) - timedelta(days=1),
             )
             draft_result = SchoolAcademicResult(school_student_id=student_a.id, academic_year="2026", term="Term 1", subject="Science", max_marks=100, marks_obtained=91, status="draft", uploaded_by_user_id=academic1.id)
-            db.add_all([published_result, verified_result, draft_result])
+            published_result_2 = SchoolAcademicResult(
+                school_student_id=student_e.id, academic_year="2026", term="Term 1", subject="Mathematics", max_marks=100, marks_obtained=79, grade="B",
+                status="published", uploaded_by_user_id=academic1.id, verified_by_user_id=academic2.id, verified_at=datetime.now(UTC) - timedelta(days=4), published_by_user_id=academic2.id, published_at=datetime.now(UTC) - timedelta(days=2),
+            )
+            db.add_all([published_result, verified_result, draft_result, published_result_2])
             await db.flush()
             db.add_all(
                 [
                     SchoolResultStatusHistory(result_id=published_result.id, from_status="draft", to_status="verified", changed_by_user_id=academic2.id),
                     SchoolResultStatusHistory(result_id=published_result.id, from_status="verified", to_status="published", changed_by_user_id=academic2.id),
                     SchoolResultStatusHistory(result_id=verified_result.id, from_status="draft", to_status="verified", changed_by_user_id=academic2.id),
+                    SchoolResultStatusHistory(result_id=published_result_2.id, from_status="draft", to_status="verified", changed_by_user_id=academic2.id),
+                    SchoolResultStatusHistory(result_id=published_result_2.id, from_status="verified", to_status="published", changed_by_user_id=academic2.id),
                 ]
             )
 
@@ -692,12 +706,14 @@ async def main():
                 [
                     SchoolCareerRecord(school_student_id=student_a.id, career_counselor_user_id=career_counselor.id, record_type="guidance_session", notes="Discussed STEM vs. humanities track based on early aptitude signals."),
                     SchoolCareerRecord(school_student_id=student_c.id, career_counselor_user_id=career_counselor.id, record_type="counselling_note", notes="Follow-up planned next term on extracurricular interests."),
+                    SchoolCareerRecord(school_student_id=student_d.id, career_counselor_user_id=career_counselor.id, record_type="guidance_session", notes="Explored interest in design and visual arts alongside academic strengths."),
                 ]
             )
             db.add_all(
                 [
                     SchoolPsychometricRecord(school_student_id=student_a.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Aptitude Test", report_url="/demo/aarav-aptitude-report.pdf", status="completed"),
                     SchoolPsychometricRecord(school_student_id=student_c.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Personality Assessment", status="assigned"),
+                    SchoolPsychometricRecord(school_student_id=student_d.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Aptitude Test", status="assigned"),
                 ]
             )
         await db.commit()

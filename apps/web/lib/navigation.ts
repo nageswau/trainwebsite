@@ -34,8 +34,8 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
 // colliding with an unrelated role of the same URL-segment name in another division
 // (RBAC_MATRIX.md §2.12's role-name collision guard, SCH-001-AC05).
 export const SCHOOL_NAV: Record<string, NavItem[]> = {
-  coordinator: ["dashboard", "students", "activities", "team"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/coordinator/${x}` })),
-  principal: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/principal/${x}` })),
+  coordinator: ["dashboard", "students", "activities", "team", "reports"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/coordinator/${x}` })),
+  principal: ["dashboard", "reports"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/principal/${x}` })),
   teacher: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/teacher/${x}` })),
   parent: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/parent/${x}` })),
   // SCH-004/005/006 -- single-item nav, same shape as principal/teacher/parent above.

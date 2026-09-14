@@ -47,6 +47,9 @@ export default async function SchoolPrincipalDashboardPage() {
               </table>
             </>
           )}
+          <div className="field" style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+            <a className="btn secondary" href="/school/principal/reports">View full reports</a>
+          </div>
         </div>
         <SchoolServiceDeliverySummary />
       </div>

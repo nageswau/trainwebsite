@@ -41,6 +41,7 @@ export default async function SchoolCoordinatorDashboardPage() {
             <a className="btn" href="/school/coordinator/students">Go to student roster</a>
             <a className="btn secondary" href="/school/coordinator/students/bulk-upload">Go to bulk upload</a>
             <a className="btn secondary" href="/school/coordinator/activities">Go to activities</a>
+            <a className="btn secondary" href="/school/coordinator/reports">Go to reports</a>
           </div>
         </div>
         <div className="card">

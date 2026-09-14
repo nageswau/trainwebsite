@@ -289,6 +289,75 @@ async def school_dashboard(user: User = Depends(get_current_user), db: AsyncSess
     }
 
 
+@router.get("/reports")
+async def school_reports(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Coordinator/Principal reporting view -- real, computed-from-live-data figures only,
+    never a fabricated placeholder (DATA_MODEL.md §8's rule, named for RPT-001 and applied
+    here identically). A Draft/Verified academic result's very existence is sensitive to
+    these two roles (SCH-006-AC02) -- this report counts Published results only, never
+    leaks a draft/verified count even in aggregate.
+    """
+    if user.role not in {"school_coordinator", "school_principal"}:
+        raise HTTPException(403, "School Coordinator or Principal role required")
+    school_id = _own_school_id(user)
+
+    students = (await db.scalars(select(SchoolStudent).where(SchoolStudent.school_id == school_id))).all()
+    student_ids = [s.id for s in students]
+    total_students = len(students)
+
+    grade_counts: dict[str, int] = {}
+    for s in students:
+        label = s.grade_or_class or "Unspecified"
+        grade_counts[label] = grade_counts.get(label, 0) + 1
+    grade_breakdown = [{"grade": g, "count": c} for g, c in sorted(grade_counts.items())]
+    students_with_teacher = sum(1 for s in students if s.assigned_teacher_user_id)
+
+    school_accounts = (await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent"))))).all()
+    school_accounts = [a for a in school_accounts if (a.profile or {}).get("school_id") == str(school_id)]
+    teacher_count = sum(1 for a in school_accounts if a.role == "school_teacher")
+    parent_count = sum(1 for a in school_accounts if a.role == "school_parent")
+    principal_count = sum(1 for a in school_accounts if a.role == "school_principal")
+    pending_invite_count = len((await db.scalars(select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school_id, SchoolAccountInvite.status == "pending"))).all())
+
+    career_students: set = set()
+    psych_rows: list = []
+    published_students: set = set()
+    if student_ids:
+        career_students = set((await db.scalars(select(SchoolCareerRecord.school_student_id).where(SchoolCareerRecord.school_student_id.in_(student_ids)))).all())
+        psych_rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id.in_(student_ids)))).all()
+        published_students = set(
+            (await db.scalars(select(SchoolAcademicResult.school_student_id).where(SchoolAcademicResult.school_student_id.in_(student_ids), SchoolAcademicResult.status == "published"))).all()
+        )
+    psych_completed_students = {r.school_student_id for r in psych_rows if r.status == "completed"}
+    psych_assigned_students = {r.school_student_id for r in psych_rows} - psych_completed_students
+
+    activities = (await db.scalars(select(SchoolActivity).where(SchoolActivity.school_id == school_id))).all()
+    now = datetime.now(UTC)
+    upcoming_count = sum(1 for a in activities if a.scheduled_at >= now)
+    activity_ids = [a.id for a in activities]
+    attendance_present = 0
+    attendance_total = 0
+    if activity_ids:
+        attendance_rows = (await db.scalars(select(SchoolActivityAttendance).where(SchoolActivityAttendance.activity_id.in_(activity_ids)))).all()
+        attendance_total = len(attendance_rows)
+        attendance_present = sum(1 for r in attendance_rows if r.present)
+
+    return {
+        "student_count": total_students,
+        "students_with_teacher": students_with_teacher,
+        "teacher_count": teacher_count,
+        "parent_count": parent_count,
+        "principal_count": principal_count,
+        "pending_invite_count": pending_invite_count,
+        "grade_breakdown": grade_breakdown,
+        "career_guidance": {"students_covered": len(career_students), "total_students": total_students},
+        "psychometric": {"completed": len(psych_completed_students), "assigned_only": len(psych_assigned_students), "total_students": total_students},
+        "results_published": {"students_covered": len(published_students), "total_students": total_students},
+        "activities": {"total": len(activities), "upcoming": upcoming_count, "past": len(activities) - upcoming_count},
+        "attendance": {"present": attendance_present, "total": attendance_total},
+    }
+
+
 @router.get("/students")
 async def list_students(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     school_id = _own_school_id(user)
