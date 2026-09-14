@@ -1,0 +1,1 @@
+"""M08 Employer & Placement Portal. Reserved package boundary per docs/architecture/ARCHITECTURE.md #3.2/#4. Existing code lives in api/portal.py and api/public.py (careers). See docs/IMPLEMENTATION_PLAN.md Slice 7."""

@@ -1,0 +1,1 @@
+"""M02 Identity, Authentication & RBAC. Reserved package boundary per docs/architecture/ARCHITECTURE.md #3.2/#4. No code has been migrated here yet; existing identity code lives in core/rbac.py, core/security.py and api/auth.py. See docs/IMPLEMENTATION_PLAN.md Slice 1/2 for the migration path."""

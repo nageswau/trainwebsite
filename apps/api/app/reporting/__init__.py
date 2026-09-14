@@ -1,0 +1,1 @@
+"""M19 Dashboards, Reports, Analytics & Audit. Reserved package boundary per docs/architecture/ARCHITECTURE.md #3.2/#4. Existing code lives partially in api/admin.py. See docs/IMPLEMENTATION_PLAN.md Slice 8."""

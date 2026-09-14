@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality and test gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Run isolated local-equivalent CI
+        shell: pwsh
+        run: ./scripts/ci-local.ps1 -ArtifactRoot artifacts/ci
+
+      - name: Add run summary
+        if: always()
+        shell: pwsh
+        run: |
+          $latest = Get-ChildItem artifacts/ci -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($latest) {
+            Get-Content (Join-Path $latest.FullName "summary.md") | Add-Content $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: Upload compact test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-test-reports-${{ github.run_attempt }}
+          path: |
+            artifacts/ci/**/summary.json
+            artifacts/ci/**/summary.md
+            artifacts/ci/**/*.xml
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-failure-evidence-${{ github.run_attempt }}
+          path: |
+            artifacts/ci/**/*.log
+            artifacts/ci/**/playwright/test-results/**
+            artifacts/ci/**/playwright/report/**
+          if-no-files-found: ignore
+          retention-days: 14

@@ -1,0 +1,1 @@
+"""M01 Public Website & SEO, M03 Organisation & Configuration, M16 CMS/Blogs/Webinars. Reserved package boundary per docs/architecture/ARCHITECTURE.md #3.2/#4. Existing code lives in api/cms.py and api/public.py (content parts)."""

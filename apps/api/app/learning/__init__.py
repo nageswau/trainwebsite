@@ -1,0 +1,1 @@
+"""M10 Content Library, M11 Assignments/Q&A/Feedback, M12 Attendance/Progress, M14 Agreements/Consent, M15 Certificates. Reserved package boundary per docs/architecture/ARCHITECTURE.md #3.2/#4. Existing code lives in services/storage.py, services/certificates.py, api/portal.py, api/workflows.py, api/files.py. See docs/IMPLEMENTATION_PLAN.md Slice 6."""

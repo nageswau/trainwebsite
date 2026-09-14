@@ -1,0 +1,1 @@
+"""M04 Course, Batch & Session Management. Reserved package boundary per docs/architecture/ARCHITECTURE.md #3.2/#4. Existing code lives in api/portal.py and services/meetings.py. See docs/IMPLEMENTATION_PLAN.md Slice 6."""

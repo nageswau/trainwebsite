@@ -1,0 +1,22 @@
+[
+["python-full-stack","Software Development","Python Full Stack","Python, FastAPI/Django, React, PostgreSQL, APIs and cloud deployment.","16 weeks",65000,["Python foundations","FastAPI APIs","PostgreSQL","React/Next.js","Docker & AWS"]],
+["java-full-stack","Software Development","Java Full Stack","Java, Spring Boot, React, SQL and enterprise API development.","18 weeks",70000,["Core Java","Spring Boot","REST","React","SQL"]],
+["mern-stack","Software Development","MERN Stack","MongoDB, Express, React and Node.js full-stack development.","14 weeks",55000,["JavaScript","React","Node/Express","MongoDB","Deployment"]],
+["dotnet","Software Development",".NET","C#, ASP.NET Core, Web API, SQL Server and Azure-ready development.","16 weeks",60000,["C#","ASP.NET Core","EF Core","SQL","Azure fundamentals"]],
+["data-analytics","Data","Data Analytics","Excel, SQL, Power BI, Python and practical business analytics.","12 weeks",45000,["Excel","SQL","Power BI","Python","Case studies"]],
+["data-science","Data","Data Science","Statistics, Python, machine learning and model deployment.","20 weeks",85000,["Python","Statistics","ML","Feature engineering","MLOps basics"]],
+["power-bi","Data","Power BI","Data modelling, DAX, dashboards and enterprise reporting.","8 weeks",30000,["Power Query","Data model","DAX","Dashboards"]],
+["sql","Data","SQL","SQL fundamentals through advanced querying and performance.","6 weeks",22000,["SQL basics","Joins","Window functions","Performance"]],
+["sap-fico","SAP","SAP FICO","Financial accounting and controlling with practical business scenarios.","16 weeks",90000,["FI","CO","Integration","Business scenarios"]],
+["sap-mm","SAP","SAP MM","Materials management, procurement, inventory and integration.","14 weeks",85000,["Procurement","Inventory","Valuation","Integration"]],
+["sap-sd","SAP","SAP SD","Sales and distribution, pricing, billing and order-to-cash.","14 weeks",85000,["Master data","Sales","Pricing","Billing"]],
+["sap-abap","SAP","SAP ABAP","ABAP programming, reports, interfaces and enhancements.","16 weeks",90000,["ABAP basics","Reports","ALV","Interfaces","Enhancements"]],
+["aws","Cloud","AWS","Cloud fundamentals, architecture, networking, compute, storage and deployment.","10 weeks",50000,["IAM","VPC","EC2","S3","RDS","CloudFront"]],
+["azure","Cloud","Azure","Azure administration and application cloud fundamentals.","10 weeks",50000,["Identity","Networking","VMs","Storage","App services"]],
+["google-cloud","Cloud","Google Cloud","GCP core services, IAM, compute, storage, data and deployment.","10 weeks",50000,["IAM","Compute","Storage","Networking","Cloud Run"]],
+["ai","Artificial Intelligence","Artificial Intelligence","AI fundamentals, intelligent systems and applied project work.","12 weeks",70000,["AI foundations","Search","NLP","Vision","Projects"]],
+["machine-learning","Artificial Intelligence","Machine Learning","Supervised/unsupervised learning, evaluation and deployment.","14 weeks",75000,["Regression","Classification","Clustering","Evaluation","Deployment"]],
+["generative-ai","Artificial Intelligence","Generative AI","LLMs, prompting, RAG, agents and production GenAI applications.","14 weeks",95000,["LLMs","Prompting","Embeddings","RAG","Agents","Evaluation"]],
+["cyber-security","Cyber Security","Cyber Security","Security foundations, network security, application security and SOC concepts.","16 weeks",80000,["Networking","Linux","Web security","SIEM","Incident response"]],
+["devops","DevOps","DevOps","Git, CI/CD, Docker, Kubernetes, observability and cloud delivery.","14 weeks",75000,["Git","CI/CD","Docker","Kubernetes","Monitoring"]]
+]

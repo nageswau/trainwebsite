@@ -1,0 +1,9 @@
+# Set WEB_DOMAIN and API_DOMAIN in .env (see docker-compose.override.yml) --
+# these placeholders are only used if those env vars are unset.
+{$WEB_DOMAIN:dev.yourdomain.com} {
+	reverse_proxy web:3000
+}
+
+{$API_DOMAIN:api-dev.yourdomain.com} {
+	reverse_proxy api:8000
+}

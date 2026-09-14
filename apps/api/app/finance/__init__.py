@@ -1,0 +1,1 @@
+"""M13 Payments, EMI, Invoices & Receipts. Reserved package boundary per docs/architecture/ARCHITECTURE.md #3.2/#4. Existing code lives in api/payments.py and services/payment.py. Gateway identity is BLOCKED_BY_DECISION(DEC-013). See docs/IMPLEMENTATION_PLAN.md Slice 7."""

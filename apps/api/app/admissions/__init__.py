@@ -1,0 +1,1 @@
+"""M09 Admissions Handoff (No CRM - bounded, see APPROVED_SCOPE_BASELINE.md). Reserved package boundary per docs/architecture/ARCHITECTURE.md #3.2/#4. Existing code lives in api/public.py and api/admin.py; the crm_sync_status/sync_crm_enquiry rename described in docs/architecture/INTEGRATIONS.md #3 (DEC-023 default) lands here. See docs/IMPLEMENTATION_PLAN.md Slice 3."""

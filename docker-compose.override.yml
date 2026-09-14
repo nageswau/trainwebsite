@@ -1,0 +1,27 @@
+# Adds a Caddy reverse proxy in front of the existing api/web services for TLS-terminated
+# public access (dev.<domain> -> web, api-dev.<domain> -> api). Deploy with:
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+#
+# Before running on the server, set in .env (do not expose api/web on all interfaces):
+#   API_PORT=127.0.0.1:8000
+#   WEB_PORT=127.0.0.1:3000
+#   WEB_DOMAIN=dev.yourdomain.com
+#   API_DOMAIN=api-dev.yourdomain.com
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,1 @@
+"""M17 Communications & Notifications. Reserved package boundary per docs/architecture/ARCHITECTURE.md #3.2/#4. Existing dispatch code lives in services/integrations.py (send_notification). See docs/architecture/INTEGRATIONS.md #6 and docs/IMPLEMENTATION_PLAN.md Slice 5."""

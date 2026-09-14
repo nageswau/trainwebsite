@@ -1,0 +1,42 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Original confidential client evidence - keep locally, do not commit by default
+docs/sources/*
+!docs/sources/.gitkeep
+
+# Generated evidence/cache
+.claude-cache/
+artifacts/
+test-results/
+playwright-report/
+blob-report/
+coverage/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+.next/
+dist/
+build/
+logs/
+tmp/
+temp/
+*.tsbuildinfo
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

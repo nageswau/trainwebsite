@@ -1,0 +1,2 @@
+import PublicShell from "@/components/PublicShell";import PageHero from "@/components/PageHero";import SearchClient from "@/components/SearchClient";
+export default function SearchPage(){return <PublicShell><PageHero eyebrow="Advanced Search" title="Search EduSphere" description="Find IT training programs, universities and published news from one searchable interface."/><section className="section compact"><div className="container"><SearchClient/></div></section></PublicShell>}

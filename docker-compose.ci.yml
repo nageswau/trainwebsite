@@ -1,0 +1,72 @@
+x-ci-api-environment: &ci-api-environment
+  APP_NAME: EduSphere CI
+  ENVIRONMENT: test
+  LOG_LEVEL: INFO
+  SECRET_KEY: ci-only-secret-not-for-production
+  DATABASE_URL: postgresql+asyncpg://edusphere:edusphere@postgres:5432/edusphere
+  REDIS_URL: redis://redis:6379/0
+  FRONTEND_URL: http://web:3000
+  COOKIE_SECURE: "false"
+  AUTO_CREATE_SCHEMA: "false"
+  LOCAL_UPLOAD_DIR: /tmp/edusphere-ci-uploads
+  AWS_S3_BUCKET: ""
+  CRM_WEBHOOK_URL: ""
+  WHATSAPP_WEBHOOK_URL: ""
+  SMS_WEBHOOK_URL: ""
+  EMAIL_WEBHOOK_URL: ""
+  INBOUND_EMAIL_WEBHOOK_SECRET: ""
+  GOOGLE_CLIENT_ID: ""
+  GOOGLE_CLIENT_SECRET: ""
+  GOOGLE_REFRESH_TOKEN: ""
+  ZOHO_CLIENT_ID: ""
+  ZOHO_CLIENT_SECRET: ""
+  ZOHO_REFRESH_TOKEN: ""
+  ZOHO_ORGANIZATION_ID: ""
+  ZOHO_PRESENTER_ID: ""
+  RAZORPAY_KEY_ID: ""
+  RAZORPAY_KEY_SECRET: ""
+  RAZORPAY_WEBHOOK_SECRET: ""
+
+services:
+  api:
+    environment: *ci-api-environment
+
+  web:
+    environment:
+      BACKEND_INTERNAL_URL: http://api:8000
+      NEXT_PUBLIC_API_BASE: /api/v1
+      NEXT_PUBLIC_APP_NAME: EduSphere
+      HOSTNAME: 0.0.0.0
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/it/programs').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 15s
+
+  api-test:
+    profiles: ["ci"]
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.ci
+    environment: *ci-api-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - "${CI_ARTIFACTS_DIR:-./artifacts/ci}:/artifacts"
+
+  web-test:
+    profiles: ["ci"]
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.ci
+    environment:
+      CI: "true"
+      E2E_BASE_URL: http://localhost:3000
+      PLAYWRIGHT_PROXY_TARGET: http://web:3000
+      PLAYWRIGHT_ARTIFACT_DIR: /artifacts/playwright
+    volumes:
+      - "${CI_ARTIFACTS_DIR:-./artifacts/ci}:/artifacts"

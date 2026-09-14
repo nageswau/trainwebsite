@@ -1,0 +1,29 @@
+.collection-controls,.table-controls{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;padding:18px 20px;border-bottom:1px solid var(--line);background:#fbfdff}
+.collection-controls{padding:18px;margin:0 0 14px;border:1px solid var(--line);border-radius:16px}
+.collection-controls>div,.table-controls>div{display:grid;gap:5px}
+.collection-controls label,.table-controls label{font-size:12px;font-weight:800;color:var(--muted)}
+.collection-search,.table-control-search{flex:1;min-width:250px}
+.collection-search .search,.table-control-search .search{width:100%}
+.table-controls>div:nth-child(3){flex:1;min-width:190px}
+.table-controls>div:nth-child(3) .search{width:100%;min-width:180px}
+.collection-summary{margin:0 0 16px;color:var(--muted);font-size:13px}
+.collection-item{display:flex;min-width:0}
+.collection-item>*{width:100%;margin:0}
+.collection-empty>.card{max-width:560px;margin:20px auto;text-align:center}
+.pagination-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;background:#fff}
+.pagination-bar p{margin:0;color:var(--muted);font-size:13px}
+.collection-pagination{padding:22px 0 0}
+.pagination{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.pagination button{min-width:36px;height:36px;border:1px solid #cbd8e8;border-radius:9px;background:#fff;color:var(--ink);font-weight:700;padding:0 10px}
+.pagination button:hover:not(:disabled),.pagination button.active{border-color:var(--blue);background:var(--blue);color:#fff}
+.pagination button:disabled{opacity:.45;cursor:not-allowed}
+.sort-button{border:0;background:transparent;color:inherit;font:inherit;font-weight:inherit;text-transform:inherit;letter-spacing:inherit;padding:0;white-space:nowrap}
+.search:disabled{background:#f1f5f9;color:#94a3b8}
+
+@media(max-width:640px){
+  .collection-controls,.table-controls{align-items:stretch}
+  .collection-controls>div,.table-controls>div{width:100%}
+  .collection-controls .search,.collection-controls .select,.table-controls .search,.table-controls .select{width:100%;min-width:0}
+  .pagination-bar{align-items:flex-start;flex-direction:column}
+  .pagination{width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}
+}

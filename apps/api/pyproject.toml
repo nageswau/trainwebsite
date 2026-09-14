@@ -1,0 +1,42 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+
+[tool.ruff]
+line-length = 200
+target-version = "py312"
+exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# E501: line-length is already relaxed above, not separately enforced.
+# E701/E702/E703 (multi-statement lines) are ignored defensively even though `ruff
+# format` (run once during foundation scaffolding, see docs/IMPLEMENTATION_PLAN.md
+# Slice 1) already normalizes the codebase away from that pattern - kept off so a
+# hand-written one-liner slipping in later is a style choice, not a hard CI failure.
+ignore = ["E501", "E701", "E702", "E703"]
+
+[tool.ruff.lint.per-file-ignores]
+# app/seed.py intentionally imports every model with `from app.models import *`
+# to seed deterministic demo/test data (docs/architecture/ARCHITECTURE.md domain
+# packages will give this a narrower import surface once models move per
+# docs/IMPLEMENTATION_PLAN.md; not re-scoped in this foundation pass).
+"app/seed.py" = ["F403", "F405"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection idiom (Depends(...)/Query(...)/etc. as a default
+# argument value) is not the function-call-in-default-argument bug B008 exists to catch.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Body", "fastapi.Header", "fastapi.Path", "fastapi.Cookie", "fastapi.Security", "fastapi.Form", "fastapi.File"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+check_untyped_defs = true
+disallow_untyped_defs = false
+warn_unused_ignores = true
+warn_redundant_casts = true
+exclude = "^(alembic/|tests/)"
+
+[[tool.mypy.overrides]]
+module = "app.models"
+disallow_untyped_defs = false

@@ -1,0 +1,3498 @@
+[
+  {
+    "id": "FND-001",
+    "module": "Foundation",
+    "name": "Reference-implementation extension baseline",
+    "desc": "Fork/adopt the extended reference implementation (Next.js+FastAPI+PostgreSQL+Redis/Celery, modular monolith) as the working codebase.",
+    "primary": "Engineering",
+    "secondary": "-",
+    "br": [],
+    "prd": [],
+    "dec": [
+      "DEC-ARCH-001",
+      "DEC-TECH-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 0",
+    "pre": "Reference implementation accessible at the given path.",
+    "main": "Codebase imported/forked; local dev environment runs via docker-compose.",
+    "alt": "-",
+    "err": "Missing dependency/tooling halts setup; documented in LOCAL_DEVELOPMENT.md (base repo).",
+    "deps": [],
+    "ux": "N",
+    "api": "N",
+    "db": "N",
+    "rbac": "N/A",
+    "integ": "-",
+    "sec": "Secrets never committed; .env excluded.",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "Build/CI smoke test"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "FND-002",
+    "module": "Foundation",
+    "name": "Division-aware RBAC & identity framework",
+    "desc": "Deny-by-default backend RBAC enforcing division (it/overseas/global) and role on every protected route, per the base codebase's own security baseline.",
+    "primary": "Engineering",
+    "secondary": "All roles",
+    "br": [],
+    "prd": [
+      "PRD-AUTH-002",
+      "NFR-SEC-001"
+    ],
+    "dec": [
+      "DEC-ARCH-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 0",
+    "pre": "FND-001 complete.",
+    "main": "Every protected API route validates JWT, division, and role before executing.",
+    "alt": "-",
+    "err": "Unauthorized/wrong-division request returns 401/403, never partial data.",
+    "deps": [
+      "FND-001"
+    ],
+    "ux": "N",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "All roles",
+    "integ": "-",
+    "sec": "Backend-enforced, never trust frontend role checks (base ARCHITECTURE.md).",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "Unit",
+      "API",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "AUTH-001",
+    "module": "Auth",
+    "name": "Division-aware authenticated login",
+    "desc": "Separate IT and Overseas login entry points; JWT access + refresh token in HttpOnly cookies.",
+    "primary": "All roles",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-AUTH-001"
+    ],
+    "dec": [
+      "DEC-ROLE-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 0",
+    "pre": "Account exists (self-registered or admin-created).",
+    "main": "User submits credentials on the correct division's login page; session established.",
+    "alt": "Password reset flow.",
+    "err": "Invalid credentials rejected with generic error (no user enumeration).",
+    "deps": [
+      "FND-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Self",
+    "integ": "-",
+    "sec": "bcrypt password hashing; short-lived access JWT; Secure cookie flag in prod.",
+    "a11y_resp": "Responsive login form.",
+    "perf": "-",
+    "tests": [
+      "Unit",
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "AUTH-002",
+    "module": "Auth",
+    "name": "Role-based access control enforcement (UI)",
+    "desc": "Frontend hides navigation/actions outside the user's role, mirroring backend enforcement (FND-002).",
+    "primary": "All roles",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-AUTH-002"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 0",
+    "pre": "AUTH-001, FND-002.",
+    "main": "Only role-permitted navigation/actions render.",
+    "alt": "-",
+    "err": "Role-restricted UI accessed via direct URL/API is still blocked server-side (FND-002) even if briefly rendered client-side before redirect.",
+    "deps": [
+      "AUTH-001",
+      "FND-002"
+    ],
+    "ux": "Y",
+    "api": "N",
+    "db": "N",
+    "rbac": "All roles",
+    "integ": "-",
+    "sec": "Frontend visibility is UX only, never the security boundary.",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "AUTH-003",
+    "module": "Auth",
+    "name": "Google OAuth login",
+    "desc": "Optional Google sign-in alongside credential login.",
+    "primary": "Student, Trainer, Admin, Employer, Agent",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-AUTH-003"
+    ],
+    "dec": [],
+    "scope": "BLOCKED",
+    "priority": "P2",
+    "moscow": "Could",
+    "release": "Unscheduled",
+    "pre": "AUTH-001.",
+    "main": "-",
+    "alt": "-",
+    "err": "-",
+    "deps": [
+      "AUTH-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Self",
+    "integ": "Google OAuth",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "Unit",
+      "API"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": "PRD-AUTH-003 is PROPOSED (unconfirmed) — sourced only from the original tech-stack document, never independently re-confirmed via the Decision Register."
+  },
+  {
+    "id": "PUB-001",
+    "module": "Public Website",
+    "name": "Corporate & IT marketing content",
+    "desc": "Home, About, Career Paths (+detail), Real Projects (+detail), Success Stories (+detail), Business Services, Blog — public, unauthenticated content browsing.",
+    "primary": "Visitor",
+    "secondary": "-",
+    "br": [
+      "BR-PUB-001"
+    ],
+    "prd": [
+      "PRD-PUB-001",
+      "PRD-PUB-004",
+      "PRD-PUB-005",
+      "PRD-PUB-006",
+      "PRD-PUB-007",
+      "PRD-PUB-008",
+      "NFR-RESP-001"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "None.",
+    "main": "Visitor browses list/detail pages.",
+    "alt": "-",
+    "err": "Unpublished/missing content shows empty state, not an error.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Public",
+    "integ": "CMS (base)",
+    "sec": "No PII collected.",
+    "a11y_resp": "Responsive; SEO metadata per page.",
+    "perf": "Static/CDN-cacheable.",
+    "tests": [
+      "UI",
+      "Accessibility",
+      "Responsive"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "PUB-002",
+    "module": "Public Website",
+    "name": "Enquiry submission synced to CRM",
+    "desc": "Contact/request-callback form; enquiry reaches Admin and syncs via the CRM webhook (configured for Zoho).",
+    "primary": "Visitor",
+    "secondary": "Admin",
+    "br": [
+      "BR-PUB-001"
+    ],
+    "prd": [
+      "PRD-PUB-002"
+    ],
+    "dec": [
+      "DEC-SCOPE-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "None (public form).",
+    "main": "Submission creates an enquiry record; webhook fires to Zoho.",
+    "alt": "-",
+    "err": "Webhook failure must not lose the locally-captured enquiry (retry/queue).",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Public submit / Admin view",
+    "integ": "Zoho CRM webhook",
+    "sec": "Enquiry data is personal data — GDPR-scoped.",
+    "a11y_resp": "Responsive form; accessible labels.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "Integration"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "PUB-003",
+    "module": "Public Website",
+    "name": "Course catalogue and detail",
+    "desc": "Search/filter course catalogue; course detail (curriculum, fee, duration, certification, placement-support flags).",
+    "primary": "Visitor",
+    "secondary": "-",
+    "br": [
+      "BR-PUB-001"
+    ],
+    "prd": [
+      "PRD-PUB-003"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "None.",
+    "main": "Visitor searches/filters/opens a course.",
+    "alt": "-",
+    "err": "No results → empty state with guidance.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Public",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive; SEO.",
+    "perf": "Pagination for large catalogues.",
+    "tests": [
+      "UI",
+      "API"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "PUB-004",
+    "module": "Public Website",
+    "name": "Webinar listing and registration",
+    "desc": "Upcoming/past webinars listing; registration capture.",
+    "primary": "Visitor",
+    "secondary": "-",
+    "br": [
+      "BR-PUB-001"
+    ],
+    "prd": [
+      "PRD-PUB-009"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "None.",
+    "main": "Visitor registers for a webinar.",
+    "alt": "-",
+    "err": "Capacity/waitlist rule unspecified — open item.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Public",
+    "integ": "-",
+    "sec": "Registration data is personal data — GDPR-scoped.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "UI",
+      "API"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "PUB-005",
+    "module": "Public Website",
+    "name": "News and gallery (CMS-managed)",
+    "desc": "Published news articles and gallery items, managed via CMS/Admin panel.",
+    "primary": "Visitor",
+    "secondary": "Admin",
+    "br": [],
+    "prd": [],
+    "dec": [
+      "DEC-ARCH-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P3",
+    "moscow": "Could",
+    "release": "Wave 3",
+    "pre": "CMS content published.",
+    "main": "Visitor browses; Admin publishes via CMS.",
+    "alt": "-",
+    "err": "Empty state when nothing published.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Public view / Admin publish",
+    "integ": "S3 (media)",
+    "sec": "Upload malware scanning recommended (base ARCHITECTURE.md).",
+    "a11y_resp": "Responsive.",
+    "perf": "CDN for media.",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "S",
+    "base": true,
+    "blocked_reason": null
+  },
+  {
+    "id": "PUB-010",
+    "module": "Public Website",
+    "name": "Site search, FAQ, and legal pages",
+    "desc": "Cross-site search, FAQ, Privacy Policy, Terms & Conditions, Cookie Preferences.",
+    "primary": "Visitor",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-PUB-010"
+    ],
+    "dec": [
+      "DEC-SCOPE-008"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Could",
+    "release": "Wave 4",
+    "pre": "-",
+    "main": "-",
+    "alt": "-",
+    "err": "Legal pages (Privacy/Terms/Cookie) ship as explicitly-labeled non-final placeholder content only -- real legal sign-off is DEC-PRIV-001, still open.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Public",
+    "integ": "-",
+    "sec": "Privacy/Terms content must reflect actual GDPR posture, not boilerplate -- placeholder content must be clearly labeled non-final, never presented as final legal text.",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "STU-001",
+    "module": "Student",
+    "name": "Trainer/batch slot enrolment",
+    "desc": "Student selects an available trainer/time-slot at enrolment; 20/slot capacity; locked once booked (~3 months).",
+    "primary": "Student",
+    "secondary": "IT Admin",
+    "br": [
+      "BR-STU-001"
+    ],
+    "prd": [
+      "PRD-STU-001"
+    ],
+    "dec": [
+      "DEC-WF-002"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "Student has selected a course/track; payment initiated or completed per business rule.",
+    "main": "Student browses capacity-aware slot list and books one.",
+    "alt": "-",
+    "err": "Booking a full slot is rejected; changing a locked slot is rejected.",
+    "deps": [
+      "FND-002",
+      "PUB-003"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self (Student)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive slot picker.",
+    "perf": "-",
+    "tests": [
+      "Unit",
+      "API",
+      "UI"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "STU-002",
+    "module": "Student",
+    "name": "Student dashboard",
+    "desc": "Course progress, attendance, pending fees, applied jobs, upcoming assignments in one view.",
+    "primary": "Student",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-STU-002"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "STU-001.",
+    "main": "Dashboard aggregates data from enrolment, attendance, payments, assignments.",
+    "alt": "-",
+    "err": "A failed data source for one dashboard widget (e.g. payments) does not block the rest of the dashboard from rendering.",
+    "deps": [
+      "STU-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Self",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "Aggregation query performance for scale.",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "STU-003",
+    "module": "Student",
+    "name": "Live class access",
+    "desc": "Join scheduled live class via Zoho (default) or Google Meet (retained).",
+    "primary": "Student",
+    "secondary": "Trainer",
+    "br": [
+      "BR-LIVE-001"
+    ],
+    "prd": [
+      "PRD-STU-003"
+    ],
+    "dec": [
+      "DEC-LIVE-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "Session scheduled by Trainer (TRN-003).",
+    "main": "Student joins from dashboard at session time.",
+    "alt": "-",
+    "err": "No recording available for a session hit by the concurrency limit — accepted limitation, not a fault.",
+    "deps": [
+      "TRN-003"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Self",
+    "integ": "Zoho Meeting, Google Meet",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "Integration"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "STU-004",
+    "module": "Student",
+    "name": "Assignment submission",
+    "desc": "View assigned work, submit before due date, see trainer score/feedback.",
+    "primary": "Student",
+    "secondary": "Trainer",
+    "br": [],
+    "prd": [
+      "PRD-STU-004"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "TRN-006 assignment created.",
+    "main": "Student submits; Trainer grades (TRN-007).",
+    "alt": "Late submission per trainer rule.",
+    "err": "Submission after due date flagged, not silently accepted unless allowed.",
+    "deps": [
+      "TRN-006"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self",
+    "integ": "File storage",
+    "sec": "-",
+    "a11y_resp": "Responsive; file upload accessible.",
+    "perf": "-",
+    "tests": [
+      "Unit",
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "STU-005",
+    "module": "Student",
+    "name": "Support ticket",
+    "desc": "Raise and track a support ticket; Trainer/Admin resolves.",
+    "primary": "Student",
+    "secondary": "Trainer, Admin",
+    "br": [],
+    "prd": [
+      "PRD-STU-005"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "Student is authenticated.",
+    "main": "Student raises ticket; staff responds/resolves.",
+    "alt": "-",
+    "err": "A ticket with no assigned staff member remains visibly unassigned, not silently lost.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self / assigned staff",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "STU-006",
+    "module": "Student",
+    "name": "Attendance and progress view",
+    "desc": "Student views own attendance record and course/module completion percentage with outstanding blockers.",
+    "primary": "Student",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-STU-006",
+      "PRD-STU-007"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "TRN-008 attendance marked.",
+    "main": "Student views read-only attendance/progress.",
+    "alt": "-",
+    "err": "No attendance recorded yet for a session shows as not-yet-marked, never defaulted to absent.",
+    "deps": [
+      "TRN-008"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Self",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "XS",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "STU-007",
+    "module": "Student",
+    "name": "Certificate download",
+    "desc": "Download earned certificates once eligibility criteria are met.",
+    "primary": "Student",
+    "secondary": "Admin",
+    "br": [],
+    "prd": [
+      "PRD-STU-008"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "Course completion criteria met.",
+    "main": "Student downloads certificate (auto-generated or admin-uploaded — mechanism open).",
+    "alt": "-",
+    "err": "Certificate unavailable before eligibility met.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive; accessible PDF.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "STU-008",
+    "module": "Student",
+    "name": "Feedback submission",
+    "desc": "Submit feedback on a course/trainer.",
+    "primary": "Student",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-STU-009"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Could",
+    "release": "Wave 2",
+    "pre": "Student is enrolled in the course/trainer being reviewed.",
+    "main": "Student submits feedback form.",
+    "alt": "Anonymous option (open item).",
+    "err": "A student cannot submit feedback for a course/trainer they are not enrolled with.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "XS",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "STU-009",
+    "module": "Student",
+    "name": "Digital agreement / consent",
+    "desc": "Review and accept a digital agreement as part of enrolment.",
+    "primary": "Student",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-STU-010"
+    ],
+    "dec": [
+      "DEC-PRIV-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "STU-001 enrolment initiated.",
+    "main": "Student reviews and accepts agreement; acceptance timestamped.",
+    "alt": "-",
+    "err": "Enrolment cannot complete without acceptance.",
+    "deps": [
+      "STU-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self",
+    "integ": "-",
+    "sec": "Consent capture point for GDPR.",
+    "a11y_resp": "Responsive; accessible document viewer.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "STU-010",
+    "module": "Student",
+    "name": "Fee payment, EMI, invoices, receipts",
+    "desc": "Payment dashboard (total/paid/pending/next due), EMI/instalment timeline, invoice/receipt access — Razorpay only (Stripe removed, DEC-PAY-001 re-resolved 2026-09-03).",
+    "primary": "Student",
+    "secondary": "IT Admin",
+    "br": [
+      "BR-PAY-001"
+    ],
+    "prd": [
+      "PRD-STU-011",
+      "PRD-PAY-001",
+      "PRD-PAY-002",
+      "PRD-PAY-003"
+    ],
+    "dec": [
+      "DEC-PAY-001",
+      "DEC-PAY-002"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "STU-001 enrolment.",
+    "main": "Student pays via Razorpay; invoice/receipt generated; EMI schedule tracked.",
+    "alt": "Manual/offline payment record (base codebase).",
+    "err": "Failed payment does not mark fee as paid; webhook signature must verify.",
+    "deps": [
+      "STU-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self (Student) / Admin (view)",
+    "integ": "Razorpay",
+    "sec": "PCI scope minimized via hosted checkout; webhook signature verification required before accepting.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "Unit",
+      "API",
+      "Integration",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "STU-011",
+    "module": "Student",
+    "name": "Profile and document management",
+    "desc": "Maintain own profile (contact info; CV/portfolio fields open).",
+    "primary": "Student",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-STU-012"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "Student is authenticated.",
+    "main": "Student edits profile fields.",
+    "alt": "-",
+    "err": "An invalid file type/size on document upload is rejected with a clear message, not silently dropped.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "XS",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "TRN-001",
+    "module": "Trainer",
+    "name": "My Batches",
+    "desc": "List of batches assigned to the authenticated Trainer only.",
+    "primary": "Trainer",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-TRN-001"
+    ],
+    "dec": [
+      "DEC-ROLE-002"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "Trainer has at least one assigned batch (ADM-003).",
+    "main": "Trainer views own batch list.",
+    "alt": "-",
+    "err": "No batches → empty state.",
+    "deps": [
+      "ADM-003"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Self (Trainer)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "XS",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "TRN-002",
+    "module": "Trainer",
+    "name": "Batch detail (roster and schedule)",
+    "desc": "Open a batch: student roster (capped at 20 per DEC-WF-002) and schedule/status.",
+    "primary": "Trainer",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-TRN-002"
+    ],
+    "dec": [
+      "DEC-WF-002"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "TRN-001.",
+    "main": "Trainer opens batch, sees roster+schedule.",
+    "alt": "-",
+    "err": "Roster scoped strictly to that batch.",
+    "deps": [
+      "TRN-001",
+      "STU-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Self (Trainer, own batch only)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "TRN-003",
+    "module": "Trainer",
+    "name": "Upcoming sessions and live-class join",
+    "desc": "Dashboard lists upcoming sessions across assigned batches with a join link to the live class.",
+    "primary": "Trainer",
+    "secondary": "Student",
+    "br": [],
+    "prd": [
+      "PRD-TRN-003"
+    ],
+    "dec": [
+      "DEC-LIVE-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "TRN-001; batch has a scheduled session.",
+    "main": "Trainer views/joins upcoming session.",
+    "alt": "-",
+    "err": "Not-yet-joinable session shown as such, not an error.",
+    "deps": [
+      "TRN-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Self (Trainer)",
+    "integ": "Zoho Meeting, Google Meet",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "Integration"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "TRN-004",
+    "module": "Trainer",
+    "name": "Recording list and resource upload",
+    "desc": "Past session recordings and course resource/notes upload, visible to enrolled Students.",
+    "primary": "Trainer",
+    "secondary": "Student",
+    "br": [],
+    "prd": [
+      "PRD-TRN-004",
+      "PRD-TRN-005"
+    ],
+    "dec": [
+      "DEC-LIVE-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "TRN-002.",
+    "main": "Trainer uploads resource / recording appears post-session.",
+    "alt": "-",
+    "err": "Missing recording (concurrency limit) shown as unavailable, not an error.",
+    "deps": [
+      "TRN-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self (Trainer) / enrolled Students (view)",
+    "integ": "S3 storage",
+    "sec": "Restricted upload types/sizes.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "TRN-005",
+    "module": "Trainer",
+    "name": "Assignment create and edit",
+    "desc": "Create/edit assignments for a batch with due date and rubric.",
+    "primary": "Trainer",
+    "secondary": "Student",
+    "br": [],
+    "prd": [
+      "PRD-TRN-006"
+    ],
+    "dec": [
+      "DEC-ROLE-002"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "TRN-002.",
+    "main": "Trainer authors assignment; visible to batch students by due date.",
+    "alt": "-",
+    "err": "Editing an assignment after student submissions exist does not retroactively invalidate work already submitted.",
+    "deps": [
+      "TRN-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self (Trainer, own batch)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "TRN-006",
+    "module": "Trainer",
+    "name": "Assessment create and edit",
+    "desc": "Create/edit assessments — distinct content type from assignments, with draft/scheduled states.",
+    "primary": "Trainer",
+    "secondary": "Student",
+    "br": [],
+    "prd": [
+      "PRD-TRN-007"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "TRN-002.",
+    "main": "Trainer authors assessment in Draft; moves to Scheduled to publish.",
+    "alt": "-",
+    "err": "Draft assessment never visible to Students.",
+    "deps": [
+      "TRN-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self (Trainer, own batch)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "TRN-007",
+    "module": "Trainer",
+    "name": "Submission review and grading",
+    "desc": "Review assignment/assessment submissions, record score/grade and feedback.",
+    "primary": "Trainer",
+    "secondary": "Student",
+    "br": [],
+    "prd": [
+      "PRD-TRN-008"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "STU-004 submission exists.",
+    "main": "Trainer grades; Student sees result.",
+    "alt": "-",
+    "err": "Re-grading a submission overwrites the prior grade with an audit trail, not a duplicate record.",
+    "deps": [
+      "STU-004"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self (Trainer, own batch)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "TRN-008",
+    "module": "Trainer",
+    "name": "Attendance marking",
+    "desc": "Mark per-session attendance (present/absent) for an assigned batch.",
+    "primary": "Trainer",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-TRN-009"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "TRN-002; session occurred.",
+    "main": "Trainer marks attendance per student per session.",
+    "alt": "-",
+    "err": "Marking attendance for a session with no scheduled students returns an empty roster, not an error.",
+    "deps": [
+      "TRN-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self (Trainer, own batch)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "TRN-009",
+    "module": "Trainer",
+    "name": "Q&A response",
+    "desc": "View and respond to student questions raised against the Trainer's batch.",
+    "primary": "Trainer",
+    "secondary": "Student",
+    "br": [],
+    "prd": [
+      "PRD-TRN-010"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "TRN-002.",
+    "main": "Trainer answers a question; Student sees the reply.",
+    "alt": "-",
+    "err": "Only the Trainer assigned to that batch can reply; multiple replies on one question show in order.",
+    "deps": [
+      "TRN-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self (Trainer, own batch)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "XS",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-001",
+    "module": "Admin (IT)",
+    "name": "User/course/batch administration",
+    "desc": "Admin manages users, students, trainers, courses, batches.",
+    "primary": "IT Admin",
+    "secondary": "-",
+    "br": [
+      "BR-ADM-001"
+    ],
+    "prd": [
+      "PRD-ADM-001"
+    ],
+    "dec": [
+      "DEC-SCOPE-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "FND-002.",
+    "main": "Admin performs CRUD on core entities.",
+    "alt": "-",
+    "err": "Deleting/deactivating an entity with active dependents (e.g. a course with active batches) is blocked or requires explicit cascade confirmation, never a silent cascade delete.",
+    "deps": [
+      "FND-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "IT Admin",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "Pagination for admin lists.",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-002",
+    "module": "Admin (IT)",
+    "name": "CRM-linked enquiry/lead management",
+    "desc": "View and route enquiries/leads synced via the CRM webhook (configured for Zoho).",
+    "primary": "IT Admin",
+    "secondary": "-",
+    "br": [
+      "BR-ADM-001"
+    ],
+    "prd": [
+      "PRD-ADM-002"
+    ],
+    "dec": [
+      "DEC-SCOPE-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "PUB-002 enquiry submitted.",
+    "main": "Admin views/routes enquiry.",
+    "alt": "-",
+    "err": "An enquiry that fails to sync to Zoho remains visible and actionable in Admin regardless of sync status.",
+    "deps": [
+      "PUB-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "IT Admin",
+    "integ": "Zoho CRM webhook",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Integration"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-003",
+    "module": "Admin (IT)",
+    "name": "Batch creation and trainer assignment",
+    "desc": "Create a batch, assign a trainer, set capacity (≤20/slot).",
+    "primary": "IT Admin",
+    "secondary": "Trainer",
+    "br": [],
+    "prd": [
+      "PRD-ADM-003"
+    ],
+    "dec": [
+      "DEC-WF-002"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "ADM-001.",
+    "main": "Admin creates batch and assigns trainer; batch becomes student-selectable.",
+    "alt": "-",
+    "err": "Capacity exceeding 20 rejected.",
+    "deps": [
+      "ADM-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "IT Admin",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-004",
+    "module": "Admin (IT)",
+    "name": "Directory management: Students, Trainers, Employers",
+    "desc": "Ongoing directory/detail management beyond initial creation.",
+    "primary": "IT Admin",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-ADM-006"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "ADM-001.",
+    "main": "Admin views/edits directory detail records.",
+    "alt": "-",
+    "err": "Editing a Student/Trainer/Employer record never overwrites a field the acting Admin lacks permission to change.",
+    "deps": [
+      "ADM-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "IT Admin",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-005",
+    "module": "Admin (IT)",
+    "name": "Enrolment review and approval",
+    "desc": "Review a student's enrolment/enquiry (post-CRM-sync) and approve into active enrolment.",
+    "primary": "IT Admin",
+    "secondary": "Student",
+    "br": [],
+    "prd": [
+      "PRD-ADM-007"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "ADM-002.",
+    "main": "Admin approves; student enrolment becomes active.",
+    "alt": "-",
+    "err": "Rejected enrolment does not silently proceed.",
+    "deps": [
+      "ADM-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "IT Admin",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-006",
+    "module": "Admin (IT)",
+    "name": "Certificate administration",
+    "desc": "Admin issues/uploads certificates as an alternative to auto-generation.",
+    "primary": "IT Admin",
+    "secondary": "Student",
+    "br": [],
+    "prd": [
+      "PRD-ADM-009"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "Student course-completion criteria met.",
+    "main": "Admin uploads/issues certificate.",
+    "alt": "-",
+    "err": "Issuing a certificate for a student who hasn't met completion criteria requires an explicit override, not silent allowance.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "IT Admin",
+    "integ": "S3 storage",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-007",
+    "module": "Admin (IT)",
+    "name": "Placement Team workspace",
+    "desc": "[Base role] Candidate pool, company hiring requirements, interviews, offers, placement reports.",
+    "primary": "Placement Team",
+    "secondary": "-",
+    "br": [],
+    "prd": [],
+    "dec": [
+      "DEC-ARCH-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "FND-002.",
+    "main": "Placement Team manages the domestic placement pipeline.",
+    "alt": "-",
+    "err": "A candidate withdrawn from the pool no longer appears in active matching, but historical placement records are retained.",
+    "deps": [
+      "FND-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Placement Team",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "M",
+    "base": true,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-008",
+    "module": "Admin (IT)",
+    "name": "HR Team workspace",
+    "desc": "[Base role] Hiring/job requirements, candidate shortlist, interview coordination — internal staff mediating corporate hiring, distinct from the new Employer role.",
+    "primary": "HR Team",
+    "secondary": "-",
+    "br": [],
+    "prd": [],
+    "dec": [
+      "DEC-ARCH-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "FND-002.",
+    "main": "HR Team manages hiring requirements and shortlists.",
+    "alt": "-",
+    "err": "A hiring requirement with no matching candidates shows an empty state, not an error.",
+    "deps": [
+      "FND-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "HR Team",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": true,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-009",
+    "module": "Admin (IT)",
+    "name": "Resources/recordings oversight",
+    "desc": "Admin-level view over Trainer-uploaded resources/recordings across batches.",
+    "primary": "IT Admin",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-ADM-008"
+    ],
+    "dec": [
+      "DEC-SCOPE-008"
+    ],
+    "scope": "CURRENT",
+    "priority": "P3",
+    "moscow": "Could",
+    "release": "Wave 4",
+    "pre": "-",
+    "main": "-",
+    "alt": "-",
+    "err": "-",
+    "deps": [
+      "TRN-004"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "IT Admin",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-010",
+    "module": "Admin (IT)",
+    "name": "Agreement/consent oversight",
+    "desc": "Admin view of student agreement/consent status.",
+    "primary": "IT Admin",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-ADM-010"
+    ],
+    "dec": [
+      "DEC-SCOPE-008"
+    ],
+    "scope": "CURRENT",
+    "priority": "P3",
+    "moscow": "Could",
+    "release": "Wave 4",
+    "pre": "-",
+    "main": "-",
+    "alt": "-",
+    "err": "-",
+    "deps": [
+      "STU-009"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "IT Admin",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "XS",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-011",
+    "module": "Admin (IT)",
+    "name": "Notification template management",
+    "desc": "Manage notification templates and monitor delivery status.",
+    "primary": "IT Admin",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-ADM-011"
+    ],
+    "dec": [
+      "DEC-NOT-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P3",
+    "moscow": "Could",
+    "release": "Wave 4",
+    "pre": "-",
+    "main": "-",
+    "alt": "-",
+    "err": "Email channel only this round -- WhatsApp/SMS template management stays out of scope until NOT-002/NOT-003 unblock (Twilio credentials); build extensibly (e.g. a channel field), not email-hardcoded.",
+    "deps": [
+      "NOT-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "IT Admin",
+    "integ": "Email (Twilio/SMS deferred with NOT-002/NOT-003)",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-012",
+    "module": "Admin (IT)",
+    "name": "Roles/permission administration",
+    "desc": "Admin-configurable role/permission matrix.",
+    "primary": "IT Admin",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-ADM-013"
+    ],
+    "dec": [
+      "DEC-SCOPE-008"
+    ],
+    "scope": "CURRENT",
+    "priority": "P3",
+    "moscow": "Could",
+    "release": "Wave 4",
+    "pre": "-",
+    "main": "-",
+    "alt": "-",
+    "err": "-",
+    "deps": [
+      "FND-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "IT Admin",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-013",
+    "module": "Admin (IT)",
+    "name": "Operational-tooling cluster",
+    "desc": "System settings, audit logs, data import/export, backup/restore, system health, background-job monitoring.",
+    "primary": "IT Admin, Super Admin",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-ADM-012"
+    ],
+    "dec": [
+      "DEC-SCOPE-008"
+    ],
+    "scope": "CURRENT",
+    "priority": "P3",
+    "moscow": "Could",
+    "release": "Wave 4",
+    "pre": "-",
+    "main": "-",
+    "alt": "-",
+    "err": "-",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Super Admin (DEC-SCOPE-008 resolves the prior IT Admin/Super Admin ownership ambiguity)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "UI",
+      "API"
+    ],
+    "complexity": "L",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "ADM-014",
+    "module": "Admin (IT)",
+    "name": "Super Admin cross-division console",
+    "desc": "[Base role] Central dashboard across both divisions: users/students/staff, programs/batches/universities/recruiters, CMS/blogs/events, leads/applications/payments, reports/notifications, roles/settings/security logs/backups.",
+    "primary": "Super Admin",
+    "secondary": "-",
+    "br": [],
+    "prd": [],
+    "dec": [
+      "DEC-ARCH-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 3",
+    "pre": "FND-002.",
+    "main": "Super Admin operates cross-division console.",
+    "alt": "-",
+    "err": "A cross-division privileged action (e.g. security-log export) is itself audit-logged, per the base codebase's privileged-write audit requirement.",
+    "deps": [
+      "FND-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Super Admin",
+    "integ": "-",
+    "sec": "Privileged-write audit records (base ARCHITECTURE.md).",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "L",
+    "base": true,
+    "blocked_reason": null
+  },
+  {
+    "id": "EMP-001",
+    "module": "Employer",
+    "name": "Employer registration",
+    "desc": "[Net-new] Company registers an Employer account — no equivalent exists in the base codebase.",
+    "primary": "Employer",
+    "secondary": "IT Admin",
+    "br": [
+      "BR-EMP-001"
+    ],
+    "prd": [
+      "PRD-EMP-001"
+    ],
+    "dec": [
+      "DEC-SCOPE-002"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "FND-002 (new role/route to add).",
+    "main": "Company self-registers.",
+    "alt": "-",
+    "err": "Approval-before-activation workflow open — see FEATURE_QUESTIONS.md.",
+    "deps": [
+      "FND-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Employer (new)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "Unit",
+      "API",
+      "UI"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "EMP-002",
+    "module": "Employer",
+    "name": "Job posting",
+    "desc": "[Net-new] Employer posts open roles.",
+    "primary": "Employer",
+    "secondary": "Student",
+    "br": [
+      "BR-EMP-001"
+    ],
+    "prd": [
+      "PRD-EMP-002"
+    ],
+    "dec": [
+      "DEC-SCOPE-002"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "EMP-001.",
+    "main": "Employer posts a job; visible to eligible Students.",
+    "alt": "-",
+    "err": "A job posting past its closing date is not shown to Students as open, even if the Employer never explicitly closed it.",
+    "deps": [
+      "EMP-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Employer (own postings)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "EMP-003",
+    "module": "Employer",
+    "name": "Candidate profile search",
+    "desc": "[Net-new] Employer searches/browses Student candidate profiles within GDPR-approved visibility limits.",
+    "primary": "Employer",
+    "secondary": "Student",
+    "br": [
+      "BR-EMP-001"
+    ],
+    "prd": [
+      "PRD-EMP-003"
+    ],
+    "dec": [
+      "DEC-SCOPE-002",
+      "DEC-PRIV-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "EMP-001; STU-011 profile exists.",
+    "main": "Employer searches; sees permission-limited profile fields.",
+    "alt": "-",
+    "err": "Fields outside approved visibility never returned to Employer.",
+    "deps": [
+      "EMP-001",
+      "STU-011"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Employer",
+    "integ": "-",
+    "sec": "GDPR-scoped — exact visible field set is an open item.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "EMP-004",
+    "module": "Employer",
+    "name": "Interview scheduling and shortlist",
+    "desc": "[Net-new] Employer maintains a shortlist and schedules interviews with candidates.",
+    "primary": "Employer",
+    "secondary": "Student",
+    "br": [
+      "BR-EMP-001"
+    ],
+    "prd": [
+      "PRD-EMP-004",
+      "PRD-EMP-005"
+    ],
+    "dec": [
+      "DEC-SCOPE-002"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "EMP-003.",
+    "main": "Employer shortlists, then schedules an interview.",
+    "alt": "-",
+    "err": "Scheduling conflicts (same candidate, overlapping time) are flagged, not silently double-booked.",
+    "deps": [
+      "EMP-003"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Employer (own candidates)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "EMP-005",
+    "module": "Employer",
+    "name": "Interview list and status",
+    "desc": "[Net-new] Employer views scheduled/past interviews in one list.",
+    "primary": "Employer",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-EMP-006"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Could",
+    "release": "Wave 3",
+    "pre": "EMP-004.",
+    "main": "Employer reviews interview list.",
+    "alt": "-",
+    "err": "Cancelled interviews remain visible in history, not deleted.",
+    "deps": [
+      "EMP-004"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Employer",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "XS",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "EMP-006",
+    "module": "Employer",
+    "name": "Placement status tracking",
+    "desc": "[Net-new] Placement status (offer/accepted/joined) tracked per interviewed candidate.",
+    "primary": "Employer",
+    "secondary": "IT Admin",
+    "br": [],
+    "prd": [
+      "PRD-EMP-007"
+    ],
+    "dec": [
+      "DEC-SCOPE-008"
+    ],
+    "scope": "CURRENT",
+    "priority": "P3",
+    "moscow": "Could",
+    "release": "Wave 4",
+    "pre": "-",
+    "main": "-",
+    "alt": "-",
+    "err": "-",
+    "deps": [
+      "EMP-004"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Employer, IT Admin",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "OVS-001",
+    "module": "Overseas",
+    "name": "Destination/university/course discovery",
+    "desc": "Browse countries/destinations, universities (admin-prioritized), courses, with tuition ranges.",
+    "primary": "Visitor, Student",
+    "secondary": "-",
+    "br": [
+      "BR-OVS-001"
+    ],
+    "prd": [
+      "PRD-OVS-001"
+    ],
+    "dec": [
+      "DEC-SCOPE-003",
+      "DEC-DATA-002"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "None.",
+    "main": "User browses country/university/course listings and detail.",
+    "alt": "-",
+    "err": "A university/course with incomplete admin-entered data (per DEC-DATA-002) shows only the fields that exist -- never a fabricated placeholder value.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Public",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "UI",
+      "API"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "OVS-002",
+    "module": "Overseas",
+    "name": "Overseas application submission",
+    "desc": "Student (existing identity) submits interest in a country/university/course.",
+    "primary": "Student",
+    "secondary": "Counselor",
+    "br": [
+      "BR-OVS-001"
+    ],
+    "prd": [
+      "PRD-OVS-002"
+    ],
+    "dec": [
+      "DEC-SCOPE-003",
+      "DEC-ROLE-001",
+      "DEC-ROLE-004"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "OVS-001; Student authenticated.",
+    "main": "Student submits interest; application enters the state sequence (OVS-003/004).",
+    "alt": "Known-incomplete since DEC-ROLE-004 (2026-09-14): covers only a self-authenticating applicant. An Agent-referred applicant has no login and needs an Agent-performed equivalent -- see AGT-002's reconciliation note, not yet designed.",
+    "err": "Submitting interest in the same university/course twice does not create a duplicate application record.",
+    "deps": [
+      "OVS-001",
+      "AUTH-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self (Student)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "OVS-003",
+    "module": "Overseas",
+    "name": "Eligibility evaluation",
+    "desc": "Counselor evaluates eligibility, determining viable university/course options.",
+    "primary": "Counselor",
+    "secondary": "Student",
+    "br": [
+      "BR-OVS-001"
+    ],
+    "prd": [
+      "PRD-OVS-003"
+    ],
+    "dec": [
+      "DEC-WF-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "OVS-002.",
+    "main": "Counselor reviews and advances/declines the application stage.",
+    "alt": "-",
+    "err": "Rejection/waitlist/deferral outcomes are an open item — do not invent.",
+    "deps": [
+      "OVS-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Counselor (assigned students)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "M",
+    "base": true,
+    "blocked_reason": null
+  },
+  {
+    "id": "OVS-004",
+    "module": "Overseas",
+    "name": "Application status tracking and notifications",
+    "desc": "Student sees current application stage at any time; notified on stage change.",
+    "primary": "Student",
+    "secondary": "Counselor",
+    "br": [
+      "BR-OVS-001"
+    ],
+    "prd": [
+      "PRD-OVS-004"
+    ],
+    "dec": [
+      "DEC-WF-001",
+      "DEC-NOT-001",
+      "DEC-ROLE-004"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "OVS-002.",
+    "main": "Stage change triggers a notification and updates the Student's tracking view.",
+    "alt": "Known-incomplete since DEC-ROLE-004 (2026-09-14): same gap as OVS-002, an Agent-referred applicant has no login to view this with; the Agent needs an equivalent view, not yet designed.",
+    "err": "A stage-change notification that fails to send does not block the status update itself from being recorded.",
+    "deps": [
+      "OVS-002",
+      "NOT-001",
+      "NOT-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Self (Student)",
+    "integ": "Email, Twilio WhatsApp, SMS",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Integration"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "OVS-005",
+    "module": "Overseas",
+    "name": "Document upload against checklist",
+    "desc": "Student uploads required documents against a checklist varying by country/university/course.",
+    "primary": "Student",
+    "secondary": "Counselor",
+    "br": [
+      "BR-OVS-001"
+    ],
+    "prd": [
+      "PRD-OVS-005"
+    ],
+    "dec": [
+      "DEC-DATA-001",
+      "DEC-ROLE-004"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "OVS-002.",
+    "main": "Student uploads; Counselor verifies (verification_status).",
+    "alt": "Known-incomplete since DEC-ROLE-004 (2026-09-14): same gap as OVS-002/004, an Agent-referred applicant has no login to upload with; the Agent needs an equivalent upload path, not yet designed.",
+    "err": "Unsupported file types/sizes — open item.",
+    "deps": [
+      "OVS-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self (Student) / Counselor (verify)",
+    "integ": "S3 storage",
+    "sec": "Documents may include passports/financial evidence — least-privilege access required.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "OVS-006",
+    "module": "Overseas",
+    "name": "Scholarship listing and application",
+    "desc": "Browse scholarships; apply.",
+    "primary": "Visitor, Student",
+    "secondary": "-",
+    "br": [
+      "BR-OVS-001"
+    ],
+    "prd": [
+      "PRD-OVS-006"
+    ],
+    "dec": [
+      "DEC-SCOPE-003"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Could",
+    "release": "Wave 3",
+    "pre": "OVS-001 context.",
+    "main": "Student applies to a listed scholarship.",
+    "alt": "-",
+    "err": "No eligibility rule engine — listing only.",
+    "deps": [
+      "OVS-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Public view / Self (Student) apply",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "OVS-007",
+    "module": "Overseas",
+    "name": "Events and workshops",
+    "desc": "View and register interest in Overseas events/workshops.",
+    "primary": "Visitor, Student",
+    "secondary": "-",
+    "br": [
+      "BR-OVS-001"
+    ],
+    "prd": [
+      "PRD-OVS-007"
+    ],
+    "dec": [
+      "DEC-SCOPE-003"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Could",
+    "release": "Wave 3",
+    "pre": "None.",
+    "main": "User registers for an event.",
+    "alt": "-",
+    "err": "Capacity/waitlist unspecified — open item.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Public",
+    "integ": "-",
+    "sec": "Registration data is personal data.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "XS",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "VISA-001",
+    "module": "Visa",
+    "name": "Visa checklist and documentation",
+    "desc": "Student completes a visa-specific document checklist.",
+    "primary": "Student",
+    "secondary": "Counselor",
+    "br": [
+      "BR-VISA-001"
+    ],
+    "prd": [
+      "PRD-VISA-001"
+    ],
+    "dec": [
+      "DEC-SCOPE-006"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "OVS-005 documents verified.",
+    "main": "Student completes checklist; status tracked.",
+    "alt": "-",
+    "err": "An unverified document does not block viewing the checklist -- only advancing past the stage that requires it.",
+    "deps": [
+      "OVS-005"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self (Student) / Counselor",
+    "integ": "-",
+    "sec": "Sensitive documents — least-privilege access.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "VISA-002",
+    "module": "Visa",
+    "name": "Visa interview preparation",
+    "desc": "Student accesses visa interview preparation material/guidance.",
+    "primary": "Student",
+    "secondary": "Counselor",
+    "br": [
+      "BR-VISA-001"
+    ],
+    "prd": [
+      "PRD-VISA-002"
+    ],
+    "dec": [
+      "DEC-SCOPE-006"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Could",
+    "release": "Wave 3",
+    "pre": "VISA-001.",
+    "main": "Student views prep material.",
+    "alt": "-",
+    "err": "Missing prep material for a specific country shows a clear fallback, not a broken page.",
+    "deps": [
+      "VISA-001"
+    ],
+    "ux": "Y",
+    "api": "N",
+    "db": "Y",
+    "rbac": "Self (Student)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "XS",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "VISA-003",
+    "module": "Visa",
+    "name": "Visa approval status tracking",
+    "desc": "Track visa approval status through to a final outcome.",
+    "primary": "Student",
+    "secondary": "Counselor",
+    "br": [
+      "BR-VISA-001"
+    ],
+    "prd": [
+      "PRD-VISA-003"
+    ],
+    "dec": [
+      "DEC-SCOPE-006"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "VISA-001.",
+    "main": "Status updates as the case progresses (checklist → ... → decision).",
+    "alt": "-",
+    "err": "Compliance rule: never represent EduSphere as the visa decision-maker (found in reference implementation copy).",
+    "deps": [
+      "VISA-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Self (Student) / Counselor",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "AGT-001",
+    "module": "Agent",
+    "name": "Agent self-registration and approval gate",
+    "desc": "Agent self-registers; account held Pending until Overseas Admin approves.",
+    "primary": "Agent",
+    "secondary": "Overseas Admin",
+    "br": [
+      "BR-AGT-001"
+    ],
+    "prd": [
+      "PRD-AGT-001",
+      "PRD-ADM-004",
+      "NFR-SEC-002"
+    ],
+    "dec": [
+      "DEC-SCOPE-004"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 3",
+    "pre": "FND-002.",
+    "main": "Agent registers; Overseas Admin approves/rejects (ADM-015).",
+    "alt": "-",
+    "err": "Pending/Rejected Agent cannot refer students or view data.",
+    "deps": [
+      "FND-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Agent (self) / Overseas Admin (approve)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "Unit",
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "AGT-002",
+    "module": "Agent",
+    "name": "Referred-student roster and status",
+    "desc": "Agent views roster of referred students and each one's application status. Read-only, as shipped -- known-incomplete against DEC-ROLE-004 (2026-09-14): an Agent-referred student is never issued a login, so a companion create/manage-on-behalf-of capability is required scope, not yet designed or built.",
+    "primary": "Agent",
+    "secondary": "-",
+    "br": [
+      "BR-AGT-001"
+    ],
+    "prd": [
+      "PRD-AGT-002"
+    ],
+    "dec": [
+      "DEC-SCOPE-004",
+      "DEC-ROLE-004"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 3",
+    "pre": "AGT-001 approved; OVS-002 applications linked via agent_id.",
+    "main": "Agent views own referrals only.",
+    "alt": "Not yet built (DEC-ROLE-004, 2026-09-14): Agent creates the AgentStudent referral and performs OVS-002/004/005-equivalent actions (submit application, track status, upload documents) on the referred student's behalf, since that student has no login. New Feature ID needed for this write path -- see PRD_OPEN_ITEMS.md item 68, RBAC_MATRIX.md Section 2.8, DATA_MODEL.md Section 6.2/6.8.",
+    "err": "Agent never sees another agent's referrals.",
+    "deps": [
+      "AGT-001",
+      "OVS-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Self (Agent, own referrals)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "AGT-003",
+    "module": "Agent",
+    "name": "Commission accrual (automatic trigger)",
+    "desc": "Commission auto-created/marked eligible when a referred application reaches finalized+joined; amount stays admin-discretionary per application (no fixed rate, by design).",
+    "primary": "Agent",
+    "secondary": "Overseas Admin",
+    "br": [
+      "BR-AGT-002"
+    ],
+    "prd": [
+      "PRD-AGT-003"
+    ],
+    "dec": [
+      "DEC-SCOPE-005"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 3",
+    "pre": "AGT-002; application reaches the (to-be-mapped) joined status.",
+    "main": "System auto-creates eligible commission on trigger.",
+    "alt": "Overseas Admin sets/adjusts amount.",
+    "err": "No commission creatable before the trigger condition — extends the base codebase's manual-only creation.",
+    "deps": [
+      "AGT-002",
+      "OVS-004"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Agent (view own) / Overseas Admin (amount)",
+    "integ": "-",
+    "sec": "Extends base codebase logic — see FEATURE_QUESTIONS.md for the exact trigger status mapping.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "Unit",
+      "API"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "AGT-004",
+    "module": "Agent",
+    "name": "Commission payout request and approval",
+    "desc": "Agent claims commission; separate Overseas Admin approval required before paid — closes a gap the base codebase left open.",
+    "primary": "Agent",
+    "secondary": "Overseas Admin",
+    "br": [
+      "BR-AGT-002"
+    ],
+    "prd": [
+      "PRD-AGT-004",
+      "PRD-ADM-005",
+      "NFR-SEC-002"
+    ],
+    "dec": [
+      "DEC-SCOPE-005"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 3",
+    "pre": "AGT-003 commission eligible/estimated.",
+    "main": "Agent claims; Overseas Admin approves payout (new endpoint).",
+    "alt": "-",
+    "err": "No commission reaches paid without explicit Overseas Admin approval, distinct from the Agent's own claim.",
+    "deps": [
+      "AGT-003"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Agent (claim) / Overseas Admin (approve)",
+    "integ": "-",
+    "sec": "Net-new payout-approval endpoint — not present in the base codebase.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "Unit",
+      "API",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "CNS-001",
+    "module": "Overseas Staff",
+    "name": "Counselor workspace",
+    "desc": "[Base role] Assigned students, leads, documents, applications, visas, appointments, reports.",
+    "primary": "Counselor",
+    "secondary": "-",
+    "br": [],
+    "prd": [],
+    "dec": [
+      "DEC-ARCH-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "FND-002.",
+    "main": "Counselor manages their assigned Overseas caseload end-to-end.",
+    "alt": "-",
+    "err": "A Counselor cannot act on a student who is not assigned to them, even via a direct record ID.",
+    "deps": [
+      "FND-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Counselor (own assigned students)",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI"
+    ],
+    "complexity": "L",
+    "base": true,
+    "blocked_reason": null
+  },
+  {
+    "id": "UNI-001",
+    "module": "Overseas Staff",
+    "name": "University Representative portal",
+    "desc": "[Base role] External partner-university portal: applications sent to their institution, offer-letter tracking, admission updates, student communication, reports.",
+    "primary": "University Representative",
+    "secondary": "Counselor",
+    "br": [],
+    "prd": [],
+    "dec": [
+      "DEC-ARCH-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 3",
+    "pre": "FND-002; a University partner record exists.",
+    "main": "Rep reviews/updates applications sent to their university.",
+    "alt": "-",
+    "err": "Rep sees only applications addressed to their own institution.",
+    "deps": [
+      "FND-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "University Representative (own institution only)",
+    "integ": "Inbound university email (base)",
+    "sec": "External-partner access — least-privilege scoping required.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": true,
+    "blocked_reason": null
+  },
+  {
+    "id": "SCH-001",
+    "module": "School",
+    "name": "School Portal role-based access (Principal/Coordinator/Teacher/Parent)",
+    "desc": "[New] Net-new build -- four school-side roles, each scoped server-side to their own institution only: Principal (read-only dashboard/stats/reports), School Coordinator (write access: create/manage students one at a time, schedule activities, track attendance, generate reports), Teacher (role code school_teacher, read-only, assigned students only), Parent (role code school_parent, read-only, own child(ren) only). Supersedes the original single-representative-login model (DEC-SCOPE-009) per DEC-SCOPE-011, resolved 2026-09-14. Service-delivery data (career guidance/psychometric/counselling), if/when built, stays with the existing Counselor role (DEC-ROLE-005), not this feature's roles.",
+    "primary": "Principal, School Coordinator, Teacher, Parent",
+    "secondary": "Counselor (service-delivery data, out of this feature's scope)",
+    "br": [
+      "BR-SCH-001"
+    ],
+    "prd": [
+      "PRD-SCH-001",
+      "PRD-SCH-002",
+      "PRD-SCH-004",
+      "PRD-SCH-005",
+      "PRD-SCH-006"
+    ],
+    "dec": [
+      "DEC-SCOPE-009",
+      "DEC-SCOPE-011",
+      "DEC-ROLE-005"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 4",
+    "pre": "FND-002; SCH-003 (a School partner record and the acting account both exist, created per DEC-SCOPE-012's onboarding flow).",
+    "main": "Each role logs in and sees/acts on only their own institution's data, further scoped per role (Coordinator: whole institution write access; Teacher: assigned students only; Parent: own child(ren) only; Principal: whole institution read-only).",
+    "alt": "Bulk roster upload is a separate Feature ID (SCH-002). Explicitly excludes an academic results/marks module (DEC-SCOPE-010 part 2, PENDING) and whether Career Guidance/Psychometric/Counselling exist as buildable modules at all (DEC-ROLE-005 settled only who would manage that data, not whether it's in scope).",
+    "err": "No role ever sees another institution's data, even via a direct record ID. Teacher/Parent additionally never see students outside their own assigned/child scope, even within the same institution.",
+    "deps": [
+      "FND-002",
+      "SCH-003"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Principal (own institution, read-only) / School Coordinator (own institution, write) / Teacher (own institution + assigned students only, read-only) / Parent (own institution + own child(ren) only, read-only)",
+    "integ": "-",
+    "sec": "External-partner-style access -- least-privilege own-institution scoping required for all four roles, same class as UNI-001/AGT-002.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "L",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "SCH-002",
+    "module": "School",
+    "name": "School Coordinator bulk student roster upload (template-download-first)",
+    "desc": "[New] Net-new build -- School Coordinator downloads a fixed-format template, fills it offline, uploads it; server validates against the template schema and returns a row-level accept/reject report. Resolves DEC-SCOPE-009's original deferral reason (avoiding uncontrolled bulk writes) by construction. Roster only -- academic results bulk upload is separate, undecided scope (DEC-SCOPE-010 part 2, PENDING).",
+    "primary": "School Coordinator",
+    "secondary": "-",
+    "br": [
+      "BR-SCH-002"
+    ],
+    "prd": [
+      "PRD-SCH-003"
+    ],
+    "dec": [
+      "DEC-SCOPE-010",
+      "DEC-SCOPE-011"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 4",
+    "pre": "SCH-001 (School Coordinator account exists and is scoped to their institution).",
+    "main": "Coordinator downloads template, uploads filled file, system validates and applies row-level, returns per-row accept/reject report.",
+    "alt": "A row that fails validation does not block the rest of the batch -- each row succeeds or fails independently.",
+    "err": "Coordinator can only bulk-create/update students within their own institution, never another's, even via a crafted upload row.",
+    "deps": [
+      "SCH-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "School Coordinator (own institution only)",
+    "integ": "File upload/storage (template schema TBD in Contracts)",
+    "sec": "Server-side validation mandatory before any row is committed -- never trust the uploaded file's own claims about itself (file type, size, row count) without independent verification.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "SCH-003",
+    "module": "School",
+    "name": "School partner onboarding (Admin-created, Coordinator-seeded invites)",
+    "desc": "[New] Net-new build -- Overseas Admin creates a School partner record and a seed School Coordinator account for it, both active immediately (no approval gate). The Coordinator then invites/creates Principal, Teacher, and Parent accounts for that same institution, also active immediately. No School-side self-service registration exists. Independent of the still-open School Partnership tiers question.",
+    "primary": "Overseas Admin",
+    "secondary": "School Coordinator",
+    "br": [
+      "BR-SCH-003"
+    ],
+    "prd": [
+      "PRD-SCH-007"
+    ],
+    "dec": [
+      "DEC-SCOPE-012"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 4",
+    "pre": "FND-002. Overseas Admin's own division-management access (mirrors how Overseas Admin manages University partner records).",
+    "main": "Overseas Admin creates School + seed Coordinator (active immediately) -> Coordinator invites/creates Principal/Teacher/Parent for the same institution (active immediately).",
+    "alt": "Provisioning does not vary by School Partnership tier -- every school gets the same onboarding path regardless of commercial tier, unless a future decision says otherwise.",
+    "err": "An account the Coordinator creates is always scoped to the Coordinator's own school_id, server-derived, never client-supplied. A Coordinator cannot create accounts for a different institution even via a crafted request.",
+    "deps": [
+      "FND-002"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Overseas Admin (create School + seed Coordinator, division-wide) / School Coordinator (invite/create Principal, Teacher, Parent -- own institution only)",
+    "integ": "Invite/notification delivery (email, per NOT-001) for the three Coordinator-created accounts.",
+    "sec": "Invite tokens must be single-use and scoped to one institution -- same class of concern as any other account-creation flow.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "SCH-004",
+    "module": "School",
+    "name": "Career Guidance & Counselling module",
+    "desc": "[New] Net-new build -- Career Counselor (new role) conducts career guidance sessions, adds counselling notes, and uploads recommendations for their assigned school-affiliated students, combining EVID-014's 'Career Awareness/Guidance' and 'Individual Career Counselling' into one role's domain. School Coordinator sees this content read-only, for their own institution only. Supersedes DEC-ROLE-005's 'existing Counselor role' framing per DEC-ROLE-006.",
+    "primary": "Career Counselor",
+    "secondary": "School Coordinator (read-only), Parent/Student/Teacher (read-only)",
+    "br": [
+      "BR-SCH-005"
+    ],
+    "prd": [
+      "PRD-SCH-009"
+    ],
+    "dec": [
+      "DEC-ROLE-006",
+      "DEC-SCOPE-013",
+      "DEC-SCOPE-014"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 4",
+    "pre": "FND-002; ADM-001 (Overseas Admin or Super Admin creates the Career Counselor account and assigns their school portfolio via the Admin console -- DEC-SCOPE-014, resolved 2026-09-14, NOT via SCH-003's invite flow, which covers only the four school-side roles).",
+    "main": "Career Counselor creates/manages career guidance sessions and counselling records for school-affiliated students at any school in their own portfolio; Coordinator and Parent/Student/Teacher view read-only.",
+    "alt": "Exact field list/session structure not itemized by DEC-ROLE-006 -- EVID-014's detailed proposal is DERIVED_BLUEPRINT only, not confirmed. Do not invent beyond the confirmed actor/scope.",
+    "err": "Career Counselor never manages a student at a school outside their own portfolio (DEC-SCOPE-013), even via a direct record ID; School Coordinator never edits this content, only views it, for their own institution only.",
+    "deps": [
+      "FND-002",
+      "SCH-001",
+      "ADM-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Career Counselor (own school portfolio, DEC-SCOPE-013) / School Coordinator (read-only, own institution) / Parent, Student, Teacher (read-only, own scope) / Overseas Admin, Super Admin (account creation + portfolio assignment, DEC-SCOPE-014)",
+    "integ": "-",
+    "sec": "Service-delivery content about a minor -- least-privilege access required, same class as VISA/OVS document handling.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "SCH-005",
+    "module": "School",
+    "name": "Psychometric Assessment module",
+    "desc": "[New] Net-new build -- Psychometric Team (new role) assigns psychometric assessments and uploads reports for their assigned school-affiliated students. School Coordinator sees this content read-only, for their own institution only. Supersedes DEC-ROLE-005's 'existing Counselor role' framing per DEC-ROLE-006.",
+    "primary": "Psychometric Team",
+    "secondary": "School Coordinator (read-only), Parent/Student/Teacher (read-only)",
+    "br": [
+      "BR-SCH-006"
+    ],
+    "prd": [
+      "PRD-SCH-010"
+    ],
+    "dec": [
+      "DEC-ROLE-006",
+      "DEC-SCOPE-013",
+      "DEC-SCOPE-014"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 4",
+    "pre": "FND-002; ADM-001 (Overseas Admin or Super Admin creates the Psychometric Team account and assigns their school portfolio via the Admin console -- DEC-SCOPE-014, resolved 2026-09-14, NOT via SCH-003's invite flow, which covers only the four school-side roles).",
+    "main": "Psychometric Team assigns assessments and uploads reports for school-affiliated students at any school in their own portfolio; Coordinator and Parent/Student/Teacher view read-only.",
+    "alt": "Exact assessment types/report field list not itemized by DEC-ROLE-006 -- EVID-014's detailed proposal is DERIVED_BLUEPRINT only, not confirmed. Do not invent beyond the confirmed actor/scope.",
+    "err": "Psychometric Team never manages a student at a school outside their own portfolio (DEC-SCOPE-013), even via a direct record ID; School Coordinator never edits this content, only views it, for their own institution only.",
+    "deps": [
+      "FND-002",
+      "SCH-001",
+      "ADM-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Psychometric Team (own school portfolio, DEC-SCOPE-013) / School Coordinator (read-only, own institution) / Parent, Student, Teacher (read-only, own scope) / Overseas Admin, Super Admin (account creation + portfolio assignment, DEC-SCOPE-014)",
+    "integ": "File upload/storage (report_url, presigned-download pattern per DATA_MODEL.md 6.18 -- corrected 2026-09-14, was '-')",
+    "sec": "Psychometric report data about a minor -- least-privilege access required, same class as VISA/OVS document handling.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "SCH-006",
+    "module": "School",
+    "name": "Academic Results module (Draft to Verified to Published)",
+    "desc": "[New] Net-new build -- Academic Team (new role) uploads/edits academic results (subject/term/marks) for assigned school-affiliated students. A result is not visible to Parent/Student/Teacher until it passes Draft -> Verified -> Published. School Coordinator sees results read-only, for their own institution only. Resolves DEC-SCOPE-010 part 2, actor/gate per DEC-ROLE-006.",
+    "primary": "Academic Team",
+    "secondary": "School Coordinator (read-only), Parent/Student/Teacher (read-only, once Published)",
+    "br": [
+      "BR-SCH-004"
+    ],
+    "prd": [
+      "PRD-SCH-008"
+    ],
+    "dec": [
+      "DEC-SCOPE-010",
+      "DEC-ROLE-006",
+      "DEC-SCOPE-013",
+      "DEC-SCOPE-014",
+      "DEC-ROLE-007"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 4",
+    "pre": "FND-002; ADM-001 (Overseas Admin or Super Admin creates the Academic Team account and assigns their school portfolio via the Admin console -- DEC-SCOPE-014, resolved 2026-09-14, NOT via SCH-003's invite flow, which covers only the four school-side roles). A portfolio needs at least two Academic Team members for publishing to be possible at all (DEC-ROLE-007's same-actor restriction).",
+    "main": "Academic Team uploads a result (Draft) -> a DIFFERENT Academic Team member verifies it (Verified) -> a DIFFERENT Academic Team member publishes it (Published) -> Parent/Student/Teacher can then view it. Same-actor restriction confirmed DEC-ROLE-007, 2026-09-14: the uploader may never also verify or publish their own entry.",
+    "alt": "The Draft->Verified->Published gate, and its verify/publish same-actor restriction, are both confirmed (DEC-ROLE-006, DEC-ROLE-007, resolved 2026-09-14) -- no longer an open re-confirmation item.",
+    "err": "A Draft or Verified (not yet Published) result is never visible to Parent/Student/Teacher, even via a direct record ID. Academic Team never edits a result at a school outside their own portfolio (DEC-SCOPE-013), even via a direct record ID. An Academic Team member can never verify or publish a result they themselves uploaded (DEC-ROLE-007).",
+    "deps": [
+      "FND-002",
+      "SCH-001",
+      "ADM-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Academic Team (own school portfolio, DEC-SCOPE-013; verify/publish restricted to a different member than the uploader, DEC-ROLE-007) / School Coordinator (read-only, own institution) / Parent, Student, Teacher (read-only, own scope, Published only) / Overseas Admin, Super Admin (account creation + portfolio assignment, DEC-SCOPE-014)",
+    "integ": "-",
+    "sec": "Academic record data about a minor -- least-privilege access required, same class as VISA/OVS document handling.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "NOT-001",
+    "module": "Notifications",
+    "name": "Email notifications",
+    "desc": "Status-change events trigger email notifications.",
+    "primary": "All roles",
+    "secondary": "-",
+    "br": [
+      "BR-NOT-001"
+    ],
+    "prd": [
+      "PRD-NOT-001"
+    ],
+    "dec": [
+      "DEC-NOT-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "Triggering event occurs.",
+    "main": "System sends email on defined trigger.",
+    "alt": "-",
+    "err": "A failed send is retried per a defined policy (policy itself open -- PRD_OPEN_ITEMS item 13), never silently dropped.",
+    "deps": [],
+    "ux": "N",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "System",
+    "integ": "Email provider (unnamed)",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "API",
+      "Integration"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "NOT-002",
+    "module": "Notifications",
+    "name": "WhatsApp notifications (Twilio)",
+    "desc": "Status-change events trigger WhatsApp notifications via Twilio.",
+    "primary": "Student",
+    "secondary": "-",
+    "br": [
+      "BR-NOT-001"
+    ],
+    "prd": [
+      "PRD-NOT-002"
+    ],
+    "dec": [
+      "DEC-NOT-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "Triggering event occurs.",
+    "main": "System sends WhatsApp message via Twilio on defined trigger.",
+    "alt": "-",
+    "err": "Opt-out respected once defined.",
+    "deps": [],
+    "ux": "N",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "System",
+    "integ": "Twilio WhatsApp Business API",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "API",
+      "Integration"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "NOT-003",
+    "module": "Notifications",
+    "name": "SMS notifications",
+    "desc": "[Retained] Status-change events can trigger SMS, alongside Email/WhatsApp.",
+    "primary": "All roles",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-NOT-003"
+    ],
+    "dec": [
+      "DEC-NOT-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Could",
+    "release": "Wave 3",
+    "pre": "Triggering event occurs.",
+    "main": "System sends SMS on defined trigger.",
+    "alt": "-",
+    "err": "Same failure-handling expectation as Email/WhatsApp -- never silently dropped.",
+    "deps": [],
+    "ux": "N",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "System",
+    "integ": "SMS provider (unnamed)",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "API",
+      "Integration"
+    ],
+    "complexity": "S",
+    "base": true,
+    "blocked_reason": null
+  },
+  {
+    "id": "PAY-001",
+    "module": "Payments",
+    "name": "Payment gateway integration",
+    "desc": "Razorpay gateway integration with webhook signature verification (Stripe removed, DEC-PAY-001 re-resolved 2026-09-03).",
+    "primary": "Engineering",
+    "secondary": "Student",
+    "br": [
+      "BR-PAY-001"
+    ],
+    "prd": [
+      "PRD-PAY-001"
+    ],
+    "dec": [
+      "DEC-PAY-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 1",
+    "pre": "FND-001.",
+    "main": "Checkout session created; webhook confirms payment.",
+    "alt": "Manual/offline payment record (base).",
+    "err": "Unverified/failed webhook never marks a fee paid.",
+    "deps": [
+      "FND-001"
+    ],
+    "ux": "N",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "System",
+    "integ": "Razorpay",
+    "sec": "Webhook signature verification mandatory before accepting live money (base PRODUCTION_CHECKLIST.md).",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "Unit",
+      "API",
+      "Integration",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "LMS-001",
+    "module": "Learning",
+    "name": "Native LMS module extensions",
+    "desc": "Additional native LMS capability beyond already-scoped notes/assignments/Q&A/attendance/recordings/certificates.",
+    "primary": "Student, Trainer",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "PRD-LMS-001"
+    ],
+    "dec": [
+      "DEC-LMS-001"
+    ],
+    "scope": "BLOCKED",
+    "priority": "P2",
+    "moscow": "Could",
+    "release": "Unscheduled",
+    "pre": "-",
+    "main": "-",
+    "alt": "-",
+    "err": "-",
+    "deps": [
+      "STU-004",
+      "TRN-005",
+      "TRN-006"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "UI",
+      "API"
+    ],
+    "complexity": "L",
+    "base": false,
+    "blocked_reason": "PRD-LMS-001's actual feature boundary (content authoring? sequencing? quizzes? gradebooks? SCORM?) is explicitly undefined — cannot decompose into buildable AC without inventing scope."
+  },
+  {
+    "id": "RPT-001",
+    "module": "Reporting",
+    "name": "Domestic/Employer reporting",
+    "desc": "Enrolment funnel, course performance, student progress, employer job activity, placement outcomes.",
+    "primary": "IT Admin, Placement Team",
+    "secondary": "Employer",
+    "br": [],
+    "prd": [
+      "PRD-RPT-001"
+    ],
+    "dec": [],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 3",
+    "pre": "Underlying data exists (enrolment/attendance/placement features live).",
+    "main": "Admin/Placement Team views reports.",
+    "alt": "-",
+    "err": "A report with no underlying data for the selected period shows an empty state, never a zero-filled fabrication.",
+    "deps": [
+      "ADM-005",
+      "ADM-007"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "IT Admin, Placement Team",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "Responsive.",
+    "perf": "Query performance for large datasets.",
+    "tests": [
+      "UI",
+      "API"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "RPT-002",
+    "module": "Reporting",
+    "name": "Overseas reporting",
+    "desc": "Application funnel by stage, agent commission report, visa-status aging.",
+    "primary": "Overseas Admin",
+    "secondary": "Counselor",
+    "br": [],
+    "prd": [
+      "PRD-RPT-002"
+    ],
+    "dec": [
+      "DEC-SCOPE-008"
+    ],
+    "scope": "CURRENT",
+    "priority": "P3",
+    "moscow": "Could",
+    "release": "Wave 4",
+    "pre": "-",
+    "main": "-",
+    "alt": "-",
+    "err": "-",
+    "deps": [
+      "OVS-004",
+      "AGT-003"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Overseas Admin",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "UI"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "SEC-001",
+    "module": "Security",
+    "name": "Approval-gate audit trail",
+    "desc": "Agent-approval (AGT-001) and commission-payout (AGT-004) actions logged with actor, timestamp, outcome.",
+    "primary": "Overseas Admin",
+    "secondary": "-",
+    "br": [],
+    "prd": [
+      "NFR-AUDIT-001"
+    ],
+    "dec": [
+      "DEC-SCOPE-004",
+      "DEC-SCOPE-005"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "AGT-001, AGT-004.",
+    "main": "Every approval action writes an audit record (base codebase already has AuditLog + audit helper).",
+    "alt": "-",
+    "err": "An audit-log write failure must not silently allow the underlying privileged action to proceed unlogged -- fail closed, not open.",
+    "deps": [
+      "AGT-001",
+      "AGT-004"
+    ],
+    "ux": "N",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "System (write) / Overseas Admin (implicit)",
+    "integ": "-",
+    "sec": "Directly addresses NFR-AUDIT-001 for this specific domain.",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "Unit",
+      "API"
+    ],
+    "complexity": "S",
+    "base": true,
+    "blocked_reason": null
+  },
+  {
+    "id": "SEC-002",
+    "module": "Security",
+    "name": "GDPR consent capture and self-service export/delete",
+    "desc": "Explicit consent capture at data-collection points; self-service data export/delete requests.",
+    "primary": "All roles",
+    "secondary": "IT Admin",
+    "br": [
+      "BR-PRIV-001"
+    ],
+    "prd": [
+      "NFR-PRIV-001"
+    ],
+    "dec": [
+      "DEC-PRIV-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P1",
+    "moscow": "Should",
+    "release": "Wave 2",
+    "pre": "User is authenticated and requesting their own data, or an Admin is acting on a verified request.",
+    "main": "User requests export/delete; system fulfills within a defined SLA (SLA itself open).",
+    "alt": "-",
+    "err": "Deletion respects legal/financial retention holds where applicable — retention periods still open.",
+    "deps": [],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Self (request) / IT Admin (fulfill)",
+    "integ": "-",
+    "sec": "Legal review recommended before release, per BRD Risk R-05.",
+    "a11y_resp": "Responsive.",
+    "perf": "-",
+    "tests": [
+      "API",
+      "UI",
+      "Security"
+    ],
+    "complexity": "M",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "OPS-001",
+    "module": "Operations",
+    "name": "DigitalOcean deployment",
+    "desc": "Retarget the existing Docker/Postgres/Redis/Celery workload from its native AWS setup onto DigitalOcean.",
+    "primary": "Engineering",
+    "secondary": "-",
+    "br": [],
+    "prd": [],
+    "dec": [
+      "DEC-INFRA-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 0",
+    "pre": "FND-001.",
+    "main": "App deployed and reachable on DigitalOcean infrastructure.",
+    "alt": "-",
+    "err": "A failed deployment does not silently leave production traffic pointed at a partially-updated instance.",
+    "deps": [
+      "FND-001"
+    ],
+    "ux": "N",
+    "api": "N",
+    "db": "N",
+    "rbac": "Engineering",
+    "integ": "DigitalOcean (Managed Postgres/Redis/Spaces/App Platform or Droplets/DOKS — mapping open)",
+    "sec": "TLS termination; DB/Redis not internet-accessible; secrets via env/secret manager (base security baseline).",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "Deployment/smoke"
+    ],
+    "complexity": "L",
+    "base": false,
+    "blocked_reason": null
+  },
+  {
+    "id": "OPS-002",
+    "module": "Operations",
+    "name": "Database migration execution and seed-data decision",
+    "desc": "Run the existing Alembic migration baseline against the DigitalOcean-hosted PostgreSQL instance; decide what to do with the base codebase's (currently empty) seed data.",
+    "primary": "Engineering",
+    "secondary": "-",
+    "br": [],
+    "prd": [],
+    "dec": [
+      "DEC-ARCH-001",
+      "DEC-INFRA-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P0",
+    "moscow": "Must",
+    "release": "Wave 0",
+    "pre": "OPS-001.",
+    "main": "Migrations run cleanly; seed-data decision made and executed.",
+    "alt": "-",
+    "err": "A failed migration does not leave the schema in a partially-applied state -- must be transactional/rollback-safe.",
+    "deps": [
+      "OPS-001"
+    ],
+    "ux": "N",
+    "api": "N",
+    "db": "Y",
+    "rbac": "Engineering",
+    "integ": "-",
+    "sec": "-",
+    "a11y_resp": "-",
+    "perf": "-",
+    "tests": [
+      "Migration/smoke"
+    ],
+    "complexity": "S",
+    "base": false,
+    "blocked_reason": null
+  }
+]

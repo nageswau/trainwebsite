@@ -1,0 +1,1 @@
+export default function PageHero({eyebrow,title,description}:{eyebrow:string;title:string;description:string}){return <section className="page-hero"><div className="container"><div className="eyebrow">{eyebrow}</div><h1 style={{fontSize:"clamp(34px,4vw,54px)"}}>{title}</h1><p className="lead">{description}</p></div></section>}

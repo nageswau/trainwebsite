@@ -1,0 +1,2699 @@
+[
+  {
+    "id": "SCR-AUTH-001",
+    "roles": [
+      "Visitor->Student/Trainer/Placement Team/HR Team/IT Admin"
+    ],
+    "route": "/it/login",
+    "purpose": "IT-division login entry point.",
+    "features": [
+      "AUTH-001"
+    ],
+    "entry": "Header 'Login' link from any IT-division public page.",
+    "data": "None required to view; credential fields on submit.",
+    "actions": "Enter email/password; submit; forgot-password link.",
+    "empty": "N/A (form, not a list).",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Generic 'invalid credentials' message — never reveals whether the email exists (anti-enumeration).",
+    "perms": "Public (unauthenticated) to view; redirects by role/division on success.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Login with valid/invalid credentials for each IT-division role; verify correct post-login redirect per role."
+  },
+  {
+    "id": "SCR-AUTH-002",
+    "roles": [
+      "Visitor->Student/Counselor/University Rep/Agent/Overseas Admin"
+    ],
+    "route": "/overseas/login",
+    "purpose": "Overseas-division login entry point, separate from IT login per the base codebase's division isolation.",
+    "features": [
+      "AUTH-001"
+    ],
+    "entry": "Header 'Login' link from any Overseas-division public page.",
+    "data": "None required to view; credential fields on submit.",
+    "actions": "Enter email/password; submit; forgot-password link.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Same anti-enumeration behavior as SCR-AUTH-001.",
+    "perms": "Public to view; redirects by role on success.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Same as SCR-AUTH-001, Overseas-division roles."
+  },
+  {
+    "id": "SCR-PUB-001",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it (Home)",
+    "purpose": "IT division marketing homepage — hero, course discovery entry, career paths/projects/success-story teasers.",
+    "features": [
+      "PUB-001"
+    ],
+    "entry": "Root domain, top-nav 'Home', logo click.",
+    "data": "Published hero content, headline stats, featured courses/paths/projects (CMS-managed).",
+    "actions": "Explore courses; view career paths; enquire.",
+    "empty": "No featured content configured yet → generic hero only, no broken sections.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "`DAHRCNYnu6g` default screen ('PUB-001 / Home' per its own on-canvas label) — the **only** Canva screen actually inspected this session (one static thumbnail). Structural reference only, not pixel-parity, per `DEC-UX-001`. Observed: hero heading, 2 CTA buttons, 4 stat tiles, 3 feature cards — this screen's layout should follow that shape; exact spacing/colour/typography were not extractable (no text-layer access) and must not be claimed as matched.",
+    "evidence": "Compare rendered hero/stat-tile/feature-card structure against the one inspected Canva thumbnail; confirm no fabricated content when CMS data is empty."
+  },
+  {
+    "id": "SCR-PUB-002",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/about",
+    "purpose": "About EduSphere IT — mission, methodology, leadership.",
+    "features": [
+      "PUB-001"
+    ],
+    "entry": "Top-nav 'About'.",
+    "data": "CMS-managed about content.",
+    "actions": "Read; enquire CTA.",
+    "empty": "Missing leadership bios show placeholder text, not broken images.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Content renders; no dead links."
+  },
+  {
+    "id": "SCR-PUB-003",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/career-paths",
+    "purpose": "Career path list.",
+    "features": [
+      "PUB-001"
+    ],
+    "entry": "Top-nav 'Career Paths'; home teaser link.",
+    "data": "Published career paths (CMS).",
+    "actions": "Browse; open a path.",
+    "empty": "No paths published → empty state with guidance, not an error.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Empty-state and populated-state both verified."
+  },
+  {
+    "id": "SCR-PUB-004",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/career-paths/[slug]",
+    "purpose": "Career path detail.",
+    "features": [
+      "PUB-001"
+    ],
+    "entry": "SCR-PUB-003 list.",
+    "data": "Path detail: skills, related courses, outcomes.",
+    "actions": "Read; enquire; view related course.",
+    "empty": "Path not found (bad slug) → 404, not a blank page.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "404 on invalid slug verified."
+  },
+  {
+    "id": "SCR-PUB-005",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/projects",
+    "purpose": "Real-world project list.",
+    "features": [
+      "PUB-001"
+    ],
+    "entry": "Top-nav; home teaser.",
+    "data": "Published projects.",
+    "actions": "Browse; open a project.",
+    "empty": "No projects published → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Empty and populated states verified."
+  },
+  {
+    "id": "SCR-PUB-006",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/projects/[slug]",
+    "purpose": "Project detail.",
+    "features": [
+      "PUB-001"
+    ],
+    "entry": "SCR-PUB-005 list.",
+    "data": "Problem, deliverables, tech stack, related course.",
+    "actions": "Read; enquire.",
+    "empty": "Invalid slug → 404.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "404 on invalid slug verified."
+  },
+  {
+    "id": "SCR-PUB-007",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/success-stories",
+    "purpose": "Success story list.",
+    "features": [
+      "PUB-001"
+    ],
+    "entry": "Top-nav; home teaser.",
+    "data": "Published stories.",
+    "actions": "Browse; open a story.",
+    "empty": "No stories published → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Empty and populated states verified."
+  },
+  {
+    "id": "SCR-PUB-008",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/success-stories/[slug]",
+    "purpose": "Success story detail.",
+    "features": [
+      "PUB-001"
+    ],
+    "entry": "SCR-PUB-007 list.",
+    "data": "Case study, before/after, outcomes.",
+    "actions": "Read.",
+    "empty": "Invalid slug → 404.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "404 on invalid slug verified."
+  },
+  {
+    "id": "SCR-PUB-009",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/business-services",
+    "purpose": "Business/corporate services overview.",
+    "features": [
+      "PUB-001"
+    ],
+    "entry": "Top-nav.",
+    "data": "CMS-managed service descriptions.",
+    "actions": "Read; contact CTA.",
+    "empty": "No content → minimal page, not broken.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Content renders; contact CTA works."
+  },
+  {
+    "id": "SCR-PUB-010",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/blog",
+    "purpose": "Blog list.",
+    "features": [
+      "PUB-001"
+    ],
+    "entry": "Top-nav; home teaser.",
+    "data": "Published posts.",
+    "actions": "Browse; search/filter; open a post.",
+    "empty": "No posts → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Empty and populated states verified."
+  },
+  {
+    "id": "SCR-PUB-011",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/blog/[slug]",
+    "purpose": "Blog post detail.",
+    "features": [
+      "PUB-001"
+    ],
+    "entry": "SCR-PUB-010 list.",
+    "data": "Article body, author, related posts.",
+    "actions": "Read; share.",
+    "empty": "Invalid slug → 404.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "404 on invalid slug verified."
+  },
+  {
+    "id": "SCR-PUB-012",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/contact and /overseas/contact",
+    "purpose": "Enquiry/callback form.",
+    "features": [
+      "PUB-002"
+    ],
+    "entry": "Header 'Enquire' CTA; footer link.",
+    "data": "None (write-only form).",
+    "actions": "Submit name/email/phone/programme-interest/message.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Validation errors shown per field; a Zoho-webhook failure does not lose the locally-captured enquiry (silent to the user, logged internally).",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Enquiry appears in SCR-ADM-004 (enquiry list) after submission, regardless of webhook outcome."
+  },
+  {
+    "id": "SCR-PUB-013",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/programs",
+    "purpose": "Course catalogue with search/filter.",
+    "features": [
+      "PUB-003"
+    ],
+    "entry": "Top-nav 'Programs'.",
+    "data": "Published courses; category/fee filters.",
+    "actions": "Search; filter; sort; open a course.",
+    "empty": "No matching courses → 'No programs available' with a request-callback CTA (matches live reference implementation copy).",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Filter/search/pagination all verified against a populated and an empty catalogue."
+  },
+  {
+    "id": "SCR-PUB-014",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/programs/[slug]",
+    "purpose": "Course detail.",
+    "features": [
+      "PUB-003"
+    ],
+    "entry": "SCR-PUB-013.",
+    "data": "Curriculum, fee, duration, certification/placement flags, trainer info.",
+    "actions": "Read; enquire; start enrolment (→ SCR-STU-001 if authenticated).",
+    "empty": "Invalid slug → 404.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "404 on invalid slug; enrolment CTA correctly gates on auth state."
+  },
+  {
+    "id": "SCR-PUB-015",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/webinars",
+    "purpose": "Webinar list.",
+    "features": [
+      "PUB-004"
+    ],
+    "entry": "Top-nav.",
+    "data": "Upcoming/past webinars.",
+    "actions": "Browse; register.",
+    "empty": "No webinars → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Empty and populated states verified."
+  },
+  {
+    "id": "SCR-PUB-016",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/it/webinars/[slug]",
+    "purpose": "Webinar detail and registration.",
+    "features": [
+      "PUB-004"
+    ],
+    "entry": "SCR-PUB-015.",
+    "data": "Agenda, speakers, date/time.",
+    "actions": "Register; add consent.",
+    "empty": "Past/closed webinar shows registration-closed state, not an open form (capacity/waitlist rule itself open — see FEATURE_QUESTIONS.md).",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Registration confirmation shown; closed-webinar state verified."
+  },
+  {
+    "id": "SCR-PUB-017",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/news",
+    "purpose": "News list (CMS-managed).",
+    "features": [
+      "PUB-005"
+    ],
+    "entry": "Top-nav (corporate).",
+    "data": "Published articles.",
+    "actions": "Browse; open an article.",
+    "empty": "'No published news yet' (matches live reference implementation copy exactly).",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Empty-state copy matches confirmed baseline; populated state verified once content exists."
+  },
+  {
+    "id": "SCR-PUB-018",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/news/[slug]",
+    "purpose": "News article detail.",
+    "features": [
+      "PUB-005"
+    ],
+    "entry": "SCR-PUB-017.",
+    "data": "Article body.",
+    "actions": "Read.",
+    "empty": "Invalid slug → 404.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "404 on invalid slug verified."
+  },
+  {
+    "id": "SCR-PUB-019",
+    "roles": [
+      "Visitor"
+    ],
+    "route": "/gallery",
+    "purpose": "Gallery (CMS-managed).",
+    "features": [
+      "PUB-005"
+    ],
+    "entry": "Top-nav (corporate).",
+    "data": "Published gallery items.",
+    "actions": "Browse; filter by category/division.",
+    "empty": "'Gallery content is CMS-managed' empty state (matches live reference implementation copy).",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Empty-state copy matches confirmed baseline."
+  },
+  {
+    "id": "SCR-STU-001",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/enrol/[courseId]",
+    "purpose": "Trainer/time-slot selection at enrolment.",
+    "features": [
+      "STU-001"
+    ],
+    "entry": "SCR-PUB-014 'Start enrolment' CTA; SCR-STU-002 'Enrol in another course'.",
+    "data": "Available batches/trainers/slots with live capacity count.",
+    "actions": "Select a slot; confirm booking.",
+    "empty": "No slots available for this course → 'fully booked' state with a notify-me/waitlist prompt (waitlist itself not confirmed — do not build without confirmation).",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Booking a slot that reached capacity between page-load and submit is rejected with a clear 'this slot just filled' message, not a silent failure.",
+    "perms": "Self (Student).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "20th booking succeeds, 21st is rejected; a booked slot's edit control is disabled/absent."
+  },
+  {
+    "id": "SCR-STU-002",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student (Dashboard)",
+    "purpose": "Student home: progress, attendance, fees, jobs, upcoming assignments.",
+    "features": [
+      "STU-002"
+    ],
+    "entry": "Post-login redirect; persistent nav 'Dashboard'.",
+    "data": "Aggregated enrolment/attendance/payment/assignment data.",
+    "actions": "Navigate to any sub-area; join next live class.",
+    "empty": "New student with no enrolments → onboarding empty state pointing to SCR-PUB-013.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "One failed data source (e.g. payments API down) degrades that widget only, not the whole dashboard.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Dashboard renders correctly with 0, 1, and many enrolments."
+  },
+  {
+    "id": "SCR-STU-003",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/live/[sessionId]",
+    "purpose": "Join a live class.",
+    "features": [
+      "STU-003"
+    ],
+    "entry": "SCR-STU-002 'Join now' widget; SCR-TRN-003 shared session.",
+    "data": "Session join link (Zoho/Google Meet).",
+    "actions": "Join; leave.",
+    "empty": "Session not yet started → countdown/wait state, not a broken link.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Session ended or provider link expired shows a clear message, not a generic error.",
+    "perms": "Self (enrolled in that batch).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Join works only for the enrolled batch's own students."
+  },
+  {
+    "id": "SCR-STU-004",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/assignments",
+    "purpose": "Assignment list.",
+    "features": [
+      "STU-004"
+    ],
+    "entry": "SCR-STU-002.",
+    "data": "Assigned work per batch, due dates, submission/grade status.",
+    "actions": "Open an assignment.",
+    "empty": "No assignments yet → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "List reflects only the student's own batch assignments."
+  },
+  {
+    "id": "SCR-STU-005",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/assignments/[id]",
+    "purpose": "Assignment detail and submission.",
+    "features": [
+      "STU-004"
+    ],
+    "entry": "SCR-STU-004.",
+    "data": "Instructions, due date, rubric, attachments; prior submission if any.",
+    "actions": "Upload/submit; view grade+feedback once graded.",
+    "empty": "Submission after due date flagged as late per trainer rule, not silently accepted as on-time.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Unsupported file type/size rejected with a clear message (exact limits open — see PRD open items).",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Late-submission flag and grade/feedback display verified."
+  },
+  {
+    "id": "SCR-STU-006",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/support",
+    "purpose": "Support ticket list and create.",
+    "features": [
+      "STU-005"
+    ],
+    "entry": "SCR-STU-002 'Help & Support'.",
+    "data": "Own tickets, status.",
+    "actions": "Raise a ticket; view responses.",
+    "empty": "No tickets → empty state with 'Raise a ticket' CTA.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "New ticket appears immediately in the list."
+  },
+  {
+    "id": "SCR-STU-007",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/attendance",
+    "purpose": "Attendance and progress view.",
+    "features": [
+      "STU-006"
+    ],
+    "entry": "SCR-STU-002.",
+    "data": "Per-session attendance; module completion %.",
+    "actions": "Read-only review.",
+    "empty": "Session not yet marked by trainer → 'not yet recorded', never defaulted to absent.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Unmarked vs. absent states are visually distinct."
+  },
+  {
+    "id": "SCR-STU-008",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/certificates",
+    "purpose": "Certificate list and download.",
+    "features": [
+      "STU-007"
+    ],
+    "entry": "SCR-STU-002.",
+    "data": "Earned/pending certificates.",
+    "actions": "Download a PDF.",
+    "empty": "Not-yet-eligible course shows 'in progress', not a broken download link.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Download only enabled once eligibility criteria are met."
+  },
+  {
+    "id": "SCR-STU-009",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/feedback/[courseId]",
+    "purpose": "Course/trainer feedback form.",
+    "features": [
+      "STU-008"
+    ],
+    "entry": "SCR-STU-002 post-completion prompt.",
+    "data": "None (write form).",
+    "actions": "Submit rating/comments.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Feedback for a course the student isn't enrolled in is rejected.",
+    "perms": "Self, own enrolled courses only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Cannot submit for an unenrolled course."
+  },
+  {
+    "id": "SCR-STU-010",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/agreements",
+    "purpose": "Digital agreement review and acceptance.",
+    "features": [
+      "STU-009"
+    ],
+    "entry": "SCR-STU-001 enrolment flow, blocking step.",
+    "data": "Agreement document, version.",
+    "actions": "Read; accept (timestamped).",
+    "empty": "N/A — cannot proceed past this step unaccepted.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Enrolment cannot complete without a recorded acceptance timestamp."
+  },
+  {
+    "id": "SCR-STU-011",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/payments",
+    "purpose": "Payment dashboard: total/paid/pending/next due.",
+    "features": [
+      "STU-010"
+    ],
+    "entry": "SCR-STU-002.",
+    "data": "Fee plan, EMI schedule, payment history.",
+    "actions": "View instalment timeline; go to checkout.",
+    "empty": "No pending dues → 'all paid' state, not an empty error.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Instalment timeline matches actual payment records."
+  },
+  {
+    "id": "SCR-STU-012",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/payments/pay",
+    "purpose": "Payment checkout (Razorpay).",
+    "features": [
+      "STU-010"
+    ],
+    "entry": "SCR-STU-011 'Pay now'.",
+    "data": "Amount due, selected gateway.",
+    "actions": "Submit payment via hosted checkout.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Failed/declined payment shown clearly; fee is never marked paid until webhook confirms.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Fee status only flips to paid after a verified webhook, never on client-side redirect alone."
+  },
+  {
+    "id": "SCR-STU-013",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/invoices/[id] and /student/receipts/[id]",
+    "purpose": "Invoice/receipt detail.",
+    "features": [
+      "STU-010"
+    ],
+    "entry": "SCR-STU-011 line item.",
+    "data": "Invoice lines, tax, PDF; receipt reference.",
+    "actions": "Download PDF.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "PDF download works; only own invoices/receipts visible."
+  },
+  {
+    "id": "SCR-STU-014",
+    "roles": [
+      "Student"
+    ],
+    "route": "/student/profile",
+    "purpose": "Profile and document management.",
+    "features": [
+      "STU-011"
+    ],
+    "entry": "Persistent nav.",
+    "data": "Contact info; documents.",
+    "actions": "Edit fields; upload documents.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Invalid file type/size on upload rejected clearly.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Edits persist; upload validation verified."
+  },
+  {
+    "id": "SCR-TRN-001",
+    "roles": [
+      "Trainer"
+    ],
+    "route": "/trainer/batches (My Batches)",
+    "purpose": "List of assigned batches only.",
+    "features": [
+      "TRN-001"
+    ],
+    "entry": "Post-login redirect; persistent nav.",
+    "data": "Assigned batches: course, capacity, status, progress.",
+    "actions": "Open a batch.",
+    "empty": "No batches assigned → empty state, not an error.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self (Trainer, own batches only).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "List contains only this trainer's own assigned batches."
+  },
+  {
+    "id": "SCR-TRN-002",
+    "roles": [
+      "Trainer"
+    ],
+    "route": "/trainer/batches/[id]",
+    "purpose": "Batch detail: roster + schedule.",
+    "features": [
+      "TRN-002"
+    ],
+    "entry": "SCR-TRN-001.",
+    "data": "Student roster (≤20), schedule, resources, assignments, attendance summary.",
+    "actions": "View roster; jump to grading/attendance/resources for this batch.",
+    "empty": "N/A — batch always has ≥1 student once active.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self, own batch only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Roster shows exactly the students enrolled in that batch's slot, capped at 20."
+  },
+  {
+    "id": "SCR-TRN-003",
+    "roles": [
+      "Trainer"
+    ],
+    "route": "/trainer (Dashboard/Calendar)",
+    "purpose": "Today's sessions, pending reviews, unanswered Q&A.",
+    "features": [
+      "TRN-003"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "Upcoming sessions across all assigned batches; join links.",
+    "actions": "Launch/join a live session.",
+    "empty": "No sessions today → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Not-yet-joinable session shown as such, not an error.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Only this trainer's own upcoming sessions appear."
+  },
+  {
+    "id": "SCR-TRN-004",
+    "roles": [
+      "Trainer",
+      "Student"
+    ],
+    "route": "/trainer/recordings",
+    "purpose": "Recording list per batch.",
+    "features": [
+      "TRN-004"
+    ],
+    "entry": "SCR-TRN-002.",
+    "data": "Past session recordings.",
+    "actions": "View/share a recording link.",
+    "empty": "Session missed by the concurrency limit → 'unavailable', not an error.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Trainer (own batch) / enrolled Students (view).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Missing-recording state distinguishable from a load error."
+  },
+  {
+    "id": "SCR-TRN-005",
+    "roles": [
+      "Trainer",
+      "Student"
+    ],
+    "route": "/trainer/resources/upload",
+    "purpose": "Resource/notes upload.",
+    "features": [
+      "TRN-004"
+    ],
+    "entry": "SCR-TRN-002.",
+    "data": "Course/folder selection.",
+    "actions": "Upload file/link; set visibility/publish schedule.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Unsupported file type/size rejected clearly.",
+    "perms": "Trainer (own batch, write) / Students (read).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Uploaded resource visible to enrolled students only."
+  },
+  {
+    "id": "SCR-TRN-006",
+    "roles": [
+      "Trainer"
+    ],
+    "route": "/trainer/assignments",
+    "purpose": "Assignment management list (draft/published/closed).",
+    "features": [
+      "TRN-005"
+    ],
+    "entry": "SCR-TRN-002.",
+    "data": "Assignments per batch, submission/grading status.",
+    "actions": "Create new; open existing.",
+    "empty": "No assignments yet → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self, own batch.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "List scoped to trainer's own batches."
+  },
+  {
+    "id": "SCR-TRN-007",
+    "roles": [
+      "Trainer"
+    ],
+    "route": "/trainer/assignments/new",
+    "purpose": "Assignment create/edit.",
+    "features": [
+      "TRN-005"
+    ],
+    "entry": "SCR-TRN-006.",
+    "data": "Title, description, due date, rubric, attachments.",
+    "actions": "Save; publish to batch.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Editing after submissions exist does not retroactively invalidate them.",
+    "perms": "Self, own batch.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Published assignment visible to batch students immediately."
+  },
+  {
+    "id": "SCR-TRN-008",
+    "roles": [
+      "Trainer"
+    ],
+    "route": "/trainer/assessments",
+    "purpose": "Assessment management (draft/scheduled), distinct type from assignments.",
+    "features": [
+      "TRN-006"
+    ],
+    "entry": "SCR-TRN-002.",
+    "data": "Assessments per batch, question sets.",
+    "actions": "Create/edit; move draft→scheduled.",
+    "empty": "No assessments yet → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A draft assessment is never visible to Students under any circumstance.",
+    "perms": "Self, own batch.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Draft-state assessment confirmed invisible to Student role via direct URL attempt."
+  },
+  {
+    "id": "SCR-TRN-009",
+    "roles": [
+      "Trainer"
+    ],
+    "route": "/trainer/submissions/[id]",
+    "purpose": "Submission review and grading.",
+    "features": [
+      "TRN-007"
+    ],
+    "entry": "SCR-TRN-006 submission list.",
+    "data": "Submitted work, rubric.",
+    "actions": "Assign score/feedback.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Re-grading overwrites the prior grade with an audit trail, not a duplicate.",
+    "perms": "Self, own batch.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Grade/feedback appears to the submitting student immediately."
+  },
+  {
+    "id": "SCR-TRN-010",
+    "roles": [
+      "Trainer"
+    ],
+    "route": "/trainer/attendance/[sessionId]",
+    "purpose": "Attendance marking.",
+    "features": [
+      "TRN-008"
+    ],
+    "entry": "SCR-TRN-002 or SCR-TRN-003 post-session prompt.",
+    "data": "Roster for that session.",
+    "actions": "Mark present/absent/late per student; bulk mark.",
+    "empty": "Session with an empty roster → empty state, not an error.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self, own batch.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Bulk-mark and per-student override both verified."
+  },
+  {
+    "id": "SCR-TRN-011",
+    "roles": [
+      "Trainer"
+    ],
+    "route": "/trainer/questions",
+    "purpose": "Q&A inbox (unanswered/assigned/resolved).",
+    "features": [
+      "TRN-009"
+    ],
+    "entry": "SCR-TRN-002.",
+    "data": "Questions raised against trainer's batches.",
+    "actions": "Filter by status; open a thread.",
+    "empty": "No open questions → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self, own batch.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Only own-batch questions appear."
+  },
+  {
+    "id": "SCR-TRN-012",
+    "roles": [
+      "Trainer",
+      "Student"
+    ],
+    "route": "/trainer/questions/[id]",
+    "purpose": "Q&A thread detail and reply.",
+    "features": [
+      "TRN-009"
+    ],
+    "entry": "SCR-TRN-011.",
+    "data": "Full thread.",
+    "actions": "Post a reply.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Trainer (own batch, reply) / asking Student (view/reply).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Only the assigned trainer for that batch can post the trainer-side reply."
+  },
+  {
+    "id": "SCR-ADM-001",
+    "roles": [
+      "IT Admin"
+    ],
+    "route": "/it/admin (Operations Dashboard)",
+    "purpose": "IT Admin landing dashboard.",
+    "features": [
+      "ADM-001"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "Summary counts: users, enquiries, active batches.",
+    "actions": "Navigate to any admin area.",
+    "empty": "N/A — always shows summary, zero-state included.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "IT Admin.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Counts match underlying data."
+  },
+  {
+    "id": "SCR-ADM-002",
+    "roles": [
+      "IT Admin"
+    ],
+    "route": "/it/admin/users, /it/admin/users/[id]",
+    "purpose": "User/Student/Trainer directory and detail.",
+    "features": [
+      "ADM-001",
+      "ADM-004"
+    ],
+    "entry": "SCR-ADM-001.",
+    "data": "User list with role/status filters; detail record.",
+    "actions": "Create/edit/deactivate a user.",
+    "empty": "No matching filter results → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Deleting/deactivating a user with active dependents (e.g. an active batch's trainer) is blocked or requires explicit confirmation, never a silent cascade.",
+    "perms": "IT Admin.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Cascade-block behavior verified on a trainer with an active batch."
+  },
+  {
+    "id": "SCR-ADM-003",
+    "roles": [
+      "IT Admin"
+    ],
+    "route": "/it/admin/courses",
+    "purpose": "Course management.",
+    "features": [
+      "ADM-001"
+    ],
+    "entry": "SCR-ADM-001.",
+    "data": "Course list.",
+    "actions": "Create/edit a course.",
+    "empty": "No courses → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "IT Admin.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Created course appears in SCR-PUB-013 once published."
+  },
+  {
+    "id": "SCR-ADM-004",
+    "roles": [
+      "IT Admin"
+    ],
+    "route": "/it/admin/leads (Enquiries)",
+    "purpose": "Enquiry/lead list synced via the CRM webhook.",
+    "features": [
+      "ADM-002"
+    ],
+    "entry": "SCR-ADM-001; new enquiry notification.",
+    "data": "Enquiries with Zoho sync status.",
+    "actions": "Route/assign an enquiry; mark actioned.",
+    "empty": "No enquiries → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "An enquiry that failed to sync to Zoho remains visible and actionable regardless of sync status.",
+    "perms": "IT Admin.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Enquiry from SCR-PUB-012 appears here immediately, sync status shown but not blocking."
+  },
+  {
+    "id": "SCR-ADM-005",
+    "roles": [
+      "IT Admin"
+    ],
+    "route": "/it/admin/batches, /it/admin/batches/[id]",
+    "purpose": "Batch creation and trainer assignment.",
+    "features": [
+      "ADM-003"
+    ],
+    "entry": "SCR-ADM-003 or SCR-ADM-001.",
+    "data": "Course, trainer options, capacity (≤20), schedule.",
+    "actions": "Create batch; assign trainer; set capacity.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Capacity above 20 is rejected at save time, not just hidden in the Student-facing UI.",
+    "perms": "IT Admin.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Attempted capacity of 21 rejected; batch immediately selectable at SCR-STU-001 once saved."
+  },
+  {
+    "id": "SCR-ADM-006",
+    "roles": [
+      "IT Admin"
+    ],
+    "route": "/it/admin/enrolments, /it/admin/enrolments/[id]",
+    "purpose": "Enrolment review and approval.",
+    "features": [
+      "ADM-005"
+    ],
+    "entry": "SCR-ADM-004 post-sync.",
+    "data": "Enrolment/enquiry detail, documents.",
+    "actions": "Approve; reject.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A rejected enrolment does not silently proceed to active status.",
+    "perms": "IT Admin.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Approval flips the enrolment to active and unlocks the Student portal for that user."
+  },
+  {
+    "id": "SCR-ADM-007",
+    "roles": [
+      "IT Admin"
+    ],
+    "route": "/it/admin/certificates",
+    "purpose": "Certificate administration (admin-issue path).",
+    "features": [
+      "ADM-006"
+    ],
+    "entry": "SCR-ADM-002 student detail.",
+    "data": "Completion status per student.",
+    "actions": "Issue/upload a certificate.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Issuing before completion criteria are met requires an explicit override, never silent allowance.",
+    "perms": "IT Admin.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Issued certificate appears immediately at SCR-STU-008."
+  },
+  {
+    "id": "SCR-ADM-008",
+    "roles": [
+      "Placement Team"
+    ],
+    "route": "/it/placement/candidates",
+    "purpose": "[base] Candidate pool.",
+    "features": [
+      "ADM-007"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "Placement-ready students.",
+    "actions": "Search/filter; view profile.",
+    "empty": "No candidates → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Placement Team.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "List reflects only placement-ready students."
+  },
+  {
+    "id": "SCR-ADM-009",
+    "roles": [
+      "Placement Team"
+    ],
+    "route": "/it/placement/company-requirements",
+    "purpose": "[base] Company hiring requirements review.",
+    "features": [
+      "ADM-007"
+    ],
+    "entry": "Placement Team dashboard.",
+    "data": "Requirements submitted (incl. via SCR-EMP-002 once Employer exists).",
+    "actions": "Validate role/skills; forward to matching.",
+    "empty": "No open requirements → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Placement Team.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "See FEATURE_QUESTIONS.md Q1 — Employer/Placement Team interaction undefined."
+  },
+  {
+    "id": "SCR-ADM-010",
+    "roles": [
+      "Placement Team"
+    ],
+    "route": "/it/placement/interviews",
+    "purpose": "[base] Interview coordination and offer/joining tracking.",
+    "features": [
+      "ADM-007"
+    ],
+    "entry": "SCR-ADM-008/009.",
+    "data": "Scheduled interviews, offers.",
+    "actions": "Schedule; record offer/joining status.",
+    "empty": "No activity yet → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Scheduling conflicts (same candidate, overlapping time) flagged, not silently double-booked.",
+    "perms": "Placement Team.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Conflict-flagging verified."
+  },
+  {
+    "id": "SCR-ADM-012",
+    "roles": [
+      "HR Team"
+    ],
+    "route": "/it/hr/job-requirements",
+    "purpose": "[base] Hiring requirement intake.",
+    "features": [
+      "ADM-008"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "Submitted hiring requirements.",
+    "actions": "Review; action.",
+    "empty": "No requirements → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "HR Team.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "See FEATURE_QUESTIONS.md Q1."
+  },
+  {
+    "id": "SCR-ADM-013",
+    "roles": [
+      "HR Team"
+    ],
+    "route": "/it/hr/candidates",
+    "purpose": "[base] Shortlist coordination.",
+    "features": [
+      "ADM-008"
+    ],
+    "entry": "SCR-ADM-012.",
+    "data": "Shortlisted candidates per requirement.",
+    "actions": "Add/remove from shortlist.",
+    "empty": "No shortlist yet → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "HR Team.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Shortlist scoped to the HR Team's own requirement."
+  },
+  {
+    "id": "SCR-ADM-014",
+    "roles": [
+      "HR Team"
+    ],
+    "route": "/it/hr/interviews",
+    "purpose": "[base] Interview coordination.",
+    "features": [
+      "ADM-008"
+    ],
+    "entry": "SCR-ADM-013.",
+    "data": "Scheduled interviews.",
+    "actions": "Schedule; update status.",
+    "empty": "No interviews → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "HR Team.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Interview status changes reflected in real time."
+  },
+  {
+    "id": "SCR-ADM-015",
+    "roles": [
+      "Super Admin"
+    ],
+    "route": "/admin (Super Admin console)",
+    "purpose": "[base] Cross-division dashboard.",
+    "features": [
+      "ADM-014"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "Both-division summary metrics.",
+    "actions": "Navigate to any cross-division area.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Super Admin.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "See FEATURE_QUESTIONS.md Q2 — ownership vs IT Admin for ops-tooling ambiguous."
+  },
+  {
+    "id": "SCR-ADM-016",
+    "roles": [
+      "Super Admin"
+    ],
+    "route": "/admin/content, /admin/blogs, /admin/events",
+    "purpose": "[base] CMS management.",
+    "features": [
+      "ADM-014"
+    ],
+    "entry": "SCR-ADM-015.",
+    "data": "Pages/blogs/events (feeds SCR-PUB-010/015/017/019).",
+    "actions": "Create/edit/publish content.",
+    "empty": "No content → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Super Admin.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Published content appears on the corresponding public screen."
+  },
+  {
+    "id": "SCR-ADM-017",
+    "roles": [
+      "Super Admin"
+    ],
+    "route": "/admin/security-logs, /admin/backups",
+    "purpose": "[base] Security logs and backups.",
+    "features": [
+      "ADM-014"
+    ],
+    "entry": "SCR-ADM-015.",
+    "data": "Privileged-action audit trail; backup status.",
+    "actions": "Review logs; trigger/verify backup.",
+    "empty": "No log entries yet → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Super Admin.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Every privileged write from any admin screen appears here."
+  },
+  {
+    "id": "SCR-EMP-001",
+    "roles": [
+      "Employer"
+    ],
+    "route": "/employer/register",
+    "purpose": "[new] Employer registration.",
+    "features": [
+      "EMP-001"
+    ],
+    "entry": "Public 'Company/HR Login' area, 'Register' link.",
+    "data": "Company details.",
+    "actions": "Submit registration.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Duplicate company registration (same domain) is flagged, not silently duplicated.",
+    "perms": "Public to register; self after.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Approval-before-activation workflow open — see FEATURE_QUESTIONS.md item 7."
+  },
+  {
+    "id": "SCR-EMP-002",
+    "roles": [
+      "Employer"
+    ],
+    "route": "/employer (Dashboard)",
+    "purpose": "[new] Employer landing dashboard.",
+    "features": [
+      "EMP-001"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "Own job postings, shortlist, interview summary.",
+    "actions": "Navigate to any Employer area.",
+    "empty": "New Employer with no postings → onboarding empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self (Employer).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Only this Employer's own data visible."
+  },
+  {
+    "id": "SCR-EMP-003",
+    "roles": [
+      "Employer"
+    ],
+    "route": "/employer/jobs, /employer/jobs/new",
+    "purpose": "[new] Job posting list and create/edit.",
+    "features": [
+      "EMP-002"
+    ],
+    "entry": "SCR-EMP-002.",
+    "data": "Own job postings.",
+    "actions": "Post a new job; edit/close an existing one.",
+    "empty": "No postings → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A job past its closing date is not shown to Students as open, even if never explicitly closed.",
+    "perms": "Self (Employer, own postings).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Closed/expired job disappears from the Student-facing career portal."
+  },
+  {
+    "id": "SCR-EMP-004",
+    "roles": [
+      "Employer"
+    ],
+    "route": "/employer/candidates",
+    "purpose": "[new] Candidate search.",
+    "features": [
+      "EMP-003"
+    ],
+    "entry": "SCR-EMP-002.",
+    "data": "Searchable candidate profiles, GDPR-scoped fields only.",
+    "actions": "Search/filter; view a profile.",
+    "empty": "No matches → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Fields outside approved visibility are never returned, not merely hidden client-side.",
+    "perms": "Self (Employer).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "API response itself excludes non-visible fields — verified server-side, not just UI-hidden. Exact field set open — see PRD_OPEN_ITEMS item 33."
+  },
+  {
+    "id": "SCR-EMP-005",
+    "roles": [
+      "Employer"
+    ],
+    "route": "/employer/candidates/[id]",
+    "purpose": "[new] Candidate profile detail.",
+    "features": [
+      "EMP-003"
+    ],
+    "entry": "SCR-EMP-004.",
+    "data": "Permission-scoped profile view.",
+    "actions": "Add to shortlist.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Same field-scoping check as SCR-EMP-004."
+  },
+  {
+    "id": "SCR-EMP-006",
+    "roles": [
+      "Employer"
+    ],
+    "route": "/employer/shortlist",
+    "purpose": "[new] Shortlist management.",
+    "features": [
+      "EMP-004"
+    ],
+    "entry": "SCR-EMP-005 'Add to shortlist'.",
+    "data": "Shortlisted candidates.",
+    "actions": "Remove; proceed to schedule.",
+    "empty": "Empty shortlist → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Shortlist persists across sessions."
+  },
+  {
+    "id": "SCR-EMP-007",
+    "roles": [
+      "Employer"
+    ],
+    "route": "/employer/interviews/new",
+    "purpose": "[new] Interview scheduling.",
+    "features": [
+      "EMP-004"
+    ],
+    "entry": "SCR-EMP-006.",
+    "data": "Shortlisted candidate, available slots.",
+    "actions": "Propose a time; confirm.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Overlapping-time conflicts flagged, not silently double-booked.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Conflict-flagging verified."
+  },
+  {
+    "id": "SCR-EMP-008",
+    "roles": [
+      "Employer"
+    ],
+    "route": "/employer/interviews",
+    "purpose": "[new] Interview list and status.",
+    "features": [
+      "EMP-005"
+    ],
+    "entry": "SCR-EMP-002.",
+    "data": "Scheduled/past interviews.",
+    "actions": "View status; cancel.",
+    "empty": "No interviews → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Cancelled interviews remain visible in history, not deleted.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Cancelled entries remain in history view."
+  },
+  {
+    "id": "SCR-OVS-001",
+    "roles": [
+      "Visitor",
+      "Student"
+    ],
+    "route": "/overseas/countries, /overseas/countries/[slug]",
+    "purpose": "Study-destination list and country detail.",
+    "features": [
+      "OVS-001"
+    ],
+    "entry": "Top-nav 'Countries'.",
+    "data": "Country profile: tuition/living-cost ranges, visa-process overview (admin-maintained, DEC-DATA-002).",
+    "actions": "Browse; open a country; 'Book profile evaluation' CTA.",
+    "empty": "Country with incomplete admin-entered data shows only what exists, never fabricated figures.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "No fabricated tuition/visa figures verified against admin-entered source data."
+  },
+  {
+    "id": "SCR-OVS-002",
+    "roles": [
+      "Visitor",
+      "Student"
+    ],
+    "route": "/overseas/universities, /overseas/universities/[slug]",
+    "purpose": "University list and profile.",
+    "features": [
+      "OVS-001"
+    ],
+    "entry": "Top-nav 'Universities'; SCR-OVS-001 country page.",
+    "data": "University eligibility, requirements, deadlines, scholarships (admin-maintained).",
+    "actions": "Browse; open a university; 'Apply/request evaluation' CTA.",
+    "empty": "Same no-fabrication rule as SCR-OVS-001.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Same verification as SCR-OVS-001."
+  },
+  {
+    "id": "SCR-OVS-003",
+    "roles": [
+      "Visitor",
+      "Student"
+    ],
+    "route": "/overseas/courses",
+    "purpose": "Overseas course list.",
+    "features": [
+      "OVS-001"
+    ],
+    "entry": "Top-nav 'Courses'; university page.",
+    "data": "Course title/level/duration/fee/intake (admin-maintained).",
+    "actions": "Browse; filter by university/country.",
+    "empty": "No courses for a filter → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Filter correctness verified."
+  },
+  {
+    "id": "SCR-OVS-004",
+    "roles": [
+      "Student"
+    ],
+    "route": "/overseas/apply",
+    "purpose": "Overseas application/interest submission.",
+    "features": [
+      "OVS-002"
+    ],
+    "entry": "SCR-OVS-001/002/003 'Apply' CTA.",
+    "data": "Selected country/university/course; student's existing profile.",
+    "actions": "Submit interest.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Duplicate submission for the same university/course does not create a second application record.",
+    "perms": "Self (Student — same identity as domestic Student, per DEC-ROLE-001).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Submission enters the state sequence visible at SCR-OVS-006; duplicate-prevention verified."
+  },
+  {
+    "id": "SCR-OVS-005",
+    "roles": [
+      "Counselor"
+    ],
+    "route": "/overseas/students/[id]/evaluate",
+    "purpose": "Eligibility evaluation (Counselor-side).",
+    "features": [
+      "OVS-003"
+    ],
+    "entry": "SCR-CNS-002 assigned-student list.",
+    "data": "Application + profile data.",
+    "actions": "Advance/decline the application stage; record notes.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Rejection/waitlist/deferral outcomes not yet specified — do not implement invented rules; flag to Admin instead (FEATURE_QUESTIONS.md / PRD_OPEN_ITEMS item 5).",
+    "perms": "Counselor, own assigned students only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Counselor cannot act on a student not assigned to them, even via direct record ID."
+  },
+  {
+    "id": "SCR-OVS-006",
+    "roles": [
+      "Student"
+    ],
+    "route": "/overseas/applications/[id]",
+    "purpose": "Application status tracker (student-facing).",
+    "features": [
+      "OVS-004"
+    ],
+    "entry": "Overseas Student dashboard.",
+    "data": "Current stage, history, next action.",
+    "actions": "Read; view stage-change notifications.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A notification-send failure does not block the status update itself from being recorded/shown.",
+    "perms": "Self (Student).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Stage shown here always matches the authoritative record even if a notification failed to send."
+  },
+  {
+    "id": "SCR-OVS-007",
+    "roles": [
+      "Student"
+    ],
+    "route": "/overseas/applications/[id]/documents",
+    "purpose": "Document upload against checklist.",
+    "features": [
+      "OVS-005"
+    ],
+    "entry": "SCR-OVS-006.",
+    "data": "Checklist for the chosen country/university/course (varies, DEC-DATA-001).",
+    "actions": "Upload each required document.",
+    "empty": "Checklist itself not yet fully specified for every combination — show only confirmed items (PRD_OPEN_ITEMS item 6), never a fabricated generic list.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Unsupported file type/size rejected clearly.",
+    "perms": "Self (upload) / Counselor (verify).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "No fabricated checklist items verified."
+  },
+  {
+    "id": "SCR-OVS-008",
+    "roles": [
+      "Visitor",
+      "Student"
+    ],
+    "route": "/overseas/scholarships",
+    "purpose": "Scholarship list and apply.",
+    "features": [
+      "OVS-006"
+    ],
+    "entry": "Top-nav.",
+    "data": "Published scholarships (admin-maintained).",
+    "actions": "Browse; apply.",
+    "empty": "'No scholarships available' (matches live reference implementation copy).",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "No eligibility rule engine — listing/apply only, never an automated eligibility decision.",
+    "perms": "Public view / Self (Student) apply.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Empty-state copy matches confirmed baseline."
+  },
+  {
+    "id": "SCR-OVS-009",
+    "roles": [
+      "Visitor",
+      "Student"
+    ],
+    "route": "/overseas/events",
+    "purpose": "Events/workshops list and register.",
+    "features": [
+      "OVS-007"
+    ],
+    "entry": "Top-nav.",
+    "data": "Published events (admin-maintained).",
+    "actions": "Browse; register.",
+    "empty": "'No events available' (matches live reference implementation copy).",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Capacity/waitlist rule unspecified — open item, do not invent one.",
+    "perms": "Public.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Empty-state copy matches confirmed baseline."
+  },
+  {
+    "id": "SCR-VISA-001",
+    "roles": [
+      "Student",
+      "Counselor"
+    ],
+    "route": "/overseas/applications/[id]/visa (Checklist)",
+    "purpose": "Visa checklist and documentation.",
+    "features": [
+      "VISA-001"
+    ],
+    "entry": "SCR-OVS-006.",
+    "data": "Visa-specific checklist, evidence status.",
+    "actions": "Upload/verify visa documents.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "An unverified document does not block viewing the checklist — only advancing past that stage.",
+    "perms": "Self (Student) / Counselor (verify).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Compliance copy present: EduSphere is not the visa decision-maker (matches confirmed reference-implementation language)."
+  },
+  {
+    "id": "SCR-VISA-002",
+    "roles": [
+      "Student"
+    ],
+    "route": "/overseas/applications/[id]/visa/prep",
+    "purpose": "Visa interview preparation.",
+    "features": [
+      "VISA-002"
+    ],
+    "entry": "SCR-VISA-001.",
+    "data": "Prep material/guidance (may vary by destination).",
+    "actions": "Read.",
+    "empty": "Missing prep material for a specific country → fallback message, not a broken page.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Fallback state verified for an uncovered country."
+  },
+  {
+    "id": "SCR-VISA-003",
+    "roles": [
+      "Student",
+      "Counselor"
+    ],
+    "route": "/overseas/applications/[id]/visa/status",
+    "purpose": "Visa approval status tracking.",
+    "features": [
+      "VISA-003"
+    ],
+    "entry": "SCR-VISA-001.",
+    "data": "Status progression to final outcome.",
+    "actions": "Read; Counselor updates status.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Self (Student) / Counselor.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Same compliance-copy requirement as SCR-VISA-001."
+  },
+  {
+    "id": "SCR-AGT-001",
+    "roles": [
+      "Agent"
+    ],
+    "route": "/overseas/agent/register",
+    "purpose": "Agent self-registration.",
+    "features": [
+      "AGT-001"
+    ],
+    "entry": "Public Overseas login area, 'Register as Agent' link.",
+    "data": "Agent/company details.",
+    "actions": "Submit registration.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Public to register; self after (Pending state).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Registered Agent cannot refer students or view any data while Pending."
+  },
+  {
+    "id": "SCR-AGT-002",
+    "roles": [
+      "Overseas Admin"
+    ],
+    "route": "/overseas/admin/agents",
+    "purpose": "Agent approval queue (Overseas Admin side).",
+    "features": [
+      "AGT-001"
+    ],
+    "entry": "Overseas Admin dashboard.",
+    "data": "Pending Agent registrations.",
+    "actions": "Approve; reject.",
+    "empty": "No pending registrations → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A rejected Agent cannot bypass rejection without a new registration.",
+    "perms": "Overseas Admin.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Approval flips the Agent to Active and unlocks SCR-AGT-003/004 for them; every decision audit-logged (SEC-001)."
+  },
+  {
+    "id": "SCR-AGT-003",
+    "roles": [
+      "Agent"
+    ],
+    "route": "/overseas/agent (Dashboard: referred students)",
+    "purpose": "Referred-student roster and status.",
+    "features": [
+      "AGT-002"
+    ],
+    "entry": "Post-login redirect (once approved).",
+    "data": "Own referred students, application status.",
+    "actions": "View a referred student's status.",
+    "empty": "No referrals yet → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Agent never sees another agent's referrals, verified server-side.",
+    "perms": "Self (Agent, own referrals only).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Cross-agent data isolation verified."
+  },
+  {
+    "id": "SCR-AGT-004",
+    "roles": [
+      "Agent"
+    ],
+    "route": "/overseas/agent/commissions",
+    "purpose": "Commission list (auto-accrued).",
+    "features": [
+      "AGT-003"
+    ],
+    "entry": "SCR-AGT-003.",
+    "data": "Commission per referral: amount, currency, status.",
+    "actions": "View; initiate claim.",
+    "empty": "No commissions yet → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "No commission appears before the referred application reaches the finalized+joined trigger — extends the base codebase's manual-only creation.",
+    "perms": "Self (Agent, own commissions).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Commission appears automatically on trigger, not on Admin's manual timing."
+  },
+  {
+    "id": "SCR-AGT-005",
+    "roles": [
+      "Agent"
+    ],
+    "route": "/overseas/agent/commissions/[id]/claim",
+    "purpose": "Commission claim action.",
+    "features": [
+      "AGT-004"
+    ],
+    "entry": "SCR-AGT-004.",
+    "data": "Eligible/estimated commission detail.",
+    "actions": "Claim (generates claim reference).",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Claiming an already-claimed/paid commission is rejected, not double-processed.",
+    "perms": "Self (Agent).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Claim reference generated once, immutable."
+  },
+  {
+    "id": "SCR-AGT-006",
+    "roles": [
+      "Overseas Admin"
+    ],
+    "route": "/overseas/admin/commissions",
+    "purpose": "Commission payout approval queue.",
+    "features": [
+      "AGT-004"
+    ],
+    "entry": "Overseas Admin dashboard.",
+    "data": "Claimed commissions awaiting approval.",
+    "actions": "Approve payout; adjust amount.",
+    "empty": "No claims pending → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "No commission reaches paid without this explicit, separate approval — net-new endpoint the base codebase lacked.",
+    "perms": "Overseas Admin.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Approval action is itself audit-logged (SEC-001); Agent cannot self-approve."
+  },
+  {
+    "id": "SCR-CNS-001",
+    "roles": [
+      "Counselor"
+    ],
+    "route": "/overseas/counselor (Dashboard)",
+    "purpose": "[base] Counselor landing dashboard.",
+    "features": [
+      "CNS-001"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "Assigned student summary, pending appointments.",
+    "actions": "Navigate to assigned students/leads/documents/appointments.",
+    "empty": "No assignments yet → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Counselor.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Only own-assigned data visible."
+  },
+  {
+    "id": "SCR-CNS-002",
+    "roles": [
+      "Counselor"
+    ],
+    "route": "/overseas/counselor/students",
+    "purpose": "[base] Assigned-student list.",
+    "features": [
+      "CNS-001"
+    ],
+    "entry": "SCR-CNS-001.",
+    "data": "Students assigned to this Counselor.",
+    "actions": "Open a student's case (→ SCR-OVS-005).",
+    "empty": "No assigned students → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Counselor, own assignments only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Server-side scoping to own assignments verified."
+  },
+  {
+    "id": "SCR-CNS-003",
+    "roles": [
+      "Counselor"
+    ],
+    "route": "/overseas/counselor/appointments",
+    "purpose": "[base] Appointment management.",
+    "features": [
+      "CNS-001"
+    ],
+    "entry": "SCR-CNS-001.",
+    "data": "Scheduled appointments.",
+    "actions": "Schedule; reschedule; mark complete.",
+    "empty": "No appointments → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "Counselor.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Own-scope only."
+  },
+  {
+    "id": "SCR-UNI-001",
+    "roles": [
+      "University Representative"
+    ],
+    "route": "/overseas/university (Dashboard)",
+    "purpose": "[base] University Rep landing.",
+    "features": [
+      "UNI-001"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "Applications sent to this institution.",
+    "actions": "Navigate to applications.",
+    "empty": "No applications yet → empty state.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "University Representative, own institution only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Rep sees only applications addressed to their own institution — least-privilege verified."
+  },
+  {
+    "id": "SCR-UNI-002",
+    "roles": [
+      "University Representative"
+    ],
+    "route": "/overseas/university/applications/[id]",
+    "purpose": "[base] Application review and offer-letter tracking.",
+    "features": [
+      "UNI-001"
+    ],
+    "entry": "SCR-UNI-001.",
+    "data": "Application detail, offer-letter status.",
+    "actions": "Post admission update; upload offer letter; message student.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A Rep cannot see or act on an application not addressed to their institution.",
+    "perms": "University Representative, own institution only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Cross-institution isolation verified."
+  },
+  {
+    "id": "SCR-SCH-001",
+    "roles": [
+      "Principal"
+    ],
+    "route": "/school/principal (Dashboard)",
+    "purpose": "School-wide, read-only progress overview -- the one landing view a Principal needs to see how their institution's students are doing.",
+    "features": [
+      "SCH-001"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "Own-institution student statistics, career-progress summary, global-education status, report links, plus published results / career-guidance-and-counselling / psychometric summary counts (SCH-004/005/006, added 2026-09-14, read-only). Exact metric set OPEN -- DEC-SCOPE-011 confirmed the role and its read-only scope, not the dashboard's specific field list (PRD-SCH-001); do not copy EVID-014's KPI table in as if it were confirmed.",
+    "actions": "Open a report.",
+    "empty": "No students yet. Ask your School Coordinator to add your first student.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A Principal never sees another institution's numbers, even in aggregate -- verified server-side.",
+    "perms": "Principal, own institution only, read-only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Cross-institution isolation verified; no create/edit/delete action reachable from this screen (SCH-001-AC04)."
+  },
+  {
+    "id": "SCR-SCH-002",
+    "roles": [
+      "School Coordinator"
+    ],
+    "route": "/school/coordinator (Dashboard)",
+    "purpose": "Coordinator's landing view -- roster size, upcoming activities, and quick access to the two things they actually do here: add students and schedule things.",
+    "features": [
+      "SCH-001"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "Own-institution student count, upcoming activities, recent roster changes, plus read-only summary of published results / career-guidance-and-counselling / psychometric status (SCH-004/005/006, added 2026-09-14).",
+    "actions": "Go to student roster; go to bulk upload; go to activities.",
+    "empty": "No students yet. Add your first student, or upload your roster in bulk.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "School Coordinator, own institution only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Cross-institution isolation verified."
+  },
+  {
+    "id": "SCR-SCH-003",
+    "roles": [
+      "School Coordinator"
+    ],
+    "route": "/school/coordinator/students",
+    "purpose": "Own-institution student roster -- the Coordinator's working list to view or edit a student record.",
+    "features": [
+      "SCH-001"
+    ],
+    "entry": "SCR-SCH-002.",
+    "data": "Own-institution students and their identifying fields.",
+    "actions": "Edit a student; open new-student form; open bulk upload.",
+    "empty": "No students yet.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A Coordinator never edits a student outside their own institution, even via a direct link.",
+    "perms": "School Coordinator, own institution only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Cross-institution isolation verified, including via a direct record ID (SCH-001-AC02)."
+  },
+  {
+    "id": "SCR-SCH-004",
+    "roles": [
+      "School Coordinator"
+    ],
+    "route": "/school/coordinator/students/new",
+    "purpose": "Add one student to the roster by hand.",
+    "features": [
+      "SCH-001"
+    ],
+    "entry": "SCR-SCH-003.",
+    "data": "Student identifying fields. Exact field list OPEN -- same open item as School's own profile fields (DATA_MODEL.md §6.11); do not invent from EVID-014.",
+    "actions": "Save student.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Saving with a missing required field is rejected inline, field-by-field -- never a silent drop.",
+    "perms": "School Coordinator, own institution only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "New student is created under the acting Coordinator's own school_id, server-derived, never client-supplied."
+  },
+  {
+    "id": "SCR-SCH-005",
+    "roles": [
+      "School Coordinator"
+    ],
+    "route": "/school/coordinator/students/bulk-upload",
+    "purpose": "Add many students at once without typing each one in by hand -- download a template, fill it offline, upload it back.",
+    "features": [
+      "SCH-002"
+    ],
+    "entry": "SCR-SCH-002, SCR-SCH-003.",
+    "data": "The downloadable template (exact columns OPEN, Contracts-phase -- DATA_MODEL.md §6.13); the uploaded file.",
+    "actions": "Download template; upload filled file; download the row-level result report.",
+    "empty": "First visit offers the template download as the primary action -- there is nothing to show until a file is uploaded.",
+    "loading": "Upload/validation progress shown explicitly (row count processed so far) -- a bulk operation must never look frozen.",
+    "error": "A row that fails validation is named specifically -- which row, which field, why -- never a generic \"upload failed.\" Rows that did succeed are kept, not discarded because others failed (SCH-002-AC04).",
+    "perms": "School Coordinator, own institution only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Partial-batch integrity verified -- one bad row never blocks the good ones; every accepted/rejected row is individually reported, not summarized away."
+  },
+  {
+    "id": "SCR-SCH-006",
+    "roles": [
+      "School Coordinator"
+    ],
+    "route": "/school/coordinator/activities",
+    "purpose": "Schedule an activity and mark who attended, for the Coordinator's own institution.",
+    "features": [
+      "SCH-001"
+    ],
+    "entry": "SCR-SCH-002.",
+    "data": "Own-institution students, upcoming/past activities.",
+    "actions": "Schedule an activity; mark attendance.",
+    "empty": "Nothing scheduled yet.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "School Coordinator, own institution only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Cross-institution isolation verified."
+  },
+  {
+    "id": "SCR-SCH-007",
+    "roles": [
+      "Teacher"
+    ],
+    "route": "/school/teacher (Dashboard: assigned students)",
+    "purpose": "A Teacher's own class list -- only the students actually assigned to them, nothing else in the school.",
+    "features": [
+      "SCH-001"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "Assigned students only, attendance summary, career-activity participation.",
+    "actions": "Open a student's detail.",
+    "empty": "No students assigned to you yet.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A Teacher never sees a student outside their own assignment, even within the same school.",
+    "perms": "Teacher, own institution AND assigned students only, read-only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Assigned-scope isolation verified -- a Teacher cannot reach an unassigned student even within the same institution (SCH-001-AC03), and never through a trainer permission path (SCH-001-AC05)."
+  },
+  {
+    "id": "SCR-SCH-008",
+    "roles": [
+      "Teacher"
+    ],
+    "route": "/school/teacher/students/[id]",
+    "purpose": "One assigned student's attendance, career activities, and progress -- read-only.",
+    "features": [
+      "SCH-001"
+    ],
+    "entry": "SCR-SCH-007.",
+    "data": "The assigned student's attendance/activity/progress record, plus their published results / career-guidance-and-counselling / psychometric records (SCH-004/005/006, added 2026-09-14, read-only -- a draft/verified result is never included here).",
+    "actions": "N/A -- read-only.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Same assigned-scope deny as SCR-SCH-007, verified even via a direct record ID.",
+    "perms": "Teacher, own institution AND assigned students only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Cross-assignment isolation verified via direct record ID."
+  },
+  {
+    "id": "SCR-SCH-009",
+    "roles": [
+      "Parent"
+    ],
+    "route": "/school/parent (Dashboard: my children)",
+    "purpose": "A Parent's view of their own child's -- or children's -- profile and progress, with a switcher if there's more than one.",
+    "features": [
+      "SCH-001"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "Own child(ren)'s profile/progress only, plus their published results / career-guidance-and-counselling / psychometric records (SCH-004/005/006, added 2026-09-14, read-only -- a draft/verified result is never included here).",
+    "actions": "Switch between children, if more than one is linked.",
+    "empty": "No child linked to your account yet. Contact your school to get set up.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A Parent never sees a student who isn't their own linked child, even within the same institution.",
+    "perms": "Parent, own institution AND own child(ren) only, read-only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Own-child-only isolation verified, including for a parent with multiple children linked."
+  },
+  {
+    "id": "SCR-SCH-010",
+    "roles": [
+      "Overseas Admin",
+      "Super Admin"
+    ],
+    "route": "/overseas/admin/schools",
+    "purpose": "Every partnered school in one list, with a create-school form on the same screen -- the Admin's one stop for onboarding a new partner or checking an existing one's Coordinator status.",
+    "features": [
+      "SCH-003"
+    ],
+    "entry": "Overseas Admin dashboard.",
+    "data": "All School partner records (division-wide), each with its seed Coordinator's status.",
+    "actions": "Create a new school (name/city/state + seed Coordinator name/email in one form); view the list.",
+    "empty": "No partner schools yet. Add your first one.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Saving with a missing required field is rejected inline, field-by-field -- never a silent drop.",
+    "perms": "Overseas Admin (and Super Admin), division-wide.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Only Overseas Admin/Super Admin reaches this screen -- no other role, including School Coordinator, can list or create schools (SCH-003-AC03). No activation gate -- the new School and its Coordinator account are usable immediately on save, not held Pending (SCH-003-AC04). SCR-SCH-011 (originally a separate /new route) was merged into this screen during SCH-003's build, 2026-09-14 -- see SCREEN_CATALOG.md."
+  },
+  {
+    "id": "SCR-SCH-012",
+    "roles": [
+      "School Coordinator"
+    ],
+    "route": "/school/coordinator/team",
+    "purpose": "Bring the rest of the school's team on board -- invite the Principal, any Teachers, and Parents, and see who's already accepted.",
+    "features": [
+      "SCH-003"
+    ],
+    "entry": "SCR-SCH-002.",
+    "data": "Own-institution accounts and pending invites, by role.",
+    "actions": "Invite Principal; invite Teacher; invite Parent; resend or revoke a pending invite.",
+    "empty": "It's just you so far. Invite your Principal, teachers, or parents to give them their own login.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "An invite always names exactly one role and one recipient -- sending it never silently creates the wrong role.",
+    "perms": "School Coordinator, own institution only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "A Coordinator can never invite someone into a different institution, even via a crafted request (SCH-003-AC02); an accepted invite always lands the invitee in the same school the Coordinator sent it from."
+  },
+  {
+    "id": "SCR-SCH-013",
+    "roles": [
+      "Principal",
+      "Teacher",
+      "Parent"
+    ],
+    "route": "/school/invite/[token]/accept",
+    "purpose": "Turn an invite into a real, usable login in one step.",
+    "features": [
+      "SCH-003"
+    ],
+    "entry": "The invite link itself (email, per NOT-001 -- the only confirmed delivery channel for this flow).",
+    "data": "The invite token; basic account details for the invitee to confirm/complete.",
+    "actions": "Accept and set up login.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A consumed, expired, or revoked token gets an honest, specific message -- \"This invite has already been used\" / \"This invite has expired\" -- never a generic broken-link page (SCH-003-AC06).",
+    "perms": "Public until the token is validated; the resulting account is scoped to the invite's own institution, never a value the invitee can change.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "A token can be accepted at most once; the created account's role and institution exactly match what the Coordinator's invite specified, never client-editable."
+  },
+  {
+    "id": "SCR-SCH-014",
+    "roles": [
+      "Academic Team"
+    ],
+    "route": "/school/academic-team (Dashboard: assigned students)",
+    "purpose": "Every assigned student's result status at a glance -- who still needs a result uploaded, who's Draft, who's Published.",
+    "features": [
+      "SCH-006"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "School-affiliated students at any school in the acting member's own portfolio (DEC-SCOPE-013, SchoolStaffAssignment), each with their latest result status per subject/term.",
+    "actions": "Open a student to add a result; open an existing result.",
+    "empty": "You haven't been assigned to any schools yet. Contact your Overseas Admin.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Academic Team never sees a student at a school outside their own portfolio, even within a school they're not assigned to.",
+    "perms": "Academic Team, own school portfolio only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Assigned-scope isolation verified (SCH-006-AC05)."
+  },
+  {
+    "id": "SCR-SCH-015",
+    "roles": [
+      "Academic Team"
+    ],
+    "route": "/school/academic-team/results/new",
+    "purpose": "Enter a result for one subject/term -- it starts life as a Draft, invisible to everyone but Academic Team until verified and published.",
+    "features": [
+      "SCH-006"
+    ],
+    "entry": "SCR-SCH-014.",
+    "data": "Student, academic year, term, subject, max marks, marks obtained (exact field list OPEN, DATA_MODEL.md §6.16).",
+    "actions": "Save as Draft.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Saving with a missing required field is rejected inline, field-by-field -- never a silent drop.",
+    "perms": "Academic Team, assigned school-affiliated students only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "A newly-saved result starts at draft, never any other status (SCH-006-AC04)."
+  },
+  {
+    "id": "SCR-SCH-016",
+    "roles": [
+      "Academic Team"
+    ],
+    "route": "/school/academic-team/results/[id]",
+    "purpose": "Move a result forward -- verify it, then publish it -- and see its full history of who did what, when.",
+    "features": [
+      "SCH-006"
+    ],
+    "entry": "SCR-SCH-014, SCR-SCH-015.",
+    "data": "The result's own fields, its current status, and its SchoolResultStatusHistory.",
+    "actions": "Verify (Draft -> Verified); Publish (Verified -> Published). Confirmed DEC-ROLE-007 (2026-09-14): Verify/Publish are only offered to an Academic Team member other than the result's own uploader -- the uploader viewing their own Draft/Verified result sees status and history, but not an actionable Verify/Publish control.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A stage cannot be skipped -- Publish is only reachable from Verified, never directly from Draft. Verify/Publish by the uploader themselves is rejected server-side, with a clear message.",
+    "perms": "Academic Team, own school portfolio only; verify/publish further restricted to a different member than the uploader.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Gate integrity verified -- no skip-stage transition reachable through this screen's own actions (SCH-006-AC04)."
+  },
+  {
+    "id": "SCR-SCH-017",
+    "roles": [
+      "Career Counselor"
+    ],
+    "route": "/school/career-counselor (Dashboard: assigned students)",
+    "purpose": "Every assigned student, one list -- the Career Counselor's starting point for adding a guidance session, a counselling note, or a recommendation.",
+    "features": [
+      "SCH-004"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "School-affiliated students at any school in the acting Counselor's own portfolio (DEC-SCOPE-013).",
+    "actions": "Open a student's records.",
+    "empty": "You haven't been assigned to any schools yet. Contact your Overseas Admin.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Career Counselor never sees a student at a school outside their own portfolio.",
+    "perms": "Career Counselor, own school portfolio only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Assigned-scope isolation verified (SCH-004-AC02)."
+  },
+  {
+    "id": "SCR-SCH-018",
+    "roles": [
+      "Career Counselor"
+    ],
+    "route": "/school/career-counselor/students/[id]/records",
+    "purpose": "One student's whole career-guidance-and-counselling history, and the place to add to it.",
+    "features": [
+      "SCH-004"
+    ],
+    "entry": "SCR-SCH-017.",
+    "data": "The student's guidance sessions, counselling notes, and recommendations, in order (exact field list OPEN, DATA_MODEL.md §6.17).",
+    "actions": "Add a guidance session, counselling note, or recommendation.",
+    "empty": "No career guidance or counselling recorded yet.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A new record is always attributed to the acting Career Counselor, never client-supplied.",
+    "perms": "Career Counselor (write), School Coordinator/Parent/Student/Teacher (read-only) -- all own institution/scope only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Only Career Counselor writes; every reader stays read-only (SCH-004-AC04)."
+  },
+  {
+    "id": "SCR-SCH-019",
+    "roles": [
+      "Psychometric Team"
+    ],
+    "route": "/school/psychometric-team (Dashboard: assigned students)",
+    "purpose": "Every assigned student, one list -- who needs an assessment assigned, who has a report pending upload.",
+    "features": [
+      "SCH-005"
+    ],
+    "entry": "Post-login redirect.",
+    "data": "School-affiliated students at any school in the acting member's own portfolio (DEC-SCOPE-013), each with their assessment status.",
+    "actions": "Open a student's assessments.",
+    "empty": "You haven't been assigned to any schools yet. Contact your Overseas Admin.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Psychometric Team never sees a student at a school outside their own portfolio.",
+    "perms": "Psychometric Team, own school portfolio only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Assigned-scope isolation verified (SCH-005-AC02)."
+  },
+  {
+    "id": "SCR-SCH-020",
+    "roles": [
+      "Psychometric Team"
+    ],
+    "route": "/school/psychometric-team/students/[id]/assessments",
+    "purpose": "One student's assessments -- assign a new one, or upload a report against one already assigned.",
+    "features": [
+      "SCH-005"
+    ],
+    "entry": "SCR-SCH-019.",
+    "data": "The student's assigned/completed assessments and their reports (exact taxonomy OPEN, DATA_MODEL.md §6.18).",
+    "actions": "Assign an assessment; upload a report.",
+    "empty": "No assessments assigned yet.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A new assessment/report is always attributed to the acting Psychometric Team member, never client-supplied.",
+    "perms": "Psychometric Team (write), School Coordinator/Parent/Student/Teacher (read-only) -- all own institution/scope only.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Only Psychometric Team writes; every reader stays read-only (SCH-005-AC04)."
+  },
+  {
+    "id": "SCR-SCH-021",
+    "roles": [
+      "Overseas Admin",
+      "Super Admin"
+    ],
+    "route": "/overseas/admin/school-staff",
+    "purpose": "Create an Academic Team, Career Counselor, or Psychometric Team account and assign the school(s) they cover -- the only way any of these three accounts comes into existence.",
+    "features": [
+      "SCH-004",
+      "SCH-005",
+      "SCH-006"
+    ],
+    "entry": "Admin console navigation (extends SCR-ADM-001's existing user-management area, ADM-001/004 -- not a standalone new nav section).",
+    "data": "Existing accounts of these three roles, each with their current school portfolio; the list of partner schools to assign from.",
+    "actions": "Create account (name, role, contact details); assign/remove one or more schools from their portfolio.",
+    "empty": "No Academic Team, Career Counselor, or Psychometric Team accounts yet. Create one to start assigning results, career guidance, or psychometric work to a school.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Creating an account with zero schools assigned is allowed but shows an explicit warning -- this account has no assigned schools yet and won't be able to act on any student until you assign at least one -- never a silent no-op account.",
+    "perms": "Overseas Admin, Super Admin only -- school_coordinator has no access to this screen, even for their own institution's staff (DEC-SCOPE-014).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Only Overseas Admin/Super Admin can reach this screen or its underlying action, even via a direct request -- a School Coordinator attempting it gets 403 (DEC-SCOPE-014)."
+  },
+  {
+    "id": "SCR-RPT-001",
+    "roles": [
+      "IT Admin",
+      "Placement Team"
+    ],
+    "route": "/it/admin/reports",
+    "purpose": "Domestic/Employer/Placement reporting dashboard.",
+    "features": [
+      "RPT-001",
+      "ADM-007"
+    ],
+    "entry": "SCR-ADM-001 / Placement Team dashboard.",
+    "data": "Enrolment funnel, course performance, placement outcomes/funnel data.",
+    "actions": "Filter by period; export.",
+    "empty": "No data for period → empty state, never fabricated figures.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "Inline error message with retry action; never a blank/broken screen.",
+    "perms": "IT Admin, Placement Team.",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "No fabricated zero/placeholder figures verified."
+  },
+  {
+    "id": "SCR-SEC-001",
+    "roles": [
+      "Student",
+      "Trainer",
+      "IT Admin",
+      "Employer",
+      "Agent",
+      "Overseas Admin",
+      "Counselor",
+      "University Representative",
+      "Placement Team",
+      "HR Team",
+      "Super Admin"
+    ],
+    "route": "/account/privacy (Data export/delete request)",
+    "purpose": "GDPR self-service export/delete request.",
+    "features": [
+      "SEC-002"
+    ],
+    "entry": "Persistent account/profile menu, every role.",
+    "data": "None (write-only request form).",
+    "actions": "Request export; request deletion.",
+    "empty": "N/A.",
+    "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
+    "error": "A deletion request respects legal/financial retention holds where applicable — retention periods themselves still open (PRD_OPEN_ITEMS item 15).",
+    "perms": "Self (own data only) / IT Admin (fulfillment queue, not built as a separate screen here — see FEATURE_QUESTIONS.md if a dedicated fulfillment UI is needed).",
+    "responsive": "Single-column stack on mobile; secondary panels collapse to tabs/accordions on tablet; full multi-column on desktop.",
+    "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "Export/delete request recorded and actionable; legal review still recommended before this ships (BRD Risk R-05)."
+  }
+]

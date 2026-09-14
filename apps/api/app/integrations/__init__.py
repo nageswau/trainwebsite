@@ -1,0 +1,1 @@
+"""M18 External Integrations - provider adapters only, owns no domain tables. Reserved package boundary per docs/architecture/ARCHITECTURE.md #3.2/#4. Existing adapter code lives in services/meetings.py, services/integrations.py, services/payment.py. Every named vendor is BLOCKED_BY_DECISION - see docs/architecture/INTEGRATIONS.md #2."""

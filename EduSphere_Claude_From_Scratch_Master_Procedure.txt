@@ -1,0 +1,362 @@
+EDUSPHERE UK — CLAUDE CODE FROM-SCRATCH MASTER PROCEDURE v3
+================================================================
+
+PRINCIPLE
+---------
+Do not code from old documents directly.
+Do not let a draft test define product behavior.
+Do not let a derived document's word "approved" become approval automatically.
+Do not infer product features from an inaccessible Canva design.
+
+FINAL WORKFLOW
+--------------
+00 Evidence Inventory
+   ↓
+01 Source Conflict Audit
+   ↓
+02 UX Reference Audit
+   ↓
+03 Decision Register + Client Questions
+   ↓
+   EXPLICIT DECISION APPROVAL
+   ↓
+04 BRD
+   ↓
+   BRD APPROVAL
+   ↓
+05 PRD
+   ↓
+   PRD APPROVAL
+   ↓
+06 Master Feature Catalogue
+   ↓
+   FEATURE APPROVAL
+   ↓
+07 UX Screen / Route / Flow Catalogue
+   ↓
+   UX APPROVAL
+   ↓
+08 Architecture + ADRs
+   ↓
+   ARCHITECTURE APPROVAL
+   ↓
+09 Data/API/RBAC/Integration Contracts
+   ↓
+   CONTRACT APPROVAL
+   ↓
+10 Test Catalogue Audit + Rebuild Plan
+   ↓
+   TEST STRATEGY APPROVAL
+   ↓
+11 Implementation Plan + Release Backlog
+   ↓
+   CODING GATE
+   ↓
+12 Foundation Scaffold
+   ↓
+13 One Approved Feature at a Time
+   ↓
+14 Release Gate
+   ↓
+UAT
+   ↓
+Production
+
+
+WINDOWS SETUP
+-------------
+Check:
+    git --version
+    node --version
+    npm --version
+    python --version
+    docker --version
+
+Install Claude Code:
+    irm https://claude.ai/install.ps1 | iex
+
+Verify:
+    claude --version
+    claude doctor
+
+Open repository:
+    cd C:\Projects\EduSphere\edusphere_claude_from_scratch
+
+Run:
+    Set-ExecutionPolicy -Scope Process Bypass
+    .\scripts\preflight.ps1
+
+Start:
+    claude
+
+
+FIRST CLAUDE PROMPT
+-------------------
+Read CLAUDE.md completely.
+
+Execute:
+prompts/00_BOOTSTRAP_AND_EVIDENCE_INVENTORY.md
+
+NO CODE.
+Do not infer approvals.
+Stop after the evidence inventory.
+
+
+PROMPT 01
+---------
+Run:
+prompts/01_SOURCE_CONFLICT_AUDIT.md
+
+Purpose:
+Find contradictions and scope changes.
+Do not resolve them.
+
+
+PROMPT 02 — CANVA / UX
+----------------------
+Run:
+prompts/02_UX_REFERENCE_AUDIT.md
+
+Reference:
+https://vnsitcareer.my.canva.site/onecampus-erp-customer-friendly-responsive-ux
+
+Known Canva design:
+DAHRWCa0RLw
+OneCampus ERP — Customer-Friendly Responsive UX
+
+Rule:
+If Claude cannot actually inspect it, it must say so.
+It must not invent screen details.
+Ask for screenshots/PDF/HTML export if visual parity is required.
+
+
+PROMPT 03 — DECISIONS
+---------------------
+Run:
+prompts/03_DECISION_REGISTER_AND_CLIENT_QUESTIONS.md
+
+Claude creates questions/recommendations.
+Claude does NOT approve its own recommendation.
+
+Confirm important decisions:
+CRM
+Employer
+Overseas
+Agent
+Commission
+Visa
+Identity model
+Application workflow/statuses
+Documents
+Notifications
+Live-class provider
+Meeting platform
+Payments
+WhatsApp
+LMS
+GDPR
+Stack
+Architecture
+Cloud
+UX authority
+Release date
+
+
+PROMPT 04 — BRD
+---------------
+After decisions:
+prompts/04_GENERATE_BRD.md
+
+BRD = business WHAT/WHY/scope/processes.
+
+Approve BRD before PRD.
+
+
+PROMPT 05 — PRD
+---------------
+prompts/05_GENERATE_PRD.md
+
+PRD = product behavior and NFRs derived from approved BRD/decisions.
+
+Approve PRD.
+
+
+PROMPT 06 — CREATE FEATURES
+---------------------------
+prompts/06_MASTER_FEATURE_CATALOG.md
+
+THIS IS THE FEATURE-LIST CREATION PROMPT.
+
+It creates:
+MASTER_FEATURE_CATALOG.md
+FEATURE_ACCEPTANCE_CRITERIA.md
+USER_STORIES.md
+FEATURE_DEPENDENCY_MAP.md
+MVP_FEATURES.md
+DELIVERY_SEQUENCE.md
+FEATURE_TRACEABILITY.md
+BACKLOG_GAP_ANALYSIS.md
+FEATURE_QUESTIONS.md
+feature_catalog.json
+
+Each feature traces to approved BRD/PRD.
+No unsupported old backlog item becomes a feature.
+
+Approve feature catalogue.
+
+
+PROMPT 07 — UX/SCREENS
+----------------------
+prompts/07_UX_SCREEN_AND_FLOW_CATALOG.md
+
+Features drive screens, not the other way around.
+
+Do not claim Canva parity unless actual visual evidence was available.
+
+
+PROMPT 08 — ARCHITECTURE
+------------------------
+prompts/08_ARCHITECTURE_AND_ADRS.md
+
+Do not preselect DigitalOcean/AWS.
+
+The source material proposes AWS and the later blueprint recommends ECS Fargate,
+but the final provider must be confirmed.
+
+Same rule for Next.js/FastAPI:
+it is source-backed preference, not assumed final decision.
+
+
+STACK-SPECIFIC SKILLS
+---------------------
+Only after DEC-TECH-001 confirms Next.js + FastAPI:
+
+    .\scripts\setup-skills-after-stack-approval.ps1 -InstallProposedNextFastAPIStack
+
+Then start a NEW Claude session.
+
+
+PROMPT 09 — CONTRACTS
+---------------------
+prompts/09_DATA_API_RBAC_INTEGRATION_CONTRACTS.md
+
+Define:
+data
+API
+RBAC/resource scope
+integration/webhook
+security controls
+
+No code yet.
+
+
+PROMPT 10 — TEST AUDIT
+----------------------
+prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md
+
+Verified workbook fact:
+824 / 824 existing test cases are Draft.
+
+Do not feed all tests into Claude at once.
+
+Known bad-template areas must be audited:
+certificate public verification
+public content auth
+payment webhook auth
+generic pagination
+generic idempotency/ETag
+vague "where applicable"
+
+
+PROMPT 11 — IMPLEMENTATION PLAN
+-------------------------------
+prompts/11_IMPLEMENTATION_PLAN_AND_RELEASE_BACKLOG.md
+
+Re-estimate work from approved features.
+Do not reuse historical 2–3 week or September dates as a promise.
+
+
+PROMPT 12 — FOUNDATION
+----------------------
+prompts/12_FOUNDATION_SCAFFOLD.md
+
+Code only approved FND-* items.
+
+
+PROMPT 13 — FEATURE LOOP
+------------------------
+prompts/13_FEATURE_LOOP.md
+
+One approved Feature ID at a time.
+
+Before code:
+Requirement IDs
+Acceptance Criteria
+Dependencies
+RBAC
+DB/API/UI
+Tests
+Blockers
+
+After code:
+unit
+API
+integration
+UI/E2E
+responsive
+accessibility
+security
+RTM
+
+Never mark COMPLETE if mandatory gates fail.
+
+
+TOKEN-EFFICIENT TESTING
+-----------------------
+Preferred:
+
+Claude writes test
+    ↓
+Local pytest / Playwright
+    ↓
+Compact report
+    ↓
+PASS -> no large logs/screenshots
+FAIL -> Claude sees only failing artifacts
+
+Do not use continuous visual browser exploration for all 824 tests.
+
+
+.CLAUDE-CACHE
+-------------
+Do not delete it every time.
+
+Use fresh Claude sessions and selective document loading instead.
+
+
+PROMPT 14 — RELEASE
+-------------------
+prompts/14_RELEASE_GATE.md
+
+Verdict:
+READY
+or
+NOT READY
+
+
+FINAL TRACEABILITY
+------------------
+Evidence
+  -> Decision
+  -> BRD
+  -> PRD
+  -> Feature
+  -> Acceptance Criteria
+  -> UX
+  -> Architecture/Contract
+  -> Test
+  -> Code
+  -> Release Evidence
+
+Never reverse this into:
+Draft Test -> Product Behavior
