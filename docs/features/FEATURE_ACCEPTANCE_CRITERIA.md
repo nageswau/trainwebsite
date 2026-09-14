@@ -458,6 +458,21 @@ Generated per feature, ID format `<FEATURE-ID>-AC##`. Derived directly from each
 - **SCH-006-AC04:** Gate integrity — a result cannot skip a stage (e.g. Draft directly to Published); each transition is explicit and individually auditable. **Same-actor restriction (`DEC-ROLE-007`, resolved 2026-09-14):** the `academic_team` member recorded as `uploaded_by_user_id` may never also be recorded as `verified_by_user_id` or `published_by_user_id` — a verify/publish attempt by the uploader themselves is rejected (**403**, corrected 2026-09-14 as-built — same status code as every other role/scope deny in this API, not 409, which this API reserves for a state-conflict such as a duplicate email or an already-consumed invite), not silently accepted. This gate design and its verify/publish actor are both confirmed (`DEC-ROLE-006`, `DEC-ROLE-007`), no longer an open re-confirmation item.
 - **SCH-006-AC05:** Academic Team never edits a result at a school outside their own portfolio (`DEC-SCOPE-013`), even via a direct record ID.
 
+## SCH-007 — Parent Portal: child 360 overview + parent notifications
+
+- **SCH-007-AC01:** Given a Parent linked to a child (`SCH-001`), when they open the dashboard or the child's page, then they see that child's profile (school, grade, DOB, class teacher), career guidance status, counselling notes, recommended careers, psychometric status, Published results, activities attended, and upcoming sessions — all from one server-side endpoint, and only for children linked to them.
+- **SCH-007-AC02:** RBAC — a Parent opening any student they are not linked to (even at the same school, even via direct URL) is denied at the API layer (403); Teacher/Coordinator/Principal using the same overview endpoint get their own `SCH-001-AC02`/`AC03` scope, no wider.
+- **SCH-007-AC03:** A Draft or Verified result never appears in the overview (`SCH-006-AC02` carried over) and never generates a Parent notification — only the Published transition does.
+- **SCH-007-AC04:** Notifications — assessment assigned / report attached, guidance session / counselling note / recommendation recorded, session scheduled, result Published each write one in-app `Notification` row per linked Parent (school-wide, once per Parent, for sessions) plus one `NotificationDelivery` row recording the real email outcome (`sent`/`failed`/`not_configured`); a failed or unconfigured send never blocks the write that triggered it, and a Parent of a different child never receives another child's per-student notification.
+- **SCH-007-AC05:** Honest empty state — a child with no records shows "not started" statuses and empty sections; no section is rendered for Skills, Portfolio, or Overseas progress until a confirmed module exists for them (`DEC-SCOPE-015`).
+
+## SCH-008 — Student Journey Timeline (narrow, built from confirmed modules only)
+
+- **SCH-008-AC01:** Given a Parent linked to a child (or a Teacher/Coordinator/Principal within their own `SCH-001` scope), when they open that student's timeline, then they see every event already recorded across `SCH-001`/`004`/`005`/`006` for that student, in real chronological order (by the event's own date — `scheduled_at` for activities, `published_at` for results, `created_at`/`updated_at` for everything else), never a fabricated monthly cadence.
+- **SCH-008-AC02:** RBAC — a Parent opening any student they are not linked to (even at the same school, even via direct URL) is denied at the API layer (403), identical to `SCH-007-AC02`; Teacher/Coordinator/Principal get their own `SCH-001-AC02`/`AC03` scope, no wider; the three specialized service-delivery roles have no access to this endpoint at all.
+- **SCH-008-AC03:** A Draft or Verified result never appears on the timeline (`SCH-006-AC02` carried over).
+- **SCH-008-AC04:** No event category beyond profile/career/psychometric/academic/activity is shown — Skills, Portfolio, Overseas progress, Foreign Language, or Test-prep stages are never fabricated, since no confirmed module produces them (`DEC-SCOPE-016`).
+
 ## NOT-001 — Email notifications
 
 - **NOT-001-AC01:** Given Triggering event occurs., when the primary actor performs the main workflow (System sends email on defined trigger.), then it completes successfully and is visible to the correct actor(s) only.

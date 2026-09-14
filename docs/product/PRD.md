@@ -1125,6 +1125,42 @@ Manager/School Partnership Manager's exact duties and overlap.
 - **Scope/status:** CONFIRMED_CURRENT (module in scope, actor); OPEN (exact field list/assessment
   types)
 
+#### PRD-SCH-011 — Parent Portal: child 360 overview + parent notifications
+- **Source:** `DEC-SCOPE-015` (user restated `EVID-014` §23 in-session, 2026-09-15)
+- **Actor:** Parent (`school_parent`); secondary — Teacher/Coordinator/Principal (same overview
+  endpoint, own scope); the writing roles whose actions trigger notifications
+- **Requirement:** For each linked child a Parent sees profile (school, grade, DOB, class teacher),
+  career guidance status, counselling notes, recommended careers, psychometric status, Published
+  results, activities attended, upcoming sessions, and their own notification feed. A Parent is
+  notified (in-app + email) when an assessment is assigned or its report attached, a guidance/
+  counselling/recommendation record is added, a session is scheduled, or a result is Published.
+- **Business rule:** Own child(ren) only, enforced at the API layer even via direct record ID;
+  Draft/Verified results never appear and never notify; a school-wide session notifies each Parent
+  at that school once.
+- **Open:** Skills, Portfolio, Overseas-education progress (item 77) and Test/Application/Important-
+  deadline notifications (item 78) — no confirmed module produces that data; whether a Parent may
+  open the psychometric report file itself (item 79).
+- **Scope/status:** CONFIRMED_CURRENT (surface + four triggers, built as `SCH-007`); OPEN (items
+  77/78/79)
+
+#### PRD-SCH-012 — Student Journey Timeline: narrow, built from confirmed modules only
+- **Source:** `DEC-SCOPE-016` (user asked whether `EVID-014`'s own recommended timeline
+  exists, then requested the narrow confirmed-modules version, 2026-09-15)
+- **Actor:** Parent (own child(ren) only); secondary — Teacher (assigned), Coordinator/
+  Principal (own institution), same scope rule as `SCH-007`
+- **Requirement:** A chronologically-ordered list of events already recorded for one
+  student across `SCH-001` (profile created, activities attended), `SCH-004` (guidance
+  session, counselling note, recommendation), `SCH-005` (assessment assigned, report
+  uploaded), and `SCH-006` (result Published only).
+- **Business rule:** Own-scope access identical to `SCH-007`'s overview, enforced at the
+  API layer even via direct record ID. A Draft/Verified result never appears. No event
+  category beyond the five above is fabricated — `EVID-014`'s own illustrative Foreign
+  Language / English Test / University Planning / Soft-Skills stages remain unconfirmed.
+- **Open:** Whether/when those additional stages should be added depends entirely on
+  `DEC-SCOPE-015` items 77/78 (Skills, Portfolio, Overseas progress, Test/Application/
+  Deadline modules) being confirmed first.
+- **Scope/status:** CONFIRMED_CURRENT, built as `SCH-008`
+
 ## 8. Non-functional requirements (NFRs)
 
 **Rigor note:** several NFR figures below exist only in the superseded blueprint's own

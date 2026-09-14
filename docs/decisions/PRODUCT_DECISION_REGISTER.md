@@ -1756,3 +1756,127 @@ itself (already adopted per `DEC-ROLE-006`) is now fully confirmed, including wh
 **Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-14.
 Propagation into `RBAC_MATRIX.md`/`DATA_MODEL.md` is follow-up work, not yet done as of this
 resolution.
+
+---
+
+### DEC-SCOPE-015 — Parent Portal content scope (`EVID-014` §23) and parent notification triggers
+
+**Status:** CONFIRMED_CURRENT for the Parent Portal *surface* and for the four triggers whose
+modules exist; **OPEN (`NEEDS_CONFIRMATION`)** for the six items that depend on modules never
+confirmed — resolved 2026-09-15, in-session.
+
+**Trigger:** The user asked, in-session on 2026-09-15, "execute school-crm.md" and then, quoting
+`EVID-014` §23 verbatim: *"does the parent portal contains all this features. Very important for
+the school model. Parents can see: Student profile · Career guidance status · Psychometric status ·
+Counselling · Recommended careers · Skills · Activities · Portfolio · Overseas education progress ·
+Upcoming sessions · Important notifications. Parent should receive notifications for: Assessment →
+Counselling → Workshop → Test → Application → Important deadline."* Until this, `DEC-SCOPE-011`
+had confirmed only that a Parent login exists and can "view their own child's/children's profile
+and progress" — the content of that view was never itemized, and the `SCR-SCH-009` build showed
+name/grade/DOB plus a three-number summary only.
+
+**Evidence:** `EVID-014` (`School CRM.md`, `DERIVED_BLUEPRINT`, unattributed) §23 and the
+second-part "4. Parent Login" / "11. Notifications" sections. Governing here only because the user
+named the list directly in-session (same rule as `DEC-SCOPE-011`/`DEC-ROLE-006`), not because the
+document says so.
+
+**Resolution, item by item — what the confirmed data model can actually supply:**
+
+| §23 item | Backing module | Outcome |
+|---|---|---|
+| Student profile | `SCH-001` `SchoolStudent` (+ school name, assigned Teacher name) | **Built** (`SCH-007`) |
+| Career guidance status | `SCH-004` `guidance_session` records | **Built** — "completed" once ≥1 session recorded |
+| Psychometric status | `SCH-005` `SchoolPsychometricRecord.status` | **Built** — not_started / assigned / completed |
+| Counselling | `SCH-004` `counselling_note` records | **Built** |
+| Recommended careers | `SCH-004` `recommendation` records ("uploads recommendations" is in `DEC-ROLE-006`'s confirmed Career Counselor duties) | **Built** — as free-text recommendation rows, not a structured career taxonomy |
+| Activities | `SCH-001` `SchoolActivityAttendance` | **Built** — the child's attended/absent sessions |
+| Upcoming sessions | `SCH-001` `SchoolActivity` (future, own school) | **Built** |
+| Important notifications | existing `Notification` model (`NOT-001`) | **Built** — in-app feed + email copy |
+| **Skills** | none — `EVID-014` §9 Soft Skills / §10 Digital Skills were never confirmed as modules | **OPEN** — `PRD_OPEN_ITEMS.md` item 77 |
+| **Portfolio** | none — §14 Digital Portfolio never confirmed | **OPEN** — item 77 |
+| **Overseas education progress** | none — §15–20 Global Education never confirmed for school students; a `SchoolStudent` has no login and no link to the Overseas `overseas_student` identity (`DEC-ROLE-004`) | **OPEN** — item 77 |
+
+| Notification chain step | Trigger built | Outcome |
+|---|---|---|
+| Assessment | psychometric assessment assigned; report attached (→ completed) | **Built** |
+| Counselling | guidance session / counselling note / recommendation recorded | **Built** |
+| Workshop | Coordinator schedules a `SchoolActivity` (every linked Parent at that school, once) | **Built** |
+| Test | no confirmed test module (`EVID-014` §12 IELTS / §13 SAT never confirmed) | **OPEN** — item 78. **Result Published** *is* built (§11's "Term 1 results are now available" parent notification) as the nearest confirmed event, clearly not the same thing |
+| Application | no Overseas linkage for school students | **OPEN** — item 78 |
+| Important deadline | no deadline entity in any confirmed module | **OPEN** — item 78 |
+
+**Not decided here, deliberately:** whether a Parent may open the psychometric `report_url` itself
+(the readable list has always returned status only — kept as-is, item 79); grade/section targeting
+of sessions (a `SchoolActivity` is school-wide in the confirmed model, so the Workshop notification
+is school-wide too).
+
+**New Feature ID authorized:** `SCH-007` (Parent Portal: child 360 overview + notifications).
+
+**Status:** CONFIRMED_CURRENT (surface + four triggers) / OPEN (six items) — Stated by: user
+(in-session) — Date: 2026-09-15. BRD/PRD/Feature Catalogue/RBAC/UX/RTM propagation done the same
+day (`BRD_CHANGE_LOG.md` v1.10, `PRD_CHANGE_LOG.md` v1.8).
+
+---
+
+### DEC-SCOPE-016 — Narrow Student Journey Timeline (`EVID-014` second-part §15), built from confirmed modules only
+
+**Status:** CONFIRMED_CURRENT — resolved 2026-09-15, in-session.
+
+**Trigger:** The user asked whether `EVID-014`'s second-part §15 ("One Feature I Strongly
+Recommend: Student Journey Timeline") exists. It did not — that section is the source
+document's own recommendation, never confirmed by any Decision ID, Business Requirement, or
+Feature ID. The user then asked for the narrow version, built only from what `SCH-001`/
+`004`/`005`/`006` already record, with the same role-based access `DEC-SCOPE-011` already
+established (a Parent sees only their own child's timeline).
+
+**Resolution:** Built as `SCH-008`, a single read endpoint deriving a chronological event
+list from existing rows — no new tables, no invented Foreign Language / English Test /
+University Planning / Soft-Skills stages (those remain unconfirmed, same as `DEC-SCOPE-015`
+items 77/78). Five event categories only: **profile** (student created), **career**
+(guidance session / counselling note / recommendation, from `SCH-004`), **psychometric**
+(assessment assigned / report uploaded, from `SCH-005`), **academic** (result Published
+only — `SCH-006-AC02`'s Draft/Verified visibility rule carried through unchanged), and
+**activity** (attended sessions, from `SCH-001`). Access reuses the identical own-scope
+loader already built for `SCH-007`'s overview (`_load_readable_student`): a Parent's own
+child only, a Teacher's assigned student only, Coordinator/Principal their own institution
+— not the three specialized service-delivery roles' own portfolio mechanism, since this is
+a student-facing view, not a staff work queue.
+
+**Evidence:** `EVID-014` second part §15 (`DERIVED_BLUEPRINT`, its illustrative one-event-
+per-month cadence is not itself confirmed or reproduced — the built timeline shows real
+event dates, however they actually cluster).
+
+**New Feature ID authorized:** `SCH-008` (Student Journey Timeline, narrow).
+
+**Status:** CONFIRMED_CURRENT — Stated by: user (in-session) — Date: 2026-09-15. BRD/PRD/
+Feature Catalogue/RBAC/UX/RTM propagation done the same day.
+
+**Addendum, 2026-09-15 (later, same day) — UI surfaces extended to Coordinator/Principal; demo
+data corrected:** the user asked for two things in one message: (1) "timeline workflow or diagram
+should be available to co-ordinator, teacher, principal also" (Teacher's own per-student page
+already had it; the API already scoped correctly for all four roles via `_load_readable_student`,
+but Coordinator and Principal had no screen to reach it from) -- resolved by adding a
+`SchoolStudentDetailPanel.tsx` (student header + Journey Timeline, shared read-only component),
+wired into a new `/school/coordinator/students/[id]` page (linked from a "Timeline" action on the
+existing roster) and a new `/school/principal/students/[id]` page (linked from the dashboard's
+roster table); Teacher's existing page was refactored onto the same shared component. No backend
+change was needed -- `GET /school/students/{id}/timeline`'s scope already covered Coordinator/
+Principal correctly. (2) "correct the previous errors identified" -- referring to two things flagged
+in this session's own visual review of the seeded demo account: events appearing out of expected
+order (an activity and a published result both predating "Student profile created"), and several
+unrelated events sharing an identical timestamp. Root cause confirmed: `app/seed.py`'s School-domain
+block relied on `TimestampMixin`'s insert-time default for `created_at` on most rows, while a few
+fields (activity `scheduled_at`, result `verified_at`/`published_at`) were independently offset from
+separate `datetime.now(UTC)` calls -- nothing kept the *story* internally consistent (a result could
+even end up "published" before its own `created_at`). Fixed by introducing one shared `journey_base`
+timestamp per seed run and explicit, staggered offsets so "Student profile created" is always
+earliest and every other confirmed-module event follows in real order; applied to `seed.py` (for any
+future fresh seed) and, via a one-off exactly-scoped update statement, to the already-running dev
+database's existing demo rows (five named students, three career records, three psychometric
+records, and the four academic results belonging to them -- verified by exact-id/exact-field match
+before writing, so no unrelated row from this shared dev database's considerable accumulated test
+data was touched). This is a demo/seed-data correction, not an application logic change -- the
+timeline's own chronological-sort behavior was already correct and was not altered.
+
+**New Screen IDs:** `SCR-SCH-025` (`/school/coordinator/students/[id]`), `SCR-SCH-026`
+(`/school/principal/students/[id]`).

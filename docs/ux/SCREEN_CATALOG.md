@@ -1908,6 +1908,11 @@ extended same day with `SCH-003` onboarding per `DEC-SCOPE-012`, then again with
 | `SCR-SCH-019` | `/school/psychometric-team (Dashboard: assigned students)` | Psychometric Team | `SCH-005` |
 | `SCR-SCH-020` | `/school/psychometric-team/students/[id]/assessments` | Psychometric Team | `SCH-005` |
 | `SCR-SCH-021` | `/overseas/admin/school-staff` | Overseas Admin, Super Admin | `SCH-004`, `SCH-005`, `SCH-006` |
+| `SCR-SCH-022` | `/school/parent/children/[id]` (Child profile & progress) | Parent | `SCH-007` |
+| `SCR-SCH-023` | `/school/parent/notifications` | Parent | `SCH-007` |
+| `SCR-SCH-024` | *(embedded in `SCR-SCH-022`, the Teacher's, Coordinator's, and Principal's student-detail screens — not a standalone route)* Journey timeline section | Parent, Teacher, School Coordinator, Principal | `SCH-008` |
+| `SCR-SCH-025` | `/school/coordinator/students/[id]` | School Coordinator | `SCH-008` |
+| `SCR-SCH-026` | `/school/principal/students/[id]` | Principal | `SCH-008` |
 
 ### `SCR-SCH-001`
 - **Route:** `/school/principal (Dashboard)`  
@@ -2059,7 +2064,7 @@ extended same day with `SCH-003` onboarding per `DEC-SCOPE-012`, then again with
 - **Purpose:** A Parent's view of their own child's — or children's — profile and progress, with a switcher if there's more than one.  
 - **Linked Feature ID(s):** `SCH-001`  
 - **Entry points:** Post-login redirect.  
-- **Required data:** Own child(ren)'s profile/progress only, plus their **published results / career-guidance-and-counselling / psychometric records** (`SCH-004`/`005`/`006`, added 2026-09-14, read-only — a `draft`/`verified` result is never included here).  
+- **Required data:** Own child(ren)'s profile/progress only, plus their **published results / career-guidance-and-counselling / psychometric records** (`SCH-004`/`005`/`006`, added 2026-09-14, read-only — a `draft`/`verified` result is never included here). **Rebuilt 2026-09-15 (`SCH-007`):** one card per child with class teacher, career-guidance / counselling / psychometric status chips, Published-result count, recommended careers, and a link to `SCR-SCH-022`; plus the school's upcoming sessions and the Parent's five latest notifications (unread count) linking to `SCR-SCH-023`. No switcher: every child is visible at once.  
 - **Key actions:** Switch between children, if more than one is linked.  
 - **Empty state:** No child linked yet → "No child linked to your account yet. Contact your school to get set up."  
 - **Loading state:** Skeleton/placeholder layout while data loads; no layout shift on resolve.  
@@ -2280,6 +2285,100 @@ correction, not deleted, per this project's traceability convention.
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.  
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Only Overseas Admin/Super Admin can reach this screen or its underlying action, even via a direct request — a School Coordinator attempting it gets 403 (`DEC-SCOPE-014`).  
+
+
+### `SCR-SCH-022` *(added 2026-09-15, propagating `DEC-SCOPE-015`)*
+- **Route:** `/school/parent/children/[id]`
+- **Role(s):** Parent (`school_parent`)
+- **Purpose:** One child's complete profile & progress — the `EVID-014` §23 list as far as confirmed modules can supply it.
+- **Linked Feature ID(s):** `SCH-007`
+- **Entry points:** "View full profile & progress" on `SCR-SCH-009`; a notification's "Open" link.
+- **Required data:** `GET /school/students/{id}/overview` — profile (school, grade, DOB, class teacher), career guidance sessions, counselling notes, recommended careers, psychometric assessments with status, Published results table, activities attended (present/absent), upcoming sessions.
+- **Key actions:** Read-only. Back to my children.
+- **Empty state:** Each section carries its own honest empty line ("No career guidance session recorded yet", "No published results yet. A result appears here only once the school has published it", …). **No Skills / Portfolio / Overseas section is rendered at all** until a confirmed module exists for it.
+- **Loading state:** Server-rendered; no client loading state.
+- **Error state:** A student not linked to this Parent → "Access unavailable" with a back link (API 403, `SCH-007-AC02`), never a partial page.
+- **Permissions/resource scope:** Own child(ren) only, verified server-side even via this direct record ID.
+- **Responsive behavior:** Single-column stack on mobile; every table inside `table-wrap` (no horizontal page scroll).
+- **Accessibility requirements:** Semantic headings per section, keyboard-navigable links, status chips carry text not colour alone.
+- **Desktop/tablet/mobile behavior:** As above; status grid collapses to two columns on mobile.
+- **Visual-reference mapping:** None — not inspected (see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2). Do not claim parity.
+- **Acceptance evidence needed:** `SCH-007-AC01`/`AC02`/`AC03`/`AC05` — `test_sch_007_parent_portal.py`, `sch-007-parent-portal.spec.ts`.
+- **`SCH-008` addendum, 2026-09-15:** a "Journey timeline" card is appended to this screen — a vertical, chronologically-ordered rail (colored node per category: profile/career/psychometric/academic/activity, connecting line, tinted category badge) reading `GET /school/students/{id}/timeline`. Same own-child scope; a load failure shows "Timeline is unavailable right now." without blocking the rest of the page. The identical component also renders on the Teacher's per-student detail screen (`/school/teacher/students/[id]`, within their assigned-student scope) — see `SCR-SCH-024`.
+
+### `SCR-SCH-023` *(added 2026-09-15, propagating `DEC-SCOPE-015`)*
+- **Route:** `/school/parent/notifications`
+- **Role(s):** Parent (`school_parent`)
+- **Purpose:** The Parent's full notification feed — assessment assigned / report ready, guidance or counselling recorded, session scheduled, result Published.
+- **Linked Feature ID(s):** `SCH-007`
+- **Entry points:** Parent nav "Notifications"; "All notifications" on `SCR-SCH-009`.
+- **Required data:** `GET /workflows/notifications` (own rows only — keyed on the signed-in user).
+- **Key actions:** Read; "Open" follows the notification's `action_url` to the child page or dashboard.
+- **Empty state:** "No notifications yet. You will be notified here when an assessment, counselling session, workshop, or result is recorded for your child."
+- **Loading state:** Server-rendered.
+- **Error state:** Standard "Access unavailable" card.
+- **Permissions/resource scope:** Own notifications only.
+- **Responsive behavior:** Table inside `table-wrap`.
+- **Accessibility requirements:** Unread marked with a text badge ("new"), not colour alone.
+- **Desktop/tablet/mobile behavior:** Single column on mobile.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `SCH-007-AC04` — `test_sch_007_parent_portal.py`, `sch-007-parent-portal.spec.ts`.
+
+
+### `SCR-SCH-024` *(added 2026-09-15, propagating `DEC-SCOPE-016`)*
+- **Route:** Embedded section, not a standalone route — appears on `SCR-SCH-022` (`/school/parent/children/[id]`), the Teacher's `/school/teacher/students/[id]`, and (added 2026-09-15, later the same day) `SCR-SCH-025`/`SCR-SCH-026` for Coordinator/Principal.
+- **Role(s):** Parent (own child), Teacher (assigned student), School Coordinator, Principal (own institution) — all four via the same shared `SchoolStudentDetailPanel.tsx`, each their own page/route
+- **Purpose:** The narrow Student Journey Timeline — a chronological rail of every event already recorded for this student across `SCH-001`/`004`/`005`/`006`.
+- **Linked Feature ID(s):** `SCH-008`
+- **Entry points:** Scrolled section on the student's own detail page.
+- **Required data:** `GET /school/students/{id}/timeline` — `events[]` with `date`, `category`, `title`, `detail`.
+- **Key actions:** Read-only.
+- **Empty state:** Never truly empty — a "profile created" event always exists once the student is on the roster.
+- **Loading state:** Server-rendered; a fetch failure shows "Timeline is unavailable right now." without blocking the rest of the page.
+- **Error state:** Covered by the parent page's own "Access unavailable" (a caller outside scope never reaches this section at all — enforced before the page renders).
+- **Permissions/resource scope:** Same as `SCR-SCH-022`/the Teacher detail page — own child / assigned student / own institution only depending on role, verified server-side even via direct record ID.
+- **Responsive behavior:** Single vertical rail, two-column grid (node + content) at every width — no horizontal scroll, confirmed at 400px viewport.
+- **Accessibility requirements:** Each event's category is stated in text (a badge label), never conveyed by color alone.
+- **Desktop/tablet/mobile behavior:** Identical layout at all widths — the rail is inherently single-column.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `SCH-008-AC01`–`AC04` — `test_sch_008_student_timeline.py`, `sch-008-student-timeline.spec.ts`.
+
+
+### `SCR-SCH-025` *(added 2026-09-15, later the same day, propagating `DEC-SCOPE-016`'s addendum)*
+- **Route:** `/school/coordinator/students/[id]`
+- **Role(s):** School Coordinator
+- **Purpose:** Read-only student header plus `SCR-SCH-024`'s Journey Timeline, own institution only.
+- **Linked Feature ID(s):** `SCH-008`
+- **Entry points:** A "Timeline" action on each roster row of `/school/coordinator/students`.
+- **Required data:** `GET /school/students/{id}`, `GET /school/students/{id}/timeline`.
+- **Key actions:** Read-only; write actions (add/edit/link parent) stay on the roster screen, not duplicated here.
+- **Empty state:** N/A — a student always has at least a "profile created" event.
+- **Loading state:** Server-rendered; a timeline fetch failure shows "Timeline is unavailable right now." without blocking the header.
+- **Error state:** A student at a different institution → "Access unavailable" with a back link (403).
+- **Permissions/resource scope:** Own institution only (`SCH-001-AC02`), verified server-side even via direct record ID.
+- **Responsive behavior:** Same as `SCR-SCH-024`.
+- **Accessibility requirements:** Same as `SCR-SCH-024`.
+- **Desktop/tablet/mobile behavior:** Same as `SCR-SCH-024`.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `SCH-008-AC01`/`AC02` — `sch-008-student-timeline.spec.ts` (Coordinator case).
+
+### `SCR-SCH-026` *(added 2026-09-15, later the same day, propagating `DEC-SCOPE-016`'s addendum)*
+- **Route:** `/school/principal/students/[id]`
+- **Role(s):** Principal
+- **Purpose:** Read-only student header plus `SCR-SCH-024`'s Journey Timeline, own institution only.
+- **Linked Feature ID(s):** `SCH-008`
+- **Entry points:** A "Timeline" action on each row of the dashboard's roster table.
+- **Required data:** `GET /school/students/{id}`, `GET /school/students/{id}/timeline`.
+- **Key actions:** Read-only.
+- **Empty state:** N/A.
+- **Loading state:** Server-rendered; a timeline fetch failure shows "Timeline is unavailable right now." without blocking the header.
+- **Error state:** A student at a different institution → "Access unavailable" with a back link (403).
+- **Permissions/resource scope:** Own institution only (`SCH-001-AC02`), verified server-side even via direct record ID.
+- **Responsive behavior:** Same as `SCR-SCH-024`.
+- **Accessibility requirements:** Same as `SCR-SCH-024`.
+- **Desktop/tablet/mobile behavior:** Same as `SCR-SCH-024`.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `SCH-008-AC01`/`AC02` — `sch-008-student-timeline.spec.ts` (Principal case).
 
 
 ## RPT

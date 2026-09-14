@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type Student = {
@@ -138,6 +139,7 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
                     <td style={{ display: "flex", gap: 8 }}>
                       <button className="btn ghost small" onClick={() => { setEditingId(s.id); setLinkingId(null); }}>Edit</button>
                       <button className="btn ghost small" onClick={() => { setLinkingId(s.id); setEditingId(null); }}>Link parent</button>
+                      <a className="btn ghost small" href={`/school/coordinator/students/${s.id}`}>Timeline</a>
                     </td>
                   </tr>
                 ))}
@@ -225,7 +227,7 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
           </div>
           <button className="btn" disabled={busy}>{busy ? "Saving…" : "Add student"}</button>
         </form>
-        <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>Adding many students at once? <a href="/school/coordinator/students/bulk-upload">Use bulk upload</a> instead.</p>
+        <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>Adding many students at once? <Link href="/school/coordinator/students/bulk-upload">Use bulk upload</Link> instead.</p>
       </div>
 
       {message && (

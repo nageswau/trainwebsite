@@ -663,6 +663,30 @@ have gone beyond `DEC-ROLE-006`'s confirmed scope. `status` moves `assigned → 
 
 ---
 
+### 6.19 Parent Portal (`SCH-007`) — added 2026-09-15, propagating `DEC-SCOPE-015`; no new tables
+
+`GET /school/students/{id}/overview` is a pure read over §6.11 (`SchoolStudent`, `SchoolActivity`,
+`SchoolActivityAttendance`), §6.12 (`SchoolParentLink` scope), §6.16 (`SchoolAcademicResult`,
+`status='published'` only), §6.17 (`SchoolCareerRecord`, split by `record_type` into guidance
+sessions / counselling notes / recommended careers), and §6.18 (`SchoolPsychometricRecord.status`).
+Parent notifications reuse §7's existing `Notification` + `NotificationDelivery` rows unchanged —
+recipient is the linked `school_parent` user, `channel='email'`, `status` carries the real SMTP (or
+webhook fallback) outcome. **Deliberately absent, not forgotten:** no `skills`, `portfolio`, or
+overseas-progress tables — `EVID-014` §9/§10/§14/§15–20 remain unconfirmed `DERIVED_BLUEPRINT`
+(`PRD_OPEN_ITEMS.md` items 77/78); adding those tables requires their own decisions first.
+
+### 6.20 Student Journey Timeline (`SCH-008`) — added 2026-09-15, propagating `DEC-SCOPE-016`; no new tables
+
+`GET /school/students/{id}/timeline` is a pure read over the same rows as §6.19's overview,
+reshaped into a flat, chronologically-sorted event list rather than grouped by module. Each
+event's date comes from the source row's own most meaningful timestamp: `SchoolStudent.
+created_at` for profile creation, `SchoolCareerRecord.created_at` for guidance/counselling/
+recommendation, `SchoolPsychometricRecord.created_at` for assignment and `.updated_at` for
+a report attach, `SchoolAcademicResult.published_at` for a Published result, `SchoolActivity.
+scheduled_at` for an attended session. **Deliberately absent:** any Foreign Language /
+English Test / University Planning / Soft-Skills stage from `EVID-014`'s own illustrative
+timeline — none of those are confirmed modules (`DEC-SCOPE-015`/`016`).
+
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)
 
 ### 7.1 `NotificationLog`

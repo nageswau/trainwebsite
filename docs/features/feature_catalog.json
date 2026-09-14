@@ -3044,6 +3044,97 @@
     "blocked_reason": null
   },
   {
+    "id": "SCH-007",
+    "module": "School",
+    "name": "Parent Portal: child 360 overview + parent notifications",
+    "desc": "[New] Net-new build -- a Parent sees, for their own child(ren) only, one complete picture: profile (school, grade, class teacher), career guidance status, counselling notes, recommended careers, psychometric status, Published results, activities attended, upcoming sessions, and their notification feed. Parents are notified (in-app + email) when an assessment is assigned or its report attached, a guidance/counselling/recommendation record is added, a session is scheduled, or a result is Published. Skills, portfolio, and overseas-education progress are NOT included -- no confirmed module produces that data (DEC-SCOPE-015, open items 77/78).",
+    "primary": "Parent",
+    "secondary": "Teacher/Coordinator/Principal (same overview endpoint, own scope); Career Counselor, Psychometric Team, Academic Team, School Coordinator (their writes trigger the notifications)",
+    "br": [
+      "BR-SCH-007"
+    ],
+    "prd": [
+      "PRD-SCH-011"
+    ],
+    "dec": [
+      "DEC-SCOPE-011",
+      "DEC-ROLE-006",
+      "DEC-SCOPE-015",
+      "DEC-NOT-001"
+    ],
+    "scope": "CURRENT",
+    "priority": "P2",
+    "moscow": "Should",
+    "release": "Wave 4",
+    "pre": "SCH-001 (Parent account linked to at least one SchoolStudent); SCH-004/005/006 for the content sections to be non-empty; NOT-001 for the email copy.",
+    "main": "Parent logs in -> dashboard lists every linked child with status chips -> opens a child -> full overview -> notifications feed lists every event recorded for that child.",
+    "alt": "A child with no records yet shows honest not-started statuses and empty sections, never placeholders. SMTP not configured -> in-app row still written, email delivery recorded as not_configured.",
+    "err": "A Parent never sees an unlinked student's overview, even at the same school, even via direct URL (403). A Draft/Verified result never appears in the overview and never triggers a notification -- only the Published transition does. A Parent of a different student at the same school never receives another child's assessment/counselling notification.",
+    "deps": [
+      "SCH-001",
+      "SCH-004",
+      "SCH-005",
+      "SCH-006",
+      "NOT-001"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Parent (own child(ren) only, read-only) / Teacher (assigned) / Coordinator, Principal (own institution) on the overview; notification rows are keyed to the recipient user only",
+    "integration": "Email via app/services/mailer.py (real SMTP) with fallback to the NOT-001 webhook channel; NotificationDelivery row per send",
+    "security": "Service-delivery and results data about a minor -- least-privilege, own-child scope enforced at the API layer, not the UI",
+    "a11y": "Responsive; tables in table-wrap, no horizontal page scroll on mobile",
+    "perf": "-",
+    "tests": "API, UI, Security",
+    "cx": "M",
+    "status": "COMPLETE (2026-09-15): GET /school/students/{id}/overview + four notification triggers in app/api/schools.py, send_parent_notification_email in app/services/mailer.py; /school/parent/dashboard rewritten, /school/parent/children/[id] and /school/parent/notifications added, SchoolChildOverview.tsx; 9 pytest cases (test_sch_007_parent_portal.py), 1 Playwright case (sch-007-parent-portal.spec.ts), both passing live."
+  },
+  {
+    "id": "SCH-008",
+    "module": "School",
+    "name": "Student Journey Timeline (narrow, built from confirmed modules only)",
+    "desc": "[New] Net-new build -- a chronological, role-scoped list of events already recorded for one student: profile created, career guidance session / counselling note / recommendation, psychometric assessment assigned / report uploaded, academic result Published, activity attended. No invented Foreign Language / English Test / University Planning / Soft-Skills stages -- EVID-014's own illustrative timeline is not itself confirmed (DEC-SCOPE-016). Same own-scope access as SCH-007's overview: a Parent sees only their own child's timeline.",
+    "primary": "Parent",
+    "secondary": "Teacher (assigned), Coordinator/Principal (own institution) -- same endpoint, same scope rule as SCH-007",
+    "br": [
+      "BR-SCH-008"
+    ],
+    "prd": [
+      "PRD-SCH-012"
+    ],
+    "dec": [
+      "DEC-SCOPE-011",
+      "DEC-SCOPE-015",
+      "DEC-SCOPE-016"
+    ],
+    "scope": "CURRENT",
+    "priority": "P3",
+    "moscow": "Could",
+    "release": "Wave 4",
+    "pre": "SCH-001 (student exists, own-scope link); SCH-004/005/006 for the content categories to be non-empty.",
+    "main": "Parent (or Teacher/Coordinator/Principal within their own scope) opens a student's page -> sees a vertical, chronologically-ordered rail of every event recorded for that student across the confirmed modules.",
+    "alt": "A brand-new student's timeline has exactly one event (profile created). A Draft/Verified result never appears (SCH-006-AC02 carried through).",
+    "err": "A Parent never sees an unlinked student's timeline, even at the same school, even via direct URL (403) -- identical deny to SCH-007-AC02. The three specialized service-delivery roles (career_counselor/psychometric_team/academic_team) have no access to this endpoint -- it is student-facing, not their own portfolio work queue.",
+    "deps": [
+      "SCH-001",
+      "SCH-004",
+      "SCH-005",
+      "SCH-006",
+      "SCH-007"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "N",
+    "rbac": "Parent (own child(ren) only) / Teacher (assigned) / Coordinator, Principal (own institution) -- identical to SCH-001-AC02/AC03 and SCH-007-AC02",
+    "integration": "-",
+    "security": "Service-delivery and results data about a minor, same class as SCH-007",
+    "a11y": "Responsive; single vertical rail, no horizontal scroll at any width",
+    "perf": "-",
+    "tests": "API, UI, Security",
+    "cx": "S",
+    "status": "COMPLETE (2026-09-15): GET /school/students/{id}/timeline in app/api/schools.py (no new tables); SchoolStudentTimeline.tsx rendered on /school/parent/children/[id] and /school/teacher/students/[id]; 7 pytest cases (test_sch_008_student_timeline.py), 1 Playwright case (sch-008-student-timeline.spec.ts), both passing live. Addendum, 2026-09-15 (later, same day): Coordinator and Principal own per-student pages added (/school/coordinator/students/[id], /school/principal/students/[id], both via the shared SchoolStudentDetailPanel.tsx, no backend change needed -- the endpoint's scope already covered them). Seed-data timestamp ordering corrected in app/seed.py and the live dev database (a demo/seed-data fix, not an application logic change -- see DEC-SCOPE-016 addendum). E2E case extended to also verify Coordinator and Principal reach the identical timeline through their own real UI entry points; full School-domain backend regression re-run: 58/58 passing."
+  },
+  {
     "id": "NOT-001",
     "module": "Notifications",
     "name": "Email notifications",

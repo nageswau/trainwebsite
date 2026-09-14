@@ -27,6 +27,8 @@ from app.core.database import get_db
 from app.core.security import hash_password
 from app.models import (
     AuditLog,
+    Notification,
+    NotificationDelivery,
     School,
     SchoolAcademicResult,
     SchoolAccountInvite,
@@ -44,7 +46,7 @@ from app.models import (
     UserRoleAssignment,
 )
 from app.services.integrations import send_notification
-from app.services.mailer import send_school_invite_email
+from app.services.mailer import send_parent_notification_email, send_school_invite_email
 
 router = APIRouter(prefix="/school", tags=["school"])
 SERVICE_DELIVERY_ROLES = {"academic_team", "career_counselor", "psychometric_team"}
@@ -211,6 +213,61 @@ def _student_out(s: SchoolStudent) -> dict:
         "assigned_teacher_user_id": s.assigned_teacher_user_id,
         "pending_parent_email": s.pending_parent_email,
     }
+
+
+# --- SCH-007: Parent Portal notifications ---------------------------------------------------
+# Every trigger below writes the in-app `Notification` row first (what the Parent Portal
+# lists), then records one `NotificationDelivery` for the email copy (`NOT-001`'s per-channel
+# contract). Real SMTP via `mailer.send_parent_notification_email`; when SMTP isn't
+# configured the platform's generic webhook channel is tried instead, and whichever
+# outcome results is persisted -- a failed or unconfigured send never blocks the write
+# that triggered it (SCH-007-AC04).
+
+async def _notify_parent(db: AsyncSession, parent: User, *, school_name: str, title: str, body: str, action_url: str | None) -> None:
+    item = Notification(user_id=parent.id, title=title, body=body, read=False, action_url=action_url)
+    db.add(item)
+    await db.flush()
+    status, error = await send_parent_notification_email(to_email=parent.email, recipient_name=parent.full_name, school_name=school_name, title=title, body=body, action_url=action_url)
+    if status == "not_configured":
+        status, error = await send_notification("email", {"to": parent.email, "title": title, "body": body, "action_url": action_url})
+    db.add(NotificationDelivery(notification_id=item.id, channel="email", status=status, error=error, sent_at=datetime.now(UTC) if status == "sent" else None))
+
+
+async def _notify_student_parents(db: AsyncSession, student: SchoolStudent, *, title: str, body: str, action_url: str | None) -> int:
+    """Notify every active Parent linked to this one student (own-child scope, SCH-001-AC03 --
+    a Parent linked to a different student at the same school is never included)."""
+    parents = (
+        await db.scalars(
+            select(User).join(SchoolParentLink, SchoolParentLink.parent_user_id == User.id).where(SchoolParentLink.school_student_id == student.id, User.active.is_(True))
+        )
+    ).all()
+    if not parents:
+        return 0
+    school = await db.get(School, student.school_id)
+    for parent in parents:
+        await _notify_parent(db, parent, school_name=school.name if school else "your school", title=title, body=body, action_url=action_url)
+    return len(parents)
+
+
+async def _notify_school_parents(db: AsyncSession, school_id: UUID, *, title: str, body: str, action_url: str | None) -> int:
+    """Notify every active Parent linked to any student at this school, once each (a parent
+    of two children here still gets one notification). Used for school-wide sessions, since
+    a `SchoolActivity` has no grade/section targeting in the confirmed model."""
+    # Distinct on the id subquery, not on the User row -- Postgres cannot DISTINCT a JSON
+    # column (`users.profile`), so `select(User).distinct()` would fail outright.
+    parent_ids = (
+        select(SchoolParentLink.parent_user_id)
+        .join(SchoolStudent, SchoolStudent.id == SchoolParentLink.school_student_id)
+        .where(SchoolStudent.school_id == school_id)
+        .distinct()
+    )
+    parents = (await db.scalars(select(User).where(User.id.in_(parent_ids), User.active.is_(True)))).all()
+    if not parents:
+        return 0
+    school = await db.get(School, school_id)
+    for parent in parents:
+        await _notify_parent(db, parent, school_name=school.name if school else "your school", title=title, body=body, action_url=action_url)
+    return len(parents)
 
 
 async def _parent_email_conflict(db: AsyncSession, *, school_id: UUID, parent_email: str) -> str | None:
@@ -381,8 +438,10 @@ async def roster_template(user: User = Depends(get_current_user)):
     return Response(content=buffer.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=school-roster-template.csv"})
 
 
-@router.get("/students/{student_id}")
-async def get_student(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def _load_readable_student(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
+    """One student, checked against the acting School role's own scope (SCH-001-AC02/AC03):
+    own institution for every role, plus assigned-only for Teacher and own-child-only for
+    Parent -- the same rule as the list, applied to a direct record ID."""
     school_id = _own_school_id(user)
     student = await db.get(SchoolStudent, student_id)
     if not student:
@@ -395,7 +454,118 @@ async def get_student(student_id: UUID, user: User = Depends(get_current_user), 
         linked = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == user.id, SchoolParentLink.school_student_id == student.id))
         if not linked:
             raise HTTPException(403, "This student is not linked to your account")
+    return student
+
+
+@router.get("/students/{student_id}")
+async def get_student(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    student = await _load_readable_student(db, user, student_id)
     return _student_out(student)
+
+
+@router.get("/students/{student_id}/overview")
+async def student_overview(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """SCH-007 -- one child's complete picture for the Parent Portal (and, by the same scope
+    rule, for Teacher/Coordinator/Principal): profile, career guidance status, counselling,
+    recommended careers, psychometric status, published results, activities attended, and
+    upcoming sessions. Pure read over the already-built SCH-001/004/005/006 tables -- no new
+    tables. Results are Published-only, same as everywhere else (SCH-006-AC02). Skills,
+    portfolio, and overseas-education progress are NOT here: no confirmed module produces
+    that data yet (`DEC-SCOPE-015`, open items) -- omitted rather than faked."""
+    student = await _load_readable_student(db, user, student_id)
+    school = await db.get(School, student.school_id)
+    teacher = await db.get(User, student.assigned_teacher_user_id) if student.assigned_teacher_user_id else None
+    career_rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id == student.id).order_by(SchoolCareerRecord.created_at.desc()))).all()
+    psych_rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id == student.id).order_by(SchoolPsychometricRecord.created_at.desc()))).all()
+    result_rows = (
+        await db.scalars(
+            select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id == student.id, SchoolAcademicResult.status == "published").order_by(SchoolAcademicResult.published_at.desc())
+        )
+    ).all()
+    attended_rows = (
+        await db.execute(
+            select(SchoolActivityAttendance, SchoolActivity)
+            .join(SchoolActivity, SchoolActivity.id == SchoolActivityAttendance.activity_id)
+            .where(SchoolActivityAttendance.school_student_id == student.id)
+            .order_by(SchoolActivity.scheduled_at.desc())
+        )
+    ).all()
+    upcoming_rows = (
+        await db.scalars(
+            select(SchoolActivity).where(SchoolActivity.school_id == student.school_id, SchoolActivity.scheduled_at >= datetime.now(UTC)).order_by(SchoolActivity.scheduled_at.asc()).limit(10)
+        )
+    ).all()
+
+    def _career(rows: list) -> list[dict]:
+        return [{"id": r.id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
+
+    guidance = [r for r in career_rows if r.record_type == "guidance_session"]
+    counselling = [r for r in career_rows if r.record_type == "counselling_note"]
+    recommendations = [r for r in career_rows if r.record_type == "recommendation"]
+    psych_statuses = {r.status for r in psych_rows}
+    psychometric_status = "completed" if "completed" in psych_statuses else ("assigned" if psych_rows else "not_started")
+    return {
+        "student": {**_student_out(student), "school_name": school.name if school else None, "assigned_teacher_name": teacher.full_name if teacher else None},
+        "career_guidance": {"status": "completed" if guidance else "not_started", "sessions": _career(guidance)},
+        "counselling": {"status": "completed" if counselling else "not_started", "notes": _career(counselling)},
+        "recommended_careers": _career(recommendations),
+        "psychometric": {"status": psychometric_status, "assessments": [{"id": r.id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at} for r in psych_rows]},
+        "results": [_result_out(r) for r in result_rows],
+        "activities": {
+            "attended": [{"activity_id": a.id, "title": a.title, "scheduled_at": a.scheduled_at, "present": att.present} for att, a in attended_rows],
+            "upcoming": [{"id": a.id, "title": a.title, "scheduled_at": a.scheduled_at} for a in upcoming_rows],
+        },
+    }
+
+
+CAREER_RECORD_TIMELINE = {
+    "guidance_session": ("career", "Career guidance session"),
+    "counselling_note": ("career", "Counselling note added"),
+    "recommendation": ("career", "Career recommendation added"),
+}
+
+
+@router.get("/students/{student_id}/timeline")
+async def student_timeline(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """SCH-008 -- narrow Student Journey Timeline: a chronological list of events already
+    recorded for one student, built only from already-built modules (`SCH-001`/`004`/`005`/
+    `006`) -- no invented Foreign Language / English Test / University Planning steps from
+    `EVID-014`'s own illustrative timeline, since none of those are confirmed modules
+    (`DEC-SCOPE-015`). Same own-scope loader as the overview (`_load_readable_student`), so
+    a Parent gets their own child's timeline only, a Teacher their assigned student's, and
+    Coordinator/Principal their own institution's -- identical to `SCH-001-AC02`/`AC03`
+    and `SCH-007-AC02`. Read-only, no new tables: every event is derived from an existing
+    row's own timestamp, nothing synthesized."""
+    student = await _load_readable_student(db, user, student_id)
+    events: list[dict] = [{
+        "date": student.created_at, "category": "profile", "type": "profile_created",
+        "title": "Student profile created", "detail": f"Added to {student.grade_or_class}" if student.grade_or_class else None,
+    }]
+    career_rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id == student.id))).all()
+    for r in career_rows:
+        category, title = CAREER_RECORD_TIMELINE[r.record_type]
+        events.append({"date": r.created_at, "category": category, "type": r.record_type, "title": title, "detail": r.notes})
+    psych_rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id == student.id))).all()
+    for r in psych_rows:
+        events.append({"date": r.created_at, "category": "psychometric", "type": "psychometric_assigned", "title": "Psychometric assessment assigned", "detail": r.assessment_type})
+        if r.report_url:
+            events.append({"date": r.updated_at, "category": "psychometric", "type": "psychometric_report", "title": "Psychometric report uploaded", "detail": r.assessment_type})
+    result_rows = (
+        await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id == student.id, SchoolAcademicResult.status == "published"))
+    ).all()
+    for r in result_rows:
+        events.append({"date": r.published_at, "category": "academic", "type": "result_published", "title": "Academic result published", "detail": f"{r.term} {r.subject} -- {r.grade}" if r.grade else f"{r.term} {r.subject}"})
+    attended_rows = (
+        await db.execute(
+            select(SchoolActivityAttendance, SchoolActivity)
+            .join(SchoolActivity, SchoolActivity.id == SchoolActivityAttendance.activity_id)
+            .where(SchoolActivityAttendance.school_student_id == student.id, SchoolActivityAttendance.present.is_(True))
+        )
+    ).all()
+    for _att, a in attended_rows:
+        events.append({"date": a.scheduled_at, "category": "activity", "type": "activity_attended", "title": f"Attended {a.title}", "detail": None})
+    events.sort(key=lambda e: e["date"])
+    return {"student": {"id": student.id, "full_name": student.full_name}, "events": events}
 
 
 @router.post("/students", status_code=201)
@@ -525,6 +695,11 @@ async def create_activity(payload: dict, user: User = Depends(get_current_user),
     db.add(activity)
     await db.flush()
     db.add(AuditLog(user_id=user.id, action="school.activity_create", entity_type="school_activity", entity_id=str(activity.id), metadata_json={"school_id": str(school_id)}))
+    # SCH-007 "Workshop" trigger: every linked Parent at this school hears about a new session.
+    await _notify_school_parents(
+        db, school_id, title=f"Upcoming session: {activity.title}",
+        body=f"{activity.title} is scheduled for {activity.scheduled_at.strftime('%d %b %Y, %H:%M')}.", action_url="/school/parent/dashboard",
+    )
     await db.commit()
     return {"id": activity.id, "title": activity.title, "scheduled_at": activity.scheduled_at}
 
@@ -750,6 +925,9 @@ async def create_career_record(payload: dict, user: User = Depends(get_current_u
     db.add(record)
     await db.flush()
     db.add(AuditLog(user_id=user.id, action="school.career_record_create", entity_type="school_career_record", entity_id=str(record.id), metadata_json={"record_type": record_type}))
+    # SCH-007 "Counselling" trigger (guidance session / counselling note / recommendation).
+    label = {"guidance_session": "Career guidance session recorded", "counselling_note": "Counselling note added", "recommendation": "Career recommendation added"}[record_type]
+    await _notify_student_parents(db, student, title=f"{label} for {student.full_name}", body=f"A Career Counselor has added a new {record_type.replace('_', ' ')} to {student.full_name}'s career profile.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
     return {"id": record.id, "school_student_id": record.school_student_id, "record_type": record.record_type, "notes": record.notes, "created_at": record.created_at}
 
@@ -799,6 +977,11 @@ async def create_psychometric_record(payload: dict, user: User = Depends(get_cur
     db.add(record)
     await db.flush()
     db.add(AuditLog(user_id=user.id, action="school.psychometric_record_create", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={"assessment_type": assessment_type}))
+    # SCH-007 "Assessment" trigger: assigned (or completed at once, when a report came with it).
+    if record.status == "completed":
+        await _notify_student_parents(db, student, title=f"Psychometric report ready for {student.full_name}", body=f"The {assessment_type} report for {student.full_name} is now available.", action_url=f"/school/parent/children/{student.id}")
+    else:
+        await _notify_student_parents(db, student, title=f"Psychometric assessment assigned to {student.full_name}", body=f"{student.full_name} has been assigned a {assessment_type}.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
     return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status, "created_at": record.created_at}
 
@@ -811,10 +994,16 @@ async def update_psychometric_record(record_id: UUID, payload: dict, user: User 
     if not record:
         raise HTTPException(404, "Record not found")
     await _student_in_portfolio(db, user, record.school_student_id)
+    became_completed = False
     if "report_url" in payload:
         record.report_url = payload["report_url"]
-        record.status = "completed" if payload["report_url"] else record.status
+        if payload["report_url"] and record.status != "completed":
+            record.status = "completed"
+            became_completed = True
     db.add(AuditLog(user_id=user.id, action="school.psychometric_record_update", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={}))
+    if became_completed:
+        student = await db.get(SchoolStudent, record.school_student_id)
+        await _notify_student_parents(db, student, title=f"Psychometric report ready for {student.full_name}", body=f"The {record.assessment_type} report for {student.full_name} is now available.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
     return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status}
 
@@ -930,6 +1119,11 @@ async def _advance_result(result_id: UUID, target: str, user: User, db: AsyncSes
         result.published_at = datetime.now(UTC)
     db.add(SchoolResultStatusHistory(result_id=result.id, from_status=from_status, to_status=target, changed_by_user_id=user.id))
     db.add(AuditLog(user_id=user.id, action=f"school.result_{target}", entity_type="school_academic_result", entity_id=str(result.id), metadata_json={}))
+    if target == "published":
+        # SCH-007: only the Published transition reaches a Parent -- a Draft/Verified step
+        # never does, so the gate's existence is not leaked through a notification either.
+        student = await db.get(SchoolStudent, result.school_student_id)
+        await _notify_student_parents(db, student, title=f"{result.term} {result.subject} result published for {student.full_name}", body=f"{student.full_name}'s {result.academic_year} {result.term} result for {result.subject} is now available.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
     return result
 

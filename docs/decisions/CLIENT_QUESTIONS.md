@@ -435,3 +435,40 @@ Manager's and School Partnership Manager's exact duties/overlap.
 open within `DEC-ROLE-006` itself (not full client questions, just implementation-level precision
 to nail down before building): the exact duties/overlap of Edusphere School Manager vs. School
 Partnership Manager, and word-for-word re-confirmation of the Draft→Verified→Published results gate.
+
+## Round 5 — 15 September 2026: Parent Portal content
+
+### 18. Parent Portal — Skills, Portfolio, Overseas education progress
+
+**(From `DEC-SCOPE-015`)** The user restated `EVID-014` §23's "Parents can see" list and called it
+very important for the school model. Eight of the eleven items are now live (`SCH-007`). The three
+below have **no confirmed module behind them**, so the Parent Portal cannot show them without
+inventing data — please confirm each separately:
+
+1. **Skills** — should a Skills record exist for a school student? Who enters it (Career Counselor,
+   a Soft-Skills/Digital-Skills trainer role from `EVID-014` §9/§10, the school)? What is tracked
+   (skill name + level? training attended + score?)
+2. **Digital Portfolio** — is `EVID-014` §14's portfolio in scope? Which sections, who edits, and is
+   a "% complete" figure wanted?
+3. **Overseas education progress** — should a school student be linkable to an Overseas application
+   pipeline? Today a `SchoolStudent` has no login and no link to `overseas_student` (`DEC-ROLE-004`).
+   If yes: is that link created when the student later registers as an Overseas student, or does the
+   school student get a Global Education record of its own (`EVID-014` §15–20)?
+
+### 19. Parent notifications — "Test", "Application", "Important deadline"
+
+**(From `DEC-SCOPE-015`)** Assessment → Counselling → Workshop are built; result Published is built
+as the parent notification `EVID-014` §11 itself specifies. For the remaining three steps:
+
+1. **Test** — does this mean IELTS/SAT test dates (`EVID-014` §12/§13 — not confirmed modules), a
+   school exam date, or something else?
+2. **Application** and **Important deadline** — which events, from which module? These depend on
+   item 18.3's answer (Overseas link) and on a deadline entity no confirmed module has.
+
+### 20. Parent access to the psychometric report file
+
+`SCH-007` shows a Parent the assessment's status only, never the report file — the readable list has
+always been built that way. Should a Parent be able to open the report? If so, should the
+Psychometric Team release it explicitly first (like results' Published gate)?
+
+---

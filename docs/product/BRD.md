@@ -383,6 +383,8 @@ the Feature Catalogue, `prompts/06`):
 | BR-SCH-004 | Academic Team uploads/manages school-affiliated student results; a Draft→Verified→Published gate sits between upload and Parent/Student visibility (adopted, not verbatim re-confirmed — item 74); School Coordinator gets read-only visibility only | `DEC-SCOPE-010` (part 2), `DEC-ROLE-006` |
 | BR-SCH-005 | Career Counselor owns Career Guidance and Counselling for school-affiliated students; School Coordinator gets read-only visibility only | `DEC-ROLE-006` |
 | BR-SCH-006 | Psychometric Team owns psychometric assessment for school-affiliated students; School Coordinator gets read-only visibility only | `DEC-ROLE-006` |
+| BR-SCH-007 | A Parent sees, for their own child(ren) only, one complete picture — profile, career guidance status, counselling, recommended careers, psychometric status, Published results, activities, upcoming sessions, notifications — and is notified when an assessment is assigned/reported, a counselling/guidance record is added, a session is scheduled, or a result is Published. Skills, portfolio, overseas progress, and test/application/deadline notifications stay OPEN until their modules are confirmed | `DEC-SCOPE-015` |
+| BR-SCH-008 | A Parent (and, within their own `SCH-001` scope, a Teacher/Coordinator/Principal) sees a chronological Student Journey Timeline built only from events already recorded across `SCH-001`/`004`/`005`/`006` — no invented Foreign Language, English Test, University Planning, or Soft-Skills stages | `DEC-SCOPE-016` |
 
 ---
 

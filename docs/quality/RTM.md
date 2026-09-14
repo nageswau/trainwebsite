@@ -139,12 +139,47 @@ coverage status, and its new/rewritten test coverage. Full test case detail is i
 | `SCH-004` | `DATA_MODEL.md` §6.17, `API_CONTRACT.md` §12A | **None** | **COMPLETE** (`prompts/15`, 2026-09-14): `SchoolCareerRecord` net-new (migration `0026`); portfolio-scoped career guidance/counselling API in `app/api/schools.py`, provisioning API (`DEC-SCOPE-014`) in `app/api/admin.py`. Backend: 5 new pytest cases (`test_sch_004_career_guidance.py`, covers `SCH-CAREER-01`'s full portfolio-scope case, no longer partial) plus 4 shared provisioning cases (`test_sch_school_staff_provisioning.py`). E2E: shared coverage in `sch-004-005-006-service-delivery.spec.ts`. |
 | `SCH-005` | `DATA_MODEL.md` §6.18, `API_CONTRACT.md` §12A | **None** | **COMPLETE** (`prompts/15`, 2026-09-14): `SchoolPsychometricRecord` net-new (migration `0026`); portfolio-scoped assessment-assignment/report-attach API in `app/api/schools.py`. Backend: 5 new pytest cases (`test_sch_005_psychometric_assessment.py`, covers `SCH-PSYCH-01`'s full portfolio-scope case, no longer partial). E2E: shared coverage in `sch-004-005-006-service-delivery.spec.ts`. |
 | `SCH-006` | `DATA_MODEL.md` §6.16, `API_CONTRACT.md` §12A | **None** | **COMPLETE** (`prompts/15`, 2026-09-14): `SchoolAcademicResult`/`SchoolResultStatusHistory` net-new (migration `0026`); Draft→Verified→Published API with `DEC-ROLE-007`'s same-actor restriction enforced in `app/api/schools.py`. Backend: 9 new pytest cases (`test_sch_006_academic_results.py`, covers `SCH-RESULTS-01`/`02` including the same-actor rejection, `PRD_OPEN_ITEMS.md` item 74 resolved by build). E2E: 2 new Playwright cases (`sch-004-005-006-service-delivery.spec.ts`) — full upload→verify-by-a-different-member→publish→read-only-summary flow and an empty-portfolio provisioning case, both passing live against the real stack. |
+| `SCH-007` | `DATA_MODEL.md` §6.19, `API_CONTRACT.md` §12A, `RBAC_MATRIX.md` §2.12 | **None** (net-new) | **COMPLETE** (2026-09-15): `GET /school/students/{id}/overview` + four Parent notification triggers in `app/api/schools.py` (no new tables; existing `Notification`/`NotificationDelivery` reused), `send_parent_notification_email` in `app/services/mailer.py`; `/school/parent/dashboard` rebuilt, `/school/parent/children/[id]` and `/school/parent/notifications` added. Backend: 9 new pytest cases (`test_sch_007_parent_portal.py`, covers `SCH-007-AC01`–`AC05` including the unlinked-child 403, Draft-never-notifies, and once-per-parent school-wide broadcast). E2E: 1 new Playwright case (`sch-007-parent-portal.spec.ts`), passing live. Neighbouring School suites re-run after the change: 42/42 passing. |
+| `SCH-008` | `DATA_MODEL.md` §6.20, `API_CONTRACT.md` §12A, `RBAC_MATRIX.md` §2.12 | **None** (net-new) | **COMPLETE** (2026-09-15): `GET /school/students/{id}/timeline` in `app/api/schools.py` (no new tables, reuses `SCH-007`'s own-scope loader), `SchoolStudentTimeline.tsx` rendered on the Parent child page and the Teacher per-student page. Backend: 7 new pytest cases (`test_sch_008_student_timeline.py`, covers `SCH-008-AC01`–`AC04` including full cross-category chronological ordering and the unlinked-child 403). E2E: 1 new Playwright case (`sch-008-student-timeline.spec.ts`), passing live. Full School-domain backend regression after this feature: 58/58 passing. |
 
 **Addendum, 2026-09-14:** `SCH-003`, `SCH-001`, `SCH-002`, `SCH-004`, `SCH-005`, and `SCH-006` are now
 all `COMPLETE` (rows updated above), completing the entire originally-scoped School domain. Full
 backend regression after `SCH-004`/`005`/`006`: 545/562 passing (the same 17 pre-existing,
 credential-dependent failures — Razorpay, Zoho Meeting, CRM webhook — unrelated to School, unchanged
 across every School feature's regression run this build).
+
+**Addendum, 2026-09-15:** `SCH-007` (Parent Portal) added and `COMPLETE` (row above). Per the
+project's regression cadence, only the School-domain suites were re-run for this single feature
+(`test_sch_001`/`004`/`005`/`006`/`reports`/`roster_parent_invite`/`mailer`: 42/42); the full
+backend regression is due after the next batch of features.
+
+**Addendum, 2026-09-15 (later, same day):** `SCH-008` (Student Journey Timeline) added and
+`COMPLETE` (row above). School-domain suites re-run including the new `SCH-008` tests: 58/58
+passing. E2E regression for the four related School specs (`sch-007`, `sch-reports`,
+`sch-roster-parent-invite`, `sch-001`) confirmed passing when run serially (`--workers=1`); a
+parallel-worker run showed 2 incidental failures traced to this project's known shared/
+non-isolated test-database characteristic (`PROJECT_AUDIT_2026-09-10.md`), not to this change —
+both pass individually and serially.
+
+**Addendum, 2026-09-15 (later still, same day) — Coordinator/Principal timeline UI + demo-data
+correction:** Two follow-ups to `SCH-008`, both `DEC-SCOPE-016` addendum. (1) `SchoolStudentDetailPanel.tsx`
+(shared read-only component) plus two new pages — `/school/coordinator/students/[id]` and
+`/school/principal/students/[id]` — give School Coordinator and Principal their own real UI entry
+point onto the same `GET /school/students/{id}/timeline`, matching the API's scope that already
+covered them; Teacher's page was refactored onto the same shared component, no behavior change.
+`sch-008-student-timeline.spec.ts` extended to invite and log in as a Principal, add a Coordinator
+roster-link click-through, and a Principal dashboard-link click-through, asserting all four roles'
+pages render the identical ordered timeline; passing. Full School-domain backend regression re-run
+after this change too: 58/58 passing (no backend code changed). (2) A seed-data ordering issue the
+user identified by visual review (an activity and a published result both predating "Student profile
+created"; several unrelated events sharing one identical timestamp) was traced to `app/seed.py`
+relying on `TimestampMixin`'s insert-time default for most School-domain rows while a few fields used
+independent `datetime.now(UTC)` offsets — nothing kept the demo story internally consistent. Fixed in
+`app/seed.py` (one shared `journey_base`, explicit staggered offsets) and, via an exactly-scoped
+Core `update()` verified against a prior read-only row count before writing, in the already-running
+dev database's existing demo rows for the five named seed students. This is a demo/seed-data
+correction only — the timeline's own chronological-sort logic was already correct and was not
+changed.
 
 ## Traceability check
 

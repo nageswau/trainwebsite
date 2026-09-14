@@ -6,10 +6,9 @@ import type { User } from "@/lib/types";
 
 type Student = { id: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
 
-// SCH-001: one assigned student's detail, read-only. Same assigned-scope deny as the
-// dashboard, verified server-side even via this direct record ID (SCH-001-AC03).
-// SCH-008: journey timeline, own-scope-checked the same way, via the shared detail panel.
-export default async function SchoolTeacherStudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+// SCH-008 (DEC-SCOPE-016): Principal's read-only view of one student's Journey Timeline,
+// own institution only (SCH-001-AC02) -- reachable from the dashboard's roster table.
+export default async function SchoolPrincipalStudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let user: User;
   let student: Student;
@@ -20,15 +19,15 @@ export default async function SchoolTeacherStudentDetailPage({ params }: { param
       <div className="section">
         <div className="container card">
           <h1>Access unavailable</h1>
-          <p>{e instanceof Error ? e.message : "This student is not assigned to you, or does not exist."}</p>
-          <a className="btn" href="/school/teacher/dashboard">Back to your students</a>
+          <p>{e instanceof Error ? e.message : "This student is at a different institution, or does not exist."}</p>
+          <a className="btn" href="/school/principal/dashboard">Back to dashboard</a>
         </div>
       </div>
     );
   }
   return (
-    <PortalShell nav={SCHOOL_NAV.teacher} roleLabel="Teacher" userName={user.full_name}>
-      <SchoolStudentDetailPanel student={student} backHref="/school/teacher/dashboard" backLabel="Back to your students" />
+    <PortalShell nav={SCHOOL_NAV.principal} roleLabel="Principal" userName={user.full_name}>
+      <SchoolStudentDetailPanel student={student} backHref="/school/principal/dashboard" backLabel="Back to dashboard" />
     </PortalShell>
   );
 }

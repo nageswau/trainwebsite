@@ -169,6 +169,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 
 - `SCR-SCH-013` — /school/invite/[token]/accept — **True first entry point**: accepting the School Coordinator's invite (`DEC-SCOPE-012`), before any dashboard nav exists.
 - `SCR-SCH-001` — /school/principal (Dashboard) — School-wide read-only progress overview.
+- `SCR-SCH-026` — /school/principal/students/[id] — One student's Journey Timeline (`SCH-008`, added 2026-09-15).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## School Coordinator *(net-new, added 2026-09-14, `DEC-SCOPE-011`/`DEC-SCOPE-010` part 1/`DEC-SCOPE-012`)*
@@ -176,6 +177,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-SCH-002` — /school/coordinator (Dashboard) — Coordinator landing view.
 - `SCR-SCH-003` — /school/coordinator/students — Student roster, view/edit.
 - `SCR-SCH-004` — /school/coordinator/students/new — Add one student by hand.
+- `SCR-SCH-025` — /school/coordinator/students/[id] — One student's Journey Timeline (`SCH-008`, added 2026-09-15).
 - `SCR-SCH-005` — /school/coordinator/students/bulk-upload — Bulk roster upload (template-download-first).
 - `SCR-SCH-006` — /school/coordinator/activities — Schedule activities, track attendance.
 - `SCR-SCH-012` — /school/coordinator/team — Invite Principal/Teacher/Parent accounts.
@@ -192,7 +194,9 @@ distinct from the existing Trainer/"Teacher" role above)*
 ## Parent (school-side) *(net-new, added 2026-09-14, `DEC-SCOPE-011` — role code `school_parent`)*
 
 - `SCR-SCH-013` — /school/invite/[token]/accept — True first entry point: accepting the Coordinator's invite (`DEC-SCOPE-012`).
-- `SCR-SCH-009` — /school/parent (Dashboard: my children) — Own child(ren) only.
+- `SCR-SCH-009` — /school/parent (Dashboard: my children) — Own child(ren) only; per-child status chips, upcoming sessions, latest notifications (`SCH-007`, 2026-09-15).
+- `SCR-SCH-022` — /school/parent/children/[id] (Child profile & progress) — One child's full overview (`SCH-007`); embeds `SCR-SCH-024`'s Journey Timeline (`SCH-008`).
+- `SCR-SCH-023` — /school/parent/notifications — Own notification feed (`SCH-007`).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Academic Team *(net-new, added 2026-09-14, `DEC-ROLE-006` — supersedes `DEC-ROLE-005`'s single-Counselor-role framing)*

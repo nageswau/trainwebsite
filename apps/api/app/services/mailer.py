@@ -118,3 +118,76 @@ async def send_school_invite_email(
         return "sent", None
     except Exception as exc:
         return "failed", str(exc)[:500]
+
+
+# --- SCH-007: Parent Portal notifications -------------------------------------------------
+
+def _parent_notification_html(*, recipient_name: str, school_name: str, title: str, body: str, action_url: str | None) -> str:
+    logo_url = f"{settings.frontend_url}/brand/logo-dark.png"
+    button = (
+        f"""<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+                  <tr>
+                    <td style="border-radius:12px;background:#1554d8;">
+                      <a href="{action_url}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;">Open in EduSphere</a>
+                    </td>
+                  </tr>
+                </table>"""
+        if action_url
+        else ""
+    )
+    return f"""<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f4f7fb;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f2850;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:32px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
+            <tr>
+              <td style="background:#0a1e3f;padding:28px 32px;">
+                <img src="{logo_url}" alt="EduSphere" height="40" style="display:block;">
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <h1 style="font-size:20px;margin:0 0 16px;">{title}</h1>
+                <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Hi {recipient_name},</p>
+                <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">{body}</p>
+                {button}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;background:#f8fafc;border-top:1px solid #edf1f6;">
+                <p style="font-size:12px;color:#60738b;margin:0;">
+                  Sent by {school_name} via EduSphere. You receive this because you are a linked parent at this school.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
+
+
+async def send_parent_notification_email(*, to_email: str, recipient_name: str, school_name: str, title: str, body: str, action_url: str | None) -> tuple[str, str | None]:
+    """SCH-007: the email copy of a Parent Portal notification (in-app row is always written
+    first by the caller; this is the delivery channel on top of it, `NOT-001`). Same
+    (status, error) contract and same not_configured/sent/failed semantics as the invite
+    mailer above -- an unconfigured SMTP host never blocks the write that triggered it."""
+    if not settings.smtp_host or not settings.smtp_from_email:
+        return "not_configured", None
+    msg = EmailMessage()
+    msg["Subject"] = f"{title} -- {school_name}"
+    msg["From"] = f"{school_name} via EduSphere <{settings.smtp_from_email}>"
+    msg["To"] = to_email
+    text = f"Hi {recipient_name},\n\n{title}\n\n{body}\n"
+    if action_url:
+        text += f"\nOpen in EduSphere: {action_url}\n"
+    msg.set_content(text)
+    msg.add_alternative(_parent_notification_html(recipient_name=recipient_name, school_name=school_name, title=title, body=body, action_url=action_url), subtype="html")
+    try:
+        await asyncio.to_thread(_send_sync, msg)
+        return "sent", None
+    except Exception as exc:
+        return "failed", str(exc)[:500]

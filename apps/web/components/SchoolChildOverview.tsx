@@ -1,0 +1,160 @@
+import { serverApi } from "@/lib/api";
+
+// SCH-007: one child's complete picture for the Parent Portal, read from
+// GET /school/students/{id}/overview (own-child scope enforced server-side, SCH-001-AC03).
+// Rendered in two densities: `compact` for the dashboard's per-child card, full for
+// /school/parent/children/[id]. Skills, portfolio, and overseas-education progress are
+// deliberately absent -- no confirmed module produces that data yet (`DEC-SCOPE-015`);
+// showing an empty section for them would imply a record set that does not exist.
+
+type CareerRecord = { id: string; record_type: string; notes: string; created_at: string };
+type Assessment = { id: string; assessment_type: string; status: string; created_at: string };
+type Result = { id: string; academic_year: string; term: string; subject: string; max_marks: number; marks_obtained: number; percentage: number | null; grade: string | null };
+type Attended = { activity_id: string; title: string; scheduled_at: string; present: boolean };
+type Upcoming = { id: string; title: string; scheduled_at: string };
+
+export type ChildOverview = {
+  student: { id: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null; school_name: string | null; assigned_teacher_name: string | null };
+  career_guidance: { status: string; sessions: CareerRecord[] };
+  counselling: { status: string; notes: CareerRecord[] };
+  recommended_careers: CareerRecord[];
+  psychometric: { status: string; assessments: Assessment[] };
+  results: Result[];
+  activities: { attended: Attended[]; upcoming: Upcoming[] };
+};
+
+export async function loadChildOverview(studentId: string): Promise<ChildOverview> {
+  return serverApi<ChildOverview>(`/api/v1/school/students/${studentId}/overview`);
+}
+
+export function formatDate(value: string | null | undefined, withTime = false): string {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}) });
+}
+
+const STATUS_LABEL: Record<string, string> = { completed: "Completed", assigned: "Assigned", not_started: "Not started" };
+
+export function StatusChip({ status }: { status: string }) {
+  const tone = status === "completed" ? "" : status === "assigned" ? " pending" : " pending";
+  return <span className={`status${tone}`}>{STATUS_LABEL[status] || status}</span>;
+}
+
+export function ChildStatusRow({ overview }: { overview: ChildOverview }) {
+  return (
+    <div className="metric-grid">
+      <div className="metric"><span>Career guidance</span><StatusChip status={overview.career_guidance.status} /></div>
+      <div className="metric"><span>Counselling</span><StatusChip status={overview.counselling.status} /></div>
+      <div className="metric"><span>Psychometric</span><StatusChip status={overview.psychometric.status} /></div>
+      <div className="metric"><span>Published results</span><strong>{overview.results.length}</strong></div>
+    </div>
+  );
+}
+
+export default function SchoolChildOverview({ overview }: { overview: ChildOverview }) {
+  const s = overview.student;
+  return (
+    <>
+      <div className="card">
+        <h2>{s.full_name}</h2>
+        <p><strong>School:</strong> {s.school_name || "-"}</p>
+        <p><strong>Grade/Class:</strong> {s.grade_or_class || "-"}</p>
+        <p><strong>Date of birth:</strong> {formatDate(s.date_of_birth)}</p>
+        <p><strong>Class teacher:</strong> {s.assigned_teacher_name || "Not assigned yet"}</p>
+      </div>
+
+      <ChildStatusRow overview={overview} />
+
+      <div className="card">
+        <h3>Career guidance</h3>
+        {overview.career_guidance.sessions.length === 0 ? (
+          <p className="muted">No career guidance session recorded yet.</p>
+        ) : (
+          <ul>{overview.career_guidance.sessions.map((r) => <li key={r.id}><strong>{formatDate(r.created_at)}</strong> — {r.notes}</li>)}</ul>
+        )}
+      </div>
+
+      <div className="card">
+        <h3>Counselling</h3>
+        {overview.counselling.notes.length === 0 ? (
+          <p className="muted">No counselling notes yet.</p>
+        ) : (
+          <ul>{overview.counselling.notes.map((r) => <li key={r.id}><strong>{formatDate(r.created_at)}</strong> — {r.notes}</li>)}</ul>
+        )}
+      </div>
+
+      <div className="card">
+        <h3>Recommended careers</h3>
+        {overview.recommended_careers.length === 0 ? (
+          <p className="muted">No career recommendation yet — this appears once the Career Counselor records one.</p>
+        ) : (
+          <ul>{overview.recommended_careers.map((r) => <li key={r.id}><span className="badge">{r.notes}</span> <span className="muted">{formatDate(r.created_at)}</span></li>)}</ul>
+        )}
+      </div>
+
+      <div className="card">
+        <h3>Psychometric assessment</h3>
+        {overview.psychometric.assessments.length === 0 ? (
+          <p className="muted">No psychometric assessment assigned yet.</p>
+        ) : (
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th>Assessment</th><th>Status</th><th>Assigned on</th></tr></thead>
+              <tbody>
+                {overview.psychometric.assessments.map((a) => (
+                  <tr key={a.id}><td>{a.assessment_type}</td><td><StatusChip status={a.status} /></td><td>{formatDate(a.created_at)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h3>Academic results</h3>
+        {overview.results.length === 0 ? (
+          <p className="muted">No published results yet. A result appears here only once the school has published it.</p>
+        ) : (
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th>Year</th><th>Term</th><th>Subject</th><th>Marks</th><th>%</th><th>Grade</th></tr></thead>
+              <tbody>
+                {overview.results.map((r) => (
+                  <tr key={r.id}><td>{r.academic_year}</td><td>{r.term}</td><td>{r.subject}</td><td>{r.marks_obtained} / {r.max_marks}</td><td>{r.percentage ?? "-"}</td><td>{r.grade || "-"}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h3>Activities</h3>
+        {overview.activities.attended.length === 0 ? (
+          <p className="muted">No activity attendance recorded yet.</p>
+        ) : (
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th>Activity</th><th>Date</th><th>Attendance</th></tr></thead>
+              <tbody>
+                {overview.activities.attended.map((a) => (
+                  <tr key={a.activity_id}><td>{a.title}</td><td>{formatDate(a.scheduled_at, true)}</td><td><span className={`status${a.present ? "" : " error"}`}>{a.present ? "Present" : "Absent"}</span></td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h3>Upcoming sessions</h3>
+        {overview.activities.upcoming.length === 0 ? (
+          <p className="muted">Nothing scheduled yet.</p>
+        ) : (
+          <ul>{overview.activities.upcoming.map((a) => <li key={a.id}><strong>{formatDate(a.scheduled_at, true)}</strong> — {a.title}</li>)}</ul>
+        )}
+      </div>
+    </>
+  );
+}
