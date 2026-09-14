@@ -55,7 +55,7 @@ export default function SchoolBulkUploadPanel() {
     <div className="portal-content">
       <div className="card">
         <h2>1. Download the template</h2>
-        <p className="muted">Fill it in offline, then upload it below. Columns: full name (required), date of birth, grade/class, and an existing Teacher&apos;s email if you want to assign one.</p>
+        <p className="muted">Fill it in offline, then upload it below. Columns: full name (required), date of birth, grade/class, an existing Teacher&apos;s email if you want to assign one, and a parent&apos;s name/email if you want one invited (or linked, if they already have an account).</p>
         <button type="button" className="btn secondary" onClick={() => window.open("/api/v1/school/students/roster-template", "_blank", "noreferrer")}>
           Download template (.csv)
         </button>

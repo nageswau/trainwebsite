@@ -433,6 +433,16 @@ extended same day with provisioning fields per `DEC-SCOPE-012`
   client-supplied value — always server-derived from the acting Coordinator's own `school_id` scope.
 - **Feature IDs:** `SCH-001`, `SCH-002`.
 
+**Addendum, 2026-09-14 (roster-driven parent invites):** `SchoolStudent` gained a
+`pending_parent_email` column (nullable string, indexed) — set when a Coordinator enters a
+parent's email on the roster (single-add, edit, or bulk upload) and no matching
+`school_parent` account exists yet at this school; cleared once `SchoolParentLink` exists
+for that student. Deliberately not a new join table: `POST /school/invites/{token}/accept`
+links every `SchoolStudent` row carrying the invite's own email in one pass, which handles
+a second child added to the roster while the first invite is still pending without any
+extra bookkeeping on the invite itself. See `API_CONTRACT.md` §12A for the endpoint-level
+behavior (`linked`/`invited`/`invite_reused`/rejected).
+
 **`SchoolParentLink`, `SchoolActivity`, `SchoolActivityAttendance` — added 2026-09-14, during `SCH-001`'s
 build.** Net-new — no table was proposed anywhere in this document's original §6.11–6.18 listing for
 `SCH-001`'s own "schedule activities, track attendance" main-workflow line, or for the many-to-many
@@ -462,7 +472,12 @@ provisioning audit trail (`RBAC_MATRIX.md` §3, `SCH-003`).
   built:** the many-to-many `SchoolParentLink` table named below, exactly as proposed — a student may
   have more than one linked parent, a parent more than one linked child, with no 1:1 assumption
   forced either direction. Coordinator links a Parent to a Student explicitly (`POST /school/students/
-  {id}/parents`) — no self-service linking exists for either party.
+  {id}/parents`, for an already-existing Parent account) — no self-service linking exists for either
+  party. **Addendum, 2026-09-14:** the roster's own `parent_email` field (§6.11 addendum) is now the
+  primary path for most Coordinators — it creates the link immediately if the account already exists,
+  or invites the parent and links automatically on acceptance if it doesn't; `POST /school/students/
+  {id}/parents` remains for linking an *additional* already-existing Parent account to a student (e.g.
+  a second parent) without going through the roster fields again.
 - **Role-name collision guard (architecture-level, not just naming):** `school_teacher`'s grants must
   never be reachable through the existing `trainer` role check, and `school_coordinator`'s grants must
   never be reachable through the existing `coordinator` role check (`DEC-ROLE-003`, certificate
@@ -494,6 +509,10 @@ replays the original batch's report rather than re-processing the file).
   `assigned_teacher_email` (optional — must resolve to an existing `school_teacher` at the uploading
   Coordinator's own school, or the row is rejected) — mapped directly from `SCH-001`'s own
   already-built `SchoolStudent` creation fields (`POST /school/students`), not an invented list.
+  **Addendum, 2026-09-14:** two more optional columns, `parent_name`/`parent_email`, added the same
+  way — mapped directly from `POST /school/students`' own roster-driven parent invite addendum
+  (§6.11), not an invented pair. An invalid `parent_email` (belongs to a non-Parent account, or a
+  Parent at a different school) rejects only that row, same discipline as `assigned_teacher_email`.
 - **Feature IDs:** `SCH-002`.
 
 ### 6.14 Service-delivery data for school-affiliated students — resolved 2026-09-14, `DEC-ROLE-006`,
@@ -549,9 +568,12 @@ accounts).
 - **Audit:** issuance and consumption (accepted/expired/revoked) are each their own `AuditLog` entry
   — a reused or cross-institution attempt must be independently visible in the trail, not just
   blocked in the moment (`RBAC_MATRIX.md` §3).
-- **OPEN, Contracts-phase, not decided here:** invite delivery channel (email only, per `NOT-001`,
-  is the safe default given no other channel is confirmed for this flow) and token expiry duration —
-  neither is architecture-level modeling.
+- **RESOLVED as built, 2026-09-14 (email delivery channel):** email only, per `NOT-001`, confirmed as
+  the actual delivery mechanism -- real SMTP sending via `app/services/mailer.py` (`SMTP_*` env vars),
+  not just the generic webhook-forwarding stub every other notification in this codebase uses. An
+  unconfigured SMTP host still creates the invite normally (`email_status: "not_configured"` in the
+  response) -- never blocks the write, matches this codebase's standing "optional integration" rule.
+  Token expiry duration stays **OPEN**, Contracts-phase, not architecture-level modeling.
 - **Note:** this table provisions the four **school-side** accounts only. How
   `academic_team`/`career_counselor`/`psychometric_team` accounts themselves are created is a
   separate question, **resolved 2026-09-14 by `DEC-SCOPE-014`** (Admin console, Overseas Admin or

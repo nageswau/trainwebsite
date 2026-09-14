@@ -44,6 +44,7 @@ from app.models import (
     UserRoleAssignment,
 )
 from app.services.integrations import send_notification
+from app.services.mailer import send_school_invite_email
 
 router = APIRouter(prefix="/school", tags=["school"])
 SERVICE_DELIVERY_ROLES = {"academic_team", "career_counselor", "psychometric_team"}
@@ -61,6 +62,45 @@ def _require_coordinator(user: User) -> UUID:
     return UUID(str(school_id))
 
 
+async def _create_and_send_invite(db: AsyncSession, *, school: School, role: str, email: str, full_name: str, inviter: User) -> dict:
+    """Shared by the Team page (Teacher/Principal/Parent) and the roster's parent_email
+    field (Parent only) -- one code path, one email template, for every School invite.
+    Real SMTP send via `mailer.send_school_invite_email`; the generic webhook-forwarding
+    `send_notification` call stays alongside it for parity with the rest of the platform's
+    notification architecture (`NOT-001`), even though the SMTP result is the one that
+    actually determines whether the recipient got anything.
+    """
+    raw = secrets.token_urlsafe(32)
+    invite = SchoolAccountInvite(
+        school_id=school.id,
+        role=role,
+        invited_by_user_id=inviter.id,
+        token_hash=hashlib.sha256(raw.encode()).hexdigest(),
+        email=email,
+        full_name=full_name,
+        status="pending",
+        expires_at=datetime.now(UTC) + timedelta(days=INVITE_EXPIRY_DAYS),
+    )
+    db.add(invite)
+    await db.flush()
+    from app.core.config import settings
+
+    accept_url = f"{settings.frontend_url}/school/invite/{raw}/accept"
+    webhook_status, webhook_error = await send_notification("email", {"to": email, "template": "school_invite", "role": role, "school_id": str(school.id), "invite_token": raw})
+    smtp_status, smtp_error = await send_school_invite_email(
+        to_email=email, recipient_name=full_name, role=role, school_name=school.name, accept_url=accept_url,
+        coordinator_name=inviter.full_name, coordinator_email=inviter.email, expires_at=invite.expires_at,
+    )
+    db.add(AuditLog(
+        user_id=inviter.id, action="school.invite_create", entity_type="school_account_invite", entity_id=str(invite.id),
+        metadata_json={"role": role, "school_id": str(school.id), "webhook_status": webhook_status, "webhook_error": webhook_error, "smtp_status": smtp_status, "smtp_error": smtp_error},
+    ))
+    response = {"id": invite.id, "role": invite.role, "email": invite.email, "status": invite.status, "expires_at": invite.expires_at, "email_status": smtp_status}
+    if settings.environment == "development":
+        response["development_invite_token"] = raw
+    return response
+
+
 @router.post("/team/invites", status_code=201)
 async def create_invite(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     school_id = _require_coordinator(user)
@@ -73,31 +113,9 @@ async def create_invite(payload: dict, user: User = Depends(get_current_user), d
         raise HTTPException(422, "email and full_name are required")
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
-    raw = secrets.token_urlsafe(32)
-    invite = SchoolAccountInvite(
-        school_id=school_id,
-        role=role,
-        invited_by_user_id=user.id,
-        token_hash=hashlib.sha256(raw.encode()).hexdigest(),
-        email=email,
-        full_name=full_name,
-        status="pending",
-        expires_at=datetime.now(UTC) + timedelta(days=INVITE_EXPIRY_DAYS),
-    )
-    db.add(invite)
-    await db.flush()
-    # SCH-003: this table's own Contracts-phase note (`DATA_MODEL.md` §6.15) leaves invite
-    # delivery channel as email-only per `NOT-001` -- no `Notification` row is created
-    # since no `User` exists yet to own one; the send is fire-and-forget, same
-    # never-block-the-write discipline as every other notification path (`OVS-004-AC02`).
-    status_, error = await send_notification("email", {"to": email, "template": "school_invite", "role": role, "school_id": str(school_id), "invite_token": raw})
-    db.add(AuditLog(user_id=user.id, action="school.invite_create", entity_type="school_account_invite", entity_id=str(invite.id), metadata_json={"role": role, "school_id": str(school_id), "notification_status": status_, "notification_error": error}))
+    school = await db.get(School, school_id)
+    response = await _create_and_send_invite(db, school=school, role=role, email=email, full_name=full_name, inviter=user)
     await db.commit()
-    response = {"id": invite.id, "role": invite.role, "email": invite.email, "status": invite.status, "expires_at": invite.expires_at}
-    from app.core.config import settings
-
-    if settings.environment == "development":
-        response["development_invite_token"] = raw
     return response
 
 
@@ -152,6 +170,16 @@ async def accept_invite(token: str, payload: dict, response: Response, db: Async
     invite.status = "accepted"
     invite.accepted_at = datetime.now(UTC)
     invite.accepted_by_user_id = account.id
+    if invite.role == "school_parent":
+        # Roster-driven invite (parent_email on one or more SchoolStudent rows): link every
+        # student that named this exact email, not just the one that triggered the invite --
+        # covers a second child added to the roster while the first invite was still pending.
+        pending_students = (
+            await db.scalars(select(SchoolStudent).where(SchoolStudent.school_id == invite.school_id, SchoolStudent.pending_parent_email == invite.email))
+        ).all()
+        for s in pending_students:
+            db.add(SchoolParentLink(parent_user_id=account.id, school_student_id=s.id, linked_by_user_id=invite.invited_by_user_id))
+            s.pending_parent_email = None
     db.add(AuditLog(user_id=account.id, action="school.invite_accept", entity_type="school_account_invite", entity_id=str(invite.id), metadata_json={"role": invite.role, "school_id": str(invite.school_id)}))
     await db.commit()
     _set_auth_cookies(response, account)
@@ -181,7 +209,51 @@ def _student_out(s: SchoolStudent) -> dict:
         "date_of_birth": s.date_of_birth,
         "grade_or_class": s.grade_or_class,
         "assigned_teacher_user_id": s.assigned_teacher_user_id,
+        "pending_parent_email": s.pending_parent_email,
     }
+
+
+async def _parent_email_conflict(db: AsyncSession, *, school_id: UUID, parent_email: str) -> str | None:
+    """None means the email is safe to use as a parent_email (either genuinely new, or
+    already a school_parent at this same school); a string explains why it can't be --
+    an existing account under that email with a different role, or a Parent at a
+    different school. Shared by single-add/edit (raises 422) and bulk upload (rejects
+    just that row, `SCH-002-AC04`'s never-block-the-batch discipline)."""
+    existing_user = await db.scalar(select(User).where(User.email == parent_email))
+    if existing_user and (existing_user.role != "school_parent" or (existing_user.profile or {}).get("school_id") != str(school_id)):
+        return f"parent_email '{parent_email}' belongs to an existing account that is not a Parent at this school"
+    return None
+
+
+async def _link_or_invite_parent(db: AsyncSession, *, school: School, student: SchoolStudent, parent_email: str, parent_name: str | None, coordinator: User) -> tuple[str, str | None, str | None]:
+    """Roster-driven parent linkage (single-add, edit, or bulk upload all call this).
+    Returns (status, error, development_invite_token): status is "linked" (an existing
+    school_parent account at this school was linked immediately, no email sent), "invited"
+    (no account existed yet, a new invite was created and emailed), or "invite_reused"
+    (another roster row already triggered a pending invite for this exact email -- reused,
+    no duplicate email sent). "rejected" + an error message means the email belongs to an
+    account that can't be this student's parent (wrong role, or a Parent at a different
+    school) -- never invented. The token is only ever non-None in a development
+    environment and only for "invited" -- same dev-only exposure as `/team/invites`.
+    """
+    parent_email = parent_email.lower().strip()
+    conflict = await _parent_email_conflict(db, school_id=school.id, parent_email=parent_email)
+    if conflict:
+        return "rejected", conflict, None
+    existing_user = await db.scalar(select(User).where(User.email == parent_email))
+    if existing_user:
+        already = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == existing_user.id, SchoolParentLink.school_student_id == student.id))
+        if not already:
+            db.add(SchoolParentLink(parent_user_id=existing_user.id, school_student_id=student.id, linked_by_user_id=coordinator.id))
+        return "linked", None, None
+    student.pending_parent_email = parent_email
+    pending_invite = await db.scalar(
+        select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school.id, SchoolAccountInvite.email == parent_email, SchoolAccountInvite.role == "school_parent", SchoolAccountInvite.status == "pending")
+    )
+    if pending_invite:
+        return "invite_reused", None, None
+    invite_response = await _create_and_send_invite(db, school=school, role="school_parent", email=parent_email, full_name=(parent_name or f"Parent of {student.full_name}").strip(), inviter=coordinator)
+    return "invited", None, invite_response.get("development_invite_token")
 
 
 async def _scoped_students_query(db: AsyncSession, user: User, school_id: UUID):
@@ -236,7 +308,7 @@ async def roster_template(user: User = Depends(get_current_user)):
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(ROSTER_TEMPLATE_HEADERS)
-    writer.writerow(["Jane Doe", "2015-04-12", "Grade 5", ""])
+    writer.writerow(["Jane Doe", "2015-04-12", "Grade 5", "", "Jane's Parent", ""])
     return Response(content=buffer.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=school-roster-template.csv"})
 
 
@@ -283,9 +355,20 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
     )
     db.add(student)
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.student_create", entity_type="school_student", entity_id=str(student.id), metadata_json={"school_id": str(school_id)}))
+    parent_status = None
+    dev_token = None
+    parent_email = payload.get("parent_email")
+    if parent_email:
+        school = await db.get(School, school_id)
+        parent_status, error, dev_token = await _link_or_invite_parent(db, school=school, student=student, parent_email=str(parent_email), parent_name=payload.get("parent_name"), coordinator=user)
+        if error:
+            raise HTTPException(422, error)
+    db.add(AuditLog(user_id=user.id, action="school.student_create", entity_type="school_student", entity_id=str(student.id), metadata_json={"school_id": str(school_id), "parent_status": parent_status}))
     await db.commit()
-    return _student_out(student)
+    out = {**_student_out(student), "parent_status": parent_status}
+    if dev_token:
+        out["development_invite_token"] = dev_token
+    return out
 
 
 @router.patch("/students/{student_id}")
@@ -313,9 +396,19 @@ async def update_student(student_id: UUID, payload: dict, user: User = Depends(g
             student.assigned_teacher_user_id = teacher.id
         else:
             student.assigned_teacher_user_id = None
-    db.add(AuditLog(user_id=user.id, action="school.student_update", entity_type="school_student", entity_id=str(student.id), metadata_json={}))
+    parent_status = None
+    dev_token = None
+    if "parent_email" in payload and payload["parent_email"]:
+        school = await db.get(School, school_id)
+        parent_status, error, dev_token = await _link_or_invite_parent(db, school=school, student=student, parent_email=str(payload["parent_email"]), parent_name=payload.get("parent_name"), coordinator=user)
+        if error:
+            raise HTTPException(422, error)
+    db.add(AuditLog(user_id=user.id, action="school.student_update", entity_type="school_student", entity_id=str(student.id), metadata_json={"parent_status": parent_status}))
     await db.commit()
-    return _student_out(student)
+    out = {**_student_out(student), "parent_status": parent_status}
+    if dev_token:
+        out["development_invite_token"] = dev_token
+    return out
 
 
 @router.post("/students/{student_id}/parents", status_code=201)
@@ -403,7 +496,7 @@ async def mark_attendance(activity_id: UUID, payload: dict, user: User = Depends
 # not fixed by DATA_MODEL.md §6.13 -- resolved here as technical contract design, mapped
 # directly from SCH-001's own already-built SchoolStudent creation fields (POST /school/
 # students), not an invented field list.
-ROSTER_TEMPLATE_HEADERS = ["full_name", "date_of_birth", "grade_or_class", "assigned_teacher_email"]
+ROSTER_TEMPLATE_HEADERS = ["full_name", "date_of_birth", "grade_or_class", "assigned_teacher_email", "parent_name", "parent_email"]
 
 
 async def _batch_report(db: AsyncSession, batch: SchoolRosterUploadBatch) -> dict:
@@ -449,6 +542,7 @@ async def bulk_upload_students(
     db.add(batch)
     await db.flush()
 
+    school = await db.get(School, school_id)
     accepted = 0
     rejected = 0
     for i, row in enumerate(rows, start=1):
@@ -456,6 +550,8 @@ async def bulk_upload_students(
         error = None
         student_dob = None
         assigned_teacher_user_id = None
+        parent_email = None
+        parent_name = None
         if not full_name:
             error = "full_name is required"
         if not error:
@@ -473,6 +569,11 @@ async def bulk_upload_students(
                     error = f"assigned_teacher_email '{teacher_email}' is not an existing Teacher at your own school"
                 else:
                     assigned_teacher_user_id = teacher.id
+        if not error:
+            parent_email = (row.get("parent_email") or "").strip().lower() or None
+            parent_name = (row.get("parent_name") or "").strip() or None
+            if parent_email:
+                error = await _parent_email_conflict(db, school_id=school_id, parent_email=parent_email)
         # SCH-002-AC04: a row that fails validation is recorded and skipped -- it never
         # blocks or discards the rows around it.
         if error:
@@ -486,6 +587,10 @@ async def bulk_upload_students(
         )
         db.add(student)
         await db.flush()
+        if parent_email:
+            # Already validated above (no conflicting account) -- this call only ever
+            # links or invites here, it does not reject.
+            await _link_or_invite_parent(db, school=school, student=student, parent_email=parent_email, parent_name=parent_name, coordinator=user)
         db.add(SchoolRosterUploadRow(batch_id=batch.id, row_number=i, status="accepted", created_student_id=student.id))
         accepted += 1
 

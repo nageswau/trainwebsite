@@ -23,6 +23,18 @@ class Settings(BaseSettings):
     sms_webhook_url: str | None = None
     email_webhook_url: str | None = None
     inbound_email_webhook_secret: str | None = None
+    # Real SMTP sending for School invite emails (Coordinator-issued Teacher/Principal/
+    # Parent invites). Distinct from email_webhook_url above, which forwards a JSON payload
+    # to an external notification service and is left in place for that architecture.
+    # Unset (smtp_host is None) means "not configured" -- callers must treat that as a
+    # normal, reportable outcome, never a crash (same discipline as every other optional
+    # integration in this file).
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    smtp_use_tls: bool = True
     google_client_id: str | None = None
     google_client_secret: str | None = None
     google_refresh_token: str | None = None

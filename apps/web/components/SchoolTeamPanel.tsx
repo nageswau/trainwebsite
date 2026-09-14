@@ -45,7 +45,8 @@ export default function SchoolTeamPanel({ accounts, pendingInvites }: { accounts
       setMessage({ text: detailMessage(data.detail), failed: true });
       return;
     }
-    setMessage({ text: `Invite sent to ${data.email}. It's valid for 7 days.`, failed: false });
+    const emailNote = data.email_status === "sent" ? "" : data.email_status === "not_configured" ? " (email sending isn't configured yet -- share the link manually)" : " (the email could not be sent -- share the link manually)";
+    setMessage({ text: `Invite sent to ${data.email}${emailNote}. It's valid for 7 days.`, failed: false });
     formElement.reset();
     router.refresh();
   }

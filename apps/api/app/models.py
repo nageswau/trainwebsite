@@ -968,6 +968,11 @@ class SchoolStudent(Base, TimestampMixin):
     # FK... not confirmed" -- adopted here as the working build default, the documented
     # leaning, not an invented mechanism).
     assigned_teacher_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # Roster-driven parent invite (DATA_MODEL.md §6.11 addendum): set when a Coordinator
+    # enters a parent email that has no matching school_parent account yet, cleared once
+    # SchoolParentLink exists -- lets invite-accept auto-link every student that named this
+    # email, including a second child added while the first invite is still pending.
+    pending_parent_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
 class SchoolParentLink(Base, TimestampMixin):
