@@ -1028,3 +1028,76 @@ class SchoolRosterUploadRow(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(20))
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), nullable=True)
+
+
+class SchoolStaffAssignment(Base, TimestampMixin):
+    """School-staff portfolio assignment (`DEC-SCOPE-013`) -- scopes an `academic_team`/
+    `career_counselor`/`psychometric_team` member to one or more entire schools. Many-to-
+    many: one member may cover several schools, one school may have several members of the
+    same role (needed for `DEC-ROLE-007`'s same-actor restriction on `SCH-006` -- a
+    portfolio needs at least two `academic_team` members to publish anything)."""
+
+    __tablename__ = "school_staff_assignments"
+    __table_args__ = (UniqueConstraint("user_id", "school_id", name="uq_school_staff_assignment"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
+    role: Mapped[str] = mapped_column(String(50))
+    assigned_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolCareerRecord(Base, TimestampMixin):
+    """SCH-004 -- Career Guidance & Counselling. Net-new, `DATA_MODEL.md` §6.17. No
+    Draft/Published gate -- visible to readers as soon as it's created."""
+
+    __tablename__ = "school_career_records"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    career_counselor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    record_type: Mapped[str] = mapped_column(String(30))
+    notes: Mapped[str] = mapped_column(Text)
+
+
+class SchoolPsychometricRecord(Base, TimestampMixin):
+    """SCH-005 -- Psychometric Assessment. Net-new, `DATA_MODEL.md` §6.18."""
+
+    __tablename__ = "school_psychometric_records"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    psychometric_team_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    assessment_type: Mapped[str] = mapped_column(String(120))
+    report_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="assigned")
+
+
+class SchoolAcademicResult(Base, TimestampMixin):
+    """SCH-006 -- Academic Results (Draft -> Verified -> Published). Net-new,
+    `DATA_MODEL.md` §6.16. `DEC-ROLE-007`: `verified_by_user_id`/`published_by_user_id`
+    must each be a different `academic_team` member than `uploaded_by_user_id`, enforced
+    at the application layer (SCH-006-AC04)."""
+
+    __tablename__ = "school_academic_results"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    academic_year: Mapped[str] = mapped_column(String(20))
+    term: Mapped[str] = mapped_column(String(40))
+    subject: Mapped[str] = mapped_column(String(80))
+    max_marks: Mapped[float] = mapped_column(Numeric(6, 2))
+    marks_obtained: Mapped[float] = mapped_column(Numeric(6, 2))
+    grade: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="draft")
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    verified_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    published_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SchoolResultStatusHistory(Base, TimestampMixin):
+    __tablename__ = "school_result_status_history"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    result_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_academic_results.id"), index=True)
+    from_status: Mapped[str] = mapped_column(String(20))
+    to_status: Mapped[str] = mapped_column(String(20))
+    changed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

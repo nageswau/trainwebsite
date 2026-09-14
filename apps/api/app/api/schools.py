@@ -1,12 +1,13 @@
-"""SCH-003/SCH-001/SCH-002 -- School partner onboarding, Principal/Coordinator/Teacher/
-Parent role-based access to the student roster and activities, and bulk roster upload.
+"""SCH-003/SCH-001/SCH-002/SCH-004/SCH-005/SCH-006 -- School partner onboarding, role-based
+roster/activity access, bulk roster upload, and the three service-delivery modules (career
+guidance, psychometric assessment, academic results).
 
 Net-new router. `POST /overseas-admin/schools`/`GET /overseas-admin/schools` (Overseas
-Admin creates the School + seed Coordinator, SCH-003) live in `admin.py`'s `agents_router`
-(`/overseas-admin` namespace, alongside the Agent approval routes) -- this file covers
-everything under the `/school` prefix: the Coordinator-side invite flow and public token
-acceptance (SCH-003), role-scoped student/activity access (SCH-001), and template-
-download-first bulk roster upload (SCH-002), per `API_CONTRACT.md` §12A.
+Admin creates the School + seed Coordinator, SCH-003) and `POST`/`GET /overseas-admin/
+school-staff` (Overseas Admin/Super Admin creates an academic_team/career_counselor/
+psychometric_team account and assigns its school portfolio, SCH-004/005/006, DEC-SCOPE-014)
+live in `admin.py`'s `agents_router` (`/overseas-admin` namespace) -- this file covers
+everything under the `/school` prefix, per `API_CONTRACT.md` §12A.
 """
 
 import csv
@@ -24,10 +25,28 @@ from app.api.auth import _set_auth_cookies
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.security import hash_password
-from app.models import AuditLog, School, SchoolAccountInvite, SchoolActivity, SchoolActivityAttendance, SchoolParentLink, SchoolRosterUploadBatch, SchoolRosterUploadRow, SchoolStudent, User, UserRoleAssignment
+from app.models import (
+    AuditLog,
+    School,
+    SchoolAcademicResult,
+    SchoolAccountInvite,
+    SchoolActivity,
+    SchoolActivityAttendance,
+    SchoolCareerRecord,
+    SchoolParentLink,
+    SchoolPsychometricRecord,
+    SchoolResultStatusHistory,
+    SchoolRosterUploadBatch,
+    SchoolRosterUploadRow,
+    SchoolStaffAssignment,
+    SchoolStudent,
+    User,
+    UserRoleAssignment,
+)
 from app.services.integrations import send_notification
 
 router = APIRouter(prefix="/school", tags=["school"])
+SERVICE_DELIVERY_ROLES = {"academic_team", "career_counselor", "psychometric_team"}
 
 INVITABLE_ROLES = {"school_principal", "school_teacher", "school_parent"}
 INVITE_EXPIRY_DAYS = 7
@@ -487,3 +506,297 @@ async def get_roster_upload(batch_id: UUID, user: User = Depends(get_current_use
     if not batch or batch.school_id != school_id:
         raise HTTPException(404, "Upload batch not found")
     return await _batch_report(db, batch)
+
+
+# ---------------------------------------------------------------------------------------
+# SCH-004/005/006 -- Career Guidance & Counselling, Psychometric Assessment, Academic
+# Results. All three specialized roles are scoped to a school portfolio (DEC-SCOPE-013),
+# not a single institution.
+# ---------------------------------------------------------------------------------------
+
+
+async def _portfolio_school_ids(db: AsyncSession, user: User) -> set:
+    rows = (await db.scalars(select(SchoolStaffAssignment.school_id).where(SchoolStaffAssignment.user_id == user.id))).all()
+    return set(rows)
+
+
+async def _student_in_portfolio(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
+    student = await db.get(SchoolStudent, student_id)
+    if not student:
+        raise HTTPException(404, "Student not found")
+    portfolio = await _portfolio_school_ids(db, user)
+    if student.school_id not in portfolio:
+        raise HTTPException(403, "This student is at a school outside your own portfolio")
+    return student
+
+
+async def _readable_students(db: AsyncSession, user: User) -> set:
+    """The set of school_student_id values this reading role (Coordinator/Principal/
+    Teacher/Parent) may see published/visible service-delivery content for -- reuses the
+    exact same scoping as SCH-001's own roster access, since it's the same underlying
+    own-institution/assigned/own-child rule (SCH-001-AC02/AC03)."""
+    school_id = _own_school_id(user)
+    stmt = await _scoped_students_query(db, user, school_id)
+    return set((await db.scalars(stmt.with_only_columns(SchoolStudent.id))).all())
+
+
+@router.get("/portfolio-students")
+async def list_portfolio_students(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Shared across the three specialized roles -- their own school portfolio's students,
+    with each student's own school name for clarity since a portfolio can span several
+    schools (unlike SCH-001's own-institution-only roles)."""
+    if user.role not in SERVICE_DELIVERY_ROLES:
+        raise HTTPException(403, "Academic Team, Career Counselor, or Psychometric Team role required")
+    portfolio = await _portfolio_school_ids(db, user)
+    if not portfolio:
+        return []
+    rows = (
+        await db.execute(select(SchoolStudent, School).join(School, School.id == SchoolStudent.school_id).where(SchoolStudent.school_id.in_(portfolio)).order_by(SchoolStudent.full_name.asc()))
+    ).all()
+    return [{"id": s.id, "full_name": s.full_name, "school_id": s.school_id, "school_name": sc.name} for s, sc in rows]
+
+
+# --- SCH-004: Career Guidance & Counselling ---------------------------------------------
+
+@router.post("/career-counselor/records", status_code=201)
+async def create_career_record(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "career_counselor":
+        raise HTTPException(403, "Career Counselor role required")
+    student_id = payload.get("school_student_id")
+    if not student_id:
+        raise HTTPException(422, "school_student_id is required")
+    student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    record_type = payload.get("record_type")
+    if record_type not in {"guidance_session", "counselling_note", "recommendation"}:
+        raise HTTPException(422, "record_type must be one of guidance_session, counselling_note, recommendation")
+    notes = str(payload.get("notes", "")).strip()
+    if not notes:
+        raise HTTPException(422, "notes is required")
+    record = SchoolCareerRecord(school_student_id=student.id, career_counselor_user_id=user.id, record_type=record_type, notes=notes)
+    db.add(record)
+    await db.flush()
+    db.add(AuditLog(user_id=user.id, action="school.career_record_create", entity_type="school_career_record", entity_id=str(record.id), metadata_json={"record_type": record_type}))
+    await db.commit()
+    return {"id": record.id, "school_student_id": record.school_student_id, "record_type": record.record_type, "notes": record.notes, "created_at": record.created_at}
+
+
+@router.get("/career-counselor/records")
+async def list_career_counselor_records(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "career_counselor":
+        raise HTTPException(403, "Career Counselor role required")
+    portfolio = await _portfolio_school_ids(db, user)
+    if not portfolio:
+        return []
+    student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
+    rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id.in_(student_ids)).order_by(SchoolCareerRecord.created_at.desc()))).all()
+    return [{"id": r.id, "school_student_id": r.school_student_id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
+
+
+@router.get("/career-records")
+async def list_readable_career_records(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Read-only for School Coordinator/Principal/Teacher/Parent, own scope -- no
+    Draft/Published gate for this content, unlike results (visible as soon as created)."""
+    if user.role not in {"school_coordinator", "school_principal", "school_teacher", "school_parent"}:
+        raise HTTPException(403, "School role required")
+    readable = await _readable_students(db, user)
+    if not readable:
+        return []
+    rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id.in_(readable)).order_by(SchoolCareerRecord.created_at.desc()))).all()
+    return [{"id": r.id, "school_student_id": r.school_student_id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
+
+
+# --- SCH-005: Psychometric Assessment ----------------------------------------------------
+
+@router.post("/psychometric-team/records", status_code=201)
+async def create_psychometric_record(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "psychometric_team":
+        raise HTTPException(403, "Psychometric Team role required")
+    student_id = payload.get("school_student_id")
+    if not student_id:
+        raise HTTPException(422, "school_student_id is required")
+    student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    assessment_type = str(payload.get("assessment_type", "")).strip()
+    if not assessment_type:
+        raise HTTPException(422, "assessment_type is required")
+    record = SchoolPsychometricRecord(
+        school_student_id=student.id, psychometric_team_user_id=user.id, assessment_type=assessment_type,
+        report_url=payload.get("report_url"), status="completed" if payload.get("report_url") else "assigned",
+    )
+    db.add(record)
+    await db.flush()
+    db.add(AuditLog(user_id=user.id, action="school.psychometric_record_create", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={"assessment_type": assessment_type}))
+    await db.commit()
+    return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status, "created_at": record.created_at}
+
+
+@router.patch("/psychometric-team/records/{record_id}")
+async def update_psychometric_record(record_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "psychometric_team":
+        raise HTTPException(403, "Psychometric Team role required")
+    record = await db.get(SchoolPsychometricRecord, record_id)
+    if not record:
+        raise HTTPException(404, "Record not found")
+    await _student_in_portfolio(db, user, record.school_student_id)
+    if "report_url" in payload:
+        record.report_url = payload["report_url"]
+        record.status = "completed" if payload["report_url"] else record.status
+    db.add(AuditLog(user_id=user.id, action="school.psychometric_record_update", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={}))
+    await db.commit()
+    return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status}
+
+
+@router.get("/psychometric-team/records")
+async def list_psychometric_team_records(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "psychometric_team":
+        raise HTTPException(403, "Psychometric Team role required")
+    portfolio = await _portfolio_school_ids(db, user)
+    if not portfolio:
+        return []
+    student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
+    rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id.in_(student_ids)).order_by(SchoolPsychometricRecord.created_at.desc()))).all()
+    return [{"id": r.id, "school_student_id": r.school_student_id, "assessment_type": r.assessment_type, "report_url": r.report_url, "status": r.status, "created_at": r.created_at} for r in rows]
+
+
+@router.get("/psychometric-records")
+async def list_readable_psychometric_records(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role not in {"school_coordinator", "school_principal", "school_teacher", "school_parent"}:
+        raise HTTPException(403, "School role required")
+    readable = await _readable_students(db, user)
+    if not readable:
+        return []
+    rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id.in_(readable)).order_by(SchoolPsychometricRecord.created_at.desc()))).all()
+    return [{"id": r.id, "school_student_id": r.school_student_id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at} for r in rows]
+
+
+# --- SCH-006: Academic Results (Draft -> Verified -> Published) -------------------------
+
+def _result_out(r: SchoolAcademicResult) -> dict:
+    percentage = round(float(r.marks_obtained) / float(r.max_marks) * 100, 2) if float(r.max_marks) else None
+    return {
+        "id": r.id, "school_student_id": r.school_student_id, "academic_year": r.academic_year, "term": r.term,
+        "subject": r.subject, "max_marks": float(r.max_marks), "marks_obtained": float(r.marks_obtained),
+        "percentage": percentage, "grade": r.grade, "status": r.status,
+        "uploaded_by_user_id": r.uploaded_by_user_id, "verified_by_user_id": r.verified_by_user_id,
+        "published_by_user_id": r.published_by_user_id,
+    }
+
+
+@router.post("/academic-team/results", status_code=201)
+async def create_academic_result(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "academic_team":
+        raise HTTPException(403, "Academic Team role required")
+    student_id = payload.get("school_student_id")
+    if not student_id:
+        raise HTTPException(422, "school_student_id is required")
+    student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    try:
+        max_marks = float(payload.get("max_marks"))
+        marks_obtained = float(payload.get("marks_obtained"))
+    except (TypeError, ValueError):
+        raise HTTPException(422, "max_marks and marks_obtained must be numbers")
+    subject = str(payload.get("subject", "")).strip()
+    academic_year = str(payload.get("academic_year", "")).strip()
+    term = str(payload.get("term", "")).strip()
+    if not subject or not academic_year or not term:
+        raise HTTPException(422, "academic_year, term, and subject are required")
+    result = SchoolAcademicResult(
+        school_student_id=student.id, academic_year=academic_year, term=term, subject=subject,
+        max_marks=max_marks, marks_obtained=marks_obtained, grade=payload.get("grade"),
+        status="draft", uploaded_by_user_id=user.id,
+    )
+    db.add(result)
+    await db.flush()
+    db.add(SchoolResultStatusHistory(result_id=result.id, from_status="none", to_status="draft", changed_by_user_id=user.id))
+    db.add(AuditLog(user_id=user.id, action="school.result_create", entity_type="school_academic_result", entity_id=str(result.id), metadata_json={"subject": subject}))
+    await db.commit()
+    return _result_out(result)
+
+
+@router.patch("/academic-team/results/{result_id}")
+async def update_academic_result(result_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "academic_team":
+        raise HTTPException(403, "Academic Team role required")
+    result = await db.get(SchoolAcademicResult, result_id)
+    if not result:
+        raise HTTPException(404, "Result not found")
+    await _student_in_portfolio(db, user, result.school_student_id)
+    if result.status != "draft":
+        raise HTTPException(409, "Only a Draft result can be edited")
+    for field in ("subject", "academic_year", "term", "grade"):
+        if field in payload:
+            setattr(result, field, payload[field])
+    for field in ("max_marks", "marks_obtained"):
+        if field in payload:
+            setattr(result, field, float(payload[field]))
+    db.add(AuditLog(user_id=user.id, action="school.result_update", entity_type="school_academic_result", entity_id=str(result.id), metadata_json={}))
+    await db.commit()
+    return _result_out(result)
+
+
+async def _advance_result(result_id: UUID, target: str, user: User, db: AsyncSession) -> SchoolAcademicResult:
+    if user.role != "academic_team":
+        raise HTTPException(403, "Academic Team role required")
+    result = await db.get(SchoolAcademicResult, result_id)
+    if not result:
+        raise HTTPException(404, "Result not found")
+    await _student_in_portfolio(db, user, result.school_student_id)
+    expected_from = "draft" if target == "verified" else "verified"
+    if result.status != expected_from:
+        raise HTTPException(409, f"A result must be {expected_from} before it can be moved to {target} -- no skip-stage transition")
+    # DEC-ROLE-007: the uploader may never also verify or publish their own entry.
+    if result.uploaded_by_user_id == user.id:
+        raise HTTPException(403, "A different Academic Team member must perform this step -- you cannot verify or publish your own upload")
+    from_status = result.status
+    result.status = target
+    if target == "verified":
+        result.verified_by_user_id = user.id
+        result.verified_at = datetime.now(UTC)
+    else:
+        result.published_by_user_id = user.id
+        result.published_at = datetime.now(UTC)
+    db.add(SchoolResultStatusHistory(result_id=result.id, from_status=from_status, to_status=target, changed_by_user_id=user.id))
+    db.add(AuditLog(user_id=user.id, action=f"school.result_{target}", entity_type="school_academic_result", entity_id=str(result.id), metadata_json={}))
+    await db.commit()
+    return result
+
+
+@router.post("/academic-team/results/{result_id}/verify")
+async def verify_academic_result(result_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await _advance_result(result_id, "verified", user, db)
+    return _result_out(result)
+
+
+@router.post("/academic-team/results/{result_id}/publish")
+async def publish_academic_result(result_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await _advance_result(result_id, "published", user, db)
+    return _result_out(result)
+
+
+@router.get("/academic-team/results")
+async def list_academic_team_results(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "academic_team":
+        raise HTTPException(403, "Academic Team role required")
+    portfolio = await _portfolio_school_ids(db, user)
+    if not portfolio:
+        return []
+    student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
+    rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids)).order_by(SchoolAcademicResult.created_at.desc()))).all()
+    return [_result_out(r) for r in rows]
+
+
+@router.get("/results")
+async def list_readable_results(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Read-only for School Coordinator/Principal/Teacher/Parent, own scope -- filtered to
+    status='published' only. A Draft/Verified result is never returned, even indirectly
+    (SCH-006-AC02)."""
+    if user.role not in {"school_coordinator", "school_principal", "school_teacher", "school_parent"}:
+        raise HTTPException(403, "School role required")
+    readable = await _readable_students(db, user)
+    if not readable:
+        return []
+    rows = (
+        await db.scalars(
+            select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(readable), SchoolAcademicResult.status == "published").order_by(SchoolAcademicResult.published_at.desc())
+        )
+    ).all()
+    return [_result_out(r) for r in rows]

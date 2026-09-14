@@ -21,6 +21,10 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
   school_principal: "/school/principal/dashboard",
   school_teacher: "/school/teacher/dashboard",
   school_parent: "/school/parent/dashboard",
+  // SCH-004/005/006 -- the three service-delivery roles.
+  academic_team: "/school/academic-team/dashboard",
+  career_counselor: "/school/career-counselor/dashboard",
+  psychometric_team: "/school/psychometric-team/dashboard",
 };
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
@@ -34,6 +38,10 @@ export const SCHOOL_NAV: Record<string, NavItem[]> = {
   principal: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/principal/${x}` })),
   teacher: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/teacher/${x}` })),
   parent: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/parent/${x}` })),
+  // SCH-004/005/006 -- single-item nav, same shape as principal/teacher/parent above.
+  "academic-team": ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/academic-team/${x}` })),
+  "career-counselor": ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/career-counselor/${x}` })),
+  "psychometric-team": ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/psychometric-team/${x}` })),
 };
 export const IT_PUBLIC:NavItem[] = [
   {label:"Home",href:"/it"},{label:"About",href:"/it/about"},
@@ -62,7 +70,7 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   "overseas/student": ["dashboard","profile","applications","documents","offer-letters","visa-status","scholarships","university-communication","payments","appointments","counselor-chat","downloads"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/student/${x}`})),
   "overseas/counselor": ["dashboard","students","leads","documents","applications","visa","appointments","counselor-chat","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/counselor/${x}`})),
   "overseas/university": ["dashboard","applications","offer-letters","admission-updates","student-communication","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/university/${x}`})),
-  "overseas/admin": ["dashboard","users","students","counselors","agents","commissions","universities","schools","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),
+  "overseas/admin": ["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),
   "overseas/agent": ["dashboard","students","applications","documents","commissions","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/agent/${x}`})),
 };
 export const SUPER_ADMIN_NAV:NavItem[] = ["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`}));

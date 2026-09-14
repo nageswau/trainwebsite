@@ -1,0 +1,183 @@
+import { test, expect } from "@playwright/test";
+
+// SCH-004/005/006 -- Career Guidance, Psychometric Assessment, Academic Results.
+// Requires the stack running via `docker compose up` with `python -m app.seed` already
+// applied (seeds an `overseas_admin` account, overseasadmin@edusphere.local/Demo@123).
+// Registers its own throwaway School + Coordinator + specialized staff + student per run.
+//
+// Covers DEC-SCOPE-014 (only Overseas Admin provisions Academic Team/Career Counselor/
+// Psychometric Team accounts, with a per-school portfolio) and DEC-ROLE-007 (a different
+// Academic Team member must verify/publish a result than the one who uploaded it).
+
+test("overseas admin provisions specialized staff, they deliver services, and school-side roles see a read-only summary (SCH-004/005/006)", async ({ page }) => {
+  // The shared dev DB accumulates schools/staff across every prior test run with no
+  // cleanup (RAID.md I-06) -- the Admin's School portfolio checkbox list has grown to
+  // hundreds of entries, which slows each render enough to need generous timeouts here.
+  test.setTimeout(120_000);
+  const unique = Date.now();
+  const coordinatorEmail = `sch456-e2e-coord-${unique}@example.local`;
+  const schoolName = `E2E Service School ${unique}`;
+  const uploaderEmail = `sch456-e2e-academic1-${unique}@example.local`;
+  const verifierEmail = `sch456-e2e-academic2-${unique}@example.local`;
+  const counselorEmail = `sch456-e2e-counselor-${unique}@example.local`;
+  const psychEmail = `sch456-e2e-psych-${unique}@example.local`;
+
+  // 1. Overseas Admin creates the school + seed Coordinator.
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", "overseasadmin@edusphere.local");
+  await page.fill("#login-password", "Demo@123");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/overseas/admin/dashboard");
+
+  await page.goto("/overseas/admin/schools");
+  await page.fill("#school-name", schoolName);
+  await page.fill("#school-coordinator-name", "E2E SVC Coordinator");
+  await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.click('button:has-text("Create school + seed Coordinator")');
+  await expect(page.getByText(/School created\./)).toBeVisible();
+
+  // 2. Overseas Admin provisions two Academic Team accounts (uploader + verifier/
+  // publisher, per DEC-ROLE-007), one Career Counselor, one Psychometric Team member --
+  // each with the new school in their portfolio.
+  await page.goto("/overseas/admin/school-staff");
+  await expect(page.getByText(schoolName)).toBeVisible();
+
+  async function createStaff(role: string, name: string, email: string) {
+    await page.selectOption("#staff-role", role);
+    await page.fill("#staff-name", name);
+    await page.fill("#staff-email", email);
+    await page.getByLabel(schoolName).check();
+    await page.click('button:has-text("Create account")');
+    await expect(page.getByText(/Account created for/)).toBeVisible({ timeout: 20_000 });
+  }
+
+  await createStaff("academic_team", "E2E Academic Uploader", uploaderEmail);
+  await createStaff("academic_team", "E2E Academic Verifier", verifierEmail);
+  await createStaff("career_counselor", "E2E Career Counselor", counselorEmail);
+  await createStaff("psychometric_team", "E2E Psychometric Team", psychEmail);
+
+  await expect(page.getByRole("cell", { name: uploaderEmail })).toBeVisible();
+  await expect(page.getByRole("cell", { name: verifierEmail })).toBeVisible();
+
+  // 3. Coordinator adds a student to the roster.
+  await page.request.post("/api/v1/auth/logout");
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", coordinatorEmail);
+  await page.fill("#login-password", "ChangeMe@12345");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/school/coordinator/dashboard");
+
+  await page.goto("/school/coordinator/students");
+  await page.fill("#new-full-name", "E2E Service Student");
+  await page.click('button:has-text("Add student")');
+  await expect(page.getByRole("cell", { name: "E2E Service Student" })).toBeVisible();
+
+  // 4. Academic Team uploader creates a Draft result, sees no working Verify action on it.
+  await page.request.post("/api/v1/auth/logout");
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", uploaderEmail);
+  await page.fill("#login-password", "ChangeMe@12345");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/school/academic-team/dashboard");
+
+  await expect(page.getByRole("option", { name: /E2E Service Student/ })).toHaveCount(1);
+  await page.selectOption("#result-student", { label: `E2E Service Student — ${schoolName}` });
+  await page.fill("#result-year", "2026");
+  await page.fill("#result-term", "Term 1");
+  await page.fill("#result-subject", "Mathematics");
+  await page.fill("#result-max", "100");
+  await page.fill("#result-obtained", "82");
+  await page.click('button:has-text("Save as Draft")');
+  await expect(page.getByText(/Mathematics result saved as Draft\./)).toBeVisible();
+  await expect(page.getByText(/Ask another Academic Team member to verify/)).toBeVisible();
+
+  // 5. A different Academic Team member (the verifier) verifies then publishes it.
+  await page.request.post("/api/v1/auth/logout");
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", verifierEmail);
+  await page.fill("#login-password", "ChangeMe@12345");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/school/academic-team/dashboard");
+
+  const resultRow = page.locator("tr", { hasText: "Mathematics" });
+  await resultRow.getByRole("button", { name: "Verify" }).click();
+  await expect(page.getByText(/Result verified\./)).toBeVisible();
+  await resultRow.getByRole("button", { name: "Publish" }).click();
+  await expect(page.getByText(/Result published\./)).toBeVisible();
+  await expect(resultRow.getByText("published")).toBeVisible();
+
+  // 6. Career Counselor adds a guidance record for the same portfolio student.
+  await page.request.post("/api/v1/auth/logout");
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", counselorEmail);
+  await page.fill("#login-password", "ChangeMe@12345");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/school/career-counselor/dashboard");
+
+  await page.selectOption("#career-student", { label: `E2E Service Student — ${schoolName}` });
+  await page.selectOption("#career-type", "guidance_session");
+  await page.fill("#career-notes", "Discussed engineering vs. commerce streams.");
+  await page.click('button:has-text("Save record")');
+  await expect(page.getByText(/Record saved\./)).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Guidance session" })).toBeVisible();
+
+  // 7. Psychometric Team assigns an assessment and attaches a report.
+  await page.request.post("/api/v1/auth/logout");
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", psychEmail);
+  await page.fill("#login-password", "ChangeMe@12345");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/school/psychometric-team/dashboard");
+
+  await page.selectOption("#psych-student", { label: `E2E Service Student — ${schoolName}` });
+  await page.fill("#psych-type", "Aptitude Test");
+  await page.click('button:has-text("Assign assessment")');
+  await expect(page.getByText(/Assessment assigned\./)).toBeVisible();
+
+  await page.click('button:has-text("Attach report")');
+  const attachCard = page.locator(".action-card", { hasText: "Attach report" });
+  await attachCard.locator("#report-url").fill("/local-files/uploads/e2e-report.pdf");
+  await attachCard.getByRole("button", { name: "Attach", exact: true }).click();
+  await expect(page.getByText(/Report attached\./)).toBeVisible();
+
+  // 8. The Coordinator's dashboard now shows a read-only summary reflecting all three --
+  // the published result (a Draft/Verified one never counts here), the career record, and
+  // the psychometric assessment.
+  await page.request.post("/api/v1/auth/logout");
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", coordinatorEmail);
+  await page.fill("#login-password", "ChangeMe@12345");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/school/coordinator/dashboard");
+
+  await expect(page.getByText("Results & guidance")).toBeVisible();
+  await expect(page.getByText(/1 published result, 1 career guidance\/counselling record, 1 psychometric assessment\./)).toBeVisible();
+});
+
+test("a newly provisioned specialized staff account with an empty portfolio can't act on any student yet (SCH-004/005/006 provisioning)", async ({ page }) => {
+  test.setTimeout(60_000);
+  const unique = Date.now();
+  const emptyPortfolioEmail = `sch456-e2e-empty-${unique}@example.local`;
+
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", "overseasadmin@edusphere.local");
+  await page.fill("#login-password", "Demo@123");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/overseas/admin/dashboard");
+
+  await page.goto("/overseas/admin/school-staff");
+  await page.selectOption("#staff-role", "career_counselor");
+  await page.fill("#staff-name", "E2E Empty Portfolio Counselor");
+  await page.fill("#staff-email", emptyPortfolioEmail);
+  await page.click('button:has-text("Create account")');
+  await expect(page.getByText(/Account created for/)).toBeVisible({ timeout: 20_000 });
+
+  await page.request.post("/api/v1/auth/logout");
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", emptyPortfolioEmail);
+  await page.fill("#login-password", "ChangeMe@12345");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/school/career-counselor/dashboard");
+
+  await expect(page.getByText(/No students in your portfolio yet/)).toBeVisible();
+});

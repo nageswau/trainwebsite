@@ -238,6 +238,14 @@ real privilege-boundary bug, not a naming quibble (`SCH-001-AC05`).
 have no grant rows above — their existence is confirmed (`DEC-ROLE-006`) but their exact duties are
 not (`PRD_OPEN_ITEMS.md` item 75). Do not invent a grant for either.
 
+**As built, 2026-09-14 (`prompts/13`/`15`):** every grant row and explicit-deny rule in this section is
+now built and covered by a passing test — `SCH-001` through `SCH-006` are all `COMPLETE`
+(`MASTER_FEATURE_CATALOG.md`). The role-name-collision guard is enforced by giving `school_teacher`/
+`school_coordinator` their own distinct `PERMISSIONS` entries in `app/core/rbac.py`, never sharing a
+check with `trainer`/`coordinator`. The same-actor restriction and portfolio scoping are both covered
+by dedicated pytest cases (`test_sch_006_academic_results.py`, `test_sch_004_career_guidance.py`,
+`test_sch_005_psychometric_assessment.py`).
+
 ---
 
 ## 3. Support / admin audit controls

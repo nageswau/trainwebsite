@@ -42,6 +42,7 @@ from app.models import (
     Scholarship,
     ScholarshipApplication,
     School,
+    SchoolStaffAssignment,
     StudentDocument,
     Submission,
     SupportTicket,
@@ -1334,6 +1335,22 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 "Every School partner record. Create a new one to seed its Coordinator account.",
                 (("id", "reference"), ("name", "Name"), ("city", "City"), ("state", "State"), ("created_at", "Created")),
                 ({"id": s.id, "name": s.name, "city": s.city or "-", "state": s.state or "-", "created_at": s.created_at} for s in rows),
+            )
+        if section == "school-staff" and division == "overseas":
+            # SCH-004/005/006 (DEC-SCOPE-014): Academic Team/Career Counselor/Psychometric
+            # Team accounts -- creation and portfolio management handled by
+            # AdminSchoolStaffPanel.tsx, same split as `schools` above.
+            service_roles = ("academic_team", "career_counselor", "psychometric_team")
+            rows = (await db.scalars(select(User).where(User.role.in_(service_roles)).order_by(User.created_at.desc()))).all()
+            assignments = (await db.scalars(select(SchoolStaffAssignment))).all()
+            portfolio_counts: dict = {}
+            for a in assignments:
+                portfolio_counts[a.user_id] = portfolio_counts.get(a.user_id, 0) + 1
+            return _payload(
+                "Academic Team / Career Counselor / Psychometric Team",
+                "Every specialized School service-delivery staff account and how many schools are in their portfolio.",
+                (("id", "reference"), ("name", "Name"), ("email", "Email"), ("role", "Role"), ("portfolio_size", "Schools in portfolio")),
+                ({"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "portfolio_size": portfolio_counts.get(u.id, 0)} for u in rows),
             )
         if section == "commissions" and division == "overseas":
             # AGT-003-AC02: Overseas Admin needs to see every commission in the division

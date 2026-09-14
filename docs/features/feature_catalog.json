@@ -2980,7 +2980,7 @@
     "api": "Y",
     "db": "Y",
     "rbac": "Psychometric Team (own school portfolio, DEC-SCOPE-013) / School Coordinator (read-only, own institution) / Parent, Student, Teacher (read-only, own scope) / Overseas Admin, Super Admin (account creation + portfolio assignment, DEC-SCOPE-014)",
-    "integ": "File upload/storage (report_url, presigned-download pattern per DATA_MODEL.md 6.18 -- corrected 2026-09-14, was '-')",
+    "integ": "-- Built as a plain report_url string field, not a presigned file-upload integration (DATA_MODEL.md 6.18 corrected 2026-09-14; no file-storage dependency in scope for this build pass).",
     "sec": "Psychometric report data about a minor -- least-privilege access required, same class as VISA/OVS document handling.",
     "a11y_resp": "Responsive.",
     "perf": "-",

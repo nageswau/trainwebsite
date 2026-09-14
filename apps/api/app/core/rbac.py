@@ -41,6 +41,12 @@ PERMISSIONS: dict[str, set[str]] = {
     "school_principal": {"school:principal:own_institution:read"},
     "school_teacher": {"school:teacher:assigned:read"},
     "school_parent": {"school:parent:own_child:read"},
+    # Service-delivery roles (SCH-004/005/006, DEC-ROLE-006) -- scoped to a school
+    # portfolio (DEC-SCOPE-013, SchoolStaffAssignment), not a single institution; enforced
+    # at the query layer, not by these coarse bundles alone.
+    "academic_team": {"school:academic_team:portfolio"},
+    "career_counselor": {"school:career_counselor:portfolio"},
+    "psychometric_team": {"school:psychometric_team:portfolio"},
 }
 
 

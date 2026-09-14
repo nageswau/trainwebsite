@@ -524,6 +524,14 @@ portfolio membership — that FK attributes the action, `SchoolStaffAssignment` 
 `DEC-SCOPE-014` is not accurate — provisioning for these three roles is a **separate** Admin-console
 path from `SCH-003`'s invite flow, not part of that Feature ID (see `RBAC_MATRIX.md` §2.12).
 
+**As built, 2026-09-14 (`prompts/15`):** `SchoolStaffAssignment` built exactly as specified above
+(migration `0026_school_service_delivery`). Provisioning lives at `POST /overseas-admin/school-staff`
+(create the account with an initial portfolio) and `POST /overseas-admin/school-staff/{staff_id}/
+portfolio` (add a school to an existing member's portfolio) in `app/api/admin.py`, confirming this
+section's "separate Admin-console path" prediction. The "my assigned school-affiliated students" query
+is `_portfolio_school_ids()`/`_readable_students()` in `app/api/schools.py`, shared by all three
+service-delivery Feature IDs rather than duplicated per role.
+
 ### 6.15 `SchoolAccountInvite` — added 2026-09-14, propagating `DEC-SCOPE-012`
 **Net-new**, supporting `SCH-003`'s Coordinator-issued invite step (Principal/Teacher/Parent
 accounts).
@@ -581,6 +589,14 @@ accounts).
   etc.) is not itemized by `DEC-ROLE-006` — Contracts-phase detail, not invented here.
 - **Feature IDs:** `SCH-006`.
 
+**As built, 2026-09-14 (`prompts/15`):** built exactly as specified, resolving the "computed or
+entered" open question as technical contract design (precedent: `ADR-011`/`ADR-012`) — `percentage` is
+**not** a stored column; it is computed on read from `marks_obtained`/`max_marks`, avoiding a
+derived-value staleness risk if either input is later corrected while still in `draft`. No pass/fail
+threshold is modeled — none was confirmed, so none was invented. The `DEC-ROLE-007` same-actor check
+and the forward-only status transition are both enforced by a single shared `_advance_result()`
+helper in `app/api/schools.py`, used by both the verify and publish endpoints.
+
 ### 6.17 `SchoolCareerRecord` — added 2026-09-14, propagating `DEC-ROLE-006`
 **Net-new**, supporting `SCH-004`. Combines Career Guidance sessions, counselling notes, and
 recommendations into one table, matching `DEC-ROLE-006`'s framing of Career Counselor's domain as
@@ -598,6 +614,9 @@ one combined area (not two separate modules).
   `EVID-014`'s detailed proposal is `DERIVED_BLUEPRINT` only, not confirmed.
 - **Feature IDs:** `SCH-004`.
 
+**As built, 2026-09-14 (`prompts/15`):** built exactly as specified — single free-text `notes` field
+per `record_type`, no structured sub-fields invented beyond what `DEC-ROLE-006` confirmed.
+
 ### 6.18 `SchoolPsychometricRecord` — added 2026-09-14, propagating `DEC-ROLE-006`
 **Net-new**, supporting `SCH-005`.
 
@@ -612,6 +631,13 @@ one combined area (not two separate modules).
 - **Open:** exact assessment-type taxonomy and report field structure not itemized by `DEC-ROLE-006`
   — `EVID-014`'s detailed proposal is `DERIVED_BLUEPRINT` only, not confirmed.
 - **Feature IDs:** `SCH-005`.
+
+**As built, 2026-09-14 (`prompts/15`), correcting `report_url`'s field description above:** built as
+a plain string field the Psychometric Team member supplies directly (`PATCH .../records/{id}`), not
+the presigned-upload/download pattern this section originally predicted — no file-storage integration
+(`STU`-style presigned S3 flow) is confirmed in scope for this build pass, and inventing one would
+have gone beyond `DEC-ROLE-006`'s confirmed scope. `status` moves `assigned → completed` the moment a
+`report_url` is attached, with no separate confirmation step.
 
 ---
 

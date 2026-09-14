@@ -941,3 +941,88 @@ async def list_schools(user: User = Depends(get_current_user), db: AsyncSession 
         raise HTTPException(403, "Overseas Admin role required")
     rows = (await db.scalars(select(School).order_by(School.created_at.desc()))).all()
     return [{"id": s.id, "name": s.name, "city": s.city, "state": s.state, "created_at": s.created_at} for s in rows]
+
+
+# SCH-004/005/006 (DEC-SCOPE-014): only Overseas Admin or Super Admin creates an
+# academic_team/career_counselor/psychometric_team account -- a separate path from
+# SCH-003's SchoolAccountInvite flow, which covers only the four school-side roles.
+SCHOOL_SERVICE_ROLES = {"academic_team", "career_counselor", "psychometric_team"}
+
+
+@agents_router.post("/school-staff", status_code=201)
+async def create_school_staff(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from app.core.security import hash_password
+    from app.models import SchoolStaffAssignment
+
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    role = payload.get("role")
+    if role not in SCHOOL_SERVICE_ROLES:
+        raise HTTPException(422, f"role must be one of {sorted(SCHOOL_SERVICE_ROLES)}")
+    email = str(payload.get("email", "")).lower().strip()
+    full_name = str(payload.get("full_name", "")).strip()
+    if not email or not full_name:
+        raise HTTPException(422, "email and full_name are required")
+    if await db.scalar(select(User).where(User.email == email)):
+        raise HTTPException(409, "Email already exists")
+    school_ids = payload.get("school_ids") or []
+    schools = (await db.scalars(select(School).where(School.id.in_(school_ids)))).all() if school_ids else []
+    if len(schools) != len(set(school_ids)):
+        raise HTTPException(422, "One or more school_ids do not exist")
+
+    staff = User(
+        email=email,
+        password_hash=hash_password(payload.get("password") or "ChangeMe@12345"),
+        full_name=full_name,
+        role=role,
+        division="overseas",
+        active=True,
+        email_verified=False,
+        profile={},
+    )
+    db.add(staff)
+    await db.flush()
+    db.add(UserRoleAssignment(user_id=staff.id, division="overseas", role=role, is_active=True, assigned_by_user_id=user.id, approval_status="approved"))
+    for school in schools:
+        db.add(SchoolStaffAssignment(user_id=staff.id, school_id=school.id, role=role, assigned_by_user_id=user.id))
+    db.add(AuditLog(user_id=user.id, action="school.staff_create", entity_type="user", entity_id=str(staff.id), metadata_json={"role": role, "school_ids": [str(s.id) for s in schools]}))
+    await db.commit()
+    return {"id": staff.id, "email": staff.email, "role": staff.role, "school_ids": [str(s.id) for s in schools]}
+
+
+@agents_router.get("/school-staff")
+async def list_school_staff(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from app.models import SchoolStaffAssignment
+
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    rows = (await db.scalars(select(User).where(User.role.in_(SCHOOL_SERVICE_ROLES)).order_by(User.created_at.desc()))).all()
+    assignments = (await db.scalars(select(SchoolStaffAssignment))).all()
+    portfolio_by_user: dict = {}
+    for a in assignments:
+        portfolio_by_user.setdefault(a.user_id, []).append(a.school_id)
+    return [{"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "school_ids": [str(sid) for sid in portfolio_by_user.get(u.id, [])]} for u in rows]
+
+
+@agents_router.post("/school-staff/{staff_id}/portfolio")
+async def add_school_staff_portfolio(staff_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from app.models import SchoolStaffAssignment
+
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    staff = await db.get(User, staff_id)
+    if not staff or staff.role not in SCHOOL_SERVICE_ROLES:
+        raise HTTPException(404, "Specialized-role staff account not found")
+    school_id = payload.get("school_id")
+    school = await db.get(School, school_id) if school_id else None
+    if not school:
+        raise HTTPException(422, "A valid school_id is required")
+    existing = await db.scalar(select(SchoolStaffAssignment).where(SchoolStaffAssignment.user_id == staff.id, SchoolStaffAssignment.school_id == school.id))
+    if existing:
+        raise HTTPException(409, "This school is already in this staff member's portfolio")
+    assignment = SchoolStaffAssignment(user_id=staff.id, school_id=school.id, role=staff.role, assigned_by_user_id=user.id)
+    db.add(assignment)
+    await db.flush()
+    db.add(AuditLog(user_id=user.id, action="school.staff_portfolio_add", entity_type="school_staff_assignment", entity_id=str(assignment.id), metadata_json={"staff_id": str(staff.id), "school_id": str(school.id)}))
+    await db.commit()
+    return {"id": assignment.id, "user_id": staff.id, "school_id": school.id}

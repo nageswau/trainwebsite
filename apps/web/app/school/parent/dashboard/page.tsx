@@ -1,4 +1,5 @@
 import PortalShell from "@/components/PortalShell";
+import SchoolServiceDeliverySummary from "@/components/SchoolServiceDeliverySummary";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
@@ -40,6 +41,7 @@ export default async function SchoolParentDashboardPage() {
             </div>
           ))
         )}
+        <SchoolServiceDeliverySummary />
       </div>
     </PortalShell>
   );
