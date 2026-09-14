@@ -601,6 +601,105 @@ async def main():
                     ),
                 ]
             )
+        # School domain (SCH-001-006) -- one fully populated partner school so every School
+        # report/dashboard (Admin's Schools/School Staff lists, and all seven School role
+        # dashboards) shows real data locally/in dev, not an empty state. Two academic_team
+        # members are seeded deliberately -- DEC-ROLE-007's same-actor rule means a result
+        # can never be verified/published by the same member who uploaded it, so a single
+        # academic_team account could never demonstrate a Published result here.
+        school = await db.scalar(select(School).where(School.name == "Sunrise Public School"))
+        if not school:
+            school = School(name="Sunrise Public School", city="Hyderabad", state="Telangana", created_by_user_id=us["overseas_admin"].id)
+            db.add(school)
+            await db.flush()
+
+            school_coordinator = await user(db, "school.coordinator@edusphere.local", "Fatima School Coordinator", "school_coordinator", "overseas")
+            school_principal = await user(db, "school.principal@edusphere.local", "Rakesh School Principal", "school_principal", "overseas")
+            school_teacher = await user(db, "school.teacher@edusphere.local", "Neha School Teacher", "school_teacher", "overseas")
+            school_parent = await user(db, "school.parent@edusphere.local", "Vikram School Parent", "school_parent", "overseas")
+            academic1 = await user(db, "school.academic1@edusphere.local", "Divya Academic Team", "academic_team", "overseas")
+            academic2 = await user(db, "school.academic2@edusphere.local", "Suresh Academic Team", "academic_team", "overseas")
+            career_counselor = await user(db, "school.careercounselor@edusphere.local", "Anita Career Counselor", "career_counselor", "overseas")
+            psychometric_team = await user(db, "school.psychometric@edusphere.local", "Manoj Psychometric Team", "psychometric_team", "overseas")
+            for u in (school_coordinator, school_principal, school_teacher, school_parent):
+                u.profile = {"demo": True, "school_id": str(school.id)}
+            db.add_all(
+                [
+                    UserRoleAssignment(user_id=school_coordinator.id, division="overseas", role="school_coordinator", is_active=True, assigned_by_user_id=us["overseas_admin"].id, approval_status="approved"),
+                    UserRoleAssignment(user_id=school_principal.id, division="overseas", role="school_principal", is_active=True, assigned_by_user_id=school_coordinator.id, approval_status="approved"),
+                    UserRoleAssignment(user_id=school_teacher.id, division="overseas", role="school_teacher", is_active=True, assigned_by_user_id=school_coordinator.id, approval_status="approved"),
+                    UserRoleAssignment(user_id=school_parent.id, division="overseas", role="school_parent", is_active=True, assigned_by_user_id=school_coordinator.id, approval_status="approved"),
+                    UserRoleAssignment(user_id=academic1.id, division="overseas", role="academic_team", is_active=True, assigned_by_user_id=us["overseas_admin"].id, approval_status="approved"),
+                    UserRoleAssignment(user_id=academic2.id, division="overseas", role="academic_team", is_active=True, assigned_by_user_id=us["overseas_admin"].id, approval_status="approved"),
+                    UserRoleAssignment(user_id=career_counselor.id, division="overseas", role="career_counselor", is_active=True, assigned_by_user_id=us["overseas_admin"].id, approval_status="approved"),
+                    UserRoleAssignment(user_id=psychometric_team.id, division="overseas", role="psychometric_team", is_active=True, assigned_by_user_id=us["overseas_admin"].id, approval_status="approved"),
+                    SchoolStaffAssignment(user_id=academic1.id, school_id=school.id, role="academic_team", assigned_by_user_id=us["overseas_admin"].id),
+                    SchoolStaffAssignment(user_id=academic2.id, school_id=school.id, role="academic_team", assigned_by_user_id=us["overseas_admin"].id),
+                    SchoolStaffAssignment(user_id=career_counselor.id, school_id=school.id, role="career_counselor", assigned_by_user_id=us["overseas_admin"].id),
+                    SchoolStaffAssignment(user_id=psychometric_team.id, school_id=school.id, role="psychometric_team", assigned_by_user_id=us["overseas_admin"].id),
+                ]
+            )
+
+            student_a = SchoolStudent(school_id=school.id, full_name="Aarav Mehta", date_of_birth=date(2015, 4, 12), grade_or_class="Grade 5", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id)
+            student_b = SchoolStudent(school_id=school.id, full_name="Isha Mehta", date_of_birth=date(2017, 9, 3), grade_or_class="Grade 3", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id)
+            student_c = SchoolStudent(school_id=school.id, full_name="Kabir Nair", date_of_birth=date(2016, 1, 20), grade_or_class="Grade 4", created_by_user_id=school_coordinator.id)
+            db.add_all([student_a, student_b, student_c])
+            await db.flush()
+            db.add_all(
+                [
+                    # One Parent, two linked children -- demonstrates the roster's
+                    # multi-child auto-link addendum, not just a single 1:1 link.
+                    SchoolParentLink(parent_user_id=school_parent.id, school_student_id=student_a.id, linked_by_user_id=school_coordinator.id),
+                    SchoolParentLink(parent_user_id=school_parent.id, school_student_id=student_b.id, linked_by_user_id=school_coordinator.id),
+                ]
+            )
+
+            activity = SchoolActivity(school_id=school.id, title="Annual Sports Day", scheduled_at=datetime.now(UTC) + timedelta(days=10), created_by_user_id=school_coordinator.id)
+            db.add(activity)
+            await db.flush()
+            db.add_all(
+                [
+                    SchoolActivityAttendance(activity_id=activity.id, school_student_id=student_a.id, present=True, marked_by_user_id=school_coordinator.id),
+                    SchoolActivityAttendance(activity_id=activity.id, school_student_id=student_b.id, present=True, marked_by_user_id=school_coordinator.id),
+                    SchoolActivityAttendance(activity_id=activity.id, school_student_id=student_c.id, present=False, marked_by_user_id=school_coordinator.id),
+                ]
+            )
+
+            # Academic results across all three pipeline stages -- Published (so
+            # Coordinator/Principal/Teacher/Parent read-only reports have something to
+            # show), Verified (ready to publish), and Draft (never visible outside
+            # academic_team, demonstrating the gate itself is real).
+            published_result = SchoolAcademicResult(
+                school_student_id=student_a.id, academic_year="2026", term="Term 1", subject="Mathematics", max_marks=100, marks_obtained=88, grade="A",
+                status="published", uploaded_by_user_id=academic1.id, verified_by_user_id=academic2.id, verified_at=datetime.now(UTC) - timedelta(days=5), published_by_user_id=academic2.id, published_at=datetime.now(UTC) - timedelta(days=3),
+            )
+            verified_result = SchoolAcademicResult(
+                school_student_id=student_b.id, academic_year="2026", term="Term 1", subject="English", max_marks=100, marks_obtained=76, grade="B+",
+                status="verified", uploaded_by_user_id=academic1.id, verified_by_user_id=academic2.id, verified_at=datetime.now(UTC) - timedelta(days=1),
+            )
+            draft_result = SchoolAcademicResult(school_student_id=student_a.id, academic_year="2026", term="Term 1", subject="Science", max_marks=100, marks_obtained=91, status="draft", uploaded_by_user_id=academic1.id)
+            db.add_all([published_result, verified_result, draft_result])
+            await db.flush()
+            db.add_all(
+                [
+                    SchoolResultStatusHistory(result_id=published_result.id, from_status="draft", to_status="verified", changed_by_user_id=academic2.id),
+                    SchoolResultStatusHistory(result_id=published_result.id, from_status="verified", to_status="published", changed_by_user_id=academic2.id),
+                    SchoolResultStatusHistory(result_id=verified_result.id, from_status="draft", to_status="verified", changed_by_user_id=academic2.id),
+                ]
+            )
+
+            db.add_all(
+                [
+                    SchoolCareerRecord(school_student_id=student_a.id, career_counselor_user_id=career_counselor.id, record_type="guidance_session", notes="Discussed STEM vs. humanities track based on early aptitude signals."),
+                    SchoolCareerRecord(school_student_id=student_c.id, career_counselor_user_id=career_counselor.id, record_type="counselling_note", notes="Follow-up planned next term on extracurricular interests."),
+                ]
+            )
+            db.add_all(
+                [
+                    SchoolPsychometricRecord(school_student_id=student_a.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Aptitude Test", report_url="/demo/aarav-aptitude-report.pdf", status="completed"),
+                    SchoolPsychometricRecord(school_student_id=student_c.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Personality Assessment", status="assigned"),
+                ]
+            )
         await db.commit()
     print("Seed complete; demo password:", PASSWORD)
 
