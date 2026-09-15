@@ -1878,5 +1878,151 @@ before writing, so no unrelated row from this shared dev database's considerable
 data was touched). This is a demo/seed-data correction, not an application logic change -- the
 timeline's own chronological-sort behavior was already correct and was not altered.
 
+---
+
+### DEC-SCOPE-017 — School Partnership tiers (`EVID-013`) → entitlements, no invented caps
+
+**Status:** CONFIRMED_CURRENT — resolved 2026-09-15, in-session.
+
+**Trigger:** Validating `docs/sources/SCHOOL BROUCHER (5).pdf` (`EVID-013`) against the current
+build for the user's "make sure it matches all including partner models" request surfaced
+`CLIENT_QUESTIONS.md` item 9 (School Partnership tiers) as the one remaining genuinely open
+gap. That item was originally deferred to the real client, not decided in-session. The user
+chose to resolve it directly instead: first "Resolve it now," then confirmed the resolution
+approach ("Track entitlements with usage counters"), then attached the brochure's own
+Bronze/Silver/Gold/Platinum tier-breakdown image, then confirmed the semantics ("Included =
+unlimited, just count usage" — no invented quota caps).
+
+**Resolution:** A School's `tier` (`bronze`/`silver`/`gold`/`platinum`, nullable — set by
+Overseas Admin at creation or later via a small `PATCH`) determines a cumulative service list,
+read exactly as the brochure's own image shows (each tier lists only what it *adds* over the
+previous one):
+
+- **Bronze:** career seminar, student career awareness session, parent orientation,
+  psychometric test, soft skills.
+- **Silver adds:** individual counselling, web designing.
+- **Gold adds:** application support, scholarship assistance, IELTS coaching, SAT coaching,
+  foreign language classes, digital portfolio creation.
+- **Platinum adds:** dedicated EduSphere counselor, monthly campus visits, internships, visa
+  support, loan assistance, alumni network, parent help desk.
+
+A service is never quota-limited — "included" always means unlimited access. `GET
+/school/entitlements` (`SCH-011`, Coordinator/Principal, own institution only) returns each
+included service with a REAL usage count wherever a confirmed module already produces one
+(psychometric assessments, counselling notes, IELTS/SAT test-prep records, language-class
+records, bridged Overseas applications/visa cases — see `DEC-SCOPE-018` — and a new optional
+`SchoolActivity.activity_type` tag for seminar/orientation/campus-visit counts), and `used:
+null` ("not yet tracked") for services with no underlying module (soft skills, web designing,
+digital portfolio creation, internships, loan assistance, alumni network, parent help desk,
+scholarship assistance) — never a fabricated zero or an invented cap, matching this codebase's
+own established "honest zeros, never fabricated" convention (`RPT-002-AC02`, `DATA_MODEL.md`
+§8).
+
+**Evidence:** `EVID-013` (`docs/sources/SCHOOL BROUCHER (5).pdf`) — its own Partnership Model
+page and tier-breakdown image, both supplied directly by the user in-session.
+
+**New Feature ID authorized:** `SCH-011` (Partnership tier entitlements).
+
+**Stated by:** user (in-session) — **Date:** 2026-09-15. Closes `CLIENT_QUESTIONS.md` item 9.
+
+---
+
+### DEC-SCOPE-018 — School→Overseas bridge, and actor for Test Prep / Foreign Language modules
+
+**Status:** CONFIRMED_CURRENT — resolved 2026-09-15, in-session.
+
+**Trigger:** The same brochure validation pass surfaced two more gaps against
+`PRD_OPEN_ITEMS.md` item 77 (Parent Portal's "Overseas education progress," no confirmed data
+path since `SchoolStudent` has no Overseas identity, `DEC-ROLE-004`) and item 78 (parent
+notification triggers for "Test"/"Application"). The user was asked which unbuilt journey
+stages to scope now, picked "All of the above" (build the School→Overseas bridge AND Test
+Prep + Language Training modules), then resolved two remaining actor questions: "Reuse
+Academic Team" (no new role for Test Prep/Language) and "Overseas Admin/Counselor initiates
+it" (not School Coordinator, for the bridge).
+
+**Resolution, part 1 — School→Overseas bridge:** `OverseasApplication.student_id` is relaxed
+to nullable, and a new nullable `school_student_id` FK (`school_students.id`) is added.
+Exactly one of the two is always set, enforced at the application layer (not a DB CHECK
+constraint, matching this codebase's existing style) — never a synthetic `users` row for a
+`SchoolStudent`, consistent with `DEC-ROLE-004`'s own rejection of that approach. **Overseas
+Admin or Counselor (never School Coordinator)** looks a School student up by their
+business-facing Student ID (`DEC-DATA-003`) via `GET
+/overseas-admin/school-students/lookup?code=`, then starts a real application via `POST
+/overseas-admin/school-students/{id}/applications` (`SCH-010`). Every existing
+Overseas-student-centric endpoint that inner-joins `User` on `student_id` (11+ call sites)
+is left untouched — a bridged row's `student_id IS NULL` simply never matches those joins,
+which is the correct behavior (they are for real logged-in Overseas students, agent-referred
+students, etc.), not something to retrofit. The existing application status-advance and
+`VisaCase` endpoints work unchanged on a bridged application (both key off
+`application_id`/`counselor_id`, never `User`). `SCH-007`'s student overview/`SCH-008`'s
+timeline gained a `global_education` section reading these bridged rows — this is what
+actually closes `PRD_OPEN_ITEMS.md` item 77's "Overseas education progress" part (Skills and
+Portfolio remain unconfirmed and out of scope).
+
+**Resolution, part 2 — Test Preparation (IELTS/SAT) and Foreign Language Classes:** two new
+modules, `SchoolTestPrepRecord` and `SchoolLanguageRecord`, delivered by the existing
+`academic_team` role (no new role, per the user's explicit choice) — same portfolio-scoped
+CRUD shape as `SCH-004`/`005` (`_student_in_portfolio`, `_notify_student_parents`, `AuditLog`),
+with no Draft/Verified/Published gate (that gate is `SCH-006`-specific, `DEC-ROLE-007`). This
+closes `PRD_OPEN_ITEMS.md` item 78's "Test" notification trigger (test-prep start/result) and,
+via the bridge above, its "Application" trigger; "Important deadline" remains open (no
+confirmed deadline entity exists).
+
+**Evidence:** `EVID-013`; `PRD_OPEN_ITEMS.md` items 77/78; `DEC-ROLE-004` (no synthetic User
+row for a `SchoolStudent`).
+
+**New Feature IDs authorized:** `SCH-009` (Test Preparation & Foreign Language Classes),
+`SCH-010` (School→Overseas bridge).
+
+**Stated by:** user (in-session) — **Date:** 2026-09-15. Partially closes `PRD_OPEN_ITEMS.md`
+items 77 and 78 (Skills/Portfolio and Important-deadline notification remain open).
+
 **New Screen IDs:** `SCR-SCH-025` (`/school/coordinator/students/[id]`), `SCR-SCH-026`
 (`/school/principal/students/[id]`).
+
+---
+
+## Group 14 — 15 September 2026: business-facing Student ID
+
+### DEC-DATA-003 — Business-facing unique Student ID format and scope
+
+**Question:** `PRD_OPEN_ITEMS.md` item 66 / `CLIENT_QUESTIONS.md` D-09 asked the client to confirm
+the exact format (length, character set, prefix convention) of a short, memorable, searchable
+Student ID distinct from the existing internal technical identifier, and whether it should extend to
+Agents or other operational identities beyond students.
+
+**Evidence:** `EVID-011` (12 Sep review call) and `EVID-012` both request this; `EVID-014` ("School
+CRM.md") independently asks for "every student should have a unique Student ID" (§3) with its own
+illustrative example (`ES-2026-00125`, a longer, encoded format, not itself confirmed).
+
+**Recommendation:** None was needed — resolved directly by the user, who also delegated the format
+detail rather than specifying it.
+
+**Resolution:** User confirmed directly, in-session (2026-09-15): **8-character alphanumeric**,
+applying to **all students** — narrowing the original question's "students and/or agents" scope to
+students only, no Agent ID. Character set/prefix convention was explicitly left to implementation
+("you decide"): built as uppercase hex (`secrets.token_hex(4).upper()`), reusing this codebase's own
+already-established short-code convention (`enrollment_code`, `certificate_no` in `workflows.py`)
+rather than inventing a bespoke alphabet — hex naturally excludes the commonly-confused I/O/L
+letters, which serves the original "memorable/searchable" request without extra encoding rules.
+Applied to **both** student populations discussed all session: `User.student_code` (nullable,
+`it_student`/`overseas_student` roles only) and `SchoolStudent.student_code` (never null — every row
+in that table is a student). Each is its own per-table unique constraint, not a single cross-domain
+namespace — the two populations are never compared side by side in the same list, so global
+uniqueness was judged unnecessary complexity, not asked for, and not built.
+
+**Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-15.
+
+**Implementation:** `app.core.identifiers.generate_student_code`/`unique_student_code` (shared
+generator + collision-retry uniqueness check, reused at every creation site: self-registration,
+`app.seed`, School roster single-add, and School bulk-upload). Migration `0028_student_code` adds
+both columns and backfills every pre-existing row (School seed demo students, seeded `it_student`/
+`overseas_student` accounts) so the NOT NULL constraint on `school_students.student_code` holds from
+the first deploy. Surfaced in the UI: `PortalShell.tsx`'s sidebar identity badge for IT/Overseas
+Student roles (added once, in the shared `PortalPage.tsx` dispatcher, covering every page those
+roles see); the School roster table, edit form, and per-role student detail page
+(`SchoolStudentDetailPanel.tsx`, shared across Coordinator/Principal/Teacher); and the Parent's own
+dashboard card and child-detail page (`SchoolChildOverview.tsx`). 9 test-fixture call sites across
+`test_sch_004`/`005`/`006`/`007`/`008`/`reports.py` updated for the new required field; full backend
+regression (579 tests, excluding the two live-credential-only Zoho/Razorpay files per `CI.md`'s own
+documented exclusion) and 20 targeted E2E cases confirmed clean.

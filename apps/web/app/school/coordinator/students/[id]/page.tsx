@@ -5,7 +5,7 @@ import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-type Student = { id: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
+type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
 
 // SCH-008 (DEC-SCOPE-016): School Coordinator's read-only view of one student's Journey
 // Timeline, own institution only (SCH-001-AC02) -- reachable from the roster's "Timeline"

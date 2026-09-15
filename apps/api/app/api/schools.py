@@ -24,17 +24,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import _set_auth_cookies
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
 from app.models import (
     AuditLog,
     Notification,
     NotificationDelivery,
+    OverseasApplication,
     School,
     SchoolAcademicResult,
     SchoolAccountInvite,
     SchoolActivity,
     SchoolActivityAttendance,
     SchoolCareerRecord,
+    SchoolLanguageRecord,
     SchoolParentLink,
     SchoolPsychometricRecord,
     SchoolResultStatusHistory,
@@ -42,8 +45,11 @@ from app.models import (
     SchoolRosterUploadRow,
     SchoolStaffAssignment,
     SchoolStudent,
+    SchoolTestPrepRecord,
+    University,
     User,
     UserRoleAssignment,
+    VisaCase,
 )
 from app.services.integrations import send_notification
 from app.services.mailer import send_parent_notification_email, send_school_invite_email
@@ -98,7 +104,7 @@ async def _create_and_send_invite(db: AsyncSession, *, school: School, role: str
         metadata_json={"role": role, "school_id": str(school.id), "webhook_status": webhook_status, "webhook_error": webhook_error, "smtp_status": smtp_status, "smtp_error": smtp_error},
     ))
     response = {"id": invite.id, "role": invite.role, "email": invite.email, "status": invite.status, "expires_at": invite.expires_at, "email_status": smtp_status}
-    if settings.environment == "development":
+    if settings.environment in ("development", "test"):
         response["development_invite_token"] = raw
     return response
 
@@ -132,9 +138,39 @@ async def list_team(user: User = Depends(get_current_user), db: AsyncSession = D
         await db.scalars(select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school_id, SchoolAccountInvite.status == "pending").order_by(SchoolAccountInvite.created_at.desc()))
     ).all()
     return {
-        "accounts": [{"id": a.id, "name": a.full_name, "email": a.email, "role": a.role} for a in accounts],
+        "accounts": [{"id": a.id, "name": a.full_name, "email": a.email, "role": a.role, "active": a.active} for a in accounts],
         "pending_invites": [{"id": i.id, "role": i.role, "email": i.email, "full_name": i.full_name, "expires_at": i.expires_at} for i in invites],
     }
+
+
+@router.patch("/team/accounts/{user_id}")
+async def update_team_account(user_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Coordinator activate/deactivate for their own school's Principal/Teacher/Parent
+    accounts (EVID-014 "School Master" §33/§2 -- treated as the same role as
+    school_coordinator per direct user confirmation). Deliberately no cascade guard like
+    ADM-001-AC02's trainer/batch check: a deactivated Teacher's existing
+    assigned_teacher_user_id links are left unchanged (not unsafe by themselves, no
+    batch-like scheduling dependency in this domain); the Teacher picker (SchoolStudentsPanel)
+    excludes inactive teachers from new assignments instead.
+    """
+    school_id = _require_coordinator(user)
+    if "active" not in payload or not isinstance(payload["active"], bool):
+        raise HTTPException(422, "active (boolean) is required")
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Account not found")
+    # INVITABLE_ROLES doubles as the guard against targeting a Coordinator, self or peer.
+    if target.role not in INVITABLE_ROLES:
+        raise HTTPException(403, "Can only activate/deactivate Principal, Teacher, or Parent accounts")
+    if (target.profile or {}).get("school_id") != str(school_id):
+        raise HTTPException(403, "This account is not at your institution")
+    target.active = payload["active"]
+    db.add(AuditLog(
+        user_id=user.id, action="school.team_account_update", entity_type="user", entity_id=str(target.id),
+        metadata_json={"school_id": str(school_id), "role": target.role, "active": target.active},
+    ))
+    await db.commit()
+    return {"id": target.id, "active": target.active}
 
 
 @router.post("/invites/{token}/accept", status_code=201)
@@ -207,6 +243,7 @@ def _own_school_id(user: User) -> UUID:
 def _student_out(s: SchoolStudent) -> dict:
     return {
         "id": s.id,
+        "student_code": s.student_code,
         "full_name": s.full_name,
         "date_of_birth": s.date_of_birth,
         "grade_or_class": s.grade_or_class,
@@ -415,6 +452,98 @@ async def school_reports(user: User = Depends(get_current_user), db: AsyncSessio
     }
 
 
+TIER_ORDER = ["bronze", "silver", "gold", "platinum"]
+# DEC-SCOPE-017 (2026-09-15): cumulative per the brochure's own image -- each tier lists
+# only what it *adds* over the previous one.
+TIER_SERVICES: dict[str, list[tuple[str, str]]] = {
+    "bronze": [
+        ("career_seminar", "Career seminar"),
+        ("career_awareness_session", "Student career awareness session"),
+        ("parent_orientation", "Parent orientation"),
+        ("psychometric_test", "Psychometric test"),
+        ("soft_skills", "Soft skills"),
+    ],
+    "silver": [
+        ("individual_counselling", "Individual counselling"),
+        ("web_designing", "Web designing"),
+    ],
+    "gold": [
+        ("application_support", "Application support"),
+        ("scholarship_assistance", "Scholarship assistance"),
+        ("ielts_coaching", "IELTS coaching"),
+        ("sat_coaching", "SAT coaching"),
+        ("foreign_language_classes", "Foreign language classes"),
+        ("digital_portfolio_creation", "Digital portfolio creation"),
+    ],
+    "platinum": [
+        ("dedicated_counselor", "Dedicated EduSphere counselor"),
+        ("monthly_campus_visits", "Monthly campus visits"),
+        ("internships", "Internships"),
+        ("visa_support", "Visa support"),
+        ("loan_assistance", "Loan assistance"),
+        ("alumni_network", "Alumni network"),
+        ("parent_help_desk", "Parent help desk"),
+    ],
+}
+
+
+def _cumulative_services(tier: str | None) -> list[tuple[str, str]]:
+    if not tier or tier not in TIER_ORDER:
+        return []
+    services: list[tuple[str, str]] = []
+    for t in TIER_ORDER[: TIER_ORDER.index(tier) + 1]:
+        services.extend(TIER_SERVICES[t])
+    return services
+
+
+@router.get("/entitlements")
+async def school_entitlements(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """DEC-SCOPE-017 -- what this school's partnership tier includes, with a REAL usage
+    count wherever a confirmed module produces one, and `used: None` ("not yet tracked")
+    for the rest -- never a fabricated 0 or an invented cap (the user explicitly confirmed
+    "included = unlimited, count usage" -- no numeric entitlement ever existed in any
+    source, School CRM.md's own table was illustrative only).
+    """
+    if user.role not in {"school_coordinator", "school_principal"}:
+        raise HTTPException(403, "School Coordinator or Principal role required")
+    school_id = _own_school_id(user)
+    school = await db.get(School, school_id)
+    services = _cumulative_services(school.tier if school else None)
+    if not services:
+        return {"tier": school.tier if school else None, "tier_valid_until": school.tier_valid_until if school else None, "services": []}
+
+    student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id == school_id))).all()
+
+    async def _activity_count(activity_type: str) -> int:
+        return len((await db.scalars(select(SchoolActivity.id).where(SchoolActivity.school_id == school_id, SchoolActivity.activity_type == activity_type))).all())
+
+    usage: dict[str, int | bool | None] = {}
+    if student_ids:
+        usage["psychometric_test"] = len((await db.scalars(select(SchoolPsychometricRecord.id).where(SchoolPsychometricRecord.school_student_id.in_(student_ids)))).all())
+        usage["individual_counselling"] = len(
+            (await db.scalars(select(SchoolCareerRecord.id).where(SchoolCareerRecord.school_student_id.in_(student_ids), SchoolCareerRecord.record_type == "counselling_note"))).all()
+        )
+        usage["ielts_coaching"] = len((await db.scalars(select(SchoolTestPrepRecord.id).where(SchoolTestPrepRecord.school_student_id.in_(student_ids), SchoolTestPrepRecord.test_type == "ielts"))).all())
+        usage["sat_coaching"] = len((await db.scalars(select(SchoolTestPrepRecord.id).where(SchoolTestPrepRecord.school_student_id.in_(student_ids), SchoolTestPrepRecord.test_type == "sat"))).all())
+        usage["foreign_language_classes"] = len((await db.scalars(select(SchoolLanguageRecord.id).where(SchoolLanguageRecord.school_student_id.in_(student_ids)))).all())
+        application_ids = (await db.scalars(select(OverseasApplication.id).where(OverseasApplication.school_student_id.in_(student_ids)))).all()
+        usage["application_support"] = len(application_ids)
+        usage["visa_support"] = len((await db.scalars(select(VisaCase.id).where(VisaCase.application_id.in_(application_ids)))).all()) if application_ids else 0
+    else:
+        usage.update({"psychometric_test": 0, "individual_counselling": 0, "ielts_coaching": 0, "sat_coaching": 0, "foreign_language_classes": 0, "application_support": 0, "visa_support": 0})
+    usage["career_seminar"] = await _activity_count("career_seminar")
+    usage["career_awareness_session"] = await _activity_count("career_awareness_session")
+    usage["parent_orientation"] = await _activity_count("parent_orientation")
+    usage["monthly_campus_visits"] = await _activity_count("campus_visit")
+    usage["dedicated_counselor"] = bool(await db.scalar(select(SchoolStaffAssignment.id).where(SchoolStaffAssignment.school_id == school_id)))
+
+    return {
+        "tier": school.tier if school else None,
+        "tier_valid_until": school.tier_valid_until if school else None,
+        "services": [{"key": key, "label": label, "included": True, "used": usage.get(key)} for key, label in services],
+    }
+
+
 @router.get("/students")
 async def list_students(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     school_id = _own_school_id(user)
@@ -467,16 +596,21 @@ async def get_student(student_id: UUID, user: User = Depends(get_current_user), 
 async def student_overview(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """SCH-007 -- one child's complete picture for the Parent Portal (and, by the same scope
     rule, for Teacher/Coordinator/Principal): profile, career guidance status, counselling,
-    recommended careers, psychometric status, published results, activities attended, and
-    upcoming sessions. Pure read over the already-built SCH-001/004/005/006 tables -- no new
-    tables. Results are Published-only, same as everywhere else (SCH-006-AC02). Skills,
-    portfolio, and overseas-education progress are NOT here: no confirmed module produces
-    that data yet (`DEC-SCOPE-015`, open items) -- omitted rather than faked."""
+    recommended careers, psychometric status, published results, activities attended,
+    upcoming sessions, test prep, foreign language, and (once linked) global education
+    progress. Pure read over the already-built tables -- no new tables beyond `SCH-009`'s
+    own two and the `DEC-SCOPE-018` bridge fields. Results are Published-only, same as
+    everywhere else (SCH-006-AC02). Skills and portfolio remain NOT here: still no
+    confirmed module produces that data (`DEC-SCOPE-015` items 79/80) -- omitted rather
+    than faked. Overseas-education progress is now included (`DEC-SCOPE-018`, closes item
+    77) once an Overseas Admin/Counselor has linked this student to a real application."""
     student = await _load_readable_student(db, user, student_id)
     school = await db.get(School, student.school_id)
     teacher = await db.get(User, student.assigned_teacher_user_id) if student.assigned_teacher_user_id else None
     career_rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id == student.id).order_by(SchoolCareerRecord.created_at.desc()))).all()
     psych_rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id == student.id).order_by(SchoolPsychometricRecord.created_at.desc()))).all()
+    test_prep_rows = (await db.scalars(select(SchoolTestPrepRecord).where(SchoolTestPrepRecord.school_student_id == student.id).order_by(SchoolTestPrepRecord.created_at.desc()))).all()
+    language_rows = (await db.scalars(select(SchoolLanguageRecord).where(SchoolLanguageRecord.school_student_id == student.id).order_by(SchoolLanguageRecord.created_at.desc()))).all()
     result_rows = (
         await db.scalars(
             select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id == student.id, SchoolAcademicResult.status == "published").order_by(SchoolAcademicResult.published_at.desc())
@@ -495,6 +629,16 @@ async def student_overview(student_id: UUID, user: User = Depends(get_current_us
             select(SchoolActivity).where(SchoolActivity.school_id == student.school_id, SchoolActivity.scheduled_at >= datetime.now(UTC)).order_by(SchoolActivity.scheduled_at.asc()).limit(10)
         )
     ).all()
+    application_rows = (
+        await db.execute(
+            select(OverseasApplication, University).join(University, University.id == OverseasApplication.university_id).where(OverseasApplication.school_student_id == student.id).order_by(OverseasApplication.created_at.desc())
+        )
+    ).all()
+    application_ids = [a.id for a, _u in application_rows]
+    visa_by_application = {}
+    if application_ids:
+        visa_rows = (await db.scalars(select(VisaCase).where(VisaCase.application_id.in_(application_ids)))).all()
+        visa_by_application = {v.application_id: v for v in visa_rows}
 
     def _career(rows: list) -> list[dict]:
         return [{"id": r.id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
@@ -504,16 +648,29 @@ async def student_overview(student_id: UUID, user: User = Depends(get_current_us
     recommendations = [r for r in career_rows if r.record_type == "recommendation"]
     psych_statuses = {r.status for r in psych_rows}
     psychometric_status = "completed" if "completed" in psych_statuses else ("assigned" if psych_rows else "not_started")
+    test_prep_statuses = {r.status for r in test_prep_rows}
+    test_prep_status = "completed" if test_prep_statuses and test_prep_statuses == {"completed"} else ("in_progress" if test_prep_rows else "not_started")
+    language_statuses = {r.certification_status for r in language_rows}
+    language_status = "certified" if "certified" in language_statuses else ("in_progress" if language_rows else "not_started")
     return {
         "student": {**_student_out(student), "school_name": school.name if school else None, "assigned_teacher_name": teacher.full_name if teacher else None},
         "career_guidance": {"status": "completed" if guidance else "not_started", "sessions": _career(guidance)},
         "counselling": {"status": "completed" if counselling else "not_started", "notes": _career(counselling)},
         "recommended_careers": _career(recommendations),
         "psychometric": {"status": psychometric_status, "assessments": [{"id": r.id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at} for r in psych_rows]},
+        "test_prep": {"status": test_prep_status, "records": [_test_prep_out(r) for r in test_prep_rows]},
+        "foreign_language": {"status": language_status, "records": [_language_out(r) for r in language_rows]},
         "results": [_result_out(r) for r in result_rows],
         "activities": {
             "attended": [{"activity_id": a.id, "title": a.title, "scheduled_at": a.scheduled_at, "present": att.present} for att, a in attended_rows],
             "upcoming": [{"id": a.id, "title": a.title, "scheduled_at": a.scheduled_at} for a in upcoming_rows],
+        },
+        "global_education": {
+            "status": "linked" if application_rows else "not_started",
+            "applications": [
+                {"id": a.id, "university_name": u.name, "status": a.status, "visa_status": visa_by_application[a.id].status if a.id in visa_by_application else None}
+                for a, u in application_rows
+            ],
         },
     }
 
@@ -529,9 +686,9 @@ CAREER_RECORD_TIMELINE = {
 async def student_timeline(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """SCH-008 -- narrow Student Journey Timeline: a chronological list of events already
     recorded for one student, built only from already-built modules (`SCH-001`/`004`/`005`/
-    `006`) -- no invented Foreign Language / English Test / University Planning steps from
-    `EVID-014`'s own illustrative timeline, since none of those are confirmed modules
-    (`DEC-SCOPE-015`). Same own-scope loader as the overview (`_load_readable_student`), so
+    `006`/`009`), plus (once linked, `DEC-SCOPE-018`) real Overseas application/visa stage
+    changes. No invented University Planning/Soft-Skills steps -- those remain unconfirmed
+    (`DEC-SCOPE-015` items 79/80). Same own-scope loader as the overview (`_load_readable_student`), so
     a Parent gets their own child's timeline only, a Teacher their assigned student's, and
     Coordinator/Principal their own institution's -- identical to `SCH-001-AC02`/`AC03`
     and `SCH-007-AC02`. Read-only, no new tables: every event is derived from an existing
@@ -569,6 +726,24 @@ async def student_timeline(student_id: UUID, user: User = Depends(get_current_us
     ).all()
     for _att, a in attended_rows:
         events.append({"date": a.scheduled_at, "category": "activity", "type": "activity_attended", "title": f"Attended {a.title}", "detail": None})
+    test_prep_rows = (await db.scalars(select(SchoolTestPrepRecord).where(SchoolTestPrepRecord.school_student_id == student.id))).all()
+    for tp_r in test_prep_rows:
+        events.append({"date": tp_r.created_at, "category": "test_prep", "type": "test_prep_started", "title": f"{tp_r.test_type.upper()} preparation started", "detail": tp_r.target_score})
+        if tp_r.status == "completed":
+            events.append({"date": tp_r.updated_at, "category": "test_prep", "type": "test_prep_completed", "title": f"{tp_r.test_type.upper()} result recorded", "detail": tp_r.actual_score})
+    language_rows = (await db.scalars(select(SchoolLanguageRecord).where(SchoolLanguageRecord.school_student_id == student.id))).all()
+    for lang_r in language_rows:
+        events.append({"date": lang_r.created_at, "category": "foreign_language", "type": "language_started", "title": f"{lang_r.language} classes started", "detail": lang_r.level})
+        if lang_r.certification_status == "certified":
+            events.append({"date": lang_r.updated_at, "category": "foreign_language", "type": "language_certified", "title": f"{lang_r.language} certification earned", "detail": None})
+    application_rows = (
+        await db.execute(select(OverseasApplication, University).join(University, University.id == OverseasApplication.university_id).where(OverseasApplication.school_student_id == student.id))
+    ).all()
+    for app_r, uni_r in application_rows:
+        events.append({"date": app_r.created_at, "category": "global_education", "type": "application_linked", "title": f"Overseas application started: {uni_r.name}", "detail": app_r.status})
+        visa_r = await db.scalar(select(VisaCase).where(VisaCase.application_id == app_r.id))
+        if visa_r:
+            events.append({"date": visa_r.updated_at, "category": "global_education", "type": "visa_status", "title": f"Visa status: {visa_r.status}", "detail": uni_r.name})
     events.sort(key=lambda e: e["date"])
     return {"student": {"id": student.id, "full_name": student.full_name}, "events": events}
 
@@ -581,9 +756,17 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
     full_name = str(payload.get("full_name", "")).strip()
     if not full_name:
         raise HTTPException(422, "full_name is required")
+    # assigned_teacher_user_id (picker) takes precedence over assigned_teacher_email
+    # (kept for SCH-002's bulk-upload CSV path, which only ever has an email column).
     assigned_teacher_user_id = None
+    teacher_id = payload.get("assigned_teacher_user_id")
     teacher_email = payload.get("assigned_teacher_email")
-    if teacher_email:
+    if teacher_id:
+        teacher = await db.get(User, UUID(str(teacher_id)))
+        if not teacher or teacher.role != "school_teacher" or (teacher.profile or {}).get("school_id") != str(school_id):
+            raise HTTPException(422, "assigned_teacher_user_id must be an existing Teacher at your own school")
+        assigned_teacher_user_id = teacher.id
+    elif teacher_email:
         teacher = await db.scalar(select(User).where(User.email == str(teacher_email).lower().strip(), User.role == "school_teacher"))
         if not teacher or (teacher.profile or {}).get("school_id") != str(school_id):
             raise HTTPException(422, "assigned_teacher_email must be an existing Teacher at your own school")
@@ -591,6 +774,7 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
     dob = payload.get("date_of_birth")
     student = SchoolStudent(
         school_id=school_id,
+        student_code=await unique_student_code(db, SchoolStudent.student_code),
         full_name=full_name,
         date_of_birth=date.fromisoformat(dob) if dob else None,
         grade_or_class=payload.get("grade_or_class"),
@@ -631,7 +815,16 @@ async def update_student(student_id: UUID, payload: dict, user: User = Depends(g
         student.grade_or_class = payload["grade_or_class"]
     if "date_of_birth" in payload:
         student.date_of_birth = date.fromisoformat(payload["date_of_birth"]) if payload["date_of_birth"] else None
-    if "assigned_teacher_email" in payload:
+    if "assigned_teacher_user_id" in payload:
+        teacher_id = payload["assigned_teacher_user_id"]
+        if teacher_id:
+            teacher = await db.get(User, UUID(str(teacher_id)))
+            if not teacher or teacher.role != "school_teacher" or (teacher.profile or {}).get("school_id") != str(school_id):
+                raise HTTPException(422, "assigned_teacher_user_id must be an existing Teacher at your own school")
+            student.assigned_teacher_user_id = teacher.id
+        else:
+            student.assigned_teacher_user_id = None
+    elif "assigned_teacher_email" in payload:
         teacher_email = payload["assigned_teacher_email"]
         if teacher_email:
             teacher = await db.scalar(select(User).where(User.email == str(teacher_email).lower().strip(), User.role == "school_teacher"))
@@ -684,7 +877,7 @@ async def list_activities(user: User = Depends(get_current_user), db: AsyncSessi
         raise HTTPException(403, "School Coordinator role required")
     school_id = _own_school_id(user)
     rows = (await db.scalars(select(SchoolActivity).where(SchoolActivity.school_id == school_id).order_by(SchoolActivity.scheduled_at.desc()))).all()
-    return [{"id": a.id, "title": a.title, "scheduled_at": a.scheduled_at} for a in rows]
+    return [{"id": a.id, "title": a.title, "scheduled_at": a.scheduled_at, "activity_type": a.activity_type} for a in rows]
 
 
 @router.post("/activities", status_code=201)
@@ -696,7 +889,13 @@ async def create_activity(payload: dict, user: User = Depends(get_current_user),
     scheduled_at = payload.get("scheduled_at")
     if not title or not scheduled_at:
         raise HTTPException(422, "title and scheduled_at are required")
-    activity = SchoolActivity(school_id=school_id, title=title, scheduled_at=datetime.fromisoformat(scheduled_at), created_by_user_id=user.id)
+    activity_type = payload.get("activity_type")
+    # DEC-SCOPE-017: optional entitlement-tracking category -- lets an Entitlements-tracked
+    # activity (career seminar, parent orientation, campus visit, ...) actually feed
+    # `GET /school/entitlements`'s usage counts; free-text activities keep working unset.
+    if activity_type and activity_type not in {"career_seminar", "career_awareness_session", "parent_orientation", "campus_visit"}:
+        raise HTTPException(422, "activity_type must be one of career_seminar, career_awareness_session, parent_orientation, campus_visit")
+    activity = SchoolActivity(school_id=school_id, title=title, scheduled_at=datetime.fromisoformat(scheduled_at), created_by_user_id=user.id, activity_type=activity_type)
     db.add(activity)
     await db.flush()
     db.add(AuditLog(user_id=user.id, action="school.activity_create", entity_type="school_activity", entity_id=str(activity.id), metadata_json={"school_id": str(school_id)}))
@@ -706,7 +905,7 @@ async def create_activity(payload: dict, user: User = Depends(get_current_user),
         body=f"{activity.title} is scheduled for {activity.scheduled_at.strftime('%d %b %Y, %H:%M')}.", action_url="/school/parent/dashboard",
     )
     await db.commit()
-    return {"id": activity.id, "title": activity.title, "scheduled_at": activity.scheduled_at}
+    return {"id": activity.id, "title": activity.title, "scheduled_at": activity.scheduled_at, "activity_type": activity.activity_type}
 
 
 @router.post("/activities/{activity_id}/attendance")
@@ -830,7 +1029,7 @@ async def bulk_upload_students(
             rejected += 1
             continue
         student = SchoolStudent(
-            school_id=school_id, full_name=full_name, date_of_birth=student_dob,
+            school_id=school_id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name=full_name, date_of_birth=student_dob,
             grade_or_class=(row.get("grade_or_class") or "").strip() or None,
             created_by_user_id=user.id, assigned_teacher_user_id=assigned_teacher_user_id,
         )
@@ -1036,6 +1235,162 @@ async def list_readable_psychometric_records(user: User = Depends(get_current_us
         return []
     rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id.in_(readable)).order_by(SchoolPsychometricRecord.created_at.desc()))).all()
     return [{"id": r.id, "school_student_id": r.school_student_id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at} for r in rows]
+
+
+# --- SCH-009: Test Preparation (IELTS/SAT) -----------------------------------------------
+# Resolved 2026-09-15 (`DEC-SCOPE-018`, closes `DEC-SCOPE-015` item 78) -- delivered by the
+# existing `academic_team` role, same "no Draft/Published gate" shape as SCH-004/005, not
+# SCH-006's formal-results gate.
+
+def _test_prep_out(r: SchoolTestPrepRecord) -> dict:
+    return {"id": r.id, "school_student_id": r.school_student_id, "test_type": r.test_type, "mock_scores": r.mock_scores, "target_score": r.target_score, "actual_score": r.actual_score, "status": r.status, "created_at": r.created_at}
+
+
+@router.post("/academic-team/test-prep-records", status_code=201)
+async def create_test_prep_record(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "academic_team":
+        raise HTTPException(403, "Academic Team role required")
+    student_id = payload.get("school_student_id")
+    if not student_id:
+        raise HTTPException(422, "school_student_id is required")
+    student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    test_type = payload.get("test_type")
+    if test_type not in {"ielts", "sat"}:
+        raise HTTPException(422, "test_type must be one of ielts, sat")
+    record = SchoolTestPrepRecord(school_student_id=student.id, academic_team_user_id=user.id, test_type=test_type, target_score=payload.get("target_score"))
+    db.add(record)
+    await db.flush()
+    db.add(AuditLog(user_id=user.id, action="school.test_prep_record_create", entity_type="school_test_prep_record", entity_id=str(record.id), metadata_json={"test_type": test_type}))
+    await _notify_student_parents(db, student, title=f"{test_type.upper()} preparation started for {student.full_name}", body=f"{student.full_name} has started {test_type.upper()} preparation.", action_url=f"/school/parent/children/{student.id}")
+    await db.commit()
+    return _test_prep_out(record)
+
+
+@router.patch("/academic-team/test-prep-records/{record_id}")
+async def update_test_prep_record(record_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "academic_team":
+        raise HTTPException(403, "Academic Team role required")
+    record = await db.get(SchoolTestPrepRecord, record_id)
+    if not record:
+        raise HTTPException(404, "Record not found")
+    await _student_in_portfolio(db, user, record.school_student_id)
+    became_completed = False
+    if "mock_scores" in payload:
+        record.mock_scores = payload["mock_scores"] or []
+    if "actual_score" in payload:
+        record.actual_score = payload["actual_score"]
+        if payload["actual_score"] and record.status != "completed":
+            record.status = "completed"
+            became_completed = True
+    db.add(AuditLog(user_id=user.id, action="school.test_prep_record_update", entity_type="school_test_prep_record", entity_id=str(record.id), metadata_json={}))
+    if became_completed:
+        student = await db.get(SchoolStudent, record.school_student_id)
+        if student is None:
+            raise HTTPException(404, "Student not found")
+        await _notify_student_parents(db, student, title=f"{record.test_type.upper()} result recorded for {student.full_name}", body=f"{student.full_name}'s {record.test_type.upper()} result is now available.", action_url=f"/school/parent/children/{student.id}")
+    await db.commit()
+    return _test_prep_out(record)
+
+
+@router.get("/academic-team/test-prep-records")
+async def list_academic_team_test_prep_records(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "academic_team":
+        raise HTTPException(403, "Academic Team role required")
+    portfolio = await _portfolio_school_ids(db, user)
+    if not portfolio:
+        return []
+    student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
+    rows = (await db.scalars(select(SchoolTestPrepRecord).where(SchoolTestPrepRecord.school_student_id.in_(student_ids)).order_by(SchoolTestPrepRecord.created_at.desc()))).all()
+    return [_test_prep_out(r) for r in rows]
+
+
+@router.get("/test-prep-records")
+async def list_readable_test_prep_records(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role not in {"school_coordinator", "school_principal", "school_teacher", "school_parent"}:
+        raise HTTPException(403, "School role required")
+    readable = await _readable_students(db, user)
+    if not readable:
+        return []
+    rows = (await db.scalars(select(SchoolTestPrepRecord).where(SchoolTestPrepRecord.school_student_id.in_(readable)).order_by(SchoolTestPrepRecord.created_at.desc()))).all()
+    return [_test_prep_out(r) for r in rows]
+
+
+# --- SCH-009: Foreign Language Classes ----------------------------------------------------
+
+def _language_out(r: SchoolLanguageRecord) -> dict:
+    return {"id": r.id, "school_student_id": r.school_student_id, "language": r.language, "level": r.level, "classes_attended": r.classes_attended, "assessment_score": r.assessment_score, "certification_status": r.certification_status, "created_at": r.created_at}
+
+
+@router.post("/academic-team/language-records", status_code=201)
+async def create_language_record(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "academic_team":
+        raise HTTPException(403, "Academic Team role required")
+    student_id = payload.get("school_student_id")
+    if not student_id:
+        raise HTTPException(422, "school_student_id is required")
+    student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    language = str(payload.get("language", "")).strip()
+    if not language:
+        raise HTTPException(422, "language is required")
+    record = SchoolLanguageRecord(school_student_id=student.id, academic_team_user_id=user.id, language=language, level=payload.get("level"))
+    db.add(record)
+    await db.flush()
+    db.add(AuditLog(user_id=user.id, action="school.language_record_create", entity_type="school_language_record", entity_id=str(record.id), metadata_json={"language": language}))
+    await _notify_student_parents(db, student, title=f"{language} classes started for {student.full_name}", body=f"{student.full_name} has started {language} classes.", action_url=f"/school/parent/children/{student.id}")
+    await db.commit()
+    return _language_out(record)
+
+
+@router.patch("/academic-team/language-records/{record_id}")
+async def update_language_record(record_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "academic_team":
+        raise HTTPException(403, "Academic Team role required")
+    record = await db.get(SchoolLanguageRecord, record_id)
+    if not record:
+        raise HTTPException(404, "Record not found")
+    await _student_in_portfolio(db, user, record.school_student_id)
+    became_certified = False
+    if "classes_attended" in payload:
+        record.classes_attended = int(payload["classes_attended"])
+    if "assessment_score" in payload:
+        record.assessment_score = payload["assessment_score"]
+    if "certification_status" in payload:
+        if payload["certification_status"] not in {"not_started", "in_progress", "certified"}:
+            raise HTTPException(422, "certification_status must be one of not_started, in_progress, certified")
+        if payload["certification_status"] == "certified" and record.certification_status != "certified":
+            became_certified = True
+        record.certification_status = payload["certification_status"]
+    db.add(AuditLog(user_id=user.id, action="school.language_record_update", entity_type="school_language_record", entity_id=str(record.id), metadata_json={}))
+    if became_certified:
+        student = await db.get(SchoolStudent, record.school_student_id)
+        if student is None:
+            raise HTTPException(404, "Student not found")
+        await _notify_student_parents(db, student, title=f"{record.language} certification earned by {student.full_name}", body=f"{student.full_name} has been certified in {record.language}.", action_url=f"/school/parent/children/{student.id}")
+    await db.commit()
+    return _language_out(record)
+
+
+@router.get("/academic-team/language-records")
+async def list_academic_team_language_records(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role != "academic_team":
+        raise HTTPException(403, "Academic Team role required")
+    portfolio = await _portfolio_school_ids(db, user)
+    if not portfolio:
+        return []
+    student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
+    rows = (await db.scalars(select(SchoolLanguageRecord).where(SchoolLanguageRecord.school_student_id.in_(student_ids)).order_by(SchoolLanguageRecord.created_at.desc()))).all()
+    return [_language_out(r) for r in rows]
+
+
+@router.get("/language-records")
+async def list_readable_language_records(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role not in {"school_coordinator", "school_principal", "school_teacher", "school_parent"}:
+        raise HTTPException(403, "School role required")
+    readable = await _readable_students(db, user)
+    if not readable:
+        return []
+    rows = (await db.scalars(select(SchoolLanguageRecord).where(SchoolLanguageRecord.school_student_id.in_(readable)).order_by(SchoolLanguageRecord.created_at.desc()))).all()
+    return [_language_out(r) for r in rows]
 
 
 # --- SCH-006: Academic Results (Draft -> Verified -> Published) -------------------------

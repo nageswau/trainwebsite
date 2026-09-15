@@ -1161,6 +1161,48 @@ Manager/School Partnership Manager's exact duties and overlap.
   Deadline modules) being confirmed first.
 - **Scope/status:** CONFIRMED_CURRENT, built as `SCH-008`
 
+#### PRD-SCH-013 — Test Preparation (IELTS/SAT) & Foreign Language Classes
+- **Source:** `DEC-SCOPE-018` (user picked "All of the above" — bridge + Test Prep + Language
+  — then "Reuse Academic Team," 2026-09-15)
+- **Actor:** Academic Team (`academic_team`, own school portfolio); secondary — Coordinator/
+  Principal/Teacher/Parent (read-only, own scope)
+- **Requirement:** Academic Team member starts/updates a Test Preparation record (IELTS/SAT,
+  mock scores, target/actual score) or a Foreign Language Classes record (language, level,
+  classes attended, certification status) for a portfolio student. Completion/certification
+  notifies the linked Parent(s). Surfaced in `SCH-007`'s overview and `SCH-008`'s timeline.
+- **Business rule:** Own school portfolio only, same mechanism as `SCH-004`/`005`
+  (`DEC-SCOPE-013`); no Draft/Verified/Published gate — that gate is `SCH-006`-specific.
+- **Open:** none — fully resolved and built.
+- **Scope/status:** CONFIRMED_CURRENT, built as `SCH-009`
+
+#### PRD-SCH-014 — School→Overseas bridge
+- **Source:** `DEC-SCOPE-018` (user picked "Overseas Admin/Counselor initiates it," 2026-09-15)
+- **Actor:** Overseas Admin, Counselor; secondary — School Coordinator/Principal/Parent
+  (read-only, via `SCH-007`'s `global_education` section and `SCH-008`'s timeline)
+- **Requirement:** Overseas Admin or Counselor looks a School student up by their Student ID
+  (`DEC-DATA-003`) and starts a real `OverseasApplication` for them (`school_student_id` set,
+  `student_id` null). The application then advances through the existing, unmodified
+  Overseas application/visa workflow.
+- **Business rule:** School Coordinator is explicitly denied this action — the one confirmed
+  asymmetry against the School Portal's usual Coordinator-writes-everything pattern. A bridged
+  application never appears in any Overseas-student-facing self-service view.
+- **Open:** none for the bridge itself — closes `PRD_OPEN_ITEMS.md` item 77's Overseas-progress
+  gap; Skills and Portfolio (the other two parts of item 77) remain open.
+- **Scope/status:** CONFIRMED_CURRENT, built as `SCH-010`
+
+#### PRD-SCH-015 — Partnership tier entitlements
+- **Source:** `DEC-SCOPE-017` (user resolved `CLIENT_QUESTIONS.md` item 9 directly in-session,
+  providing the brochure's own tier→service breakdown image, 2026-09-15)
+- **Actor:** School Coordinator, Principal (read-only, own institution); secondary — Overseas
+  Admin (sets/changes the tier)
+- **Requirement:** A School's tier (Bronze/Silver/Gold/Platinum, cumulative) determines its
+  included service list. Coordinator/Principal see each service with a real usage count where
+  a confirmed module produces one, and an explicit "not tracked" indicator for the rest.
+- **Business rule:** A tier's services are unlimited — never a numeric cap; never a fabricated
+  `0` for a service with no confirmed underlying module.
+- **Open:** none — fully resolved and built; closes `CLIENT_QUESTIONS.md` item 9.
+- **Scope/status:** CONFIRMED_CURRENT, built as `SCH-011`
+
 ## 8. Non-functional requirements (NFRs)
 
 **Rigor note:** several NFR figures below exist only in the superseded blueprint's own

@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
 from app.models import (
     School,
@@ -46,8 +47,8 @@ async def _school(db_session) -> dict:
     await db_session.flush()
     coordinator = await _user(db_session, role="school_coordinator", full_name="Coordinator", school_id=school.id, assigned_by=admin)
     teacher = await _user(db_session, role="school_teacher", full_name="Ms Teacher", school_id=school.id, assigned_by=coordinator)
-    student_a = SchoolStudent(school_id=school.id, full_name="Child A", grade_or_class="Grade 8", created_by_user_id=coordinator.id, assigned_teacher_user_id=teacher.id)
-    student_b = SchoolStudent(school_id=school.id, full_name="Child B", grade_or_class="Grade 9", created_by_user_id=coordinator.id)
+    student_a = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db_session, SchoolStudent.student_code), full_name="Child A", grade_or_class="Grade 8", created_by_user_id=coordinator.id, assigned_teacher_user_id=teacher.id)
+    student_b = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db_session, SchoolStudent.student_code), full_name="Child B", grade_or_class="Grade 9", created_by_user_id=coordinator.id)
     db_session.add_all([student_a, student_b])
     await db_session.flush()
     parent_a = await _user(db_session, role="school_parent", full_name="Parent of A", school_id=school.id, assigned_by=coordinator)

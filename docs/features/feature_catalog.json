@@ -2784,7 +2784,7 @@
     "moscow": "Should",
     "release": "Wave 4",
     "pre": "FND-002; SCH-003 (a School partner record and the acting account both exist, created per DEC-SCOPE-012's onboarding flow).",
-    "main": "Each role logs in and sees/acts on only their own institution's data, further scoped per role (Coordinator: whole institution write access; Teacher: assigned students only; Parent: own child(ren) only; Principal: whole institution read-only).",
+    "main": "Each role logs in and sees/acts on only their own institution's data, further scoped per role (Coordinator: whole institution write access; Teacher: assigned students only; Parent: own child(ren) only; Principal: whole institution read-only). Addendum 2026-09-15: assigning a Teacher to a student is a live picker (assigned_teacher_user_id), not a hand-typed email -- assigned_teacher_email is kept for SCH-002's bulk-upload path, id takes precedence when both are supplied.",
     "alt": "Bulk roster upload is a separate Feature ID (SCH-002). Explicitly excludes an academic results/marks module (DEC-SCOPE-010 part 2, PENDING) and whether Career Guidance/Psychometric/Counselling exist as buildable modules at all (DEC-ROLE-005 settled only who would manage that data, not whether it's in scope).",
     "err": "No role ever sees another institution's data, even via a direct record ID. Teacher/Parent additionally never see students outside their own assigned/child scope, even within the same institution.",
     "deps": [
@@ -2876,14 +2876,14 @@
     "pre": "FND-002. Overseas Admin's own division-management access (mirrors how Overseas Admin manages University partner records).",
     "main": "Overseas Admin creates School + seed Coordinator (active immediately) -> Coordinator invites/creates Principal/Teacher/Parent for the same institution (active immediately).",
     "alt": "Provisioning does not vary by School Partnership tier -- every school gets the same onboarding path regardless of commercial tier, unless a future decision says otherwise.",
-    "err": "An account the Coordinator creates is always scoped to the Coordinator's own school_id, server-derived, never client-supplied. A Coordinator cannot create accounts for a different institution even via a crafted request.",
+    "err": "An account the Coordinator creates is always scoped to the Coordinator's own school_id, server-derived, never client-supplied. A Coordinator cannot create accounts for a different institution even via a crafted request. Addendum 2026-09-15: a Coordinator can also never activate/deactivate another institution's account, or any school_coordinator account including their own.",
     "deps": [
       "FND-002"
     ],
     "ux": "Y",
     "api": "Y",
     "db": "Y",
-    "rbac": "Overseas Admin (create School + seed Coordinator, division-wide) / School Coordinator (invite/create Principal, Teacher, Parent -- own institution only)",
+    "rbac": "Overseas Admin (create School + seed Coordinator, division-wide) / School Coordinator (invite/create Principal, Teacher, Parent -- own institution only; may also activate/deactivate those same three accounts, added 2026-09-15)",
     "integ": "Invite/notification delivery (email, per NOT-001) for the three Coordinator-created accounts.",
     "sec": "Invite tokens must be single-use and scoped to one institution -- same class of concern as any other account-creation flow.",
     "a11y_resp": "Responsive.",
@@ -3133,6 +3133,136 @@
     "tests": "API, UI, Security",
     "cx": "S",
     "status": "COMPLETE (2026-09-15): GET /school/students/{id}/timeline in app/api/schools.py (no new tables); SchoolStudentTimeline.tsx rendered on /school/parent/children/[id] and /school/teacher/students/[id]; 7 pytest cases (test_sch_008_student_timeline.py), 1 Playwright case (sch-008-student-timeline.spec.ts), both passing live. Addendum, 2026-09-15 (later, same day): Coordinator and Principal own per-student pages added (/school/coordinator/students/[id], /school/principal/students/[id], both via the shared SchoolStudentDetailPanel.tsx, no backend change needed -- the endpoint's scope already covered them). Seed-data timestamp ordering corrected in app/seed.py and the live dev database (a demo/seed-data fix, not an application logic change -- see DEC-SCOPE-016 addendum). E2E case extended to also verify Coordinator and Principal reach the identical timeline through their own real UI entry points; full School-domain backend regression re-run: 58/58 passing."
+  },
+  {
+    "id": "SCH-009",
+    "module": "School",
+    "name": "Test Preparation (IELTS/SAT) & Foreign Language Classes",
+    "desc": "[New] Net-new build -- two content modules named in EVID-013's brochure, delivered by the existing academic_team role rather than a new one (DEC-SCOPE-018, user's explicit choice). Test Preparation tracks a student's IELTS/SAT prep (test type, mock scores, target/actual score, in_progress/completed status). Foreign Language Classes tracks language, level, classes attended, and not_started/in_progress/certified status. Neither has a Draft/Verified/Published gate -- that gate is SCH-006-specific (DEC-ROLE-007).",
+    "primary": "Academic Team (own school portfolio)",
+    "secondary": "Coordinator/Principal/Teacher/Parent (read-only, own-scope, via SCH-007's overview and SCH-008's timeline)",
+    "br": [
+      "BR-SCH-009"
+    ],
+    "prd": [
+      "PRD-SCH-013"
+    ],
+    "dec": [
+      "DEC-SCOPE-018",
+      "DEC-SCOPE-013"
+    ],
+    "scope": "CURRENT",
+    "priority": "P3",
+    "moscow": "Could",
+    "release": "Wave 4",
+    "pre": "SCH-004/005 (portfolio-scope helpers, academic_team staff already provisioned per DEC-SCOPE-014).",
+    "main": "Academic Team member starts a test-prep record or language-class record for a portfolio student -> records progress (mock/actual score, classes attended) -> marks completed/certified, which notifies the student's linked Parent(s).",
+    "alt": "Read-only cross-role access via GET /school/test-prep-records/language-records, same role set and _readable_students scoping as SCH-004's career records.",
+    "err": "An academic_team member outside the student's portfolio is denied (403), identical class to SCH-004-AC02/SCH-005-AC02. An invalid test_type (not ielts/sat) or certification_status is rejected (422).",
+    "deps": [
+      "SCH-004",
+      "SCH-005",
+      "SCH-007",
+      "SCH-008"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Academic Team (own portfolio) / Coordinator, Principal, Teacher, Parent (read-only, own scope) -- see RBAC_MATRIX.md 2.12 addendum",
+    "integration": "AuditLog on every create/update; _notify_student_parents on start and on completion/certification",
+    "security": "Service-delivery data about a minor, same class as SCH-004/005/006.",
+    "a11y": "Responsive, same form/table pattern as SCH-006's Results panel.",
+    "perf": "-",
+    "tests": "API, UI, Security",
+    "cx": "M",
+    "status": "COMPLETE (2026-09-15): full CRUD in app/api/schools.py (/academic-team/test-prep-records, /academic-team/language-records, plus read-only /test-prep-records//language-records), wired into SCH-007's overview (test_prep/foreign_language sections) and SCH-008's timeline (test_prep_started/completed, language_started/certified events). Frontend: SchoolTestPrepLanguagePanel.tsx on the Academic Team dashboard. Backend: 9 pytest cases (test_sch_009_test_prep_language.py). E2E: 1 Playwright case (sch-009-test-prep-language.spec.ts), passing live."
+  },
+  {
+    "id": "SCH-010",
+    "module": "School / Overseas",
+    "name": "School→Overseas bridge",
+    "desc": "[New] Net-new build -- links a School-affiliated student (SchoolStudent, no login per DEC-ROLE-004) to a real Overseas application. OverseasApplication.student_id is relaxed to nullable; a new nullable school_student_id FK is added, with the app-level invariant that exactly one of the two is always set. Overseas Admin or Counselor initiates it -- never School Coordinator (DEC-SCOPE-018, user's explicit choice), via a Student-ID lookup (DEC-DATA-003) rather than a raw internal-ID picker. The existing application status-advance and VisaCase endpoints work unchanged on a bridged application (both key off application_id/counselor_id, never User). Closes PRD_OPEN_ITEMS.md item 77's \"Overseas education progress\" gap.",
+    "primary": "Overseas Admin, Counselor",
+    "secondary": "School Coordinator/Principal/Parent (read-only, via SCH-007's new global_education section and SCH-008's timeline)",
+    "br": [
+      "BR-SCH-010"
+    ],
+    "prd": [
+      "PRD-SCH-014"
+    ],
+    "dec": [
+      "DEC-SCOPE-018",
+      "DEC-ROLE-004",
+      "DEC-DATA-003"
+    ],
+    "scope": "CURRENT",
+    "priority": "P3",
+    "moscow": "Could",
+    "release": "Wave 4",
+    "pre": "SCH-001 (student exists, has a student_code); a real University record exists.",
+    "main": "Overseas Admin/Counselor looks up a School student by Student ID -> selects a university/intake -> starts the application (status=\"enquiry\") -> advances it and opens a VisaCase through the existing, unmodified Overseas workflow endpoints.",
+    "alt": "A duplicate (same student + university, not withdrawn) is rejected (409).",
+    "err": "school_coordinator is explicitly denied (403) -- this is the one confirmed asymmetry against the School Portal's usual Coordinator-does-everything pattern. A bridged application never appears in any Overseas-student-centric self-service listing (GET /overseas/applications, agent/university-rep views) since those inner-join User on student_id, which a bridged row's NULL value never matches -- left deliberately untouched rather than retrofitted (11+ call sites).",
+    "deps": [
+      "SCH-001",
+      "SCH-007",
+      "SCH-008",
+      "DEC-DATA-003"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Overseas Admin, Counselor only -- explicit deny on School Coordinator -- see RBAC_MATRIX.md 2.12 addendum",
+    "integration": "AuditLog (school.overseas_application_link), ApplicationStatusHistory, _notify_student_parents on link",
+    "security": "Cross-division (School <-> Overseas) data link about a minor -- same class as SCH-007/009.",
+    "a11y": "Responsive, same form/table pattern as AdminSchoolStaffPanel.tsx.",
+    "perf": "-",
+    "tests": "API, UI, Security",
+    "cx": "M",
+    "status": "COMPLETE (2026-09-15): POST /overseas-admin/school-students/{id}/applications, GET /overseas-admin/school-students/lookup, GET /overseas-admin/school-applications in app/api/admin.py; SCH-007/008 extended with global_education. Frontend: AdminSchoolApplicationsPanel.tsx, wired into WorkflowPanel.tsx for Overseas Admin/Counselor's school-applications section. Backend: 8 pytest cases (test_sch_010_overseas_bridge.py). E2E: 1 Playwright case (sch-010-overseas-bridge.spec.ts), passing live."
+  },
+  {
+    "id": "SCH-011",
+    "module": "School",
+    "name": "Partnership tier entitlements",
+    "desc": "[New] Net-new build -- resolves CLIENT_QUESTIONS.md item 9 (School Partnership tiers, EVID-013), which was originally deferred to the real client; the user resolved it directly in-session instead, providing the brochure's own exact Bronze/Silver/Gold/Platinum tier-to-service breakdown image and confirming \"included = unlimited, count usage\" (never an invented numeric cap). A School's tier (nullable, set by Overseas Admin) determines a cumulative service list; GET /school/entitlements returns each service with a real usage count wherever a confirmed module produces one, and used: null (\"not tracked\") for the rest.",
+    "primary": "School Coordinator, Principal (read-only, own institution)",
+    "secondary": "Overseas Admin (sets/changes the tier)",
+    "br": [
+      "BR-SCH-011"
+    ],
+    "prd": [
+      "PRD-SCH-015"
+    ],
+    "dec": [
+      "DEC-SCOPE-017"
+    ],
+    "scope": "CURRENT",
+    "priority": "P3",
+    "moscow": "Could",
+    "release": "Wave 4",
+    "pre": "SCH-003 (School exists); tier set via create_school or the new PATCH /overseas-admin/schools/{id}.",
+    "main": "Overseas Admin sets a School's tier at creation (or later) -> Coordinator/Principal view /school/coordinator|principal/entitlements -> see the cumulative service list with real usage counts.",
+    "alt": "No tier set -> empty service list with an explanatory message, never a fabricated default tier.",
+    "err": "A service with no confirmed underlying module (soft skills, web designing, digital portfolio creation, internships, loan assistance, alumni network, parent help desk, scholarship assistance) always returns used: null, never 0 or an invented cap -- the one behavior this feature must never violate.",
+    "deps": [
+      "SCH-003",
+      "SCH-004",
+      "SCH-005",
+      "SCH-009",
+      "SCH-010"
+    ],
+    "ux": "Y",
+    "api": "Y",
+    "db": "Y",
+    "rbac": "Coordinator, Principal only (own institution) -- see RBAC_MATRIX.md 2.12 addendum",
+    "integration": "AuditLog (school.tier_update)",
+    "security": "-",
+    "a11y": "Responsive table, same pattern as SCH-006's Reports page.",
+    "perf": "-",
+    "tests": "API, UI",
+    "cx": "S",
+    "status": "COMPLETE (2026-09-15): GET /school/entitlements in app/api/schools.py (TIER_ORDER/TIER_SERVICES/_cumulative_services), PATCH /overseas-admin/schools/{id} and create_school's optional tier in app/api/admin.py. Frontend: SchoolEntitlementsPanel.tsx + Coordinator/Principal pages; AdminSchoolCreatePanel.tsx gained a tier <select>. Backend: 7 pytest cases (test_sch_011_entitlements.py). E2E: 1 Playwright case (sch-011-entitlements.spec.ts), passing live."
   },
   {
     "id": "NOT-001",

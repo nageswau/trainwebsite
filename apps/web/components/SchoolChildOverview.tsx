@@ -14,7 +14,7 @@ type Attended = { activity_id: string; title: string; scheduled_at: string; pres
 type Upcoming = { id: string; title: string; scheduled_at: string };
 
 export type ChildOverview = {
-  student: { id: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null; school_name: string | null; assigned_teacher_name: string | null };
+  student: { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null; school_name: string | null; assigned_teacher_name: string | null };
   career_guidance: { status: string; sessions: CareerRecord[] };
   counselling: { status: string; notes: CareerRecord[] };
   recommended_careers: CareerRecord[];
@@ -57,7 +57,7 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
   return (
     <>
       <div className="card">
-        <h2>{s.full_name}</h2>
+        <h2>{s.full_name} <span className="muted" style={{ fontSize: 14 }}>({s.student_code})</span></h2>
         <p><strong>School:</strong> {s.school_name || "-"}</p>
         <p><strong>Grade/Class:</strong> {s.grade_or_class || "-"}</p>
         <p><strong>Date of birth:</strong> {formatDate(s.date_of_birth)}</p>

@@ -43,6 +43,7 @@ from app.models import (
     ScholarshipApplication,
     School,
     SchoolStaffAssignment,
+    SchoolStudent,
     StudentDocument,
     Submission,
     SupportTicket,
@@ -1156,6 +1157,28 @@ async def _operations(db: AsyncSession, user: User, section: str):
                         ] or ["No agent commissions recorded yet."],
                     },
                 ),
+            )
+        if section == "school-applications" and user.role in {"counselor", "overseas_admin"}:
+            # SCH-010 (DEC-SCOPE-018): read-only summary of bridged School->Overseas
+            # applications -- creation itself is handled by AdminSchoolApplicationsPanel.tsx
+            # (POST /overseas-admin/school-students/{id}/applications), same "read via the
+            # generic portal section, write via a dedicated panel" split as `schools` above.
+            # Joined against SchoolStudent, never User, since a bridged row has no User.
+            stmt = (
+                select(OverseasApplication, SchoolStudent, University)
+                .join(SchoolStudent, SchoolStudent.id == OverseasApplication.school_student_id)
+                .join(University, University.id == OverseasApplication.university_id)
+                .where(OverseasApplication.school_student_id.is_not(None))
+                .order_by(OverseasApplication.created_at.desc())
+            )
+            if user.role == "counselor":
+                stmt = stmt.where(OverseasApplication.counselor_id == user.id)
+            rows = (await db.execute(stmt)).all()
+            return _payload(
+                "School-Linked Overseas Applications",
+                "Overseas applications started for School-affiliated students. Start a new one below by Student ID.",
+                (("id", "reference"), ("student", "Student"), ("student_code", "Student ID"), ("university", "University"), ("status", "Status")),
+                ({"id": a.id, "student": s.full_name, "student_code": s.student_code, "university": u.name, "status": a.status} for a, s, u in rows),
             )
     if user.role in {"it_admin", "overseas_admin", "super_admin"}:
         division = user.division if user.role != "super_admin" else None

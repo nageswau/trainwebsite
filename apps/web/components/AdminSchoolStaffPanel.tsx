@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type SchoolOption = { id: string; name: string };
@@ -20,6 +20,7 @@ export default function AdminSchoolStaffPanel() {
   const router = useRouter();
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
+  const [schoolQuery, setSchoolQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
 
@@ -59,11 +60,39 @@ export default function AdminSchoolStaffPanel() {
     setMessage({ text: `Account created for ${data.email} (default password: ChangeMe@12345 -- share it securely and ask them to change it).`, failed: false });
     formElement.reset();
     setSelectedSchools([]);
+    setSchoolQuery("");
     router.refresh();
   }
 
-  function toggleSchool(id: string) {
-    setSelectedSchools((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]));
+  const normalizedQuery = schoolQuery.trim().toLowerCase();
+  const visibleSchools = normalizedQuery ? schools.filter((s) => s.name.toLowerCase().includes(normalizedQuery)) : schools;
+
+  function handleSchoolSelectionChange(event: ChangeEvent<HTMLSelectElement>) {
+    // Filtering hides <option> elements rather than removing them from state, so a
+    // school selected before a search narrowed the list must not be silently dropped --
+    // keep whatever's already selected among the schools currently hidden by the search,
+    // and take the browser's own selection state only for the ones actually on screen.
+    const visibleIds = new Set(visibleSchools.map((s) => s.id));
+    const chosenFromVisible = Array.from(event.target.selectedOptions, (option) => option.value);
+    setSelectedSchools((current) => [...current.filter((id) => !visibleIds.has(id)), ...chosenFromVisible]);
+  }
+
+  function selectAll() {
+    setSelectedSchools(schools.map((s) => s.id));
+  }
+
+  function selectVisible() {
+    const visibleIds = visibleSchools.map((s) => s.id);
+    setSelectedSchools((current) => Array.from(new Set([...current, ...visibleIds])));
+  }
+
+  function clearVisible() {
+    const visibleIds = new Set(visibleSchools.map((s) => s.id));
+    setSelectedSchools((current) => current.filter((id) => !visibleIds.has(id)));
+  }
+
+  function clearAll() {
+    setSelectedSchools([]);
   }
 
   return (
@@ -88,20 +117,46 @@ export default function AdminSchoolStaffPanel() {
           <input id="staff-email" name="email" type="email" required />
         </div>
         <div className="field full">
-          <span>School portfolio</span>
+          <label htmlFor="staff-schools">School portfolio {selectedSchools.length > 0 && <span className="muted">({selectedSchools.length} selected)</span>}</label>
           {schools.length === 0 ? (
             <p className="muted" style={{ fontSize: 13 }}>No partner schools yet -- create one first.</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {schools.map((s) => (
-                <label key={s.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input type="checkbox" checked={selectedSchools.includes(s.id)} onChange={() => toggleSchool(s.id)} />
-                  {s.name}
-                </label>
-              ))}
-            </div>
+            <>
+              <input
+                type="search"
+                className="search"
+                placeholder="Search schools…"
+                value={schoolQuery}
+                onChange={(event) => setSchoolQuery(event.target.value)}
+                style={{ marginBottom: 8 }}
+              />
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                <button type="button" className="btn ghost small" onClick={selectAll}>Select all ({schools.length})</button>
+                <button type="button" className="btn ghost small" onClick={selectVisible} disabled={visibleSchools.length === 0}>
+                  Select visible {normalizedQuery ? `(${visibleSchools.length})` : ""}
+                </button>
+                <button type="button" className="btn ghost small" onClick={clearVisible} disabled={visibleSchools.length === 0}>Clear visible</button>
+                <button type="button" className="btn ghost small" onClick={clearAll} disabled={selectedSchools.length === 0}>Clear all</button>
+              </div>
+              {visibleSchools.length === 0 ? (
+                <p className="muted" style={{ fontSize: 13 }}>No schools match &quot;{schoolQuery}&quot;.</p>
+              ) : (
+                <select
+                  id="staff-schools"
+                  className="select"
+                  multiple
+                  size={Math.min(visibleSchools.length, 8)}
+                  value={selectedSchools}
+                  onChange={handleSchoolSelectionChange}
+                >
+                  {visibleSchools.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              )}
+            </>
           )}
-          <span className="muted" style={{ fontSize: 12 }}>A portfolio can be left empty and filled in later, but the account can&apos;t act on any student until at least one school is assigned.</span>
+          <span className="muted" style={{ fontSize: 12 }}>Hold Ctrl (Windows) or Cmd (Mac) to select more than one. A portfolio can be left empty and filled in later, but the account can&apos;t act on any student until at least one school is assigned.</span>
         </div>
         <button className="btn" disabled={busy}>{busy ? "Creating…" : "Create account"}</button>
       </form>

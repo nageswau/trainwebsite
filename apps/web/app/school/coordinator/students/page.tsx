@@ -4,7 +4,7 @@ import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-type Student = { id: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null; assigned_teacher_user_id: string | null; pending_parent_email: string | null };
+type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null; assigned_teacher_user_id: string | null; pending_parent_email: string | null };
 
 // SCH-001: own-institution student roster, add/edit one at a time, link a parent.
 export default async function SchoolCoordinatorStudentsPage() {

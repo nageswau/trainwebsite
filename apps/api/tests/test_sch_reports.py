@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
 from app.models import (
     School,
@@ -77,9 +78,9 @@ async def test_report_figures_match_real_seeded_data(client, db_session):
     ctx = await _create_school_with_roles(db_session)
     school = ctx["school"]
 
-    s1 = SchoolStudent(school_id=school.id, full_name="Student One", grade_or_class="Grade 5", created_by_user_id=ctx["school_coordinator"].id, assigned_teacher_user_id=ctx["school_teacher"].id)
-    s2 = SchoolStudent(school_id=school.id, full_name="Student Two", grade_or_class="Grade 5", created_by_user_id=ctx["school_coordinator"].id)
-    s3 = SchoolStudent(school_id=school.id, full_name="Student Three", grade_or_class="Grade 6", created_by_user_id=ctx["school_coordinator"].id)
+    s1 = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db_session, SchoolStudent.student_code), full_name="Student One", grade_or_class="Grade 5", created_by_user_id=ctx["school_coordinator"].id, assigned_teacher_user_id=ctx["school_teacher"].id)
+    s2 = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db_session, SchoolStudent.student_code), full_name="Student Two", grade_or_class="Grade 5", created_by_user_id=ctx["school_coordinator"].id)
+    s3 = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db_session, SchoolStudent.student_code), full_name="Student Three", grade_or_class="Grade 6", created_by_user_id=ctx["school_coordinator"].id)
     db_session.add_all([s1, s2, s3])
     await db_session.flush()
     db_session.add(SchoolParentLink(parent_user_id=ctx["school_parent"].id, school_student_id=s1.id, linked_by_user_id=ctx["school_coordinator"].id))
@@ -142,7 +143,7 @@ async def test_a_second_schools_data_never_leaks_into_this_report(client, db_ses
     ctx_a = await _create_school_with_roles(db_session)
     ctx_b = await _create_school_with_roles(db_session)
 
-    student_b = SchoolStudent(school_id=ctx_b["school"].id, full_name="Other School Student", grade_or_class="Grade 9", created_by_user_id=ctx_b["school_coordinator"].id)
+    student_b = SchoolStudent(school_id=ctx_b["school"].id, student_code=await unique_student_code(db_session, SchoolStudent.student_code), full_name="Other School Student", grade_or_class="Grade 9", created_by_user_id=ctx_b["school_coordinator"].id)
     db_session.add(student_b)
     await db_session.commit()
 

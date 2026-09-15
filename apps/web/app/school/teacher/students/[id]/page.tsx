@@ -4,7 +4,7 @@ import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-type Student = { id: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
+type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
 
 // SCH-001: one assigned student's detail, read-only. Same assigned-scope deny as the
 // dashboard, verified server-side even via this direct record ID (SCH-001-AC03).

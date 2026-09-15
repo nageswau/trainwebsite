@@ -4,7 +4,7 @@ import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-type Student = { id: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
+type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
 type NotificationItem = { id: string; title: string; body: string; read: boolean; action_url: string | null; created_at: string };
 
 // SCH-001 + SCH-007: a Parent's view of their own child(ren) -- own institution AND own
@@ -50,7 +50,7 @@ export default async function SchoolParentDashboardPage() {
             const o = overviews[i];
             return (
               <div className="card" key={c.id} data-testid={`child-card-${c.id}`}>
-                <h2>{c.full_name}</h2>
+                <h2>{c.full_name} <span className="muted" style={{ fontSize: 14 }}>({c.student_code})</span></h2>
                 <p><strong>Grade/Class:</strong> {c.grade_or_class || "-"}</p>
                 <p><strong>Date of birth:</strong> {formatDate(c.date_of_birth)}</p>
                 {o ? (

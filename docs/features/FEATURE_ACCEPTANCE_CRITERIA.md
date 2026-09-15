@@ -471,7 +471,29 @@ Generated per feature, ID format `<FEATURE-ID>-AC##`. Derived directly from each
 - **SCH-008-AC01:** Given a Parent linked to a child (or a Teacher/Coordinator/Principal within their own `SCH-001` scope), when they open that student's timeline, then they see every event already recorded across `SCH-001`/`004`/`005`/`006` for that student, in real chronological order (by the event's own date — `scheduled_at` for activities, `published_at` for results, `created_at`/`updated_at` for everything else), never a fabricated monthly cadence.
 - **SCH-008-AC02:** RBAC — a Parent opening any student they are not linked to (even at the same school, even via direct URL) is denied at the API layer (403), identical to `SCH-007-AC02`; Teacher/Coordinator/Principal get their own `SCH-001-AC02`/`AC03` scope, no wider; the three specialized service-delivery roles have no access to this endpoint at all.
 - **SCH-008-AC03:** A Draft or Verified result never appears on the timeline (`SCH-006-AC02` carried over).
-- **SCH-008-AC04:** No event category beyond profile/career/psychometric/academic/activity is shown — Skills, Portfolio, Overseas progress, Foreign Language, or Test-prep stages are never fabricated, since no confirmed module produces them (`DEC-SCOPE-016`).
+- **SCH-008-AC04:** No event category beyond profile/career/psychometric/academic/activity is shown — Skills, Portfolio, Overseas progress, Foreign Language, or Test-prep stages are never fabricated, since no confirmed module produces them (`DEC-SCOPE-016`). **Superseded in part 2026-09-15 (`DEC-SCOPE-018`):** Test-prep, Foreign Language, and Overseas/global-education events are now confirmed and shown (`SCH-009`/`SCH-010`) — Skills and Portfolio remain unconfirmed and still never appear.
+
+## SCH-009 — Test Preparation (IELTS/SAT) & Foreign Language Classes
+
+- **SCH-009-AC01:** Given an `academic_team` member with a school in their portfolio, when they start a Test Preparation record (`ielts`/`sat`, optional target score) or a Foreign Language Classes record (language, optional level) for a portfolio student, then the record is created (`in_progress`/`not_started`) and the student's linked Parent(s) are notified.
+- **SCH-009-AC02:** RBAC — an `academic_team` member acting on a student outside their own school portfolio, even via direct record ID, is denied (403), identical class to `SCH-004-AC02`/`SCH-005-AC02`; no role other than `academic_team` can create or edit either record type.
+- **SCH-009-AC03:** Recording an `actual_score` moves a Test Prep record to `completed`; setting `certification_status` to `certified` on a Language record moves it there — both notify the linked Parent(s) again, and an invalid `test_type`/`certification_status` value is rejected (422).
+- **SCH-009-AC04:** Coordinator/Principal/Teacher/Parent read the same records read-only, scoped identically to `SCH-004`'s career records (`_readable_students`); `SCH-007`'s overview and `SCH-008`'s timeline both reflect `test_prep`/`foreign_language` status and events.
+
+## SCH-010 — School→Overseas bridge
+
+- **SCH-010-AC01:** Given a School student's Student ID (`DEC-DATA-003`), when an Overseas Admin or Counselor looks it up and starts an application (university + intake), then a new `OverseasApplication` is created with `student_id=NULL`, `school_student_id` set to the resolved student, `status="enquiry"`, and the linked Parent(s) are notified — **`school_coordinator` is denied this action (403)**, the one confirmed asymmetry against the School Portal's usual Coordinator-writes-everything pattern.
+- **SCH-010-AC02:** A duplicate bridge (same student + university, not withdrawn) is rejected (409).
+- **SCH-010-AC03:** The existing application status-advance (`POST /workflows/overseas/applications/{id}/advance`) and `VisaCase` creation endpoints work unchanged on a bridged application — both key off `application_id`/`counselor_id`, never `User`.
+- **SCH-010-AC04:** A bridged application (`student_id IS NULL`) never appears in any Overseas-student-centric self-service listing (`GET /workflows/overseas/applications`, agent/university-rep/commission views) — those inner-join `User` on `student_id`, which a bridged row never matches; this is verified, not merely assumed.
+- **SCH-010-AC05:** `SCH-007`'s overview gains a `global_education` section (`status: "linked"|"not_started"`, linked applications with university name/status/visa status) and `SCH-008`'s timeline gains `application_linked`/`visa_status` events, for Coordinator/Principal/Parent within their existing own-scope rules.
+
+## SCH-011 — Partnership tier entitlements
+
+- **SCH-011-AC01:** Given a School with a `tier` set (`bronze`/`silver`/`gold`/`platinum`), when a Coordinator or Principal opens `GET /school/entitlements`, then they see the exact cumulative service list for that tier (each tier adds only what the brochure's own image shows over the previous one) — no other role may call this endpoint (403).
+- **SCH-011-AC02:** Every returned service has `used` equal to a real count from a confirmed module (psychometric assessments, counselling notes, test-prep records by type, language-class records, bridged applications/visa cases, tagged activities, staff-assignment existence) wherever one exists, and `used: null` ("not tracked") for every service with no confirmed module — never a fabricated `0` and never an invented numeric cap, since a tier's services are unlimited by the user's own explicit confirmation.
+- **SCH-011-AC03:** A School with no tier set returns an empty `services` list with `tier: null`, never a fabricated default tier.
+- **SCH-011-AC04:** Usage counts are strictly scoped to the acting Coordinator/Principal's own institution — another institution's activity never contributes to the count, even at the same partnership tier.
 
 ## NOT-001 — Email notifications
 

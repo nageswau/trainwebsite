@@ -11,7 +11,7 @@ import { test, expect } from "@playwright/test";
 
 test("overseas admin provisions specialized staff, they deliver services, and school-side roles see a read-only summary (SCH-004/005/006)", async ({ page }) => {
   // The shared dev DB accumulates schools/staff across every prior test run with no
-  // cleanup (RAID.md I-06) -- the Admin's School portfolio checkbox list has grown to
+  // cleanup (RAID.md I-06) -- the Admin's School portfolio dropdown has grown to
   // hundreds of entries, which slows each render enough to need generous timeouts here.
   test.setTimeout(120_000);
   const unique = Date.now();
@@ -46,7 +46,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
     await page.selectOption("#staff-role", role);
     await page.fill("#staff-name", name);
     await page.fill("#staff-email", email);
-    await page.getByLabel(schoolName).check();
+    await page.selectOption("#staff-schools", { label: schoolName });
     await page.click('button:has-text("Create account")');
     await expect(page.getByText(/Account created for/)).toBeVisible({ timeout: 20_000 });
   }
@@ -80,7 +80,10 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/academic-team/dashboard");
 
-  await expect(page.getByRole("option", { name: /E2E Service Student/ })).toHaveCount(1);
+  // Scoped to this specific select -- SCH-009 added its own Test Prep/Language student
+  // pickers to the same Academic Team dashboard, so an unscoped option lookup now matches
+  // this same option label across all three selects.
+  await expect(page.locator("#result-student").getByRole("option", { name: /E2E Service Student/ })).toHaveCount(1);
   await page.selectOption("#result-student", { label: `E2E Service Student — ${schoolName}` });
   await page.fill("#result-year", "2026");
   await page.fill("#result-term", "Term 1");
@@ -180,4 +183,111 @@ test("a newly provisioned specialized staff account with an empty portfolio can'
   await page.waitForURL("**/school/career-counselor/dashboard");
 
   await expect(page.getByText(/No students in your portfolio yet/)).toBeVisible();
+});
+
+test("the School portfolio search narrows the dropdown without losing a selection made before searching", async ({ page }) => {
+  test.setTimeout(60_000);
+  const unique = Date.now();
+  const alphaName = `E2E Search Alpha School ${unique}`;
+  const betaName = `E2E Search Beta School ${unique}`;
+  const staffEmail = `sch456-e2e-search-${unique}@example.local`;
+
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", "overseasadmin@edusphere.local");
+  await page.fill("#login-password", "Demo@123");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/overseas/admin/dashboard");
+
+  for (const name of [alphaName, betaName]) {
+    await page.goto("/overseas/admin/schools");
+    await page.fill("#school-name", name);
+    await page.fill("#school-coordinator-name", "E2E Search Coordinator");
+    await page.fill("#school-coordinator-email", `sch456-e2e-search-coord-${unique}-${name === alphaName ? "a" : "b"}@example.local`);
+    await page.click('button:has-text("Create school + seed Coordinator")');
+    await expect(page.getByText(/School created\./)).toBeVisible();
+  }
+
+  await page.goto("/overseas/admin/school-staff");
+  await page.selectOption("#staff-role", "academic_team");
+  await page.fill("#staff-name", "E2E Search Staff");
+  await page.fill("#staff-email", staffEmail);
+
+  // Search narrows the list to Alpha only, select it.
+  await page.fill('input[placeholder="Search schools…"]', "Search Alpha");
+  await expect(page.locator("#staff-schools option")).toHaveCount(1);
+  await page.selectOption("#staff-schools", { label: alphaName });
+  await expect(page.getByText("(1 selected)")).toBeVisible();
+
+  // Clearing the search brings Beta back into view -- Alpha's selection (now hidden
+  // during the search above) must not have been silently dropped.
+  await page.fill('input[placeholder="Search schools…"]', "");
+  await expect(page.getByText("(1 selected)")).toBeVisible();
+
+  // Search again and add Beta -- both selections must now be counted.
+  await page.fill('input[placeholder="Search schools…"]', "Search Beta");
+  await page.selectOption("#staff-schools", { label: betaName });
+  await expect(page.getByText("(2 selected)")).toBeVisible();
+
+  await page.click('button:has-text("Create account")');
+  await expect(page.getByText(/Account created for/)).toBeVisible({ timeout: 20_000 });
+
+  const staffList = await (await page.request.get("/api/v1/overseas-admin/school-staff")).json();
+  const created = staffList.find((s: { email: string }) => s.email === staffEmail);
+  expect(created).toBeTruthy();
+  expect(created.school_ids).toHaveLength(2);
+});
+
+test("Select all / Select visible / Clear visible / Clear all act on the School portfolio picker as expected", async ({ page }) => {
+  test.setTimeout(60_000);
+  const unique = Date.now();
+  const alphaName = `E2E Bulk Alpha School ${unique}`;
+  const betaName = `E2E Bulk Beta School ${unique}`;
+
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", "overseasadmin@edusphere.local");
+  await page.fill("#login-password", "Demo@123");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/overseas/admin/dashboard");
+
+  for (const name of [alphaName, betaName]) {
+    await page.goto("/overseas/admin/schools");
+    await page.fill("#school-name", name);
+    await page.fill("#school-coordinator-name", "E2E Bulk Coordinator");
+    await page.fill("#school-coordinator-email", `sch456-e2e-bulk-coord-${unique}-${name === alphaName ? "a" : "b"}@example.local`);
+    await page.click('button:has-text("Create school + seed Coordinator")');
+    await expect(page.getByText(/School created\./)).toBeVisible();
+  }
+
+  await page.goto("/overseas/admin/school-staff");
+  const selectAllButton = page.getByRole("button", { name: /^Select all \(\d+\)$/ });
+  const totalCount = Number((await selectAllButton.textContent())?.match(/\((\d+)\)/)?.[1]);
+  expect(totalCount).toBeGreaterThan(2);
+
+  // Select all -> every school, including ones never touched by search.
+  await selectAllButton.click();
+  await expect(page.getByText(`(${totalCount} selected)`)).toBeVisible();
+
+  // Clear all -> back to nothing selected (no "(N selected)" badge at all).
+  await page.getByRole("button", { name: "Clear all" }).click();
+  await expect(page.getByText(/\(\d+ selected\)/)).toHaveCount(0);
+
+  // Select visible, scoped to a search, only adds the currently-filtered schools.
+  await page.fill('input[placeholder="Search schools…"]', "Bulk Alpha");
+  await page.getByRole("button", { name: /^Select visible/ }).click();
+  await expect(page.getByText("(1 selected)")).toBeVisible();
+
+  // Selecting visible again under a *different* search adds to the existing selection,
+  // it does not replace it.
+  await page.fill('input[placeholder="Search schools…"]', "Bulk Beta");
+  await page.getByRole("button", { name: /^Select visible/ }).click();
+  await expect(page.getByText("(2 selected)")).toBeVisible();
+
+  // Clear visible only removes what's currently filtered (Beta) -- Alpha's selection,
+  // hidden right now by the same search, must survive.
+  await page.getByRole("button", { name: "Clear visible" }).click();
+  await expect(page.getByText("(1 selected)")).toBeVisible();
+
+  // Clearing the search brings Alpha back into view -- its selection must still hold.
+  await page.fill('input[placeholder="Search schools…"]', "");
+  await expect(page.getByText("(1 selected)")).toBeVisible();
 });

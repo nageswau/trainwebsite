@@ -199,13 +199,24 @@ descriptive assignment answers was discussed informally. **Question:** should th
 an exact business rule (threshold %, algorithm — e.g. cosine similarity over keyword sets — partial-
 credit behavior below threshold), or does it remain trainer-reviewed only for now?
 
-### 5. Business-facing unique Student/Agent ID format
+### 5. ~~Business-facing unique Student/Agent ID format~~ — RESOLVED 2026-09-15
 
 **(D-09)** A short (≤10 alphanumeric characters suggested), searchable, memorable ID is requested,
 separate from the existing 16-character technical UID (this also closes part of `DEC-WF-002`'s
-still-open ID-visibility question). **Question:** confirm the exact format (length, character set,
-prefix convention e.g. by division/course) and whether it applies to students only or also to agents
-and other operational identities.
+still-open ID-visibility question).
+
+**Resolution:** User confirmed directly, in-session: **8-character alphanumeric**, applies to **all
+students** (School-affiliated `SchoolStudent` rows, and `User` rows with role `it_student`/
+`overseas_student`) — **not** agents or other operational identities, narrowing the original
+question's broader scope. Exact character set/prefix convention was left to implementation: built as
+uppercase hex (`secrets.token_hex(4).upper()`), reusing this codebase's own existing short-code
+convention (`enrollment_code`/`certificate_no`) rather than inventing a new alphabet — hex naturally
+excludes the commonly-confused I/O/L letters, serving the original "memorable/searchable" intent.
+Per-table uniqueness (own `users.student_code` / `school_students.student_code` constraint each),
+not a single cross-domain namespace — the two student populations are never compared side by side.
+See `DEC-DATA-003` for the formal decision entry.
+
+**Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-15.
 
 ### 6. ~~School/Institution Portal access model~~ — RESOLVED 2026-09-12
 
@@ -234,25 +245,26 @@ flow with per-university backend eligibility screening — refining `DEC-WF-001`
 it. No specific question is required unless the client wants to cap the number of concurrent
 university selections per application (none was stated).
 
-### 9. School Partnership tiers (`EVID-013`) → software mapping — still genuinely open
+### 9. School Partnership tiers (`EVID-013`) → software mapping — RESOLVED
 
-**(New, from the marketing brochure)** `EVID-013` describes a Bronze/Silver/Gold/Platinum "School
+**RESOLVED 2026-09-15 (`DEC-SCOPE-017`).** `EVID-013` describes a Bronze/Silver/Gold/Platinum "School
 Partnership Model" with different service bundles per tier (career seminars, psychometric testing,
-IELTS/SAT coaching, dedicated counselor, campus visits, etc.). **Question, explicitly deferred to the
-real client rather than decided in-session:** should a school's portal access/features vary by which
-partnership tier they've purchased, or is this purely an offline sales/marketing construct with no
-platform implications? No Feature ID, RBAC entry, or School-Portal design should assume either
-answer until the client responds.
+IELTS/SAT coaching, dedicated counselor, campus visits, etc.). This was originally deferred to the
+real client; the user instead resolved it directly in-session, providing the exact cumulative
+tier→service breakdown from the brochure's own image and confirming the intended platform semantics:
+a tier's services are **unlimited, entitlement-tracked by real usage** (never an invented numeric
+cap), read-only for the School Coordinator/Principal via a new `GET /school/entitlements` (`SCH-011`).
+See `DEC-SCOPE-017` for the full resolution and the per-service usage-source mapping.
 
 ---
 
-**Note:** Items 1, 2, and 6 are now resolved (`DEC-SCOPE-001` re-resolved, `DEC-ROLE-003`,
-`DEC-SCOPE-009` — see `PRODUCT_DECISION_REGISTER.md` Group 12). Items 3-5, 7, and 8 remain open
-enhancement questions to already-approved feature scope and do not block already-scheduled Wave 1-4
-work that doesn't touch them, but should not be built ahead of an explicit answer. Item 9 (School
-Partnership tiers) is explicitly deferred to the real client, not decided in-session, and stays
-open. None of items 1-9 have been through `prompts/03_DECISION_REGISTER_AND_CLIENT_QUESTIONS.md`'s
-formal Decision ID assignment ceremony beyond the ad hoc IDs already cross-referenced above.
+**Note:** Items 1, 2, 6, and 9 are now resolved (`DEC-SCOPE-001` re-resolved, `DEC-ROLE-003`,
+`DEC-SCOPE-009`, `DEC-SCOPE-017` — see `PRODUCT_DECISION_REGISTER.md` Group 12 and `DEC-SCOPE-017`).
+Items 3-5, 7, and 8 remain open enhancement questions to already-approved feature scope and do not
+block already-scheduled Wave 1-4 work that doesn't touch them, but should not be built ahead of an
+explicit answer. None of items 1-9 have been through
+`prompts/03_DECISION_REGISTER_AND_CLIENT_QUESTIONS.md`'s formal Decision ID assignment ceremony
+beyond the ad hoc IDs already cross-referenced above.
 
 ---
 

@@ -42,9 +42,15 @@ test("a trainer sees the ticket in their division queue, even unassigned, and re
   await loginAs(page, "trainer@edusphere.local", "Demo@123", "/it/trainer/dashboard");
   await page.goto("/it/trainer/support");
 
-  const row = page.locator("tr").filter({ hasText: subject });
+  // /it/trainer/support renders both a generic read-only "Support Tickets" overview
+  // table and the actionable SupportTicketQueuePanel table below it -- both show the
+  // same ticket, so an unscoped `tr` locator matches one row per table. Scope to the
+  // actionable panel specifically (same pattern as adm-005-enrollment-review.spec.ts's
+  // "Review enrolments" panel).
+  const panel = page.locator(".action-card", { has: page.getByRole("heading", { name: "Support tickets", level: 3 }) });
+  const row = panel.locator("tr", { hasText: subject });
   await expect(row).toBeVisible();
-  await expect(row.getByText("Unassigned")).toBeVisible();
+  await expect(row.getByRole("cell", { name: "Unassigned" })).toBeVisible();
 
   await row.getByLabel("Resolution note").fill("Checked and fixed the batch access issue.");
   await row.getByRole("button", { name: "Resolve" }).click();

@@ -6,6 +6,7 @@ from pathlib import Path
 from sqlalchemy import select
 
 from app.core.database import SessionLocal, engine
+from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
 from app.models import *
 
@@ -34,13 +35,15 @@ UNIVERSITIES = [
     ("usa", "arizona-state-university", "Arizona State University", "Tempe"),
     ("ireland", "university-college-dublin", "University College Dublin", "Dublin"),
     ("netherlands", "tu-delft", "Delft University of Technology", "Delft"),
+    ("singapore", "national-university-of-singapore", "National University of Singapore", "Singapore"),
 ]
 
 
 async def user(db, email, name, role, division):
     x = await db.scalar(select(User).where(User.email == email))
     if not x:
-        x = User(email=email, password_hash=hash_password(PASSWORD), full_name=name, role=role, division=division, profile={"demo": True})
+        student_code = await unique_student_code(db, User.student_code) if role in ("it_student", "overseas_student") else None
+        x = User(email=email, password_hash=hash_password(PASSWORD), full_name=name, role=role, division=division, student_code=student_code, profile={"demo": True})
         db.add(x)
         await db.flush()
     return x
@@ -609,7 +612,10 @@ async def main():
         # academic_team account could never demonstrate a Published result here.
         school = await db.scalar(select(School).where(School.name == "Sunrise Public School"))
         if not school:
-            school = School(name="Sunrise Public School", city="Hyderabad", state="Telangana", created_by_user_id=us["overseas_admin"].id)
+            school = School(
+                name="Sunrise Public School", city="Hyderabad", state="Telangana", created_by_user_id=us["overseas_admin"].id,
+                tier="platinum", tier_valid_until=date.today() + timedelta(days=365),
+            )
             db.add(school)
             await db.flush()
 
@@ -649,11 +655,11 @@ async def main():
             # the same insert-time minute (found and corrected 2026-09-15, DEC-SCOPE-016).
             journey_base = datetime.now(UTC)
             roster_created_at = journey_base - timedelta(days=45)
-            student_a = SchoolStudent(school_id=school.id, full_name="Aarav Mehta", date_of_birth=date(2015, 4, 12), grade_or_class="Grade 5", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id, created_at=roster_created_at)
-            student_b = SchoolStudent(school_id=school.id, full_name="Isha Mehta", date_of_birth=date(2017, 9, 3), grade_or_class="Grade 3", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id, created_at=roster_created_at)
-            student_c = SchoolStudent(school_id=school.id, full_name="Kabir Nair", date_of_birth=date(2016, 1, 20), grade_or_class="Grade 4", created_by_user_id=school_coordinator.id, created_at=roster_created_at)
-            student_d = SchoolStudent(school_id=school.id, full_name="Priya Shah", date_of_birth=date(2015, 11, 8), grade_or_class="Grade 5", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id, created_at=roster_created_at)
-            student_e = SchoolStudent(school_id=school.id, full_name="Rohan Gupta", date_of_birth=date(2012, 6, 22), grade_or_class="Grade 8", created_by_user_id=school_coordinator.id, created_at=roster_created_at)
+            student_a = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Aarav Mehta", date_of_birth=date(2015, 4, 12), grade_or_class="Grade 5", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id, created_at=roster_created_at)
+            student_b = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Isha Mehta", date_of_birth=date(2017, 9, 3), grade_or_class="Grade 3", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id, created_at=roster_created_at)
+            student_c = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Kabir Nair", date_of_birth=date(2016, 1, 20), grade_or_class="Grade 4", created_by_user_id=school_coordinator.id, created_at=roster_created_at)
+            student_d = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Priya Shah", date_of_birth=date(2015, 11, 8), grade_or_class="Grade 5", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id, created_at=roster_created_at)
+            student_e = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Rohan Gupta", date_of_birth=date(2012, 6, 22), grade_or_class="Grade 8", created_by_user_id=school_coordinator.id, created_at=roster_created_at)
             db.add_all([student_a, student_b, student_c, student_d, student_e])
             await db.flush()
             db.add_all(
@@ -728,6 +734,66 @@ async def main():
                     SchoolPsychometricRecord(school_student_id=student_d.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Aptitude Test", status="assigned", created_at=journey_base - timedelta(days=6)),
                 ]
             )
+
+        # DEC-SCOPE-017/018 entitlements demo data -- backfilled unconditionally (not only
+        # inside "if not school:" above) so an already-seeded dev database also gets it, same
+        # backfill pattern already used for Country.interview_prep earlier in this function.
+        # Every tracked entitlement service gets a real, non-zero usage count; every
+        # deliberately-untracked service (soft skills, web designing, digital portfolio
+        # creation, internships, loan assistance, alumni network, parent help desk,
+        # scholarship assistance) is left alone -- it has no seed data because it has no
+        # confirmed module, not because seeding was skipped.
+        academic1 = await user(db, "school.academic1@edusphere.local", "Divya Academic Team", "academic_team", "overseas")
+        academic2 = await user(db, "school.academic2@edusphere.local", "Suresh Academic Team", "academic_team", "overseas")
+        school_coordinator = await user(db, "school.coordinator@edusphere.local", "Fatima School Coordinator", "school_coordinator", "overseas")
+        entitlement_now = datetime.now(UTC)
+        if school.tier is None:
+            school.tier = "platinum"
+            school.tier_valid_until = date.today() + timedelta(days=365)
+
+        student_rows = {s.full_name: s for s in (await db.scalars(select(SchoolStudent).where(SchoolStudent.school_id == school.id))).all()}
+        student_b = student_rows.get("Isha Mehta")
+        student_d = student_rows.get("Priya Shah")
+        student_e = student_rows.get("Rohan Gupta")
+
+        activities_by_title = {a.title: a for a in (await db.scalars(select(SchoolActivity).where(SchoolActivity.school_id == school.id))).all()}
+        if "Career Awareness Session" in activities_by_title and activities_by_title["Career Awareness Session"].activity_type is None:
+            activities_by_title["Career Awareness Session"].activity_type = "career_awareness_session"
+        for title, activity_type, days_ago in [
+            ("Career Guidance Seminar", "career_seminar", 20),
+            ("Parent Orientation Day", "parent_orientation", 18),
+            ("Campus Visit: Delhi University", "campus_visit", 14),
+        ]:
+            if title not in activities_by_title:
+                db.add(SchoolActivity(school_id=school.id, title=title, scheduled_at=entitlement_now - timedelta(days=days_ago), created_by_user_id=school_coordinator.id, activity_type=activity_type))
+
+        if student_d and not await db.scalar(select(SchoolTestPrepRecord).where(SchoolTestPrepRecord.school_student_id == student_d.id)):
+            db.add(SchoolTestPrepRecord(school_student_id=student_d.id, academic_team_user_id=academic1.id, test_type="ielts", mock_scores=["6.5", "7.0"], target_score="7.5", actual_score="7.0", status="completed", created_at=entitlement_now - timedelta(days=25), updated_at=entitlement_now - timedelta(days=5)))
+        if student_e and not await db.scalar(select(SchoolTestPrepRecord).where(SchoolTestPrepRecord.school_student_id == student_e.id)):
+            db.add(SchoolTestPrepRecord(school_student_id=student_e.id, academic_team_user_id=academic2.id, test_type="sat", mock_scores=["1350"], target_score="1450", status="in_progress", created_at=entitlement_now - timedelta(days=10)))
+
+        if student_b and not await db.scalar(select(SchoolLanguageRecord).where(SchoolLanguageRecord.school_student_id == student_b.id)):
+            db.add(SchoolLanguageRecord(school_student_id=student_b.id, academic_team_user_id=academic1.id, language="French", level="A2", classes_attended=14, certification_status="certified", created_at=entitlement_now - timedelta(days=30), updated_at=entitlement_now - timedelta(days=3)))
+        if student_d and not await db.scalar(select(SchoolLanguageRecord).where(SchoolLanguageRecord.school_student_id == student_d.id)):
+            db.add(SchoolLanguageRecord(school_student_id=student_d.id, academic_team_user_id=academic2.id, language="German", level="A1", classes_attended=4, certification_status="in_progress", created_at=entitlement_now - timedelta(days=12)))
+
+        # School->Overseas bridge (SCH-010) demo: feeds the entitlements view's own
+        # application_support/visa_support usage counts, and SCH-007/008's global_education
+        # section -- student_id stays NULL (SchoolStudent never gets a users row, DEC-ROLE-004).
+        await db.flush()
+        if student_e and not await db.scalar(select(OverseasApplication).where(OverseasApplication.school_student_id == student_e.id)):
+            bridged_university = umap.get("university-of-manchester")
+            if bridged_university:
+                bridged_app = OverseasApplication(
+                    student_id=None, school_student_id=student_e.id, university_id=bridged_university.id,
+                    counselor_id=us["counselor"].id, status="eligibility_evaluation", intake="September 2027",
+                    next_action="Complete profile and required document checklist", created_at=entitlement_now - timedelta(days=15),
+                )
+                db.add(bridged_app)
+                await db.flush()
+                db.add(ApplicationStatusHistory(application_id=bridged_app.id, from_status="enquiry", to_status="eligibility_evaluation", next_action=bridged_app.next_action, changed_by_id=us["counselor"].id))
+                db.add(VisaCase(application_id=bridged_app.id, status="checklist", checklist=["Passport", "Offer letter", "Financial evidence", "Visa form"]))
+
         await db.commit()
     print("Seed complete; demo password:", PASSWORD)
 

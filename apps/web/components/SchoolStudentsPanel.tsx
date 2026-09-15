@@ -1,17 +1,20 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type Student = {
   id: string;
+  student_code: string;
   full_name: string;
   date_of_birth: string | null;
   grade_or_class: string | null;
   assigned_teacher_user_id: string | null;
   pending_parent_email: string | null;
 };
+
+type TeacherOption = { id: string; name: string; active: boolean };
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -35,6 +38,27 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
   const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [teachers, setTeachers] = useState<TeacherOption[]>([]);
+
+  // SCH-001 addendum: a live picker of the school's own Teachers, replacing the
+  // hand-typed email field -- the same "raw ID typed by hand" gap already fixed
+  // elsewhere in this app (e.g. AdminBatchCreatePanel's trainer picker).
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/v1/school/team")
+      .then((res) => (res.ok ? res.json() : { accounts: [] }))
+      .then((data) => {
+        if (cancelled) return;
+        const options = ((data.accounts || []) as { id: string; name: string; role: string; active: boolean }[])
+          .filter((a) => a.role === "school_teacher")
+          .map((a) => ({ id: a.id, name: a.name, active: a.active }));
+        setTeachers(options);
+      })
+      .catch(() => !cancelled && setTeachers([]));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function createStudent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,7 +73,7 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
         full_name: form.get("full_name"),
         grade_or_class: form.get("grade_or_class") || undefined,
         date_of_birth: form.get("date_of_birth") || undefined,
-        assigned_teacher_email: form.get("assigned_teacher_email") || undefined,
+        assigned_teacher_user_id: form.get("assigned_teacher_user_id") || undefined,
         parent_name: form.get("parent_name") || undefined,
         parent_email: form.get("parent_email") || undefined,
       }),
@@ -77,7 +101,7 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
       body: JSON.stringify({
         full_name: form.get("full_name"),
         grade_or_class: form.get("grade_or_class") || null,
-        assigned_teacher_email: form.get("assigned_teacher_email") || null,
+        assigned_teacher_user_id: form.get("assigned_teacher_user_id") || null,
         parent_name: form.get("parent_name") || undefined,
         parent_email: form.get("parent_email") || undefined,
       }),
@@ -128,11 +152,12 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
           <div className="table-wrap">
             <table className="table">
               <thead>
-                <tr><th>Name</th><th>Grade/Class</th><th>Parent</th><th>Actions</th></tr>
+                <tr><th>Student ID</th><th>Name</th><th>Grade/Class</th><th>Parent</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {students.map((s) => (
                   <tr key={s.id}>
+                    <td><code>{s.student_code}</code></td>
                     <td>{s.full_name}</td>
                     <td>{s.grade_or_class || "-"}</td>
                     <td>{s.pending_parent_email ? <span className="status pending">Invite sent to {s.pending_parent_email}</span> : "-"}</td>
@@ -151,7 +176,7 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
 
       {editing && (
         <div className="action-card">
-          <h3>Edit {editing.full_name}</h3>
+          <h3>Edit {editing.full_name} <span className="muted" style={{ fontSize: 13 }}>({editing.student_code})</span></h3>
           <form className="form" onSubmit={(e) => saveEdit(e, editing.id)}>
             <div className="field">
               <label htmlFor="edit-full-name">Full name</label>
@@ -162,8 +187,17 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
               <input id="edit-grade" name="grade_or_class" defaultValue={editing.grade_or_class || ""} />
             </div>
             <div className="field">
-              <label htmlFor="edit-teacher">Assigned Teacher email</label>
-              <input id="edit-teacher" name="assigned_teacher_email" type="email" placeholder="Leave blank to unassign" />
+              <label htmlFor="edit-teacher">Assigned Teacher</label>
+              {/* Includes inactive teachers here (unlike the create form below) so an
+                  already-assigned Teacher who's since been deactivated still shows up as
+                  the selected option -- otherwise the select would silently fall back to
+                  "Unassigned" and an unrelated "Save changes" click would clear it. */}
+              <select id="edit-teacher" name="assigned_teacher_user_id" defaultValue={editing.assigned_teacher_user_id || ""}>
+                <option value="">Unassigned</option>
+                {teachers.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}{t.active ? "" : " (inactive)"}</option>
+                ))}
+              </select>
             </div>
             <div className="field">
               <label htmlFor="edit-parent-name">Parent&apos;s name</label>
@@ -214,8 +248,13 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
             <input id="new-grade" name="grade_or_class" />
           </div>
           <div className="field">
-            <label htmlFor="new-teacher">Assigned Teacher email</label>
-            <input id="new-teacher" name="assigned_teacher_email" type="email" placeholder="Optional" />
+            <label htmlFor="new-teacher">Assigned Teacher</label>
+            <select id="new-teacher" name="assigned_teacher_user_id" defaultValue="">
+              <option value="">Unassigned</option>
+              {teachers.filter((t) => t.active).map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
           </div>
           <div className="field">
             <label htmlFor="new-parent-name">Parent&apos;s name</label>
