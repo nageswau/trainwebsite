@@ -943,6 +943,19 @@ class School(Base, TimestampMixin):
     tier_valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
+class AcademicYear(Base, TimestampMixin):
+    """Global, admin-managed academic-year calendar (ENH-001, DEC-DATA-004). No `school_id`
+    -- one shared calendar across every partnered school, per the user's explicit decision
+    recorded in docs/superpowers/specs/2026-09-18-enh-001-academic-year-design.md."""
+
+    __tablename__ = "academic_years"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    label: Mapped[str] = mapped_column(String(20), unique=True)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="active")
+
+
 class SchoolAccountInvite(Base, TimestampMixin):
     """Coordinator-issued invite for Principal/Teacher/Parent accounts (SCH-003,
     DATA_MODEL.md §6.15). Net-new. Provisions the four school-side accounts only --
@@ -1000,6 +1013,10 @@ class SchoolStudent(Base, TimestampMixin):
     # SchoolParentLink exists -- lets invite-accept auto-link every student that named this
     # email, including a second child added while the first invite is still pending.
     pending_parent_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # ENH-001: system-assigned only -- create_student/update_student must never read
+    # this from a client payload (spec's security review, role-escalation finding).
+    academic_year_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"), nullable=True, index=True)
+    grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class SchoolParentLink(Base, TimestampMixin):
