@@ -4,13 +4,14 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
-from app.models import AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, University, User, UserRoleAssignment
+from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, University, User, UserRoleAssignment
 from app.schemas import BatchCreate
 from app.services.storage import storage
 
@@ -967,6 +968,66 @@ async def update_school_tier(school_id: UUID, payload: dict, user: User = Depend
     db.add(AuditLog(user_id=user.id, action="school.tier_update", entity_type="school", entity_id=str(school.id), metadata_json={"tier": school.tier}))
     await db.commit()
     return {"id": school.id, "tier": school.tier, "tier_valid_until": school.tier_valid_until}
+
+
+ACADEMIC_YEAR_STATUSES = ["draft", "active", "closed"]
+
+
+@agents_router.post("/academic-years", status_code=201)
+async def create_academic_year(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-001 -- global, admin-only academic-year calendar. Mirrors create_school's
+    shape; unlike create_school's duplicate-email check, this inserts directly and lets
+    the unique constraint on `label` pick the winner (spec's security review item 1 --
+    a pre-check SELECT is a race, not a guard)."""
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    label = str(payload.get("label", "")).strip()
+    if not label:
+        raise HTTPException(422, "label is required")
+    try:
+        start_date = date.fromisoformat(payload["start_date"])
+        end_date = date.fromisoformat(payload["end_date"])
+    except (KeyError, ValueError):
+        raise HTTPException(422, "start_date and end_date are required, in YYYY-MM-DD format")
+    if end_date <= start_date:
+        raise HTTPException(422, "end_date must be after start_date")
+    year = AcademicYear(label=label, start_date=start_date, end_date=end_date, status="draft")
+    db.add(year)
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, f"an academic year with label '{label}' already exists")
+    db.add(AuditLog(user_id=user.id, action="school.academic_year_create", entity_type="academic_year", entity_id=str(year.id), metadata_json={"label": year.label, "status": year.status}))
+    await db.commit()
+    return {"id": year.id, "label": year.label, "start_date": year.start_date, "end_date": year.end_date, "status": year.status}
+
+
+@agents_router.patch("/academic-years/{year_id}")
+async def update_academic_year_status(year_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    year = await db.get(AcademicYear, year_id)
+    if not year:
+        raise HTTPException(404, "Academic year not found")
+    if "status" in payload:
+        new_status = payload["status"]
+        if new_status not in ACADEMIC_YEAR_STATUSES:
+            raise HTTPException(422, f"status must be one of {ACADEMIC_YEAR_STATUSES}")
+        if ACADEMIC_YEAR_STATUSES.index(new_status) < ACADEMIC_YEAR_STATUSES.index(year.status):
+            raise HTTPException(409, f"cannot move status backward from '{year.status}' to '{new_status}'")
+        year.status = new_status
+    db.add(AuditLog(user_id=user.id, action="school.academic_year_status_change", entity_type="academic_year", entity_id=str(year.id), metadata_json={"label": year.label, "status": year.status}))
+    await db.commit()
+    return {"id": year.id, "label": year.label, "start_date": year.start_date, "end_date": year.end_date, "status": year.status}
+
+
+@agents_router.get("/academic-years")
+async def list_academic_years(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    rows = (await db.scalars(select(AcademicYear).order_by(AcademicYear.start_date.desc()))).all()
+    return [{"id": r.id, "label": r.label, "start_date": r.start_date, "end_date": r.end_date, "status": r.status} for r in rows]
 
 
 # SCH-004/005/006 (DEC-SCOPE-014): only Overseas Admin or Super Admin creates an

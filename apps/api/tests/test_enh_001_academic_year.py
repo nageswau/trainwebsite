@@ -9,7 +9,19 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-from app.models import AcademicYear, School, SchoolStudent
+from app.core.security import hash_password
+from app.models import AcademicYear, School, SchoolStudent, User
+
+ADMIN_PASSWORD = "Sup3r-Secret-Pass!"
+
+
+async def _create_admin_and_login(client, db_session) -> User:
+    admin = User(email=f"enh001-admin-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(ADMIN_PASSWORD), full_name="Overseas Admin", role="overseas_admin", division="overseas", active=True)
+    db_session.add(admin)
+    await db_session.commit()
+    response = await client.post("/api/v1/auth/login", json={"email": admin.email, "password": ADMIN_PASSWORD, "division": "overseas"})
+    assert response.status_code == 200
+    return admin
 
 
 def test_academic_year_model_has_expected_columns():
@@ -201,3 +213,64 @@ def test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgra
         #    by inspector checks in 0030), so calling it again here -- even if already at
         #    head -- is safe.
         command.upgrade(cfg, "head")
+
+
+@pytest.mark.asyncio
+async def test_admin_creates_an_academic_year(client, db_session):
+    await _create_admin_and_login(client, db_session)
+    response = await client.post("/api/v1/overseas-admin/academic-years", json={"label": "2030-31", "start_date": "2030-04-01", "end_date": "2031-03-31"})
+    assert response.status_code == 201, response.text
+    assert response.json()["label"] == "2030-31"
+    assert response.json()["status"] == "draft"
+
+
+@pytest.mark.asyncio
+async def test_duplicate_academic_year_label_is_rejected_with_409(client, db_session):
+    await _create_admin_and_login(client, db_session)
+    payload = {"label": "2031-32", "start_date": "2031-04-01", "end_date": "2032-03-31"}
+    first = await client.post("/api/v1/overseas-admin/academic-years", json=payload)
+    assert first.status_code == 201
+    second = await client.post("/api/v1/overseas-admin/academic-years", json=payload)
+    assert second.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_end_date_before_start_date_is_rejected(client, db_session):
+    await _create_admin_and_login(client, db_session)
+    response = await client.post("/api/v1/overseas-admin/academic-years", json={"label": "2032-33", "start_date": "2032-04-01", "end_date": "2031-03-31"})
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_school_coordinator_cannot_create_an_academic_year(client, db_session):
+    coordinator = User(email=f"enh001-coord-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(ADMIN_PASSWORD), full_name="Coordinator", role="school_coordinator", division="overseas", active=True, profile={"school_id": str(uuid.uuid4())})
+    db_session.add(coordinator)
+    await db_session.commit()
+    await client.post("/api/v1/auth/login", json={"email": coordinator.email, "password": ADMIN_PASSWORD, "division": "overseas"})
+    response = await client.post("/api/v1/overseas-admin/academic-years", json={"label": "2033-34", "start_date": "2033-04-01", "end_date": "2034-03-31"})
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_status_transition_forward_succeeds_and_backward_is_conflict(client, db_session):
+    await _create_admin_and_login(client, db_session)
+    created = await client.post("/api/v1/overseas-admin/academic-years", json={"label": "2034-35", "start_date": "2034-04-01", "end_date": "2035-03-31"})
+    year_id = created.json()["id"]
+
+    forward = await client.patch(f"/api/v1/overseas-admin/academic-years/{year_id}", json={"status": "active"})
+    assert forward.status_code == 200
+    assert forward.json()["status"] == "active"
+
+    backward = await client.patch(f"/api/v1/overseas-admin/academic-years/{year_id}", json={"status": "draft"})
+    assert backward.status_code == 409
+
+    bad_value = await client.patch(f"/api/v1/overseas-admin/academic-years/{year_id}", json={"status": "banana"})
+    assert bad_value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_list_academic_years_requires_admin(client, db_session):
+    await _create_admin_and_login(client, db_session)
+    response = await client.get("/api/v1/overseas-admin/academic-years")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
