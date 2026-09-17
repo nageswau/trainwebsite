@@ -269,8 +269,89 @@ async def test_status_transition_forward_succeeds_and_backward_is_conflict(clien
 
 
 @pytest.mark.asyncio
+async def test_academic_year_malformed_start_date_returns_422_not_500(client, db_session):
+    """Review finding fix: `date.fromisoformat(...)` only had `(KeyError, ValueError)`
+    caught around it. A non-string `start_date` (e.g. JSON `null`) makes
+    `date.fromisoformat` raise `TypeError`, which propagated uncaught into a 500 instead
+    of the required 422 for malformed input."""
+    await _create_admin_and_login(client, db_session)
+    response = await client.post(
+        "/api/v1/overseas-admin/academic-years",
+        json={"label": "2035-36", "start_date": None, "end_date": "2036-03-31"},
+    )
+    assert response.status_code == 422, response.text
+
+
+@pytest.mark.asyncio
+async def test_academic_year_non_string_end_date_returns_422_not_500(client, db_session):
+    """Same finding, other field and shape: a non-date-shaped (int, not just null)
+    `end_date` must also 422, not 500."""
+    await _create_admin_and_login(client, db_session)
+    response = await client.post(
+        "/api/v1/overseas-admin/academic-years",
+        json={"label": "2036-37", "start_date": "2036-04-01", "end_date": 20370331},
+    )
+    assert response.status_code == 422, response.text
+
+
+@pytest.mark.asyncio
 async def test_list_academic_years_requires_admin(client, db_session):
     await _create_admin_and_login(client, db_session)
     response = await client.get("/api/v1/overseas-admin/academic-years")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+
+    coordinator = User(
+        email=f"enh001-coord-{uuid.uuid4().hex[:8]}@example.local",
+        password_hash=hash_password(ADMIN_PASSWORD),
+        full_name="Coordinator",
+        role="school_coordinator",
+        division="overseas",
+        active=True,
+        profile={"school_id": str(uuid.uuid4())},
+    )
+    db_session.add(coordinator)
+    await db_session.commit()
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": coordinator.email, "password": ADMIN_PASSWORD, "division": "overseas"},
+    )
+    assert login.status_code == 200
+    forbidden = await client.get("/api/v1/overseas-admin/academic-years")
+    assert forbidden.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_patch_academic_year_requires_admin(client, db_session):
+    """Review finding fix: no existing test verified a non-admin gets 403 on the PATCH
+    status-transition endpoint (mirrors `test_school_coordinator_cannot_create_an_academic_year`
+    for the create endpoint)."""
+    await _create_admin_and_login(client, db_session)
+    created = await client.post(
+        "/api/v1/overseas-admin/academic-years",
+        json={"label": "2037-38", "start_date": "2037-04-01", "end_date": "2038-03-31"},
+    )
+    assert created.status_code == 201, created.text
+    year_id = created.json()["id"]
+
+    coordinator = User(
+        email=f"enh001-coord-{uuid.uuid4().hex[:8]}@example.local",
+        password_hash=hash_password(ADMIN_PASSWORD),
+        full_name="Coordinator",
+        role="school_coordinator",
+        division="overseas",
+        active=True,
+        profile={"school_id": str(uuid.uuid4())},
+    )
+    db_session.add(coordinator)
+    await db_session.commit()
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": coordinator.email, "password": ADMIN_PASSWORD, "division": "overseas"},
+    )
+    assert login.status_code == 200
+    response = await client.patch(
+        f"/api/v1/overseas-admin/academic-years/{year_id}",
+        json={"status": "active"},
+    )
+    assert response.status_code == 403

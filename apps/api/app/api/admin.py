@@ -987,7 +987,11 @@ async def create_academic_year(payload: dict, user: User = Depends(get_current_u
     try:
         start_date = date.fromisoformat(payload["start_date"])
         end_date = date.fromisoformat(payload["end_date"])
-    except (KeyError, ValueError):
+    except (KeyError, ValueError, TypeError):
+        # TypeError covers a non-string value (e.g. JSON `null`, a number) for either
+        # field -- `date.fromisoformat` raises TypeError rather than ValueError for
+        # those, and an uncaught TypeError would otherwise surface as a 500 instead of
+        # the 422 malformed input deserves.
         raise HTTPException(422, "start_date and end_date are required, in YYYY-MM-DD format")
     if end_date <= start_date:
         raise HTTPException(422, "end_date must be after start_date")
