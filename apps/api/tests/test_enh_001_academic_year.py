@@ -355,3 +355,40 @@ async def test_patch_academic_year_requires_admin(client, db_session):
         json={"status": "active"},
     )
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_coordinator_reads_the_active_academic_year(client, db_session):
+    admin = await _create_admin_and_login(client, db_session)
+    unique = uuid.uuid4().hex[:8]
+
+    # Deactivate any existing active years to isolate this test
+    active_years = await db_session.execute(select(AcademicYear).where(AcademicYear.status == "active"))
+    for year in active_years.scalars():
+        year.status = "archived"
+    await db_session.commit()
+
+    created = await client.post("/api/v1/overseas-admin/academic-years", json={"label": f"enh001-read-{unique}", "start_date": "2035-04-01", "end_date": "2036-03-31"})
+    assert created.status_code == 201, created.text
+    year_id = created.json()["id"]
+    patch_resp = await client.patch(f"/api/v1/overseas-admin/academic-years/{year_id}", json={"status": "active"})
+    assert patch_resp.status_code == 200
+
+    coordinator = User(email=f"enh001-read-{unique}@example.local", password_hash=hash_password(ADMIN_PASSWORD), full_name="Coordinator", role="school_coordinator", division="overseas", active=True, profile={"school_id": str(uuid.uuid4())})
+    db_session.add(coordinator)
+    await db_session.commit()
+    await client.post("/api/v1/auth/login", json={"email": coordinator.email, "password": ADMIN_PASSWORD, "division": "overseas"})
+
+    response = await client.get("/api/v1/school/academic-years/active")
+    assert response.status_code == 200
+    assert response.json()["label"] == f"enh001-read-{unique}"
+
+
+@pytest.mark.asyncio
+async def test_active_academic_year_is_out_of_scope_for_unrelated_roles(client, db_session):
+    unrelated = User(email=f"enh001-unrelated-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(ADMIN_PASSWORD), full_name="IT Student", role="it_student", division="it", active=True)
+    db_session.add(unrelated)
+    await db_session.commit()
+    await client.post("/api/v1/auth/login", json={"email": unrelated.email, "password": ADMIN_PASSWORD, "division": "it"})
+    response = await client.get("/api/v1/school/academic-years/active")
+    assert response.status_code == 403

@@ -13,6 +13,7 @@ everything under the `/school` prefix, per `API_CONTRACT.md` §12A.
 import csv
 import hashlib
 import io
+import re
 import secrets
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
@@ -27,6 +28,7 @@ from app.core.database import get_db
 from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
 from app.models import (
+    AcademicYear,
     AuditLog,
     Notification,
     NotificationDelivery,
@@ -57,8 +59,25 @@ from app.services.mailer import send_parent_notification_email, send_school_invi
 router = APIRouter(prefix="/school", tags=["school"])
 SERVICE_DELIVERY_ROLES = {"academic_team", "career_counselor", "psychometric_team"}
 
+SCHOOL_DOMAIN_ROLES = {
+    "school_coordinator", "school_principal", "school_teacher", "school_parent",
+    "academic_team", "career_counselor", "psychometric_team", "school_partnership_manager",
+    "edusphere_school_manager", "overseas_admin", "super_admin",
+}
+
 INVITABLE_ROLES = {"school_principal", "school_teacher", "school_parent"}
 INVITE_EXPIRY_DAYS = 7
+OVERSEAS_APPLICATION_STAGES = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"]
+OFFER_ONWARD_STATUSES = {"offer", "offer_received", "accepted", "visa_documentation", "status_tracking", "enrolled"}
+UNTRACKED_SCHOOL_DASHBOARD_KPIS = {
+    "digital_portfolios_created": "No confirmed School digital-portfolio model exists yet.",
+    "internships": "No confirmed School internship model exists yet.",
+}
+UNTRACKED_SCHOOL_DASHBOARD_CHARTS = [
+    {"key": "skills_training", "label": "Skills training", "note": "No confirmed School soft-skills training model exists yet."},
+    {"key": "internships", "label": "Internships", "note": "No confirmed School internship model exists yet."},
+    {"key": "student_participation_by_program", "label": "Student participation by program", "note": "No confirmed School program-participation model exists yet."},
+]
 
 
 def _require_coordinator(user: User) -> UUID:
@@ -240,6 +259,182 @@ def _own_school_id(user: User) -> UUID:
     return UUID(str(school_id))
 
 
+def _school_dashboard_kpi(key: str, label: str, value: int | None, *, tracked: bool = True, note: str | None = None) -> dict:
+    return {"key": key, "label": label, "value": value, "tracked": tracked, "note": note}
+
+
+def _grade_number(label: str | None) -> str | None:
+    if not label:
+        return None
+    match = re.search(r"\b(?:grade|class)\s*(8|9|10|11|12)\b|\b(8|9|10|11|12)\b", label.lower())
+    if not match:
+        return None
+    return match.group(1) or match.group(2)
+
+
+def _stage_at_or_after(status: str, stage: str) -> bool:
+    if status not in OVERSEAS_APPLICATION_STAGES or stage not in OVERSEAS_APPLICATION_STAGES:
+        return False
+    return OVERSEAS_APPLICATION_STAGES.index(status) >= OVERSEAS_APPLICATION_STAGES.index(stage)
+
+
+async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
+    """Complete School CRM dashboard aggregation for Coordinator/Principal views.
+
+    Every tracked value is computed from live School-domain rows. Items from
+    `School CRM.md` point 1 that still have no confirmed module stay visible as
+    `tracked=False` instead of being represented by a fabricated zero.
+    """
+    students = (await db.scalars(select(SchoolStudent).where(SchoolStudent.school_id == school_id))).all()
+    student_ids = [s.id for s in students]
+    total_students = len(students)
+
+    grade_counts: dict[str, int] = {}
+    grade_level_counts = {str(n): 0 for n in range(8, 13)}
+    for student in students:
+        label = student.grade_or_class or "Unspecified"
+        grade_counts[label] = grade_counts.get(label, 0) + 1
+        grade_number = _grade_number(student.grade_or_class)
+        if grade_number in grade_level_counts:
+            grade_level_counts[grade_number] += 1
+    grade_breakdown = [{"grade": g, "count": c} for g, c in sorted(grade_counts.items())]
+    students_with_teacher = sum(1 for s in students if s.assigned_teacher_user_id)
+
+    school_accounts = (await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent"))))).all()
+    school_accounts = [a for a in school_accounts if (a.profile or {}).get("school_id") == str(school_id)]
+    teacher_count = sum(1 for a in school_accounts if a.role == "school_teacher")
+    parent_count = sum(1 for a in school_accounts if a.role == "school_parent")
+    principal_count = sum(1 for a in school_accounts if a.role == "school_principal")
+    pending_invite_count = len((await db.scalars(select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school_id, SchoolAccountInvite.status == "pending"))).all())
+
+    career_rows: list[SchoolCareerRecord] = []
+    psych_rows: list[SchoolPsychometricRecord] = []
+    published_students: set = set()
+    test_prep_rows: list[SchoolTestPrepRecord] = []
+    language_rows: list[SchoolLanguageRecord] = []
+    applications: list[OverseasApplication] = []
+    visas: list[VisaCase] = []
+    if student_ids:
+        career_rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id.in_(student_ids)))).all()
+        psych_rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id.in_(student_ids)))).all()
+        published_students = set(
+            (await db.scalars(select(SchoolAcademicResult.school_student_id).where(SchoolAcademicResult.school_student_id.in_(student_ids), SchoolAcademicResult.status == "published"))).all()
+        )
+        test_prep_rows = (await db.scalars(select(SchoolTestPrepRecord).where(SchoolTestPrepRecord.school_student_id.in_(student_ids)))).all()
+        language_rows = (await db.scalars(select(SchoolLanguageRecord).where(SchoolLanguageRecord.school_student_id.in_(student_ids)))).all()
+        applications = (await db.scalars(select(OverseasApplication).where(OverseasApplication.school_student_id.in_(student_ids)))).all()
+        application_ids = [application.id for application in applications]
+        if application_ids:
+            visas = (await db.scalars(select(VisaCase).where(VisaCase.application_id.in_(application_ids)))).all()
+
+    career_students = {r.school_student_id for r in career_rows}
+    guidance_students = {r.school_student_id for r in career_rows if r.record_type == "guidance_session"}
+    counselling_students = {r.school_student_id for r in career_rows if r.record_type == "counselling_note"}
+    psych_completed_students = {r.school_student_id for r in psych_rows if r.status == "completed"}
+    psych_assigned_students = {r.school_student_id for r in psych_rows} - psych_completed_students
+    ielts_students = {r.school_student_id for r in test_prep_rows if r.test_type == "ielts"}
+    sat_students = {r.school_student_id for r in test_prep_rows if r.test_type == "sat"}
+    language_students = {r.school_student_id for r in language_rows}
+    global_students = {a.school_student_id for a in applications if a.school_student_id}
+    shortlisted_students = {a.school_student_id for a in applications if a.school_student_id and _stage_at_or_after(a.status, "university_selection")}
+    admitted_students = {a.school_student_id for a in applications if a.school_student_id and a.status == "enrolled"}
+    applications_in_progress = [a for a in applications if a.status not in {"withdrawn", "rejected", "enrolled"}]
+    offers = [a for a in applications if a.status in OFFER_ONWARD_STATUSES or a.offer_letter_url]
+    application_by_id = {a.id: a for a in applications}
+    visa_student_ids = {
+        application_by_id[v.application_id].school_student_id
+        for v in visas
+        if v.application_id in application_by_id and application_by_id[v.application_id].school_student_id
+    }
+
+    activities = (await db.scalars(select(SchoolActivity).where(SchoolActivity.school_id == school_id))).all()
+    now = datetime.now(UTC)
+    upcoming_count = sum(1 for a in activities if a.scheduled_at >= now)
+    upcoming = sorted((a for a in activities if a.scheduled_at >= now), key=lambda a: a.scheduled_at)[:10]
+    activity_ids = [a.id for a in activities]
+    attendance_present = 0
+    attendance_total = 0
+    if activity_ids:
+        attendance_rows = (await db.scalars(select(SchoolActivityAttendance).where(SchoolActivityAttendance.activity_id.in_(activity_ids)))).all()
+        attendance_total = len(attendance_rows)
+        attendance_present = sum(1 for r in attendance_rows if r.present)
+
+    stage_labels = {
+        "enquiry": "Interested in global education",
+        "eligibility_evaluation": "Profile evaluation",
+        "university_selection": "University shortlisted",
+        "offer": "Offers",
+        "visa_documentation": "Visa documentation",
+        "status_tracking": "Visa/status tracking",
+        "enrolled": "Admitted",
+    }
+    application_pipeline = [
+        {"key": stage, "label": stage_labels[stage], "count": sum(1 for a in applications if a.status == stage)}
+        for stage in OVERSEAS_APPLICATION_STAGES
+    ]
+    visa_counts: dict[str, int] = {}
+    for visa in visas:
+        visa_counts[visa.status] = visa_counts.get(visa.status, 0) + 1
+    visa_status = [{"status": status, "count": count} for status, count in sorted(visa_counts.items())]
+
+    return {
+        "student_count": total_students,
+        "students_with_teacher": students_with_teacher,
+        "teacher_count": teacher_count,
+        "parent_count": parent_count,
+        "principal_count": principal_count,
+        "pending_invite_count": pending_invite_count,
+        "grade_breakdown": grade_breakdown,
+        "career_guidance": {"students_covered": len(career_students), "total_students": total_students},
+        "psychometric": {"completed": len(psych_completed_students), "assigned_only": len(psych_assigned_students), "total_students": total_students},
+        "results_published": {"students_covered": len(published_students), "total_students": total_students},
+        "activities": {"total": len(activities), "upcoming": upcoming_count, "past": len(activities) - upcoming_count},
+        "attendance": {"present": attendance_present, "total": attendance_total},
+        "upcoming_activities": [{"id": a.id, "title": a.title, "scheduled_at": a.scheduled_at} for a in upcoming],
+        "school_crm_kpis": [
+            _school_dashboard_kpi("total_students", "Total Students", total_students),
+            _school_dashboard_kpi("grade_8", "Grade 8", grade_level_counts["8"]),
+            _school_dashboard_kpi("grade_9", "Grade 9", grade_level_counts["9"]),
+            _school_dashboard_kpi("grade_10", "Grade 10", grade_level_counts["10"]),
+            _school_dashboard_kpi("grade_11", "Grade 11", grade_level_counts["11"]),
+            _school_dashboard_kpi("grade_12", "Grade 12", grade_level_counts["12"]),
+            _school_dashboard_kpi("career_guidance_completed", "Career Guidance Completed", len(guidance_students)),
+            _school_dashboard_kpi("psychometric_tests_completed", "Psychometric Tests Completed", len(psych_completed_students)),
+            _school_dashboard_kpi("individual_counselling_completed", "Individual Counselling Completed", len(counselling_students)),
+            _school_dashboard_kpi("students_in_global_education_pathway", "Students in Global Education Pathway", len(global_students)),
+            _school_dashboard_kpi("ielts_training", "IELTS Training", len(ielts_students)),
+            _school_dashboard_kpi("sat_preparation", "SAT Preparation", len(sat_students)),
+            _school_dashboard_kpi("foreign_language_students", "Foreign Language Students", len(language_students)),
+            _school_dashboard_kpi("digital_portfolios_created", "Digital Portfolios Created", None, tracked=False, note=UNTRACKED_SCHOOL_DASHBOARD_KPIS["digital_portfolios_created"]),
+            _school_dashboard_kpi("university_shortlisting", "University Shortlisting", len(shortlisted_students)),
+            _school_dashboard_kpi("applications_in_progress", "Applications in Progress", len(applications_in_progress)),
+            _school_dashboard_kpi("offers_received", "Offers Received", len(offers)),
+            _school_dashboard_kpi("visa_applications", "Visa Applications", len(visa_student_ids)),
+            _school_dashboard_kpi("students_admitted", "Students Admitted", len(admitted_students)),
+            _school_dashboard_kpi("internships", "Internships", None, tracked=False, note=UNTRACKED_SCHOOL_DASHBOARD_KPIS["internships"]),
+        ],
+        "completion": [
+            {"key": "career_guidance", "label": "Career guidance completion", "value": len(guidance_students), "total": total_students, "tracked": True},
+            {"key": "psychometric", "label": "Psychometric completion", "value": len(psych_completed_students), "total": total_students, "tracked": True},
+            {"key": "counselling", "label": "Counselling completion", "value": len(counselling_students), "total": total_students, "tracked": True},
+            {"key": "ielts", "label": "IELTS training", "value": len(ielts_students), "total": total_students, "tracked": True},
+            {"key": "sat", "label": "SAT preparation", "value": len(sat_students), "total": total_students, "tracked": True},
+            {"key": "foreign_language", "label": "Foreign language students", "value": len(language_students), "total": total_students, "tracked": True},
+        ],
+        "global_education": {
+            "students": len(global_students),
+            "university_shortlisting": len(shortlisted_students),
+            "applications_in_progress": len(applications_in_progress),
+            "offers_received": len(offers),
+            "visa_applications": len(visa_student_ids),
+            "students_admitted": len(admitted_students),
+        },
+        "application_pipeline": application_pipeline,
+        "visa_status": visa_status,
+        "untracked_charts": UNTRACKED_SCHOOL_DASHBOARD_CHARTS,
+    }
+
+
 def _student_out(s: SchoolStudent) -> dict:
     return {
         "id": s.id,
@@ -371,16 +566,7 @@ async def school_dashboard(user: User = Depends(get_current_user), db: AsyncSess
     if user.role not in {"school_coordinator", "school_principal"}:
         raise HTTPException(403, "School Coordinator or Principal role required")
     school_id = _own_school_id(user)
-    student_count = len((await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id == school_id))).all())
-    upcoming = (
-        await db.scalars(
-            select(SchoolActivity).where(SchoolActivity.school_id == school_id, SchoolActivity.scheduled_at >= datetime.now(UTC)).order_by(SchoolActivity.scheduled_at.asc()).limit(10)
-        )
-    ).all()
-    return {
-        "student_count": student_count,
-        "upcoming_activities": [{"id": a.id, "title": a.title, "scheduled_at": a.scheduled_at} for a in upcoming],
-    }
+    return await _school_dashboard_payload(db, school_id)
 
 
 @router.get("/reports")
@@ -394,6 +580,7 @@ async def school_reports(user: User = Depends(get_current_user), db: AsyncSessio
     if user.role not in {"school_coordinator", "school_principal"}:
         raise HTTPException(403, "School Coordinator or Principal role required")
     school_id = _own_school_id(user)
+    return await _school_dashboard_payload(db, school_id)
 
     students = (await db.scalars(select(SchoolStudent).where(SchoolStudent.school_id == school_id))).all()
     student_ids = [s.id for s in students]
@@ -565,6 +752,18 @@ async def roster_template(user: User = Depends(get_current_user)):
     writer.writerow(ROSTER_TEMPLATE_HEADERS)
     writer.writerow(["Jane Doe", "2015-04-12", "Grade 5", "", "Jane's Parent", ""])
     return Response(content=buffer.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=school-roster-template.csv"})
+
+
+@router.get("/academic-years/active")
+async def active_academic_year(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-001. Explicit role allowlist rather than "any authenticated user" -- least
+    privilege even though this data isn't sensitive (spec's security review)."""
+    if user.role not in SCHOOL_DOMAIN_ROLES:
+        raise HTTPException(403, "Not a School-domain role")
+    year = await db.scalar(select(AcademicYear).where(AcademicYear.status == "active").order_by(AcademicYear.start_date.desc()))
+    if not year:
+        return None
+    return {"id": year.id, "label": year.label, "start_date": year.start_date, "end_date": year.end_date, "status": year.status}
 
 
 async def _load_readable_student(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
