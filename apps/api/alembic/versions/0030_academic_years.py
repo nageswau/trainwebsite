@@ -59,7 +59,13 @@ def upgrade() -> None:
     # Seed row: today's academic year, so there's something to backfill onto immediately.
     seed_id = str(op.get_bind().execute(sa.text("SELECT gen_random_uuid()")).scalar())
     today = date.today()
-    # Indian academic-year convention (School CRM.md's own examples: "2026-27") -- April to March.
+    # Indian academic-year convention (School CRM.md's own examples: "2026-27") -- April to
+    # March. Review finding: the backlog's own "Edge cases" section marks whether every
+    # school follows this convention (vs. international/CBSE-vs-state variance) as
+    # genuinely NEEDS_CONFIRMATION, not decided -- this is a real, disclosed assumption,
+    # not a confirmed business rule. Do not read the code below as settling that question;
+    # it's the placeholder the unconfirmed scope decision (`DEC-DATA-0xx`) still needs to
+    # either ratify or replace.
     start_year = today.year if today.month >= 4 else today.year - 1
     label = f"{start_year}-{str(start_year + 1)[-2:]}"
     existing_seed = bind.execute(sa.text("SELECT id FROM academic_years WHERE label = :label"), {"label": label}).fetchone()
@@ -74,16 +80,20 @@ def upgrade() -> None:
 
     bind.execute(sa.text("UPDATE school_students SET academic_year_id = :year_id WHERE academic_year_id IS NULL"), {"year_id": current_id})
 
-    rows = bind.execute(sa.text("SELECT id, grade_or_class FROM school_students WHERE grade_level IS NULL")).fetchall()
-    unparseable = 0
-    for row_id, grade_or_class in rows:
+    rows = bind.execute(sa.text("SELECT id, student_code, grade_or_class FROM school_students WHERE grade_level IS NULL")).fetchall()
+    unparseable_codes = []
+    for row_id, student_code, grade_or_class in rows:
         derived = _derive_grade_level(grade_or_class)
         if derived is None:
-            unparseable += 1
+            # Review finding fix: log which row, not just how many -- an aggregate count
+            # gives an operator nothing to act on. `student_code` is this table's
+            # human-readable natural key, so "needs manual coordinator follow-up" is
+            # actually followable.
+            unparseable_codes.append(student_code)
             continue
         bind.execute(sa.text("UPDATE school_students SET grade_level = :g WHERE id = :id"), {"g": derived, "id": row_id})
-    if unparseable:
-        print(f"[0030_academic_years] {unparseable} school_students row(s) had an unparseable grade_or_class -- grade_level left NULL, needs manual coordinator follow-up.")
+    if unparseable_codes:
+        print(f"[0030_academic_years] {len(unparseable_codes)} school_students row(s) had an unparseable grade_or_class -- grade_level left NULL, needs manual coordinator follow-up: {', '.join(unparseable_codes)}")
 
 
 def downgrade() -> None:

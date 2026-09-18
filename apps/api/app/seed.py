@@ -655,11 +655,18 @@ async def main():
             # the same insert-time minute (found and corrected 2026-09-15, DEC-SCOPE-016).
             journey_base = datetime.now(UTC)
             roster_created_at = journey_base - timedelta(days=45)
-            student_a = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Aarav Mehta", date_of_birth=date(2015, 4, 12), grade_or_class="Grade 5", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id, created_at=roster_created_at)
-            student_b = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Isha Mehta", date_of_birth=date(2017, 9, 3), grade_or_class="Grade 3", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id, created_at=roster_created_at)
-            student_c = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Kabir Nair", date_of_birth=date(2016, 1, 20), grade_or_class="Grade 4", created_by_user_id=school_coordinator.id, created_at=roster_created_at)
-            student_d = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Priya Shah", date_of_birth=date(2015, 11, 8), grade_or_class="Grade 5", created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id, created_at=roster_created_at)
-            student_e = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Rohan Gupta", date_of_birth=date(2012, 6, 22), grade_or_class="Grade 8", created_by_user_id=school_coordinator.id, created_at=roster_created_at)
+            # Review finding fix: this script bypasses the API's own
+            # `create_student`/`_current_academic_year_id()` path, so it must set
+            # `academic_year_id`/`grade_level` itself the same way that path would --
+            # otherwise every seeded demo student silently has neither, and (since the
+            # dashboard reads `grade_level` directly) drops out of its grade KPIs.
+            seed_year = await db.scalar(select(AcademicYear).where(AcademicYear.status == "active").order_by(AcademicYear.start_date.desc()))
+            seed_year_id = seed_year.id if seed_year else None
+            student_a = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Aarav Mehta", date_of_birth=date(2015, 4, 12), grade_or_class="Grade 5", grade_level=5, academic_year_id=seed_year_id, created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id, created_at=roster_created_at)
+            student_b = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Isha Mehta", date_of_birth=date(2017, 9, 3), grade_or_class="Grade 3", grade_level=3, academic_year_id=seed_year_id, created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id, created_at=roster_created_at)
+            student_c = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Kabir Nair", date_of_birth=date(2016, 1, 20), grade_or_class="Grade 4", grade_level=4, academic_year_id=seed_year_id, created_by_user_id=school_coordinator.id, created_at=roster_created_at)
+            student_d = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Priya Shah", date_of_birth=date(2015, 11, 8), grade_or_class="Grade 5", grade_level=5, academic_year_id=seed_year_id, created_by_user_id=school_coordinator.id, assigned_teacher_user_id=school_teacher.id, created_at=roster_created_at)
+            student_e = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name="Rohan Gupta", date_of_birth=date(2012, 6, 22), grade_or_class="Grade 8", grade_level=8, academic_year_id=seed_year_id, created_by_user_id=school_coordinator.id, created_at=roster_created_at)
             db.add_all([student_a, student_b, student_c, student_d, student_e])
             await db.flush()
             db.add_all(

@@ -7,10 +7,10 @@ import uuid
 from pathlib import Path
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core.security import hash_password
-from app.models import AcademicYear, School, SchoolStudent, User
+from app.models import AcademicYear, AuditLog, SchoolStudent, User
 
 ADMIN_PASSWORD = "Sup3r-Secret-Pass!"
 
@@ -65,65 +65,51 @@ def test_grade_level_backfill_parser(label, expected):
 
 
 @pytest.mark.asyncio
-async def test_migration_backfills_existing_school_students(db_session):
-    # This test assumes `alembic upgrade head` has already been run against the test
-    # database (conftest.py disables schema autocreate) -- it verifies the *outcome* of
-    # the migration that already ran, not a live revision-to-revision replay. Create a
-    # real User first (School.created_by_user_id is a NOT NULL FK) rather than reaching
-    # for some other test's leftover row.
-    from app.core.security import hash_password
-    from app.models import User
+async def test_migration_creates_a_seed_academic_year(db_session):
+    """Review finding fix (simplification): this test used to create a User/School/
+    SchoolStudent chain via the ORM but never asserted anything about it (its own prior
+    docstring conceded as much) -- the actual backfill-onto-a-pre-existing-row behavior is
+    what `test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgrade_cycle`
+    below verifies for real, via a genuine pre-migration insert. All that's left to check
+    here is that `alembic upgrade head` (already run against the test database before any
+    test runs -- conftest.py disables schema autocreate) leaves behind the seed
+    `AcademicYear` row every other test's `_current_academic_year_id()` call depends on
+    finding.
 
-    creator = User(email=f"enh001-creator-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password("Sup3r-Secret-Pass!"), full_name="Migration Check Admin", role="overseas_admin", division="overseas", active=True)
-    db_session.add(creator)
-    await db_session.flush()
-    school = School(name="ENH-001 Migration Check School", created_by_user_id=creator.id)
-    db_session.add(school)
-    await db_session.flush()
-    student = SchoolStudent(school_id=school.id, student_code=f"ENH{uuid.uuid4().hex[:5].upper()}", full_name="Backfill Check", grade_or_class="Grade 9", created_by_user_id=creator.id)
-    db_session.add(student)
-    await db_session.commit()
-
-    # A freshly-created row after the migration should still get a sane academic_year_id
-    # default at the application layer in Task 5 -- this test only asserts the migration
-    # itself produced at least one seed AcademicYear row to backfill onto.
-    #
-    # Found by actually re-running this file twice (finding 6, idempotency): other tests
-    # below also drive AcademicYear rows to (and away from) status="active" with
-    # differently-shaped labels, so on a second pass through this file against this same
-    # persistent DB, `status == "active"` alone no longer uniquely identifies the
-    # migration's own seed row -- it can just as easily pick up a leftover row from a
-    # prior test. The seed row's label is always exactly "<4-digit year>-<2-digit year>"
-    # (0030_academic_years.py's own `f"{start_year}-{str(start_year + 1)[-2:]}"`), and it's
-    # inserted at most once (keyed on that exact label, see the migration's
-    # `existing_seed` check), so matching the label shape -- not the status -- is what
-    # stays stable across re-runs.
+    Found by actually re-running this file twice (finding 6, idempotency): other tests
+    below also drive AcademicYear rows to (and away from) status="active" with
+    differently-shaped labels, so on a second pass through this file against this same
+    persistent DB, `status == "active"` alone no longer uniquely identifies the migration's
+    own seed row -- it can just as easily pick up a leftover row from a prior test. The
+    seed row's label is always exactly "<4-digit year>-<2-digit year>"
+    (0030_academic_years.py's own `f"{start_year}-{str(start_year + 1)[-2:]}"`), and it's
+    inserted at most once (keyed on that exact label, see the migration's `existing_seed`
+    check), so matching the label shape -- not the status -- is what stays stable across
+    re-runs."""
     all_years = (await db_session.scalars(select(AcademicYear))).all()
     seed_year = next((y for y in all_years if re.match(r"^\d{4}-\d{2}$", y.label)), None)
     assert seed_year is not None
 
 
 def test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgrade_cycle():
-    """Review finding fix: `test_migration_backfills_existing_school_students` above only
-    ever creates its School/SchoolStudent row *after* 0030 has already run against the
-    test DB, so the migration's `UPDATE ... WHERE academic_year_id IS NULL` backfill loop
-    never actually touches a pre-existing row in CI (the test DB is empty before
-    migrations run). This test reproduces the real deploy scenario instead: downgrade to
-    the revision just before 0030, insert a row against that pre-migration schema via raw
-    SQL (the ORM models describe the *current* schema and no longer match a downgraded
-    one), upgrade back to head, then assert the backfill actually populated
-    `academic_year_id`/`grade_level` on that specific pre-existing row.
+    """Review finding fix (BLOCKER): this test used to run `command.downgrade` for real
+    against `settings.database_url` -- in this repo that is the same persistent database
+    the live dev/demo stack uses (`conftest.py` has no test-DB isolation at all), so the
+    downgrade actually dropped the real `academic_years` table and both `school_students`
+    columns, destroying any admin-created years/statuses that existed at that moment.
+    Reproduced exactly once, live, during a QA pass on this branch.
 
-    Uses the same downgrade/reseed/upgrade technique the prior implementer used manually
-    for this migration's Step 5 verification (see task-2-report.md), encoded here as an
-    automated test instead of a one-off manual check.
+    Fixed by never touching the shared database at all: this test builds a throwaway,
+    fully isolated database (via `CREATE DATABASE`), runs the *entire* migration history
+    from scratch up to 0029 there (rather than downgrading a shared DB down to 0029), does
+    its pre-existing-row insert and its 0030 upgrade assertion inside that isolated
+    database, then drops it. The scenario under test -- "0030 must backfill a row that
+    already existed before it ran" -- is identical either way; only the blast radius
+    changes.
 
     Deliberately a plain (non-async) test: `alembic/env.py`'s `run_migrations_online()`
     calls `asyncio.run(...)` internally, which raises if invoked from inside an already-
-    running event loop -- exactly what a `@pytest.mark.asyncio` test body would be. Kept
-    synchronous, this test never has a loop running when `command.downgrade`/`upgrade`
-    make that call, so no conflict. The raw-SQL insert/select steps below each use their
-    own short-lived engine + `asyncio.run()` for the same reason: sequential, not nested.
+    running event loop -- exactly what a `@pytest.mark.asyncio` test body would be.
     """
     import asyncio
     import uuid as uuid_mod
@@ -132,6 +118,7 @@ def test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgra
     import sqlalchemy as sa
     from alembic import command
     from alembic.config import Config
+    from sqlalchemy.engine import make_url
     from sqlalchemy.ext.asyncio import create_async_engine
 
     from app.core.config import settings
@@ -147,20 +134,43 @@ def test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgra
     student_id = uuid_mod.uuid4()
     unique = uuid_mod.uuid4().hex[:8]
 
-    def _exec(sql, params=None):
+    original_url = settings.database_url
+    isolated_db_name = f"enh001_migration_isolated_{unique}"
+    # `str(url)`/default `render_as_string()` mask the password as "***" -- must render
+    # with the real password, or every connection to the isolated database 401s.
+    isolated_url = make_url(original_url).set(database=isolated_db_name).render_as_string(hide_password=False)
+
+    def _run(coro_factory):
+        return asyncio.run(coro_factory())
+
+    def _on_maintenance_db(sql, params=None):
+        # `CREATE DATABASE`/`DROP DATABASE` cannot run inside a transaction block --
+        # connect with AUTOCOMMIT and target the original database as the maintenance
+        # connection (it already exists and this test doesn't touch it).
         async def _inner():
-            engine = create_async_engine(settings.database_url)
+            engine = create_async_engine(original_url, isolation_level="AUTOCOMMIT")
+            try:
+                async with engine.connect() as conn:
+                    await conn.execute(sa.text(sql), params or {})
+            finally:
+                await engine.dispose()
+
+        _run(_inner)
+
+    def _exec(url, sql, params=None):
+        async def _inner():
+            engine = create_async_engine(url)
             try:
                 async with engine.begin() as conn:
                     await conn.execute(sa.text(sql), params or {})
             finally:
                 await engine.dispose()
 
-        asyncio.run(_inner())
+        _run(_inner)
 
-    def _query(sql, params=None):
+    def _query(url, sql, params=None):
         async def _inner():
-            engine = create_async_engine(settings.database_url)
+            engine = create_async_engine(url)
             try:
                 async with engine.begin() as conn:
                     result = await conn.execute(sa.text(sql), params or {})
@@ -168,18 +178,22 @@ def test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgra
             finally:
                 await engine.dispose()
 
-        return asyncio.run(_inner())
+        return _run(_inner)
 
+    _on_maintenance_db(f'CREATE DATABASE "{isolated_db_name}"')
     try:
-        # 1. Downgrade to the revision just before 0030: academic_years / academic_year_id
-        #    / grade_level don't exist at this point -- the real pre-migration shape.
-        command.downgrade(cfg, "0029_partnership_gaps")
+        settings.database_url = isolated_url
+
+        # 1. Build the full pre-0030 schema from scratch, in the isolated database only --
+        #    never a downgrade of anything real.
+        command.upgrade(cfg, "0029_partnership_gaps")
 
         # 2. Insert School/SchoolStudent rows via raw SQL against that pre-migration
         #    schema (a real NOT NULL column list for `users`/`schools`/`school_students`
         #    at this revision -- the ORM models describe the post-migration schema and
         #    would reference columns/relations that don't exist at 0029).
         _exec(
+            isolated_url,
             "INSERT INTO users (id, email, password_hash, full_name, role, division, "
             "phone, active, email_verified, locale, profile, student_code) "
             "VALUES (:id, :email, 'x', :full_name, 'overseas_admin', 'overseas', "
@@ -187,10 +201,12 @@ def test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgra
             {"id": creator_id, "email": f"enh001-downgrade-{unique}@example.local", "full_name": "Downgrade Cycle Admin"},
         )
         _exec(
+            isolated_url,
             "INSERT INTO schools (id, name, created_by_user_id) VALUES (:id, :name, :creator)",
             {"id": school_id, "name": "ENH-001 Downgrade Cycle School", "creator": creator_id},
         )
         _exec(
+            isolated_url,
             "INSERT INTO school_students (id, school_id, student_code, full_name, grade_or_class, created_by_user_id) "
             "VALUES (:id, :school_id, :code, :full_name, :goc, :creator)",
             {
@@ -203,13 +219,14 @@ def test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgra
             },
         )
 
-        # 3. Re-apply 0030 (back to head) -- this must backfill the row that already
-        #    existed *before* this upgrade ran: the exact gap the review finding
-        #    identified (the other DB-backed test only ever inserts *after* the upgrade).
+        # 3. Apply 0030 -- this must backfill the row that already existed *before* this
+        #    upgrade ran: the exact gap the original review finding identified (the other
+        #    DB-backed test only ever inserts *after* the upgrade).
         command.upgrade(cfg, "head")
 
         # 4. Assert the backfill actually touched this specific pre-existing row.
         rows = _query(
+            isolated_url,
             "SELECT academic_year_id, grade_level FROM school_students WHERE id = :id",
             {"id": student_id},
         )
@@ -218,12 +235,14 @@ def test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgra
         assert academic_year_id is not None
         assert grade_level == 9
     finally:
-        # 5. Always leave the test database at head, even if an assertion above failed,
-        #    so later tests in this session see the expected (post-migration) schema.
-        #    `alembic upgrade head` is idempotent by the migration's own design (guarded
-        #    by inspector checks in 0030), so calling it again here -- even if already at
-        #    head -- is safe.
-        command.upgrade(cfg, "head")
+        settings.database_url = original_url
+        try:
+            _on_maintenance_db(f'DROP DATABASE IF EXISTS "{isolated_db_name}" WITH (FORCE)')
+        except Exception:
+            # Best-effort cleanup -- a leftover throwaway database is a cheap, contained
+            # cost (never the shared dev database, always a fresh, uniquely-suffixed
+            # name), unlike the destructive downgrade this test replaced.
+            pass
 
 
 @pytest.mark.asyncio
@@ -251,6 +270,37 @@ async def test_end_date_before_start_date_is_rejected(client, db_session):
     await _create_admin_and_login(client, db_session)
     response = await client.post("/api/v1/overseas-admin/academic-years", json={"label": f"2032-33-{uuid.uuid4().hex[:4]}", "start_date": "2032-04-01", "end_date": "2031-03-31"})
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad_label", [True, 12345])
+async def test_non_string_label_is_rejected_not_silently_stringified(client, db_session, bad_label):
+    """Review finding fix: `str(payload.get("label", ""))` used to silently coerce a
+    boolean/number into a "valid" label (e.g. `str(True)` -> the literal label "True")
+    instead of rejecting the malformed request."""
+    await _create_admin_and_login(client, db_session)
+    response = await client.post("/api/v1/overseas-admin/academic-years", json={"label": bad_label, "start_date": "2036-04-01", "end_date": "2037-03-31"})
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_patch_with_no_status_key_is_a_true_no_op(client, db_session):
+    """Review finding fix: this endpoint used to write a `school.academic_year_status_change`
+    audit log entry (and commit) even when the payload contained no `status` key at all --
+    a no-op recorded as if a real status change happened."""
+    await _create_admin_and_login(client, db_session)
+    created = await client.post("/api/v1/overseas-admin/academic-years", json={"label": f"2038-39-{uuid.uuid4().hex[:4]}", "start_date": "2038-04-01", "end_date": "2039-03-31"})
+    year_id = created.json()["id"]
+
+    before = await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.entity_id == str(year_id)))
+
+    response = await client.patch(f"/api/v1/overseas-admin/academic-years/{year_id}", json={})
+    assert response.status_code == 200
+    assert response.json()["status"] == "draft"
+
+    await db_session.commit()
+    after = await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.entity_id == str(year_id)))
+    assert after == before
 
 
 @pytest.mark.asyncio
@@ -374,30 +424,57 @@ async def test_coordinator_reads_the_active_academic_year(client, db_session):
     admin = await _create_admin_and_login(client, db_session)
     unique = uuid.uuid4().hex[:8]
 
-    # Deactivate any existing active years to isolate this test
-    active_years = await db_session.execute(select(AcademicYear).where(AcademicYear.status == "active"))
-    for year in active_years.scalars():
-        # "archived" is not a valid AcademicYear status (draft/active/closed per
-        # ACADEMIC_YEAR_STATUSES) -- writing it directly via the ORM would permanently
-        # corrupt the migration's seed row that test_migration_backfills_existing_school_students
-        # depends on finding with status == "active". "closed" is the real terminal status.
-        year.status = "closed"
-    await db_session.commit()
-
-    created = await client.post("/api/v1/overseas-admin/academic-years", json={"label": f"enh001-read-{unique}", "start_date": "2035-04-01", "end_date": "2036-03-31"})
+    # Review finding fix (BLOCKER): this test used to close every OTHER active
+    # AcademicYear row to "isolate" itself -- against this repo's shared, persistent
+    # dev/demo database (there is no per-test transaction rollback here), that meant a
+    # real admin-created active year, or the migration's own real seed row, could get
+    # silently closed by running this test file. `GET /school/academic-years/active`
+    # resolves ties by picking the most recent `start_date` (a documented, deliberate
+    # convention -- see `update_academic_year_status`'s docstring), so giving this
+    # test's own year a `start_date` far beyond any real or other-test year guarantees
+    # it wins that comparison without ever touching another row.
+    created = await client.post("/api/v1/overseas-admin/academic-years", json={"label": f"enh001-read-{unique}", "start_date": "9999-04-01", "end_date": "9999-12-30"})
     assert created.status_code == 201, created.text
     year_id = created.json()["id"]
-    patch_resp = await client.patch(f"/api/v1/overseas-admin/academic-years/{year_id}", json={"status": "active"})
-    assert patch_resp.status_code == 200
+    try:
+        patch_resp = await client.patch(f"/api/v1/overseas-admin/academic-years/{year_id}", json={"status": "active"})
+        assert patch_resp.status_code == 200
 
-    coordinator = User(email=f"enh001-read-{unique}@example.local", password_hash=hash_password(ADMIN_PASSWORD), full_name="Coordinator", role="school_coordinator", division="overseas", active=True, profile={"school_id": str(uuid.uuid4())})
-    db_session.add(coordinator)
+        coordinator = User(email=f"enh001-read-{unique}@example.local", password_hash=hash_password(ADMIN_PASSWORD), full_name="Coordinator", role="school_coordinator", division="overseas", active=True, profile={"school_id": str(uuid.uuid4())})
+        db_session.add(coordinator)
+        await db_session.commit()
+        await client.post("/api/v1/auth/login", json={"email": coordinator.email, "password": ADMIN_PASSWORD, "division": "overseas"})
+
+        response = await client.get("/api/v1/school/academic-years/active")
+        assert response.status_code == 200
+        assert response.json()["label"] == f"enh001-read-{unique}"
+    finally:
+        # Self-cleanup, not the global "close everything" this test used to do: a
+        # `start_date` of 9999 only guarantees this row wins the active-year tie-break
+        # against *real* years (near-term dates) -- it does not disambiguate against a
+        # *different run's* leftover 9999-dated row on a second pass through this file
+        # against the same persistent database (both tie on the same day-granularity
+        # date, and the endpoint has no secondary sort key). Deleting the row this test
+        # itself created, every time, keeps repeated runs idempotent without ever
+        # touching a row this test didn't create.
+        year = await db_session.get(AcademicYear, year_id)
+        if year:
+            await db_session.delete(year)
+            await db_session.commit()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("role", ["school_partnership_manager", "edusphere_school_manager"])
+async def test_active_academic_year_rejects_roles_rbac_matrix_says_have_no_grant(client, db_session, role):
+    """Review finding fix: `SCHOOL_DOMAIN_ROLES` used to include these two roles.
+    `RBAC_MATRIX.md` explicitly lists both as "Not modeled -- explicitly deferred...
+    Do not invent a grant for either." -- this endpoint had invented one anyway."""
+    user = User(email=f"enh001-{role}-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(ADMIN_PASSWORD), full_name="Undecided Role", role=role, division="overseas", active=True)
+    db_session.add(user)
     await db_session.commit()
-    await client.post("/api/v1/auth/login", json={"email": coordinator.email, "password": ADMIN_PASSWORD, "division": "overseas"})
-
+    await client.post("/api/v1/auth/login", json={"email": user.email, "password": ADMIN_PASSWORD, "division": "overseas"})
     response = await client.get("/api/v1/school/academic-years/active")
-    assert response.status_code == 200
-    assert response.json()["label"] == f"enh001-read-{unique}"
+    assert response.status_code == 403
 
 
 @pytest.mark.asyncio
@@ -516,3 +593,25 @@ async def test_dashboard_grade_level_counts_use_the_stored_column_not_regex_pars
     assert report.status_code == 200, report.text
     kpis = {k["key"]: k for k in report.json()["school_crm_kpis"]}
     assert kpis["grade_9"]["value"] == 2
+
+
+@pytest.mark.asyncio
+async def test_dashboard_falls_back_to_parsing_grade_or_class_when_grade_level_is_never_supplied(client, db_session):
+    """Review finding fix: a client (any pre-ENH-001 caller, or the seed script) that
+    creates a student with only `grade_or_class` and never supplies the newer optional
+    `grade_level` must not silently disappear from the dashboard's grade KPIs -- that
+    would violate this feature's own "no existing roster/read endpoint response breaks"
+    acceptance criterion (`ENHANCEMENT_BACKLOG.md`'s ENH-001 entry). `grade_level` stays
+    NULL in this scenario (never a fabricated derived value written back to the row --
+    zero data loss / no silent mutation), but the dashboard's *count* must still find it
+    via a fallback parse of `grade_or_class`, exactly as it did before Task 7 retired the
+    old always-on regex path."""
+    await _create_school_with_coordinator(client, db_session)
+    response = await client.post("/api/v1/school/students", json={"full_name": "No Grade Level Supplied", "grade_or_class": "Grade 9"})
+    assert response.status_code == 201, response.text
+    assert response.json()["grade_level"] is None
+
+    report = await client.get("/api/v1/school/dashboard")
+    assert report.status_code == 200, report.text
+    kpis = {k["key"]: k for k in report.json()["school_crm_kpis"]}
+    assert kpis["grade_9"]["value"] == 1
