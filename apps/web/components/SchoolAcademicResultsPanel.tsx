@@ -11,6 +11,19 @@ type Result = {
   status: string; uploaded_by_user_id: string; verified_by_user_id: string | null; published_by_user_id: string | null;
 };
 
+const NETWORK_ERROR = "Could not reach the server. Check your connection and try again.";
+
+// A rejected fetch (offline, dropped connection) must surface as an error, not leave the
+// form stuck on "Saving…".
+async function send(url: string, init: RequestInit): Promise<{ ok: boolean; data: { detail?: unknown; subject?: string } }> {
+  try {
+    const response = await fetch(url, init);
+    return { ok: response.ok, data: await response.json().catch(() => ({})) };
+  } catch {
+    return { ok: false, data: { detail: NETWORK_ERROR } };
+  }
+}
+
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
@@ -31,7 +44,7 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
     setBusy(true);
     setMessage(null);
     const form = new FormData(formElement);
-    const response = await fetch("/api/v1/school/academic-team/results", {
+    const { ok, data } = await send("/api/v1/school/academic-team/results", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -45,9 +58,8 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
         teacher_remarks: form.get("teacher_remarks") || undefined,
       }),
     });
-    const data = await response.json().catch(() => ({}));
     setBusy(false);
-    if (!response.ok) {
+    if (!ok) {
       setMessage({ text: detailMessage(data.detail), failed: true });
       return;
     }
@@ -59,10 +71,9 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
   async function advance(resultId: string, action: "verify" | "publish") {
     setBusy(true);
     setMessage(null);
-    const response = await fetch(`/api/v1/school/academic-team/results/${resultId}/${action}`, { method: "POST" });
-    const data = await response.json().catch(() => ({}));
+    const { ok, data } = await send(`/api/v1/school/academic-team/results/${resultId}/${action}`, { method: "POST" });
     setBusy(false);
-    if (!response.ok) {
+    if (!ok) {
       setMessage({ text: detailMessage(data.detail), failed: true });
       return;
     }
