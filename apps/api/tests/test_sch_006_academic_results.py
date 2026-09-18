@@ -412,3 +412,52 @@ async def test_progress_endpoint_returns_empty_list_for_a_member_with_no_portfol
     response = await client.get("/api/v1/school/academic-team/progress")
     assert response.status_code == 200
     assert response.json() == []
+
+
+@pytest.mark.asyncio
+async def test_progress_includes_a_student_with_zero_results(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    member = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, member.email)
+    response = await client.get("/api/v1/school/academic-team/progress")
+    assert response.status_code == 200
+    row = next(r for r in response.json() if r["school_student_id"] == str(ctx["student"].id))
+    assert row["result_count"] == 0
+    assert row["average_percentage"] is None
+
+
+@pytest.mark.asyncio
+async def test_progress_average_reflects_mixed_max_marks_across_subjects(client, db_session):
+    """Average of PERCENTAGES per subject, not sum(marks)/sum(max_marks) -- subjects can
+    have different max_marks, so those two formulas diverge and only the former is correct."""
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    await client.post("/api/v1/school/academic-team/results", json={"school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1", "subject": "Mathematics", "max_marks": 100, "marks_obtained": 80})
+    await client.post("/api/v1/school/academic-team/results", json={"school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1", "subject": "Art", "max_marks": 20, "marks_obtained": 10})
+    # 80% and 50% -> average 65%, NOT (80+10)/(100+20)*100 = 75%.
+    response = await client.get("/api/v1/school/academic-team/progress")
+    row = next(r for r in response.json() if r["school_student_id"] == str(ctx["student"].id))
+    assert row["result_count"] == 2
+    assert row["average_percentage"] == 65.0
+
+
+@pytest.mark.asyncio
+async def test_progress_spans_every_school_in_a_multi_school_portfolio(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    member = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    second_school = School(name=f"ENH-002 Second School {uuid.uuid4().hex[:6]}", created_by_user_id=ctx["admin"].id)
+    db_session.add(second_school)
+    await db_session.flush()
+    db_session.add(SchoolStaffAssignment(user_id=member.id, school_id=second_school.id, role="academic_team", assigned_by_user_id=ctx["admin"].id))
+    second_student = SchoolStudent(school_id=second_school.id, student_code=await unique_student_code(db_session, SchoolStudent.student_code), full_name="Second School Student", created_by_user_id=ctx["admin"].id)
+    db_session.add(second_student)
+    await db_session.commit()
+
+    await _login(client, member.email)
+    response = await client.get("/api/v1/school/academic-team/progress")
+    student_ids = {row["school_student_id"] for row in response.json()}
+    assert str(ctx["student"].id) in student_ids
+    assert str(second_student.id) in student_ids
+    row = next(r for r in response.json() if r["school_student_id"] == str(second_student.id))
+    assert row["school_name"] == second_school.name
