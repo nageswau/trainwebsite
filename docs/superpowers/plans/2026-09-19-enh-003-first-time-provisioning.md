@@ -2862,3 +2862,32 @@ Expected: pytest passes with no failure outside the 17 pre-existing ones recorde
 - **Placeholders:** none. Task 10 Step 4 is a mechanical migration across 13 files driven by two fully-shown patterns, an exact worklist and a `grep` gate, because reading and rewriting all 37 call sites in the plan would only restate the same two transformations.
 - **Type/name consistency:** `issue_welcome_token(db, *, user, issued_by)`, `deliver_welcome_link(db, *, user, issued, issued_by)`, `provisioning_statuses`, `user_ids_with_status(db, actor, status)`, `IssuedWelcome(raw, expires_at, token_id)`, `send_welcome_email(...)`, `welcomeLinkFeedback(subject, data)`, `requestWelcomeLink(userId)`, `toneClass`, `refocus(id)` are used identically in every task. One intentional deviation from the spec, noted in Task 3: `user_ids_with_status` generalizes the spec's `expired_welcome_link_user_ids`, and `issue_welcome_token` takes `issued_by` for its audit row.
 - **Security review (2026-09-19, user-approved):** S1 → Task 7 steps 8a/8b + Task 10 Referrer test; S2 → Tasks 4 and 6 (inactive check, revoke-on-`active`-change) and the latest-token status rule in Task 3; S3 → Task 2 (mailer inside `try`), Task 3 (`return_exceptions`) and Task 5 (`_valid_email`); S4 → Tasks 3 and 6 (60-second cooldown) and Task 10; S5 → Task 3 (`_redact`); S8 → Task 4 (128-character cap); deployment note → Task 11. Spec §13 and `AC-21`…`AC-29` carry the criteria.
+
+## Implementation notes (2026-09-19) — where the built code deliberately differs from the text above
+
+Recorded so this plan stops disagreeing with the code. Everything below was found by writing the test
+first or by a mutation check, not by reading.
+
+- **Migration number:** `0032_welcome_token_purpose` (chains after `0031_academic_result_remarks`); ENH-002 merged `0031` first.
+- **Task 3 (service):** added structured, id-only logging (`welcome_link_delivered` INFO / `welcome_link_not_delivered` WARNING
+  / `welcome_link_audit_failed`), and `_redact` also strips e-mail addresses (SMTP refusals echo the recipient), not only URLs.
+- **Task 4 (reset):** logs `welcome_password_set` (INFO) and `welcome_link_refused_inactive_account` (WARNING) under `app.auth`.
+- **Task 5 (create routes):** `_reject_supplied_password(payload, actor, route, *fields)` logs `provisioning_password_field_rejected`
+  (actor and route, never the value); the three duplicated `try flush / except IntegrityError` blocks became one `_flush_unique_email`.
+- **Task 6:** logs `welcome_link_resent`, `welcome_link_resend_throttled`, `welcome_links_revoked_on_active_change` under `app.admin`.
+  The plan's Re-send concurrency check could not fail: a bare `asyncio.gather` interleaves harmlessly, so the test passed even
+  with the row lock removed. It now pauses right after the cooldown check to widen the race window (verified: passes with the lock,
+  fails 3/3 without). The duplicate-email race test was mutation-checked too (fails 3/3 with the `IntegrityError` handling removed).
+- **Task 7:** added component tests the plan did not have (`ResetPasswordForm`, both create panels), a source guard
+  (`no-default-password.test.ts`) and a `next.config` header test; the reset input gained `maxLength={128}` to mirror the server cap.
+- **Task 9:** `WorkflowPanel` has an early `return null` that lists every panel flag; the plan did not mention it, so on a dashboard with
+  no other action the new panel would silently never render. Found by the mounting test; the flag is now in that condition.
+- **Task 10 (e2e):** the plan's "convert UI-driven flows to API calls" was replaced by a helper, `createAndActivateFromUi`, that keeps the
+  click and captures the create response, so the school/staff forms stay under test. Scope: **19** specs (enh-002, merged after this
+  plan was written, uses the forms too), limited to specs that use the staff form and to the five that create a throwaway account
+  through `POST /admin/users`. A first, broader run wrongly rewrote unrelated "Create account" buttons and dropped passwords from
+  registration calls in five other specs; those edits were reverted and the script re-scoped. **None of the e2e specs has been run.**
+- **Task 11 (docs):** updated `API_CONTRACT.md`, `DATA_MODEL.md` (§1.4, new), `SECURITY_CONTROLS.md` and the backlog. `RTM.md` and
+  `SCREEN_CATALOG.md` were not touched: ENH items are not tracked there (ENH-001 precedent).
+- **Verification environment:** backend tests ran in throwaway containers built from the repo's `edusphere-api` image, mounting the
+  worktree, against a **separate database** (`edusphere_enh003`) on the same Postgres server, so the dev database was never migrated.

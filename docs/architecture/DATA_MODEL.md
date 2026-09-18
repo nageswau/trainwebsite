@@ -70,6 +70,25 @@ one structural extension (see below).
 - **Audit:** every transition writes an `AuditLog` row (`SEC-001`).
 - **Feature IDs:** `AGT-001`.
 
+### 1.4 `PasswordResetToken` (`password_reset_tokens`) — first-time set-password links, `ENH-003`
+- **Fields:** `user_id` (FK `User`, indexed), `token_hash` (SHA-256 hex of the raw token, unique — the raw
+  token is never stored), `expires_at`, `used_at` (nullable), `purpose` (`reset` \| `welcome`, NOT NULL,
+  default `reset`), `superseded_at` (nullable), plus the usual `created_at`/`updated_at`.
+- **Purposes:** `reset` — forgot-password, 30-minute expiry. `welcome` — the first-time set-password link
+  for an admin-provisioned account (`DEC-SCOPE-019`), 72-hour expiry; consuming it also sets
+  `User.email_verified`.
+- **Lifecycle:** a token is consumed atomically (`used_at` set only if unused, unsuperseded and unexpired).
+  A Re-send, or any real change of the account's `active` flag, sets `superseded_at` on the account's open
+  welcome tokens. An account's setup state is derived from its **latest** welcome token (never stored on
+  `User`): used, or a later token used ⇒ password set; otherwise `pending_setup` (unexpired) or
+  `link_expired` (expired, or revoked with nothing newer).
+- **Migration:** `0032_welcome_token_purpose` — additive; existing rows read `purpose='reset'`.
+- **Account credential:** an admin-provisioned `User.password_hash` is the hash of a discarded random
+  secret, never a constant and never a value any admin chose or saw.
+- **Audit:** `user.welcome_link_issue`, `user.welcome_link_delivery`, `auth.welcome_password_set`,
+  `auth.password_reset` (`SEC-001`); metadata never holds the raw token, an address, or a URL.
+- **Feature IDs:** `ENH-003`.
+
 ---
 
 ## 2. Public content / CMS domain

@@ -423,6 +423,13 @@ a different role — must reuse the same conflict-handling discipline already pr
 **Complexity:** Medium. **Risk:** High (credential-handling; prioritize the audit even if the rest of
 the backlog is resequenced).
 
+**Implementation status (2026-09-19): IMPLEMENTED, NOT COMPLETE.** Built test-first on branch
+`feature/enh-003-first-time-provisioning` per `docs/superpowers/plans/2026-09-19-enh-003-first-time-provisioning.md`
+(see its "Implementation notes"). Backend and frontend unit/component tests pass and the type-check is clean.
+**Still required before this can be called complete:** a real-browser validation (the Playwright specs, including
+the 19 migrated ones, have not been executed), and an independent code review. `DEC-SCOPE-014`'s
+`SchoolAccountInvite` flow is untouched.
+
 ---
 
 ## ENH-004 — Student Promotion to Next Academic Year / Grade
