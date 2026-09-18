@@ -10,6 +10,8 @@ type Student = {
   full_name: string;
   date_of_birth: string | null;
   grade_or_class: string | null;
+  academic_year_id: string | null;
+  grade_level: number | null;
   assigned_teacher_user_id: string | null;
   pending_parent_email: string | null;
 };
@@ -72,6 +74,7 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
       body: JSON.stringify({
         full_name: form.get("full_name"),
         grade_or_class: form.get("grade_or_class") || undefined,
+        grade_level: form.get("grade_level") ? Number(form.get("grade_level")) : undefined,
         date_of_birth: form.get("date_of_birth") || undefined,
         assigned_teacher_user_id: form.get("assigned_teacher_user_id") || undefined,
         parent_name: form.get("parent_name") || undefined,
@@ -101,6 +104,7 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
       body: JSON.stringify({
         full_name: form.get("full_name"),
         grade_or_class: form.get("grade_or_class") || null,
+        grade_level: form.get("grade_level") ? Number(form.get("grade_level")) : null,
         assigned_teacher_user_id: form.get("assigned_teacher_user_id") || null,
         parent_name: form.get("parent_name") || undefined,
         parent_email: form.get("parent_email") || undefined,
@@ -187,6 +191,10 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
               <input id="edit-grade" name="grade_or_class" defaultValue={editing.grade_or_class || ""} />
             </div>
             <div className="field">
+              <label htmlFor="edit-grade-level">Grade level (1-12, optional)</label>
+              <input id="edit-grade-level" name="grade_level" type="number" min={1} max={12} step={1} defaultValue={editing.grade_level ?? ""} />
+            </div>
+            <div className="field">
               <label htmlFor="edit-teacher">Assigned Teacher</label>
               {/* Includes inactive teachers here (unlike the create form below) so an
                   already-assigned Teacher who's since been deactivated still shows up as
@@ -246,6 +254,10 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
           <div className="field">
             <label htmlFor="new-grade">Grade/Class</label>
             <input id="new-grade" name="grade_or_class" />
+          </div>
+          <div className="field">
+            <label htmlFor="new-grade-level">Grade level (1-12, optional)</label>
+            <input id="new-grade-level" name="grade_level" type="number" min={1} max={12} step={1} />
           </div>
           <div className="field">
             <label htmlFor="new-teacher">Assigned Teacher</label>
