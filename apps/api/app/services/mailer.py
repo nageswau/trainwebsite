@@ -13,8 +13,9 @@ error), "sent", or "failed".
 
 import asyncio
 import smtplib
-from datetime import datetime
+from datetime import UTC, datetime
 from email.message import EmailMessage
+from html import escape
 
 from app.core.config import settings
 
@@ -187,6 +188,101 @@ async def send_parent_notification_email(*, to_email: str, recipient_name: str, 
     msg.set_content(text)
     msg.add_alternative(_parent_notification_html(recipient_name=recipient_name, school_name=school_name, title=title, body=body, action_url=action_url), subtype="html")
     try:
+        await asyncio.to_thread(_send_sync, msg)
+        return "sent", None
+    except Exception as exc:
+        return "failed", str(exc)[:500]
+
+
+# --- ENH-003 / DEC-SCOPE-019: first-time set-password link for admin-provisioned accounts -------
+
+WELCOME_EXPIRY_HOURS_LABEL = "72 hours"
+
+
+def _welcome_html(*, recipient_name: str, role_label: str, set_password_url: str, expires_at: datetime, invited_by_name: str) -> str:
+    logo_url = f"{settings.frontend_url}/brand/logo-dark.png"
+    expires_label = expires_at.astimezone(UTC).strftime("%d %b %Y %H:%M UTC")
+    name, role, inviter = escape(recipient_name), escape(role_label), escape(invited_by_name)
+    url = escape(set_password_url, quote=True)
+    return f"""<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f4f7fb;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f2850;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:32px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
+            <tr>
+              <td style="background:#0a1e3f;padding:28px 32px;">
+                <img src="{logo_url}" alt="EduSphere" height="40" style="display:block;">
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <h1 style="font-size:20px;margin:0 0 16px;">Welcome to EduSphere</h1>
+                <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Hi {name},</p>
+                <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+                  {inviter} has created your EduSphere account as <strong>{role}</strong>. Set your password to get started.
+                </p>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+                  <tr>
+                    <td style="border-radius:12px;background:#1554d8;">
+                      <a href="{url}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;">Set your password</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="font-size:13px;line-height:1.6;color:#60738b;margin:0 0 8px;">
+                  This link is single-use and expires in {WELCOME_EXPIRY_HOURS_LABEL} ({expires_label}). If the button doesn't work, copy and paste this link into your browser:
+                </p>
+                <p style="font-size:13px;line-height:1.6;word-break:break-all;margin:0;">
+                  <a href="{url}" style="color:#1554d8;">{url}</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;background:#f8fafc;border-top:1px solid #edf1f6;">
+                <p style="font-size:12px;color:#60738b;margin:0;">
+                  Didn't expect this? You can safely ignore this email.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
+
+
+def _welcome_text(*, recipient_name: str, role_label: str, set_password_url: str, expires_at: datetime, invited_by_name: str) -> str:
+    expires_label = expires_at.astimezone(UTC).strftime("%d %b %Y %H:%M UTC")
+    return (
+        f"Hi {recipient_name},\n\n"
+        f"{invited_by_name} has created your EduSphere account as {role_label}.\n\n"
+        f"Set your password: {set_password_url}\n\n"
+        f"This link is single-use and expires in {WELCOME_EXPIRY_HOURS_LABEL} ({expires_label}).\n\n"
+        f"Didn't expect this? You can safely ignore this email."
+    )
+
+
+async def send_welcome_email(
+    *, to_email: str, recipient_name: str, role: str, set_password_url: str, expires_at: datetime, invited_by_name: str,
+) -> tuple[str, str | None]:
+    """ENH-003: the first-time set-password email for an admin-provisioned account. Same
+    (status, error) contract as the invite mailer: `not_configured` is a normal, reportable
+    state that never blocks the account creation that triggered it."""
+    if not settings.smtp_host or not settings.smtp_from_email:
+        return "not_configured", None
+    role_label = ROLE_LABELS.get(role, role.replace("_", " ").title())
+    try:
+        # Building the message is inside the try on purpose: a malformed address makes EmailMessage
+        # raise ValueError, and a send problem must never escape as a 500 after the account committed.
+        msg = EmailMessage()
+        msg["Subject"] = "Welcome to EduSphere -- set your password"
+        msg["From"] = f"EduSphere <{settings.smtp_from_email}>"
+        msg["To"] = to_email
+        fields = dict(recipient_name=recipient_name, role_label=role_label, set_password_url=set_password_url, expires_at=expires_at, invited_by_name=invited_by_name)
+        msg.set_content(_welcome_text(**fields))
+        msg.add_alternative(_welcome_html(**fields), subtype="html")
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:

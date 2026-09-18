@@ -74,3 +74,77 @@ async def test_a_token_created_without_a_purpose_defaults_to_reset(db_session):
     await db_session.refresh(token)
     assert token.purpose == "reset"
     assert token.superseded_at is None
+
+
+# --- Task 2: welcome email ------------------------------------------------------------
+
+from app.services import mailer  # noqa: E402
+
+LINK = "https://example.local/overseas/reset-password?token=abc123"
+
+
+def _configure_smtp(monkeypatch):
+    monkeypatch.setattr(settings, "smtp_host", "smtp.example.local")
+    monkeypatch.setattr(settings, "smtp_from_email", "no-reply@edusphere.local")
+    monkeypatch.setattr(settings, "smtp_username", None)
+    monkeypatch.setattr(settings, "smtp_password", None)
+
+
+def _welcome_kwargs(**overrides):
+    base = dict(to_email="new.staff@example.local", recipient_name="Asha", role="academic_team", set_password_url=LINK, expires_at=datetime.now(UTC) + timedelta(hours=72), invited_by_name="Overseas Admin")
+    base.update(overrides)
+    return base
+
+
+@pytest.mark.asyncio
+async def test_welcome_email_reports_not_configured_without_smtp(monkeypatch):
+    monkeypatch.setattr(settings, "smtp_host", None)
+    assert await mailer.send_welcome_email(**_welcome_kwargs()) == ("not_configured", None)
+
+
+@pytest.mark.asyncio
+async def test_welcome_email_carries_the_link_and_expiry_and_no_password(monkeypatch):
+    _configure_smtp(monkeypatch)
+    sent = []
+    monkeypatch.setattr(mailer, "_send_sync", lambda msg: sent.append(msg))
+    status, error = await mailer.send_welcome_email(**_welcome_kwargs())
+    assert (status, error) == ("sent", None)
+    msg = sent[0]
+    assert msg["To"] == "new.staff@example.local"
+    assert "no-reply@edusphere.local" in msg["From"]
+    text = msg.get_body(preferencelist=("plain",)).get_content()
+    html_body = msg.get_body(preferencelist=("html",)).get_content()
+    assert LINK in text and LINK in html_body
+    assert "72 hours" in text
+    assert "ChangeMe" not in text and "ChangeMe" not in html_body
+
+
+@pytest.mark.asyncio
+async def test_welcome_email_escapes_names_in_html(monkeypatch):
+    _configure_smtp(monkeypatch)
+    sent = []
+    monkeypatch.setattr(mailer, "_send_sync", lambda msg: sent.append(msg))
+    await mailer.send_welcome_email(**_welcome_kwargs(recipient_name="<b>Eve</b>", invited_by_name="<i>Admin</i>"))
+    html_body = sent[0].get_body(preferencelist=("html",)).get_content()
+    assert "<b>Eve</b>" not in html_body and "&lt;b&gt;Eve&lt;/b&gt;" in html_body
+    assert "<i>Admin</i>" not in html_body
+
+
+@pytest.mark.asyncio
+async def test_welcome_email_reports_a_send_failure(monkeypatch):
+    _configure_smtp(monkeypatch)
+
+    def boom(msg):
+        raise RuntimeError("smtp down")
+
+    monkeypatch.setattr(mailer, "_send_sync", boom)
+    status, error = await mailer.send_welcome_email(**_welcome_kwargs())
+    assert status == "failed" and "smtp down" in error
+
+
+@pytest.mark.asyncio
+async def test_welcome_email_never_raises_on_a_malformed_address(monkeypatch):
+    _configure_smtp(monkeypatch)
+    monkeypatch.setattr(mailer, "_send_sync", lambda msg: None)
+    status, error = await mailer.send_welcome_email(**_welcome_kwargs(to_email="victim@example.local\r\nBcc: attacker@example.local"))
+    assert status == "failed" and error
