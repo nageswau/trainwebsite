@@ -7,6 +7,7 @@ type Student = { id: string; full_name: string; school_name: string };
 type Result = {
   id: string; school_student_id: string; academic_year: string; term: string; subject: string;
   max_marks: number; marks_obtained: number; percentage: number | null; grade: string | null;
+  teacher_remarks: string | null;
   status: string; uploaded_by_user_id: string; verified_by_user_id: string | null; published_by_user_id: string | null;
 };
 
@@ -41,6 +42,7 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
         max_marks: Number(form.get("max_marks")),
         marks_obtained: Number(form.get("marks_obtained")),
         grade: form.get("grade") || undefined,
+        teacher_remarks: form.get("teacher_remarks") || undefined,
       }),
     });
     const data = await response.json().catch(() => ({}));
@@ -82,7 +84,7 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
           <div className="table-wrap">
             <table className="table">
               <thead>
-                <tr><th>Student</th><th>Subject</th><th>Marks</th><th>Status</th><th>Actions</th></tr>
+                <tr><th scope="col">Student</th><th scope="col">Subject</th><th scope="col">Marks</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
               </thead>
               <tbody>
                 {results.map((r) => {
@@ -90,7 +92,7 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
                   return (
                     <tr key={r.id}>
                       <td>{studentName(r.school_student_id)}</td>
-                      <td>{r.subject} ({r.academic_year}, {r.term})</td>
+                      <td>{r.subject} ({r.academic_year}, {r.term}){r.teacher_remarks && <><br /><span className="muted" style={{ fontSize: 13 }}>{r.teacher_remarks}</span></>}</td>
                       <td>{r.marks_obtained}/{r.max_marks}{r.percentage !== null ? ` (${r.percentage}%)` : ""}</td>
                       <td>{r.status}</td>
                       <td>
@@ -157,6 +159,10 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
             <div className="field">
               <label htmlFor="result-grade">Grade</label>
               <input id="result-grade" name="grade" placeholder="Optional" />
+            </div>
+            <div className="field">
+              <label htmlFor="result-remarks">Teacher remarks</label>
+              <textarea id="result-remarks" name="teacher_remarks" rows={2} placeholder="Optional" />
             </div>
             <button className="btn" disabled={busy}>{busy ? "Saving…" : "Save as Draft"}</button>
           </form>

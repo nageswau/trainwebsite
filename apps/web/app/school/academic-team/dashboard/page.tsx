@@ -9,6 +9,7 @@ type Student = { id: string; full_name: string; school_name: string };
 type Result = {
   id: string; school_student_id: string; academic_year: string; term: string; subject: string;
   max_marks: number; marks_obtained: number; percentage: number | null; grade: string | null;
+  teacher_remarks: string | null;
   status: string; uploaded_by_user_id: string; verified_by_user_id: string | null; published_by_user_id: string | null;
 };
 type TestPrepRecord = { id: string; school_student_id: string; test_type: string; mock_scores: string[]; target_score: string | null; actual_score: string | null; status: string };
