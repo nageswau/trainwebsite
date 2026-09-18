@@ -55,7 +55,7 @@ validation (no Pydantic layer for these routes); no new Pydantic response models
 
 ## 4. Data model
 
-Migration `0031_welcome_token_purpose` (additive; guarded with the same `sa.inspect` checks `0030`
+Migration `0032_welcome_token_purpose` (additive; guarded with the same `sa.inspect` checks `0030`
 uses; downgrade drops both columns):
 
 | Column (`password_reset_tokens`) | Type | Notes |
@@ -196,7 +196,7 @@ dashboard shape.
 | AC-14 | `GET /admin/dashboard` includes integer `expired_welcome_links`, division-scoped. |
 | AC-15 | Backward compatibility: all existing `SchoolAccountInvite`, forgot-password, reset-password, `test_sch_*` and admin-CRUD tests pass unchanged (helpers that logged in with a supplied password move to the dev-token flow). |
 | AC-16 | Two simultaneous creates for one email return one `201` and one `409` (no `500`). |
-| AC-17 | Migration `0031`: upgrade adds both columns, existing rows read `purpose='reset'`; downgrade restores; no row is lost. |
+| AC-17 | Migration `0032`: upgrade adds both columns, existing rows read `purpose='reset'`; downgrade restores; no row is lost. |
 | AC-18 | UI: no password text/field on the three surfaces; warning shown when `email_status !== "sent"`; directory shows status/filter/Re-send with busy/success/error; expired panel shows loading/empty/error; reset form shows the re-send hint on `400`; labels and live regions accessible; usable at 375 px. |
 | AC-19 | E2E: create staff → activate with dev token → log in → reach dashboard; Re-send from the directory works; `grep -r "ChangeMe@12345" apps/web` returns nothing. |
 | AC-20 | Audit rows exist for issue, delivery, Re-send and password-set, none containing the raw token or any password. |

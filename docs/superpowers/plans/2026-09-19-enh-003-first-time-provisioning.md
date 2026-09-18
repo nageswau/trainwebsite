@@ -55,11 +55,11 @@ Expected: all pass. Write down the pass count; later tasks must not reduce it.
 
 ---
 
-### Task 1: Model columns + migration `0031` (+ the new test file's helpers)
+### Task 1: Model columns + migration `0032` (+ the new test file's helpers)
 
 **Files:**
 - Modify: `apps/api/app/models.py` (`PasswordResetToken`, ~line 914)
-- Create: `apps/api/alembic/versions/0031_welcome_token_purpose.py`
+- Create: `apps/api/alembic/versions/0032_welcome_token_purpose.py`
 - Create: `apps/api/tests/test_enh_003_first_time_provisioning.py`
 
 **Interfaces:**
@@ -176,8 +176,8 @@ with:
 ```python
 """ENH-003 -- password_reset_tokens.purpose + superseded_at (welcome links for admin-provisioned accounts).
 
-Revision ID: 0031_welcome_token_purpose
-Revises: 0030_academic_years
+Revision ID: 0032_welcome_token_purpose
+Revises: 0031_academic_result_remarks
 
 docs/superpowers/specs/2026-09-19-enh-003-first-time-provisioning-design.md §4. Additive only.
 `purpose` is NOT NULL with a server default of 'reset', which backfills every existing row without a
@@ -187,8 +187,8 @@ rewrite; no index (two values, no selectivity -- the user_id index already serve
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0031_welcome_token_purpose"
-down_revision = "0030_academic_years"
+revision = "0032_welcome_token_purpose"
+down_revision = "0031_academic_result_remarks"
 branch_labels = None
 depends_on = None
 
@@ -216,7 +216,7 @@ Expected: PASS (2 tests). Also confirm existing rows: ask the user to run (or ru
 - [ ] **Step 6: Commit** (with approval)
 
 ```bash
-git add apps/api/app/models.py apps/api/alembic/versions/0031_welcome_token_purpose.py apps/api/tests/test_enh_003_first_time_provisioning.py
+git add apps/api/app/models.py apps/api/alembic/versions/0032_welcome_token_purpose.py apps/api/tests/test_enh_003_first_time_provisioning.py
 git commit -m "feat(enh-003): add purpose and superseded_at to password_reset_tokens" -m "Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ```
 

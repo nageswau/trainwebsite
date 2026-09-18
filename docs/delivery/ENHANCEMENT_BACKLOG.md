@@ -358,7 +358,7 @@ password" copy for `welcome` tokens.
 **Database impact.** Decided (`DEC-SCOPE-019`): extend `password_reset_tokens` (`PasswordResetToken`)
 with a `purpose` column (`reset` | `welcome`, existing rows backfilled to `reset`) and a nullable
 `superseded_at` (set when Re-send replaces an unused token, so a superseded token never reads as an
-unresolved expired link). New migration `0031`. No new table; `SchoolAccountInvite` is untouched.
+unresolved expired link). New migration `0032`. No new table; `SchoolAccountInvite` is untouched.
 New accounts are created with a random, discarded, unusable password hash — never a constant.
 
 **API impact.** `POST /admin/users`, `POST /overseas-admin/schools` and `POST /overseas-admin/school-staff`
