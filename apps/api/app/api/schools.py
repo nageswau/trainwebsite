@@ -1640,7 +1640,11 @@ def _clean_teacher_remarks(value) -> str | None:
     if value is None:
         return None
     cleaned = str(value).strip()
-    return cleaned or None
+    if not cleaned:
+        return None
+    if len(cleaned) > 2000:
+        raise HTTPException(422, "teacher_remarks must be 2000 characters or fewer")
+    return cleaned
 
 
 def _result_out(r: SchoolAcademicResult) -> dict:

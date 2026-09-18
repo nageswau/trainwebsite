@@ -270,3 +270,41 @@ async def test_teacher_remarks_cannot_be_edited_after_verify(client, db_session)
     await _login(client, uploader.email)
     edit_after_verify = await client.patch(f"/api/v1/school/academic-team/results/{result_id}", json={"teacher_remarks": "Too late."})
     assert edit_after_verify.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_teacher_remarks_over_2000_chars_is_rejected_on_create(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    response = await client.post("/api/v1/school/academic-team/results", json={
+        "school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1",
+        "subject": "Mathematics", "max_marks": 100, "marks_obtained": 85,
+        "teacher_remarks": "x" * 2001,
+    })
+    assert response.status_code == 422
+    assert "teacher_remarks" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_teacher_remarks_at_exactly_2000_chars_is_accepted(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    response = await client.post("/api/v1/school/academic-team/results", json={
+        "school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1",
+        "subject": "Mathematics", "max_marks": 100, "marks_obtained": 85,
+        "teacher_remarks": "x" * 2000,
+    })
+    assert response.status_code == 201, response.text
+
+
+@pytest.mark.asyncio
+async def test_teacher_remarks_over_2000_chars_is_rejected_on_update(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    created = await client.post("/api/v1/school/academic-team/results", json={"school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1", "subject": "Chemistry", "max_marks": 100, "marks_obtained": 60})
+    result_id = created.json()["id"]
+    edited = await client.patch(f"/api/v1/school/academic-team/results/{result_id}", json={"teacher_remarks": "x" * 2001})
+    assert edited.status_code == 422
