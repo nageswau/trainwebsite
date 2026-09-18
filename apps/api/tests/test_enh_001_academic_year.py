@@ -447,3 +447,33 @@ async def test_update_student_can_set_grade_level(client, db_session):
     response = await client.patch(f"/api/v1/school/students/{student_id}", json={"grade_level": 7})
     assert response.status_code == 200
     assert response.json()["grade_level"] == 7
+
+
+@pytest.mark.asyncio
+async def test_bulk_upload_accepts_an_optional_grade_level_column(client, db_session):
+    await _create_school_with_coordinator(client, db_session)
+    csv_body = "full_name,date_of_birth,grade_or_class,grade_level\nBulk Student,,Grade 6,6\n"
+    response = await client.post(
+        "/api/v1/school/students/bulk-upload",
+        files={"file": ("roster.csv", csv_body, "text/csv")},
+        headers={"Idempotency-Key": str(uuid.uuid4())},
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["accepted_count"] == 1
+
+    students = await client.get("/api/v1/school/students")
+    assert any(s["full_name"] == "Bulk Student" and s["grade_level"] == 6 for s in students.json())
+
+
+@pytest.mark.asyncio
+async def test_bulk_upload_rejects_an_out_of_range_grade_level_for_that_row_only(client, db_session):
+    await _create_school_with_coordinator(client, db_session)
+    csv_body = "full_name,date_of_birth,grade_or_class,grade_level\nBad Row,,Grade 6,99\nGood Row,,Grade 7,7\n"
+    response = await client.post(
+        "/api/v1/school/students/bulk-upload",
+        files={"file": ("roster.csv", csv_body, "text/csv")},
+        headers={"Idempotency-Key": str(uuid.uuid4())},
+    )
+    assert response.status_code == 201
+    assert response.json()["accepted_count"] == 1
+    assert response.json()["rejected_count"] == 1

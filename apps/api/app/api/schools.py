@@ -1162,7 +1162,7 @@ async def mark_attendance(activity_id: UUID, payload: dict, user: User = Depends
 # not fixed by DATA_MODEL.md §6.13 -- resolved here as technical contract design, mapped
 # directly from SCH-001's own already-built SchoolStudent creation fields (POST /school/
 # students), not an invented field list.
-ROSTER_TEMPLATE_HEADERS = ["full_name", "date_of_birth", "grade_or_class", "assigned_teacher_email", "parent_name", "parent_email"]
+ROSTER_TEMPLATE_HEADERS = ["full_name", "date_of_birth", "grade_or_class", "assigned_teacher_email", "parent_name", "parent_email", "grade_level"]
 
 
 async def _batch_report(db: AsyncSession, batch: SchoolRosterUploadBatch) -> dict:
@@ -1240,6 +1240,14 @@ async def bulk_upload_students(
             parent_name = (row.get("parent_name") or "").strip() or None
             if parent_email:
                 error = await _parent_email_conflict(db, school_id=school_id, parent_email=parent_email)
+        grade_level = None
+        if not error:
+            raw_grade_level = (row.get("grade_level") or "").strip()
+            if raw_grade_level:
+                try:
+                    grade_level = _validate_grade_level(int(raw_grade_level))
+                except (ValueError, HTTPException):
+                    error = f"grade_level '{raw_grade_level}' must be an integer between 1 and 12"
         # SCH-002-AC04: a row that fails validation is recorded and skipped -- it never
         # blocks or discards the rows around it.
         if error:
@@ -1250,6 +1258,7 @@ async def bulk_upload_students(
             school_id=school_id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name=full_name, date_of_birth=student_dob,
             grade_or_class=(row.get("grade_or_class") or "").strip() or None,
             created_by_user_id=user.id, assigned_teacher_user_id=assigned_teacher_user_id,
+            grade_level=grade_level, academic_year_id=await _current_academic_year_id(db),
         )
         db.add(student)
         await db.flush()
