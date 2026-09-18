@@ -52,29 +52,6 @@ async def _add_academic_team_member(db_session, admin, school) -> User:
 
 
 @pytest.mark.asyncio
-async def test_teacher_remarks_column_round_trips_on_the_model(db_session):
-    """ENH-002: SchoolAcademicResult must accept and persist teacher_remarks."""
-    admin = User(email=f"enh002-admin-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD), full_name="Admin", role="overseas_admin", division="overseas", active=True)
-    db_session.add(admin)
-    await db_session.flush()
-    school = School(name=f"ENH-002 Test School {uuid.uuid4().hex[:6]}", created_by_user_id=admin.id)
-    db_session.add(school)
-    await db_session.flush()
-    student = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db_session, SchoolStudent.student_code), full_name="Remarks Student", created_by_user_id=admin.id)
-    db_session.add(student)
-    await db_session.flush()
-    result = SchoolAcademicResult(
-        school_student_id=student.id, academic_year="2026", term="Term 1", subject="Mathematics",
-        max_marks=100, marks_obtained=90, status="draft", uploaded_by_user_id=admin.id,
-        teacher_remarks="Strong grasp of algebra.",
-    )
-    db_session.add(result)
-    await db_session.commit()
-    await db_session.refresh(result)
-    assert result.teacher_remarks == "Strong grasp of algebra."
-
-
-@pytest.mark.asyncio
 async def test_teacher_remarks_can_be_set_on_upload(client, db_session):
     ctx = await _create_school_with_coordinator(db_session)
     uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
@@ -550,3 +527,21 @@ async def test_teacher_remarks_can_be_cleared_with_null(client, db_session):
     cleared = await client.patch(f"/api/v1/school/academic-team/results/{created.json()['id']}", json={"teacher_remarks": None})
     assert cleared.status_code == 200
     assert cleared.json()["teacher_remarks"] is None
+
+
+@pytest.mark.asyncio
+async def test_progress_is_empty_for_a_portfolio_school_that_has_no_students(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    empty_school = School(name=f"ENH-002 Empty School {uuid.uuid4().hex[:6]}", created_by_user_id=ctx["admin"].id)
+    db_session.add(empty_school)
+    await db_session.flush()
+    member = User(email=f"enh002-emptyportfolio-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD), full_name="Empty Portfolio", role="academic_team", division="overseas", active=True, profile={})
+    db_session.add(member)
+    await db_session.flush()
+    db_session.add(UserRoleAssignment(user_id=member.id, division="overseas", role="academic_team", is_active=True, assigned_by_user_id=ctx["admin"].id, approval_status="approved"))
+    db_session.add(SchoolStaffAssignment(user_id=member.id, school_id=empty_school.id, role="academic_team", assigned_by_user_id=ctx["admin"].id))
+    await db_session.commit()
+    await _login(client, member.email)
+    response = await client.get("/api/v1/school/academic-team/progress")
+    assert response.status_code == 200
+    assert response.json() == []

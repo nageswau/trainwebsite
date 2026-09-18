@@ -1,5 +1,5 @@
 import PortalShell from "@/components/PortalShell";
-import SchoolAcademicProgressPanel from "@/components/SchoolAcademicProgressPanel";
+import SchoolAcademicProgressPanel, { type ProgressRow } from "@/components/SchoolAcademicProgressPanel";
 import SchoolAcademicResultsPanel from "@/components/SchoolAcademicResultsPanel";
 import SchoolTestPrepLanguagePanel from "@/components/SchoolTestPrepLanguagePanel";
 import { serverApi } from "@/lib/api";
@@ -15,7 +15,6 @@ type Result = {
 };
 type TestPrepRecord = { id: string; school_student_id: string; test_type: string; mock_scores: string[]; target_score: string | null; actual_score: string | null; status: string };
 type LanguageRecord = { id: string; school_student_id: string; language: string; level: string | null; classes_attended: number; assessment_score: string | null; certification_status: string };
-type ProgressRow = { school_student_id: string; full_name: string; school_name: string; result_count: number; average_percentage: number | null };
 
 // SCH-006: every assigned student's result status at a glance -- who still needs a result
 // uploaded, who's Draft, who's Published.

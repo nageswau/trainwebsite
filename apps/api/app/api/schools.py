@@ -1636,6 +1636,9 @@ async def list_readable_language_records(user: User = Depends(get_current_user),
 
 # --- SCH-006: Academic Results (Draft -> Verified -> Published) -------------------------
 
+_TEACHER_REMARKS_MAX_LENGTH = 2000
+
+
 def _clean_teacher_remarks(value) -> str | None:
     if value is None:
         return None
@@ -1644,8 +1647,8 @@ def _clean_teacher_remarks(value) -> str | None:
     cleaned = value.strip()
     if not cleaned:
         return None
-    if len(cleaned) > 2000:
-        raise HTTPException(422, "teacher_remarks must be 2000 characters or fewer")
+    if len(cleaned) > _TEACHER_REMARKS_MAX_LENGTH:
+        raise HTTPException(422, f"teacher_remarks must be {_TEACHER_REMARKS_MAX_LENGTH} characters or fewer")
     return cleaned
 
 
@@ -1654,11 +1657,10 @@ def _percentage(max_marks: float, marks_obtained: float) -> float | None:
 
 
 def _result_out(r: SchoolAcademicResult) -> dict:
-    percentage = _percentage(float(r.max_marks), float(r.marks_obtained))
     return {
         "id": r.id, "school_student_id": r.school_student_id, "academic_year": r.academic_year, "term": r.term,
         "subject": r.subject, "max_marks": float(r.max_marks), "marks_obtained": float(r.marks_obtained),
-        "percentage": percentage, "grade": r.grade, "teacher_remarks": r.teacher_remarks, "status": r.status,
+        "percentage": _percentage(float(r.max_marks), float(r.marks_obtained)), "grade": r.grade, "teacher_remarks": r.teacher_remarks, "status": r.status,
         "uploaded_by_user_id": r.uploaded_by_user_id, "verified_by_user_id": r.verified_by_user_id,
         "published_by_user_id": r.published_by_user_id,
     }
@@ -1700,8 +1702,7 @@ async def create_academic_result(payload: dict, user: User = Depends(get_current
 async def update_academic_result(result_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if user.role != "academic_team":
         raise HTTPException(403, "Academic Team role required")
-    # Row lock: a concurrent verify/publish (or second edit) must not interleave between the
-    # draft check and the commit -- same SELECT ... FOR UPDATE pattern as admin.py's batch work.
+    # Row lock: a concurrent verify must not slip in between the draft check and the commit.
     result = await db.scalar(select(SchoolAcademicResult).where(SchoolAcademicResult.id == result_id).with_for_update())
     if not result:
         raise HTTPException(404, "Result not found")
@@ -1728,6 +1729,7 @@ async def update_academic_result(result_id: UUID, payload: dict, user: User = De
 async def _advance_result(result_id: UUID, target: str, user: User, db: AsyncSession) -> SchoolAcademicResult:
     if user.role != "academic_team":
         raise HTTPException(403, "Academic Team role required")
+    # Row lock: two reviewers racing on the same result must not both record the transition.
     result = await db.scalar(select(SchoolAcademicResult).where(SchoolAcademicResult.id == result_id).with_for_update())
     if not result:
         raise HTTPException(404, "Result not found")
@@ -1798,7 +1800,7 @@ async def academic_team_progress(user: User = Depends(get_current_user), db: Asy
         await db.execute(select(SchoolStudent, School).join(School, School.id == SchoolStudent.school_id).where(SchoolStudent.school_id.in_(portfolio)).order_by(SchoolStudent.full_name.asc()))
     ).all()
     student_ids = [s.id for s, _sc in rows]
-    result_rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids)))).all() if student_ids else []
+    result_rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids)))).all()
     by_student: dict = {}
     for r in result_rows:
         by_student.setdefault(r.school_student_id, []).append(r)
