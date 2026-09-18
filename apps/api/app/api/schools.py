@@ -1636,12 +1636,19 @@ async def list_readable_language_records(user: User = Depends(get_current_user),
 
 # --- SCH-006: Academic Results (Draft -> Verified -> Published) -------------------------
 
+def _clean_teacher_remarks(value) -> str | None:
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    return cleaned or None
+
+
 def _result_out(r: SchoolAcademicResult) -> dict:
     percentage = round(float(r.marks_obtained) / float(r.max_marks) * 100, 2) if float(r.max_marks) else None
     return {
         "id": r.id, "school_student_id": r.school_student_id, "academic_year": r.academic_year, "term": r.term,
         "subject": r.subject, "max_marks": float(r.max_marks), "marks_obtained": float(r.marks_obtained),
-        "percentage": percentage, "grade": r.grade, "status": r.status,
+        "percentage": percentage, "grade": r.grade, "teacher_remarks": r.teacher_remarks, "status": r.status,
         "uploaded_by_user_id": r.uploaded_by_user_id, "verified_by_user_id": r.verified_by_user_id,
         "published_by_user_id": r.published_by_user_id,
     }
@@ -1665,10 +1672,11 @@ async def create_academic_result(payload: dict, user: User = Depends(get_current
     term = str(payload.get("term", "")).strip()
     if not subject or not academic_year or not term:
         raise HTTPException(422, "academic_year, term, and subject are required")
+    teacher_remarks = _clean_teacher_remarks(payload.get("teacher_remarks"))
     result = SchoolAcademicResult(
         school_student_id=student.id, academic_year=academic_year, term=term, subject=subject,
         max_marks=max_marks, marks_obtained=marks_obtained, grade=payload.get("grade"),
-        status="draft", uploaded_by_user_id=user.id,
+        teacher_remarks=teacher_remarks, status="draft", uploaded_by_user_id=user.id,
     )
     db.add(result)
     await db.flush()

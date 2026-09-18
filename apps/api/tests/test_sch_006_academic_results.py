@@ -75,6 +75,34 @@ async def test_teacher_remarks_column_round_trips_on_the_model(db_session):
 
 
 @pytest.mark.asyncio
+async def test_teacher_remarks_can_be_set_on_upload(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    response = await client.post("/api/v1/school/academic-team/results", json={
+        "school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1",
+        "subject": "Mathematics", "max_marks": 100, "marks_obtained": 85,
+        "teacher_remarks": "Good improvement this term.",
+    })
+    assert response.status_code == 201, response.text
+    assert response.json()["teacher_remarks"] == "Good improvement this term."
+
+
+@pytest.mark.asyncio
+async def test_teacher_remarks_is_optional_on_upload(client, db_session):
+    """Backward compatibility: omitting teacher_remarks must keep working exactly as before."""
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    response = await client.post("/api/v1/school/academic-team/results", json={
+        "school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1",
+        "subject": "Mathematics", "max_marks": 100, "marks_obtained": 85,
+    })
+    assert response.status_code == 201, response.text
+    assert response.json()["teacher_remarks"] is None
+
+
+@pytest.mark.asyncio
 async def test_academic_team_uploads_a_result_as_draft(client, db_session):
     ctx = await _create_school_with_coordinator(db_session)
     uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
