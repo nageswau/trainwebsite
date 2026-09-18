@@ -585,8 +585,11 @@ accounts).
 **Net-new**, supporting `SCH-006`.
 
 - **`SchoolAcademicResult`** fields: `id`, `school_student_id` (FK `SchoolStudent`), `academic_year`,
-  `term`, `subject`, `max_marks`, `marks_obtained`, `percentage`, `grade`, `status`
-  (`draft`/`verified`/`published`), `uploaded_by_user_id` (the `academic_team` member), `verified_by_
+  `term`, `subject`, `max_marks`, `marks_obtained`, `percentage`, `grade`, `teacher_remarks`
+  (nullable `Text`, added `0031_academic_result_remarks`, `ENH-002` — `School CRM.md` Part B §9's
+  Result Entry field list; visible under the exact same Draft→Verified→Published gate as every other
+  field on this record, never before publish), `status` (`draft`/`verified`/`published`),
+  `uploaded_by_user_id` (the `academic_team` member), `verified_by_
   user_id` (nullable), `verified_at` (nullable), `published_by_user_id` (nullable), `published_at`
   (nullable).
 - **RESOLVED 2026-09-14, `DEC-ROLE-007`:** `verified_by_user_id`/`published_by_user_id` must each be
