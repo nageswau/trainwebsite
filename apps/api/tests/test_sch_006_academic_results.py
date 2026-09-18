@@ -240,3 +240,33 @@ async def test_a_draft_result_can_only_be_edited_while_still_draft(client, db_se
     await _login(client, uploader.email)
     edit_after_verify = await client.patch(f"/api/v1/school/academic-team/results/{result_id}", json={"marks_obtained": 99})
     assert edit_after_verify.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_teacher_remarks_can_be_edited_while_draft(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    created = await client.post("/api/v1/school/academic-team/results", json={"school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1", "subject": "Physics", "max_marks": 100, "marks_obtained": 70})
+    result_id = created.json()["id"]
+
+    edited = await client.patch(f"/api/v1/school/academic-team/results/{result_id}", json={"teacher_remarks": "Needs more practice with vectors."})
+    assert edited.status_code == 200
+    assert edited.json()["teacher_remarks"] == "Needs more practice with vectors."
+
+
+@pytest.mark.asyncio
+async def test_teacher_remarks_cannot_be_edited_after_verify(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    reviewer = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    created = await client.post("/api/v1/school/academic-team/results", json={"school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1", "subject": "Physics", "max_marks": 100, "marks_obtained": 70})
+    result_id = created.json()["id"]
+
+    await _login(client, reviewer.email)
+    await client.post(f"/api/v1/school/academic-team/results/{result_id}/verify")
+
+    await _login(client, uploader.email)
+    edit_after_verify = await client.patch(f"/api/v1/school/academic-team/results/{result_id}", json={"teacher_remarks": "Too late."})
+    assert edit_after_verify.status_code == 409

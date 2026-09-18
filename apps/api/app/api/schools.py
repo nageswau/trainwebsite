@@ -1702,6 +1702,8 @@ async def update_academic_result(result_id: UUID, payload: dict, user: User = De
     for field in ("max_marks", "marks_obtained"):
         if field in payload:
             setattr(result, field, float(payload[field]))
+    if "teacher_remarks" in payload:
+        result.teacher_remarks = _clean_teacher_remarks(payload["teacher_remarks"])
     db.add(AuditLog(user_id=user.id, action="school.result_update", entity_type="school_academic_result", entity_id=str(result.id), metadata_json={}))
     await db.commit()
     return _result_out(result)
