@@ -392,3 +392,58 @@ async def test_active_academic_year_is_out_of_scope_for_unrelated_roles(client, 
     await client.post("/api/v1/auth/login", json={"email": unrelated.email, "password": ADMIN_PASSWORD, "division": "it"})
     response = await client.get("/api/v1/school/academic-years/active")
     assert response.status_code == 403
+
+
+async def _create_school_with_coordinator(client, db_session, *, suffix: str | None = None) -> dict:
+    admin = await _create_admin_and_login(client, db_session)
+    suffix = suffix or uuid.uuid4().hex[:8]
+    response = await client.post(
+        "/api/v1/overseas-admin/schools",
+        json={"name": f"ENH-001 School {suffix}", "coordinator_full_name": "Coordinator", "coordinator_email": f"enh001-coord-{suffix}@example.local", "coordinator_password": ADMIN_PASSWORD},
+    )
+    assert response.status_code == 201
+    data = response.json()
+    await client.post("/api/v1/auth/login", json={"email": data["coordinator_email"], "password": ADMIN_PASSWORD, "division": "overseas"})
+    return data
+
+
+@pytest.mark.asyncio
+async def test_create_student_accepts_a_valid_grade_level(client, db_session):
+    await _create_school_with_coordinator(client, db_session)
+    response = await client.post("/api/v1/school/students", json={"full_name": "Test Student", "grade_or_class": "Grade 9", "grade_level": 9})
+    assert response.status_code == 201, response.text
+    assert response.json()["grade_level"] == 9
+    assert response.json()["grade_or_class"] == "Grade 9"  # zero data loss -- both present
+
+
+@pytest.mark.asyncio
+async def test_create_student_rejects_an_out_of_range_grade_level(client, db_session):
+    await _create_school_with_coordinator(client, db_session)
+    response = await client.post("/api/v1/school/students", json={"full_name": "Test Student", "grade_level": 13})
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_student_rejects_a_boolean_grade_level(client, db_session):
+    await _create_school_with_coordinator(client, db_session)
+    response = await client.post("/api/v1/school/students", json={"full_name": "Test Student", "grade_level": True})
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_student_ignores_a_client_supplied_academic_year_id(client, db_session):
+    await _create_school_with_coordinator(client, db_session)
+    bogus_year_id = str(uuid.uuid4())
+    response = await client.post("/api/v1/school/students", json={"full_name": "Test Student", "academic_year_id": bogus_year_id})
+    assert response.status_code == 201
+    assert response.json()["academic_year_id"] != bogus_year_id
+
+
+@pytest.mark.asyncio
+async def test_update_student_can_set_grade_level(client, db_session):
+    school = await _create_school_with_coordinator(client, db_session)
+    created = await client.post("/api/v1/school/students", json={"full_name": "Test Student"})
+    student_id = created.json()["id"]
+    response = await client.patch(f"/api/v1/school/students/{student_id}", json={"grade_level": 7})
+    assert response.status_code == 200
+    assert response.json()["grade_level"] == 7

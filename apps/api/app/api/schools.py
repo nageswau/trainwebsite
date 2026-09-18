@@ -435,6 +435,19 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     }
 
 
+def _validate_grade_level(value) -> int | None:
+    if value is None:
+        return None
+    if not isinstance(value, int) or isinstance(value, bool) or not (1 <= value <= 12):
+        raise HTTPException(422, "grade_level must be an integer between 1 and 12")
+    return value
+
+
+async def _current_academic_year_id(db: AsyncSession) -> UUID | None:
+    year = await db.scalar(select(AcademicYear).where(AcademicYear.status == "active").order_by(AcademicYear.start_date.desc()))
+    return year.id if year else None
+
+
 def _student_out(s: SchoolStudent) -> dict:
     return {
         "id": s.id,
@@ -444,6 +457,8 @@ def _student_out(s: SchoolStudent) -> dict:
         "grade_or_class": s.grade_or_class,
         "assigned_teacher_user_id": s.assigned_teacher_user_id,
         "pending_parent_email": s.pending_parent_email,
+        "academic_year_id": s.academic_year_id,
+        "grade_level": s.grade_level,
     }
 
 
@@ -977,6 +992,8 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
         full_name=full_name,
         date_of_birth=date.fromisoformat(dob) if dob else None,
         grade_or_class=payload.get("grade_or_class"),
+        grade_level=_validate_grade_level(payload.get("grade_level")),
+        academic_year_id=await _current_academic_year_id(db),
         created_by_user_id=user.id,
         assigned_teacher_user_id=assigned_teacher_user_id,
     )
@@ -1012,6 +1029,8 @@ async def update_student(student_id: UUID, payload: dict, user: User = Depends(g
         student.full_name = payload["full_name"]
     if "grade_or_class" in payload:
         student.grade_or_class = payload["grade_or_class"]
+    if "grade_level" in payload:
+        student.grade_level = _validate_grade_level(payload["grade_level"])
     if "date_of_birth" in payload:
         student.date_of_birth = date.fromisoformat(payload["date_of_birth"]) if payload["date_of_birth"] else None
     if "assigned_teacher_user_id" in payload:
