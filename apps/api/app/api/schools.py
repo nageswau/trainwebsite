@@ -1647,8 +1647,12 @@ def _clean_teacher_remarks(value) -> str | None:
     return cleaned
 
 
+def _percentage(max_marks: float, marks_obtained: float) -> float | None:
+    return round(marks_obtained / max_marks * 100, 2) if max_marks else None
+
+
 def _result_out(r: SchoolAcademicResult) -> dict:
-    percentage = round(float(r.marks_obtained) / float(r.max_marks) * 100, 2) if float(r.max_marks) else None
+    percentage = _percentage(float(r.max_marks), float(r.marks_obtained))
     return {
         "id": r.id, "school_student_id": r.school_student_id, "academic_year": r.academic_year, "term": r.term,
         "subject": r.subject, "max_marks": float(r.max_marks), "marks_obtained": float(r.marks_obtained),
