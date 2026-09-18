@@ -6,7 +6,7 @@ export type PortalPayload = {
   actions:{label:string;href:string}[]; columns:{key:string;label:string;type?:string}[];
   rows:Record<string, unknown>[]; panels:{title:string;items:string[]}[];
 };
-export type User = {id:string; email:string; full_name:string; role:string; division:string; phone?:string; profile:Record<string,unknown>};
+export type User = {id:string; email:string; full_name:string; role:string; division:string; phone?:string; student_code?:string|null; profile:Record<string,unknown>};
 export type CareerPath = {id:string; division:string; slug:string; title:string; summary:string; skills:string[]; related_program_slugs:string[]; outcomes:string};
 export type RealProject = {id:string; division:string; slug:string; title:string; summary:string; description:string; tech_stack:string[]};
 export type Testimonial = {id:string; division:string; person_name:string; headline:string; quote:string; rating:number};

@@ -66,7 +66,7 @@ test("coordinator adds a student, assigns a teacher, links a parent; principal/t
   await page.goto("/school/coordinator/students");
   await page.fill("#new-full-name", "E2E Student One");
   await page.fill("#new-grade", "Grade 4");
-  await page.fill("#new-teacher", teacherEmail);
+  await page.selectOption("#new-teacher", { label: "E2E Teacher" });
   await page.click('button:has-text("Add student")');
   await expect(page.getByText(/added to the roster/)).toBeVisible();
   await expect(page.getByRole("cell", { name: "E2E Student One" })).toBeVisible();

@@ -4,13 +4,14 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
-from app.models import AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, University, User, UserRoleAssignment
+from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, University, User, UserRoleAssignment
 from app.schemas import BatchCreate
 from app.services.storage import storage
 
@@ -908,7 +909,11 @@ async def create_school(payload: dict, user: User = Depends(get_current_user), d
         raise HTTPException(422, "School name and Coordinator name/email are required")
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
-    school = School(name=payload["name"], city=payload.get("city"), state=payload.get("state"), created_by_user_id=user.id)
+    tier = payload.get("tier")
+    if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
+        raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
+    tier_valid_until = date.fromisoformat(payload["tier_valid_until"]) if payload.get("tier_valid_until") else None
+    school = School(name=payload["name"], city=payload.get("city"), state=payload.get("state"), created_by_user_id=user.id, tier=tier, tier_valid_until=tier_valid_until)
     db.add(school)
     await db.flush()
     coordinator = User(
@@ -940,7 +945,101 @@ async def list_schools(user: User = Depends(get_current_user), db: AsyncSession 
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
     rows = (await db.scalars(select(School).order_by(School.created_at.desc()))).all()
-    return [{"id": s.id, "name": s.name, "city": s.city, "state": s.state, "created_at": s.created_at} for s in rows]
+    return [{"id": s.id, "name": s.name, "city": s.city, "state": s.state, "tier": s.tier, "tier_valid_until": s.tier_valid_until, "created_at": s.created_at} for s in rows]
+
+
+@agents_router.patch("/schools/{school_id}")
+async def update_school_tier(school_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """`DEC-SCOPE-017` -- Overseas Admin sets/changes a School's partnership tier after
+    creation. Deliberately narrow: only tier/tier_valid_until are editable here, not the
+    identity fields `create_school` already owns."""
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    school = await db.get(School, school_id)
+    if not school:
+        raise HTTPException(404, "School not found")
+    if "tier" in payload:
+        tier = payload["tier"]
+        if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
+            raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
+        school.tier = tier
+    if "tier_valid_until" in payload:
+        school.tier_valid_until = date.fromisoformat(payload["tier_valid_until"]) if payload["tier_valid_until"] else None
+    db.add(AuditLog(user_id=user.id, action="school.tier_update", entity_type="school", entity_id=str(school.id), metadata_json={"tier": school.tier}))
+    await db.commit()
+    return {"id": school.id, "tier": school.tier, "tier_valid_until": school.tier_valid_until}
+
+
+ACADEMIC_YEAR_STATUSES = ["draft", "active", "closed"]
+
+
+@agents_router.post("/academic-years", status_code=201)
+async def create_academic_year(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-001 -- global, admin-only academic-year calendar. Mirrors create_school's
+    shape; unlike create_school's duplicate-email check, this inserts directly and lets
+    the unique constraint on `label` pick the winner (spec's security review item 1 --
+    a pre-check SELECT is a race, not a guard)."""
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    label = str(payload.get("label", "")).strip()
+    if not label:
+        raise HTTPException(422, "label is required")
+    if len(label) > 20:
+        raise HTTPException(422, "label must be at most 20 characters")
+    try:
+        start_date = date.fromisoformat(payload["start_date"])
+        end_date = date.fromisoformat(payload["end_date"])
+    except (KeyError, ValueError, TypeError):
+        # TypeError covers a non-string value (e.g. JSON `null`, a number) for either
+        # field -- `date.fromisoformat` raises TypeError rather than ValueError for
+        # those, and an uncaught TypeError would otherwise surface as a 500 instead of
+        # the 422 malformed input deserves.
+        raise HTTPException(422, "start_date and end_date are required, in YYYY-MM-DD format")
+    if end_date <= start_date:
+        raise HTTPException(422, "end_date must be after start_date")
+    year = AcademicYear(label=label, start_date=start_date, end_date=end_date, status="draft")
+    db.add(year)
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, f"an academic year with label '{label}' already exists")
+    db.add(AuditLog(user_id=user.id, action="school.academic_year_create", entity_type="academic_year", entity_id=str(year.id), metadata_json={"label": year.label, "status": year.status}))
+    await db.commit()
+    return {"id": year.id, "label": year.label, "start_date": year.start_date, "end_date": year.end_date, "status": year.status}
+
+
+@agents_router.patch("/academic-years/{year_id}")
+async def update_academic_year_status(year_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Note: nothing here (or anywhere else) enforces that at most one AcademicYear
+    row has status == "active" at a time -- this endpoint only validates forward-only
+    status transitions for the single row it's given. Callers that need "the" active
+    year (GET /school/academic-years/active in schools.py, and _current_academic_year_id())
+    resolve any such ambiguity by picking the most recent start_date -- a documented
+    best-effort convention, not a uniqueness guarantee."""
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    year = await db.get(AcademicYear, year_id)
+    if not year:
+        raise HTTPException(404, "Academic year not found")
+    if "status" in payload:
+        new_status = payload["status"]
+        if new_status not in ACADEMIC_YEAR_STATUSES:
+            raise HTTPException(422, f"status must be one of {ACADEMIC_YEAR_STATUSES}")
+        if ACADEMIC_YEAR_STATUSES.index(new_status) < ACADEMIC_YEAR_STATUSES.index(year.status):
+            raise HTTPException(409, f"cannot move status backward from '{year.status}' to '{new_status}'")
+        year.status = new_status
+    db.add(AuditLog(user_id=user.id, action="school.academic_year_status_change", entity_type="academic_year", entity_id=str(year.id), metadata_json={"label": year.label, "status": year.status}))
+    await db.commit()
+    return {"id": year.id, "label": year.label, "start_date": year.start_date, "end_date": year.end_date, "status": year.status}
+
+
+@agents_router.get("/academic-years")
+async def list_academic_years(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    rows = (await db.scalars(select(AcademicYear).order_by(AcademicYear.start_date.desc()))).all()
+    return [{"id": r.id, "label": r.label, "start_date": r.start_date, "end_date": r.end_date, "status": r.status} for r in rows]
 
 
 # SCH-004/005/006 (DEC-SCOPE-014): only Overseas Admin or Super Admin creates an
@@ -1002,6 +1101,93 @@ async def list_school_staff(user: User = Depends(get_current_user), db: AsyncSes
     for a in assignments:
         portfolio_by_user.setdefault(a.user_id, []).append(a.school_id)
     return [{"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "school_ids": [str(sid) for sid in portfolio_by_user.get(u.id, [])]} for u in rows]
+
+
+@agents_router.get("/school-students/lookup")
+async def lookup_school_student_by_code(code: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Resolves a School student's business-facing `student_code` (added 2026-09-15,
+    `DEC-DATA-003`) to a real record -- exactly the "short, searchable, memorable" lookup
+    use case that field was built for, used here so Overseas Admin/Counselor can find a
+    School student across every school without a raw internal-id picker."""
+    from app.models import School, SchoolStudent
+
+    if user.role not in {"overseas_admin", "counselor", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin or Counselor role required")
+    student = await db.scalar(select(SchoolStudent).where(SchoolStudent.student_code == code.strip().upper()))
+    if not student:
+        raise HTTPException(404, "No school student found with that Student ID")
+    school = await db.get(School, student.school_id)
+    return {"id": student.id, "full_name": student.full_name, "student_code": student.student_code, "school_name": school.name if school else None}
+
+
+# --- DEC-SCOPE-018: School->Overseas bridge ----------------------------------------------
+# Overseas Admin/Counselor (never school_coordinator, per direct user decision) links a
+# School-affiliated student to a real Overseas application. `OverseasApplication.
+# student_id` is nullable as of this decision specifically for this case --
+# `school_student_id` is set instead, since a SchoolStudent never gets a `users` row
+# (`DEC-ROLE-004`). Deliberately a new, separate endpoint rather than a branch inside
+# `workflows.create_overseas_application`: that endpoint hard-validates a real
+# overseas_student User and notifies it directly, neither of which applies here.
+
+@agents_router.post("/school-students/{school_student_id}/applications", status_code=201)
+async def create_bridged_application(school_student_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from app.api.schools import _notify_student_parents
+    from app.models import ApplicationStatusHistory, SchoolStudent
+
+    if user.role not in {"overseas_admin", "counselor", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin or Counselor role required")
+    student = await db.get(SchoolStudent, school_student_id)
+    if not student:
+        raise HTTPException(404, "School student not found")
+    university = await db.get(University, uuid_reference(payload.get("university_id"), "university"))
+    if not university:
+        raise HTTPException(404, "University not found")
+    intake = str(payload.get("intake", "")).strip()
+    if not intake:
+        raise HTTPException(422, "intake is required")
+    duplicate = await db.scalar(
+        select(OverseasApplication.id).where(
+            OverseasApplication.school_student_id == student.id, OverseasApplication.university_id == university.id, OverseasApplication.status != "withdrawn"
+        )
+    )
+    if duplicate:
+        raise HTTPException(409, "An application for this university already exists for this student")
+    item = OverseasApplication(
+        student_id=None,
+        school_student_id=student.id,
+        university_id=university.id,
+        course_id=uuid_reference(payload.get("course_id"), "course", required=False),
+        counselor_id=user.id if user.role == "counselor" else None,
+        intake=intake,
+        status="enquiry",
+        next_action="Complete profile and required document checklist",
+    )
+    db.add(item)
+    await db.flush()
+    db.add(ApplicationStatusHistory(application_id=item.id, from_status=None, to_status=item.status, next_action=item.next_action, changed_by_id=user.id))
+    db.add(AuditLog(user_id=user.id, action="school.overseas_application_link", entity_type="overseas_application", entity_id=str(item.id), metadata_json={"school_student_id": str(student.id), "university_id": str(university.id)}))
+    await _notify_student_parents(db, student, title=f"Overseas application started for {student.full_name}", body=f"An application to {university.name} has been started for {student.full_name}.", action_url=f"/school/parent/children/{student.id}")
+    await db.commit()
+    return {"id": item.id, "school_student_id": item.school_student_id, "university_id": item.university_id, "status": item.status}
+
+
+@agents_router.get("/school-applications")
+async def list_bridged_applications(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from app.models import SchoolStudent
+
+    if user.role not in {"overseas_admin", "counselor", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin or Counselor role required")
+    stmt = (
+        select(OverseasApplication, SchoolStudent, University)
+        .join(SchoolStudent, SchoolStudent.id == OverseasApplication.school_student_id)
+        .join(University, University.id == OverseasApplication.university_id)
+        .where(OverseasApplication.school_student_id.is_not(None))
+        .order_by(OverseasApplication.created_at.desc())
+    )
+    if user.role == "counselor":
+        stmt = stmt.where(OverseasApplication.counselor_id == user.id)
+    rows = (await db.execute(stmt)).all()
+    return [{"id": a.id, "student_name": s.full_name, "student_code": s.student_code, "university_name": u.name, "status": a.status, "created_at": a.created_at} for a, s, u in rows]
 
 
 @agents_router.post("/school-staff/{staff_id}/portfolio")

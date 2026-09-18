@@ -54,6 +54,11 @@ services:
       BACKEND_INTERNAL_URL: http://api:8000
       NEXT_PUBLIC_API_BASE: /api/v1
       NEXT_PUBLIC_APP_NAME: EduSphere
+      # Server-only (never NEXT_PUBLIC_ -- must not reach the browser bundle). Defaults to
+      # "production" when unset, so an unconfigured deploy fails safe by hiding the demo
+      # accounts box rather than showing it. Login pages read this to decide whether to
+      # render the "Demo accounts" cards at all.
+      ENVIRONMENT: ${ENVIRONMENT:-production}
     depends_on: [api]
     ports: ["${WEB_PORT:-3000}:3000"]
 volumes:

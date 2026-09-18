@@ -37,11 +37,15 @@ export default async function SchoolPrincipalDashboardPage() {
               <p>{students.length} student{students.length === 1 ? "" : "s"} on the roster.</p>
               <table className="table">
                 <thead>
-                  <tr><th>Name</th><th>Grade/Class</th></tr>
+                  <tr><th>Name</th><th>Grade/Class</th><th></th></tr>
                 </thead>
                 <tbody>
                   {students.map((s) => (
-                    <tr key={s.id}><td>{s.full_name}</td><td>{s.grade_or_class || "-"}</td></tr>
+                    <tr key={s.id}>
+                      <td>{s.full_name}</td>
+                      <td>{s.grade_or_class || "-"}</td>
+                      <td><a className="btn ghost small" href={`/school/principal/students/${s.id}`}>Timeline</a></td>
+                    </tr>
                   ))}
                 </tbody>
               </table>

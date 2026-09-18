@@ -192,6 +192,11 @@ remains EduSphere's own IT-training instructor role, an unrelated actor
 ### Parent (`school_parent`)
 - View their own child's/children's profile and progress only — never another student's, even
   within the same institution (`DEC-SCOPE-011`)
+- View, per child (`DEC-SCOPE-015`, 2026-09-15): profile with class teacher, career guidance status,
+  counselling notes, recommended careers, psychometric status, Published results, activities attended,
+  upcoming sessions
+- Receive notifications (in-app + email) when an assessment is assigned/its report attached, a
+  guidance/counselling/recommendation record is added, a session is scheduled, or a result is Published
 - **Read-only**
 
 *Note on who manages the underlying data (`DEC-ROLE-005`, resolved 2026-09-14): School Coordinator

@@ -1756,3 +1756,273 @@ itself (already adopted per `DEC-ROLE-006`) is now fully confirmed, including wh
 **Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-14.
 Propagation into `RBAC_MATRIX.md`/`DATA_MODEL.md` is follow-up work, not yet done as of this
 resolution.
+
+---
+
+### DEC-SCOPE-015 — Parent Portal content scope (`EVID-014` §23) and parent notification triggers
+
+**Status:** CONFIRMED_CURRENT for the Parent Portal *surface* and for the four triggers whose
+modules exist; **OPEN (`NEEDS_CONFIRMATION`)** for the six items that depend on modules never
+confirmed — resolved 2026-09-15, in-session.
+
+**Trigger:** The user asked, in-session on 2026-09-15, "execute school-crm.md" and then, quoting
+`EVID-014` §23 verbatim: *"does the parent portal contains all this features. Very important for
+the school model. Parents can see: Student profile · Career guidance status · Psychometric status ·
+Counselling · Recommended careers · Skills · Activities · Portfolio · Overseas education progress ·
+Upcoming sessions · Important notifications. Parent should receive notifications for: Assessment →
+Counselling → Workshop → Test → Application → Important deadline."* Until this, `DEC-SCOPE-011`
+had confirmed only that a Parent login exists and can "view their own child's/children's profile
+and progress" — the content of that view was never itemized, and the `SCR-SCH-009` build showed
+name/grade/DOB plus a three-number summary only.
+
+**Evidence:** `EVID-014` (`School CRM.md`, `DERIVED_BLUEPRINT`, unattributed) §23 and the
+second-part "4. Parent Login" / "11. Notifications" sections. Governing here only because the user
+named the list directly in-session (same rule as `DEC-SCOPE-011`/`DEC-ROLE-006`), not because the
+document says so.
+
+**Resolution, item by item — what the confirmed data model can actually supply:**
+
+| §23 item | Backing module | Outcome |
+|---|---|---|
+| Student profile | `SCH-001` `SchoolStudent` (+ school name, assigned Teacher name) | **Built** (`SCH-007`) |
+| Career guidance status | `SCH-004` `guidance_session` records | **Built** — "completed" once ≥1 session recorded |
+| Psychometric status | `SCH-005` `SchoolPsychometricRecord.status` | **Built** — not_started / assigned / completed |
+| Counselling | `SCH-004` `counselling_note` records | **Built** |
+| Recommended careers | `SCH-004` `recommendation` records ("uploads recommendations" is in `DEC-ROLE-006`'s confirmed Career Counselor duties) | **Built** — as free-text recommendation rows, not a structured career taxonomy |
+| Activities | `SCH-001` `SchoolActivityAttendance` | **Built** — the child's attended/absent sessions |
+| Upcoming sessions | `SCH-001` `SchoolActivity` (future, own school) | **Built** |
+| Important notifications | existing `Notification` model (`NOT-001`) | **Built** — in-app feed + email copy |
+| **Skills** | none — `EVID-014` §9 Soft Skills / §10 Digital Skills were never confirmed as modules | **OPEN** — `PRD_OPEN_ITEMS.md` item 77 |
+| **Portfolio** | none — §14 Digital Portfolio never confirmed | **OPEN** — item 77 |
+| **Overseas education progress** | none — §15–20 Global Education never confirmed for school students; a `SchoolStudent` has no login and no link to the Overseas `overseas_student` identity (`DEC-ROLE-004`) | **OPEN** — item 77 |
+
+| Notification chain step | Trigger built | Outcome |
+|---|---|---|
+| Assessment | psychometric assessment assigned; report attached (→ completed) | **Built** |
+| Counselling | guidance session / counselling note / recommendation recorded | **Built** |
+| Workshop | Coordinator schedules a `SchoolActivity` (every linked Parent at that school, once) | **Built** |
+| Test | no confirmed test module (`EVID-014` §12 IELTS / §13 SAT never confirmed) | **OPEN** — item 78. **Result Published** *is* built (§11's "Term 1 results are now available" parent notification) as the nearest confirmed event, clearly not the same thing |
+| Application | no Overseas linkage for school students | **OPEN** — item 78 |
+| Important deadline | no deadline entity in any confirmed module | **OPEN** — item 78 |
+
+**Not decided here, deliberately:** whether a Parent may open the psychometric `report_url` itself
+(the readable list has always returned status only — kept as-is, item 79); grade/section targeting
+of sessions (a `SchoolActivity` is school-wide in the confirmed model, so the Workshop notification
+is school-wide too).
+
+**New Feature ID authorized:** `SCH-007` (Parent Portal: child 360 overview + notifications).
+
+**Status:** CONFIRMED_CURRENT (surface + four triggers) / OPEN (six items) — Stated by: user
+(in-session) — Date: 2026-09-15. BRD/PRD/Feature Catalogue/RBAC/UX/RTM propagation done the same
+day (`BRD_CHANGE_LOG.md` v1.10, `PRD_CHANGE_LOG.md` v1.8).
+
+---
+
+### DEC-SCOPE-016 — Narrow Student Journey Timeline (`EVID-014` second-part §15), built from confirmed modules only
+
+**Status:** CONFIRMED_CURRENT — resolved 2026-09-15, in-session.
+
+**Trigger:** The user asked whether `EVID-014`'s second-part §15 ("One Feature I Strongly
+Recommend: Student Journey Timeline") exists. It did not — that section is the source
+document's own recommendation, never confirmed by any Decision ID, Business Requirement, or
+Feature ID. The user then asked for the narrow version, built only from what `SCH-001`/
+`004`/`005`/`006` already record, with the same role-based access `DEC-SCOPE-011` already
+established (a Parent sees only their own child's timeline).
+
+**Resolution:** Built as `SCH-008`, a single read endpoint deriving a chronological event
+list from existing rows — no new tables, no invented Foreign Language / English Test /
+University Planning / Soft-Skills stages (those remain unconfirmed, same as `DEC-SCOPE-015`
+items 77/78). Five event categories only: **profile** (student created), **career**
+(guidance session / counselling note / recommendation, from `SCH-004`), **psychometric**
+(assessment assigned / report uploaded, from `SCH-005`), **academic** (result Published
+only — `SCH-006-AC02`'s Draft/Verified visibility rule carried through unchanged), and
+**activity** (attended sessions, from `SCH-001`). Access reuses the identical own-scope
+loader already built for `SCH-007`'s overview (`_load_readable_student`): a Parent's own
+child only, a Teacher's assigned student only, Coordinator/Principal their own institution
+— not the three specialized service-delivery roles' own portfolio mechanism, since this is
+a student-facing view, not a staff work queue.
+
+**Evidence:** `EVID-014` second part §15 (`DERIVED_BLUEPRINT`, its illustrative one-event-
+per-month cadence is not itself confirmed or reproduced — the built timeline shows real
+event dates, however they actually cluster).
+
+**New Feature ID authorized:** `SCH-008` (Student Journey Timeline, narrow).
+
+**Status:** CONFIRMED_CURRENT — Stated by: user (in-session) — Date: 2026-09-15. BRD/PRD/
+Feature Catalogue/RBAC/UX/RTM propagation done the same day.
+
+**Addendum, 2026-09-15 (later, same day) — UI surfaces extended to Coordinator/Principal; demo
+data corrected:** the user asked for two things in one message: (1) "timeline workflow or diagram
+should be available to co-ordinator, teacher, principal also" (Teacher's own per-student page
+already had it; the API already scoped correctly for all four roles via `_load_readable_student`,
+but Coordinator and Principal had no screen to reach it from) -- resolved by adding a
+`SchoolStudentDetailPanel.tsx` (student header + Journey Timeline, shared read-only component),
+wired into a new `/school/coordinator/students/[id]` page (linked from a "Timeline" action on the
+existing roster) and a new `/school/principal/students/[id]` page (linked from the dashboard's
+roster table); Teacher's existing page was refactored onto the same shared component. No backend
+change was needed -- `GET /school/students/{id}/timeline`'s scope already covered Coordinator/
+Principal correctly. (2) "correct the previous errors identified" -- referring to two things flagged
+in this session's own visual review of the seeded demo account: events appearing out of expected
+order (an activity and a published result both predating "Student profile created"), and several
+unrelated events sharing an identical timestamp. Root cause confirmed: `app/seed.py`'s School-domain
+block relied on `TimestampMixin`'s insert-time default for `created_at` on most rows, while a few
+fields (activity `scheduled_at`, result `verified_at`/`published_at`) were independently offset from
+separate `datetime.now(UTC)` calls -- nothing kept the *story* internally consistent (a result could
+even end up "published" before its own `created_at`). Fixed by introducing one shared `journey_base`
+timestamp per seed run and explicit, staggered offsets so "Student profile created" is always
+earliest and every other confirmed-module event follows in real order; applied to `seed.py` (for any
+future fresh seed) and, via a one-off exactly-scoped update statement, to the already-running dev
+database's existing demo rows (five named students, three career records, three psychometric
+records, and the four academic results belonging to them -- verified by exact-id/exact-field match
+before writing, so no unrelated row from this shared dev database's considerable accumulated test
+data was touched). This is a demo/seed-data correction, not an application logic change -- the
+timeline's own chronological-sort behavior was already correct and was not altered.
+
+---
+
+### DEC-SCOPE-017 — School Partnership tiers (`EVID-013`) → entitlements, no invented caps
+
+**Status:** CONFIRMED_CURRENT — resolved 2026-09-15, in-session.
+
+**Trigger:** Validating `docs/sources/SCHOOL BROUCHER (5).pdf` (`EVID-013`) against the current
+build for the user's "make sure it matches all including partner models" request surfaced
+`CLIENT_QUESTIONS.md` item 9 (School Partnership tiers) as the one remaining genuinely open
+gap. That item was originally deferred to the real client, not decided in-session. The user
+chose to resolve it directly instead: first "Resolve it now," then confirmed the resolution
+approach ("Track entitlements with usage counters"), then attached the brochure's own
+Bronze/Silver/Gold/Platinum tier-breakdown image, then confirmed the semantics ("Included =
+unlimited, just count usage" — no invented quota caps).
+
+**Resolution:** A School's `tier` (`bronze`/`silver`/`gold`/`platinum`, nullable — set by
+Overseas Admin at creation or later via a small `PATCH`) determines a cumulative service list,
+read exactly as the brochure's own image shows (each tier lists only what it *adds* over the
+previous one):
+
+- **Bronze:** career seminar, student career awareness session, parent orientation,
+  psychometric test, soft skills.
+- **Silver adds:** individual counselling, web designing.
+- **Gold adds:** application support, scholarship assistance, IELTS coaching, SAT coaching,
+  foreign language classes, digital portfolio creation.
+- **Platinum adds:** dedicated EduSphere counselor, monthly campus visits, internships, visa
+  support, loan assistance, alumni network, parent help desk.
+
+A service is never quota-limited — "included" always means unlimited access. `GET
+/school/entitlements` (`SCH-011`, Coordinator/Principal, own institution only) returns each
+included service with a REAL usage count wherever a confirmed module already produces one
+(psychometric assessments, counselling notes, IELTS/SAT test-prep records, language-class
+records, bridged Overseas applications/visa cases — see `DEC-SCOPE-018` — and a new optional
+`SchoolActivity.activity_type` tag for seminar/orientation/campus-visit counts), and `used:
+null` ("not yet tracked") for services with no underlying module (soft skills, web designing,
+digital portfolio creation, internships, loan assistance, alumni network, parent help desk,
+scholarship assistance) — never a fabricated zero or an invented cap, matching this codebase's
+own established "honest zeros, never fabricated" convention (`RPT-002-AC02`, `DATA_MODEL.md`
+§8).
+
+**Evidence:** `EVID-013` (`docs/sources/SCHOOL BROUCHER (5).pdf`) — its own Partnership Model
+page and tier-breakdown image, both supplied directly by the user in-session.
+
+**New Feature ID authorized:** `SCH-011` (Partnership tier entitlements).
+
+**Stated by:** user (in-session) — **Date:** 2026-09-15. Closes `CLIENT_QUESTIONS.md` item 9.
+
+---
+
+### DEC-SCOPE-018 — School→Overseas bridge, and actor for Test Prep / Foreign Language modules
+
+**Status:** CONFIRMED_CURRENT — resolved 2026-09-15, in-session.
+
+**Trigger:** The same brochure validation pass surfaced two more gaps against
+`PRD_OPEN_ITEMS.md` item 77 (Parent Portal's "Overseas education progress," no confirmed data
+path since `SchoolStudent` has no Overseas identity, `DEC-ROLE-004`) and item 78 (parent
+notification triggers for "Test"/"Application"). The user was asked which unbuilt journey
+stages to scope now, picked "All of the above" (build the School→Overseas bridge AND Test
+Prep + Language Training modules), then resolved two remaining actor questions: "Reuse
+Academic Team" (no new role for Test Prep/Language) and "Overseas Admin/Counselor initiates
+it" (not School Coordinator, for the bridge).
+
+**Resolution, part 1 — School→Overseas bridge:** `OverseasApplication.student_id` is relaxed
+to nullable, and a new nullable `school_student_id` FK (`school_students.id`) is added.
+Exactly one of the two is always set, enforced at the application layer (not a DB CHECK
+constraint, matching this codebase's existing style) — never a synthetic `users` row for a
+`SchoolStudent`, consistent with `DEC-ROLE-004`'s own rejection of that approach. **Overseas
+Admin or Counselor (never School Coordinator)** looks a School student up by their
+business-facing Student ID (`DEC-DATA-003`) via `GET
+/overseas-admin/school-students/lookup?code=`, then starts a real application via `POST
+/overseas-admin/school-students/{id}/applications` (`SCH-010`). Every existing
+Overseas-student-centric endpoint that inner-joins `User` on `student_id` (11+ call sites)
+is left untouched — a bridged row's `student_id IS NULL` simply never matches those joins,
+which is the correct behavior (they are for real logged-in Overseas students, agent-referred
+students, etc.), not something to retrofit. The existing application status-advance and
+`VisaCase` endpoints work unchanged on a bridged application (both key off
+`application_id`/`counselor_id`, never `User`). `SCH-007`'s student overview/`SCH-008`'s
+timeline gained a `global_education` section reading these bridged rows — this is what
+actually closes `PRD_OPEN_ITEMS.md` item 77's "Overseas education progress" part (Skills and
+Portfolio remain unconfirmed and out of scope).
+
+**Resolution, part 2 — Test Preparation (IELTS/SAT) and Foreign Language Classes:** two new
+modules, `SchoolTestPrepRecord` and `SchoolLanguageRecord`, delivered by the existing
+`academic_team` role (no new role, per the user's explicit choice) — same portfolio-scoped
+CRUD shape as `SCH-004`/`005` (`_student_in_portfolio`, `_notify_student_parents`, `AuditLog`),
+with no Draft/Verified/Published gate (that gate is `SCH-006`-specific, `DEC-ROLE-007`). This
+closes `PRD_OPEN_ITEMS.md` item 78's "Test" notification trigger (test-prep start/result) and,
+via the bridge above, its "Application" trigger; "Important deadline" remains open (no
+confirmed deadline entity exists).
+
+**Evidence:** `EVID-013`; `PRD_OPEN_ITEMS.md` items 77/78; `DEC-ROLE-004` (no synthetic User
+row for a `SchoolStudent`).
+
+**New Feature IDs authorized:** `SCH-009` (Test Preparation & Foreign Language Classes),
+`SCH-010` (School→Overseas bridge).
+
+**Stated by:** user (in-session) — **Date:** 2026-09-15. Partially closes `PRD_OPEN_ITEMS.md`
+items 77 and 78 (Skills/Portfolio and Important-deadline notification remain open).
+
+**New Screen IDs:** `SCR-SCH-025` (`/school/coordinator/students/[id]`), `SCR-SCH-026`
+(`/school/principal/students/[id]`).
+
+---
+
+## Group 14 — 15 September 2026: business-facing Student ID
+
+### DEC-DATA-003 — Business-facing unique Student ID format and scope
+
+**Question:** `PRD_OPEN_ITEMS.md` item 66 / `CLIENT_QUESTIONS.md` D-09 asked the client to confirm
+the exact format (length, character set, prefix convention) of a short, memorable, searchable
+Student ID distinct from the existing internal technical identifier, and whether it should extend to
+Agents or other operational identities beyond students.
+
+**Evidence:** `EVID-011` (12 Sep review call) and `EVID-012` both request this; `EVID-014` ("School
+CRM.md") independently asks for "every student should have a unique Student ID" (§3) with its own
+illustrative example (`ES-2026-00125`, a longer, encoded format, not itself confirmed).
+
+**Recommendation:** None was needed — resolved directly by the user, who also delegated the format
+detail rather than specifying it.
+
+**Resolution:** User confirmed directly, in-session (2026-09-15): **8-character alphanumeric**,
+applying to **all students** — narrowing the original question's "students and/or agents" scope to
+students only, no Agent ID. Character set/prefix convention was explicitly left to implementation
+("you decide"): built as uppercase hex (`secrets.token_hex(4).upper()`), reusing this codebase's own
+already-established short-code convention (`enrollment_code`, `certificate_no` in `workflows.py`)
+rather than inventing a bespoke alphabet — hex naturally excludes the commonly-confused I/O/L
+letters, which serves the original "memorable/searchable" request without extra encoding rules.
+Applied to **both** student populations discussed all session: `User.student_code` (nullable,
+`it_student`/`overseas_student` roles only) and `SchoolStudent.student_code` (never null — every row
+in that table is a student). Each is its own per-table unique constraint, not a single cross-domain
+namespace — the two populations are never compared side by side in the same list, so global
+uniqueness was judged unnecessary complexity, not asked for, and not built.
+
+**Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-15.
+
+**Implementation:** `app.core.identifiers.generate_student_code`/`unique_student_code` (shared
+generator + collision-retry uniqueness check, reused at every creation site: self-registration,
+`app.seed`, School roster single-add, and School bulk-upload). Migration `0028_student_code` adds
+both columns and backfills every pre-existing row (School seed demo students, seeded `it_student`/
+`overseas_student` accounts) so the NOT NULL constraint on `school_students.student_code` holds from
+the first deploy. Surfaced in the UI: `PortalShell.tsx`'s sidebar identity badge for IT/Overseas
+Student roles (added once, in the shared `PortalPage.tsx` dispatcher, covering every page those
+roles see); the School roster table, edit form, and per-role student detail page
+(`SchoolStudentDetailPanel.tsx`, shared across Coordinator/Principal/Teacher); and the Parent's own
+dashboard card and child-detail page (`SchoolChildOverview.tsx`). 9 test-fixture call sites across
+`test_sch_004`/`005`/`006`/`007`/`008`/`reports.py` updated for the new required field; full backend
+regression (579 tests, excluding the two live-credential-only Zoho/Razorpay files per `CI.md`'s own
+documented exclusion) and 20 targeted E2E cases confirmed clean.

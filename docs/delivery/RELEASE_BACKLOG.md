@@ -98,6 +98,8 @@ surface in the entire project. New "Agent Journey" UAT case authored and passing
 | `SCH-004` | Career Guidance & Counselling module |
 | `SCH-005` | Psychometric Assessment module |
 | `SCH-006` | Academic Results module (Draft → Verified → Published) |
+| `SCH-007` | Parent Portal: child 360 overview + parent notifications (added 2026-09-15, `DEC-SCOPE-015`; built same day) |
+| `SCH-008` | Student Journey Timeline, narrow (added 2026-09-15, `DEC-SCOPE-016`; built same day) |
 
 **Sequencing:** `SCH-003` → `SCH-001` → then `SCH-002`/`SCH-004`/`SCH-005`/`SCH-006` in parallel (no
 cross-dependency among the four, per each feature's `deps` field in `feature_catalog.json`).

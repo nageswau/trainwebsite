@@ -11,6 +11,7 @@ import uuid
 import pytest
 from sqlalchemy import select
 
+from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
 from app.models import School, SchoolAcademicResult, SchoolStaffAssignment, SchoolStudent, User, UserRoleAssignment
 
@@ -33,7 +34,7 @@ async def _create_school_with_coordinator(db_session) -> dict:
     db_session.add(coordinator)
     await db_session.flush()
     db_session.add(UserRoleAssignment(user_id=coordinator.id, division="overseas", role="school_coordinator", is_active=True, assigned_by_user_id=admin.id, approval_status="approved"))
-    student = SchoolStudent(school_id=school.id, full_name="Test Student", created_by_user_id=coordinator.id)
+    student = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db_session, SchoolStudent.student_code), full_name="Test Student", created_by_user_id=coordinator.id)
     db_session.add(student)
     await db_session.flush()
     await db_session.commit()

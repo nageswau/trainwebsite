@@ -1,12 +1,14 @@
 import PortalShell from "@/components/PortalShell";
+import SchoolStudentDetailPanel from "@/components/SchoolStudentDetailPanel";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-type Student = { id: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
+type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
 
 // SCH-001: one assigned student's detail, read-only. Same assigned-scope deny as the
 // dashboard, verified server-side even via this direct record ID (SCH-001-AC03).
+// SCH-008: journey timeline, own-scope-checked the same way, via the shared detail panel.
 export default async function SchoolTeacherStudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let user: User;
@@ -26,14 +28,7 @@ export default async function SchoolTeacherStudentDetailPage({ params }: { param
   }
   return (
     <PortalShell nav={SCHOOL_NAV.teacher} roleLabel="Teacher" userName={user.full_name}>
-      <div className="portal-content">
-        <div className="card">
-          <h2>{student.full_name}</h2>
-          <p><strong>Grade/Class:</strong> {student.grade_or_class || "-"}</p>
-          <p><strong>Date of birth:</strong> {student.date_of_birth || "-"}</p>
-          <a className="btn secondary" href="/school/teacher/dashboard">Back to your students</a>
-        </div>
-      </div>
+      <SchoolStudentDetailPanel student={student} backHref="/school/teacher/dashboard" backLabel="Back to your students" />
     </PortalShell>
   );
 }

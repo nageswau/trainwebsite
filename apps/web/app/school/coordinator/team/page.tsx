@@ -5,7 +5,7 @@ import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
 type TeamPayload = {
-  accounts: { id: string; name: string; email: string; role: string }[];
+  accounts: { id: string; name: string; email: string; role: string; active: boolean }[];
   pending_invites: { id: string; role: string; email: string; full_name: string; expires_at: string }[];
 };
 

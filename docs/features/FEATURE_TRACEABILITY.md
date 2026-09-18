@@ -88,6 +88,11 @@ Full chain: Evidence → Decision → BRD (BR ID) → PRD ID → Feature ID, per
 | `SCH-004` | BR-SCH-005 | PRD-SCH-009 | DEC-ROLE-006 | Yes |
 | `SCH-005` | BR-SCH-006 | PRD-SCH-010 | DEC-ROLE-006 | Yes |
 | `SCH-006` | BR-SCH-004 | PRD-SCH-008 | DEC-SCOPE-010, DEC-ROLE-006 | Yes |
+| `SCH-007` | BR-SCH-007 | PRD-SCH-011 | DEC-SCOPE-011, DEC-ROLE-006, DEC-SCOPE-015, DEC-NOT-001 | Yes |
+| `SCH-008` | BR-SCH-008 | PRD-SCH-012 | DEC-SCOPE-011, DEC-SCOPE-015, DEC-SCOPE-016 | Yes |
+| `SCH-009` | BR-SCH-009 | PRD-SCH-013 | DEC-SCOPE-018, DEC-SCOPE-013 | Yes |
+| `SCH-010` | BR-SCH-010 | PRD-SCH-014 | DEC-SCOPE-018, DEC-ROLE-004, DEC-DATA-003 | Yes |
+| `SCH-011` | BR-SCH-011 | PRD-SCH-015 | DEC-SCOPE-017 | Yes |
 
 ## Orphan check
 
@@ -115,10 +120,15 @@ Full chain: Evidence → Decision → BRD (BR ID) → PRD ID → Feature ID, per
 | `BR-SCH-004` | `SCH-006` |
 | `BR-SCH-005` | `SCH-004` |
 | `BR-SCH-006` | `SCH-005` |
+| `BR-SCH-007` | `SCH-007` |
+| `BR-SCH-008` | `SCH-008` |
+| `BR-SCH-009` | `SCH-009` |
+| `BR-SCH-010` | `SCH-010` |
+| `BR-SCH-011` | `SCH-011` |
 
 ## PRD/NFR requirement coverage check
 
-Every `#### PRD-*`/`#### NFR-*` heading in `docs/product/PRD.md` was extracted and diffed against every feature's `prd` citation list. Result: **86 requirement headings, 86 covered** after two rounds of fixes (initial generation missed `PRD-ADM-004`, `PRD-ADM-005`, and 6 NFR IDs — added to `AGT-001`, `AGT-004`, `FND-002`, `SEC-001`, `SEC-002`, `PUB-001` where each genuinely belongs, not force-fit elsewhere).
+Every `#### PRD-*`/`#### NFR-*` heading in `docs/product/PRD.md` was extracted and diffed against every feature's `prd` citation list. Result: **86 requirement headings, 86 covered** after two rounds of fixes (initial generation missed `PRD-ADM-004`, `PRD-ADM-005`, and 6 NFR IDs — added to `AGT-001`, `AGT-004`, `FND-002`, `SEC-001`, `SEC-002`, `PUB-001` where each genuinely belongs, not force-fit elsewhere). **Addendum, 2026-09-15:** `PRD-SCH-013`/`014`/`015` added for `SCH-009`/`010`/`011` (`DEC-SCOPE-017`/`018`) — 89 requirement headings, 89 covered.
 
 **Deliberately left without a dedicated feature** (correct, not a gap):
 

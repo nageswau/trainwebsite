@@ -6,21 +6,26 @@ import { test, expect } from "@playwright/test";
 // seeded student's own on-record application/visa case.
 
 async function createVisaCaseAssignedToCounselor(page: import("@playwright/test").Page, trackingReference: string) {
+  // The seeded university list is finite and the shared demo student accumulates
+  // applications against it across repeated runs -- create a fresh, guaranteed-unapplied
+  // university as an admin first instead of hunting for one (same fix already applied in
+  // visa-002-interview-prep.spec.ts for the identical root cause).
+  const unique = `visa003-${Date.now()}`;
+  const universityName = `VISA-003 Test University ${unique}`;
+  await page.request.post("/api/v1/auth/login", { data: { email: "overseasadmin@edusphere.local", password: "Demo@123", division: "overseas" } });
+  const university = await (await page.request.post("/api/v1/admin/universities", { data: { country_slug: "usa", slug: unique, name: universityName } })).json();
+
   await page.request.post("/api/v1/auth/login", { data: { email: "counselor@edusphere.local", password: "Demo@123", division: "overseas" } });
   const counselorId = (await (await page.request.get("/api/v1/auth/me")).json()).id as string;
 
   await page.request.post("/api/v1/auth/login", { data: { email: "student.overseas@edusphere.local", password: "Demo@123", division: "overseas" } });
-  const alreadyApplied = ((await (await page.request.get("/api/v1/portal/overseas/student/applications")).json()).rows || []) as { university: string }[];
-  const universities = (await (await page.request.get("/api/v1/public/universities")).json()) as { id: string; name: string }[];
-  const target = universities.find((u) => !alreadyApplied.some((a) => a.university === u.name));
-  if (!target) throw new Error("No unapplied university available to pick in this seed dataset");
-  const application = await (await page.request.post("/api/v1/workflows/overseas/applications", { data: { university_id: target.id, counselor_id: counselorId } })).json();
+  const application = await (await page.request.post("/api/v1/workflows/overseas/applications", { data: { university_id: university.id, counselor_id: counselorId } })).json();
 
   await page.request.post("/api/v1/auth/login", { data: { email: "counselor@edusphere.local", password: "Demo@123", division: "overseas" } });
   const created = await page.request.post("/api/v1/workflows/overseas/visa", { data: { application_id: application.id, checklist: ["Passport"], tracking_reference: trackingReference } });
   expect(created.ok()).toBeTruthy();
 
-  return { universityName: target.name as string };
+  return { universityName };
 }
 
 test("student sees the visa status tracking reference and the compliance disclaimer (VISA-003-AC01/AC02)", async ({ page }) => {

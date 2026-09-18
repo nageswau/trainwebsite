@@ -58,7 +58,7 @@ test("coordinator and principal see real report figures; teacher is denied (Scho
   await page.goto("/school/coordinator/students");
   await page.fill("#new-full-name", "Report Student One");
   await page.fill("#new-grade", "Grade 6");
-  await page.fill("#new-teacher", teacherEmail);
+  await page.selectOption("#new-teacher", { label: "E2E Reports Teacher" });
   await page.click('button:has-text("Add student")');
   await expect(page.getByText(/added to the roster/)).toBeVisible();
 

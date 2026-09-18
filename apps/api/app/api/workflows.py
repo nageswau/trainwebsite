@@ -1870,7 +1870,9 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
         db.add(ApplicationStatusHistory(application_id=item.id, from_status=old_status, to_status=item.status, next_action=item.next_action, notes=notes, changed_by_id=user.id))
     if item.status != old_status:
         await _maybe_trigger_agent_commission(db, item, old_status, user)
-    student = await db.get(User, item.student_id)
+    # DEC-SCOPE-018: a bridged (School-origin) application has `student_id IS NULL` --
+    # guarded the same way as `advance_overseas_application` below.
+    student = await db.get(User, item.student_id) if item.student_id else None
     safe_channels = [channel for channel in channels if channel in {"email", "sms", "whatsapp"}]
     if student and (item.status != old_status or "next_action" in changes):
         await _notify_user(
@@ -1896,7 +1898,7 @@ async def post_university_rep_update(application_id: UUID, payload: dict, user: 
     if not message:
         raise HTTPException(422, "message is required")
     university = await db.get(University, item.university_id)
-    student = await db.get(User, item.student_id)
+    student = await db.get(User, item.student_id) if item.student_id else None
     recipients = [student] + ([await db.get(User, item.counselor_id)] if item.counselor_id else [])
     for recipient in recipients:
         if recipient:
@@ -1925,7 +1927,11 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
         item.next_action = payload.next_action
     db.add(ApplicationStatusHistory(application_id=item.id, from_status=old_status, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id))
     await _maybe_trigger_agent_commission(db, item, old_status, user)
-    student = await db.get(User, item.student_id)
+    # DEC-SCOPE-018: a bridged (School-origin) application has `student_id IS NULL` --
+    # `db.get(User, None)` triggers a SAWarning ("fully NULL primary key identity") and
+    # is documented as a future error, so it's guarded here rather than relied on to
+    # short-circuit. There is no User to notify for a bridged application.
+    student = await db.get(User, item.student_id) if item.student_id else None
     safe_channels = [channel for channel in payload.notify_channels if channel in {"email", "sms", "whatsapp"}]
     if student:
         # OVS-004-AC02 (this feature's own concern, not OVS-003's): a notification

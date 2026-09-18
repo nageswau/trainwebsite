@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type Account = { id: string; name: string; email: string; role: string };
+type Account = { id: string; name: string; email: string; role: string; active: boolean };
 type Invite = { id: string; role: string; email: string; full_name: string; expires_at: string };
 
 const ROLE_LABEL: Record<string, string> = {
@@ -16,7 +16,7 @@ const ROLE_LABEL: Record<string, string> = {
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
-  return "Unable to send invite.";
+  return "Unable to complete this action.";
 }
 
 // SCH-003 (DEC-SCOPE-012): the Coordinator's team screen -- see who's already on board,
@@ -27,6 +27,26 @@ export default function SchoolTeamPanel({ accounts, pendingInvites }: { accounts
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [rowMessage, setRowMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
+
+  async function toggleActive(account: Account) {
+    setBusyId(account.id);
+    setRowMessage(null);
+    const response = await fetch(`/api/v1/school/team/accounts/${account.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: !account.active }),
+    });
+    const data = await response.json().catch(() => ({}));
+    setBusyId(null);
+    if (!response.ok) {
+      setRowMessage({ id: account.id, text: detailMessage(data.detail), failed: true });
+      return;
+    }
+    setRowMessage({ id: account.id, text: `${account.name} ${account.active ? "deactivated" : "reactivated"}.`, failed: false });
+    router.refresh();
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,11 +84,32 @@ export default function SchoolTeamPanel({ accounts, pendingInvites }: { accounts
           <div className="table-wrap">
             <table className="table">
               <thead>
-                <tr><th>Name</th><th>Email</th><th>Role</th></tr>
+                <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr>
               </thead>
               <tbody>
                 {accounts.map((a) => (
-                  <tr key={a.id}><td>{a.name}</td><td>{a.email}</td><td>{ROLE_LABEL[a.role] || a.role}</td></tr>
+                  <tr key={a.id}>
+                    <td>{a.name}</td>
+                    <td>{a.email}</td>
+                    <td>{ROLE_LABEL[a.role] || a.role}</td>
+                    <td>{a.active ? "Active" : <span className="badge">Inactive</span>}</td>
+                    <td>
+                      {a.role === "school_coordinator" ? (
+                        <span className="muted" style={{ fontSize: 13 }}>—</span>
+                      ) : (
+                        <>
+                          <button className="btn small" disabled={busyId === a.id} onClick={() => toggleActive(a)}>
+                            {busyId === a.id ? "Saving…" : a.active ? "Deactivate" : "Reactivate"}
+                          </button>
+                          {rowMessage?.id === a.id && (
+                            <div className={rowMessage.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 6, fontSize: 13 }}>
+                              {rowMessage.text}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>

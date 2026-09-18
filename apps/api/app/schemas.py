@@ -27,6 +27,7 @@ class UserOut(BaseModel):
     role: str
     division: str
     phone: str | None = None
+    student_code: str | None = None
     profile: dict = Field(default_factory=dict)
     role_assignments: list[RoleAssignmentOut] = Field(default_factory=list)
     model_config = {"from_attributes": True}

@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.identifiers import unique_student_code
 from app.core.security import create_token, decode_token, hash_password, verify_password
 from app.models import AuditLog, Notification, NotificationDelivery, PasswordResetToken, User, UserRoleAssignment
 from app.schemas import LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
@@ -80,6 +81,7 @@ async def register(payload: RegistrationRequest, response: Response, db: AsyncSe
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
     role = "agent" if payload.account_type == "agent" else ("it_student" if payload.division == "it" else "overseas_student")
+    student_code = await unique_student_code(db, User.student_code) if role in ("it_student", "overseas_student") else None
     user = User(
         email=email,
         password_hash=hash_password(payload.password),
@@ -89,6 +91,7 @@ async def register(payload: RegistrationRequest, response: Response, db: AsyncSe
         phone=payload.phone,
         active=True,
         email_verified=False,
+        student_code=student_code,
         profile={"registration_source": "self_service"},
     )
     db.add(user)

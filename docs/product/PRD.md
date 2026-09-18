@@ -1125,6 +1125,84 @@ Manager/School Partnership Manager's exact duties and overlap.
 - **Scope/status:** CONFIRMED_CURRENT (module in scope, actor); OPEN (exact field list/assessment
   types)
 
+#### PRD-SCH-011 — Parent Portal: child 360 overview + parent notifications
+- **Source:** `DEC-SCOPE-015` (user restated `EVID-014` §23 in-session, 2026-09-15)
+- **Actor:** Parent (`school_parent`); secondary — Teacher/Coordinator/Principal (same overview
+  endpoint, own scope); the writing roles whose actions trigger notifications
+- **Requirement:** For each linked child a Parent sees profile (school, grade, DOB, class teacher),
+  career guidance status, counselling notes, recommended careers, psychometric status, Published
+  results, activities attended, upcoming sessions, and their own notification feed. A Parent is
+  notified (in-app + email) when an assessment is assigned or its report attached, a guidance/
+  counselling/recommendation record is added, a session is scheduled, or a result is Published.
+- **Business rule:** Own child(ren) only, enforced at the API layer even via direct record ID;
+  Draft/Verified results never appear and never notify; a school-wide session notifies each Parent
+  at that school once.
+- **Open:** Skills, Portfolio, Overseas-education progress (item 77) and Test/Application/Important-
+  deadline notifications (item 78) — no confirmed module produces that data; whether a Parent may
+  open the psychometric report file itself (item 79).
+- **Scope/status:** CONFIRMED_CURRENT (surface + four triggers, built as `SCH-007`); OPEN (items
+  77/78/79)
+
+#### PRD-SCH-012 — Student Journey Timeline: narrow, built from confirmed modules only
+- **Source:** `DEC-SCOPE-016` (user asked whether `EVID-014`'s own recommended timeline
+  exists, then requested the narrow confirmed-modules version, 2026-09-15)
+- **Actor:** Parent (own child(ren) only); secondary — Teacher (assigned), Coordinator/
+  Principal (own institution), same scope rule as `SCH-007`
+- **Requirement:** A chronologically-ordered list of events already recorded for one
+  student across `SCH-001` (profile created, activities attended), `SCH-004` (guidance
+  session, counselling note, recommendation), `SCH-005` (assessment assigned, report
+  uploaded), and `SCH-006` (result Published only).
+- **Business rule:** Own-scope access identical to `SCH-007`'s overview, enforced at the
+  API layer even via direct record ID. A Draft/Verified result never appears. No event
+  category beyond the five above is fabricated — `EVID-014`'s own illustrative Foreign
+  Language / English Test / University Planning / Soft-Skills stages remain unconfirmed.
+- **Open:** Whether/when those additional stages should be added depends entirely on
+  `DEC-SCOPE-015` items 77/78 (Skills, Portfolio, Overseas progress, Test/Application/
+  Deadline modules) being confirmed first.
+- **Scope/status:** CONFIRMED_CURRENT, built as `SCH-008`
+
+#### PRD-SCH-013 — Test Preparation (IELTS/SAT) & Foreign Language Classes
+- **Source:** `DEC-SCOPE-018` (user picked "All of the above" — bridge + Test Prep + Language
+  — then "Reuse Academic Team," 2026-09-15)
+- **Actor:** Academic Team (`academic_team`, own school portfolio); secondary — Coordinator/
+  Principal/Teacher/Parent (read-only, own scope)
+- **Requirement:** Academic Team member starts/updates a Test Preparation record (IELTS/SAT,
+  mock scores, target/actual score) or a Foreign Language Classes record (language, level,
+  classes attended, certification status) for a portfolio student. Completion/certification
+  notifies the linked Parent(s). Surfaced in `SCH-007`'s overview and `SCH-008`'s timeline.
+- **Business rule:** Own school portfolio only, same mechanism as `SCH-004`/`005`
+  (`DEC-SCOPE-013`); no Draft/Verified/Published gate — that gate is `SCH-006`-specific.
+- **Open:** none — fully resolved and built.
+- **Scope/status:** CONFIRMED_CURRENT, built as `SCH-009`
+
+#### PRD-SCH-014 — School→Overseas bridge
+- **Source:** `DEC-SCOPE-018` (user picked "Overseas Admin/Counselor initiates it," 2026-09-15)
+- **Actor:** Overseas Admin, Counselor; secondary — School Coordinator/Principal/Parent
+  (read-only, via `SCH-007`'s `global_education` section and `SCH-008`'s timeline)
+- **Requirement:** Overseas Admin or Counselor looks a School student up by their Student ID
+  (`DEC-DATA-003`) and starts a real `OverseasApplication` for them (`school_student_id` set,
+  `student_id` null). The application then advances through the existing, unmodified
+  Overseas application/visa workflow.
+- **Business rule:** School Coordinator is explicitly denied this action — the one confirmed
+  asymmetry against the School Portal's usual Coordinator-writes-everything pattern. A bridged
+  application never appears in any Overseas-student-facing self-service view.
+- **Open:** none for the bridge itself — closes `PRD_OPEN_ITEMS.md` item 77's Overseas-progress
+  gap; Skills and Portfolio (the other two parts of item 77) remain open.
+- **Scope/status:** CONFIRMED_CURRENT, built as `SCH-010`
+
+#### PRD-SCH-015 — Partnership tier entitlements
+- **Source:** `DEC-SCOPE-017` (user resolved `CLIENT_QUESTIONS.md` item 9 directly in-session,
+  providing the brochure's own tier→service breakdown image, 2026-09-15)
+- **Actor:** School Coordinator, Principal (read-only, own institution); secondary — Overseas
+  Admin (sets/changes the tier)
+- **Requirement:** A School's tier (Bronze/Silver/Gold/Platinum, cumulative) determines its
+  included service list. Coordinator/Principal see each service with a real usage count where
+  a confirmed module produces one, and an explicit "not tracked" indicator for the rest.
+- **Business rule:** A tier's services are unlimited — never a numeric cap; never a fabricated
+  `0` for a service with no confirmed underlying module.
+- **Open:** none — fully resolved and built; closes `CLIENT_QUESTIONS.md` item 9.
+- **Scope/status:** CONFIRMED_CURRENT, built as `SCH-011`
+
 ## 8. Non-functional requirements (NFRs)
 
 **Rigor note:** several NFR figures below exist only in the superseded blueprint's own

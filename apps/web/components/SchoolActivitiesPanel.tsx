@@ -30,7 +30,7 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
     const response = await fetch("/api/v1/school/activities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: form.get("title"), scheduled_at: new Date(String(form.get("scheduled_at"))).toISOString() }),
+      body: JSON.stringify({ title: form.get("title"), scheduled_at: new Date(String(form.get("scheduled_at"))).toISOString(), activity_type: form.get("activity_type") || undefined }),
     });
     const data = await response.json().catch(() => ({}));
     setBusy(false);
@@ -132,6 +132,16 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
           <div className="field">
             <label htmlFor="activity-when">Date &amp; time</label>
             <input id="activity-when" name="scheduled_at" type="datetime-local" required />
+          </div>
+          <div className="field">
+            <label htmlFor="activity-type">Entitlement category (optional)</label>
+            <select id="activity-type" name="activity_type" defaultValue="">
+              <option value="">None</option>
+              <option value="career_seminar">Career seminar</option>
+              <option value="career_awareness_session">Student career awareness session</option>
+              <option value="parent_orientation">Parent orientation</option>
+              <option value="campus_visit">Monthly campus visit</option>
+            </select>
           </div>
           <button className="btn" disabled={busy}>{busy ? "Scheduling…" : "Schedule activity"}</button>
         </form>

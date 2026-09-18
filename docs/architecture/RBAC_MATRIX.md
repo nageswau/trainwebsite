@@ -174,13 +174,14 @@ merely a documented intent.
 `DEC-SCOPE-012`/`DEC-ROLE-006`)*
 | Role | Actions | Scope | Feature |
 |---|---|---|---|
-| `overseas_admin` | **create a School partner record and a seed `school_coordinator` account for it** — both active immediately, no approval gate; **create `academic_team`/`career_counselor`/`psychometric_team` accounts and assign each to a school portfolio (one or more institutions)** | Overseas division — same actor that manages University partner records and approves Agent registrations | `SCH-003` (School+Coordinator); `SCH-004`/`005`/`006` (specialized-role account creation, `DEC-SCOPE-014`) |
+| `overseas_admin` | **create a School partner record and a seed `school_coordinator` account for it** — both active immediately, no approval gate; **create `academic_team`/`career_counselor`/`psychometric_team` accounts and assign each to a school portfolio (one or more institutions)**; **set/change a School's partnership tier** (`SCH-011`, `DEC-SCOPE-017`); **look up a School student by Student ID and start a real Overseas application for them (School→Overseas bridge)** (`SCH-010`, `DEC-SCOPE-018`) | Overseas division — same actor that manages University partner records and approves Agent registrations | `SCH-003` (School+Coordinator); `SCH-004`/`005`/`006` (specialized-role account creation, `DEC-SCOPE-014`); `SCH-010`, `SCH-011` |
 | `super_admin` | Same specialized-role account-creation grant as `overseas_admin` above, cross-division | Not division-restricted (Super Admin's standing cross-division grant, §1) | `SCH-004`/`005`/`006` (`DEC-SCOPE-014`) |
-| `school_principal` | view dashboard, student statistics, career progress, reports (read-only) | **Own institution only** — explicit deny on any other school's data, even via direct record ID | `SCH-001` |
-| `school_coordinator` | create/manage student records (one at a time), schedule activities, track attendance, generate reports; **bulk-upload** student roster via template-download-first workflow; **invite/create `school_principal`, `school_teacher`, `school_parent` accounts** for their own institution, active immediately, no approval gate; **view (read-only)** results/career-guidance/counselling/psychometric content for their own institution | **Own institution only** | `SCH-001`, `SCH-002`, `SCH-003`, `SCH-004`, `SCH-005`, `SCH-006` (read-only on the last three) |
+| `counselor` | **look up a School student by Student ID and start a real Overseas application for them (School→Overseas bridge)** — the only School-domain grant this role has; every other Overseas-caseload grant remains at §2.7, unchanged | Overseas division; the bridged application then follows the counselor's normal own-caseload scope (`item.counselor_id == user.id`) for every subsequent status advance/`VisaCase` action, identical to a self-service application | `SCH-010` (`DEC-SCOPE-018`) |
+| `school_principal` | view dashboard, student statistics, career progress, reports (read-only); **view any own-institution student's Journey Timeline** (`SCH-008`, added 2026-09-15); **view (read-only) the school's partnership-tier entitlements and real usage counts** (`SCH-011`, `DEC-SCOPE-017`) | **Own institution only** — explicit deny on any other school's data, even via direct record ID | `SCH-001`, `SCH-008`, `SCH-011` |
+| `school_coordinator` | create/manage student records (one at a time), schedule activities, track attendance, generate reports; **bulk-upload** student roster via template-download-first workflow; **invite/create `school_principal`, `school_teacher`, `school_parent` accounts** for their own institution, active immediately, no approval gate; **activate/deactivate** those same three own-institution accounts (added 2026-09-15) — **never** a `school_coordinator` account, including their own; **view (read-only)** results/career-guidance/counselling/psychometric/test-prep/foreign-language content for their own institution; **view any own-institution student's Journey Timeline** (`SCH-008`, added 2026-09-15); **view (read-only) the school's partnership-tier entitlements and real usage counts** (`SCH-011`, `DEC-SCOPE-017`) — **cannot** initiate the School→Overseas bridge (`SCH-010`, `DEC-SCOPE-018`'s explicit deny, below) | **Own institution only** | `SCH-001`, `SCH-002`, `SCH-003`, `SCH-004`, `SCH-005`, `SCH-006` (read-only on the last three), `SCH-008`, `SCH-009` (read-only), `SCH-011` |
 | `school_teacher` | view attendance, career activities, student progress (read-only) | **Own institution AND assigned students only** — narrower than the whole institution; explicit deny on any student not assigned to that Teacher, even within the same school (`SCH-001-AC03`) | `SCH-001` |
-| `school_parent` | view own child(ren)'s profile and progress (read-only); **view Published results, career guidance, and psychometric content for own child(ren) only** | **Own institution AND own child(ren) only** — explicit deny on any other student, even within the same school (`SCH-001-AC03`) | `SCH-001`, `SCH-004`, `SCH-005`, `SCH-006` (read-only, results Published-only) |
-| `academic_team` | **create/edit results** (subject/term/marks) as `academic_team`; **verify** a result **only if a different `academic_team` member than its uploader** (`SCH-006-AC04`, same-actor restriction); **publish** likewise restricted to a different member than the uploader | **Own school portfolio only** (`DEC-SCOPE-013` — one or more institutions, many-to-many `SchoolStaffAssignment`, `DATA_MODEL.md` §6.12) — explicit deny on any student at a school outside the acting member's portfolio, even via direct record ID | `SCH-006` |
+| `school_parent` | view own child(ren)'s profile and progress (read-only); **view Published results, career guidance, psychometric, test-prep, and foreign-language content for own child(ren) only**; **child 360 overview** (profile, guidance/counselling/psychometric/test-prep/foreign-language status, recommended careers, Published results, activities, upcoming sessions, and — once linked — global education/Overseas application progress) and **own notification feed** (`SCH-007`, 2026-09-15, extended `SCH-009`/`SCH-010` 2026-09-15); **student journey timeline** — chronological cross-module event list, including test-prep/language/global-education events (`SCH-008`, extended `SCH-009`/`SCH-010`) | **Own institution AND own child(ren) only** — explicit deny on any other student, even within the same school (`SCH-001-AC03`, `SCH-007-AC02`, `SCH-008-AC02`); notification rows keyed to the recipient user only | `SCH-001`, `SCH-004`, `SCH-005`, `SCH-006` (read-only, results Published-only), `SCH-007`, `SCH-008`, `SCH-009`, `SCH-010` |
+| `academic_team` | **create/edit results** (subject/term/marks) as `academic_team`; **verify** a result **only if a different `academic_team` member than its uploader** (`SCH-006-AC04`, same-actor restriction); **publish** likewise restricted to a different member than the uploader; **create/edit Test Preparation (IELTS/SAT) and Foreign Language Class records** — no Draft/Verified/Published gate on these two, unlike results (`SCH-009`, `DEC-SCOPE-018`: reuses this role rather than a new one) | **Own school portfolio only** (`DEC-SCOPE-013` — one or more institutions, many-to-many `SchoolStaffAssignment`, `DATA_MODEL.md` §6.12) — explicit deny on any student at a school outside the acting member's portfolio, even via direct record ID | `SCH-006`, `SCH-009` |
 | `career_counselor` | **create/manage career guidance sessions, counselling notes, recommendations** | **Own school portfolio only** (`DEC-SCOPE-013`, same mechanism as `academic_team` above) — explicit deny on any student at a school outside the portfolio, even via direct record ID | `SCH-004` |
 | `psychometric_team` | **assign assessments, upload reports** | **Own school portfolio only** (`DEC-SCOPE-013`, same mechanism as `academic_team` above) — explicit deny on any student at a school outside the portfolio, even via direct record ID | `SCH-005` |
 
@@ -188,7 +189,8 @@ merely a documented intent.
 had a single `counselor` (extended) row for all service-delivery data, "if and when those modules are
 built." Those modules are now confirmed in scope, and the actor is **not** `counselor` — it is the
 three specialized roles above. The existing `counselor` role's Overseas-caseload grants (§2.7) are
-unchanged; it has no School-domain grant.
+unchanged; its only School-domain grant is the narrow `SCH-010` bridge-initiation action added
+2026-09-15 (`DEC-SCOPE-018`), above.
 
 **Provisioning is not self-service anywhere in this section** (`DEC-SCOPE-012`/`DEC-SCOPE-014`): no
 role below `overseas_admin` can create a School record, and no role below `school_coordinator` can
@@ -238,6 +240,17 @@ real privilege-boundary bug, not a naming quibble (`SCH-001-AC05`).
 have no grant rows above — their existence is confirmed (`DEC-ROLE-006`) but their exact duties are
 not (`PRD_OPEN_ITEMS.md` item 75). Do not invent a grant for either.
 
+**Not modeled — explicitly deferred, 2026-09-15 (`EVID-014` "School Master" validation):** after
+confirming `EVID-014`'s "School Master" role is `school_coordinator` itself, two of its named
+capabilities were deliberately **not** given a grant row: "Manage classes" (no `Class`/`Section`
+entity exists anywhere in this schema — `SchoolStudent.grade_or_class` remains a free-text string;
+building a real entity with its own roster/capacity/teacher-of-record is new scope beyond
+`DEC-SCOPE-011` and needs its own Decision ID first) and "Manage permissions" (identical precedent
+already declined for `it_admin`'s `ADM-012` — `PRD-ADM-013`/`PRD_OPEN_ITEMS.md` item 42,
+`DEC-SCOPE-008` — `core/rbac.py`'s `PERMISSIONS` is a static code table, not DB-backed; runtime
+editing would mean inventing a security-critical engine on unconfirmed scope, for School exactly as
+much as for IT Admin). Do not invent a grant for either without a new Decision ID.
+
 **As built, 2026-09-14 (`prompts/13`/`15`):** every grant row and explicit-deny rule in this section is
 now built and covered by a passing test — `SCH-001` through `SCH-006` are all `COMPLETE`
 (`MASTER_FEATURE_CATALOG.md`). The role-name-collision guard is enforced by giving `school_teacher`/
@@ -245,6 +258,13 @@ now built and covered by a passing test — `SCH-001` through `SCH-006` are all 
 check with `trainer`/`coordinator`. The same-actor restriction and portfolio scoping are both covered
 by dedicated pytest cases (`test_sch_006_academic_results.py`, `test_sch_004_career_guidance.py`,
 `test_sch_005_psychometric_assessment.py`).
+
+**Addendum, 2026-09-15 (`DEC-SCOPE-017`/`018`):** `SCH-009` (Test Preparation & Foreign Language,
+reusing `academic_team`), `SCH-010` (School→Overseas bridge, `overseas_admin`/`counselor` only,
+explicit deny on `school_coordinator`), and `SCH-011` (partnership-tier entitlements, real usage
+counts or `null`, never a fabricated cap) added to this section's grant/deny rules above. Covered by
+`test_sch_009_test_prep_language.py`, `test_sch_010_overseas_bridge.py`, and
+`test_sch_011_entitlements.py`.
 
 ---
 
@@ -292,6 +312,12 @@ by dedicated pytest cases (`test_sch_006_academic_results.py`, `test_sch_004_car
 | Any of `academic_team`/`career_counselor`/`psychometric_team` acting on a student at a school outside their own portfolio, even via direct record ID | `DEC-SCOPE-013`, same class as `SCH-004-AC02`/`SCH-005-AC02`/`SCH-006-AC05` above |
 | An `academic_team` member verifying or publishing a result they themselves uploaded | `DEC-ROLE-007`, `SCH-006-AC04` |
 | Any role other than `overseas_admin`/`super_admin` creating an `academic_team`/`career_counselor`/`psychometric_team` account, including `school_coordinator` | `DEC-SCOPE-014` |
+| A `school_coordinator` activating/deactivating another institution's account, or any `school_coordinator` account including their own, through `PATCH /school/team/accounts/{id}` | `SCH-003` addendum, 2026-09-15 |
+| `school_coordinator` (or any role other than `overseas_admin`/`counselor`/`super_admin`) calling `POST /overseas-admin/school-students/{id}/applications` to initiate the School→Overseas bridge | `DEC-SCOPE-018`, `SCH-010-AC01` |
+| Any role other than `academic_team` creating/editing a Test Preparation or Foreign Language Class record, or an `academic_team` member acting on a student outside their own portfolio | `DEC-SCOPE-018`, `SCH-009-AC02`/`AC03`, same class as `SCH-004-AC02`/`SCH-005-AC02` above |
+| Any role other than `school_coordinator`/`school_principal` reading `GET /school/entitlements` | `DEC-SCOPE-017`, `SCH-011-AC01` |
+| Any client-supplied `used` value, or a fabricated `0`/invented cap, for a service with no confirmed underlying module on the entitlements view — must be `null` ("not tracked") | `DEC-SCOPE-017`, `SCH-011-AC02` |
+| A bridged `OverseasApplication` (`school_student_id` set, `student_id IS NULL`) appearing in any Overseas-student-centric self-service listing (`GET /overseas/applications`, agent/university-rep views, commission listings) | `DEC-SCOPE-018`, `SCH-010-AC04` — these all inner-join `User` on `student_id`, which a bridged row never matches |
 
 ---
 

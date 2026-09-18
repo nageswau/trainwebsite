@@ -28,6 +28,13 @@ class User(Base, TimestampMixin):
     email_verified: Mapped[bool] = mapped_column(Boolean, default=True)
     locale: Mapped[str] = mapped_column(String(12), default="en-GB")
     profile: Mapped[dict] = mapped_column(JSON, default=dict)
+    # Business-facing unique Student ID (PRD_OPEN_ITEMS.md item 66 / CLIENT_QUESTIONS.md
+    # D-09), resolved 2026-09-15: 8-character alphanumeric, all students, format left to
+    # implementation -- reuses this codebase's own existing short-code convention
+    # (secrets.token_hex(N).upper(), see enrollment_code/certificate_no) rather than
+    # inventing a new alphabet. Only it_student/overseas_student rows get one; every other
+    # role's value stays NULL (multiple NULLs are fine under a unique constraint).
+    student_code: Mapped[str | None] = mapped_column(String(8), unique=True, nullable=True, index=True)
     role_assignments: Mapped[list["UserRoleAssignment"]] = relationship(
         foreign_keys="UserRoleAssignment.user_id", viewonly=True, order_by="UserRoleAssignment.assigned_at"
     )
@@ -408,7 +415,16 @@ class OverseasCourse(Base, TimestampMixin):
 class OverseasApplication(Base, TimestampMixin):
     __tablename__ = "overseas_applications"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
-    student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    # Nullable as of `DEC-SCOPE-018` (2026-09-15): a bridged application created on behalf
+    # of a School-affiliated student (`DEC-ROLE-004` -- no login, no `users` row) has
+    # school_student_id set instead. Application code enforces "exactly one of the two is
+    # set" at every write site; this is not a DB CHECK constraint, matching this table's
+    # existing style of app-level invariants over DB-level ones. Every pre-existing query
+    # that inner-joins `User` on this column is unaffected -- a bridged row (student_id
+    # NULL) simply never matches those joins, which is correct: those views are for real
+    # logged-in overseas students/agents, not bridged School students.
+    student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    school_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), nullable=True, index=True)
     university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id"), index=True)
     course_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_courses.id"), nullable=True)
     counselor_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
@@ -919,6 +935,25 @@ class School(Base, TimestampMixin):
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     state: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    # Partnership tier (Bronze/Silver/Gold/Platinum), resolved 2026-09-15 (`DEC-SCOPE-017`,
+    # closes `CLIENT_QUESTIONS.md` item 9) -- unlike the rest of EVID-014's field list, this
+    # one is now confirmed, not derived-blueprint-only. Nullable: a School can exist before
+    # a tier is assigned.
+    tier: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    tier_valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
+class AcademicYear(Base, TimestampMixin):
+    """Global, admin-managed academic-year calendar (ENH-001, DEC-DATA-004). No `school_id`
+    -- one shared calendar across every partnered school, per the user's explicit decision
+    recorded in docs/superpowers/specs/2026-09-18-enh-001-academic-year-design.md."""
+
+    __tablename__ = "academic_years"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    label: Mapped[str] = mapped_column(String(20), unique=True)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="active")
 
 
 class SchoolAccountInvite(Base, TimestampMixin):
@@ -960,6 +995,11 @@ class SchoolStudent(Base, TimestampMixin):
     __tablename__ = "school_students"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
+    # Business-facing unique Student ID (PRD_OPEN_ITEMS.md item 66 / CLIENT_QUESTIONS.md
+    # D-09), resolved 2026-09-15 -- see User.student_code's own comment for the format
+    # rationale. Every school-affiliated student gets one (unlike User.student_code, this
+    # column is never NULL -- every row here is a student, no other role shares the table).
+    student_code: Mapped[str] = mapped_column(String(8), unique=True, index=True)
     full_name: Mapped[str] = mapped_column(String(160))
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     grade_or_class: Mapped[str | None] = mapped_column(String(60), nullable=True)
@@ -973,6 +1013,10 @@ class SchoolStudent(Base, TimestampMixin):
     # SchoolParentLink exists -- lets invite-accept auto-link every student that named this
     # email, including a second child added while the first invite is still pending.
     pending_parent_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # ENH-001: system-assigned only -- create_student/update_student must never read
+    # this from a client payload (spec's security review, role-escalation finding).
+    academic_year_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"), nullable=True, index=True)
+    grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class SchoolParentLink(Base, TimestampMixin):
@@ -999,6 +1043,10 @@ class SchoolActivity(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(200))
     scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    # Optional entitlement-tracking category (`DEC-SCOPE-017`), e.g. "career_seminar" /
+    # "parent_orientation" / "campus_visit" -- nullable so every pre-existing free-text
+    # activity keeps working unchanged; only new tier-relevant activities need to set it.
+    activity_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
 
 class SchoolActivityAttendance(Base, TimestampMixin):
@@ -1073,6 +1121,40 @@ class SchoolPsychometricRecord(Base, TimestampMixin):
     assessment_type: Mapped[str] = mapped_column(String(120))
     report_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="assigned")
+
+
+class SchoolTestPrepRecord(Base, TimestampMixin):
+    """SCH-009 -- Test Preparation (IELTS/SAT coaching), resolved 2026-09-15
+    (`DEC-SCOPE-018`, closes `DEC-SCOPE-015` item 78 for this specific module). Delivered
+    by the existing `academic_team` role (no new role) -- same "one table, no Draft/
+    Published gate" shape as `SchoolCareerRecord`/`SchoolPsychometricRecord`, not
+    `SchoolAcademicResult`'s formal-results gate."""
+
+    __tablename__ = "school_test_prep_records"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    academic_team_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    test_type: Mapped[str] = mapped_column(String(10))
+    mock_scores: Mapped[list] = mapped_column(JSON, default=list)
+    target_score: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    actual_score: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="in_progress")
+
+
+class SchoolLanguageRecord(Base, TimestampMixin):
+    """SCH-009 -- Foreign Language Classes, resolved 2026-09-15 (`DEC-SCOPE-018`, closes
+    `DEC-SCOPE-015` item 78 for this specific module). Same actor/shape rationale as
+    `SchoolTestPrepRecord` above."""
+
+    __tablename__ = "school_language_records"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    academic_team_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    language: Mapped[str] = mapped_column(String(60))
+    level: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    classes_attended: Mapped[int] = mapped_column(Integer, default=0)
+    assessment_score: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    certification_status: Mapped[str] = mapped_column(String(20), default="not_started")
 
 
 class SchoolAcademicResult(Base, TimestampMixin):

@@ -44,8 +44,11 @@ test("admin approves an enrolment by student name, and rejection is terminal (AD
   await page.waitForURL("**/it/student/dashboard");
 
   await page.goto("/it/student/course");
-  const batchCard = page.locator(".card", { has: page.getByRole("heading", { name: batchName, exact: true }) });
-  await batchCard.getByRole("button", { name: "Book this slot" }).click();
+  // The batch picker groups slots by program and collapses every group except the one
+  // currently selected in its Program filter (BatchSlotPicker.tsx) -- select this
+  // throwaway program by name to bring its one batch into view as a table row.
+  await page.getByLabel("Program").selectOption({ label: programTitle });
+  await page.locator("tr", { hasText: batchName }).getByRole("button", { name: "Book this slot" }).click();
   await expect(page.getByText(/Enrolment confirmed/)).toBeVisible();
 
   await page.goto("/it/login");
