@@ -1698,10 +1698,16 @@ async def create_academic_result(payload: dict, user: User = Depends(get_current
 async def update_academic_result(result_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if user.role != "academic_team":
         raise HTTPException(403, "Academic Team role required")
-    result = await db.get(SchoolAcademicResult, result_id)
+    # Row lock: a concurrent verify/publish (or second edit) must not interleave between the
+    # draft check and the commit -- same SELECT ... FOR UPDATE pattern as admin.py's batch work.
+    result = await db.scalar(select(SchoolAcademicResult).where(SchoolAcademicResult.id == result_id).with_for_update())
     if not result:
         raise HTTPException(404, "Result not found")
     await _student_in_portfolio(db, user, result.school_student_id)
+    # DEC-ROLE-007: only the uploader may edit a draft. A peer who could rewrite it would then be
+    # a legitimate (non-uploader) verifier of their own rewritten content.
+    if result.uploaded_by_user_id != user.id:
+        raise HTTPException(403, "Only the Academic Team member who uploaded this result can edit it")
     if result.status != "draft":
         raise HTTPException(409, "Only a Draft result can be edited")
     for field in ("subject", "academic_year", "term", "grade"):
@@ -1720,7 +1726,7 @@ async def update_academic_result(result_id: UUID, payload: dict, user: User = De
 async def _advance_result(result_id: UUID, target: str, user: User, db: AsyncSession) -> SchoolAcademicResult:
     if user.role != "academic_team":
         raise HTTPException(403, "Academic Team role required")
-    result = await db.get(SchoolAcademicResult, result_id)
+    result = await db.scalar(select(SchoolAcademicResult).where(SchoolAcademicResult.id == result_id).with_for_update())
     if not result:
         raise HTTPException(404, "Result not found")
     await _student_in_portfolio(db, user, result.school_student_id)

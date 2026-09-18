@@ -461,3 +461,62 @@ async def test_progress_spans_every_school_in_a_multi_school_portfolio(client, d
     assert str(second_student.id) in student_ids
     row = next(r for r in response.json() if r["school_student_id"] == str(second_student.id))
     assert row["school_name"] == second_school.name
+
+
+@pytest.mark.asyncio
+async def test_a_peer_cannot_edit_another_members_draft(client, db_session):
+    """Codex finding #1: without an uploader check on PATCH, member B could rewrite member
+    A's draft and then verify/publish B's own rewritten content (B is not the recorded
+    uploader), defeating DEC-ROLE-007's separation of duties."""
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    peer = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    created = await client.post("/api/v1/school/academic-team/results", json={"school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1", "subject": "Geography", "max_marks": 100, "marks_obtained": 40, "teacher_remarks": "Original remark."})
+    result_id = created.json()["id"]
+
+    await _login(client, peer.email)
+    hijack = await client.patch(f"/api/v1/school/academic-team/results/{result_id}", json={"marks_obtained": 99, "teacher_remarks": "Rewritten by a peer."})
+    assert hijack.status_code == 403
+
+    row = await db_session.get(SchoolAcademicResult, uuid.UUID(result_id))
+    await db_session.refresh(row)
+    assert float(row.marks_obtained) == 40.0
+    assert row.teacher_remarks == "Original remark."
+
+
+@pytest.mark.asyncio
+async def test_two_concurrent_verifications_record_exactly_one_transition(client, db_session):
+    """Codex finding #2: verify does read -> check status -> mutate -> commit with no row
+    lock, so two reviewers racing on the same draft could both 'win' and write two
+    draft -> verified history rows. A race is probabilistic, so several results are raced
+    per run to make an unlocked implementation fail reliably."""
+    import asyncio
+
+    from httpx import ASGITransport, AsyncClient
+
+    from app.main import app
+    from app.models import SchoolResultStatusHistory
+
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    reviewer_b = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    reviewer_c = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    result_ids = []
+    for n in range(6):
+        created = await client.post("/api/v1/school/academic-team/results", json={"school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1", "subject": f"Race {n}", "max_marks": 100, "marks_obtained": 50})
+        result_ids.append(created.json()["id"])
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client_b, AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client_c:
+        # Log both in first: bcrypt would otherwise stagger the two verifies and hide the race.
+        await _login(client_b, reviewer_b.email)
+        await _login(client_c, reviewer_c.email)
+        for result_id in result_ids:
+            responses = await asyncio.gather(
+                client_b.post(f"/api/v1/school/academic-team/results/{result_id}/verify"),
+                client_c.post(f"/api/v1/school/academic-team/results/{result_id}/verify"),
+            )
+            assert sorted(r.status_code for r in responses) == [200, 409], f"{result_id}: {[r.status_code for r in responses]}"
+            history = (await db_session.scalars(select(SchoolResultStatusHistory).where(SchoolResultStatusHistory.result_id == uuid.UUID(result_id), SchoolResultStatusHistory.to_status == "verified"))).all()
+            assert len(history) == 1
