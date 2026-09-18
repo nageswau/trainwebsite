@@ -381,3 +381,114 @@ async def test_an_undelivered_link_is_logged_at_warning_and_redacts_addresses_an
     assert "victim@example.local" not in blob and "smtp.example.local" not in blob and issued.raw not in blob and target.email not in blob
     stored = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == str(target.id), AuditLog.action == "user.welcome_link_delivery"))
     assert "victim@example.local" not in json.dumps(stored.metadata_json)
+
+
+# --- Task 4: reset_password -----------------------------------------------------------
+
+RESET_URL = "/api/v1/auth/reset-password"
+INVALID = "Reset token is invalid or expired"
+
+
+async def _pending_user(db_session, *, active=True, **token_kwargs):
+    user = await _make_user(db_session, role="counselor", email_verified=False, active=active, password=uuid.uuid4().hex + "Zz1!")
+    raw, token = await _seed_token(db_session, user, **token_kwargs)
+    return user, raw, token
+
+
+@pytest.mark.asyncio
+async def test_a_welcome_link_sets_the_password_verifies_the_email_and_allows_login(client, db_session):
+    user, raw, token = await _pending_user(db_session)
+    response = await client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD})
+    assert response.status_code == 200 and response.json() == {"ok": True}
+    await db_session.refresh(user)
+    await db_session.refresh(token)
+    assert user.email_verified is True and token.used_at is not None
+    assert (await _login(client, user.email, NEW_PASSWORD)).status_code == 200
+    assert await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == str(user.id), AuditLog.action == "auth.welcome_password_set")) is not None
+
+
+@pytest.mark.asyncio
+async def test_a_used_link_is_rejected_with_the_generic_400(client, db_session):
+    user, raw, _ = await _pending_user(db_session)
+    assert (await client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD})).status_code == 200
+    second = await client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD})
+    assert second.status_code == 400 and second.json()["detail"] == INVALID
+
+
+@pytest.mark.asyncio
+async def test_two_simultaneous_submissions_yield_exactly_one_success(client, db_session):
+    _, raw, _ = await _pending_user(db_session)
+    results = await asyncio.gather(
+        client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD}),
+        client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD}),
+    )
+    assert sorted(r.status_code for r in results) == [200, 400]
+
+
+@pytest.mark.asyncio
+async def test_expired_superseded_and_unknown_links_all_return_the_same_400(client, db_session):
+    _, expired, _ = await _pending_user(db_session, expires_in=timedelta(hours=-1))
+    _, superseded, _ = await _pending_user(db_session, superseded=True)
+    for raw in (expired, superseded, "not-a-real-token"):
+        response = await client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD})
+        assert response.status_code == 400 and response.json()["detail"] == INVALID
+
+
+@pytest.mark.asyncio
+async def test_a_too_short_password_is_422_and_does_not_burn_the_link(client, db_session):
+    _, raw, _ = await _pending_user(db_session)
+    assert (await client.post(RESET_URL, json={"token": raw, "new_password": "short"})).status_code == 422
+    assert (await client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD})).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_password_length_is_capped_at_128_and_an_oversized_one_does_not_burn_the_link(client, db_session):
+    _, raw, _ = await _pending_user(db_session)
+    assert (await client.post(RESET_URL, json={"token": raw, "new_password": "x" * 129})).status_code == 422
+    assert (await client.post(RESET_URL, json={"token": raw, "new_password": "A1" + "x" * 126})).status_code == 200  # exactly 128
+
+
+@pytest.mark.asyncio
+async def test_a_welcome_link_is_refused_for_a_deactivated_account_and_is_not_consumed(client, db_session):
+    user, raw, token = await _pending_user(db_session, active=False)
+    response = await client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD})
+    assert response.status_code == 400 and response.json()["detail"] == INVALID
+    await db_session.refresh(token)
+    await db_session.refresh(user)
+    assert token.used_at is None  # the failed attempt rolled back; the link was not burned
+    assert not verify_password(NEW_PASSWORD, user.password_hash)
+
+
+@pytest.mark.asyncio
+async def test_a_forgot_password_token_keeps_its_behavior_and_does_not_verify_the_email(client, db_session):
+    user, raw, _ = await _pending_user(db_session, purpose="reset", expires_in=timedelta(minutes=30))
+    assert (await client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD})).status_code == 200
+    await db_session.refresh(user)
+    assert user.email_verified is False
+    assert await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == str(user.id), AuditLog.action == "auth.password_reset")) is not None
+
+
+@pytest.mark.asyncio
+async def test_setting_a_password_from_a_welcome_link_is_logged_without_secrets(client, db_session, caplog):
+    import logging
+
+    user, raw, _ = await _pending_user(db_session)
+    with caplog.at_level(logging.INFO, logger="app.auth"):
+        assert (await client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD})).status_code == 200
+    records = [r for r in caplog.records if r.name == "app.auth"]
+    record = next(r for r in records if r.getMessage() == "welcome_password_set")
+    assert record.extra_fields["user_id"] == str(user.id)
+    blob = " ".join(r.getMessage() + json.dumps(getattr(r, "extra_fields", {}), default=str) for r in records)
+    assert raw not in blob and NEW_PASSWORD not in blob and user.email not in blob
+
+
+@pytest.mark.asyncio
+async def test_a_refused_welcome_link_for_an_inactive_account_is_logged_as_a_warning(client, db_session, caplog):
+    import logging
+
+    user, raw, _ = await _pending_user(db_session, active=False)
+    with caplog.at_level(logging.INFO, logger="app.auth"):
+        assert (await client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD})).status_code == 400
+    record = next(r for r in caplog.records if r.name == "app.auth" and r.getMessage() == "welcome_link_refused_inactive_account")
+    assert record.levelno == logging.WARNING and record.extra_fields["user_id"] == str(user.id)
+    assert raw not in json.dumps(record.extra_fields, default=str)
