@@ -7,8 +7,22 @@ type Student = { id: string; full_name: string; school_name: string };
 type Result = {
   id: string; school_student_id: string; academic_year: string; term: string; subject: string;
   max_marks: number; marks_obtained: number; percentage: number | null; grade: string | null;
+  teacher_remarks: string | null;
   status: string; uploaded_by_user_id: string; verified_by_user_id: string | null; published_by_user_id: string | null;
 };
+
+const NETWORK_ERROR = "Could not reach the server. Check your connection and try again.";
+
+// A rejected fetch (offline, dropped connection) must surface as an error, not leave the
+// form stuck on "Saving…".
+async function send(url: string, init: RequestInit): Promise<{ ok: boolean; data: { detail?: unknown; subject?: string } }> {
+  try {
+    const response = await fetch(url, init);
+    return { ok: response.ok, data: await response.json().catch(() => ({})) };
+  } catch {
+    return { ok: false, data: { detail: NETWORK_ERROR } };
+  }
+}
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -30,7 +44,7 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
     setBusy(true);
     setMessage(null);
     const form = new FormData(formElement);
-    const response = await fetch("/api/v1/school/academic-team/results", {
+    const { ok, data } = await send("/api/v1/school/academic-team/results", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -41,11 +55,11 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
         max_marks: Number(form.get("max_marks")),
         marks_obtained: Number(form.get("marks_obtained")),
         grade: form.get("grade") || undefined,
+        teacher_remarks: form.get("teacher_remarks") || undefined,
       }),
     });
-    const data = await response.json().catch(() => ({}));
     setBusy(false);
-    if (!response.ok) {
+    if (!ok) {
       setMessage({ text: detailMessage(data.detail), failed: true });
       return;
     }
@@ -57,10 +71,9 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
   async function advance(resultId: string, action: "verify" | "publish") {
     setBusy(true);
     setMessage(null);
-    const response = await fetch(`/api/v1/school/academic-team/results/${resultId}/${action}`, { method: "POST" });
-    const data = await response.json().catch(() => ({}));
+    const { ok, data } = await send(`/api/v1/school/academic-team/results/${resultId}/${action}`, { method: "POST" });
     setBusy(false);
-    if (!response.ok) {
+    if (!ok) {
       setMessage({ text: detailMessage(data.detail), failed: true });
       return;
     }
@@ -82,7 +95,7 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
           <div className="table-wrap">
             <table className="table">
               <thead>
-                <tr><th>Student</th><th>Subject</th><th>Marks</th><th>Status</th><th>Actions</th></tr>
+                <tr><th scope="col">Student</th><th scope="col">Subject</th><th scope="col">Marks</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
               </thead>
               <tbody>
                 {results.map((r) => {
@@ -90,7 +103,7 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
                   return (
                     <tr key={r.id}>
                       <td>{studentName(r.school_student_id)}</td>
-                      <td>{r.subject} ({r.academic_year}, {r.term})</td>
+                      <td>{r.subject} ({r.academic_year}, {r.term}){r.teacher_remarks && <><br /><span className="muted" style={{ fontSize: 13 }}>{r.teacher_remarks}</span></>}</td>
                       <td>{r.marks_obtained}/{r.max_marks}{r.percentage !== null ? ` (${r.percentage}%)` : ""}</td>
                       <td>{r.status}</td>
                       <td>
@@ -157,6 +170,11 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
             <div className="field">
               <label htmlFor="result-grade">Grade</label>
               <input id="result-grade" name="grade" placeholder="Optional" />
+            </div>
+            <div className="field">
+              <label htmlFor="result-remarks">Teacher remarks</label>
+              <textarea id="result-remarks" name="teacher_remarks" rows={2} maxLength={2000} placeholder="Optional" aria-describedby="result-remarks-hint" />
+              <span id="result-remarks-hint" className="muted" style={{ fontSize: 13 }}>Optional, up to 2000 characters. Shown to the school once the result is published.</span>
             </div>
             <button className="btn" disabled={busy}>{busy ? "Saving…" : "Save as Draft"}</button>
           </form>

@@ -9,7 +9,7 @@ import { serverApi } from "@/lib/api";
 
 type CareerRecord = { id: string; record_type: string; notes: string; created_at: string };
 type Assessment = { id: string; assessment_type: string; status: string; created_at: string };
-type Result = { id: string; academic_year: string; term: string; subject: string; max_marks: number; marks_obtained: number; percentage: number | null; grade: string | null };
+type Result = { id: string; academic_year: string; term: string; subject: string; max_marks: number; marks_obtained: number; percentage: number | null; grade: string | null; teacher_remarks: string | null };
 type Attended = { activity_id: string; title: string; scheduled_at: string; present: boolean };
 type Upcoming = { id: string; title: string; scheduled_at: string };
 
@@ -118,10 +118,10 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         ) : (
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Year</th><th>Term</th><th>Subject</th><th>Marks</th><th>%</th><th>Grade</th></tr></thead>
+              <thead><tr><th scope="col">Year</th><th scope="col">Term</th><th scope="col">Subject</th><th scope="col">Marks</th><th scope="col">%</th><th scope="col">Grade</th><th scope="col">Remarks</th></tr></thead>
               <tbody>
                 {overview.results.map((r) => (
-                  <tr key={r.id}><td>{r.academic_year}</td><td>{r.term}</td><td>{r.subject}</td><td>{r.marks_obtained} / {r.max_marks}</td><td>{r.percentage ?? "-"}</td><td>{r.grade || "-"}</td></tr>
+                  <tr key={r.id}><td>{r.academic_year}</td><td>{r.term}</td><td>{r.subject}</td><td>{r.marks_obtained} / {r.max_marks}</td><td>{r.percentage ?? "-"}</td><td>{r.grade || "-"}</td><td>{r.teacher_remarks || "-"}</td></tr>
                 ))}
               </tbody>
             </table>

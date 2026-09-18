@@ -1636,12 +1636,31 @@ async def list_readable_language_records(user: User = Depends(get_current_user),
 
 # --- SCH-006: Academic Results (Draft -> Verified -> Published) -------------------------
 
+_TEACHER_REMARKS_MAX_LENGTH = 2000
+
+
+def _clean_teacher_remarks(value) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise HTTPException(422, "teacher_remarks must be a string")
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    if len(cleaned) > _TEACHER_REMARKS_MAX_LENGTH:
+        raise HTTPException(422, f"teacher_remarks must be {_TEACHER_REMARKS_MAX_LENGTH} characters or fewer")
+    return cleaned
+
+
+def _percentage(max_marks: float, marks_obtained: float) -> float | None:
+    return round(marks_obtained / max_marks * 100, 2) if max_marks else None
+
+
 def _result_out(r: SchoolAcademicResult) -> dict:
-    percentage = round(float(r.marks_obtained) / float(r.max_marks) * 100, 2) if float(r.max_marks) else None
     return {
         "id": r.id, "school_student_id": r.school_student_id, "academic_year": r.academic_year, "term": r.term,
         "subject": r.subject, "max_marks": float(r.max_marks), "marks_obtained": float(r.marks_obtained),
-        "percentage": percentage, "grade": r.grade, "status": r.status,
+        "percentage": _percentage(float(r.max_marks), float(r.marks_obtained)), "grade": r.grade, "teacher_remarks": r.teacher_remarks, "status": r.status,
         "uploaded_by_user_id": r.uploaded_by_user_id, "verified_by_user_id": r.verified_by_user_id,
         "published_by_user_id": r.published_by_user_id,
     }
@@ -1665,10 +1684,11 @@ async def create_academic_result(payload: dict, user: User = Depends(get_current
     term = str(payload.get("term", "")).strip()
     if not subject or not academic_year or not term:
         raise HTTPException(422, "academic_year, term, and subject are required")
+    teacher_remarks = _clean_teacher_remarks(payload.get("teacher_remarks"))
     result = SchoolAcademicResult(
         school_student_id=student.id, academic_year=academic_year, term=term, subject=subject,
         max_marks=max_marks, marks_obtained=marks_obtained, grade=payload.get("grade"),
-        status="draft", uploaded_by_user_id=user.id,
+        teacher_remarks=teacher_remarks, status="draft", uploaded_by_user_id=user.id,
     )
     db.add(result)
     await db.flush()
@@ -1682,10 +1702,15 @@ async def create_academic_result(payload: dict, user: User = Depends(get_current
 async def update_academic_result(result_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if user.role != "academic_team":
         raise HTTPException(403, "Academic Team role required")
-    result = await db.get(SchoolAcademicResult, result_id)
+    # Row lock: a concurrent verify must not slip in between the draft check and the commit.
+    result = await db.scalar(select(SchoolAcademicResult).where(SchoolAcademicResult.id == result_id).with_for_update())
     if not result:
         raise HTTPException(404, "Result not found")
     await _student_in_portfolio(db, user, result.school_student_id)
+    # DEC-ROLE-007: only the uploader may edit a draft. A peer who could rewrite it would then be
+    # a legitimate (non-uploader) verifier of their own rewritten content.
+    if result.uploaded_by_user_id != user.id:
+        raise HTTPException(403, "Only the Academic Team member who uploaded this result can edit it")
     if result.status != "draft":
         raise HTTPException(409, "Only a Draft result can be edited")
     for field in ("subject", "academic_year", "term", "grade"):
@@ -1694,6 +1719,8 @@ async def update_academic_result(result_id: UUID, payload: dict, user: User = De
     for field in ("max_marks", "marks_obtained"):
         if field in payload:
             setattr(result, field, float(payload[field]))
+    if "teacher_remarks" in payload:
+        result.teacher_remarks = _clean_teacher_remarks(payload["teacher_remarks"])
     db.add(AuditLog(user_id=user.id, action="school.result_update", entity_type="school_academic_result", entity_id=str(result.id), metadata_json={}))
     await db.commit()
     return _result_out(result)
@@ -1702,7 +1729,8 @@ async def update_academic_result(result_id: UUID, payload: dict, user: User = De
 async def _advance_result(result_id: UUID, target: str, user: User, db: AsyncSession) -> SchoolAcademicResult:
     if user.role != "academic_team":
         raise HTTPException(403, "Academic Team role required")
-    result = await db.get(SchoolAcademicResult, result_id)
+    # Row lock: two reviewers racing on the same result must not both record the transition.
+    result = await db.scalar(select(SchoolAcademicResult).where(SchoolAcademicResult.id == result_id).with_for_update())
     if not result:
         raise HTTPException(404, "Result not found")
     await _student_in_portfolio(db, user, result.school_student_id)
@@ -1755,6 +1783,37 @@ async def list_academic_team_results(user: User = Depends(get_current_user), db:
     student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
     rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids)).order_by(SchoolAcademicResult.created_at.desc()))).all()
     return [_result_out(r) for r in rows]
+
+
+@router.get("/academic-team/progress")
+async def academic_team_progress(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-002: portfolio-wide progress aggregate for the Academic Team member themselves --
+    average is computed over ALL statuses (draft/verified/published) in their own portfolio,
+    matching list_academic_team_results' existing exposure level, not the published-only rule
+    that applies to external roles (Coordinator/Teacher/Parent)."""
+    if user.role != "academic_team":
+        raise HTTPException(403, "Academic Team role required")
+    portfolio = await _portfolio_school_ids(db, user)
+    if not portfolio:
+        return []
+    rows = (
+        await db.execute(select(SchoolStudent, School).join(School, School.id == SchoolStudent.school_id).where(SchoolStudent.school_id.in_(portfolio)).order_by(SchoolStudent.full_name.asc()))
+    ).all()
+    student_ids = [s.id for s, _sc in rows]
+    result_rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids)))).all()
+    by_student: dict = {}
+    for r in result_rows:
+        by_student.setdefault(r.school_student_id, []).append(r)
+    out = []
+    for student, school in rows:
+        student_results = by_student.get(student.id, [])
+        percentages = [p for p in (_percentage(float(r.max_marks), float(r.marks_obtained)) for r in student_results) if p is not None]
+        out.append({
+            "school_student_id": student.id, "full_name": student.full_name, "school_name": school.name,
+            "result_count": len(student_results),
+            "average_percentage": round(sum(percentages) / len(percentages), 2) if percentages else None,
+        })
+    return out
 
 
 @router.get("/results")
