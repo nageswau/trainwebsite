@@ -49,7 +49,7 @@ npm run lint
 
 **Files:**
 - Modify: `apps/api/app/models.py:1160-1180` (`SchoolAcademicResult`)
-- Create: `apps/api/alembic/versions/0031_school_academic_result_teacher_remarks.py`
+- Create: `apps/api/alembic/versions/0031_academic_result_remarks.py`
 - Test: `apps/api/tests/test_sch_006_academic_results.py`
 
 **Interfaces:**
@@ -102,12 +102,12 @@ In `apps/api/app/models.py`, inside `SchoolAcademicResult` (after `grade`, befor
 
 - [ ] **Step 4: Write the migration**
 
-Create `apps/api/alembic/versions/0031_school_academic_result_teacher_remarks.py`:
+Create `apps/api/alembic/versions/0031_academic_result_remarks.py`:
 
 ```python
 """Add school_academic_results.teacher_remarks (ENH-002).
 
-Revision ID: 0031_school_academic_result_teacher_remarks
+Revision ID: 0031_academic_result_remarks
 Revises: 0030_academic_years
 
 School CRM.md Part B §9's Result Entry field list includes "Teacher Remarks" alongside
@@ -118,7 +118,7 @@ backfill, existing rows read as NULL.
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0031_school_academic_result_teacher_remarks"
+revision = "0031_academic_result_remarks"
 down_revision = "0030_academic_years"
 branch_labels = None
 depends_on = None
@@ -147,7 +147,7 @@ MSYS_NO_PATHCONV=1 docker run --rm --network edusphere_default \
   edusphere-api \
   alembic upgrade head
 ```
-Expected output ends with `Running upgrade 0030_academic_years -> 0031_school_academic_result_teacher_remarks`.
+Expected output ends with `Running upgrade 0030_academic_years -> 0031_academic_result_remarks`.
 
 - [ ] **Step 6: Run test to verify it passes**
 
@@ -162,7 +162,7 @@ Expected: all tests pass (9 existing + 1 new = 10).
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/api/app/models.py apps/api/alembic/versions/0031_school_academic_result_teacher_remarks.py apps/api/tests/test_sch_006_academic_results.py
+git add apps/api/app/models.py apps/api/alembic/versions/0031_academic_result_remarks.py apps/api/tests/test_sch_006_academic_results.py
 git commit -m "feat(enh-002): add teacher_remarks column to SchoolAcademicResult"
 ```
 
@@ -1017,7 +1017,7 @@ git commit -m "feat(enh-002): add portfolio progress panel to the Academic Team 
 
 - [ ] **Step 1: Update `DATA_MODEL.md` §6.16**
 
-Add `teacher_remarks` to `SchoolAcademicResult`'s documented field list (the line beginning `- **SchoolAcademicResult** fields:`), noting it as added by `0031_school_academic_result_teacher_remarks`, nullable, ENH-002.
+Add `teacher_remarks` to `SchoolAcademicResult`'s documented field list (the line beginning `- **SchoolAcademicResult** fields:`), noting it as added by `0031_academic_result_remarks`, nullable, ENH-002.
 
 - [ ] **Step 2: Update `API_CONTRACT.md`**
 

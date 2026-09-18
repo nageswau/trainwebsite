@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
-from app.models import School, SchoolAcademicResult, SchoolStaffAssignment, SchoolStudent, User, UserRoleAssignment
+from app.models import AuditLog, School, SchoolAcademicResult, SchoolStaffAssignment, SchoolStudent, User, UserRoleAssignment
 
 PASSWORD = "Sup3r-Secret-Pass!"
 
@@ -49,6 +49,29 @@ async def _add_academic_team_member(db_session, admin, school) -> User:
     db_session.add(SchoolStaffAssignment(user_id=member.id, school_id=school.id, role="academic_team", assigned_by_user_id=admin.id))
     await db_session.commit()
     return member
+
+
+@pytest.mark.asyncio
+async def test_teacher_remarks_column_round_trips_on_the_model(db_session):
+    """ENH-002: SchoolAcademicResult must accept and persist teacher_remarks."""
+    admin = User(email=f"enh002-admin-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD), full_name="Admin", role="overseas_admin", division="overseas", active=True)
+    db_session.add(admin)
+    await db_session.flush()
+    school = School(name=f"ENH-002 Test School {uuid.uuid4().hex[:6]}", created_by_user_id=admin.id)
+    db_session.add(school)
+    await db_session.flush()
+    student = SchoolStudent(school_id=school.id, student_code=await unique_student_code(db_session, SchoolStudent.student_code), full_name="Remarks Student", created_by_user_id=admin.id)
+    db_session.add(student)
+    await db_session.flush()
+    result = SchoolAcademicResult(
+        school_student_id=student.id, academic_year="2026", term="Term 1", subject="Mathematics",
+        max_marks=100, marks_obtained=90, status="draft", uploaded_by_user_id=admin.id,
+        teacher_remarks="Strong grasp of algebra.",
+    )
+    db_session.add(result)
+    await db_session.commit()
+    await db_session.refresh(result)
+    assert result.teacher_remarks == "Strong grasp of algebra."
 
 
 @pytest.mark.asyncio

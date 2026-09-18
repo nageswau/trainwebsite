@@ -1172,6 +1172,7 @@ class SchoolAcademicResult(Base, TimestampMixin):
     max_marks: Mapped[float] = mapped_column(Numeric(6, 2))
     marks_obtained: Mapped[float] = mapped_column(Numeric(6, 2))
     grade: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    teacher_remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="draft")
     uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     verified_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
