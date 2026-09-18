@@ -984,6 +984,8 @@ async def create_academic_year(payload: dict, user: User = Depends(get_current_u
     label = str(payload.get("label", "")).strip()
     if not label:
         raise HTTPException(422, "label is required")
+    if len(label) > 20:
+        raise HTTPException(422, "label must be at most 20 characters")
     try:
         start_date = date.fromisoformat(payload["start_date"])
         end_date = date.fromisoformat(payload["end_date"])
@@ -1009,6 +1011,12 @@ async def create_academic_year(payload: dict, user: User = Depends(get_current_u
 
 @agents_router.patch("/academic-years/{year_id}")
 async def update_academic_year_status(year_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Note: nothing here (or anywhere else) enforces that at most one AcademicYear
+    row has status == "active" at a time -- this endpoint only validates forward-only
+    status transitions for the single row it's given. Callers that need "the" active
+    year (GET /school/academic-years/active in schools.py, and _current_academic_year_id())
+    resolve any such ambiguity by picking the most recent start_date -- a documented
+    best-effort convention, not a uniqueness guarantee."""
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
     year = await db.get(AcademicYear, year_id)

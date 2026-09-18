@@ -754,7 +754,7 @@ async def roster_template(user: User = Depends(get_current_user)):
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(ROSTER_TEMPLATE_HEADERS)
-    writer.writerow(["Jane Doe", "2015-04-12", "Grade 5", "", "Jane's Parent", ""])
+    writer.writerow(["Jane Doe", "2015-04-12", "Grade 5", "", "Jane's Parent", "", "9"])
     return Response(content=buffer.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=school-roster-template.csv"})
 
 
@@ -1200,6 +1200,10 @@ async def bulk_upload_students(
     school = await db.get(School, school_id)
     accepted = 0
     rejected = 0
+    # Hoisted out of the per-row loop below: this is a loop-invariant query (the "current"
+    # academic year does not change mid-request), so it's issued once for the whole batch
+    # rather than once per accepted row.
+    current_year_id = await _current_academic_year_id(db)
     for i, row in enumerate(rows, start=1):
         full_name = (row.get("full_name") or "").strip()
         error = None
@@ -1247,7 +1251,7 @@ async def bulk_upload_students(
             school_id=school_id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name=full_name, date_of_birth=student_dob,
             grade_or_class=(row.get("grade_or_class") or "").strip() or None,
             created_by_user_id=user.id, assigned_teacher_user_id=assigned_teacher_user_id,
-            grade_level=grade_level, academic_year_id=await _current_academic_year_id(db),
+            grade_level=grade_level, academic_year_id=current_year_id,
         )
         db.add(student)
         await db.flush()

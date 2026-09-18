@@ -80,16 +80,27 @@ async def test_migration_backfills_existing_school_students(db_session):
     school = School(name="ENH-001 Migration Check School", created_by_user_id=creator.id)
     db_session.add(school)
     await db_session.flush()
-    student = SchoolStudent(school_id=school.id, student_code="ENH0001Z", full_name="Backfill Check", grade_or_class="Grade 9", created_by_user_id=creator.id)
+    student = SchoolStudent(school_id=school.id, student_code=f"ENH{uuid.uuid4().hex[:5].upper()}", full_name="Backfill Check", grade_or_class="Grade 9", created_by_user_id=creator.id)
     db_session.add(student)
     await db_session.commit()
 
     # A freshly-created row after the migration should still get a sane academic_year_id
     # default at the application layer in Task 5 -- this test only asserts the migration
     # itself produced at least one seed AcademicYear row to backfill onto.
-    seed_year = await db_session.scalar(select(AcademicYear).where(AcademicYear.status == "active"))
+    #
+    # Found by actually re-running this file twice (finding 6, idempotency): other tests
+    # below also drive AcademicYear rows to (and away from) status="active" with
+    # differently-shaped labels, so on a second pass through this file against this same
+    # persistent DB, `status == "active"` alone no longer uniquely identifies the
+    # migration's own seed row -- it can just as easily pick up a leftover row from a
+    # prior test. The seed row's label is always exactly "<4-digit year>-<2-digit year>"
+    # (0030_academic_years.py's own `f"{start_year}-{str(start_year + 1)[-2:]}"`), and it's
+    # inserted at most once (keyed on that exact label, see the migration's
+    # `existing_seed` check), so matching the label shape -- not the status -- is what
+    # stays stable across re-runs.
+    all_years = (await db_session.scalars(select(AcademicYear))).all()
+    seed_year = next((y for y in all_years if re.match(r"^\d{4}-\d{2}$", y.label)), None)
     assert seed_year is not None
-    assert re.match(r"^\d{4}-\d{2}$", seed_year.label)
 
 
 def test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgrade_cycle():
@@ -218,16 +229,17 @@ def test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgra
 @pytest.mark.asyncio
 async def test_admin_creates_an_academic_year(client, db_session):
     await _create_admin_and_login(client, db_session)
-    response = await client.post("/api/v1/overseas-admin/academic-years", json={"label": "2030-31", "start_date": "2030-04-01", "end_date": "2031-03-31"})
+    label = f"2030-31-{uuid.uuid4().hex[:4]}"
+    response = await client.post("/api/v1/overseas-admin/academic-years", json={"label": label, "start_date": "2030-04-01", "end_date": "2031-03-31"})
     assert response.status_code == 201, response.text
-    assert response.json()["label"] == "2030-31"
+    assert response.json()["label"] == label
     assert response.json()["status"] == "draft"
 
 
 @pytest.mark.asyncio
 async def test_duplicate_academic_year_label_is_rejected_with_409(client, db_session):
     await _create_admin_and_login(client, db_session)
-    payload = {"label": "2031-32", "start_date": "2031-04-01", "end_date": "2032-03-31"}
+    payload = {"label": f"2031-32-{uuid.uuid4().hex[:4]}", "start_date": "2031-04-01", "end_date": "2032-03-31"}
     first = await client.post("/api/v1/overseas-admin/academic-years", json=payload)
     assert first.status_code == 201
     second = await client.post("/api/v1/overseas-admin/academic-years", json=payload)
@@ -237,7 +249,7 @@ async def test_duplicate_academic_year_label_is_rejected_with_409(client, db_ses
 @pytest.mark.asyncio
 async def test_end_date_before_start_date_is_rejected(client, db_session):
     await _create_admin_and_login(client, db_session)
-    response = await client.post("/api/v1/overseas-admin/academic-years", json={"label": "2032-33", "start_date": "2032-04-01", "end_date": "2031-03-31"})
+    response = await client.post("/api/v1/overseas-admin/academic-years", json={"label": f"2032-33-{uuid.uuid4().hex[:4]}", "start_date": "2032-04-01", "end_date": "2031-03-31"})
     assert response.status_code == 422
 
 
@@ -247,14 +259,14 @@ async def test_school_coordinator_cannot_create_an_academic_year(client, db_sess
     db_session.add(coordinator)
     await db_session.commit()
     await client.post("/api/v1/auth/login", json={"email": coordinator.email, "password": ADMIN_PASSWORD, "division": "overseas"})
-    response = await client.post("/api/v1/overseas-admin/academic-years", json={"label": "2033-34", "start_date": "2033-04-01", "end_date": "2034-03-31"})
+    response = await client.post("/api/v1/overseas-admin/academic-years", json={"label": f"2033-34-{uuid.uuid4().hex[:4]}", "start_date": "2033-04-01", "end_date": "2034-03-31"})
     assert response.status_code == 403
 
 
 @pytest.mark.asyncio
 async def test_status_transition_forward_succeeds_and_backward_is_conflict(client, db_session):
     await _create_admin_and_login(client, db_session)
-    created = await client.post("/api/v1/overseas-admin/academic-years", json={"label": "2034-35", "start_date": "2034-04-01", "end_date": "2035-03-31"})
+    created = await client.post("/api/v1/overseas-admin/academic-years", json={"label": f"2034-35-{uuid.uuid4().hex[:4]}", "start_date": "2034-04-01", "end_date": "2035-03-31"})
     year_id = created.json()["id"]
 
     forward = await client.patch(f"/api/v1/overseas-admin/academic-years/{year_id}", json={"status": "active"})
@@ -277,7 +289,7 @@ async def test_academic_year_malformed_start_date_returns_422_not_500(client, db
     await _create_admin_and_login(client, db_session)
     response = await client.post(
         "/api/v1/overseas-admin/academic-years",
-        json={"label": "2035-36", "start_date": None, "end_date": "2036-03-31"},
+        json={"label": f"2035-36-{uuid.uuid4().hex[:4]}", "start_date": None, "end_date": "2036-03-31"},
     )
     assert response.status_code == 422, response.text
 
@@ -289,7 +301,7 @@ async def test_academic_year_non_string_end_date_returns_422_not_500(client, db_
     await _create_admin_and_login(client, db_session)
     response = await client.post(
         "/api/v1/overseas-admin/academic-years",
-        json={"label": "2036-37", "start_date": "2036-04-01", "end_date": 20370331},
+        json={"label": f"2036-37-{uuid.uuid4().hex[:4]}", "start_date": "2036-04-01", "end_date": 20370331},
     )
     assert response.status_code == 422, response.text
 
@@ -329,7 +341,7 @@ async def test_patch_academic_year_requires_admin(client, db_session):
     await _create_admin_and_login(client, db_session)
     created = await client.post(
         "/api/v1/overseas-admin/academic-years",
-        json={"label": "2037-38", "start_date": "2037-04-01", "end_date": "2038-03-31"},
+        json={"label": f"2037-38-{uuid.uuid4().hex[:4]}", "start_date": "2037-04-01", "end_date": "2038-03-31"},
     )
     assert created.status_code == 201, created.text
     year_id = created.json()["id"]
@@ -365,7 +377,11 @@ async def test_coordinator_reads_the_active_academic_year(client, db_session):
     # Deactivate any existing active years to isolate this test
     active_years = await db_session.execute(select(AcademicYear).where(AcademicYear.status == "active"))
     for year in active_years.scalars():
-        year.status = "archived"
+        # "archived" is not a valid AcademicYear status (draft/active/closed per
+        # ACADEMIC_YEAR_STATUSES) -- writing it directly via the ORM would permanently
+        # corrupt the migration's seed row that test_migration_backfills_existing_school_students
+        # depends on finding with status == "active". "closed" is the real terminal status.
+        year.status = "closed"
     await db_session.commit()
 
     created = await client.post("/api/v1/overseas-admin/academic-years", json={"label": f"enh001-read-{unique}", "start_date": "2035-04-01", "end_date": "2036-03-31"})
@@ -491,8 +507,10 @@ async def test_dashboard_grade_level_counts_use_the_stored_column_not_regex_pars
     even miscounted into a wrong grade) under the old regex path. Reading `grade_level`
     directly must count both students correctly."""
     school = await _create_school_with_coordinator(client, db_session)
-    await client.post("/api/v1/school/students", json={"full_name": "A", "grade_or_class": "Std IX", "grade_level": 9})
-    await client.post("/api/v1/school/students", json={"full_name": "B", "grade_or_class": "Grade 9", "grade_level": 9})
+    first = await client.post("/api/v1/school/students", json={"full_name": "A", "grade_or_class": "Std IX", "grade_level": 9})
+    assert first.status_code == 201, first.text
+    second = await client.post("/api/v1/school/students", json={"full_name": "B", "grade_or_class": "Grade 9", "grade_level": 9})
+    assert second.status_code == 201, second.text
 
     report = await client.get("/api/v1/school/dashboard")
     assert report.status_code == 200, report.text
