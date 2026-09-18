@@ -687,3 +687,237 @@ async def test_a_rejected_password_field_is_logged_as_a_warning_naming_the_actor
     assert record.levelno == logging.WARNING
     assert record.extra_fields["actor_id"] == str(admin.id) and record.extra_fields["route"] == "/api/v1/admin/users"
     assert "Nope-Nope-1!" not in json.dumps(record.extra_fields, default=str)
+
+
+# --- Task 6: Re-send, status, filter, dashboard, revoke -------------------------------
+
+async def _provision_via_api(client, monkeypatch, *, role="counselor", division="overseas"):
+    monkeypatch.setattr(settings, "environment", "test")
+    email = _email()
+    response = await client.post("/api/v1/admin/users", json={"role": role, "division": division, "email": email, "full_name": "Pending"})
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+async def _age_welcome_tokens(db_session, user_id, minutes=2):
+    tokens = (await db_session.scalars(select(PasswordResetToken).where(PasswordResetToken.user_id == uuid.UUID(str(user_id)), PasswordResetToken.purpose == "welcome"))).all()
+    for token in tokens:
+        token.created_at = datetime.now(UTC) - timedelta(minutes=minutes)
+    await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_resend_supersedes_the_old_link_and_issues_a_new_72_hour_one(client, db_session, monkeypatch):
+    await _admin_client(client, db_session)
+    created = await _provision_via_api(client, monkeypatch)
+    old = created["development_welcome_token"]
+    response = await client.post(f"/api/v1/admin/users/{created['id']}/welcome-links")
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["id"] == created["id"] and body["email_status"] in {"sent", "failed", "not_configured"}
+    assert timedelta(hours=71, minutes=59) < datetime.fromisoformat(body["expires_at"]) - datetime.now(UTC) <= timedelta(hours=72)
+
+    assert (await client.post(RESET_URL, json={"token": old, "new_password": NEW_PASSWORD})).status_code == 400
+    open_tokens = (await db_session.scalars(select(PasswordResetToken).where(PasswordResetToken.user_id == uuid.UUID(created["id"]), PasswordResetToken.purpose == "welcome", PasswordResetToken.superseded_at.is_(None)))).all()
+    assert len(open_tokens) == 1
+    assert (await client.post(RESET_URL, json={"token": body["development_welcome_token"], "new_password": NEW_PASSWORD})).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_a_second_resend_inside_the_cooldown_is_429_with_retry_after_and_lapses(client, db_session, monkeypatch):
+    await _admin_client(client, db_session)
+    created = await _provision_via_api(client, monkeypatch)
+    url = f"/api/v1/admin/users/{created['id']}/welcome-links"
+    assert (await client.post(url)).status_code == 201  # the first Re-send after creation is allowed
+
+    blocked = await client.post(url)
+    assert blocked.status_code == 429
+    assert 0 < int(blocked.headers["retry-after"]) <= 60 and "wait" in blocked.json()["detail"].lower()
+    tokens = (await db_session.scalars(select(PasswordResetToken).where(PasswordResetToken.user_id == uuid.UUID(created["id"]), PasswordResetToken.purpose == "welcome"))).all()
+    assert len(tokens) == 2  # the blocked call issued nothing
+
+    await _age_welcome_tokens(db_session, created["id"])
+    assert (await client.post(url)).status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_resend_guards_404_403_409_and_non_admin(client, db_session, monkeypatch):
+    await _admin_client(client, db_session)
+    created = await _provision_via_api(client, monkeypatch)
+    assert (await client.post(f"/api/v1/admin/users/{uuid.uuid4()}/welcome-links")).status_code == 404
+
+    # already active -> 409
+    activated = await _make_user(db_session, role="counselor", division="overseas")
+    assert (await client.post(f"/api/v1/admin/users/{activated.id}/welcome-links")).status_code == 409
+    # deactivated but never set up -> 409
+    inactive = await _make_user(db_session, role="counselor", division="overseas", active=False)
+    await _seed_token(db_session, inactive)
+    assert (await client.post(f"/api/v1/admin/users/{inactive.id}/welcome-links")).status_code == 409
+
+    # another division -> 403
+    it_admin = await _make_user(db_session, role="it_admin", division="it")
+    assert (await _login(client, it_admin.email, division="it")).status_code == 200
+    assert (await client.post(f"/api/v1/admin/users/{created['id']}/welcome-links")).status_code == 403
+
+    # non-admin -> refused
+    trainer = await _make_user(db_session, role="trainer", division="it")
+    assert (await _login(client, trainer.email, division="it")).status_code == 200
+    assert (await client.post(f"/api/v1/admin/users/{created['id']}/welcome-links")).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_users_list_carries_provisioning_status_and_keeps_its_existing_fields(client, db_session, monkeypatch):
+    await _admin_client(client, db_session)
+    created = await _provision_via_api(client, monkeypatch)
+    rows = (await client.get("/api/v1/admin/users")).json()
+    row = next(r for r in rows if r["id"] == created["id"])
+    assert row["provisioning_status"] == "pending_setup"
+    assert {"id", "name", "email", "division", "role", "active", "phone", "profile"} <= set(row)
+    assert any(r["provisioning_status"] == "active" for r in rows)
+
+
+@pytest.mark.asyncio
+async def test_the_filter_returns_exactly_the_expired_users_in_scope(client, db_session):
+    overseas_admin = await _make_user(db_session)
+    assert (await _login(client, overseas_admin.email)).status_code == 200
+    expired = await _make_user(db_session, role="counselor", division="overseas")
+    pending = await _make_user(db_session, role="counselor", division="overseas")
+    resent = await _make_user(db_session, role="counselor", division="overseas")
+    revoked = await _make_user(db_session, role="counselor", division="overseas")
+    inactive = await _make_user(db_session, role="counselor", division="overseas", active=False)
+    it_user = await _make_user(db_session, role="trainer", division="it")
+    await _seed_token(db_session, expired, expires_in=timedelta(hours=-1))
+    await _seed_token(db_session, pending)
+    await _seed_token(db_session, resent, expires_in=timedelta(hours=-5), superseded=True, created_at=datetime.now(UTC) - timedelta(hours=100))
+    await _seed_token(db_session, resent)  # the Re-send's new open link wins
+    await _seed_token(db_session, revoked, superseded=True)  # revoked, nothing newer -> needs a Re-send
+    await _seed_token(db_session, inactive, expires_in=timedelta(hours=-1))
+    await _seed_token(db_session, it_user, expires_in=timedelta(hours=-1))
+
+    rows = (await client.get("/api/v1/admin/users?provisioning_status=link_expired")).json()
+    ids = {r["id"] for r in rows}
+    assert {str(expired.id), str(revoked.id)} <= ids
+    assert not ({str(pending.id), str(resent.id), str(inactive.id), str(it_user.id)} & ids)
+    assert all(r["provisioning_status"] == "link_expired" for r in rows)
+    pending_ids = {r["id"] for r in (await client.get("/api/v1/admin/users?provisioning_status=pending_setup")).json()}
+    assert {str(pending.id), str(resent.id)} <= pending_ids and str(expired.id) not in pending_ids
+    assert (await client.get("/api/v1/admin/users?provisioning_status=bogus")).status_code == 422
+
+    it_admin = await _make_user(db_session, role="it_admin", division="it")
+    assert (await _login(client, it_admin.email, division="it")).status_code == 200
+    it_ids = {r["id"] for r in (await client.get("/api/v1/admin/users?provisioning_status=link_expired")).json()}
+    assert str(it_user.id) in it_ids and str(expired.id) not in it_ids
+
+    super_admin = await _make_user(db_session, role="super_admin", division="global")
+    assert (await _login(client, super_admin.email, division="it")).status_code == 200
+    all_ids = {r["id"] for r in (await client.get("/api/v1/admin/users?provisioning_status=link_expired")).json()}
+    assert {str(expired.id), str(it_user.id)} <= all_ids
+
+
+@pytest.mark.asyncio
+async def test_a_later_password_set_via_forgot_password_resolves_the_expired_status(client, db_session):
+    admin = await _make_user(db_session)
+    assert (await _login(client, admin.email)).status_code == 200
+    user = await _make_user(db_session, role="counselor", division="overseas")
+    await _seed_token(db_session, user, expires_in=timedelta(hours=-1), created_at=datetime.now(UTC) - timedelta(hours=100))
+    ids = {r["id"] for r in (await client.get("/api/v1/admin/users?provisioning_status=link_expired")).json()}
+    assert str(user.id) in ids
+    await _seed_token(db_session, user, purpose="reset", used=True)
+    ids = {r["id"] for r in (await client.get("/api/v1/admin/users?provisioning_status=link_expired")).json()}
+    assert str(user.id) not in ids
+
+
+@pytest.mark.asyncio
+async def test_dashboard_reports_the_scoped_expired_link_count(client, db_session):
+    admin = await _make_user(db_session)
+    assert (await _login(client, admin.email)).status_code == 200
+    before = (await client.get("/api/v1/admin/dashboard")).json()["expired_welcome_links"]
+    assert isinstance(before, int)
+    await _seed_token(db_session, await _make_user(db_session, role="counselor", division="overseas"), expires_in=timedelta(hours=-1))
+    await _seed_token(db_session, await _make_user(db_session, role="trainer", division="it"), expires_in=timedelta(hours=-1))
+    after = (await client.get("/api/v1/admin/dashboard")).json()["expired_welcome_links"]
+    assert after == before + 1  # only the overseas one is in this admin's scope
+
+
+@pytest.mark.asyncio
+async def test_changing_active_revokes_the_open_welcome_link_and_reactivation_needs_a_resend(client, db_session, monkeypatch):
+    await _admin_client(client, db_session)
+    created = await _provision_via_api(client, monkeypatch)
+    old, uid = created["development_welcome_token"], created["id"]
+
+    assert (await client.patch(f"/api/v1/admin/users/{uid}", json={"active": False})).status_code == 200
+    assert (await client.post(RESET_URL, json={"token": old, "new_password": NEW_PASSWORD})).status_code == 400
+    assert (await client.post(f"/api/v1/admin/users/{uid}/welcome-links")).status_code == 409  # deactivated: reactivate first
+
+    assert (await client.patch(f"/api/v1/admin/users/{uid}", json={"active": True})).status_code == 200
+    assert (await client.post(RESET_URL, json={"token": old, "new_password": NEW_PASSWORD})).status_code == 400  # the old link stays dead
+    assert uid in {r["id"] for r in (await client.get("/api/v1/admin/users?provisioning_status=link_expired")).json()}
+
+    fresh = await client.post(f"/api/v1/admin/users/{uid}/welcome-links")
+    assert fresh.status_code == 201
+    assert (await client.post(RESET_URL, json={"token": fresh.json()["development_welcome_token"], "new_password": NEW_PASSWORD})).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_a_patch_that_leaves_active_unchanged_does_not_revoke_the_link(client, db_session, monkeypatch):
+    await _admin_client(client, db_session)
+    created = await _provision_via_api(client, monkeypatch)
+    assert (await client.patch(f"/api/v1/admin/users/{created['id']}", json={"active": True, "full_name": "Renamed"})).status_code == 200
+    assert (await client.post(RESET_URL, json={"token": created["development_welcome_token"], "new_password": NEW_PASSWORD})).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_resend_and_its_throttle_are_logged_without_secrets(client, db_session, monkeypatch, caplog):
+    import logging
+
+    admin = await _admin_client(client, db_session)
+    created = await _provision_via_api(client, monkeypatch)
+    url = f"/api/v1/admin/users/{created['id']}/welcome-links"
+    with caplog.at_level(logging.INFO, logger="app.admin"):
+        assert (await client.post(url)).status_code == 201
+        assert (await client.post(url)).status_code == 429
+    by_message = {r.getMessage(): r for r in caplog.records if r.name == "app.admin"}
+    resent = by_message["welcome_link_resent"]
+    assert resent.levelno == logging.INFO and resent.extra_fields == {"actor_id": str(admin.id), "user_id": created["id"]}
+    throttled = by_message["welcome_link_resend_throttled"]
+    assert throttled.levelno == logging.WARNING and throttled.extra_fields["user_id"] == created["id"] and throttled.extra_fields["wait_seconds"] > 0
+    blob = json.dumps([getattr(r, "extra_fields", {}) for r in caplog.records if r.name == "app.admin"], default=str)
+    assert created["development_welcome_token"] not in blob and created["email"] not in blob
+
+
+@pytest.mark.asyncio
+async def test_revoking_links_on_an_active_change_is_logged(client, db_session, monkeypatch, caplog):
+    import logging
+
+    admin = await _admin_client(client, db_session)
+    created = await _provision_via_api(client, monkeypatch)
+    with caplog.at_level(logging.INFO, logger="app.admin"):
+        assert (await client.patch(f"/api/v1/admin/users/{created['id']}", json={"active": False})).status_code == 200
+    record = next(r for r in caplog.records if r.name == "app.admin" and r.getMessage() == "welcome_links_revoked_on_active_change")
+    assert record.levelno == logging.INFO
+    assert record.extra_fields == {"actor_id": str(admin.id), "user_id": created["id"], "active": False}
+
+
+@pytest.mark.asyncio
+async def test_two_simultaneous_resends_serialize_to_one_link_and_one_throttle(client, db_session, monkeypatch):
+    """The user-row lock makes the second request wait for the first one's commit and so see its new
+    token (and the cooldown); without it both pass the throttle and two links go out. A short pause
+    right after the cooldown check widens the race window so an unlocked implementation fails
+    reliably (a bare gather happens to interleave harmlessly and would pass either way)."""
+    from app.api import admin as admin_module
+
+    real_wait = admin_module.resend_wait_seconds
+
+    async def slow_wait(db, user_id):
+        wait = await real_wait(db, user_id)
+        await asyncio.sleep(0.3)
+        return wait
+
+    monkeypatch.setattr(admin_module, "resend_wait_seconds", slow_wait)
+    await _admin_client(client, db_session)
+    created = await _provision_via_api(client, monkeypatch)
+    url = f"/api/v1/admin/users/{created['id']}/welcome-links"
+    results = await asyncio.gather(client.post(url), client.post(url))
+    assert sorted(r.status_code for r in results) == [201, 429]
+    tokens = (await db_session.scalars(select(PasswordResetToken).where(PasswordResetToken.user_id == uuid.UUID(created["id"]), PasswordResetToken.purpose == "welcome"))).all()
+    assert len(tokens) == 2 and sum(1 for t in tokens if t.superseded_at is None) == 1

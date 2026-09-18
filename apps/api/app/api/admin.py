@@ -15,7 +15,7 @@ from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, University, User, UserRoleAssignment
 from app.schemas import BatchCreate
-from app.services.provisioning import deliver_welcome_link, issue_welcome_token, unusable_password_hash
+from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.storage import storage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -76,11 +76,15 @@ async def dashboard(user: User = Depends(ensure_admin), db: AsyncSession = Depen
         "programs": await db.scalar(select(func.count()).select_from(Program)),
         "universities": await db.scalar(select(func.count()).select_from(University)),
         "overseas_applications": await db.scalar(select(func.count()).select_from(OverseasApplication)),
+        # ENH-003: admin-provisioned accounts whose 72-hour set-password link expired unused.
+        "expired_welcome_links": len(await user_ids_with_status(db, user, "link_expired")),
     }
 
 
 @router.get("/users")
-async def users(division: str | None = None, role: str | None = None, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+async def users(division: str | None = None, role: str | None = None, provisioning_status: str | None = None, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    if provisioning_status is not None and provisioning_status not in {"pending_setup", "link_expired"}:
+        raise HTTPException(422, "provisioning_status must be pending_setup or link_expired")
     stmt = select(User)
     if user.role != "super_admin":
         stmt = stmt.where(User.division == user.division)
@@ -88,11 +92,19 @@ async def users(division: str | None = None, role: str | None = None, user: User
         stmt = stmt.where(User.division == division)
     if role:
         stmt = stmt.where(User.role == role)
+    if provisioning_status:
+        # Resolve the exact id set first so the 500-row cap below cannot hide a match.
+        stmt = stmt.where(User.id.in_(await user_ids_with_status(db, user, provisioning_status)))
     xs = (await db.scalars(stmt.order_by(User.created_at.desc()).limit(500))).all()
+    statuses = await provisioning_statuses(db, [x.id for x in xs])
     # ADM-004: "views/edits directory detail records" -- `phone`/`profile` are exposed
     # here so a directory edit form can prefill existing values, not just the flat
-    # list ADM-001's activate/deactivate action needed.
-    return [{"id": x.id, "name": x.full_name, "email": x.email, "division": x.division, "role": x.role, "active": x.active, "phone": x.phone, "profile": x.profile} for x in xs]
+    # list ADM-001's activate/deactivate action needed. ENH-003: `provisioning_status` is additive.
+    return [
+        {"id": x.id, "name": x.full_name, "email": x.email, "division": x.division, "role": x.role, "active": x.active, "phone": x.phone, "profile": x.profile,
+         "provisioning_status": statuses[x.id].status if x.id in statuses else "active"}
+        for x in xs
+    ]
 
 
 @router.get("/programs")
@@ -322,12 +334,45 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         active_batches = await db.scalar(select(func.count()).select_from(Batch).where(Batch.trainer_id == item.id, Batch.status.in_(("upcoming", "active"))))
         if active_batches:
             raise HTTPException(409, f"This trainer has {active_batches} active/upcoming batch(es) assigned. Pass confirm_cascade to deactivate anyway.")
+    if "active" in payload and bool(payload["active"]) != item.active:
+        # ENH-003 security review: a welcome link mailed to a wrong recipient must not come back to
+        # life when the account is (re)activated. Any real change of `active` revokes open welcome
+        # links; an admin then Re-sends explicitly. Same transaction and commit as the update below.
+        await revoke_welcome_tokens(db, item.id)
+        logger.info("welcome_links_revoked_on_active_change", extra={"extra_fields": {"actor_id": str(user.id), "user_id": str(item.id), "active": bool(payload["active"])}})
     for k in ("full_name", "phone", "active", "email_verified", "profile"):
         if k in payload:
             setattr(item, k, payload[k])
     db.add(AuditLog(user_id=user.id, action="user.update", entity_type="user", entity_id=str(item.id), metadata_json={k: v for k, v in payload.items() if k != "password"}))
     await db.commit()
     return {"ok": True}
+
+
+@router.post("/users/{user_id}/welcome-links", status_code=201)
+async def create_welcome_link(user_id: UUID, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    """ENH-003 / DEC-SCOPE-019 Re-send. Only for accounts that never set a password (a pending,
+    expired or revoked welcome link), and it only ever mails the account's own address -- so it
+    cannot reset an active account. Deliberately not idempotent: each call supersedes the previous
+    link; a second call inside the cooldown is refused so the endpoint cannot flood a mailbox."""
+    # Lock the row so two concurrent Re-sends serialize and only one welcome token stays open.
+    item = await db.scalar(select(User).where(User.id == user_id).with_for_update())
+    if not item:
+        raise HTTPException(404, "User not found")
+    if user.role != "super_admin" and item.division != user.division:
+        raise HTTPException(403, "Cannot manage another division")
+    if item.id not in await provisioning_statuses(db, [item.id]):
+        raise HTTPException(409, "This account has no pending invitation (its password is already set)")
+    if not item.active:
+        raise HTTPException(409, "Reactivate this account before re-sending its link")
+    wait = await resend_wait_seconds(db, item.id)
+    if wait:
+        logger.warning("welcome_link_resend_throttled", extra={"extra_fields": {"actor_id": str(user.id), "user_id": str(item.id), "wait_seconds": wait}})
+        raise HTTPException(429, f"A link was just sent; wait {wait} seconds before re-sending", headers={"Retry-After": str(wait)})
+    issued = await issue_welcome_token(db, user=item, issued_by=user)
+    await db.commit()
+    logger.info("welcome_link_resent", extra={"extra_fields": {"actor_id": str(user.id), "user_id": str(item.id)}})
+    delivery = await deliver_welcome_link(db, user=item, issued=issued, issued_by=user)
+    return {"id": item.id, **delivery}
 
 
 @router.post("/programs", status_code=201)
