@@ -477,3 +477,24 @@ async def test_bulk_upload_rejects_an_out_of_range_grade_level_for_that_row_only
     assert response.status_code == 201
     assert response.json()["accepted_count"] == 1
     assert response.json()["rejected_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_dashboard_grade_level_counts_use_the_stored_column_not_regex_parsing(client, db_session):
+    """Task 7: `_school_dashboard_payload()` has no top-level `grade_level_counts` key --
+    confirmed by reading schools.py:293/380-400 -- the per-grade counts are exposed as
+    individual `school_crm_kpis` entries keyed `grade_8`..`grade_12` (see
+    test_sch_reports.py's `kpis = {k["key"]: k for k in data["school_crm_kpis"]}` pattern).
+    "Std IX" is a label the old `_grade_number()` regex (`\\b(?:grade|class)\\s*(8-12)\\b`)
+    cannot parse at all -- it only matches "grade"/"class" prefixed or bare numbers -- so a
+    student with only that label would be silently dropped from the count entirely (not
+    even miscounted into a wrong grade) under the old regex path. Reading `grade_level`
+    directly must count both students correctly."""
+    school = await _create_school_with_coordinator(client, db_session)
+    await client.post("/api/v1/school/students", json={"full_name": "A", "grade_or_class": "Std IX", "grade_level": 9})
+    await client.post("/api/v1/school/students", json={"full_name": "B", "grade_or_class": "Grade 9", "grade_level": 9})
+
+    report = await client.get("/api/v1/school/dashboard")
+    assert report.status_code == 200, report.text
+    kpis = {k["key"]: k for k in report.json()["school_crm_kpis"]}
+    assert kpis["grade_9"]["value"] == 2

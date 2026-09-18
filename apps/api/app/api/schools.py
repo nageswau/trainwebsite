@@ -13,7 +13,6 @@ everything under the `/school` prefix, per `API_CONTRACT.md` §12A.
 import csv
 import hashlib
 import io
-import re
 import secrets
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
@@ -263,15 +262,6 @@ def _school_dashboard_kpi(key: str, label: str, value: int | None, *, tracked: b
     return {"key": key, "label": label, "value": value, "tracked": tracked, "note": note}
 
 
-def _grade_number(label: str | None) -> str | None:
-    if not label:
-        return None
-    match = re.search(r"\b(?:grade|class)\s*(8|9|10|11|12)\b|\b(8|9|10|11|12)\b", label.lower())
-    if not match:
-        return None
-    return match.group(1) or match.group(2)
-
-
 def _stage_at_or_after(status: str, stage: str) -> bool:
     if status not in OVERSEAS_APPLICATION_STAGES or stage not in OVERSEAS_APPLICATION_STAGES:
         return False
@@ -294,9 +284,8 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     for student in students:
         label = student.grade_or_class or "Unspecified"
         grade_counts[label] = grade_counts.get(label, 0) + 1
-        grade_number = _grade_number(student.grade_or_class)
-        if grade_number in grade_level_counts:
-            grade_level_counts[grade_number] += 1
+        if student.grade_level is not None and str(student.grade_level) in grade_level_counts:
+            grade_level_counts[str(student.grade_level)] += 1
     grade_breakdown = [{"grade": g, "count": c} for g, c in sorted(grade_counts.items())]
     students_with_teacher = sum(1 for s in students if s.assigned_teacher_user_id)
 
