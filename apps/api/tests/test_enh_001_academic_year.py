@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy import func, select
 
 from app.core.security import hash_password
-from app.models import AcademicYear, AuditLog, School, SchoolStudent, User
+from app.models import AcademicYear, AuditLog, SchoolStudent, User
 
 ADMIN_PASSWORD = "Sup3r-Secret-Pass!"
 
@@ -65,39 +65,27 @@ def test_grade_level_backfill_parser(label, expected):
 
 
 @pytest.mark.asyncio
-async def test_migration_backfills_existing_school_students(db_session):
-    # This test assumes `alembic upgrade head` has already been run against the test
-    # database (conftest.py disables schema autocreate) -- it verifies the *outcome* of
-    # the migration that already ran, not a live revision-to-revision replay. Create a
-    # real User first (School.created_by_user_id is a NOT NULL FK) rather than reaching
-    # for some other test's leftover row.
-    from app.core.security import hash_password
-    from app.models import User
+async def test_migration_creates_a_seed_academic_year(db_session):
+    """Review finding fix (simplification): this test used to create a User/School/
+    SchoolStudent chain via the ORM but never asserted anything about it (its own prior
+    docstring conceded as much) -- the actual backfill-onto-a-pre-existing-row behavior is
+    what `test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgrade_cycle`
+    below verifies for real, via a genuine pre-migration insert. All that's left to check
+    here is that `alembic upgrade head` (already run against the test database before any
+    test runs -- conftest.py disables schema autocreate) leaves behind the seed
+    `AcademicYear` row every other test's `_current_academic_year_id()` call depends on
+    finding.
 
-    creator = User(email=f"enh001-creator-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password("Sup3r-Secret-Pass!"), full_name="Migration Check Admin", role="overseas_admin", division="overseas", active=True)
-    db_session.add(creator)
-    await db_session.flush()
-    school = School(name="ENH-001 Migration Check School", created_by_user_id=creator.id)
-    db_session.add(school)
-    await db_session.flush()
-    student = SchoolStudent(school_id=school.id, student_code=f"ENH{uuid.uuid4().hex[:5].upper()}", full_name="Backfill Check", grade_or_class="Grade 9", created_by_user_id=creator.id)
-    db_session.add(student)
-    await db_session.commit()
-
-    # A freshly-created row after the migration should still get a sane academic_year_id
-    # default at the application layer in Task 5 -- this test only asserts the migration
-    # itself produced at least one seed AcademicYear row to backfill onto.
-    #
-    # Found by actually re-running this file twice (finding 6, idempotency): other tests
-    # below also drive AcademicYear rows to (and away from) status="active" with
-    # differently-shaped labels, so on a second pass through this file against this same
-    # persistent DB, `status == "active"` alone no longer uniquely identifies the
-    # migration's own seed row -- it can just as easily pick up a leftover row from a
-    # prior test. The seed row's label is always exactly "<4-digit year>-<2-digit year>"
-    # (0030_academic_years.py's own `f"{start_year}-{str(start_year + 1)[-2:]}"`), and it's
-    # inserted at most once (keyed on that exact label, see the migration's
-    # `existing_seed` check), so matching the label shape -- not the status -- is what
-    # stays stable across re-runs.
+    Found by actually re-running this file twice (finding 6, idempotency): other tests
+    below also drive AcademicYear rows to (and away from) status="active" with
+    differently-shaped labels, so on a second pass through this file against this same
+    persistent DB, `status == "active"` alone no longer uniquely identifies the migration's
+    own seed row -- it can just as easily pick up a leftover row from a prior test. The
+    seed row's label is always exactly "<4-digit year>-<2-digit year>"
+    (0030_academic_years.py's own `f"{start_year}-{str(start_year + 1)[-2:]}"`), and it's
+    inserted at most once (keyed on that exact label, see the migration's `existing_seed`
+    check), so matching the label shape -- not the status -- is what stays stable across
+    re-runs."""
     all_years = (await db_session.scalars(select(AcademicYear))).all()
     seed_year = next((y for y in all_years if re.match(r"^\d{4}-\d{2}$", y.label)), None)
     assert seed_year is not None
