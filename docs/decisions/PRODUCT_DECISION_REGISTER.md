@@ -2026,3 +2026,75 @@ dashboard card and child-detail page (`SchoolChildOverview.tsx`). 9 test-fixture
 `test_sch_004`/`005`/`006`/`007`/`008`/`reports.py` updated for the new required field; full backend
 regression (579 tests, excluding the two live-credential-only Zoho/Razorpay files per `CI.md`'s own
 documented exclusion) and 20 targeted E2E cases confirmed clean.
+
+---
+
+### DEC-SCOPE-019 — First-time provisioning of admin-created accounts: emailed set-password link, no admin-known credential
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-003 required an audit and five decisions before
+implementation: how an account created by an admin (rather than by self-registration or a
+`SchoolAccountInvite`) obtains its first password, and the token model, expiry, admin-facing
+recovery path and email-verification effect that go with it.
+
+**Evidence:** Audit of the current code, 2026-09-18 (`UNVERIFIED` until re-run against the branch at
+implementation time, per the "audit before implementation" acceptance criterion):
+
+- Gap **confirmed**, and wider than the ENH-003 draft assumed. Three admin routes in
+  `apps/api/app/api/admin.py` fall back to the hard-coded constant `ChangeMe@12345` and send no
+  email: `POST /admin/users` (`create_user`), `POST /overseas-admin/schools` (Coordinator seed,
+  `coordinator_password`) and `POST /overseas-admin/school-staff` (`create_school_staff`).
+- The route `DEC-SCOPE-014` actually mandates for `academic_team`/`career_counselor`/
+  `psychometric_team` is `create_school_staff`, not `create_user` (whose role allow-list excludes them).
+- `AdminSchoolStaffPanel.tsx` and `AdminSchoolCreatePanel.tsx` display the default password to the
+  admin; `WorkflowPanel.tsx` has a required "Temporary password" field on the create-user form.
+- `auth.forgot_password()` sends its reset token only through the generic webhook
+  (`integrations.send_notification`); the only SMTP composer, `services/mailer.py`, has invite and
+  parent-notification templates but none for password links.
+- `PasswordResetToken` (`models.py`) is already user-bound, SHA-256-hashed, unique, expiring and
+  single-use, and does not reference `SchoolAccountInvite`.
+
+**Resolution:** User confirmed directly, in-session (2026-09-18), five points:
+
+1. **Token model:** extend `PasswordResetToken` with a `purpose` column (`reset` | `welcome`) rather
+   than add a new table. This keeps `DEC-SCOPE-014`'s constraint that these accounts are not routed
+   through `SchoolAccountInvite`.
+2. **Expiry:** welcome links expire after **72 hours** (the user wrote "71"; confirmed as 72 when
+   asked). Forgot-password reset links are unchanged at 30 minutes. Welcome links that expire without
+   being used are surfaced to admins in the Users directory (status, filter, Re-send) and as a count
+   and list on the Super Admin, IT Admin and Overseas Admin dashboards, scoped by division exactly as
+   `GET /admin/users` is today.
+3. **Explicit password field:** `POST /admin/users` no longer accepts `password`; the same removal
+   applies to `coordinator_password` and to the `password` field on `POST /overseas-admin/school-staff`.
+   No admin ever knows or chooses a credential for an account they provision.
+4. **Recovery when SMTP is `not_configured` or a link expires:** an admin **Re-send** action issues a
+   fresh welcome token and supersedes the previous one. The public forgot-password page remains a
+   fallback.
+5. **Email verification:** consuming a `welcome` token sets `email_verified = True`, because the link
+   proves control of the address.
+
+**Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-18.
+
+**Open, not resolved by this decision:** the retry/backoff policy for a failed welcome-email send
+remains open with `PRD_OPEN_ITEMS.md` item 13 (NOT-001) and is not invented here; a failed send is
+recorded (`status`, `error`) and recovered through Re-send only.
+
+**Unblocks:** `ENH-003` past GATE-02. `ENH-007` (profile completion) should follow it, per the
+backlog's own dependency note.
+
+**Security hardening addendum, 2026-09-19 — user-approved in-session** (security review of this design;
+findings and rationale in `docs/superpowers/specs/2026-09-19-enh-003-first-time-provisioning-design.md` §13):
+
+- **Auth-logic change (asked first, approved):** a welcome link is refused for a deactivated account
+  (same generic `400`, not consumed), and any real change of `active` revokes the account's open welcome
+  links so a link mailed to a mistyped address cannot come back to life on reactivation; an admin then
+  Re-sends explicitly.
+- **Throttle (asked first, approved):** Re-send has a 60-second per-account cooldown (`429` +
+  `Retry-After`); the first Re-send after creation is always allowed.
+- **Also approved:** email validation on the three create routes (`422`); a raising mail/webhook sender is
+  a failed send, never a `500`; URLs redacted from stored delivery errors; passwords capped at 128
+  characters on reset; the reset page excluded from Google Analytics and served with
+  `Referrer-Policy: no-referrer`.
+- **Deployment checklist, not a code change:** the API's `ENVIRONMENT` must be `production` outside local
+  development. **Pre-existing and out of scope of this decision:** with `ENVIRONMENT=development`,
+  `forgot_password` returns `development_reset_token` to anonymous callers — `NEEDS_CONFIRMATION` whether
+  to fix separately.
