@@ -1639,7 +1639,9 @@ async def list_readable_language_records(user: User = Depends(get_current_user),
 def _clean_teacher_remarks(value) -> str | None:
     if value is None:
         return None
-    cleaned = str(value).strip()
+    if not isinstance(value, str):
+        raise HTTPException(422, "teacher_remarks must be a string")
+    cleaned = value.strip()
     if not cleaned:
         return None
     if len(cleaned) > 2000:

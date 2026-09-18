@@ -428,8 +428,9 @@ async def test_progress_includes_a_student_with_zero_results(client, db_session)
 
 @pytest.mark.asyncio
 async def test_progress_average_reflects_mixed_max_marks_across_subjects(client, db_session):
-    """Average of PERCENTAGES per subject, not sum(marks)/sum(max_marks) -- subjects can
-    have different max_marks, so those two formulas diverge and only the former is correct."""
+    """Design choice (ENH-002 design review, not a source requirement): the average is the mean
+    of each result's own percentage, so a 20-mark paper weighs the same as a 100-mark one.
+    That diverges from sum(marks)/sum(max_marks) when max_marks differ; this pins the chosen one."""
     ctx = await _create_school_with_coordinator(db_session)
     uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
     await _login(client, uploader.email)
@@ -520,3 +521,32 @@ async def test_two_concurrent_verifications_record_exactly_one_transition(client
             assert sorted(r.status_code for r in responses) == [200, 409], f"{result_id}: {[r.status_code for r in responses]}"
             history = (await db_session.scalars(select(SchoolResultStatusHistory).where(SchoolResultStatusHistory.result_id == uuid.UUID(result_id), SchoolResultStatusHistory.to_status == "verified"))).all()
             assert len(history) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad_value", [{"comment": "x"}, True, 123, ["a"]])
+async def test_teacher_remarks_must_be_a_string(client, db_session, bad_value):
+    """Codex finding #7: the contract says string; str(value) coercion silently stored
+    "{'comment': 'x'}" / "True" instead of rejecting a mistyped payload."""
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    base = {"school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1", "subject": "Typed", "max_marks": 100, "marks_obtained": 50}
+    created = await client.post("/api/v1/school/academic-team/results", json={**base, "teacher_remarks": bad_value})
+    assert created.status_code == 422
+    assert "teacher_remarks" in created.json()["detail"]
+
+    ok = await client.post("/api/v1/school/academic-team/results", json=base)
+    edited = await client.patch(f"/api/v1/school/academic-team/results/{ok.json()['id']}", json={"teacher_remarks": bad_value})
+    assert edited.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_teacher_remarks_can_be_cleared_with_null(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    created = await client.post("/api/v1/school/academic-team/results", json={"school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1", "subject": "Clear", "max_marks": 100, "marks_obtained": 50, "teacher_remarks": "To be cleared."})
+    cleared = await client.patch(f"/api/v1/school/academic-team/results/{created.json()['id']}", json={"teacher_remarks": None})
+    assert cleared.status_code == 200
+    assert cleared.json()["teacher_remarks"] is None

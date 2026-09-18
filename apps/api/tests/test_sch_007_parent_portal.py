@@ -244,3 +244,50 @@ async def test_teacher_and_coordinator_use_the_same_overview_with_their_own_scop
     assert (await client.get(f"/api/v1/school/students/{ctx['student_b'].id}/overview")).status_code == 200
     other = await _school(db_session)
     assert (await client.get(f"/api/v1/school/students/{other['student_a'].id}/overview")).status_code == 403  # other institution
+
+
+async def _seed_results_with_remarks(db_session, ctx) -> None:
+    a = ctx["student_a"]
+    db_session.add_all([
+        SchoolAcademicResult(school_student_id=a.id, academic_year="2026-27", term="Term 1", subject="Mathematics", max_marks=100, marks_obtained=88, grade="A", teacher_remarks="Published remark for A.", status="published", uploaded_by_user_id=ctx["coordinator"].id, published_by_user_id=ctx["coordinator"].id, published_at=datetime.now(UTC)),
+        SchoolAcademicResult(school_student_id=a.id, academic_year="2026-27", term="Term 1", subject="Physics", max_marks=100, marks_obtained=91, grade="A+", teacher_remarks="Draft remark must stay hidden.", status="draft", uploaded_by_user_id=ctx["coordinator"].id),
+    ])
+    await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_parent_sees_teacher_remarks_only_for_the_published_result(client, db_session):
+    """ENH-002 acceptance: a published result's teacher_remarks reaches the Parent (the only
+    'Student' consumer -- School-affiliated students have no login, DEC-ROLE-004); the draft's never does."""
+    ctx = await _school(db_session)
+    await _seed_results_with_remarks(db_session, ctx)
+    await _login(client, ctx["parent_a"].email)
+    response = await client.get(f"/api/v1/school/students/{ctx['student_a'].id}/overview")
+    assert response.status_code == 200, response.text
+    assert [(r["subject"], r["teacher_remarks"]) for r in response.json()["results"]] == [("Mathematics", "Published remark for A.")]
+    assert "Draft remark must stay hidden." not in response.text
+
+
+@pytest.mark.asyncio
+async def test_assigned_teacher_sees_teacher_remarks_only_for_the_published_result(client, db_session):
+    ctx = await _school(db_session)
+    await _seed_results_with_remarks(db_session, ctx)
+    await _login(client, ctx["teacher"].email)
+    listed = await client.get("/api/v1/school/results")
+    assert listed.status_code == 200, listed.text
+    assert [(r["subject"], r["teacher_remarks"]) for r in listed.json()] == [("Mathematics", "Published remark for A.")]
+    overview = await client.get(f"/api/v1/school/students/{ctx['student_a'].id}/overview")
+    assert [r["teacher_remarks"] for r in overview.json()["results"]] == ["Published remark for A."]
+    assert "Draft remark must stay hidden." not in listed.text + overview.text
+
+
+@pytest.mark.asyncio
+async def test_an_unlinked_parent_never_sees_another_childs_teacher_remarks(client, db_session):
+    ctx = await _school(db_session)
+    await _seed_results_with_remarks(db_session, ctx)
+    await _login(client, ctx["parent_b"].email)
+    listed = await client.get("/api/v1/school/results")
+    assert listed.status_code == 200
+    assert "Published remark for A." not in listed.text
+    forbidden = await client.get(f"/api/v1/school/students/{ctx['student_a'].id}/overview")
+    assert forbidden.status_code == 403

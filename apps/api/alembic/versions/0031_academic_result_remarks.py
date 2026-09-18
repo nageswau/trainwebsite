@@ -8,8 +8,9 @@ Academic Year/Term/Subject/Marks/Grade/Uploaded By -- every other field in that 
 already present on SchoolAcademicResult except this one. Nullable, additive-only: no
 backfill, existing rows read as NULL.
 """
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "0031_academic_result_remarks"
 down_revision = "0030_academic_years"

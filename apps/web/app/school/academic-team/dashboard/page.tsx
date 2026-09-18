@@ -25,7 +25,7 @@ export default async function SchoolAcademicTeamDashboardPage() {
   let students: Student[];
   let testPrepRecords: TestPrepRecord[];
   let languageRecords: LanguageRecord[];
-  let progress: ProgressRow[];
+  let progress: ProgressRow[] | null;
   try {
     [user, results, students, testPrepRecords, languageRecords, progress] = await Promise.all([
       serverApi<User>("/api/v1/auth/me"),
@@ -33,7 +33,8 @@ export default async function SchoolAcademicTeamDashboardPage() {
       serverApi<Student[]>("/api/v1/school/portfolio-students"),
       serverApi<TestPrepRecord[]>("/api/v1/school/academic-team/test-prep-records"),
       serverApi<LanguageRecord[]>("/api/v1/school/academic-team/language-records"),
-      serverApi<ProgressRow[]>("/api/v1/school/academic-team/progress"),
+      // Optional summary: a failure here must not hide the upload/results/test-prep workspace.
+      serverApi<ProgressRow[]>("/api/v1/school/academic-team/progress").catch(() => null),
     ]);
   } catch (e) {
     return (

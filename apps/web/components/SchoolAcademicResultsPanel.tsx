@@ -162,7 +162,8 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
             </div>
             <div className="field">
               <label htmlFor="result-remarks">Teacher remarks</label>
-              <textarea id="result-remarks" name="teacher_remarks" rows={2} placeholder="Optional" />
+              <textarea id="result-remarks" name="teacher_remarks" rows={2} maxLength={2000} placeholder="Optional" aria-describedby="result-remarks-hint" />
+              <span id="result-remarks-hint" className="muted" style={{ fontSize: 13 }}>Optional, up to 2000 characters. Shown to the school once the result is published.</span>
             </div>
             <button className="btn" disabled={busy}>{busy ? "Saving…" : "Save as Draft"}</button>
           </form>
