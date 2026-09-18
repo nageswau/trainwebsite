@@ -54,6 +54,20 @@ async def _seed_token(db_session, user, *, purpose="welcome", expires_in=timedel
     return raw, token
 
 
+@pytest.fixture(autouse=True)
+def _app_loggers_enabled():
+    """Alembic's env.py calls `logging.config.fileConfig`, which by default DISABLES every logger that
+    already exists. Any earlier test that runs a migration in-process (ENH-001's downgrade/upgrade
+    cycle) therefore silences `app.*` loggers for the rest of the pytest session -- so `caplog` sees
+    nothing and the logging tests below fail depending on test order. Production is unaffected
+    (Alembic runs in its own process before the server starts); this only keeps the tests order-proof."""
+    import logging
+
+    for name in ("app.provisioning", "app.auth", "app.admin"):
+        logging.getLogger(name).disabled = False
+    yield
+
+
 # --- Task 1: schema -------------------------------------------------------------------
 
 @pytest.mark.asyncio
