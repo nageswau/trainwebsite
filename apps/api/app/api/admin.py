@@ -1,4 +1,6 @@
 import json
+import logging
+import re
 from datetime import UTC, date, datetime
 from uuid import UUID, uuid4
 
@@ -13,15 +15,49 @@ from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, University, User, UserRoleAssignment
 from app.schemas import BatchCreate
+from app.services.provisioning import deliver_welcome_link, issue_welcome_token, unusable_password_hash
 from app.services.storage import storage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+logger = logging.getLogger("app.admin")
 
 
 async def ensure_admin(user: User = Depends(get_current_user)):
     if user.role not in {"super_admin", "it_admin", "overseas_admin"}:
         raise HTTPException(403, "Admin role required")
     return user
+
+
+def _reject_supplied_password(payload: dict, actor: User, route: str, *fields: str) -> None:
+    """ENH-003 / DEC-SCOPE-019: an admin never supplies or knows a credential for an account they
+    provision -- the user sets their own via the emailed link. Logged as a WARNING (actor and route
+    only, never the value): a caller still sending one is a stale client or a misuse worth seeing."""
+    if any(field in payload for field in fields):
+        logger.warning("provisioning_password_field_rejected", extra={"extra_fields": {"actor_id": str(actor.id), "route": route}})
+        raise HTTPException(422, "A password cannot be supplied; the user sets their own via the emailed set-password link")
+
+
+# The same email shape the registration schemas already use (no whitespace, so a CR/LF header-injection
+# attempt cannot pass). The address is the only delivery channel for a credential-setting link, so these
+# routes no longer accept arbitrary strings.
+EMAIL_PATTERN = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
+
+
+def _valid_email(raw) -> str:
+    email = str(raw or "").lower().strip()
+    if len(email) > 255 or not EMAIL_PATTERN.fullmatch(email):
+        raise HTTPException(422, "A valid email address is required")
+    return email
+
+
+async def _flush_unique_email(db: AsyncSession) -> None:
+    """Flush a new account; two simultaneous creates for one email are settled by the unique
+    constraint (409 for the loser, never a 500). Rolling back also drops anything created with it."""
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "Email already exists")
 
 
 @router.get("/dashboard")
@@ -233,13 +269,13 @@ async def reports(user: User = Depends(ensure_admin), db: AsyncSession = Depends
 
 @router.post("/users", status_code=201)
 async def create_user(payload: dict, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
-    from app.core.security import hash_password
     from app.models import AuditLog
 
     division = payload.get("division", user.division)
     role = payload["role"]
     if user.role != "super_admin" and division != user.division:
         raise HTTPException(403, "Cannot create users in another division")
+    _reject_supplied_password(payload, user, "/api/v1/admin/users", "password")
     allowed_by_division = {
         "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin"},
         "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin"},
@@ -247,12 +283,12 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
     }
     if role not in allowed_by_division.get(division, set()):
         raise HTTPException(422, "Role is not valid for the selected division")
-    email = str(payload["email"]).lower().strip()
+    email = _valid_email(payload.get("email"))
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
     item = User(
         email=email,
-        password_hash=hash_password(payload.get("password") or "ChangeMe@12345"),
+        password_hash=unusable_password_hash(),
         full_name=payload["full_name"],
         role=role,
         division=division,
@@ -262,11 +298,12 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         profile=payload.get("profile", {}),
     )
     db.add(item)
-    await db.flush()
+    await _flush_unique_email(db)
+    issued = await issue_welcome_token(db, user=item, issued_by=user)
     db.add(AuditLog(user_id=user.id, action="user.create", entity_type="user", entity_id=str(item.id), metadata_json={"role": role, "division": division}))
     await db.commit()
-    await db.refresh(item)
-    return {"id": item.id, "email": item.email, "role": item.role, "division": item.division}
+    delivery = await deliver_welcome_link(db, user=item, issued=issued, issued_by=user)
+    return {"id": item.id, "email": item.email, "role": item.role, "division": item.division, **delivery}
 
 
 @router.patch("/users/{user_id}")
@@ -900,13 +937,13 @@ async def approve_commission_payout(commission_id: UUID, user: User = Depends(ge
 # per `API_CONTRACT.md` §12A.
 @agents_router.post("/schools", status_code=201)
 async def create_school(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    from app.core.security import hash_password
-
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
+    _reject_supplied_password(payload, user, "/api/v1/overseas-admin/schools", "coordinator_password")
     email = str(payload.get("coordinator_email", "")).lower().strip()
     if not payload.get("name") or not email or not payload.get("coordinator_full_name"):
         raise HTTPException(422, "School name and Coordinator name/email are required")
+    email = _valid_email(email)
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
     tier = payload.get("tier")
@@ -918,7 +955,7 @@ async def create_school(payload: dict, user: User = Depends(get_current_user), d
     await db.flush()
     coordinator = User(
         email=email,
-        password_hash=hash_password(payload.get("coordinator_password") or "ChangeMe@12345"),
+        password_hash=unusable_password_hash(),
         full_name=payload["coordinator_full_name"],
         role="school_coordinator",
         division="overseas",
@@ -927,7 +964,8 @@ async def create_school(payload: dict, user: User = Depends(get_current_user), d
         profile={"school_id": str(school.id)},
     )
     db.add(coordinator)
-    await db.flush()
+    await _flush_unique_email(db)  # a lost race also rolls back the school created above
+    issued = await issue_welcome_token(db, user=coordinator, issued_by=user)
     # DATA_MODEL.md §6.12: `UserRoleAssignment` is created eagerly here (not lazily on
     # first login like `auth._sync_role_assignment`) so `created_by_user_id`/`assigned_by_
     # user_id` records the acting Overseas Admin from the moment the account exists,
@@ -937,7 +975,8 @@ async def create_school(payload: dict, user: User = Depends(get_current_user), d
     db.add(AuditLog(user_id=user.id, action="school.create", entity_type="school", entity_id=str(school.id), metadata_json={"name": school.name}))
     db.add(AuditLog(user_id=user.id, action="school.coordinator_seed", entity_type="user", entity_id=str(coordinator.id), metadata_json={"school_id": str(school.id)}))
     await db.commit()
-    return {"id": school.id, "name": school.name, "coordinator_id": coordinator.id, "coordinator_email": coordinator.email}
+    delivery = await deliver_welcome_link(db, user=coordinator, issued=issued, issued_by=user)
+    return {"id": school.id, "name": school.name, "coordinator_id": coordinator.id, "coordinator_email": coordinator.email, **delivery}
 
 
 @agents_router.get("/schools")
@@ -1067,11 +1106,11 @@ SCHOOL_SERVICE_ROLES = {"academic_team", "career_counselor", "psychometric_team"
 
 @agents_router.post("/school-staff", status_code=201)
 async def create_school_staff(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    from app.core.security import hash_password
     from app.models import SchoolStaffAssignment
 
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
+    _reject_supplied_password(payload, user, "/api/v1/overseas-admin/school-staff", "password")
     role = payload.get("role")
     if role not in SCHOOL_SERVICE_ROLES:
         raise HTTPException(422, f"role must be one of {sorted(SCHOOL_SERVICE_ROLES)}")
@@ -1079,6 +1118,7 @@ async def create_school_staff(payload: dict, user: User = Depends(get_current_us
     full_name = str(payload.get("full_name", "")).strip()
     if not email or not full_name:
         raise HTTPException(422, "email and full_name are required")
+    email = _valid_email(email)
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
     school_ids = payload.get("school_ids") or []
@@ -1088,7 +1128,7 @@ async def create_school_staff(payload: dict, user: User = Depends(get_current_us
 
     staff = User(
         email=email,
-        password_hash=hash_password(payload.get("password") or "ChangeMe@12345"),
+        password_hash=unusable_password_hash(),
         full_name=full_name,
         role=role,
         division="overseas",
@@ -1097,13 +1137,15 @@ async def create_school_staff(payload: dict, user: User = Depends(get_current_us
         profile={},
     )
     db.add(staff)
-    await db.flush()
+    await _flush_unique_email(db)
+    issued = await issue_welcome_token(db, user=staff, issued_by=user)
     db.add(UserRoleAssignment(user_id=staff.id, division="overseas", role=role, is_active=True, assigned_by_user_id=user.id, approval_status="approved"))
     for school in schools:
         db.add(SchoolStaffAssignment(user_id=staff.id, school_id=school.id, role=role, assigned_by_user_id=user.id))
     db.add(AuditLog(user_id=user.id, action="school.staff_create", entity_type="user", entity_id=str(staff.id), metadata_json={"role": role, "school_ids": [str(s.id) for s in schools]}))
     await db.commit()
-    return {"id": staff.id, "email": staff.email, "role": staff.role, "school_ids": [str(s.id) for s in schools]}
+    delivery = await deliver_welcome_link(db, user=staff, issued=issued, issued_by=user)
+    return {"id": staff.id, "email": staff.email, "role": staff.role, "school_ids": [str(s.id) for s in schools], **delivery}
 
 
 @agents_router.get("/school-staff")

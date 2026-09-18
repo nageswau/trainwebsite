@@ -492,3 +492,198 @@ async def test_a_refused_welcome_link_for_an_inactive_account_is_logged_as_a_war
     record = next(r for r in caplog.records if r.name == "app.auth" and r.getMessage() == "welcome_link_refused_inactive_account")
     assert record.levelno == logging.WARNING and record.extra_fields["user_id"] == str(user.id)
     assert raw not in json.dumps(record.extra_fields, default=str)
+
+
+# --- Task 5: create routes ------------------------------------------------------------
+
+async def _admin_client(client, db_session, *, role="overseas_admin", division="overseas"):
+    admin = await _make_user(db_session, role=role, division=division)
+    assert (await _login(client, admin.email, division="it" if division in ("it", "global") else division)).status_code == 200
+    return admin
+
+
+def _no_password_keys(body: dict) -> bool:
+    return not any("password" in key.lower() for key in body)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("path,body,field", [
+    ("/api/v1/admin/users", {"role": "counselor", "division": "overseas", "full_name": "X"}, "password"),
+    ("/api/v1/overseas-admin/school-staff", {"role": "academic_team", "full_name": "X"}, "password"),
+    ("/api/v1/overseas-admin/schools", {"name": "S", "coordinator_full_name": "X"}, "coordinator_password"),
+])
+async def test_a_supplied_password_is_rejected_with_422_and_creates_nothing(client, db_session, path, body, field):
+    await _admin_client(client, db_session)
+    email = _email()
+    payload = {**body, ("coordinator_email" if field == "coordinator_password" else "email"): email, field: "Should-Be-Ignored-1!"}
+    response = await client.post(path, json=payload)
+    assert response.status_code == 422 and "password" in response.json()["detail"].lower()
+    assert await db_session.scalar(select(User).where(User.email == email)) is None
+
+
+@pytest.mark.asyncio
+async def test_create_user_issues_a_welcome_link_and_never_a_password(client, db_session, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "test")
+    monkeypatch.setattr(settings, "smtp_host", None)
+    admin = await _admin_client(client, db_session)
+    email = _email()
+    response = await client.post("/api/v1/admin/users", json={"role": "counselor", "division": "overseas", "email": email, "full_name": "New Counselor"})
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert _no_password_keys(body) and "ChangeMe" not in response.text
+    assert body["email_status"] == "not_configured" and body["email"] == email
+    assert timedelta(hours=71, minutes=59) < datetime.fromisoformat(body["expires_at"]) - datetime.now(UTC) <= timedelta(hours=72)
+
+    user = await db_session.scalar(select(User).where(User.email == email))
+    assert not verify_password("ChangeMe@12345", user.password_hash)
+    assert (await _login(client, email, "ChangeMe@12345")).status_code == 401
+    tokens = (await db_session.scalars(select(PasswordResetToken).where(PasswordResetToken.user_id == user.id))).all()
+    assert len(tokens) == 1 and tokens[0].purpose == "welcome"
+    assert tokens[0].token_hash == _sha(body["development_welcome_token"])
+
+    audits = (await db_session.scalars(select(AuditLog).where(AuditLog.entity_id == str(user.id)))).all()
+    assert {"user.create", "user.welcome_link_issue", "user.welcome_link_delivery"} <= {a.action for a in audits}
+    assert all(body["development_welcome_token"] not in json.dumps(a.metadata_json) for a in audits)
+    assert any(a.user_id == admin.id for a in audits)
+
+
+@pytest.mark.asyncio
+async def test_the_created_user_can_activate_from_the_link_and_log_in(client, db_session, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "test")
+    await _admin_client(client, db_session)
+    email = _email()
+    body = (await client.post("/api/v1/admin/users", json={"role": "counselor", "division": "overseas", "email": email, "full_name": "New Counselor"})).json()
+    assert (await client.post(RESET_URL, json={"token": body["development_welcome_token"], "new_password": NEW_PASSWORD})).status_code == 200
+    assert (await _login(client, email, NEW_PASSWORD)).status_code == 200
+    user = await db_session.scalar(select(User).where(User.email == email))
+    await db_session.refresh(user)
+    assert user.email_verified is True
+
+
+@pytest.mark.asyncio
+async def test_the_dev_token_is_never_returned_in_production(client, db_session, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "production")
+    await _admin_client(client, db_session)
+    body = (await client.post("/api/v1/admin/users", json={"role": "counselor", "division": "overseas", "email": _email(), "full_name": "P"})).json()
+    assert "development_welcome_token" not in body and "email_status" in body
+
+
+@pytest.mark.asyncio
+async def test_school_staff_route_provisions_with_a_welcome_link(client, db_session, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "test")
+    await _admin_client(client, db_session)
+    email = _email()
+    response = await client.post("/api/v1/overseas-admin/school-staff", json={"role": "academic_team", "full_name": "Staff", "email": email, "school_ids": []})
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert _no_password_keys(body) and body["role"] == "academic_team" and body["school_ids"] == []
+    assert (await client.post(RESET_URL, json={"token": body["development_welcome_token"], "new_password": NEW_PASSWORD})).status_code == 200
+    assert (await _login(client, email, NEW_PASSWORD)).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_create_school_seeds_a_coordinator_with_a_welcome_link(client, db_session, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "test")
+    await _admin_client(client, db_session)
+    email = _email()
+    response = await client.post("/api/v1/overseas-admin/schools", json={"name": f"S {uuid.uuid4().hex[:6]}", "coordinator_full_name": "Coord", "coordinator_email": email})
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert _no_password_keys(body) and body["coordinator_email"] == email
+    assert (await client.post(RESET_URL, json={"token": body["development_welcome_token"], "new_password": NEW_PASSWORD})).status_code == 200
+    assert (await _login(client, email, NEW_PASSWORD)).status_code == 200
+    assert (await client.get("/api/v1/school/team")).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_a_failed_send_never_blocks_creation_and_is_audited(client, db_session, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "test")
+
+    async def failing_smtp(**kwargs):
+        return "failed", "smtp down"
+
+    monkeypatch.setattr(provisioning, "send_welcome_email", failing_smtp)
+    await _admin_client(client, db_session)
+    email = _email()
+    response = await client.post("/api/v1/admin/users", json={"role": "counselor", "division": "overseas", "email": email, "full_name": "F"})
+    assert response.status_code == 201 and response.json()["email_status"] == "failed"
+    user = await db_session.scalar(select(User).where(User.email == email))
+    delivery = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == str(user.id), AuditLog.action == "user.welcome_link_delivery"))
+    assert delivery.metadata_json["smtp_status"] == "failed" and delivery.metadata_json["smtp_error"] == "smtp down"
+    assert await db_session.scalar(select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)) is not None
+
+
+@pytest.mark.asyncio
+async def test_the_composed_email_goes_to_the_new_user_with_the_link_and_no_password(client, db_session, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "test")
+    _configure_smtp(monkeypatch)
+    sent = []
+    monkeypatch.setattr(mailer, "_send_sync", lambda msg: sent.append(msg))
+    await _admin_client(client, db_session)
+    email = _email()
+    body = (await client.post("/api/v1/admin/users", json={"role": "counselor", "division": "overseas", "email": email, "full_name": "New"})).json()
+    assert body["email_status"] == "sent" and len(sent) == 1 and sent[0]["To"] == email
+    text = sent[0].get_body(preferencelist=("plain",)).get_content()
+    assert f"/overseas/reset-password?token={body['development_welcome_token']}" in text
+    assert "72 hours" in text and "ChangeMe" not in text
+
+
+@pytest.mark.asyncio
+async def test_a_duplicate_email_is_409_including_under_a_race(client, db_session):
+    await _admin_client(client, db_session)
+    email = _email()
+    payload = {"role": "counselor", "division": "overseas", "email": email, "full_name": "Dup"}
+    results = await asyncio.gather(client.post("/api/v1/admin/users", json=payload), client.post("/api/v1/admin/users", json=payload))
+    assert sorted(r.status_code for r in results) == [201, 409]
+    assert (await client.post("/api/v1/admin/users", json=payload)).status_code == 409
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("path", ["/api/v1/admin/users", "/api/v1/overseas-admin/school-staff", "/api/v1/overseas-admin/schools"])
+@pytest.mark.parametrize("bad_email", ["not-an-email", "a b@example.local", "a@b", "victim@example.local\r\nBcc: attacker@example.local", "x" * 250 + "@example.local", ""])
+async def test_a_malformed_email_is_422_and_creates_nothing(client, db_session, path, bad_email):
+    await _admin_client(client, db_session)
+    payloads = {
+        "/api/v1/admin/users": {"role": "counselor", "division": "overseas", "full_name": "X", "email": bad_email},
+        "/api/v1/overseas-admin/school-staff": {"role": "academic_team", "full_name": "X", "email": bad_email, "school_ids": []},
+        "/api/v1/overseas-admin/schools": {"name": "S", "coordinator_full_name": "X", "coordinator_email": bad_email},
+    }
+    before = await db_session.scalar(sa.select(sa.func.count()).select_from(User))
+    response = await client.post(path, json=payloads[path])
+    assert response.status_code == 422, response.text
+    assert await db_session.scalar(sa.select(sa.func.count()).select_from(User)) == before
+
+
+@pytest.mark.asyncio
+async def test_a_sender_that_raises_never_turns_a_committed_creation_into_a_500(client, db_session, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "test")
+
+    async def exploding_smtp(**kwargs):
+        raise ValueError("bad header")
+
+    monkeypatch.setattr(provisioning, "send_welcome_email", exploding_smtp)
+    await _admin_client(client, db_session)
+    email = _email()
+    response = await client.post("/api/v1/admin/users", json={"role": "counselor", "division": "overseas", "email": email, "full_name": "Boom"})
+    assert response.status_code == 201 and response.json()["email_status"] == "failed"
+    assert await db_session.scalar(select(User).where(User.email == email)) is not None
+
+
+def test_no_default_password_constant_remains_in_the_api_source():
+    root = Path(__file__).resolve().parents[1] / "app"
+    offenders = [str(p.relative_to(root)) for p in root.rglob("*.py") if "ChangeMe@12345" in p.read_text(encoding="utf-8")]
+    assert offenders == []
+
+
+@pytest.mark.asyncio
+async def test_a_rejected_password_field_is_logged_as_a_warning_naming_the_actor(client, db_session, caplog):
+    import logging
+
+    admin = await _admin_client(client, db_session)
+    with caplog.at_level(logging.INFO, logger="app.admin"):
+        response = await client.post("/api/v1/admin/users", json={"role": "counselor", "division": "overseas", "email": _email(), "full_name": "X", "password": "Nope-Nope-1!"})
+    assert response.status_code == 422
+    record = next(r for r in caplog.records if r.name == "app.admin" and r.getMessage() == "provisioning_password_field_rejected")
+    assert record.levelno == logging.WARNING
+    assert record.extra_fields["actor_id"] == str(admin.id) and record.extra_fields["route"] == "/api/v1/admin/users"
+    assert "Nope-Nope-1!" not in json.dumps(record.extra_fields, default=str)
