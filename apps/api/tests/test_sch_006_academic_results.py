@@ -308,3 +308,49 @@ async def test_teacher_remarks_over_2000_chars_is_rejected_on_update(client, db_
     result_id = created.json()["id"]
     edited = await client.patch(f"/api/v1/school/academic-team/results/{result_id}", json={"teacher_remarks": "x" * 2001})
     assert edited.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_teacher_remarks_is_not_leaked_before_publish(client, db_session):
+    """SCH-006-AC02, extended to the new field: a draft/verified result's teacher_remarks
+    must never reach /school/results, exactly like every other field on that result."""
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    await client.post("/api/v1/school/academic-team/results", json={"school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1", "subject": "Biology", "max_marks": 100, "marks_obtained": 88, "teacher_remarks": "Excellent lab work."})
+
+    await _login(client, ctx["coordinator"].email)
+    readable = await client.get("/api/v1/school/results")
+    assert readable.status_code == 200
+    assert readable.json() == []
+
+
+@pytest.mark.asyncio
+async def test_teacher_remarks_is_visible_once_published(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    reviewer = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    created = await client.post("/api/v1/school/academic-team/results", json={"school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1", "subject": "Biology", "max_marks": 100, "marks_obtained": 88, "teacher_remarks": "Excellent lab work."})
+    result_id = created.json()["id"]
+    await _login(client, reviewer.email)
+    await client.post(f"/api/v1/school/academic-team/results/{result_id}/verify")
+    await client.post(f"/api/v1/school/academic-team/results/{result_id}/publish")
+
+    await _login(client, ctx["coordinator"].email)
+    readable = await client.get("/api/v1/school/results")
+    assert readable.status_code == 200
+    assert readable.json()[0]["teacher_remarks"] == "Excellent lab work."
+
+
+@pytest.mark.asyncio
+async def test_teacher_remarks_content_is_never_written_to_the_audit_log(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    uploader = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    await _login(client, uploader.email)
+    await client.post("/api/v1/school/academic-team/results", json={"school_student_id": str(ctx["student"].id), "academic_year": "2026", "term": "Term 1", "subject": "Biology", "max_marks": 100, "marks_obtained": 88, "teacher_remarks": "A private observation about this student."})
+
+    rows = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.result_create"))).all()
+    assert rows, "expected an AuditLog row for the create action"
+    for row in rows:
+        assert "A private observation" not in str(row.metadata_json)
