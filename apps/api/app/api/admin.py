@@ -981,7 +981,14 @@ async def create_academic_year(payload: dict, user: User = Depends(get_current_u
     a pre-check SELECT is a race, not a guard)."""
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
-    label = str(payload.get("label", "")).strip()
+    raw_label = payload.get("label", "")
+    if not isinstance(raw_label, str):
+        # Review finding fix: `str(payload.get("label", ""))` used to silently coerce a
+        # non-string value (e.g. `true`, `123`) into a valid-looking label instead of
+        # rejecting it -- inconsistent with this same endpoint's own strictness for
+        # `grade_level` elsewhere in this feature.
+        raise HTTPException(422, "label must be a string")
+    label = raw_label.strip()
     if not label:
         raise HTTPException(422, "label is required")
     if len(label) > 20:
@@ -1019,7 +1026,14 @@ async def update_academic_year_status(year_id: UUID, payload: dict, user: User =
     best-effort convention, not a uniqueness guarantee."""
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
-    year = await db.get(AcademicYear, year_id)
+    # Review finding fix: `db.get(...)` followed by a plain UPDATE is an unlocked
+    # read-check-write -- two concurrent PATCH requests on the same row (e.g. one
+    # draft->active, one draft->closed) can both read the same starting status and
+    # each locally believe its own transition is forward-only, then commit in either
+    # order and silently undo one another. `SELECT ... FOR UPDATE` serializes any
+    # concurrent PATCH on this same row for the life of this transaction; it does not
+    # lock any other row, so unrelated academic years are unaffected.
+    year = await db.scalar(select(AcademicYear).where(AcademicYear.id == year_id).with_for_update())
     if not year:
         raise HTTPException(404, "Academic year not found")
     if "status" in payload:
@@ -1029,8 +1043,11 @@ async def update_academic_year_status(year_id: UUID, payload: dict, user: User =
         if ACADEMIC_YEAR_STATUSES.index(new_status) < ACADEMIC_YEAR_STATUSES.index(year.status):
             raise HTTPException(409, f"cannot move status backward from '{year.status}' to '{new_status}'")
         year.status = new_status
-    db.add(AuditLog(user_id=user.id, action="school.academic_year_status_change", entity_type="academic_year", entity_id=str(year.id), metadata_json={"label": year.label, "status": year.status}))
-    await db.commit()
+        # Review finding fix: this audit-log write used to happen unconditionally, so a
+        # PATCH with no `status` key (a no-op) still wrote a false "status changed"
+        # record. Only log/commit when a status change was actually applied.
+        db.add(AuditLog(user_id=user.id, action="school.academic_year_status_change", entity_type="academic_year", entity_id=str(year.id), metadata_json={"label": year.label, "status": year.status}))
+        await db.commit()
     return {"id": year.id, "label": year.label, "start_date": year.start_date, "end_date": year.end_date, "status": year.status}
 
 
