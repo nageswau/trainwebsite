@@ -3,6 +3,8 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { type Feedback, toneClass, welcomeLinkFeedback } from "@/lib/welcomeLink";
+
 type SchoolOption = { id: string; name: string };
 
 function detailMessage(detail: unknown) {
@@ -22,7 +24,7 @@ export default function AdminSchoolStaffPanel() {
   const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
   const [schoolQuery, setSchoolQuery] = useState("");
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  const [message, setMessage] = useState<Feedback | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,10 +56,10 @@ export default function AdminSchoolStaffPanel() {
     const data = await response.json().catch(() => ({}));
     setBusy(false);
     if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+      setMessage({ text: detailMessage(data.detail), tone: "error" });
       return;
     }
-    setMessage({ text: `Account created for ${data.email} (default password: ChangeMe@12345 -- share it securely and ask them to change it).`, failed: false });
+    setMessage(welcomeLinkFeedback(`Account created for ${data.email}.`, data));
     formElement.reset();
     setSelectedSchools([]);
     setSchoolQuery("");
@@ -161,7 +163,7 @@ export default function AdminSchoolStaffPanel() {
         <button className="btn" disabled={busy}>{busy ? "Creating…" : "Create account"}</button>
       </form>
       {message && (
-        <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 8 }}>
+        <div className={toneClass[message.tone]} role="status" aria-live="polite" style={{ marginTop: 8 }}>
           {message.text}
         </div>
       )}

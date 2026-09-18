@@ -31,18 +31,22 @@ const info: Record<string, { title: string; subtitle: string }> = {
 
 type TableData = { rows: Record<string, unknown>[]; columns: { key: string; label: string }[]; panels?: { title: string; items: string[] }[] };
 const columns = (items: [string, string][]) => items.map(([key, label]) => ({ key, label }));
-const userColumns = () => columns([["id", "reference"], ["name", "Name"], ["email", "Email"], ["division", "Division"], ["role", "Role"], ["active", "Active"]]);
+const userColumns = () => columns([["id", "reference"], ["name", "Name"], ["email", "Email"], ["division", "Division"], ["role", "Role"], ["active", "Active"], ["provisioning_status", "Setup"]]);
 const getRows = (path: string) => serverApi<Record<string, unknown>[]>(path);
 
+// ENH-003: humane labels for the derived setup status (DataTable would otherwise print `pending_setup`).
+const SETUP_LABEL: Record<string, string> = { active: "Password set", pending_setup: "Awaiting setup", link_expired: "Link expired" };
+const withSetupLabels = (rows: Record<string, unknown>[]) => rows.map((row) => ({ ...row, provisioning_status: SETUP_LABEL[String(row.provisioning_status)] ?? row.provisioning_status }));
+
 async function tableData(module: string): Promise<TableData> {
-  if (module === "users") return { rows: await getRows("/api/v1/admin/users"), columns: userColumns() };
+  if (module === "users") return { rows: withSetupLabels(await getRows("/api/v1/admin/users")), columns: userColumns() };
   if (module === "students") {
     const [it, overseas] = await Promise.all([serverApi<Record<string, unknown>[]>("/api/v1/admin/users?role=it_student"), serverApi<Record<string, unknown>[]>("/api/v1/admin/users?role=overseas_student")]);
-    return { rows: [...it, ...overseas], columns: userColumns() };
+    return { rows: withSetupLabels([...it, ...overseas]), columns: userColumns() };
   }
   if (module === "staff") {
     const rows = await serverApi<Record<string, unknown>[]>("/api/v1/admin/users");
-    return { rows: rows.filter(row => !["it_student", "overseas_student", "super_admin"].includes(String(row.role))), columns: userColumns() };
+    return { rows: withSetupLabels(rows.filter(row => !["it_student", "overseas_student", "super_admin"].includes(String(row.role)))), columns: userColumns() };
   }
   if (module === "programs") return { rows: await getRows("/api/v1/admin/programs"), columns: columns([["id", "reference"], ["title", "Program"], ["category", "Category"], ["duration", "Duration"], ["fees", "Fees"], ["active", "Active"]]) };
   if (module === "batches") return { rows: await getRows("/api/v1/admin/batches"), columns: columns([["id", "reference"], ["program", "Program"], ["name", "Batch"], ["trainer_id", "Trainer reference"], ["schedule", "Schedule"], ["capacity", "Capacity"], ["enrolled", "Enrolled"], ["status", "Status"]]) };
