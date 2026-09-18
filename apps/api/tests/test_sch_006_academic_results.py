@@ -354,3 +354,61 @@ async def test_teacher_remarks_content_is_never_written_to_the_audit_log(client,
     assert rows, "expected an AuditLog row for the create action"
     for row in rows:
         assert "A private observation" not in str(row.metadata_json)
+
+
+@pytest.mark.asyncio
+async def test_progress_endpoint_requires_academic_team_role(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    await _login(client, ctx["coordinator"].email)
+    response = await client.get("/api/v1/school/academic-team/progress")
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_progress_endpoint_rejects_career_counselor_and_psychometric_team(client, db_session):
+    """Anti-regression: this endpoint must use the singular academic_team check, not a
+    copy-pasted multi-role tuple that would accidentally admit these two sibling roles."""
+    ctx = await _create_school_with_coordinator(db_session)
+    for role in ("career_counselor", "psychometric_team"):
+        member = User(email=f"enh002-{role}-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD), full_name="Sibling Role", role=role, division="overseas", active=True, profile={})
+        db_session.add(member)
+        await db_session.flush()
+        db_session.add(UserRoleAssignment(user_id=member.id, division="overseas", role=role, is_active=True, assigned_by_user_id=ctx["admin"].id, approval_status="approved"))
+        db_session.add(SchoolStaffAssignment(user_id=member.id, school_id=ctx["school"].id, role=role, assigned_by_user_id=ctx["admin"].id))
+        await db_session.commit()
+        await _login(client, member.email)
+        response = await client.get("/api/v1/school/academic-team/progress")
+        assert response.status_code == 403, f"{role} must not access the Academic Team progress view"
+
+
+@pytest.mark.asyncio
+async def test_progress_endpoint_only_includes_the_callers_own_portfolio(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    member = await _add_academic_team_member(db_session, ctx["admin"], ctx["school"])
+    other_school = School(name=f"ENH-002 Other School {uuid.uuid4().hex[:6]}", created_by_user_id=ctx["admin"].id)
+    db_session.add(other_school)
+    await db_session.flush()
+    other_student = SchoolStudent(school_id=other_school.id, student_code=await unique_student_code(db_session, SchoolStudent.student_code), full_name="Outside Portfolio", created_by_user_id=ctx["admin"].id)
+    db_session.add(other_student)
+    await db_session.commit()
+
+    await _login(client, member.email)
+    response = await client.get("/api/v1/school/academic-team/progress")
+    assert response.status_code == 200
+    student_ids = {row["school_student_id"] for row in response.json()}
+    assert str(ctx["student"].id) in student_ids
+    assert str(other_student.id) not in student_ids
+
+
+@pytest.mark.asyncio
+async def test_progress_endpoint_returns_empty_list_for_a_member_with_no_portfolio(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    unassigned = User(email=f"enh002-noportfolio-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD), full_name="No Portfolio", role="academic_team", division="overseas", active=True, profile={})
+    db_session.add(unassigned)
+    await db_session.flush()
+    db_session.add(UserRoleAssignment(user_id=unassigned.id, division="overseas", role="academic_team", is_active=True, assigned_by_user_id=ctx["admin"].id, approval_status="approved"))
+    await db_session.commit()
+    await _login(client, unassigned.email)
+    response = await client.get("/api/v1/school/academic-team/progress")
+    assert response.status_code == 200
+    assert response.json() == []

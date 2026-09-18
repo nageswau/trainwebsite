@@ -1775,6 +1775,37 @@ async def list_academic_team_results(user: User = Depends(get_current_user), db:
     return [_result_out(r) for r in rows]
 
 
+@router.get("/academic-team/progress")
+async def academic_team_progress(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-002: portfolio-wide progress aggregate for the Academic Team member themselves --
+    average is computed over ALL statuses (draft/verified/published) in their own portfolio,
+    matching list_academic_team_results' existing exposure level, not the published-only rule
+    that applies to external roles (Coordinator/Teacher/Parent)."""
+    if user.role != "academic_team":
+        raise HTTPException(403, "Academic Team role required")
+    portfolio = await _portfolio_school_ids(db, user)
+    if not portfolio:
+        return []
+    rows = (
+        await db.execute(select(SchoolStudent, School).join(School, School.id == SchoolStudent.school_id).where(SchoolStudent.school_id.in_(portfolio)).order_by(SchoolStudent.full_name.asc()))
+    ).all()
+    student_ids = [s.id for s, _sc in rows]
+    result_rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids)))).all() if student_ids else []
+    by_student: dict = {}
+    for r in result_rows:
+        by_student.setdefault(r.school_student_id, []).append(r)
+    out = []
+    for student, school in rows:
+        student_results = by_student.get(student.id, [])
+        percentages = [p for p in (_percentage(float(r.max_marks), float(r.marks_obtained)) for r in student_results) if p is not None]
+        out.append({
+            "school_student_id": student.id, "full_name": student.full_name, "school_name": school.name,
+            "result_count": len(student_results),
+            "average_percentage": round(sum(percentages) / len(percentages), 2) if percentages else None,
+        })
+    return out
+
+
 @router.get("/results")
 async def list_readable_results(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Read-only for School Coordinator/Principal/Teacher/Parent, own scope -- filtered to
