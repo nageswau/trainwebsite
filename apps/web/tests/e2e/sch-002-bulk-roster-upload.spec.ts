@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // SCH-002 -- School Coordinator bulk student roster upload (template-download-first).
 // Requires the stack running via `docker compose up` with `python -m app.seed` already
@@ -16,13 +17,13 @@ async function onboardCoordinator(page: import("@playwright/test").Page, unique:
   await page.fill("#school-name", `E2E SCH-002 School ${unique}`);
   await page.fill("#school-coordinator-name", "E2E Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
-  await page.click('button:has-text("Create school + seed Coordinator")');
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
   return coordinatorEmail;

@@ -13,7 +13,7 @@ test("HR reviews a requirement's shortlist, and an empty requirement shows a cle
   await page.waitForURL("**/it/admin/dashboard");
 
   const candidateEmail = `adm008-${Date.now()}@example.com`;
-  const createdCandidate = await page.request.post("/api/v1/admin/users", { data: { role: "it_student", email: candidateEmail, full_name: "ADM-008 Candidate", password: "Sup3r-Secret-Pass!" } });
+  const createdCandidate = await page.request.post("/api/v1/admin/users", { data: { role: "it_student", email: candidateEmail, full_name: "ADM-008 Candidate" } });
   expect(createdCandidate.ok()).toBeTruthy();
 
   await page.goto("/it/login");

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // SCH-003/SCH-001 addenda -- Coordinator activate/deactivate for own-school team
 // accounts, and the live Teacher picker replacing the hand-typed email field. Builds its
@@ -21,13 +22,13 @@ async function onboardSchoolWithFullTeam(page: import("@playwright/test").Page, 
   await page.fill("#school-name", `E2E SCH-Team School ${unique}`);
   await page.fill("#school-coordinator-name", "E2E Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
-  await page.click('button:has-text("Create school + seed Coordinator")');
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 
@@ -46,7 +47,7 @@ async function onboardSchoolWithFullTeam(page: import("@playwright/test").Page, 
     await page.request.post("/api/v1/auth/logout");
     await page.goto("/overseas/login");
     await page.fill("#login-email", coordinatorEmail);
-    await page.fill("#login-password", "ChangeMe@12345");
+    await page.fill("#login-password", E2E_PASSWORD);
     await page.click("button:has-text('Sign in securely')");
     await page.waitForURL("**/school/coordinator/dashboard");
   }

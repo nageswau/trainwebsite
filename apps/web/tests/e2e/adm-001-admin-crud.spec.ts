@@ -20,7 +20,7 @@ test("admin can deactivate and reactivate a user with no active dependents (ADM-
   const trainerName = `E2E Trainer ${Date.now()}`;
   const created = await request.post("/api/v1/admin/users", {
     headers: { cookie: `edusphere_access=${access}` },
-    data: { full_name: trainerName, email: `trainer-${Date.now()}@example.com`, password: "Sup3r-Secret-Pass!", division: "it", role: "trainer" },
+    data: { full_name: trainerName, email: `trainer-${Date.now()}@example.com`, division: "it", role: "trainer" },
   });
   expect(created.ok()).toBeTruthy();
 

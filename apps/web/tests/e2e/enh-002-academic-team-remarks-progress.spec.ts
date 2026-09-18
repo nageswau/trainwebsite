@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
+import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // ENH-002 -- Academic Team: `teacher_remarks` on a result, the portfolio progress summary,
 // and DEC-ROLE-007's actor separation. Requires the stack running via `docker compose up`
@@ -6,7 +7,7 @@ import { test, expect, type Locator, type Page } from "@playwright/test";
 // own throwaway School + Coordinator + Academic Team + Career Counselor + students per run,
 // like the SCH-00x specs.
 
-const DEFAULT_PASSWORD = "ChangeMe@12345";
+const DEFAULT_PASSWORD = E2E_PASSWORD;
 const PARENT_PASSWORD = "Sup3r-Secret-Pass!";
 
 type Staff = { role: string; name: string; email: string };
@@ -26,7 +27,7 @@ async function provisionSchool(page: Page, schoolName: string, coordinatorEmail:
   await page.fill("#school-name", schoolName);
   await page.fill("#school-coordinator-name", "ENH-002 Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
-  await page.click('button:has-text("Create school + seed Coordinator")');
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
   await page.goto("/overseas/admin/school-staff");
@@ -35,7 +36,7 @@ async function provisionSchool(page: Page, schoolName: string, coordinatorEmail:
     await page.fill("#staff-name", member.name);
     await page.fill("#staff-email", member.email);
     await page.selectOption("#staff-schools", { label: schoolName });
-    await page.click('button:has-text("Create account")');
+    await createAndActivateFromUi(page, 'button:has-text("Create account")', "/overseas-admin/school-staff");
     await expect(page.getByText(/Account created for/)).toBeVisible({ timeout: 20_000 });
   }
 }

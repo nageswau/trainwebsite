@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { E2E_PASSWORD, activateWithToken, createAndActivateFromUi } from "./helpers/welcome";
 
 // SCH-008 -- narrow Student Journey Timeline. Builds its own throwaway school + roster
 // through the real onboarding/roster flows, records one event in each already-built
@@ -31,7 +32,7 @@ test("student journey timeline renders in order for Parent, Teacher, Coordinator
   await page.fill("#school-name", `E2E Timeline School ${unique}`);
   await page.fill("#school-coordinator-name", "E2E Timeline Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
-  await page.click('button:has-text("Create school + seed Coordinator")');
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
   const schoolListRes = await page.request.get("/api/v1/overseas-admin/schools");
   const schools = await schoolListRes.json();
@@ -40,7 +41,9 @@ test("student journey timeline renders in order for Parent, Teacher, Coordinator
   for (const [email, role] of [[counselorEmail, "career_counselor"], [psychEmail, "psychometric_team"], [academicEmail1, "academic_team"], [academicEmail2, "academic_team"]] as const) {
     const created = await page.request.post("/api/v1/overseas-admin/school-staff", { data: { role, full_name: email, email } });
     expect(created.status()).toBe(201);
-    const staffId = (await created.json()).id;
+    const createdBody = await created.json();
+    const staffId = createdBody.id;
+    await activateWithToken(page.request, createdBody.development_welcome_token);
     const assigned = await page.request.post(`/api/v1/overseas-admin/school-staff/${staffId}/portfolio`, { data: { school_id: school.id } });
     expect(assigned.status()).toBe(200); // no status_code=201 on this route -- FastAPI's default
   }
@@ -49,7 +52,7 @@ test("student journey timeline renders in order for Parent, Teacher, Coordinator
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 
@@ -74,7 +77,7 @@ test("student journey timeline renders in order for Parent, Teacher, Coordinator
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 
@@ -88,13 +91,13 @@ test("student journey timeline renders in order for Parent, Teacher, Coordinator
   const unlinked = await unlinkedRes.json();
 
   // --- One event in each already-built module, for the linked child. Each specialized
-  // staff account was created via POST /overseas-admin/school-staff with no password
-  // field, so it carries that endpoint's own default ("ChangeMe@12345"), not the seeded
+  // staff account was created via POST /overseas-admin/school-staff (no password field) and
+  // activated from its welcome link, so it carries E2E_PASSWORD, not the seeded
   // demo accounts' "Demo@123".
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", counselorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/career-counselor/dashboard");
   const guidanceRes = await page.request.post("/api/v1/school/career-counselor/records", { data: { school_student_id: linked.id, record_type: "guidance_session", notes: "Explored engineering vs design paths" } });
@@ -103,7 +106,7 @@ test("student journey timeline renders in order for Parent, Teacher, Coordinator
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", psychEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/psychometric-team/dashboard");
   const psychRes = await page.request.post("/api/v1/school/psychometric-team/records", { data: { school_student_id: linked.id, assessment_type: "Aptitude Test" } });
@@ -115,7 +118,7 @@ test("student journey timeline renders in order for Parent, Teacher, Coordinator
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", academicEmail1);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/academic-team/dashboard");
   const resultRes = await page.request.post("/api/v1/school/academic-team/results", {
@@ -127,7 +130,7 @@ test("student journey timeline renders in order for Parent, Teacher, Coordinator
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", academicEmail2);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/academic-team/dashboard");
   expect((await page.request.post(`/api/v1/school/academic-team/results/${resultId}/verify`)).status()).toBe(200);
@@ -178,7 +181,7 @@ test("student journey timeline renders in order for Parent, Teacher, Coordinator
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
   await page.goto("/school/coordinator/students");

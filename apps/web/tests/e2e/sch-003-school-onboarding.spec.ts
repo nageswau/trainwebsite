@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // SCH-003 -- School partner onboarding (Admin-created, Coordinator-seeded invites).
 // Requires the stack running via `docker compose up` with `python -m app.seed` already
@@ -21,14 +22,14 @@ test("overseas admin creates a school + seed coordinator, who invites a principa
   await page.fill("#school-city", "Testville");
   await page.fill("#school-coordinator-name", "E2E Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
-  await page.click('button:has-text("Create school + seed Coordinator")');
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
   await expect(page.getByRole("cell", { name: `E2E School ${unique}` })).toBeVisible();
 
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
   await page.goto("/school/coordinator/team");
@@ -88,13 +89,13 @@ test("a consumed invite token shows an honest, specific message, not a generic b
   await page.fill("#school-name", `E2E School B ${unique}`);
   await page.fill("#school-coordinator-name", "E2E Coordinator B");
   await page.fill("#school-coordinator-email", coordinatorEmail);
-  await page.click('button:has-text("Create school + seed Coordinator")');
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 
