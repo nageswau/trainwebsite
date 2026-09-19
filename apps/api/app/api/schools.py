@@ -988,9 +988,15 @@ async def student_timeline(student_id: UUID, user: User = Depends(get_current_us
     and `SCH-007-AC02`. Read-only, no new tables: every event is derived from an existing
     row's own timestamp, nothing synthesized."""
     student = await _load_readable_student(db, user, student_id)
+    # ENH-004: once a student has been promoted, `grade_or_class` is no longer where they were added.
+    # The earliest history row's `from_grade_or_class` is; with no history the current label is still right.
+    first_move = await db.scalar(
+        select(SchoolStudentGradeHistory).where(SchoolStudentGradeHistory.school_student_id == student.id).order_by(SchoolStudentGradeHistory.created_at.asc(), SchoolStudentGradeHistory.id.asc()).limit(1)
+    )
+    added_to = first_move.from_grade_or_class if first_move else student.grade_or_class
     events: list[dict] = [{
         "date": student.created_at, "category": "profile", "type": "profile_created",
-        "title": "Student profile created", "detail": f"Added to {student.grade_or_class}" if student.grade_or_class else None,
+        "title": "Student profile created", "detail": f"Added to {added_to}" if added_to else None,
     }]
     # Distinct loop-variable names per query (career_r/psych_r/result_r, not a shared `r`) --
     # a reused loop variable across differently-typed queries left MyPy inferring every

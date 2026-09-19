@@ -991,3 +991,23 @@ async def test_grade_history_of_another_school_is_403_and_unknown_is_404(client,
 async def test_grade_history_requires_a_session(client, db_session):
     ctx = await _school(db_session)
     assert (await client.get(_history_url(ctx["students"][0]))).status_code == 401
+
+
+# ---------------------------------------------------------------- SCH-008 timeline stays truthful
+
+
+@pytest.mark.asyncio
+async def test_the_timeline_profile_event_keeps_the_pre_promotion_label(client, db_session, future_years):
+    await future_years()
+    ctx = await _school(db_session)
+    student = ctx["students"][0]
+    await _login(client, ctx["coordinator"].email)
+    assert (await _promote(client, [_item(student)])).status_code == 200
+
+    await _login(client, ctx["parent"].email)
+    response = await client.get(f"/api/v1/school/students/{student.id}/timeline")
+
+    assert response.status_code == 200, response.text
+    events = response.json()["events"]
+    assert (events[0]["type"], events[0]["detail"]) == ("profile_created", "Added to Grade 8-A")
+    assert len(events) == 1  # promotion adds no timeline events (spec non-goal)
