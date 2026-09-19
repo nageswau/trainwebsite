@@ -90,7 +90,10 @@ describe("ResetPasswordForm: network failure (QA-007)", () => {
     await submit();
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Network error");
-    expect(alert).toHaveTextContent("password was not changed");
+    // The server commits before it answers, so a lost response is an UNKNOWN outcome -- never claim "not changed".
+    expect(alert).toHaveTextContent("could not confirm whether your password was saved");
+    expect(alert.textContent).not.toMatch(/was not changed/i);
+    expect(alert).toHaveTextContent("Try signing in");
     const button = screen.getByRole("button", { name: "Reset password" });
     expect(button).toBeEnabled();
     expect(screen.getByLabelText("New password")).toHaveValue("Brand-New-Pass-1!");

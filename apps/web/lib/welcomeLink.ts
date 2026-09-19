@@ -1,8 +1,8 @@
 // ENH-003 / DEC-SCOPE-019: shared wording and request helper for the first-time set-password link.
 // Never mentions a password value -- admins no longer know or choose one.
-export type Tone = "success" | "warning" | "error";
+type Tone = "success" | "warning" | "error";
 export type Feedback = { text: string; tone: Tone };
-export type WelcomeDelivery = { email_status?: string; expires_at?: string };
+type WelcomeDelivery = { email_status?: string };
 
 // Reuses the existing message classes; `form-warning` (controls.css) is the amber sibling used when
 // the account WAS created but the email was not delivered -- a partial success, not an error.
@@ -29,6 +29,7 @@ export async function requestWelcomeLink(userId: string): Promise<{ ok: boolean;
     const data = await response.json().catch(() => ({}));
     return { ok: response.ok, data };
   } catch {
-    return { ok: false, data: { detail: "Network error -- the link was not re-sent. Please try again." } };
+    // Re-send commits the new token before it answers, so a lost response is an unknown outcome, not "not sent".
+    return { ok: false, data: { detail: "Network error -- it is not known whether the link was sent. Check the account's status before re-sending." } };
   }
 }

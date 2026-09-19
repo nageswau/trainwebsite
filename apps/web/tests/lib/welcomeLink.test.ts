@@ -63,5 +63,8 @@ describe("requestWelcomeLink", () => {
     const result = await requestWelcomeLink("u1");
     expect(result.ok).toBe(false);
     expect(String(result.data.detail)).toContain("Network error");
+    // Re-send commits the new token before it answers, so a lost response is an unknown outcome, not "not re-sent".
+    expect(String(result.data.detail)).toContain("not known whether the link was sent");
+    expect(String(result.data.detail)).not.toMatch(/was not re-sent/i);
   });
 });

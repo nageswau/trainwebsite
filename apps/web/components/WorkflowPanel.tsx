@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@/lib/types";
 import { type Feedback, toneClass, welcomeLinkFeedback } from "@/lib/welcomeLink";
+import { announceUsersChanged } from "@/lib/usersChanged";
 import BatchSlotPicker from "./BatchSlotPicker";
 import LiveClassesPanel from "./LiveClassesPanel";
 import AssignmentSubmissionPanel from "./AssignmentSubmissionPanel";
@@ -58,6 +59,8 @@ type ActionSpec = {
   success: string;
   // Optional: build the outcome from the response (e.g. ENH-003 welcome-link delivery). Defaults to `success` as a plain success.
   describeSuccess?: (data: Record<string, unknown>) => Feedback;
+  // Tell sibling panels (the Manage users list) that the set of accounts changed, so they refetch.
+  announcesUserChange?: boolean;
   fields: Field[];
   pathFields?: string[];
   buildBody?: (values: Record<string, unknown>) => Record<string, unknown>;
@@ -127,6 +130,7 @@ function ActionForm({ spec }: { spec: ActionSpec }) {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(detailMessage(data.detail));
       setFeedback(spec.describeSuccess ? spec.describeSuccess(data) : { text: spec.success, tone: "success" }); formElement.reset(); router.refresh();
+      if (spec.announcesUserChange) announceUsersChanged();
     } catch (error) {
       setFeedback({ text: error instanceof Error ? error.message : "Request failed", tone: "error" });
     } finally { setBusy(false); }
@@ -368,7 +372,7 @@ function createUserRoleOptions(user: User) {
 }
 
 function adminSpecs(user: User, section: string): ActionSpec[] {
-  if (["users", "students", "trainers", "counselors", "staff"].includes(section)) return [{ title: "Create user", endpoint: "/api/v1/admin/users", success: "User created.", describeSuccess: data => welcomeLinkFeedback("User created.", data), fields: [{ name: "full_name", label: "Full name", required: true }, { name: "email", label: "Email", required: true }, { name: "phone", label: "Phone" }, { name: "division", label: "Division", type: "select", required: true, defaultValue: user.division === "global" ? "it" : user.division, options: createUserDivisionOptions(user) }, { name: "role", label: "Role", type: "select", required: true, options: createUserRoleOptions(user) }] }];
+  if (["users", "students", "trainers", "counselors", "staff"].includes(section)) return [{ title: "Create user", endpoint: "/api/v1/admin/users", success: "User created.", describeSuccess: data => welcomeLinkFeedback("User created.", data), announcesUserChange: true, fields: [{ name: "full_name", label: "Full name", required: true }, { name: "email", label: "Email", required: true }, { name: "phone", label: "Phone" }, { name: "division", label: "Division", type: "select", required: true, defaultValue: user.division === "global" ? "it" : user.division, options: createUserDivisionOptions(user) }, { name: "role", label: "Role", type: "select", required: true, options: createUserRoleOptions(user) }] }];
   if (section === "programs") return [{ title: "Create program", endpoint: "/api/v1/admin/programs", success: "Program created.", fields: [{ name: "slug", label: "Slug", required: true }, { name: "category", label: "Category", required: true }, { name: "title", label: "Title", required: true }, { name: "summary", label: "Summary", type: "textarea" }, { name: "duration", label: "Duration", required: true }, { name: "fees", label: "Fees", type: "number", required: true }, { name: "eligibility", label: "Eligibility", type: "textarea" }, { name: "curriculum", label: "Curriculum (comma separated)", parse: "list" }] }];
   // "batches" is handled by AdminBatchCreatePanel (ADM-003) -- see showBatchCreate below.
   if (section === "payments") return [
@@ -441,7 +445,7 @@ export default function WorkflowPanel({ user, section }: { user: User; section: 
   const showAuditExport = user.role === "super_admin" && section === "security-logs";
   // ENH-003: expired set-password links on the IT and Overseas admin dashboards (`PortalPage` always
   // renders this panel under the dashboard content). Independent of `isAdmin`, which excludes
-  // overseas_admin. The Super Admin's own `/admin` page shows a tile and links to /admin/users.
+  // overseas_admin. The Super Admin's own `/admin` page mounts AdminExpiredLinksPanel directly.
   const showExpiredLinks = ["it_admin", "overseas_admin", "super_admin"].includes(user.role) && section === "dashboard";
   // RAID.md I-32: gated by the same role set `admin.py`'s `create_university` itself
   // enforces (`super_admin`/`overseas_admin`, not `it_admin` -- IT Admin's own nav has no

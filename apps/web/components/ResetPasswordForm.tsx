@@ -34,9 +34,10 @@ export default function ResetPasswordForm({ division }: { division: "it" | "over
         body: JSON.stringify({ token, new_password: form.get("new_password") }),
       });
     } catch {
-      // A dropped connection never reaches the server, so the link is still valid: just let them retry.
+      // The server commits the new password BEFORE it answers, so a lost response is an unknown outcome -- the
+      // request may or may not have been saved. Say so, and point at the two ways to find out.
       setBusy(false);
-      setError("Network error -- your password was not changed. Check your connection and try again.");
+      setError("Network error -- we could not confirm whether your password was saved. Try signing in; if that fails, use this link again or request a new one.");
       return;
     }
     const data = await response.json().catch(() => ({}));

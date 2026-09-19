@@ -25,8 +25,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// The status filter is resolved by the server (GET /admin/users?provisioning_status=...), never by slicing a capped list.
+function listFor(url: string) {
+  const status = new URL(url, "http://x").searchParams.get("provisioning_status");
+  return status ? users.filter((u) => u.provisioning_status === status) : users;
+}
+
 async function renderPanel() {
-  stubFetch((url, init) => (init?.method === "POST" ? json({ id: "p", email_status: "sent" }, 201) : json(users)));
+  stubFetch((url, init) => (init?.method === "POST" ? json({ id: "p", email_status: "sent" }, 201) : json(listFor(url))));
   render(<AdminUserManagementPanel />);
   await screen.findByText("Pia Pending");
 }
@@ -54,25 +60,63 @@ describe("AdminUserManagementPanel setup filter", () => {
     await renderPanel();
     const filter = screen.getByLabelText("Account setup");
     fireEvent.change(filter, { target: { value: "link_expired" } });
+    expect(await screen.findByText("1 account shown")).toHaveAttribute("aria-live", "polite");
     expect(screen.getByText("Eli Expired")).toBeInTheDocument();
     expect(screen.queryByText("Pia Pending")).toBeNull();
-    expect(screen.getByText("1 account shown")).toHaveAttribute("aria-live", "polite");
 
     fireEvent.change(screen.getByLabelText("Search by name, email, or role"), { target: { value: "zzz" } });
     expect(screen.getByText("No records match this search.")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Search by name, email, or role"), { target: { value: "" } });
     fireEvent.change(filter, { target: { value: "pending_setup" } });
-    expect(screen.getByText("Pia Pending")).toBeInTheDocument();
+    expect(await screen.findByText("Pia Pending")).toBeInTheDocument();
   });
 
   it("shows a specific empty message and 'Show all accounts' when the filter matches nobody", async () => {
-    stubFetch(() => json([users[0]]));
+    stubFetch((url) => json(new URL(url, "http://x").searchParams.get("provisioning_status") ? [] : [users[0]]));
     render(<AdminUserManagementPanel />);
     await screen.findByText("Asha Active");
     fireEvent.change(screen.getByLabelText("Account setup"), { target: { value: "link_expired" } });
-    expect(screen.getByText("No accounts have an expired link.")).toBeInTheDocument();
+    expect(await screen.findByText("No accounts have an expired link.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Show all accounts" }));
-    expect(screen.getByText("Asha Active")).toBeInTheDocument();
+    expect(await screen.findByText("Asha Active")).toBeInTheDocument();
+  });
+
+  // Codex finding 1 (UI): the panel used to filter the newest-500 list it had already fetched, so an older pending or
+  // expired account was invisible to the filter and to Re-send. The filter must ask the server for the exact set.
+  it("asks the server for the filtered set, so an account outside the unfiltered list is still found", async () => {
+    const older = { ...base, id: "o", name: "Olga Older", email: "olga@example.local", role: "career_counselor", active: true, provisioning_status: "link_expired" };
+    const mock = vi.fn((url: string) => Promise.resolve(json(new URL(url, "http://x").searchParams.get("provisioning_status") === "link_expired" ? [older] : [users[0]])));
+    vi.stubGlobal("fetch", mock);
+    render(<AdminUserManagementPanel />);
+    await screen.findByText("Asha Active");
+    fireEvent.change(screen.getByLabelText("Account setup"), { target: { value: "link_expired" } });
+    expect(await screen.findByText("Olga Older")).toBeInTheDocument();
+    expect(mock).toHaveBeenCalledWith("/api/v1/admin/users?provisioning_status=link_expired");
+    expect(screen.getByRole("button", { name: "Re-send set-password link to Olga Older" })).toBeInTheDocument();
+  });
+
+  // Codex finding 3: a successful Re-send turns the row into `pending_setup`; under the "Link expired" filter that
+  // used to drop the row -- taking its status message and its focus target with it.
+  it("keeps the re-sent row, its message and keyboard focus visible while the Link expired filter is on", async () => {
+    await renderPanel();
+    fireEvent.change(screen.getByLabelText("Account setup"), { target: { value: "link_expired" } });
+    await screen.findByText("1 account shown");
+    fireEvent.click(screen.getByRole("button", { name: "Re-send set-password link to Eli Expired" }));
+    expect(await screen.findByText(/New link created for Eli Expired\./)).toHaveAttribute("role", "status");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Re-send set-password link to Eli Expired" })).toHaveFocus());
+    expect(within(screen.getByRole("row", { name: /Eli Expired/ })).getByText("Awaiting setup")).toBeInTheDocument();
+  });
+
+  // Codex finding 7: creating an account elsewhere on the page must show up here without a reload.
+  it("refetches its list when an account is created elsewhere on the page", async () => {
+    let created = false;
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json(created ? [...users, { ...base, id: "n", name: "Nia New", email: "nia@example.local", role: "trainer", active: true, provisioning_status: "pending_setup" }] : users))));
+    render(<AdminUserManagementPanel />);
+    await screen.findByText("Pia Pending");
+    expect(screen.queryByText("Nia New")).toBeNull();
+    created = true;
+    window.dispatchEvent(new Event("edusphere:users-changed"));
+    expect(await screen.findByText("Nia New")).toBeInTheDocument();
   });
 
   it("makes the scrollable table keyboard-reachable", async () => {

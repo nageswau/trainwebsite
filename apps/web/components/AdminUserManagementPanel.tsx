@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { refocus } from "@/lib/focus";
+import { USERS_CHANGED } from "@/lib/usersChanged";
 import { type Feedback, errorText, requestWelcomeLink, toneClass, welcomeLinkFeedback } from "@/lib/welcomeLink";
 
 type Profile = { education?: string; skills?: string[]; [key: string]: unknown };
@@ -47,28 +48,52 @@ export default function AdminUserManagementPanel({ section }: { section?: string
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState<({ id: string } & Feedback) | null>(null);
   const [setupFilter, setSetupFilter] = useState<"all" | "pending_setup" | "link_expired">("all");
+  const [listLoading, setListLoading] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
 
+  // An account created elsewhere on the page (the Create user card) must appear here without a reload.
+  useEffect(() => {
+    const reload = () => setReloadTick((tick) => tick + 1);
+    window.addEventListener(USERS_CHANGED, reload);
+    return () => window.removeEventListener(USERS_CHANGED, reload);
+  }, []);
+
+  // The setup filter is resolved by the server (the exact set), never by slicing the capped unfiltered list: an older
+  // pending or expired account would otherwise be invisible to the filter and to Re-send.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/v1/admin/users")
+    const url = setupFilter === "all" ? "/api/v1/admin/users" : `/api/v1/admin/users?provisioning_status=${setupFilter}`;
+    fetch(url)
       .then((res) => (res.ok ? res.json() : []))
-      .then((data) => !cancelled && setUsers(data))
-      .catch(() => !cancelled && setUsers([]));
+      .then((data) => {
+        if (cancelled) return;
+        setUsers(data);
+        setListLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setUsers([]);
+        setListLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setupFilter, reloadTick]);
+
+  function changeSetupFilter(next: "all" | "pending_setup" | "link_expired") {
+    setSetupFilter(next);
+    setListLoading(true);
+  }
 
   const scopedRoles = section ? SECTION_ROLES[section] : undefined;
 
   const visible = useMemo(() => {
     if (!users) return [];
     const scoped = scopedRoles ? users.filter((u) => scopedRoles.includes(u.role)) : users;
-    const bySetup = setupFilter === "all" ? scoped : scoped.filter((u) => u.provisioning_status === setupFilter);
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return bySetup;
-    return bySetup.filter((u) => u.name.toLowerCase().includes(normalized) || u.email.toLowerCase().includes(normalized) || u.role.toLowerCase().includes(normalized));
-  }, [users, query, scopedRoles, setupFilter]);
+    if (!normalized) return scoped;
+    return scoped.filter((u) => u.name.toLowerCase().includes(normalized) || u.email.toLowerCase().includes(normalized) || u.role.toLowerCase().includes(normalized));
+  }, [users, query, scopedRoles]);
 
   async function toggleActive(row: AdminUserRow, confirmCascade: boolean) {
     setBusyId(row.id);
@@ -173,28 +198,30 @@ export default function AdminUserManagementPanel({ section }: { section?: string
       </div>
       <div className="field" style={{ marginTop: 8 }}>
         <label htmlFor="admin-user-setup">Account setup</label>
-        <select id="admin-user-setup" value={setupFilter} onChange={(event) => setSetupFilter(event.target.value as "all" | "pending_setup" | "link_expired")}>
+        <select id="admin-user-setup" value={setupFilter} onChange={(event) => changeSetupFilter(event.target.value as "all" | "pending_setup" | "link_expired")}>
           <option value="all">All accounts</option>
           <option value="pending_setup">Awaiting setup</option>
           <option value="link_expired">Link expired</option>
         </select>
       </div>
-      {users.length > 0 && (
+      {!listLoading && users.length > 0 && (
         <p className="collection-summary" aria-live="polite" style={{ margin: "8px 0 0" }}>
           {visible.length} {visible.length === 1 ? "account" : "accounts"} shown
         </p>
       )}
-      {visible.length === 0 ? (
+      {listLoading ? (
+        <p className="muted" role="status" style={{ marginTop: 12 }}>Loading accounts…</p>
+      ) : visible.length === 0 ? (
         <div style={{ marginTop: 12 }}>
           <p className="muted">
-            {users.length === 0
-              ? "No users found."
-              : setupFilter !== "all" && !query.trim()
-                ? setupFilter === "pending_setup" ? "No accounts are awaiting setup." : "No accounts have an expired link."
+            {setupFilter !== "all" && !query.trim()
+              ? setupFilter === "pending_setup" ? "No accounts are awaiting setup." : "No accounts have an expired link."
+              : users.length === 0
+                ? "No users found."
                 : "No records match this search."}
           </p>
           {setupFilter !== "all" && (
-            <button type="button" className="btn ghost small" onClick={() => setSetupFilter("all")}>Show all accounts</button>
+            <button type="button" className="btn ghost small" onClick={() => changeSetupFilter("all")}>Show all accounts</button>
           )}
         </div>
       ) : (

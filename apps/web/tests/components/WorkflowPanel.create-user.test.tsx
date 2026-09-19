@@ -63,4 +63,18 @@ describe("WorkflowPanel Create user card (ENH-003)", () => {
     expect(outcome).toHaveClass("form-error");
     expect(outcome).toHaveAttribute("role", "alert");
   });
+
+  // Codex finding 7: the Manage users panel next to this card only fetched on mount, so a new account (especially one
+  // whose email failed and needs a Re-send) was missing from it until a reload.
+  it("makes the new account appear in the Manage users panel beside it without a reload", async () => {
+    const created = { id: "n", name: "New Trainer", email: "trainer@example.local", division: "it", role: "trainer", active: true, phone: null, profile: {}, provisioning_status: "pending_setup" };
+    let posted = false;
+    vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") { posted = true; return Promise.resolve(json({ email: "trainer@example.local", email_status: "failed" }, 201)); }
+      return Promise.resolve(json(posted ? [created] : [], 200));
+    }));
+    await createUser();
+    await screen.findByText(/User created\./);
+    expect(await screen.findByRole("button", { name: "Re-send set-password link to New Trainer" })).toBeInTheDocument();
+  });
 });
