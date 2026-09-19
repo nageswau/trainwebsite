@@ -185,8 +185,10 @@ but deliberately not returned, so a parent never receives a staff user ID.
 - **Conventions follow the existing API, not generic style guides:** `snake_case` fields, lowercase
   enum values (`promoted`, `held_back`), plural-noun hyphenated paths (`/students/promotions`,
   `/students/{id}/grade-history`, like `bulk-upload`/`roster-template`), errors as FastAPI
-  `{"detail": …}`. The static `POST /students/promotions` route is declared before the `{student_id}`
-  routes, per the ordering comment at `schools.py:769`.
+  `{"detail": …}`. `POST /students/promotions` is registered beside the other student writes: the
+  static-before-dynamic ordering comment at `schools.py:769` concerns two routes with the *same method*
+  (`GET /students/roster-template` vs `GET /students/{student_id}`), and no `POST /students/{student_id}`
+  route exists, so declaration order is immaterial here (Starlette skips method-mismatched matches).
 - **Error shapes:** `401`/`403`/`404`/`409` use `{"detail": "<string>"}` as every other route does;
   request-validation `422` uses FastAPI's `{"detail": [{loc, msg, type}]}`. The web client's
   `detailMessage()` already renders both. Per-row failures are not HTTP errors: they are `200`
