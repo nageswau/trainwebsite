@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@/lib/types";
+import { type Feedback, toneClass, welcomeLinkFeedback } from "@/lib/welcomeLink";
 import BatchSlotPicker from "./BatchSlotPicker";
 import LiveClassesPanel from "./LiveClassesPanel";
 import AssignmentSubmissionPanel from "./AssignmentSubmissionPanel";
@@ -55,6 +56,8 @@ type ActionSpec = {
   endpoint: string;
   method?: "POST" | "PATCH" | "PUT";
   success: string;
+  // Optional: build the outcome from the response (e.g. ENH-003 welcome-link delivery). Defaults to `success` as a plain success.
+  describeSuccess?: (data: Record<string, unknown>) => Feedback;
   fields: Field[];
   pathFields?: string[];
   buildBody?: (values: Record<string, unknown>) => Record<string, unknown>;
@@ -103,8 +106,7 @@ function parseValues(form: FormData, fields: Field[]) {
 function ActionForm({ spec }: { spec: ActionSpec }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [failed, setFailed] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -113,7 +115,7 @@ function ActionForm({ spec }: { spec: ActionSpec }) {
     // after the fetch, or `.reset()` intermittently throws "Cannot read properties of
     // null" (found while testing STU-005's ticket form, which uses this same component).
     const formElement = event.currentTarget;
-    setBusy(true); setMessage(""); setFailed(false);
+    setBusy(true); setFeedback(null);
     const values = parseValues(new FormData(formElement), spec.fields);
     let endpoint = spec.endpoint;
     for (const name of spec.pathFields || []) endpoint = endpoint.replace(`:${name}`, encodeURIComponent(String(values[name] ?? "")));
@@ -124,9 +126,9 @@ function ActionForm({ spec }: { spec: ActionSpec }) {
       const response = await fetch(endpoint, { method: spec.method || "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(detailMessage(data.detail));
-      setMessage(spec.success); formElement.reset(); router.refresh();
+      setFeedback(spec.describeSuccess ? spec.describeSuccess(data) : { text: spec.success, tone: "success" }); formElement.reset(); router.refresh();
     } catch (error) {
-      setFailed(true); setMessage(error instanceof Error ? error.message : "Request failed");
+      setFeedback({ text: error instanceof Error ? error.message : "Request failed", tone: "error" });
     } finally { setBusy(false); }
   }
 
@@ -135,7 +137,7 @@ function ActionForm({ spec }: { spec: ActionSpec }) {
       <label htmlFor={`${spec.title}-${field.name}`}>{field.label}</label>
       {field.type === "textarea" ? <textarea id={`${spec.title}-${field.name}`} name={field.name} required={field.required} placeholder={field.placeholder} defaultValue={String(field.defaultValue ?? "")}/> : field.type === "select" ? <select id={`${spec.title}-${field.name}`} name={field.name} required={field.required} defaultValue={String(field.defaultValue ?? "")}><option value="">Select</option>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : field.type === "checkbox" ? <input id={`${spec.title}-${field.name}`} name={field.name} type="checkbox" defaultChecked={Boolean(field.defaultValue)}/> : <input id={`${spec.title}-${field.name}`} name={field.name} type={field.type || "text"} required={field.required} placeholder={field.placeholder} defaultValue={String(field.defaultValue ?? "")}/>} 
     </div>)}</div>
-    {message && <div className={failed ? "form-error" : "form-message"}>{message}</div>}
+    {feedback && <div className={toneClass[feedback.tone]} role={feedback.tone === "error" ? "alert" : "status"} aria-live={feedback.tone === "error" ? "assertive" : "polite"}>{feedback.text}</div>}
     <button className="btn" disabled={busy}>{busy ? "Saving…" : spec.title}</button>
   </form></div>;
 }
@@ -366,7 +368,7 @@ function createUserRoleOptions(user: User) {
 }
 
 function adminSpecs(user: User, section: string): ActionSpec[] {
-  if (["users", "students", "trainers", "counselors", "staff"].includes(section)) return [{ title: "Create user", endpoint: "/api/v1/admin/users", success: "User created.", fields: [{ name: "full_name", label: "Full name", required: true }, { name: "email", label: "Email", required: true }, { name: "phone", label: "Phone" }, { name: "division", label: "Division", type: "select", required: true, defaultValue: user.division === "global" ? "it" : user.division, options: createUserDivisionOptions(user) }, { name: "role", label: "Role", type: "select", required: true, options: createUserRoleOptions(user) }] }];
+  if (["users", "students", "trainers", "counselors", "staff"].includes(section)) return [{ title: "Create user", endpoint: "/api/v1/admin/users", success: "User created.", describeSuccess: data => welcomeLinkFeedback("User created.", data), fields: [{ name: "full_name", label: "Full name", required: true }, { name: "email", label: "Email", required: true }, { name: "phone", label: "Phone" }, { name: "division", label: "Division", type: "select", required: true, defaultValue: user.division === "global" ? "it" : user.division, options: createUserDivisionOptions(user) }, { name: "role", label: "Role", type: "select", required: true, options: createUserRoleOptions(user) }] }];
   if (section === "programs") return [{ title: "Create program", endpoint: "/api/v1/admin/programs", success: "Program created.", fields: [{ name: "slug", label: "Slug", required: true }, { name: "category", label: "Category", required: true }, { name: "title", label: "Title", required: true }, { name: "summary", label: "Summary", type: "textarea" }, { name: "duration", label: "Duration", required: true }, { name: "fees", label: "Fees", type: "number", required: true }, { name: "eligibility", label: "Eligibility", type: "textarea" }, { name: "curriculum", label: "Curriculum (comma separated)", parse: "list" }] }];
   // "batches" is handled by AdminBatchCreatePanel (ADM-003) -- see showBatchCreate below.
   if (section === "payments") return [
