@@ -106,8 +106,9 @@ export default function AdminUserManagementPanel({ section }: { section?: string
       setMessage({ id: row.id, text: errorText(data.detail, "Unable to re-send the link."), tone: "error" });
     } else {
       setMessage({ id: row.id, ...welcomeLinkFeedback(`New link created for ${row.name}.`, data) });
+      // The row is updated locally, so no server refresh here: a refresh re-renders the page and dropped keyboard
+      // focus to <body> after the success message (QA-004). Nothing on this page reads the token state server-side.
       setUsers((prev) => (prev ? prev.map((u) => (u.id === row.id ? { ...u, provisioning_status: "pending_setup" } : u)) : prev));
-      router.refresh();
     }
     refocus(`resend-${row.id}`);
   }

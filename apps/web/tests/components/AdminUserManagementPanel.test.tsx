@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AdminUserManagementPanel from "@/components/AdminUserManagementPanel";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 const base = { division: "overseas", phone: null, profile: {} };
 const users = [
@@ -20,6 +21,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 afterEach(() => {
   cleanup();
+  refresh.mockReset();
   vi.unstubAllGlobals();
 });
 
@@ -90,6 +92,20 @@ describe("AdminUserManagementPanel Re-send", () => {
     expect(outcome).toHaveAttribute("aria-live", "polite");
     expect(within(screen.getByRole("row", { name: /Eli Expired/ })).getByText("Awaiting setup")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: "Re-send set-password link to Eli Expired" })).toHaveFocus());
+  });
+
+  // QA-004: in the browser a successful Re-send left focus on <body>. The old test's refresh() was a no-op, so it could
+  // never see it. This one behaves like Next: whatever a server refresh re-renders drops focus, a moment AFTER the
+  // refocus frame has run. Re-send already updates the row locally, so it must not depend on a refresh at all.
+  it("keeps keyboard focus on the button after a successful re-send even if a server refresh would drop it", async () => {
+    refresh.mockImplementation(() => {
+      setTimeout(() => (document.activeElement as HTMLElement | null)?.blur(), 50);
+    });
+    await renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: "Re-send set-password link to Eli Expired" }));
+    await screen.findByText(/New link created for Eli Expired\./);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(screen.getByRole("button", { name: "Re-send set-password link to Eli Expired" })).toHaveFocus();
   });
 
   it("shows an amber warning, not an error, when the link was created but the email was not sent", async () => {
