@@ -24,6 +24,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.database import SessionLocal
 from app.core.security import hash_password
 from app.models import AuditLog, PasswordResetToken, User
 from app.services.integrations import send_notification
@@ -43,11 +44,6 @@ class IssuedWelcome(NamedTuple):
     raw: str
     expires_at: datetime
     token_id: UUID
-
-
-class Provisioning(NamedTuple):
-    status: str  # "pending_setup" | "link_expired"; a user absent from the result is "active"
-    expires_at: datetime
 
 
 def unusable_password_hash() -> str:
@@ -94,19 +90,25 @@ async def issue_welcome_token(db: AsyncSession, *, user: User, issued_by: User) 
     token = PasswordResetToken(user_id=user.id, token_hash=hashlib.sha256(raw.encode()).hexdigest(), purpose="welcome", expires_at=expires_at)
     db.add(token)
     await db.flush()
-    db.add(AuditLog(user_id=issued_by.id, action="user.welcome_link_issue", entity_type="user", entity_id=str(user.id), metadata_json={"token_id": str(token.id), "expires_at": expires_at.isoformat()}))
+    db.add(
+        AuditLog(user_id=issued_by.id, action="user.welcome_link_issue", entity_type="user", entity_id=str(user.id), metadata_json={"token_id": str(token.id), "expires_at": expires_at.isoformat()})
+    )
     return IssuedWelcome(raw, expires_at, token.id)
 
 
-async def deliver_welcome_link(db: AsyncSession, *, user: User, issued: IssuedWelcome, issued_by: User) -> dict:
+async def deliver_welcome_link(*, user: User, issued: IssuedWelcome, issued_by: User) -> dict:
     """Call AFTER the caller's commit. SMTP and the generic webhook (parity with the invite flow)
     run concurrently; a sender that raises counts as a failed send. The outcome is audited
     (statuses and URL-redacted errors, never the raw token). Never raises."""
     webhook, smtp = await asyncio.gather(
         send_notification("email", {"to": user.email, "template": "welcome_set_password", "reset_token": issued.raw, "expires_hours": WELCOME_EXPIRY_HOURS}),
         send_welcome_email(
-            to_email=user.email, recipient_name=user.full_name, role=user.role,
-            set_password_url=_set_password_url(user, issued.raw), expires_at=issued.expires_at, invited_by_name=issued_by.full_name,
+            to_email=user.email,
+            recipient_name=user.full_name,
+            role=user.role,
+            set_password_url=_set_password_url(user, issued.raw),
+            expires_at=issued.expires_at,
+            invited_by_name=issued_by.full_name,
         ),
         return_exceptions=True,
     )
@@ -119,37 +121,50 @@ async def deliver_welcome_link(db: AsyncSession, *, user: User, issued: IssuedWe
     logger.log(
         logging.INFO if delivered else logging.WARNING,
         "welcome_link_delivered" if delivered else "welcome_link_not_delivered",
-        extra={"extra_fields": {
-            "user_id": str(user.id), "issued_by": str(issued_by.id), "token_id": str(issued.token_id),
-            "smtp_status": smtp_status, "smtp_error": smtp_error, "webhook_status": webhook_status,
-        }},
+        extra={
+            "extra_fields": {
+                "user_id": str(user.id),
+                "issued_by": str(issued_by.id),
+                "token_id": str(issued.token_id),
+                "smtp_status": smtp_status,
+                "smtp_error": smtp_error,
+                "webhook_status": webhook_status,
+            }
+        },
     )
+    # Audited in its OWN short session. Rolling back the request's session on an audit failure would expire every ORM
+    # object the route still reads to build its response (async lazy-load -> MissingGreenlet -> a 500 for an account and
+    # token that are already committed). A failed audit write is logged; it never reaches the caller.
     try:
-        db.add(AuditLog(
-            user_id=issued_by.id, action="user.welcome_link_delivery", entity_type="user", entity_id=str(user.id),
-            metadata_json={"token_id": str(issued.token_id), "smtp_status": smtp_status, "smtp_error": smtp_error, "webhook_status": webhook_status, "webhook_error": webhook_error},
-        ))
-        await db.commit()
+        async with SessionLocal() as audit_db:
+            audit_db.add(
+                AuditLog(
+                    user_id=issued_by.id,
+                    action="user.welcome_link_delivery",
+                    entity_type="user",
+                    entity_id=str(user.id),
+                    metadata_json={"token_id": str(issued.token_id), "smtp_status": smtp_status, "smtp_error": smtp_error, "webhook_status": webhook_status, "webhook_error": webhook_error},
+                )
+            )
+            await audit_db.commit()
     except Exception:
         logger.exception("welcome_link_audit_failed", extra={"extra_fields": {"user_id": str(user.id), "token_id": str(issued.token_id)}})
-        await db.rollback()
     result = {"email_status": smtp_status, "expires_at": issued.expires_at}
     if settings.environment in DEV_TOKEN_ENVIRONMENTS:
         result["development_welcome_token"] = issued.raw
     return result
 
 
-async def provisioning_statuses(db: AsyncSession, user_ids) -> dict[UUID, Provisioning]:
+async def provisioning_statuses(db: AsyncSession, user_ids) -> dict[UUID, str]:
     """Derived from each user's LATEST welcome token (superseded ones included, so a revoked link
     with nothing newer reads `link_expired` and stays Re-sendable). A user who has since set a
     password -- the latest welcome token was used, or any token was used at/after its creation
-    (e.g. forgot-password) -- is active, i.e. absent. Two queries; no N+1."""
+    (e.g. forgot-password) -- is active, i.e. absent. Values are "pending_setup" or "link_expired".
+    Two queries; no N+1."""
     ids = list(user_ids)
     if not ids:
         return {}
-    tokens = (await db.scalars(
-        select(PasswordResetToken).where(PasswordResetToken.user_id.in_(ids), PasswordResetToken.purpose == "welcome")
-    )).all()
+    tokens = (await db.scalars(select(PasswordResetToken).where(PasswordResetToken.user_id.in_(ids), PasswordResetToken.purpose == "welcome"))).all()
     latest: dict[UUID, PasswordResetToken] = {}
     for token in tokens:
         current = latest.get(token.user_id)
@@ -158,21 +173,23 @@ async def provisioning_statuses(db: AsyncSession, user_ids) -> dict[UUID, Provis
     unused = [user_id for user_id, token in latest.items() if token.used_at is None]
     if not unused:
         return {}
-    rows = (await db.execute(
-        select(PasswordResetToken.user_id, func.max(PasswordResetToken.used_at))
-        .where(PasswordResetToken.user_id.in_(unused), PasswordResetToken.used_at.is_not(None))
-        .group_by(PasswordResetToken.user_id)
-    )).all()
+    rows = (
+        await db.execute(
+            select(PasswordResetToken.user_id, func.max(PasswordResetToken.used_at))
+            .where(PasswordResetToken.user_id.in_(unused), PasswordResetToken.used_at.is_not(None))
+            .group_by(PasswordResetToken.user_id)
+        )
+    ).all()
     last_used = {row[0]: row[1] for row in rows}
     now = datetime.now(UTC)
-    result: dict[UUID, Provisioning] = {}
+    result: dict[UUID, str] = {}
     for user_id in unused:
         token = latest[user_id]
         used = last_used.get(user_id)
         if used is not None and used >= token.created_at:
             continue
         expired = token.superseded_at is not None or token.expires_at < now
-        result[user_id] = Provisioning("link_expired" if expired else "pending_setup", token.expires_at)
+        result[user_id] = "link_expired" if expired else "pending_setup"
     return result
 
 
@@ -187,18 +204,17 @@ async def user_ids_with_status(db: AsyncSession, actor: User, status: str) -> li
         stmt = stmt.where(User.division == actor.division)
     candidates = list((await db.scalars(stmt)).all())
     statuses = await provisioning_statuses(db, candidates)
-    return [user_id for user_id in candidates if user_id in statuses and statuses[user_id].status == status]
+    return [user_id for user_id in candidates if statuses.get(user_id) == status]
 
 
 async def resend_wait_seconds(db: AsyncSession, user_id: UUID) -> int:
     """Per-account Re-send throttle (security review 2026-09-19): the first Re-send after creation is
     always allowed; any later one within RESEND_COOLDOWN_SECONDS of the newest welcome link is not.
     0 means allowed. Capped so DB/app clock skew can never produce an absurd wait."""
-    count, newest = (await db.execute(
-        select(func.count(PasswordResetToken.id), func.max(PasswordResetToken.created_at))
-        .where(PasswordResetToken.user_id == user_id, PasswordResetToken.purpose == "welcome")
-    )).one()
-    if count < 2 or newest is None:
+    count, newest = (
+        await db.execute(select(func.count(PasswordResetToken.id), func.max(PasswordResetToken.created_at)).where(PasswordResetToken.user_id == user_id, PasswordResetToken.purpose == "welcome"))
+    ).one()
+    if count < 2:
         return 0
     remaining = RESEND_COOLDOWN_SECONDS - (datetime.now(UTC) - newest).total_seconds()
     return min(RESEND_COOLDOWN_SECONDS, max(0, math.ceil(remaining)))

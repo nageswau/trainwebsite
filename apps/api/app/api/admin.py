@@ -28,14 +28,18 @@ async def ensure_admin(user: User = Depends(get_current_user)):
     return user
 
 
-def _reject_supplied_password(payload: dict, actor: User, route: str, *fields: str) -> None:
+def _reject_supplied_password(payload: dict, actor: User, route: str, field: str) -> None:
     """ENH-003 / DEC-SCOPE-019: an admin never supplies or knows a credential for an account they
     provision -- the user sets their own via the emailed link. Logged as a WARNING (actor and route
     only, never the value): a caller still sending one is a stale client or a misuse worth seeing."""
-    if any(field in payload for field in fields):
+    if field in payload:
         logger.warning("provisioning_password_field_rejected", extra={"extra_fields": {"actor_id": str(actor.id), "route": route}})
         raise HTTPException(422, "A password cannot be supplied; the user sets their own via the emailed set-password link")
 
+
+# Cap on the unfiltered directory list; named so tests can lower it. A `provisioning_status` filter is NOT capped:
+# it is the exact set of accounts that still need an admin's action.
+USER_LIST_CAP = 500
 
 # The same email shape the registration schemas already use (no whitespace, so a CR/LF header-injection
 # attempt cannot pass). The address is the only delivery channel for a credential-setting link, so these
@@ -65,7 +69,7 @@ async def _flush_unique_email(db: AsyncSession) -> None:
         await db.flush()
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(409, "Email already exists")
+        raise HTTPException(409, "Email already exists") from None
 
 
 @router.get("/dashboard")
@@ -101,16 +105,26 @@ async def users(division: str | None = None, role: str | None = None, provisioni
     if role:
         stmt = stmt.where(User.role == role)
     if provisioning_status:
-        # Resolve the exact id set first so the 500-row cap below cannot hide a match.
+        # Resolve the exact id set first; the cap below is skipped for a filtered request so it cannot hide a match.
         stmt = stmt.where(User.id.in_(await user_ids_with_status(db, user, provisioning_status)))
-    xs = (await db.scalars(stmt.order_by(User.created_at.desc()).limit(500))).all()
+    ordered = stmt.order_by(User.created_at.desc())
+    xs = (await db.scalars(ordered if provisioning_status else ordered.limit(USER_LIST_CAP))).all()
     statuses = await provisioning_statuses(db, [x.id for x in xs])
     # ADM-004: "views/edits directory detail records" -- `phone`/`profile` are exposed
     # here so a directory edit form can prefill existing values, not just the flat
     # list ADM-001's activate/deactivate action needed. ENH-003: `provisioning_status` is additive.
     return [
-        {"id": x.id, "name": x.full_name, "email": x.email, "division": x.division, "role": x.role, "active": x.active, "phone": x.phone, "profile": x.profile,
-         "provisioning_status": statuses[x.id].status if x.id in statuses else "active"}
+        {
+            "id": x.id,
+            "name": x.full_name,
+            "email": x.email,
+            "division": x.division,
+            "role": x.role,
+            "active": x.active,
+            "phone": x.phone,
+            "profile": x.profile,
+            "provisioning_status": statuses.get(x.id, "active"),
+        }
         for x in xs
     ]
 
@@ -322,7 +336,7 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
     issued = await issue_welcome_token(db, user=item, issued_by=user)
     db.add(AuditLog(user_id=user.id, action="user.create", entity_type="user", entity_id=str(item.id), metadata_json={"role": role, "division": division}))
     await db.commit()
-    delivery = await deliver_welcome_link(db, user=item, issued=issued, issued_by=user)
+    delivery = await deliver_welcome_link(user=item, issued=issued, issued_by=user)
     return {"id": item.id, "email": item.email, "role": item.role, "division": item.division, **delivery}
 
 
@@ -379,7 +393,7 @@ async def create_welcome_link(user_id: UUID, user: User = Depends(ensure_admin),
     issued = await issue_welcome_token(db, user=item, issued_by=user)
     await db.commit()
     logger.info("welcome_link_resent", extra={"extra_fields": {"actor_id": str(user.id), "user_id": str(item.id)}})
-    delivery = await deliver_welcome_link(db, user=item, issued=issued, issued_by=user)
+    delivery = await deliver_welcome_link(user=item, issued=issued, issued_by=user)
     return {"id": item.id, **delivery}
 
 
@@ -1003,7 +1017,14 @@ async def create_school(payload: dict, user: User = Depends(get_current_user), d
     if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
         raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
     tier_valid_until = date.fromisoformat(payload["tier_valid_until"]) if payload.get("tier_valid_until") else None
-    school = School(name=_fit(payload["name"], "School name", 200), city=_fit(payload.get("city"), "City", 120), state=_fit(payload.get("state"), "State", 120), created_by_user_id=user.id, tier=tier, tier_valid_until=tier_valid_until)
+    school = School(
+        name=_fit(payload["name"], "School name", 200),
+        city=_fit(payload.get("city"), "City", 120),
+        state=_fit(payload.get("state"), "State", 120),
+        created_by_user_id=user.id,
+        tier=tier,
+        tier_valid_until=tier_valid_until,
+    )
     db.add(school)
     await db.flush()
     coordinator = User(
@@ -1028,7 +1049,7 @@ async def create_school(payload: dict, user: User = Depends(get_current_user), d
     db.add(AuditLog(user_id=user.id, action="school.create", entity_type="school", entity_id=str(school.id), metadata_json={"name": school.name}))
     db.add(AuditLog(user_id=user.id, action="school.coordinator_seed", entity_type="user", entity_id=str(coordinator.id), metadata_json={"school_id": str(school.id)}))
     await db.commit()
-    delivery = await deliver_welcome_link(db, user=coordinator, issued=issued, issued_by=user)
+    delivery = await deliver_welcome_link(user=coordinator, issued=issued, issued_by=user)
     return {"id": school.id, "name": school.name, "coordinator_id": coordinator.id, "coordinator_email": coordinator.email, **delivery}
 
 
@@ -1198,7 +1219,7 @@ async def create_school_staff(payload: dict, user: User = Depends(get_current_us
         db.add(SchoolStaffAssignment(user_id=staff.id, school_id=school.id, role=role, assigned_by_user_id=user.id))
     db.add(AuditLog(user_id=user.id, action="school.staff_create", entity_type="user", entity_id=str(staff.id), metadata_json={"role": role, "school_ids": [str(s.id) for s in schools]}))
     await db.commit()
-    delivery = await deliver_welcome_link(db, user=staff, issued=issued, issued_by=user)
+    delivery = await deliver_welcome_link(user=staff, issued=issued, issued_by=user)
     return {"id": staff.id, "email": staff.email, "role": staff.role, "school_ids": [str(s.id) for s in schools], **delivery}
 
 

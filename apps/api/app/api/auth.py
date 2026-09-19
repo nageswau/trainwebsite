@@ -189,22 +189,29 @@ async def reset_password(payload: dict, db: AsyncSession = Depends(get_db)):
         raise HTTPException(422, "Password must be at most 128 characters")
     digest = hashlib.sha256(raw.encode()).hexdigest()
     now = datetime.now(UTC)
+    # Lock order: user row FIRST, then the token -- the same order Re-send uses. Consuming the token first and updating
+    # the user afterwards was the opposite order, so a reset racing a Re-send could deadlock (Postgres aborts one -> 500).
+    # The plain lookup takes no lock; an unknown token is the same generic 400 as every other failure.
+    owner_id = await db.scalar(select(PasswordResetToken.user_id).where(PasswordResetToken.token_hash == digest))
+    if owner_id is None:
+        raise HTTPException(400, "Reset token is invalid or expired")
+    user = await db.scalar(select(User).where(User.id == owner_id).with_for_update())
+    if not user:
+        raise HTTPException(400, "User unavailable")
     # ENH-003: consume atomically so "single-use" holds under concurrency -- a read-then-write
     # let two simultaneous submissions both pass `used_at IS NULL`. Every failure (unknown, used,
     # expired, superseded) is deliberately the same 400 so a caller cannot tell them apart. bcrypt
     # only runs after a valid token, so invalid requests cannot burn CPU.
-    consumed = (await db.execute(
-        update(PasswordResetToken)
-        .where(PasswordResetToken.token_hash == digest, PasswordResetToken.used_at.is_(None), PasswordResetToken.superseded_at.is_(None), PasswordResetToken.expires_at > now)
-        .values(used_at=now)
-        .returning(PasswordResetToken.user_id, PasswordResetToken.purpose)
-    )).first()
+    consumed = (
+        await db.execute(
+            update(PasswordResetToken)
+            .where(PasswordResetToken.token_hash == digest, PasswordResetToken.used_at.is_(None), PasswordResetToken.superseded_at.is_(None), PasswordResetToken.expires_at > now)
+            .values(used_at=now)
+            .returning(PasswordResetToken.purpose)
+        )
+    ).first()
     if not consumed:
         raise HTTPException(400, "Reset token is invalid or expired")
-    user = await db.get(User, consumed.user_id)
-    if not user:
-        # Raising without a commit rolls the token consumption back with the session.
-        raise HTTPException(400, "User unavailable")
     welcome = consumed.purpose == "welcome"
     if welcome and not user.active:
         # A welcome link is only good for an active account (security review S2): the rollback keeps

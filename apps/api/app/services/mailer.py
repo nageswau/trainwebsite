@@ -199,9 +199,8 @@ async def send_parent_notification_email(*, to_email: str, recipient_name: str, 
 WELCOME_EXPIRY_HOURS_LABEL = "72 hours"
 
 
-def _welcome_html(*, recipient_name: str, role_label: str, set_password_url: str, expires_at: datetime, invited_by_name: str) -> str:
+def _welcome_html(*, recipient_name: str, role_label: str, set_password_url: str, expires_label: str, invited_by_name: str) -> str:
     logo_url = f"{settings.frontend_url}/brand/logo-dark.png"
-    expires_label = expires_at.astimezone(UTC).strftime("%d %b %Y %H:%M UTC")
     name, role, inviter = escape(recipient_name), escape(role_label), escape(invited_by_name)
     url = escape(set_password_url, quote=True)
     return f"""<!doctype html>
@@ -253,8 +252,7 @@ def _welcome_html(*, recipient_name: str, role_label: str, set_password_url: str
 </html>"""
 
 
-def _welcome_text(*, recipient_name: str, role_label: str, set_password_url: str, expires_at: datetime, invited_by_name: str) -> str:
-    expires_label = expires_at.astimezone(UTC).strftime("%d %b %Y %H:%M UTC")
+def _welcome_text(*, recipient_name: str, role_label: str, set_password_url: str, expires_label: str, invited_by_name: str) -> str:
     return (
         f"Hi {recipient_name},\n\n"
         f"{invited_by_name} has created your EduSphere account as {role_label}.\n\n"
@@ -265,7 +263,13 @@ def _welcome_text(*, recipient_name: str, role_label: str, set_password_url: str
 
 
 async def send_welcome_email(
-    *, to_email: str, recipient_name: str, role: str, set_password_url: str, expires_at: datetime, invited_by_name: str,
+    *,
+    to_email: str,
+    recipient_name: str,
+    role: str,
+    set_password_url: str,
+    expires_at: datetime,
+    invited_by_name: str,
 ) -> tuple[str, str | None]:
     """ENH-003: the first-time set-password email for an admin-provisioned account. Same
     (status, error) contract as the invite mailer: `not_configured` is a normal, reportable
@@ -280,7 +284,8 @@ async def send_welcome_email(
         msg["Subject"] = "Welcome to EduSphere -- set your password"
         msg["From"] = f"EduSphere <{settings.smtp_from_email}>"
         msg["To"] = to_email
-        fields = dict(recipient_name=recipient_name, role_label=role_label, set_password_url=set_password_url, expires_at=expires_at, invited_by_name=invited_by_name)
+        expires_label = expires_at.astimezone(UTC).strftime("%d %b %Y %H:%M UTC")
+        fields = dict(recipient_name=recipient_name, role_label=role_label, set_password_url=set_password_url, expires_label=expires_label, invited_by_name=invited_by_name)
         msg.set_content(_welcome_text(**fields))
         msg.add_alternative(_welcome_html(**fields), subtype="html")
         await asyncio.to_thread(_send_sync, msg)

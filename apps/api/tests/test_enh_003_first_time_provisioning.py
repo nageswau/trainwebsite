@@ -44,8 +44,12 @@ async def _seed_token(db_session, user, *, purpose="welcome", expires_in=timedel
     raw = uuid.uuid4().hex + uuid.uuid4().hex
     now = datetime.now(UTC)
     token = PasswordResetToken(
-        user_id=user.id, token_hash=_sha(raw), purpose=purpose, expires_at=now + expires_in,
-        used_at=now if used else None, superseded_at=now if superseded else None,
+        user_id=user.id,
+        token_hash=_sha(raw),
+        purpose=purpose,
+        expires_at=now + expires_in,
+        used_at=now if used else None,
+        superseded_at=now if superseded else None,
     )
     if created_at is not None:
         token.created_at = created_at
@@ -69,6 +73,7 @@ def _app_loggers_enabled():
 
 
 # --- Task 1: schema -------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_password_reset_tokens_have_purpose_and_superseded_columns(db_session):
@@ -105,7 +110,9 @@ def _configure_smtp(monkeypatch):
 
 
 def _welcome_kwargs(**overrides):
-    base = dict(to_email="new.staff@example.local", recipient_name="Asha", role="academic_team", set_password_url=LINK, expires_at=datetime.now(UTC) + timedelta(hours=72), invited_by_name="Overseas Admin")
+    base = dict(
+        to_email="new.staff@example.local", recipient_name="Asha", role="academic_team", set_password_url=LINK, expires_at=datetime.now(UTC) + timedelta(hours=72), invited_by_name="Overseas Admin"
+    )
     base.update(overrides)
     return base
 
@@ -227,10 +234,10 @@ async def test_statuses_pending_expired_resent_revoked_and_resolved(db_session):
 
     ids = [u.id for u in (pending, expired, resent, revoked, consumed, resolved, plain)]
     result = await provisioning.provisioning_statuses(db_session, ids)
-    assert result[pending.id].status == "pending_setup"
-    assert result[expired.id].status == "link_expired"
-    assert result[resent.id].status == "pending_setup"
-    assert result[revoked.id].status == "link_expired"
+    assert result[pending.id] == "pending_setup"
+    assert result[expired.id] == "link_expired"
+    assert result[resent.id] == "pending_setup"
+    assert result[revoked.id] == "link_expired"
     assert consumed.id not in result and resolved.id not in result and plain.id not in result
     assert await provisioning.provisioning_statuses(db_session, []) == {}
 
@@ -310,11 +317,11 @@ async def test_deliver_reports_status_and_only_returns_the_dev_token_in_dev_or_t
     admin, target, issued = await _delivery_setup(db_session, monkeypatch, smtp=("sent", None), webhook=("not_configured", None))
 
     monkeypatch.setattr(settings, "environment", "test")
-    dev = await provisioning.deliver_welcome_link(db_session, user=target, issued=issued, issued_by=admin)
+    dev = await provisioning.deliver_welcome_link(user=target, issued=issued, issued_by=admin)
     assert dev["email_status"] == "sent" and dev["development_welcome_token"] == issued.raw and dev["expires_at"] == issued.expires_at
 
     monkeypatch.setattr(settings, "environment", "production")
-    prod = await provisioning.deliver_welcome_link(db_session, user=target, issued=issued, issued_by=admin)
+    prod = await provisioning.deliver_welcome_link(user=target, issued=issued, issued_by=admin)
     assert "development_welcome_token" not in prod
 
     audit = (await db_session.scalars(select(AuditLog).where(AuditLog.entity_id == str(target.id), AuditLog.action == "user.welcome_link_delivery"))).all()
@@ -326,7 +333,7 @@ async def test_deliver_reports_status_and_only_returns_the_dev_token_in_dev_or_t
 async def test_deliver_redacts_urls_from_the_errors_it_stores(db_session, monkeypatch):
     leaky = "Client error '404 Not Found' for url 'https://hooks.example.local/secret-path?key=abc123'"
     admin, target, issued = await _delivery_setup(db_session, monkeypatch, smtp=("failed", "connect to https://smtp.example.local:587 failed"), webhook=("failed", leaky))
-    await provisioning.deliver_welcome_link(db_session, user=target, issued=issued, issued_by=admin)
+    await provisioning.deliver_welcome_link(user=target, issued=issued, issued_by=admin)
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == str(target.id), AuditLog.action == "user.welcome_link_delivery"))
     stored = json.dumps(audit.metadata_json)
     assert "hooks.example.local" not in stored and "abc123" not in stored and "smtp.example.local" not in stored
@@ -339,7 +346,7 @@ async def test_deliver_treats_a_raising_sender_as_a_failed_send_not_an_exception
         raise ValueError("Header values may not contain linefeed or carriage return characters")
 
     admin, target, issued = await _delivery_setup(db_session, monkeypatch, smtp=boom, webhook=("not_configured", None))
-    result = await provisioning.deliver_welcome_link(db_session, user=target, issued=issued, issued_by=admin)
+    result = await provisioning.deliver_welcome_link(user=target, issued=issued, issued_by=admin)
     assert result["email_status"] == "failed"
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == str(target.id), AuditLog.action == "user.welcome_link_delivery"))
     assert audit.metadata_json["smtp_status"] == "failed" and "linefeed" in audit.metadata_json["smtp_error"]
@@ -353,7 +360,7 @@ async def test_deliver_never_raises_when_the_audit_write_fails(db_session, monke
         raise RuntimeError("db down")
 
     monkeypatch.setattr(db_session, "commit", broken_commit)
-    result = await provisioning.deliver_welcome_link(db_session, user=target, issued=issued, issued_by=admin)
+    result = await provisioning.deliver_welcome_link(user=target, issued=issued, issued_by=admin)
     assert result["email_status"] == "failed"
 
 
@@ -371,7 +378,7 @@ async def test_a_delivered_link_is_logged_at_info_without_secrets(db_session, mo
 
     admin, target, issued = await _delivery_setup(db_session, monkeypatch, smtp=("sent", None), webhook=("not_configured", None))
     with caplog.at_level(logging.INFO, logger="app.provisioning"):
-        await provisioning.deliver_welcome_link(db_session, user=target, issued=issued, issued_by=admin)
+        await provisioning.deliver_welcome_link(user=target, issued=issued, issued_by=admin)
     records, blob = _provisioning_log_blob(caplog)
     record = next(r for r in records if r.getMessage() == "welcome_link_delivered")
     assert record.levelno == logging.INFO
@@ -387,7 +394,7 @@ async def test_an_undelivered_link_is_logged_at_warning_and_redacts_addresses_an
     error = "550 <victim@example.local> rejected via https://smtp.example.local:587"
     admin, target, issued = await _delivery_setup(db_session, monkeypatch, smtp=("failed", error), webhook=("not_configured", None))
     with caplog.at_level(logging.INFO, logger="app.provisioning"):
-        await provisioning.deliver_welcome_link(db_session, user=target, issued=issued, issued_by=admin)
+        await provisioning.deliver_welcome_link(user=target, issued=issued, issued_by=admin)
     records, blob = _provisioning_log_blob(caplog)
     record = next(r for r in records if r.getMessage() == "welcome_link_not_delivered")
     assert record.levelno == logging.WARNING
@@ -510,6 +517,7 @@ async def test_a_refused_welcome_link_for_an_inactive_account_is_logged_as_a_war
 
 # --- Task 5: create routes ------------------------------------------------------------
 
+
 async def _admin_client(client, db_session, *, role="overseas_admin", division="overseas"):
     admin = await _make_user(db_session, role=role, division=division)
     assert (await _login(client, admin.email, division="it" if division in ("it", "global") else division)).status_code == 200
@@ -521,11 +529,14 @@ def _no_password_keys(body: dict) -> bool:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("path,body,field", [
-    ("/api/v1/admin/users", {"role": "counselor", "division": "overseas", "full_name": "X"}, "password"),
-    ("/api/v1/overseas-admin/school-staff", {"role": "academic_team", "full_name": "X"}, "password"),
-    ("/api/v1/overseas-admin/schools", {"name": "S", "coordinator_full_name": "X"}, "coordinator_password"),
-])
+@pytest.mark.parametrize(
+    "path,body,field",
+    [
+        ("/api/v1/admin/users", {"role": "counselor", "division": "overseas", "full_name": "X"}, "password"),
+        ("/api/v1/overseas-admin/school-staff", {"role": "academic_team", "full_name": "X"}, "password"),
+        ("/api/v1/overseas-admin/schools", {"name": "S", "coordinator_full_name": "X"}, "coordinator_password"),
+    ],
+)
 async def test_a_supplied_password_is_rejected_with_422_and_creates_nothing(client, db_session, path, body, field):
     await _admin_client(client, db_session)
     email = _email()
@@ -748,6 +759,7 @@ async def test_a_rejected_password_field_is_logged_as_a_warning_naming_the_actor
 
 # --- Task 6: Re-send, status, filter, dashboard, revoke -------------------------------
 
+
 async def _provision_via_api(client, monkeypatch, *, role="counselor", division="overseas"):
     monkeypatch.setattr(settings, "environment", "test")
     email = _email()
@@ -775,7 +787,11 @@ async def test_resend_supersedes_the_old_link_and_issues_a_new_72_hour_one(clien
     assert timedelta(hours=71, minutes=59) < datetime.fromisoformat(body["expires_at"]) - datetime.now(UTC) <= timedelta(hours=72)
 
     assert (await client.post(RESET_URL, json={"token": old, "new_password": NEW_PASSWORD})).status_code == 400
-    open_tokens = (await db_session.scalars(select(PasswordResetToken).where(PasswordResetToken.user_id == uuid.UUID(created["id"]), PasswordResetToken.purpose == "welcome", PasswordResetToken.superseded_at.is_(None)))).all()
+    open_tokens = (
+        await db_session.scalars(
+            select(PasswordResetToken).where(PasswordResetToken.user_id == uuid.UUID(created["id"]), PasswordResetToken.purpose == "welcome", PasswordResetToken.superseded_at.is_(None))
+        )
+    ).all()
     assert len(open_tokens) == 1
     assert (await client.post(RESET_URL, json={"token": body["development_welcome_token"], "new_password": NEW_PASSWORD})).status_code == 200
 
@@ -882,6 +898,93 @@ async def test_a_later_password_set_via_forgot_password_resolves_the_expired_sta
     await _seed_token(db_session, user, purpose="reset", used=True)
     ids = {r["id"] for r in (await client.get("/api/v1/admin/users?provisioning_status=link_expired")).json()}
     assert str(user.id) not in ids
+
+
+# Codex review, finding 1: the status filter resolves the exact id set, but the route then applied the 500-row cap to
+# that set. "Not limited by the 500-row cap" (spec 6.4, API contract) means the FILTERED set is never truncated.
+@pytest.mark.asyncio
+async def test_a_status_filter_returns_the_whole_set_even_when_it_exceeds_the_list_cap(client, db_session, monkeypatch):
+    from app.api import admin as admin_module
+
+    monkeypatch.setattr(admin_module, "USER_LIST_CAP", 2)
+    admin = await _make_user(db_session)
+    assert (await _login(client, admin.email)).status_code == 200
+    emails = []
+    for _ in range(3):
+        member = await _make_user(db_session, role="counselor", email_verified=False)
+        await _seed_token(db_session, member, expires_in=timedelta(hours=-1))
+        emails.append(member.email)
+    filtered = (await client.get("/api/v1/admin/users?provisioning_status=link_expired")).json()
+    assert set(emails) <= {row["email"] for row in filtered}, "a matching account was hidden by the list cap"
+    assert len((await client.get("/api/v1/admin/users")).json()) == 2  # the unfiltered directory keeps its cap
+
+
+# Codex review, finding 5: `deliver_welcome_link` rolls back when its own audit write fails, and a rollback expires every
+# ORM object on the session; the routes then read `item.id` etc. and hit implicit async IO (MissingGreenlet -> 500)
+# although the account and token were already committed. "Never raises" must hold for the whole request.
+@pytest.mark.asyncio
+@pytest.mark.parametrize("route", ["users", "school-staff", "schools", "resend"])
+async def test_a_failing_delivery_audit_never_turns_a_committed_provisioning_into_a_500(client, db_session, monkeypatch, route):
+    monkeypatch.setattr(settings, "environment", "test")
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    real_commit = AsyncSession.commit
+
+    async def commit(self):
+        # Fail only the delivery-audit commit, AFTER its row has been flushed -- as a real commit failure would --
+        # so the session holds an open transaction and the service's rollback actually expires every loaded object.
+        if any(isinstance(obj, AuditLog) and obj.action == "user.welcome_link_delivery" for obj in self.sync_session.new):
+            await self.flush()
+            raise RuntimeError("audit store unavailable")
+        return await real_commit(self)
+
+    monkeypatch.setattr(AsyncSession, "commit", commit)
+    await _admin_client(client, db_session)
+    if route == "resend":
+        member, _, _ = await _pending_user(db_session)
+        response = await client.post(f"/api/v1/admin/users/{member.id}/welcome-links")
+    else:
+        body = {
+            "users": ("/api/v1/admin/users", {"role": "counselor", "division": "overseas", "full_name": "Audit Down", "email": _email()}),
+            "school-staff": ("/api/v1/overseas-admin/school-staff", {"role": "academic_team", "full_name": "Audit Down", "email": _email(), "school_ids": []}),
+            "schools": ("/api/v1/overseas-admin/schools", {"name": "Audit Down School", "coordinator_full_name": "Audit Down", "coordinator_email": _email()}),
+        }[route]
+        response = await client.post(body[0], json=body[1])
+    assert response.status_code == 201, response.text
+    assert response.json()["email_status"] in {"sent", "failed", "not_configured"}
+
+
+# Codex review, finding 6: Re-send locks the user row and THEN revokes tokens; reset used to consume the token first and
+# update the user afterwards -- the opposite order, so a reset racing a Re-send could deadlock (Postgres aborts one
+# transaction -> a 500). Both must take the user row first. Here a Re-send-like transaction holds the user lock while a
+# reset request is in flight and then revokes the token; with a consistent order that just supersedes the link.
+@pytest.mark.asyncio
+async def test_a_reset_racing_a_resend_cannot_deadlock(client, db_session):
+    member, raw, _ = await _pending_user(db_session)
+    await db_session.execute(select(User).where(User.id == member.id).with_for_update())  # Re-send step 1: lock the user
+    reset = asyncio.create_task(client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD}))
+    await asyncio.sleep(2)  # let the reset request reach its first lock wait
+    revoke_error = None
+    try:  # Re-send step 2: revoke the open welcome tokens (what `revoke_welcome_tokens` does)
+        await asyncio.wait_for(
+            db_session.execute(
+                sa.update(PasswordResetToken)
+                .where(PasswordResetToken.user_id == member.id, PasswordResetToken.purpose == "welcome", PasswordResetToken.used_at.is_(None), PasswordResetToken.superseded_at.is_(None))
+                .values(superseded_at=datetime.now(UTC))
+            ),
+            timeout=10,
+        )
+        await db_session.commit()
+    except Exception as exc:  # a Postgres deadlock abort lands here (or in the reset request below)
+        revoke_error = exc
+        await db_session.rollback()
+    reset_error = None
+    try:
+        response = await asyncio.wait_for(reset, timeout=15)
+    except Exception as exc:
+        reset_error, response = exc, None
+    assert revoke_error is None and reset_error is None, f"deadlock: revoke={revoke_error!r} reset={reset_error!r}"
+    assert response.status_code == 400  # the Re-send superseded the link first, so the reset is refused, cleanly
 
 
 # QA-006: the expired-links panel sat below the fold on the IT and Overseas dashboards, so nothing at the top told an

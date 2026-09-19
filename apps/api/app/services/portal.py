@@ -73,7 +73,7 @@ async def _safe[T](db: AsyncSession, fn: Callable[[], Awaitable[T]], default: T)
 
 
 # ENH-003 / QA-005: the same wording the Super Admin table and the Manage users panel use for a user's setup state.
-_SETUP_LABEL = {"pending_setup": "Awaiting setup", "link_expired": "Link expired"}
+_SETUP_LABEL = {"active": "Password set", "pending_setup": "Awaiting setup", "link_expired": "Link expired"}
 
 
 def _payload(title, subtitle, columns=(), rows=(), metrics=(), actions=(), panels=()):
@@ -1341,7 +1341,7 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 section.title(),
                 "Role-scoped user administration.",
                 (("id", "reference"), ("name", "Name"), ("email", "Email"), ("role", "Role"), ("active", "Active"), ("setup", "Setup")),
-                ({"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "active": u.active, "setup": _SETUP_LABEL[setup[u.id].status] if u.id in setup else "Password set"} for u in rows),
+                ({"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "active": u.active, "setup": _SETUP_LABEL[setup.get(u.id, "active")]} for u in rows),
             )
         if section == "agents" and division == "overseas":
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic
