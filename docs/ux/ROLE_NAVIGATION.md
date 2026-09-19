@@ -178,6 +178,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-SCH-003` — /school/coordinator/students — Student roster, view/edit.
 - `SCR-SCH-004` — /school/coordinator/students/new — Add one student by hand.
 - `SCR-SCH-025` — /school/coordinator/students/[id] — One student's Journey Timeline (`SCH-008`, added 2026-09-15).
+- `SCR-SCH-027` — /school/coordinator/promotion — Promote or hold back students at academic-year rollover (`ENH-004`, added 2026-09-19).
 - `SCR-SCH-005` — /school/coordinator/students/bulk-upload — Bulk roster upload (template-download-first).
 - `SCR-SCH-006` — /school/coordinator/activities — Schedule activities, track attendance.
 - `SCR-SCH-012` — /school/coordinator/team — Invite Principal/Teacher/Parent accounts.
