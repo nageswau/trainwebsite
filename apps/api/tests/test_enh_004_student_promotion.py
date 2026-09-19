@@ -915,3 +915,79 @@ async def test_promoting_with_no_active_year_is_logged(client, db_session, monke
     await _promote(client, [_item(ctx["students"][0])])
 
     assert _events(caplog, "student_promotion_no_active_year") == [{"actor_id": str(ctx["coordinator"].id), "school_id": str(ctx["school"].id)}]
+
+
+# ---------------------------------------------------------------- grade-history read endpoint
+
+
+def _history_url(student) -> str:
+    return f"/api/v1/school/students/{student.id}/grade-history"
+
+
+@pytest.mark.asyncio
+async def test_grade_history_lists_transitions_newest_first_with_year_labels(client, db_session, future_years):
+    year_one = await future_years()
+    ctx = await _school(db_session)
+    student = ctx["students"][0]
+    await _login(client, ctx["coordinator"].email)
+    first = await _promote(client, [_item(student)])
+    assert first.json()["academic_year"]["id"] == str(year_one.id)
+    # A later-dated year is created and becomes "the" active year: the rollover to the next year.
+    year_two = await future_years(date(9999, 5, 1))
+    second = await _promote(client, [_item(student)])
+    assert second.json()["academic_year"]["id"] == str(year_two.id)
+    assert second.json()["results"][0]["status"] == "promoted"
+
+    response = await client.get(_history_url(student))
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["student"] == {"id": str(student.id), "full_name": "Child 0"}
+    history = body["history"]
+    assert [(h["action"], h["from"]["grade_level"], h["to"]["grade_level"]) for h in history] == [("promoted", 9, 10), ("promoted", 8, 9)]
+    assert (history[0]["from"]["academic_year_label"], history[0]["to"]["academic_year_label"]) == (year_one.label, year_two.label)
+    assert (history[1]["from"]["academic_year_id"], history[1]["from"]["academic_year_label"]) == (None, None)
+    assert history[1]["to"]["academic_year_label"] == year_one.label
+    assert (history[0]["to"]["grade_or_class"], history[1]["from"]["grade_or_class"]) == ("Grade 10-A", "Grade 8-A")
+    assert "performed_by_user_id" not in history[0] and "performed_by" not in history[0]
+
+
+@pytest.mark.asyncio
+async def test_a_never_promoted_student_has_an_empty_history(client, db_session):
+    ctx = await _school(db_session)
+    await _login(client, ctx["coordinator"].email)
+    response = await client.get(_history_url(ctx["students"][1]))
+    assert response.status_code == 200, response.text
+    assert response.json()["history"] == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "role_key,student_index,expected",
+    [
+        ("coordinator", 0, 200), ("coordinator", 1, 200),
+        ("principal", 1, 200),
+        ("teacher", 0, 200), ("teacher", 1, 403),  # the teacher is assigned to students[0] only
+        ("parent", 0, 200), ("parent", 1, 403),  # the parent is linked to students[0] only
+    ],
+)
+async def test_grade_history_follows_the_existing_student_read_scope(client, db_session, role_key, student_index, expected):
+    ctx = await _school(db_session)
+    await _login(client, ctx[role_key].email)
+    response = await client.get(_history_url(ctx["students"][student_index]))
+    assert response.status_code == expected, response.text
+
+
+@pytest.mark.asyncio
+async def test_grade_history_of_another_school_is_403_and_unknown_is_404(client, db_session):
+    school_a = await _school(db_session)
+    school_b = await _school(db_session)
+    await _login(client, school_b["coordinator"].email)
+    assert (await client.get(_history_url(school_a["students"][0]))).status_code == 403
+    assert (await client.get(f"/api/v1/school/students/{uuid.uuid4()}/grade-history")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_grade_history_requires_a_session(client, db_session):
+    ctx = await _school(db_session)
+    assert (await client.get(_history_url(ctx["students"][0]))).status_code == 401

@@ -531,3 +531,29 @@ class StudentPromotionResponse(BaseModel):
     academic_year: PromotionYear
     counts: PromotionCounts
     results: list[PromotionResult]
+
+
+class GradeHistoryState(BaseModel):
+    academic_year_id: UUID | None = None
+    academic_year_label: str | None = None
+    grade_level: int | None = None
+    grade_or_class: str | None = None
+
+
+class GradeHistoryEntry(BaseModel):
+    model_config = {"populate_by_name": True}
+    id: UUID
+    action: Literal["promoted", "held_back"]
+    from_: GradeHistoryState = Field(alias="from")
+    to: GradeHistoryState
+    created_at: datetime
+
+
+class GradeHistoryStudent(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class GradeHistoryResponse(BaseModel):
+    student: GradeHistoryStudent
+    history: list[GradeHistoryEntry]

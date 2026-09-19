@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, U
 from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.api.auth import _set_auth_cookies
 from app.api.deps import get_current_user
@@ -57,7 +58,7 @@ from app.models import (
     UserRoleAssignment,
     VisaCase,
 )
-from app.schemas import StudentPromotionRequest, StudentPromotionResponse
+from app.schemas import GradeHistoryResponse, StudentPromotionRequest, StudentPromotionResponse
 from app.services.integrations import send_notification
 from app.services.mailer import send_parent_notification_email, send_school_invite_email
 
@@ -1039,6 +1040,37 @@ async def student_timeline(student_id: UUID, user: User = Depends(get_current_us
             events.append({"date": visa_r.updated_at, "category": "global_education", "type": "visa_status", "title": f"Visa status: {visa_r.status}", "detail": uni_r.name})
     events.sort(key=lambda e: e["date"])
     return {"student": {"id": student.id, "full_name": student.full_name}, "events": events}
+
+
+@router.get("/students/{student_id}/grade-history", response_model=GradeHistoryResponse)
+async def student_grade_history(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-004 -- one student's grade/academic-year transitions, newest first. The same own-scope
+    loader as the overview and timeline (own institution; assigned-only for a Teacher; own-child-only
+    for a Parent). Bounded by one row per academic year per student, so it is not paginated. The
+    performer is stored but deliberately not returned, so a Parent never receives a staff user ID."""
+    student = await _load_readable_student(db, user, student_id)
+    from_year = aliased(AcademicYear)
+    to_year = aliased(AcademicYear)
+    rows = (
+        await db.execute(
+            select(SchoolStudentGradeHistory, from_year, to_year)
+            .outerjoin(from_year, from_year.id == SchoolStudentGradeHistory.from_academic_year_id)
+            .join(to_year, to_year.id == SchoolStudentGradeHistory.to_academic_year_id)
+            .where(SchoolStudentGradeHistory.school_student_id == student.id)
+            .order_by(SchoolStudentGradeHistory.created_at.desc(), SchoolStudentGradeHistory.id.desc())
+        )
+    ).all()
+    return {
+        "student": {"id": student.id, "full_name": student.full_name},
+        "history": [
+            {
+                "id": h.id, "action": h.action, "created_at": h.created_at,
+                "from": {"academic_year_id": h.from_academic_year_id, "academic_year_label": from_y.label if from_y else None, "grade_level": h.from_grade_level, "grade_or_class": h.from_grade_or_class},
+                "to": {"academic_year_id": h.to_academic_year_id, "academic_year_label": to_y.label, "grade_level": h.to_grade_level, "grade_or_class": h.to_grade_or_class},
+            }
+            for h, from_y, to_y in rows
+        ],
+    }
 
 
 @router.post("/students", status_code=201)
