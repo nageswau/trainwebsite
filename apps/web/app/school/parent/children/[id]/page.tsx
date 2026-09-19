@@ -1,5 +1,6 @@
 import PortalShell from "@/components/PortalShell";
 import SchoolChildOverview, { loadChildOverview, type ChildOverview } from "@/components/SchoolChildOverview";
+import SchoolGradeHistory, { loadGradeHistory, type StudentGradeHistory } from "@/components/SchoolGradeHistory";
 import SchoolStudentTimeline, { loadStudentTimeline, type StudentTimeline } from "@/components/SchoolStudentTimeline";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
@@ -26,12 +27,19 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
       </div>
     );
   }
-  const timeline: StudentTimeline | null = await loadStudentTimeline(id).catch(() => null);
+  const [timeline, gradeHistory]: [StudentTimeline | null, StudentGradeHistory | null] = await Promise.all([
+    loadStudentTimeline(id).catch(() => null),
+    loadGradeHistory(id).catch(() => null),
+  ]);
   return (
     <PortalShell nav={SCHOOL_NAV.parent} roleLabel="Parent" userName={user.full_name}>
       <div className="portal-content">
         <a className="btn secondary" href="/school/parent/dashboard">Back to my children</a>
         <SchoolChildOverview overview={overview} />
+        <div className="card">
+          <h3>Grade history</h3>
+          {gradeHistory ? <SchoolGradeHistory history={gradeHistory.history} /> : <p className="muted">Grade history is unavailable right now.</p>}
+        </div>
         <div className="card">
           <h3>Journey timeline</h3>
           {timeline ? <SchoolStudentTimeline events={timeline.events} /> : <p className="muted">Timeline is unavailable right now.</p>}
