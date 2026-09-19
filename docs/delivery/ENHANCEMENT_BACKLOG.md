@@ -423,11 +423,24 @@ a different role — must reuse the same conflict-handling discipline already pr
 **Complexity:** Medium. **Risk:** High (credential-handling; prioritize the audit even if the rest of
 the backlog is resequenced).
 
-**Implementation status (2026-09-19): IMPLEMENTED, NOT COMPLETE.** Built test-first on branch
-`feature/enh-003-first-time-provisioning` per `docs/superpowers/plans/2026-09-19-enh-003-first-time-provisioning.md`
-(see its "Implementation notes"). Backend and frontend unit/component tests pass and the type-check is clean.
-**Still required before this can be called complete:** a real-browser validation (the Playwright specs, including
-the 19 migrated ones, have not been executed), and an independent code review. `DEC-SCOPE-014`'s
+**Implementation status (2026-09-19): IMPLEMENTED and VERIFIED — deliberately not declared COMPLETE.** Built test-first on
+branch `feature/enh-003-first-time-provisioning` per `docs/superpowers/plans/2026-09-19-enh-003-first-time-provisioning.md`
+(see its "Implementation notes"). Evidence gathered fresh on the final tree: full backend suite **789 passed**; frontend
+**13 files / 81 tests** passed; `tsc --noEmit` clean; ESLint **0 errors** (31 warnings, all pre-existing); production
+`next build` succeeds; migration `0032` upgrades a legacy table without losing a row (existing tokens read `reset`), passes
+`alembic check`, and downgrades and re-upgrades cleanly; the project's local CI runs the **full Playwright suite: 240 passed,
+0 failed** (the base commit: 233 passed, 0 failed; +7 new); real-browser verification (Browser Use) passed **191 checks with
+0 failures** across all 29 acceptance criteria. An independent code review was performed and its seven HIGH/MEDIUM findings
+were verified and fixed; its LOW findings were the missing `RTM.md`/`SCREEN_CATALOG.md` entries (now added) and that the
+Playwright spec has no successful reset-password UI submission (covered by the browser verification instead).
+
+**Why this is not marked COMPLETE.** (1) The repository's own CI gate is red at the *base commit* and stays red with identical
+counts: `ruff format --check` (55 files), `ruff check` (33 errors) and `mypy app` (154 errors). ENH-003 adds none of them
+(verified by running the same tools on both trees), but "lint/type-check passes" cannot be claimed for the repo until that
+existing debt is fixed or formally accepted — a decision for the owner. (2) Two acceptance criteria cannot be observed in the
+QA environment: the API's `ENVIRONMENT=production` behaviour (AC-29, a deployment check) and the Google Analytics skip on the
+reset page (AC-27, needs a GA id). (3) Six items are not observable from a browser and rest on backend tests alone (AC-15,
+AC-17, AC-22, AC-25, and two review findings: delivery-audit failure and the reset/Re-send lock order). `DEC-SCOPE-014`'s
 `SchoolAccountInvite` flow is untouched.
 
 ---

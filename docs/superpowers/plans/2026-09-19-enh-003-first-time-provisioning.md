@@ -2891,3 +2891,14 @@ first or by a mutation check, not by reading.
   `SCREEN_CATALOG.md` were not touched: ENH items are not tracked there (ENH-001 precedent).
 - **Verification environment:** backend tests ran in throwaway containers built from the repo's `edusphere-api` image, mounting the
   worktree, against a **separate database** (`edusphere_enh003`) on the same Postgres server, so the dev database was never migrated.
+- **Interfaces as finally built (post-review simplification):** `provisioning_statuses` returns a plain `dict[UUID, str]` (`"pending_setup"` / `"link_expired"`, absent = active) -- the plan's `Provisioning(status, expires_at)` tuple was dropped because nothing read `expires_at`; `deliver_welcome_link` takes no session (its delivery audit is written in its own short session so a failed audit can never expire the request's ORM objects); the status filter on `GET /admin/users` is not capped and the Manage users panel asks the server for it; reset locks the user row before consuming the token (same order as Re-send).
+- **Verification (2026-09-19, final tree):** full backend suite 789 passed; vitest 13 files / 81 tests; `tsc` clean; ESLint 0 errors;
+  production `next build` OK; migration round-trip on legacy data OK; project CI Playwright 240 passed / 0 failed (base 233 / 0);
+  Browser Use 191 checks / 0 failed over all 29 acceptance criteria. Findings from that pass, all fixed: three e2e specs the
+  migration had missed or got wrong (`adm-001` still filled the removed password field, `adm-008` logged in with a password
+  it never set, and this feature's own spec used an ambiguous `getByRole("alert")` because Next.js renders its own), and one
+  multi-account journey (`sch-008`) that now needs the same `test.setTimeout` its sibling long journeys have (14.5 s -> 16.7 s
+  against the 15 s default). Lesson recorded: the local CI reads the worktree's `.env`; a QA `.env` pointing SMTP at an
+  unreachable host made every email-sending route take 3-4 s and caused eight false timeouts (a ninth, `sch-008`, was a real
+  regression) until it was moved aside.
+  ENH-003 adds no `ruff format`/`ruff check`/`mypy` findings; those gates were already failing at the base commit.

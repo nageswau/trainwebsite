@@ -193,6 +193,13 @@ one contract document, closing the Feature ID → AC → contract → test segme
 School) appear above, each citing at least one contract document and its `TEST_REWRITE_PLAN.md` stub
 (full or partial).
 
+**Addendum, 2026-09-19 (`ENH-003`)** — one enhancement row, added because its design spec (§12) requires
+it. `ENH-001`/`ENH-002` are not tracked in this matrix; `ENH-003` is, at the spec's explicit direction.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `ENH-003` | `API_CONTRACT.md` §5 (`/admin/users`, `/admin/users/{id}/welcome-links`, `/admin/dashboard`) and §12A (`/overseas-admin/schools`, `/overseas-admin/school-staff`), `DATA_MODEL.md` §1.4 (`password_reset_tokens.purpose`/`superseded_at`, migration `0032`), `SECURITY_CONTROLS.md` (credential provisioning; deployment checklist `ENVIRONMENT`) | **Not audited** (an enhancement; the old workbook was not consulted for it) | **IMPLEMENTED and VERIFIED 2026-09-19 — deliberately not marked COMPLETE** (see `ENHANCEMENT_BACKLOG.md` ENH-003 for why). Code: `app/services/provisioning.py`, `app/api/admin.py`, `app/api/auth.py`, `app/services/mailer.py`, migration `0032`; web `AdminExpiredLinksPanel`, `AdminUserManagementPanel`, `ResetPasswordForm`. Tests: `apps/api/tests/test_enh_003_first_time_provisioning.py` (96 cases; full backend suite 789 passed), 13 vitest files / 81 tests, `apps/web/tests/e2e/enh-003-first-time-provisioning.spec.ts` (7) plus the 19 migrated specs (full Playwright suite 240 passed / 0 failed, base commit 233 / 0). Real-browser verification: 191 checks passed / 0 failed over all 29 acceptance criteria; 8 checks are not observable from a browser and are covered by backend tests. |
+
 ---
 
 **APPROVED** (user, in-session, 2026-09-01, approved as drafted) as part of GATE-08's test-strategy

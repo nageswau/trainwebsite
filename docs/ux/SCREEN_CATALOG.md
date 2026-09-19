@@ -2433,6 +2433,21 @@ correction, not deleted, per this project's traceability convention.
 
 ---
 
+## ENH-003 addendum (2026-09-19) — surfaces changed by first-time provisioning
+
+No new routes and no new screens were added. `ENH-003` (`docs/delivery/ENHANCEMENT_BACKLOG.md`) changed the
+behaviour of the existing surfaces below; they are listed here because the design spec (§12) requires this
+catalogue to stay in step. Where a surface has no catalogue ID today (a pre-existing gap, not created by
+`ENH-003`) that is stated rather than an ID invented.
+
+| Surface | Route | Catalogue ID | Change |
+|---|---|---|---|
+| Set-password / reset page | `/{it\|overseas}/reset-password?token=` | none (pre-existing gap) | Serves the first-time welcome link too; on a `400` shows a recovery link and an "ask your administrator to re-send it" hint; honest network-error copy; `maxLength` 128; served with `Referrer-Policy: no-referrer` and `Cache-Control: no-store`; excluded from Google Analytics. |
+| Users directory | `/it/admin/users`, `/overseas/admin/users` | `SCR-ADM-002` (IT); no catalogue ID was found for the Overseas Admin users page | Create user card no longer has a password field and reports the emailed-link outcome; "Manage users" panel gains a per-account setup status, an Account-setup filter (resolved by the server) and a Re-send action (now also for Overseas Admin); the Users table gains a "Setup" column. |
+| Admin dashboards | `/it/admin/dashboard`, `/overseas/admin/dashboard`, `/admin` | `SCR-ADM-001` (IT); no catalogue ID was found for the Overseas Admin or Super Admin dashboards | "Expired welcome links" metric tile in the first viewport, plus an expired-links list with Re-send (loading, empty, error-with-retry states). |
+| Create school + seed Coordinator | `/overseas/admin/schools` | `SCR-SCH-010` | No password shown; success/warning message states whether the 72-hour link was emailed. |
+| School staff | `/overseas/admin/school-staff` | `SCR-SCH-021` | Same as above for Academic Team / Career Counselor / Psychometric Team accounts. |
+
 ## Required findings report
 
 ### FEATURE_WITHOUT_REQUIRED_SCREEN
