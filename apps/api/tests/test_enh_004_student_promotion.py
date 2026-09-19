@@ -1,10 +1,20 @@
 """ENH-004 -- Student promotion to the next academic year / grade
 (docs/superpowers/specs/2026-09-19-enh-004-student-promotion-design.md, DEC-SCOPE-020)."""
 
+import asyncio
 import uuid
+from contextlib import contextmanager
+from pathlib import Path
 
 import pytest
+import sqlalchemy as sa
+from alembic import command
+from alembic.config import Config
 from pydantic import ValidationError
+from sqlalchemy import text
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.api.schools import (
     MAX_GRADE_LEVEL,
@@ -15,6 +25,8 @@ from app.api.schools import (
     _decide_promotion,
     _swap_grade_label,
 )
+from app.core.config import settings
+from app.models import SchoolStudentGradeHistory
 from app.schemas import StudentPromotionRequest
 
 YEAR_OLD = uuid.uuid4()
@@ -174,3 +186,104 @@ _DUPLICATE = _item()
 def test_request_rejects_invalid_payloads(payload):
     with pytest.raises(ValidationError):
         StudentPromotionRequest(**payload)
+
+
+# ---------------------------------------------------------------- model + migration
+
+API_ROOT = Path(__file__).resolve().parents[1]
+HISTORY_TABLE_COUNT_SQL = "SELECT count(*) FROM information_schema.tables WHERE table_name = 'school_student_grade_history'"
+
+
+def test_grade_history_model_shape():
+    table = SchoolStudentGradeHistory.__table__
+    assert table.name == "school_student_grade_history"
+    for name in ("school_student_id", "action", "to_academic_year_id", "performed_by_user_id"):
+        assert table.columns[name].nullable is False, name
+    for name in ("from_academic_year_id", "from_grade_level", "from_grade_or_class", "to_grade_level", "to_grade_or_class"):
+        assert table.columns[name].nullable is True, name
+    assert table.columns["from_grade_or_class"].type.length == 60
+    assert "uq_school_student_grade_history_year" in {c.name for c in table.constraints}
+
+
+def _sql(url: str, statement: str, params: dict | None = None, *, autocommit: bool = False) -> list:
+    """Run one statement on its own throwaway engine. A plain (sync) helper on purpose: alembic's
+    env.py calls asyncio.run() itself, so the migration test cannot run inside an event loop."""
+
+    async def _inner():
+        engine = create_async_engine(url, isolation_level="AUTOCOMMIT") if autocommit else create_async_engine(url)
+        try:
+            async with engine.connect() as conn:
+                result = await conn.execute(sa.text(statement), params or {})
+                rows = result.fetchall() if result.returns_rows else []
+                await conn.commit()
+                return rows
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(_inner())
+
+
+@contextmanager
+def _isolated_migration_database():
+    """A uniquely named, throwaway database (never the shared one -- ENH-001's review found a real
+    downgrade destroying live rows). Yields (alembic Config, isolated URL); always drops it."""
+    original_url = settings.database_url
+    name = f"enh004_migration_isolated_{uuid.uuid4().hex[:8]}"
+    isolated_url = make_url(original_url).set(database=name).render_as_string(hide_password=False)
+    _sql(original_url, f'CREATE DATABASE "{name}"', autocommit=True)
+    settings.database_url = isolated_url
+    try:
+        cfg = Config(str(API_ROOT / "alembic.ini"))
+        cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+        yield cfg, isolated_url
+    finally:
+        settings.database_url = original_url
+        try:
+            _sql(original_url, f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)', autocommit=True)
+        except Exception:
+            pass  # best-effort: a leftover uniquely named throwaway database is a contained cost
+
+
+def test_migration_0033_creates_and_drops_only_the_history_table_and_keeps_student_rows():
+    creator_id, school_id, student_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    unique = uuid.uuid4().hex[:8]
+    with _isolated_migration_database() as (cfg, url):
+        command.upgrade(cfg, "0032_welcome_token_purpose")
+        # `0001_initial` builds the baseline from the *current* ORM metadata, so on a fresh database the table
+        # already exists by 0032 (which is why every migration here is inspector-guarded, and why 0033 is a
+        # no-op there). A real database created before this feature has no such table: emulate that state.
+        assert _sql(url, HISTORY_TABLE_COUNT_SQL)[0][0] == 1
+        _sql(url, "DROP TABLE school_student_grade_history")
+        assert _sql(url, HISTORY_TABLE_COUNT_SQL)[0][0] == 0
+        # Raw SQL against the pre-0033 schema (same column list ENH-001's migration test uses; `users` is unchanged since 0028).
+        _sql(
+            url,
+            "INSERT INTO users (id, email, password_hash, full_name, role, division, phone, active, email_verified, locale, profile, student_code) "
+            "VALUES (:id, :email, 'x', 'Cycle Admin', 'overseas_admin', 'overseas', NULL, true, true, 'en-GB', '{}', NULL)",
+            {"id": creator_id, "email": f"enh004-cycle-{unique}@example.local"},
+        )
+        _sql(url, "INSERT INTO schools (id, name, created_by_user_id) VALUES (:id, 'ENH-004 Cycle School', :creator)", {"id": school_id, "creator": creator_id})
+        _sql(
+            url,
+            "INSERT INTO school_students (id, school_id, student_code, full_name, grade_or_class, grade_level, created_by_user_id) VALUES (:id, :school, :code, 'Cycle Student', 'Grade 8', 8, :creator)",
+            {"id": student_id, "school": school_id, "code": f"E{unique[:7]}".upper(), "creator": creator_id},
+        )
+
+        command.upgrade(cfg, "0033_student_grade_history")
+        assert _sql(url, HISTORY_TABLE_COUNT_SQL)[0][0] == 1
+        year_id = _sql(url, "SELECT id FROM academic_years ORDER BY start_date DESC LIMIT 1")[0][0]
+        insert = "INSERT INTO school_student_grade_history (id, school_student_id, action, to_academic_year_id, performed_by_user_id) VALUES (:id, :student, 'held_back', :year, :creator)"
+        _sql(url, insert, {"id": uuid.uuid4(), "student": student_id, "year": year_id, "creator": creator_id})
+        with pytest.raises(IntegrityError, match="uq_school_student_grade_history_year"):
+            _sql(url, insert, {"id": uuid.uuid4(), "student": student_id, "year": year_id, "creator": creator_id})
+
+        command.downgrade(cfg, "0032_welcome_token_purpose")
+        assert _sql(url, HISTORY_TABLE_COUNT_SQL)[0][0] == 0
+        assert _sql(url, "SELECT full_name, grade_level FROM school_students WHERE id = :id", {"id": student_id}) == [("Cycle Student", 8)]
+
+
+@pytest.mark.asyncio
+async def test_the_shared_database_has_the_history_table(db_session):
+    # Fails until migration 0033 has been applied to the test database.
+    result = await db_session.execute(text(HISTORY_TABLE_COUNT_SQL))
+    assert result.scalar() == 1
