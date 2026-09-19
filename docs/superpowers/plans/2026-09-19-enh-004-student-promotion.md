@@ -39,6 +39,24 @@ Copied from the spec. Every task's requirements include this section.
 
 4. **Task 3b, Step 0 (security):** explicit approval to make `profile.school_id` read-only through `PATCH /auth/me`. It is a change to authentication/profile logic, and the exposure it closes is real: without it, ENH-004's "a coordinator cannot promote at another school" criterion can be bypassed by editing one's own profile.
 
+## Execution log and plan corrections (2026-09-20)
+
+Found while executing this plan test-first. Where the task text below disagrees with this section, **this section is correct**; the affected steps were fixed in the code and tests as noted.
+
+| # | Plan said | Reality | What was done |
+|---|---|---|---|
+| 1 | Lint/type gates "expect clean" (`ruff check .`, `mypy app`). | Baseline `HEAD` already has 1 ruff finding (B904 in `schools.py`) and about 154 mypy errors in existing code. | Gate is **no new findings versus baseline**, checked per file and per changed line range. |
+| 2 | Task 1 tests and Task 3 tests both define `_item`. | The later definition shadows the earlier at run time, so two Task 1 tests failed with `TypeError`. | Task 1's helper is `_raw_item`; Task 3's stays `_item`. |
+| 3 | Task 2: after `upgrade 0032`, the history table is absent. | `0001_initial` builds the baseline from the current ORM metadata, so on a fresh database the table **already exists** by 0032 (why every migration here is inspector-guarded; `0033` is a no-op there). | The migration test drops the table after reaching 0032 to emulate a real pre-feature database, then asserts `0033` creates it, enforces the unique constraint, and its downgrade keeps student rows. |
+| 4 | (not covered) | Alembic's `env.py` calls `logging.config.fileConfig()`, which disables every existing logger, silencing `app.school` for all later tests. | The migration helper snapshots and restores logger `disabled` flags. |
+| 5 | Preflight: the shared Postgres is on `localhost:5432`. | The user's stack was running, but Postgres is not published to the host. | A throwaway `postgres:16-alpine` on `127.0.0.1:5433` (`DATABASE_URL` override), migrated with the repo's Alembic. The user's database and containers were never touched. Migration `0033` reaches the user's real DB only when the `api` container is rebuilt (needs the user's go-ahead). |
+| 6 | (not covered) | The user asked for operational logging. | Structured `app.school` events (IDs and counts only, never names, labels or student IDs): `student_promotion_completed`, `_denied` (warning), `_no_active_year`, `_lock_timeout` (warning), `_conflict` (warning). Each has a test. |
+| 7 | Task 8's "no active year" empty state and the roster link used a plain `<a href>`. | The repo's lint rule requires `next/link` for internal routes. | `Link` is used. |
+| 8 | Task 8 has only a Playwright test. | The stack was not available to run it, so the UI had no real RED/GREEN. | Added Vitest + Testing Library component tests (`SchoolPromotionPanel.test.tsx`, 14; `SchoolGradeHistory.test.tsx`, 6). The Playwright spec is written and compiles but **has not been run**. |
+| 9 | (not covered) | Testing Library's `getByLabelText` over jsdom is super-linear (16 s at 120 rows). The component itself is fast (501 rows: render ~0.5 s, select-all ~0.13 s). | The 501-row cap test selects by id and text, with a comment saying why. |
+| 10 | `npm ci` implicitly available. | `apps/web/node_modules` did not exist in the worktree. | Ran `npm ci` (locked dependencies only; `node_modules/` is git-ignored). |
+| 11 | Task 3b (`PATCH /auth/me`) was a normal task. | It changes authentication logic and needs the user's approval. | **Not implemented.** The exposure stays open until the user approves. |
+
 ## File Structure
 
 | File | Action | Responsibility |
