@@ -14,7 +14,7 @@ test("placement team withdraws a candidate from the active pool (ADM-007-AC02)",
   // shared seeded demo student, which other specs may depend on staying in the pool.
   const uniqueName = `ADM-007 Candidate ${Date.now()}`;
   const created = await page.request.post("/api/v1/admin/users", {
-    data: { role: "it_student", email: `adm007-${Date.now()}@example.com`, full_name: uniqueName, password: "Sup3r-Secret-Pass!" },
+    data: { role: "it_student", email: `adm007-${Date.now()}@example.com`, full_name: uniqueName },
   });
   expect(created.ok()).toBeTruthy();
 

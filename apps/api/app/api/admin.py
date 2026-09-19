@@ -1,4 +1,6 @@
 import json
+import logging
+import re
 from datetime import UTC, date, datetime
 from uuid import UUID, uuid4
 
@@ -13,15 +15,61 @@ from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, University, User, UserRoleAssignment
 from app.schemas import BatchCreate
+from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.storage import storage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+logger = logging.getLogger("app.admin")
 
 
 async def ensure_admin(user: User = Depends(get_current_user)):
     if user.role not in {"super_admin", "it_admin", "overseas_admin"}:
         raise HTTPException(403, "Admin role required")
     return user
+
+
+def _reject_supplied_password(payload: dict, actor: User, route: str, field: str) -> None:
+    """ENH-003 / DEC-SCOPE-019: an admin never supplies or knows a credential for an account they
+    provision -- the user sets their own via the emailed link. Logged as a WARNING (actor and route
+    only, never the value): a caller still sending one is a stale client or a misuse worth seeing."""
+    if field in payload:
+        logger.warning("provisioning_password_field_rejected", extra={"extra_fields": {"actor_id": str(actor.id), "route": route}})
+        raise HTTPException(422, "A password cannot be supplied; the user sets their own via the emailed set-password link")
+
+
+# Cap on the unfiltered directory list; named so tests can lower it. A `provisioning_status` filter is NOT capped:
+# it is the exact set of accounts that still need an admin's action.
+USER_LIST_CAP = 500
+
+# The same email shape the registration schemas already use (no whitespace, so a CR/LF header-injection
+# attempt cannot pass). The address is the only delivery channel for a credential-setting link, so these
+# routes no longer accept arbitrary strings.
+EMAIL_PATTERN = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
+
+
+def _valid_email(raw) -> str:
+    email = str(raw or "").lower().strip()
+    if len(email) > 255 or not EMAIL_PATTERN.fullmatch(email):
+        raise HTTPException(422, "A valid email address is required")
+    return email
+
+
+def _fit(value, label: str, limit: int):
+    """A value longer than its column is a 422 that names the field, never a database 500 (QA-001).
+    Validates only: the value is returned unchanged, so accepted input is stored exactly as before."""
+    if value is not None and len(str(value)) > limit:
+        raise HTTPException(422, f"{label} must be at most {limit} characters")
+    return value
+
+
+async def _flush_unique_email(db: AsyncSession) -> None:
+    """Flush a new account; two simultaneous creates for one email are settled by the unique
+    constraint (409 for the loser, never a 500). Rolling back also drops anything created with it."""
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "Email already exists") from None
 
 
 @router.get("/dashboard")
@@ -40,11 +88,15 @@ async def dashboard(user: User = Depends(ensure_admin), db: AsyncSession = Depen
         "programs": await db.scalar(select(func.count()).select_from(Program)),
         "universities": await db.scalar(select(func.count()).select_from(University)),
         "overseas_applications": await db.scalar(select(func.count()).select_from(OverseasApplication)),
+        # ENH-003: admin-provisioned accounts whose 72-hour set-password link expired unused.
+        "expired_welcome_links": len(await user_ids_with_status(db, user, "link_expired")),
     }
 
 
 @router.get("/users")
-async def users(division: str | None = None, role: str | None = None, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+async def users(division: str | None = None, role: str | None = None, provisioning_status: str | None = None, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    if provisioning_status is not None and provisioning_status not in {"pending_setup", "link_expired"}:
+        raise HTTPException(422, "provisioning_status must be pending_setup or link_expired")
     stmt = select(User)
     if user.role != "super_admin":
         stmt = stmt.where(User.division == user.division)
@@ -52,11 +104,29 @@ async def users(division: str | None = None, role: str | None = None, user: User
         stmt = stmt.where(User.division == division)
     if role:
         stmt = stmt.where(User.role == role)
-    xs = (await db.scalars(stmt.order_by(User.created_at.desc()).limit(500))).all()
+    if provisioning_status:
+        # Resolve the exact id set first; the cap below is skipped for a filtered request so it cannot hide a match.
+        stmt = stmt.where(User.id.in_(await user_ids_with_status(db, user, provisioning_status)))
+    ordered = stmt.order_by(User.created_at.desc())
+    xs = (await db.scalars(ordered if provisioning_status else ordered.limit(USER_LIST_CAP))).all()
+    statuses = await provisioning_statuses(db, [x.id for x in xs])
     # ADM-004: "views/edits directory detail records" -- `phone`/`profile` are exposed
     # here so a directory edit form can prefill existing values, not just the flat
-    # list ADM-001's activate/deactivate action needed.
-    return [{"id": x.id, "name": x.full_name, "email": x.email, "division": x.division, "role": x.role, "active": x.active, "phone": x.phone, "profile": x.profile} for x in xs]
+    # list ADM-001's activate/deactivate action needed. ENH-003: `provisioning_status` is additive.
+    return [
+        {
+            "id": x.id,
+            "name": x.full_name,
+            "email": x.email,
+            "division": x.division,
+            "role": x.role,
+            "active": x.active,
+            "phone": x.phone,
+            "profile": x.profile,
+            "provisioning_status": statuses.get(x.id, "active"),
+        }
+        for x in xs
+    ]
 
 
 @router.get("/programs")
@@ -233,13 +303,13 @@ async def reports(user: User = Depends(ensure_admin), db: AsyncSession = Depends
 
 @router.post("/users", status_code=201)
 async def create_user(payload: dict, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
-    from app.core.security import hash_password
     from app.models import AuditLog
 
     division = payload.get("division", user.division)
     role = payload["role"]
     if user.role != "super_admin" and division != user.division:
         raise HTTPException(403, "Cannot create users in another division")
+    _reject_supplied_password(payload, user, "/api/v1/admin/users", "password")
     allowed_by_division = {
         "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin"},
         "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin"},
@@ -247,13 +317,13 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
     }
     if role not in allowed_by_division.get(division, set()):
         raise HTTPException(422, "Role is not valid for the selected division")
-    email = str(payload["email"]).lower().strip()
+    email = _valid_email(payload.get("email"))
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
     item = User(
         email=email,
-        password_hash=hash_password(payload.get("password") or "ChangeMe@12345"),
-        full_name=payload["full_name"],
+        password_hash=unusable_password_hash(),
+        full_name=_fit(payload["full_name"], "Full name", 160),
         role=role,
         division=division,
         phone=payload.get("phone"),
@@ -262,11 +332,12 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         profile=payload.get("profile", {}),
     )
     db.add(item)
-    await db.flush()
+    await _flush_unique_email(db)
+    issued = await issue_welcome_token(db, user=item, issued_by=user)
     db.add(AuditLog(user_id=user.id, action="user.create", entity_type="user", entity_id=str(item.id), metadata_json={"role": role, "division": division}))
     await db.commit()
-    await db.refresh(item)
-    return {"id": item.id, "email": item.email, "role": item.role, "division": item.division}
+    delivery = await deliver_welcome_link(user=item, issued=issued, issued_by=user)
+    return {"id": item.id, "email": item.email, "role": item.role, "division": item.division, **delivery}
 
 
 @router.patch("/users/{user_id}")
@@ -285,12 +356,45 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         active_batches = await db.scalar(select(func.count()).select_from(Batch).where(Batch.trainer_id == item.id, Batch.status.in_(("upcoming", "active"))))
         if active_batches:
             raise HTTPException(409, f"This trainer has {active_batches} active/upcoming batch(es) assigned. Pass confirm_cascade to deactivate anyway.")
+    if "active" in payload and bool(payload["active"]) != item.active:
+        # ENH-003 security review: a welcome link mailed to a wrong recipient must not come back to
+        # life when the account is (re)activated. Any real change of `active` revokes open welcome
+        # links; an admin then Re-sends explicitly. Same transaction and commit as the update below.
+        await revoke_welcome_tokens(db, item.id)
+        logger.info("welcome_links_revoked_on_active_change", extra={"extra_fields": {"actor_id": str(user.id), "user_id": str(item.id), "active": bool(payload["active"])}})
     for k in ("full_name", "phone", "active", "email_verified", "profile"):
         if k in payload:
             setattr(item, k, payload[k])
     db.add(AuditLog(user_id=user.id, action="user.update", entity_type="user", entity_id=str(item.id), metadata_json={k: v for k, v in payload.items() if k != "password"}))
     await db.commit()
     return {"ok": True}
+
+
+@router.post("/users/{user_id}/welcome-links", status_code=201)
+async def create_welcome_link(user_id: UUID, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    """ENH-003 / DEC-SCOPE-019 Re-send. Only for accounts that never set a password (a pending,
+    expired or revoked welcome link), and it only ever mails the account's own address -- so it
+    cannot reset an active account. Deliberately not idempotent: each call supersedes the previous
+    link; a second call inside the cooldown is refused so the endpoint cannot flood a mailbox."""
+    # Lock the row so two concurrent Re-sends serialize and only one welcome token stays open.
+    item = await db.scalar(select(User).where(User.id == user_id).with_for_update())
+    if not item:
+        raise HTTPException(404, "User not found")
+    if user.role != "super_admin" and item.division != user.division:
+        raise HTTPException(403, "Cannot manage another division")
+    if item.id not in await provisioning_statuses(db, [item.id]):
+        raise HTTPException(409, "This account has no pending invitation (its password is already set)")
+    if not item.active:
+        raise HTTPException(409, "Reactivate this account before re-sending its link")
+    wait = await resend_wait_seconds(db, item.id)
+    if wait:
+        logger.warning("welcome_link_resend_throttled", extra={"extra_fields": {"actor_id": str(user.id), "user_id": str(item.id), "wait_seconds": wait}})
+        raise HTTPException(429, f"A link was just sent; wait {wait} seconds before re-sending", headers={"Retry-After": str(wait)})
+    issued = await issue_welcome_token(db, user=item, issued_by=user)
+    await db.commit()
+    logger.info("welcome_link_resent", extra={"extra_fields": {"actor_id": str(user.id), "user_id": str(item.id)}})
+    delivery = await deliver_welcome_link(user=item, issued=issued, issued_by=user)
+    return {"id": item.id, **delivery}
 
 
 @router.post("/programs", status_code=201)
@@ -900,26 +1004,33 @@ async def approve_commission_payout(commission_id: UUID, user: User = Depends(ge
 # per `API_CONTRACT.md` §12A.
 @agents_router.post("/schools", status_code=201)
 async def create_school(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    from app.core.security import hash_password
-
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
+    _reject_supplied_password(payload, user, "/api/v1/overseas-admin/schools", "coordinator_password")
     email = str(payload.get("coordinator_email", "")).lower().strip()
     if not payload.get("name") or not email or not payload.get("coordinator_full_name"):
         raise HTTPException(422, "School name and Coordinator name/email are required")
+    email = _valid_email(email)
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
     tier = payload.get("tier")
     if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
         raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
     tier_valid_until = date.fromisoformat(payload["tier_valid_until"]) if payload.get("tier_valid_until") else None
-    school = School(name=payload["name"], city=payload.get("city"), state=payload.get("state"), created_by_user_id=user.id, tier=tier, tier_valid_until=tier_valid_until)
+    school = School(
+        name=_fit(payload["name"], "School name", 200),
+        city=_fit(payload.get("city"), "City", 120),
+        state=_fit(payload.get("state"), "State", 120),
+        created_by_user_id=user.id,
+        tier=tier,
+        tier_valid_until=tier_valid_until,
+    )
     db.add(school)
     await db.flush()
     coordinator = User(
         email=email,
-        password_hash=hash_password(payload.get("coordinator_password") or "ChangeMe@12345"),
-        full_name=payload["coordinator_full_name"],
+        password_hash=unusable_password_hash(),
+        full_name=_fit(payload["coordinator_full_name"], "Coordinator name", 160),
         role="school_coordinator",
         division="overseas",
         active=True,
@@ -927,7 +1038,8 @@ async def create_school(payload: dict, user: User = Depends(get_current_user), d
         profile={"school_id": str(school.id)},
     )
     db.add(coordinator)
-    await db.flush()
+    await _flush_unique_email(db)  # a lost race also rolls back the school created above
+    issued = await issue_welcome_token(db, user=coordinator, issued_by=user)
     # DATA_MODEL.md §6.12: `UserRoleAssignment` is created eagerly here (not lazily on
     # first login like `auth._sync_role_assignment`) so `created_by_user_id`/`assigned_by_
     # user_id` records the acting Overseas Admin from the moment the account exists,
@@ -937,7 +1049,8 @@ async def create_school(payload: dict, user: User = Depends(get_current_user), d
     db.add(AuditLog(user_id=user.id, action="school.create", entity_type="school", entity_id=str(school.id), metadata_json={"name": school.name}))
     db.add(AuditLog(user_id=user.id, action="school.coordinator_seed", entity_type="user", entity_id=str(coordinator.id), metadata_json={"school_id": str(school.id)}))
     await db.commit()
-    return {"id": school.id, "name": school.name, "coordinator_id": coordinator.id, "coordinator_email": coordinator.email}
+    delivery = await deliver_welcome_link(user=coordinator, issued=issued, issued_by=user)
+    return {"id": school.id, "name": school.name, "coordinator_id": coordinator.id, "coordinator_email": coordinator.email, **delivery}
 
 
 @agents_router.get("/schools")
@@ -1067,11 +1180,11 @@ SCHOOL_SERVICE_ROLES = {"academic_team", "career_counselor", "psychometric_team"
 
 @agents_router.post("/school-staff", status_code=201)
 async def create_school_staff(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    from app.core.security import hash_password
     from app.models import SchoolStaffAssignment
 
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
+    _reject_supplied_password(payload, user, "/api/v1/overseas-admin/school-staff", "password")
     role = payload.get("role")
     if role not in SCHOOL_SERVICE_ROLES:
         raise HTTPException(422, f"role must be one of {sorted(SCHOOL_SERVICE_ROLES)}")
@@ -1079,6 +1192,8 @@ async def create_school_staff(payload: dict, user: User = Depends(get_current_us
     full_name = str(payload.get("full_name", "")).strip()
     if not email or not full_name:
         raise HTTPException(422, "email and full_name are required")
+    _fit(full_name, "Full name", 160)
+    email = _valid_email(email)
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
     school_ids = payload.get("school_ids") or []
@@ -1088,7 +1203,7 @@ async def create_school_staff(payload: dict, user: User = Depends(get_current_us
 
     staff = User(
         email=email,
-        password_hash=hash_password(payload.get("password") or "ChangeMe@12345"),
+        password_hash=unusable_password_hash(),
         full_name=full_name,
         role=role,
         division="overseas",
@@ -1097,13 +1212,15 @@ async def create_school_staff(payload: dict, user: User = Depends(get_current_us
         profile={},
     )
     db.add(staff)
-    await db.flush()
+    await _flush_unique_email(db)
+    issued = await issue_welcome_token(db, user=staff, issued_by=user)
     db.add(UserRoleAssignment(user_id=staff.id, division="overseas", role=role, is_active=True, assigned_by_user_id=user.id, approval_status="approved"))
     for school in schools:
         db.add(SchoolStaffAssignment(user_id=staff.id, school_id=school.id, role=role, assigned_by_user_id=user.id))
     db.add(AuditLog(user_id=user.id, action="school.staff_create", entity_type="user", entity_id=str(staff.id), metadata_json={"role": role, "school_ids": [str(s.id) for s in schools]}))
     await db.commit()
-    return {"id": staff.id, "email": staff.email, "role": staff.role, "school_ids": [str(s.id) for s in schools]}
+    delivery = await deliver_welcome_link(user=staff, issued=issued, issued_by=user)
+    return {"id": staff.id, "email": staff.email, "role": staff.role, "school_ids": [str(s.id) for s in schools], **delivery}
 
 
 @agents_router.get("/school-staff")

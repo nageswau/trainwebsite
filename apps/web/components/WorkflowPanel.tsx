@@ -3,11 +3,14 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@/lib/types";
+import { type Feedback, toneClass, welcomeLinkFeedback } from "@/lib/welcomeLink";
+import { announceUsersChanged } from "@/lib/usersChanged";
 import BatchSlotPicker from "./BatchSlotPicker";
 import LiveClassesPanel from "./LiveClassesPanel";
 import AssignmentSubmissionPanel from "./AssignmentSubmissionPanel";
 import AgreementConsentPanel from "./AgreementConsentPanel";
 import AdminUserManagementPanel from "./AdminUserManagementPanel";
+import AdminExpiredLinksPanel from "./AdminExpiredLinksPanel";
 import AdminProgramManagementPanel from "./AdminProgramManagementPanel";
 import AdminLeadManagementPanel from "./AdminLeadManagementPanel";
 import AdminBatchCreatePanel from "./AdminBatchCreatePanel";
@@ -54,6 +57,10 @@ type ActionSpec = {
   endpoint: string;
   method?: "POST" | "PATCH" | "PUT";
   success: string;
+  // Optional: build the outcome from the response (e.g. ENH-003 welcome-link delivery). Defaults to `success` as a plain success.
+  describeSuccess?: (data: Record<string, unknown>) => Feedback;
+  // Tell sibling panels (the Manage users list) that the set of accounts changed, so they refetch.
+  announcesUserChange?: boolean;
   fields: Field[];
   pathFields?: string[];
   buildBody?: (values: Record<string, unknown>) => Record<string, unknown>;
@@ -102,8 +109,7 @@ function parseValues(form: FormData, fields: Field[]) {
 function ActionForm({ spec }: { spec: ActionSpec }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [failed, setFailed] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -112,7 +118,7 @@ function ActionForm({ spec }: { spec: ActionSpec }) {
     // after the fetch, or `.reset()` intermittently throws "Cannot read properties of
     // null" (found while testing STU-005's ticket form, which uses this same component).
     const formElement = event.currentTarget;
-    setBusy(true); setMessage(""); setFailed(false);
+    setBusy(true); setFeedback(null);
     const values = parseValues(new FormData(formElement), spec.fields);
     let endpoint = spec.endpoint;
     for (const name of spec.pathFields || []) endpoint = endpoint.replace(`:${name}`, encodeURIComponent(String(values[name] ?? "")));
@@ -123,9 +129,10 @@ function ActionForm({ spec }: { spec: ActionSpec }) {
       const response = await fetch(endpoint, { method: spec.method || "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(detailMessage(data.detail));
-      setMessage(spec.success); formElement.reset(); router.refresh();
+      setFeedback(spec.describeSuccess ? spec.describeSuccess(data) : { text: spec.success, tone: "success" }); formElement.reset(); router.refresh();
+      if (spec.announcesUserChange) announceUsersChanged();
     } catch (error) {
-      setFailed(true); setMessage(error instanceof Error ? error.message : "Request failed");
+      setFeedback({ text: error instanceof Error ? error.message : "Request failed", tone: "error" });
     } finally { setBusy(false); }
   }
 
@@ -134,7 +141,7 @@ function ActionForm({ spec }: { spec: ActionSpec }) {
       <label htmlFor={`${spec.title}-${field.name}`}>{field.label}</label>
       {field.type === "textarea" ? <textarea id={`${spec.title}-${field.name}`} name={field.name} required={field.required} placeholder={field.placeholder} defaultValue={String(field.defaultValue ?? "")}/> : field.type === "select" ? <select id={`${spec.title}-${field.name}`} name={field.name} required={field.required} defaultValue={String(field.defaultValue ?? "")}><option value="">Select</option>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : field.type === "checkbox" ? <input id={`${spec.title}-${field.name}`} name={field.name} type="checkbox" defaultChecked={Boolean(field.defaultValue)}/> : <input id={`${spec.title}-${field.name}`} name={field.name} type={field.type || "text"} required={field.required} placeholder={field.placeholder} defaultValue={String(field.defaultValue ?? "")}/>} 
     </div>)}</div>
-    {message && <div className={failed ? "form-error" : "form-message"}>{message}</div>}
+    {feedback && <div className={toneClass[feedback.tone]} role={feedback.tone === "error" ? "alert" : "status"} aria-live={feedback.tone === "error" ? "assertive" : "polite"}>{feedback.text}</div>}
     <button className="btn" disabled={busy}>{busy ? "Saving…" : spec.title}</button>
   </form></div>;
 }
@@ -365,7 +372,7 @@ function createUserRoleOptions(user: User) {
 }
 
 function adminSpecs(user: User, section: string): ActionSpec[] {
-  if (["users", "students", "trainers", "counselors", "staff"].includes(section)) return [{ title: "Create user", endpoint: "/api/v1/admin/users", success: "User created.", fields: [{ name: "full_name", label: "Full name", required: true }, { name: "email", label: "Email", required: true }, { name: "phone", label: "Phone" }, { name: "password", label: "Temporary password", type: "password", required: true }, { name: "division", label: "Division", type: "select", required: true, defaultValue: user.division === "global" ? "it" : user.division, options: createUserDivisionOptions(user) }, { name: "role", label: "Role", type: "select", required: true, options: createUserRoleOptions(user) }] }];
+  if (["users", "students", "trainers", "counselors", "staff"].includes(section)) return [{ title: "Create user", endpoint: "/api/v1/admin/users", success: "User created.", describeSuccess: data => welcomeLinkFeedback("User created.", data), announcesUserChange: true, fields: [{ name: "full_name", label: "Full name", required: true }, { name: "email", label: "Email", required: true }, { name: "phone", label: "Phone" }, { name: "division", label: "Division", type: "select", required: true, defaultValue: user.division === "global" ? "it" : user.division, options: createUserDivisionOptions(user) }, { name: "role", label: "Role", type: "select", required: true, options: createUserRoleOptions(user) }] }];
   if (section === "programs") return [{ title: "Create program", endpoint: "/api/v1/admin/programs", success: "Program created.", fields: [{ name: "slug", label: "Slug", required: true }, { name: "category", label: "Category", required: true }, { name: "title", label: "Title", required: true }, { name: "summary", label: "Summary", type: "textarea" }, { name: "duration", label: "Duration", required: true }, { name: "fees", label: "Fees", type: "number", required: true }, { name: "eligibility", label: "Eligibility", type: "textarea" }, { name: "curriculum", label: "Curriculum (comma separated)", parse: "list" }] }];
   // "batches" is handled by AdminBatchCreatePanel (ADM-003) -- see showBatchCreate below.
   if (section === "payments") return [
@@ -423,7 +430,10 @@ export default function WorkflowPanel({ user, section }: { user: User; section: 
   const showCounselorEvaluation = user.role === "counselor" && ["applications", "students"].includes(section);
   const showCounselorChat = user.role === "counselor" && section === "counselor-chat";
   const isAdmin = ["it_admin", "super_admin"].includes(user.role);
-  const showUserManagement = isAdmin && ["users", "students", "trainers", "employers", "counselors", "staff"].includes(section);
+  // QA-009: the Overseas Admin provisions school staff, so they get the Manage users panel (setup status + Re-send)
+  // on the `users` page too. The API already scopes every route to their division; the role/section-specific
+  // directories stay IT/Super Admin only.
+  const showUserManagement = (isAdmin && ["users", "students", "trainers", "employers", "counselors", "staff"].includes(section)) || (user.role === "overseas_admin" && section === "users");
   const showProgramManagement = isAdmin && section === "programs";
   const showLeadManagement = isAdmin && section === "leads";
   const showBatchCreate = isAdmin && section === "batches";
@@ -433,6 +443,10 @@ export default function WorkflowPanel({ user, section }: { user: User; section: 
   const showPlacementCandidates = user.role === "placement_team" && section === "candidates";
   const showHrShortlists = user.role === "hr_team" && section === "shortlists";
   const showAuditExport = user.role === "super_admin" && section === "security-logs";
+  // ENH-003: expired set-password links on the IT and Overseas admin dashboards (`PortalPage` always
+  // renders this panel under the dashboard content). Independent of `isAdmin`, which excludes
+  // overseas_admin. The Super Admin's own `/admin` page mounts AdminExpiredLinksPanel directly.
+  const showExpiredLinks = ["it_admin", "overseas_admin", "super_admin"].includes(user.role) && section === "dashboard";
   // RAID.md I-32: gated by the same role set `admin.py`'s `create_university` itself
   // enforces (`super_admin`/`overseas_admin`, not `it_admin` -- IT Admin's own nav has no
   // "universities" entry at all), not the narrower `isAdmin` constant above.
@@ -444,6 +458,6 @@ export default function WorkflowPanel({ user, section }: { user: User; section: 
   // student to a real Overseas application, same section name as the School side's own
   // "school-applications" nav entry but a distinct role gate.
   const showSchoolApplications = ["overseas_admin", "counselor", "super_admin"].includes(user.role) && section === "school-applications";
-  if (!specs.length && !showAssessment && !showDocuments && !showDocumentDownload && !showCounselorDocumentReview && !showVisaChecklist && !showCounselorVisa && !showAgentApproval && !showBatchPicker && !showLiveClasses && !showAgreementConsent && !showAssignmentSubmission && !showCertificateDownload && !showFeedback && !showQuestions && !showProfileDocuments && !showOverseasApply && !showScholarshipApply && !showFeePayment && !showCounselorEvaluation && !showCounselorChat && !showUserManagement && !showProgramManagement && !showLeadManagement && !showBatchCreate && !showEnrollmentReview && !showSupportQueue && !showCertificateIssue && !showPlacementCandidates && !showHrShortlists && !showAuditExport && !showUniversityCreate && !showAgentApplicationCreate && !showSchoolCreate && !showSchoolStaffCreate && !showSchoolApplications) return null;
-  return <div className="portal-content action-center"><div className="workspace-head action-heading"><div><strong>Actions</strong><p>Changes are validated, permission checked, and written to the live workflow.</p></div><span className="badge">Operational</span></div><div className="action-grid">{showAgreementConsent && <AgreementConsentPanel/>}{showLiveClasses && <LiveClassesPanel userName={user.full_name} userEmail={user.email}/>}{showBatchPicker && <BatchSlotPicker/>}{showAssignmentSubmission && <AssignmentSubmissionPanel section={section as "assignments" | "projects"}/>}{showCertificateDownload && <CertificateDownloadPanel/>}{showFeedback && <FeedbackSubmissionPanel/>}{showQuestions && <QuestionAskPanel/>}{showProfileDocuments && <ProfileDocumentUpload/>}{showOverseasApply && <OverseasApplyPanel/>}{showScholarshipApply && <ScholarshipApplyPanel/>}{showFeePayment && <FeePaymentPanel/>}{showCounselorEvaluation && <CounselorEvaluationPanel/>}{showCounselorChat && <CounselorChatPanel userId={user.id}/>}{showCounselorDocumentReview && <CounselorDocumentReviewPanel/>}{showVisaChecklist && <VisaChecklistPanel/>}{showCounselorVisa && <CounselorVisaPanel/>}{showAgentApproval && <AgentApprovalPanel/>}{showUserManagement && <AdminUserManagementPanel section={section}/>}{showProgramManagement && <AdminProgramManagementPanel/>}{showLeadManagement && <AdminLeadManagementPanel/>}{showBatchCreate && <AdminBatchCreatePanel/>}{showEnrollmentReview && <AdminEnrollmentReviewPanel/>}{showSupportQueue && <SupportTicketQueuePanel/>}{showCertificateIssue && <AdminCertificatePanel/>}{showPlacementCandidates && <PlacementCandidatePanel/>}{showHrShortlists && <HrShortlistPanel/>}{showAuditExport && <AuditExportPanel/>}{showUniversityCreate && <AdminUniversityCreatePanel/>}{showAgentApplicationCreate && <AgentApplicationCreatePanel/>}{showSchoolCreate && <AdminSchoolCreatePanel/>}{showSchoolStaffCreate && <AdminSchoolStaffPanel/>}{showSchoolApplications && <AdminSchoolApplicationsPanel/>}{specs.map(spec => <ActionForm key={spec.title} spec={spec}/>)}{showAssessment && <AssessmentForm/>}{showDocuments && <DocumentUpload user={user}/>}{showDocumentDownload && <DocumentDownloadPanel/>}</div></div>;
+  if (!specs.length && !showAssessment && !showDocuments && !showDocumentDownload && !showCounselorDocumentReview && !showVisaChecklist && !showCounselorVisa && !showAgentApproval && !showBatchPicker && !showLiveClasses && !showAgreementConsent && !showAssignmentSubmission && !showCertificateDownload && !showFeedback && !showQuestions && !showProfileDocuments && !showOverseasApply && !showScholarshipApply && !showFeePayment && !showCounselorEvaluation && !showCounselorChat && !showUserManagement && !showProgramManagement && !showLeadManagement && !showBatchCreate && !showEnrollmentReview && !showSupportQueue && !showCertificateIssue && !showPlacementCandidates && !showHrShortlists && !showAuditExport && !showUniversityCreate && !showAgentApplicationCreate && !showSchoolCreate && !showSchoolStaffCreate && !showSchoolApplications && !showExpiredLinks) return null;
+  return <div className="portal-content action-center"><div className="workspace-head action-heading"><div><strong>Actions</strong><p>Changes are validated, permission checked, and written to the live workflow.</p></div><span className="badge">Operational</span></div><div className="action-grid">{showAgreementConsent && <AgreementConsentPanel/>}{showLiveClasses && <LiveClassesPanel userName={user.full_name} userEmail={user.email}/>}{showBatchPicker && <BatchSlotPicker/>}{showAssignmentSubmission && <AssignmentSubmissionPanel section={section as "assignments" | "projects"}/>}{showCertificateDownload && <CertificateDownloadPanel/>}{showFeedback && <FeedbackSubmissionPanel/>}{showQuestions && <QuestionAskPanel/>}{showProfileDocuments && <ProfileDocumentUpload/>}{showOverseasApply && <OverseasApplyPanel/>}{showScholarshipApply && <ScholarshipApplyPanel/>}{showFeePayment && <FeePaymentPanel/>}{showCounselorEvaluation && <CounselorEvaluationPanel/>}{showCounselorChat && <CounselorChatPanel userId={user.id}/>}{showCounselorDocumentReview && <CounselorDocumentReviewPanel/>}{showVisaChecklist && <VisaChecklistPanel/>}{showCounselorVisa && <CounselorVisaPanel/>}{showAgentApproval && <AgentApprovalPanel/>}{showUserManagement && <AdminUserManagementPanel section={section}/>}{showProgramManagement && <AdminProgramManagementPanel/>}{showLeadManagement && <AdminLeadManagementPanel/>}{showBatchCreate && <AdminBatchCreatePanel/>}{showEnrollmentReview && <AdminEnrollmentReviewPanel/>}{showSupportQueue && <SupportTicketQueuePanel/>}{showCertificateIssue && <AdminCertificatePanel/>}{showPlacementCandidates && <PlacementCandidatePanel/>}{showHrShortlists && <HrShortlistPanel/>}{showAuditExport && <AuditExportPanel/>}{showExpiredLinks && <AdminExpiredLinksPanel/>}{showUniversityCreate && <AdminUniversityCreatePanel/>}{showAgentApplicationCreate && <AgentApplicationCreatePanel/>}{showSchoolCreate && <AdminSchoolCreatePanel/>}{showSchoolStaffCreate && <AdminSchoolStaffPanel/>}{showSchoolApplications && <AdminSchoolApplicationsPanel/>}{specs.map(spec => <ActionForm key={spec.title} spec={spec}/>)}{showAssessment && <AssessmentForm/>}{showDocuments && <DocumentUpload user={user}/>}{showDocumentDownload && <DocumentDownloadPanel/>}</div></div>;
 }

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // School Coordinator/Principal Reports module -- real, computed-from-live-data charts
 // (grade-wise bar chart, service-delivery completion rings, activity/attendance stats).
@@ -22,13 +23,13 @@ test("coordinator and principal see real report figures; teacher is denied (Scho
   await page.fill("#school-name", `E2E Reports School ${unique}`);
   await page.fill("#school-coordinator-name", "E2E Reports Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
-  await page.click('button:has-text("Create school + seed Coordinator")');
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 
@@ -51,7 +52,7 @@ test("coordinator and principal see real report figures; teacher is denied (Scho
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 

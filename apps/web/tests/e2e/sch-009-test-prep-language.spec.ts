@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // SCH-009 -- Test Preparation (IELTS/SAT) and Foreign Language Classes, delivered by the
 // existing Academic Team role (`DEC-SCOPE-018`: no new role was created for these two
@@ -23,7 +24,7 @@ test("academic team starts and completes test prep and language classes; coordin
   await page.fill("#school-name", schoolName);
   await page.fill("#school-coordinator-name", "E2E SCH-009 Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
-  await page.click('button:has-text("Create school + seed Coordinator")');
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
   await page.goto("/overseas/admin/school-staff");
@@ -31,13 +32,13 @@ test("academic team starts and completes test prep and language classes; coordin
   await page.fill("#staff-name", "E2E SCH-009 Academic Team");
   await page.fill("#staff-email", academicEmail);
   await page.selectOption("#staff-schools", { label: schoolName });
-  await page.click('button:has-text("Create account")');
+  await createAndActivateFromUi(page, 'button:has-text("Create account")', "/overseas-admin/school-staff");
   await expect(page.getByText(/Account created for/)).toBeVisible({ timeout: 20_000 });
 
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 
@@ -53,7 +54,7 @@ test("academic team starts and completes test prep and language classes; coordin
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", academicEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/academic-team/dashboard");
 
@@ -84,7 +85,7 @@ test("academic team starts and completes test prep and language classes; coordin
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 

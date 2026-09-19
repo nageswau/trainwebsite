@@ -3,8 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { refocus } from "@/lib/focus";
+import { USERS_CHANGED } from "@/lib/usersChanged";
+import { type Feedback, errorText, requestWelcomeLink, toneClass, welcomeLinkFeedback } from "@/lib/welcomeLink";
+
 type Profile = { education?: string; skills?: string[]; [key: string]: unknown };
-type AdminUserRow = { id: string; name: string; email: string; division: string; role: string; active: boolean; phone: string | null; profile: Profile };
+type AdminUserRow = { id: string; name: string; email: string; division: string; role: string; active: boolean; phone: string | null; profile: Profile; provisioning_status?: "active" | "pending_setup" | "link_expired" };
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -42,18 +46,44 @@ export default function AdminUserManagementPanel({ section }: { section?: string
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
+  const [message, setMessage] = useState<({ id: string } & Feedback) | null>(null);
+  const [setupFilter, setSetupFilter] = useState<"all" | "pending_setup" | "link_expired">("all");
+  const [listLoading, setListLoading] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
 
+  // An account created elsewhere on the page (the Create user card) must appear here without a reload.
+  useEffect(() => {
+    const reload = () => setReloadTick((tick) => tick + 1);
+    window.addEventListener(USERS_CHANGED, reload);
+    return () => window.removeEventListener(USERS_CHANGED, reload);
+  }, []);
+
+  // The setup filter is resolved by the server (the exact set), never by slicing the capped unfiltered list: an older
+  // pending or expired account would otherwise be invisible to the filter and to Re-send.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/v1/admin/users")
+    const url = setupFilter === "all" ? "/api/v1/admin/users" : `/api/v1/admin/users?provisioning_status=${setupFilter}`;
+    fetch(url)
       .then((res) => (res.ok ? res.json() : []))
-      .then((data) => !cancelled && setUsers(data))
-      .catch(() => !cancelled && setUsers([]));
+      .then((data) => {
+        if (cancelled) return;
+        setUsers(data);
+        setListLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setUsers([]);
+        setListLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setupFilter, reloadTick]);
+
+  function changeSetupFilter(next: "all" | "pending_setup" | "link_expired") {
+    setSetupFilter(next);
+    setListLoading(true);
+  }
 
   const scopedRoles = section ? SECTION_ROLES[section] : undefined;
 
@@ -78,16 +108,34 @@ export default function AdminUserManagementPanel({ section }: { section?: string
     if (!response.ok) {
       if (response.status === 409) {
         setConfirmingId(row.id);
-        setMessage({ id: row.id, text: `${detailMessage(data.detail)} Click "Confirm deactivate" to proceed anyway.`, failed: true });
+        // A confirmation prompt, not a failure: amber, like the other "needs your attention" outcomes.
+        setMessage({ id: row.id, text: `${detailMessage(data.detail)} Click "Confirm deactivate" to proceed anyway.`, tone: "warning" });
         return;
       }
-      setMessage({ id: row.id, text: detailMessage(data.detail), failed: true });
+      setMessage({ id: row.id, text: detailMessage(data.detail), tone: "error" });
       return;
     }
     setConfirmingId(null);
-    setMessage({ id: row.id, text: `${row.name} ${row.active ? "deactivated" : "reactivated"}.`, failed: false });
+    setMessage({ id: row.id, text: `${row.name} ${row.active ? "deactivated" : "reactivated"}.`, tone: "success" });
     setUsers((prev) => (prev ? prev.map((u) => (u.id === row.id ? { ...u, active: !row.active } : u)) : prev));
     router.refresh();
+  }
+
+  // ENH-003: Re-send the set-password link to an account that has not set a password yet.
+  async function resendWelcome(row: AdminUserRow) {
+    setBusyId(row.id);
+    setMessage(null);
+    const { ok, data } = await requestWelcomeLink(row.id);
+    setBusyId(null);
+    if (!ok) {
+      setMessage({ id: row.id, text: errorText(data.detail, "Unable to re-send the link."), tone: "error" });
+    } else {
+      setMessage({ id: row.id, ...welcomeLinkFeedback(`New link created for ${row.name}.`, data) });
+      // The row is updated locally, so no server refresh here: a refresh re-renders the page and dropped keyboard
+      // focus to <body> after the success message (QA-004). Nothing on this page reads the token state server-side.
+      setUsers((prev) => (prev ? prev.map((u) => (u.id === row.id ? { ...u, provisioning_status: "pending_setup" } : u)) : prev));
+    }
+    refocus(`resend-${row.id}`);
   }
 
   async function saveDetails(row: AdminUserRow, form: FormData) {
@@ -106,10 +154,10 @@ export default function AdminUserManagementPanel({ section }: { section?: string
     const data = await response.json().catch(() => ({}));
     setBusyId(null);
     if (!response.ok) {
-      setMessage({ id: row.id, text: detailMessage(data.detail), failed: true });
+      setMessage({ id: row.id, text: detailMessage(data.detail), tone: "error" });
       return;
     }
-    setMessage({ id: row.id, text: "Details updated.", failed: false });
+    setMessage({ id: row.id, text: "Details updated.", tone: "success" });
     setEditingId(null);
     setUsers((prev) =>
       prev
@@ -148,10 +196,36 @@ export default function AdminUserManagementPanel({ section }: { section?: string
         <label htmlFor="admin-user-search">Search by name, email, or role</label>
         <input id="admin-user-search" className="search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} />
       </div>
-      {visible.length === 0 ? (
-        <p className="muted" style={{ marginTop: 12 }}>{users.length === 0 ? "No users found." : "No records match this search."}</p>
+      <div className="field" style={{ marginTop: 8 }}>
+        <label htmlFor="admin-user-setup">Account setup</label>
+        <select id="admin-user-setup" value={setupFilter} onChange={(event) => changeSetupFilter(event.target.value as "all" | "pending_setup" | "link_expired")}>
+          <option value="all">All accounts</option>
+          <option value="pending_setup">Awaiting setup</option>
+          <option value="link_expired">Link expired</option>
+        </select>
+      </div>
+      {!listLoading && users.length > 0 && (
+        <p className="collection-summary" aria-live="polite" style={{ margin: "8px 0 0" }}>
+          {visible.length} {visible.length === 1 ? "account" : "accounts"} shown
+        </p>
+      )}
+      {listLoading ? (
+        <p className="muted" role="status" style={{ marginTop: 12 }}>Loading accounts…</p>
+      ) : visible.length === 0 ? (
+        <div style={{ marginTop: 12 }}>
+          <p className="muted">
+            {setupFilter !== "all" && !query.trim()
+              ? setupFilter === "pending_setup" ? "No accounts are awaiting setup." : "No accounts have an expired link."
+              : users.length === 0
+                ? "No users found."
+                : "No records match this search."}
+          </p>
+          {setupFilter !== "all" && (
+            <button type="button" className="btn ghost small" onClick={() => changeSetupFilter("all")}>Show all accounts</button>
+          )}
+        </div>
       ) : (
-        <div className="table-wrap" style={{ marginTop: 12 }}>
+        <div className="table-wrap" style={{ marginTop: 12 }} role="region" aria-label={scopedRoles ? "Directory" : "Users"} tabIndex={0}>
           <table className="table">
             <thead>
               <tr>
@@ -168,7 +242,11 @@ export default function AdminUserManagementPanel({ section }: { section?: string
                   <th scope="row">{row.name}</th>
                   <td>{row.email}</td>
                   <td>{row.role}</td>
-                  <td>{row.active ? "Active" : "Inactive"}</td>
+                  <td>
+                    {row.active ? "Active" : "Inactive"}
+                    {row.provisioning_status === "pending_setup" && <span className="status pending" style={{ marginLeft: 8 }}>Awaiting setup</span>}
+                    {row.provisioning_status === "link_expired" && <span className="status error" style={{ marginLeft: 8 }}>Link expired</span>}
+                  </td>
                   <td>
                     <button className="btn small" disabled={busyId === row.id} onClick={() => toggleActive(row, confirmingId === row.id)}>
                       {busyId === row.id ? "Saving…" : confirmingId === row.id ? "Confirm deactivate" : row.active ? "Deactivate" : "Reactivate"}
@@ -176,6 +254,21 @@ export default function AdminUserManagementPanel({ section }: { section?: string
                     <button className="btn small secondary" disabled={busyId === row.id} onClick={() => setEditingId(editingId === row.id ? null : row.id)}>
                       {editingId === row.id ? "Cancel" : "Edit details"}
                     </button>
+                    {row.active && (row.provisioning_status === "pending_setup" || row.provisioning_status === "link_expired") && (
+                      <>
+                        {" "}
+                        <button
+                          id={`resend-${row.id}`}
+                          type="button"
+                          className="btn small secondary"
+                          disabled={busyId === row.id}
+                          aria-label={`Re-send set-password link to ${row.name}`}
+                          onClick={() => void resendWelcome(row)}
+                        >
+                          {busyId === row.id ? "Sending…" : "Re-send link"}
+                        </button>
+                      </>
+                    )}
                     {editingId === row.id && (
                       <form
                         className="form"
@@ -205,7 +298,7 @@ export default function AdminUserManagementPanel({ section }: { section?: string
                       </form>
                     )}
                     {message?.id === row.id && (
-                      <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 6, fontSize: 13 }}>
+                      <div className={toneClass[message.tone]} role="status" aria-live="polite" style={{ marginTop: 6, fontSize: 13 }}>
                         {message.text}
                       </div>
                     )}

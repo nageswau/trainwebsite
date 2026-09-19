@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // SCH-004/005/006 -- Career Guidance, Psychometric Assessment, Academic Results.
 // Requires the stack running via `docker compose up` with `python -m app.seed` already
@@ -33,7 +34,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.fill("#school-name", schoolName);
   await page.fill("#school-coordinator-name", "E2E SVC Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
-  await page.click('button:has-text("Create school + seed Coordinator")');
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
   // 2. Overseas Admin provisions two Academic Team accounts (uploader + verifier/
@@ -47,7 +48,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
     await page.fill("#staff-name", name);
     await page.fill("#staff-email", email);
     await page.selectOption("#staff-schools", { label: schoolName });
-    await page.click('button:has-text("Create account")');
+    await createAndActivateFromUi(page, 'button:has-text("Create account")', "/overseas-admin/school-staff");
     await expect(page.getByText(/Account created for/)).toBeVisible({ timeout: 20_000 });
   }
 
@@ -63,7 +64,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 
@@ -76,7 +77,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", uploaderEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/academic-team/dashboard");
 
@@ -98,7 +99,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", verifierEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/academic-team/dashboard");
 
@@ -113,7 +114,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", counselorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/career-counselor/dashboard");
 
@@ -128,7 +129,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", psychEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/psychometric-team/dashboard");
 
@@ -149,7 +150,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 
@@ -172,13 +173,13 @@ test("a newly provisioned specialized staff account with an empty portfolio can'
   await page.selectOption("#staff-role", "career_counselor");
   await page.fill("#staff-name", "E2E Empty Portfolio Counselor");
   await page.fill("#staff-email", emptyPortfolioEmail);
-  await page.click('button:has-text("Create account")');
+  await createAndActivateFromUi(page, 'button:has-text("Create account")', "/overseas-admin/school-staff");
   await expect(page.getByText(/Account created for/)).toBeVisible({ timeout: 20_000 });
 
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", emptyPortfolioEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/career-counselor/dashboard");
 
@@ -203,7 +204,7 @@ test("the School portfolio search narrows the dropdown without losing a selectio
     await page.fill("#school-name", name);
     await page.fill("#school-coordinator-name", "E2E Search Coordinator");
     await page.fill("#school-coordinator-email", `sch456-e2e-search-coord-${unique}-${name === alphaName ? "a" : "b"}@example.local`);
-    await page.click('button:has-text("Create school + seed Coordinator")');
+    await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
     await expect(page.getByText(/School created\./)).toBeVisible();
   }
 
@@ -228,7 +229,7 @@ test("the School portfolio search narrows the dropdown without losing a selectio
   await page.selectOption("#staff-schools", { label: betaName });
   await expect(page.getByText("(2 selected)")).toBeVisible();
 
-  await page.click('button:has-text("Create account")');
+  await createAndActivateFromUi(page, 'button:has-text("Create account")', "/overseas-admin/school-staff");
   await expect(page.getByText(/Account created for/)).toBeVisible({ timeout: 20_000 });
 
   const staffList = await (await page.request.get("/api/v1/overseas-admin/school-staff")).json();
@@ -254,7 +255,7 @@ test("Select all / Select visible / Clear visible / Clear all act on the School 
     await page.fill("#school-name", name);
     await page.fill("#school-coordinator-name", "E2E Bulk Coordinator");
     await page.fill("#school-coordinator-email", `sch456-e2e-bulk-coord-${unique}-${name === alphaName ? "a" : "b"}@example.local`);
-    await page.click('button:has-text("Create school + seed Coordinator")');
+    await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
     await expect(page.getByText(/School created\./)).toBeVisible();
   }
 

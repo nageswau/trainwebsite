@@ -492,10 +492,11 @@ async def _create_school_with_coordinator(client, db_session, *, suffix: str | N
     suffix = suffix or uuid.uuid4().hex[:8]
     response = await client.post(
         "/api/v1/overseas-admin/schools",
-        json={"name": f"ENH-001 School {suffix}", "coordinator_full_name": "Coordinator", "coordinator_email": f"enh001-coord-{suffix}@example.local", "coordinator_password": ADMIN_PASSWORD},
+        json={"name": f"ENH-001 School {suffix}", "coordinator_full_name": "Coordinator", "coordinator_email": f"enh001-coord-{suffix}@example.local"},
     )
     assert response.status_code == 201
     data = response.json()
+    await client.post("/api/v1/auth/reset-password", json={"token": data["development_welcome_token"], "new_password": ADMIN_PASSWORD})
     await client.post("/api/v1/auth/login", json={"email": data["coordinator_email"], "password": ADMIN_PASSWORD, "division": "overseas"})
     return data
 

@@ -19,11 +19,11 @@ test("admin views a role-scoped student directory and edits detail fields (ADM-0
   const uniqueName = `ADM-004 Directory Student ${Date.now()}`;
   const trainerName = `ADM-004 Directory Trainer ${Date.now()}`;
   const created = await page.request.post("/api/v1/admin/users", {
-    data: { role: "it_student", email: `adm004-${Date.now()}@example.com`, full_name: uniqueName, password: "Sup3r-Secret-Pass!" },
+    data: { role: "it_student", email: `adm004-${Date.now()}@example.com`, full_name: uniqueName },
   });
   expect(created.ok()).toBeTruthy();
   const createdTrainer = await page.request.post("/api/v1/admin/users", {
-    data: { role: "trainer", email: `adm004-trainer-${Date.now()}@example.com`, full_name: trainerName, password: "Sup3r-Secret-Pass!" },
+    data: { role: "trainer", email: `adm004-trainer-${Date.now()}@example.com`, full_name: trainerName },
   });
   expect(createdTrainer.ok()).toBeTruthy();
 

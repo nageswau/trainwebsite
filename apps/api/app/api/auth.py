@@ -1,10 +1,11 @@
 import hashlib
+import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -18,6 +19,8 @@ from app.schemas import LoginRequest, LoginResponse, ProfileUpdate, Registration
 from app.services.integrations import send_notification
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+logger = logging.getLogger("app.auth")
 
 
 async def _sync_role_assignment(db: AsyncSession, user: User, assigned_by_user_id: UUID | None = None) -> UserRoleAssignment:
@@ -181,15 +184,46 @@ async def reset_password(payload: dict, db: AsyncSession = Depends(get_db)):
     new_password = str(payload.get("new_password", ""))
     if len(new_password) < 10:
         raise HTTPException(422, "Password must be at least 10 characters")
+    if len(new_password) > 128:
+        # Same cap as the registration schemas; bcrypt silently ignores bytes past 72 anyway.
+        raise HTTPException(422, "Password must be at most 128 characters")
     digest = hashlib.sha256(raw.encode()).hexdigest()
-    item = await db.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == digest, PasswordResetToken.used_at.is_(None)))
-    if not item or item.expires_at < datetime.now(UTC):
+    now = datetime.now(UTC)
+    # Lock order: user row FIRST, then the token -- the same order Re-send uses. Consuming the token first and updating
+    # the user afterwards was the opposite order, so a reset racing a Re-send could deadlock (Postgres aborts one -> 500).
+    # The plain lookup takes no lock; an unknown token is the same generic 400 as every other failure.
+    owner_id = await db.scalar(select(PasswordResetToken.user_id).where(PasswordResetToken.token_hash == digest))
+    if owner_id is None:
         raise HTTPException(400, "Reset token is invalid or expired")
-    user = await db.get(User, item.user_id)
+    user = await db.scalar(select(User).where(User.id == owner_id).with_for_update())
     if not user:
         raise HTTPException(400, "User unavailable")
+    # ENH-003: consume atomically so "single-use" holds under concurrency -- a read-then-write
+    # let two simultaneous submissions both pass `used_at IS NULL`. Every failure (unknown, used,
+    # expired, superseded) is deliberately the same 400 so a caller cannot tell them apart. bcrypt
+    # only runs after a valid token, so invalid requests cannot burn CPU.
+    consumed = (
+        await db.execute(
+            update(PasswordResetToken)
+            .where(PasswordResetToken.token_hash == digest, PasswordResetToken.used_at.is_(None), PasswordResetToken.superseded_at.is_(None), PasswordResetToken.expires_at > now)
+            .values(used_at=now)
+            .returning(PasswordResetToken.purpose)
+        )
+    ).first()
+    if not consumed:
+        raise HTTPException(400, "Reset token is invalid or expired")
+    welcome = consumed.purpose == "welcome"
+    if welcome and not user.active:
+        # A welcome link is only good for an active account (security review S2): the rollback keeps
+        # the token unconsumed, and deactivation/reactivation revokes it (Task 6).
+        logger.warning("welcome_link_refused_inactive_account", extra={"extra_fields": {"user_id": str(user.id)}})
+        raise HTTPException(400, "Reset token is invalid or expired")
     user.password_hash = hash_password(new_password)
-    item.used_at = datetime.now(UTC)
-    db.add(AuditLog(user_id=user.id, action="auth.password_reset", entity_type="user", entity_id=str(user.id), metadata_json={}))
+    if welcome:
+        # The link was delivered to this address, so using it proves control of it (DEC-SCOPE-019 #5).
+        user.email_verified = True
+    db.add(AuditLog(user_id=user.id, action="auth.welcome_password_set" if welcome else "auth.password_reset", entity_type="user", entity_id=str(user.id), metadata_json={}))
     await db.commit()
+    if welcome:
+        logger.info("welcome_password_set", extra={"extra_fields": {"user_id": str(user.id)}})
     return {"ok": True}

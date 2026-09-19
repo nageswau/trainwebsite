@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function message(detail: unknown) {
@@ -16,22 +17,36 @@ export default function ResetPasswordForm({ division }: { division: "it" | "over
   const search = useSearchParams();
   const token = search.get("token") || "";
   const [error, setError] = useState("");
+  const [expiredLink, setExpiredLink] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setError("");
+    setExpiredLink(false);
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/v1/auth/reset-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, new_password: form.get("new_password") }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/v1/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, new_password: form.get("new_password") }),
+      });
+    } catch {
+      // The server commits the new password BEFORE it answers, so a lost response is an unknown outcome -- the
+      // request may or may not have been saved. Say so, and point at the two ways to find out.
+      setBusy(false);
+      setError("Network error -- we could not confirm whether your password was saved. Try signing in; if that fails, use this link again or request a new one.");
+      return;
+    }
     const data = await response.json().catch(() => ({}));
     setBusy(false);
     if (!response.ok) {
       setError(message(data.detail));
+      // 400 is the one generic answer for an unknown, used, expired or revoked link (ENH-003), so it
+      // is the only case where a way to get a fresh link helps; a 422 is about the password itself.
+      setExpiredLink(response.status === 400);
       return;
     }
     router.push(`/${division}/login`);
@@ -49,12 +64,18 @@ export default function ResetPasswordForm({ division }: { division: "it" | "over
     <form className="form" onSubmit={submit}>
       <div className="field">
         <label htmlFor="reset-new-password">New password</label>
-        <input id="reset-new-password" name="new_password" type="password" minLength={10} autoComplete="new-password" required />
-        <span className="muted" style={{ fontSize: 12 }}>Use at least 10 characters.</span>
+        <input id="reset-new-password" name="new_password" type="password" minLength={10} maxLength={128} autoComplete="new-password" aria-describedby="reset-password-hint" required />
+        <span id="reset-password-hint" className="muted" style={{ fontSize: 12 }}>Use at least 10 characters.</span>
       </div>
       {error && (
         <div className="form-error" role="alert" aria-live="assertive">
-          {error}
+          <p style={{ margin: 0 }}>{error}</p>
+          {expiredLink && (
+            <p style={{ margin: "6px 0 0" }}>
+              <Link href={`/${division}/forgot-password`} style={{ color: "var(--blue)", fontWeight: 800 }}>Request a new reset link</Link>{" "}
+              or, if this was your first-time invitation, ask your administrator to re-send it.
+            </p>
+          )}
         </div>
       )}
       <button className="btn" disabled={busy}>

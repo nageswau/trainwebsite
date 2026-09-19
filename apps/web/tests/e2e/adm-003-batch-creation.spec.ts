@@ -25,7 +25,7 @@ test("admin creates a batch by picking program and trainer, no manual reference 
   const trainerName = `ADM-003 E2E Trainer ${Date.now()}`;
   const trainer = await request.post("/api/v1/admin/users", {
     headers: { cookie: `edusphere_access=${access}` },
-    data: { full_name: trainerName, email: `adm003-trainer-${Date.now()}@example.com`, password: "Sup3r-Secret-Pass!", division: "it", role: "trainer" },
+    data: { full_name: trainerName, email: `adm003-trainer-${Date.now()}@example.com`, division: "it", role: "trainer" },
   });
   expect(trainer.ok()).toBeTruthy();
 

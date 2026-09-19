@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { E2E_PASSWORD, activateWithToken, createAndActivateFromUi } from "./helpers/welcome";
 
 // SCH-010 -- School->Overseas bridge (`DEC-SCOPE-018`). A Counselor (never
 // school_coordinator, per direct user decision) looks a School student up by their
@@ -25,13 +26,14 @@ test("counselor links a School student to a real Overseas application via their 
   await page.fill("#school-name", schoolName);
   await page.fill("#school-coordinator-name", "E2E SCH-010 Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
-  await page.click('button:has-text("Create school + seed Coordinator")');
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
   const counselorCreated = await page.request.post("/api/v1/admin/users", {
     data: { full_name: "E2E SCH-010 Counselor", email: counselorEmail, division: "overseas", role: "counselor" },
   });
   expect(counselorCreated.ok()).toBeTruthy();
+  await activateWithToken(page.request, (await counselorCreated.json()).development_welcome_token);
 
   // A real university to link against -- created here, while still logged in as Overseas
   // Admin, since only overseas_admin/super_admin may call this endpoint.
@@ -45,7 +47,7 @@ test("counselor links a School student to a real Overseas application via their 
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 
@@ -61,7 +63,7 @@ test("counselor links a School student to a real Overseas application via their 
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", counselorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/overseas/counselor/dashboard");
 
@@ -82,7 +84,7 @@ test("counselor links a School student to a real Overseas application via their 
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 

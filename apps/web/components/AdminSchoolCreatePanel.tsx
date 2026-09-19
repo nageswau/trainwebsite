@@ -3,6 +3,8 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { type Feedback, toneClass, welcomeLinkFeedback } from "@/lib/welcomeLink";
+
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
@@ -16,7 +18,7 @@ function detailMessage(detail: unknown) {
 export default function AdminSchoolCreatePanel() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  const [message, setMessage] = useState<Feedback | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,25 +26,32 @@ export default function AdminSchoolCreatePanel() {
     setBusy(true);
     setMessage(null);
     const form = new FormData(formElement);
-    const response = await fetch("/api/v1/overseas-admin/schools", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: form.get("name"),
-        city: form.get("city") || undefined,
-        state: form.get("state") || undefined,
-        coordinator_full_name: form.get("coordinator_full_name"),
-        coordinator_email: form.get("coordinator_email"),
-        tier: form.get("tier") || undefined,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/v1/overseas-admin/schools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.get("name"),
+          city: form.get("city") || undefined,
+          state: form.get("state") || undefined,
+          coordinator_full_name: form.get("coordinator_full_name"),
+          coordinator_email: form.get("coordinator_email"),
+          tier: form.get("tier") || undefined,
+        }),
+      });
+    } catch {
+      setBusy(false);
+      setMessage({ text: "Network error -- it is not known whether the school was created. Check the schools list before trying again.", tone: "error" });
+      return;
+    }
     const data = await response.json().catch(() => ({}));
     setBusy(false);
     if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+      setMessage({ text: detailMessage(data.detail), tone: "error" });
       return;
     }
-    setMessage({ text: `School created. Coordinator account ready for ${data.coordinator_email} (default password: ChangeMe@12345 -- share it securely and ask them to change it).`, failed: false });
+    setMessage(welcomeLinkFeedback(`School created. Coordinator account ready for ${data.coordinator_email}.`, data));
     formElement.reset();
     router.refresh();
   }
@@ -86,7 +95,7 @@ export default function AdminSchoolCreatePanel() {
         </button>
       </form>
       {message && (
-        <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 8 }}>
+        <div className={toneClass[message.tone]} role="status" aria-live="polite" style={{ marginTop: 8 }}>
           {message.text}
         </div>
       )}

@@ -20,7 +20,7 @@ test("admin can deactivate and reactivate a user with no active dependents (ADM-
   const trainerName = `E2E Trainer ${Date.now()}`;
   const created = await request.post("/api/v1/admin/users", {
     headers: { cookie: `edusphere_access=${access}` },
-    data: { full_name: trainerName, email: `trainer-${Date.now()}@example.com`, password: "Sup3r-Secret-Pass!", division: "it", role: "trainer" },
+    data: { full_name: trainerName, email: `trainer-${Date.now()}@example.com`, division: "it", role: "trainer" },
   });
   expect(created.ok()).toBeTruthy();
 
@@ -127,7 +127,6 @@ test("Super Admin sees every division/role and can create another Super Admin th
   const email = `e2e-second-super-admin-${Date.now()}@example.com`;
   await form.locator('input[name="full_name"]').fill("E2E Second Super Admin");
   await form.locator('input[name="email"]').fill(email);
-  await form.locator('input[name="password"]').fill("Sup3r-Secret-Pass!");
   await form.locator('select[name="division"]').selectOption("global");
   await form.locator('select[name="role"]').selectOption("super_admin");
   await form.getByRole("button", { name: "Create user" }).click();

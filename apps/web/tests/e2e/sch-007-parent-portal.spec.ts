@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // SCH-007 -- Parent Portal: child 360 overview + parent notifications. Builds its own
 // throwaway school + roster through the real onboarding/roster flows, has the Parent accept
@@ -22,13 +23,13 @@ test("parent sees child overview, upcoming session, and notification; unlinked c
   await page.fill("#school-name", `E2E Parent Portal School ${unique}`);
   await page.fill("#school-coordinator-name", "E2E PP Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
-  await page.click('button:has-text("Create school + seed Coordinator")');
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
 
@@ -54,7 +55,7 @@ test("parent sees child overview, upcoming session, and notification; unlinked c
   await page.request.post("/api/v1/auth/logout");
   await page.goto("/overseas/login");
   await page.fill("#login-email", coordinatorEmail);
-  await page.fill("#login-password", "ChangeMe@12345");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/coordinator/dashboard");
   const when = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();

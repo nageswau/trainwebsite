@@ -43,11 +43,13 @@ async def _create_school(client, db_session, *, suffix: str | None = None) -> di
             "city": "Testville",
             "coordinator_full_name": "Test Coordinator",
             "coordinator_email": f"sch003-coord-{suffix}@example.local",
-            "coordinator_password": PASSWORD,
         },
     )
     assert response.status_code == 201
     data = response.json()
+    # ENH-003: the Coordinator sets their own password from the welcome link (dev/test token).
+    activation = await client.post("/api/v1/auth/reset-password", json={"token": data["development_welcome_token"], "new_password": PASSWORD})
+    assert activation.status_code == 200
     return {"admin": admin, **data}
 
 

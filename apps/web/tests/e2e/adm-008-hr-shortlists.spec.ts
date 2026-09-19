@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { E2E_PASSWORD, createAndActivate } from "./helpers/welcome";
+
 // ADM-008 -- HR Team workspace. Requires the stack running via `docker compose up` with
 // `python -m app.seed` already applied.
 
@@ -13,8 +15,7 @@ test("HR reviews a requirement's shortlist, and an empty requirement shows a cle
   await page.waitForURL("**/it/admin/dashboard");
 
   const candidateEmail = `adm008-${Date.now()}@example.com`;
-  const createdCandidate = await page.request.post("/api/v1/admin/users", { data: { role: "it_student", email: candidateEmail, full_name: "ADM-008 Candidate", password: "Sup3r-Secret-Pass!" } });
-  expect(createdCandidate.ok()).toBeTruthy();
+  await createAndActivate(page.request, "/api/v1/admin/users", { role: "it_student", email: candidateEmail, full_name: "ADM-008 Candidate" });
 
   await page.goto("/it/login");
   await page.fill("#login-email", "hr@edusphere.local");
@@ -31,7 +32,7 @@ test("HR reviews a requirement's shortlist, and an empty requirement shows a cle
 
   await page.goto("/it/login");
   await page.fill("#login-email", candidateEmail);
-  await page.fill("#login-password", "Sup3r-Secret-Pass!");
+  await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/it/student/dashboard");
   const apply = await page.request.post(`/api/v1/workflows/it/jobs/${filledJob.id}/apply`, { data: {} });

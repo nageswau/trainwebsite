@@ -918,6 +918,11 @@ class PasswordResetToken(Base, TimestampMixin):
     token_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # ENH-003 / DEC-SCOPE-019: "reset" (forgot-password, 30 min) or "welcome" (admin-provisioned
+    # first-time set-password link, 72 h). `superseded_at` is set when an admin Re-send (or an
+    # `active` change) replaces/revokes an unused welcome token.
+    purpose: Mapped[str] = mapped_column(String(20), default="reset", server_default="reset")
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class School(Base, TimestampMixin):

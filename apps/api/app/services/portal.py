@@ -51,6 +51,7 @@ from app.models import (
     User,
     VisaCase,
 )
+from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")
 
@@ -69,6 +70,10 @@ async def _safe[T](db: AsyncSession, fn: Callable[[], Awaitable[T]], default: T)
     except Exception:
         logger.exception("dashboard widget query failed")
         return default
+
+
+# ENH-003 / QA-005: the same wording the Super Admin table and the Manage users panel use for a user's setup state.
+_SETUP_LABEL = {"active": "Password set", "pending_setup": "Awaiting setup", "link_expired": "Link expired"}
 
 
 def _payload(title, subtitle, columns=(), rows=(), metrics=(), actions=(), panels=()):
@@ -934,6 +939,8 @@ async def _operations(db: AsyncSession, user: User, section: str):
                     {"label": "Applications", "value": len(applications)},
                     {"label": "Awaiting documents", "value": sum(1 for a, _, _ in applications if a.status in {"profile_evaluation", "documents_pending"})},
                     {"label": "Offers", "value": sum(1 for a, _, _ in applications if a.status in {"offer_received", "accepted"})},
+                    # ENH-003 / QA-006: an admin's time-sensitive to-do belongs in the first viewport, not only in the panel below.
+                    *(({"label": "Expired welcome links", "value": len(await user_ids_with_status(db, user, "link_expired"))},) if user.role == "overseas_admin" else ()),
                 ),
             )
         if section == "offer-letters" and user.role == "university_rep":
@@ -1203,6 +1210,8 @@ async def _operations(db: AsyncSession, user: User, section: str):
                     {"label": "Users", "value": await db.scalar(users_q) or 0},
                     {"label": "Enquiries", "value": await db.scalar(leads_q) or 0},
                     {"label": "Collected payments", "value": f"INR {float(await db.scalar(payments_q) or 0):,.0f}"},
+                    # ENH-003 / QA-006: same scoped count the Super Admin dashboard already leads with.
+                    {"label": "Expired welcome links", "value": len(await user_ids_with_status(db, user, "link_expired"))},
                 ),
             )
         if section == "reports" and user.role in {"it_admin", "super_admin"}:
@@ -1327,11 +1336,12 @@ async def _operations(db: AsyncSession, user: User, section: str):
             if role_map[section]:
                 stmt = stmt.where(User.role == role_map[section])
             rows = (await db.scalars(stmt.order_by(User.created_at.desc()).limit(500))).all()
+            setup = await provisioning_statuses(db, [u.id for u in rows])  # absent = has set a password
             return _payload(
                 section.title(),
                 "Role-scoped user administration.",
-                (("id", "reference"), ("name", "Name"), ("email", "Email"), ("role", "Role"), ("active", "Active")),
-                ({"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "active": u.active} for u in rows),
+                (("id", "reference"), ("name", "Name"), ("email", "Email"), ("role", "Role"), ("active", "Active"), ("setup", "Setup")),
+                ({"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "active": u.active, "setup": _SETUP_LABEL[setup.get(u.id, "active")]} for u in rows),
             )
         if section == "agents" and division == "overseas":
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic
