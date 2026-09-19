@@ -51,6 +51,7 @@ from app.models import (
     User,
     VisaCase,
 )
+from app.services.provisioning import user_ids_with_status
 
 logger = logging.getLogger("app.portal")
 
@@ -934,6 +935,8 @@ async def _operations(db: AsyncSession, user: User, section: str):
                     {"label": "Applications", "value": len(applications)},
                     {"label": "Awaiting documents", "value": sum(1 for a, _, _ in applications if a.status in {"profile_evaluation", "documents_pending"})},
                     {"label": "Offers", "value": sum(1 for a, _, _ in applications if a.status in {"offer_received", "accepted"})},
+                    # ENH-003 / QA-006: an admin's time-sensitive to-do belongs in the first viewport, not only in the panel below.
+                    *(({"label": "Expired welcome links", "value": len(await user_ids_with_status(db, user, "link_expired"))},) if user.role == "overseas_admin" else ()),
                 ),
             )
         if section == "offer-letters" and user.role == "university_rep":
@@ -1203,6 +1206,8 @@ async def _operations(db: AsyncSession, user: User, section: str):
                     {"label": "Users", "value": await db.scalar(users_q) or 0},
                     {"label": "Enquiries", "value": await db.scalar(leads_q) or 0},
                     {"label": "Collected payments", "value": f"INR {float(await db.scalar(payments_q) or 0):,.0f}"},
+                    # ENH-003 / QA-006: same scoped count the Super Admin dashboard already leads with.
+                    {"label": "Expired welcome links", "value": len(await user_ids_with_status(db, user, "link_expired"))},
                 ),
             )
         if section == "reports" and user.role in {"it_admin", "super_admin"}:

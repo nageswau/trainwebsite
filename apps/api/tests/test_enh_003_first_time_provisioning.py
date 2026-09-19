@@ -884,6 +884,29 @@ async def test_a_later_password_set_via_forgot_password_resolves_the_expired_sta
     assert str(user.id) not in ids
 
 
+# QA-006: the expired-links panel sat below the fold on the IT and Overseas dashboards, so nothing at the top told an
+# admin there was anything to act on. Both portal dashboards now lead with the same scoped count as a metric tile.
+def _expired_tile(payload: dict):
+    return next((m["value"] for m in payload["metrics"] if m["label"] == "Expired welcome links"), None)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("role,division,other_division,other_role", [("it_admin", "it", "overseas", "counselor"), ("overseas_admin", "overseas", "it", "trainer")])
+async def test_the_portal_dashboard_leads_with_a_scoped_expired_links_tile(client, db_session, role, division, other_division, other_role):
+    admin = await _make_user(db_session, role=role, division=division)
+    assert (await _login(client, admin.email, division=division)).status_code == 200
+    url = f"/api/v1/portal/{division}/{'admin'}/dashboard"
+    before = _expired_tile((await client.get(url)).json())
+    assert isinstance(before, int), "the dashboard has no 'Expired welcome links' metric"
+    mine = await _make_user(db_session, role="counselor" if division == "overseas" else "trainer", division=division, email_verified=False)
+    await _seed_token(db_session, mine, expires_in=timedelta(hours=-1))
+    theirs = await _make_user(db_session, role=other_role, division=other_division, email_verified=False)
+    await _seed_token(db_session, theirs, expires_in=timedelta(hours=-1))
+    live = await _make_user(db_session, role="counselor" if division == "overseas" else "trainer", division=division, email_verified=False)
+    await _seed_token(db_session, live)  # still valid: not expired
+    assert _expired_tile((await client.get(url)).json()) == before + 1
+
+
 @pytest.mark.asyncio
 async def test_dashboard_reports_the_scoped_expired_link_count(client, db_session):
     admin = await _make_user(db_session)
