@@ -43,16 +43,23 @@ export default function AdminSchoolStaffPanel() {
     setBusy(true);
     setMessage(null);
     const form = new FormData(formElement);
-    const response = await fetch("/api/v1/overseas-admin/school-staff", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        role: form.get("role"),
-        full_name: form.get("full_name"),
-        email: form.get("email"),
-        school_ids: selectedSchools,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/v1/overseas-admin/school-staff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: form.get("role"),
+          full_name: form.get("full_name"),
+          email: form.get("email"),
+          school_ids: selectedSchools,
+        }),
+      });
+    } catch {
+      setBusy(false);
+      setMessage({ text: "Network error -- it is not known whether the account was created. Check the Users list before trying again.", tone: "error" });
+      return;
+    }
     const data = await response.json().catch(() => ({}));
     setBusy(false);
     if (!response.ok) {

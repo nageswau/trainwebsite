@@ -26,11 +26,19 @@ export default function ResetPasswordForm({ division }: { division: "it" | "over
     setError("");
     setExpiredLink(false);
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/v1/auth/reset-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, new_password: form.get("new_password") }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/v1/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, new_password: form.get("new_password") }),
+      });
+    } catch {
+      // A dropped connection never reaches the server, so the link is still valid: just let them retry.
+      setBusy(false);
+      setError("Network error -- your password was not changed. Check your connection and try again.");
+      return;
+    }
     const data = await response.json().catch(() => ({}));
     setBusy(false);
     if (!response.ok) {

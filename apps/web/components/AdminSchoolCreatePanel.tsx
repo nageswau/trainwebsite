@@ -26,18 +26,25 @@ export default function AdminSchoolCreatePanel() {
     setBusy(true);
     setMessage(null);
     const form = new FormData(formElement);
-    const response = await fetch("/api/v1/overseas-admin/schools", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: form.get("name"),
-        city: form.get("city") || undefined,
-        state: form.get("state") || undefined,
-        coordinator_full_name: form.get("coordinator_full_name"),
-        coordinator_email: form.get("coordinator_email"),
-        tier: form.get("tier") || undefined,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/v1/overseas-admin/schools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.get("name"),
+          city: form.get("city") || undefined,
+          state: form.get("state") || undefined,
+          coordinator_full_name: form.get("coordinator_full_name"),
+          coordinator_email: form.get("coordinator_email"),
+          tier: form.get("tier") || undefined,
+        }),
+      });
+    } catch {
+      setBusy(false);
+      setMessage({ text: "Network error -- it is not known whether the school was created. Check the schools list before trying again.", tone: "error" });
+      return;
+    }
     const data = await response.json().catch(() => ({}));
     setBusy(false);
     if (!response.ok) {

@@ -66,3 +66,16 @@ describe("AdminSchoolCreatePanel (ENH-003: no password is shown, chosen or sent)
     expect(outcome).toHaveClass("form-error");
   });
 });
+
+describe("AdminSchoolCreatePanel: network failure (QA-008)", () => {
+  it("re-enables the button, explains the failure and keeps the typed values when the POST rejects", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    render(<AdminSchoolCreatePanel />);
+    fillAndSubmit();
+    const outcome = await screen.findByText(/Network error/);
+    expect(outcome).toHaveClass("form-error");
+    expect(outcome).toHaveTextContent("not known whether the school was created");
+    expect(screen.getByRole("button", { name: "Create school + seed Coordinator" })).toBeEnabled();
+    expect(screen.getByLabelText("School name")).toHaveValue("Test School");
+  });
+});

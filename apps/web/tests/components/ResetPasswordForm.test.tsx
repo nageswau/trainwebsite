@@ -82,3 +82,20 @@ describe("ResetPasswordForm (ENH-003: also the first-time set-password page)", (
     expect(document.getElementById("reset-password-hint")).toHaveTextContent("at least 10 characters");
   });
 });
+
+describe("ResetPasswordForm: network failure (QA-007)", () => {
+  it("re-enables the button, explains the failure and keeps the typed password when fetch rejects", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    render(<ResetPasswordForm division="overseas" />);
+    await submit();
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Network error");
+    expect(alert).toHaveTextContent("password was not changed");
+    const button = screen.getByRole("button", { name: "Reset password" });
+    expect(button).toBeEnabled();
+    expect(screen.getByLabelText("New password")).toHaveValue("Brand-New-Pass-1!");
+    // The link itself is fine -- there is nothing to "request again" for a dropped connection.
+    expect(screen.queryByRole("link", { name: "Request a new reset link" })).toBeNull();
+    expect(push).not.toHaveBeenCalled();
+  });
+});

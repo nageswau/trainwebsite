@@ -64,3 +64,16 @@ describe("AdminSchoolStaffPanel (ENH-003: no password is shown, chosen or sent)"
     expect(await screen.findByText("Email already exists")).toHaveClass("form-error");
   });
 });
+
+describe("AdminSchoolStaffPanel: network failure (QA-008)", () => {
+  it("re-enables the button, explains the failure and keeps the typed values when the POST rejects", async () => {
+    vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => (init?.method === "POST" ? Promise.reject(new TypeError("Failed to fetch")) : Promise.resolve(json([], 200)))));
+    render(<AdminSchoolStaffPanel />);
+    await fillAndSubmit();
+    const outcome = await screen.findByText(/Network error/);
+    expect(outcome).toHaveClass("form-error");
+    expect(outcome).toHaveTextContent("not known whether the account was created");
+    expect(screen.getByRole("button", { name: "Create account" })).toBeEnabled();
+    expect(screen.getByLabelText("Email")).toHaveValue("staff@example.local");
+  });
+});
