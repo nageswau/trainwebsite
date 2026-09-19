@@ -51,7 +51,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services.provisioning import user_ids_with_status
+from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")
 
@@ -70,6 +70,10 @@ async def _safe[T](db: AsyncSession, fn: Callable[[], Awaitable[T]], default: T)
     except Exception:
         logger.exception("dashboard widget query failed")
         return default
+
+
+# ENH-003 / QA-005: the same wording the Super Admin table and the Manage users panel use for a user's setup state.
+_SETUP_LABEL = {"pending_setup": "Awaiting setup", "link_expired": "Link expired"}
 
 
 def _payload(title, subtitle, columns=(), rows=(), metrics=(), actions=(), panels=()):
@@ -1332,11 +1336,12 @@ async def _operations(db: AsyncSession, user: User, section: str):
             if role_map[section]:
                 stmt = stmt.where(User.role == role_map[section])
             rows = (await db.scalars(stmt.order_by(User.created_at.desc()).limit(500))).all()
+            setup = await provisioning_statuses(db, [u.id for u in rows])  # absent = has set a password
             return _payload(
                 section.title(),
                 "Role-scoped user administration.",
-                (("id", "reference"), ("name", "Name"), ("email", "Email"), ("role", "Role"), ("active", "Active")),
-                ({"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "active": u.active} for u in rows),
+                (("id", "reference"), ("name", "Name"), ("email", "Email"), ("role", "Role"), ("active", "Active"), ("setup", "Setup")),
+                ({"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "active": u.active, "setup": _SETUP_LABEL[setup[u.id].status] if u.id in setup else "Password set"} for u in rows),
             )
         if section == "agents" and division == "overseas":
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic

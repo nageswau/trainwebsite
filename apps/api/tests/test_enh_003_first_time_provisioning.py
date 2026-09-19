@@ -907,6 +907,27 @@ async def test_the_portal_dashboard_leads_with_a_scoped_expired_links_tile(clien
     assert _expired_tile((await client.get(url)).json()) == before + 1
 
 
+# QA-005: the Users table next to the Manage users panel listed a not-yet-activated account as just "Active: true", while the
+# panel said "Awaiting setup". Both adjacent lists now agree, and use the same labels as the Super Admin table's Setup column.
+@pytest.mark.asyncio
+@pytest.mark.parametrize("role,division,section_division", [("it_admin", "it", "it"), ("overseas_admin", "overseas", "overseas")])
+async def test_the_users_table_shows_each_accounts_setup_state(client, db_session, role, division, section_division):
+    admin = await _make_user(db_session, role=role, division=division)
+    assert (await _login(client, admin.email, division=division)).status_code == 200
+    member_role = "counselor" if division == "overseas" else "trainer"
+    pending = await _make_user(db_session, role=member_role, division=division, email_verified=False)
+    await _seed_token(db_session, pending)
+    expired = await _make_user(db_session, role=member_role, division=division, email_verified=False)
+    await _seed_token(db_session, expired, expires_in=timedelta(hours=-1))
+    active = await _make_user(db_session, role=member_role, division=division)
+    payload = (await client.get(f"/api/v1/portal/{section_division}/admin/users")).json()
+    assert {"key": "setup", "label": "Setup"} in payload["columns"]
+    by_email = {row["email"]: row for row in payload["rows"]}
+    assert by_email[pending.email]["setup"] == "Awaiting setup"
+    assert by_email[expired.email]["setup"] == "Link expired"
+    assert by_email[active.email]["setup"] == "Password set"
+
+
 @pytest.mark.asyncio
 async def test_dashboard_reports_the_scoped_expired_link_count(client, db_session):
     admin = await _make_user(db_session)
