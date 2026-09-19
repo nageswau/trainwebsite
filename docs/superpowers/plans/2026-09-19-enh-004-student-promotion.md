@@ -27,6 +27,7 @@ Copied from the spec. Every task's requirements include this section.
 - **The user controls Docker.** Never run `docker compose ...` yourself. When a step needs the stack rebuilt or restarted, or a migration applied to the shared database, ask the user and wait.
 - **Quality gates:** `python -m ruff check .` and `python -m mypy app` from `apps/api`; `npm run typecheck`, `npm run lint`, `npm run build` from `apps/web`. Ruff line length is 200.
 - **Git:** stay on branch `feature/enh-004-student-grade-promotion`. **Never `git add -A` or `git add .`** (an untracked `graphify-out/` must stay out of every commit); add explicit paths. End every commit message with the trailer `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>` (pass it as a second `-m`).
+- **Frontend rules (binding, from `docs/ux/`):** a data table becomes a stacked card list on mobile, never a horizontally scrolling table as the only option (`RESPONSIVE_RULES.md`, `NFR-RESP-001` confirmed); no layout shift; every input has a real label; visible focus, never suppressed; errors stated in text and tied to their field; a keyboard-reachable confirmation before a high-consequence action; outcome never conveyed by colour alone (`ACCESSIBILITY_RULES.md`). Reuse existing classes and components (`.card`, `.btn`, `.status`, `.field`, `.select`, `.search`, `.table-controls`, `.empty`, `.form-error`/`.form-message`, `.jtl-*`); the single new stylesheet is `SchoolPromotionPanel.module.css` (precedent: `ProgramCatalogue.module.css`). No new npm dependency, no `loading.tsx` (there is no shared `school/layout.tsx`, so it would render without the portal shell), no optimistic update, no `window.confirm`. Avoid apostrophes in JSX text (`react/no-unescaped-entities`).
 - **Commands:** backend commands run from `apps/api`; frontend commands from `apps/web`. The examples use PowerShell-safe syntax (no `&&`).
 
 ## Confirmations to obtain from the user (during execution)
@@ -44,7 +45,9 @@ Copied from the spec. Every task's requirements include this section.
 | `apps/api/app/schemas.py` | Modify (imports + append) | `PromotionItem`, `StudentPromotionRequest`, response models, grade-history models |
 | `apps/api/app/api/schools.py` | Modify | Pure helpers (`_swap_grade_label`, `_decide_promotion`), the promotion route, the grade-history route, the timeline detail fix |
 | `apps/api/tests/test_enh_004_student_promotion.py` | Create (grows over Tasks 1–6) | All backend tests |
-| `apps/web/components/SchoolPromotionPanel.tsx` | Create | Promotion UI (client component) |
+| `apps/web/components/SchoolPromotionPanel.tsx` | Create | Promotion container (client): filter, selection, confirm step, submit, focus management |
+| `apps/web/components/SchoolPromotionRow.tsx` | Create | One student's row/card (memoised, presentational) |
+| `apps/web/components/SchoolPromotionPanel.module.css` | Create | The only new CSS: stacked-card layout on mobile, header row from 768px, sticky action bar |
 | `apps/web/app/school/coordinator/promotion/page.tsx` | Create | Server page for the route |
 | `apps/web/lib/navigation.ts` | Modify line 37 | Coordinator nav entry |
 | `apps/web/components/SchoolGradeHistory.tsx` | Create | Read-only history section + loader |
@@ -1748,15 +1751,23 @@ Expected: only `models.py`, `schemas.py`, `api/schools.py`, `alembic/versions/00
 
 ## Task 8: The promotion screen
 
+Design constraints for this task come from `docs/ux/RESPONSIVE_RULES.md` (confirmed requirement `NFR-RESP-001`: a data table becomes a stacked card list on mobile, never a horizontally scrolling table as the only option; no layout shift; the primary action stays reachable) and `docs/ux/ACCESSIBILITY_RULES.md` (keyboard operable, visible focus, real labels, errors identified in text and tied to the field, a keyboard-reachable confirmation for a high-consequence action). Spec §7.1 records the resulting decisions.
+
 **Files:**
-- Create: `apps/web/components/SchoolPromotionPanel.tsx`
+- Create: `apps/web/components/SchoolPromotionRow.tsx` (presentational: one student)
+- Create: `apps/web/components/SchoolPromotionPanel.tsx` (container: state, filter, confirm step, submit)
+- Create: `apps/web/components/SchoolPromotionPanel.module.css` (the only new CSS; precedent: `ProgramCatalogue.module.css`)
 - Create: `apps/web/app/school/coordinator/promotion/page.tsx`
 - Modify: `apps/web/lib/navigation.ts:37`
 - Create: `apps/web/tests/e2e/enh-004-student-promotion.spec.ts`
 
+**Reuse, not rebuilt:** `PortalShell`, `.card`, `.btn` (+`.ghost`), `.status` (+`.error`/`.pending`), `.field`, `.select`, `.search`, `.table-controls`, `.empty`, `.form-error`/`.form-message` (as `SchoolStudentsPanel` uses them), the inline two-step confirm pattern from `AdminUserManagementPanel`/`AdminProgramManagementPanel` (no `window.confirm`), and the "Showing X of Y" `aria-live` pattern from `DataTable`. `DataTable` itself is not reusable here: it renders plain values only and cannot host per-row controls.
+
+**Deliberately not done:** no `loading.tsx` (no route in the app has one, and there is no shared `school/layout.tsx`, so it would render without the portal shell); no optimistic update (promotion is server-authoritative and rows can fail, so the UI shows the server's per-row result the moment it returns, then reconciles with `router.refresh()`); no new dependency (no axe-core).
+
 **Interfaces:**
 - Consumes: Task 3's `POST /api/v1/school/students/promotions` (request `{items:[{student_id, action, grade_or_class?}]}`; response `{academic_year:{id,label}, counts, results:[{student_id,status,reason,message,grade_level,grade_or_class}]}`), existing `GET /api/v1/school/students` and `GET /api/v1/school/academic-years/active` (returns `null` when none).
-- Produces: route `/school/coordinator/promotion`; accessible names the e2e relies on: filter `#promotion-filter`; per-row checkbox `aria-label="Select <full name>"`, action select `aria-label="Action for <full name>"`, label input `aria-label="New label for <full name>"`; select-all checkbox `aria-label="Select all shown students"`; submit button text `Apply to N student(s)`; result summary text `N promoted, N held back, N failed, N skipped.`; a row already in the active year shows `Already in <year label>`.
+- Produces: route `/school/coordinator/promotion`. Accessible names the e2e relies on: filter `#promotion-filter` (label "Grade level"); select-all checkbox (label "Select all shown"); per-student checkbox whose label text contains the student's full name; per-row selects/inputs labelled "Action" and "New label (optional)"; buttons "Review changes (N)", "Confirm promotion", "Cancel"; confirm text `Promote N and hold back M into <year label>?`; result text `Done for <year label>: N promoted, N held back, N not changed, N skipped.`; a locked row shows `Already in <year label>`.
 
 - [ ] **Step 1: Write the failing e2e spec**
 
@@ -1805,6 +1816,8 @@ async function createStudent(page: Page, data: Record<string, unknown>) {
   return response.json();
 }
 
+const studentRow = (page: Page, name: string) => page.getByRole("listitem").filter({ hasText: name });
+
 test("coordinator promotes and holds back students; the parent sees the new grade; another school is refused (ENH-004)", async ({ page }) => {
   test.setTimeout(90_000);
   const unique = Date.now();
@@ -1842,27 +1855,51 @@ test("coordinator promotes and holds back students; the parent sees the new grad
   await signIn(page, coordinatorA, E2E_PASSWORD, "**/school/coordinator/dashboard");
   await page.goto("/school/coordinator/promotion");
   await expect(page.getByText(yearLabel).first()).toBeVisible();
-  await page.getByLabel("Select E2E Promo Alpha").check();
-  await page.getByLabel("Select E2E Promo Beta").check();
-  await page.getByLabel("Action for E2E Promo Beta").selectOption("hold_back");
-  await page.getByLabel("Select E2E Promo Twelve").check();
-  await page.getByRole("button", { name: /Apply to 3 students/ }).click();
-  await expect(page.getByText("1 promoted, 1 held back, 1 failed, 0 skipped.")).toBeVisible();
-  await expect(page.getByText(/Grade 12 is the highest grade/)).toBeVisible();
+  await page.getByRole("checkbox", { name: /E2E Promo Alpha/ }).check();
+  await page.getByRole("checkbox", { name: /E2E Promo Beta/ }).check();
+  await studentRow(page, "E2E Promo Beta").getByLabel("Action").selectOption("hold_back");
+  await page.getByRole("checkbox", { name: /E2E Promo Twelve/ }).check();
+  // The Grade 12 student is flagged before anything is submitted (advisory; the server decides).
+  await expect(studentRow(page, "E2E Promo Twelve")).toContainText("Grade 12 is the highest grade");
 
-  // The list reflects the outcome after a full reload; processed students are locked, the failed one is not.
+  // High-consequence action: an explicit confirmation step, not a one-click apply.
+  await page.getByRole("button", { name: /Review changes \(3\)/ }).click();
+  await expect(page.getByText(`Promote 2 and hold back 1 into ${yearLabel}?`)).toBeVisible();
+  await page.getByRole("button", { name: "Confirm promotion" }).click();
+  await expect(page.getByText(`Done for ${yearLabel}: 1 promoted, 1 held back, 1 not changed, 0 skipped.`)).toBeVisible();
+
+  // The server's per-row outcome is shown at once, before any reload.
+  await expect(studentRow(page, "E2E Promo Alpha")).toContainText("Grade 9-A");
+  await expect(studentRow(page, "E2E Promo Alpha")).toContainText("Promoted");
+  await expect(studentRow(page, "E2E Promo Beta")).toContainText("Held back");
+  await expect(studentRow(page, "E2E Promo Twelve")).toContainText("Not changed");
+
+  // ...and it survives a full reload: processed students are locked, the failed one is not.
   await page.reload();
-  const alphaRow = page.locator("tr", { hasText: "E2E Promo Alpha" });
-  await expect(alphaRow).toContainText("Grade 9-A");
-  await expect(alphaRow).toContainText(`Already in ${yearLabel}`);
-  const betaRow = page.locator("tr", { hasText: "E2E Promo Beta" });
-  await expect(betaRow).toContainText("Grade 8-B");
-  await expect(betaRow).toContainText(`Already in ${yearLabel}`);
-  const twelveRow = page.locator("tr", { hasText: "E2E Promo Twelve" });
-  await expect(twelveRow).toContainText("Grade 12");
-  await expect(twelveRow).not.toContainText("Already in");
+  await expect(studentRow(page, "E2E Promo Alpha")).toContainText(`Already in ${yearLabel}`);
+  await expect(studentRow(page, "E2E Promo Beta")).toContainText(`Already in ${yearLabel}`);
+  await expect(studentRow(page, "E2E Promo Twelve")).not.toContainText("Already in");
   await page.selectOption("#promotion-filter", "12");
-  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await expect(page.getByRole("listitem").filter({ hasText: "E2E Promo" })).toHaveCount(1);
+
+  // Keyboard: Space toggles the checkbox; Enter opens the confirm step and moves focus to it; Escape backs out and returns focus.
+  const twelveBox = page.getByRole("checkbox", { name: /E2E Promo Twelve/ });
+  await twelveBox.focus();
+  await page.keyboard.press("Space");
+  await expect(twelveBox).toBeChecked();
+  const review = page.getByRole("button", { name: /Review changes \(1\)/ });
+  await review.press("Enter");
+  await expect(page.getByRole("button", { name: "Confirm promotion" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(review).toBeFocused();
+
+  // Responsive (RESPONSIVE_RULES): no horizontal scroll at 320 / 768 / 1024 / 1440, and the primary action stays reachable.
+  for (const width of [320, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), { message: `horizontal overflow at ${width}px` }).toBe(true);
+    await expect(review).toBeInViewport();
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   // The Parent (invited earlier, accepting now) sees the promoted grade on the dashboard.
   await page.request.post("/api/v1/auth/logout");
@@ -1875,13 +1912,138 @@ test("coordinator promotes and holds back students; the parent sees the new grad
 });
 ```
 
-- [ ] **Step 2: Confirm the spec fails for the right reason**
+- [ ] **Step 2: Confirm the spec compiles**
 
-The spec needs the running stack, which the user controls. Do not start it. Confirm statically instead:
 Run (from `apps/web`): `npx tsc --noEmit`
-Expected: passes (the spec compiles). The spec itself will fail on `/school/coordinator/promotion` until Steps 3-5 exist; the first real run happens in Step 6.
+Expected: passes. The spec fails at runtime until Steps 3-6 exist; the first real run is Step 8 (it needs the stack, which the user controls).
 
-- [ ] **Step 3: Create the panel**
+- [ ] **Step 3: Create the scoped stylesheet**
+
+Create `apps/web/components/SchoolPromotionPanel.module.css` (uses only existing CSS variables; no new colors; no animation):
+
+```css
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.header { display: none; }
+.row { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.who { display: flex; gap: 12px; align-items: flex-start; }
+.who input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+.who label { display: grid; gap: 2px; cursor: pointer; }
+.control { display: grid; gap: 7px; }
+.outcome { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+.hint { color: var(--muted); font-size: 13px; }
+.bar { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 16px; padding: 12px 14px; background: #fff; border-top: 1px solid var(--line); }
+.barText { margin: 0; font-weight: 700; }
+.barActions { display: flex; gap: 10px; flex-wrap: wrap; }
+.summary:focus { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .row select, .row input[type="text"] { min-height: 44px; width: 100%; }
+  .bar .btn, .barActions { width: 100%; }
+  .bar .btn { min-height: 44px; }
+  .barActions .btn { flex: 1; min-height: 44px; }
+}
+
+/* Labels are visible on small screens (the card stack has no column headers) and move to a header row from 768px up. */
+@media (min-width: 768px) {
+  .header, .row { grid-template-columns: minmax(220px, 2fr) 150px minmax(180px, 1.5fr) minmax(150px, 1fr); align-items: center; }
+  .header { display: grid; padding: 0 14px; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .row { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+  .controlLabel { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .outcomeWide { grid-column: 2 / -1; }
+}
+```
+
+- [ ] **Step 4: Create the row component**
+
+Create `apps/web/components/SchoolPromotionRow.tsx`:
+
+```tsx
+import { memo } from "react";
+import styles from "./SchoolPromotionPanel.module.css";
+
+export type PromotionStudent = { id: string; student_code: string; full_name: string; grade_or_class: string | null; grade_level: number | null; academic_year_id: string | null };
+export type PromotionAction = "promote" | "hold_back";
+export type PromotionRowResult = { student_id: string; status: "promoted" | "held_back" | "failed" | "skipped"; reason: string | null; message: string | null; grade_level: number | null; grade_or_class: string | null };
+
+type Props = {
+  student: PromotionStudent;
+  activeYearLabel: string;
+  inActiveYear: boolean;
+  selected: boolean;
+  action: PromotionAction;
+  override: string;
+  result: PromotionRowResult | null;
+  onSelect: (id: string, on: boolean) => void;
+  onAction: (id: string, action: PromotionAction) => void;
+  onOverride: (id: string, value: string) => void;
+};
+
+// Advisory only: the server decides (spec §5.2). It just spares the coordinator a predictable failed row.
+function promoteHint(level: number | null) {
+  if (level === null) return "Grade level is not set. Set it on the roster before promoting.";
+  if (level >= 12) return "Grade 12 is the highest grade and cannot be promoted. Choose Hold back.";
+  return null;
+}
+
+// One student. Memoised with primitive props and stable callbacks so ticking one box does not re-render
+// the whole roster. Labels are real <label>s (visible on mobile, moved to a header row from 768px up).
+function SchoolPromotionRow({ student, activeYearLabel, inActiveYear, selected, action, override, result, onSelect, onAction, onOverride }: Props) {
+  const id = student.id;
+  const settled = result && (result.status === "promoted" || result.status === "held_back") ? result : null;
+  const locked = inActiveYear || settled !== null;
+  const gradeText = settled ? settled.grade_or_class : student.grade_or_class;
+  const level = settled ? settled.grade_level : student.grade_level;
+  const hint = locked || action !== "promote" ? null : promoteHint(student.grade_level);
+  const failure = result && (result.status === "failed" || result.status === "skipped") ? result : null;
+  const describedBy = failure ? `promo-msg-${id}` : hint ? `promo-hint-${id}` : undefined;
+
+  return (
+    <li className={styles.row}>
+      <div className={styles.who}>
+        <input id={`promo-select-${id}`} type="checkbox" checked={selected && !locked} disabled={locked} onChange={(e) => onSelect(id, e.target.checked)} />
+        <label htmlFor={`promo-select-${id}`}>
+          <strong>{student.full_name}</strong>
+          <span className="muted">{student.student_code} · {gradeText || "Grade not set"}{level !== null ? ` (level ${level})` : ""}</span>
+        </label>
+      </div>
+      {locked ? (
+        <div className={`${styles.outcome} ${styles.outcomeWide}`}>
+          {settled ? <span className="status">{settled.status === "promoted" ? "Promoted" : "Held back"}</span> : null}
+          <span>{settled ? `Now in ${activeYearLabel}` : `Already in ${activeYearLabel}`}</span>
+        </div>
+      ) : (
+        <>
+          <div className={`field ${styles.control}`}>
+            <label className={styles.controlLabel} htmlFor={`promo-action-${id}`}>Action</label>
+            <select id={`promo-action-${id}`} className="select" value={action} aria-describedby={describedBy} onChange={(e) => onAction(id, e.target.value as PromotionAction)}>
+              <option value="promote">Promote</option>
+              <option value="hold_back">Hold back</option>
+            </select>
+          </div>
+          <div className={`field ${styles.control}`}>
+            <label className={styles.controlLabel} htmlFor={`promo-label-${id}`}>New label (optional)</label>
+            <input id={`promo-label-${id}`} type="text" className="search" placeholder="automatic" maxLength={60} value={override} disabled={action !== "promote"} aria-describedby={describedBy} onChange={(e) => onOverride(id, e.target.value)} />
+          </div>
+          <div className={styles.outcome}>
+            {failure ? (
+              <>
+                <span className={failure.status === "failed" ? "status error" : "status pending"}>{failure.status === "failed" ? "Not changed" : "Skipped"}</span>
+                <span id={`promo-msg-${id}`}>{failure.message}</span>
+              </>
+            ) : hint ? (
+              <span id={`promo-hint-${id}`} className={styles.hint}>{hint}</span>
+            ) : null}
+          </div>
+        </>
+      )}
+    </li>
+  );
+}
+
+export default memo(SchoolPromotionRow);
+```
+
+- [ ] **Step 5: Create the panel**
 
 Create `apps/web/components/SchoolPromotionPanel.tsx`:
 
@@ -1889,14 +2051,14 @@ Create `apps/web/components/SchoolPromotionPanel.tsx`:
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type KeyboardEvent } from "react";
+import SchoolPromotionRow, { type PromotionAction, type PromotionRowResult, type PromotionStudent } from "@/components/SchoolPromotionRow";
+import styles from "./SchoolPromotionPanel.module.css";
 
-type Student = { id: string; student_code: string; full_name: string; grade_or_class: string | null; grade_level: number | null; academic_year_id: string | null };
 type ActiveYear = { id: string; label: string } | null;
-type Action = "promote" | "hold_back";
-type RowResult = { student_id: string; status: "promoted" | "held_back" | "failed" | "skipped"; reason: string | null; message: string | null; grade_level: number | null; grade_or_class: string | null };
-type Report = { academic_year: { id: string; label: string }; counts: { promoted: number; held_back: number; failed: number; skipped: number }; results: RowResult[] };
+type Report = { academic_year: { id: string; label: string }; counts: { promoted: number; held_back: number; failed: number; skipped: number }; results: PromotionRowResult[] };
 
+const MAX_ITEMS = 500; // the API's per-request cap (spec §5.2)
 const FILTER_ALL = "all";
 const FILTER_UNSET = "unset";
 
@@ -1907,30 +2069,77 @@ function detailMessage(detail: unknown) {
   return "Something went wrong.";
 }
 
-// ENH-004: the Coordinator's rollover screen. Each selected student is either promoted (grade + 1) or
-// held back (same grade) into the ACTIVE academic year. Students already in that year are locked, so a
-// second click can never promote twice. Failed rows stay selected so the label can be corrected and retried.
-export default function SchoolPromotionPanel({ students, activeYear }: { students: Student[]; activeYear: ActiveYear }) {
+// ENH-004: the Coordinator's rollover screen. Choose students, review, confirm. Each selected student is
+// promoted (grade + 1) or held back (same grade) into the ACTIVE academic year. Students already in that
+// year are locked, so a second submit can never promote twice. Failed rows stay selected, with their
+// reason beside the field, so the label can be corrected and retried.
+export default function SchoolPromotionPanel({ students, activeYear }: { students: PromotionStudent[]; activeYear: ActiveYear }) {
   const router = useRouter();
+  const [refreshing, startRefresh] = useTransition();
   const [filter, setFilter] = useState(FILTER_ALL);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [actions, setActions] = useState<Record<string, Action>>({});
+  const [actions, setActions] = useState<Record<string, PromotionAction>>({});
   const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const [results, setResults] = useState<Record<string, PromotionRowResult>>({});
+  const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
-  const [report, setReport] = useState<Report | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const reviewRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const restoreFocus = useRef(false);
 
+  // Focus management: the confirm button takes focus when it appears, Cancel/Escape returns it to
+  // "Review changes", and after a result the (now unmounted) confirm button's focus moves to the summary.
+  useEffect(() => {
+    if (confirming) confirmRef.current?.focus();
+    else if (restoreFocus.current) {
+      restoreFocus.current = false;
+      reviewRef.current?.focus();
+    }
+  }, [confirming]);
+  useEffect(() => {
+    if (summary) summaryRef.current?.focus();
+  }, [summary]);
+
+  const onSelect = useCallback((id: string, on: boolean) => {
+    setSelected((prev) => ({ ...prev, [id]: on }));
+    setConfirming(false);
+  }, []);
+  const onAction = useCallback((id: string, action: PromotionAction) => setActions((prev) => ({ ...prev, [id]: action })), []);
+  const onOverride = useCallback((id: string, value: string) => setOverrides((prev) => ({ ...prev, [id]: value })), []);
+
+  if (activeYear === null) {
+    return (
+      <div className="portal-content">
+        <div className="card">
+          <h2>Promote students</h2>
+          <div className="empty" role="status">
+            <h3>No active academic year</h3>
+            <p>Promotion becomes available once an Overseas Admin activates the new academic year.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const inActiveYear = (s: PromotionStudent) => s.academic_year_id === activeYear.id;
+  const isSettled = (s: PromotionStudent) => results[s.id]?.status === "promoted" || results[s.id]?.status === "held_back";
+  const isLocked = (s: PromotionStudent) => inActiveYear(s) || isSettled(s);
   const levels = Array.from(new Set(students.map((s) => s.grade_level).filter((l): l is number => l !== null))).sort((a, b) => a - b);
   const visible = students.filter((s) => filter === FILTER_ALL || (filter === FILTER_UNSET ? s.grade_level === null : String(s.grade_level) === filter));
-  const isLocked = (s: Student) => activeYear === null || s.academic_year_id === activeYear.id;
   const selectable = visible.filter((s) => !isLocked(s));
   const chosen = students.filter((s) => selected[s.id] && !isLocked(s));
+  const holdCount = chosen.filter((s) => actions[s.id] === "hold_back").length;
+  const promoteCount = chosen.length - holdCount;
+  const tooMany = chosen.length > MAX_ITEMS;
   const allShownSelected = selectable.length > 0 && selectable.every((s) => selected[s.id]);
-  const nameOf = (id: string) => students.find((s) => s.id === id)?.full_name ?? id;
 
   function changeFilter(value: string) {
     setFilter(value);
     setSelected({});
+    setConfirming(false);
   }
 
   function toggleAllShown(on: boolean) {
@@ -1939,12 +2148,22 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
       for (const s of selectable) next[s.id] = on;
       return next;
     });
+    setConfirming(false);
+  }
+
+  function cancelConfirm() {
+    restoreFocus.current = true;
+    setConfirming(false);
+  }
+
+  function onBarKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape" && confirming && !busy) cancelConfirm();
   }
 
   async function submit() {
     setBusy(true);
-    setMessage(null);
-    setReport(null);
+    setError(null);
+    setSummary(null);
     const items = chosen.map((s) => {
       const action = actions[s.id] ?? "promote";
       const override = (overrides[s.id] || "").trim();
@@ -1955,154 +2174,123 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
       response = await fetch("/api/v1/school/students/promotions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) });
     } catch {
       setBusy(false);
-      setMessage({ text: "The request did not complete. Refresh to see the current state before trying again; repeating it is safe.", failed: true });
+      setConfirming(false);
+      setError("The request did not complete. Your selection is kept. Refresh to check the current state, then try again; repeating it is safe.");
       return;
     }
     const data = await response.json().catch(() => ({}));
     setBusy(false);
+    setConfirming(false);
     if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+      setError(detailMessage(data.detail));
       return;
     }
-    const result = data as Report;
-    setReport(result);
-    const failedIds = result.results.filter((r) => r.status === "failed").map((r) => r.student_id);
-    setSelected(Object.fromEntries(failedIds.map((id) => [id, true])));
-    setOverrides((prev) => Object.fromEntries(failedIds.map((id) => [id, prev[id] ?? ""])));
-    router.refresh();
+    const report = data as Report;
+    const c = report.counts;
+    setResults((prev) => ({ ...prev, ...Object.fromEntries(report.results.map((r) => [r.student_id, r])) }));
+    setSelected(Object.fromEntries(report.results.filter((r) => r.status === "failed").map((r) => [r.student_id, true])));
+    setSummary(`Done for ${report.academic_year.label}: ${c.promoted} promoted, ${c.held_back} held back, ${c.failed} not changed, ${c.skipped} skipped.`);
+    startRefresh(() => router.refresh());
   }
 
   return (
     <div className="portal-content">
       <div className="card">
         <h2>Promote students</h2>
-        {activeYear ? (
-          <p>Students are moved into the active academic year: <strong>{activeYear.label}</strong>. Promote advances the grade by one; Hold back keeps the grade and records the new year.</p>
-        ) : (
-          <p className="form-error" role="status">No active academic year. Ask an Overseas Admin to activate one before promoting students.</p>
-        )}
+        <p>Move students into <span className="status">{activeYear.label}</span>, the active academic year. <strong>Promote</strong> advances the grade by one; <strong>Hold back</strong> keeps the grade and records the new year.</p>
+
+        {error && <div className="form-error" role="alert">{error}</div>}
+        {summary && <div ref={summaryRef} tabIndex={-1} className={`form-message ${styles.summary}`} role="status">{summary}</div>}
+
         {students.length === 0 ? (
-          <p className="muted">No students yet.</p>
+          <div className="empty">
+            <h3>No students on the roster yet</h3>
+            <p>Add students first, then come back to promote them.</p>
+            <a className="btn secondary small" href="/school/coordinator/students">Go to the student roster</a>
+          </div>
         ) : (
           <>
-            <div className="field">
-              <label htmlFor="promotion-filter">Grade level</label>
-              <select id="promotion-filter" value={filter} onChange={(e) => changeFilter(e.target.value)}>
-                <option value={FILTER_ALL}>All grades</option>
-                {levels.map((l) => <option key={l} value={String(l)}>Grade {l}</option>)}
-                <option value={FILTER_UNSET}>Grade level not set</option>
-              </select>
-            </div>
-            {visible.length === 0 ? (
-              <p className="muted">No students match this filter.</p>
-            ) : (
-              <div className="table-wrap">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th scope="col"><input type="checkbox" aria-label="Select all shown students" checked={allShownSelected} disabled={selectable.length === 0} onChange={(e) => toggleAllShown(e.target.checked)} /></th>
-                      <th scope="col">Student ID</th>
-                      <th scope="col">Name</th>
-                      <th scope="col">Grade/Class</th>
-                      <th scope="col">Action</th>
-                      <th scope="col">New label (optional)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visible.map((s) => {
-                      const locked = isLocked(s);
-                      const action = actions[s.id] ?? "promote";
-                      return (
-                        <tr key={s.id}>
-                          <td><input type="checkbox" aria-label={`Select ${s.full_name}`} checked={!!selected[s.id] && !locked} disabled={locked} onChange={(e) => setSelected((prev) => ({ ...prev, [s.id]: e.target.checked }))} /></td>
-                          <td><code>{s.student_code}</code></td>
-                          <td>{s.full_name}</td>
-                          <td>{s.grade_or_class || "-"}{s.grade_level !== null && <span className="muted"> (level {s.grade_level})</span>}</td>
-                          <td>
-                            {activeYear && s.academic_year_id === activeYear.id ? (
-                              <span className="muted">Already in {activeYear.label}</span>
-                            ) : (
-                              <select aria-label={`Action for ${s.full_name}`} value={action} disabled={locked} onChange={(e) => setActions((prev) => ({ ...prev, [s.id]: e.target.value as Action }))}>
-                                <option value="promote">Promote</option>
-                                <option value="hold_back">Hold back</option>
-                              </select>
-                            )}
-                          </td>
-                          <td>
-                            <input aria-label={`New label for ${s.full_name}`} placeholder="automatic" maxLength={60} value={overrides[s.id] ?? ""} disabled={locked || action !== "promote"} onChange={(e) => setOverrides((prev) => ({ ...prev, [s.id]: e.target.value }))} />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            <div className="table-controls" aria-label="Promotion filters">
+              <div>
+                <label htmlFor="promotion-filter">Grade level</label>
+                <select id="promotion-filter" className="select" value={filter} onChange={(e) => changeFilter(e.target.value)}>
+                  <option value={FILTER_ALL}>All grades</option>
+                  {levels.map((l) => <option key={l} value={String(l)}>Grade {l}</option>)}
+                  <option value={FILTER_UNSET}>Grade level not set</option>
+                </select>
               </div>
+              <div>
+                <label htmlFor="promotion-select-all">Select all shown</label>
+                <input id="promotion-select-all" type="checkbox" checked={allShownSelected} disabled={selectable.length === 0} onChange={(e) => toggleAllShown(e.target.checked)} />
+              </div>
+            </div>
+            <p className="muted" aria-live="polite">Showing {visible.length} of {students.length} students</p>
+
+            {visible.length === 0 ? (
+              <div className="empty">
+                <h3>No students match this filter</h3>
+                <button type="button" className="btn secondary small" onClick={() => changeFilter(FILTER_ALL)}>Show all grades</button>
+              </div>
+            ) : (
+              <ul className={styles.list} role="list" aria-busy={refreshing}>
+                <li className={styles.header} aria-hidden="true"><span>Student</span><span>Action</span><span>New label (optional)</span><span>Status</span></li>
+                {visible.map((s) => (
+                  <SchoolPromotionRow
+                    key={s.id} student={s} activeYearLabel={activeYear.label} inActiveYear={inActiveYear(s)}
+                    selected={!!selected[s.id]} action={actions[s.id] ?? "promote"} override={overrides[s.id] ?? ""} result={results[s.id] ?? null}
+                    onSelect={onSelect} onAction={onAction} onOverride={onOverride}
+                  />
+                ))}
+              </ul>
             )}
-            <button type="button" className="btn" onClick={submit} disabled={busy || chosen.length === 0 || !activeYear}>
-              {busy ? "Promoting…" : `Apply to ${chosen.length} student${chosen.length === 1 ? "" : "s"}`}
-            </button>
+
+            <div className={styles.bar} onKeyDown={onBarKeyDown}>
+              {confirming ? (
+                <>
+                  <p id="promotion-confirm-text" className={styles.barText}>Promote {promoteCount} and hold back {holdCount} into {activeYear.label}? This changes the current grade of each selected student.</p>
+                  <div className={styles.barActions}>
+                    <button ref={confirmRef} type="button" className="btn" onClick={submit} disabled={busy} aria-describedby="promotion-confirm-text">{busy ? "Promoting…" : "Confirm promotion"}</button>
+                    <button type="button" className="btn ghost" onClick={cancelConfirm} disabled={busy}>Cancel</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p id="promotion-selected-count" className={styles.barText}>{chosen.length} selected{tooMany ? `. Select at most ${MAX_ITEMS} at a time.` : ""}</p>
+                  <button ref={reviewRef} type="button" className="btn" disabled={chosen.length === 0 || tooMany} aria-describedby="promotion-selected-count" onClick={() => setConfirming(true)}>Review changes ({chosen.length})</button>
+                </>
+              )}
+            </div>
           </>
         )}
       </div>
-
-      {message && (
-        <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite">
-          {message.text}
-        </div>
-      )}
-
-      {report && (
-        <div className="card" role="status" aria-live="polite">
-          <h3>Result for {report.academic_year.label}</h3>
-          <p>{report.counts.promoted} promoted, {report.counts.held_back} held back, {report.counts.failed} failed, {report.counts.skipped} skipped.</p>
-          {report.results.some((r) => r.status === "failed" || r.status === "skipped") && (
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr><th scope="col">Student</th><th scope="col">Outcome</th><th scope="col">Why</th></tr>
-                </thead>
-                <tbody>
-                  {report.results.filter((r) => r.status === "failed" || r.status === "skipped").map((r) => (
-                    <tr key={r.student_id}>
-                      <td>{nameOf(r.student_id)}</td>
-                      <td>{r.status === "failed" ? "Not changed" : "Skipped"}</td>
-                      <td>{r.message}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
 ```
 
-- [ ] **Step 4: Create the page and add the nav entry**
+- [ ] **Step 6: Create the page and add the nav entry**
 
 Create `apps/web/app/school/coordinator/promotion/page.tsx`:
 
 ```tsx
 import PortalShell from "@/components/PortalShell";
 import SchoolPromotionPanel from "@/components/SchoolPromotionPanel";
+import type { PromotionStudent } from "@/components/SchoolPromotionRow";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-type Student = { id: string; student_code: string; full_name: string; grade_or_class: string | null; grade_level: number | null; academic_year_id: string | null };
 type ActiveYear = { id: string; label: string } | null;
 
 // ENH-004: academic-year rollover -- promote or hold back students, own institution only.
 export default async function SchoolCoordinatorPromotionPage() {
   let user: User;
-  let students: Student[];
+  let students: PromotionStudent[];
   let activeYear: ActiveYear;
   try {
     [user, students, activeYear] = await Promise.all([
       serverApi<User>("/api/v1/auth/me"),
-      serverApi<Student[]>("/api/v1/school/students"),
+      serverApi<PromotionStudent[]>("/api/v1/school/students"),
       serverApi<ActiveYear>("/api/v1/school/academic-years/active"),
     ]);
   } catch (e) {
@@ -2129,21 +2317,26 @@ In `apps/web/lib/navigation.ts` line 37, change the coordinator array from
 `["dashboard", "students", "promotion", "activities", "team", "reports", "entitlements"]`
 (the label "Promotion" and href `/school/coordinator/promotion` are derived by the existing `.map`).
 
-- [ ] **Step 5: Static checks**
+- [ ] **Step 7: Static checks**
 
 Run (from `apps/web`): `npm run typecheck; npm run lint`
-Expected: both clean.
+Expected: both clean. If lint flags `react/no-unescaped-entities`, replace the apostrophe with a rewording; do not disable the rule.
 
-- [ ] **Step 6: Run the e2e spec (needs the user)**
+- [ ] **Step 8: Run the e2e spec (needs the user)**
 
 Ask the user to rebuild and restart the `api` and `web` containers so they contain Tasks 1-8 (the API needs migration `0033` applied — done in Task 2 — and the new routes), and to confirm the shared-state note in the spec header. Wait for their go-ahead.
 Run (from `apps/web`): `npx playwright test tests/e2e/enh-004-student-promotion.spec.ts --workers=1`
 Expected: `1 passed`. If a step fails, open only that failure's trace; re-run alone with `--workers=1` once before classifying it as a regression.
+If only the **320 px overflow** assertion fails, first load `/school/coordinator/students` at 320 px: horizontal overflow there too means the portal shell, not this screen, is responsible. Report it to the user as a pre-existing finding; do not paper over it in this component and do not weaken the assertion.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Manual pass (ask the user to do this, or do it with them)**
+
+Load `/school/coordinator/promotion` with a roster of 20+ students. Check: Tab reaches every control in a logical order with a visible focus ring; at 320 px each student is a stacked card with visible "Action" and "New label (optional)" labels and no horizontal scroll; at 1024 px+ the header row replaces the per-row labels; with the browser's reduced-motion setting on, nothing animates; a screen reader reads the checkbox as the student's name and code and announces the result summary. Record anything that fails as a bug, not a note.
+
+- [ ] **Step 10: Commit**
 
 ```powershell
-git add apps/web/components/SchoolPromotionPanel.tsx apps/web/app/school/coordinator/promotion/page.tsx apps/web/lib/navigation.ts apps/web/tests/e2e/enh-004-student-promotion.spec.ts
+git add apps/web/components/SchoolPromotionRow.tsx apps/web/components/SchoolPromotionPanel.tsx apps/web/components/SchoolPromotionPanel.module.css apps/web/app/school/coordinator/promotion/page.tsx apps/web/lib/navigation.ts apps/web/tests/e2e/enh-004-student-promotion.spec.ts
 git commit -m "feat(enh-004): add the coordinator promotion screen" -m "Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ```
 
@@ -2158,9 +2351,11 @@ git commit -m "feat(enh-004): add the coordinator promotion screen" -m "Co-Autho
 - Modify: `apps/web/app/school/parent/children/[id]/page.tsx`
 - Modify: `apps/web/tests/e2e/enh-004-student-promotion.spec.ts` (append assertions to the existing test)
 
+**Reuse, not rebuilt:** the existing `.jtl-*` timeline rail classes and the timeline component's colour-plus-text badge convention. History is a short, ordered list of dated events, which is exactly what the rail already presents, and it stacks on mobile with no new CSS (a four-column table would need horizontal scroll at 320 px). `SchoolStudentTimeline` itself is not modified.
+
 **Interfaces:**
 - Consumes: Task 5's `GET /api/v1/school/students/{id}/grade-history`; existing `formatDate` (`SchoolChildOverview.tsx:30`).
-- Produces: `loadGradeHistory(studentId)`, types `GradeHistoryEntry` / `StudentGradeHistory`, default component `SchoolGradeHistory({ history })`; `SchoolStudentDetailPanel` gains optional prop `showGradeHistory?: boolean` (default `false`, so principal and teacher pages are unchanged).
+- Produces: `loadGradeHistory(studentId)`, types `GradeHistoryEntry` / `StudentGradeHistory`, default component `SchoolGradeHistory({ history })`; `SchoolStudentDetailPanel` gains optional prop `showGradeHistory?: boolean` (default `false`, so the principal and teacher pages are unchanged). Visible copy the e2e relies on: `Moved from <grade> to <grade>`, `Kept in <grade>`, badge `Promoted`/`Held back`, empty state `No promotions recorded yet.`
 
 - [ ] **Step 1: Write the failing e2e assertions**
 
@@ -2178,14 +2373,12 @@ with:
   await expect(page.getByRole("heading", { name: "E2E Promo Alpha" })).toBeVisible();
   await expect(page.getByText("Grade 9-A").first()).toBeVisible();
 
-  // The child page keeps the prior grade: one "Promoted" row, from Grade 8-A to Grade 9-A (AC-02).
+  // The child page keeps the prior grade: a "Promoted" entry from Grade 8-A to Grade 9-A in the new year (AC-02).
   await page.click('a:has-text("View full profile & progress")');
   await page.waitForURL(`**/school/parent/children/${alpha.id}`);
   await expect(page.getByRole("heading", { name: "Grade history" })).toBeVisible();
-  const promotedRow = page.locator("tr", { hasText: "Promoted" });
-  await expect(promotedRow).toContainText("Grade 8-A");
-  await expect(promotedRow).toContainText("Grade 9-A");
-  await expect(promotedRow).toContainText(yearLabel);
+  await expect(page.getByText("Moved from Grade 8-A to Grade 9-A")).toBeVisible();
+  await expect(page.getByText(`Academic year: ${yearLabel}`)).toBeVisible();
 
   // The coordinator's student page shows the held-back outcome, and the empty state for an unpromoted student.
   await signIn(page, coordinatorA, E2E_PASSWORD, "**/school/coordinator/dashboard");
@@ -2194,13 +2387,13 @@ with:
   const twelve = students.find((s: { full_name: string }) => s.full_name === "E2E Promo Twelve");
   await page.goto(`/school/coordinator/students/${beta.id}`);
   await expect(page.getByRole("heading", { name: "Grade history" })).toBeVisible();
-  await expect(page.locator("tr", { hasText: "Held back" })).toContainText("Grade 8-B");
+  await expect(page.getByText("Kept in Grade 8-B")).toBeVisible();
   await page.goto(`/school/coordinator/students/${twelve.id}`);
   await expect(page.getByText("No promotions recorded yet.")).toBeVisible();
 });
 ```
 
-- [ ] **Step 2: Confirm it compiles and note the expected failure**
+- [ ] **Step 2: Confirm it compiles**
 
 Run (from `apps/web`): `npx tsc --noEmit`
 Expected: passes. (The new assertions fail at runtime until Steps 3-4; the run is Step 5.)
@@ -2210,12 +2403,14 @@ Expected: passes. (The new assertions fail at runtime until Steps 3-4; the run i
 Create `apps/web/components/SchoolGradeHistory.tsx`:
 
 ```tsx
-import { serverApi } from "@/lib/api";
 import { formatDate } from "@/components/SchoolChildOverview";
+import { serverApi } from "@/lib/api";
 
 // ENH-004 -- a student's grade/academic-year transitions, read from GET /school/students/{id}/grade-history.
 // That endpoint reuses the same own-scope loader as the overview and timeline, so this renders correctly
-// for whichever role is looking (a Parent gets their own child's history only).
+// for whichever role is looking (a Parent gets their own child's history only). It deliberately reuses the
+// Journey Timeline's `.jtl-*` rail: a short, dated list that stacks on mobile without horizontal scroll.
+// Outcome is stated in text (badge + sentence), never by colour alone.
 
 type State = { academic_year_id: string | null; academic_year_label: string | null; grade_level: number | null; grade_or_class: string | null };
 export type GradeHistoryEntry = { id: string; action: "promoted" | "held_back"; from: State; to: State; created_at: string };
@@ -2225,9 +2420,17 @@ export async function loadGradeHistory(studentId: string): Promise<StudentGradeH
   return serverApi<StudentGradeHistory>(`/api/v1/school/students/${studentId}/grade-history`);
 }
 
-function describe(state: State) {
-  const grade = state.grade_or_class || (state.grade_level !== null ? `Grade ${state.grade_level}` : "Grade not set");
-  return state.academic_year_label ? `${grade} (${state.academic_year_label})` : grade;
+const OUTCOME: Record<GradeHistoryEntry["action"], { label: string; color: string }> = {
+  promoted: { label: "Promoted", color: "#15803d" },
+  held_back: { label: "Held back", color: "#b45309" },
+};
+
+function gradeText(state: State) {
+  return state.grade_or_class || (state.grade_level !== null ? `Grade ${state.grade_level}` : "Grade not set");
+}
+
+function summarize(entry: GradeHistoryEntry) {
+  return entry.action === "held_back" ? `Kept in ${gradeText(entry.to)}` : `Moved from ${gradeText(entry.from)} to ${gradeText(entry.to)}`;
 }
 
 export default function SchoolGradeHistory({ history }: { history: GradeHistoryEntry[] }) {
@@ -2235,28 +2438,29 @@ export default function SchoolGradeHistory({ history }: { history: GradeHistoryE
     return <p className="muted">No promotions recorded yet.</p>;
   }
   return (
-    <div className="table-wrap">
-      <table className="table">
-        <thead>
-          <tr><th scope="col">Date</th><th scope="col">Outcome</th><th scope="col">From</th><th scope="col">To</th></tr>
-        </thead>
-        <tbody>
-          {history.map((h) => (
-            <tr key={h.id}>
-              <td>{formatDate(h.created_at, true)}</td>
-              <td>{h.action === "promoted" ? "Promoted" : "Held back"}</td>
-              <td>{describe(h.from)}</td>
-              <td>{describe(h.to)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="jtl">
+      {history.map((h) => {
+        const meta = OUTCOME[h.action];
+        return (
+          <div className="jtl-row" key={h.id}>
+            <div className="jtl-rail">
+              <span className="jtl-node" style={{ "--jtl-color": meta.color } as React.CSSProperties} />
+            </div>
+            <div className="jtl-body">
+              <span className="jtl-date">{formatDate(h.created_at, true)}</span>
+              <span className="jtl-badge" style={{ "--jtl-color": meta.color } as React.CSSProperties}>{meta.label}</span>
+              <h4 className="jtl-title">{summarize(h)}</h4>
+              <p className="jtl-detail">Academic year: {h.from.academic_year_label ? `${h.from.academic_year_label} to ` : ""}{h.to.academic_year_label}</p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 ```
 
-- [ ] **Step 4: Wire it into the two pages**
+- [ ] **Step 4: Wire it into the two pages (loading in parallel)**
 
 Replace the whole of `apps/web/components/SchoolStudentDetailPanel.tsx` with:
 
@@ -2272,13 +2476,15 @@ import { formatDate } from "@/components/SchoolChildOverview";
 // for the same reuse pattern across dashboards) -- only this presentational piece is shared,
 // so no role gains another role's write actions by using it.
 // ENH-004: `showGradeHistory` (default off, so the Principal and Teacher pages are unchanged)
-// adds the read-only grade-history card for the Coordinator.
+// adds the read-only grade-history card for the Coordinator. Both reads start together.
 
 type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
 
 export default async function SchoolStudentDetailPanel({ student, backHref, backLabel, showGradeHistory = false }: { student: Student; backHref: string; backLabel: string; showGradeHistory?: boolean }) {
-  const timeline = await loadStudentTimeline(student.id).catch(() => null);
-  const gradeHistory = showGradeHistory ? await loadGradeHistory(student.id).catch(() => null) : null;
+  const [timeline, gradeHistory] = await Promise.all([
+    loadStudentTimeline(student.id).catch(() => null),
+    showGradeHistory ? loadGradeHistory(student.id).catch(() => null) : Promise.resolve(null),
+  ]);
   return (
     <div className="portal-content">
       <div className="card">
@@ -2316,10 +2522,13 @@ In `apps/web/app/school/parent/children/[id]/page.tsx`:
 import SchoolGradeHistory, { loadGradeHistory, type StudentGradeHistory } from "@/components/SchoolGradeHistory";
 ```
 
-(b) Below `const timeline: StudentTimeline | null = await loadStudentTimeline(id).catch(() => null);` add:
+(b) Replace the line `const timeline: StudentTimeline | null = await loadStudentTimeline(id).catch(() => null);` with:
 
 ```tsx
-  const gradeHistory: StudentGradeHistory | null = await loadGradeHistory(id).catch(() => null);
+  const [timeline, gradeHistory]: [StudentTimeline | null, StudentGradeHistory | null] = await Promise.all([
+    loadStudentTimeline(id).catch(() => null),
+    loadGradeHistory(id).catch(() => null),
+  ]);
 ```
 
 (c) Between the `<SchoolChildOverview overview={overview} />` line and the timeline card, add:
@@ -2426,27 +2635,28 @@ Then append these two detail sections immediately after the `### SCR-SCH-026` se
 - **Linked Feature ID(s):** `ENH-004`
 - **Entry points:** "Promotion" item in the Coordinator navigation.
 - **Required data:** `GET /school/students`, `GET /school/academic-years/active`, `POST /school/students/promotions`.
-- **Key actions:** Filter by grade level; select students (or all shown); choose Promote or Hold back per student; optional replacement label; apply.
-- **Empty state:** "No students yet." / "No students match this filter." / with no active year, "No active academic year. Ask an Overseas Admin to activate one…" and the submit is disabled.
-- **Loading state:** The apply button is disabled and reads "Promoting…".
-- **Error state:** 403/409/422 and network failures render a message; per-row failures are listed with their reason and stay selected for a corrected retry. A student already in the active year is locked ("Already in <year>").
+- **Key actions:** Filter by grade level; select students (or all shown); choose Promote or Hold back per student; optional replacement label; "Review changes (N)" then an explicit "Confirm promotion" (or Cancel / Escape). At most 500 students per request.
+- **Empty state:** "No students on the roster yet" with a link to the roster / "No students match this filter" with "Show all grades" / "No active academic year" (nothing to act on until an Overseas Admin activates one).
+- **Loading state:** Server-rendered. While submitting, the confirm button is disabled and reads "Promoting…"; the server's per-row outcome is shown as soon as it returns, then the list is refreshed in a transition (`aria-busy`).
+- **Error state:** 403/409/422 and network failures render an `alert` message and keep the selection (a repeat is safe). Per-row failures show "Not changed" or "Skipped" plus the reason beside the row's own controls and stay selected for a corrected retry. Known-to-fail rows (Grade 12, no grade level) carry an advisory hint before submit. A student already in the active year is locked ("Already in <year>").
 - **Permissions/resource scope:** Coordinator only; the school is server-derived, never client-supplied.
-- **Responsive behavior:** Reuses the shared `table-wrap` scroll container.
-- **Accessibility requirements:** Every checkbox, select and input has an accessible name; the result summary is an `aria-live` region; outcomes are stated in text.
-- **Desktop/tablet/mobile behavior:** Same layout at all widths; the table scrolls horizontally inside its container.
+- **Responsive behavior:** Each student is a stacked card on mobile (visible "Action" and "New label" labels); from 768px a header row replaces the per-row labels; the action bar is sticky so the primary action stays reachable; no horizontal scroll at 320/768/1024/1440px (asserted in the e2e).
+- **Accessibility requirements:** Real labels on every control; the checkbox is labelled by the student's name, code and grade; a keyboard-reachable confirmation step (focus moves to Confirm; Escape/Cancel returns focus to Review); focus moves to the result summary, which is a status region; the filter's "Showing N of M" is a polite live region; outcomes are stated in text as well as colour.
+- **Desktop/tablet/mobile behavior:** One list structure at every width, restyled by breakpoint (cards below 768px, columned rows above).
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** `enh-004-student-promotion.spec.ts`, `test_enh_004_student_promotion.py`.
 
 ### `SCR-SCH-028` *(added 2026-09-19, `ENH-004`)*
 - **Route:** Embedded section, not a standalone route — appears on `SCR-SCH-022` (`/school/parent/children/[id]`) and `SCR-SCH-025` (`/school/coordinator/students/[id]`).
 - **Role(s):** Parent (own child), School Coordinator (own institution)
-- **Purpose:** Read-only list of a student's promotions and hold-backs (date, outcome, from, to).
+- **Purpose:** Read-only list of a student's promotions and hold-backs (date, outcome, "Moved from X to Y" / "Kept in X", academic year).
 - **Linked Feature ID(s):** `ENH-004`
 - **Required data:** `GET /school/students/{id}/grade-history`.
 - **Empty state:** "No promotions recorded yet."
 - **Error state:** "Grade history is unavailable right now." without blocking the rest of the page.
 - **Permissions/resource scope:** The same own-scope loader as the overview and timeline.
-- **Accessibility requirements:** Table with column headers; the outcome is text.
+- **Responsive behavior:** Reuses the Journey Timeline's single-column rail (`SCR-SCH-024`), so no horizontal scroll at any width.
+- **Accessibility requirements:** The outcome is a text badge plus a sentence, never colour alone; loaded in parallel with the timeline.
 - **Acceptance evidence needed:** `enh-004-student-promotion.spec.ts`.
 ```
 

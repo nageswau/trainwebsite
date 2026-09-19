@@ -250,6 +250,43 @@ The school identifier is never read from the request.
 - Accessibility and layout reuse the existing table, form and button classes and `scope="col"`
   headers. Exact class names and the `SCHOOL_NAV` shape are read at plan time.
 
+### 7.1 Frontend revisions (result of the `frontend-ui-engineering` review, 2026-09-19)
+
+Where this section differs from the bullets above, **this section wins**. It applies the confirmed
+`NFR-RESP-001` (`docs/ux/RESPONSIVE_RULES.md`) and the baseline in `docs/ux/ACCESSIBILITY_RULES.md`,
+and reuses the existing design language instead of introducing a new one.
+
+- **No horizontally scrolling table.** Every existing table is `min-width: 650px` inside `overflow: auto`,
+  which `RESPONSIVE_RULES.md` forbids as the only mobile option. The promotion list is one `<ul>` of
+  student rows: stacked cards below 768px (labels visible), a columned row with a header above it from
+  768px. The only new CSS is `SchoolPromotionPanel.module.css` (precedent: `ProgramCatalogue.module.css`).
+  `DataTable` is not reusable here (it renders plain values only), but its `table-controls`/`select`/`empty`
+  classes and its "Showing X of Y" live-region pattern are reused.
+- **Explicit confirmation.** A bulk change to many students' current grade is high-consequence
+  (`ACCESSIBILITY_RULES.md`). "Review changes (N)" opens an inline confirm step ("Promote A and hold back
+  B into <year>?") with Confirm and Cancel, following the two-step pattern already used in
+  `AdminUserManagementPanel`/`AdminProgramManagementPanel`; focus moves to Confirm, Escape or Cancel returns
+  it to Review, and after the result it moves to the summary. No `window.confirm`.
+- **Errors tied to the field.** A failed or skipped row shows "Not changed"/"Skipped" and its reason beside
+  that row's own controls (`aria-describedby`), not in a separate table. Rows known to fail (Grade 12, no
+  grade level) carry an advisory hint before submit; the server stays authoritative. Request-level errors use
+  `role="alert"`, results `role="status"`.
+- **Client-side cap.** More than 500 selected disables "Review changes" with an explanation, so the API's
+  `422` is never the first the coordinator hears of it.
+- **Perceived performance.** No optimistic update (the server decides and rows can fail); instead the
+  per-row outcome the server returns is shown immediately and `router.refresh()` runs in a transition. Rows are
+  memoised with primitive props and stable callbacks, so ticking a box does not re-render the roster. The
+  grade-history read starts in parallel with the timeline read. No `loading.tsx`: no route has one and there is
+  no shared `school/layout.tsx`, so it would render without the portal shell.
+- **Empty states are actionable:** no roster (link to the roster), no filter match ("Show all grades"), no
+  active year (nothing to act on until an Overseas Admin activates one).
+- **Grade history reuses the Journey Timeline rail** (`.jtl-*`): a short dated list that stacks on mobile
+  with no new CSS; the outcome is a text badge plus a sentence ("Moved from X to Y" / "Kept in X"), never
+  colour alone. `SchoolStudentTimeline` is not modified.
+- **Verification** adds keyboard steps (Space, Enter, Escape, focus placement) and a no-horizontal-overflow
+  check at 320/768/1024/1440px to the Playwright spec, plus a manual screen-reader/reduced-motion pass. No
+  new dependency (axe-core is not added).
+
 ## 8. One forced change to existing behavior
 
 `student_timeline` (`schools.py:923`) writes `Added to {student.grade_or_class}` from the *current*
