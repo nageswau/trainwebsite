@@ -79,7 +79,8 @@ test("an invalid link offers a real recovery link, and the page fits a phone", a
   await page.goto("/overseas/reset-password?token=not-a-real-token");
   await page.fill("#reset-new-password", E2E_PASSWORD);
   await page.getByRole("button", { name: "Reset password" }).click();
-  const alert = page.getByRole("alert");
+  // Next.js also renders an empty role="alert" route announcer, so scope to the form error.
+  const alert = page.getByRole("alert").filter({ hasText: "Reset token is invalid or expired" });
   await expect(alert).toContainText("Reset token is invalid or expired");
   await expect(alert).toContainText("ask your administrator to re-send it");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

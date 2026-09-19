@@ -12,6 +12,9 @@ import { E2E_PASSWORD, activateWithToken, createAndActivateFromUi } from "./help
 // SCH-008, and DEC-SCOPE-016's "available to Coordinator/Teacher/Principal too" extension).
 
 test("student journey timeline renders in order for Parent, Teacher, Coordinator and Principal, denied for an unlinked child (SCH-008)", async ({ page }) => {
+  // A multi-account journey: ENH-003 added a create + set-password step per provisioned account, which took this
+  // test from 14.5 s to 16.7 s -- past the 15 s default. Same override the other long onboarding journeys use.
+  test.setTimeout(60_000);
   const unique = Date.now();
   const coordinatorEmail = `sch008-e2e-coord-${unique}@example.local`;
   const principalEmail = `sch008-e2e-principal-${unique}@example.local`;
