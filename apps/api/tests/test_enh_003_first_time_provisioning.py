@@ -15,7 +15,7 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.core.security import hash_password, verify_password
-from app.models import AuditLog, PasswordResetToken, User
+from app.models import AuditLog, PasswordResetToken, School, User
 
 PASSWORD = "Sup3r-Secret-Pass!"
 NEW_PASSWORD = "Brand-New-Pass-1!"
@@ -666,6 +666,49 @@ async def test_a_malformed_email_is_422_and_creates_nothing(client, db_session, 
     response = await client.post(path, json=payloads[path])
     assert response.status_code == 422, response.text
     assert await db_session.scalar(sa.select(sa.func.count()).select_from(User)) == before
+
+
+# QA-001: a value longer than its column (users.full_name 160, schools.name 200, schools.city/state 120)
+# used to reach Postgres and come back as an unhandled 500; it is now a 422 that names the field.
+def _create_payload(path: str, **override) -> dict:
+    base = {
+        "/api/v1/admin/users": {"role": "counselor", "division": "overseas", "full_name": "Ok Name", "email": _email()},
+        "/api/v1/overseas-admin/school-staff": {"role": "academic_team", "full_name": "Ok Name", "email": _email(), "school_ids": []},
+        "/api/v1/overseas-admin/schools": {"name": "Ok School", "coordinator_full_name": "Ok Name", "coordinator_email": _email()},
+    }[path]
+    return {**base, **override}
+
+
+LENGTH_CASES = [
+    ("/api/v1/admin/users", "full_name", 160),
+    ("/api/v1/overseas-admin/school-staff", "full_name", 160),
+    ("/api/v1/overseas-admin/schools", "coordinator_full_name", 160),
+    ("/api/v1/overseas-admin/schools", "name", 200),
+    ("/api/v1/overseas-admin/schools", "city", 120),
+    ("/api/v1/overseas-admin/schools", "state", 120),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("path,field,limit", LENGTH_CASES)
+async def test_a_value_longer_than_its_column_is_422_naming_the_field_and_creates_nothing(client, db_session, path, field, limit):
+    await _admin_client(client, db_session)
+    users_before = await db_session.scalar(sa.select(sa.func.count()).select_from(User))
+    schools_before = await db_session.scalar(sa.select(sa.func.count()).select_from(School))
+    response = await client.post(path, json=_create_payload(path, **{field: "N" * (limit + 1)}))
+    assert response.status_code == 422, response.text
+    assert str(limit) in response.json()["detail"]
+    assert await db_session.scalar(sa.select(sa.func.count()).select_from(User)) == users_before
+    assert await db_session.scalar(sa.select(sa.func.count()).select_from(School)) == schools_before
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("path,field,limit", LENGTH_CASES)
+async def test_a_value_exactly_at_its_column_limit_is_accepted(client, db_session, monkeypatch, path, field, limit):
+    monkeypatch.setattr(settings, "environment", "test")
+    await _admin_client(client, db_session)
+    response = await client.post(path, json=_create_payload(path, **{field: "N" * limit}))
+    assert response.status_code == 201, response.text
 
 
 @pytest.mark.asyncio

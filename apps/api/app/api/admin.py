@@ -50,6 +50,14 @@ def _valid_email(raw) -> str:
     return email
 
 
+def _fit(value, label: str, limit: int):
+    """A value longer than its column is a 422 that names the field, never a database 500 (QA-001).
+    Validates only: the value is returned unchanged, so accepted input is stored exactly as before."""
+    if value is not None and len(str(value)) > limit:
+        raise HTTPException(422, f"{label} must be at most {limit} characters")
+    return value
+
+
 async def _flush_unique_email(db: AsyncSession) -> None:
     """Flush a new account; two simultaneous creates for one email are settled by the unique
     constraint (409 for the loser, never a 500). Rolling back also drops anything created with it."""
@@ -301,7 +309,7 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
     item = User(
         email=email,
         password_hash=unusable_password_hash(),
-        full_name=payload["full_name"],
+        full_name=_fit(payload["full_name"], "Full name", 160),
         role=role,
         division=division,
         phone=payload.get("phone"),
@@ -995,13 +1003,13 @@ async def create_school(payload: dict, user: User = Depends(get_current_user), d
     if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
         raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
     tier_valid_until = date.fromisoformat(payload["tier_valid_until"]) if payload.get("tier_valid_until") else None
-    school = School(name=payload["name"], city=payload.get("city"), state=payload.get("state"), created_by_user_id=user.id, tier=tier, tier_valid_until=tier_valid_until)
+    school = School(name=_fit(payload["name"], "School name", 200), city=_fit(payload.get("city"), "City", 120), state=_fit(payload.get("state"), "State", 120), created_by_user_id=user.id, tier=tier, tier_valid_until=tier_valid_until)
     db.add(school)
     await db.flush()
     coordinator = User(
         email=email,
         password_hash=unusable_password_hash(),
-        full_name=payload["coordinator_full_name"],
+        full_name=_fit(payload["coordinator_full_name"], "Coordinator name", 160),
         role="school_coordinator",
         division="overseas",
         active=True,
@@ -1163,6 +1171,7 @@ async def create_school_staff(payload: dict, user: User = Depends(get_current_us
     full_name = str(payload.get("full_name", "")).strip()
     if not email or not full_name:
         raise HTTPException(422, "email and full_name are required")
+    _fit(full_name, "Full name", 160)
     email = _valid_email(email)
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
