@@ -21,7 +21,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from sqlalchemy import select, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import _set_auth_cookies
@@ -1197,7 +1197,14 @@ async def promote_students(payload: StudentPromotionRequest, user: User = Depend
     # read) by this request. `school_id` never changes after creation (DATA_MODEL.md §6.11), so there is no
     # check/use gap. An unknown ID and another school's ID are the same absence here, which is what makes them
     # indistinguishable to the caller.
-    locked = (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(student_ids), SchoolStudent.school_id == school_id).order_by(SchoolStudent.id).with_for_update())).all()
+    try:
+        locked = (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(student_ids), SchoolStudent.school_id == school_id).order_by(SchoolStudent.id).with_for_update())).all()
+    except DBAPIError as exc:
+        await db.rollback()
+        if getattr(exc.orig, "sqlstate", None) == "55P03":  # lock_not_available: the wait exceeded PROMOTION_LOCK_TIMEOUT
+            logger.warning("student_promotion_lock_timeout", extra={"extra_fields": {**actor, "requested": len(student_ids), "lock_timeout": PROMOTION_LOCK_TIMEOUT}})
+            raise HTTPException(409, "Another promotion is in progress; retry") from exc
+        raise
     students = {s.id: s for s in locked}
     if len(students) != len(student_ids):
         not_in_school = len(student_ids) - len(students)

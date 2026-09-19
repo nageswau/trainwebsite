@@ -803,6 +803,64 @@ async def test_a_student_created_in_the_active_year_is_skipped(client, db_sessio
     assert await _history(db_session, student) == []
 
 
+# ---------------------------------------------------------------- concurrency
+
+
+@pytest.mark.asyncio
+async def test_two_concurrent_identical_requests_promote_each_student_once(client, db_session, future_years):
+    await future_years()
+    ctx = await _school(db_session)
+    student = ctx["students"][0]
+    await _login(client, ctx["coordinator"].email)
+
+    first, second = await asyncio.gather(_promote(client, [_item(student)]), _promote(client, [_item(student)]))
+
+    assert first.status_code == second.status_code == 200, (first.text, second.text)
+    assert sorted(r.json()["results"][0]["status"] for r in (first, second)) == ["promoted", "skipped"]
+    await db_session.refresh(student)
+    assert student.grade_level == 9
+    assert len(await _history(db_session, student)) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_request_that_cannot_get_the_row_locks_in_time_returns_409(client, db_session, future_years, monkeypatch):
+    await future_years()
+    ctx = await _school(db_session)
+    student = ctx["students"][0]
+    await _login(client, ctx["coordinator"].email)
+    monkeypatch.setattr("app.api.schools.PROMOTION_LOCK_TIMEOUT", "200ms")
+    # Hold the row lock in the test's own session, exactly as a slower concurrent promotion would.
+    await db_session.execute(select(SchoolStudent).where(SchoolStudent.id == student.id).with_for_update())
+    try:
+        response = await _promote(client, [_item(student)])
+    finally:
+        await db_session.rollback()
+
+    assert response.status_code == 409
+    assert "in progress" in response.json()["detail"]
+    await db_session.refresh(student)
+    assert student.grade_level == 8
+
+
+@pytest.mark.asyncio
+async def test_a_lock_timeout_is_logged_as_a_warning(client, db_session, future_years, monkeypatch, caplog):
+    await future_years()
+    ctx = await _school(db_session)
+    student = ctx["students"][0]
+    await _login(client, ctx["coordinator"].email)
+    monkeypatch.setattr("app.api.schools.PROMOTION_LOCK_TIMEOUT", "200ms")
+    caplog.set_level(logging.INFO, logger="app.school")
+    coordinator_id, school_id = str(ctx["coordinator"].id), str(ctx["school"].id)  # read before the rollback below expires the ORM objects
+    await db_session.execute(select(SchoolStudent).where(SchoolStudent.id == student.id).with_for_update())
+    try:
+        await _promote(client, [_item(student)])
+    finally:
+        await db_session.rollback()
+
+    assert _events(caplog, "student_promotion_lock_timeout") == [{"actor_id": coordinator_id, "school_id": school_id, "requested": 1, "lock_timeout": "200ms"}]
+    assert [r.levelno for r in caplog.records if r.getMessage() == "student_promotion_lock_timeout"] == [logging.WARNING]
+
+
 # ---------------------------------------------------------------- operational logging
 # Structured events (app.core.logging convention): snake_case name, IDs and counts in `extra_fields`, never a
 # student name, label or student ID -- the same rule as the audit metadata (spec §14).
