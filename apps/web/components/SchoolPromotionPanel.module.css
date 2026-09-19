@@ -1,0 +1,29 @@
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.header { display: none; }
+.row { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.who { display: flex; gap: 12px; align-items: flex-start; }
+.who input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+.who label { display: grid; gap: 2px; cursor: pointer; }
+.control { display: grid; gap: 7px; }
+.outcome { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+.hint { color: var(--muted); font-size: 13px; }
+.bar { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 16px; padding: 12px 14px; background: #fff; border-top: 1px solid var(--line); }
+.barText { margin: 0; font-weight: 700; }
+.barActions { display: flex; gap: 10px; flex-wrap: wrap; }
+.summary:focus { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .row select, .row input[type="text"] { min-height: 44px; width: 100%; }
+  .bar .btn, .barActions { width: 100%; }
+  .bar .btn { min-height: 44px; }
+  .barActions .btn { flex: 1; min-height: 44px; }
+}
+
+/* Labels are visible on small screens (the card stack has no column headers) and move to a header row from 768px up. */
+@media (min-width: 768px) {
+  .header, .row { grid-template-columns: minmax(220px, 2fr) 150px minmax(180px, 1.5fr) minmax(150px, 1fr); align-items: center; }
+  .header { display: grid; padding: 0 14px; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .row { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+  .controlLabel { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .outcomeWide { grid-column: 2 / -1; }
+}
