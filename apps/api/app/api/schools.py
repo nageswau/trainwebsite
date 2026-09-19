@@ -20,13 +20,15 @@ from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import _set_auth_cookies
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code
+from app.core.logging import get_logger
 from app.core.security import hash_password
 from app.models import (
     AcademicYear,
@@ -48,16 +50,19 @@ from app.models import (
     SchoolRosterUploadRow,
     SchoolStaffAssignment,
     SchoolStudent,
+    SchoolStudentGradeHistory,
     SchoolTestPrepRecord,
     University,
     User,
     UserRoleAssignment,
     VisaCase,
 )
+from app.schemas import StudentPromotionRequest, StudentPromotionResponse
 from app.services.integrations import send_notification
 from app.services.mailer import send_parent_notification_email, send_school_invite_email
 
 router = APIRouter(prefix="/school", tags=["school"])
+logger = get_logger("app.school")
 SERVICE_DELIVERY_ROLES = {"academic_team", "career_counselor", "psychometric_team"}
 
 SCHOOL_DOMAIN_ROLES = {
@@ -1161,6 +1166,90 @@ async def link_parent(student_id: UUID, payload: dict, user: User = Depends(get_
     db.add(AuditLog(user_id=user.id, action="school.parent_link", entity_type="school_parent_link", entity_id=str(link.id), metadata_json={"student_id": str(student.id), "parent_id": str(parent.id)}))
     await db.commit()
     return {"id": link.id, "parent_user_id": parent.id, "school_student_id": student.id}
+
+
+# Bounded wait for the row locks a promotion takes (ENH-004 spec §5.2). A module constant, read at
+# call time so a test can shorten it; it is passed as a bound parameter below and is never request input.
+PROMOTION_LOCK_TIMEOUT = "5s"
+
+
+async def _require_coordinator_user(user: User = Depends(get_current_user)) -> User:
+    """Dependency form of `_require_coordinator`. FastAPI resolves dependencies before it validates
+    the request body, so a non-coordinator gets 403 before any 422 (spec §5.2 check order)."""
+    _require_coordinator(user)
+    return user
+
+
+@router.post("/students/promotions", response_model=StudentPromotionResponse)
+async def promote_students(payload: StudentPromotionRequest, user: User = Depends(_require_coordinator_user), db: AsyncSession = Depends(get_db)):
+    """ENH-004 -- promote (grade + 1) or hold back (same grade) students into the ACTIVE academic
+    year, one transaction per request. The school always comes from the caller's own profile. Every
+    listed student is row-locked in id order; an unknown or other-school ID rejects the whole request
+    with one generic 403 (nothing written). Business-rule failures are per-row results in a 200 body
+    and never block the valid rows. A student already in the active year is skipped, which is what
+    makes a retry or a concurrent duplicate safe (backed by UNIQUE (student, target year))."""
+    school_id = _own_school_id(user)
+    student_ids = [item.student_id for item in payload.items]
+    actor = {"actor_id": str(user.id), "school_id": str(school_id)}
+    # `set_config(..., true)` is SET LOCAL with a bound parameter, so no SQL is built from a string.
+    await db.execute(text("SELECT set_config('lock_timeout', :timeout, true)"), {"timeout": PROMOTION_LOCK_TIMEOUT})
+    # The school filter is part of the locking query itself, so another school's rows are never locked (or even
+    # read) by this request. `school_id` never changes after creation (DATA_MODEL.md §6.11), so there is no
+    # check/use gap. An unknown ID and another school's ID are the same absence here, which is what makes them
+    # indistinguishable to the caller.
+    locked = (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(student_ids), SchoolStudent.school_id == school_id).order_by(SchoolStudent.id).with_for_update())).all()
+    students = {s.id: s for s in locked}
+    if len(students) != len(student_ids):
+        not_in_school = len(student_ids) - len(students)
+        # A security-relevant event (probing, or a stale/misdirected client): record it, then refuse. Nothing else has
+        # been written yet, and the audit row carries counts only (no student IDs or names).
+        db.add(AuditLog(user_id=user.id, action="school.student_promotion_denied", entity_type="school", entity_id=str(school_id), outcome="denied", metadata_json={"requested": len(student_ids), "not_in_school": not_in_school}))
+        await db.commit()
+        logger.warning("student_promotion_denied", extra={"extra_fields": {**actor, "requested": len(student_ids), "not_in_school": not_in_school}})
+        raise HTTPException(403, "One or more students are not at your institution")
+    active_year_id = await _current_academic_year_id(db)
+    active_year = await db.get(AcademicYear, active_year_id) if active_year_id else None
+    if active_year is None:
+        logger.info("student_promotion_no_active_year", extra={"extra_fields": actor})
+        raise HTTPException(409, "No active academic year. Ask an Overseas Admin to activate one.")
+
+    counts = {"promoted": 0, "held_back": 0, "failed": 0, "skipped": 0}
+    results: list[dict] = []
+    history: list[SchoolStudentGradeHistory] = []
+    for item in payload.items:
+        student = students[item.student_id]
+        decision = _decide_promotion(
+            action=item.action, student_year_id=student.academic_year_id, active_year_id=active_year.id,
+            grade_level=student.grade_level, grade_or_class=student.grade_or_class, override=item.grade_or_class,
+        )
+        if decision.status in ("promoted", "held_back"):
+            history.append(
+                SchoolStudentGradeHistory(
+                    school_student_id=student.id, action=decision.status,
+                    from_academic_year_id=student.academic_year_id, from_grade_level=student.grade_level, from_grade_or_class=student.grade_or_class,
+                    to_academic_year_id=active_year.id, to_grade_level=decision.grade_level, to_grade_or_class=decision.grade_or_class,
+                    performed_by_user_id=user.id,
+                )
+            )
+            student.academic_year_id = active_year.id
+            student.grade_level = decision.grade_level
+            student.grade_or_class = decision.grade_or_class
+        counts[decision.status] += 1
+        results.append({"student_id": student.id, "status": decision.status, "reason": decision.reason, "message": decision.message, "grade_level": decision.grade_level, "grade_or_class": decision.grade_or_class})
+
+    committed = False
+    if history:
+        db.add_all(history)
+        db.add(AuditLog(user_id=user.id, action="school.student_promotion", entity_type="academic_year", entity_id=str(active_year.id), metadata_json={"academic_year_id": str(active_year.id), **counts}))
+        try:
+            await db.commit()
+        except IntegrityError as exc:
+            await db.rollback()
+            logger.warning("student_promotion_conflict", extra={"extra_fields": {**actor, "academic_year_id": str(active_year.id), "requested": len(student_ids)}})
+            raise HTTPException(409, "A concurrent promotion was detected; reload and retry") from exc
+        committed = True
+    logger.info("student_promotion_completed", extra={"extra_fields": {**actor, "academic_year_id": str(active_year.id), "requested": len(student_ids), **counts, "committed": committed}})
+    return {"academic_year": {"id": active_year.id, "label": active_year.label}, "counts": counts, "results": results}
 
 
 @router.get("/activities")
