@@ -392,3 +392,54 @@ e2e run waits for their say-so.
 - Parent notification on promotion and promotion events in the SCH-008 timeline.
 - Whether `grade-history` should also appear on the principal and teacher detail pages (this spec
   places it on the parent child page and the coordinator detail page only).
+- Security follow-ups outside ENH-004 (see §14.3): `profile.university_id` mass-assignment (UNI-001);
+  a school-student erasure path; an app-wide rate limiter and CSRF token.
+
+## 14. Security review (2026-09-19)
+
+Method: a threat model of ENH-004's trust boundaries (the request body, the session cookie, `profile.school_id`
+(the value every school authorization check rests on), the free-text `grade_or_class`, the database), a STRIDE
+pass, and a check of each item against the code rather than against the design. Only items that concern
+ENH-004 are changed; everything else is reported. **Where this section differs from §5.2, this section wins.**
+
+### 14.1 Findings
+
+| ID | Severity | Finding | Decision |
+|---|---|---|---|
+| **S1** | **Critical, pre-existing** | `PATCH /auth/me` (`auth.py:143`) merges a client-supplied, unrestricted `profile` dict into `user.profile`. Every school scope check reads `profile["school_id"]` (`_own_school_id`, `_require_coordinator`, ~16 sites in `schools.py`). Any logged-in user can set their own `school_id` to another school's and then read, edit and **promote** that school's students. AC-04 ("a coordinator cannot promote at another school, 403") is false while this holds, whatever the promotion endpoint does. | Fix in plan Task 3b: `profile.school_id` is read-only through `PATCH /auth/me` (an unchanged echo is still accepted, because the web form sends the whole profile); a refused change is 403 and audited (`profile.update_denied`); nothing else in that request is applied. **Changes authentication/profile logic, so it needs the user's approval before it is made.** The same class exists for `profile.university_id` (UNI-001: `workflows.py:158,1824`, `inbound.py:138`, `portal.py:929`); that is **not** changed here and is reported separately. |
+| **H1** | Medium (ENH-004's own design) | §5.2 locked every listed student row *before* checking ownership, so a coordinator naming another school's IDs made the request wait on, and briefly hold, that school's rows (lock griefing, and an existence-timing signal). | The school filter is part of the locking query itself (`WHERE id IN (...) AND school_id = :own FOR UPDATE`). Another school's rows are never locked or read; an unknown ID and another school's ID are the same absence, so the generic 403 stays indistinguishable. `school_id` never changes after creation (`DATA_MODEL.md` §6.11), so there is no check/use gap. |
+| **H2** | Low | `SET LOCAL lock_timeout = '{constant}'` builds SQL from an f-string. Safe today (a module constant) but the pattern is a scanner and future-edit hazard. | `SELECT set_config('lock_timeout', :timeout, true)` with a bound parameter (identical semantics to `SET LOCAL`). |
+| **H3** | Low | Pydantic ignores unknown fields by default, so a client-supplied `school_id`/`academic_year_id` would be silently dropped. | `extra="forbid"` on the request models: it is refused with 422, consistent with ENH-001's rule that these are never read from a client payload. |
+| **H4** | Low | A NUL byte in the override label passes Pydantic and cannot be stored in PostgreSQL text: a 500, and an unhandled SQLAlchemy error's text carries its parameters into the logs. Newlines and other control characters have no legitimate place in a grade label. | The override label rejects control characters (Unicode category `Cc`) with 422. |
+| **H5** | Low | A refused cross-school attempt (probing, or a stale client) leaves no trace; today's audit trail records successes only. | The 403 is recorded as `school.student_promotion_denied` (`entity_type="school"`, `outcome="denied"`, metadata `{requested, not_in_school}`: counts only, no IDs or names) before it is raised. Nothing else has been written by then. |
+
+### 14.2 Checked and unchanged
+
+| Area | Result | Evidence |
+|---|---|---|
+| Authentication | No new flow; nothing to change. | `get_current_user` (`deps.py:14`) requires the `edusphere_access` cookie, `type == "access"`, and reloads the active user from the database on every request, so role and `profile` never come from the token and deactivation is immediate. |
+| Token/session handling | No change. | Cookies are `httponly`, `secure` (config-driven), `samesite=lax` (`auth.py:61`); no token reaches JavaScript; the new UI only calls same-origin `/api/v1/...`. |
+| Authorization | Sound, subject to S1 and H1. | The coordinator gate is a `Depends` that runs before body validation; the school comes from the caller's profile; the scoped query enforces it again. |
+| IDOR | Promotion: closed (H1 and the generic 403). History read: reuses `_load_readable_student` (own institution; teacher assigned only; parent own child only). | The read route keeps that loader's existing 404-unknown/403-foreign behavior, documented in `API_CONTRACT.md`; changing it would alter existing contracts and is out of scope. |
+| Role escalation | The endpoint takes no role, school or year input (H3). Tenant escalation is S1. | |
+| Input validation | Typed at the boundary: UUIDs, `Literal` action, 1-500 items, no duplicates, label 1-60 chars stripped, no control characters (H4), unknown fields refused (H3). | |
+| XSS | No new exposure. | Labels are stored raw and rendered only as React text nodes; the web app contains no `dangerouslySetInnerHTML`/`innerHTML`; nothing in ENH-004 builds HTML, email or CSV from a label; server messages are static strings that never echo input. |
+| CSRF | No new exposure; no token added. | State change is POST only (the history GET is read-only). Cookies are `SameSite=Lax`, CORS allows one origin (`settings.frontend_url`), and the body is JSON, so a cross-site POST carries no session. Residual (unchanged, app-wide): a same-site sibling-subdomain attacker; a CSRF token would be an app-wide change. |
+| SQL injection | None. | ORM-bound parameters throughout; IDs are typed UUIDs; the one raw statement is now parameterized (H2). |
+| Secret exposure | None introduced. | No new secret, key or third-party call; tests and e2e reuse the existing seeded demo/test literals. |
+| Sensitive logging | Clean. | The audit metadata is counts and a year ID; the denied row has no student IDs or names; the request middleware logs request IDs and exceptions, not bodies. |
+| Rate limiting | **None exists app-wide** (only ENH-003's own resend throttle). A limiter is infrastructure and needs approval, so none is added. | ENH-004 bounds its own cost per request: coordinator only, at most 500 items, only own-school rows, a 5 s lock timeout, one transaction, at most 500 history rows plus one audit row. A valid coordinator can only load their own school. |
+| Audit | Successes: one request-level row plus a per-student ledger row carrying the performer. Denied cross-school attempts: H5. Refused profile change: S1's `profile.update_denied`. | A role-denied 403 is not audited, matching every existing route. |
+| Privacy | Grade/year history about minors, readable only within the existing student-read scope; the performer's user ID is stored but never returned; nothing is shared with a third party. | Retention is "kept with the student record" (append-only). |
+
+### 14.3 Reported, not changed (outside ENH-004)
+
+- `profile.university_id` has the same mass-assignment class as S1 (UNI-001). Recommend a separate fix.
+- No school-student erasure path exists anywhere (data-subject handling covers users, `admin.py:887`). The new history table follows the codebase norm (a plain foreign key, no cascade), so it neither adds to nor closes that gap. `NEEDS_CONFIRMATION`.
+- No app-wide rate limiter and no CSRF token; ENH-004 relies on `SameSite=Lax` and its own per-request bounds.
+- `create_student`, `update_student` and bulk upload accept control characters in `grade_or_class` (a NUL there is a 500). Only the new promotion field is hardened.
+- An unhandled SQLAlchemy error's text carries its SQL parameters into the server logs (a general logging setting).
+
+### 14.4 Tests (all written before the code they cover)
+
+`extra="forbid"` and control-character rejection (unit and endpoint); a rejected request never locks or waits on another school's rows (a foreign row is locked by another session and the request must return 403, not 409); a cross-school attempt writes exactly one `school.student_promotion_denied` row with counts only and changes nothing; `PATCH /auth/me` cannot change `school_id` (and the promotion boundary still holds afterwards), applies no partial change when refused, cannot give a schoolless user a school, and still accepts an unchanged echo.

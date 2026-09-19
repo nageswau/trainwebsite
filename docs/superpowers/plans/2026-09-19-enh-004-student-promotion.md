@@ -27,6 +27,7 @@ Copied from the spec. Every task's requirements include this section.
 - **The user controls Docker.** Never run `docker compose ...` yourself. When a step needs the stack rebuilt or restarted, or a migration applied to the shared database, ask the user and wait.
 - **Quality gates:** `python -m ruff check .` and `python -m mypy app` from `apps/api`; `npm run typecheck`, `npm run lint`, `npm run build` from `apps/web`. Ruff line length is 200.
 - **Git:** stay on branch `feature/enh-004-student-grade-promotion`. **Never `git add -A` or `git add .`** (an untracked `graphify-out/` must stay out of every commit); add explicit paths. End every commit message with the trailer `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>` (pass it as a second `-m`).
+- **Security (spec §14):** the school and the target year are server-decided, never read from the request (request models use `extra="forbid"`); the school filter is part of the row-locking query so another school's rows are never locked or read; unknown and other-school IDs are one indistinguishable `403`, and a denied attempt is audited (`school.student_promotion_denied`, counts only, no IDs or names); no SQL is built from a string (`set_config` with a bound parameter, not an f-string `SET LOCAL`); a grade label may not contain control characters; nothing sensitive is logged or added to the audit metadata; no new rate limiter and no CSRF token are added (see spec §14 for why); `PATCH /auth/me` making `profile.school_id` read-only (Task 3b) needs the user's approval because it changes authentication/profile logic.
 - **Frontend rules (binding, from `docs/ux/`):** a data table becomes a stacked card list on mobile, never a horizontally scrolling table as the only option (`RESPONSIVE_RULES.md`, `NFR-RESP-001` confirmed); no layout shift; every input has a real label; visible focus, never suppressed; errors stated in text and tied to their field; a keyboard-reachable confirmation before a high-consequence action; outcome never conveyed by colour alone (`ACCESSIBILITY_RULES.md`). Reuse existing classes and components (`.card`, `.btn`, `.status`, `.field`, `.select`, `.search`, `.table-controls`, `.empty`, `.form-error`/`.form-message`, `.jtl-*`); the single new stylesheet is `SchoolPromotionPanel.module.css` (precedent: `ProgramCatalogue.module.css`). No new npm dependency, no `loading.tsx` (there is no shared `school/layout.tsx`, so it would render without the portal shell), no optimistic update, no `window.confirm`. Avoid apostrophes in JSX text (`react/no-unescaped-entities`).
 - **Commands:** backend commands run from `apps/api`; frontend commands from `apps/web`. The examples use PowerShell-safe syntax (no `&&`).
 
@@ -35,6 +36,8 @@ Copied from the spec. Every task's requirements include this section.
 1. **Task 2, Step 6:** permission to apply migration `0033` to the shared database (`python -m alembic upgrade head` from `apps/api`). It is additive (creates one new table) and touches no existing data.
 2. **Task 8, Step 6 and Task 9, Step 5:** ask the user to rebuild and restart the `api` and `web` containers so the e2e run sees the new code, then wait for their go-ahead.
 3. **Task 8 side effect (accepted by AGENTS.md's shared-state rule, but confirm before the first run):** the e2e spec must activate a new academic year, which cannot be deleted through the API. Each run creates a far-future, strictly increasing year so it always wins the "latest start_date" tie-break; afterwards, students created by *other* specs get that year. Nothing else reads it.
+
+4. **Task 3b, Step 0 (security):** explicit approval to make `profile.school_id` read-only through `PATCH /auth/me`. It is a change to authentication/profile logic, and the exposure it closes is real: without it, ENH-004's "a coordinator cannot promote at another school" criterion can be bypassed by editing one's own profile.
 
 ## File Structure
 
@@ -254,8 +257,15 @@ _DUPLICATE = _item()
         {"items": [_item(action="hold_back", grade_or_class="Grade 9")]},
         {"items": [_item(grade_or_class="   ")]},
         {"items": [_item(grade_or_class="x" * 61)]},
+        {"items": [_item(grade_or_class="Grade\x00 9")]},
+        {"items": [_item(grade_or_class="Grade\n9")]},
+        {"items": [_item()], "school_id": str(uuid.uuid4())},
+        {"items": [_item(academic_year_id=str(uuid.uuid4()))]},
     ],
-    ids=["missing_items", "empty_items", "over_the_cap", "duplicate_id", "not_a_uuid", "unknown_action", "hold_back_with_label", "blank_label", "label_too_long"],
+    ids=[
+        "missing_items", "empty_items", "over_the_cap", "duplicate_id", "not_a_uuid", "unknown_action", "hold_back_with_label", "blank_label", "label_too_long",
+        "nul_in_label", "newline_in_label", "client_supplied_school_id", "client_supplied_year_on_item",
+    ],
 )
 def test_request_rejects_invalid_payloads(payload):
     with pytest.raises(ValidationError):
@@ -281,6 +291,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 with:
 
 ```python
+import unicodedata
 from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
@@ -297,13 +308,25 @@ Then append at the very end of the file:
 
 
 class PromotionItem(BaseModel):
-    model_config = {"str_strip_whitespace": True}
+    # `extra="forbid"`: a client-supplied `academic_year_id`/`school_id` is a loud 422, never silently ignored
+    # (the target year and the school are server-decided; spec §14).
+    model_config = {"str_strip_whitespace": True, "extra": "forbid"}
     student_id: UUID
     action: Literal["promote", "hold_back"]
     grade_or_class: str | None = Field(default=None, min_length=1, max_length=60)
 
+    @field_validator("grade_or_class")
+    @classmethod
+    def _no_control_characters(cls, value: str | None) -> str | None:
+        # A NUL byte cannot be stored in PostgreSQL text (it would surface as a 500), and newlines or other
+        # control characters have no place in a grade label that is later rendered and exported.
+        if value is not None and any(unicodedata.category(ch) == "Cc" for ch in value):
+            raise ValueError("grade_or_class must not contain control characters")
+        return value
+
 
 class StudentPromotionRequest(BaseModel):
+    model_config = {"extra": "forbid"}
     items: list[PromotionItem] = Field(min_length=1, max_length=500)
 
     @model_validator(mode="after")
@@ -1019,6 +1042,46 @@ async def test_an_unknown_student_id_is_indistinguishable_from_a_foreign_one(cli
 
 
 @pytest.mark.asyncio
+async def test_a_rejected_request_never_locks_or_waits_on_another_schools_rows(client, db_session, future_years, monkeypatch):
+    """Security (spec §14): the school filter is part of the locking query. If the request first locked every
+    listed row and only then checked ownership, naming school A's IDs would make school B's coordinator wait
+    on (and briefly hold) school A's rows -- a lock-griefing lever. Here school A's row is locked by someone
+    else; B's request must be refused at once (403), not time out on the lock (409)."""
+    await future_years()
+    school_a = await _school(db_session)
+    school_b = await _school(db_session)
+    foreign = school_a["students"][0]
+    await _login(client, school_b["coordinator"].email)
+    monkeypatch.setattr("app.api.schools.PROMOTION_LOCK_TIMEOUT", "200ms")
+    await db_session.execute(select(SchoolStudent).where(SchoolStudent.id == foreign.id).with_for_update())
+    try:
+        response = await _promote(client, [_item(foreign)])
+    finally:
+        await db_session.rollback()
+
+    assert response.status_code == 403, response.text
+
+
+@pytest.mark.asyncio
+async def test_a_cross_school_attempt_is_audited_as_denied_with_counts_only(client, db_session, future_years):
+    await future_years()
+    school_a = await _school(db_session)
+    school_b = await _school(db_session)
+    own, foreign = school_b["students"][0], school_a["students"][0]
+    await _login(client, school_b["coordinator"].email)
+
+    response = await _promote(client, [_item(own), _item(foreign)])
+
+    assert response.status_code == 403
+    rows = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.student_promotion_denied", AuditLog.entity_id == str(school_b["school"].id)))).all()
+    assert len(rows) == 1
+    assert (rows[0].user_id, rows[0].entity_type, rows[0].outcome) == (school_b["coordinator"].id, "school", "denied")
+    assert rows[0].metadata_json == {"requested": 2, "not_in_school": 1}  # counts only: no student IDs or names
+    await db_session.refresh(own)
+    assert own.grade_level == 8 and await _history(db_session, own) == []
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("role_key", ["principal", "teacher", "parent", "admin"])
 async def test_only_a_school_coordinator_may_promote(client, db_session, future_years, role_key):
     await future_years()
@@ -1058,6 +1121,12 @@ INVALID_PAYLOADS = {
     "hold_back_with_label": lambda sid: {"items": [{"student_id": sid, "action": "hold_back", "grade_or_class": "Grade 9"}]},
     "blank_label": lambda sid: {"items": [{"student_id": sid, "action": "promote", "grade_or_class": "   "}]},
     "label_too_long": lambda sid: {"items": [{"student_id": sid, "action": "promote", "grade_or_class": "x" * 61}]},
+    # Security (spec §14): a NUL byte would otherwise reach PostgreSQL and surface as a 500; a client-supplied
+    # school or year is refused loudly, not ignored.
+    "nul_in_label": lambda sid: {"items": [{"student_id": sid, "action": "promote", "grade_or_class": "Grade\u0000 9"}]},
+    "newline_in_label": lambda sid: {"items": [{"student_id": sid, "action": "promote", "grade_or_class": "Grade\n9"}]},
+    "client_supplied_school_id": lambda sid: {"items": [{"student_id": sid, "action": "promote"}], "school_id": str(uuid.uuid4())},
+    "client_supplied_year_on_item": lambda sid: {"items": [{"student_id": sid, "action": "promote", "academic_year_id": str(uuid.uuid4())}]},
 }
 
 
@@ -1260,10 +1329,19 @@ async def promote_students(payload: StudentPromotionRequest, user: User = Depend
     makes a retry or a concurrent duplicate safe (backed by UNIQUE (student, target year))."""
     school_id = _own_school_id(user)
     student_ids = [item.student_id for item in payload.items]
-    await db.execute(text(f"SET LOCAL lock_timeout = '{PROMOTION_LOCK_TIMEOUT}'"))
-    locked = (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(student_ids)).order_by(SchoolStudent.id).with_for_update())).all()
+    # `set_config(..., true)` is SET LOCAL with a bound parameter, so no SQL is built from a string.
+    await db.execute(text("SELECT set_config('lock_timeout', :timeout, true)"), {"timeout": PROMOTION_LOCK_TIMEOUT})
+    # The school filter is part of the locking query itself, so another school's rows are never locked (or even
+    # read) by this request. `school_id` never changes after creation (DATA_MODEL.md §6.11), so there is no
+    # check/use gap. An unknown ID and another school's ID are the same absence here, which is what makes them
+    # indistinguishable to the caller.
+    locked = (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(student_ids), SchoolStudent.school_id == school_id).order_by(SchoolStudent.id).with_for_update())).all()
     students = {s.id: s for s in locked}
-    if len(students) != len(student_ids) or any(s.school_id != school_id for s in students.values()):
+    if len(students) != len(student_ids):
+        # A security-relevant event (probing, or a stale/misdirected client): record it, then refuse. Nothing else has
+        # been written yet, and the audit row carries counts only (no student IDs or names).
+        db.add(AuditLog(user_id=user.id, action="school.student_promotion_denied", entity_type="school", entity_id=str(school_id), outcome="denied", metadata_json={"requested": len(student_ids), "not_in_school": len(student_ids) - len(students)}))
+        await db.commit()
         raise HTTPException(403, "One or more students are not at your institution")
     active_year_id = await _current_academic_year_id(db)
     active_year = await db.get(AcademicYear, active_year_id) if active_year_id else None
@@ -1326,6 +1404,159 @@ Expected: all pass, same counts as before this task.
 ```powershell
 git add apps/api/app/api/schools.py apps/api/tests/test_enh_004_student_promotion.py
 git commit -m "feat(enh-004): add POST /school/students/promotions" -m "Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 3b: Close the tenant-escalation path in `PATCH /auth/me` (**needs the user's approval first**)
+
+**Why this is in ENH-004:** every school authorization check (`_own_school_id`, `_require_coordinator`) trusts `user.profile["school_id"]`, and `PATCH /auth/me` (`auth.py:143`) merges an **unrestricted** client-supplied `profile` dict into `user.profile`. Any coordinator can therefore send `{"profile": {"school_id": "<another school's id>"}}` and then read, edit and **promote** that school's students. ENH-004's first security acceptance criterion ("a coordinator cannot promote students at a school outside their own institution (403)") is not true while this holds, whatever the promotion endpoint does. See spec §14, finding S1.
+
+**This task changes authentication/profile logic, which the security review lists as "ask first".** Step 0 is the gate.
+
+**Files:**
+- Modify: `apps/api/app/api/auth.py` (the `update_me` function, currently lines 143-155)
+- Modify: `apps/api/tests/test_enh_004_student_promotion.py`
+
+**Interfaces:**
+- Consumes: Task 3's test helpers (`_school`, `_user`, `_login`, `_promote`, `_item`, `future_years`, `PASSWORD`).
+- Produces: `SERVER_OWNED_PROFILE_KEYS = ("school_id",)` in `auth.py`; `PATCH /auth/me` answers `403` (detail `"school_id cannot be changed here"`) when the body's `profile.school_id` differs from the user's current value, applies no other change from that request, and writes an `AuditLog` row `profile.update_denied` (`outcome="denied"`, metadata `{"field": "school_id"}`). Echoing the *unchanged* value back is accepted (the web "Update profile" form sends the whole profile, `WorkflowPanel.tsx:254`).
+
+**Deliberately not changed:** other profile keys, notably `university_id` (the same bypass class for university reps, `workflows.py:158,1824`, `inbound.py:138`, `portal.py:929`) — that belongs to UNI-001 and is reported to the user as a separate finding, not silently widened here. The admin route `PATCH /admin/users/{id}` (which legitimately sets `profile`) is untouched.
+
+- [ ] **Step 0: Get approval**
+
+Tell the user, in plain words: "Any logged-in user can currently change their own `profile.school_id` via `PATCH /auth/me`, which defeats every school scope check including ENH-004's. The fix makes `school_id` read-only through that route (an unchanged echo is still accepted) and audits attempts. It changes profile-update logic. May I make it in this branch?" Wait for a yes. If the user declines or wants it done separately, skip this task, keep the rest of the plan, and record the exposure in the final report and in `DEC-SCOPE-020`'s `NEEDS_CONFIRMATION` list.
+
+- [ ] **Step 1: Write the failing tests**
+
+Append to `apps/api/tests/test_enh_004_student_promotion.py`:
+
+```python
+
+
+# ---------------------------------------------------------------- tenant escalation via PATCH /auth/me (spec §14, S1)
+
+
+async def _patch_profile(client, body: dict):
+    return await client.patch("/api/v1/auth/me", json=body)
+
+
+@pytest.mark.asyncio
+async def test_a_coordinator_cannot_re_point_their_own_school_via_profile_update(client, db_session, future_years):
+    await future_years()
+    school_a = await _school(db_session)
+    school_b = await _school(db_session)
+    victim = school_b["students"][0]
+    await _login(client, school_a["coordinator"].email)
+
+    response = await _patch_profile(client, {"profile": {"school_id": str(school_b["school"].id)}})
+
+    assert response.status_code == 403, response.text
+    await db_session.refresh(school_a["coordinator"])
+    assert school_a["coordinator"].profile["school_id"] == str(school_a["school"].id)
+    # The boundary this protects still holds: nothing of school B is reachable.
+    assert (await _promote(client, [_item(victim)])).status_code == 403
+    listing = await client.get("/api/v1/school/students")
+    assert {s["id"] for s in listing.json()} == {str(s.id) for s in school_a["students"]}
+    denied = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "profile.update_denied", AuditLog.user_id == school_a["coordinator"].id))).all()
+    assert len(denied) == 1
+    assert (denied[0].outcome, denied[0].metadata_json) == ("denied", {"field": "school_id"})
+
+
+@pytest.mark.asyncio
+async def test_a_refused_profile_update_applies_no_partial_change(client, db_session):
+    school_a = await _school(db_session)
+    school_b = await _school(db_session)
+    await _login(client, school_a["coordinator"].email)
+
+    response = await _patch_profile(client, {"full_name": "Renamed Coordinator", "profile": {"school_id": str(school_b["school"].id)}})
+
+    assert response.status_code == 403, response.text
+    await db_session.refresh(school_a["coordinator"])
+    assert school_a["coordinator"].full_name == "Coordinator"
+
+
+@pytest.mark.asyncio
+async def test_a_user_with_no_school_cannot_acquire_one_via_profile_update(client, db_session):
+    school = await _school(db_session)
+    outsider = await _user(db_session, role="overseas_student", full_name="Outsider")
+    await db_session.commit()
+    await _login(client, outsider.email)
+
+    response = await _patch_profile(client, {"profile": {"school_id": str(school["school"].id)}})
+
+    assert response.status_code == 403, response.text
+    await db_session.refresh(outsider)
+    assert "school_id" not in (outsider.profile or {})
+
+
+@pytest.mark.asyncio
+async def test_a_profile_update_that_echoes_the_unchanged_school_id_still_works(client, db_session):
+    ctx = await _school(db_session)
+    await _login(client, ctx["coordinator"].email)
+
+    response = await _patch_profile(client, {"profile": {"school_id": str(ctx["school"].id), "education": "B.Ed"}})
+
+    assert response.status_code == 200, response.text
+    profile = response.json()["profile"]
+    assert profile["school_id"] == str(ctx["school"].id)
+    assert profile["education"] == "B.Ed"
+```
+
+- [ ] **Step 2: Run the tests to verify the exploit is real**
+
+Run (from `apps/api`): `python -m pytest -q tests/test_enh_004_student_promotion.py -k "profile_update"`
+Expected: `test_a_coordinator_cannot_re_point_their_own_school_via_profile_update`, `test_a_refused_profile_update_applies_no_partial_change` and `test_a_user_with_no_school_cannot_acquire_one_via_profile_update` FAIL with `assert 200 == 403` (the bypass succeeds today); the echo test passes. **Report the three failures to the user as confirmation of the finding before continuing.**
+
+- [ ] **Step 3: Implement the fix**
+
+In `apps/api/app/api/auth.py`, replace:
+
+```python
+@router.patch("/me", response_model=UserOut)
+async def update_me(payload: ProfileUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    changes = payload.model_dump(exclude_unset=True)
+    if "full_name" in changes:
+```
+
+with:
+
+```python
+# Profile keys that carry an authorization scope. A user may echo their own current value back (the web
+# "Update profile" form sends the whole profile) but may never change it: only an admin route sets these.
+SERVER_OWNED_PROFILE_KEYS = ("school_id",)
+
+
+@router.patch("/me", response_model=UserOut)
+async def update_me(payload: ProfileUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    changes = payload.model_dump(exclude_unset=True)
+    # Checked before anything is mutated: the audit commit below would otherwise also persist an
+    # already-assigned full_name/phone from a request that is being refused.
+    incoming = changes.get("profile") or {}
+    current = user.profile or {}
+    for key in SERVER_OWNED_PROFILE_KEYS:
+        if key in incoming and incoming[key] != current.get(key):
+            db.add(AuditLog(user_id=user.id, action="profile.update_denied", entity_type="user", entity_id=str(user.id), outcome="denied", metadata_json={"field": key}))
+            await db.commit()
+            raise HTTPException(403, f"{key} cannot be changed here")
+    if "full_name" in changes:
+```
+
+- [ ] **Step 4: Run the tests, and the existing profile tests**
+
+Run: `python -m pytest -q tests/test_enh_004_student_promotion.py -k "profile_update"; python -m pytest -q tests/test_stu_011_profile_documents.py tests/test_role_assignments.py`
+Expected: all pass (the existing tests PATCH `profile.skills`, which is untouched).
+
+- [ ] **Step 5: Document, lint, commit**
+
+Run (Grep tool): search `docs/architecture/API_CONTRACT.md` for `PATCH /auth/me`. If a row exists, append this sentence to it: `**Addendum, 2026-09-19 (ENH-004 security review):** \`profile.school_id\` is server-owned: a request that changes it is 403 (\`school_id cannot be changed here\`) and audited as \`profile.update_denied\`; echoing the unchanged value is accepted.` If no row exists, add nothing (do not invent a contract entry).
+Run: `python -m ruff check .; python -m mypy app`
+Expected: clean.
+
+```powershell
+git add apps/api/app/api/auth.py apps/api/tests/test_enh_004_student_promotion.py docs/architecture/API_CONTRACT.md
+git commit -m "fix(auth): make profile.school_id read-only via PATCH /auth/me" -m "Any user could re-point their own school scope, defeating every school authorization check including ENH-004's. An unchanged echo is still accepted; attempts are audited as profile.update_denied." -m "Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1402,14 +1633,14 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 In `promote_students`, replace this line:
 
 ```python
-    locked = (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(student_ids)).order_by(SchoolStudent.id).with_for_update())).all()
+    locked = (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(student_ids), SchoolStudent.school_id == school_id).order_by(SchoolStudent.id).with_for_update())).all()
 ```
 
 with:
 
 ```python
     try:
-        locked = (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(student_ids)).order_by(SchoolStudent.id).with_for_update())).all()
+        locked = (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(student_ids), SchoolStudent.school_id == school_id).order_by(SchoolStudent.id).with_for_update())).all()
     except DBAPIError as exc:
         await db.rollback()
         if getattr(exc.orig, "sqlstate", None) == "55P03":  # lock_not_available: the wait exceeded PROMOTION_LOCK_TIMEOUT
@@ -2594,7 +2825,7 @@ Design and API review: `docs/superpowers/specs/2026-09-19-enh-004-student-promot
 
 **Consequences:** new append-only table `school_student_grade_history` (migration `0033`); `POST /school/students/promotions` and `GET /school/students/{id}/grade-history`; the "student dashboard" in the backlog's acceptance criteria maps to the parent view only.
 
-**`NEEDS_CONFIRMATION` (not decided here):** graduate/alumni handling after Grade 12; a real section field; whether admin roles should ever promote; parent notification on promotion; promotion events in the SCH-008 timeline.
+**`NEEDS_CONFIRMATION` (not decided here):** graduate/alumni handling after Grade 12; a real section field; whether admin roles should ever promote; parent notification on promotion; promotion events in the SCH-008 timeline. Security follow-ups found during review and outside this feature: `profile.university_id` can be changed by its owner through `PATCH /auth/me` (the same class as the `school_id` exposure; UNI-001); no school-student erasure path exists; no app-wide rate limiter or CSRF token.
 ```
 
 - [ ] **Step 2: Document the endpoints**
@@ -2602,7 +2833,7 @@ Design and API review: `docs/superpowers/specs/2026-09-19-enh-004-student-promot
 In `docs/architecture/API_CONTRACT.md`, insert these two rows immediately after the `GET /school/academic-years/active` row (the row that ends `... Response shape (when active exists): `{id, label, start_date, end_date, status}`. |`):
 
 ```markdown
-| `POST /school/students/promotions` | Authenticated | School Coordinator, own institution only | **ENH-004 / `DEC-SCOPE-020`.** Body `{items: [{student_id, action: "promote"\|"hold_back", grade_or_class?}]}`, 1–500 items; `grade_or_class` (≤60 chars) only with `promote`. Moves each student into the **active** academic year: `promote` adds one to `grade_level` and advances the number inside `grade_or_class` (an unswappable label needs the override); `hold_back` keeps grade and label. Always **200** with `{academic_year, counts, results[{student_id, status: promoted\|held_back\|failed\|skipped, reason, message, grade_level, grade_or_class}]}` (200 even when nothing changed, unlike `bulk-upload`'s 201, because a request can create nothing). Row `reason` codes (stable): `already_in_active_year`, `grade_level_not_set`, `terminal_grade`, `label_unparseable`. Valid rows commit; failed/skipped rows change nothing. **Errors:** 401; 403 if the caller is not a coordinator (checked before body validation) or if any listed student is unknown **or** at another institution (one generic message, nothing written); 409 if there is no active academic year, on a concurrent-promotion conflict, or if row locks cannot be taken within 5 s; 422 (FastAPI list-shaped `detail`) for an empty/oversized/duplicated/malformed list, an unknown action, or a label with `hold_back`. **Retry:** no `Idempotency-Key`; the natural key is (student, target year), enforced by a row lock plus `UNIQUE (school_student_id, to_academic_year_id)`. A repeat reports `skipped: already_in_active_year` instead of replaying `promoted`, so confirm via `results[].grade_level` or `GET …/grade-history`. |
+| `POST /school/students/promotions` | Authenticated | School Coordinator, own institution only | **ENH-004 / `DEC-SCOPE-020`.** Body `{items: [{student_id, action: "promote"\|"hold_back", grade_or_class?}]}`, 1–500 items; `grade_or_class` (≤60 chars) only with `promote`. Moves each student into the **active** academic year: `promote` adds one to `grade_level` and advances the number inside `grade_or_class` (an unswappable label needs the override); `hold_back` keeps grade and label. Always **200** with `{academic_year, counts, results[{student_id, status: promoted\|held_back\|failed\|skipped, reason, message, grade_level, grade_or_class}]}` (200 even when nothing changed, unlike `bulk-upload`'s 201, because a request can create nothing). Row `reason` codes (stable): `already_in_active_year`, `grade_level_not_set`, `terminal_grade`, `label_unparseable`. Valid rows commit; failed/skipped rows change nothing. **Errors:** 401; 403 if the caller is not a coordinator (checked before body validation) or if any listed student is unknown **or** at another institution (one generic message, nothing written); 409 if there is no active academic year, on a concurrent-promotion conflict, or if row locks cannot be taken within 5 s; 422 (FastAPI list-shaped `detail`) for an empty/oversized/duplicated/malformed list, an unknown action, a label with `hold_back` or containing control characters, or **any unknown body field** (a client-supplied `school_id` or `academic_year_id` is refused, never ignored). A 403 for a student outside the caller's institution is recorded as `school.student_promotion_denied` (`outcome=denied`, counts only). **Retry:** no `Idempotency-Key`; the natural key is (student, target year), enforced by a row lock plus `UNIQUE (school_student_id, to_academic_year_id)`. A repeat reports `skipped: already_in_active_year` instead of replaying `promoted`, so confirm via `results[].grade_level` or `GET …/grade-history`. |
 | `GET /school/students/{id}/grade-history` | Authenticated | Coordinator, Principal (own institution) / Teacher (assigned) / Parent (own child(ren)) | **ENH-004.** `{student: {id, full_name}, history: [{id, action: promoted\|held_back, from: {academic_year_id, academic_year_label, grade_level, grade_or_class}, to: {…}, created_at}]}`, newest first; `[]` if never promoted. Same scope loader as `GET /school/students/{id}` (403 outside scope, 404 for an unknown ID). Not paginated (at most one row per academic year per student). The performer is stored but not returned. |
 ```
 
@@ -2714,7 +2945,7 @@ Expected: all pass. The full backend and e2e regression suites are **not** run f
 
 - [ ] **Step 4: Acceptance check against the spec**
 
-For each of AC-01 … AC-11 in the spec §10, name the passing test that proves it (the test names in Tasks 3-6 and the e2e spec map one-to-one). Report any AC with no passing test as a gap; do not claim completion with a gap.
+For each of AC-01 … AC-11 in the spec §10 and each security item S1 and H1-H5 in §14.1, name the passing test that proves it (the test names in Tasks 3-6 and the e2e spec map one-to-one). Report any AC with no passing test as a gap; do not claim completion with a gap.
 
 - [ ] **Step 5: Hand off**
 
