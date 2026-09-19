@@ -424,7 +424,10 @@ export default function WorkflowPanel({ user, section }: { user: User; section: 
   const showCounselorEvaluation = user.role === "counselor" && ["applications", "students"].includes(section);
   const showCounselorChat = user.role === "counselor" && section === "counselor-chat";
   const isAdmin = ["it_admin", "super_admin"].includes(user.role);
-  const showUserManagement = isAdmin && ["users", "students", "trainers", "employers", "counselors", "staff"].includes(section);
+  // QA-009: the Overseas Admin provisions school staff, so they get the Manage users panel (setup status + Re-send)
+  // on the `users` page too. The API already scopes every route to their division; the role/section-specific
+  // directories stay IT/Super Admin only.
+  const showUserManagement = (isAdmin && ["users", "students", "trainers", "employers", "counselors", "staff"].includes(section)) || (user.role === "overseas_admin" && section === "users");
   const showProgramManagement = isAdmin && section === "programs";
   const showLeadManagement = isAdmin && section === "leads";
   const showBatchCreate = isAdmin && section === "batches";

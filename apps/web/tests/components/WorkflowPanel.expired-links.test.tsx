@@ -41,3 +41,27 @@ describe("WorkflowPanel mounts the expired-links panel", () => {
     expect(screen.queryByRole("heading", { name: /Expired set-password links/ })).toBeNull();
   });
 });
+
+// QA-009: the Overseas Admin provisions school staff, so they need the same per-account setup status and
+// Re-send as the IT Admin -- not only the dashboard list of ALREADY-expired links. Scoped to the `users`
+// section: the role/section-specific directories (students, trainers, ...) stay IT/Super Admin only.
+describe("WorkflowPanel mounts the Manage users panel (setup status + Re-send)", () => {
+  it.each(["it_admin", "super_admin", "overseas_admin"])("on the %s users page", async (role) => {
+    const mock = stubFetch();
+    render(<WorkflowPanel user={asUser(role)} section="users" />);
+    expect(await screen.findByRole("heading", { name: "Manage users" })).toBeInTheDocument();
+    await waitFor(() => expect(mock).toHaveBeenCalledWith("/api/v1/admin/users"));
+  });
+
+  it.each(["students", "trainers", "employers", "counselors", "staff"])("not on the overseas_admin %s page", (section) => {
+    stubFetch();
+    render(<WorkflowPanel user={asUser("overseas_admin")} section={section} />);
+    expect(screen.queryByRole("heading", { name: /Manage users|Directory/ })).toBeNull();
+  });
+
+  it.each(["trainer", "it_student", "school_coordinator", "counselor"])("not on the %s users page", (role) => {
+    stubFetch();
+    render(<WorkflowPanel user={asUser(role)} section="users" />);
+    expect(screen.queryByRole("heading", { name: "Manage users" })).toBeNull();
+  });
+});
