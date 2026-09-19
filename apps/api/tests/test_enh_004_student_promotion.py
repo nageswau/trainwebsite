@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
-from alembic import command
 from alembic.config import Config
 from pydantic import ValidationError
 from sqlalchemy import text
@@ -16,6 +15,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from alembic import command
 from app.api.schools import (
     MAX_GRADE_LEVEL,
     REASON_ALREADY_IN_ACTIVE_YEAR,
