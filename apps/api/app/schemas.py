@@ -1,7 +1,9 @@
+import unicodedata
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 class LoginRequest(BaseModel):
@@ -465,3 +467,67 @@ class UniversityOut(BaseModel):
     deadlines: list
     scholarships: list
     model_config = {"from_attributes": True}
+
+
+# --- ENH-004: student promotion (docs/superpowers/specs/2026-09-19-enh-004-student-promotion-design.md) ---
+
+
+class PromotionItem(BaseModel):
+    # `extra="forbid"`: a client-supplied `academic_year_id`/`school_id` is a loud 422, never silently ignored
+    # (the target year and the school are server-decided; spec §14).
+    model_config = {"str_strip_whitespace": True, "extra": "forbid"}
+    student_id: UUID
+    action: Literal["promote", "hold_back"]
+    grade_or_class: str | None = Field(default=None, min_length=1, max_length=60)
+
+    @field_validator("grade_or_class")
+    @classmethod
+    def _no_control_characters(cls, value: str | None) -> str | None:
+        # A NUL byte cannot be stored in PostgreSQL text (it would surface as a 500), and newlines or other
+        # control characters have no place in a grade label that is later rendered and exported.
+        if value is not None and any(unicodedata.category(ch) == "Cc" for ch in value):
+            raise ValueError("grade_or_class must not contain control characters")
+        return value
+
+
+class StudentPromotionRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    items: list[PromotionItem] = Field(min_length=1, max_length=500)
+
+    @model_validator(mode="after")
+    def _reject_duplicates_and_hold_back_labels(self):
+        seen: set[UUID] = set()
+        for item in self.items:
+            if item.student_id in seen:
+                raise ValueError(f"student_id {item.student_id} appears more than once")
+            seen.add(item.student_id)
+            if item.action == "hold_back" and item.grade_or_class is not None:
+                raise ValueError("grade_or_class is only allowed with action 'promote'")
+        return self
+
+
+class PromotionResult(BaseModel):
+    student_id: UUID
+    status: Literal["promoted", "held_back", "failed", "skipped"]
+    reason: str | None = None
+    message: str | None = None
+    grade_level: int | None = None
+    grade_or_class: str | None = None
+
+
+class PromotionCounts(BaseModel):
+    promoted: int = 0
+    held_back: int = 0
+    failed: int = 0
+    skipped: int = 0
+
+
+class PromotionYear(BaseModel):
+    id: UUID
+    label: str
+
+
+class StudentPromotionResponse(BaseModel):
+    academic_year: PromotionYear
+    counts: PromotionCounts
+    results: list[PromotionResult]

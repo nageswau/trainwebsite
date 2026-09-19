@@ -15,6 +15,7 @@ import hashlib
 import io
 import re
 import secrets
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
@@ -451,6 +452,69 @@ def _validate_grade_level(value) -> int | None:
     if not isinstance(value, int) or isinstance(value, bool) or not (1 <= value <= 12):
         raise HTTPException(422, "grade_level must be an integer between 1 and 12")
     return value
+
+
+# --- ENH-004: student promotion (docs/superpowers/specs/2026-09-19-enh-004-student-promotion-design.md) ---
+MAX_GRADE_LEVEL = 12
+GRADE_LABEL_MAX_LENGTH = 60  # the school_students.grade_or_class column width
+# Same pattern family as migration 0030 and `_grade_level_from_label`.
+GRADE_LABEL_PATTERN = re.compile(r"\b(?:grade|class)\s*(\d{1,2})\b|\b(\d{1,2})\b", re.IGNORECASE)
+# Stable, machine-readable reasons on a failed/skipped promotion row. Clients may branch on these: never rename one.
+REASON_ALREADY_IN_ACTIVE_YEAR = "already_in_active_year"
+REASON_GRADE_LEVEL_NOT_SET = "grade_level_not_set"
+REASON_TERMINAL_GRADE = "terminal_grade"
+REASON_LABEL_UNPARSEABLE = "label_unparseable"
+
+
+def _swap_grade_label(label: str | None, from_level: int, to_level: int) -> tuple[str | None, str | None]:
+    """Advance the grade number inside a free-text label ("Grade 8-A" -> "Grade 9-A"). Returns
+    (new_label, problem): a missing label stays missing; a label with no grade number, whose number
+    disagrees with `from_level`, or whose result would not fit the column returns (None, message)."""
+    if label is None:
+        return None, None
+    match = GRADE_LABEL_PATTERN.search(label)
+    if match is None:
+        return None, "grade_or_class has no grade number to advance; supply grade_or_class"
+    group = 1 if match.group(1) is not None else 2
+    if int(match.group(group)) != from_level:
+        return None, "grade_or_class does not match grade_level; supply grade_or_class"
+    swapped = label[: match.start(group)] + str(to_level) + label[match.end(group) :]
+    if len(swapped) > GRADE_LABEL_MAX_LENGTH:
+        return None, f"the advanced grade_or_class would be longer than {GRADE_LABEL_MAX_LENGTH} characters; supply a shorter grade_or_class"
+    return swapped, None
+
+
+@dataclass(frozen=True)
+class PromotionDecision:
+    status: str  # promoted | held_back | failed | skipped
+    grade_level: int | None
+    grade_or_class: str | None
+    reason: str | None = None
+    message: str | None = None
+
+
+def _decide_promotion(*, action: str, student_year_id: UUID | None, active_year_id: UUID, grade_level: int | None, grade_or_class: str | None, override: str | None) -> PromotionDecision:
+    """The whole per-row rule table (spec §5.2), with no database access. `grade_level` and
+    `grade_or_class` on the result are the student's state after the request."""
+
+    def _unchanged(status: str, reason: str, message: str) -> PromotionDecision:
+        return PromotionDecision(status, grade_level, grade_or_class, reason, message)
+
+    if student_year_id == active_year_id:
+        return _unchanged("skipped", REASON_ALREADY_IN_ACTIVE_YEAR, "Student is already in the active academic year.")
+    if action == "hold_back":
+        return PromotionDecision("held_back", grade_level, grade_or_class)
+    if grade_level is None:
+        return _unchanged("failed", REASON_GRADE_LEVEL_NOT_SET, "grade_level is not set; set it on the student before promoting.")
+    if grade_level >= MAX_GRADE_LEVEL:
+        return _unchanged("failed", REASON_TERMINAL_GRADE, f"Grade {MAX_GRADE_LEVEL} is the highest grade; graduation is not supported yet.")
+    new_level = grade_level + 1
+    if override is not None:
+        return PromotionDecision("promoted", new_level, override)
+    new_label, problem = _swap_grade_label(grade_or_class, grade_level, new_level)
+    if problem is not None:
+        return _unchanged("failed", REASON_LABEL_UNPARSEABLE, problem)
+    return PromotionDecision("promoted", new_level, new_label)
 
 
 async def _current_academic_year_id(db: AsyncSession) -> UUID | None:
