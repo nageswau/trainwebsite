@@ -1011,3 +1011,88 @@ async def test_the_timeline_profile_event_keeps_the_pre_promotion_label(client, 
     events = response.json()["events"]
     assert (events[0]["type"], events[0]["detail"]) == ("profile_created", "Added to Grade 8-A")
     assert len(events) == 1  # promotion adds no timeline events (spec non-goal)
+
+
+# ---------------------------------------------------------------- tenant escalation via PATCH /auth/me (spec §14, S1)
+
+
+async def _patch_profile(client, body: dict):
+    return await client.patch("/api/v1/auth/me", json=body)
+
+
+@pytest.mark.asyncio
+async def test_a_coordinator_cannot_re_point_their_own_school_via_profile_update(client, db_session, future_years):
+    await future_years()
+    school_a = await _school(db_session)
+    school_b = await _school(db_session)
+    victim = school_b["students"][0]
+    await _login(client, school_a["coordinator"].email)
+
+    response = await _patch_profile(client, {"profile": {"school_id": str(school_b["school"].id)}})
+
+    assert response.status_code == 403, response.text
+    await db_session.refresh(school_a["coordinator"])
+    assert school_a["coordinator"].profile["school_id"] == str(school_a["school"].id)
+    # The boundary this protects still holds: nothing of school B is reachable.
+    assert (await _promote(client, [_item(victim)])).status_code == 403
+    listing = await client.get("/api/v1/school/students")
+    assert {s["id"] for s in listing.json()} == {str(s.id) for s in school_a["students"]}
+    denied = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "profile.update_denied", AuditLog.user_id == school_a["coordinator"].id))).all()
+    assert len(denied) == 1
+    assert (denied[0].outcome, denied[0].metadata_json) == ("denied", {"field": "school_id"})
+
+
+@pytest.mark.asyncio
+async def test_a_refused_profile_update_applies_no_partial_change(client, db_session):
+    school_a = await _school(db_session)
+    school_b = await _school(db_session)
+    await _login(client, school_a["coordinator"].email)
+
+    response = await _patch_profile(client, {"full_name": "Renamed Coordinator", "profile": {"school_id": str(school_b["school"].id)}})
+
+    assert response.status_code == 403, response.text
+    await db_session.refresh(school_a["coordinator"])
+    assert school_a["coordinator"].full_name == "Coordinator"
+
+
+@pytest.mark.asyncio
+async def test_a_refused_school_id_change_is_logged_as_a_warning_without_the_value(client, db_session, caplog):
+    school_a = await _school(db_session)
+    school_b = await _school(db_session)
+    await _login(client, school_a["coordinator"].email)
+    caplog.set_level(logging.INFO, logger="app.auth")
+    actor_id, target = str(school_a["coordinator"].id), str(school_b["school"].id)
+
+    await _patch_profile(client, {"profile": {"school_id": target}})
+
+    records = [r for r in caplog.records if r.name == "app.auth" and r.getMessage() == "profile_update_denied"]
+    assert [r.extra_fields for r in records] == [{"user_id": actor_id, "field": "school_id"}]
+    assert [r.levelno for r in records] == [logging.WARNING]
+    assert target not in json.dumps([r.extra_fields for r in records])  # the attempted value is not logged
+
+
+@pytest.mark.asyncio
+async def test_a_user_with_no_school_cannot_acquire_one_via_profile_update(client, db_session):
+    school = await _school(db_session)
+    outsider = await _user(db_session, role="overseas_student", full_name="Outsider")
+    await db_session.commit()
+    await _login(client, outsider.email)
+
+    response = await _patch_profile(client, {"profile": {"school_id": str(school["school"].id)}})
+
+    assert response.status_code == 403, response.text
+    await db_session.refresh(outsider)
+    assert "school_id" not in (outsider.profile or {})
+
+
+@pytest.mark.asyncio
+async def test_a_profile_update_that_echoes_the_unchanged_school_id_still_works(client, db_session):
+    ctx = await _school(db_session)
+    await _login(client, ctx["coordinator"].email)
+
+    response = await _patch_profile(client, {"profile": {"school_id": str(ctx["school"].id), "education": "B.Ed"}})
+
+    assert response.status_code == 200, response.text
+    profile = response.json()["profile"]
+    assert profile["school_id"] == str(ctx["school"].id)
+    assert profile["education"] == "B.Ed"
