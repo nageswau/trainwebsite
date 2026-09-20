@@ -8,12 +8,21 @@
 .who input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
 .who label { display: grid; gap: 2px; cursor: pointer; min-width: 0; overflow-wrap: anywhere; }
 .control { display: grid; gap: 7px; min-width: 0; }
+/* The global `.search` sets `min-width: 240px`, which is wider than the label column in the columned layout (the input
+   spilled over the status text) and wider than the card at 320px (it poked out of the right edge). Let the control
+   shrink to its cell. */
+.row select, .row input[type="text"] { min-width: 0; }
 .outcome { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; min-width: 0; overflow-wrap: anywhere; }
 .hint { color: var(--muted); font-size: 13px; }
 .bar { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 16px; padding: 12px 14px; background: #fff; border-top: 1px solid var(--line); }
 .barText { margin: 0; font-weight: 700; }
 .barActions { display: flex; gap: 10px; flex-wrap: wrap; }
 .summary:focus { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* iOS/iPadOS zoom the page when a control under 16px is focused; the app's controls are 15px. Touch devices only. */
+@media (pointer: coarse) {
+  .row select, .row input[type="text"], .filter { font-size: 16px; }
+}
 
 @media (max-width: 640px) {
   .row select, .row input[type="text"] { min-height: 44px; width: 100%; }

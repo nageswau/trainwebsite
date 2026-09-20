@@ -194,8 +194,19 @@ _DUPLICATE = _raw_item()
         {"items": [_raw_item(academic_year_id=str(uuid.uuid4()))]},
     ],
     ids=[
-        "missing_items", "empty_items", "over_the_cap", "duplicate_id", "not_a_uuid", "unknown_action", "hold_back_with_label", "blank_label", "label_too_long",
-        "nul_in_label", "newline_in_label", "client_supplied_school_id", "client_supplied_year_on_item",
+        "missing_items",
+        "empty_items",
+        "over_the_cap",
+        "duplicate_id",
+        "not_a_uuid",
+        "unknown_action",
+        "hold_back_with_label",
+        "blank_label",
+        "label_too_long",
+        "nul_in_label",
+        "newline_in_label",
+        "client_supplied_school_id",
+        "client_supplied_year_on_item",
     ],
 )
 def test_request_rejects_invalid_payloads(payload):
@@ -340,6 +351,18 @@ async def future_years(db_session):
         await db_session.commit()
 
 
+@pytest.fixture(autouse=True)
+def _app_loggers_enabled():
+    """Alembic's env.py calls `logging.config.fileConfig`, which by default DISABLES every logger that already
+    exists. An earlier test that migrates in-process (ENH-001's upgrade cycle) therefore silences `app.*` for the rest
+    of the pytest session, and `caplog` sees nothing, so the logging tests below would fail depending on test order
+    (found by running the full suite). Production is unaffected; this only keeps these tests order-proof, as
+    `test_enh_003_first_time_provisioning.py` does."""
+    for name in ("app.school", "app.auth"):
+        logging.getLogger(name).disabled = False
+    yield
+
+
 async def _login(client, email: str) -> None:
     response = await client.post("/api/v1/auth/login", json={"email": email, "password": PASSWORD, "division": "overseas"})
     assert response.status_code == 200, response.text
@@ -369,8 +392,13 @@ async def _school(db_session, students=(("Grade 8-A", 8), ("Grade 8-B", 8))) -> 
     for index, (label, level) in enumerate(students):
         rows.append(
             SchoolStudent(
-                school_id=school.id, student_code=await unique_student_code(db_session, SchoolStudent.student_code), full_name=f"Child {index}",
-                grade_or_class=label, grade_level=level, created_by_user_id=coordinator.id, assigned_teacher_user_id=teacher.id if index == 0 else None,
+                school_id=school.id,
+                student_code=await unique_student_code(db_session, SchoolStudent.student_code),
+                full_name=f"Child {index}",
+                grade_or_class=label,
+                grade_level=level,
+                created_by_user_id=coordinator.id,
+                assigned_teacher_user_id=teacher.id if index == 0 else None,
             )
         )
     db_session.add_all(rows)
@@ -882,7 +910,17 @@ async def test_a_completed_promotion_is_logged_with_ids_and_counts_only(client, 
 
     events = _events(caplog, "student_promotion_completed")
     assert events == [
-        {"actor_id": str(ctx["coordinator"].id), "school_id": str(ctx["school"].id), "academic_year_id": str(year.id), "requested": 1, "promoted": 1, "held_back": 0, "failed": 0, "skipped": 0, "committed": True}
+        {
+            "actor_id": str(ctx["coordinator"].id),
+            "school_id": str(ctx["school"].id),
+            "academic_year_id": str(year.id),
+            "requested": 1,
+            "promoted": 1,
+            "held_back": 0,
+            "failed": 0,
+            "skipped": 0,
+            "committed": True,
+        }
     ]
     dumped = json.dumps(events)
     assert "Gold" not in dumped and student.full_name not in dumped and str(student.id) not in dumped
@@ -965,10 +1003,13 @@ async def test_a_never_promoted_student_has_an_empty_history(client, db_session)
 @pytest.mark.parametrize(
     "role_key,student_index,expected",
     [
-        ("coordinator", 0, 200), ("coordinator", 1, 200),
+        ("coordinator", 0, 200),
+        ("coordinator", 1, 200),
         ("principal", 1, 200),
-        ("teacher", 0, 200), ("teacher", 1, 403),  # the teacher is assigned to students[0] only
-        ("parent", 0, 200), ("parent", 1, 403),  # the parent is linked to students[0] only
+        ("teacher", 0, 200),
+        ("teacher", 1, 403),  # the teacher is assigned to students[0] only
+        ("parent", 0, 200),
+        ("parent", 1, 403),  # the parent is linked to students[0] only
     ],
 )
 async def test_grade_history_follows_the_existing_student_read_scope(client, db_session, role_key, student_index, expected):
@@ -1106,7 +1147,9 @@ async def test_a_profile_update_that_echoes_the_unchanged_school_id_still_works(
 
 async def _university_rep(db_session, university_id: uuid.UUID | None) -> User:
     profile = {"university_id": str(university_id)} if university_id else {}
-    rep = User(email=f"enh004-rep-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD), full_name="Rep", role="university_rep", division="overseas", active=True, profile=profile)
+    rep = User(
+        email=f"enh004-rep-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD), full_name="Rep", role="university_rep", division="overseas", active=True, profile=profile
+    )
     db_session.add(rep)
     await db_session.flush()
     db_session.add(UserRoleAssignment(user_id=rep.id, division="overseas", role="university_rep", is_active=True, assigned_by_user_id=rep.id, approval_status="approved"))

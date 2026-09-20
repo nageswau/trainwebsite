@@ -187,7 +187,7 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
             <div className="table-controls" aria-label="Promotion filters">
               <div>
                 <label htmlFor="promotion-filter">Grade level</label>
-                <select id="promotion-filter" className="select" value={filter} disabled={busy} onChange={(e) => changeFilter(e.target.value)}>
+                <select id="promotion-filter" className={`select ${styles.filter}`} value={filter} disabled={busy} onChange={(e) => changeFilter(e.target.value)}>
                   <option value={FILTER_ALL}>All grades</option>
                   {levels.map((l) => <option key={l} value={String(l)}>Grade {l}</option>)}
                   <option value={FILTER_UNSET}>Grade level not set</option>
