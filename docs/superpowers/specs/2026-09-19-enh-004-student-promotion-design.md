@@ -392,7 +392,7 @@ e2e run waits for their say-so.
 - Parent notification on promotion and promotion events in the SCH-008 timeline.
 - Whether `grade-history` should also appear on the principal and teacher detail pages (this spec
   places it on the parent child page and the coordinator detail page only).
-- Security follow-ups outside ENH-004 (see §14.3): `profile.university_id` mass-assignment (UNI-001);
+- Security follow-ups outside ENH-004 (see §14.3): `profile.university_id` mass-assignment (UNI-001, since fixed 2026-09-20);
   a school-student erasure path; an app-wide rate limiter and CSRF token.
 
 ## 14. Security review (2026-09-19)
@@ -434,7 +434,7 @@ ENH-004 are changed; everything else is reported. **Where this section differs f
 
 ### 14.3 Reported, not changed (outside ENH-004)
 
-- `profile.university_id` has the same mass-assignment class as S1 (UNI-001). Recommend a separate fix.
+- `profile.university_id` has the same mass-assignment class as S1 (UNI-001). Recommend a separate fix. **Resolved 2026-09-20:** the independent code review rated it High; it now shares the server-owned list with `school_id` (plan execution log, row 20).
 - No school-student erasure path exists anywhere (data-subject handling covers users, `admin.py:887`). The new history table follows the codebase norm (a plain foreign key, no cascade), so it neither adds to nor closes that gap. `NEEDS_CONFIRMATION`.
 - No app-wide rate limiter and no CSRF token; ENH-004 relies on `SameSite=Lax` and its own per-request bounds.
 - `create_student`, `update_student` and bulk upload accept control characters in `grade_or_class` (a NUL there is a 500). Only the new promotion field is hardened.

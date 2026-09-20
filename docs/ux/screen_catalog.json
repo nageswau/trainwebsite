@@ -2639,6 +2639,53 @@
     "evidence": "Only Overseas Admin/Super Admin can reach this screen or its underlying action, even via a direct request -- a School Coordinator attempting it gets 403 (DEC-SCOPE-014)."
   },
   {
+    "id": "SCR-SCH-027",
+    "roles": [
+      "School Coordinator"
+    ],
+    "route": "/school/coordinator/promotion",
+    "purpose": "Academic-year rollover: promote (grade + 1) or hold back the selected students into the active academic year, own institution only.",
+    "features": [
+      "ENH-004"
+    ],
+    "entry": "\"Promotion\" item in the Coordinator navigation.",
+    "data": "GET /school/students, GET /school/academic-years/active, POST /school/students/promotions.",
+    "actions": "Filter by grade level; select students (or all shown); choose Promote or Hold back per student; optional replacement label; \"Review changes (N)\" then an explicit \"Confirm promotion\" (or Cancel / Escape). At most 500 students per request.",
+    "empty": "\"No students on the roster yet\" with a link to the roster / \"No students match this filter\" with \"Show all grades\" / \"No active academic year\" (nothing to act on until an Overseas Admin activates one).",
+    "loading": "Server-rendered. While submitting, the confirm button is disabled and reads \"Promoting\u2026\", and the rows, the grade filter and select-all are read-only (the list is aria-busy); the per-row outcome is shown as soon as it returns, then the list is refreshed.",
+    "error": "403/409/422, a dropped connection, and a 200 whose body is not a report render an alert that takes focus and keep the selection (a repeat is safe). A 401 says the session expired with a \"Sign in again\" link. Per-row failures show \"Not changed\" or \"Skipped\" with a plain-language reason beside the row and stay selected for a corrected retry. Known-to-fail rows (Grade 12, no grade level) carry an advisory hint before submit. A student already in the active year is locked (\"Already in <year>\").",
+    "perms": "Coordinator only, enforced twice: the page shows \"Access unavailable \u2014 School Coordinator role required\" to any other role without loading the roster, and the API returns 403. The school is server-derived, never client-supplied.",
+    "responsive": "Each student is a stacked card until the list itself is at least 720px wide, then a header row replaces the per-row labels (a container query on the list, not a viewport breakpoint). The action bar is sticky; no horizontal scroll at 320/768/1024/1440px.",
+    "a11y": "Real labels on every control; the checkbox is labelled by the student's name, code and grade; a keyboard-reachable confirmation step (focus moves to Confirm; Escape/Cancel returns focus to Review); focus moves to the result summary or, after a failure, to the error alert; the filter count is a polite live region; outcomes are stated in text as well as colour.",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None \u2014 not inspected. Do not claim parity.",
+    "evidence": "SchoolPromotionPanel.test.tsx, SchoolCoordinatorPromotionPage.test.tsx, test_enh_004_student_promotion.py; enh-004-student-promotion.spec.ts (browser, isolated stack, 2026-09-20; restores the active academic years afterwards). Independent exploratory browser pass: nine findings, seven fixed and re-verified."
+  },
+  {
+    "id": "SCR-SCH-028",
+    "roles": [
+      "Parent",
+      "School Coordinator"
+    ],
+    "route": "Embedded section, not a standalone route \u2014 appears on SCR-SCH-022 (/school/parent/children/[id]) and SCR-SCH-025 (/school/coordinator/students/[id]).",
+    "purpose": "Read-only list of a student's promotions and hold-backs (date, outcome, \"Moved from X to Y\" / \"Kept in X\", academic year).",
+    "features": [
+      "ENH-004"
+    ],
+    "entry": "Embedded in the student's overview page; no separate navigation.",
+    "data": "GET /school/students/{id}/grade-history.",
+    "actions": "None (read-only).",
+    "empty": "\"No promotions recorded yet.\"",
+    "loading": "Loaded in parallel with the timeline.",
+    "error": "\"Grade history is unavailable right now.\" without blocking the rest of the page.",
+    "perms": "The same own-scope loader as the overview and timeline: a Parent sees only their own child; a Coordinator only their own institution.",
+    "responsive": "Reuses the Journey Timeline's single-column rail (SCR-SCH-024), so no horizontal scroll at any width.",
+    "a11y": "The outcome is a text badge plus a sentence, never colour alone.",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None \u2014 not inspected. Do not claim parity.",
+    "evidence": "SchoolGradeHistory.test.tsx and enh-004-student-promotion.spec.ts (browser, 2026-09-20); the history card renders a hostile grade label as plain text."
+  },
+  {
     "id": "SCR-RPT-001",
     "roles": [
       "IT Admin",
