@@ -50,7 +50,7 @@ duplicate application).
 | `POST /auth/forgot-password` | Public | — | Generic `{"accepted": true}` response regardless of whether the email exists (no enumeration) — verified by Playwright E2E. |
 | `POST /auth/reset-password` | Public (token) | — | Token single-use and hashed at rest, consumed atomically (two simultaneous submissions yield exactly one success). Forgot-password links expire in 30 minutes; admin-provisioned **welcome** links (`DEC-SCOPE-019`, `ENH-003`) in 72 hours, and using one also sets `email_verified`. `new_password` is 10–128 characters (`422` otherwise, without consuming the link). Unknown, used, expired, revoked/superseded and inactive-account welcome links all return the same `400 "Reset token is invalid or expired"`. |
 | `GET /auth/me` | Authenticated | Self | Returns identity + active `UserRoleAssignment` list (supports the multi-role-per-User model, `DATA_MODEL.md` §1.1). |
-| `PATCH /auth/me` | Authenticated | Self | Profile field updates. |
+| `PATCH /auth/me` | Authenticated | Self | Profile field updates. **Addendum, 2026-09-20 (ENH-004 security review):** `profile.school_id` is server-owned. A request whose `profile.school_id` differs from the caller's current value is **403** (`school_id cannot be changed here`), applies no other change from that request, and is audited as `profile.update_denied` (`outcome=denied`); echoing the unchanged value is accepted (the web "Update profile" form sends the whole profile). Only an admin route sets it. Other profile keys are unchanged, including `university_id` (see `DEC-SCOPE-020`). |
 
 **Auth type for every other route below:** Bearer access JWT unless marked **Public**. Every
 protected route validates JWT signature, expiry, division, and role server-side before executing —
