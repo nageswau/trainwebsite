@@ -1096,3 +1096,59 @@ async def test_a_profile_update_that_echoes_the_unchanged_school_id_still_works(
     profile = response.json()["profile"]
     assert profile["school_id"] == str(ctx["school"].id)
     assert profile["education"] == "B.Ed"
+
+
+# ------------------------------- university_id: the other scope-bearing profile key (Codex review, HIGH)
+# A university representative's access to applications is decided by `profile["university_id"]` (workflows.py,
+# portal.py, inbound.py). Only an admin route (PATCH /admin/users/{id}) is meant to set it, but PATCH /auth/me let
+# the rep change their own.
+
+
+async def _university_rep(db_session, university_id: uuid.UUID | None) -> User:
+    profile = {"university_id": str(university_id)} if university_id else {}
+    rep = User(email=f"enh004-rep-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD), full_name="Rep", role="university_rep", division="overseas", active=True, profile=profile)
+    db_session.add(rep)
+    await db_session.flush()
+    db_session.add(UserRoleAssignment(user_id=rep.id, division="overseas", role="university_rep", is_active=True, assigned_by_user_id=rep.id, approval_status="approved"))
+    await db_session.commit()
+    return rep
+
+
+@pytest.mark.asyncio
+async def test_a_university_rep_cannot_re_point_their_own_university_via_profile_update(client, db_session):
+    own, other = uuid.uuid4(), uuid.uuid4()
+    rep = await _university_rep(db_session, own)
+    await _login(client, rep.email)
+
+    response = await _patch_profile(client, {"profile": {"university_id": str(other)}})
+
+    assert response.status_code == 403, response.text
+    await db_session.refresh(rep)
+    assert rep.profile["university_id"] == str(own)
+    denied = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "profile.update_denied", AuditLog.user_id == rep.id))).all()
+    assert [(a.outcome, a.metadata_json) for a in denied] == [("denied", {"field": "university_id"})]
+
+
+@pytest.mark.asyncio
+async def test_a_user_with_no_university_cannot_acquire_one_via_profile_update(client, db_session):
+    rep = await _university_rep(db_session, None)
+    await _login(client, rep.email)
+
+    response = await _patch_profile(client, {"profile": {"university_id": str(uuid.uuid4())}})
+
+    assert response.status_code == 403, response.text
+    await db_session.refresh(rep)
+    assert "university_id" not in (rep.profile or {})
+
+
+@pytest.mark.asyncio
+async def test_a_profile_update_that_echoes_the_unchanged_university_id_still_works(client, db_session):
+    own = uuid.uuid4()
+    rep = await _university_rep(db_session, own)
+    await _login(client, rep.email)
+
+    response = await _patch_profile(client, {"profile": {"university_id": str(own), "education": "PhD"}})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["profile"]["university_id"] == str(own)
+    assert response.json()["profile"]["education"] == "PhD"

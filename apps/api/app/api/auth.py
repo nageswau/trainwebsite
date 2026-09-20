@@ -142,7 +142,9 @@ async def me(user: User = Depends(get_current_user)):
 
 # Profile keys that carry an authorization scope. A user may echo their own current value back (the web
 # "Update profile" form sends the whole profile) but may never change it: only an admin route sets these.
-SERVER_OWNED_PROFILE_KEYS = ("school_id",)
+# school_id scopes the School portal (schools.py); university_id scopes a University Rep's access to applications
+# (workflows.py, portal.py, inbound.py). Add a key here if a new profile key is ever used to authorize access.
+SERVER_OWNED_PROFILE_KEYS = ("school_id", "university_id")
 
 
 @router.patch("/me", response_model=UserOut)
