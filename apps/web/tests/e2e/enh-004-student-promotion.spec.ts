@@ -6,9 +6,11 @@ import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 // schools; the second exists only to prove a coordinator cannot promote another school's student.
 //
 // Shared-state note: promotion needs an ACTIVE academic year the students are not already in, and a
-// year cannot be deleted through the API. So each run closes any earlier `e2e4-*` year, then creates and
-// activates a far-future one (it wins the "latest start_date" tie-break over the real year) AFTER the
-// roster exists. The only lasting effect is that students later created by other specs get that year.
+// year cannot be deleted through the API. So each run closes any leftover `e2e4-*` year (from a run that was
+// killed before it could clean up), then creates and activates a far-future one (it wins the "latest
+// start_date" tie-break over the real year) AFTER the roster exists. Activating a year does not close the
+// others, so `afterEach` restores the shared state by closing the run's own year, and asserts that the set of
+// active years is what it was before. Other specs and real users therefore never see the e2e year as "current".
 
 const ADMIN_EMAIL = "overseasadmin@edusphere.local";
 const ADMIN_PASSWORD = "Demo@123";
@@ -42,6 +44,19 @@ async function createStudent(page: Page, data: Record<string, unknown>) {
 
 const studentRow = (page: Page, name: string) => page.getByRole("listitem").filter({ hasText: name });
 
+// The year this run created and the labels that were active before it did. Read by `afterEach` below.
+let e2eYear: { id: string; activeBefore: string[] } | null = null;
+
+test.afterEach(async ({ page }) => {
+  if (!e2eYear) return;
+  const { id, activeBefore } = e2eYear;
+  e2eYear = null;
+  await signIn(page, ADMIN_EMAIL, ADMIN_PASSWORD, "**/overseas/admin/dashboard");
+  expect((await page.request.patch(`/api/v1/overseas-admin/academic-years/${id}`, { data: { status: "closed" } })).ok()).toBeTruthy();
+  const years: { label: string; status: string }[] = await (await page.request.get("/api/v1/overseas-admin/academic-years")).json();
+  expect(years.filter((y) => y.status === "active").map((y) => y.label).sort()).toEqual([...activeBefore].sort());
+});
+
 test("coordinator promotes and holds back students; the parent sees the new grade; history is kept; another school is refused (ENH-004)", async ({ page }) => {
   test.setTimeout(90_000);
   const unique = Date.now();
@@ -68,11 +83,14 @@ test("coordinator promotes and holds back students; the parent sees the new grad
     expect((await page.request.patch(`/api/v1/overseas-admin/academic-years/${old.id}`, { data: { status: "closed" } })).ok()).toBeTruthy();
   }
   const yearLabel = `e2e4-${unique}`;
+  const activeBefore = years.filter((y) => y.status === "active" && !y.label.startsWith("e2e4-")).map((y) => y.label);
   const created = await page.request.post("/api/v1/overseas-admin/academic-years", {
     data: { label: yearLabel, start_date: "5000-01-01", end_date: "5000-12-31" },
   });
   expect(created.status()).toBe(201);
-  const activated = await page.request.patch(`/api/v1/overseas-admin/academic-years/${(await created.json()).id}`, { data: { status: "active" } });
+  const yearId: string = (await created.json()).id;
+  e2eYear = { id: yearId, activeBefore }; // from here on, `afterEach` closes it even if an assertion below fails
+  const activated = await page.request.patch(`/api/v1/overseas-admin/academic-years/${yearId}`, { data: { status: "active" } });
   expect(activated.ok()).toBeTruthy();
 
   // Another school's coordinator cannot touch school A's student (AC-04).
