@@ -2401,11 +2401,11 @@ correction, not deleted, per this project's traceability convention.
 - **Loading state:** Server-rendered. While submitting, the confirm button is disabled and reads "Promoting…"; the server's per-row outcome is shown as soon as it returns, then the list is refreshed in a transition (`aria-busy`).
 - **Error state:** 403/409/422 and network failures render an `alert` message and keep the selection (a repeat is safe). Per-row failures show "Not changed" or "Skipped" plus the reason beside the row's own controls and stay selected for a corrected retry. Known-to-fail rows (Grade 12, no grade level) carry an advisory hint before submit. A student already in the active year is locked ("Already in <year>").
 - **Permissions/resource scope:** Coordinator only; the school is server-derived, never client-supplied.
-- **Responsive behavior:** Each student is a stacked card on mobile (visible "Action" and "New label" labels); from 768px a header row replaces the per-row labels; the action bar is sticky so the primary action stays reachable; no horizontal scroll at 320/768/1024/1440px (asserted in the e2e, which has not yet been run).
+- **Responsive behavior:** Each student is a stacked card (visible "Action" and "New label" labels) until the list itself is at least 720px wide, then a header row replaces the per-row labels. This is a container query on the list, not a viewport breakpoint: keyed to the viewport it overflowed at 768 and 1024px because the portal sidebar leaves the content area much narrower than the viewport (found in the browser run). The action bar is sticky so the primary action stays reachable; no horizontal scroll at 320/768/1024/1440px (asserted in the e2e; passing).
 - **Accessibility requirements:** Real labels on every control; the checkbox is labelled by the student's name, code and grade; a keyboard-reachable confirmation step (focus moves to Confirm; Escape/Cancel returns focus to Review); focus moves to the result summary, which is a status region; the filter's "Showing N of M" is a polite live region; outcomes are stated in text as well as colour.
-- **Desktop/tablet/mobile behavior:** One list structure at every width, restyled by breakpoint (cards below 768px, columned rows above).
+- **Desktop/tablet/mobile behavior:** One list structure at every width, restyled by the list's own width (cards below 720px, columned rows above). At 1024px with the sidebar open the list is still in the card layout.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
-- **Acceptance evidence needed:** `SchoolPromotionPanel.test.tsx` (component behavior, passing); `enh-004-student-promotion.spec.ts` (browser, **not yet run**); `test_enh_004_student_promotion.py`.
+- **Acceptance evidence needed:** `SchoolPromotionPanel.test.tsx` (component behavior, passing); `enh-004-student-promotion.spec.ts` (browser: passing, run twice, on an isolated stack, 2026-09-20); `test_enh_004_student_promotion.py`.
 
 ### `SCR-SCH-028` *(added 2026-09-19, `ENH-004`)*
 - **Route:** Embedded section, not a standalone route — appears on `SCR-SCH-022` (`/school/parent/children/[id]`) and `SCR-SCH-025` (`/school/coordinator/students/[id]`).
@@ -2418,7 +2418,7 @@ correction, not deleted, per this project's traceability convention.
 - **Permissions/resource scope:** The same own-scope loader as the overview and timeline.
 - **Responsive behavior:** Reuses the Journey Timeline's single-column rail (`SCR-SCH-024`), so no horizontal scroll at any width.
 - **Accessibility requirements:** The outcome is a text badge plus a sentence, never colour alone; loaded in parallel with the timeline.
-- **Acceptance evidence needed:** `SchoolGradeHistory.test.tsx` (passing); `enh-004-student-promotion.spec.ts` (**not yet run**).
+- **Acceptance evidence needed:** `SchoolGradeHistory.test.tsx` (passing); `enh-004-student-promotion.spec.ts` (browser: passing, 2026-09-20).
 
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  
