@@ -15,17 +15,21 @@ import hashlib
 import io
 import re
 import secrets
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.api.auth import _set_auth_cookies
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code
+from app.core.logging import get_logger
 from app.core.security import hash_password
 from app.models import (
     AcademicYear,
@@ -47,16 +51,19 @@ from app.models import (
     SchoolRosterUploadRow,
     SchoolStaffAssignment,
     SchoolStudent,
+    SchoolStudentGradeHistory,
     SchoolTestPrepRecord,
     University,
     User,
     UserRoleAssignment,
     VisaCase,
 )
+from app.schemas import GradeHistoryResponse, StudentPromotionRequest, StudentPromotionResponse
 from app.services.integrations import send_notification
 from app.services.mailer import send_parent_notification_email, send_school_invite_email
 
 router = APIRouter(prefix="/school", tags=["school"])
+logger = get_logger("app.school")
 SERVICE_DELIVERY_ROLES = {"academic_team", "career_counselor", "psychometric_team"}
 
 SCHOOL_DOMAIN_ROLES = {
@@ -451,6 +458,69 @@ def _validate_grade_level(value) -> int | None:
     if not isinstance(value, int) or isinstance(value, bool) or not (1 <= value <= 12):
         raise HTTPException(422, "grade_level must be an integer between 1 and 12")
     return value
+
+
+# --- ENH-004: student promotion (docs/superpowers/specs/2026-09-19-enh-004-student-promotion-design.md) ---
+MAX_GRADE_LEVEL = 12
+GRADE_LABEL_MAX_LENGTH = 60  # the school_students.grade_or_class column width
+# Same pattern family as migration 0030 and `_grade_level_from_label`.
+GRADE_LABEL_PATTERN = re.compile(r"\b(?:grade|class)\s*(\d{1,2})\b|\b(\d{1,2})\b", re.IGNORECASE)
+# Stable, machine-readable reasons on a failed/skipped promotion row. Clients may branch on these: never rename one.
+REASON_ALREADY_IN_ACTIVE_YEAR = "already_in_active_year"
+REASON_GRADE_LEVEL_NOT_SET = "grade_level_not_set"
+REASON_TERMINAL_GRADE = "terminal_grade"
+REASON_LABEL_UNPARSEABLE = "label_unparseable"
+
+
+def _swap_grade_label(label: str | None, from_level: int, to_level: int) -> tuple[str | None, str | None]:
+    """Advance the grade number inside a free-text label ("Grade 8-A" -> "Grade 9-A"). Returns
+    (new_label, problem): a missing label stays missing; a label with no grade number, whose number
+    disagrees with `from_level`, or whose result would not fit the column returns (None, message)."""
+    if label is None:
+        return None, None
+    match = GRADE_LABEL_PATTERN.search(label)
+    if match is None:
+        return None, "grade_or_class has no grade number to advance; supply grade_or_class"
+    group = 1 if match.group(1) is not None else 2
+    if int(match.group(group)) != from_level:
+        return None, "grade_or_class does not match grade_level; supply grade_or_class"
+    swapped = label[: match.start(group)] + str(to_level) + label[match.end(group) :]
+    if len(swapped) > GRADE_LABEL_MAX_LENGTH:
+        return None, f"the advanced grade_or_class would be longer than {GRADE_LABEL_MAX_LENGTH} characters; supply a shorter grade_or_class"
+    return swapped, None
+
+
+@dataclass(frozen=True)
+class PromotionDecision:
+    status: str  # promoted | held_back | failed | skipped
+    grade_level: int | None
+    grade_or_class: str | None
+    reason: str | None = None
+    message: str | None = None
+
+
+def _decide_promotion(*, action: str, student_year_id: UUID | None, active_year_id: UUID, grade_level: int | None, grade_or_class: str | None, override: str | None) -> PromotionDecision:
+    """The whole per-row rule table (spec §5.2), with no database access. `grade_level` and
+    `grade_or_class` on the result are the student's state after the request."""
+
+    def _unchanged(status: str, reason: str, message: str) -> PromotionDecision:
+        return PromotionDecision(status, grade_level, grade_or_class, reason, message)
+
+    if student_year_id == active_year_id:
+        return _unchanged("skipped", REASON_ALREADY_IN_ACTIVE_YEAR, "Student is already in the active academic year.")
+    if action == "hold_back":
+        return PromotionDecision("held_back", grade_level, grade_or_class)
+    if grade_level is None:
+        return _unchanged("failed", REASON_GRADE_LEVEL_NOT_SET, "grade_level is not set; set it on the student before promoting.")
+    if grade_level >= MAX_GRADE_LEVEL:
+        return _unchanged("failed", REASON_TERMINAL_GRADE, f"Grade {MAX_GRADE_LEVEL} is the highest grade; graduation is not supported yet.")
+    new_level = grade_level + 1
+    if override is not None:
+        return PromotionDecision("promoted", new_level, override)
+    new_label, problem = _swap_grade_label(grade_or_class, grade_level, new_level)
+    if problem is not None:
+        return _unchanged("failed", REASON_LABEL_UNPARSEABLE, problem)
+    return PromotionDecision("promoted", new_level, new_label)
 
 
 async def _current_academic_year_id(db: AsyncSession) -> UUID | None:
@@ -918,9 +988,15 @@ async def student_timeline(student_id: UUID, user: User = Depends(get_current_us
     and `SCH-007-AC02`. Read-only, no new tables: every event is derived from an existing
     row's own timestamp, nothing synthesized."""
     student = await _load_readable_student(db, user, student_id)
+    # ENH-004: once a student has been promoted, `grade_or_class` is no longer where they were added.
+    # The earliest history row's `from_grade_or_class` is; with no history the current label is still right.
+    first_move = await db.scalar(
+        select(SchoolStudentGradeHistory).where(SchoolStudentGradeHistory.school_student_id == student.id).order_by(SchoolStudentGradeHistory.created_at.asc(), SchoolStudentGradeHistory.id.asc()).limit(1)
+    )
+    added_to = first_move.from_grade_or_class if first_move else student.grade_or_class
     events: list[dict] = [{
         "date": student.created_at, "category": "profile", "type": "profile_created",
-        "title": "Student profile created", "detail": f"Added to {student.grade_or_class}" if student.grade_or_class else None,
+        "title": "Student profile created", "detail": f"Added to {added_to}" if added_to else None,
     }]
     # Distinct loop-variable names per query (career_r/psych_r/result_r, not a shared `r`) --
     # a reused loop variable across differently-typed queries left MyPy inferring every
@@ -970,6 +1046,37 @@ async def student_timeline(student_id: UUID, user: User = Depends(get_current_us
             events.append({"date": visa_r.updated_at, "category": "global_education", "type": "visa_status", "title": f"Visa status: {visa_r.status}", "detail": uni_r.name})
     events.sort(key=lambda e: e["date"])
     return {"student": {"id": student.id, "full_name": student.full_name}, "events": events}
+
+
+@router.get("/students/{student_id}/grade-history", response_model=GradeHistoryResponse)
+async def student_grade_history(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-004 -- one student's grade/academic-year transitions, newest first. The same own-scope
+    loader as the overview and timeline (own institution; assigned-only for a Teacher; own-child-only
+    for a Parent). Bounded by one row per academic year per student, so it is not paginated. The
+    performer is stored but deliberately not returned, so a Parent never receives a staff user ID."""
+    student = await _load_readable_student(db, user, student_id)
+    from_year = aliased(AcademicYear)
+    to_year = aliased(AcademicYear)
+    rows = (
+        await db.execute(
+            select(SchoolStudentGradeHistory, from_year, to_year)
+            .outerjoin(from_year, from_year.id == SchoolStudentGradeHistory.from_academic_year_id)
+            .join(to_year, to_year.id == SchoolStudentGradeHistory.to_academic_year_id)
+            .where(SchoolStudentGradeHistory.school_student_id == student.id)
+            .order_by(SchoolStudentGradeHistory.created_at.desc(), SchoolStudentGradeHistory.id.desc())
+        )
+    ).all()
+    return {
+        "student": {"id": student.id, "full_name": student.full_name},
+        "history": [
+            {
+                "id": h.id, "action": h.action, "created_at": h.created_at,
+                "from": {"academic_year_id": h.from_academic_year_id, "academic_year_label": from_y.label if from_y else None, "grade_level": h.from_grade_level, "grade_or_class": h.from_grade_or_class},
+                "to": {"academic_year_id": h.to_academic_year_id, "academic_year_label": to_y.label, "grade_level": h.to_grade_level, "grade_or_class": h.to_grade_or_class},
+            }
+            for h, from_y, to_y in rows
+        ],
+    }
 
 
 @router.post("/students", status_code=201)
@@ -1097,6 +1204,97 @@ async def link_parent(student_id: UUID, payload: dict, user: User = Depends(get_
     db.add(AuditLog(user_id=user.id, action="school.parent_link", entity_type="school_parent_link", entity_id=str(link.id), metadata_json={"student_id": str(student.id), "parent_id": str(parent.id)}))
     await db.commit()
     return {"id": link.id, "parent_user_id": parent.id, "school_student_id": student.id}
+
+
+# Bounded wait for the row locks a promotion takes (ENH-004 spec §5.2). A module constant, read at
+# call time so a test can shorten it; it is passed as a bound parameter below and is never request input.
+PROMOTION_LOCK_TIMEOUT = "5s"
+
+
+async def _require_coordinator_user(user: User = Depends(get_current_user)) -> User:
+    """Dependency form of `_require_coordinator`. FastAPI resolves dependencies before it validates
+    the request body, so a non-coordinator gets 403 before any 422 (spec §5.2 check order)."""
+    _require_coordinator(user)
+    return user
+
+
+@router.post("/students/promotions", response_model=StudentPromotionResponse)
+async def promote_students(payload: StudentPromotionRequest, user: User = Depends(_require_coordinator_user), db: AsyncSession = Depends(get_db)):
+    """ENH-004 -- promote (grade + 1) or hold back (same grade) students into the ACTIVE academic
+    year, one transaction per request. The school always comes from the caller's own profile. Every
+    listed student is row-locked in id order; an unknown or other-school ID rejects the whole request
+    with one generic 403 (nothing written). Business-rule failures are per-row results in a 200 body
+    and never block the valid rows. A student already in the active year is skipped, which is what
+    makes a retry or a concurrent duplicate safe (backed by UNIQUE (student, target year))."""
+    school_id = _own_school_id(user)
+    student_ids = [item.student_id for item in payload.items]
+    actor = {"actor_id": str(user.id), "school_id": str(school_id)}
+    # `set_config(..., true)` is SET LOCAL with a bound parameter, so no SQL is built from a string.
+    await db.execute(text("SELECT set_config('lock_timeout', :timeout, true)"), {"timeout": PROMOTION_LOCK_TIMEOUT})
+    # The school filter is part of the locking query itself, so another school's rows are never locked (or even
+    # read) by this request. `school_id` never changes after creation (DATA_MODEL.md §6.11), so there is no
+    # check/use gap. An unknown ID and another school's ID are the same absence here, which is what makes them
+    # indistinguishable to the caller.
+    try:
+        locked = (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(student_ids), SchoolStudent.school_id == school_id).order_by(SchoolStudent.id).with_for_update())).all()
+    except DBAPIError as exc:
+        await db.rollback()
+        if getattr(exc.orig, "sqlstate", None) == "55P03":  # lock_not_available: the wait exceeded PROMOTION_LOCK_TIMEOUT
+            logger.warning("student_promotion_lock_timeout", extra={"extra_fields": {**actor, "requested": len(student_ids), "lock_timeout": PROMOTION_LOCK_TIMEOUT}})
+            raise HTTPException(409, "Another promotion is in progress; retry") from exc
+        raise
+    students = {s.id: s for s in locked}
+    if len(students) != len(student_ids):
+        not_in_school = len(student_ids) - len(students)
+        # A security-relevant event (probing, or a stale/misdirected client): record it, then refuse. Nothing else has
+        # been written yet, and the audit row carries counts only (no student IDs or names).
+        db.add(AuditLog(user_id=user.id, action="school.student_promotion_denied", entity_type="school", entity_id=str(school_id), outcome="denied", metadata_json={"requested": len(student_ids), "not_in_school": not_in_school}))
+        await db.commit()
+        logger.warning("student_promotion_denied", extra={"extra_fields": {**actor, "requested": len(student_ids), "not_in_school": not_in_school}})
+        raise HTTPException(403, "One or more students are not at your institution")
+    active_year_id = await _current_academic_year_id(db)
+    active_year = await db.get(AcademicYear, active_year_id) if active_year_id else None
+    if active_year is None:
+        logger.info("student_promotion_no_active_year", extra={"extra_fields": actor})
+        raise HTTPException(409, "No active academic year. Ask an Overseas Admin to activate one.")
+
+    counts = {"promoted": 0, "held_back": 0, "failed": 0, "skipped": 0}
+    results: list[dict] = []
+    history: list[SchoolStudentGradeHistory] = []
+    for item in payload.items:
+        student = students[item.student_id]
+        decision = _decide_promotion(
+            action=item.action, student_year_id=student.academic_year_id, active_year_id=active_year.id,
+            grade_level=student.grade_level, grade_or_class=student.grade_or_class, override=item.grade_or_class,
+        )
+        if decision.status in ("promoted", "held_back"):
+            history.append(
+                SchoolStudentGradeHistory(
+                    school_student_id=student.id, action=decision.status,
+                    from_academic_year_id=student.academic_year_id, from_grade_level=student.grade_level, from_grade_or_class=student.grade_or_class,
+                    to_academic_year_id=active_year.id, to_grade_level=decision.grade_level, to_grade_or_class=decision.grade_or_class,
+                    performed_by_user_id=user.id,
+                )
+            )
+            student.academic_year_id = active_year.id
+            student.grade_level = decision.grade_level
+            student.grade_or_class = decision.grade_or_class
+        counts[decision.status] += 1
+        results.append({"student_id": student.id, "status": decision.status, "reason": decision.reason, "message": decision.message, "grade_level": decision.grade_level, "grade_or_class": decision.grade_or_class})
+
+    committed = False
+    if history:
+        db.add_all(history)
+        db.add(AuditLog(user_id=user.id, action="school.student_promotion", entity_type="academic_year", entity_id=str(active_year.id), metadata_json={"academic_year_id": str(active_year.id), **counts}))
+        try:
+            await db.commit()
+        except IntegrityError as exc:
+            await db.rollback()
+            logger.warning("student_promotion_conflict", extra={"extra_fields": {**actor, "academic_year_id": str(active_year.id), "requested": len(student_ids)}})
+            raise HTTPException(409, "A concurrent promotion was detected; reload and retry") from exc
+        committed = True
+    logger.info("student_promotion_completed", extra={"extra_fields": {**actor, "academic_year_id": str(active_year.id), "requested": len(student_ids), **counts, "committed": committed}})
+    return {"academic_year": {"id": active_year.id, "label": active_year.label}, "counts": counts, "results": results}
 
 
 @router.get("/activities")

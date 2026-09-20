@@ -472,6 +472,8 @@ many-to-many relationship §6.12 proposes. `SchoolActivity` (`school_id`, `title
 `marked_by_user_id`, unique per activity+student pair) cover the scheduling/attendance workflow.
 **Feature IDs:** `SCH-001`.
 
+**Addendum, 2026-09-19 (`ENH-004` / `DEC-SCOPE-020` — `school_student_grade_history`):** an append-only ledger of grade/academic-year transitions. Columns: `id`; `school_student_id` (FK `school_students`, indexed); `action` (`promoted` \| `held_back`); `from_academic_year_id` (FK `academic_years`, nullable), `from_grade_level` (int, nullable), `from_grade_or_class` (≤60, nullable); `to_academic_year_id` (FK `academic_years`, not null), `to_grade_level`, `to_grade_or_class` (both nullable); `performed_by_user_id` (FK `users`, not null); `created_at`/`updated_at`. `UNIQUE (school_student_id, to_academic_year_id)` (`uq_school_student_grade_history_year`) is the database backstop against promoting a student twice into the same year. Each row records its own "from" state, so no backfill of existing students was needed; `school_students` remains the source of the *current* grade and year. Migration `0033_student_grade_history` is create-table only (inspector-guarded, because the `0001` baseline builds from the current models) and its downgrade drops only this table.
+
 ### 6.12 School role resource scoping (`school_principal`/`school_coordinator`/`school_teacher`/`school_parent`)
 **RESOLVED as built, 2026-09-14 (`SCH-001`):** `user.profile["school_id"]` — no dedicated
 `SchoolRoleProfile` table. This confirms the "mirroring §6.10's `university_id` pattern exactly"

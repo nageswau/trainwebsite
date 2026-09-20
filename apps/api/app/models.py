@@ -1036,6 +1036,28 @@ class SchoolParentLink(Base, TimestampMixin):
     linked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+class SchoolStudentGradeHistory(Base, TimestampMixin):
+    """ENH-004 append-only ledger of a student's grade/academic-year transitions
+    (docs/superpowers/specs/2026-09-19-enh-004-student-promotion-design.md §5.1). Each row is
+    self-contained -- it records the state the student left (`from_*`) and the state they entered
+    (`to_*`) -- so no backfill of existing students is needed and `school_students` stays the
+    source of the *current* grade/year. `UNIQUE (school_student_id, to_academic_year_id)` is the
+    database backstop against promoting the same student twice into the same year."""
+
+    __tablename__ = "school_student_grade_history"
+    __table_args__ = (UniqueConstraint("school_student_id", "to_academic_year_id", name="uq_school_student_grade_history_year"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    action: Mapped[str] = mapped_column(String(20))  # promoted | held_back
+    from_academic_year_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"), nullable=True)
+    from_grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    from_grade_or_class: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    to_academic_year_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"))
+    to_grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    to_grade_or_class: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    performed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
 class SchoolActivity(Base, TimestampMixin):
     """School-wide scheduled activity (SCH-001's "schedule activities, track attendance"
     main workflow). Net-new -- no equivalent exists in `DATA_MODEL.md`'s original §6.11-6.18

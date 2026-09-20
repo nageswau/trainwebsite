@@ -140,9 +140,26 @@ async def me(user: User = Depends(get_current_user)):
     return user
 
 
+# Profile keys that carry an authorization scope. A user may echo their own current value back (the web
+# "Update profile" form sends the whole profile) but may never change it: only an admin route sets these.
+# school_id scopes the School portal (schools.py); university_id scopes a University Rep's access to applications
+# (workflows.py, portal.py, inbound.py). Add a key here if a new profile key is ever used to authorize access.
+SERVER_OWNED_PROFILE_KEYS = ("school_id", "university_id")
+
+
 @router.patch("/me", response_model=UserOut)
 async def update_me(payload: ProfileUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     changes = payload.model_dump(exclude_unset=True)
+    # Checked before anything is mutated: the audit commit below would otherwise also persist an
+    # already-assigned full_name/phone from a request that is being refused.
+    incoming = changes.get("profile") or {}
+    current = user.profile or {}
+    for key in SERVER_OWNED_PROFILE_KEYS:
+        if key in incoming and incoming[key] != current.get(key):
+            db.add(AuditLog(user_id=user.id, action="profile.update_denied", entity_type="user", entity_id=str(user.id), outcome="denied", metadata_json={"field": key}))
+            await db.commit()
+            logger.warning("profile_update_denied", extra={"extra_fields": {"user_id": str(user.id), "field": key}})
+            raise HTTPException(403, f"{key} cannot be changed here")
     if "full_name" in changes:
         user.full_name = changes["full_name"].strip()
     if "phone" in changes:

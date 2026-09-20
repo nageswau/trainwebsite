@@ -8,11 +8,12 @@ import { formatDate } from "@/components/SchoolChildOverview";
 // correctly for whichever role is looking -- a Parent who calls it always gets their own
 // child's events only, never another student's, even at the same school.
 //
-// The five categories below are the only ones the confirmed data model can produce today
-// (`DEC-SCOPE-015`): no Skills/Portfolio/Overseas-progress/Foreign-Language/Test-prep
-// stages are shown, because no confirmed module records them yet.
+// The categories below are the ones `GET /school/students/{id}/timeline` emits today:
+// the original five (`DEC-SCOPE-015`) plus test_prep / foreign_language / global_education,
+// which the API began emitting once those modules were linked. A category the API adds later
+// must never take the whole student page down, so unknown ones fall back to a neutral badge.
 
-export type TimelineEvent = { date: string; category: "profile" | "career" | "psychometric" | "academic" | "activity"; type: string; title: string; detail: string | null };
+export type TimelineEvent = { date: string; category: "profile" | "career" | "psychometric" | "academic" | "activity" | "test_prep" | "foreign_language" | "global_education"; type: string; title: string; detail: string | null };
 export type StudentTimeline = { student: { id: string; full_name: string }; events: TimelineEvent[] };
 
 export async function loadStudentTimeline(studentId: string): Promise<StudentTimeline> {
@@ -25,7 +26,20 @@ const CATEGORY: Record<TimelineEvent["category"], { label: string; color: string
   psychometric: { label: "Psychometric", color: "#0e7c86" },
   academic: { label: "Academic", color: "#6d28d9" },
   activity: { label: "Activity", color: "#15803d" },
+  test_prep: { label: "Test prep", color: "#b45309" },
+  foreign_language: { label: "Foreign language", color: "#be185d" },
+  global_education: { label: "Global education", color: "#0369a1" },
 };
+
+const FALLBACK_COLOR = "#475569";
+
+/** Badge for a category the map does not know: "visa_planning" -> "Visa planning". */
+function categoryMeta(category: string): { label: string; color: string } {
+  const known = (CATEGORY as Record<string, { label: string; color: string } | undefined>)[category];
+  if (known) return known;
+  const words = category.replace(/_/g, " ").trim();
+  return { label: words ? words.charAt(0).toUpperCase() + words.slice(1) : "Other", color: FALLBACK_COLOR };
+}
 
 export default function SchoolStudentTimeline({ events }: { events: TimelineEvent[] }) {
   if (events.length === 0) {
@@ -34,7 +48,7 @@ export default function SchoolStudentTimeline({ events }: { events: TimelineEven
   return (
     <div className="jtl">
       {events.map((e, i) => {
-        const meta = CATEGORY[e.category];
+        const meta = categoryMeta(e.category);
         return (
           <div className="jtl-row" key={`${e.type}-${e.date}-${i}`}>
             <div className="jtl-rail">

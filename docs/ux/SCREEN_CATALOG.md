@@ -1913,6 +1913,8 @@ extended same day with `SCH-003` onboarding per `DEC-SCOPE-012`, then again with
 | `SCR-SCH-024` | *(embedded in `SCR-SCH-022`, the Teacher's, Coordinator's, and Principal's student-detail screens — not a standalone route)* Journey timeline section | Parent, Teacher, School Coordinator, Principal | `SCH-008` |
 | `SCR-SCH-025` | `/school/coordinator/students/[id]` | School Coordinator | `SCH-008` |
 | `SCR-SCH-026` | `/school/principal/students/[id]` | Principal | `SCH-008` |
+| `SCR-SCH-027` | `/school/coordinator/promotion` | School Coordinator | `ENH-004` |
+| `SCR-SCH-028` | *(embedded in `SCR-SCH-022` and `SCR-SCH-025` — not a standalone route)* Grade history section | Parent, School Coordinator | `ENH-004` |
 
 ### `SCR-SCH-001`
 - **Route:** `/school/principal (Dashboard)`  
@@ -2386,6 +2388,37 @@ correction, not deleted, per this project's traceability convention.
 | Screen ID | Route | Roles | Feature ID(s) |
 |---|---|---|---|
 | `SCR-RPT-001` | `/it/admin/reports` | IT Admin, Placement Team | `RPT-001`, `ADM-007` |
+
+### `SCR-SCH-027` *(added 2026-09-19, `ENH-004` / `DEC-SCOPE-020`)*
+- **Route:** `/school/coordinator/promotion`
+- **Role(s):** School Coordinator
+- **Purpose:** Academic-year rollover: promote (grade + 1) or hold back the selected students into the active academic year, own institution only.
+- **Linked Feature ID(s):** `ENH-004`
+- **Entry points:** "Promotion" item in the Coordinator navigation.
+- **Required data:** `GET /school/students`, `GET /school/academic-years/active`, `POST /school/students/promotions`.
+- **Key actions:** Filter by grade level; select students (or all shown); choose Promote or Hold back per student; optional replacement label; "Review changes (N)" then an explicit "Confirm promotion" (or Cancel / Escape). At most 500 students per request.
+- **Empty state:** "No students on the roster yet" with a link to the roster / "No students match this filter" with "Show all grades" / "No active academic year" (nothing to act on until an Overseas Admin activates one).
+- **Loading state:** Server-rendered. While submitting, the confirm button is disabled and reads "Promoting…", and the rows, the grade filter and select-all are read-only so what is on screen is what was sent (the list is `aria-busy`); the server's per-row outcome is shown as soon as it returns, then the list is refreshed in a transition.
+- **Error state:** 403/409/422, a dropped connection, and a 200 whose body is not a report (a proxy page, an empty object: "could not be read, repeating it is safe") render an `alert` that takes focus (so it is scrolled into view) and keep the selection (a repeat is safe). A 401 says "Your session has expired" with a "Sign in again" link. Per-row failures show "Not changed" or "Skipped" plus a plain-language reason beside the row's own controls (each stable reason code is worded for the coordinator; the API's own message is only the fallback for an unknown reason) and stay selected for a corrected retry. Known-to-fail rows (Grade 12, no grade level) carry an advisory hint before submit. A student already in the active year is locked ("Already in <year>").
+- **Permissions/resource scope:** Coordinator only, enforced twice: the page shows "Access unavailable — School Coordinator role required" to any other role (Parent, Teacher, Principal, Overseas Admin) without loading the roster, and the API returns 403. The school is server-derived, never client-supplied.
+- **Responsive behavior:** Each student is a stacked card (visible "Action" and "New label" labels) until the list itself is at least 720px wide, then a header row replaces the per-row labels. This is a container query on the list, not a viewport breakpoint: keyed to the viewport it overflowed at 768 and 1024px because the portal sidebar leaves the content area much narrower than the viewport (found in the browser run). The action bar is sticky so the primary action stays reachable; no horizontal scroll at 320/768/1024/1440px (asserted in the e2e; passing). Controls shrink to their own cell: the global `.search` class has `min-width: 240px`, which pushed the label input out of its card at 320px and over the status text in a phone-landscape (844x390) columned row, so the screen overrides it. On touch devices (`pointer: coarse`) the controls are 16px so iOS does not zoom the page on focus. Verified in the browser at 14 widths from 320 to 1920px, including 640x400 (a 200% zoom equivalent) and phone landscape.
+- **Accessibility requirements:** Real labels on every control; the checkbox is labelled by the student's name, code and grade; a keyboard-reachable confirmation step (focus moves to Confirm; Escape/Cancel returns focus to Review); focus moves to the result summary (a status region) or, after a failure, to the error alert; the filter's "Showing N of M" is a polite live region; outcomes are stated in text as well as colour.
+- **Desktop/tablet/mobile behavior:** One list structure at every width, restyled by the list's own width (cards below 720px, columned rows above). At 1024px with the sidebar open the list is still in the card layout.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `SchoolPromotionPanel.test.tsx` (component behavior, passing), `SchoolCoordinatorPromotionPage.test.tsx` (role guard, passing); `enh-004-student-promotion.spec.ts` (browser: passing, run repeatedly on an isolated stack, 2026-09-20; it closes the academic year it creates and asserts the active years are restored); `test_enh_004_student_promotion.py`. An independent exploratory browser pass (2026-09-20) found nine issues; seven were fixed and re-verified (see the plan's execution log rows 16-19); the other two are app-wide and are not ENH-004.
+
+### `SCR-SCH-028` *(added 2026-09-19, `ENH-004`)*
+- **Route:** Embedded section, not a standalone route — appears on `SCR-SCH-022` (`/school/parent/children/[id]`) and `SCR-SCH-025` (`/school/coordinator/students/[id]`).
+- **Role(s):** Parent (own child), School Coordinator (own institution)
+- **Purpose:** Read-only list of a student's promotions and hold-backs (date, outcome, "Moved from X to Y" / "Kept in X", academic year).
+- **Linked Feature ID(s):** `ENH-004`
+- **Required data:** `GET /school/students/{id}/grade-history`.
+- **Empty state:** "No promotions recorded yet."
+- **Error state:** "Grade history is unavailable right now." without blocking the rest of the page.
+- **Permissions/resource scope:** The same own-scope loader as the overview and timeline.
+- **Responsive behavior:** Reuses the Journey Timeline's single-column rail (`SCR-SCH-024`), so no horizontal scroll at any width.
+- **Accessibility requirements:** The outcome is a text badge plus a sentence, never colour alone; loaded in parallel with the timeline.
+- **Acceptance evidence needed:** `SchoolGradeHistory.test.tsx` (passing); `enh-004-student-promotion.spec.ts` (browser: passing, 2026-09-20).
 
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  

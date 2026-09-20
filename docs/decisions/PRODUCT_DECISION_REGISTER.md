@@ -2098,3 +2098,26 @@ findings and rationale in `docs/superpowers/specs/2026-09-19-enh-003-first-time-
   development. **Pre-existing and out of scope of this decision:** with `ENVIRONMENT=development`,
   `forgot_password` returns `development_reset_token` to anonymous callers — `NEEDS_CONFIRMATION` whether
   to fix separately.
+
+### DEC-SCOPE-020 — Student promotion to the next academic year / grade (`ENH-004`)
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-004 (source: the user's instruction to think broadly about user lifecycle, "promoted to upper grade in next year if required") had no Decision ID or Feature ID. How does a School Coordinator advance students at academic-year rollover, and what happens to the prior grade?
+
+**Evidence:** Audit of the code, 2026-09-19: no promotion action existed; `PATCH /school/students/{id}` overwrote `grade_or_class`/`grade_level` in place with no history; every school page renders the free-text `grade_or_class` (only the dashboard KPIs read `grade_level`); `SchoolStudent` has no section field; school students never log in (`DEC-ROLE-004`).
+
+**Resolution:** User confirmed in-session, 2026-09-19 (`EXPLICIT_APPROVAL`), six points:
+
+1. **Bulk selection:** an explicit list of student IDs (the UI filters and ticks); no server-side grade/section selector.
+2. **Grade label:** the number inside `grade_or_class` is advanced automatically ("Grade 8-A" → "Grade 9-A"); a label that cannot be advanced fails that row unless the coordinator supplies a replacement.
+3. **Top grade:** a Grade 12 promotion is rejected for that row; graduate/alumni handling is out of scope.
+4. **Who:** `school_coordinator` only, scoped to their own school; the school is never client-supplied.
+5. **Target year and hold-back:** the active academic year, server-resolved; "hold back" is a recorded action (same grade, moved into the new year).
+6. **Partial failure:** valid rows commit and failures are reported per row; a student from another school (or an unknown ID) rejects the whole request with `403`.
+
+Design, API, UI and security review: `docs/superpowers/specs/2026-09-19-enh-004-student-promotion-design.md` (§5.4, §7.1, §14).
+
+**Consequences:** new append-only table `school_student_grade_history` (migration `0033`); `POST /school/students/promotions` and `GET /school/students/{id}/grade-history`; the "student dashboard" in the backlog's acceptance criteria maps to the parent view only.
+
+**`NEEDS_CONFIRMATION` (not decided here):** graduate/alumni handling after Grade 12; a real section field; whether admin roles should ever promote; parent notification on promotion; promotion events in the SCH-008 timeline.
+
+**Security exposure found during ENH-004's review, and its status.** `PATCH /auth/me` merged a client-supplied `profile` into the user's own profile, and every school scope check trusts `profile.school_id`, so a logged-in user could re-point their own school scope and defeat the "a coordinator cannot promote at another school" guarantee this feature relies on. **Fixed 2026-09-20 with the user's approval** (plan Task 3b): `school_id` is now read-only through that route (an unchanged echo is still accepted; a change is `403`, applies nothing else, is audited as `profile.update_denied` and logged). `profile.university_id` had the same weakness for university reps (UNI-001); the independent code review of ENH-004 flagged it as High and it was **fixed the same day** by adding it to the same server-owned list (3 tests, red before the change). **Still OPEN, deliberately not changed here:** no school-student erasure path exists; there is no app-wide rate limiter or CSRF token.
