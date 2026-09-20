@@ -48,3 +48,36 @@ deliberate ones), redirects (none unexpected).
   or excluded by ENH-004. A full Playwright and backend regression has not been run on this branch.
 - The e2e spec initially failed once because exploratory `QA-*` years outranked its own year; that was contamination from the QA
   runs, and the spec now closes its own year and asserts the active years are restored.
+
+## Final verification (2026-09-20, fresh runs on the final build, after the code review)
+
+Every result below was produced by a command run during this verification, not carried over from earlier. Base = `0bfba40`.
+
+| Gate | Result |
+|---|---|
+| Backend, full suite (`pytest`, throwaway Postgres) | **875 passed, 22 failed.** The 22 are the *identical test IDs* that fail on the base commit (Razorpay/Zoho credentials unset, public-content tests needing a seeded DB); 0 failures in ENH-004's file. |
+| Frontend unit (`npm test`) | 17 files, 129 tests, all pass |
+| Type check (`npm run typecheck`) | exit 0 |
+| Lint (`npm run lint`) | exit 0, 0 errors; 31 warnings, none in an ENH-004 file |
+| Production build (`npm run build`) | exit 0, `/school/coordinator/promotion` compiled |
+| `ruff check .` / `mypy app` | 33 findings / 154 errors: identical to base |
+| `ruff format --check app tests` | 55 files unformatted: identical to base (the gate was already red; this branch adds none after formatting its own test file) |
+| `alembic heads` / `alembic check` | single head `0033_student_grade_history`; "No new upgrade operations detected" |
+| Playwright, every `sch-*` and `enh-*` spec, one process each | 16 files, 31 tests, all pass |
+| Playwright, same specs in one process (`--workers=1`) | 27/27 pass (excluding `sch-004-005-006`, see below) |
+| Browser Use (fresh data, isolated stack) | 156 distinct checks; all AC-01..AC-11 pass; the only two FAIL rows are known faulty assertions of the script itself (superseded by corrected checks that pass) |
+| Responsive (14 widths, 320..1920px incl. 640x400 and 844x390) | 14/14 pass after two layout fixes below |
+
+Found and fixed during this verification:
+
+- **Test-order bug in ENH-004's own tests:** four log-assertion tests passed alone but failed in the full suite, because ENH-001's in-process migration disables `app.*` loggers. Fixed with an autouse fixture, the convention `test_enh_003_*` already uses; reproduced red (ENH-001 first) then green.
+- **Format gate:** ENH-004's new test file was unformatted; formatted (no pre-existing file reformatted).
+- **Two responsive defects** (visible in screenshots, invisible to the earlier overflow metrics): the global `.search { min-width: 240px }` pushed the label input 13px out of its card at 320px and over the status text in the columned layout at 844x390; controls were 15px on touch devices (iOS zooms on focus). Fixed in the screen's own stylesheet. A method error was also caught: scripted `.focus()` is not keyboard focus; with real Tab presses the focus ring is present.
+
+Known limits, stated plainly:
+
+- `sch-004-005-006-service-delivery.spec.ts` is **not repeatable on a database it has already run against** (it searches for "Search Alpha" and expects one school). It is not in this branch's diff and passes on a fresh database, which is how CI runs it. Two of its tests failed in a second run here for that reason.
+- The intermittent Playwright `POST /auth/logout` hang seen earlier when many specs run in one process was **not observed** in the final runs, and remains **unexplained**.
+- The full Playwright suite (non-school specs) was not run. The lock-timeout `409` (AC-07) is not reachable from a browser and is covered by a backend test that passes.
+- "Student dashboard" (original brief) is not applicable: `DEC-ROLE-004`, school students never log in; the approved spec maps it to the parent view, which passes.
+- QA-008 (raw "fetch failed" text when the API is down) and QA-009 (no `aria-current`, no `h1`) are app-wide, open, and not ENH-004.
