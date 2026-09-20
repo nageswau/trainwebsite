@@ -5,10 +5,16 @@ export type PromotionStudent = { id: string; student_code: string; full_name: st
 export type PromotionAction = "promote" | "hold_back";
 export type PromotionRowResult = { student_id: string; status: "promoted" | "held_back" | "failed" | "skipped"; reason: string | null; message: string | null; grade_level: number | null; grade_or_class: string | null };
 
+/** A row the server has just moved into the active year (promoted or held back). Such a row is locked, like one already in the year. */
+export function isSettled(result: PromotionRowResult | null | undefined): result is PromotionRowResult {
+  return result?.status === "promoted" || result?.status === "held_back";
+}
+
 type Props = {
   student: PromotionStudent;
   activeYearLabel: string;
-  inActiveYear: boolean;
+  /** Already in the active year, or settled by this session's submit: nothing left to choose. Decided once, by the panel. */
+  locked: boolean;
   selected: boolean;
   action: PromotionAction;
   override: string;
@@ -43,10 +49,9 @@ function failureText(result: PromotionRowResult) {
 
 // One student. Memoised with primitive props and stable callbacks so ticking one box does not re-render
 // the whole roster. Labels are real <label>s (visible on mobile, moved to a header row from 768px up).
-function SchoolPromotionRow({ student, activeYearLabel, inActiveYear, selected, action, override, result, busy, onSelect, onAction, onOverride }: Props) {
+function SchoolPromotionRow({ student, activeYearLabel, locked, selected, action, override, result, busy, onSelect, onAction, onOverride }: Props) {
   const id = student.id;
-  const settled = result && (result.status === "promoted" || result.status === "held_back") ? result : null;
-  const locked = inActiveYear || settled !== null;
+  const settled = isSettled(result) ? result : null;
   const gradeText = settled ? settled.grade_or_class : student.grade_or_class;
   const level = settled ? settled.grade_level : student.grade_level;
   const hint = locked || action !== "promote" ? null : promoteHint(student.grade_level);

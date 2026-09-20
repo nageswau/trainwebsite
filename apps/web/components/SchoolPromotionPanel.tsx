@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition, type KeyboardEvent } from "react";
-import SchoolPromotionRow, { type PromotionAction, type PromotionRowResult, type PromotionStudent } from "@/components/SchoolPromotionRow";
+import SchoolPromotionRow, { isSettled, type PromotionAction, type PromotionRowResult, type PromotionStudent } from "@/components/SchoolPromotionRow";
 import styles from "./SchoolPromotionPanel.module.css";
 
 type ActiveYear = { id: string; label: string } | null;
@@ -90,9 +90,7 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
     );
   }
 
-  const inActiveYear = (s: PromotionStudent) => s.academic_year_id === activeYear.id;
-  const isSettled = (s: PromotionStudent) => results[s.id]?.status === "promoted" || results[s.id]?.status === "held_back";
-  const isLocked = (s: PromotionStudent) => inActiveYear(s) || isSettled(s);
+  const isLocked = (s: PromotionStudent) => s.academic_year_id === activeYear.id || isSettled(results[s.id]);
   const levels = Array.from(new Set(students.map((s) => s.grade_level).filter((l): l is number => l !== null))).sort((a, b) => a - b);
   const visible = students.filter((s) => filter === FILTER_ALL || (filter === FILTER_UNSET ? s.grade_level === null : String(s.grade_level) === filter));
   const selectable = visible.filter((s) => !isLocked(s));
@@ -212,7 +210,7 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
                 <li className={styles.header} aria-hidden="true"><span>Student</span><span>Action</span><span>New label (optional)</span><span>Status</span></li>
                 {visible.map((s) => (
                   <SchoolPromotionRow
-                    key={s.id} student={s} activeYearLabel={activeYear.label} inActiveYear={inActiveYear(s)}
+                    key={s.id} student={s} activeYearLabel={activeYear.label} locked={isLocked(s)}
                     selected={!!selected[s.id]} action={actions[s.id] ?? "promote"} override={overrides[s.id] ?? ""} result={results[s.id] ?? null} busy={busy}
                     onSelect={onSelect} onAction={onAction} onOverride={onOverride}
                   />
