@@ -1,11 +1,14 @@
-.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+/* The list is a size container: the columned layout switches on by the LIST's own width, not the viewport's.
+   Keyed to the viewport it overflowed at 768 and 1024px, because the portal sidebar leaves the content area
+   far narrower than the viewport (found by the browser run: the four columns need ~700px). */
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; container-type: inline-size; }
 .header { display: none; }
 .row { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
-.who { display: flex; gap: 12px; align-items: flex-start; }
+.who { display: flex; gap: 12px; align-items: flex-start; min-width: 0; }
 .who input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
-.who label { display: grid; gap: 2px; cursor: pointer; }
-.control { display: grid; gap: 7px; }
-.outcome { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+.who label { display: grid; gap: 2px; cursor: pointer; min-width: 0; overflow-wrap: anywhere; }
+.control { display: grid; gap: 7px; min-width: 0; }
+.outcome { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; min-width: 0; overflow-wrap: anywhere; }
 .hint { color: var(--muted); font-size: 13px; }
 .bar { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 16px; padding: 12px 14px; background: #fff; border-top: 1px solid var(--line); }
 .barText { margin: 0; font-weight: 700; }
@@ -19,9 +22,10 @@
   .barActions .btn { flex: 1; min-height: 44px; }
 }
 
-/* Labels are visible on small screens (the card stack has no column headers) and move to a header row from 768px up. */
-@media (min-width: 768px) {
-  .header, .row { grid-template-columns: minmax(220px, 2fr) 150px minmax(180px, 1.5fr) minmax(150px, 1fr); align-items: center; }
+/* Labels are visible in the stacked layout (it has no column headers) and move to a header row once the list is
+   wide enough for four columns (~704px = 4 column minimums + gaps + row padding). */
+@container (min-width: 720px) {
+  .header, .row { grid-template-columns: minmax(200px, 2fr) 140px minmax(160px, 1.5fr) minmax(140px, 1fr); align-items: center; }
   .header { display: grid; padding: 0 14px; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
   .row { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
   .controlLabel { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

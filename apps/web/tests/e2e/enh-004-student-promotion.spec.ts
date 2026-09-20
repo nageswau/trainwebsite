@@ -6,9 +6,9 @@ import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 // schools; the second exists only to prove a coordinator cannot promote another school's student.
 //
 // Shared-state note: promotion needs an ACTIVE academic year the students are not already in, and a
-// year cannot be deleted through the API. So each run creates a far-future, strictly increasing year
-// (it always wins the "latest start_date" tie-break) and activates it AFTER the roster exists.
-// The only lasting effect is that students later created by other specs get that year.
+// year cannot be deleted through the API. So each run closes any earlier `e2e4-*` year, then creates and
+// activates a far-future one (it wins the "latest start_date" tie-break over the real year) AFTER the
+// roster exists. The only lasting effect is that students later created by other specs get that year.
 
 const ADMIN_EMAIL = "overseasadmin@edusphere.local";
 const ADMIN_PASSWORD = "Demo@123";
@@ -59,12 +59,17 @@ test("coordinator promotes and holds back students; the parent sees the new grad
   const parentToken = alpha.development_invite_token;
   expect(parentToken).toBeTruthy();
 
-  // A new academic year becomes active (start date far in the future and strictly increasing per run).
+  // A new academic year becomes active. Earlier runs' `e2e4-*` years are closed first, so exactly one e2e year is
+  // active (start dates are day-granular, so a "later date" trick would tie for two runs on the same day). The far
+  // future start date only makes it win over the real, seeded year; real years are never touched.
   await signIn(page, ADMIN_EMAIL, ADMIN_PASSWORD, "**/overseas/admin/dashboard");
-  const startMs = Date.UTC(5000, 0, 1) + (Date.now() - Date.UTC(2026, 0, 1));
+  const years: { id: string; label: string; status: string }[] = await (await page.request.get("/api/v1/overseas-admin/academic-years")).json();
+  for (const old of years.filter((y) => y.label.startsWith("e2e4-") && y.status === "active")) {
+    expect((await page.request.patch(`/api/v1/overseas-admin/academic-years/${old.id}`, { data: { status: "closed" } })).ok()).toBeTruthy();
+  }
   const yearLabel = `e2e4-${unique}`;
   const created = await page.request.post("/api/v1/overseas-admin/academic-years", {
-    data: { label: yearLabel, start_date: new Date(startMs).toISOString().slice(0, 10), end_date: new Date(startMs + 300 * 86_400_000).toISOString().slice(0, 10) },
+    data: { label: yearLabel, start_date: "5000-01-01", end_date: "5000-12-31" },
   });
   expect(created.status()).toBe(201);
   const activated = await page.request.patch(`/api/v1/overseas-admin/academic-years/${(await created.json()).id}`, { data: { status: "active" } });
@@ -139,7 +144,8 @@ test("coordinator promotes and holds back students; the parent sees the new grad
   await page.waitForURL(`**/school/parent/children/${alpha.id}`);
   await expect(page.getByRole("heading", { name: "Grade history" })).toBeVisible();
   await expect(page.getByText("Moved from Grade 8-A to Grade 9-A")).toBeVisible();
-  await expect(page.getByText(`Academic year: ${yearLabel}`)).toBeVisible();
+  // The students were created inside the previously active year, so the entry reads "<previous year> to <new year>".
+  await expect(page.getByText(new RegExp(`Academic year: .*${yearLabel}`))).toBeVisible();
 
   // The coordinator's student page shows the held-back outcome, and the empty state for an unpromoted student.
   await signIn(page, coordinatorA, E2E_PASSWORD, "**/school/coordinator/dashboard");
