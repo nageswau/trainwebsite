@@ -13,21 +13,37 @@ type Props = {
   action: PromotionAction;
   override: string;
   result: PromotionRowResult | null;
+  /** A request is in flight: the row is read-only so what is on screen is what was sent. */
+  busy: boolean;
   onSelect: (id: string, on: boolean) => void;
   onAction: (id: string, action: PromotionAction) => void;
   onOverride: (id: string, value: string) => void;
 };
 
+const LEVEL_NOT_SET = "Grade level is not set. Set it on the roster before promoting.";
+
 // Advisory only: the server decides (spec §5.2). It just spares the coordinator a predictable failed row.
 function promoteHint(level: number | null) {
-  if (level === null) return "Grade level is not set. Set it on the roster before promoting.";
+  if (level === null) return LEVEL_NOT_SET;
   if (level >= 12) return "Grade 12 is the highest grade and cannot be promoted. Choose Hold back.";
   return null;
 }
 
+// The API's `message` names its own fields (`grade_or_class`, `grade_level`) and is part of its contract, so the screen
+// words each stable `reason` code for a coordinator instead. An unknown or future reason shows the server's own message.
+const REASON_TEXT: Record<string, string> = {
+  already_in_active_year: "Already in the active academic year.",
+  grade_level_not_set: LEVEL_NOT_SET,
+  terminal_grade: "Grade 12 is the highest grade; graduation is not supported yet.",
+  label_unparseable: "This student's grade label can't be advanced automatically. Type the new grade in \"New label\", then try again.",
+};
+function failureText(result: PromotionRowResult) {
+  return (result.reason && REASON_TEXT[result.reason]) || result.message;
+}
+
 // One student. Memoised with primitive props and stable callbacks so ticking one box does not re-render
 // the whole roster. Labels are real <label>s (visible on mobile, moved to a header row from 768px up).
-function SchoolPromotionRow({ student, activeYearLabel, inActiveYear, selected, action, override, result, onSelect, onAction, onOverride }: Props) {
+function SchoolPromotionRow({ student, activeYearLabel, inActiveYear, selected, action, override, result, busy, onSelect, onAction, onOverride }: Props) {
   const id = student.id;
   const settled = result && (result.status === "promoted" || result.status === "held_back") ? result : null;
   const locked = inActiveYear || settled !== null;
@@ -40,7 +56,7 @@ function SchoolPromotionRow({ student, activeYearLabel, inActiveYear, selected, 
   return (
     <li className={styles.row}>
       <div className={styles.who}>
-        <input id={`promo-select-${id}`} type="checkbox" checked={selected && !locked} disabled={locked} onChange={(e) => onSelect(id, e.target.checked)} />
+        <input id={`promo-select-${id}`} type="checkbox" checked={selected && !locked} disabled={locked || busy} onChange={(e) => onSelect(id, e.target.checked)} />
         <label htmlFor={`promo-select-${id}`}>
           <strong>{student.full_name}</strong>
           <span className="muted">{student.student_code} · {gradeText || "Grade not set"}{level !== null ? ` (level ${level})` : ""}</span>
@@ -55,20 +71,20 @@ function SchoolPromotionRow({ student, activeYearLabel, inActiveYear, selected, 
         <>
           <div className={`field ${styles.control}`}>
             <label className={styles.controlLabel} htmlFor={`promo-action-${id}`}>Action</label>
-            <select id={`promo-action-${id}`} className="select" value={action} aria-describedby={describedBy} onChange={(e) => onAction(id, e.target.value as PromotionAction)}>
+            <select id={`promo-action-${id}`} className="select" value={action} disabled={busy} aria-describedby={describedBy} onChange={(e) => onAction(id, e.target.value as PromotionAction)}>
               <option value="promote">Promote</option>
               <option value="hold_back">Hold back</option>
             </select>
           </div>
           <div className={`field ${styles.control}`}>
             <label className={styles.controlLabel} htmlFor={`promo-label-${id}`}>New label (optional)</label>
-            <input id={`promo-label-${id}`} type="text" className="search" placeholder="automatic" maxLength={60} value={override} disabled={action !== "promote"} aria-describedby={describedBy} onChange={(e) => onOverride(id, e.target.value)} />
+            <input id={`promo-label-${id}`} type="text" className="search" placeholder="automatic" maxLength={60} value={override} disabled={busy || action !== "promote"} aria-describedby={describedBy} onChange={(e) => onOverride(id, e.target.value)} />
           </div>
           <div className={styles.outcome}>
             {failure ? (
               <>
                 <span className={failure.status === "failed" ? "status error" : "status pending"}>{failure.status === "failed" ? "Not changed" : "Skipped"}</span>
-                <span id={`promo-msg-${id}`}>{failure.message}</span>
+                <span id={`promo-msg-${id}`}>{failureText(failure)}</span>
               </>
             ) : hint ? (
               <span id={`promo-hint-${id}`} className={styles.hint}>{hint}</span>

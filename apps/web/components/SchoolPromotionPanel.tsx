@@ -13,6 +13,15 @@ const MAX_ITEMS = 500; // the API's per-request cap (spec §5.2)
 const FILTER_ALL = "all";
 const FILTER_UNSET = "unset";
 
+const NOT_COMPLETED = "The request did not complete. Your selection is kept. Refresh to check the current state, then try again; repeating it is safe.";
+const UNREADABLE = "The server's response could not be read, so it is unclear whether the changes were applied. Your selection is kept. Refresh to check the current state, then try again; repeating it is safe.";
+
+// A 200 is only trusted if it has the shape of a report. A proxy login page or an empty body must not crash the screen.
+function isReport(data: unknown): data is Report {
+  const d = data as Partial<Report> | null;
+  return !!d && typeof d === "object" && typeof d.academic_year?.label === "string" && Array.isArray(d.results) && typeof d.counts === "object" && d.counts !== null;
+}
+
 // Same two shapes SchoolStudentsPanel handles: a string `detail` (403/409) or FastAPI's list (422).
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -35,6 +44,7 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expired, setExpired] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const reviewRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
@@ -119,6 +129,7 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
   async function submit() {
     setBusy(true);
     setError(null);
+    setExpired(false);
     setSummary(null);
     const items = chosen.map((s) => {
       const action = actions[s.id] ?? "promote";
@@ -131,17 +142,26 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
     } catch {
       setBusy(false);
       setConfirming(false);
-      setError("The request did not complete. Your selection is kept. Refresh to check the current state, then try again; repeating it is safe.");
+      setError(NOT_COMPLETED);
       return;
     }
-    const data = await response.json().catch(() => ({}));
+    const data = await response.json().catch(() => null);
     setBusy(false);
     setConfirming(false);
-    if (!response.ok) {
-      setError(detailMessage(data.detail));
+    if (response.status === 401) {
+      setExpired(true);
+      setError("Your session has expired. Your selection is kept. ");
       return;
     }
-    const report = data as Report;
+    if (!response.ok) {
+      setError(detailMessage(data?.detail));
+      return;
+    }
+    if (!isReport(data)) {
+      setError(UNREADABLE);
+      return;
+    }
+    const report = data;
     const c = report.counts;
     setResults((prev) => ({ ...prev, ...Object.fromEntries(report.results.map((r) => [r.student_id, r])) }));
     setSelected(Object.fromEntries(report.results.filter((r) => r.status === "failed").map((r) => [r.student_id, true])));
@@ -155,7 +175,7 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
         <h2>Promote students</h2>
         <p>Move students into <span className="status">{activeYear.label}</span>, the active academic year. <strong>Promote</strong> advances the grade by one; <strong>Hold back</strong> keeps the grade and records the new year.</p>
 
-        {error && <div ref={errorRef} tabIndex={-1} className="form-error" role="alert">{error}</div>}
+        {error && <div ref={errorRef} tabIndex={-1} className="form-error" role="alert">{error}{expired && <Link href="/overseas/login">Sign in again</Link>}</div>}
         {summary && <div ref={summaryRef} tabIndex={-1} className={`form-message ${styles.summary}`} role="status">{summary}</div>}
 
         {students.length === 0 ? (
@@ -169,7 +189,7 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
             <div className="table-controls" aria-label="Promotion filters">
               <div>
                 <label htmlFor="promotion-filter">Grade level</label>
-                <select id="promotion-filter" className="select" value={filter} onChange={(e) => changeFilter(e.target.value)}>
+                <select id="promotion-filter" className="select" value={filter} disabled={busy} onChange={(e) => changeFilter(e.target.value)}>
                   <option value={FILTER_ALL}>All grades</option>
                   {levels.map((l) => <option key={l} value={String(l)}>Grade {l}</option>)}
                   <option value={FILTER_UNSET}>Grade level not set</option>
@@ -177,7 +197,7 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
               </div>
               <div>
                 <label htmlFor="promotion-select-all">Select all shown</label>
-                <input id="promotion-select-all" type="checkbox" checked={allShownSelected} disabled={selectable.length === 0} onChange={(e) => toggleAllShown(e.target.checked)} />
+                <input id="promotion-select-all" type="checkbox" checked={allShownSelected} disabled={busy || selectable.length === 0} onChange={(e) => toggleAllShown(e.target.checked)} />
               </div>
             </div>
             <p className="muted" aria-live="polite">Showing {visible.length} of {students.length} students</p>
@@ -188,12 +208,12 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
                 <button type="button" className="btn secondary small" onClick={() => changeFilter(FILTER_ALL)}>Show all grades</button>
               </div>
             ) : (
-              <ul className={styles.list} role="list" aria-busy={refreshing}>
+              <ul className={styles.list} role="list" aria-busy={refreshing || busy}>
                 <li className={styles.header} aria-hidden="true"><span>Student</span><span>Action</span><span>New label (optional)</span><span>Status</span></li>
                 {visible.map((s) => (
                   <SchoolPromotionRow
                     key={s.id} student={s} activeYearLabel={activeYear.label} inActiveYear={inActiveYear(s)}
-                    selected={!!selected[s.id]} action={actions[s.id] ?? "promote"} override={overrides[s.id] ?? ""} result={results[s.id] ?? null}
+                    selected={!!selected[s.id]} action={actions[s.id] ?? "promote"} override={overrides[s.id] ?? ""} result={results[s.id] ?? null} busy={busy}
                     onSelect={onSelect} onAction={onAction} onOverride={onOverride}
                   />
                 ))}

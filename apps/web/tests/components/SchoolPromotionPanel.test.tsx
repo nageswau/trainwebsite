@@ -233,3 +233,94 @@ describe("error states", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });
+
+// QA-004..007 (second QA round, all Low).
+describe("unreadable success response (QA-004)", () => {
+  it.each([
+    ["an empty JSON object", () => json({})],
+    ["a non-JSON body", () => new Response("<html>proxy login page</html>", { status: 200, headers: { "Content-Type": "text/html" } })],
+    ["a report without counts", () => json({ academic_year: YEAR, results: [] })],
+  ])("shows an error instead of crashing the page on %s, and keeps the selection", async (_name, respond) => {
+    stubFetch(() => respond());
+    render(<SchoolPromotionPanel students={[student("A")]} activeYear={YEAR} />);
+    fireEvent.click(box(/Child A/));
+    reviewAndConfirm(1);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("could not be read");
+    expect(alert.textContent).toContain("repeating it is safe");
+    expect(box(/Child A/).checked).toBe(true);
+    expect(screen.queryByText(/Done for/)).toBeNull();
+  });
+});
+
+describe("failure reasons are shown in plain language (QA-005)", () => {
+  const failedReport = (reason: string | null, message: string) => ({
+    academic_year: YEAR,
+    counts: { promoted: 0, held_back: 0, failed: 1, skipped: 0 },
+    results: [{ student_id: "id-A", status: "failed", reason, message, grade_level: 8, grade_or_class: "8A" }],
+  });
+
+  it.each([
+    ["label_unparseable", "grade_or_class has no grade number to advance; supply grade_or_class", /can't be advanced automatically.*New label/],
+    ["label_unparseable", "grade_or_class does not match grade_level; supply grade_or_class", /can't be advanced automatically.*New label/],
+    ["grade_level_not_set", "grade_level is not set; set it on the student before promoting.", /Grade level is not set\. Set it on the roster/],
+  ])("maps %s to wording a coordinator can act on, without the API's field names", async (reason, raw, friendly) => {
+    stubFetch(() => json(failedReport(reason, raw)));
+    render(<SchoolPromotionPanel students={[student("A")]} activeYear={YEAR} />);
+    fireEvent.click(box(/Child A/));
+    reviewAndConfirm(1);
+
+    await screen.findByText(/Done for/);
+    const text = within(row("Child A")).getByText(friendly).textContent!;
+    expect(text).not.toMatch(/grade_or_class|grade_level/);
+    expect(within(row("Child A")).queryByText(raw)).toBeNull();
+  });
+
+  it("falls back to the server's message for a reason it does not know", async () => {
+    stubFetch(() => json(failedReport("some_future_reason", "Something specific from the server.")));
+    render(<SchoolPromotionPanel students={[student("A")]} activeYear={YEAR} />);
+    fireEvent.click(box(/Child A/));
+    reviewAndConfirm(1);
+    await screen.findByText(/Done for/);
+    expect(within(row("Child A")).getByText("Something specific from the server.")).toBeTruthy();
+  });
+});
+
+describe("while a request is in flight (QA-006)", () => {
+  it("locks the list, the filters and select-all, marks the list busy, and unlocks after the answer", async () => {
+    let release: (r: Response) => void = () => {};
+    stubFetch(() => new Promise<Response>((resolve) => { release = resolve; }) as unknown as Response);
+    render(<SchoolPromotionPanel students={[student("A"), student("B")]} activeYear={YEAR} />);
+    fireEvent.click(box(/Child A/));
+    reviewAndConfirm(1);
+
+    await screen.findByRole("button", { name: "Promoting…" });
+    expect(box(/Child A/).disabled).toBe(true);
+    expect(box(/Child B/).disabled).toBe(true);
+    expect((within(row("Child B")).getByLabelText("Action") as HTMLSelectElement).disabled).toBe(true);
+    expect((within(row("Child B")).getByLabelText("New label (optional)") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Grade level") as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Select all shown") as HTMLInputElement).disabled).toBe(true);
+    expect(screen.getByRole("list").getAttribute("aria-busy")).toBe("true");
+
+    release(json({ academic_year: YEAR, counts: { promoted: 1, held_back: 0, failed: 0, skipped: 0 }, results: [{ student_id: "id-A", status: "promoted", reason: null, message: null, grade_level: 9, grade_or_class: "Grade 9-A" }] }));
+    await screen.findByText(/Done for/);
+    expect(box(/Child B/).disabled).toBe(false);
+    expect((screen.getByLabelText("Grade level") as HTMLSelectElement).disabled).toBe(false);
+  });
+});
+
+describe("an expired session on submit (QA-007)", () => {
+  it("says the session expired and links to sign in again, keeping the selection", async () => {
+    stubFetch(() => json({ detail: "Not authenticated" }, 401));
+    render(<SchoolPromotionPanel students={[student("A")]} activeYear={YEAR} />);
+    fireEvent.click(box(/Child A/));
+    reviewAndConfirm(1);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Your session has expired");
+    expect(within(alert).getByRole("link", { name: "Sign in again" }).getAttribute("href")).toBe("/overseas/login");
+    expect(box(/Child A/).checked).toBe(true);
+  });
+});
