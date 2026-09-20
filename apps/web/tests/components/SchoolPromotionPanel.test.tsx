@@ -202,4 +202,34 @@ describe("error states", () => {
     expect(alert.textContent).toContain("repeating it is safe");
     expect(box(/Child A/).checked).toBe(true);
   });
+
+  // QA-003: the Confirm button (bottom of a long list) is unmounted on failure, so focus is lost; the banner sits at the
+  // top of the panel and can be scrolled out of view. Focusing it scrolls it into view and moves keyboard users to it,
+  // exactly as the success summary already does.
+  it.each([
+    ["a server refusal", () => stubFetch(() => json({ detail: "One or more students are not at your institution" }, 403))],
+    ["a non-JSON server error", () => stubFetch(() => new Response("Bad gateway", { status: 502 }))],
+    ["a dropped connection", () => vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))))],
+  ])("moves focus to the error banner after %s", async (_name, arrange) => {
+    arrange();
+    render(<SchoolPromotionPanel students={[student("A")]} activeYear={YEAR} />);
+    fireEvent.click(box(/Child A/));
+    reviewAndConfirm(1);
+
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+  });
+
+  it("does not leave a stale error banner after a later successful submit", async () => {
+    stubFetch(() => json({ detail: "Another promotion is in progress; retry" }, 409));
+    render(<SchoolPromotionPanel students={[student("A")]} activeYear={YEAR} />);
+    fireEvent.click(box(/Child A/));
+    reviewAndConfirm(1);
+    await screen.findByRole("alert");
+
+    stubFetch(() => json({ academic_year: YEAR, counts: { promoted: 1, held_back: 0, failed: 0, skipped: 0 }, results: [{ student_id: "id-A", status: "promoted", reason: null, message: null, grade_level: 9, grade_or_class: "Grade 9-A" }] }));
+    reviewAndConfirm(1);
+    await screen.findByText(/Done for/);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

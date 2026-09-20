@@ -7,27 +7,35 @@ import type { User } from "@/lib/types";
 
 type ActiveYear = { id: string; label: string } | null;
 
+function AccessUnavailable({ message }: { message: string }) {
+  return (
+    <div className="section">
+      <div className="container card">
+        <h1>Access unavailable</h1>
+        <p>{message}</p>
+        <a className="btn" href="/overseas/login">Return to login</a>
+      </div>
+    </div>
+  );
+}
+
 // ENH-004: academic-year rollover -- promote or hold back students, own institution only.
+// Coordinator-only, like the API (`POST /school/students/promotions` returns 403 for every other role): the role is
+// checked here first so a Parent, Teacher or Principal is not shown an action that can only fail, and their roster is
+// not fetched for a page they cannot use.
 export default async function SchoolCoordinatorPromotionPage() {
   let user: User;
   let students: PromotionStudent[];
   let activeYear: ActiveYear;
   try {
-    [user, students, activeYear] = await Promise.all([
-      serverApi<User>("/api/v1/auth/me"),
+    user = await serverApi<User>("/api/v1/auth/me");
+    if (user.role !== "school_coordinator") return <AccessUnavailable message="School Coordinator role required" />;
+    [students, activeYear] = await Promise.all([
       serverApi<PromotionStudent[]>("/api/v1/school/students"),
       serverApi<ActiveYear>("/api/v1/school/academic-years/active"),
     ]);
   } catch (e) {
-    return (
-      <div className="section">
-        <div className="container card">
-          <h1>Access unavailable</h1>
-          <p>{e instanceof Error ? e.message : "Unable to load this workspace"}</p>
-          <a className="btn" href="/overseas/login">Return to login</a>
-        </div>
-      </div>
-    );
+    return <AccessUnavailable message={e instanceof Error ? e.message : "Unable to load this workspace"} />;
   }
   return (
     <PortalShell nav={SCHOOL_NAV.coordinator} roleLabel="School Coordinator" userName={user.full_name}>

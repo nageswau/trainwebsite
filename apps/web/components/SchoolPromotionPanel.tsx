@@ -39,10 +39,12 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
   const reviewRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
   const restoreFocus = useRef(false);
 
   // Focus management: the confirm button takes focus when it appears, Cancel/Escape returns it to
-  // "Review changes", and after a result the (now unmounted) confirm button's focus moves to the summary.
+  // "Review changes", and after a result or a failure the (now unmounted) confirm button's focus moves to the
+  // summary or the error banner -- which also scrolls it into view from the bottom of a long list.
   useEffect(() => {
     if (confirming) confirmRef.current?.focus();
     else if (restoreFocus.current) {
@@ -53,6 +55,9 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
   useEffect(() => {
     if (summary) summaryRef.current?.focus();
   }, [summary]);
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
 
   const onSelect = useCallback((id: string, on: boolean) => {
     setSelected((prev) => ({ ...prev, [id]: on }));
@@ -150,7 +155,7 @@ export default function SchoolPromotionPanel({ students, activeYear }: { student
         <h2>Promote students</h2>
         <p>Move students into <span className="status">{activeYear.label}</span>, the active academic year. <strong>Promote</strong> advances the grade by one; <strong>Hold back</strong> keeps the grade and records the new year.</p>
 
-        {error && <div className="form-error" role="alert">{error}</div>}
+        {error && <div ref={errorRef} tabIndex={-1} className="form-error" role="alert">{error}</div>}
         {summary && <div ref={summaryRef} tabIndex={-1} className={`form-message ${styles.summary}`} role="status">{summary}</div>}
 
         {students.length === 0 ? (
