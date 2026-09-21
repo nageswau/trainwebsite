@@ -157,6 +157,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-AGT-006` — /overseas/admin/commissions — Commission payout approval queue.
 - `SCR-SCH-010` — /overseas/admin/schools — All partner schools + create School/seed Coordinator on the same screen *(net-new, added 2026-09-14, `DEC-SCOPE-012`; `SCR-SCH-011`'s separate `/new` route merged in during `SCH-003`'s build, same day)*.
 - `SCR-SCH-021` — /overseas/admin/school-staff — Create/manage Academic Team, Career Counselor, Psychometric Team accounts and their school portfolios *(net-new, added 2026-09-14, `DEC-SCOPE-014`)*.
+- `SCR-SCH-031` — /overseas/admin/school-transfers — Approve or reject school transfer requests (`ENH-005`, added 2026-09-21).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## University Representative
@@ -179,6 +180,8 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-SCH-004` — /school/coordinator/students/new — Add one student by hand.
 - `SCR-SCH-025` — /school/coordinator/students/[id] — One student's Journey Timeline (`SCH-008`, added 2026-09-15).
 - `SCR-SCH-027` — /school/coordinator/promotion — Promote or hold back students at academic-year rollover (`ENH-004`, added 2026-09-19).
+- `SCR-SCH-029` — /school/coordinator/transfers — Request a student transfer (either direction), track and cancel requests (`ENH-005`, added 2026-09-21).
+- `SCR-SCH-030` — /school/coordinator/notifications — The school's in-app notices, including transfer decisions (`ENH-005`, added 2026-09-21).
 - `SCR-SCH-005` — /school/coordinator/students/bulk-upload — Bulk roster upload (template-download-first).
 - `SCR-SCH-006` — /school/coordinator/activities — Schedule activities, track attendance.
 - `SCR-SCH-012` — /school/coordinator/team — Invite Principal/Teacher/Parent accounts.

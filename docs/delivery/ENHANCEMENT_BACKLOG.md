@@ -607,6 +607,16 @@ to a parent who does *not* have a link at the gaining school — must not silent
 **Regression risks.** `SCH-006` results workflow, `SCH-007` Parent Portal, `SCH-008` Student Journey
 Timeline — all read `SchoolStudent.school_id` and must keep working after a transfer.
 
+**Status (2026-09-21).** Designed and decided in `docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md`
+(`DEC-SCOPE-021`); implemented on branch `feature/enh-005-student-school-transfer`. **NOT COMPLETE.** The workflow is: a coordinator of
+either school files a request, an Overseas Admin or Super Admin approves or rejects it, approval is one transaction, and neither school can move
+a student alone. Verified so far (see `RTM.md` and `docs/quality/ENH-005_BROWSER_QA_2026-09-21.md` for the numbers and their limits): backend,
+frontend and Playwright suites as recorded there; three browser passes by the implementer, whose defects D1–D4 were fixed and re-verified (D1 only
+after a first, jsdom-only fix proved insufficient in a real browser). **Still outstanding:** (1) the independent code review the owner asked for;
+(2) an owner decision on parents invited but not yet accepted at transfer time (they end up with no linked child); (3) four low-severity browser
+findings (N1–N4); (4) a full Playwright run. Deliberately not decided or built: consent from the other school, bulk transfer, branch moves
+(`ENH-009`), multi-school parents beyond the recorded rule (`ENH-008`).
+
 **Complexity:** Medium. **Risk:** Medium.
 
 ---

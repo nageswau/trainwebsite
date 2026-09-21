@@ -2686,6 +2686,100 @@
     "evidence": "SchoolGradeHistory.test.tsx and enh-004-student-promotion.spec.ts (browser, 2026-09-20); the history card renders a hostile grade label as plain text."
   },
   {
+    "id": "SCR-SCH-029",
+    "roles": [
+      "School Coordinator"
+    ],
+    "route": "/school/coordinator/transfers",
+    "purpose": "Ask an admin to move a student to or from this school: the requests this school has filed (either direction), with cancel for a pending one, and a form to ask for a student at another school by Student ID.",
+    "features": [
+      "ENH-005"
+    ],
+    "entry": "\"Transfers\" item in the Coordinator navigation; a coordinator files an outgoing request from the student's own page (SCR-SCH-032).",
+    "data": "GET /school/transfer-requests (status filter, limit/offset), POST /school/transfer-requests/incoming, POST /school/transfer-requests/{id}/cancel.",
+    "actions": "Filter by status (Pending review / All / Approved / Rejected / Cancelled); enter an 8-character Student ID and \"Request student\"; \"Cancel request\" on a pending row; \"Load more\".",
+    "empty": "\"No pending requests.\" / \"No transfer requests yet.\" / \"No <status> requests.\"",
+    "loading": "Server-rendered first page. A filter change replaces the rows behind a skeleton; \"Load more\" appends and reads \"Loading\u2026\"; buttons are disabled while a request is in flight (a ref guards a same-task double click).",
+    "error": "API errors (403/409/422/429) and a dropped connection render an alert that takes focus and keep the entry. Filing by Student ID always answers the same neutral message whether or not the code exists, so the screen cannot be used to probe for students at other schools; the resulting row shows \"Student details are shown once approved\" and discloses no name.",
+    "perms": "Coordinator only, enforced twice: the page shows \"School Coordinator role required\" to any other role and the API returns 403. The filing school is server-derived from the caller's profile, never client-supplied; only the filing school sees a request.",
+    "responsive": "Single column; rows wrap; no horizontal scroll at 320/768/1024/1440px (asserted in the e2e; passing).",
+    "a11y": "Real labels on every control; status messages in a polite live region; errors take focus; the row's actions are named with the student or code they act on; state is text, not colour alone.",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None \u2014 not inspected. Do not claim parity.",
+    "evidence": "SchoolTransfersPanel.test.tsx, SchoolIncomingTransferForm.test.tsx (passing); enh-005-school-transfer.spec.ts (browser, isolated stack, 2026-09-21); test_enh_005_filing.py, test_enh_005_coordinator_reads.py."
+  },
+  {
+    "id": "SCR-SCH-030",
+    "roles": [
+      "School Coordinator"
+    ],
+    "route": "/school/coordinator/notifications",
+    "purpose": "Read the in-app notices the school receives, including whether a transfer request was approved or rejected (a coordinator had no screen for these until the second browser QA pass).",
+    "features": [
+      "ENH-005"
+    ],
+    "entry": "\"Notifications\" item in the Coordinator navigation.",
+    "data": "GET /workflows/notifications, keyed on the signed-in user (never a client-supplied id); the same source the Parent's SCR-SCH-023 reads.",
+    "actions": "Read only.",
+    "empty": "\"No notifications yet. You will be told here when a transfer request is decided, or a student joins your school.\"",
+    "loading": "Server-rendered.",
+    "error": "An \"Access unavailable\" card with the reason and a link back to login when the notices cannot be loaded.",
+    "perms": "The page shows \"Access unavailable \u2014 School Coordinator role required\" to any other role. The feed is the signed-in user's own notices only.",
+    "responsive": "The table sits in the shared `.table-wrap` scroll container, so it cannot widen the page.",
+    "a11y": "A table with header cells; the unread state is the text badge \"new\", not colour alone; the message is rendered as plain text.",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None \u2014 not inspected. Do not claim parity.",
+    "evidence": "SchoolNotificationList.test.tsx (passing); enh-005-school-transfer.spec.ts asserts both the requester's and the gaining school's notice (browser, 2026-09-21)."
+  },
+  {
+    "id": "SCR-SCH-031",
+    "roles": [
+      "Overseas Admin",
+      "Super Admin"
+    ],
+    "route": "/overseas/admin/school-transfers",
+    "purpose": "Decide school transfer requests: review each pending request with a preview of what approval will move, then approve or reject it.",
+    "features": [
+      "ENH-005"
+    ],
+    "entry": "\"School Transfers\" item in the Overseas Admin navigation.",
+    "data": "GET /overseas-admin/school-transfer-requests (status filter, limit/offset), POST .../{id}/approve, POST .../{id}/reject.",
+    "actions": "Filter by status; \"Approve transfer of <student> to <school>\" then an explicit \"Confirm approval\" (or Cancel / Escape); \"Reject\" with an optional reason.",
+    "empty": "\"No pending transfer requests.\" / \"No transfer requests yet.\" / \"No <status> requests.\"",
+    "loading": "\"Loading transfer requests\u2026\"; the confirm step disables its buttons while the approval runs.",
+    "error": "API errors (including 409 \"Another change to this student is in progress; retry\") and a dropped connection render an alert that takes focus; nothing is changed on failure (approval is one transaction).",
+    "perms": "Overseas Admin and Super Admin only. A School Coordinator, of either school, gets 403 from the API and \"role required\" from the page; neither school can approve a transfer alone.",
+    "responsive": "The two confirm buttons sit side by side, not as stretched bars. No page-level horizontal scroll at 320/768/1024/1440px (asserted in the e2e). Known and not fixed: at or below 768px the shared DataTable scrolls inside its own container.",
+    "a11y": "Keyboard only: Enter on Approve moves focus to Confirm, Escape returns focus to Approve (asserted in the e2e); every action is named with the student and destination; outcomes are text.",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None \u2014 not inspected. Do not claim parity.",
+    "evidence": "AdminSchoolTransferPanel.test.tsx, AdminTransferRow.test.tsx (passing); enh-005-school-transfer.spec.ts (browser, 2026-09-21, keyboard approval); test_enh_005_admin_reads.py, test_enh_005_approve.py, test_enh_005_concurrency.py."
+  },
+  {
+    "id": "SCR-SCH-032",
+    "roles": [
+      "School Coordinator",
+      "Parent"
+    ],
+    "route": "Embedded section, not a standalone route \u2014 the request form and history appear on SCR-SCH-025 (/school/coordinator/students/[id]); the history (read-only) also appears on SCR-SCH-022 (/school/parent/children/[id]).",
+    "purpose": "The Coordinator asks for one of their students to move to another partner school (a disclosure on the student's page); the Coordinator and the Parent read that student's transfer history (\"Moved from X to Y\").",
+    "features": [
+      "ENH-005"
+    ],
+    "entry": "\"Request a transfer\" disclosure on the student's page (Coordinator only).",
+    "data": "Props read on the server with the rest of the page: the destination schools and any pending request; GET /school/students/{id}/transfer-history; POST /school/students/{id}/transfer-requests.",
+    "actions": "Choose a destination school, optional reason (500 characters), \"Request transfer\". Reversible, so there is no confirm step; the request can be cancelled from SCR-SCH-029.",
+    "empty": "\"No other partner schools are available.\" / \"Transfers are unavailable right now.\" / no history section content when the student never moved.",
+    "loading": "None needed (server-rendered props); the button reads \"Sending request\u2026\" and the form is read-only while submitting.",
+    "error": "A field error for a missing school; 401/403/409/422/429 and a dropped connection render an alert that takes focus and keep the entry.",
+    "perms": "Filing: the student's own school's Coordinator only; an unknown or foreign student answers the same 403. History: the Coordinator of the student's current school and a Parent linked to the child.",
+    "responsive": "The destination <select> is width:100% inside a min-width:0 field, so one very long school name cannot widen the page (a jsdom-only fix first missed this; the Playwright spec now creates a 200-character school name and asserts no horizontal overflow with the form open).",
+    "a11y": "Real labels; the select's error is tied by aria-describedby; the pending state is a status region; history is text.",
+    "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
+    "visual": "None \u2014 not inspected. Do not claim parity.",
+    "evidence": "SchoolTransferRequestForm.test.tsx, SchoolTransferHistory.test.tsx (passing); enh-005-school-transfer.spec.ts (browser, 2026-09-21); test_enh_005_filing.py."
+  },
+  {
     "id": "SCR-RPT-001",
     "roles": [
       "IT Admin",
