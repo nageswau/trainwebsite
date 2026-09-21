@@ -1655,3 +1655,13 @@ Browser QA (spec §13) superseded parts of Tasks 4, 5, 6 and 7. Each change was 
 - **New:** a "Change password" link on the Employer dashboard (QA-003), tested in `tests/components/EmployerDashboardPage.test.tsx`.
 - **Task 7:** the E2E spec grew from 9 to 13 tests. The employer test registers a uniquely named company (names must be unique).
 - Regression list gained `emp-001` … `emp-005` (the employer dashboard changed).
+
+Round 2 (the three low findings left open above, then fixed on request; same test-first method):
+
+- **QA-007:** `ChangePasswordRequest.new_password` refuses an all-whitespace value with a custom pydantic error (`Password must not consist only of spaces`);
+  4 backend tests (spaces, tabs, mixed, non-breaking) + one guard that spaces around real characters are kept; one E2E test. `API_CONTRACT.md` updated;
+  `DEC-SCOPE-021` #7 records that register/reset are not aligned (`NEEDS_CONFIRMATION`).
+- **QA-004:** the mobile menu now lists "Change password" **first** (`PortalShell.tsx`); the unit test asserts the order and the E2E test asserts it is within the
+  667px fold on a phone.
+- **QA-008:** `PublicShell` gains a skip link and `main#main-content` (`tabIndex=-1`); CSS in `controls.css`; `PublicShell.test.tsx` (3 tests) and an E2E keyboard test.
+  This is a shared component, so the regression run covered every public-page, auth, header, portal and employer spec (79 passed).

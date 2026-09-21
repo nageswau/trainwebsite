@@ -29,7 +29,7 @@ failures are audit-logged.
 - Throttling `login`, `forgot_password` or `reset_password` (still the open item in
   `SECURITY_CONTROLS.md` §1).
 - A migration, a new table, Redis, or any new dependency.
-- A notification email, password history, strength or breach checks beyond the existing 10–128 rule, a
+- A notification email, password history, strength or breach checks beyond the existing 10–128 rule (plus the all-whitespace refusal added by QA-007), a
   confirm-password field.
 - An `Idempotency-Key` (§0.2 of the API contract requires one only for financial/record-creating
   endpoints; no idempotency contract exists here).
@@ -65,7 +65,7 @@ never stripped or normalised):
 | Field | Rule |
 |---|---|
 | `current_password` | string, 1–1024 characters (bounded so a legacy long password still works and the input is not unbounded) |
-| `new_password` | string, 10–128 characters (the rule in `RegistrationRequest`, `reset_password` and the reset form) |
+| `new_password` | string, 10–128 characters (the rule in `RegistrationRequest`, `reset_password` and the reset form), and **not only whitespace** (QA-007: ten spaces are refused; spaces inside or around real characters are kept exactly) |
 
 Responses (FastAPI `{"detail": …}` body, as everywhere else):
 
@@ -75,6 +75,7 @@ Responses (FastAPI `{"detail": …}` body, as everywhere else):
 | 400 | current password wrong | `"Incorrect current password"` (one message, no other hint) |
 | 401 | no/invalid/expired session, inactive account | existing `get_current_user` messages |
 | 422 | body shape/length invalid | FastAPI validation list |
+| 422 | `new_password` is only whitespace | validation list, `msg` = `"Password must not consist only of spaces"` |
 | 422 | `new_password == current_password` | `"New password must be different from the current password"` |
 | 429 | 5 failures in the last 15 min | `"Too many incorrect attempts; try again in N seconds"` + `Retry-After: N` (integer, 1–900) |
 
@@ -150,11 +151,12 @@ sidebar is hidden at ≤980 px and its mobile menu shows only the role's nav ite
 - `apps/web/app/it/employer/dashboard/page.tsx` (QA-003): the Employer dashboard is a standalone page (no `PortalShell`, no site header), so it
   gets its own "Change password" link.
 - ★ `PortalShell.tsx` (every portal role): a "Change password" link in the desktop sidebar footer above
-  "Sign out", and the same link appended as the last item of the array given to the mobile
-  `MobileNavToggle`. Additive only: the desktop `.portal-nav` and each role's `nav` array are unchanged.
+  "Sign out", and the same link as the **first** item of the array given to the mobile `MobileNavToggle` (QA-004: last of 17 items meant scrolling
+  the menu to find it). Additive only: the desktop `.portal-nav` and each role's `nav` array are unchanged.
 
 **Page** `apps/web/app/account/password/page.tsx` (server), modelled on `/account/privacy` but not a dead end:
-renders inside `PublicShell` (site header, footer); `serverApi("/api/v1/auth/me")` gates it. Signed-out →
+renders inside `PublicShell` (skip link, site header, footer; QA-008 added the skip link and a focusable `main#main-content` to `PublicShell`, so every public page
+gains one Tab-press access to its content); `serverApi("/api/v1/auth/me")` gates it. Signed-out →
 "Sign in required" card — shown **only for an explicit `401`** (QA-002) — whose links are `/it/login?next=%2Faccount%2Fpassword` and the overseas
 equivalent (`LoginForm` already honours `?next=`), so the visitor returns to the page after signing in. Any other failure (API down, `5xx`, network)
 shows "Temporarily unavailable — your password has not been changed — Try again" instead; `serverApi` now throws an `ApiError` carrying the status
@@ -206,7 +208,7 @@ form inside `.action-card`. `middleware.ts` is unchanged (`/account` is outside 
   with an integer `Retry-After`, and the password is unchanged. Failures older than the window do not
   count; the block lifts when the fifth-newest failure ages out; another user is unaffected; a blocked
   attempt writes no new failure row.
-- **AC-04** `new_password` under 10 or over 128 characters, or equal to `current_password`, is `422` and
+- **AC-04** `new_password` under 10 or over 128 characters, only whitespace, or equal to `current_password`, is `422` and
   changes nothing and consumes no attempt.
 - **AC-05** A successful change writes exactly one `auth.change_password` row. No password or hash appears
   in any audit row or log record.
@@ -345,7 +347,7 @@ deployment prerequisites `COOKIE_SECURE=true`, a real `SECRET_KEY` and `ENVIRONM
 
 ## 13. Browser QA follow-ups (2026-09-21, browser-use, isolated stack `enh006-e2e`)
 
-Exploratory pass over the 20 requested areas. Every fix below was written test-first (the E2E tests were seen failing in the browser first).
+Exploratory pass over the 20 requested areas. Every fix below was written test-first (the E2E tests were seen failing in the browser first). Round 1 fixed QA-001/002/003/005/006/009; round 2 ("fix the 2", the three low findings left for a decision) fixed QA-004/007/008.
 
 | ID | Sev | Finding | Disposition |
 |---|---|---|---|
@@ -355,9 +357,9 @@ Exploratory pass over the 20 requested areas. Every fix below was written test-f
 | QA-005 | Low | Page title was the site default | **Fixed** — `metadata.title` |
 | QA-006 | Low | Back link / Show passwords row ~20 px tall | **Fixed** — ≥ 24 px |
 | QA-009 | Low | Focus dropped to `<body>` while pending; progress not announced | **Fixed** — `aria-disabled` + polite status |
-| QA-004 | Low | On a phone "Change password" is the last of 17 portal menu items | **Open**, `NEEDS_CONFIRMATION` (reordering every role's menu is outside ENH-006) |
-| QA-007 | Low | A 10-space password is accepted | **Open**, `NEEDS_CONFIRMATION` (the rule is length-only, same as registration/reset) |
-| QA-008 | Low | 17 Tab stops through the site header before the form; no skip link | **Open**, pre-existing in `PublicShell` |
+| QA-004 | Low | On a phone "Change password" is the last of 17 portal menu items | **Fixed** — first item of the mobile menu (only this feature's own item moves; no role's menu is reordered) |
+| QA-007 | Low | A 10-space password is accepted | **Fixed** for change-password (all-whitespace refused, `422`). **Open, `NEEDS_CONFIRMATION`:** registration and reset still accept it, so the three entry points now differ |
+| QA-008 | Low | 17 Tab stops through the site header before the form; no skip link | **Fixed** — skip link + focusable `main` in `PublicShell` (a shared component: every public page gains it) |
 | QA-010 | Info | A stale second tab gets "Incorrect current password" with no hint the password changed elsewhere | Accepted, correct by design |
 
 Pre-existing, observed and not changed: the public header already overflowed at 1280 px and below without the new link (43 px at 1280, 277 px at

@@ -2136,6 +2136,7 @@ Design, API, UI and security review: `docs/superpowers/specs/2026-09-19-enh-004-
 4. **Also confirmed:** a new password identical to the current one is rejected (`422`); no confirm-password field; failed attempts are audit-logged (`outcome="denied"`), a successful change as `auth.change_password`.
 5. **Reset links (security review, 2026-09-21, `EXPLICIT_APPROVAL`):** a successful change revokes the user's unused `reset`-purpose password-reset tokens (`superseded_at`, same transaction); welcome tokens, used tokens and other users' tokens are untouched.
 6. **Session survival, accepted risk (2026-09-21, `EXPLICIT_APPROVAL`):** because other sessions are not invalidated (#3), a stolen refresh cookie stays usable for up to 14 days after a change (`refresh_token_days`; access tokens 60 minutes). The smaller alternative — a `password_changed_at` column checked only in `/auth/refresh`, exposure about 60 minutes, one migration — was offered and declined for this feature.
+7. **Whitespace-only passwords (browser QA finding QA-007, user-directed 2026-09-21, `EXPLICIT_APPROVAL`):** `POST /auth/change-password` refuses a `new_password` that is only whitespace (`422`, "Password must not consist only of spaces"); spaces inside or around real characters are kept exactly. **`NEEDS_CONFIRMATION`:** registration and reset-password still accept such a value, so the three entry points now differ.
 
 Design, API, frontend and security review: `docs/superpowers/specs/2026-09-21-enh-006-change-password-design.md` (§4, §6, §12).
 
