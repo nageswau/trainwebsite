@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { formatDate } from "@/components/SchoolChildOverview";
+import { formatDate } from "@/lib/formatDate";
 import SchoolIncomingTransferForm from "@/components/SchoolIncomingTransferForm";
 import { detailMessage, isPage, type Page } from "@/lib/apiErrors";
 import { STATUS_CLASS, STATUS_LABEL, type TransferRequest } from "@/lib/transfers";

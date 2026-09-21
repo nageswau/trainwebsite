@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
 
-import { formatDate } from "@/components/SchoolChildOverview";
+import { formatDate } from "@/lib/formatDate";
 import { detailMessage } from "@/lib/apiErrors";
 import type { SchoolRef } from "@/lib/transfers";
 

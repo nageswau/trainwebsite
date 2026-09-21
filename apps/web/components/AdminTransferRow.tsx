@@ -2,7 +2,7 @@
 
 import { KeyboardEvent, memo, useEffect, useRef, useState } from "react";
 
-import { formatDate } from "@/components/SchoolChildOverview";
+import { formatDate } from "@/lib/formatDate";
 import { detailMessage } from "@/lib/apiErrors";
 import { type AdminTransferRequest, STATUS_CLASS, STATUS_LABEL } from "@/lib/transfers";
 

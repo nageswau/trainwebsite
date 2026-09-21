@@ -1,4 +1,5 @@
 import { serverApi } from "@/lib/api";
+import { formatDate } from "@/lib/formatDate";
 
 // SCH-007: one child's complete picture for the Parent Portal, read from
 // GET /school/students/{id}/overview (own-child scope enforced server-side, SCH-001-AC03).
@@ -33,12 +34,7 @@ export function childrenSpanSchools(overviews: (ChildOverview | null)[]): boolea
   return new Set(overviews.map((o) => o?.student.school_name).filter(Boolean)).size > 1;
 }
 
-export function formatDate(value: string | null | undefined, withTime = false): string {
-  if (!value) return "-";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}) });
-}
+export { formatDate };
 
 const STATUS_LABEL: Record<string, string> = { completed: "Completed", assigned: "Assigned", not_started: "Not started" };
 
