@@ -94,6 +94,19 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
 - **Direction:** the provisioning gate has no self-service anywhere (`DEC-SCOPE-012`); invite tokens
   are single-use and institution-scoped, checked the same way an account-creation IDOR would be
   (`DATA_MODEL.md` §6.15).
+- **Threat (added 2026-09-21, `ENH-005`):** a coordinator pulling another school's student, or learning
+  which Student IDs exist at other schools — by filing requests for guessed codes and watching whether a
+  row appears in their own list, or by comparing responses for a real and an unknown code.
+- **Direction:** the move is only ever performed by an admin's approval; the incoming endpoint answers
+  every well-formed code identically; a not-yet-approved incoming row is redacted; filing is throttled
+  (30/hour/coordinator, counted from the audit rows so it holds across instances) and capped (50 open per
+  school); every attempt is audited with a reason token, never the code. **Residual, stated:** a determined
+  coordinator can still learn that a code exists, slowly, and is recorded doing so (`DEC-SCOPE-022`).
+- **Threat (added 2026-09-21, `ENH-005`):** markup in a student, school or parent name reaching a parent's
+  inbox through the notification email (HTML injection under EduSphere's own sender), or hidden
+  bidirectional characters in a transfer reason/note misleading an admin.
+- **Direction:** the parent notification email escapes everything it interpolates; free text rejects
+  control and bidirectional-override characters and is rendered as text only.
 - **Threat:** premature disclosure of an unverified academic result — a family or student sees a
   `Draft`/`Verified` mark before it's confirmed accurate.
 - **Direction:** the `Draft → Verified → Published` gate exists specifically to prevent this;

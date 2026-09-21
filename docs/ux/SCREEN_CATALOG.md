@@ -1915,6 +1915,10 @@ extended same day with `SCH-003` onboarding per `DEC-SCOPE-012`, then again with
 | `SCR-SCH-026` | `/school/principal/students/[id]` | Principal | `SCH-008` |
 | `SCR-SCH-027` | `/school/coordinator/promotion` | School Coordinator | `ENH-004` |
 | `SCR-SCH-028` | *(embedded in `SCR-SCH-022` and `SCR-SCH-025` — not a standalone route)* Grade history section | Parent, School Coordinator | `ENH-004` |
+| `SCR-SCH-029` | `/school/coordinator/transfers` | School Coordinator | `ENH-005` |
+| `SCR-SCH-030` | `/school/coordinator/notifications` | School Coordinator | `ENH-005` |
+| `SCR-SCH-031` | `/overseas/admin/school-transfers` | Overseas Admin, Super Admin | `ENH-005` |
+| `SCR-SCH-032` | *(embedded in `SCR-SCH-025` and `SCR-SCH-022` — not a standalone route)* Transfer request form and history | School Coordinator, Parent | `ENH-005` |
 
 ### `SCR-SCH-001`
 - **Route:** `/school/principal (Dashboard)`  
@@ -2419,6 +2423,78 @@ correction, not deleted, per this project's traceability convention.
 - **Responsive behavior:** Reuses the Journey Timeline's single-column rail (`SCR-SCH-024`), so no horizontal scroll at any width.
 - **Accessibility requirements:** The outcome is a text badge plus a sentence, never colour alone; loaded in parallel with the timeline.
 - **Acceptance evidence needed:** `SchoolGradeHistory.test.tsx` (passing); `enh-004-student-promotion.spec.ts` (browser: passing, 2026-09-20).
+
+### `SCR-SCH-029` *(added 2026-09-21, `ENH-005` / `DEC-SCOPE-022`)*
+- **Route:** `/school/coordinator/transfers`
+- **Role(s):** School Coordinator
+- **Purpose:** Ask an admin to move a student to or from this school: the requests this school has filed (either direction), with cancel for a pending one, and a form to ask for a student at another school by Student ID.
+- **Linked Feature ID(s):** `ENH-005`
+- **Entry points:** "Transfers" item in the Coordinator navigation; a coordinator files an outgoing request from the student's own page (SCR-SCH-032).
+- **Required data:** GET /school/transfer-requests (status filter, limit/offset), POST /school/transfer-requests/incoming, POST /school/transfer-requests/{id}/cancel.
+- **Key actions:** Filter by status (Pending review / All / Approved / Rejected / Cancelled); enter an 8-character Student ID and "Request student"; "Cancel request" on a pending row; "Load more".
+- **Empty state:** "No pending requests." / "No transfer requests yet." / "No <status> requests."
+- **Loading state:** Server-rendered first page. A filter change replaces the rows behind a skeleton; "Load more" appends and reads "Loading…"; buttons are disabled while a request is in flight (a ref guards a same-task double click).
+- **Error state:** API errors (403/409/422/429) and a dropped connection render an alert that takes focus and keep the entry. Filing by Student ID always answers the same neutral message whether or not the code exists, so the screen cannot be used to probe for students at other schools; the resulting row shows "Student details are shown once approved" and discloses no name.
+- **Permissions/resource scope:** Coordinator only, enforced twice: the page shows "School Coordinator role required" to any other role and the API returns 403. The filing school is server-derived from the caller's profile, never client-supplied; only the filing school sees a request.
+- **Responsive behavior:** Single column; rows wrap; no horizontal scroll at 320/768/1024/1440px (asserted in the e2e; passing).
+- **Accessibility requirements:** Real labels on every control; status messages in a polite live region; errors take focus; the row's actions are named with the student or code they act on; state is text, not colour alone.
+- **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** SchoolTransfersPanel.test.tsx, SchoolIncomingTransferForm.test.tsx (passing); enh-005-school-transfer.spec.ts (browser, isolated stack, 2026-09-21); test_enh_005_filing.py, test_enh_005_coordinator_reads.py.
+
+### `SCR-SCH-030` *(added 2026-09-21, `ENH-005` / `DEC-SCOPE-022`)*
+- **Route:** `/school/coordinator/notifications`
+- **Role(s):** School Coordinator
+- **Purpose:** Read the in-app notices the school receives, including whether a transfer request was approved or rejected (a coordinator had no screen for these until the second browser QA pass).
+- **Linked Feature ID(s):** `ENH-005`
+- **Entry points:** "Notifications" item in the Coordinator navigation.
+- **Required data:** GET /workflows/notifications, keyed on the signed-in user (never a client-supplied id); the same source the Parent's SCR-SCH-023 reads.
+- **Key actions:** Read only.
+- **Empty state:** "No notifications yet. You will be told here when a transfer request is decided, or a student joins your school."
+- **Loading state:** Server-rendered.
+- **Error state:** An "Access unavailable" card with the reason and a link back to login when the notices cannot be loaded.
+- **Permissions/resource scope:** The page shows "Access unavailable — School Coordinator role required" to any other role. The feed is the signed-in user's own notices only.
+- **Responsive behavior:** A list of notices in the same `.link-list` rows the transfers screen uses (not a table: AC-24, found by the final browser verification), so rows stack and nothing can widen the page; verified at 320/375/768/1024/1440px.
+- **Accessibility requirements:** A labelled list (`aria-label="Notifications"`); the unread state is the text badge "new", not colour alone; the message is rendered as plain text.
+- **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** SchoolNotificationList.test.tsx (passing); enh-005-school-transfer.spec.ts asserts both the requester's and the gaining school's notice (browser, 2026-09-21).
+
+### `SCR-SCH-031` *(added 2026-09-21, `ENH-005` / `DEC-SCOPE-022`)*
+- **Route:** `/overseas/admin/school-transfers`
+- **Role(s):** Overseas Admin, Super Admin
+- **Purpose:** Decide school transfer requests: review each pending request with a preview of what approval will move, then approve or reject it.
+- **Linked Feature ID(s):** `ENH-005`
+- **Entry points:** "School Transfers" item in the Overseas Admin navigation.
+- **Required data:** GET /overseas-admin/school-transfer-requests (status filter, limit/offset), POST .../{id}/approve, POST .../{id}/reject.
+- **Key actions:** Filter by status; "Approve transfer of <student> to <school>" then an explicit "Confirm approval" (or Cancel / Escape); "Reject" with an optional reason.
+- **Empty state:** "No pending transfer requests." / "No transfer requests yet." / "No <status> requests."
+- **Loading state:** "Loading transfer requests…"; the confirm step disables its buttons while the approval runs.
+- **Error state:** API errors (including 409 "Another change to this student is in progress; retry") and a dropped connection render an alert that takes focus; nothing is changed on failure (approval is one transaction).
+- **Permissions/resource scope:** Overseas Admin and Super Admin only. A School Coordinator, of either school, gets 403 from the API and "role required" from the page; neither school can approve a transfer alone.
+- **Responsive behavior:** The two confirm buttons sit side by side, not as stretched bars. No page-level horizontal scroll at 320/768/1024/1440px (asserted in the e2e). This is its own route rather than the portal's generic section (browser QA N3): the queue follows the title directly, with no read-only table above it.
+- **Accessibility requirements:** Keyboard only: Enter on Approve moves focus to Confirm, Escape returns focus to Approve (asserted in the e2e); every action is named with the student and destination; outcomes are text.
+- **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** AdminSchoolTransferPanel.test.tsx, AdminTransferRow.test.tsx (passing); enh-005-school-transfer.spec.ts (browser, 2026-09-21, keyboard approval); test_enh_005_admin_reads.py, test_enh_005_approve.py, test_enh_005_concurrency.py.
+
+### `SCR-SCH-032` *(added 2026-09-21, `ENH-005` / `DEC-SCOPE-022`)*
+- **Route:** Embedded section, not a standalone route — the request form and history appear on SCR-SCH-025 (/school/coordinator/students/[id]); the history (read-only) also appears on SCR-SCH-022 (/school/parent/children/[id]).
+- **Role(s):** School Coordinator, Parent
+- **Purpose:** The Coordinator asks for one of their students to move to another partner school (a disclosure on the student's page); the Coordinator and the Parent read that student's transfer history ("Moved from X to Y").
+- **Linked Feature ID(s):** `ENH-005`
+- **Entry points:** "Request a transfer" disclosure on the student's page (Coordinator only), collapsed, directly under the student header (moved up from the end of the page after browser QA N4).
+- **Required data:** Props read on the server with the rest of the page: the destination schools and any pending request; GET /school/students/{id}/transfer-history; POST /school/students/{id}/transfer-requests.
+- **Key actions:** Choose a destination school, optional reason (500 characters), "Request transfer". Reversible, so there is no confirm step; the request can be cancelled from SCR-SCH-029.
+- **Empty state:** "No other partner schools are available." / "Transfers are unavailable right now." / no history section content when the student never moved.
+- **Loading state:** None needed (server-rendered props); the button reads "Sending request…" and the form is read-only while submitting.
+- **Error state:** A field error for a missing school; 401/403/409/422/429 and a dropped connection render an alert that takes focus and keep the entry.
+- **Permissions/resource scope:** Filing: the student's own school's Coordinator only; an unknown or foreign student answers the same 403. History: the Coordinator of the student's current school and a Parent linked to the child.
+- **Responsive behavior:** The destination <select> is width:100% inside a min-width:0 field, so one very long school name cannot widen the page (a jsdom-only fix first missed this; the Playwright spec now creates a 200-character school name and asserts no horizontal overflow with the form open).
+- **Accessibility requirements:** Real labels; the select's error is tied by aria-describedby; a polite live region (`role="status"`) is rendered with the form, empty, so it exists before the result and the confirmation or pending text appears in that same element; history is text.
+- **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** SchoolTransferRequestForm.test.tsx, SchoolTransferHistory.test.tsx (passing); enh-005-school-transfer.spec.ts (browser, 2026-09-21); test_enh_005_filing.py.
 
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  

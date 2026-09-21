@@ -266,6 +266,17 @@ counts or `null`, never a fabricated cap) added to this section's grant/deny rul
 `test_sch_009_test_prep_language.py`, `test_sch_010_overseas_bridge.py`, and
 `test_sch_011_entitlements.py`.
 
+**Addendum, 2026-09-21 (`ENH-005` / `DEC-SCOPE-022`) — student school transfer.**
+
+| Action | Granted | Denied |
+|---|---|---|
+| File a transfer request (outgoing: for own school's student; incoming: by Student ID) | `school_coordinator`, from their own server-owned `profile.school_id` | every other role (`403`); an unknown or another school's student gives the identical `403` |
+| List / cancel requests | the `school_coordinator` of the school that **filed** them | every other school, including the destination school of a request it did not file (`DEC-SCOPE-022` D5) |
+| Approve / reject / view the admin queue and a student's full transfer history | `overseas_admin`, `super_admin` | `school_coordinator` (either school), `school_principal`, `school_teacher`, `school_parent`, the three service-delivery roles, `counselor`: `403` |
+| Read a student's approved transfer history | the same own-scope rule as the student (own institution; assigned-only Teacher; linked-only Parent); no reason, no staff IDs | any role outside that scope |
+
+Filers (`school_coordinator`) and approvers (`overseas_admin`, `super_admin`) are disjoint roles, so no user can both file and approve. **Parent scope change:** a `school_parent`'s read scope is their `SchoolParentLink`s alone, not the school on their account (a transferred child lives at another school than the parent's account); an unlinked student is still `403` with today's two messages. That makes "a `SchoolParentLink` only joins a parent and a student of the same school (until a transfer)" the invariant that keeps a parent out of other students, so `link_parent`, `_link_or_invite_parent` and `accept_invite` must keep enforcing it (pinned by `test_enh_005_scope.py`). **Consequence for account authority:** a parent moved to the gaining school appears in that school's coordinator's team list and can be activated/deactivated by them (`update_team_account`), and leaves the losing coordinator's. Covered by the `test_enh_005_*.py` files.
+
 ---
 
 ## 3. Support / admin audit controls

@@ -646,13 +646,19 @@ async def _scoped_students_query(db: AsyncSession, user: User, school_id: UUID):
     Teacher, own institution + own child(ren) only for Parent. Never a client-supplied
     filter, and a narrower-than-institution scope is a distinct check from the
     institution check itself, not implied by it (same class as `DEC-SCOPE-013`'s
-    portfolio-vs-institution distinction for the School service-delivery roles)."""
+    portfolio-vs-institution distinction for the School service-delivery roles).
+
+    ENH-005: a Parent's scope is their LINKS alone, not their account's school, because after a transfer a
+    parent's child lives at another school than the parent's account. That makes "a `SchoolParentLink` only ever
+    joins a parent and a student of the same school" (until a transfer) the invariant that keeps a parent out of
+    other students -- so every place that creates a link (`link_parent`, `_link_or_invite_parent`,
+    `accept_invite`) must keep enforcing it (security review S2, pinned by tests/test_enh_005_scope.py)."""
+    if user.role == "school_parent":
+        linked = select(SchoolParentLink.school_student_id).where(SchoolParentLink.parent_user_id == user.id)
+        return select(SchoolStudent).where(SchoolStudent.id.in_(linked))
     stmt = select(SchoolStudent).where(SchoolStudent.school_id == school_id)
     if user.role == "school_teacher":
         stmt = stmt.where(SchoolStudent.assigned_teacher_user_id == user.id)
-    elif user.role == "school_parent":
-        linked = select(SchoolParentLink.school_student_id).where(SchoolParentLink.parent_user_id == user.id)
-        stmt = stmt.where(SchoolStudent.id.in_(linked))
     return stmt
 
 
@@ -864,19 +870,22 @@ async def active_academic_year(user: User = Depends(get_current_user), db: Async
 async def _load_readable_student(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
     """One student, checked against the acting School role's own scope (SCH-001-AC02/AC03):
     own institution for every role, plus assigned-only for Teacher and own-child-only for
-    Parent -- the same rule as the list, applied to a direct record ID."""
+    Parent -- the same rule as the list, applied to a direct record ID. ENH-005: a Parent is
+    scoped by their link alone (see `_scoped_students_query`); an unlinked student keeps today's
+    two messages, so no status code or text a client sees changes."""
     school_id = _own_school_id(user)
     student = await db.get(SchoolStudent, student_id)
     if not student:
         raise HTTPException(404, "Student not found")
+    if user.role == "school_parent":
+        linked = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == user.id, SchoolParentLink.school_student_id == student.id))
+        if not linked:
+            raise HTTPException(403, "This student is at a different institution" if student.school_id != school_id else "This student is not linked to your account")
+        return student
     if student.school_id != school_id:
         raise HTTPException(403, "This student is at a different institution")
     if user.role == "school_teacher" and student.assigned_teacher_user_id != user.id:
         raise HTTPException(403, "This student is not assigned to you")
-    if user.role == "school_parent":
-        linked = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == user.id, SchoolParentLink.school_student_id == student.id))
-        if not linked:
-            raise HTTPException(403, "This student is not linked to your account")
     return student
 
 
@@ -1232,8 +1241,10 @@ async def promote_students(payload: StudentPromotionRequest, user: User = Depend
     # `set_config(..., true)` is SET LOCAL with a bound parameter, so no SQL is built from a string.
     await db.execute(text("SELECT set_config('lock_timeout', :timeout, true)"), {"timeout": PROMOTION_LOCK_TIMEOUT})
     # The school filter is part of the locking query itself, so another school's rows are never locked (or even
-    # read) by this request. `school_id` never changes after creation (DATA_MODEL.md §6.11), so there is no
-    # check/use gap. An unknown ID and another school's ID are the same absence here, which is what makes them
+    # read) by this request. ENH-005: a student's `school_id` CAN change now (a transfer), but only under this same
+    # row lock, so there is still no check/use gap: a transfer that commits first makes the student no longer match
+    # this filter, the count check below fails, and the whole request is refused with the generic 403 having written
+    # nothing. An unknown ID and another school's ID are the same absence here, which is what makes them
     # indistinguishable to the caller.
     try:
         locked = (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(student_ids), SchoolStudent.school_id == school_id).order_by(SchoolStudent.id).with_for_update())).all()
@@ -1979,7 +1990,8 @@ async def list_academic_team_results(user: User = Depends(get_current_user), db:
     if not portfolio:
         return []
     student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
-    rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids)).order_by(SchoolAcademicResult.created_at.desc()))).all()
+    # ENH-005: results withdrawn by a student transfer are kept but never listed.
+    rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids), SchoolAcademicResult.status != "withdrawn").order_by(SchoolAcademicResult.created_at.desc()))).all()
     return [_result_out(r) for r in rows]
 
 
@@ -1998,7 +2010,7 @@ async def academic_team_progress(user: User = Depends(get_current_user), db: Asy
         await db.execute(select(SchoolStudent, School).join(School, School.id == SchoolStudent.school_id).where(SchoolStudent.school_id.in_(portfolio)).order_by(SchoolStudent.full_name.asc()))
     ).all()
     student_ids = [s.id for s, _sc in rows]
-    result_rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids)))).all()
+    result_rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids), SchoolAcademicResult.status != "withdrawn"))).all()
     by_student: dict = {}
     for r in result_rows:
         by_student.setdefault(r.school_student_id, []).append(r)
