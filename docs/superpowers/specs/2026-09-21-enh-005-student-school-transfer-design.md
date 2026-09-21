@@ -3,7 +3,8 @@
 **Status:** Design approved by the user in-session, 2026-09-21 (`EXPLICIT_APPROVAL`): four policy
 decisions in §3 plus the section-by-section design with "yes". The same day, an
 `api-and-interface-design` review of the backend was applied (§5.5) and three further decisions
-(D5–D7) were confirmed; a `frontend-ui-engineering` review of the UI was applied (§7.1). Written spec
+(D5–D7) were confirmed; a `frontend-ui-engineering` review of the UI was applied (§7.1); a
+`security-and-hardening` review was applied (§6.1) with two further decisions (D8, D9). Written spec
 awaiting the user's review. Implementation not started.
 
 **Traceability:** user instruction ("changing of schools etc.", recorded in
@@ -67,6 +68,8 @@ between schools. Three facts make a naive "update `school_id`" unsafe:
 | D5 | Who sees a pending request | **Only the filing school.** A coordinator lists only requests their own school filed. The other school learns of it when the admin decides (approval notice). |
 | D6 | Pagination of the two growing lists (admin queue, coordinator list) | **`limit`/`offset` with `{items, total, limit, offset}`**, default 25, max 100. A deliberate deviation from the contract's cursor convention (§0.1), which no endpoint implements; recorded in `API_CONTRACT.md`. |
 | D7 | Open-request cap | **50 open (`pending`) requests per filing school**; the 51st is `409`. |
+| D8 | Filing throttle (security review S3) | **30 filing attempts per coordinator per rolling hour**, valid or not, counted from the `AuditLog` rows the filing endpoints already write (so it holds across several server instances); the 31st is `429` with `Retry-After`. New endpoints only. |
+| D9 | Email HTML escaping (security review S1) | **Escape the interpolated values in `mailer._parent_notification_html`** (`title`, `recipient_name`, `body`, `school_name`, and the URL with `quote=True`), as its own commit with its own test. |
 
 Assumptions made by the design and confirmed with the user's approval of it:
 
@@ -164,7 +167,7 @@ ordered `created_at DESC, id DESC` (decision D6).
   only. Not paginated: bounded by the number of partner schools (a `<select>` source, like
   `GET /overseas-admin/academic-years`); marked explicitly as contract §0.1 requires.
 - `POST /school/students/{student_id}/transfer-requests` (**outgoing**), body `{to_school_id, reason?}`,
-  `201 TransferRequestOut`. Check order: role (`403`) → body (`422`) → the student must exist **and** be
+  `201 TransferRequestOut`. Check order: role (`403`) → body (`422`) → filing throttle (`429`, D8) → the student must exist **and** be
   at the caller's school, otherwise one identical `403` "This student is not at your institution" for
   an unknown ID and another school's ID alike (ENH-004's "same absence" rule, contract §0.3) →
   `to_school_id` exists and differs from the caller's school (`422`) → open-request cap (`409`) → a
@@ -172,13 +175,16 @@ ordered `created_at DESC, id DESC` (decision D6).
   index).
 - `POST /school/transfer-requests/incoming` (**incoming**), body `{student_code, reason?}`. The code is
   stripped, uppercased and must be 8 hex characters (`422` otherwise: a format error says nothing about
-  existence). Then the cap check (`409`, evaluated **before** the lookup so the response never depends on
-  the code), then the lookup. **Always `202 {"accepted": true}`** — the same reply shape as
+  existence). Then the filing throttle (`429`, D8) and the cap check (`409`), both evaluated **before**
+  the lookup so the response never depends on the code, then the lookup. **Always `202 {"accepted": true}`** — the same reply shape as
   `POST /auth/forgot-password` (`auth.py:175`) — for every well-formed code. A row is created only when
   the code resolves to a student at a *different* school with no pending request; unknown code, own
   school and duplicate create nothing and return the identical body (a duplicate lost to a race
-  (`IntegrityError`) is rolled back and answered the same way). Unknown-code and own-school attempts
-  write an `AuditLog` row with `outcome="denied"` (metadata: reason token only, no student data).
+  (`IntegrityError`) is rolled back and answered the same way). **Every attempt that passes validation
+  writes exactly one `AuditLog` row** (`school.transfer_request_filed`, or `school.transfer_request_denied`
+  with `outcome="denied"` for unknown code, own school, duplicate, and a foreign or unknown student on the
+  outgoing route), whose metadata holds a reason token, the school ID and the request ID only — never
+  the attempted code, the reason text, or a student name. These rows are what the throttle counts.
 - `GET /school/transfer-requests?status=pending&limit=&offset=` → list envelope of `TransferRequestOut`,
   the caller's own school's filed requests. `status` is the same `Literal` as the admin list (`pending`
   default, `approved`, `rejected`, `cancelled`, `all`; anything else `422`). It is an additive filter the
@@ -226,6 +232,7 @@ like the neighbouring admin routes, not the assignment-based `require_role`.
 | `403` | cancel of an unknown or not-yours request | "Not permitted for this transfer request" |
 | `409` | second pending request for a student | "A transfer request is already pending for this student" |
 | `409` | school has 50 open requests | "Too many open transfer requests; wait for a decision or cancel one" |
+| `429` | more than 30 filing attempts in the last hour by this coordinator (`Retry-After` set) | "Too many transfer requests; try again in N seconds" |
 | `409` | approve/reject/cancel of a decided request | "This transfer request has already been decided" |
 | `409` | approve when the student has since moved | "The student is no longer at the school this request was filed for; reject it and file a new one" |
 | `409` | lock wait exceeded | "Another change to this student is in progress; retry" |
@@ -254,7 +261,12 @@ transaction deadlock-free: request → student → parent users (by id) → in-f
    `parent.profile = {**profile, "school_id": str(to_school_id)}` (whole-dict reassignment so the JSON
    change is detected); count as `parents_moved`, else `parents_kept`. Links themselves are never
    deleted. The count runs after the parent lock, so two sibling transfers sharing a parent serialize
-   and both evaluate correctly.
+   and both evaluate correctly. **The only field ever written on a parent is `profile.school_id`, and
+   only on an account whose `role` is `school_parent`**; `role`, `division`, `UserRoleAssignment`,
+   `active`, `email` and `password_hash` are never touched (security review S5). Each moved parent gets
+   **its own `AuditLog` row** in the same transaction (`school.user_school_scope_changed`, entity `user`,
+   metadata from/to school and the transfer request ID), because `school_id` is an authorization scope
+   key (`SERVER_OWNED_PROFILE_KEYS`) and every change to one must be attributable (S4).
 4. **In-flight results (D3).** Select the student's results with `status IN ('draft','verified')`
    `FOR UPDATE` ordered by id; set each to `withdrawn` and add a `SchoolResultStatusHistory` row. A
    result that a concurrent `verify` published a moment earlier is no longer `draft`/`verified` once
@@ -367,6 +379,92 @@ was incoming; see §6). No student or dependent row is touched. **Cancel:** the 
 - `reason`, `decision_note`: length-capped in the schema, stored as text, rendered as text (no HTML).
 - Same class of risk as `RBAC_MATRIX.md` §2.12 (cross-tenant isolation): a dedicated security-review
   pass is a plan task before the branch is called complete.
+
+### 6.1 Security review (`security-and-hardening`, 2026-09-21)
+
+Scope: ENH-005 only. Anything found outside it is listed as *reported, not changed*.
+
+**Threat model.** *Trust boundaries:* coordinator browser → API (file, cancel, list, history); admin
+browser → API (approve, reject); API → SMTP and the email webhook (notification text); API → PostgreSQL.
+*Assets:* minors' records and results; cross-school isolation; the authorization scope key
+`profile.school_id`; the admin approval authority. *Abuse cases (each is a test in §11):* a coordinator
+pulls a student without approval; a coordinator probes student codes; a coordinator floods the queue; a
+user changes their own school scope; a moved parent gains other students; markup in a student, school
+or parent name reaches an admin screen or a parent's inbox; a cross-site page triggers an approval; an
+approval runs on stale data; an authorization change goes unrecorded; personal data reaches a log.
+
+**Findings and resolutions**
+
+| ID | Severity | Finding | Resolution |
+|---|---|---|---|
+| S1 | High | **HTML injection in parent emails (pre-existing, newly exposed).** `mailer._parent_notification_html` (`mailer.py:126`) interpolates `title`, `recipient_name`, `body` and (via callers) school and student names into an HTML email with no escaping. Those values are coordinator-, admin- or invite-controlled (`create_student` only strips `full_name`). ENH-005's approval notice routes a student name and a school name through it, and the mail comes from EduSphere's own sender, so it is a phishing vector against parents. | **D9:** escape the values in that function (`html.escape`; the URL with `quote=True`). Behaviour-preserving for ordinary text, its own commit and test. It also closes the hole for the existing SCH-007 callers. Notification `action_url` is always a server-built relative path from a UUID and constants, never user text (test). |
+| S2 | High | **The parent read filter no longer double-checks the school.** §8 makes a parent's scope link-only, so "every `SchoolParentLink` joins a parent and a student at the same school" stops being defence in depth and becomes the only thing keeping a parent out of another school's students. | The three link creators were read and all enforce it today: `link_parent` (`schools.py:1196`, parent's and student's school both checked against the coordinator's), `_link_or_invite_parent` via `_parent_email_conflict` (`:600-631`), and `accept_invite` (`:245-249`, students filtered to the invite's own school); `seed.py` is demo data. **Tests pin each one** (a cross-school link is refused). A **read-only pre-release data check** counts existing links whose parent's `profile.school_id` differs from the student's `school_id`; it must return 0 before the migration ships. A comment on `_scoped_students_query` states the invariant for future link creators. |
+| S3 | Medium | **Code-probing oracle.** The identical `202` hides the response, but a filer can see whether a row appeared in their own list, so student codes (32 bits) can be tested. The app has no rate limiting at all. | **D8:** 30 filing attempts per coordinator per rolling hour, counted from the audit rows; `429` + `Retry-After` + a warning log (the ENH-003 resend-throttle shape). Combined with the 50-open cap (D7) and auditing of every attempt, enumeration costs about 480 probes a day per coordinator against a 1-in-10⁵ hit rate. **Residual, stated honestly:** a determined coordinator can still learn that a code exists, slowly, and is recorded doing so. The DB-based count works across instances (an in-process limiter would not). |
+| S4 | Medium | **An authorization-scope change would go unrecorded.** Approval rewrites another user's `profile.school_id`, a key `PATCH /auth/me` treats as server-owned and audits when refused. | One `AuditLog` row per moved parent, in the same transaction (§5.4 step 3). |
+| S5 | Medium | **Approval must not be a general write path to accounts.** | It writes `profile.school_id` on `school_parent` accounts only; a test proves `role`, `division`, role assignments, `active`, `email` and `password_hash` of every linked user are unchanged, and that a link whose user is not a `school_parent` is left alone. |
+| S6 | Medium (consequence, not a defect) | **A moved parent comes under the gaining coordinator's account authority.** `list_team` shows the account (name, email) and `update_team_account` lets that coordinator activate or deactivate it (`schools.py:160-203`); the losing coordinator loses both. This follows directly from decision D1 ("the account moves"). | Accepted and recorded in `DEC-SCOPE-021`; the actions are already audited (`school.team_account_update`). A parent kept at the losing school (another child there) is not affected. |
+| S7 | Low | **Bidirectional-control characters in free text** (`reason`, `note`) could visually reorder text shown to a privileged reviewer. | The validators reject `Cc` (as ENH-004 does) **and** U+202A–U+202E and U+2066–U+2069. Zero-width joiners (U+200C/U+200D) stay allowed: Indic-script text needs them. |
+| S8 | Low | **Sensitive data in logs and audit rows.** `JsonFormatter` redacts only a fixed key list, so a careless `extra_fields` value would be logged verbatim. | Logs and audit metadata carry IDs, counts and reason tokens only; never `student_code`, `reason`, `note` or a name. A `caplog` test (the ENH-003 pattern) asserts it across every ENH-005 route. `student_code` travels in a POST body, never a path or query string, so it cannot reach the request-path access log. Audit metadata also carries the `request_id` so a row correlates with its log lines. |
+| S9 | Info | **CSRF.** Sessions are `httponly`, `SameSite=Lax` cookies; CORS allows only `frontend_url`. | Every ENH-005 mutation is a `POST`; **none is a `GET`**, so Lax (which sends cookies on top-level cross-site *GET* navigations only) protects them. A test enumerates the new routes and asserts the method. The two filing endpoints and reject take typed JSON bodies. No CSRF token is added: none exists app-wide, and one endpoint family cannot be secured that way. |
+
+**Checked and unchanged (no ENH-005 action needed)**
+
+- **Authentication:** every new route depends on `get_current_user` (cookie JWT, `type == "access"`, active
+  user re-read from the database). No new login, token or refresh flow, no public endpoint. The JWT's
+  `role`/`division` claims are not used for authorization, so the parent re-scoping in §5.4 takes effect
+  on the next request with no re-issue and no stale-token window.
+- **Authorization and IDOR:** see the matrix below.
+- **Role escalation:** filers (`school_coordinator`) and approvers (`overseas_admin`, `super_admin`) are
+  disjoint roles, so no user can file and approve; `filed_by_school_id` comes from the server-owned
+  `profile.school_id`, whose only user-facing write path (`PATCH /auth/me`) is already refused
+  (ENH-004); approval never touches `role`/`division`/assignments (S5).
+- **Input validation:** typed models, `extra="forbid"`, `student_code` stripped, upper-cased and matched
+  against an explicit ASCII `[0-9A-F]{8}` (so Unicode digits and look-alikes fail), typed UUIDs, `Literal`
+  filters, bounded `limit`/`offset`, capped free text.
+- **XSS:** React escapes everything rendered; the web app contains no `dangerouslySetInnerHTML` or
+  `innerHTML`; `reason`, `note`, names and school names are rendered as text only. The one HTML surface
+  is the email (S1).
+- **SQL injection:** all access is through SQLAlchemy with bound parameters; the lock timeout is
+  `set_config(..., :timeout, true)` with a bound value; the partial-index predicate and CHECKs are
+  constants in DDL; `status` is a `Literal`, never interpolated. No `text()` with string building is
+  introduced (a review-checklist item for the plan).
+- **Secrets:** no new setting, key or token; no response carries one; the `development_*_token`
+  exposure pattern is not used.
+- **Errors:** no stack trace or internal detail reaches a client; the `409` texts are the fixed strings in
+  §5.3a.
+
+**Authorization / IDOR matrix (every object reference, and where it is checked)**
+
+| Route | Object reference | Check | On failure |
+|---|---|---|---|
+| `POST /school/students/{id}/transfer-requests` | `student_id` | exists and `school_id ==` caller's profile school, in the query | identical `403` (audited) |
+| same | `to_school_id` | exists and differs from the caller's school | `422` |
+| `POST /school/transfer-requests/incoming` | `student_code` | resolved server-side; never returned | identical `202` |
+| `GET /school/transfer-requests` | none (list) | `WHERE filed_by_school_id = caller's school` in the query, not filtered afterwards | empty page |
+| `POST /school/transfer-requests/{id}/cancel` | `request_id` | `filed_by_school_id ==` caller's school, request locked | identical `403` (audited) |
+| `GET /school/students/{id}/transfer-history` | `student_id` | `_load_readable_student` (institution; assigned-only Teacher; linked-only Parent) | `403` |
+| `GET /school/transfer-destinations` | none | coordinator role; returns `id` + `name` only (new disclosure to a coordinator of the partner-school list, accepted in the approved design) | `403` |
+| `/overseas-admin/...` (list, approve, reject, history) | `request_id`, `student_id` | role in `{overseas_admin, super_admin}`; approve re-checks the student's current school under lock | `403` / `404` / `409` |
+
+**Audit requirements** (`SECURITY_CONTROLS.md` §10, fail-closed School-domain rule): filing, cancel,
+reject and approve each write their `AuditLog` row **in the same transaction as the change**, so a failed
+audit write aborts it; per-moved-parent scope-change rows (S4); a refused probe writes its `denied` row
+and commits before the `403` is raised (the ENH-004 pattern); actor, outcome and timestamp are always
+present; the throttle's `429` is logged, not audited (no feedback loop). Approve, reject and cancel also
+leave the request row itself (`decided_by_user_id`, `decided_at`) as a second record.
+
+**Privacy.** A request's `reason` is free text about a minor: optional, capped, shown only to the
+filing coordinator and admins, never to the other school, a parent, or a log. Requests are kept with the
+student record; no student-deletion path exists today, and when one does it must include
+`school_student_transfer_requests` (recorded for `DATA_MODEL.md`). The only personal data sent outside
+the platform is what SCH-007 already sends parents (their child's name in a notice); coordinator notices
+are in-app only.
+
+**Reported, not changed (outside ENH-005):** the API has no rate limiting on login or anywhere else; no
+CSRF token exists (SameSite=Lax only, which does not cover a hostile sibling subdomain); `secret_key`
+defaults to `"change-me"` and `cookie_secure` to `False` (production configuration must override both);
+admin routes gate on the `users.role` column rather than active role assignments;
+`PATCH /admin/users/{id}` can write `profile` (an admin power).
 
 ## 7. Frontend
 
@@ -546,6 +644,10 @@ renders a horizontally scrolling table; `SUPER_ADMIN_NAV` has no entry for the s
    opt-in `showTransfer` prop (default off), and the parent dashboard child card shows a school line only
    for a parent whose children span more than one school. No other existing component is modified.
 
+5. **Mailer escaping (D9, security review S1):** `_parent_notification_html` in `mailer.py` escapes the
+   values it interpolates. Output changes only for text containing `<`, `>`, `&` or quotes, which a mail
+   client renders as the same characters. Its own commit and test.
+
 Nothing else changes: existing endpoint shapes, `student_code`, the promotion flow, the results
 workflow's actor-separation (DEC-ROLE-007), `SchoolStaffAssignment` (portfolio follows `school_id`
 automatically), `admin.py` bridge endpoints (global, not school-scoped), attendance and activities.
@@ -634,6 +736,31 @@ automatically), `admin.py` bridge endpoints (global, not school-scoped), attenda
   exactly as before; the parent dashboard shows a school line for a child only when the parent's
   children span more than one school; the transfer-history card is absent when a student has no transfer
   and shows an "unavailable" line (not nothing) when its load fails.
+- **AC-26** The 31st filing attempt by one coordinator within a rolling hour is `429` with `Retry-After`
+  and a warning log, for outgoing and incoming alike, valid or not; attempts that fail validation (`422`)
+  do not count; another coordinator is unaffected; the count is read from `AuditLog`, so it holds across
+  processes; after the window it lapses.
+- **AC-27** Audit completeness: every filing attempt that passes validation writes exactly one row;
+  cancel, reject and approve each write one in the same transaction as the change (an injected audit
+  failure aborts the change); each moved parent gets its own `school.user_school_scope_changed` row; a
+  refused probe's `denied` row is committed before the `403`; no audit metadata contains a student code,
+  reason, note or name.
+- **AC-28** Approval writes only `profile.school_id`, and only on `school_parent` accounts: `role`,
+  `division`, role assignments, `active`, `email` and `password_hash` of every linked user are unchanged,
+  and a linked non-parent user is untouched.
+- **AC-29** Same-school link invariant (S2): `link_parent`, `_link_or_invite_parent` and `accept_invite`
+  each refuse (or skip) a parent/student pair from different schools; a parent still cannot read a
+  student they are not linked to. A read-only pre-release query over existing data finds 0 links whose
+  parent's school differs from the student's.
+- **AC-30** Email safety (S1): with `<script>` / `"><img …>` / `&` in a student name, a school name and a
+  parent name, the HTML part of `send_parent_notification_email` contains the escaped text and no live
+  tag; notification `action_url`s for ENH-005 match `^/school/[a-z-]+(/[a-z-]+)*(/[0-9a-f-]{36})?$`.
+- **AC-31** Logging hygiene (S8): a `caplog` test across every ENH-005 route asserts no log record
+  contains a student code, reason, note, student or parent name, or email; the `429` and lock-timeout
+  warnings carry IDs and counts only.
+- **AC-32** Input hardening (S7, S9): a `student_code` of Unicode digits or look-alikes is `422`; a
+  `reason`/`note` with U+202E or U+2066 is `422` while one with U+200D is accepted; every ENH-005
+  mutation route is registered as `POST` and no ENH-005 route is a state-changing `GET`.
 
 ## 11. Regression risks and test plan (written before code)
 
@@ -647,6 +774,7 @@ automatically), `admin.py` bridge endpoints (global, not school-scoped), attenda
 | Dashboard/report/entitlement counts | `_school_dashboard_payload`, `school_reports`, `school_entitlements` | test: counts of both schools change by exactly one student; entitlement usage is activity-based and unchanged |
 | Bridged Overseas applications | `admin.py` bridge endpoints | test: an existing bridged application still lists and notifies |
 | Migration | `0034` | migration applies on a copy of the seeded DB; existing rows untouched; downgrade drops only the new table; the partial unique index and CHECKs exist in both the model and the migration |
+| Security (S1–S9): mailer injection, link invariant, probing throttle, scope-change audit, approval write set, log hygiene, POST-only | `mailer.py`, `school_transfers.py`, link creators in `schools.py` | AC-26 – AC-32, plus a read-only pre-release data query (parent/student school mismatch count = 0) run by the user against the Docker database |
 | New-endpoint contract (validation, masking, redaction, pagination, cap, privacy) | `school_transfers.py` | AC-02, AC-04, AC-05, AC-06, AC-20 – AC-23: table-driven tests over the §5.3a error catalogue, the redacted/complete response schema, and a query-count test for the admin preview |
 | Existing E2E specs | `sch-001`, `sch-003`, `sch-007`, `sch-008`, `enh-004` | rerun the affected specs (Docker stack brought up by the user) |
 
@@ -665,7 +793,11 @@ task.
 - `docs/architecture/API_CONTRACT.md` §12A: the ten endpoints (six coordinator, four admin), the error
   catalogue (§5.3a), the redaction rule, and a note that these two lists use `limit`/`offset` rather than
   §0.1's cursor (D6).
-- `docs/architecture/RBAC_MATRIX.md` §2.12: the transfer rows and the parent link-based scope note.
+- `docs/architecture/RBAC_MATRIX.md` §2.12: the transfer rows and the parent link-based scope note,
+  including the same-school-link invariant (S2) and the moved-parent account authority (S6).
+- `docs/architecture/SECURITY_CONTROLS.md` §6A (cross-institution isolation now includes transfer) and
+  §10 (School-domain fail-closed audit rows for transfer, scope-change rows), and a School-domain entry in
+  `THREAT_MODEL.md` for the code-probing and email-injection abuse cases.
 - `docs/delivery/ENHANCEMENT_BACKLOG.md`: ENH-005 status line.
 - The ENH-004 spec/plan note about the immutability claim.
 - An implementation plan at `docs/superpowers/plans/2026-09-21-enh-005-student-school-transfer.md`.
