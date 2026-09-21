@@ -6,14 +6,12 @@ import { useEffect, useRef, useState } from "react";
 import { formatDate } from "@/lib/formatDate";
 import SchoolIncomingTransferForm from "@/components/SchoolIncomingTransferForm";
 import { detailMessage, isPage, isRequestBody, type Page } from "@/lib/apiErrors";
-import { STATUS_CLASS, STATUS_LABEL, type TransferRequest } from "@/lib/transfers";
+import { STATUS_CLASS, STATUS_LABEL, TRANSFER_FILTERS, type TransferFilter, type TransferRequest } from "@/lib/transfers";
 
 // ENH-005 -- the coordinator's own filed requests (spec §5.2, §7.1). The first page (pending) is read on the server, so first paint has
 // no spinner. A filter change replaces the rows behind a skeleton (the old rows would answer a different question); "Load more" appends
 // and keeps what is on screen. A not-yet-approved incoming row shows the Student ID only -- the server has already nulled the rest.
 const LIMIT = 25;
-const FILTERS = [["pending", "Pending review"], ["all", "All"], ["approved", "Approved"], ["rejected", "Rejected"], ["cancelled", "Cancelled"]] as const;
-type Filter = (typeof FILTERS)[number][0];
 type Alert = { text: string; expired?: boolean; retry?: boolean };
 
 function rowTitle(r: TransferRequest) {
@@ -21,7 +19,7 @@ function rowTitle(r: TransferRequest) {
 }
 
 export default function SchoolTransfersPanel({ initial }: { initial: Page<TransferRequest> }) {
-  const [status, setStatus] = useState<Filter>("pending");
+  const [status, setStatus] = useState<TransferFilter>("pending");
   const [items, setItems] = useState(initial.items);
   const [total, setTotal] = useState(initial.total);
   const [loading, setLoading] = useState<"filter" | "more" | null>(null);
@@ -39,7 +37,7 @@ export default function SchoolTransfersPanel({ initial }: { initial: Page<Transf
   useEffect(() => () => controller.current?.abort(), []);
 
   // mode "filter": replace behind a skeleton. "more": append. "refresh": replace in place (after a new request was filed).
-  async function load(next: Filter, offset: number, mode: "filter" | "more" | "refresh") {
+  async function load(next: TransferFilter, offset: number, mode: "filter" | "more" | "refresh") {
     controller.current?.abort();
     const abort = (controller.current = new AbortController());
     setAlert(null);
@@ -58,7 +56,7 @@ export default function SchoolTransfersPanel({ initial }: { initial: Page<Transf
     }
   }
 
-  function changeStatus(next: Filter) {
+  function changeStatus(next: TransferFilter) {
     setStatus(next);
     setMessage(null);
     void load(next, 0, "filter");
@@ -100,8 +98,8 @@ export default function SchoolTransfersPanel({ initial }: { initial: Page<Transf
         <div className="table-controls">
           <div>
             <label htmlFor="transfer-status">Status</label>
-            <select id="transfer-status" className="select" value={status} disabled={loading !== null} onChange={(e) => changeStatus(e.target.value as Filter)}>
-              {FILTERS.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
+            <select id="transfer-status" className="select" value={status} disabled={loading !== null} onChange={(e) => changeStatus(e.target.value as TransferFilter)}>
+              {TRANSFER_FILTERS.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
             </select>
           </div>
         </div>

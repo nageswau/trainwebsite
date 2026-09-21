@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyboardEvent, memo, useEffect, useRef, useState } from "react";
+import { KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { formatDate } from "@/lib/formatDate";
 import { detailMessage, isRequestBody } from "@/lib/apiErrors";
@@ -8,7 +8,7 @@ import { type AdminTransferRequest, STATUS_CLASS, STATUS_LABEL } from "@/lib/tra
 
 // ENH-005 -- one request in the admin's queue (spec §7.1). Approve and reject are irreversible from here, so each is two-step and
 // inline (ENH-004's pattern, no dialog library): the consequences are stated, focus moves into the confirm, Escape or Cancel puts it
-// back on the button that opened it. Memoised with stable callbacks so acting on one row does not re-render the rest of the queue.
+// back on the button that opened it.
 type Mode = "idle" | "approve" | "reject";
 export type Decision = { request: AdminTransferRequest; message: string };
 export type Failure = { text: string; expired?: boolean; refetch?: boolean };
@@ -25,7 +25,7 @@ function describeOutcome(request: AdminTransferRequest) {
   return o ? `${plural(o.parents_moved, "parent")} moved, ${o.parents_kept} kept, ${plural(o.results_withdrawn, "result")} withdrawn` : "";
 }
 
-function AdminTransferRow({ request, onDecided, onFailure }: { request: AdminTransferRequest; onDecided: (d: Decision) => void; onFailure: (f: Failure) => void }) {
+export default function AdminTransferRow({ request, onDecided, onFailure }: { request: AdminTransferRequest; onDecided: (d: Decision) => void; onFailure: (f: Failure) => void }) {
   const [mode, setMode] = useState<Mode>("idle");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -143,5 +143,3 @@ function AdminTransferRow({ request, onDecided, onFailure }: { request: AdminTra
     </li>
   );
 }
-
-export default memo(AdminTransferRow);

@@ -1,10 +1,10 @@
 import re
 import unicodedata
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 class LoginRequest(BaseModel):
@@ -588,23 +588,21 @@ def clean_free_text(value: str | None) -> str | None:
     return value
 
 
+FreeText = Annotated[str | None, AfterValidator(clean_free_text)]  # `reason` and `note`: one rule, declared once
+
+
 class TransferRequestCreate(BaseModel):
     # `extra="forbid"`: a client-supplied school, status or student is a loud 422; the from-school comes from the
     # student row and the filing school from the caller's profile (spec §6).
     model_config = {"extra": "forbid"}
     to_school_id: UUID
-    reason: str | None = None
-
-    @field_validator("reason")
-    @classmethod
-    def _reason(cls, value: str | None) -> str | None:
-        return clean_free_text(value)
+    reason: FreeText = None
 
 
 class IncomingTransferCreate(BaseModel):
     model_config = {"extra": "forbid"}
     student_code: str
-    reason: str | None = None
+    reason: FreeText = None
 
     @field_validator("student_code")
     @classmethod
@@ -614,20 +612,10 @@ class IncomingTransferCreate(BaseModel):
             raise ValueError("student_code must be 8 characters, 0-9 and A-F")
         return code
 
-    @field_validator("reason")
-    @classmethod
-    def _reason(cls, value: str | None) -> str | None:
-        return clean_free_text(value)
-
 
 class TransferRejectRequest(BaseModel):
     model_config = {"extra": "forbid"}
-    note: str | None = None
-
-    @field_validator("note")
-    @classmethod
-    def _note(cls, value: str | None) -> str | None:
-        return clean_free_text(value)
+    note: FreeText = None
 
 
 class SchoolRef(BaseModel):

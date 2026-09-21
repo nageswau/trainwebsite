@@ -20,6 +20,9 @@ export function isRequestBody(data: unknown): data is { id: string } {
   return !!data && typeof data === "object" && !Array.isArray(data) && typeof (data as { id?: unknown }).id === "string";
 }
 
+// What both request forms say when the network drops mid-submit. The entry is kept, so the coordinator can simply try again.
+export const NOT_COMPLETED = "The request did not complete. Check your connection and try again; your entry is kept.";
+
 export type Page<T> = { items: T[]; total: number; limit: number; offset: number };
 
 // A 200 is only trusted if it has the shape of a page. A proxy login page or an empty body must not crash the screen.

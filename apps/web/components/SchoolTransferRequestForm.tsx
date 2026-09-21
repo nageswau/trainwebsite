@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
 
 import { formatDate } from "@/lib/formatDate";
-import { detailMessage, isRequestBody } from "@/lib/apiErrors";
+import { detailMessage, isRequestBody, NOT_COMPLETED } from "@/lib/apiErrors";
 import type { SchoolRef } from "@/lib/transfers";
 
 // ENH-005 -- a coordinator asks to move ONE of their students to another school (spec §5.2, §7.1). Filing is reversible (the
@@ -14,7 +14,6 @@ import type { SchoolRef } from "@/lib/transfers";
 // needs no client round-trip and no loading state.
 type Pending = { to_school_name: string; created_at: string };
 
-const NOT_COMPLETED = "The request did not complete. Check your connection and try again; your entry is kept.";
 const UNCONFIRMED = "The reply could not be confirmed as a filed request. Your entry is kept; repeating it is safe (a student can have only one pending request).";
 
 export default function SchoolTransferRequestForm({ studentId, destinations, pending }: { studentId: string; destinations: SchoolRef[] | null; pending: Pending | null }) {
@@ -24,16 +23,15 @@ export default function SchoolTransferRequestForm({ studentId, destinations, pen
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [expired, setExpired] = useState(false);
+  const [alert, setAlert] = useState<{ text: string; expired?: boolean } | null>(null);
   const [sent, setSent] = useState<string | null>(null);
   const alertRef = useRef<HTMLDivElement>(null);
   // `busy` is state, so two clicks in the same task both see false; a ref is updated at once (found by the browser QA).
   const inFlight = useRef(false);
 
   useEffect(() => {
-    if (error) alertRef.current?.focus();
-  }, [error]);
+    if (alert) alertRef.current?.focus();
+  }, [alert]);
 
   if (sent) {
     return <div role="status" className="form-message">{sent}</div>;
@@ -47,8 +45,7 @@ export default function SchoolTransferRequestForm({ studentId, destinations, pen
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || inFlight.current) return;
-    setError(null);
-    setExpired(false);
+    setAlert(null);
     if (!school) {
       setFieldError("Choose a school.");
       return;
@@ -66,25 +63,24 @@ export default function SchoolTransferRequestForm({ studentId, destinations, pen
     } catch {
       inFlight.current = false;
       setBusy(false);
-      setError(NOT_COMPLETED);
+      setAlert({ text: NOT_COMPLETED });
       return;
     }
     const data = await response.json().catch(() => null);
     inFlight.current = false;
     setBusy(false);
     if (response.status === 401) {
-      setExpired(true);
-      setError("Your session has expired. Your entry is kept. ");
+      setAlert({ text: "Your session has expired. Your entry is kept. ", expired: true });
       return;
     }
     if (!response.ok) {
-      setError(detailMessage(data?.detail));
+      setAlert({ text: detailMessage(data?.detail) });
       return;
     }
     // A 2xx whose body is not the request (a proxy's page, an empty body) is not proof it was filed. Filing twice is harmless: a student can
     // have one pending request, so the repeat is a 409 at worst.
     if (!isRequestBody(data)) {
-      setError(UNCONFIRMED);
+      setAlert({ text: UNCONFIRMED });
       return;
     }
     setSent("Transfer request sent for review. An admin decides; nothing changes until it is approved.");
@@ -111,10 +107,10 @@ export default function SchoolTransferRequestForm({ studentId, destinations, pen
         <textarea id="transfer-reason" className="search" rows={3} maxLength={500} value={reason} disabled={busy} onChange={(e) => setReason(e.target.value)} />
       </div>
       <button type="submit" className="btn" disabled={busy}>{busy ? "Sending request…" : "Request transfer"}</button>
-      {error && (
+      {alert && (
         <div ref={alertRef} tabIndex={-1} className="form-error" role="alert">
-          {error}
-          {expired && <Link href="/overseas/login">Sign in again</Link>}
+          {alert.text}
+          {alert.expired && <Link href="/overseas/login">Sign in again</Link>}
         </div>
       )}
     </form>

@@ -1,5 +1,5 @@
-import { formatDate } from "@/components/SchoolChildOverview";
 import { serverApi } from "@/lib/api";
+import { formatDate } from "@/lib/formatDate";
 import type { SchoolRef } from "@/lib/transfers";
 
 // ENH-005 -- a student's approved school transfers, read from GET /school/students/{id}/transfer-history. That endpoint uses

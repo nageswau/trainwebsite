@@ -45,6 +45,10 @@ export type AdminTransferRequest = {
   decided_at: string | null;
 };
 
+// The status filter both request lists offer (the coordinator's and the admin's); `all` is the API's filter value for "no filter".
+export const TRANSFER_FILTERS = [["pending", "Pending review"], ["all", "All"], ["approved", "Approved"], ["rejected", "Rejected"], ["cancelled", "Cancelled"]] as const;
+export type TransferFilter = (typeof TRANSFER_FILTERS)[number][0];
+
 export const STATUS_LABEL: Record<TransferStatus, string> = {
   pending: "Pending review",
   approved: "Approved",

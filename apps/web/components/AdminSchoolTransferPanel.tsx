@@ -5,17 +5,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import AdminTransferRow, { type Decision, type Failure } from "@/components/AdminTransferRow";
 import { isPage } from "@/lib/apiErrors";
-import type { AdminTransferRequest } from "@/lib/transfers";
+import { type AdminTransferRequest, TRANSFER_FILTERS, type TransferFilter } from "@/lib/transfers";
 
 // ENH-005 -- the admin's transfer queue (spec §5.3, §7.1). Loaded after first paint, like AdminExpiredLinksPanel, so nothing else on the
 // page is blocked. Pending by default; a decision removes the row and announces the outcome in a live region that is mounted from the
 // start (so screen readers announce it) and takes focus, because the row and its button are gone.
 const LIMIT = 25;
-const FILTERS = [["pending", "Pending review"], ["all", "All"], ["approved", "Approved"], ["rejected", "Rejected"], ["cancelled", "Cancelled"]] as const;
-type Filter = (typeof FILTERS)[number][0];
 
 export default function AdminSchoolTransferPanel() {
-  const [status, setStatus] = useState<Filter>("pending");
+  const [status, setStatus] = useState<TransferFilter>("pending");
   const [items, setItems] = useState<AdminTransferRequest[] | null>(null);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState<"first" | "more" | null>("first");
@@ -25,7 +23,7 @@ export default function AdminSchoolTransferPanel() {
   const alertRef = useRef<HTMLDivElement>(null);
   const messageRef = useRef<HTMLDivElement>(null);
 
-  const load = useCallback(async (next: Filter, offset: number, mode: "first" | "more" | "refresh") => {
+  const load = useCallback(async (next: TransferFilter, offset: number, mode: "first" | "more" | "refresh") => {
     controller.current?.abort();
     const abort = (controller.current = new AbortController());
     setLoading(mode === "refresh" ? null : mode);
@@ -53,20 +51,20 @@ export default function AdminSchoolTransferPanel() {
     if (alert) alertRef.current?.focus();
   }, [alert]);
 
-  const onDecided = useCallback(({ request, message: text }: Decision) => {
+  function onDecided({ request, message: text }: Decision) {
     setAlert(null);
     setMessage(text);
     setItems((prev) => (prev ? (status === "pending" ? prev.filter((row) => row.id !== request.id) : prev.map((row) => (row.id === request.id ? request : row))) : prev));
     if (status === "pending") setTotal((t) => Math.max(0, t - 1));
     requestAnimationFrame(() => messageRef.current?.focus());
-  }, [status]);
-  const onFailure = useCallback((failure: Failure) => {
+  }
+  function onFailure(failure: Failure) {
     setMessage(null);
     setAlert(failure);
     if (failure.refetch) void load(status, 0, "refresh"); // already decided, stale, or the lock was busy: show the queue as it now is
-  }, [load, status]);
+  }
 
-  function changeStatus(next: Filter) {
+  function changeStatus(next: TransferFilter) {
     setStatus(next);
     setMessage(null);
     setAlert(null);
@@ -82,8 +80,8 @@ export default function AdminSchoolTransferPanel() {
       <div className="table-controls">
         <div>
           <label htmlFor="admin-transfer-status">Status</label>
-          <select id="admin-transfer-status" className="select" value={status} disabled={loading !== null} onChange={(e) => changeStatus(e.target.value as Filter)}>
-            {FILTERS.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
+          <select id="admin-transfer-status" className="select" value={status} disabled={loading !== null} onChange={(e) => changeStatus(e.target.value as TransferFilter)}>
+            {TRANSFER_FILTERS.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
           </select>
         </div>
       </div>

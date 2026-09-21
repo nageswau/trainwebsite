@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
-import { detailMessage } from "@/lib/apiErrors";
+import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { refocus } from "@/lib/focus";
 
 // ENH-005 -- a coordinator asks for a student who is at ANOTHER school, by their Student ID (spec §5.2, §7.1).
@@ -13,30 +13,27 @@ import { refocus } from "@/lib/focus";
 export const NEUTRAL_SUBMITTED = "If that Student ID belongs to a student at another school, your request has been sent to an admin for review.";
 
 const CODE = /^[0-9A-Fa-f]{8}$/;
-const NOT_COMPLETED = "The request did not complete. Check your connection and try again; your entry is kept.";
 
 export default function SchoolIncomingTransferForm({ onSubmitted }: { onSubmitted?: () => void }) {
   const [code, setCode] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [expired, setExpired] = useState(false);
+  const [alert, setAlert] = useState<{ text: string; expired?: boolean } | null>(null);
   const [done, setDone] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const alertRef = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false); // `busy` is state: two clicks in one task both see false (found by the browser QA)
 
   useEffect(() => {
-    if (error) alertRef.current?.focus();
-  }, [error]);
+    if (alert) alertRef.current?.focus();
+  }, [alert]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || inFlight.current) return;
     const value = code.trim().toUpperCase();
-    setError(null);
-    setExpired(false);
+    setAlert(null);
     setDone(false);
     if (!CODE.test(value)) {
       setFieldError("Enter all 8 characters of the Student ID (digits 0-9 and letters A-F).");
@@ -56,19 +53,18 @@ export default function SchoolIncomingTransferForm({ onSubmitted }: { onSubmitte
     } catch {
       inFlight.current = false;
       setBusy(false);
-      setError(NOT_COMPLETED);
+      setAlert({ text: NOT_COMPLETED });
       return;
     }
     const data = await response.json().catch(() => null);
     inFlight.current = false;
     setBusy(false);
     if (response.status === 401) {
-      setExpired(true);
-      setError("Your session has expired. Your entry is kept. ");
+      setAlert({ text: "Your session has expired. Your entry is kept. ", expired: true });
       return;
     }
     if (response.status !== 202 || data?.accepted !== true) {
-      setError(response.ok ? NOT_COMPLETED : detailMessage(data?.detail));
+      setAlert({ text: response.ok ? NOT_COMPLETED : detailMessage(data?.detail) });
       return;
     }
     setDone(true);
@@ -99,10 +95,10 @@ export default function SchoolIncomingTransferForm({ onSubmitted }: { onSubmitte
       </div>
       <button type="submit" className="btn" disabled={busy}>{busy ? "Sending request…" : "Request student"}</button>
       <div role="status" aria-live="polite">{done && <div className="form-message">{NEUTRAL_SUBMITTED}</div>}</div>
-      {error && (
+      {alert && (
         <div ref={alertRef} tabIndex={-1} className="form-error" role="alert">
-          {error}
-          {expired && <Link href="/overseas/login">Sign in again</Link>}
+          {alert.text}
+          {alert.expired && <Link href="/overseas/login">Sign in again</Link>}
         </div>
       )}
     </form>

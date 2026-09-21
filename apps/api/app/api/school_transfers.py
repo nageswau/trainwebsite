@@ -115,16 +115,25 @@ async def _filing_guard(db: AsyncSession, actor_id: UUID, school_id: UUID) -> No
         raise HTTPException(409, TOO_MANY_OPEN)
 
 
+def _ref(school: School) -> dict:
+    return {"id": school.id, "name": school.name}
+
+
+def _direction(row: SchoolStudentTransferRequest) -> str:
+    """Outgoing when the losing school filed it, incoming when the gaining school did. Derived, never stored."""
+    return "outgoing" if row.filed_by_school_id == row.from_school_id else "incoming"
+
+
 def _request_out(row: SchoolStudentTransferRequest, student: SchoolStudent, from_school: School, to_school: School) -> TransferRequestOut:
     """The coordinator's view of a request. A request the GAINING school filed is redacted until it is approved: the student's ID,
     name and current school stay null, so the gaining coordinator knows only the Student ID they typed (spec §5.2). One schema
     either way -- nothing appears or disappears by condition."""
-    direction = "outgoing" if row.filed_by_school_id == row.from_school_id else "incoming"
+    direction = _direction(row)
     redacted = direction == "incoming" and row.status != "approved"
     return TransferRequestOut(
         id=row.id, direction=direction, status=row.status, student_id=None if redacted else student.id, student_code=student.student_code,
-        student_name=None if redacted else student.full_name, from_school=None if redacted else {"id": from_school.id, "name": from_school.name},
-        to_school={"id": to_school.id, "name": to_school.name}, reason=row.reason, decision_note=row.decision_note, created_at=row.created_at, decided_at=row.decided_at,
+        student_name=None if redacted else student.full_name, from_school=None if redacted else _ref(from_school),
+        to_school=_ref(to_school), reason=row.reason, decision_note=row.decision_note, created_at=row.created_at, decided_at=row.decided_at,
     )
 
 
@@ -133,7 +142,7 @@ async def transfer_destinations(user: User = Depends(_require_coordinator_user),
     """Every other school, as id and name only -- the source of the destination picker."""
     school_id = _own_school_id(user)
     schools = (await db.scalars(select(School).where(School.id != school_id).order_by(School.name))).all()
-    return [{"id": s.id, "name": s.name} for s in schools]
+    return [_ref(s) for s in schools]
 
 
 @coordinator_router.get("/transfer-requests", response_model=TransferRequestPage)
@@ -205,7 +214,7 @@ async def student_transfer_history(student_id: UUID, user: User = Depends(get_cu
     ).all()
     return {
         "student": {"id": student.id, "full_name": student.full_name},
-        "history": [{"id": r.id, "decided_at": r.decided_at, "from_school": {"id": f.id, "name": f.name}, "to_school": {"id": t.id, "name": t.name}} for r, f, t in rows],
+        "history": [{"id": r.id, "decided_at": r.decided_at, "from_school": _ref(f), "to_school": _ref(t)} for r, f, t in rows],
     }
 
 
@@ -316,12 +325,9 @@ def _admin_rows_stmt(*conditions):
 
 def _admin_out(row, student, from_school, to_school, filed_by, requester, decider, preview=None) -> AdminTransferRequestOut:
     """The admin's view: always complete, no redaction."""
-    def ref(school):
-        return {"id": school.id, "name": school.name}
-
     return AdminTransferRequestOut(
-        id=row.id, direction="outgoing" if row.filed_by_school_id == row.from_school_id else "incoming", status=row.status, student_id=student.id,
-        student_code=student.student_code, student_name=student.full_name, from_school=ref(from_school), to_school=ref(to_school), filed_by_school=ref(filed_by),
+        id=row.id, direction=_direction(row), status=row.status, student_id=student.id,
+        student_code=student.student_code, student_name=student.full_name, from_school=_ref(from_school), to_school=_ref(to_school), filed_by_school=_ref(filed_by),
         requester={"id": requester.id, "name": requester.full_name}, reason=row.reason, decision_note=row.decision_note,
         decided_by={"id": decider.id, "name": decider.full_name} if decider else None, outcome=row.outcome, preview=preview, created_at=row.created_at, decided_at=row.decided_at,
     )
