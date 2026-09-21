@@ -1,8 +1,9 @@
 # ENH-005 — Student School Transfer / Reassignment — Design
 
 **Status:** Design approved by the user in-session, 2026-09-21 (`EXPLICIT_APPROVAL`): four policy
-decisions in §3 plus the section-by-section design with "yes". Written spec awaiting the user's review.
-Implementation not started.
+decisions in §3 plus the section-by-section design with "yes". The same day, an
+`api-and-interface-design` review of the backend was applied (§5.5) and three further decisions
+(D5–D7) were confirmed. Written spec awaiting the user's review. Implementation not started.
 
 **Traceability:** user instruction ("changing of schools etc.", recorded in
 `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-005, `DERIVED_BACKLOG`) → `DEC-SCOPE-021` (proposed by this
@@ -62,6 +63,9 @@ between schools. Three facts make a naive "update `school_id`" unsafe:
 | D2 | Authority | **Coordinator requests, admin approves.** Either school's coordinator may file a request. Approval and rejection are admin-only. The approval is the single action that performs the move. |
 | D3 | In-flight academic results | **Withdraw and freeze.** Draft and Verified results become `withdrawn` (kept, never deleted), hidden from every list and average, uneditable. Published results stay with the student. |
 | D4 | Career / psychometric / test-prep / language records | **Follow the student, unchanged.** No schema change, no data movement. |
+| D5 | Who sees a pending request | **Only the filing school.** A coordinator lists only requests their own school filed. The other school learns of it when the admin decides (approval notice). |
+| D6 | Pagination of the two growing lists (admin queue, coordinator list) | **`limit`/`offset` with `{items, total, limit, offset}`**, default 25, max 100. A deliberate deviation from the contract's cursor convention (§0.1), which no endpoint implements; recorded in `API_CONTRACT.md`. |
+| D7 | Open-request cap | **50 open (`pending`) requests per filing school**; the 51st is `409`. |
 
 Assumptions made by the design and confirmed with the user's approval of it:
 
@@ -70,8 +74,8 @@ Assumptions made by the design and confirmed with the user's approval of it:
   denied.
 - **A2.** "One action" (backlog acceptance criterion 1) means the admin's approval performs the entire
   move; the coordinator's request is a separate earlier step.
-- **A3.** The incoming-request endpoint returns the same `202` for every input, to avoid a cross-school
-  existence oracle (§6).
+- **A3.** The incoming-request endpoint returns the same `202 {"accepted": true}` for every well-formed
+  input, to avoid a cross-school existence oracle (§6).
 
 Decisions taken by the design without a separate question (consequences of D1–D4):
 
@@ -109,7 +113,7 @@ already imports `_notify_student_parents` from `schools.py`. No new dependency.
 | `from_school_id` | UUID FK `schools.id` | the student's school at filing time |
 | `to_school_id` | UUID FK `schools.id` | never equal to `from_school_id` (CHECK) |
 | `requested_by_user_id` | UUID FK `users.id` | the filing coordinator |
-| `requested_side` | String(10) | `losing` or `gaining` |
+| `filed_by_school_id` | UUID FK `schools.id`, indexed | the filing coordinator's school, always taken from their profile; CHECK `filed_by_school_id IN (from_school_id, to_school_id)`. `direction` is derived: `outgoing` when it equals `from_school_id`, else `incoming`. It scopes the coordinator list, the cancel check and the open-request cap. |
 | `status` | String(20), default `pending` | `pending` / `approved` / `rejected` / `cancelled` |
 | `reason` | Text, nullable | coordinator free text, length-capped in the schema |
 | `decided_by_user_id` | UUID FK `users.id`, nullable | admin (approve/reject) or coordinator (cancel) |
@@ -120,7 +124,11 @@ already imports `_notify_student_parents` from `schools.py`. No new dependency.
 
 - **Partial unique index** `uq_school_transfer_pending_student` on `(school_student_id) WHERE status = 'pending'`
   (SQLAlchemy `Index(..., unique=True, postgresql_where=text("status = 'pending'"))`): at most one open
-  request per student, enforced by the database.
+  request per student, enforced by the database. The index and both CHECK constraints are declared in
+  **both** the SQLAlchemy model (dev startup can build the schema with `create_all`) and migration
+  `0034` (Docker runs `alembic upgrade head`; backend tests run against that migrated database).
+- **Other indexes:** `school_student_id` and `filed_by_school_id`. The admin queue filters on `status` of
+  a small table and needs no further index (YAGNI); revisit only if the table grows.
 - **Non-destructive migration:** creates one table and indexes; no backfill; no existing row is touched.
   Downgrade drops the table. Any `withdrawn` result rows written after upgrade stay in
   `school_academic_results` as plain strings (documented in the plan; the downgrade note says so).
@@ -130,47 +138,98 @@ already imports `_notify_student_parents` from `schools.py`. No new dependency.
 
 ### 5.2 Coordinator endpoints (`/school`)
 
-All require `user.role == "school_coordinator"` with a linked school, via a dependency (so `403` precedes
-any `422`, matching ENH-004 §5.2). The caller's school always comes from their profile.
+**Boundary conventions (all endpoints in §5.2–5.3).** Typed Pydantic request models with
+`extra="forbid"` and `str_strip_whitespace` (a client-supplied `school_id`, `from_school_id`,
+`filed_by_school_id`, `status` or `student_id` in a body is a loud `422`); free text is capped
+(`reason` ≤ 500, `note` ≤ 500) and rejects control characters (a NUL byte would otherwise surface as a
+`500` from PostgreSQL text, as noted in ENH-004's `PromotionItem`); typed `UUID` fields, so a malformed
+ID is `422`, never a `500`; `response_model` on every route so the generated OpenAPI matches the
+contract. `snake_case` fields, lowercase enum values, `{"detail": …}` errors. Role gates are
+dependencies (`403` precedes `422`, as `_require_coordinator_user` does for ENH-004). The caller's school
+always comes from their profile.
+
+**One response shape for requests, `TransferRequestOut`** (no field appears or disappears by condition;
+redacted values are `null`): `id`, `direction` (`outgoing` = filed by the losing school, `incoming` =
+filed by the gaining school), `status`, `student_id`, `student_code`, `student_name`, `from_school
+{id,name}`, `to_school {id,name}`, `reason`, `decision_note`, `created_at`, `decided_at`. **Redaction
+rule:** a request whose `direction` is `incoming` and whose `status` is not `approved` has `student_id`,
+`student_name` and `from_school` set to `null` (the gaining coordinator knows only the code they typed);
+every other row is complete. A coordinator sees only requests **filed by their own school** (decision D5).
+
+**List envelope:** `{items: [...], total, limit, offset}`; `limit` default 25, `1..100`; `offset` ≥ 0;
+ordered `created_at DESC, id DESC` (decision D6).
 
 - `GET /school/transfer-destinations` → `[{id, name}]`, every school except the caller's own. Id and name
-  only.
+  only. Not paginated: bounded by the number of partner schools (a `<select>` source, like
+  `GET /overseas-admin/academic-years`); marked explicitly as contract §0.1 requires.
 - `POST /school/students/{student_id}/transfer-requests` (**outgoing**), body `{to_school_id, reason?}`,
-  `extra="forbid"`. The student must be at the caller's school (`403` otherwise, same message as
-  `update_student`). `to_school_id` must exist and differ from the caller's school (`422`). A pending
-  request for the student already exists → `409` (also caught as `IntegrityError` from the partial index).
-  `201` with the request.
-- `POST /school/transfer-requests/incoming` (**incoming**), body `{student_code, reason?}`,
-  `extra="forbid"`. Always `202 {"status": "submitted"}`. A row is created only when the code resolves
-  to a student at a *different* school with no pending request; every other case (unknown code, own
-  school, duplicate) creates nothing and returns the identical body. Unknown code and own-school
-  attempts write an `AuditLog` row with `outcome="denied"` (no student data in the row).
-- `GET /school/transfer-requests` → the caller's school's requests, both sides, newest first. Incoming
-  rows that are not yet approved expose only `student_code`, `status`, `reason`, timestamps — **no
-  student name and no source school**. Outgoing rows, and incoming rows once approved, expose the full
-  view.
-- `POST /school/transfer-requests/{id}/cancel` → only a coordinator of the school that filed
-  (`requested_side` school), only while `pending`; otherwise `403` / `409`.
-- `GET /school/students/{student_id}/transfer-history` → approved transfers for the student, newest first,
-  through `_load_readable_student` (own institution; assigned-only Teacher; own-child-only Parent). Each
-  entry: `id`, `created_at`/`decided_at`, `from_school {id,name}`, `to_school {id,name}`, `reason`. No
-  staff user IDs, so a Parent never receives one. Bounded by the number of transfers per student, not
-  paginated.
+  `201 TransferRequestOut`. Check order: role (`403`) → body (`422`) → the student must exist **and** be
+  at the caller's school, otherwise one identical `403` "This student is not at your institution" for
+  an unknown ID and another school's ID alike (ENH-004's "same absence" rule, contract §0.3) →
+  `to_school_id` exists and differs from the caller's school (`422`) → open-request cap (`409`) → a
+  pending request for the student already exists (`409`, also caught as `IntegrityError` from the partial
+  index).
+- `POST /school/transfer-requests/incoming` (**incoming**), body `{student_code, reason?}`. The code is
+  stripped, uppercased and must be 8 hex characters (`422` otherwise: a format error says nothing about
+  existence). Then the cap check (`409`, evaluated **before** the lookup so the response never depends on
+  the code), then the lookup. **Always `202 {"accepted": true}`** — the same reply shape as
+  `POST /auth/forgot-password` (`auth.py:175`) — for every well-formed code. A row is created only when
+  the code resolves to a student at a *different* school with no pending request; unknown code, own
+  school and duplicate create nothing and return the identical body (a duplicate lost to a race
+  (`IntegrityError`) is rolled back and answered the same way). Unknown-code and own-school attempts
+  write an `AuditLog` row with `outcome="denied"` (metadata: reason token only, no student data).
+- `GET /school/transfer-requests` → list envelope of `TransferRequestOut`, the caller's own school's filed
+  requests, any status.
+- `POST /school/transfer-requests/{id}/cancel` → `200 TransferRequestOut`. The request is locked
+  `FOR UPDATE` (so a concurrent approve serializes with it). A request that does not exist **or** was not
+  filed by the caller's school → one identical `403`; not `pending` → `409`.
+- `GET /school/students/{student_id}/transfer-history` →
+  `{student: {id, full_name}, history: [{id, decided_at, from_school {id,name}, to_school {id,name}}]}`,
+  approved transfers only, newest first, through `_load_readable_student` (own institution; assigned-only
+  Teacher; own-child-only Parent). **No `reason`** (a coordinator's free text is for the admin's review,
+  not for the other school's staff or a Parent), **no staff user IDs**. Bounded by the number of transfers
+  per student, so not paginated (marked explicitly). After a transfer the losing school can no longer
+  read the student, so this endpoint is the gaining side's and the parent's view; the losing side is
+  informed by notification and the admin has the full view below.
 
 ### 5.3 Admin endpoints (`/overseas-admin`)
 
-All require `user.role in {"overseas_admin", "super_admin"}`, via a dependency.
+All require `user.role in {"overseas_admin", "super_admin"}`, via a dependency — a direct `user.role` check
+like the neighbouring admin routes, not the assignment-based `require_role`.
 
-- `GET /overseas-admin/school-transfer-requests?status=pending` (default `pending`; also `all`,
-  `approved`, `rejected`, `cancelled`) → each request with student name/code, both school names,
-  requester name and side, reason, and a **preview**: `linked_parents`, `in_flight_results`
-  (draft+verified), and `to_school_has_portfolio_staff` (so an admin is warned when the destination has
-  no staff portfolio and the student would be invisible to service-delivery roles).
-- `POST /overseas-admin/school-transfer-requests/{id}/approve` → `200` with the request and its
-  `outcome`.
+- `GET /overseas-admin/school-transfer-requests?status=pending&limit=&offset=` → list envelope of
+  `AdminTransferRequestOut`. `status` is a `Literal` (`pending` default, `approved`, `rejected`,
+  `cancelled`, `all`; anything else `422`). `AdminTransferRequestOut` is always complete: everything in
+  `TransferRequestOut` unredacted plus `filed_by_school`, `requester {id,name}`, `decided_by
+  {id,name}|null`, `outcome`, and a **preview** `{linked_parents, in_flight_results, to_school_has_portfolio_staff}`
+  (`in_flight_results` = draft+verified; the flag warns when the destination has no staff portfolio and
+  the student would be invisible to service-delivery roles). The preview is computed with **one grouped
+  query per count over the page's IDs**, never per row.
+- `POST /overseas-admin/school-transfer-requests/{id}/approve` → `200 AdminTransferRequestOut` including
+  `outcome`. Unknown ID `404` (admin-only, so no masking concern).
 - `POST /overseas-admin/school-transfer-requests/{id}/reject`, body `{note?}` → `200`.
-- `GET /overseas-admin/school-students/{student_id}/transfer-history` → every request for the student
-  (all statuses) with performer/requester names. Admin-only, so staff names are allowed here.
+- `GET /overseas-admin/school-students/{student_id}/transfer-history` → every request for the student, all
+  statuses, unredacted with staff names. Bounded per student, not paginated.
+
+### 5.3a Error catalogue (stable `detail` strings; a client may match on them — Hyrum's Law)
+
+| Status | When | `detail` |
+|---|---|---|
+| `401` | no/invalid session | existing |
+| `403` | wrong role | "School Coordinator role required" / "Overseas Admin role required" (existing wording) |
+| `403` | outgoing filing for an unknown or foreign student | "This student is not at your institution" |
+| `403` | cancel of an unknown or not-yours request | "Not permitted for this transfer request" |
+| `409` | second pending request for a student | "A transfer request is already pending for this student" |
+| `409` | school has 50 open requests | "Too many open transfer requests; wait for a decision or cancel one" |
+| `409` | approve/reject/cancel of a decided request | "This transfer request has already been decided" |
+| `409` | approve when the student has since moved | "The student is no longer at the school this request was filed for; reject it and file a new one" |
+| `409` | lock wait exceeded | "Another change to this student is in progress; retry" |
+| `422` | validation | FastAPI's `{"detail": [{loc, msg, type}]}` or a string, as elsewhere |
+
+Retry semantics (contract §0.2: no `Idempotency-Key`, since this is not a financial action): every write
+is naturally safe to retry. A duplicate filing, approve, reject or cancel after a lost response answers
+`409` with a message that tells the client the state has already changed; the UI refetches the request
+instead of retrying blindly. The incoming endpoint is idempotent by construction (identical `202`).
 
 ### 5.4 The approval transaction
 
@@ -180,9 +239,10 @@ One transaction (`READ COMMITTED`, as the rest of the codebase), started with
 `409 "Another change to this student is in progress; retry"`. **Lock order is fixed** to keep the
 transaction deadlock-free: request → student → parent users (by id) → in-flight results (by id).
 
-1. Lock the request `FOR UPDATE`. Missing → `404`. Not `pending` → `409`.
+1. Lock the request `FOR UPDATE`. Missing → `404`. Not `pending` → `409` "already decided".
 2. Lock the student `FOR UPDATE`. If `student.school_id != request.from_school_id` the request is stale →
-   `409`, request left `pending` (the admin can reject it). Load `to_school`; missing → `422`.
+   `409` (stale message, §5.3a), request left `pending` (the admin can reject it). Load `to_school`;
+   missing → `422`.
 3. **Parents (D1).** Lock the `users` rows of the student's linked parents `FOR UPDATE`, ordered by id.
    For each parent with `role == "school_parent"` and `profile.school_id == from_school_id`: count that
    parent's links to *other* students whose `school_id == from_school_id`. If none, reassign
@@ -199,15 +259,28 @@ transaction deadlock-free: request → student → parent users (by id) → in-f
    applications are untouched (D4).
 6. Request: `status = approved`, `decided_by_user_id`, `decided_at`, `outcome` counts.
 7. `AuditLog` (`school.student_transfer`, entity `school_student`, metadata from/to school IDs and
-   outcome counts). `commit`. `IntegrityError` → rollback, `409`.
-8. **After the commit**, in a second short step: in-app `Notification` rows for both schools'
+   outcome counts). `commit`. `IntegrityError` → explicit `rollback`, `409`.
+8. **After the commit**, in a second short transaction: in-app `Notification` rows for both schools'
    coordinators and the requester, and parent notifications via the existing `_notify_student_parents`
    (in-app plus the existing email channel). A failure here is logged and swallowed; the approval has
    already committed (SCH-007-AC04 discipline).
 
+**Transaction boundaries (why this shape).**
+- `set_config('lock_timeout', …, true)` is transaction-local and takes effect for the transaction that the
+  request's earlier queries (`get_current_user`) already opened; it lasts until the commit. After the
+  commit the notification step is a new transaction with no lock timeout, which is fine because it takes
+  no contended locks.
+- `get_db` has no explicit rollback: closing the session rolls back uncommitted work and releases every
+  lock, so any `HTTPException` after the locks is safe. The `55P03` and `IntegrityError` paths still call
+  `db.rollback()` explicitly first, as ENH-004 and `create_academic_year` do.
+- `expire_on_commit=False`, so the response is built after the commit without re-reading rows.
+- Structured logs (`student_transfer_approved`, `..._rejected`, `..._lock_timeout`) carry IDs and counts
+  only, never names or free text, with the `extra_fields` pattern ENH-004 uses.
+
 **Reject:** lock the request, must be `pending` (`409`), set `rejected`, `decided_by_user_id`,
-`decided_at`, `decision_note`, audit, commit, then notify the requester. No student or dependent row is
-touched. **Cancel:** the same shape with `cancelled`.
+`decided_at`, `decision_note`, audit, commit, then notify the requester (student code only if the request
+was incoming; see §6). No student or dependent row is touched. **Cancel:** the same shape with
+`cancelled`, `decided_by_user_id` the cancelling coordinator, no notification.
 
 **Concurrency, stated once**
 - Two approvals of one request: the request lock serializes them; the second sees `approved` → `409`.
@@ -220,22 +293,65 @@ touched. **Cancel:** the same shape with `cancelled`.
   student without locking, so it never waits on the student lock — no cycle. It either finishes first
   (the result is published and left alone) or runs after and gets `409` on status.
 
+### 5.5 API design notes (result of the `api-and-interface-design` review, 2026-09-21)
+
+- **Conventions follow the existing API, not generic style guides:** `snake_case` fields, lowercase enum
+  values, hyphenated plural paths (`school-transfer-requests` beside `school-staff`/`school-students`),
+  verb sub-resources for state transitions (`/approve`, `/reject`, `/cancel`, as `/verify` and `/publish`
+  already are), errors as FastAPI `{"detail": …}`. `API_CONTRACT.md` §0.3 documents a different error
+  shape (`{error_code, message, field_errors}`) that no route emits; that pre-existing drift is not
+  fixed here (ENH-004 recorded the same).
+- **Typed boundary:** Pydantic request and response models (§5.2), unlike the older `payload: dict`
+  routes whose `UUID(str(x))` turns a garbage ID into a `500`.
+- **No shape-shifting responses:** one `TransferRequestOut` with nullable redacted fields, one
+  always-complete admin model.
+- **Existence masking:** an unknown ID and another school's ID get the same `403` on file and cancel;
+  the incoming endpoint answers every well-formed code identically. Unknown request IDs are `404` only on
+  admin routes.
+- **Backward compatibility:** no existing endpoint, field, status code or message changes. `withdrawn`
+  is filtered out of every response that could carry it (`_result_out` is reached only through the two
+  filtered lists and `409`-guarded writes), so no client-visible enum gains a value. The parent
+  message precedence is preserved (§8).
+- **Retry safety:** natural, per §5.3a; no `Idempotency-Key`, per contract §0.2.
+- **Pagination:** D6. Per-student history and the destination list are bounded and marked explicitly
+  "not paginated", as contract §0.1 requires.
+- **Database use:** the coordinator list is one indexed query (`filed_by_school_id`) with two aliased
+  `schools` joins plus a `count`; the admin list adds one grouped query per preview count over the page's
+  IDs (no per-row queries); approval is a fixed number of statements independent of result/parent count
+  except one `UPDATE`-equivalent per withdrawn result (bounded by one student's unpublished results).
+- **Routing:** both new routers are added to the tuple in `main.py`. No path collides with an existing
+  route: `POST /school/students/{student_id}/transfer-requests` and `GET
+  /school/students/{student_id}/transfer-history` have distinct suffixes, and
+  `/school/transfer-requests/incoming` (static) and `/school/transfer-requests/{id}/cancel` cannot be
+  confused.
+- **Environment:** backend tests run against the migrated Docker database, so migration `0034` must be
+  applied (by the user, who controls the stack) before the new tests can pass.
+
 ## 6. Authorization and security
 
 | Action | Allowed | Otherwise |
 |---|---|---|
 | File outgoing | `school_coordinator` of the student's school | `403` |
 | File incoming | any `school_coordinator` (creates only for another school's student) | same `202`, nothing created |
-| List / cancel own requests | coordinator of the filing side's school | `403` |
+| List / cancel requests | coordinator of the school that filed them (`filed_by_school_id`) | list: only own-filed rows; cancel: one identical `403` |
 | Approve / reject / admin list / admin history | `overseas_admin`, `super_admin` | `403`; unauthenticated `401` |
 | Read transfer history | same own-scope rule as the student itself | `403` |
 
 - Neither coordinator has any path that changes `school_id`; only `approve` does, and it is admin-only.
   `update_student` still ignores `school_id` and `academic_year_id`, unchanged.
-- Request models use `extra="forbid"`: a client-supplied `school_id`, `from_school_id`, `status`,
-  `requested_side`, or `student_id` in a body is a loud `422`, never silently ignored. The from-school
-  is always read from the student row, the requester's school from their profile, `requested_side`
-  derived server-side.
+- Request models use `extra="forbid"`: a client-supplied `school_id`, `from_school_id`,
+  `filed_by_school_id`, `status`, or `student_id` in a body is a loud `422`, never silently ignored. The
+  from-school is always read from the student row and the filing school from the caller's profile.
+- **Notification privacy.** Approval notices name the student to both coordinators and the parents (the
+  student is now, or was, theirs). A rejection or cancellation notice to an *incoming* requester carries
+  the student code only, never the name or the source school. `decision_note` is returned to the filing
+  coordinator, so the admin panel warns "visible to the requesting coordinator; do not include student
+  details".
+- **Open-request cap.** At most `MAX_OPEN_TRANSFER_REQUESTS_PER_SCHOOL = 50` `pending` requests per
+  `filed_by_school_id` (decision D7). It is a guard against flooding the admin queue, not a security
+  boundary: it is a count-then-insert, so two simultaneous filings may exceed it by a few, which is
+  acceptable and documented. Over the cap → `409`. For the incoming endpoint the cap is checked before
+  the student lookup, so it cannot be used as an oracle (it reveals only the caller's own count).
 - **No cross-school existence oracle.** The incoming endpoint's identical `202`, the redacted
   incoming rows, and the id-and-name-only destination list are the only cross-school exposure.
 - **Parent scope is now link-only** (§8). The link is created only by same-school coordinator paths
@@ -256,15 +372,18 @@ existing school-portal components and CSS, and adds no dependency.
   `<select>` fed by `GET /school/transfer-destinations` (loading → disabled; none → "No other schools";
   error → retry), optional reason, submit. Shows a pending-request banner (and hides the form) when the
   student already has one; success confirmation; `409`/`422` messages inline.
-- **`/school/coordinator/transfers`** page + `SchoolTransfersPanel` (new nav item): the school's
-  requests with status badges, **cancel** on pending own-filed rows, and a "Request an incoming
-  student" form (student code + reason) that shows the generic "submitted for review" message.
+- **`/school/coordinator/transfers`** page + `SchoolTransfersPanel` (new nav item): the school's own
+  filed requests (paginated, "Load more"; redacted incoming rows show the code only) with status
+  badges, **cancel** on pending rows, and a "Request an incoming student" form (student code + reason)
+  that shows the generic "submitted for review" message, and a clear message when the open-request cap
+  is hit.
 - **`AdminSchoolTransferPanel`** wired into `WorkflowPanel.tsx` (a new `showSchoolTransfers` flag beside
   `showSchoolApplications`, overseas-admin/super-admin sections only): pending queue with the preview
   counts and the destination-has-no-portfolio warning; **approve** and **reject** each behind a confirm
   step that states the consequences (parents moved, results withdrawn, teacher unassigned); disabled
   buttons while in flight; the result `outcome` shown after approval; `409` (stale or already decided)
-  refreshes the list.
+  refreshes the list; the queue is paginated and the reject note field carries the "visible to the
+  requesting coordinator" hint (§6).
 - **`SchoolTransferHistory`** modelled on `SchoolGradeHistory`, shown in the student detail and parent
   child overview: loading / empty ("No transfers") / error; no staff names.
 - Type additions in `lib/types.ts`, calls in `lib/api.ts`; `lib/i18n.ts` and `lib/navigation.ts` only
@@ -276,7 +395,11 @@ existing school-portal components and CSS, and adds no dependency.
 1. **Parent scope is link-only.** `_scoped_students_query` (`schools.py:643`): the `school_parent`
    branch drops the `school_id` filter and keeps the link filter. `_load_readable_student`
    (`schools.py:864`): the `school_parent` branch skips the institution check and keeps the link
-   check. `_own_school_id(user)` is still called, so a parent with no school still gets `403`. Every
+   check, and keeps today's message precedence for parents (an unlinked student at a different school
+   still answers "This student is at a different institution", an unlinked student at the parent's
+   own school still answers "This student is not linked to your account"), so no status code or
+   message a client sees today changes. `_own_school_id(user)` is still called, so a parent with no
+   school still gets `403`. Every
    reader that goes through `_readable_students` (results, career, psychometric, test-prep, language)
    inherits this. Effect: none for any existing parent, because links were only ever created
    same-school; the difference appears only after a transfer. An unlinked student is still `403`.
@@ -298,9 +421,11 @@ automatically), `admin.py` bridge endpoints (global, not school-scoped), attenda
 |---|---|
 | Same-school destination | `422` |
 | Unknown destination school | `422` |
-| Outgoing request for another school's student | `403` |
+| Outgoing request for another school's or an unknown student | identical `403` |
 | Pending request already exists (outgoing) | `409` (application check, backed by the partial index) |
-| Incoming: unknown code / own school / duplicate | identical `202`, nothing created |
+| School already has 50 open requests | `409`, checked before any student lookup |
+| Incoming: unknown code / own school / duplicate | identical `202 {"accepted": true}`, nothing created |
+| Incoming: malformed code | `422` (format only) |
 | Approve a non-pending request | `409` |
 | Approve a stale request (student moved since filing) | `409`, request stays `pending` |
 | Lock wait exceeds 5s | `409` retry message |
@@ -314,16 +439,21 @@ automatically), `admin.py` bridge endpoints (global, not school-scoped), attenda
 ## 10. Acceptance criteria (local IDs)
 
 - **AC-01** A coordinator can file an outgoing request for their own school's student; a `pending` row
-  is created with `requested_side="losing"` and the server-derived from-school.
-- **AC-02** Outgoing filing is rejected: other school's student `403`; same-school or unknown
-  destination `422`; non-coordinator `403`; a client-supplied `from_school_id`/`status`/`school_id`
-  `422`.
+  is created with `filed_by_school_id` equal to the caller's school and the server-derived from-school.
+- **AC-02** Outgoing filing is rejected: another school's student and an unknown student ID both give the
+  identical `403`; same-school or unknown destination `422`; non-coordinator `403`; a client-supplied
+  `from_school_id`/`filed_by_school_id`/`status`/`school_id` `422`; a malformed UUID or a control
+  character in `reason` `422`, never `500`.
 - **AC-03** A second pending request for the same student is `409` (also proven at the DB level).
-- **AC-04** Incoming filing returns the identical `202` body for valid, unknown, own-school and duplicate
-  inputs; a row is created only for a valid other-school student; unknown/own-school attempts are audited
-  `denied`.
-- **AC-05** Not-yet-approved incoming rows expose only the code, status, reason and timestamps.
-- **AC-06** Only a coordinator of the filing side's school can cancel, only while `pending`.
+- **AC-04** Incoming filing returns the identical `202 {"accepted": true}` for valid, unknown, own-school
+  and duplicate inputs; a row is created only for a valid other-school student; unknown/own-school
+  attempts are audited `denied`; a malformed code is `422`.
+- **AC-05** A not-yet-approved incoming row has `student_id`, `student_name` and `from_school` all `null`
+  and exposes the code, status, reason and timestamps; once approved it is complete. The response schema
+  is identical either way.
+- **AC-06** Only a coordinator of the filing school (`filed_by_school_id`) can cancel, only while
+  `pending`; an unknown request ID and another school's request give the identical `403`. A coordinator
+  never sees another school's requests in the list.
 - **AC-07** Neither school's coordinator, nor teacher, parent, principal, counselor, nor an
   unauthenticated caller can approve or reject (`403`/`401`); `overseas_admin` and `super_admin` can.
 - **AC-08** Approval changes `school_id` to the destination in one transaction; afterwards the losing
@@ -339,7 +469,7 @@ automatically), `admin.py` bridge endpoints (global, not school-scoped), attenda
 - **AC-13** Rejecting changes only the request. A stale or already-decided approve is `409` and changes
   nothing.
 - **AC-14** Transfer history: a gaining-school reader gets approved transfers for their own-scope
-  student with no staff IDs; an admin gets all statuses with names.
+  student with no staff IDs and no `reason`; an admin gets all statuses with names.
 - **AC-15** Audit rows exist for request, cancel, approve, reject and denied attempts; notifications are
   sent after the commit; a notification failure does not fail or undo the approval.
 - **AC-16** A failure injected mid-approval leaves student, parents, results and request exactly as
@@ -351,6 +481,15 @@ automatically), `admin.py` bridge endpoints (global, not school-scoped), attenda
   suites pass unchanged.
 - **AC-19** Frontend: each new screen renders loading, empty, error and success states; destructive
   actions require confirmation and disable while pending.
+- **AC-20** A school with 50 open requests gets `409` on the 51st (outgoing and incoming alike, the
+  incoming one before any lookup); cancelling or deciding one frees a slot.
+- **AC-21** The two paginated lists honour `limit` (default 25, `1..100`) and `offset` (≥ 0), reject
+  out-of-range values with `422`, order `created_at DESC, id DESC`, and return `total`; the admin
+  `status` filter rejects an unknown value with `422`.
+- **AC-22** Notices to an incoming requester on rejection carry the student code only, never the name or
+  the source school; approval notices name the student to both coordinators and the parents.
+- **AC-23** The admin preview counts are computed without per-row queries (asserted by a query-count
+  test over a page of requests).
 
 ## 11. Regression risks and test plan (written before code)
 
@@ -363,7 +502,8 @@ automatically), `admin.py` bridge endpoints (global, not school-scoped), attenda
 | Timeline shows old-school context | `student_timeline`/`student_overview` (`schools.py:889-1050`) | test: upcoming activities come from the new school; attendance history stays |
 | Dashboard/report/entitlement counts | `_school_dashboard_payload`, `school_reports`, `school_entitlements` | test: counts of both schools change by exactly one student; entitlement usage is activity-based and unchanged |
 | Bridged Overseas applications | `admin.py` bridge endpoints | test: an existing bridged application still lists and notifies |
-| Migration | `0034` | migration applies on a copy of the seeded DB; existing rows untouched; downgrade drops only the new table |
+| Migration | `0034` | migration applies on a copy of the seeded DB; existing rows untouched; downgrade drops only the new table; the partial unique index and CHECKs exist in both the model and the migration |
+| New-endpoint contract (validation, masking, redaction, pagination, cap, privacy) | `school_transfers.py` | AC-02, AC-04, AC-05, AC-06, AC-20 – AC-23: table-driven tests over the §5.3a error catalogue, the redacted/complete response schema, and a query-count test for the admin preview |
 | Existing E2E specs | `sch-001`, `sch-003`, `sch-007`, `sch-008`, `enh-004` | rerun the affected specs (Docker stack brought up by the user) |
 
 **Test files (to be written first, per task):** `apps/api/tests/test_enh_005_school_transfer.py` (real
@@ -375,15 +515,21 @@ task.
 
 ## 12. Documentation deliverables
 
-- `DEC-SCOPE-021` in `docs/decisions/PRODUCT_DECISION_REGISTER.md` (D1–D4, A1–A3, non-goals).
+- `DEC-SCOPE-021` in `docs/decisions/PRODUCT_DECISION_REGISTER.md` (D1–D7, A1–A3, non-goals).
 - `docs/architecture/DATA_MODEL.md`: the new table and the `withdrawn` result status.
-- `docs/architecture/API_CONTRACT.md` §12A: the ten endpoints (six coordinator, four admin).
+- `docs/architecture/API_CONTRACT.md` §12A: the ten endpoints (six coordinator, four admin), the error
+  catalogue (§5.3a), the redaction rule, and a note that these two lists use `limit`/`offset` rather than
+  §0.1's cursor (D6).
 - `docs/architecture/RBAC_MATRIX.md` §2.12: the transfer rows and the parent link-based scope note.
 - `docs/delivery/ENHANCEMENT_BACKLOG.md`: ENH-005 status line.
 - The ENH-004 spec/plan note about the immutability claim.
 - An implementation plan at `docs/superpowers/plans/2026-09-21-enh-005-student-school-transfer.md`.
 
 ## 13. Open items (`NEEDS_CONFIRMATION`, not decided here)
+
+- **The other school is not told of a pending request** (D5). The losing school learns of a
+  gaining-filed request, and the gaining school of a losing-filed one, only when the admin decides.
+  Whether either should be consulted first (a consent step) is not decided.
 
 - **Multi-school parents (ENH-008).** A parent kept at the losing school (because of another child
   there) reads the transferred child through the link, but does not appear in the gaining school's
