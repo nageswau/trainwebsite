@@ -3,7 +3,7 @@
 Feature: student school transfer / reassignment (`ENH-005`, `DEC-SCOPE-021`).
 Tool: Browser Use (CDP) against a separate headless Chrome driving the running web app, plus Playwright (`enh-005-school-transfer.spec.ts`).
 
-**Status of this record: NOT a completion record.** The independent code review the user asked for has not been done. See "Open items".
+**Status of this record: NOT a completion record.** See "Open items". (The independent code review was run after this record was written; see `ENH-005_CODEX_REVIEW_2026-09-21.md`.)
 
 ## Method and environment (read this before trusting the results)
 
@@ -93,7 +93,7 @@ simulated), a successful approval (the Playwright spec covers it by keyboard), t
    transfer. Still needs an
    owner decision between: carry the pending intent to the gaining school, show a pending-invite count in the admin preview, or leave it and tell
    coordinators.
-2. **Independent code review (Codex) has not been run.**
+2. The independent code review (Codex) has been run and its findings dispositioned: `ENH-005_CODEX_REVIEW_2026-09-21.md`.
 3. N3 and N4 above are open (N3 is a layout choice for the owner); N1 and N2 are fixed.
 4. The full Playwright suite was not run (only the school and enhancement specs).
 5. Raw screenshots, exploratory scripts and console/network captures are not committed.

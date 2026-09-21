@@ -8,9 +8,10 @@ from enh005_helpers import login, mk_request, mk_result, mk_school, mk_staff, mk
 from httpx import ASGITransport
 from sqlalchemy import func, select
 
+from app.api import school_transfers
 from app.core.database import SessionLocal
 from app.main import app
-from app.models import AuditLog, SchoolAcademicResult, SchoolParentLink, SchoolStudent, SchoolStudentGradeHistory, SchoolStudentTransferRequest, User
+from app.models import AuditLog, School, SchoolAcademicResult, SchoolParentLink, SchoolStudent, SchoolStudentGradeHistory, SchoolStudentTransferRequest, User
 
 # ENH-005 spec §5.4 "Concurrency, stated once". Each test holds a row lock in a SEPARATE session so both competing requests are
 # genuinely queued behind it, then releases it: the interleaving is forced rather than left to timing.
@@ -49,6 +50,62 @@ async def world(db_session):
     b = await mk_school(db_session, label="B", students=0)
     request = await mk_request(db_session, a["students"][0], from_school=a["school"], to_school=b["school"], filed_by_school=a["school"], requester=a["coordinator"])
     return {"a": a, "b": b, "kid": a["students"][0], "request": request, "admin": a["admin"]}
+
+
+# ------------------------------------------------------------------------------------------ filing: the cap and the throttle (Codex review, HIGH)
+# Both limits are "count, then insert". At READ COMMITTED two simultaneous filings both count before either commits, so both pass; with enough
+# parallelism the limit is not a limit at all. The guard therefore serialises a school's filings on the school row.
+
+OUT = "/api/v1/school/students/{sid}/transfer-requests"
+IN = "/api/v1/school/transfer-requests/incoming"
+
+
+@pytest.mark.asyncio
+async def test_a_school_filings_queue_behind_one_lock_so_the_cap_check_and_the_insert_cannot_interleave(db_session, monkeypatch):
+    """Deterministic: while another transaction holds the school row, a filing must WAIT (not read the count and carry on)."""
+    monkeypatch.setattr(school_transfers, "MAX_OPEN_TRANSFER_REQUESTS_PER_SCHOOL", 1)
+    a = await mk_school(db_session, label="A", students=2)
+    b = await mk_school(db_session, label="B", students=0)
+    async with _client_for(a["coordinator"].email) as client:
+        async with _held(School, a["school"].id):
+            first = asyncio.create_task(client.post(OUT.format(sid=a["students"][0].id), json={"to_school_id": str(b["school"].id)}))
+            second = asyncio.create_task(client.post(OUT.format(sid=a["students"][1].id), json={"to_school_id": str(b["school"].id)}))
+            await asyncio.sleep(0.7)
+            assert not first.done() and not second.done(), "a filing did not wait for the school lock"
+        results = await asyncio.wait_for(asyncio.gather(first, second), timeout=20)
+
+    assert sorted(r.status_code for r in results) == [201, 409]  # one slot: one filing wins, the other is refused, whichever ran first
+
+
+@pytest.mark.asyncio
+async def test_a_burst_of_simultaneous_filings_cannot_exceed_the_open_request_cap(db_session, monkeypatch):
+    monkeypatch.setattr(school_transfers, "MAX_OPEN_TRANSFER_REQUESTS_PER_SCHOOL", 2)
+    a = await mk_school(db_session, label="A", students=8)
+    b = await mk_school(db_session, label="B", students=0)
+    async with _client_for(a["coordinator"].email) as client:
+        results = await asyncio.wait_for(
+            asyncio.gather(*(client.post(OUT.format(sid=s.id), json={"to_school_id": str(b["school"].id)}) for s in a["students"])), timeout=30
+        )
+
+    assert sorted(r.status_code for r in results) == [201, 201] + [409] * 6, [r.text for r in results]
+    pending = await db_session.scalar(
+        select(func.count()).select_from(SchoolStudentTransferRequest).where(SchoolStudentTransferRequest.filed_by_school_id == a["school"].id, SchoolStudentTransferRequest.status == "pending")
+    )
+    assert pending == 2
+
+
+@pytest.mark.asyncio
+async def test_a_burst_of_simultaneous_filings_cannot_exceed_the_hourly_throttle(db_session, monkeypatch):
+    monkeypatch.setattr(school_transfers, "TRANSFER_FILINGS_PER_HOUR", 3)
+    a = await mk_school(db_session, label="A", students=0)
+    async with _client_for(a["coordinator"].email) as client:
+        results = await asyncio.wait_for(asyncio.gather(*(client.post(IN, json={"student_code": f"0000000{i}"}) for i in range(10))), timeout=30)
+
+    assert sorted(r.status_code for r in results) == [202] * 3 + [429] * 7, [r.text for r in results]
+    counted = await db_session.scalar(
+        select(func.count()).select_from(AuditLog).where(AuditLog.user_id == a["coordinator"].id, AuditLog.action.in_(school_transfers.FILING_ACTIONS))
+    )
+    assert counted == 3  # the audit rows the throttle counts: exactly the attempts it let through
 
 
 @pytest.mark.asyncio

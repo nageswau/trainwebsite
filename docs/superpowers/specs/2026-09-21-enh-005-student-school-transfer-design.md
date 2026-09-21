@@ -740,7 +740,9 @@ automatically), `admin.py` bridge endpoints (global, not school-scoped), attenda
   and a warning log, for outgoing and incoming alike, valid or not; attempts that fail validation (`422`)
   do not count; another coordinator is unaffected; the count is read from `AuditLog`, so it holds across
   processes; after the window it lapses.
-- **AC-27** Audit completeness: every filing attempt that passes validation writes exactly one row;
+- **AC-27** Audit completeness: every filing attempt that passes validation writes exactly one row (a cap `409` writes a `denied` row with
+  `reason_token: "cap_reached"`; the throttle's own `429` is the one refusal that is logged and not audited, because the throttle counts these
+  rows and would otherwise feed itself; clarified 2026-09-21 after the independent review found the two statements in conflict);
   cancel, reject and approve each write one in the same transaction as the change (an injected audit
   failure aborts the change); each moved parent gets its own `school.user_school_scope_changed` row; a
   refused probe's `denied` row is committed before the `403`; no audit metadata contains a student code,
@@ -843,4 +845,9 @@ Where the code differs from what §5–§7 say, the code is what shipped and thi
 - **Admin workspace payload:** `GET /portal/overseas/admin/school-transfers` was added (a table of the 200 most recent requests). `PortalPage` needs both a `PORTAL_NAV` entry and a backend payload or an admin section is a 404; browser QA found this before it shipped.
 - **Redaction on cancel:** cancelling a request the school filed as *incoming* returns the redacted view, like the list.
 - **Routing:** on this FastAPI version (0.141) `app.routes` does not flatten included routers, so route-shape tests introspect the two routers directly.
+- **Filing serialisation (independent review, HIGH, 2026-09-21):** the cap (D7) and the throttle (D8) are "count, then insert", so simultaneous filings all
+  counted before any committed and all passed (a burst of 10 against a limit of 3 all succeeded). `_filing_guard` now takes the school row
+  (`FOR NO KEY UPDATE`) first, so a school's filings run one at a time until the caller's commit; the duplicate-insert path uses a savepoint so losing
+  the race does not release that lock before its `denied` row is committed. Verified with a forced-interleaving test and two burst tests.
+- **Cap refusal is audited (independent review, MEDIUM):** see AC-27. The throttle's `429` is still logged only.
 - **The detail-panel wiring** passes `pending` from a single `?status=pending&limit=100` read (a school has at most 50 open requests), and offers the form even if that lookup fails, because the server refuses a duplicate.

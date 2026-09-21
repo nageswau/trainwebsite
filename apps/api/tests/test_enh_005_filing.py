@@ -195,6 +195,12 @@ async def test_the_open_request_cap_is_409_before_any_lookup_and_a_freed_slot_re
 
     assert (outgoing.status_code, outgoing.json()) == (409, too_many)
     assert (incoming.status_code, incoming.json()) == (409, too_many)  # the cap answers before the code is even looked up
+    # AC-27 (Codex review): a refused attempt is an attempt, so each cap refusal writes its own `denied` row, with a token and IDs only.
+    refusals = [x for x in await _audits(db_session, a["coordinator"], DENIED) if x.metadata_json.get("reason_token") == "cap_reached"]
+    assert len(refusals) == 2 and {x.outcome for x in refusals} == {"denied"}
+    assert all(x.metadata_json["school_id"] == str(a["school"].id) for x in refusals)
+    blob = json.dumps([x.metadata_json for x in refusals])
+    assert UNKNOWN_CODE not in blob and kids[2].student_code not in blob  # never the code that was typed
     await db_session.execute(update(SchoolStudentTransferRequest).where(SchoolStudentTransferRequest.id == held[0].id).values(status="cancelled"))
     await db_session.commit()
     assert (await client.post(OUT.format(sid=kids[2].id), json={"to_school_id": str(b["school"].id)})).status_code == 201
@@ -214,6 +220,8 @@ async def test_the_hourly_filing_throttle_counts_every_attempt_and_lapses(client
     assert blocked.status_code == blocked_out.status_code == 429
     assert blocked.json()["detail"].startswith("Too many transfer requests; try again in ")
     assert 1 <= int(blocked.headers["Retry-After"]) <= 3600
+    # The throttle's 429 is logged, not audited (spec §8): the throttle counts these rows, so auditing its own refusals would feed it.
+    assert len(await _audits(db_session, a["coordinator"])) == 3
     assert (await client.post(IN, json={"student_code": "nope"})).status_code == 422  # validation still comes first
     await login(client, b["coordinator"].email)
     assert (await client.post(IN, json={"student_code": UNKNOWN_CODE})).status_code == 202  # another coordinator is unaffected

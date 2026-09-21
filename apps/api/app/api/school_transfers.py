@@ -88,7 +88,14 @@ def _audit(db: AsyncSession, actor_id: UUID, action: str, entity_id, *, outcome:
 async def _filing_guard(db: AsyncSession, actor_id: UUID, school_id: UUID) -> None:
     """The hourly throttle (D8) and the open-request cap (D7), both checked BEFORE any student lookup so neither answer can
     depend on which student a code names. The throttle counts the audit rows every filing attempt already writes, so it holds
-    across several server instances (an in-process limiter would not)."""
+    across several server instances (an in-process limiter would not).
+
+    Both limits are "count, then insert", so at READ COMMITTED simultaneous filings would all count before any committed and all pass
+    (Codex review). The first statement therefore takes the school's row lock (`FOR NO KEY UPDATE`: it excludes another filing, but not a
+    foreign-key insert that merely references the school), which queues every filing of a school -- and so of each of its coordinators --
+    behind the one before it. The lock is released by the caller's commit, after the row and its audit row are visible to the next count.
+    No other code locks a school row, so this cannot join a lock cycle with an approval's request -> student -> parent -> result order."""
+    await db.scalar(select(School.id).where(School.id == school_id).with_for_update(key_share=True))
     now = datetime.now(UTC)
     window = (AuditLog.user_id == actor_id, AuditLog.action.in_(FILING_ACTIONS), AuditLog.created_at > now - timedelta(hours=1))
     if await db.scalar(select(func.count()).select_from(AuditLog).where(*window)) >= TRANSFER_FILINGS_PER_HOUR:
@@ -101,6 +108,10 @@ async def _filing_guard(db: AsyncSession, actor_id: UUID, school_id: UUID) -> No
     )
     if open_count >= MAX_OPEN_TRANSFER_REQUESTS_PER_SCHOOL:
         logger.warning("transfer_open_cap_reached", extra={"extra_fields": {"actor_id": str(actor_id), "school_id": str(school_id), "open": open_count}})
+        # AC-27: a refused attempt is still an attempt that passed validation, so it is audited (a token and the school, never the code typed) and
+        # committed before the 409. Unlike the throttle's own 429 it is safe to count: it happens only while the school is at its cap.
+        _audit(db, actor_id, ACTION_DENIED, None, outcome="denied", reason_token="cap_reached", school_id=str(school_id))
+        await db.commit()
         raise HTTPException(409, TOO_MANY_OPEN)
 
 
@@ -220,11 +231,11 @@ async def file_outgoing_request(student_id: UUID, payload: TransferRequestCreate
         school_student_id=student.id, from_school_id=school_id, to_school_id=to_school.id, requested_by_user_id=actor_id, filed_by_school_id=school_id,
         status="pending", reason=payload.reason,
     )
-    db.add(row)
     try:
-        await db.flush()  # the partial unique index is the atomic claim: two simultaneous filings cannot both win
+        async with db.begin_nested():  # a savepoint: losing the race must not release the school lock before the denial is audited and committed
+            db.add(row)
+            await db.flush()  # the partial unique index is the atomic claim: two simultaneous filings cannot both win
     except IntegrityError as exc:
-        await db.rollback()
         _audit(db, actor_id, ACTION_DENIED, None, outcome="denied", reason_token="duplicate", school_id=str(school_id))
         await db.commit()
         raise HTTPException(409, ALREADY_PENDING) from exc
@@ -253,11 +264,11 @@ async def file_incoming_request(payload: IncomingTransferCreate, user: User = De
             school_student_id=student.id, from_school_id=student.school_id, to_school_id=school_id, requested_by_user_id=actor_id, filed_by_school_id=school_id,
             status="pending", reason=payload.reason,
         )
-        db.add(row)
         try:
-            await db.flush()
+            async with db.begin_nested():  # a savepoint, for the same reason as in the outgoing route
+                db.add(row)
+                await db.flush()
         except IntegrityError:
-            await db.rollback()
             row, token = None, "duplicate"
     if row is not None:
         _audit(db, actor_id, ACTION_FILED, row.id, school_id=str(school_id), from_school_id=str(row.from_school_id), to_school_id=str(school_id), direction="incoming")
