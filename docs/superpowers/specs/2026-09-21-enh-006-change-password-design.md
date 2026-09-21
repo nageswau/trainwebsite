@@ -55,6 +55,12 @@ the control depends on audit rows not being purged (nothing purges them today; G
 the `User` row) and that `audit_logs` has no composite index — the query is per-user and bounded to five
 rows, which is adequate at this scale.
 
+**Measured (independent-review follow-up, 2026-09-21).** With 200,009 `audit_logs` rows for one user (far beyond any real account; 4,000 of them `auth.change_password_failed`),
+`EXPLAIN (ANALYZE, BUFFERS)` shows the limiter query combining `ix_audit_logs_user_id` and `ix_audit_logs_action` (BitmapAnd) and finishing in about 10 ms
+(2.8k buffers hit, sort of 0–5 rows), both when the user is blocked and when not, before the ~250 ms bcrypt call. A composite index
+`(user_id, action, created_at)` would shave that further but needs a migration on a growing audit table, which `DEC-SCOPE-021` #2 (no schema change) deliberately
+avoids. Accepted; revisit if `audit_logs` growth or a limiter latency budget ever demands it.
+
 ## 4. API contract
 
 `POST /api/v1/auth/change-password` — authenticated (access cookie), self only.
