@@ -1013,9 +1013,8 @@ Create `apps/web/components/ChangePasswordForm.tsx`:
 ```tsx
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { refocus } from "@/lib/focus";
 
 function message(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -1043,11 +1042,19 @@ export default function ChangePasswordForm({ email, forgotPasswordHref }: { emai
   // State lags a render, so a second submit event could slip past `busy`; a repeat after success would be a 400 that
   // burns one of the five rate-limit attempts.
   const submitting = useRef(false);
+  // A control disabled while busy loses keyboard focus, so put it where the user needs it next. Asked for through state and
+  // applied in an effect, i.e. after React has committed the re-enabled button: lib/focus.ts `refocus` fires on the next
+  // animation frame, which can run before that commit when the update follows an `await` (seen in a real browser: the
+  // button was still disabled, so focus() did nothing).
+  const [focusRequest, setFocusRequest] = useState<{ id: string } | null>(null);
+  useEffect(() => {
+    if (focusRequest) document.getElementById(focusRequest.id)?.focus();
+  }, [focusRequest]);
 
   function finish(focusId: string) {
     submitting.current = false;
     setBusy(false);
-    refocus(focusId); // a control disabled while busy loses keyboard focus; put it where the user needs it next
+    setFocusRequest({ id: focusId });
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
