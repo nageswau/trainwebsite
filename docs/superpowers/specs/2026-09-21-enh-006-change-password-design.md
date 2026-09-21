@@ -143,15 +143,22 @@ Reuses the existing design language and helpers; adds no UI primitive. Approved 
 **Entry points (a signed-in user must be able to find the page).** The public site header
 (`HeaderAuthActions`) renders only on public pages; portal pages use `PortalShell`, which has no header, its
 sidebar is hidden at ≤980 px and its mobile menu shows only the role's nav items. So:
-- `HeaderAuthActions.tsx`: one new link, "Password" → `/account/password`, beside "Privacy" (public pages).
+- ~~`HeaderAuthActions.tsx`: one new link, "Password", beside "Privacy".~~ **Removed after browser QA (QA-001):** a fifth header button pushed the
+  signed-in header past the viewport (Logout off-screen at 1440 px and narrower; 3 px at 1600, 83 px at 1440, 120 px at 1366, 101 px at 768).
+  The portal entry points below make it redundant, so the header keeps its original four actions. This reverses one element of the
+  2026-09-21 design approval; restoring it needs a header layout change first.
+- `apps/web/app/it/employer/dashboard/page.tsx` (QA-003): the Employer dashboard is a standalone page (no `PortalShell`, no site header), so it
+  gets its own "Change password" link.
 - ★ `PortalShell.tsx` (every portal role): a "Change password" link in the desktop sidebar footer above
   "Sign out", and the same link appended as the last item of the array given to the mobile
   `MobileNavToggle`. Additive only: the desktop `.portal-nav` and each role's `nav` array are unchanged.
 
 **Page** `apps/web/app/account/password/page.tsx` (server), modelled on `/account/privacy` but not a dead end:
 renders inside `PublicShell` (site header, footer); `serverApi("/api/v1/auth/me")` gates it. Signed-out →
-"Sign in required" card whose links are `/it/login?next=%2Faccount%2Fpassword` and the overseas equivalent
-(`LoginForm` already honours `?next=`), so the visitor returns to the page after signing in. Signed-in →
+"Sign in required" card — shown **only for an explicit `401`** (QA-002) — whose links are `/it/login?next=%2Faccount%2Fpassword` and the overseas
+equivalent (`LoginForm` already honours `?next=`), so the visitor returns to the page after signing in. Any other failure (API down, `5xx`, network)
+shows "Temporarily unavailable — your password has not been changed — Try again" instead; `serverApi` now throws an `ApiError` carrying the status
+(still an `Error` with the same message, so existing callers are unaffected). The page has its own title, "Change your password" (QA-005). Signed-in →
 "← Back to dashboard" (`ROLE_DASHBOARD_PATH[role]`), `h1` "Change your password", "Signed in as …", and the
 form inside `.action-card`. `middleware.ts` is unchanged (`/account` is outside its matcher).
 
@@ -163,8 +170,8 @@ form inside `.action-card`. `middleware.ts` is unchanged (`/account` is outside 
   checkbox switches both inputs between `password` and `text` (no confirm-password field was chosen, so this
   is the typo safeguard).
 - Posts JSON to `/api/v1/auth/change-password`. A second submit event while one is pending is ignored (a
-  repeat after success would be a `400` and burn an attempt); the button is disabled and the form
-  `aria-busy` while pending.
+  repeat after success would be a `400` and burn an attempt); the button is `aria-disabled` (not `disabled`, which drops
+  keyboard focus to `<body>`, QA-009), the form is `aria-busy`, and a visually hidden polite status announces "Changing your password…".
 - Outcomes and focus (a control disabled while busy loses focus, so `refocus` puts it back):
 
 | Outcome | Message | Field / focus | Extras |
@@ -182,6 +189,7 @@ form inside `.action-card`. `middleware.ts` is unchanged (`/account` is outside 
 - **Loading:** the button label and `aria-busy` (no skeleton: the page is server-rendered from one fast
   request and the repo has no loading pattern). **Empty:** not applicable; the signed-out card is the
   unauthenticated state. **Errors:** the table above.
+- **Tap targets (QA-006):** the back link, the "Show passwords" row and the recovery link are at least 24 px tall (WCAG 2.5.8).
 - **Responsive/accessible:** works at 375 px with no horizontal scroll, touch target ≥ 44 px, labelled inputs,
   errors announced and tied to the field at fault, fully keyboard-completable (Tab order: current → new →
   show passwords → submit; Enter submits), no animation added (so nothing to gate on
@@ -210,8 +218,10 @@ form inside `.action-card`. `middleware.ts` is unchanged (`/account` is outside 
   completable by keyboard alone, marks and focuses the field at fault, and shows the submitting, 400, 422, 429,
   401, network-failure and success states; "Show passwords" reveals and hides both fields without losing
   input; a second submit while pending sends no second request; the signed-out page shows the sign-in card
-  and returns the visitor to the page after signing in; a portal user (desktop sidebar and mobile menu) and a
-  public-site user (header) can reach the page, and the page links back to the role's dashboard.
+  and returns the visitor to the page after signing in; a portal user (desktop sidebar and mobile menu) and an
+  employer (a link on their dashboard) can reach the page, the page links back to the role's dashboard, and the public header still fits the
+  viewport (no `Password` link there); an API outage is reported as "Temporarily unavailable", never "Sign in required"; the page has its own
+  title; progress is announced and keyboard focus stays on the button while a request runs.
 - **AC-09** Existing behaviour is unchanged: login, register, refresh, forgot/reset, `PATCH /auth/me`,
   RBAC/role dependencies and the JWT claims behave exactly as before.
 - **AC-10** A successful change leaves the user's unused `reset` links unusable (`reset-password` answers the
@@ -243,7 +253,8 @@ form inside `.action-card`. `middleware.ts` is unchanged (`/account` is outside 
   change a seeded account's password — other specs log in with it), change through the real page, log out
   and in with the new password; a wrong current password shows the generic error; a 429 after five
   failures; keyboard-only completion; show-passwords; the signed-out card returning to the page after login;
-  the header link; the portal sidebar link and back-to-dashboard; the mobile portal menu at 375 px (no
+  the signed-in header fitting the viewport at 1600/1440/1366/768 px; the portal sidebar link and back-to-dashboard; the employer dashboard link;
+  the page title; 24 px tap targets; focus and announcement while pending; the mobile portal menu at 375 px (no
   horizontal scroll, touch target ≥ 44 px).
 - **Regression scope (targeted, not the full backend run — `deps.py` and the JWT are untouched):**
   `test_role_assignments.py`, `test_enh_003_first_time_provisioning.py`, `test_sec_001_audit_trail.py`,
@@ -258,7 +269,7 @@ form inside `.action-card`. `middleware.ts` is unchanged (`/account` is outside 
 
 | Risk | Mitigation |
 |---|---|
-| Header link breaks AUTH-002 / SEC-002 header e2e selectors | Run those specs; the link is additive and named distinctly |
+| Header layout: a fifth action overflowed the viewport (found by browser QA) | Header link removed; `HeaderAuthActions` unit test asserts exactly two links + Logout; E2E asserts no horizontal overflow at 1600/1440/1366/768 px |
 | `PortalShell` is used by every portal role; a layout or selector regression would hit all of them | Additive only (one link, one appended menu item; desktop nav array untouched); unit test on the shell; run the portal E2E specs above |
 | New audit actions surface in `/admin/audit` and the ADM-014 export | Additive strings; run `test_sec_001_audit_trail.py` |
 | Editing `auth.py` next to the security-reviewed `reset_password` | Add the route below `reset_password`; do not edit existing routes |
@@ -331,3 +342,26 @@ password page's clickjacking exposure is low: a frame cannot read the fields and
 password); `LoginForm` pushes an unvalidated `?next=` (ENH-006 only adds links with a constant `next`);
 deployment prerequisites `COOKIE_SECURE=true`, a real `SECRET_KEY` and `ENVIRONMENT=production` are already in
 `SECURITY_CONTROLS.md`'s release checklist.
+
+## 13. Browser QA follow-ups (2026-09-21, browser-use, isolated stack `enh006-e2e`)
+
+Exploratory pass over the 20 requested areas. Every fix below was written test-first (the E2E tests were seen failing in the browser first).
+
+| ID | Sev | Finding | Disposition |
+|---|---|---|---|
+| QA-001 | High | Signed-in header overflowed the viewport because of the new fifth button | **Fixed** — header link removed (see §6) |
+| QA-002 | Medium | An API outage rendered "Sign in required" to a signed-in user | **Fixed** — `ApiError` status; "Temporarily unavailable" state |
+| QA-003 | Medium | Employers (standalone dashboard) had no entry point | **Fixed** — link on the employer dashboard |
+| QA-005 | Low | Page title was the site default | **Fixed** — `metadata.title` |
+| QA-006 | Low | Back link / Show passwords row ~20 px tall | **Fixed** — ≥ 24 px |
+| QA-009 | Low | Focus dropped to `<body>` while pending; progress not announced | **Fixed** — `aria-disabled` + polite status |
+| QA-004 | Low | On a phone "Change password" is the last of 17 portal menu items | **Open**, `NEEDS_CONFIRMATION` (reordering every role's menu is outside ENH-006) |
+| QA-007 | Low | A 10-space password is accepted | **Open**, `NEEDS_CONFIRMATION` (the rule is length-only, same as registration/reset) |
+| QA-008 | Low | 17 Tab stops through the site header before the form; no skip link | **Open**, pre-existing in `PublicShell` |
+| QA-010 | Info | A stale second tab gets "Incorrect current password" with no hint the password changed elsewhere | Accepted, correct by design |
+
+Pre-existing, observed and not changed: the public header already overflowed at 1280 px and below without the new link (43 px at 1280, 277 px at
+1024); at 320 px it overflows by 43 px; inputs render at 15 px so iOS Safari zooms on focus; the top announcement bar is clipped at 375 px; the
+existing student dashboard shows "Access unavailable / fetch failed" during an outage. Verified fine: no console errors or exceptions across about
+40 page loads, no broken images, no unexpected redirects, 17 seeded roles plus a registered employer and agent, a cross-site request could not
+change a password (`SameSite=Lax`), garbage and refresh-token cookies were refused.

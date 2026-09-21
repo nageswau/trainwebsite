@@ -1638,3 +1638,20 @@ Run: `cd apps/web; npm test; npm run typecheck; npm run lint` — expected all g
 - [ ] **Step 4: Independent review** — dispatch the `agent-skills:code-reviewer` and `agent-skills:security-auditor` agents on `git diff main...HEAD` with the spec path; ask the security auditor to walk every row of spec §12 and try to break AC-10/AC-11; ask the reviewer to check the frontend against Global Constraints (design-language reuse, accessibility, focus handling) as well as the backend. Address findings with tests first; re-run Steps 1–2 after any fix.
 
 - [ ] **Step 5: Report honestly** — what changed, the exact tests run and their outcomes (targeted, not a full regression; say so), the mutation-check result, migrations: none, config: none, and the open items (spec §11). Use `superpowers:verification-before-completion` before claiming done. Do not push, and open a PR only if the user asks.
+
+---
+
+## Post-QA revisions (2026-09-21)
+
+Browser QA (spec §13) superseded parts of Tasks 4, 5, 6 and 7. Each change was test-first (unit RED, E2E seen failing in the browser, then GREEN):
+
+- **Task 5 header link removed** (QA-001). `HeaderAuthActions.tsx` is back to its original four actions; its unit test now asserts exactly Dashboard,
+  Privacy and Logout. The E2E "Password link is reachable from the signed-in public header" test was replaced by one asserting the header fits
+  the viewport at 1600/1440/1366/768 px.
+- **Task 5 page:** `metadata.title` (QA-005); an `ApiError`-based split between "Sign in required" (401 only) and "Temporarily unavailable" (QA-002);
+  a taller back-link tap target (QA-006). `lib/api.ts` gained an additive `ApiError` (tests in `tests/lib/api.test.ts`).
+- **Task 4 form:** `aria-disabled` instead of `disabled` plus a visually hidden polite status while pending (QA-009); 24 px tap targets (QA-006).
+  Its unit test for the busy state was updated accordingly.
+- **New:** a "Change password" link on the Employer dashboard (QA-003), tested in `tests/components/EmployerDashboardPage.test.tsx`.
+- **Task 7:** the E2E spec grew from 9 to 13 tests. The employer test registers a uniquely named company (names must be unique).
+- Regression list gained `emp-001` … `emp-005` (the employer dashboard changed).
