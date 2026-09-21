@@ -86,10 +86,12 @@ export default function SchoolTransferRequestForm({ studentId, destinations, pen
 
   return (
     <form className="form" onSubmit={submit} noValidate>
-      <div className="field">
+      {/* `.field` is a grid item whose width follows its content, so a <select> holding one very long school name grew the field to 2,300px and
+          `max-width: 100%` then resolved against that. `width: 100%` plus `min-width: 0` keeps both inside the form (measured in the live page). */}
+      <div className="field" style={{ minWidth: 0 }}>
         <label htmlFor="transfer-destination">Destination school</label>
         <select
-          id="transfer-destination" className="select" style={{ maxWidth: "100%" }} value={school} disabled={busy} aria-invalid={fieldError ? true : undefined}
+          id="transfer-destination" className="select" style={{ width: "100%", maxWidth: "100%" }} value={school} disabled={busy} aria-invalid={fieldError ? true : undefined}
           aria-describedby={fieldError ? "transfer-destination-error" : undefined} onChange={(e) => setSchool(e.target.value)}
         >
           <option value="" disabled>Select a school</option>

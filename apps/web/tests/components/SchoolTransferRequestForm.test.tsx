@@ -130,8 +130,12 @@ describe("SchoolTransferRequestForm", () => {
 
   it("keeps the destination select inside the page however long a school's name is", () => {
     render(<SchoolTransferRequestForm studentId="s1" destinations={[{ id: "x", name: "N".repeat(400) }]} pending={null} />);
-    // A <select> sizes itself to its longest option, which pushed the student page to 2,600px wide in a 1,424px window.
+    // A <select> sizes itself to its longest option, which pushed the student page to 2,600px wide in a 1,424px window. jsdom cannot measure
+    // layout (a first version of this test checked only max-width, passed, and the overflow was still there), so this pins the inline styles
+    // that the live-page experiment showed are needed; the Playwright spec is the real guard and measures scrollWidth in a browser.
+    expect(select().style.width).toBe("100%");
     expect(select().style.maxWidth).toBe("100%");
+    expect((select().parentElement as HTMLElement).style.minWidth).toBe("0");
   });
 
   it("sends ONE request when two clicks arrive before React has re-rendered (found by the browser QA)", async () => {

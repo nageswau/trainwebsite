@@ -47,6 +47,10 @@ test("a coordinator requests a transfer, an admin approves it by keyboard, and b
   await signIn(page, ADMIN_EMAIL, ADMIN_PASSWORD, "**/overseas/admin/dashboard");
   const a = await createSchool(page, unique, "a");
   const b = await createSchool(page, unique, "b");
+  // A school whose name is one very long word. The destination <select> sizes itself to its longest option, and once pushed the student page
+  // to 2,600px wide; jsdom cannot measure layout, so this is the guard (found by the second browser QA pass).
+  const longSchool = await page.request.post("/api/v1/overseas-admin/schools", { data: { name: "N".repeat(200), coordinator_full_name: "E2E Long Name Coordinator", coordinator_email: `enh005-e2e-long-${unique}@example.local` } });
+  expect(longSchool.status()).toBe(201);
 
   // School A: one student who will transfer (with a parent), and one that School B will ask for by Student ID.
   await signIn(page, a.coordinatorEmail, E2E_PASSWORD, "**/school/coordinator/dashboard");
@@ -69,6 +73,7 @@ test("a coordinator requests a transfer, an admin approves it by keyboard, and b
   // Outgoing: the request lives in a disclosure on the student's page, and is reversible, so there is no confirm step.
   await page.goto(`/school/coordinator/students/${kid.id}`);
   await page.getByText("Request a transfer").click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), { message: "the student page overflows horizontally with the transfer form open and a very long school name in the list" }).toBe(true);
   await page.selectOption("#transfer-destination", { label: b.name });
   await page.fill("#transfer-reason", "Family is moving");
   await page.getByRole("button", { name: "Request transfer" }).click();
@@ -109,10 +114,15 @@ test("a coordinator requests a transfer, an admin approves it by keyboard, and b
   // School A can no longer read the student; School B can, and sees where the student came from.
   await signIn(page, a.coordinatorEmail, E2E_PASSWORD, "**/school/coordinator/dashboard");
   expect((await page.request.get(`/api/v1/school/students/${kid.id}`)).status()).toBe(403);
+  // ...and is told so: the requester's in-app notice is readable (a coordinator screen for it was missing until the second browser QA pass).
+  await page.goto("/school/coordinator/notifications");
+  await expect(page.getByText(new RegExp(`Transfer approved: ${kidName} moved to ${b.name}`))).toBeVisible();
   await signIn(page, b.coordinatorEmail, E2E_PASSWORD, "**/school/coordinator/dashboard");
   await page.goto(`/school/coordinator/students/${kid.id}`);
   await expect(page.getByRole("heading", { name: "Transfer history" })).toBeVisible();
   await expect(page.getByText(new RegExp(`Moved from ${a.name} to ${b.name}`))).toBeVisible();
+  await page.goto("/school/coordinator/notifications");
+  await expect(page.getByText(new RegExp(`${kidName} has joined ${b.name}`))).toBeVisible();
 
   // The parent (account created at School A) still reaches the child at School B, and sees the transfer.
   await signIn(page, parentEmail, PARENT_PASSWORD, "**/school/parent/dashboard");
