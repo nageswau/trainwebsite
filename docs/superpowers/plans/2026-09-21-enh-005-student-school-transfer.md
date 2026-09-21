@@ -19,7 +19,7 @@
 - Logs and audit metadata: IDs, counts, reason tokens only; never `student_code`, `reason`, `note`, names or emails.
 - **Refinement to spec §5.2/S7:** the free-text validator rejects control characters **except `\n` and `\t`** (a `<textarea>` reason legitimately has line breaks) plus U+202A–U+202E and U+2066–U+2069; it accepts U+200C/U+200D. Record this in the spec's docs task.
 - Existing behaviour is preserved: run the named regression files after every backend task that touches `schools.py`.
-- Backend DB tests run against the migrated Docker Postgres. **The user controls Docker; the agent never starts it.** Tasks marked **[DB]** cannot be run RED/GREEN until the user says the DB is up and `0034` is applied.
+- Backend DB tests run inside the isolated compose project against a migrated Postgres, never the host (`docker compose -f docker-compose.yml -f docker-compose.ci.yml -p <project> --profile ci run --rm --no-deps api-test python -m pytest ...`, with `app`, `tests` and `alembic` mounted so an edit needs no rebuild). **The user controls Docker; the agent does not start it unless the user explicitly authorises it.** Docker was not running when this plan was written, so tasks marked **[DB]** waited; on 2026-09-21 the user explicitly authorised bringing up an isolated stack for this worktree (project `enh005-e2e`, web 3300, API 8300, apart from the ENH-006 stack), and the **[DB]** tasks were then run RED/GREEN.
 - Test command (from `apps/api`): `python -m pytest tests/<file> -q`. Web: `npm --prefix apps/web run test -- <file>`.
 
 ## File Structure

@@ -818,3 +818,17 @@ task.
 - Whether a rejected/cancelled request should be re-fileable immediately (the design allows it: the
   partial index only covers `pending`).
 - Bulk transfer for whole-cohort moves.
+
+## 14. Implementation notes (deviations from this spec, recorded 2026-09-21)
+
+Where the code differs from what §5–§7 say, the code is what shipped and this list is the honest record. None changes a decision in §3.
+
+- **Free text (§5.2, S7):** `reason`/`note` reject control characters **except line breaks and tabs** (they are `<textarea>` fields), plus U+202A–U+202E and U+2066–U+2069; zero-width joiners stay allowed.
+- **Destinations:** `GET /school/transfer-destinations` returns `SchoolRef` items; no separate `TransferDestination` type was created.
+- **Admin preview:** `preview` is present only on `pending` rows (it describes what approval would touch) and `null` on decided rows.
+- **Cancel refusal and the throttle:** the identical `403` for cancelling an unknown or not-yours request is audited with the same `denied` action the filing refusals use, so it counts toward the hourly throttle.
+- **Conflicts:** an `IntegrityError` or a lock wait past the bound on approve/reject both answer `409` with the "Another change to this student is in progress; retry" message.
+- **Admin workspace payload:** `GET /portal/overseas/admin/school-transfers` was added (a table of the 200 most recent requests). `PortalPage` needs both a `PORTAL_NAV` entry and a backend payload or an admin section is a 404; browser QA found this before it shipped.
+- **Redaction on cancel:** cancelling a request the school filed as *incoming* returns the redacted view, like the list.
+- **Routing:** on this FastAPI version (0.141) `app.routes` does not flatten included routers, so route-shape tests introspect the two routers directly.
+- **The detail-panel wiring** passes `pending` from a single `?status=pending&limit=100` read (a school has at most 50 open requests), and offers the form even if that lookup fails, because the server refuses a duplicate.
