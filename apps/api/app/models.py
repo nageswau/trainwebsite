@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -1056,6 +1056,34 @@ class SchoolStudentGradeHistory(Base, TimestampMixin):
     to_grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     to_grade_or_class: Mapped[str | None] = mapped_column(String(60), nullable=True)
     performed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolStudentTransferRequest(Base, TimestampMixin):
+    """ENH-005 -- a coordinator's request to move a student to another school, and (once approved) that student's
+    transfer history (docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md §5.1). One table is
+    both the workflow and the history. `filed_by_school_id` is the filing coordinator's school, always taken from their
+    profile; `direction` is derived (outgoing when it equals `from_school_id`). The partial unique index is the database
+    backstop for "at most one open request per student"; the CHECKs keep a request between two different schools, one
+    of which filed it. Both are also in migration 0034 (dev startup can build the schema with `create_all`)."""
+
+    __tablename__ = "school_student_transfer_requests"
+    __table_args__ = (
+        CheckConstraint("from_school_id <> to_school_id", name="ck_school_transfer_distinct_schools"),
+        CheckConstraint("filed_by_school_id IN (from_school_id, to_school_id)", name="ck_school_transfer_filed_by_side"),
+        Index("uq_school_transfer_pending_student", "school_student_id", unique=True, postgresql_where=text("status = 'pending'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    from_school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    to_school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    requested_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    filed_by_school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | approved | rejected | cancelled
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    outcome: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # set on approval: the counts of what the transfer changed
 
 
 class SchoolActivity(Base, TimestampMixin):
