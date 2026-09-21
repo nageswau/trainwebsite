@@ -1,5 +1,5 @@
 import PortalShell from "@/components/PortalShell";
-import { ChildStatusRow, formatDate, loadChildOverview, type ChildOverview } from "@/components/SchoolChildOverview";
+import { ChildStatusRow, childrenSpanSchools, formatDate, loadChildOverview, type ChildOverview } from "@/components/SchoolChildOverview";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
@@ -31,6 +31,7 @@ export default async function SchoolParentDashboardPage() {
     );
   }
   const overviews = await Promise.all(children.map((c) => loadChildOverview(c.id).catch(() => null)));
+  const multiSchool = childrenSpanSchools(overviews); // ENH-005: only then does a card need to name its school
   const upcoming = new Map<string, ChildOverview["activities"]["upcoming"][number]>();
   for (const o of overviews) for (const a of o?.activities.upcoming ?? []) upcoming.set(a.id, a);
   const upcomingList = [...upcoming.values()].sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
@@ -53,6 +54,7 @@ export default async function SchoolParentDashboardPage() {
                 <h2>{c.full_name} <span className="muted" style={{ fontSize: 14 }}>({c.student_code})</span></h2>
                 <p><strong>Grade/Class:</strong> {c.grade_or_class || "-"}</p>
                 <p><strong>Date of birth:</strong> {formatDate(c.date_of_birth)}</p>
+                {multiSchool && o?.student.school_name && <p><strong>School:</strong> {o.student.school_name}</p>}
                 {o ? (
                   <>
                     <p><strong>Class teacher:</strong> {o.student.assigned_teacher_name || "Not assigned yet"}</p>

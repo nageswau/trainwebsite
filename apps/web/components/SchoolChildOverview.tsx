@@ -27,6 +27,12 @@ export async function loadChildOverview(studentId: string): Promise<ChildOvervie
   return serverApi<ChildOverview>(`/api/v1/school/students/${studentId}/overview`);
 }
 
+/** ENH-005: true when the children's known schools are not all the same. After a transfer a parent can have children at two schools, and a
+ * card must then say which one; a single-school parent's page stays exactly as it was. A child whose overview did not load is ignored. */
+export function childrenSpanSchools(overviews: (ChildOverview | null)[]): boolean {
+  return new Set(overviews.map((o) => o?.student.school_name).filter(Boolean)).size > 1;
+}
+
 export function formatDate(value: string | null | undefined, withTime = false): string {
   if (!value) return "-";
   const d = new Date(value);
