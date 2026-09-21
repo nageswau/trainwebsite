@@ -698,6 +698,9 @@ class AdminTransferPreview(BaseModel):
     linked_parents: int
     in_flight_results: int
     to_school_has_portfolio_staff: bool
+    # True when the student still has a parent invited but not yet accepted: approval clears that invite, so the parent would later hold an
+    # account at the losing school and no linked child (DEC-SCOPE-021 open item). A boolean, never the invited address.
+    pending_parent_invite: bool = False
 
 
 class AdminTransferRequestOut(BaseModel):

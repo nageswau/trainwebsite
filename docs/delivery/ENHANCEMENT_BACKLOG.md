@@ -613,7 +613,7 @@ either school files a request, an Overseas Admin or Super Admin approves or reje
 a student alone. Verified so far (see `RTM.md` and `docs/quality/ENH-005_BROWSER_QA_2026-09-21.md` for the numbers and their limits): backend,
 frontend and Playwright suites as recorded there; three browser passes by the implementer, whose defects D1–D4 were fixed and re-verified (D1 only
 after a first, jsdom-only fix proved insufficient in a real browser). **Still outstanding:** (1) the independent code review the owner asked for;
-(2) an owner decision on parents invited but not yet accepted at transfer time (they end up with no linked child); (3) two low-severity browser
+(2) an owner decision on parents invited but not yet accepted at transfer time (they still end up with no linked child; the admin is now warned before approving, 2026-09-21, but the invite is not carried to the gaining school); (3) two low-severity browser
 findings (N3, N4; N1 and N2 are fixed); (4) a full Playwright run. Deliberately not decided or built: consent from the other school, bulk transfer, branch moves
 (`ENH-009`), multi-school parents beyond the recorded rule (`ENH-008`).
 

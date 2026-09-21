@@ -15,6 +15,11 @@ export type Failure = { text: string; expired?: boolean; refetch?: boolean };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+// Approval clears the student's pending parent invite (it belongs to the losing school), so a parent who has not accepted yet would end up with
+// an account at the losing school and no linked child. Said in words before the admin decides, and again beside the irreversible button.
+const inviteWarning = (r: AdminTransferRequest) =>
+  `A parent has been invited but has not accepted yet. Approving clears that invite, so they will not be linked to ${r.student_name}. Consider asking them to accept it first.`;
+
 function describeOutcome(request: AdminTransferRequest) {
   const o = request.outcome;
   return o ? `${plural(o.parents_moved, "parent")} moved, ${o.parents_kept} kept, ${plural(o.results_withdrawn, "result")} withdrawn` : "";
@@ -98,6 +103,7 @@ function AdminTransferRow({ request, onDecided, onFailure }: { request: AdminTra
         {r.status === "pending" && preview && !preview.to_school_has_portfolio_staff && (
           <span className="form-warning">{r.to_school.name} has no assigned staff portfolio, so the student will be invisible to the Academic Team, Career Counselor and Psychometric Team until one is assigned.</span>
         )}
+        {r.status === "pending" && preview?.pending_parent_invite && <span className="form-warning">{inviteWarning(r)}</span>}
         {r.outcome && <span>{describeOutcome(r)}</span>}
       </div>
       <div className="meta">
@@ -114,6 +120,7 @@ function AdminTransferRow({ request, onDecided, onFailure }: { request: AdminTra
           <p id={`approve-text-${r.id}`}>Moves {r.student_name} to {r.to_school.name}.</p>
           <p>Up to {plural(preview?.linked_parents ?? 0, "linked parent account")} {preview?.linked_parents === 1 ? "moves" : "move"} to {r.to_school.name} if they have no other child at {r.from_school.name}. Each parent keeps access to their child.</p>
           <p>{plural(preview?.in_flight_results ?? 0, "unpublished result")} {preview?.in_flight_results === 1 ? "is" : "are"} withdrawn. The teacher assignment is cleared. This cannot be undone here.</p>
+          {preview?.pending_parent_invite && <p className="form-warning">{inviteWarning(r)}</p>}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button ref={(el) => { buttons.current.confirmApprove = el; }} type="button" className="btn" disabled={busy} aria-describedby={`approve-text-${r.id}`} onClick={() => void decide("approve")}>{busy ? "Approving…" : "Confirm approval"}</button>
             <button type="button" className="btn ghost" disabled={busy} onClick={close}>Cancel</button>

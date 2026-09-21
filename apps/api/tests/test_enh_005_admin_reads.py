@@ -120,10 +120,27 @@ async def test_the_admin_queue_is_complete_and_carries_the_preview_counts(client
     assert (out["direction"], inc["direction"]) == ("outgoing", "incoming")
     assert (out["student_name"], out["student_code"], out["reason"]) == (kid.full_name, kid.student_code, "Family is moving")
     assert out["requester"]["id"] == str(w["a"]["coordinator"].id) and out["filed_by_school"]["id"] == str(w["a"]["school"].id)
-    assert out["preview"] == {"linked_parents": 1, "in_flight_results": 2, "to_school_has_portfolio_staff": True}
+    assert out["preview"] == {"linked_parents": 1, "in_flight_results": 2, "to_school_has_portfolio_staff": True, "pending_parent_invite": False}
     assert inc["student_name"] == w["a"]["students"][1].full_name  # the admin's view is never redacted
-    assert inc["preview"] == {"linked_parents": 0, "in_flight_results": 0, "to_school_has_portfolio_staff": False}
+    assert inc["preview"] == {"linked_parents": 0, "in_flight_results": 0, "to_school_has_portfolio_staff": False, "pending_parent_invite": False}
     assert inc["filed_by_school"]["id"] == str(w["c"]["school"].id)
+
+
+@pytest.mark.asyncio
+async def test_the_preview_flags_a_parent_invite_that_approval_would_clear(client, db_session, world):
+    """Approval clears `pending_parent_email` (the invite belongs to the losing school), so a parent who has not accepted yet ends up with no
+    linked child. The admin has to see that BEFORE deciding (DEC-SCOPE-021 open item), and only for a student that has such an invite."""
+    w = world
+    invited = w["a"]["students"][0]
+    await db_session.execute(update(SchoolStudent).where(SchoolStudent.id == invited.id).values(pending_parent_email="not-yet-accepted@example.local"))
+    await db_session.commit()
+    await login(client, w["admin"].email)
+
+    by_id = {row["id"]: row for row in (await client.get(LIST, params={"limit": 100})).json()["items"]}
+
+    assert by_id[str(w["outgoing"].id)]["preview"]["pending_parent_invite"] is True
+    assert by_id[str(w["incoming"].id)]["preview"]["pending_parent_invite"] is False
+    assert "not-yet-accepted@example.local" not in (await client.get(LIST, params={"limit": 100})).text  # a boolean: the address is never sent
 
 
 @pytest.mark.asyncio

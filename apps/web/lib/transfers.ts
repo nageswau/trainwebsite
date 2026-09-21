@@ -22,7 +22,7 @@ export type TransferRequest = {
 };
 
 export type TransferOutcome = { parents_moved: number; parents_kept: number; results_withdrawn: number; teacher_cleared: boolean; pending_parent_email_cleared: boolean };
-export type TransferPreview = { linked_parents: number; in_flight_results: number; to_school_has_portfolio_staff: boolean };
+export type TransferPreview = { linked_parents: number; in_flight_results: number; to_school_has_portfolio_staff: boolean; pending_parent_invite: boolean };
 
 /** The admin's row: always complete. */
 export type AdminTransferRequest = {

@@ -13,7 +13,7 @@ function request(n: string, over: Partial<AdminTransferRequest> = {}): AdminTran
   return {
     id: `req-${n}`, direction: "outgoing", status: "pending", student_id: `s-${n}`, student_code: `CODE000${n}`, student_name: `Child ${n}`, from_school: A, to_school: B, filed_by_school: A,
     requester: { id: "u1", name: "Fatima Coordinator" }, reason: "Family is moving", decision_note: null, decided_by: null, outcome: null,
-    preview: { linked_parents: 2, in_flight_results: 3, to_school_has_portfolio_staff: true }, created_at: "2026-09-20T10:00:00Z", decided_at: null, ...over,
+    preview: { linked_parents: 2, in_flight_results: 3, to_school_has_portfolio_staff: true, pending_parent_invite: false }, created_at: "2026-09-20T10:00:00Z", decided_at: null, ...over,
   };
 }
 const page = (items: AdminTransferRequest[], total = items.length) => ({ items, total, limit: 25, offset: 0 });
@@ -56,10 +56,27 @@ describe("AdminSchoolTransferPanel", () => {
   });
 
   it("warns, in words, when the destination has no staff portfolio", async () => {
-    stubFetch(() => json(page([request("1", { preview: { linked_parents: 0, in_flight_results: 0, to_school_has_portfolio_staff: false } })])));
+    stubFetch(() => json(page([request("1", { preview: { linked_parents: 0, in_flight_results: 0, to_school_has_portfolio_staff: false, pending_parent_invite: false } })])));
     render(<AdminSchoolTransferPanel />);
     const warning = await screen.findByText(/has no assigned staff portfolio/);
     expect(warning.closest(".form-warning")).toBeTruthy();
+  });
+
+  it("warns, in words, that approving clears a parent invite that has not been accepted, and repeats it at the confirm step (DEC-SCOPE-021 open item)", async () => {
+    stubFetch(() => json(page([request("1", { preview: { linked_parents: 0, in_flight_results: 0, to_school_has_portfolio_staff: true, pending_parent_invite: true } })])));
+    render(<AdminSchoolTransferPanel />);
+    const warning = await screen.findByText(/invited but has not accepted/);
+    expect(warning.closest(".form-warning")).toBeTruthy();
+    expect(warning.textContent).toMatch(/not be linked to Child 1/);
+    fireEvent.click(trigger(/^Approve transfer of Child 1/));
+    expect(screen.getAllByText(/invited but has not accepted/)).toHaveLength(2); // the row's warning, and the one beside the irreversible button
+  });
+
+  it("says nothing about invites when the student has none", async () => {
+    stubFetch(() => json(page([request("1")])));
+    render(<AdminSchoolTransferPanel />);
+    await screen.findByText(/Child 1/);
+    expect(screen.queryByText(/invited but has not accepted/)).toBeNull();
   });
 
   it("names the student and the school on every action button", async () => {

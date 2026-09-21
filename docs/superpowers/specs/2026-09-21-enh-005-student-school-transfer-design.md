@@ -811,6 +811,10 @@ task.
   Active links are unaffected (D1). Options: carry the pending intent to the gaining school (an S2 change: a link creator would then need a
   cross-school exception), show the admin a "pending parent invitations" count in the approval preview so it is a conscious choice, or accept
   it and tell coordinators to confirm invites are accepted before requesting a transfer.
+  **Mitigated, not resolved (2026-09-21).** The second option was built, as a boolean rather than a count (a student has one pending parent
+  email): the admin's preview carries `pending_parent_invite`, and the queue row and the confirm step both warn in words before the irreversible
+  approval. The behavior itself is unchanged: an invite still does not survive a transfer. Whether to carry it to the gaining school (option 1)
+  is still an owner decision.
 
 - **The other school is not told of a pending request** (D5). The losing school learns of a
   gaining-filed request, and the gaining school of a losing-filed one, only when the admin decides.

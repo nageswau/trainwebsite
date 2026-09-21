@@ -483,7 +483,10 @@ async def admin_list_transfer_requests(
     items = [
         _admin_out(
             r, s, f, t, filed, requester, decider,
-            AdminTransferPreview(linked_parents=parents.get(s.id, 0), in_flight_results=in_flight.get(s.id, 0), to_school_has_portfolio_staff=r.to_school_id in staffed) if r.status == "pending" else None,
+            AdminTransferPreview(
+                linked_parents=parents.get(s.id, 0), in_flight_results=in_flight.get(s.id, 0), to_school_has_portfolio_staff=r.to_school_id in staffed,
+                pending_parent_invite=s.pending_parent_email is not None,
+            ) if r.status == "pending" else None,
         )
         for r, s, f, t, filed, requester, decider in rows
     ]

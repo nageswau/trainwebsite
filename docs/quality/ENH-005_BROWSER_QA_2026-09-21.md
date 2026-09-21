@@ -82,11 +82,15 @@ simulated), a successful approval (the Playwright spec covers it by keyboard), t
   14 minutes. All 14 are in `test_pay_001_stu_010_payment_gateway.py` (11) and `test_zoho_meeting_integration.py` (3), the provider-credential tests;
   none is in an ENH-005 file. The same suites failed on the base commit in the `ENH-004` record (there 22, including tests needing a seeded DB; this
   database is seeded), but this run did not re-run the base commit, so "identical to base" is **not** claimed for these 14.
-- Frontend: 27 files, 280 tests passed (273 before the N1/N2 fix); `tsc --noEmit` and `eslint` on the changed files clean.
+- Frontend: 27 files, 282 tests passed (273 before the N1/N2 fix, 280 before the invite warning); `tsc --noEmit` and `eslint` on the changed files clean.
 
 ## Open items (must be decided or done; not hidden)
 
-1. **A parent invited but not yet accepted when the student transfers is left with no child** after accepting (spec §13, `DEC-SCOPE-021`). Needs an
+1. **A parent invited but not yet accepted when the student transfers is left with no child** after accepting (spec §13, `DEC-SCOPE-021`).
+   **Mitigated 2026-09-21 (not resolved):** the admin's preview now has a boolean `pending_parent_invite`; the queue row and the confirm step both
+   warn in words. Verified in the browser with a real student created with a parent email (warning shown, the same page for a student without an
+   invite shows none, the confirm step repeats it, the address is not in the payload, no overflow at 375px). The invite still does not survive a
+   transfer. Still needs an
    owner decision between: carry the pending intent to the gaining school, show a pending-invite count in the admin preview, or leave it and tell
    coordinators.
 2. **Independent code review (Codex) has not been run.**
