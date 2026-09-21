@@ -2122,8 +2122,35 @@ Design, API, UI and security review: `docs/superpowers/specs/2026-09-19-enh-004-
 
 **Security exposure found during ENH-004's review, and its status.** `PATCH /auth/me` merged a client-supplied `profile` into the user's own profile, and every school scope check trusts `profile.school_id`, so a logged-in user could re-point their own school scope and defeat the "a coordinator cannot promote at another school" guarantee this feature relies on. **Fixed 2026-09-20 with the user's approval** (plan Task 3b): `school_id` is now read-only through that route (an unchanged echo is still accepted; a change is `403`, applies nothing else, is audited as `profile.update_denied` and logged). `profile.university_id` had the same weakness for university reps (UNI-001); the independent code review of ENH-004 flagged it as High and it was **fixed the same day** by adding it to the same server-owned list (3 tests, red before the change). **Still OPEN, deliberately not changed here:** no school-student erasure path exists; there is no app-wide rate limiter or CSRF token.
 
+### DEC-SCOPE-021 — Self-service change password for an authenticated user (`ENH-006`)
 
-### DEC-SCOPE-021 — Student school transfer, coordinator-requested and admin-approved (`ENH-005`)
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-006 (source: the user's instruction "change password") required two decisions before implementation: the rate-limit threshold and storage for repeated wrong current passwords (`SECURITY_CONTROLS.md` §1 lists auth rate limiting as an open item that must not be decided without sign-off), and the session-invalidation policy after a change (marked `NEEDS_CONFIRMATION` in the backlog).
+
+**Evidence:** Audit of the code, 2026-09-21: `apps/api/app/api/auth.py` has `forgot_password` and `reset_password` but no route for an already-authenticated user; access and refresh tokens are stateless JWTs with no per-session or token-version record (`logout` only deletes cookies); no rate limiter exists anywhere (the only throttle is the ENH-003 welcome-link Re-send cooldown, which is derived from existing rows); `AuditLog` already records denied actions (`profile.update_denied`).
+
+**Resolution:** User confirmed in-session, 2026-09-21 (`EXPLICIT_APPROVAL`):
+
+1. **Rate limit:** 5 failed current-password attempts per authenticated user per 15 minutes; the next attempt is `429` with `Retry-After`, even if it carries the correct password. Keyed on the user id, never on IP.
+2. **Storage:** the limiter counts the `auth.change_password_failed` audit rows this feature already writes. No new table and no migration (the user chose this over a dedicated attempts table).
+3. **Sessions:** other sessions are **not** invalidated. `get_current_user` and the JWT claims are unchanged; other sessions stay valid until their tokens expire.
+4. **Also confirmed:** a new password identical to the current one is rejected (`422`); no confirm-password field; failed attempts are audit-logged (`outcome="denied"`), a successful change as `auth.change_password`.
+5. **Reset links (security review, 2026-09-21, `EXPLICIT_APPROVAL`):** a successful change revokes the user's unused `reset`-purpose password-reset tokens (`superseded_at`, same transaction); welcome tokens, used tokens and other users' tokens are untouched.
+6. **Session survival, accepted risk (2026-09-21, `EXPLICIT_APPROVAL`):** because other sessions are not invalidated (#3), a stolen refresh cookie stays usable for up to 14 days after a change (`refresh_token_days`; access tokens 60 minutes). The smaller alternative — a `password_changed_at` column checked only in `/auth/refresh`, exposure about 60 minutes, one migration — was offered and declined for this feature.
+7. **Whitespace-only passwords (browser QA finding QA-007, user-directed 2026-09-21, `EXPLICIT_APPROVAL`):** `POST /auth/change-password` refuses a `new_password` that is only whitespace (`422`, "Password must not consist only of spaces"); spaces inside or around real characters are kept exactly. **`NEEDS_CONFIRMATION`:** registration and reset-password still accept such a value, so the three entry points now differ.
+8. **Mobile menu placement (browser QA finding QA-004, user-directed 2026-09-21, `EXPLICIT_APPROVAL`):** on the portal's mobile menu, "Change password" is the **first** item, so it is in view without scrolling the role's 17 items on a phone. Only this feature's own item is positioned; no role's menu order is changed.
+9. **Skip link in the shared public shell (browser QA finding QA-008, user-directed 2026-09-21, `EXPLICIT_APPROVAL`):** `PublicShell` gains a "Skip to main content" link and a focusable `main#main-content`. **Scope note:** this is a shared component, so every public page gains it, which is wider than ENH-006's own surface; it was accepted by the instruction below and can be reverted independently (`PublicShell.tsx`, `controls.css`, `PublicShell.test.tsx`).
+
+**Approval trail for #7–#9 (added after the independent review, 2026-09-21).** The browser-QA pass listed QA-004, QA-007 and QA-008 under "your call" and marked them `NEEDS_CONFIRMATION` (spec §13, before commit `8c63fcc`). The user then replied "fix the 2", which was read as item 2 of that list, i.e. those three findings; the interpretation was stated to the user in the same turn ("say so if you meant something else") and was not contested. The fixes were made test-first and the spec, contract and RTM were updated to match. If that reading was wrong, #7–#9 are the three changes to revert.
+
+Design, API, frontend and security review: `docs/superpowers/specs/2026-09-21-enh-006-change-password-design.md` (§4, §6, §12).
+
+**Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-21.
+
+**Consequences / still OPEN, deliberately not decided here:** login, forgot-password and reset-password remain unthrottled (`SECURITY_CONTROLS.md` §1); other sessions surviving a password change is a known limitation, not a decision that it is desirable; no notification email on change; no password-history or strength rules beyond the existing 10–128 character rule.
+
+### DEC-SCOPE-022 — Student school transfer, coordinator-requested and admin-approved (`ENH-005`)
+
+**ID note:** this decision was written as `DEC-SCOPE-021` on the ENH-005 branch. `ENH-006` merged to `main` first and holds `DEC-SCOPE-021` (change password), so when `main` was merged into the ENH-005 branch (2026-09-21) this one was renumbered to `DEC-SCOPE-022` everywhere. Earlier ENH-005 commit messages that say `DEC-SCOPE-021` mean this decision.
 
 **Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-005 (source: the user's instruction "changing of schools etc.") had no Decision ID or Feature ID. Who may move a student from one school to another, and what happens to everything that hangs off that student (parents, staff visibility, unpublished results, the assigned teacher, history)?
 

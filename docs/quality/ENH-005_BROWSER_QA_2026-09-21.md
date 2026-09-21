@@ -1,6 +1,6 @@
 # ENH-005 — browser QA record (2026-09-21)
 
-Feature: student school transfer / reassignment (`ENH-005`, `DEC-SCOPE-021`).
+Feature: student school transfer / reassignment (`ENH-005`, `DEC-SCOPE-022`).
 Tool: Browser Use (CDP) against a separate headless Chrome driving the running web app, plus Playwright (`enh-005-school-transfer.spec.ts`).
 
 **Status of this record: NOT a completion record.** See "Open items". (The independent code review was run after this record was written; see `ENH-005_CODEX_REVIEW_2026-09-21.md`.)
@@ -86,11 +86,11 @@ simulated), a successful approval (the Playwright spec covers it by keyboard), t
 
 ## Open items (must be decided or done; not hidden)
 
-1. **A parent invited but not yet accepted when the student transfers is left with no child** after accepting (spec §13, `DEC-SCOPE-021`).
+1. **A parent invited but not yet accepted when the student transfers is left with no child** after accepting (spec §13, `DEC-SCOPE-022`).
    **Mitigated 2026-09-21, then decided by the owner (keep the admin warning):** the admin's preview now has a boolean `pending_parent_invite`; the queue row and the confirm step both
    warn in words. Verified in the browser with a real student created with a parent email (warning shown, the same page for a student without an
    invite shows none, the confirm step repeats it, the address is not in the payload, no overflow at 375px). The invite still does not survive a
-   transfer, by the owner's decision of 2026-09-21 (`DEC-SCOPE-021`): the admin warning is kept; carrying the invite over and blocking were not chosen.
+   transfer, by the owner's decision of 2026-09-21 (`DEC-SCOPE-022`): the admin warning is kept; carrying the invite over and blocking were not chosen.
 2. The independent code review (Codex) has been run and its findings dispositioned: `ENH-005_CODEX_REVIEW_2026-09-21.md`.
 3. N1–N4 are all fixed and were re-verified in the browser (`ENH-005_FINAL_BROWSER_VERIFICATION_2026-09-21.md`).
 4. The full Playwright suite was not run (only the school and enhancement specs).

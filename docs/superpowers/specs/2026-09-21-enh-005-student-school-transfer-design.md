@@ -8,14 +8,14 @@ decisions in §3 plus the section-by-section design with "yes". The same day, an
 awaiting the user's review. Implementation not started.
 
 **Traceability:** user instruction ("changing of schools etc.", recorded in
-`docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-005, `DERIVED_BACKLOG`) → `DEC-SCOPE-021` (proposed by this
+`docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-005, `DERIVED_BACKLOG`) → `DEC-SCOPE-022` (proposed by this
 spec, to be registered — see §12) → ENH-005 → this spec → plan (`docs/superpowers/plans/`) → tests → code.
 ENH-005 has no hard dependency, but the backlog (§2 ordering, ENH-008 note, ENH-009 note) recommends
 resolving multi-school parents (ENH-008) and Branch scope (ENH-009) first. Neither is built; §3 D1 and
 §13 record how this design copes without them.
 
 **Acceptance-criteria numbering:** `AC-nn` below is local to this spec. Do not cite it from
-`API_CONTRACT.md`/`RTM.md` as a source-document ID; cite `DEC-SCOPE-021` and `ENH-005`.
+`API_CONTRACT.md`/`RTM.md` as a source-document ID; cite `DEC-SCOPE-022` and `ENH-005`.
 
 ## 1. Problem (audit result, gap confirmed)
 
@@ -402,7 +402,7 @@ approval runs on stale data; an authorization change goes unrecorded; personal d
 | S3 | Medium | **Code-probing oracle.** The identical `202` hides the response, but a filer can see whether a row appeared in their own list, so student codes (32 bits) can be tested. The app has no rate limiting at all. | **D8:** 30 filing attempts per coordinator per rolling hour, counted from the audit rows; `429` + `Retry-After` + a warning log (the ENH-003 resend-throttle shape). Combined with the 50-open cap (D7) and auditing of every attempt, enumeration costs about 480 probes a day per coordinator against a 1-in-10⁵ hit rate. **Residual, stated honestly:** a determined coordinator can still learn that a code exists, slowly, and is recorded doing so. The DB-based count works across instances (an in-process limiter would not). |
 | S4 | Medium | **An authorization-scope change would go unrecorded.** Approval rewrites another user's `profile.school_id`, a key `PATCH /auth/me` treats as server-owned and audits when refused. | One `AuditLog` row per moved parent, in the same transaction (§5.4 step 3). |
 | S5 | Medium | **Approval must not be a general write path to accounts.** | It writes `profile.school_id` on `school_parent` accounts only; a test proves `role`, `division`, role assignments, `active`, `email` and `password_hash` of every linked user are unchanged, and that a link whose user is not a `school_parent` is left alone. |
-| S6 | Medium (consequence, not a defect) | **A moved parent comes under the gaining coordinator's account authority.** `list_team` shows the account (name, email) and `update_team_account` lets that coordinator activate or deactivate it (`schools.py:160-203`); the losing coordinator loses both. This follows directly from decision D1 ("the account moves"). | Accepted and recorded in `DEC-SCOPE-021`; the actions are already audited (`school.team_account_update`). A parent kept at the losing school (another child there) is not affected. |
+| S6 | Medium (consequence, not a defect) | **A moved parent comes under the gaining coordinator's account authority.** `list_team` shows the account (name, email) and `update_team_account` lets that coordinator activate or deactivate it (`schools.py:160-203`); the losing coordinator loses both. This follows directly from decision D1 ("the account moves"). | Accepted and recorded in `DEC-SCOPE-022`; the actions are already audited (`school.team_account_update`). A parent kept at the losing school (another child there) is not affected. |
 | S7 | Low | **Bidirectional-control characters in free text** (`reason`, `note`) could visually reorder text shown to a privileged reviewer. | The validators reject `Cc` (as ENH-004 does) **and** U+202A–U+202E and U+2066–U+2069. Zero-width joiners (U+200C/U+200D) stay allowed: Indic-script text needs them. |
 | S8 | Low | **Sensitive data in logs and audit rows.** `JsonFormatter` redacts only a fixed key list, so a careless `extra_fields` value would be logged verbatim. | Logs and audit metadata carry IDs, counts and reason tokens only; never `student_code`, `reason`, `note` or a name. A `caplog` test (the ENH-003 pattern) asserts it across every ENH-005 route. `student_code` travels in a POST body, never a path or query string, so it cannot reach the request-path access log. Audit metadata also carries the `request_id` so a row correlates with its log lines. |
 | S9 | Info | **CSRF.** Sessions are `httponly`, `SameSite=Lax` cookies; CORS allows only `frontend_url`. | Every ENH-005 mutation is a `POST`; **none is a `GET`**, so Lax (which sends cookies on top-level cross-site *GET* navigations only) protects them. A test enumerates the new routes and asserts the method. The two filing endpoints and reject take typed JSON bodies. No CSRF token is added: none exists app-wide, and one endpoint family cannot be secured that way. |
@@ -790,7 +790,7 @@ task.
 
 ## 12. Documentation deliverables
 
-- `DEC-SCOPE-021` in `docs/decisions/PRODUCT_DECISION_REGISTER.md` (D1–D7, A1–A3, non-goals).
+- `DEC-SCOPE-022` in `docs/decisions/PRODUCT_DECISION_REGISTER.md` (D1–D7, A1–A3, non-goals).
 - `docs/architecture/DATA_MODEL.md`: the new table and the `withdrawn` result status.
 - `docs/architecture/API_CONTRACT.md` §12A: the ten endpoints (six coordinator, four admin), the error
   catalogue (§5.3a), the redaction rule, and a note that these two lists use `limit`/`offset` rather than
@@ -816,7 +816,7 @@ task.
   **Mitigated (2026-09-21) and then decided by the owner (in-session, 2026-09-21): keep this behavior with the admin warning.** The second option was built, as a boolean rather than a count (a student has one pending parent
   email): the admin's preview carries `pending_parent_invite`, and the queue row and the confirm step both warn in words before the irreversible
   approval. The behavior itself is unchanged: an invite does not survive a transfer. The owner chose to keep it that way: carrying the invite to the gaining school (option 1) and
-  blocking while an invite is unaccepted were not chosen (see `DEC-SCOPE-021`).
+  blocking while an invite is unaccepted were not chosen (see `DEC-SCOPE-022`).
 
 - **The other school is not told of a pending request** (D5). The losing school learns of a
   gaining-filed request, and the gaining school of a losing-filed one, only when the admin decides.

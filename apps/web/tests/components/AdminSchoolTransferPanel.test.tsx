@@ -62,7 +62,7 @@ describe("AdminSchoolTransferPanel", () => {
     expect(warning.closest(".form-warning")).toBeTruthy();
   });
 
-  it("warns, in words, that approving clears a parent invite that has not been accepted, and repeats it at the confirm step (DEC-SCOPE-021 open item)", async () => {
+  it("warns, in words, that approving clears a parent invite that has not been accepted, and repeats it at the confirm step (DEC-SCOPE-022 open item)", async () => {
     stubFetch(() => json(page([request("1", { preview: { linked_parents: 0, in_flight_results: 0, to_school_has_portfolio_staff: true, pending_parent_invite: true } })])));
     render(<AdminSchoolTransferPanel />);
     const warning = await screen.findByText(/invited but has not accepted/);

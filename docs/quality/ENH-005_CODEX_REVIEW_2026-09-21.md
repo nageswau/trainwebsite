@@ -47,7 +47,7 @@ accepted and 3 counted audit rows).
 ## 3. Pending parent invites orphaned by approval — PARTIALLY VALID, no code change
 
 **Checked.** The description is accurate (approval clears `pending_parent_email`; `accept_invite` links only students still at the invite's school). It
-is not an undiscovered defect: it was found by the browser E2E, recorded as an open decision in `DEC-SCOPE-021` and spec §13, and mitigated on
+is not an undiscovered defect: it was found by the browser E2E, recorded as an open decision in `DEC-SCOPE-022` and spec §13, and mitigated on
 2026-09-21 by an admin-facing warning (`pending_parent_invite`) at the queue row and the confirm step. Fixing it means carrying an invite across
 schools, which needs an exception to the same-school link invariant (S2/AC-29) and a rule for a parent whose invite covers several students. The
 project's rule is `NEEDS_CONFIRMATION` for an unresolved scope choice, so it was left for the owner, who decided on 2026-09-21 to keep the admin warning and not carry the invite over. **Decided; no code change.**

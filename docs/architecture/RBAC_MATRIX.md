@@ -266,12 +266,12 @@ counts or `null`, never a fabricated cap) added to this section's grant/deny rul
 `test_sch_009_test_prep_language.py`, `test_sch_010_overseas_bridge.py`, and
 `test_sch_011_entitlements.py`.
 
-**Addendum, 2026-09-21 (`ENH-005` / `DEC-SCOPE-021`) — student school transfer.**
+**Addendum, 2026-09-21 (`ENH-005` / `DEC-SCOPE-022`) — student school transfer.**
 
 | Action | Granted | Denied |
 |---|---|---|
 | File a transfer request (outgoing: for own school's student; incoming: by Student ID) | `school_coordinator`, from their own server-owned `profile.school_id` | every other role (`403`); an unknown or another school's student gives the identical `403` |
-| List / cancel requests | the `school_coordinator` of the school that **filed** them | every other school, including the destination school of a request it did not file (`DEC-SCOPE-021` D5) |
+| List / cancel requests | the `school_coordinator` of the school that **filed** them | every other school, including the destination school of a request it did not file (`DEC-SCOPE-022` D5) |
 | Approve / reject / view the admin queue and a student's full transfer history | `overseas_admin`, `super_admin` | `school_coordinator` (either school), `school_principal`, `school_teacher`, `school_parent`, the three service-delivery roles, `counselor`: `403` |
 | Read a student's approved transfer history | the same own-scope rule as the student (own institution; assigned-only Teacher; linked-only Parent); no reason, no staff IDs | any role outside that scope |
 

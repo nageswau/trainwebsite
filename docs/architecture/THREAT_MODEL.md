@@ -101,7 +101,7 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
   every well-formed code identically; a not-yet-approved incoming row is redacted; filing is throttled
   (30/hour/coordinator, counted from the audit rows so it holds across instances) and capped (50 open per
   school); every attempt is audited with a reason token, never the code. **Residual, stated:** a determined
-  coordinator can still learn that a code exists, slowly, and is recorded doing so (`DEC-SCOPE-021`).
+  coordinator can still learn that a code exists, slowly, and is recorded doing so (`DEC-SCOPE-022`).
 - **Threat (added 2026-09-21, `ENH-005`):** markup in a student, school or parent name reaching a parent's
   inbox through the notification email (HTML injection under EduSphere's own sender), or hidden
   bidirectional characters in a transfer reason/note misleading an admin.

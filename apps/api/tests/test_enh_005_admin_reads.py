@@ -129,7 +129,7 @@ async def test_the_admin_queue_is_complete_and_carries_the_preview_counts(client
 @pytest.mark.asyncio
 async def test_the_preview_flags_a_parent_invite_that_approval_would_clear(client, db_session, world):
     """Approval clears `pending_parent_email` (the invite belongs to the losing school), so a parent who has not accepted yet ends up with no
-    linked child. The admin has to see that BEFORE deciding (DEC-SCOPE-021 open item), and only for a student that has such an invite."""
+    linked child. The admin has to see that BEFORE deciding (DEC-SCOPE-022 open item), and only for a student that has such an invite."""
     w = world
     invited = w["a"]["students"][0]
     await db_session.execute(update(SchoolStudent).where(SchoolStudent.id == invited.id).values(pending_parent_email="not-yet-accepted@example.local"))

@@ -2424,7 +2424,7 @@ correction, not deleted, per this project's traceability convention.
 - **Accessibility requirements:** The outcome is a text badge plus a sentence, never colour alone; loaded in parallel with the timeline.
 - **Acceptance evidence needed:** `SchoolGradeHistory.test.tsx` (passing); `enh-004-student-promotion.spec.ts` (browser: passing, 2026-09-20).
 
-### `SCR-SCH-029` *(added 2026-09-21, `ENH-005` / `DEC-SCOPE-021`)*
+### `SCR-SCH-029` *(added 2026-09-21, `ENH-005` / `DEC-SCOPE-022`)*
 - **Route:** `/school/coordinator/transfers`
 - **Role(s):** School Coordinator
 - **Purpose:** Ask an admin to move a student to or from this school: the requests this school has filed (either direction), with cancel for a pending one, and a form to ask for a student at another school by Student ID.
@@ -2442,7 +2442,7 @@ correction, not deleted, per this project's traceability convention.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** SchoolTransfersPanel.test.tsx, SchoolIncomingTransferForm.test.tsx (passing); enh-005-school-transfer.spec.ts (browser, isolated stack, 2026-09-21); test_enh_005_filing.py, test_enh_005_coordinator_reads.py.
 
-### `SCR-SCH-030` *(added 2026-09-21, `ENH-005` / `DEC-SCOPE-021`)*
+### `SCR-SCH-030` *(added 2026-09-21, `ENH-005` / `DEC-SCOPE-022`)*
 - **Route:** `/school/coordinator/notifications`
 - **Role(s):** School Coordinator
 - **Purpose:** Read the in-app notices the school receives, including whether a transfer request was approved or rejected (a coordinator had no screen for these until the second browser QA pass).
@@ -2460,7 +2460,7 @@ correction, not deleted, per this project's traceability convention.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** SchoolNotificationList.test.tsx (passing); enh-005-school-transfer.spec.ts asserts both the requester's and the gaining school's notice (browser, 2026-09-21).
 
-### `SCR-SCH-031` *(added 2026-09-21, `ENH-005` / `DEC-SCOPE-021`)*
+### `SCR-SCH-031` *(added 2026-09-21, `ENH-005` / `DEC-SCOPE-022`)*
 - **Route:** `/overseas/admin/school-transfers`
 - **Role(s):** Overseas Admin, Super Admin
 - **Purpose:** Decide school transfer requests: review each pending request with a preview of what approval will move, then approve or reject it.
@@ -2478,7 +2478,7 @@ correction, not deleted, per this project's traceability convention.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** AdminSchoolTransferPanel.test.tsx, AdminTransferRow.test.tsx (passing); enh-005-school-transfer.spec.ts (browser, 2026-09-21, keyboard approval); test_enh_005_admin_reads.py, test_enh_005_approve.py, test_enh_005_concurrency.py.
 
-### `SCR-SCH-032` *(added 2026-09-21, `ENH-005` / `DEC-SCOPE-021`)*
+### `SCR-SCH-032` *(added 2026-09-21, `ENH-005` / `DEC-SCOPE-022`)*
 - **Route:** Embedded section, not a standalone route — the request form and history appear on SCR-SCH-025 (/school/coordinator/students/[id]); the history (read-only) also appears on SCR-SCH-022 (/school/parent/children/[id]).
 - **Role(s):** School Coordinator, Parent
 - **Purpose:** The Coordinator asks for one of their students to move to another partner school (a disclosure on the student's page); the Coordinator and the Parent read that student's transfer history ("Moved from X to Y").

@@ -62,7 +62,7 @@ test("a coordinator requests a transfer, an admin approves it by keyboard, and b
 
   // The parent accepts their invite BEFORE the transfer. (A parent still holding an unaccepted invite when the student transfers ends up with
   // no child linked: approval clears `pending_parent_email`, and `accept_invite` only links students at the invite's own school. That gap is
-  // recorded in DEC-SCOPE-021 as a limit awaiting a decision, so it is deliberately not exercised as if it worked.)
+  // recorded in DEC-SCOPE-022 as a limit awaiting a decision, so it is deliberately not exercised as if it worked.)
   await page.request.post("/api/v1/auth/logout");
   await page.goto(`/school/invite/${kid.development_invite_token}/accept`);
   await page.fill("#invite-password", PARENT_PASSWORD);

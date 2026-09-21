@@ -321,7 +321,7 @@ Per component, RED first with these named tests (vitest + Testing Library, `fetc
 
 ### Task 13: Documentation (spec §12)
 
-**Files:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-021`, D1–D9, A1–A3, S6, the free-text refinement), `docs/architecture/DATA_MODEL.md`, `API_CONTRACT.md` §12A (ten endpoints, §5.3a catalogue, redaction, `limit`/`offset` deviation), `RBAC_MATRIX.md` §2.12, `SECURITY_CONTROLS.md` §6A/§10, `THREAT_MODEL.md`, `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-005 status (state exactly what is and is not verified), and a note on the ENH-004 plan's immutability claim.
+**Files:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-022`, D1–D9, A1–A3, S6, the free-text refinement), `docs/architecture/DATA_MODEL.md`, `API_CONTRACT.md` §12A (ten endpoints, §5.3a catalogue, redaction, `limit`/`offset` deviation), `RBAC_MATRIX.md` §2.12, `SECURITY_CONTROLS.md` §6A/§10, `THREAT_MODEL.md`, `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-005 status (state exactly what is and is not verified), and a note on the ENH-004 plan's immutability claim.
 - [ ] Write; check every claim against the code; commit.
 
 ---
