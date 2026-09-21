@@ -8,16 +8,27 @@ in this section; the request list/cancel/history and the admin approve/reject fo
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
-from app.api.schools import _own_school_id, _require_coordinator_user
+from app.api.deps import get_current_user
+from app.api.schools import _load_readable_student, _own_school_id, _require_coordinator_user
 from app.core.database import get_db
 from app.core.logging import get_logger, request_id_ctx
 from app.models import AuditLog, School, SchoolStudent, SchoolStudentTransferRequest, User
-from app.schemas import AcceptedOut, IncomingTransferCreate, TransferRequestCreate, TransferRequestOut
+from app.schemas import (
+    AcceptedOut,
+    IncomingTransferCreate,
+    SchoolRef,
+    TransferHistoryResponse,
+    TransferRequestCreate,
+    TransferRequestOut,
+    TransferRequestPage,
+    TransferStatusFilter,
+)
 
 coordinator_router = APIRouter(prefix="/school", tags=["school-transfers"])
 admin_router = APIRouter(prefix="/overseas-admin", tags=["school-transfers"])
@@ -31,9 +42,12 @@ TRANSFER_FILINGS_PER_HOUR = 30  # D8, per coordinator
 NOT_AT_INSTITUTION = "This student is not at your institution"
 ALREADY_PENDING = "A transfer request is already pending for this student"
 TOO_MANY_OPEN = "Too many open transfer requests; wait for a decision or cancel one"
+NOT_PERMITTED = "Not permitted for this transfer request"
+ALREADY_DECIDED = "This transfer request has already been decided"
 
 ACTION_FILED = "school.transfer_request_filed"
 ACTION_DENIED = "school.transfer_request_denied"
+ACTION_CANCELLED = "school.transfer_request_cancelled"
 FILING_ACTIONS = (ACTION_FILED, ACTION_DENIED)
 
 
@@ -69,11 +83,97 @@ async def _filing_guard(db: AsyncSession, actor_id: UUID, school_id: UUID) -> No
 
 
 def _request_out(row: SchoolStudentTransferRequest, student: SchoolStudent, from_school: School, to_school: School) -> TransferRequestOut:
+    """The coordinator's view of a request. A request the GAINING school filed is redacted until it is approved: the student's ID,
+    name and current school stay null, so the gaining coordinator knows only the Student ID they typed (spec §5.2). One schema
+    either way -- nothing appears or disappears by condition."""
+    direction = "outgoing" if row.filed_by_school_id == row.from_school_id else "incoming"
+    redacted = direction == "incoming" and row.status != "approved"
     return TransferRequestOut(
-        id=row.id, direction="outgoing" if row.filed_by_school_id == row.from_school_id else "incoming", status=row.status, student_id=student.id,
-        student_code=student.student_code, student_name=student.full_name, from_school={"id": from_school.id, "name": from_school.name},
+        id=row.id, direction=direction, status=row.status, student_id=None if redacted else student.id, student_code=student.student_code,
+        student_name=None if redacted else student.full_name, from_school=None if redacted else {"id": from_school.id, "name": from_school.name},
         to_school={"id": to_school.id, "name": to_school.name}, reason=row.reason, decision_note=row.decision_note, created_at=row.created_at, decided_at=row.decided_at,
     )
+
+
+@coordinator_router.get("/transfer-destinations", response_model=list[SchoolRef])
+async def transfer_destinations(user: User = Depends(_require_coordinator_user), db: AsyncSession = Depends(get_db)):
+    """Every other school, as id and name only -- the source of the destination picker."""
+    school_id = _own_school_id(user)
+    schools = (await db.scalars(select(School).where(School.id != school_id).order_by(School.name))).all()
+    return [{"id": s.id, "name": s.name} for s in schools]
+
+
+@coordinator_router.get("/transfer-requests", response_model=TransferRequestPage)
+async def list_my_transfer_requests(
+    status: TransferStatusFilter = "pending", limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0),
+    user: User = Depends(_require_coordinator_user), db: AsyncSession = Depends(get_db),
+):
+    """The requests THIS school filed (either direction), newest first. Scoped in the query, not filtered afterwards; the other
+    school in a request is not told of it until an admin decides (decision D5)."""
+    school_id = _own_school_id(user)
+    conditions = [SchoolStudentTransferRequest.filed_by_school_id == school_id]
+    if status != "all":
+        conditions.append(SchoolStudentTransferRequest.status == status)
+    total = await db.scalar(select(func.count()).select_from(SchoolStudentTransferRequest).where(*conditions))
+    from_school, to_school = aliased(School), aliased(School)
+    rows = (
+        await db.execute(
+            select(SchoolStudentTransferRequest, SchoolStudent, from_school, to_school)
+            .join(SchoolStudent, SchoolStudent.id == SchoolStudentTransferRequest.school_student_id)
+            .join(from_school, from_school.id == SchoolStudentTransferRequest.from_school_id)
+            .join(to_school, to_school.id == SchoolStudentTransferRequest.to_school_id)
+            .where(*conditions)
+            .order_by(SchoolStudentTransferRequest.created_at.desc(), SchoolStudentTransferRequest.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+    return {"items": [_request_out(r, s, f, t) for r, s, f, t in rows], "total": total, "limit": limit, "offset": offset}
+
+
+@coordinator_router.post("/transfer-requests/{request_id}/cancel", response_model=TransferRequestOut)
+async def cancel_transfer_request(request_id: UUID, user: User = Depends(_require_coordinator_user), db: AsyncSession = Depends(get_db)):
+    """Withdraw a pending request THIS school filed. The school filter is part of the locking query, so another school's request
+    is never locked or read, and an unknown ID and another school's ID are the same absence (one identical 403, audited). The row
+    lock also serialises this with a concurrent admin decision: whichever commits second sees a decided request and gets 409."""
+    actor_id, school_id = user.id, _own_school_id(user)
+    row = await db.scalar(
+        select(SchoolStudentTransferRequest).where(SchoolStudentTransferRequest.id == request_id, SchoolStudentTransferRequest.filed_by_school_id == school_id).with_for_update()
+    )
+    if row is None:
+        _audit(db, actor_id, ACTION_DENIED, None, outcome="denied", reason_token="cancel_not_permitted", school_id=str(school_id))
+        await db.commit()
+        raise HTTPException(403, NOT_PERMITTED)
+    if row.status != "pending":
+        raise HTTPException(409, ALREADY_DECIDED)
+    row.status, row.decided_by_user_id, row.decided_at = "cancelled", actor_id, datetime.now(UTC)
+    _audit(db, actor_id, ACTION_CANCELLED, row.id, school_id=str(school_id))
+    await db.commit()
+    logger.info("transfer_request_cancelled", extra={"extra_fields": {"actor_id": str(actor_id), "request_id_row": str(row.id), "school_id": str(school_id)}})
+    student = await db.get(SchoolStudent, row.school_student_id)
+    return _request_out(row, student, await db.get(School, row.from_school_id), await db.get(School, row.to_school_id))
+
+
+@coordinator_router.get("/students/{student_id}/transfer-history", response_model=TransferHistoryResponse)
+async def student_transfer_history(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """A student's APPROVED transfers, newest first, through the same own-scope loader as the overview and timeline (own institution;
+    assigned-only Teacher; linked-only Parent). No reason and no staff IDs: a coordinator's free text is for the admin, and a Parent
+    must never receive a staff user ID. Bounded by the transfers one student can have, so it is not paginated."""
+    student = await _load_readable_student(db, user, student_id)
+    from_school, to_school = aliased(School), aliased(School)
+    rows = (
+        await db.execute(
+            select(SchoolStudentTransferRequest, from_school, to_school)
+            .join(from_school, from_school.id == SchoolStudentTransferRequest.from_school_id)
+            .join(to_school, to_school.id == SchoolStudentTransferRequest.to_school_id)
+            .where(SchoolStudentTransferRequest.school_student_id == student.id, SchoolStudentTransferRequest.status == "approved")
+            .order_by(SchoolStudentTransferRequest.decided_at.desc(), SchoolStudentTransferRequest.id.desc())
+        )
+    ).all()
+    return {
+        "student": {"id": student.id, "full_name": student.full_name},
+        "history": [{"id": r.id, "decided_at": r.decided_at, "from_school": {"id": f.id, "name": f.name}, "to_school": {"id": t.id, "name": t.name}} for r, f, t in rows],
+    }
 
 
 @coordinator_router.post("/students/{student_id}/transfer-requests", status_code=201, response_model=TransferRequestOut)
