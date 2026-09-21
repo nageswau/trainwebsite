@@ -1,0 +1,195 @@
+"use client";
+
+import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+
+function message(detail: unknown) {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
+  }
+  return "Unable to change password. Try again in a moment.";
+}
+
+function waitLabel(seconds: number) {
+  const minutes = Math.ceil(seconds / 60);
+  return minutes <= 1 ? "a minute" : `${minutes} minutes`;
+}
+
+// Announced to assistive tech but not shown: the button label already says "Changing…" on screen.
+const VISUALLY_HIDDEN: CSSProperties = { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" };
+
+// Where a signed-out visitor returns to after signing in (LoginForm honours `?next=`).
+const NEXT = encodeURIComponent("/account/password");
+
+export default function ChangePasswordForm({ email, forgotPasswordHref }: { email: string; forgotPasswordHref?: string }) {
+  const [error, setError] = useState("");
+  const [errorField, setErrorField] = useState<"current" | "new" | null>(null);
+  const [notice, setNotice] = useState("");
+  const [signedOut, setSignedOut] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [busy, setBusy] = useState(false);
+  // State lags a render, so a second submit event could slip past `busy`; a repeat after success would be a 400 that
+  // burns one of the five rate-limit attempts.
+  const submitting = useRef(false);
+  // A control disabled while busy loses keyboard focus, so put it where the user needs it next. Asked for through state and
+  // applied in an effect, i.e. after React has committed the re-enabled button: lib/focus.ts `refocus` fires on the next
+  // animation frame, which can run before that commit when the update follows an `await` (seen in a real browser: the
+  // button was still disabled, so focus() did nothing).
+  const [focusRequest, setFocusRequest] = useState<{ id: string } | null>(null);
+  useEffect(() => {
+    if (focusRequest) document.getElementById(focusRequest.id)?.focus();
+  }, [focusRequest]);
+
+  // Focus goes back to the submit button unless a field needs the user's attention (a wrong current password, a rejected new one).
+  function finish(focusId = "change-password-submit") {
+    submitting.current = false;
+    setBusy(false);
+    setFocusRequest({ id: focusId });
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
+    const form = event.currentTarget;
+    setBusy(true);
+    setError("");
+    setErrorField(null);
+    setNotice("");
+    setSignedOut(false);
+    const data = new FormData(form);
+    let response: Response;
+    try {
+      response = await fetch("/api/v1/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ current_password: data.get("current_password"), new_password: data.get("new_password") }),
+      });
+    } catch {
+      // The server commits the change BEFORE it answers, so a lost response is an unknown outcome -- and resubmitting
+      // the same form would fail with "Incorrect current password" if the change did go through.
+      setError("Network error -- we could not confirm whether your password was changed. Sign in with your new password; if that fails, try again.");
+      finish();
+      return;
+    }
+    const body = await response.json().catch(() => ({}));
+    if (response.ok) {
+      form.reset();
+      setNotice("Your password was changed.");
+      finish();
+      return;
+    }
+    if (response.status === 401) {
+      setSignedOut(true);
+      finish();
+      return;
+    }
+    if (response.status === 429) {
+      const seconds = Number(response.headers.get("Retry-After"));
+      setError(Number.isFinite(seconds) && seconds > 0 ? `Too many incorrect attempts. Try again in ${waitLabel(seconds)}.` : message(body.detail));
+      finish();
+      return;
+    }
+    setError(message(body.detail));
+    if (response.status === 400) {
+      // Clear the wrong value, keep the new password the user already typed, and put the cursor where they retype.
+      const current = form.elements.namedItem("current_password");
+      if (current instanceof HTMLInputElement) current.value = "";
+      setErrorField("current");
+      finish("change-current-password");
+      return;
+    }
+    if (response.status === 422) {
+      setErrorField("new");
+      finish("change-new-password");
+      return;
+    }
+    finish();
+  }
+
+  const inputType = showPasswords ? "text" : "password";
+
+  return (
+    <form className="form" onSubmit={submit} aria-label="Change password" aria-busy={busy}>
+      {/* Lets password managers update the right saved login. Visually hidden, not focusable, never sent. */}
+      <input type="text" name="username" autoComplete="username" value={email} readOnly tabIndex={-1} aria-hidden="true" style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }} />
+      <div className="field">
+        <label htmlFor="change-current-password">Current password</label>
+        <input
+          id="change-current-password"
+          name="current_password"
+          type={inputType}
+          maxLength={1024}
+          autoComplete="current-password"
+          autoCapitalize="off"
+          spellCheck={false}
+          aria-invalid={errorField === "current" ? true : undefined}
+          aria-describedby={errorField === "current" ? "change-password-error" : undefined}
+          required
+        />
+      </div>
+      <div className="field">
+        <label htmlFor="change-new-password">New password</label>
+        <input
+          id="change-new-password"
+          name="new_password"
+          type={inputType}
+          minLength={10}
+          maxLength={128}
+          autoComplete="new-password"
+          autoCapitalize="off"
+          spellCheck={false}
+          aria-invalid={errorField === "new" ? true : undefined}
+          aria-describedby={errorField === "new" ? "change-password-hint change-password-error" : "change-password-hint"}
+          required
+        />
+        <span id="change-password-hint" className="muted" style={{ fontSize: 12 }}>Use at least 10 characters.</span>
+      </div>
+      <div className="field">
+        <label style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 32 }}>
+          <input id="change-show-passwords" type="checkbox" checked={showPasswords} onChange={(event) => setShowPasswords(event.target.checked)} />
+          Show passwords
+        </label>
+      </div>
+      {error && (
+        <div id="change-password-error" className="form-error" role="alert" aria-live="assertive">
+          <p style={{ margin: 0 }}>{error}</p>
+          {errorField === "current" && forgotPasswordHref && (
+            <p style={{ margin: "6px 0 0" }}>
+              <Link href={forgotPasswordHref} style={{ color: "var(--blue)", fontWeight: 800, display: "inline-block", padding: "4px 0" }}>Forgot your current password?</Link>
+            </p>
+          )}
+        </div>
+      )}
+      {signedOut && (
+        <div className="form-error" role="alert" aria-live="assertive">
+          <p style={{ margin: 0 }}>Your session has expired. Sign in again to change your password.</p>
+          <p style={{ margin: "6px 0 0" }}>
+            <Link href={`/it/login?next=${NEXT}`} style={{ color: "var(--blue)", fontWeight: 800 }}>IT Training sign in</Link>{" "}
+            <Link href={`/overseas/login?next=${NEXT}`} style={{ color: "var(--blue)", fontWeight: 800 }}>Overseas Education sign in</Link>
+          </p>
+        </div>
+      )}
+      {busy ? (
+        <div role="status" aria-live="polite" style={VISUALLY_HIDDEN}>
+          Changing your password…
+        </div>
+      ) : (
+        notice && (
+          <div className="form-message" role="status" aria-live="polite">
+            {notice}
+          </div>
+        )
+      )}
+      {/* aria-disabled, not `disabled`: a disabled button drops keyboard focus to <body> while the request runs. The `submitting`
+          guard in submit() is what stops a second request; globals.css dims `.btn[aria-disabled="true"]` like `.btn:disabled`. */}
+      <button id="change-password-submit" className="btn" aria-disabled={busy}>
+        {busy ? "Changing…" : "Change password"}
+      </button>
+      <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+        You stay signed in on this device. Other devices stay signed in until their sessions expire.
+      </p>
+    </form>
+  );
+}

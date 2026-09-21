@@ -681,6 +681,8 @@ session-invalidation policy `NEEDS_CONFIRMATION`.
 
 **Complexity:** Small. **Risk:** Low.
 
+**Status (2026-09-21).** Designed and decided in `docs/superpowers/specs/2026-09-21-enh-006-change-password-design.md` (`DEC-SCOPE-021`); implemented and verified on branch `feature/enh-006-change-password` (complete for ENH-006's scope, 2026-09-21; evidence in the `RTM.md` `ENH-006` row). Corrections to this entry: the routes are now at `forgot_password()` line 175 / `reset_password()` line 198; the minimum-length rule is the registration/reset rule (10–128), not `accept_invite`'s; the audit actions are `auth.change_password` / `auth.change_password_failed`, not `auth.password_change`; database impact is still none (the limiter counts existing audit rows); other sessions are **not** invalidated. Open, not decided here: login/forgot/reset throttling, session invalidation, a notification email, and the public header hiding its secondary buttons on phones (the portal menu now carries the entry point; the header link itself was removed after browser QA, spec §13).
+
 ---
 
 ## ENH-007 — Profile Self-Service: Cross-Role Completion Audit

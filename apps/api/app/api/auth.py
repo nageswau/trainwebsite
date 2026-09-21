@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import math
 import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -15,12 +16,38 @@ from app.core.database import get_db
 from app.core.identifiers import unique_student_code
 from app.core.security import create_token, decode_token, hash_password, verify_password
 from app.models import AuditLog, Notification, NotificationDelivery, PasswordResetToken, User, UserRoleAssignment
-from app.schemas import LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
+from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
 from app.services.integrations import send_notification
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 logger = logging.getLogger("app.auth")
+
+CHANGE_PASSWORD_FAILED = "auth.change_password_failed"
+# DEC-SCOPE-021: 5 wrong current passwords per user per 15 minutes, counted from the audit rows written on each failure.
+CHANGE_PASSWORD_MAX_FAILURES = 5
+CHANGE_PASSWORD_WINDOW = timedelta(minutes=15)
+
+
+async def _change_password_wait_seconds(db: AsyncSession, user_id: UUID) -> int:
+    """Seconds this user must wait before another change-password attempt; 0 means allowed.
+
+    Blocked when the newest MAX_FAILURES failures are all inside the window; the block lifts when the oldest of those
+    leaves it. Derived from existing audit rows (same idea as the Re-send throttle), so it needs no table. Clamped so
+    app/DB clock skew can never produce an absurd wait."""
+    now = datetime.now(UTC)
+    newest = (
+        await db.scalars(
+            select(AuditLog.created_at)
+            .where(AuditLog.user_id == user_id, AuditLog.action == CHANGE_PASSWORD_FAILED, AuditLog.created_at > now - CHANGE_PASSWORD_WINDOW)
+            .order_by(AuditLog.created_at.desc())
+            .limit(CHANGE_PASSWORD_MAX_FAILURES)
+        )
+    ).all()
+    if len(newest) < CHANGE_PASSWORD_MAX_FAILURES:
+        return 0
+    remaining = (newest[-1] + CHANGE_PASSWORD_WINDOW - now).total_seconds()
+    return min(int(CHANGE_PASSWORD_WINDOW.total_seconds()), max(1, math.ceil(remaining)))
 
 
 async def _sync_role_assignment(db: AsyncSession, user: User, assigned_by_user_id: UUID | None = None) -> UserRoleAssignment:
@@ -243,4 +270,40 @@ async def reset_password(payload: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     if welcome:
         logger.info("welcome_password_set", extra={"extra_fields": {"user_id": str(user.id)}})
+    return {"ok": True}
+
+
+@router.post("/change-password")
+async def change_password(payload: ChangePasswordRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    # ENH-006 / DEC-SCOPE-021. The order of these checks is part of the contract (spec §4): authenticate (the
+    # dependency) -> body validation (the model) -> same-password compare -> lock -> verify -> write. The compare is
+    # between the two request fields only, so it reveals nothing about the stored hash.
+    if payload.new_password == payload.current_password:
+        raise HTTPException(422, "New password must be different from the current password")
+    # get_current_user loaded this row without a lock: lock it and refresh the hash in one statement, so a request that
+    # waited behind another change verifies against the hash that change committed, not a stale one.
+    await db.refresh(user, attribute_names=["password_hash"], with_for_update=True)
+    # Before bcrypt, so a blocked caller cannot burn CPU; a blocked attempt is logged but NOT audited as a failure, or a
+    # lockout would extend itself forever.
+    wait = await _change_password_wait_seconds(db, user.id)
+    if wait:
+        logger.warning("change_password_throttled", extra={"extra_fields": {"user_id": str(user.id), "wait_seconds": wait}})
+        raise HTTPException(429, f"Too many incorrect attempts; try again in {wait} seconds", headers={"Retry-After": str(wait)})
+    if not verify_password(payload.current_password, user.password_hash):
+        # Commit BEFORE raising (the update_me denial pattern) so the failure survives the error response.
+        db.add(AuditLog(user_id=user.id, action=CHANGE_PASSWORD_FAILED, entity_type="user", entity_id=str(user.id), outcome="denied", metadata_json={"reason": "incorrect_current_password"}))
+        await db.commit()
+        raise HTTPException(400, "Incorrect current password")
+    user.password_hash = hash_password(payload.new_password)
+    # DEC-SCOPE-021 #5: a change also kills any reset link still in the mail (it could otherwise overwrite this password
+    # for up to 30 minutes). Only unused "reset" links of THIS user: welcome links belong to accounts with no password
+    # yet (ENH-003's state machine), used links are history, and other users' links are not ours.
+    await db.execute(
+        update(PasswordResetToken)
+        .where(PasswordResetToken.user_id == user.id, PasswordResetToken.purpose == "reset", PasswordResetToken.used_at.is_(None), PasswordResetToken.superseded_at.is_(None))
+        .values(superseded_at=datetime.now(UTC))
+    )
+    db.add(AuditLog(user_id=user.id, action="auth.change_password", entity_type="user", entity_id=str(user.id), metadata_json={}))
+    await db.commit()
+    logger.info("password_changed", extra={"extra_fields": {"user_id": str(user.id)}})
     return {"ok": True}

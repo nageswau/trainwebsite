@@ -17,6 +17,11 @@
 .pagination button{min-width:36px;height:36px;border:1px solid #cbd8e8;border-radius:9px;background:#fff;color:var(--ink);font-weight:700;padding:0 10px}
 .pagination button:hover:not(:disabled),.pagination button.active{border-color:var(--blue);background:var(--blue);color:#fff}
 .pagination button:disabled{opacity:.45;cursor:not-allowed}
+/* Skip link (ENH-006 QA-008): off-screen until keyboard focus, then the first thing on the page; the main landmark it targets is
+   focused programmatically, so it needs no focus ring of its own. */
+.skip-link{position:absolute;left:-9999px;top:8px;z-index:100;padding:10px 16px;border-radius:10px;background:var(--navy);color:#fff;font-weight:800}
+.skip-link:focus{left:16px}
+main:focus{outline:none}
 .sort-button{border:0;background:transparent;color:inherit;font:inherit;font-weight:inherit;text-transform:inherit;letter-spacing:inherit;padding:0;white-space:nowrap}
 .search:disabled{background:#f1f5f9;color:#94a3b8}
 
