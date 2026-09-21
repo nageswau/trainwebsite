@@ -12,9 +12,11 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
-from app.core.security import hash_password, verify_password
+from app.core.security import create_token, hash_password, verify_password
+from app.main import app
 from app.models import AuditLog, PasswordResetToken, User
 
 PASSWORD = "Sup3r-Secret-Pass!"
@@ -271,3 +273,137 @@ async def test_no_password_or_hash_reaches_the_logs_or_audit_rows(client, db_ses
         haystack += json.dumps([row.metadata_json for row in await _rows(db_session, user, FAILED) + await _rows(db_session, user, CHANGED)])
     for secret in (PASSWORD, NEW_PASSWORD, WRONG["current_password"], old_hash, changed.password_hash):
         assert secret not in haystack
+
+
+async def _seed_reset_token(db_session, user, *, purpose="reset", used=False):
+    raw = uuid.uuid4().hex + uuid.uuid4().hex
+    now = datetime.now(UTC)
+    token = PasswordResetToken(
+        user_id=user.id,
+        token_hash=hashlib.sha256(raw.encode()).hexdigest(),
+        purpose=purpose,
+        expires_at=now + timedelta(minutes=30),
+        used_at=now if used else None,
+    )
+    db_session.add(token)
+    await db_session.commit()
+    return raw, token
+
+
+@pytest.mark.asyncio
+async def test_a_change_revokes_unused_reset_links_so_an_emailed_link_cannot_overwrite_it(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    raw, token = await _seed_reset_token(db_session, user)
+    assert (await client.post(URL, json={"current_password": PASSWORD, "new_password": NEW_PASSWORD})).status_code == 200
+    await db_session.refresh(token)
+    assert token.superseded_at is not None
+    replay = await client.post("/api/v1/auth/reset-password", json={"token": raw, "new_password": "Attacker-Chosen-1!"})
+    assert replay.status_code == 400
+    assert replay.json() == {"detail": "Reset token is invalid or expired"}
+    assert await _password_is(db_session, user, NEW_PASSWORD)
+
+
+@pytest.mark.asyncio
+async def test_a_change_leaves_used_links_welcome_links_and_other_users_links_alone(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    other = await _make_user(db_session)
+    _, used = await _seed_reset_token(db_session, user, used=True)
+    _, welcome = await _seed_reset_token(db_session, user, purpose="welcome")
+    _, others = await _seed_reset_token(db_session, other)
+    assert (await client.post(URL, json={"current_password": PASSWORD, "new_password": NEW_PASSWORD})).status_code == 200
+    for token in (used, welcome, others):
+        await db_session.refresh(token)
+        assert token.superseded_at is None
+
+
+@pytest.mark.asyncio
+async def test_a_refused_change_revokes_nothing(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    raw, token = await _seed_reset_token(db_session, user)
+    assert (await client.post(URL, json=WRONG)).status_code == 400
+    assert (await client.post(URL, json={"current_password": PASSWORD, "new_password": PASSWORD})).status_code == 422
+    await db_session.refresh(token)
+    assert token.superseded_at is None
+
+
+@pytest.mark.asyncio
+async def test_extra_fields_cannot_change_role_division_email_or_anything_but_the_password(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    original = (user.role, user.division, user.email, user.active, user.full_name)
+    response = await client.post(
+        URL,
+        json={
+            "current_password": PASSWORD,
+            "new_password": NEW_PASSWORD,
+            "role": "super_admin",
+            "division": "global",
+            "email": "attacker@example.local",
+            "active": False,
+            "full_name": "Hacked",
+            "password_hash": "x",
+            "id": str(uuid.uuid4()),
+            "user_id": str(uuid.uuid4()),
+        },
+    )
+    assert response.status_code == 200
+    await db_session.refresh(user)
+    assert (user.role, user.division, user.email, user.active, user.full_name) == original
+    assert verify_password(NEW_PASSWORD, user.password_hash)
+
+
+@pytest.mark.asyncio
+async def test_a_refresh_token_is_not_accepted_as_a_session_here(db_session):
+    user = await _make_user(db_session)
+    token = create_token(str(user.id), user.role, user.division, "refresh")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", cookies={"edusphere_access": token}) as anonymous:
+        assert (await anonymous.post(URL, json={"current_password": PASSWORD, "new_password": NEW_PASSWORD})).status_code == 401
+    assert await _password_is(db_session, user, PASSWORD)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad", [12345678901, ["a"], {"a": 1}, True, None], ids=["int", "list", "object", "bool", "null"])
+async def test_non_string_passwords_are_422_and_never_coerced(client, db_session, bad):
+    user = await _signed_in_user(client, db_session)
+    assert (await client.post(URL, json={"current_password": bad, "new_password": NEW_PASSWORD})).status_code == 422
+    assert (await client.post(URL, json={"current_password": PASSWORD, "new_password": bad})).status_code == 422
+    assert await _password_is(db_session, user, PASSWORD)
+    assert await _rows(db_session, user, FAILED) == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "hostile",
+    ["'; DROP TABLE users; --", "pw\u0000tail-of-the-password", "<script>alert(1)</script>", "\U0001f511" * 30],
+    ids=["sql", "nul-byte", "markup", "astral"],
+)
+async def test_hostile_strings_are_just_wrong_passwords_and_are_never_echoed(client, db_session, hostile):
+    user = await _signed_in_user(client, db_session)
+    response = await client.post(URL, json={"current_password": hostile, "new_password": NEW_PASSWORD})
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Incorrect current password"}
+    rows = await _rows(db_session, user, FAILED)
+    assert len(rows) == 1
+    assert hostile not in json.dumps(rows[0].metadata_json)
+    assert await _password_is(db_session, user, PASSWORD)
+
+
+@pytest.mark.asyncio
+async def test_a_password_with_odd_characters_round_trips_as_a_new_password(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    odd = "pässwörd-\u0000-'\"<>-\U0001f511-end"
+    assert (await client.post(URL, json={"current_password": PASSWORD, "new_password": odd})).status_code == 200
+    login = await client.post("/api/v1/auth/login", json={"email": user.email, "password": odd, "division": user.division})
+    assert login.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_the_endpoint_does_not_accept_a_non_json_body(client, db_session):
+    # A cross-site "simple request" (text/plain or a form) must not be able to carry the JSON. SameSite=Lax cookies and the
+    # current-password requirement are the primary CSRF defences; this is the third. If this fails, the image's FastAPI
+    # parses non-JSON content types as JSON: report it to the user -- do not change app-wide body parsing here.
+    user = await _signed_in_user(client, db_session)
+    body = json.dumps({"current_password": PASSWORD, "new_password": NEW_PASSWORD})
+    for content_type in ("text/plain", "application/x-www-form-urlencoded"):
+        response = await client.post(URL, content=body, headers={"Content-Type": content_type})
+        assert response.status_code == 422
+    assert await _password_is(db_session, user, PASSWORD)

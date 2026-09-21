@@ -295,6 +295,14 @@ async def change_password(payload: ChangePasswordRequest, user: User = Depends(g
         await db.commit()
         raise HTTPException(400, "Incorrect current password")
     user.password_hash = hash_password(payload.new_password)
+    # DEC-SCOPE-021 #5: a change also kills any reset link still in the mail (it could otherwise overwrite this password
+    # for up to 30 minutes). Only unused "reset" links of THIS user: welcome links belong to accounts with no password
+    # yet (ENH-003's state machine), used links are history, and other users' links are not ours.
+    await db.execute(
+        update(PasswordResetToken)
+        .where(PasswordResetToken.user_id == user.id, PasswordResetToken.purpose == "reset", PasswordResetToken.used_at.is_(None), PasswordResetToken.superseded_at.is_(None))
+        .values(superseded_at=datetime.now(UTC))
+    )
     db.add(AuditLog(user_id=user.id, action="auth.change_password", entity_type="user", entity_id=str(user.id), metadata_json={}))
     await db.commit()
     logger.info("password_changed", extra={"extra_fields": {"user_id": str(user.id)}})
