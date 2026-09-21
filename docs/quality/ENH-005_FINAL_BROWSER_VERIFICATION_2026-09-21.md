@@ -1,6 +1,6 @@
 # ENH-005 — final browser verification (2026-09-21)
 
-**Result: not COMPLETE.** *The latest evidence is the "Final gate" section at the end (a fresh run at HEAD `71c371e`: Playwright 29 passed / 4 failed, Browser Use 90 PASS / 12 NOT TESTABLE / 1 FAIL); the tables below record the earlier pass at `82cfae6`.* Originally 3 findings FAILED (AC-18, AC-24 ×2 parts). **The two AC-24 parts were fixed the same day and re-verified in the browser on a rebuilt `web` (see "AC-24 fixes" at the end); AC-18 was resolved afterwards as no regression (see "Baseline comparison" at the end)**. 13 checks are NOT TESTABLE from a browser. Everything else observed passes.
+**Result: COMPLETE for ENH-005's scope, 2026-09-21, with the recorded exclusions in the last section.** *The latest evidence is the last section, and before it the "Final gate" section (a fresh run at HEAD `71c371e`: Playwright 29 passed / 4 failed, Browser Use 90 PASS / 12 NOT TESTABLE / 1 FAIL); the tables below record the earlier pass at `82cfae6`.* Originally 3 findings FAILED (AC-18, AC-24 ×2 parts). **The two AC-24 parts were fixed the same day and re-verified in the browser on a rebuilt `web` (see "AC-24 fixes" at the end); AC-18 was resolved afterwards as no regression (see "Baseline comparison" at the end)**. 13 checks are NOT TESTABLE from a browser. Everything else observed passes.
 
 ## Method and build under test
 
@@ -70,7 +70,7 @@ Both were fixed test-first (each new test was seen to fail, then pass) and re-ve
 
 ## Final gate (fresh run at HEAD `71c371e`, after the AC-24 fixes; backend lint/type follow-up at `5aa27bf` below)
 
-Everything below was produced by commands run for this gate, not carried over. **Verdict: ENH-005 is NOT COMPLETE.**
+Everything below was produced by commands run for this gate, not carried over. **Verdict at that point: not complete (the full Playwright suite and two decisions were still open; superseded by "Full Playwright suite, and the completion decision" at the end).**
 
 | Gate | Command / method | Result |
 |---|---|---|
@@ -93,7 +93,7 @@ Everything below was produced by commands run for this gate, not carried over. *
 
 **AC-18 in detail.** (1) `sch-004-005-006:189` and `:241` fail 2/2 in isolation because the spec is not idempotent: it searches `Search Alpha` and expects one school, and the shared database now holds four `E2E Search Alpha School <ts>` (one per past run); the ENH-004 record already noted it is "not repeatable on a used database". (2) `sch-team-management:79` fails every time: the roster's edit `<select>` uses `defaultValue` with options fetched by the client from `/school/team` (about 300 ms here); with that fetch delayed 2 s the value stays `""` after the options arrive, demonstrated in the browser on this build. `SchoolStudentsPanel.tsx` is untouched by this branch. (3) `enh-003:91` fails in full runs and passed 2/2 in isolation. All four were then run on the baseline ("Baseline comparison" at the end) and fail identically there, so AC-18 is a no-regression PASS.
 
-**Open, so not COMPLETE:** the full Playwright suite beyond `enh-*`/`sch-*`. (The unaccepted-parent-invite question was decided by the owner on 2026-09-21: keep the admin warning.)
+**Open at that point (closed by the last section):** the full Playwright suite beyond `enh-*`/`sch-*`. (The unaccepted-parent-invite question was decided by the owner on 2026-09-21: keep the admin warning.)
 
 ## Follow-up: backend type check and formatting (`5aa27bf`)
 
@@ -105,7 +105,7 @@ The two backend gates that failed at `71c371e` were fixed with no behavior chang
 - **Behavior:** the 94 ENH-005 backend tests pass; the full backend suite is **977 passed / 14 failed**, and the 14 failures are the same Razorpay (11) and Zoho (3) tests that fail on `main`, with none in an ENH-005 file.
 - **Not re-run after this change:** the Browser Use pass and the Playwright specs ran against the `api` container built before this refactor (it was not rebuilt), so they are evidence for the code before `5aa27bf`; the backend tests above are the evidence for the refactor.
 
-**Still open, so ENH-005 is not COMPLETE:** the full Playwright suite beyond `enh-*`/`sch-*`. (The unaccepted-parent-invite question was decided by the owner on 2026-09-21: keep the admin warning.)
+**Still open at that point (closed by the last section):** the full Playwright suite beyond `enh-*`/`sch-*`. (The unaccepted-parent-invite question was decided by the owner on 2026-09-21: keep the admin warning.)
 
 ## Baseline comparison for AC-18 (2026-09-21)
 
@@ -124,4 +124,20 @@ The two backend gates that failed at `71c371e` were fixed with no behavior chang
 
 **Conclusion.** All four reproduce on the baseline with the same database, so none is caused by ENH-005. They are pre-existing under used-database conditions: two are non-idempotent specs, one is a timing race in the roster edit form (client-fetched options with `defaultValue`), one is flaky. **AC-18 (existing behavior preserved) is a no-regression PASS.** The database state, not the code, is what makes them fail; a fresh database was not tried.
 
-**Still open, so ENH-005 is not COMPLETE:** the full Playwright suite beyond `enh-*`/`sch-*`. (The unaccepted-parent-invite question was decided by the owner on 2026-09-21: keep the admin warning.)
+**Still open at that point (closed by the last section):** the full Playwright suite beyond `enh-*`/`sch-*`. (The unaccepted-parent-invite question was decided by the owner on 2026-09-21: keep the admin warning.)
+
+## Full Playwright suite, and the completion decision (2026-09-21)
+
+**Run.** All 244 Playwright tests on the isolated stack, `api` rebuilt at 14:39Z (after the last code commit `5aa27bf`, 14:12Z), `web` from 12:35Z (no web source has changed since). 9.3m.
+
+**Result: 240 passed, 4 failed.** Both ENH-005 specs, and every `enh-*` and `sch-*` spec other than the two below, pass; `enh-003:91`, which flaked earlier, passed this time.
+
+| Failing test | Cause | Whose |
+|---|---|---|
+| `sch-004-005-006:189` and `:241` | non-idempotent spec meeting a used database (expects 1 `Search Alpha` school, finds several) | pre-existing: fails identically on the baseline `550c4fe7` (5 and 6 found) |
+| `sch-team-management:79` | roster edit-form race with a client fetch that takes about 300 ms here (`#edit-teacher` is empty) | pre-existing: fails identically on the baseline |
+| `pay-001-stu-010-fee-payments:19` (`@external`) | the Razorpay checkout iframe never appears: real Razorpay credentials are not set here | environment; excluded by the owner ("ignore the zoho and payment one for now"); not compared with the baseline |
+
+**Completion decision.** Every gate now has fresh evidence: requirement and acceptance criteria (Browser Use 90 PASS, 0 FAIL, 12 not observable in a browser), backend tests, web tests, lint, type checks (web `tsc`; backend `mypy`, `ruff` at `main`'s level), production build, Playwright (the full suite), migration (scratch database), no disabled tests, debug code or secrets, no unrelated files, documentation, and the owner's decisions (the admin layout and form position, the unaccepted-invite question). **ENH-005 is COMPLETE for its scope**, following the ENH-004 precedent of completing with explicit exclusions.
+
+**Recorded exclusions, not hidden:** the provider-credential tests that need real Razorpay/Zoho keys (14 backend, which fail identically on `main`, and 1 Playwright, not compared with the baseline); 12 browser checks that a browser cannot observe (fault injection, promotion race, the 50-request cap, query counts, e-mail body, logs, audit metadata, a linked non-parent, the one-hour throttle lapse), covered by backend tests; the Browser Use pass ran on the `api` build before the typing refactor `5aa27bf` (the refactor is covered by the 94 ENH-005 backend tests, the 977-pass backend suite and this full Playwright run on the rebuilt `api`); browsers other than Chrome, screen readers and touch devices were not covered; the branch is not merged and no pull request is open.
