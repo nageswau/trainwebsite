@@ -67,3 +67,30 @@ Both were fixed test-first (each new test was seen to fail, then pass) and re-ve
 - **(a) Table on the Notifications screen.** `SchoolNotificationList` now renders a labelled list (`ul.link-list`, `aria-label="Notifications"`) in the same rows the transfers screen uses. Browser: 0 tables and 8 notices at 320/375/768/1024/1440 with no horizontal overflow; title, body, date, "new" badge and Open link present; the empty text is unchanged for a school with no notices; no console errors.
 - **(b) Live region.** `SchoolTransferRequestForm` renders its `role="status" aria-live="polite"` region together with the form. Browser: before submitting, the region exists, is empty and is `aria-live=polite`; after a successful filing the confirmation appears in that same DOM element (verified by marking the node before the submit) and the form is gone; after a refresh the pending text is in the region and no form is offered; the error path is unchanged (alert, form and entry kept).
 - **Checks:** 291 web tests, `tsc` and `eslint` clean; the ENH-005, `sch-007` and `sch-008` Playwright specs pass (4/4). The API was not changed.
+
+## Final gate (fresh run at HEAD `71c371e`, after the AC-24 fixes)
+
+Everything below was produced by commands run for this gate, not carried over. **Verdict: ENH-005 is NOT COMPLETE.**
+
+| Gate | Command / method | Result |
+|---|---|---|
+| Tree state | `git status`, containers' creation times | clean; `web` built 12:35:31Z after the newest web source (12:33:03Z); no API change since the `api` container's build |
+| Web unit tests | `vitest run` | **PASS** 28 files / 291 tests |
+| Web type check | `tsc --noEmit` | **PASS** exit 0 |
+| Web lint | `eslint .` | **PASS** 0 errors; 31 warnings, none in a file this branch changed |
+| Production build | `next build` | **PASS** exit 0; `/overseas/admin/school-transfers`, `/school/coordinator/transfers`, `/school/coordinator/notifications` built |
+| Backend tests | full `pytest` | **977 passed / 14 failed**; the 14 (Razorpay 11, Zoho 3, credentials not configured) fail identically on `main`'s code (14 failed / 11 passed in those two files); 0 of 94 ENH-005 tests failed |
+| Backend lint | `ruff check .` | 33 errors, **equal to `main`**; none in an ENH-005 line (`schools.py:1890` B904 is pre-existing) |
+| Backend types | `mypy app` | **FAIL vs base**: 195 errors vs `main`'s 154; all 41 new ones in `app/api/school_transfers.py` (`Optional` results of `db.scalar`/`db.get`) |
+| Backend format | `ruff format --check .` | **FAIL vs base**: 64 files vs `main`'s 56 (new: `school_transfers.py`, `enh005_helpers.py`, 7 test files) |
+| Migration | scratch DB: upgrade from empty, downgrade to `0033`, re-upgrade, `alembic check` | **PASS**: create-table only; downgrade removed only the ENH-005 table; no drift; scratch DB dropped |
+| Disabled tests / debug code / TODO | scan of the 4,723 added lines under `apps/` | **PASS**: none. 5 suppressions, all justified (`BLE001` after commit ×2, `E731` in tests ×3) |
+| Secrets | pattern scan of added lines | **PASS**: no keys, tokens or real hosts; test fixtures only (`Demo@123`, the existing seed password; `Sup3r-Secret-Pass!`, a test password) |
+| Unrelated files | 65 changed files listed and the pre-existing ones' diffs read | **PASS**: all ENH-005 code, tests or docs |
+| Playwright | all `enh-*` and `sch-*` specs | **29 passed / 4 failed**; ENH-005's 2 specs pass; see AC-18 |
+| Browser Use | 13 scripts, fresh world (tag `1789996508`), 5 widths, all roles | **90 PASS / 1 FAIL (AC-18) / 12 NOT TESTABLE**; 3 invalid runs of my own flawed checks kept in the record |
+| API log hygiene (AC-31, supplementary) | read-only grep of the API container log | 0 occurrences of any name, code, e-mail, reason or note from this run (1,043 transfer lines) |
+
+**AC-18 in detail.** (1) `sch-004-005-006:189` and `:241` fail 2/2 in isolation because the spec is not idempotent: it searches `Search Alpha` and expects one school, and the shared database now holds four `E2E Search Alpha School <ts>` (one per past run); the ENH-004 record already noted it is "not repeatable on a used database". (2) `sch-team-management:79` fails every time: the roster's edit `<select>` uses `defaultValue` with options fetched by the client from `/school/team` (about 300 ms here); with that fetch delayed 2 s the value stays `""` after the options arrive, demonstrated in the browser on this build. `SchoolStudentsPanel.tsx` is untouched by this branch. (3) `enh-003:91` fails in full runs and passed 2/2 in isolation. None is shown to be caused by ENH-005, but none was compared against the base commit, so AC-18 stays FAIL.
+
+**Open, so not COMPLETE:** AC-18; backend `mypy` (+41) and `ruff format` (+8 files) against `main`; the owner decision on unaccepted parent invites; the full Playwright suite beyond `enh-*`/`sch-*`.

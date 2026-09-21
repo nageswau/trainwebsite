@@ -607,15 +607,7 @@ to a parent who does *not* have a link at the gaining school — must not silent
 **Regression risks.** `SCH-006` results workflow, `SCH-007` Parent Portal, `SCH-008` Student Journey
 Timeline — all read `SchoolStudent.school_id` and must keep working after a transfer.
 
-**Status (2026-09-21).** Designed and decided in `docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md`
-(`DEC-SCOPE-021`); implemented on branch `feature/enh-005-student-school-transfer`. **NOT COMPLETE.** The workflow is: a coordinator of
-either school files a request, an Overseas Admin or Super Admin approves or rejects it, approval is one transaction, and neither school can move
-a student alone. Verified so far (see `RTM.md` and `docs/quality/ENH-005_BROWSER_QA_2026-09-21.md` for the numbers and their limits): backend,
-frontend and Playwright suites as recorded there; three browser passes by the implementer, whose defects D1–D4 were fixed and re-verified (D1 only
-after a first, jsdom-only fix proved insufficient in a real browser). **Still outstanding:** (1) a full backend and Playwright re-run after the independent review's fixes (the review itself was done 2026-09-21: `docs/quality/ENH-005_CODEX_REVIEW_2026-09-21.md`);
-(2) an owner decision on parents invited but not yet accepted at transfer time (they still end up with no linked child; the admin is now warned before approving, 2026-09-21, but the invite is not carried to the gaining school); (3) a browser re-check of N3 (the admin queue is now its own page) and N4 (the request form moved under the student header), which have unit
-tests only until the isolated stack is rebuilt (N1 and N2 are fixed and were re-checked); (4) a full Playwright run. Deliberately not decided or built: consent from the other school, bulk transfer, branch moves
-(`ENH-009`), multi-school parents beyond the recorded rule (`ENH-008`).
+**Status (2026-09-21, re-verified at HEAD `71c371e`).** Designed and decided in `docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md` (`DEC-SCOPE-021`); implemented on branch `feature/enh-005-student-school-transfer`. **NOT COMPLETE.** The workflow is: a coordinator of either school files a request, an Overseas Admin or Super Admin approves or rejects it, approval is one transaction, and neither school can move a student alone. Fresh evidence (see `RTM.md` and `docs/quality/ENH-005_FINAL_BROWSER_VERIFICATION_2026-09-21.md`): web 291 tests, `tsc`, `eslint` (0 errors), `next build` pass; backend 977 passed / 14 failed (the 14 provider-credential failures also fail on `main`); migration `0034` verified on a scratch database; Browser Use 90 PASS / 12 NOT TESTABLE / 1 FAIL. **Still outstanding:** (1) AC-18: 4 existing Playwright tests fail in this database (2 non-idempotent picker tests, 1 roster edit-form race, 1 flaky), none shown to be caused by ENH-005, none compared with the base commit; (2) backend `mypy` +41 errors and `ruff format` +8 files against `main` (all in ENH-005's new backend files); (3) the owner decision on parents invited but not yet accepted at transfer time (`DEC-SCOPE-021`); (4) the full Playwright suite. Deliberately not decided or built: consent from the other school, bulk transfer, branch moves (`ENH-009`), multi-school parents beyond the recorded rule (`ENH-008`).
 
 **Complexity:** Medium. **Risk:** Medium.
 
