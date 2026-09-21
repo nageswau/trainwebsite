@@ -140,4 +140,27 @@ The two backend gates that failed at `71c371e` were fixed with no behavior chang
 
 **Completion decision.** Every gate now has fresh evidence: requirement and acceptance criteria (Browser Use 90 PASS, 0 FAIL, 12 not observable in a browser), backend tests, web tests, lint, type checks (web `tsc`; backend `mypy`, `ruff` at `main`'s level), production build, Playwright (the full suite), migration (scratch database), no disabled tests, debug code or secrets, no unrelated files, documentation, and the owner's decisions (the admin layout and form position, the unaccepted-invite question). **ENH-005 is COMPLETE for its scope**, following the ENH-004 precedent of completing with explicit exclusions.
 
-**Recorded exclusions, not hidden:** the provider-credential tests that need real Razorpay/Zoho keys (14 backend, which fail identically on `main`, and 1 Playwright, not compared with the baseline); 12 browser checks that a browser cannot observe (fault injection, promotion race, the 50-request cap, query counts, e-mail body, logs, audit metadata, a linked non-parent, the one-hour throttle lapse), covered by backend tests; the Browser Use pass ran on the `api` build before the typing refactor `5aa27bf` (the refactor is covered by the 94 ENH-005 backend tests, the 977-pass backend suite and this full Playwright run on the rebuilt `api`); browsers other than Chrome, screen readers and touch devices were not covered; the branch is not merged and no pull request is open.
+**Recorded exclusions, not hidden:** the provider-credential tests that need real Razorpay/Zoho keys (14 backend, which fail identically on `main`, and 1 Playwright, not compared with the baseline); 12 browser checks that a browser cannot observe (fault injection, promotion race, the 50-request cap, query counts, e-mail body, logs, audit metadata, a linked non-parent, the one-hour throttle lapse), covered by backend tests; the Browser Use pass ran on the `api` build before the typing refactor `5aa27bf` (the refactor is covered by the 94 ENH-005 backend tests, the 977-pass backend suite and this full Playwright run on the rebuilt `api`); browsers other than Chrome, screen readers and touch devices were not covered; the branch has not been merged into `main`; a pull request is being opened from it.
+
+## Merge with `main` (ENH-006) and re-verification (2026-09-21)
+
+`main` had moved 23 commits (ENH-006, change password). Merge commit `65d1a2d` resolved three conflicts (`schemas.py` imports, the decision register, the RTM), keeping both features' content.
+
+**ID clash, fixed.** ENH-006 merged first and holds `DEC-SCOPE-021`; ENH-005's decision was also written as `DEC-SCOPE-021`. It is now `DEC-SCOPE-022` in code, tests and docs (ENH-006's files are byte-identical to `main`), with an ID note in the register.
+
+| Gate | Result on the merged tree |
+|---|---|
+| Web unit | 35 files / 333 tests pass (ENH-005 291 + ENH-006 42) |
+| `tsc --noEmit`, `eslint .`, `next build` | exit 0; 0 errors (31 warnings, none new); exit 0 |
+| Backend full suite | 1023 passed / 14 failed; the 14 are the Razorpay (11) and Zoho (3) credential tests, as on `main` |
+| `ruff check`, `mypy app` | 33 and 154 errors in 11 files, equal to `main`; every ENH-005 file is `ruff format` clean (the two unformatted files, `auth.py` and `test_enh_006_change_password.py`, are ENH-006's and identical to `main`) |
+| Playwright, full suite (259 tests, `api`/`web` rebuilt after the merge, created 15:55Z) | 252 passed / 7 failed |
+
+**The 7 failures.** Five are known: `pay-001:19` (`@external`, needs Razorpay credentials), `sch-004-005-006:189` and `:241`, `sch-team-management:79`, `enh-003:91` (all four proven to fail identically on the baseline `550c4fe7`). Two were new on this build and are explained by the scratch database, not by code (neither side of the merge touches certificate, storage or country code):
+
+- `ovs-001:7` expects the seeded Germany card on page 1 of `/overseas/countries` (9 cards per page). `test_sch_reports.py` inserts a "Dashboard Country" row on every backend run; the run just before this Playwright run added the fifth, pushing Germany to the 10th position. After that row was renamed, the spec passed 3 of 3 (it failed once immediately after the rename, then passed, consistent with a cached page).
+- `stu-007:8` clicks the first "Download certificate" button. The certificate it found (`EDU-CERT-2026-BE9CDFCF`, made 14:49Z) had its PDF in the old `api` container's `/tmp` (`LOCAL_UPLOAD_DIR` in `docker-compose.ci.yml`), which was lost when the container was recreated at 15:55Z; the row survived, so the signed link returned 404. **The spec is not repeatable by design:** the issue endpoint returns any existing certificate for the enrollment, and otherwise needs an `override_reason` this spec does not send, so it passes only when a certificate already exists.
+
+**What was changed in the scratch database to prove this (owner-approved, isolated `enh005-e2e` stack only, no source change).** 6 dangling `EDU-CERT-2026-*` certificate rows deleted, 1 "Dashboard Country" row renamed (deleting it failed on a university foreign key). Deleting the certificates also removed the test enrollment's certificate, so `stu-007` then failed with 422; a new certificate was issued for that enrollment through the API (as the trainer, with an override reason). Afterwards `ovs-001` and `stu-007` passed 3 of 3 each.
+
+**Not proven, stated plainly.** The full Playwright suite was not re-run end to end after the repair; the two specs were re-run in isolation. The two failures are shown to depend on scratch-database state, not shown to be absent from a from-scratch database. Everything in the earlier "Recorded exclusions" still applies.
