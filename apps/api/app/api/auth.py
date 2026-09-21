@@ -15,12 +15,14 @@ from app.core.database import get_db
 from app.core.identifiers import unique_student_code
 from app.core.security import create_token, decode_token, hash_password, verify_password
 from app.models import AuditLog, Notification, NotificationDelivery, PasswordResetToken, User, UserRoleAssignment
-from app.schemas import LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
+from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
 from app.services.integrations import send_notification
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 logger = logging.getLogger("app.auth")
+
+CHANGE_PASSWORD_FAILED = "auth.change_password_failed"
 
 
 async def _sync_role_assignment(db: AsyncSession, user: User, assigned_by_user_id: UUID | None = None) -> UserRoleAssignment:
@@ -243,4 +245,26 @@ async def reset_password(payload: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     if welcome:
         logger.info("welcome_password_set", extra={"extra_fields": {"user_id": str(user.id)}})
+    return {"ok": True}
+
+
+@router.post("/change-password")
+async def change_password(payload: ChangePasswordRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    # ENH-006 / DEC-SCOPE-021. The order of these checks is part of the contract (spec §4): authenticate (the
+    # dependency) -> body validation (the model) -> same-password compare -> lock -> verify -> write. The compare is
+    # between the two request fields only, so it reveals nothing about the stored hash.
+    if payload.new_password == payload.current_password:
+        raise HTTPException(422, "New password must be different from the current password")
+    # get_current_user loaded this row without a lock: lock it and refresh the hash in one statement, so a request that
+    # waited behind another change verifies against the hash that change committed, not a stale one.
+    await db.refresh(user, attribute_names=["password_hash"], with_for_update=True)
+    if not verify_password(payload.current_password, user.password_hash):
+        # Commit BEFORE raising (the update_me denial pattern) so the failure survives the error response.
+        db.add(AuditLog(user_id=user.id, action=CHANGE_PASSWORD_FAILED, entity_type="user", entity_id=str(user.id), outcome="denied", metadata_json={"reason": "incorrect_current_password"}))
+        await db.commit()
+        raise HTTPException(400, "Incorrect current password")
+    user.password_hash = hash_password(payload.new_password)
+    db.add(AuditLog(user_id=user.id, action="auth.change_password", entity_type="user", entity_id=str(user.id), metadata_json={}))
+    await db.commit()
+    logger.info("password_changed", extra={"extra_fields": {"user_id": str(user.id)}})
     return {"ok": True}

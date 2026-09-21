@@ -71,6 +71,13 @@ class ProfileUpdate(BaseModel):
     profile: dict | None = None
 
 
+class ChangePasswordRequest(BaseModel):
+    # ENH-006. Passwords are never stripped or normalised. current_password is bounded (not at 128) so a legacy
+    # long password still works while the input stays finite; new_password follows the registration/reset rule.
+    current_password: str = Field(min_length=1, max_length=1024)
+    new_password: str = Field(min_length=10, max_length=128)
+
+
 class EmployerJobCreate(BaseModel):
     title: str = Field(min_length=2, max_length=180)
     location: str = Field(default="Remote", max_length=120)
