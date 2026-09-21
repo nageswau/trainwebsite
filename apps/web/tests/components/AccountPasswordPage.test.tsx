@@ -1,33 +1,15 @@
-import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import ChangePasswordForm from "@/components/ChangePasswordForm";
 import PublicShell from "@/components/PublicShell";
 import { ApiError, serverApi } from "@/lib/api";
 import AccountPasswordPage, { metadata } from "@/app/account/password/page";
+import { elements, text } from "@/tests/helpers/elementTree";
 
 // Keep the real ApiError (the page tells a 401 from an outage by it); only serverApi is replaced.
 vi.mock("@/lib/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api")>()), serverApi: vi.fn() }));
 // The site header and footer are not what is under test; the page's own decisions are.
 vi.mock("@/components/PublicShell", () => ({ default: function PublicShell() { return null; } }));
-
-type Props = Record<string, unknown> & { children?: ReactNode };
-
-function elements(node: ReactNode, found: ReactElement<Props>[] = []): ReactElement<Props>[] {
-  if (Array.isArray(node)) {
-    node.forEach((child) => elements(child, found));
-  } else if (isValidElement<Props>(node)) {
-    found.push(node);
-    elements(node.props.children, found);
-  }
-  return found;
-}
-
-function text(node: ReactNode): string {
-  if (Array.isArray(node)) return node.map(text).join("");
-  if (isValidElement<Props>(node)) return text(node.props.children);
-  return typeof node === "string" || typeof node === "number" ? String(node) : "";
-}
 
 const user = (overrides: Record<string, unknown> = {}) => ({ id: "u1", email: "asha@example.local", full_name: "Asha Rao", role: "it_student", division: "it", profile: {}, ...overrides });
 

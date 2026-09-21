@@ -1,28 +1,10 @@
-import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { serverApi } from "@/lib/api";
 import EmployerDashboardPage from "@/app/it/employer/dashboard/page";
+import { elements, text } from "@/tests/helpers/elementTree";
 
 vi.mock("@/lib/api", () => ({ serverApi: vi.fn() }));
-
-type Props = Record<string, unknown> & { children?: ReactNode };
-
-function elements(node: ReactNode, found: ReactElement<Props>[] = []): ReactElement<Props>[] {
-  if (Array.isArray(node)) {
-    node.forEach((child) => elements(child, found));
-  } else if (isValidElement<Props>(node)) {
-    found.push(node);
-    elements(node.props.children, found);
-  }
-  return found;
-}
-
-function text(node: ReactNode): string {
-  if (Array.isArray(node)) return node.map(text).join("");
-  if (isValidElement<Props>(node)) return text(node.props.children);
-  return typeof node === "string" || typeof node === "number" ? String(node) : "";
-}
 
 const profile = { full_name: "Asha Rao", email: "asha@example.local", phone: null, company_name: "Acme Ltd", company_website: null, registration_status: null };
 

@@ -173,6 +173,7 @@ test("while the request is pending the button keeps keyboard focus and progress 
   const busy = page.getByRole("button", { name: "Changing…" });
   await expect(busy).toBeVisible();
   await expect(busy).toBeFocused();
+  await expect(busy).toHaveCSS("opacity", "0.6"); // still dimmed like a disabled .btn
   await expect(page.locator("[role=status]").filter({ hasText: "Changing your password…" })).toHaveCount(1);
   await expect(page.locator(".form-error")).toContainText("Incorrect current password"); // and it settles normally
 });

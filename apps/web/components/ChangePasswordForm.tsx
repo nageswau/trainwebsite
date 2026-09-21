@@ -41,7 +41,8 @@ export default function ChangePasswordForm({ email, forgotPasswordHref }: { emai
     if (focusRequest) document.getElementById(focusRequest.id)?.focus();
   }, [focusRequest]);
 
-  function finish(focusId: string) {
+  // Focus goes back to the submit button unless a field needs the user's attention (a wrong current password, a rejected new one).
+  function finish(focusId = "change-password-submit") {
     submitting.current = false;
     setBusy(false);
     setFocusRequest({ id: focusId });
@@ -69,25 +70,25 @@ export default function ChangePasswordForm({ email, forgotPasswordHref }: { emai
       // The server commits the change BEFORE it answers, so a lost response is an unknown outcome -- and resubmitting
       // the same form would fail with "Incorrect current password" if the change did go through.
       setError("Network error -- we could not confirm whether your password was changed. Sign in with your new password; if that fails, try again.");
-      finish("change-password-submit");
+      finish();
       return;
     }
     const body = await response.json().catch(() => ({}));
     if (response.ok) {
       form.reset();
       setNotice("Your password was changed.");
-      finish("change-password-submit");
+      finish();
       return;
     }
     if (response.status === 401) {
       setSignedOut(true);
-      finish("change-password-submit");
+      finish();
       return;
     }
     if (response.status === 429) {
       const seconds = Number(response.headers.get("Retry-After"));
       setError(Number.isFinite(seconds) && seconds > 0 ? `Too many incorrect attempts. Try again in ${waitLabel(seconds)}.` : message(body.detail));
-      finish("change-password-submit");
+      finish();
       return;
     }
     setError(message(body.detail));
@@ -104,7 +105,7 @@ export default function ChangePasswordForm({ email, forgotPasswordHref }: { emai
       finish("change-new-password");
       return;
     }
-    finish("change-password-submit");
+    finish();
   }
 
   const inputType = showPasswords ? "text" : "password";
@@ -182,8 +183,8 @@ export default function ChangePasswordForm({ email, forgotPasswordHref }: { emai
         )
       )}
       {/* aria-disabled, not `disabled`: a disabled button drops keyboard focus to <body> while the request runs. The `submitting`
-          guard in submit() is what stops a second request. */}
-      <button id="change-password-submit" className="btn" aria-disabled={busy} style={busy ? { opacity: 0.6, cursor: "not-allowed" } : undefined}>
+          guard in submit() is what stops a second request; globals.css dims `.btn[aria-disabled="true"]` like `.btn:disabled`. */}
+      <button id="change-password-submit" className="btn" aria-disabled={busy}>
         {busy ? "Changing…" : "Change password"}
       </button>
       <p className="muted" style={{ fontSize: 13, margin: 0 }}>
