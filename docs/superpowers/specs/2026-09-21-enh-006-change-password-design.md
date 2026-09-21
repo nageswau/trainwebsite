@@ -250,7 +250,8 @@ form inside `.action-card`. `middleware.ts` is unchanged (`/account` is outside 
   `test_sec_002_gdpr_data_requests.py`; `ResetPasswordForm.test.tsx`, `no-default-password.test.ts`,
   `auth-001-login.spec.ts`, `auth-002-rbac-ui.spec.ts`, the SEC-002 header e2e, and the portal specs
   `sch-001-school-portal-access`, `adm-014-super-admin-console`, `desktop-nav-dropdown`,
-  `stu-011-profile-documents` (the `PortalShell` change).
+  `stu-011-profile-documents`, `trn-001-mobile-nav` (the `PortalShell` change; it asserts on the portal
+  mobile menu).
 - Never alter product behaviour merely to make a draft test pass; tests run through real scripts.
 
 ## 9. Regression risks and mitigations

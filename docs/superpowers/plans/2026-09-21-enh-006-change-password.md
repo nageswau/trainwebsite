@@ -1552,7 +1552,7 @@ Expected: 9 PASS. The signed-out test signs in as the seeded demo student (read-
 
 - [ ] **Step 3: Run the neighbouring specs (regression — `PortalShell` and the header changed)**
 
-Run: `npx playwright test tests/e2e/auth-001-login.spec.ts tests/e2e/auth-002-rbac-ui.spec.ts tests/e2e/sec-002-gdpr-data-requests.spec.ts tests/e2e/sch-001-school-portal-access.spec.ts tests/e2e/adm-014-super-admin-console.spec.ts tests/e2e/desktop-nav-dropdown.spec.ts tests/e2e/stu-011-profile-documents.spec.ts --workers=1`
+Run: `npx playwright test tests/e2e/auth-001-login.spec.ts tests/e2e/auth-002-rbac-ui.spec.ts tests/e2e/sec-002-gdpr-data-requests.spec.ts tests/e2e/sch-001-school-portal-access.spec.ts tests/e2e/adm-014-super-admin-console.spec.ts tests/e2e/desktop-nav-dropdown.spec.ts tests/e2e/stu-011-profile-documents.spec.ts tests/e2e/trn-001-mobile-nav.spec.ts --workers=1`
 Expected: PASS (the added header link and portal link must not break their selectors).
 
 - [ ] **Step 4: Commit**
