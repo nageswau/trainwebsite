@@ -87,13 +87,11 @@ simulated), a successful approval (the Playwright spec covers it by keyboard), t
 ## Open items (must be decided or done; not hidden)
 
 1. **A parent invited but not yet accepted when the student transfers is left with no child** after accepting (spec §13, `DEC-SCOPE-021`).
-   **Mitigated 2026-09-21 (not resolved):** the admin's preview now has a boolean `pending_parent_invite`; the queue row and the confirm step both
+   **Mitigated 2026-09-21, then decided by the owner (keep the admin warning):** the admin's preview now has a boolean `pending_parent_invite`; the queue row and the confirm step both
    warn in words. Verified in the browser with a real student created with a parent email (warning shown, the same page for a student without an
    invite shows none, the confirm step repeats it, the address is not in the payload, no overflow at 375px). The invite still does not survive a
-   transfer. Still needs an
-   owner decision between: carry the pending intent to the gaining school, show a pending-invite count in the admin preview, or leave it and tell
-   coordinators.
+   transfer, by the owner's decision of 2026-09-21 (`DEC-SCOPE-021`): the admin warning is kept; carrying the invite over and blocking were not chosen.
 2. The independent code review (Codex) has been run and its findings dispositioned: `ENH-005_CODEX_REVIEW_2026-09-21.md`.
-3. N1–N4 are all fixed in code; N3 and N4 still need their browser re-check on a rebuilt stack.
+3. N1–N4 are all fixed and were re-verified in the browser (`ENH-005_FINAL_BROWSER_VERIFICATION_2026-09-21.md`).
 4. The full Playwright suite was not run (only the school and enhancement specs).
 5. Raw screenshots, exploratory scripts and console/network captures are not committed.

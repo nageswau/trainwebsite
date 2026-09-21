@@ -93,7 +93,7 @@ Everything below was produced by commands run for this gate, not carried over. *
 
 **AC-18 in detail.** (1) `sch-004-005-006:189` and `:241` fail 2/2 in isolation because the spec is not idempotent: it searches `Search Alpha` and expects one school, and the shared database now holds four `E2E Search Alpha School <ts>` (one per past run); the ENH-004 record already noted it is "not repeatable on a used database". (2) `sch-team-management:79` fails every time: the roster's edit `<select>` uses `defaultValue` with options fetched by the client from `/school/team` (about 300 ms here); with that fetch delayed 2 s the value stays `""` after the options arrive, demonstrated in the browser on this build. `SchoolStudentsPanel.tsx` is untouched by this branch. (3) `enh-003:91` fails in full runs and passed 2/2 in isolation. All four were then run on the baseline ("Baseline comparison" at the end) and fail identically there, so AC-18 is a no-regression PASS.
 
-**Open, so not COMPLETE:** the owner decision on unaccepted parent invites; the full Playwright suite beyond `enh-*`/`sch-*`.
+**Open, so not COMPLETE:** the full Playwright suite beyond `enh-*`/`sch-*`. (The unaccepted-parent-invite question was decided by the owner on 2026-09-21: keep the admin warning.)
 
 ## Follow-up: backend type check and formatting (`5aa27bf`)
 
@@ -105,7 +105,7 @@ The two backend gates that failed at `71c371e` were fixed with no behavior chang
 - **Behavior:** the 94 ENH-005 backend tests pass; the full backend suite is **977 passed / 14 failed**, and the 14 failures are the same Razorpay (11) and Zoho (3) tests that fail on `main`, with none in an ENH-005 file.
 - **Not re-run after this change:** the Browser Use pass and the Playwright specs ran against the `api` container built before this refactor (it was not rebuilt), so they are evidence for the code before `5aa27bf`; the backend tests above are the evidence for the refactor.
 
-**Still open, so ENH-005 is not COMPLETE:** the owner decision on unaccepted parent invites; the full Playwright suite beyond `enh-*`/`sch-*`.
+**Still open, so ENH-005 is not COMPLETE:** the full Playwright suite beyond `enh-*`/`sch-*`. (The unaccepted-parent-invite question was decided by the owner on 2026-09-21: keep the admin warning.)
 
 ## Baseline comparison for AC-18 (2026-09-21)
 
@@ -124,4 +124,4 @@ The two backend gates that failed at `71c371e` were fixed with no behavior chang
 
 **Conclusion.** All four reproduce on the baseline with the same database, so none is caused by ENH-005. They are pre-existing under used-database conditions: two are non-idempotent specs, one is a timing race in the roster edit form (client-fetched options with `defaultValue`), one is flaky. **AC-18 (existing behavior preserved) is a no-regression PASS.** The database state, not the code, is what makes them fail; a fresh database was not tried.
 
-**Still open, so ENH-005 is not COMPLETE:** the owner decision on unaccepted parent invites; the full Playwright suite beyond `enh-*`/`sch-*`.
+**Still open, so ENH-005 is not COMPLETE:** the full Playwright suite beyond `enh-*`/`sch-*`. (The unaccepted-parent-invite question was decided by the owner on 2026-09-21: keep the admin warning.)

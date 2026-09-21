@@ -7,7 +7,7 @@ that were valid and MEDIUM or higher, with the regression test written first and
 |---|---|---|---|
 | 1 | HIGH — cap and throttle are raceable | **VALID** | **Fixed** |
 | 2 | MEDIUM — cap/throttle refusals are not audited (AC-27) | **PARTIALLY VALID** | **Cap 409 fixed; throttle 429 rejected (by design)** |
-| 3 | MEDIUM — pending parent invites orphaned by approval | **PARTIALLY VALID** | **No code change: an open owner decision, already mitigated** |
+| 3 | MEDIUM — pending parent invites orphaned by approval | **PARTIALLY VALID** | **No code change: decided by the owner on 2026-09-21 (keep the admin warning), already mitigated** |
 | 4 | LOW — generic table above the admin queue (N3) | **VALID** (low) | Not fixed in the review round (below the threshold); **fixed afterwards at the owner's request** |
 | 5 | OPTIONAL — "Request a transfer" hard to find on mobile (N4) | **VALID** (optional) | Not fixed in the review round; **fixed afterwards at the owner's request** |
 
@@ -50,7 +50,7 @@ accepted and 3 counted audit rows).
 is not an undiscovered defect: it was found by the browser E2E, recorded as an open decision in `DEC-SCOPE-021` and spec §13, and mitigated on
 2026-09-21 by an admin-facing warning (`pending_parent_invite`) at the queue row and the confirm step. Fixing it means carrying an invite across
 schools, which needs an exception to the same-school link invariant (S2/AC-29) and a rule for a parent whose invite covers several students. The
-project's rule is `NEEDS_CONFIRMATION` for an unresolved scope choice, so it is left for the owner. **Open.**
+project's rule is `NEEDS_CONFIRMATION` for an unresolved scope choice, so it was left for the owner, who decided on 2026-09-21 to keep the admin warning and not carry the invite over. **Decided; no code change.**
 
 ## 4 and 5. Admin table above the queue (N3); request form position (N4)
 

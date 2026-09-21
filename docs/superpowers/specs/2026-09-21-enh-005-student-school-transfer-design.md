@@ -806,17 +806,17 @@ task.
 
 ## 13. Open items (`NEEDS_CONFIRMATION`, not decided here)
 
-- **A pending parent invitation does not survive a transfer (found by the browser E2E, 2026-09-21).** §5.4 step 5 clears the student's
+- **A pending parent invitation does not survive a transfer (found by the browser E2E, 2026-09-21). DECIDED 2026-09-21: keep the admin warning.** §5.4 step 5 clears the student's
   `pending_parent_email`, because the pending `SchoolAccountInvite` belongs to the losing school and `accept_invite` links only students at
   the invite's own school. A parent who was invited but had not yet accepted therefore ends up, after accepting, with an account at the
   losing school and **no linked child**, and the gaining coordinator cannot link them (`link_parent` requires a parent at their own school).
   Active links are unaffected (D1). Options: carry the pending intent to the gaining school (an S2 change: a link creator would then need a
   cross-school exception), show the admin a "pending parent invitations" count in the approval preview so it is a conscious choice, or accept
   it and tell coordinators to confirm invites are accepted before requesting a transfer.
-  **Mitigated, not resolved (2026-09-21).** The second option was built, as a boolean rather than a count (a student has one pending parent
+  **Mitigated (2026-09-21) and then decided by the owner (in-session, 2026-09-21): keep this behavior with the admin warning.** The second option was built, as a boolean rather than a count (a student has one pending parent
   email): the admin's preview carries `pending_parent_invite`, and the queue row and the confirm step both warn in words before the irreversible
-  approval. The behavior itself is unchanged: an invite still does not survive a transfer. Whether to carry it to the gaining school (option 1)
-  is still an owner decision.
+  approval. The behavior itself is unchanged: an invite does not survive a transfer. The owner chose to keep it that way: carrying the invite to the gaining school (option 1) and
+  blocking while an invite is unaccepted were not chosen (see `DEC-SCOPE-021`).
 
 - **The other school is not told of a pending request** (D5). The losing school learns of a
   gaining-filed request, and the gaining school of a losing-filed one, only when the admin decides.
