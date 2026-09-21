@@ -804,6 +804,14 @@ task.
 
 ## 13. Open items (`NEEDS_CONFIRMATION`, not decided here)
 
+- **A pending parent invitation does not survive a transfer (found by the browser E2E, 2026-09-21).** §5.4 step 5 clears the student's
+  `pending_parent_email`, because the pending `SchoolAccountInvite` belongs to the losing school and `accept_invite` links only students at
+  the invite's own school. A parent who was invited but had not yet accepted therefore ends up, after accepting, with an account at the
+  losing school and **no linked child**, and the gaining coordinator cannot link them (`link_parent` requires a parent at their own school).
+  Active links are unaffected (D1). Options: carry the pending intent to the gaining school (an S2 change: a link creator would then need a
+  cross-school exception), show the admin a "pending parent invitations" count in the approval preview so it is a conscious choice, or accept
+  it and tell coordinators to confirm invites are accepted before requesting a transfer.
+
 - **The other school is not told of a pending request** (D5). The losing school learns of a
   gaining-filed request, and the gaining school of a losing-filed one, only when the admin decides.
   Whether either should be consulted first (a consent step) is not decided.
