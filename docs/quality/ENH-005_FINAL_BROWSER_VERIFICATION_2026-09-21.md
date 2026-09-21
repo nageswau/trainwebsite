@@ -1,6 +1,6 @@
 # ENH-005 — final browser verification (2026-09-21)
 
-**Result: not COMPLETE.** Originally 3 findings FAILED (AC-18, AC-24 ×2 parts). **The two AC-24 parts were fixed the same day and re-verified in the browser on a rebuilt `web` (see "AC-24 fixes" at the end); AC-18 is still FAIL** (one existing spec, cause not shown to be ENH-005). 13 checks are NOT TESTABLE from a browser. Everything else observed passes.
+**Result: not COMPLETE.** *The latest evidence is the "Final gate" section at the end (a fresh run at HEAD `71c371e`: Playwright 29 passed / 4 failed, Browser Use 90 PASS / 12 NOT TESTABLE / 1 FAIL); the tables below record the earlier pass at `82cfae6`.* Originally 3 findings FAILED (AC-18, AC-24 ×2 parts). **The two AC-24 parts were fixed the same day and re-verified in the browser on a rebuilt `web` (see "AC-24 fixes" at the end); AC-18 is still FAIL** (one existing spec, cause not shown to be ENH-005). 13 checks are NOT TESTABLE from a browser. Everything else observed passes.
 
 ## Method and build under test
 
