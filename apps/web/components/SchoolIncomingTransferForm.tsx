@@ -25,6 +25,7 @@ export default function SchoolIncomingTransferForm({ onSubmitted }: { onSubmitte
   const [done, setDone] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const alertRef = useRef<HTMLDivElement>(null);
+  const inFlight = useRef(false); // `busy` is state: two clicks in one task both see false (found by the browser QA)
 
   useEffect(() => {
     if (error) alertRef.current?.focus();
@@ -32,7 +33,7 @@ export default function SchoolIncomingTransferForm({ onSubmitted }: { onSubmitte
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || inFlight.current) return;
     const value = code.trim().toUpperCase();
     setError(null);
     setExpired(false);
@@ -43,6 +44,7 @@ export default function SchoolIncomingTransferForm({ onSubmitted }: { onSubmitte
       return;
     }
     setFieldError(null);
+    inFlight.current = true;
     setBusy(true);
     let response: Response;
     try {
@@ -52,11 +54,13 @@ export default function SchoolIncomingTransferForm({ onSubmitted }: { onSubmitte
         body: JSON.stringify({ student_code: value, ...(reason.trim() ? { reason: reason.trim() } : {}) }),
       });
     } catch {
+      inFlight.current = false;
       setBusy(false);
       setError(NOT_COMPLETED);
       return;
     }
     const data = await response.json().catch(() => null);
+    inFlight.current = false;
     setBusy(false);
     if (response.status === 401) {
       setExpired(true);

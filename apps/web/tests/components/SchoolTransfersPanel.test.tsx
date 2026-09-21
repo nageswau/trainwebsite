@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import SchoolTransfersPanel from "@/components/SchoolTransfersPanel";
@@ -124,5 +124,18 @@ describe("SchoolTransfersPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /Request student/ }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).startsWith("/api/v1/school/transfer-requests?status=pending"))).toBe(true));
     expect(await waitFor(() => row(/A3F9C21B/))).toBeTruthy();
+  });
+
+  it("cancels ONCE when Cancel is clicked twice before React re-renders, with no stray error", async () => {
+    const fetchMock = stubFetch((url) => (url.endsWith("/cancel") ? json({ ...outgoing("1"), status: "cancelled" }) : json(page([]))));
+    render(<SchoolTransfersPanel initial={page([outgoing("1")])} />);
+    const button = screen.getByRole("button", { name: "Cancel request for Child 1" });
+    act(() => {
+      button.click();
+      button.click();
+    });
+    await waitFor(() => expect(screen.getAllByRole("status").map((el) => el.textContent).join(" ")).toContain("Request cancelled"));
+    expect(fetchMock.mock.calls.filter(([u]) => String(u).endsWith("/cancel"))).toHaveLength(1);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

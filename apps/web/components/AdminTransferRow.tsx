@@ -28,6 +28,7 @@ function AdminTransferRow({ request, onDecided, onFailure }: { request: AdminTra
   const buttons = useRef<Record<string, HTMLButtonElement | null>>({});
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const restoreFocus = useRef(false);
+  const inFlight = useRef(false); // `busy` is state: two clicks in one task both see false (found by the browser QA)
   const r = request;
   const preview = r.preview;
 
@@ -55,7 +56,8 @@ function AdminTransferRow({ request, onDecided, onFailure }: { request: AdminTra
   }
 
   async function decide(kind: "approve" | "reject") {
-    if (busy) return;
+    if (busy || inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     let response: Response;
     try {
@@ -65,10 +67,12 @@ function AdminTransferRow({ request, onDecided, onFailure }: { request: AdminTra
         body: JSON.stringify(kind === "reject" && note.trim() ? { note: note.trim() } : {}),
       });
     } catch {
+      inFlight.current = false;
       setBusy(false);
       return onFailure({ text: "The decision did not complete. Check your connection and refresh the queue before trying again." });
     }
     const data = await response.json().catch(() => null);
+    inFlight.current = false;
     setBusy(false);
     if (response.status === 401) return onFailure({ text: "Your session has expired. ", expired: true });
     if (!response.ok) return onFailure({ text: detailMessage(data?.detail), refetch: response.status === 409 });
@@ -107,8 +111,10 @@ function AdminTransferRow({ request, onDecided, onFailure }: { request: AdminTra
           <p id={`approve-text-${r.id}`}>Moves {r.student_name} to {r.to_school.name}.</p>
           <p>Up to {plural(preview?.linked_parents ?? 0, "linked parent account")} {preview?.linked_parents === 1 ? "moves" : "move"} to {r.to_school.name} if they have no other child at {r.from_school.name}. Each parent keeps access to their child.</p>
           <p>{plural(preview?.in_flight_results ?? 0, "unpublished result")} {preview?.in_flight_results === 1 ? "is" : "are"} withdrawn. The teacher assignment is cleared. This cannot be undone here.</p>
-          <button ref={(el) => { buttons.current.confirmApprove = el; }} type="button" className="btn" disabled={busy} aria-describedby={`approve-text-${r.id}`} onClick={() => void decide("approve")}>{busy ? "Approving…" : "Confirm approval"}</button>
-          <button type="button" className="btn ghost" disabled={busy} onClick={close}>Cancel</button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button ref={(el) => { buttons.current.confirmApprove = el; }} type="button" className="btn" disabled={busy} aria-describedby={`approve-text-${r.id}`} onClick={() => void decide("approve")}>{busy ? "Approving…" : "Confirm approval"}</button>
+            <button type="button" className="btn ghost" disabled={busy} onClick={close}>Cancel</button>
+          </div>
         </div>
       )}
       {mode === "reject" && (
@@ -118,8 +124,10 @@ function AdminTransferRow({ request, onDecided, onFailure }: { request: AdminTra
             <textarea ref={noteRef} id={`reject-note-${r.id}`} className="search" rows={2} maxLength={500} value={note} disabled={busy} aria-describedby={`reject-hint-${r.id}`} onChange={(e) => setNote(e.target.value)} />
             <span id={`reject-hint-${r.id}`} className="muted">Visible to the requesting coordinator. Do not include student details.</span>
           </div>
-          <button type="button" className="btn" disabled={busy} onClick={() => void decide("reject")}>{busy ? "Rejecting…" : "Confirm rejection"}</button>
-          <button type="button" className="btn ghost" disabled={busy} onClick={close}>Cancel</button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" className="btn" disabled={busy} onClick={() => void decide("reject")}>{busy ? "Rejecting…" : "Confirm rejection"}</button>
+            <button type="button" className="btn ghost" disabled={busy} onClick={close}>Cancel</button>
+          </div>
         </div>
       )}
     </li>

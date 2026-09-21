@@ -51,9 +51,20 @@ test("a coordinator requests a transfer, an admin approves it by keyboard, and b
   // School A: one student who will transfer (with a parent), and one that School B will ask for by Student ID.
   await signIn(page, a.coordinatorEmail, E2E_PASSWORD, "**/school/coordinator/dashboard");
   const kidName = `E2E Transfer Kid ${unique}`;
-  const kid = await createStudent(page, { full_name: kidName, grade_or_class: "Grade 8-A", grade_level: 8, parent_name: "E2E Transfer Parent", parent_email: `enh005-e2e-parent-${unique}@example.local` });
+  const parentEmail = `enh005-e2e-parent-${unique}@example.local`;
+  const kid = await createStudent(page, { full_name: kidName, grade_or_class: "Grade 8-A", grade_level: 8, parent_name: "E2E Transfer Parent", parent_email: parentEmail });
   const other = await createStudent(page, { full_name: `E2E Transfer Other ${unique}`, grade_or_class: "Grade 7-A", grade_level: 7 });
   expect(kid.development_invite_token).toBeTruthy();
+
+  // The parent accepts their invite BEFORE the transfer. (A parent still holding an unaccepted invite when the student transfers ends up with
+  // no child linked: approval clears `pending_parent_email`, and `accept_invite` only links students at the invite's own school. That gap is
+  // recorded in DEC-SCOPE-021 as a limit awaiting a decision, so it is deliberately not exercised as if it worked.)
+  await page.request.post("/api/v1/auth/logout");
+  await page.goto(`/school/invite/${kid.development_invite_token}/accept`);
+  await page.fill("#invite-password", PARENT_PASSWORD);
+  await page.click('button:has-text("Accept and set up login")');
+  await page.waitForURL("**/school/parent/dashboard");
+  await signIn(page, a.coordinatorEmail, E2E_PASSWORD, "**/school/coordinator/dashboard");
 
   // Outgoing: the request lives in a disclosure on the student's page, and is reversible, so there is no confirm step.
   await page.goto(`/school/coordinator/students/${kid.id}`);
@@ -104,11 +115,7 @@ test("a coordinator requests a transfer, an admin approves it by keyboard, and b
   await expect(page.getByText(new RegExp(`Moved from ${a.name} to ${b.name}`))).toBeVisible();
 
   // The parent (account created at School A) still reaches the child at School B, and sees the transfer.
-  await page.request.post("/api/v1/auth/logout");
-  await page.goto(`/school/invite/${kid.development_invite_token}/accept`);
-  await page.fill("#invite-password", PARENT_PASSWORD);
-  await page.click('button:has-text("Accept and set up login")');
-  await page.waitForURL("**/school/parent/dashboard");
+  await signIn(page, parentEmail, PARENT_PASSWORD, "**/school/parent/dashboard");
   await expect(page.getByRole("heading", { name: kidName })).toBeVisible();
   await page.click(`a:has-text("View full profile & progress")`);
   await page.waitForURL(`**/school/parent/children/${kid.id}`);

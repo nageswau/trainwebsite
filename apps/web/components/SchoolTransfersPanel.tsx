@@ -31,6 +31,7 @@ export default function SchoolTransfersPanel({ initial }: { initial: Page<Transf
   const controller = useRef<AbortController | null>(null);
   const alertRef = useRef<HTMLDivElement>(null);
   const messageRef = useRef<HTMLDivElement>(null);
+  const cancelling = useRef(false); // `busyId` is state: two clicks in one task both see null (found by the browser QA)
 
   useEffect(() => {
     if (alert) alertRef.current?.focus();
@@ -64,6 +65,8 @@ export default function SchoolTransfersPanel({ initial }: { initial: Page<Transf
   }
 
   async function cancel(row: TransferRequest) {
+    if (cancelling.current) return;
+    cancelling.current = true;
     setBusyId(row.id);
     setMessage(null);
     setAlert(null);
@@ -71,10 +74,12 @@ export default function SchoolTransfersPanel({ initial }: { initial: Page<Transf
     try {
       response = await fetch(`/api/v1/school/transfer-requests/${row.id}/cancel`, { method: "POST" });
     } catch {
+      cancelling.current = false;
       setBusyId(null);
       return setAlert({ text: "The cancel did not complete. Check your connection and try again." });
     }
     const data = await response.json().catch(() => null);
+    cancelling.current = false;
     setBusyId(null);
     if (response.status === 401) return setAlert({ text: "Your session has expired. ", expired: true });
     if (!response.ok) return setAlert({ text: detailMessage(data?.detail) });

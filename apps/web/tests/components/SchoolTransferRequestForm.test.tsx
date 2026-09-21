@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import SchoolTransferRequestForm from "@/components/SchoolTransferRequestForm";
@@ -126,5 +126,24 @@ describe("SchoolTransferRequestForm", () => {
     fireEvent.change(select(), { target: { value: "b" } });
     submit();
     expect((await screen.findByRole("alert")).textContent).toMatch(/did not complete/i);
+  });
+
+  it("keeps the destination select inside the page however long a school's name is", () => {
+    render(<SchoolTransferRequestForm studentId="s1" destinations={[{ id: "x", name: "N".repeat(400) }]} pending={null} />);
+    // A <select> sizes itself to its longest option, which pushed the student page to 2,600px wide in a 1,424px window.
+    expect(select().style.maxWidth).toBe("100%");
+  });
+
+  it("sends ONE request when two clicks arrive before React has re-rendered (found by the browser QA)", async () => {
+    const fetchMock = stubFetch(() => json({ id: "r1" }, 201));
+    render(<SchoolTransferRequestForm studentId="s1" destinations={SCHOOLS} pending={null} />);
+    fireEvent.change(select(), { target: { value: "b" } });
+    const button = screen.getByRole("button", { name: "Request transfer" });
+    act(() => {
+      button.click();
+      button.click(); // same task: the busy state from the first click has not been rendered yet
+    });
+    await screen.findByText(/Transfer request sent/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

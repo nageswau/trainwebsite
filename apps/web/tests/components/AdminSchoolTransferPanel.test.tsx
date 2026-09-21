@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AdminSchoolTransferPanel from "@/components/AdminSchoolTransferPanel";
@@ -140,5 +140,20 @@ describe("AdminSchoolTransferPanel", () => {
     ok = true;
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("No pending transfer requests.")).toBeTruthy();
+  });
+
+  it("approves ONCE when Confirm is clicked twice before React re-renders, and shows no stray error after the success", async () => {
+    const fetchMock = stubFetch((url) => (url.endsWith("/approve") ? json(request("1", { status: "approved", outcome: OUTCOME, preview: null, decided_at: "2026-09-21T10:00:00Z" })) : json(page([request("1")]))));
+    render(<AdminSchoolTransferPanel />);
+    await screen.findByText(/Child 1/);
+    fireEvent.click(trigger(/^Approve transfer of Child 1/));
+    const confirm = screen.getByRole("button", { name: "Confirm approval" });
+    act(() => {
+      confirm.click();
+      confirm.click();
+    });
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Moved Child 1"));
+    expect(fetchMock.mock.calls.filter(([u]) => String(u).endsWith("/approve"))).toHaveLength(1);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

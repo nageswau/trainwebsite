@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import SchoolIncomingTransferForm, { NEUTRAL_SUBMITTED } from "@/components/SchoolIncomingTransferForm";
@@ -120,5 +120,19 @@ describe("SchoolIncomingTransferForm", () => {
     submit();
     expect((await screen.findByRole("alert")).textContent).toMatch(/did not complete/i);
     expect(input().value).toBe("A3F9C21B");
+  });
+
+  it("sends ONE request when two clicks arrive before React has re-rendered", async () => {
+    const fetchMock = stubFetch(() => json({ accepted: true }, 202));
+    render(<SchoolIncomingTransferForm />);
+    type("A3F9C21B");
+    const button = screen.getByRole("button", { name: /Request student/ });
+    act(() => {
+      button.click();
+      button.click();
+    });
+    await screen.findByRole("status");
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe(NEUTRAL_SUBMITTED));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

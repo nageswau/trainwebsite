@@ -27,6 +27,8 @@ export default function SchoolTransferRequestForm({ studentId, destinations, pen
   const [expired, setExpired] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
   const alertRef = useRef<HTMLDivElement>(null);
+  // `busy` is state, so two clicks in the same task both see false; a ref is updated at once (found by the browser QA).
+  const inFlight = useRef(false);
 
   useEffect(() => {
     if (error) alertRef.current?.focus();
@@ -43,7 +45,7 @@ export default function SchoolTransferRequestForm({ studentId, destinations, pen
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || inFlight.current) return;
     setError(null);
     setExpired(false);
     if (!school) {
@@ -51,6 +53,7 @@ export default function SchoolTransferRequestForm({ studentId, destinations, pen
       return;
     }
     setFieldError(null);
+    inFlight.current = true;
     setBusy(true);
     let response: Response;
     try {
@@ -60,11 +63,13 @@ export default function SchoolTransferRequestForm({ studentId, destinations, pen
         body: JSON.stringify({ to_school_id: school, ...(reason.trim() ? { reason: reason.trim() } : {}) }),
       });
     } catch {
+      inFlight.current = false;
       setBusy(false);
       setError(NOT_COMPLETED);
       return;
     }
     const data = await response.json().catch(() => null);
+    inFlight.current = false;
     setBusy(false);
     if (response.status === 401) {
       setExpired(true);
@@ -84,7 +89,7 @@ export default function SchoolTransferRequestForm({ studentId, destinations, pen
       <div className="field">
         <label htmlFor="transfer-destination">Destination school</label>
         <select
-          id="transfer-destination" className="select" value={school} disabled={busy} aria-invalid={fieldError ? true : undefined}
+          id="transfer-destination" className="select" style={{ maxWidth: "100%" }} value={school} disabled={busy} aria-invalid={fieldError ? true : undefined}
           aria-describedby={fieldError ? "transfer-destination-error" : undefined} onChange={(e) => setSchool(e.target.value)}
         >
           <option value="" disabled>Select a school</option>
