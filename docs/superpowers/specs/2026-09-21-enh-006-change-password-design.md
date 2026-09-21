@@ -1,7 +1,7 @@
 # ENH-006 — Self-Service Change Password (Authenticated) — Design
 
 **Status:** Design approved by the user in-session, 2026-09-21 (rate limit by counting audit rows, no
-migration; other sessions not invalidated; API-review revisions accepted). Implementation not started.
+migration; other sessions not invalidated; API-review revisions accepted). **Implemented and verified 2026-09-21** (evidence in the `RTM.md` `ENH-006` row; browser-QA follow-ups in §13).
 
 **Traceability:** `EVID` user instruction ("change password") → `DEC-SCOPE-021` (`EXPLICIT_APPROVAL`) →
 `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-006 → this spec → plan (`docs/superpowers/plans/`) → tests →
