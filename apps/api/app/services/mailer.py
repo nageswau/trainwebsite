@@ -125,11 +125,15 @@ async def send_school_invite_email(
 
 def _parent_notification_html(*, recipient_name: str, school_name: str, title: str, body: str, action_url: str | None) -> str:
     logo_url = f"{settings.frontend_url}/brand/logo-dark.png"
+    # Every value below is coordinator-, admin- or invite-controlled text (a student, parent or school name, a
+    # notification title/body, a link). Escaped like `_welcome_html` does, so it can never become markup in a
+    # parent's inbox (ENH-005 security review S1 / D9).
+    recipient_name, school_name, title, body = escape(recipient_name), escape(school_name), escape(title), escape(body)
     button = (
         f"""<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
                   <tr>
                     <td style="border-radius:12px;background:#1554d8;">
-                      <a href="{action_url}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;">Open in EduSphere</a>
+                      <a href="{escape(action_url, quote=True) if action_url else ''}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;">Open in EduSphere</a>
                     </td>
                   </tr>
                 </table>"""
