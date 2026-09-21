@@ -51,8 +51,8 @@ foreground, on pages ENH-005 did not touch.
 
 | ID | Severity | Role | Page | Finding | Status |
 |---|---|---|---|---|---|
-| N1 | Low | Coordinator | student page, transfers page | Validation errors show the framework's wording: "Value error, must be 500 characters or fewer" and "Value error, must not contain control or bidirectional-override characters". The prefix is noise to a coordinator. | Open. A small change in the error-message helper (`lib/apiErrors.ts`) or in the schema messages; not made. |
-| N2 | Low | Coordinator | student page | A `200` whose body is not a request (a proxy's HTML page, simulated) is reported as "Transfer request sent for review", so the coordinator is told it was filed when nothing was. `ENH-004` QA-004 fixed the same class on its form ("could not be read, repeating it is safe"). Not checked on the Student-ID form or on Cancel. | Open. |
+| N1 | Low | Coordinator | student page, transfers page | Validation errors show the framework's wording: "Value error, must be 500 characters or fewer" and "Value error, must not contain control or bidirectional-override characters". The prefix is noise to a coordinator. | **Fixed, verified in the browser** (commit after `796383c`): `detailMessage` drops the prefix from the 422 list and capitalises ("Must be 500 characters or fewer"); a string `detail` is untouched. Confirmed against the real API for a 501-character reason and a NUL character. |
+| N2 | Low | Coordinator | student page | A `200` whose body is not a request (a proxy's HTML page, simulated) is reported as "Transfer request sent for review", so the coordinator is told it was filed when nothing was. `ENH-004` QA-004 fixed the same class on its form ("could not be read, repeating it is safe"). Checked afterwards: the Student-ID form already refused it; **Cancel had the same flaw, and the admin Approve/Reject would have crashed** on the missing outcome. | **Fixed for all three, verified in the browser:** a 2xx whose body has no string `id` (`isRequestBody`) is no longer reported as a success. The filing form keeps the entry and says the reply could not be confirmed and that repeating is safe; Cancel keeps the row and offers a reload; the admin decision re-reads the queue. Simulated with a proxy page, an empty body and `{}`. |
 | N3 | Low–Medium | Admin | `/overseas/admin/school-transfers` | The page opens with the generic read-only "School Transfers" table (raw reference UUIDs, ISO timestamps such as `2026-09-21T09:43:43.167562+00:00`, capped at 200 records) **above** the actionable queue, so the approve/reject controls start below the fold and the two lists disagree ("200 role-scoped records" against "Transfer requests (201)"). | Open; a product/layout choice (the table is the portal's standard pattern, the queue was added under it). |
 | N4 | Low | Coordinator | student page | "Request a transfer" is the last item on a long page (after the Journey timeline), so on a phone it is a long scroll to find. | Open; observation. |
 
@@ -82,7 +82,7 @@ simulated), a successful approval (the Playwright spec covers it by keyboard), t
   14 minutes. All 14 are in `test_pay_001_stu_010_payment_gateway.py` (11) and `test_zoho_meeting_integration.py` (3), the provider-credential tests;
   none is in an ENH-005 file. The same suites failed on the base commit in the `ENH-004` record (there 22, including tests needing a seeded DB; this
   database is seeded), but this run did not re-run the base commit, so "identical to base" is **not** claimed for these 14.
-- Frontend: 27 files, 273 tests passed; `tsc --noEmit` and `eslint` on the changed files clean.
+- Frontend: 27 files, 280 tests passed (273 before the N1/N2 fix); `tsc --noEmit` and `eslint` on the changed files clean.
 
 ## Open items (must be decided or done; not hidden)
 
@@ -90,6 +90,6 @@ simulated), a successful approval (the Playwright spec covers it by keyboard), t
    owner decision between: carry the pending intent to the gaining school, show a pending-invite count in the admin preview, or leave it and tell
    coordinators.
 2. **Independent code review (Codex) has not been run.**
-3. N1–N4 above are open (N1 and N2 are small fixes; N3 is a layout choice for the owner).
+3. N3 and N4 above are open (N3 is a layout choice for the owner); N1 and N2 are fixed.
 4. The full Playwright suite was not run (only the school and enhancement specs).
 5. Raw screenshots, exploratory scripts and console/network captures are not committed.

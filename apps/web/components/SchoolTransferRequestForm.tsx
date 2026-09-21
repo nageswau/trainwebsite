@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
 
 import { formatDate } from "@/lib/formatDate";
-import { detailMessage } from "@/lib/apiErrors";
+import { detailMessage, isRequestBody } from "@/lib/apiErrors";
 import type { SchoolRef } from "@/lib/transfers";
 
 // ENH-005 -- a coordinator asks to move ONE of their students to another school (spec §5.2, §7.1). Filing is reversible (the
@@ -15,6 +15,7 @@ import type { SchoolRef } from "@/lib/transfers";
 type Pending = { to_school_name: string; created_at: string };
 
 const NOT_COMPLETED = "The request did not complete. Check your connection and try again; your entry is kept.";
+const UNCONFIRMED = "The reply could not be confirmed as a filed request. Your entry is kept; repeating it is safe (a student can have only one pending request).";
 
 export default function SchoolTransferRequestForm({ studentId, destinations, pending }: { studentId: string; destinations: SchoolRef[] | null; pending: Pending | null }) {
   const router = useRouter();
@@ -78,6 +79,12 @@ export default function SchoolTransferRequestForm({ studentId, destinations, pen
     }
     if (!response.ok) {
       setError(detailMessage(data?.detail));
+      return;
+    }
+    // A 2xx whose body is not the request (a proxy's page, an empty body) is not proof it was filed. Filing twice is harmless: a student can
+    // have one pending request, so the repeat is a 409 at worst.
+    if (!isRequestBody(data)) {
+      setError(UNCONFIRMED);
       return;
     }
     setSent("Transfer request sent for review. An admin decides; nothing changes until it is approved.");

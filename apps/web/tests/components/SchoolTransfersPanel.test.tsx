@@ -112,6 +112,15 @@ describe("SchoolTransfersPanel", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("already been decided");
   });
 
+  it("does not announce a cancel for a 200 that is not a request, and leaves the row where it is (browser QA N2)", async () => {
+    stubFetch((url) => (url.endsWith("/cancel") ? new Response("<html>proxy login</html>", { status: 200 }) : json(page([]))));
+    render(<SchoolTransfersPanel initial={page([outgoing("1")])} />);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel request for Child 1" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/could not be confirmed/i);
+    expect(findRow(/Child 1/)).not.toBeNull();
+    expect(screen.getAllByRole("status").map((el) => el.textContent).join(" ")).not.toContain("Request cancelled");
+  });
+
   it("offers Cancel only on pending rows", () => {
     render(<SchoolTransfersPanel initial={page([outgoing("1"), outgoing("2", { status: "approved", decided_at: "2026-09-21T09:00:00Z" })])} />);
     expect(screen.getAllByRole("button", { name: /Cancel request for/ })).toHaveLength(1);

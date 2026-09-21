@@ -132,6 +132,23 @@ describe("AdminSchoolTransferPanel", () => {
     await waitFor(() => expect(fetchMock.mock.calls.filter(([u]) => String(u).includes("school-transfer-requests?status=")).length).toBeGreaterThanOrEqual(2));
   });
 
+  it("does not report a decision for a 200 that is not a request (it would have crashed on the missing outcome), and refreshes the queue (browser QA N2)", async () => {
+    let calls = 0;
+    const fetchMock = stubFetch((url) => {
+      if (url.endsWith("/approve")) return new Response("<html>proxy login</html>", { status: 200 });
+      calls += 1;
+      return json(page([request("1")]));
+    });
+    render(<AdminSchoolTransferPanel />);
+    await screen.findByText(/Child 1/);
+    fireEvent.click(trigger(/^Approve transfer of Child 1/));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm approval" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/could not be confirmed/i);
+    expect(screen.queryByText(/Moved Child 1/)).toBeNull();
+    await waitFor(() => expect(calls).toBeGreaterThanOrEqual(2)); // the queue is re-read so the coordinator sees what really happened
+    expect(fetchMock.mock.calls.filter(([u]) => String(u).endsWith("/approve"))).toHaveLength(1);
+  });
+
   it("shows an empty queue, and a load failure with a retry", async () => {
     let ok = false;
     stubFetch(() => (ok ? json(page([])) : json({ detail: "boom" }, 500)));

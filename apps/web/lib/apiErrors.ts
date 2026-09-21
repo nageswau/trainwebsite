@@ -3,8 +3,21 @@
 // components; those are deliberately left untouched.)
 export function detailMessage(detail: unknown, fallback = "Something went wrong."): string {
   if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item?.msg || "Invalid input").join("; ");
+  if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => readable(item?.msg) || "Invalid input").join("; ");
   return fallback;
+}
+
+// Pydantic words a failed custom validator as "Value error, <our message>"; the prefix means nothing to a coordinator (browser QA N1).
+// Only the 422 list is cleaned: a string `detail` is our own wording and is shown as written.
+function readable(msg: string | undefined): string {
+  const text = (msg ?? "").replace(/^Value error,\s*/, "");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// A 200 (or 201) is only a success if it carries the request it is about: a proxy login page, an empty body or `{}` must not be reported as
+// "filed", "cancelled" or "decided" (browser QA N2). The check is the id only, because that is all the screens rely on beyond the status.
+export function isRequestBody(data: unknown): data is { id: string } {
+  return !!data && typeof data === "object" && !Array.isArray(data) && typeof (data as { id?: unknown }).id === "string";
 }
 
 export type Page<T> = { items: T[]; total: number; limit: number; offset: number };

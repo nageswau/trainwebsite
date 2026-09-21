@@ -3,7 +3,7 @@
 import { KeyboardEvent, memo, useEffect, useRef, useState } from "react";
 
 import { formatDate } from "@/lib/formatDate";
-import { detailMessage } from "@/lib/apiErrors";
+import { detailMessage, isRequestBody } from "@/lib/apiErrors";
 import { type AdminTransferRequest, STATUS_CLASS, STATUS_LABEL } from "@/lib/transfers";
 
 // ENH-005 -- one request in the admin's queue (spec §7.1). Approve and reject are irreversible from here, so each is two-step and
@@ -76,6 +76,9 @@ function AdminTransferRow({ request, onDecided, onFailure }: { request: AdminTra
     setBusy(false);
     if (response.status === 401) return onFailure({ text: "Your session has expired. ", expired: true });
     if (!response.ok) return onFailure({ text: detailMessage(data?.detail), refetch: response.status === 409 });
+    // A 2xx that is not the decided request (a proxy page, an empty body) does not show the decision was recorded, and describeOutcome would
+    // fail on it. Re-read the queue rather than guess (browser QA N2).
+    if (!isRequestBody(data)) return onFailure({ text: "The decision could not be confirmed. The queue is being reloaded; check it before deciding again.", refetch: true });
     const updated = data as AdminTransferRequest;
     onDecided({ request: updated, message: kind === "approve" ? `Moved ${r.student_name} to ${r.to_school.name}. ${describeOutcome(updated)}.` : `Request rejected for ${r.student_name}.` });
   }

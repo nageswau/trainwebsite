@@ -106,6 +106,24 @@ describe("SchoolTransferRequestForm", () => {
     expect(select().value).toBe("b");
   });
 
+  it("does not claim success for a 200 that is not a request (a proxy page or an empty body), keeps the entry, and says repeating is safe (browser QA N2)", async () => {
+    for (const body of ["<html>proxy login</html>", "", "{}"]) {
+      stubFetch(() => new Response(body, { status: 200 }));
+      render(<SchoolTransferRequestForm studentId="s1" destinations={SCHOOLS} pending={null} />);
+      fireEvent.change(select(), { target: { value: "b" } });
+      fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: "Family is moving" } });
+      submit();
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toMatch(/could not be confirmed/i);
+      expect(alert.textContent).toMatch(/repeating it is safe/i);
+      expect(screen.queryByText(/Transfer request sent/)).toBeNull();
+      expect(select().value).toBe("b");
+      expect((screen.getByLabelText(/Reason/) as HTMLTextAreaElement).value).toBe("Family is moving");
+      expect(refresh).not.toHaveBeenCalled();
+      cleanup();
+    }
+  });
+
   it("joins FastAPI's 422 messages, offers sign-in on 401, and survives a network failure", async () => {
     stubFetch(() => json({ detail: [{ msg: "Field required" }, { msg: "Invalid input" }] }, 422));
     render(<SchoolTransferRequestForm studentId="s1" destinations={SCHOOLS} pending={null} />);

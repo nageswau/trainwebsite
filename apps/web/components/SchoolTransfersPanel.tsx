@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { formatDate } from "@/lib/formatDate";
 import SchoolIncomingTransferForm from "@/components/SchoolIncomingTransferForm";
-import { detailMessage, isPage, type Page } from "@/lib/apiErrors";
+import { detailMessage, isPage, isRequestBody, type Page } from "@/lib/apiErrors";
 import { STATUS_CLASS, STATUS_LABEL, type TransferRequest } from "@/lib/transfers";
 
 // ENH-005 -- the coordinator's own filed requests (spec §5.2, §7.1). The first page (pending) is read on the server, so first paint has
@@ -83,6 +83,8 @@ export default function SchoolTransfersPanel({ initial }: { initial: Page<Transf
     setBusyId(null);
     if (response.status === 401) return setAlert({ text: "Your session has expired. ", expired: true });
     if (!response.ok) return setAlert({ text: detailMessage(data?.detail) });
+    // A 2xx that is not the request (a proxy page, an empty body) does not show it was cancelled; say so and offer a re-read (browser QA N2).
+    if (!isRequestBody(data)) return setAlert({ text: "The cancel could not be confirmed. Reload the list to see where the request stands.", retry: true });
     setItems((prev) => (status === "pending" ? prev.filter((r) => r.id !== row.id) : prev.map((r) => (r.id === row.id ? { ...r, ...data } : r))));
     if (status === "pending") setTotal((t) => t - 1);
     setMessage("Request cancelled.");
