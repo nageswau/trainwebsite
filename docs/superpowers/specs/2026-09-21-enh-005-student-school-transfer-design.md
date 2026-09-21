@@ -3,7 +3,8 @@
 **Status:** Design approved by the user in-session, 2026-09-21 (`EXPLICIT_APPROVAL`): four policy
 decisions in §3 plus the section-by-section design with "yes". The same day, an
 `api-and-interface-design` review of the backend was applied (§5.5) and three further decisions
-(D5–D7) were confirmed. Written spec awaiting the user's review. Implementation not started.
+(D5–D7) were confirmed; a `frontend-ui-engineering` review of the UI was applied (§7.1). Written spec
+awaiting the user's review. Implementation not started.
 
 **Traceability:** user instruction ("changing of schools etc.", recorded in
 `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-005, `DERIVED_BACKLOG`) → `DEC-SCOPE-021` (proposed by this
@@ -178,8 +179,12 @@ ordered `created_at DESC, id DESC` (decision D6).
   school and duplicate create nothing and return the identical body (a duplicate lost to a race
   (`IntegrityError`) is rolled back and answered the same way). Unknown-code and own-school attempts
   write an `AuditLog` row with `outcome="denied"` (metadata: reason token only, no student data).
-- `GET /school/transfer-requests` → list envelope of `TransferRequestOut`, the caller's own school's filed
-  requests, any status.
+- `GET /school/transfer-requests?status=pending&limit=&offset=` → list envelope of `TransferRequestOut`,
+  the caller's own school's filed requests. `status` is the same `Literal` as the admin list (`pending`
+  default, `approved`, `rejected`, `cancelled`, `all`; anything else `422`). It is an additive filter the
+  UI needs (§7.1): the transfers page defaults to pending, and a student's "already pending" banner
+  reads `status=pending`, which is complete in one page because the cap (D7) means a school has at most
+  50 pending requests.
 - `POST /school/transfer-requests/{id}/cancel` → `200 TransferRequestOut`. The request is locked
   `FOR UPDATE` (so a concurrent approve serializes with it). A request that does not exist **or** was not
   filed by the caller's school → one identical `403`; not `pending` → `409`.
@@ -390,6 +395,132 @@ existing school-portal components and CSS, and adds no dependency.
   where the existing screens already use them. (`WorkflowPanel.tsx`/`navigation.ts` wiring was not read
   in the research pass; the plan's first frontend task reads them before editing.)
 
+### 7.1 Frontend revisions (result of the `frontend-ui-engineering` review, 2026-09-21)
+
+Where this section differs from the bullets above, **this section wins**. It applies
+`docs/ux/RESPONSIVE_RULES.md` and `docs/ux/ACCESSIBILITY_RULES.md` (both baseline good-practice rules, not a
+conformance claim) and reuses the design language ENH-003 and ENH-004 already established. No new
+dependency, and no new global CSS.
+
+**Reuse map (nothing is rebuilt that already exists)**
+
+| Need | Reused from | Notes |
+|---|---|---|
+| Admin queue rows, coordinator request rows | `.link-list` (`.who` / `.meta`) from `AdminExpiredLinksPanel` | Already wraps and stacks on mobile; buttons go full-width, 44px at ≤640px. **No `<table>`**: `RESPONSIVE_RULES.md` forbids a horizontally scrolling table as the only mobile option, and `AdminSchoolApplicationsPanel`'s table is the counter-example. |
+| Loading | `.skeleton-line` (with its `prefers-reduced-motion` rule) + a visible "Loading…" line + `aria-busy` | The `AdminExpiredLinksPanel` pattern. No spinner for content. |
+| Errors | `.form-error` with `role="alert"` and a "Try again" button; per-row errors beside the row | Never the silent `res.ok ? res.json() : []` of `AdminSchoolApplicationsPanel` (reported, not changed). |
+| Warnings | `.form-warning` (ENH-003) | For "destination has no staff portfolio". Text carries the meaning, not the amber colour. |
+| Status | `.status` (+ `.pending`, `.error`) and `.badge` | Always a text label, never colour alone. |
+| Filters | `.table-controls` + `.select` + label; "Showing X of Y" `aria-live` line (ENH-004) | A `<select>` status filter, not a new tab widget. |
+| Pagination | A "Load more" `.btn secondary small` appending the next `limit`/`offset` page, under the "Showing X of Y" line | The `.pagination` numbered buttons suit page-number APIs, not `offset` + `total`. |
+| Two-step confirm | ENH-004's inline confirm (`SchoolPromotionPanel`): text → Confirm/Cancel, focus to Confirm, Escape cancels, focus returns to the trigger | No `window.confirm`, no dialog library. |
+| History | the Journey Timeline rail `.jtl-*`, as `SchoolGradeHistory` does | Outcome as a text badge plus a sentence. |
+| Focus after a control disappears | `refocus()` from `lib/focus.ts`; programmatic focus target styled like `.summary:focus` | |
+| Dates | `formatDate` from `SchoolChildOverview` | |
+| Detail-message parsing | one small new `lib/apiErrors.ts` (`detailMessage`, a list-envelope shape check) | `detailMessage` is copy-pasted in three components already; the new components share one copy. The three existing copies are not touched. |
+| Portal chrome | `PortalShell`, `SCHOOL_NAV`, `PORTAL_NAV["overseas/admin"]`, `WorkflowPanel` flags | |
+
+**Screens and states**
+
+- **Coordinator: request a transfer (`SchoolTransferRequestForm`, client).** Rendered by
+  `SchoolStudentDetailPanel` only when a new `showTransfer` prop is set (default off, exactly like
+  `showGradeHistory`, so the Principal and Teacher pages are byte-for-byte unchanged). It sits **last**, in
+  a native `<details>` ("Request a transfer") so a rare, consequential action does not compete with the
+  student's record; `<details>` gives keyboard and screen-reader behaviour with no script. The destinations
+  and this student's pending request are fetched **on the server in the same `Promise.all`** as the
+  timeline and history, so the form opens with no client waterfall and no loading state. Fields: a
+  `<select>` (placeholder "Select a school", disabled first option), an optional `<textarea>`
+  ("Reason", `maxLength` 500), each with a real `<label>` and helper text tied by `aria-describedby`.
+  States: **no other schools** → "No other partner schools are available." and submit disabled; **request
+  already pending** → the form is replaced by a status line ("Transfer to <School> requested,
+  <date>. Waiting for admin review") and the same badge appears in the header card so the state is visible
+  without opening the disclosure; **destinations failed to load** → "Transfers are unavailable right now."
+  Submitting: button disabled and reads "Sending request…", inputs disabled, one request in flight;
+  `422`/`409`/`403` render inline in a `role="alert"` region that takes focus; `401` shows a "Sign in
+  again" link; success shows a `role="status"` confirmation, focus moves to it, and `router.refresh()`
+  runs in a transition. Filing is reversible (cancel) so it has **no** confirm step; confirmation is kept
+  for the irreversible admin actions.
+- **Coordinator: `/school/coordinator/transfers` (`SchoolTransfersPanel` + `SchoolIncomingTransferForm`,
+  client; the page is a server page like `promotion/page.tsx`: role check first, first page fetched on
+  the server, so first paint has no spinner).** A `<select>` status filter (Pending default, All, Approved,
+  Rejected, Cancelled), the request list in `.link-list`, "Showing X of Y", "Load more", and Cancel on
+  pending rows (disabled while in flight, focus restored with `refocus`). Filter changes and "Load
+  more" fetch on the client with `AbortController`; the previous rows stay visible (`aria-busy`) while the
+  next page loads, and only a first or filter-change load shows skeleton rows. Redacted incoming rows show
+  the Student ID and status plus "Student details are shown once approved", never blank cells or the
+  word `null`. Empty: "No pending requests." with the two ways to start one (a link to the roster, and
+  the Student ID form below); a filtered-empty state offers "Show pending". The incoming form: a
+  labelled Student ID input (`maxLength` 8, `autoCapitalize`, `autoComplete="off"`, `spellCheck={false}`),
+  format hint, client-side format validation with `aria-invalid` + `aria-describedby`, and, on `202`, the
+  **same** neutral message for every input ("If that Student ID belongs to a student at another school, your
+  request has been sent to an admin for review."), so the UI never confirms existence; the field clears and
+  keeps focus. The cap (`409`) shows its own message.
+- **Admin: `AdminSchoolTransferPanel` + `AdminTransferRow` (client), wired as
+  `showSchoolTransfers` for `section === "school-transfers"` in `WorkflowPanel.tsx` and one new item in
+  `PORTAL_NAV["overseas/admin"]`.** It loads after first paint (like `AdminExpiredLinksPanel`, so nothing
+  else on the page is blocked), heading "Transfer requests (n)" from `total`, a `<select>` status filter,
+  `.action-card wide`. Each row: who (`Name (Student ID)`), "From <A> → To <B>", requester and date, the
+  reason as text, an "If approved" line built from the preview counts, and the `.form-warning` when the
+  destination has no portfolio staff. **Approve** and **Reject** are two-step and inline: Approve shows the
+  consequences ("Moves <name> to <B>. Up to N linked parent accounts move to <B> if they have no other
+  child at <A>. M unpublished results are withdrawn. The teacher assignment is cleared. This cannot be
+  undone here.") with Confirm/Cancel; Reject shows an optional labelled note `<textarea>` with the hint
+  "Visible to the requesting coordinator. Do not include student details." and a Confirm reject button.
+  Focus goes to Confirm when it opens, Escape or Cancel returns it to the row's trigger, and after a
+  decision the row leaves the pending list and focus moves to the always-mounted `role="status"` feedback
+  region ("Moved <name> to <B>. 1 parent moved, 2 kept, 3 results withdrawn."). `409` (already decided,
+  stale, lock busy) shows the server's message and refetches. Every button carries an `aria-label` that
+  names the student and school and contains its visible text.
+- **`SchoolTransferHistory` (server-safe presentational + `loadTransferHistory`).** Rendered by
+  `SchoolStudentDetailPanel` (coordinator) and the parent child page, loaded in the same `Promise.all`
+  as the timeline and grade history. **It renders a card only when there is at least one transfer, or
+  when the load failed ("Transfer history is unavailable right now.")**: an empty "Transfer history" card
+  on every student page would add clutter for the common case, so the empty state is the absence of
+  the card. Text badge "Transferred" + "Moved from <A> to <B>" + date.
+- **Parent dashboard (one small change to an existing page).** After a transfer a parent can have
+  children at two schools, and the child card does not name the school. Each child's overview is already
+  loaded there, so the card shows a "School: <name>" line **only when the parent's children span more
+  than one school**; a single-school parent's page is unchanged.
+
+**Responsive (320 / 768 / 1024 / 1440px).** Single column below 768px with labels visible; `.link-list`
+rows wrap; buttons full-width at ≤640px with 44px minimum height; controls at 16px on coarse pointers so
+iOS does not zoom on focus (the ENH-004 precedent). Long school and student names use `overflow-wrap:
+anywhere`. The only permitted new CSS is a small `AdminSchoolTransferPanel.module.css` for the inline
+confirm block and the focus outline on programmatic focus targets (the `SchoolPromotionPanel.module.css`
+precedent), and only if the reused classes prove insufficient in the browser run.
+
+**Accessibility.** Real `<label>`s; errors identified in text and tied to fields; live regions mounted
+from the start so results are announced; `role="alert"` for request errors and `role="status"` for
+results; visible focus from the existing `:focus-visible` rules; lists are lists (`role="list"` with an
+`aria-label`); headings follow the existing `h2` card / `h3` section pattern with none skipped; status is
+always text plus badge; no interaction is pointer-only or hover-only.
+
+**Perceived performance.** Server-first pages with parallel fetches (no client waterfall, no spinner on
+first paint); the admin panel loads after paint; **no optimistic updates** (the server decides and a
+decision can fail); after an action the affected row is updated from the server's response immediately and
+`router.refresh()` runs in a transition; refetches keep old rows on screen instead of blanking; row
+components are `memo`'d with primitive props. No `loading.tsx` (no route has one and there is no shared
+`school/layout.tsx`, so it would render without the portal shell; the ENH-004 finding).
+
+**Component size.** Each new component stays under about 200 lines: `SchoolTransferRequestForm`,
+`SchoolIncomingTransferForm`, `SchoolTransfersPanel`, `SchoolTransferHistory`, `AdminSchoolTransferPanel`,
+`AdminTransferRow`; shared types, the status label/badge map and the fetch helpers in one `lib/transfers.ts`.
+
+**Frontend tests (written before the code they cover).** vitest + Testing Library, one file per component:
+loading (skeleton, `aria-busy`), empty, error with retry, success announcement, double-submit blocked,
+field errors tied by `aria-describedby`, Escape cancels a confirm and focus returns to the trigger, focus
+moves to Confirm, `409` refetches, `401` shows the sign-in link, a redacted row never renders `null` or a
+blank, the incoming form's message is identical for every input, `SchoolStudentDetailPanel` with
+`showTransfer` off renders exactly as before, the history card is absent when empty and present when
+entries or a failure exist, and the parent dashboard shows the school line only for a multi-school parent.
+The Playwright spec adds a keyboard-only approve path and a no-horizontal-overflow check at 320/768/1024/
+1440px; a manual screen-reader and reduced-motion pass is recorded in the plan. No new dependency
+(axe-core is not added).
+
+**Reported, not changed (outside ENH-005):** `AdminSchoolApplicationsPanel` swallows load failures and
+renders a horizontally scrolling table; `SUPER_ADMIN_NAV` has no entry for the school admin panels
+(a super admin reaches them by URL only).
+
 ## 8. Forced changes to existing behavior (the only ones)
 
 1. **Parent scope is link-only.** `_scoped_students_query` (`schools.py:643`): the `school_parent`
@@ -410,6 +541,10 @@ existing school-portal components and CSS, and adds no dependency.
 3. **Comment correction** at `schools.py:1234-1237` (and a note in the ENH-004 plan): `school_id` can now
    change, and the concurrency reasoning in §5.4 replaces the "no check/use gap" claim. No code change
    to the promotion logic.
+
+4. **Two small frontend changes to existing screens (§7.1):** `SchoolStudentDetailPanel` gains an
+   opt-in `showTransfer` prop (default off), and the parent dashboard child card shows a school line only
+   for a parent whose children span more than one school. No other existing component is modified.
 
 Nothing else changes: existing endpoint shapes, `student_code`, the promotion flow, the results
 workflow's actor-separation (DEC-ROLE-007), `SchoolStaffAssignment` (portfolio follows `school_id`
@@ -484,12 +619,21 @@ automatically), `admin.py` bridge endpoints (global, not school-scoped), attenda
 - **AC-20** A school with 50 open requests gets `409` on the 51st (outgoing and incoming alike, the
   incoming one before any lookup); cancelling or deciding one frees a slot.
 - **AC-21** The two paginated lists honour `limit` (default 25, `1..100`) and `offset` (≥ 0), reject
-  out-of-range values with `422`, order `created_at DESC, id DESC`, and return `total`; the admin
-  `status` filter rejects an unknown value with `422`.
+  out-of-range values with `422`, order `created_at DESC, id DESC`, and return `total`; the `status`
+  filter on both lists defaults to `pending` and rejects an unknown value with `422`.
 - **AC-22** Notices to an incoming requester on rejection carry the student code only, never the name or
   the source school; approval notices name the student to both coordinators and the parents.
 - **AC-23** The admin preview counts are computed without per-row queries (asserted by a query-count
   test over a page of requests).
+- **AC-24** Frontend design-language and accessibility: the new screens reuse the existing classes
+  (§7.1 reuse map), render no table, do not overflow horizontally at 320/768/1024/1440px, are fully
+  operable by keyboard (Tab order, Enter/Space, Escape closes a confirm, focus lands on Confirm and
+  returns to the trigger), announce results through mounted live regions, and never convey status by
+  colour alone.
+- **AC-25** `SchoolStudentDetailPanel` without `showTransfer`, and the Principal/Teacher pages, render
+  exactly as before; the parent dashboard shows a school line for a child only when the parent's
+  children span more than one school; the transfer-history card is absent when a student has no transfer
+  and shows an "unavailable" line (not nothing) when its load fails.
 
 ## 11. Regression risks and test plan (written before code)
 
@@ -508,8 +652,9 @@ automatically), `admin.py` bridge endpoints (global, not school-scoped), attenda
 
 **Test files (to be written first, per task):** `apps/api/tests/test_enh_005_school_transfer.py` (real
 Postgres, following `test_enh_004_student_promotion.py`, including its raw-SQL concurrency helper);
-vitest component tests `SchoolTransferRequestForm`, `SchoolTransfersPanel`, `AdminSchoolTransferPanel`,
-`SchoolTransferHistory`; Playwright `apps/web/tests/e2e/enh-005-school-transfer.spec.ts`. The full
+vitest component tests `SchoolTransferRequestForm`, `SchoolIncomingTransferForm`, `SchoolTransfersPanel`,
+`AdminSchoolTransferPanel` (covering `AdminTransferRow`), `SchoolTransferHistory`, plus the
+`SchoolStudentDetailPanel` and parent-dashboard changes (AC-24/AC-25); Playwright `apps/web/tests/e2e/enh-005-school-transfer.spec.ts`. The full
 backend/E2E regression is run at the standing cadence, not after every task; targeted suites run per
 task.
 
