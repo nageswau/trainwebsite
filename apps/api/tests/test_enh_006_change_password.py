@@ -5,6 +5,7 @@ Every test creates its own user: never change a seeded account's password (other
 """
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -135,3 +136,74 @@ async def test_a_new_password_equal_to_the_current_one_is_422_and_no_oracle(clie
         assert response.json() == {"detail": "New password must be different from the current password"}
     assert await _password_is(db_session, user, PASSWORD)
     assert await _rows(db_session, user, FAILED) == []
+
+
+async def _seed_failures(db_session, user, ages_minutes):
+    """Insert denied change-password audit rows, each back-dated by the given number of minutes."""
+    now = datetime.now(UTC)
+    for age in ages_minutes:
+        db_session.add(
+            AuditLog(user_id=user.id, action=FAILED, entity_type="user", entity_id=str(user.id), outcome="denied", metadata_json={"reason": "incorrect_current_password"}, created_at=now - timedelta(minutes=age))
+        )
+    await db_session.commit()
+
+
+WRONG = {"current_password": "not-the-password", "new_password": NEW_PASSWORD}
+
+
+@pytest.mark.asyncio
+async def test_five_wrong_attempts_are_400_and_the_sixth_is_429_with_retry_after(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    for _ in range(5):
+        assert (await client.post(URL, json=WRONG)).status_code == 400
+    blocked = await client.post(URL, json=WRONG)
+    assert blocked.status_code == 429
+    assert 1 <= int(blocked.headers["Retry-After"]) <= 900
+    assert "try again in" in blocked.json()["detail"]
+    assert len(await _rows(db_session, user, FAILED)) == 5  # the blocked attempt added no row
+
+
+@pytest.mark.asyncio
+async def test_a_correct_password_is_still_refused_while_blocked(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    await _seed_failures(db_session, user, [1, 1, 1, 1, 1])
+    response = await client.post(URL, json={"current_password": PASSWORD, "new_password": NEW_PASSWORD})
+    assert response.status_code == 429
+    assert await _password_is(db_session, user, PASSWORD)
+    assert await _rows(db_session, user, CHANGED) == []
+
+
+@pytest.mark.asyncio
+async def test_retry_after_is_when_the_fifth_newest_failure_leaves_the_window(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    await _seed_failures(db_session, user, [14, 13, 12, 11, 10])  # the oldest, 14 min ago, leaves the window in ~60 s
+    blocked = await client.post(URL, json=WRONG)
+    assert blocked.status_code == 429
+    assert 55 <= int(blocked.headers["Retry-After"]) <= 61
+
+
+@pytest.mark.asyncio
+async def test_failures_older_than_the_window_do_not_count(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    await _seed_failures(db_session, user, [16, 17, 18, 19, 20])
+    response = await client.post(URL, json={"current_password": PASSWORD, "new_password": NEW_PASSWORD})
+    assert response.status_code == 200
+    assert await _password_is(db_session, user, NEW_PASSWORD)
+
+
+@pytest.mark.asyncio
+async def test_four_recent_failures_do_not_block_and_the_fifth_wrong_attempt_arms_the_block(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    await _seed_failures(db_session, user, [1, 2, 3, 4, 20])  # the 20-minute-old row is outside the window
+    assert (await client.post(URL, json=WRONG)).status_code == 400
+    assert (await client.post(URL, json=WRONG)).status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_the_limit_is_per_user(client, db_session):
+    blocked_user = await _make_user(db_session)
+    await _seed_failures(db_session, blocked_user, [1, 1, 1, 1, 1])
+    other = await _signed_in_user(client, db_session)
+    assert (await client.post(URL, json={"current_password": PASSWORD, "new_password": NEW_PASSWORD})).status_code == 200
+    assert await _password_is(db_session, other, NEW_PASSWORD)
+    assert len(await _rows(db_session, blocked_user, FAILED)) == 5
