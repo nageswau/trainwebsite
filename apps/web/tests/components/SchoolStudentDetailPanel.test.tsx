@@ -30,7 +30,7 @@ function api(over: Overrides = {}) {
   });
 }
 const paths = () => vi.mocked(serverApi).mock.calls.map(([p]) => String(p));
-async function show(props: { showTransfer?: boolean } = {}) {
+async function show(props: { showTransfer?: boolean; showGradeHistory?: boolean } = {}) {
   render(await SchoolStudentDetailPanel({ student, backHref: "/back", backLabel: "Back", ...props }));
 }
 
@@ -48,15 +48,21 @@ describe("SchoolStudentDetailPanel transfer wiring", () => {
     expect(paths().filter((p) => /transfer/.test(p))).toEqual([]);
   });
 
-  it("with showTransfer, offers the request inside a disclosure placed after the timeline", async () => {
+  it("with showTransfer, offers the request inside a collapsed disclosure right under the student header, before the record (browser QA N4)", async () => {
     api();
-    await show({ showTransfer: true });
+    await show({ showTransfer: true, showGradeHistory: true });
     const summary = screen.getByText("Request a transfer");
     expect(summary.closest("summary")).toBeTruthy(); // the text is wrapped in <strong> inside the <summary>
-    expect(summary.closest("details")).toBeTruthy();
+    const details = summary.closest("details") as HTMLDetailsElement;
+    expect(details).toBeTruthy();
+    expect(details.open).toBe(false); // a rare, consequential action: findable, but not competing with the record
     expect(screen.getByLabelText("Destination school")).toBeTruthy();
-    const timeline = screen.getByText("Journey timeline");
-    expect(timeline.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const header = screen.getByRole("heading", { name: /Aarav Mehta/ });
+    const before = (later: HTMLElement) => header.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(before(summary)).toBeTruthy(); // after the student's own header...
+    for (const later of [screen.getByText("Journey timeline"), screen.getByRole("heading", { name: "Grade history" })]) {
+      expect(summary.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // ...and ahead of the timeline and grade history
+    }
   });
 
   it("shows the pending request in the header and in place of the form", async () => {

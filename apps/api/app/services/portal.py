@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased
 
 from app.core.identifiers import uuid_reference
 from app.core.rbac import PERMISSIONS
@@ -45,7 +44,6 @@ from app.models import (
     School,
     SchoolStaffAssignment,
     SchoolStudent,
-    SchoolStudentTransferRequest,
     StudentDocument,
     Submission,
     SupportTicket,
@@ -1386,27 +1384,6 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 "Every specialized School service-delivery staff account and how many schools are in their portfolio.",
                 (("id", "reference"), ("name", "Name"), ("email", "Email"), ("role", "Role"), ("portfolio_size", "Schools in portfolio")),
                 ({"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "portfolio_size": portfolio_counts.get(u.id, 0)} for u in rows),
-            )
-        if section == "school-transfers" and division == "overseas":
-            # ENH-005: the admin's transfer workspace. Coordinators file requests; the decisions are made in AdminSchoolTransferPanel.tsx (approve/
-            # reject, two-step). This table is the read view -- the most recent requests in every status -- and, like `schools` above, `PortalPage`
-            # needs both this payload and a PORTAL_NAV entry or the section is a 404.
-            from_school, to_school = aliased(School), aliased(School)
-            rows = (
-                await db.execute(
-                    select(SchoolStudentTransferRequest, SchoolStudent, from_school, to_school)
-                    .join(SchoolStudent, SchoolStudent.id == SchoolStudentTransferRequest.school_student_id)
-                    .join(from_school, from_school.id == SchoolStudentTransferRequest.from_school_id)
-                    .join(to_school, to_school.id == SchoolStudentTransferRequest.to_school_id)
-                    .order_by(SchoolStudentTransferRequest.created_at.desc(), SchoolStudentTransferRequest.id.desc())
-                    .limit(200)
-                )
-            ).all()
-            return _payload(
-                "School Transfers",
-                "Recent student transfer requests from School Coordinators. Approve or reject pending ones below; approving moves the student in one step.",
-                (("id", "reference"), ("student", "Student"), ("student_code", "Student ID"), ("from_school", "From"), ("to_school", "To"), ("status", "Status"), ("requested", "Requested")),
-                ({"id": r.id, "student": s.full_name, "student_code": s.student_code, "from_school": f.name, "to_school": t.name, "status": r.status, "requested": r.created_at} for r, s, f, t in rows),
             )
         if section == "commissions" and division == "overseas":
             # AGT-003-AC02: Overseas Admin needs to see every commission in the division

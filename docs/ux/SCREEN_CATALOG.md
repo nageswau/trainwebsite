@@ -2472,7 +2472,7 @@ correction, not deleted, per this project's traceability convention.
 - **Loading state:** "Loading transfer requests…"; the confirm step disables its buttons while the approval runs.
 - **Error state:** API errors (including 409 "Another change to this student is in progress; retry") and a dropped connection render an alert that takes focus; nothing is changed on failure (approval is one transaction).
 - **Permissions/resource scope:** Overseas Admin and Super Admin only. A School Coordinator, of either school, gets 403 from the API and "role required" from the page; neither school can approve a transfer alone.
-- **Responsive behavior:** The two confirm buttons sit side by side, not as stretched bars. No page-level horizontal scroll at 320/768/1024/1440px (asserted in the e2e). Known and not fixed: at or below 768px the shared DataTable scrolls inside its own container.
+- **Responsive behavior:** The two confirm buttons sit side by side, not as stretched bars. No page-level horizontal scroll at 320/768/1024/1440px (asserted in the e2e). This is its own route rather than the portal's generic section (browser QA N3): the queue follows the title directly, with no read-only table above it.
 - **Accessibility requirements:** Keyboard only: Enter on Approve moves focus to Confirm, Escape returns focus to Approve (asserted in the e2e); every action is named with the student and destination; outcomes are text.
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
@@ -2483,7 +2483,7 @@ correction, not deleted, per this project's traceability convention.
 - **Role(s):** School Coordinator, Parent
 - **Purpose:** The Coordinator asks for one of their students to move to another partner school (a disclosure on the student's page); the Coordinator and the Parent read that student's transfer history ("Moved from X to Y").
 - **Linked Feature ID(s):** `ENH-005`
-- **Entry points:** "Request a transfer" disclosure on the student's page (Coordinator only).
+- **Entry points:** "Request a transfer" disclosure on the student's page (Coordinator only), collapsed, directly under the student header (moved up from the end of the page after browser QA N4).
 - **Required data:** Props read on the server with the rest of the page: the destination schools and any pending request; GET /school/students/{id}/transfer-history; POST /school/students/{id}/transfer-requests.
 - **Key actions:** Choose a destination school, optional reason (500 characters), "Request transfer". Reversible, so there is no confirm step; the request can be cancelled from SCR-SCH-029.
 - **Empty state:** "No other partner schools are available." / "Transfers are unavailable right now." / no history section content when the student never moved.

@@ -53,8 +53,8 @@ foreground, on pages ENH-005 did not touch.
 |---|---|---|---|---|---|
 | N1 | Low | Coordinator | student page, transfers page | Validation errors show the framework's wording: "Value error, must be 500 characters or fewer" and "Value error, must not contain control or bidirectional-override characters". The prefix is noise to a coordinator. | **Fixed, verified in the browser** (commit after `796383c`): `detailMessage` drops the prefix from the 422 list and capitalises ("Must be 500 characters or fewer"); a string `detail` is untouched. Confirmed against the real API for a 501-character reason and a NUL character. |
 | N2 | Low | Coordinator | student page | A `200` whose body is not a request (a proxy's HTML page, simulated) is reported as "Transfer request sent for review", so the coordinator is told it was filed when nothing was. `ENH-004` QA-004 fixed the same class on its form ("could not be read, repeating it is safe"). Checked afterwards: the Student-ID form already refused it; **Cancel had the same flaw, and the admin Approve/Reject would have crashed** on the missing outcome. | **Fixed for all three, verified in the browser:** a 2xx whose body has no string `id` (`isRequestBody`) is no longer reported as a success. The filing form keeps the entry and says the reply could not be confirmed and that repeating is safe; Cancel keeps the row and offers a reload; the admin decision re-reads the queue. Simulated with a proxy page, an empty body and `{}`. |
-| N3 | Low–Medium | Admin | `/overseas/admin/school-transfers` | The page opens with the generic read-only "School Transfers" table (raw reference UUIDs, ISO timestamps such as `2026-09-21T09:43:43.167562+00:00`, capped at 200 records) **above** the actionable queue, so the approve/reject controls start below the fold and the two lists disagree ("200 role-scoped records" against "Transfer requests (201)"). | Open; a product/layout choice (the table is the portal's standard pattern, the queue was added under it). |
-| N4 | Low | Coordinator | student page | "Request a transfer" is the last item on a long page (after the Journey timeline), so on a phone it is a long scroll to find. | Open; observation. |
+| N3 | Low–Medium | Admin | `/overseas/admin/school-transfers` | The page opens with the generic read-only "School Transfers" table (raw reference UUIDs, ISO timestamps such as `2026-09-21T09:43:43.167562+00:00`, capped at 200 records) **above** the actionable queue, so the approve/reject controls start below the fold and the two lists disagree ("200 role-scoped records" against "Transfer requests (201)"). | **Fixed** (owner asked for it): a dedicated page, `/overseas/admin/school-transfers`, with an admin-role guard, a title and the queue only; the portal payload, its test and the `WorkflowPanel` wiring were removed. Verified by unit tests (roles allowed and denied, no table, queue straight after the title); **browser re-check pending a rebuild of the isolated stack**. |
+| N4 | Low | Coordinator | student page | "Request a transfer" is the last item on a long page (after the Journey timeline), so on a phone it is a long scroll to find. | **Fixed** (owner asked for it): the collapsed disclosure is now the card directly under the student header, ahead of Grade history and the timeline. Verified by a unit test on the order and the collapsed state; **browser re-check pending a rebuild**. |
 
 Not exercised in this pass: a real `429` from the 30-per-hour limit (it would lock the QA coordinator for an hour; the UI's handling of a `429` was
 simulated), a successful approval (the Playwright spec covers it by keyboard), the parent-facing history in the browser (also the Playwright spec).
@@ -63,7 +63,7 @@ simulated), a successful approval (the Playwright spec covers it by keyboard), t
 
 - The destination list is unpaginated and, in the shared test database, has hundreds of options. Real deployments have few partner schools; a
   searchable picker is a product choice, not decided here.
-- At or below 768px the shared admin `DataTable` scrolls inside its own container (no page-level overflow). Pre-existing component.
+- At or below 768px the shared admin `DataTable` scrolled inside its own container (no page-level overflow). Pre-existing component; no longer on this page since the N3 fix.
 - A single `409` was seen on one POST during the D3 re-check. The admin queue afterwards held an earlier pending request for the same demo
   student (`Kabir Nair`, created 09:03 the same day by an earlier check), which is the documented "already pending" refusal. This was inferred from
   that row, not reproduced under a controlled sequence.
@@ -94,6 +94,6 @@ simulated), a successful approval (the Playwright spec covers it by keyboard), t
    owner decision between: carry the pending intent to the gaining school, show a pending-invite count in the admin preview, or leave it and tell
    coordinators.
 2. The independent code review (Codex) has been run and its findings dispositioned: `ENH-005_CODEX_REVIEW_2026-09-21.md`.
-3. N3 and N4 above are open (N3 is a layout choice for the owner); N1 and N2 are fixed.
+3. N1–N4 are all fixed in code; N3 and N4 still need their browser re-check on a rebuilt stack.
 4. The full Playwright suite was not run (only the school and enhancement specs).
 5. Raw screenshots, exploratory scripts and console/network captures are not committed.

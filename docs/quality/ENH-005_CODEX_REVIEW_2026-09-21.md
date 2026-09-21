@@ -8,8 +8,8 @@ that were valid and MEDIUM or higher, with the regression test written first and
 | 1 | HIGH — cap and throttle are raceable | **VALID** | **Fixed** |
 | 2 | MEDIUM — cap/throttle refusals are not audited (AC-27) | **PARTIALLY VALID** | **Cap 409 fixed; throttle 429 rejected (by design)** |
 | 3 | MEDIUM — pending parent invites orphaned by approval | **PARTIALLY VALID** | **No code change: an open owner decision, already mitigated** |
-| 4 | LOW — generic table above the admin queue (N3) | **VALID** (low) | Not fixed: below the fix threshold, and a layout choice |
-| 5 | OPTIONAL — "Request a transfer" hard to find on mobile (N4) | **VALID** (optional) | Not fixed: optional |
+| 4 | LOW — generic table above the admin queue (N3) | **VALID** (low) | Not fixed in the review round (below the threshold); **fixed afterwards at the owner's request** |
+| 5 | OPTIONAL — "Request a transfer" hard to find on mobile (N4) | **VALID** (optional) | Not fixed in the review round; **fixed afterwards at the owner's request** |
 
 ## 1. Filing cap and hourly throttle are raceable — VALID, fixed
 
@@ -56,7 +56,8 @@ project's rule is `NEEDS_CONFIRMATION` for an unresolved scope choice, so it is 
 
 Both are accurate and already recorded as N3/N4 in `ENH-005_BROWSER_QA_2026-09-21.md`; the code references match (`portal.py` builds the generic
 200-row table; `WorkflowPanel` mounts the action panel separately; the form renders after the timeline). Neither is MEDIUM or higher, N3 is a layout
-choice for the owner, and N4 is optional, so neither was changed.
+choice for the owner, and N4 is optional, so neither was changed in the review round. The owner then asked for both: N3 became a dedicated admin page
+(the generic portal payload and its wiring were removed) and N4 moved the disclosure under the student header; see `ENH-005_BROWSER_QA_2026-09-21.md`.
 
 ## Verification after the fixes
 
