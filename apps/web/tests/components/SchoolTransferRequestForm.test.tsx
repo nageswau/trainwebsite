@@ -79,6 +79,20 @@ describe("SchoolTransferRequestForm", () => {
     expect(screen.queryByLabelText("Destination school")).toBeNull(); // shown as pending now, not asked again
   });
 
+  it("has its live region in the page BEFORE the result, and announces the confirmation in that same region (AC-24; found by the final browser verification)", async () => {
+    stubFetch(() => json({ id: "r1" }, 201));
+    render(<SchoolTransferRequestForm studentId="s1" destinations={SCHOOLS} pending={null} />);
+    const region = screen.getByRole("status"); // mounted with the form, still empty
+    expect(region.textContent).toBe("");
+    expect(region.getAttribute("aria-live")).toBe("polite");
+    fireEvent.change(select(), { target: { value: "b" } });
+    submit();
+    await screen.findByText(/Transfer request sent/);
+    expect(screen.getByRole("status")).toBe(region); // the same element that was already there, not a new one inserted with its text
+    expect(region.textContent).toMatch(/Transfer request sent/);
+    expect(screen.queryByLabelText("Destination school")).toBeNull();
+  });
+
   it("omits an empty reason and blocks a double submit while sending", async () => {
     let release!: (r: Response) => void;
     const fetchMock = stubFetch(() => new Promise<Response>((resolve) => (release = resolve)) as unknown as Response);

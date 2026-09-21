@@ -16,13 +16,23 @@ describe("SchoolNotificationList", () => {
     expect(screen.queryByRole("table")).toBeNull();
   });
 
+  // A listitem takes no accessible name from its content, so notices are found by their text (as the other ENH-005 list tests do).
+  const item = (text: RegExp) => screen.getAllByRole("listitem").find((li) => text.test(li.textContent ?? ""))!;
+
   it("lists each notice with its title, body and date, marking unread ones with text", () => {
     render(<SchoolNotificationList notifications={[n("1", { read: false }), n("2")]} emptyText="none" />);
-    const first = screen.getByRole("row", { name: /Title 1/ });
+    const first = item(/Title 1/);
     expect(within(first).getByText("new")).toBeTruthy();
     expect(within(first).getByText("Body 1")).toBeTruthy();
     expect(within(first).getByText(/21 Sep\w* 2026/)).toBeTruthy();
-    expect(within(screen.getByRole("row", { name: /Title 2/ })).queryByText("new")).toBeNull();
+    expect(within(item(/Title 2/)).queryByText("new")).toBeNull();
+  });
+
+  it("is a list, not a table (AC-24: the new screens render no table; found by the final browser verification)", () => {
+    render(<SchoolNotificationList notifications={[n("1"), n("2")]} emptyText="none" />);
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.getByRole("list", { name: "Notifications" })).toBeTruthy();
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
   });
 
   it("offers Open only for a notice that has a link, and uses that link as is", () => {

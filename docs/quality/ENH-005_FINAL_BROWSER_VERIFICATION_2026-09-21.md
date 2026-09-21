@@ -1,6 +1,6 @@
 # ENH-005 — final browser verification (2026-09-21)
 
-**Result: not COMPLETE.** 3 findings FAIL (AC-18, AC-24 ×2 parts); 13 checks are NOT TESTABLE from a browser. Everything else observed passes.
+**Result: not COMPLETE.** Originally 3 findings FAILED (AC-18, AC-24 ×2 parts). **The two AC-24 parts were fixed the same day and re-verified in the browser on a rebuilt `web` (see "AC-24 fixes" at the end); AC-18 is still FAIL** (one existing spec, cause not shown to be ENH-005). 13 checks are NOT TESTABLE from a browser. Everything else observed passes.
 
 ## Method and build under test
 
@@ -38,7 +38,7 @@
 | AC-21 | PASS | Both lists: defaults, 422 validation, total, newest first |
 | AC-22 | PASS | Incoming rejection notice carries the code only; approval/outgoing notices name the student |
 | AC-23 | NOT TESTABLE | Query-count assertion |
-| **AC-24** | **FAIL (2 parts)** | See below; the rest passes (320–1440 no overflow, images, labels, names, keyboard, status as text) |
+| AC-24 | PASS after fixes (was FAIL, 2 parts) | The two failing parts were fixed and re-verified (below); the rest passed in the first run (320–1440 no overflow, images, labels, names, keyboard, status as text) |
 | AC-25 | PASS | Parent school line only when children span schools; Principal and Teacher pages unchanged |
 | AC-26 | PASS (lapse after an hour NOT TESTABLE) | 31st attempt 429 + Retry-After, in the UI too; other coordinator unaffected; 422 still first |
 | AC-27 | PASS (metadata content NOT TESTABLE) | One `filed` row per request; `denied` rows exist; the audit screen does not show metadata |
@@ -52,10 +52,18 @@
 
 D1 (long school name overflow) PASS at all five widths; D2 (coordinator notices reachable, nav) PASS; D3 (double click sends one POST) PASS; D4 (confirm buttons side by side) PASS; N1 (readable 422) PASS; N2 (2xx that is not the request: outgoing form, cancel, admin decision) PASS; N3 (queue on its own page, first action at 603 px on 1440×900, counts agree) PASS; N4 (form collapsed above the record) PASS; invite warning PASS; console and page errors none; failed network calls none other than the deliberately simulated ones.
 
-## Failures, with reproduction
+## Failures, with reproduction (as found; AC-24 (a) and (b) are fixed, see the end)
 
 **AC-24 (a): a table on a new screen.** The criterion says the new screens render no table. The coordinator Notifications screen (added after the spec, mirroring the Parent notifications page) renders one. Repro: sign in as a school coordinator, open `/school/coordinator/notifications`, `document.querySelectorAll('.portal-content table').length === 1`. The transfers screen, the admin queue and the student-page form have none.
 
 **AC-24 (b): live region not mounted before the result.** The outgoing request form's confirmation is inserted as `<div role="status">` when it succeeds; there is no pre-mounted status region for it. (The Transfers page has 3 live regions on load and the admin queue 2.) Repro: coordinator, `/school/coordinator/students/<id>`, open "Request a transfer", count `[role=status]` (none belongs to the form), submit. Whether assistive technology announces an inserted region could not be tested here.
 
 **AC-18: `sch-team-management.spec.ts:79`** (SCH-001 addendum) fails 3 of 3: `#edit-teacher` has value `""` when Edit is clicked. **The cause is not shown to be ENH-005**: `SchoolStudentsPanel.tsx` is untouched by this branch and nothing in this branch's `schools.py` diff touches teachers or the roster. The teacher options are fetched by the client from `/school/team` (about 300 ms here against about 15 ms for other calls, because the shared test database holds thousands of accumulated users) into an uncontrolled `<select defaultValue>`, so an early click leaves the value empty. It was not compared against the base commit. Repro: `run_e2e.ps1 sch-team-management` on this stack.
+
+## AC-24 fixes (same day, after the verification above)
+
+Both were fixed test-first (each new test was seen to fail, then pass) and re-verified in the browser on a `web` container rebuilt at 12:35:31Z, after the last edit.
+
+- **(a) Table on the Notifications screen.** `SchoolNotificationList` now renders a labelled list (`ul.link-list`, `aria-label="Notifications"`) in the same rows the transfers screen uses. Browser: 0 tables and 8 notices at 320/375/768/1024/1440 with no horizontal overflow; title, body, date, "new" badge and Open link present; the empty text is unchanged for a school with no notices; no console errors.
+- **(b) Live region.** `SchoolTransferRequestForm` renders its `role="status" aria-live="polite"` region together with the form. Browser: before submitting, the region exists, is empty and is `aria-live=polite`; after a successful filing the confirmation appears in that same DOM element (verified by marking the node before the submit) and the form is gone; after a refresh the pending text is in the region and no form is offered; the error path is unchanged (alert, form and entry kept).
+- **Checks:** 291 web tests, `tsc` and `eslint` clean; the ENH-005, `sch-007` and `sch-008` Playwright specs pass (4/4). The API was not changed.

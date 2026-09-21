@@ -2454,8 +2454,8 @@ correction, not deleted, per this project's traceability convention.
 - **Loading state:** Server-rendered.
 - **Error state:** An "Access unavailable" card with the reason and a link back to login when the notices cannot be loaded.
 - **Permissions/resource scope:** The page shows "Access unavailable — School Coordinator role required" to any other role. The feed is the signed-in user's own notices only.
-- **Responsive behavior:** The table sits in the shared `.table-wrap` scroll container, so it cannot widen the page.
-- **Accessibility requirements:** A table with header cells; the unread state is the text badge "new", not colour alone; the message is rendered as plain text.
+- **Responsive behavior:** A list of notices in the same `.link-list` rows the transfers screen uses (not a table: AC-24, found by the final browser verification), so rows stack and nothing can widen the page; verified at 320/375/768/1024/1440px.
+- **Accessibility requirements:** A labelled list (`aria-label="Notifications"`); the unread state is the text badge "new", not colour alone; the message is rendered as plain text.
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** SchoolNotificationList.test.tsx (passing); enh-005-school-transfer.spec.ts asserts both the requester's and the gaining school's notice (browser, 2026-09-21).
@@ -2491,7 +2491,7 @@ correction, not deleted, per this project's traceability convention.
 - **Error state:** A field error for a missing school; 401/403/409/422/429 and a dropped connection render an alert that takes focus and keep the entry.
 - **Permissions/resource scope:** Filing: the student's own school's Coordinator only; an unknown or foreign student answers the same 403. History: the Coordinator of the student's current school and a Parent linked to the child.
 - **Responsive behavior:** The destination <select> is width:100% inside a min-width:0 field, so one very long school name cannot widen the page (a jsdom-only fix first missed this; the Playwright spec now creates a 200-character school name and asserts no horizontal overflow with the form open).
-- **Accessibility requirements:** Real labels; the select's error is tied by aria-describedby; the pending state is a status region; history is text.
+- **Accessibility requirements:** Real labels; the select's error is tied by aria-describedby; a polite live region (`role="status"`) is rendered with the form, empty, so it exists before the result and the confirmation or pending text appears in that same element; history is text.
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** SchoolTransferRequestForm.test.tsx, SchoolTransferHistory.test.tsx (passing); enh-005-school-transfer.spec.ts (browser, 2026-09-21); test_enh_005_filing.py.
