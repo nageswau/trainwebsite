@@ -55,11 +55,16 @@ describe("ChangePasswordForm (ENH-006)", () => {
     fill();
     submit();
     const button = await screen.findByRole("button", { name: "Changing…" });
-    expect(button).toBeDisabled();
+    // aria-disabled, not `disabled`: a truly disabled button drops keyboard focus to <body> (QA-009); the submit guard
+    // (tested below) is what stops a second request.
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).not.toBeDisabled();
     expect(screen.getByRole("form", { name: "Change password" })).toHaveAttribute("aria-busy", "true");
+    // and progress is announced, not only shown (QA-009)
+    expect(screen.getByRole("status")).toHaveTextContent("Changing your password…");
     release(json({ ok: true }, 200));
-    expect(await screen.findByRole("status")).toHaveTextContent("Your password was changed.");
-    expect(screen.getByRole("button", { name: "Change password" })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Your password was changed."));
+    expect(screen.getByRole("button", { name: "Change password" })).toHaveAttribute("aria-disabled", "false");
     expect(screen.getByRole("form", { name: "Change password" })).toHaveAttribute("aria-busy", "false");
   });
 

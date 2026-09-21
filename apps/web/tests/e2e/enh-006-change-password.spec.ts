@@ -99,14 +99,6 @@ test("a signed-out visitor is sent to sign in and lands back on the password pag
   await expect(page.getByRole("heading", { name: "Change your password" })).toBeVisible();
 });
 
-test("the Password link is reachable from the signed-in public header (ENH-006)", async ({ page }) => {
-  await registerStudent(page);
-  await page.goto("/it");
-  await page.getByRole("link", { name: "Password", exact: true }).click();
-  await page.waitForURL("**/account/password");
-  await expect(page.getByRole("heading", { name: "Change your password" })).toBeVisible();
-});
-
 test("a portal user reaches the page from the sidebar and can go back to their dashboard (ENH-006)", async ({ page }) => {
   await registerStudent(page);
   await page.goto("/it/student/dashboard");
@@ -131,4 +123,65 @@ test("on a 375px phone the portal menu leads to a usable page with no horizontal
   expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44); // touch target
   await fillAndSubmit(page, OLD_PASSWORD, NEW_PASSWORD);
   await expect(page.locator(".form-message")).toHaveText("Your password was changed.");
+});
+
+// ---- Browser QA follow-ups (docs/quality/ENH-006_BROWSER_QA_2026-09-21.md). Each was written and seen failing first.
+
+test("the signed-in public header fits the viewport and Logout stays reachable at laptop and tablet widths (QA-001)", async ({ page }) => {
+  await registerStudent(page);
+  for (const width of [1600, 1440, 1366, 768]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/it");
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(0);
+    const logout = (await page.getByRole("button", { name: "Logout" }).boundingBox())!;
+    expect(logout.x + logout.width, `Logout's right edge at ${width}px`).toBeLessThanOrEqual(width);
+  }
+});
+
+test("the page has its own title (QA-005)", async ({ page }) => {
+  await registerStudent(page);
+  await page.goto("/account/password");
+  await expect(page).toHaveTitle("Change your password | EduSphere");
+});
+
+test("text links and the Show passwords row are at least 24px tall (QA-006, WCAG 2.5.8)", async ({ page }) => {
+  await registerStudent(page);
+  await page.goto("/account/password");
+  for (const locator of [page.getByRole("link", { name: "← Back to dashboard" }), page.getByText("Show passwords")]) {
+    expect((await locator.boundingBox())!.height).toBeGreaterThanOrEqual(24);
+  }
+  await fillAndSubmit(page, "not-the-password", NEW_PASSWORD);
+  const forgot = page.getByRole("link", { name: "Forgot your current password?" });
+  await expect(forgot).toBeVisible();
+  expect((await forgot.boundingBox())!.height).toBeGreaterThanOrEqual(24);
+});
+
+test("while the request is pending the button keeps keyboard focus and progress is announced (QA-009)", async ({ page }) => {
+  await registerStudent(page);
+  await page.goto("/account/password");
+  await page.route("**/api/v1/auth/change-password", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.getByLabel("Current password").fill("not-the-password");
+  await page.getByLabel("New password").fill(NEW_PASSWORD);
+  await page.getByRole("button", { name: "Change password" }).click();
+  const busy = page.getByRole("button", { name: "Changing…" });
+  await expect(busy).toBeVisible();
+  await expect(busy).toBeFocused();
+  await expect(page.locator("[role=status]").filter({ hasText: "Changing your password…" })).toHaveCount(1);
+  await expect(page.locator(".form-error")).toContainText("Incorrect current password"); // and it settles normally
+});
+
+test("an employer, whose dashboard has no portal shell, reaches the page from a link on it (QA-003)", async ({ page }) => {
+  const email = `enh006-emp-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}@example.local`;
+  const registered = await page.request.post("/api/v1/employer/register", {
+    data: { email, password: OLD_PASSWORD, full_name: "E2E Employer", company_name: `E2E Company ${Date.now()}-${Math.floor(Math.random() * 1_000_000)}` }, // company names are unique
+  });
+  expect(registered.ok()).toBeTruthy();
+  await page.goto("/it/employer/dashboard");
+  await page.getByRole("link", { name: "Change password" }).click();
+  await page.waitForURL("**/account/password");
+  await expect(page.getByRole("link", { name: "← Back to dashboard" })).toHaveAttribute("href", "/it/employer/dashboard");
 });

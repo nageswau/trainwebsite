@@ -52,7 +52,6 @@ export default function HeaderAuthActions({ loginHref }: { loginHref: string }) 
     <>
       <Link className="btn secondary" href={session.dashboardHref}>Dashboard</Link>
       <Link className="btn secondary" href="/account/privacy">Privacy</Link>
-      <Link className="btn secondary" href="/account/password">Password</Link>
       <button className="btn" onClick={logout}>Logout</button>
     </>
   );

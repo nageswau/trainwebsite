@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 function message(detail: unknown) {
@@ -15,6 +15,9 @@ function waitLabel(seconds: number) {
   const minutes = Math.ceil(seconds / 60);
   return minutes <= 1 ? "a minute" : `${minutes} minutes`;
 }
+
+// Announced to assistive tech but not shown: the button label already says "Changing…" on screen.
+const VISUALLY_HIDDEN: CSSProperties = { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" };
 
 // Where a signed-out visitor returns to after signing in (LoginForm honours `?next=`).
 const NEXT = encodeURIComponent("/account/password");
@@ -143,7 +146,7 @@ export default function ChangePasswordForm({ email, forgotPasswordHref }: { emai
         <span id="change-password-hint" className="muted" style={{ fontSize: 12 }}>Use at least 10 characters.</span>
       </div>
       <div className="field">
-        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 32 }}>
           <input id="change-show-passwords" type="checkbox" checked={showPasswords} onChange={(event) => setShowPasswords(event.target.checked)} />
           Show passwords
         </label>
@@ -153,7 +156,7 @@ export default function ChangePasswordForm({ email, forgotPasswordHref }: { emai
           <p style={{ margin: 0 }}>{error}</p>
           {errorField === "current" && forgotPasswordHref && (
             <p style={{ margin: "6px 0 0" }}>
-              <Link href={forgotPasswordHref} style={{ color: "var(--blue)", fontWeight: 800 }}>Forgot your current password?</Link>
+              <Link href={forgotPasswordHref} style={{ color: "var(--blue)", fontWeight: 800, display: "inline-block", padding: "4px 0" }}>Forgot your current password?</Link>
             </p>
           )}
         </div>
@@ -167,12 +170,20 @@ export default function ChangePasswordForm({ email, forgotPasswordHref }: { emai
           </p>
         </div>
       )}
-      {notice && (
-        <div className="form-message" role="status" aria-live="polite">
-          {notice}
+      {busy ? (
+        <div role="status" aria-live="polite" style={VISUALLY_HIDDEN}>
+          Changing your password…
         </div>
+      ) : (
+        notice && (
+          <div className="form-message" role="status" aria-live="polite">
+            {notice}
+          </div>
+        )
       )}
-      <button id="change-password-submit" className="btn" disabled={busy}>
+      {/* aria-disabled, not `disabled`: a disabled button drops keyboard focus to <body> while the request runs. The `submitting`
+          guard in submit() is what stops a second request. */}
+      <button id="change-password-submit" className="btn" aria-disabled={busy} style={busy ? { opacity: 0.6, cursor: "not-allowed" } : undefined}>
         {busy ? "Changing…" : "Change password"}
       </button>
       <p className="muted" style={{ fontSize: 13, margin: 0 }}>

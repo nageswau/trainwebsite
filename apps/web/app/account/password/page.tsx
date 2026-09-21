@@ -1,7 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
 import PublicShell from "@/components/PublicShell";
-import { serverApi } from "@/lib/api";
+import { ApiError, serverApi } from "@/lib/api";
 import { ROLE_DASHBOARD_PATH } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
@@ -11,11 +12,29 @@ import type { User } from "@/lib/types";
 // session on every request regardless.
 const NEXT = encodeURIComponent("/account/password");
 
+// The root layout adds " | EduSphere". A page of its own title lets a tab, history entry or screen reader say where the user is.
+export const metadata: Metadata = { title: "Change your password" };
+
 export default async function AccountPasswordPage() {
   let user: User;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
-  } catch {
+  } catch (error) {
+    // Only an explicit 401 means "signed out". An outage, a 5xx or a network failure must not be reported as that: following
+    // "sign in" would lead to a login that fails too (browser QA, QA-002).
+    if (!(error instanceof ApiError && error.status === 401)) {
+      return (
+        <PublicShell>
+          <div className="section">
+            <div className="container card">
+              <h1>Temporarily unavailable</h1>
+              <p className="muted">We can&apos;t reach EduSphere right now. Your password has not been changed. Try again in a moment.</p>
+              <a className="btn" href="/account/password">Try again</a>
+            </div>
+          </div>
+        </PublicShell>
+      );
+    }
     return (
       <PublicShell>
         <div className="section">
@@ -36,7 +55,7 @@ export default async function AccountPasswordPage() {
     <PublicShell division={division}>
       <div className="section compact">
         <div className="container" style={{ maxWidth: 560 }}>
-          <Link href={ROLE_DASHBOARD_PATH[user.role] || "/"} className="muted">← Back to dashboard</Link>
+          <Link href={ROLE_DASHBOARD_PATH[user.role] || "/"} className="muted" style={{ display: "inline-block", padding: "6px 0" }}>← Back to dashboard</Link>
           <h1 style={{ fontSize: 34, marginTop: 14 }}>Change your password</h1>
           <p className="muted">Signed in as {user.full_name} ({user.email}).</p>
           <div className="action-card">
