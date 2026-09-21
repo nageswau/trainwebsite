@@ -25,16 +25,21 @@ from app.models import (
     SchoolAcademicResult,
     SchoolParentLink,
     SchoolResultStatusHistory,
+    SchoolStaffAssignment,
     SchoolStudent,
     SchoolStudentTransferRequest,
     User,
 )
 from app.schemas import (
     AcceptedOut,
+    AdminTransferHistoryResponse,
+    AdminTransferPage,
+    AdminTransferPreview,
     AdminTransferRequestOut,
     IncomingTransferCreate,
     SchoolRef,
     TransferHistoryResponse,
+    TransferRejectRequest,
     TransferRequestCreate,
     TransferRequestOut,
     TransferRequestPage,
@@ -62,6 +67,7 @@ LOCK_BUSY = "Another change to this student is in progress; retry"
 ACTION_FILED = "school.transfer_request_filed"
 ACTION_DENIED = "school.transfer_request_denied"
 ACTION_CANCELLED = "school.transfer_request_cancelled"
+ACTION_REJECTED = "school.transfer_request_rejected"
 ACTION_TRANSFER = "school.student_transfer"
 ACTION_SCOPE_CHANGED = "school.user_school_scope_changed"
 FILING_ACTIONS = (ACTION_FILED, ACTION_DENIED)
@@ -273,6 +279,30 @@ async def _require_transfer_admin(user: User = Depends(get_current_user)) -> Use
     return user
 
 
+def _raise_if_conflict(exc: DBAPIError, actor_id: UUID, request_id: UUID) -> None:
+    """A concurrent conflict (IntegrityError) or a lock wait past the bound (`55P03`, lock_not_available) becomes a clean 409 with
+    nothing written; anything else is a real error and is left to propagate."""
+    if isinstance(exc, IntegrityError) or getattr(exc.orig, "sqlstate", None) == "55P03":
+        logger.warning("transfer_decision_conflict", extra={"extra_fields": {"actor_id": str(actor_id), "request_id_row": str(request_id), "timeout": TRANSFER_LOCK_TIMEOUT}})
+        raise HTTPException(409, LOCK_BUSY) from exc
+
+
+def _admin_rows_stmt(*conditions):
+    """Requests joined to everything the admin view names, in ONE statement (no per-row lookups)."""
+    from_school, to_school, filed_by = aliased(School), aliased(School), aliased(School)
+    requester, decider = aliased(User), aliased(User)
+    stmt = (
+        select(SchoolStudentTransferRequest, SchoolStudent, from_school, to_school, filed_by, requester, decider)
+        .join(SchoolStudent, SchoolStudent.id == SchoolStudentTransferRequest.school_student_id)
+        .join(from_school, from_school.id == SchoolStudentTransferRequest.from_school_id)
+        .join(to_school, to_school.id == SchoolStudentTransferRequest.to_school_id)
+        .join(filed_by, filed_by.id == SchoolStudentTransferRequest.filed_by_school_id)
+        .join(requester, requester.id == SchoolStudentTransferRequest.requested_by_user_id)
+        .join(decider, decider.id == SchoolStudentTransferRequest.decided_by_user_id, isouter=True)
+    )
+    return stmt.where(*conditions).order_by(SchoolStudentTransferRequest.created_at.desc(), SchoolStudentTransferRequest.id.desc())
+
+
 def _admin_out(row, student, from_school, to_school, filed_by, requester, decider, preview=None) -> AdminTransferRequestOut:
     """The admin's view: always complete, no redaction."""
     def ref(school):
@@ -372,9 +402,7 @@ async def approve_transfer_request(request_id: UUID, admin: User = Depends(_requ
         await db.commit()
     except DBAPIError as exc:
         await db.rollback()
-        if isinstance(exc, IntegrityError) or getattr(exc.orig, "sqlstate", None) == "55P03":  # a concurrent conflict, or lock_not_available
-            logger.warning("transfer_approval_conflict", extra={"extra_fields": {"actor_id": str(admin_id), "request_id_row": str(request_id), "timeout": TRANSFER_LOCK_TIMEOUT}})
-            raise HTTPException(409, LOCK_BUSY) from exc
+        _raise_if_conflict(exc, admin_id, request_id)
         raise
     logger.info("student_transfer_approved", extra={"extra_fields": {"actor_id": str(admin_id), "request_id_row": str(request.id), **request.outcome}})
     # The response is built BEFORE the notification step: a failure there rolls the session back, which expires every loaded object.
@@ -388,3 +416,85 @@ async def approve_transfer_request(request_id: UUID, admin: User = Depends(_requ
         await db.rollback()
         logger.warning("transfer_notification_failed", extra={"extra_fields": {"request_id_row": request_row_id}}, exc_info=True)
     return out
+
+
+@admin_router.post("/school-transfer-requests/{request_id}/reject", response_model=AdminTransferRequestOut)
+async def reject_transfer_request(request_id: UUID, payload: TransferRejectRequest | None = None, admin: User = Depends(_require_transfer_admin), db: AsyncSession = Depends(get_db)):
+    """Refuse a pending request. Only the request row changes; no student, parent or result is touched. The optional note is shown
+    to the filing coordinator and is never copied into the audit row or a log. The body is optional."""
+    admin_id, note = admin.id, payload.note if payload else None
+    await db.execute(text("SELECT set_config('lock_timeout', :timeout, true)"), {"timeout": TRANSFER_LOCK_TIMEOUT})
+    try:
+        request = await db.scalar(select(SchoolStudentTransferRequest).where(SchoolStudentTransferRequest.id == request_id).with_for_update())
+        if request is None:
+            raise HTTPException(404, "Transfer request not found")
+        if request.status != "pending":
+            raise HTTPException(409, ALREADY_DECIDED)
+        request.status, request.decided_by_user_id, request.decided_at, request.decision_note = "rejected", admin_id, datetime.now(UTC), note
+        _audit(db, admin_id, ACTION_REJECTED, request.id, from_school_id=str(request.from_school_id), to_school_id=str(request.to_school_id))
+        await db.commit()
+    except DBAPIError as exc:
+        await db.rollback()
+        _raise_if_conflict(exc, admin_id, request_id)
+        raise
+    logger.info("transfer_request_rejected", extra={"extra_fields": {"actor_id": str(admin_id), "request_id_row": str(request.id)}})
+    student, from_school, to_school = await db.get(SchoolStudent, request.school_student_id), await db.get(School, request.from_school_id), await db.get(School, request.to_school_id)
+    requester = await db.get(User, request.requested_by_user_id)
+    filed_by = from_school if request.filed_by_school_id == from_school.id else to_school
+    out = _admin_out(request, student, from_school, to_school, filed_by, requester, admin)
+    incoming = request.filed_by_school_id == request.to_school_id
+    try:
+        # In-app only. To a coordinator who filed an INCOMING request the notice carries the Student ID they typed and nothing else:
+        # naming the student or their school would tell a school about a student it does not own (security review S3/S8).
+        title = f"Transfer request for Student ID {student.student_code} was not approved" if incoming else f"Transfer of {student.full_name} to {to_school.name} was not approved"
+        db.add(Notification(user_id=request.requested_by_user_id, title=title, body="An admin reviewed the request and did not approve it. Nothing has changed.", read=False, action_url="/school/coordinator/transfers"))
+        await db.commit()
+    except Exception:  # noqa: BLE001 -- the decision has committed; a notification problem must never undo or fail it
+        await db.rollback()
+        logger.warning("transfer_notification_failed", extra={"extra_fields": {"request_id_row": str(request_id)}}, exc_info=True)
+    return out
+
+
+@admin_router.get("/school-transfer-requests", response_model=AdminTransferPage)
+async def admin_list_transfer_requests(
+    status: TransferStatusFilter = "pending", limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0),
+    admin: User = Depends(_require_transfer_admin), db: AsyncSession = Depends(get_db),
+):
+    """The admin's queue, newest first, unredacted. A pending row carries a preview of what approval would touch; the three counts are
+    computed with ONE grouped query each over the page's IDs, never per row."""
+    conditions = [] if status == "all" else [SchoolStudentTransferRequest.status == status]
+    total = await db.scalar(select(func.count()).select_from(SchoolStudentTransferRequest).where(*conditions))
+    rows = (await db.execute(_admin_rows_stmt(*conditions).limit(limit).offset(offset))).all()
+    pending = [r for r in rows if r[0].status == "pending"]
+    parents, in_flight, staffed = {}, {}, set()
+    if pending:
+        student_ids, to_ids = [r[1].id for r in pending], {r[0].to_school_id for r in pending}
+        parents = dict((await db.execute(select(SchoolParentLink.school_student_id, func.count()).where(SchoolParentLink.school_student_id.in_(student_ids)).group_by(SchoolParentLink.school_student_id))).all())
+        in_flight = dict(
+            (
+                await db.execute(
+                    select(SchoolAcademicResult.school_student_id, func.count())
+                    .where(SchoolAcademicResult.school_student_id.in_(student_ids), SchoolAcademicResult.status.in_(("draft", "verified")))
+                    .group_by(SchoolAcademicResult.school_student_id)
+                )
+            ).all()
+        )
+        staffed = set((await db.scalars(select(SchoolStaffAssignment.school_id).where(SchoolStaffAssignment.school_id.in_(to_ids)).distinct())).all())
+    items = [
+        _admin_out(
+            r, s, f, t, filed, requester, decider,
+            AdminTransferPreview(linked_parents=parents.get(s.id, 0), in_flight_results=in_flight.get(s.id, 0), to_school_has_portfolio_staff=r.to_school_id in staffed) if r.status == "pending" else None,
+        )
+        for r, s, f, t, filed, requester, decider in rows
+    ]
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+@admin_router.get("/school-students/{student_id}/transfer-history", response_model=AdminTransferHistoryResponse)
+async def admin_student_transfer_history(student_id: UUID, admin: User = Depends(_require_transfer_admin), db: AsyncSession = Depends(get_db)):
+    """Every request for one student, all statuses, with staff names (admin-only, so names are allowed). Bounded per student."""
+    student = await db.get(SchoolStudent, student_id)
+    if student is None:
+        raise HTTPException(404, "Student not found")
+    rows = (await db.execute(_admin_rows_stmt(SchoolStudentTransferRequest.school_student_id == student.id))).all()
+    return {"student": {"id": student.id, "full_name": student.full_name}, "history": [_admin_out(r, s, f, t, filed, requester, decider) for r, s, f, t, filed, requester, decider in rows]}
