@@ -1,6 +1,6 @@
 # ENH-005 — final browser verification (2026-09-21)
 
-**Result: not COMPLETE.** *The latest evidence is the "Final gate" section at the end (a fresh run at HEAD `71c371e`: Playwright 29 passed / 4 failed, Browser Use 90 PASS / 12 NOT TESTABLE / 1 FAIL); the tables below record the earlier pass at `82cfae6`.* Originally 3 findings FAILED (AC-18, AC-24 ×2 parts). **The two AC-24 parts were fixed the same day and re-verified in the browser on a rebuilt `web` (see "AC-24 fixes" at the end); AC-18 is still FAIL** (one existing spec, cause not shown to be ENH-005). 13 checks are NOT TESTABLE from a browser. Everything else observed passes.
+**Result: not COMPLETE.** *The latest evidence is the "Final gate" section at the end (a fresh run at HEAD `71c371e`: Playwright 29 passed / 4 failed, Browser Use 90 PASS / 12 NOT TESTABLE / 1 FAIL); the tables below record the earlier pass at `82cfae6`.* Originally 3 findings FAILED (AC-18, AC-24 ×2 parts). **The two AC-24 parts were fixed the same day and re-verified in the browser on a rebuilt `web` (see "AC-24 fixes" at the end); AC-18 was resolved afterwards as no regression (see "Baseline comparison" at the end)**. 13 checks are NOT TESTABLE from a browser. Everything else observed passes.
 
 ## Method and build under test
 
@@ -32,7 +32,7 @@
 | AC-15 | PASS (notification-failure part NOT TESTABLE) | Exactly one audit row per step, seen in the Super Admin Security & Audit Logs UI; notices to both coordinators and the parent |
 | AC-16 | NOT TESTABLE | Needs fault injection inside the transaction |
 | AC-17 | PASS (promotion race NOT TESTABLE) | Two simultaneous approvals: `[200, 409]`, one history row |
-| **AC-18** | **FAIL** | 31 of 33 existing Playwright specs pass; `sch-team-management:79` fails 3/3 (details below); `enh-003` flaked once and passed 2/2 alone |
+| AC-18 | PASS (no regression) | 31 of 33 existing Playwright specs pass at `82cfae6`; the failing ones fail identically on the baseline `550c4fe7` ("Baseline comparison" at the end) |
 | AC-19 | PASS | Loading, empty, error (500/401/network), success, two-step confirm, plain-text rendering |
 | AC-20 | NOT TESTABLE | 50 open requests cannot exist in a browser: the 30/hour throttle stops a coordinator first |
 | AC-21 | PASS | Both lists: defaults, 422 validation, total, newest first |
@@ -58,7 +58,7 @@ D1 (long school name overflow) PASS at all five widths; D2 (coordinator notices 
 
 **AC-24 (b): live region not mounted before the result.** The outgoing request form's confirmation is inserted as `<div role="status">` when it succeeds; there is no pre-mounted status region for it. (The Transfers page has 3 live regions on load and the admin queue 2.) Repro: coordinator, `/school/coordinator/students/<id>`, open "Request a transfer", count `[role=status]` (none belongs to the form), submit. Whether assistive technology announces an inserted region could not be tested here.
 
-**AC-18: `sch-team-management.spec.ts:79`** (SCH-001 addendum) fails 3 of 3: `#edit-teacher` has value `""` when Edit is clicked. **The cause is not shown to be ENH-005**: `SchoolStudentsPanel.tsx` is untouched by this branch and nothing in this branch's `schools.py` diff touches teachers or the roster. The teacher options are fetched by the client from `/school/team` (about 300 ms here against about 15 ms for other calls, because the shared test database holds thousands of accumulated users) into an uncontrolled `<select defaultValue>`, so an early click leaves the value empty. It was not compared against the base commit. Repro: `run_e2e.ps1 sch-team-management` on this stack.
+**AC-18: `sch-team-management.spec.ts:79`** (SCH-001 addendum) fails 3 of 3: `#edit-teacher` has value `""` when Edit is clicked. **The cause is not shown to be ENH-005**: `SchoolStudentsPanel.tsx` is untouched by this branch and nothing in this branch's `schools.py` diff touches teachers or the roster. The teacher options are fetched by the client from `/school/team` (about 300 ms here against about 15 ms for other calls, because the shared test database holds thousands of accumulated users) into an uncontrolled `<select defaultValue>`, so an early click leaves the value empty. It was then run on the baseline (`550c4fe7`) against the same database and fails identically ("Baseline comparison" at the end), so it is not an ENH-005 regression. Repro: `run_e2e.ps1 sch-team-management` on this stack.
 
 ## AC-24 fixes (same day, after the verification above)
 
@@ -88,12 +88,12 @@ Everything below was produced by commands run for this gate, not carried over. *
 | Secrets | pattern scan of added lines | **PASS**: no keys, tokens or real hosts; test fixtures only (`Demo@123`, the existing seed password; `Sup3r-Secret-Pass!`, a test password) |
 | Unrelated files | 65 changed files listed and the pre-existing ones' diffs read | **PASS**: all ENH-005 code, tests or docs |
 | Playwright | all `enh-*` and `sch-*` specs | **29 passed / 4 failed**; ENH-005's 2 specs pass; see AC-18 |
-| Browser Use | 13 scripts, fresh world (tag `1789996508`), 5 widths, all roles | **90 PASS / 1 FAIL (AC-18) / 12 NOT TESTABLE**; 3 invalid runs of my own flawed checks kept in the record |
+| Browser Use | 13 scripts, fresh world (tag `1789996508`), 5 widths, all roles | **90 PASS / 1 FAIL (AC-18, resolved by the baseline comparison) / 12 NOT TESTABLE**; 3 invalid runs of my own flawed checks kept in the record |
 | API log hygiene (AC-31, supplementary) | read-only grep of the API container log | 0 occurrences of any name, code, e-mail, reason or note from this run (1,043 transfer lines) |
 
-**AC-18 in detail.** (1) `sch-004-005-006:189` and `:241` fail 2/2 in isolation because the spec is not idempotent: it searches `Search Alpha` and expects one school, and the shared database now holds four `E2E Search Alpha School <ts>` (one per past run); the ENH-004 record already noted it is "not repeatable on a used database". (2) `sch-team-management:79` fails every time: the roster's edit `<select>` uses `defaultValue` with options fetched by the client from `/school/team` (about 300 ms here); with that fetch delayed 2 s the value stays `""` after the options arrive, demonstrated in the browser on this build. `SchoolStudentsPanel.tsx` is untouched by this branch. (3) `enh-003:91` fails in full runs and passed 2/2 in isolation. None is shown to be caused by ENH-005, but none was compared against the base commit, so AC-18 stays FAIL.
+**AC-18 in detail.** (1) `sch-004-005-006:189` and `:241` fail 2/2 in isolation because the spec is not idempotent: it searches `Search Alpha` and expects one school, and the shared database now holds four `E2E Search Alpha School <ts>` (one per past run); the ENH-004 record already noted it is "not repeatable on a used database". (2) `sch-team-management:79` fails every time: the roster's edit `<select>` uses `defaultValue` with options fetched by the client from `/school/team` (about 300 ms here); with that fetch delayed 2 s the value stays `""` after the options arrive, demonstrated in the browser on this build. `SchoolStudentsPanel.tsx` is untouched by this branch. (3) `enh-003:91` fails in full runs and passed 2/2 in isolation. All four were then run on the baseline ("Baseline comparison" at the end) and fail identically there, so AC-18 is a no-regression PASS.
 
-**Open, so not COMPLETE:** AC-18; the owner decision on unaccepted parent invites; the full Playwright suite beyond `enh-*`/`sch-*`.
+**Open, so not COMPLETE:** the owner decision on unaccepted parent invites; the full Playwright suite beyond `enh-*`/`sch-*`.
 
 ## Follow-up: backend type check and formatting (`5aa27bf`)
 
@@ -105,4 +105,23 @@ The two backend gates that failed at `71c371e` were fixed with no behavior chang
 - **Behavior:** the 94 ENH-005 backend tests pass; the full backend suite is **977 passed / 14 failed**, and the 14 failures are the same Razorpay (11) and Zoho (3) tests that fail on `main`, with none in an ENH-005 file.
 - **Not re-run after this change:** the Browser Use pass and the Playwright specs ran against the `api` container built before this refactor (it was not rebuilt), so they are evidence for the code before `5aa27bf`; the backend tests above are the evidence for the refactor.
 
-**Still open, so ENH-005 is not COMPLETE:** AC-18 (4 existing Playwright tests, none shown to be caused by ENH-005, none compared with the base commit); the owner decision on unaccepted parent invites; the full Playwright suite beyond `enh-*`/`sch-*`.
+**Still open, so ENH-005 is not COMPLETE:** the owner decision on unaccepted parent invites; the full Playwright suite beyond `enh-*`/`sch-*`.
+
+## Baseline comparison for AC-18 (2026-09-21)
+
+**Question.** Do the 4 existing Playwright tests that fail on the branch also fail without ENH-005?
+
+**Baseline.** `550c4fe7`, the merge commit ENH-005 was cut from (`git merge-base main HEAD`). Not today's `main`, which has since gained ENH-006 (23 commits), so the comparison isolates ENH-005 alone. The baseline has no `school_transfers.py`; its API exposes 0 paths containing "transfer" against the branch's 10 (checked in the running containers). The 3 spec files and `SchoolStudentsPanel.tsx` are byte-identical to the branch's.
+
+**Method.** Images built from an extract of the baseline (`docker build`, api and web; the web image's backend URL points at the baseline api). Both containers ran on the existing test network with their own network aliases, against **the same database** as the branch stack (the one holding thousands of accumulated users and four `E2E Search Alpha` schools), with the baseline's API started without its migration step because the database is already at revision `0034`. The tests ran in the same Playwright image with the baseline's own `tests/` mounted. The baseline containers were removed afterwards; the branch stack was not touched.
+
+| Test | Branch (this database) | Baseline (same database) |
+|---|---|---|
+| `sch-004-005-006:189` (portfolio search) | fails 2/2 | fails 2/2: `toHaveCount(1)` received 5, then 6 (one more `Search Alpha` school per run) |
+| `sch-004-005-006:241` (select all / clear) | fails 2/2 | fails 2/2 |
+| `sch-team-management:79` (deactivated teacher) | fails every run | fails 3/3: `#edit-teacher` expected a value, received `""` (line 101); test timeout 15 s |
+| `enh-003:91` (Re-send from the keyboard) | fails in full runs, passes alone | 1 pass, 1 fail of 2 (`toBeFocused`: inactive) |
+
+**Conclusion.** All four reproduce on the baseline with the same database, so none is caused by ENH-005. They are pre-existing under used-database conditions: two are non-idempotent specs, one is a timing race in the roster edit form (client-fetched options with `defaultValue`), one is flaky. **AC-18 (existing behavior preserved) is a no-regression PASS.** The database state, not the code, is what makes them fail; a fresh database was not tried.
+
+**Still open, so ENH-005 is not COMPLETE:** the owner decision on unaccepted parent invites; the full Playwright suite beyond `enh-*`/`sch-*`.
