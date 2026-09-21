@@ -68,7 +68,7 @@ Both were fixed test-first (each new test was seen to fail, then pass) and re-ve
 - **(b) Live region.** `SchoolTransferRequestForm` renders its `role="status" aria-live="polite"` region together with the form. Browser: before submitting, the region exists, is empty and is `aria-live=polite`; after a successful filing the confirmation appears in that same DOM element (verified by marking the node before the submit) and the form is gone; after a refresh the pending text is in the region and no form is offered; the error path is unchanged (alert, form and entry kept).
 - **Checks:** 291 web tests, `tsc` and `eslint` clean; the ENH-005, `sch-007` and `sch-008` Playwright specs pass (4/4). The API was not changed.
 
-## Final gate (fresh run at HEAD `71c371e`, after the AC-24 fixes)
+## Final gate (fresh run at HEAD `71c371e`, after the AC-24 fixes; backend lint/type follow-up at `5aa27bf` below)
 
 Everything below was produced by commands run for this gate, not carried over. **Verdict: ENH-005 is NOT COMPLETE.**
 
@@ -81,8 +81,8 @@ Everything below was produced by commands run for this gate, not carried over. *
 | Production build | `next build` | **PASS** exit 0; `/overseas/admin/school-transfers`, `/school/coordinator/transfers`, `/school/coordinator/notifications` built |
 | Backend tests | full `pytest` | **977 passed / 14 failed**; the 14 (Razorpay 11, Zoho 3, credentials not configured) fail identically on `main`'s code (14 failed / 11 passed in those two files); 0 of 94 ENH-005 tests failed |
 | Backend lint | `ruff check .` | 33 errors, **equal to `main`**; none in an ENH-005 line (`schools.py:1890` B904 is pre-existing) |
-| Backend types | `mypy app` | **FAIL vs base**: 195 errors vs `main`'s 154; all 41 new ones in `app/api/school_transfers.py` (`Optional` results of `db.scalar`/`db.get`) |
-| Backend format | `ruff format --check .` | **FAIL vs base**: 64 files vs `main`'s 56 (new: `school_transfers.py`, `enh005_helpers.py`, 7 test files) |
+| Backend types | `mypy app` | at `71c371e`: **FAIL vs base** (195 errors vs `main`'s 154, all 41 new ones in `school_transfers.py`); **cleared at `5aa27bf`: 154 errors in 11 files = `main`** |
+| Backend format | `ruff format --check .` | at `71c371e`: **FAIL vs base** (64 files vs `main`'s 56); **cleared at `5aa27bf`: 55 files, below `main`'s 56; every ENH-005 file formatted** |
 | Migration | scratch DB: upgrade from empty, downgrade to `0033`, re-upgrade, `alembic check` | **PASS**: create-table only; downgrade removed only the ENH-005 table; no drift; scratch DB dropped |
 | Disabled tests / debug code / TODO | scan of the 4,723 added lines under `apps/` | **PASS**: none. 5 suppressions, all justified (`BLE001` after commit ×2, `E731` in tests ×3) |
 | Secrets | pattern scan of added lines | **PASS**: no keys, tokens or real hosts; test fixtures only (`Demo@123`, the existing seed password; `Sup3r-Secret-Pass!`, a test password) |
@@ -93,4 +93,16 @@ Everything below was produced by commands run for this gate, not carried over. *
 
 **AC-18 in detail.** (1) `sch-004-005-006:189` and `:241` fail 2/2 in isolation because the spec is not idempotent: it searches `Search Alpha` and expects one school, and the shared database now holds four `E2E Search Alpha School <ts>` (one per past run); the ENH-004 record already noted it is "not repeatable on a used database". (2) `sch-team-management:79` fails every time: the roster's edit `<select>` uses `defaultValue` with options fetched by the client from `/school/team` (about 300 ms here); with that fetch delayed 2 s the value stays `""` after the options arrive, demonstrated in the browser on this build. `SchoolStudentsPanel.tsx` is untouched by this branch. (3) `enh-003:91` fails in full runs and passed 2/2 in isolation. None is shown to be caused by ENH-005, but none was compared against the base commit, so AC-18 stays FAIL.
 
-**Open, so not COMPLETE:** AC-18; backend `mypy` (+41) and `ruff format` (+8 files) against `main`; the owner decision on unaccepted parent invites; the full Playwright suite beyond `enh-*`/`sch-*`.
+**Open, so not COMPLETE:** AC-18; the owner decision on unaccepted parent invites; the full Playwright suite beyond `enh-*`/`sch-*`.
+
+## Follow-up: backend type check and formatting (`5aa27bf`)
+
+The two backend gates that failed at `71c371e` were fixed with no behavior change and re-measured with the same commands on `main` and on this branch.
+
+- **`mypy app`:** 154 errors in 11 files, equal to `main` (was 195). The 41 errors were `Optional` results of `db.scalar`/`db.get`, plain `dict`/`str` passed where the response models want `SchoolRef`/`UserRef`/`Literal`, and two unannotated dicts. `_ref` and `_direction` now return the real types, rows guaranteed by a foreign key are fetched through one narrowing helper, and `count()` results default to 0. The helper uses Python 3.12 type-parameter syntax; both Dockerfiles are `python:3.12-slim` and `pyproject.toml` targets `py312`.
+- **`ruff check`:** 33 errors, equal to `main`; clean on every ENH-005 file. (A first pass had added 2 errors, an import order and the generic-helper style, and both were fixed.)
+- **`ruff format`:** applied to the 9 new ENH-005 python files only; 55 files would still be reformatted against `main`'s 56, all of them files `main` already had unformatted.
+- **Behavior:** the 94 ENH-005 backend tests pass; the full backend suite is **977 passed / 14 failed**, and the 14 failures are the same Razorpay (11) and Zoho (3) tests that fail on `main`, with none in an ENH-005 file.
+- **Not re-run after this change:** the Browser Use pass and the Playwright specs ran against the `api` container built before this refactor (it was not rebuilt), so they are evidence for the code before `5aa27bf`; the backend tests above are the evidence for the refactor.
+
+**Still open, so ENH-005 is not COMPLETE:** AC-18 (4 existing Playwright tests, none shown to be caused by ENH-005, none compared with the base commit); the owner decision on unaccepted parent invites; the full Playwright suite beyond `enh-*`/`sch-*`.
