@@ -22,9 +22,7 @@ def test_every_interpolated_value_is_escaped():
 
 
 def test_ordinary_text_renders_unchanged():
-    html = _parent_notification_html(
-        recipient_name="Asha", school_name="Sunrise", title="Result published", body="Maths is ready.", action_url="/school/parent/children/1"
-    )
+    html = _parent_notification_html(recipient_name="Asha", school_name="Sunrise", title="Result published", body="Maths is ready.", action_url="/school/parent/children/1")
     assert "Result published" in html
     assert "Maths is ready." in html
     assert 'href="/school/parent/children/1"' in html

@@ -18,8 +18,22 @@ MIGRATION = Path(__file__).resolve().parent.parent / "alembic" / "versions" / "0
 def test_table_shape_matches_the_spec():
     table = Transfer.__table__
     assert table.name == "school_student_transfer_requests"
-    assert {"id", "school_student_id", "from_school_id", "to_school_id", "requested_by_user_id", "filed_by_school_id", "status", "reason",
-            "decided_by_user_id", "decided_at", "decision_note", "outcome", "created_at", "updated_at"} <= set(table.c.keys())
+    assert {
+        "id",
+        "school_student_id",
+        "from_school_id",
+        "to_school_id",
+        "requested_by_user_id",
+        "filed_by_school_id",
+        "status",
+        "reason",
+        "decided_by_user_id",
+        "decided_at",
+        "decision_note",
+        "outcome",
+        "created_at",
+        "updated_at",
+    } <= set(table.c.keys())
     assert table.c.status.default.arg == "pending"
     checks = {c.name for c in table.constraints if isinstance(c, CheckConstraint)}
     assert {"ck_school_transfer_distinct_schools", "ck_school_transfer_filed_by_side"} <= checks

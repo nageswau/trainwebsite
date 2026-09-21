@@ -83,9 +83,7 @@ async def test_a_burst_of_simultaneous_filings_cannot_exceed_the_open_request_ca
     a = await mk_school(db_session, label="A", students=8)
     b = await mk_school(db_session, label="B", students=0)
     async with _client_for(a["coordinator"].email) as client:
-        results = await asyncio.wait_for(
-            asyncio.gather(*(client.post(OUT.format(sid=s.id), json={"to_school_id": str(b["school"].id)}) for s in a["students"])), timeout=30
-        )
+        results = await asyncio.wait_for(asyncio.gather(*(client.post(OUT.format(sid=s.id), json={"to_school_id": str(b["school"].id)}) for s in a["students"])), timeout=30)
 
     assert sorted(r.status_code for r in results) == [201, 201] + [409] * 6, [r.text for r in results]
     pending = await db_session.scalar(
@@ -102,9 +100,7 @@ async def test_a_burst_of_simultaneous_filings_cannot_exceed_the_hourly_throttle
         results = await asyncio.wait_for(asyncio.gather(*(client.post(IN, json={"student_code": f"0000000{i}"}) for i in range(10))), timeout=30)
 
     assert sorted(r.status_code for r in results) == [202] * 3 + [429] * 7, [r.text for r in results]
-    counted = await db_session.scalar(
-        select(func.count()).select_from(AuditLog).where(AuditLog.user_id == a["coordinator"].id, AuditLog.action.in_(school_transfers.FILING_ACTIONS))
-    )
+    counted = await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.user_id == a["coordinator"].id, AuditLog.action.in_(school_transfers.FILING_ACTIONS)))
     assert counted == 3  # the audit rows the throttle counts: exactly the attempts it let through
 
 

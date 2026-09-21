@@ -41,7 +41,12 @@ async def world(db_session):
     p1 = a["parent"]
     p2 = await mk_user(db_session, role="school_parent", name="P2 two kids", school_id=a["school"].id, assigned_by=a["coordinator"])
     await db_session.flush()
-    db_session.add_all([SchoolParentLink(parent_user_id=p2.id, school_student_id=kid.id, linked_by_user_id=a["coordinator"].id), SchoolParentLink(parent_user_id=p2.id, school_student_id=sibling.id, linked_by_user_id=a["coordinator"].id)])
+    db_session.add_all(
+        [
+            SchoolParentLink(parent_user_id=p2.id, school_student_id=kid.id, linked_by_user_id=a["coordinator"].id),
+            SchoolParentLink(parent_user_id=p2.id, school_student_id=sibling.id, linked_by_user_id=a["coordinator"].id),
+        ]
+    )
     kid.pending_parent_email = "pending.parent@example.local"
     await db_session.commit()
     request = await mk_request(db_session, kid, from_school=a["school"], to_school=b["school"], filed_by_school=a["school"], requester=a["coordinator"], reason="Family is moving")
@@ -262,7 +267,11 @@ async def test_audit_rows_are_written_for_the_transfer_and_for_each_moved_parent
     assert transfer[0].metadata_json["parents_moved"] == 1 and "request_id" in transfer[0].metadata_json
     moved = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.user_school_scope_changed", AuditLog.entity_id == str(w["p1"].id)))).all()
     assert len(moved) == 1
-    assert (moved[0].metadata_json["from_school_id"], moved[0].metadata_json["to_school_id"], moved[0].metadata_json["transfer_request_id"]) == (str(w["a"]["school"].id), str(w["b"]["school"].id), str(w["request"].id))
+    assert (moved[0].metadata_json["from_school_id"], moved[0].metadata_json["to_school_id"], moved[0].metadata_json["transfer_request_id"]) == (
+        str(w["a"]["school"].id),
+        str(w["b"]["school"].id),
+        str(w["request"].id),
+    )
     assert await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action == "school.user_school_scope_changed", AuditLog.entity_id == str(w["p2"].id))) == 0
     blob = json.dumps([x.metadata_json for x in transfer + moved])
     assert w["kid"].full_name not in blob and w["kid"].student_code not in blob and "Family is moving" not in blob

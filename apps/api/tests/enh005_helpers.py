@@ -39,8 +39,13 @@ async def mk_user(db, *, role: str, name: str, school_id=None, assigned_by=None,
 
 async def mk_student(db, school, coordinator, name: str = "Child", teacher=None) -> SchoolStudent:
     student = SchoolStudent(
-        school_id=school.id, student_code=await unique_student_code(db, SchoolStudent.student_code), full_name=f"{name} {uuid.uuid4().hex[:4]}",
-        grade_or_class="Grade 8-A", grade_level=8, created_by_user_id=coordinator.id, assigned_teacher_user_id=teacher.id if teacher else None,
+        school_id=school.id,
+        student_code=await unique_student_code(db, SchoolStudent.student_code),
+        full_name=f"{name} {uuid.uuid4().hex[:4]}",
+        grade_or_class="Grade 8-A",
+        grade_level=8,
+        created_by_user_id=coordinator.id,
+        assigned_teacher_user_id=teacher.id if teacher else None,
     )
     db.add(student)
     await db.flush()
@@ -73,7 +78,13 @@ async def mk_staff(db, school, admin, role: str = "academic_team") -> User:
 
 async def mk_result(db, student, uploader, status: str = "draft", subject: str = "Maths") -> SchoolAcademicResult:
     result = SchoolAcademicResult(
-        school_student_id=student.id, academic_year="2026-27", term="Term 1", subject=subject, max_marks=100, marks_obtained=80, status=status,
+        school_student_id=student.id,
+        academic_year="2026-27",
+        term="Term 1",
+        subject=subject,
+        max_marks=100,
+        marks_obtained=80,
+        status=status,
         uploaded_by_user_id=uploader.id,
     )
     db.add(result)
@@ -84,8 +95,13 @@ async def mk_result(db, student, uploader, status: str = "draft", subject: str =
 async def mk_request(db, student, *, from_school, to_school, filed_by_school, requester, status: str = "pending", reason: str | None = None) -> SchoolStudentTransferRequest:
     """A transfer request row inserted directly (for tests that need one to exist without going through filing)."""
     row = SchoolStudentTransferRequest(
-        school_student_id=student.id, from_school_id=from_school.id, to_school_id=to_school.id, requested_by_user_id=requester.id,
-        filed_by_school_id=filed_by_school.id, status=status, reason=reason,
+        school_student_id=student.id,
+        from_school_id=from_school.id,
+        to_school_id=to_school.id,
+        requested_by_user_id=requester.id,
+        filed_by_school_id=filed_by_school.id,
+        status=status,
+        reason=reason,
     )
     db.add(row)
     await db.commit()

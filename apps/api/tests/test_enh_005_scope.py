@@ -134,8 +134,14 @@ async def test_accepting_an_invite_links_only_students_of_the_invites_own_school
     token = uuid.uuid4().hex
     db_session.add(
         SchoolAccountInvite(
-            school_id=a["school"].id, role="school_parent", invited_by_user_id=a["coordinator"].id, token_hash=hashlib.sha256(token.encode()).hexdigest(),
-            email=email, full_name="Invited Parent", status="pending", expires_at=datetime.now(UTC) + timedelta(days=7),
+            school_id=a["school"].id,
+            role="school_parent",
+            invited_by_user_id=a["coordinator"].id,
+            token_hash=hashlib.sha256(token.encode()).hexdigest(),
+            email=email,
+            full_name="Invited Parent",
+            status="pending",
+            expires_at=datetime.now(UTC) + timedelta(days=7),
         )
     )
     await db_session.commit()

@@ -6,6 +6,7 @@ in this section; the request list/cancel/history and the admin approve/reject fo
 `get_current_user`; the caller's school always comes from their server-owned profile, never from a request body."""
 
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -38,12 +39,15 @@ from app.schemas import (
     AdminTransferRequestOut,
     IncomingTransferCreate,
     SchoolRef,
+    TransferDirection,
     TransferHistoryResponse,
     TransferRejectRequest,
     TransferRequestCreate,
     TransferRequestOut,
     TransferRequestPage,
+    TransferStatus,
     TransferStatusFilter,
+    UserRef,
 )
 
 coordinator_router = APIRouter(prefix="/school", tags=["school-transfers"])
@@ -79,10 +83,23 @@ def _audit(db: AsyncSession, actor_id: UUID, action: str, entity_id, *, outcome:
     row correlates with its log lines."""
     db.add(
         AuditLog(
-            user_id=actor_id, action=action, entity_type="school_student_transfer_request", entity_id=str(entity_id) if entity_id else None,
-            outcome=outcome, metadata_json={**metadata, "request_id": request_id_ctx.get()},
+            user_id=actor_id,
+            action=action,
+            entity_type="school_student_transfer_request",
+            entity_id=str(entity_id) if entity_id else None,
+            outcome=outcome,
+            metadata_json={**metadata, "request_id": request_id_ctx.get()},
         )
     )
+
+
+async def _get_or_404[Row](db: AsyncSession, model: type[Row], pk: UUID, what: str) -> Row:
+    """`db.get` for a row a foreign key guarantees exists (a request's student and schools, the caller's own school). It only narrows the type:
+    schools and students are never deleted, so the 404 is a defensive answer where the alternative would be an AttributeError."""
+    row = await db.get(model, pk)
+    if row is None:
+        raise HTTPException(404, f"{what} not found")
+    return row
 
 
 async def _filing_guard(db: AsyncSession, actor_id: UUID, school_id: UUID) -> None:
@@ -98,13 +115,16 @@ async def _filing_guard(db: AsyncSession, actor_id: UUID, school_id: UUID) -> No
     await db.scalar(select(School.id).where(School.id == school_id).with_for_update(key_share=True))
     now = datetime.now(UTC)
     window = (AuditLog.user_id == actor_id, AuditLog.action.in_(FILING_ACTIONS), AuditLog.created_at > now - timedelta(hours=1))
-    if await db.scalar(select(func.count()).select_from(AuditLog).where(*window)) >= TRANSFER_FILINGS_PER_HOUR:
-        oldest = await db.scalar(select(func.min(AuditLog.created_at)).where(*window))
+    if (await db.scalar(select(func.count()).select_from(AuditLog).where(*window)) or 0) >= TRANSFER_FILINGS_PER_HOUR:
+        oldest = await db.scalar(select(func.min(AuditLog.created_at)).where(*window)) or now  # never None here: the count above found rows
         wait = max(1, int((oldest + timedelta(hours=1) - now).total_seconds()))
         logger.warning("transfer_filing_throttled", extra={"extra_fields": {"actor_id": str(actor_id), "school_id": str(school_id), "wait_seconds": wait}})
         raise HTTPException(429, f"Too many transfer requests; try again in {wait} seconds", headers={"Retry-After": str(wait)})
-    open_count = await db.scalar(
-        select(func.count()).select_from(SchoolStudentTransferRequest).where(SchoolStudentTransferRequest.filed_by_school_id == school_id, SchoolStudentTransferRequest.status == "pending")
+    open_count = (
+        await db.scalar(
+            select(func.count()).select_from(SchoolStudentTransferRequest).where(SchoolStudentTransferRequest.filed_by_school_id == school_id, SchoolStudentTransferRequest.status == "pending")
+        )
+        or 0
     )
     if open_count >= MAX_OPEN_TRANSFER_REQUESTS_PER_SCHOOL:
         logger.warning("transfer_open_cap_reached", extra={"extra_fields": {"actor_id": str(actor_id), "school_id": str(school_id), "open": open_count}})
@@ -115,11 +135,11 @@ async def _filing_guard(db: AsyncSession, actor_id: UUID, school_id: UUID) -> No
         raise HTTPException(409, TOO_MANY_OPEN)
 
 
-def _ref(school: School) -> dict:
-    return {"id": school.id, "name": school.name}
+def _ref(school: School) -> SchoolRef:
+    return SchoolRef(id=school.id, name=school.name)
 
 
-def _direction(row: SchoolStudentTransferRequest) -> str:
+def _direction(row: SchoolStudentTransferRequest) -> TransferDirection:
     """Outgoing when the losing school filed it, incoming when the gaining school did. Derived, never stored."""
     return "outgoing" if row.filed_by_school_id == row.from_school_id else "incoming"
 
@@ -131,9 +151,18 @@ def _request_out(row: SchoolStudentTransferRequest, student: SchoolStudent, from
     direction = _direction(row)
     redacted = direction == "incoming" and row.status != "approved"
     return TransferRequestOut(
-        id=row.id, direction=direction, status=row.status, student_id=None if redacted else student.id, student_code=student.student_code,
-        student_name=None if redacted else student.full_name, from_school=None if redacted else _ref(from_school),
-        to_school=_ref(to_school), reason=row.reason, decision_note=row.decision_note, created_at=row.created_at, decided_at=row.decided_at,
+        id=row.id,
+        direction=direction,
+        status=cast(TransferStatus, row.status),
+        student_id=None if redacted else student.id,
+        student_code=student.student_code,
+        student_name=None if redacted else student.full_name,
+        from_school=None if redacted else _ref(from_school),
+        to_school=_ref(to_school),
+        reason=row.reason,
+        decision_note=row.decision_note,
+        created_at=row.created_at,
+        decided_at=row.decided_at,
     )
 
 
@@ -147,8 +176,11 @@ async def transfer_destinations(user: User = Depends(_require_coordinator_user),
 
 @coordinator_router.get("/transfer-requests", response_model=TransferRequestPage)
 async def list_my_transfer_requests(
-    status: TransferStatusFilter = "pending", limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0),
-    user: User = Depends(_require_coordinator_user), db: AsyncSession = Depends(get_db),
+    status: TransferStatusFilter = "pending",
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(_require_coordinator_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """The requests THIS school filed (either direction), newest first. Scoped in the query, not filtered afterwards; the other
     school in a request is not told of it until an admin decides (decision D5)."""
@@ -179,9 +211,7 @@ async def cancel_transfer_request(request_id: UUID, user: User = Depends(_requir
     is never locked or read, and an unknown ID and another school's ID are the same absence (one identical 403, audited). The row
     lock also serialises this with a concurrent admin decision: whichever commits second sees a decided request and gets 409."""
     actor_id, school_id = user.id, _own_school_id(user)
-    row = await db.scalar(
-        select(SchoolStudentTransferRequest).where(SchoolStudentTransferRequest.id == request_id, SchoolStudentTransferRequest.filed_by_school_id == school_id).with_for_update()
-    )
+    row = await db.scalar(select(SchoolStudentTransferRequest).where(SchoolStudentTransferRequest.id == request_id, SchoolStudentTransferRequest.filed_by_school_id == school_id).with_for_update())
     if row is None:
         _audit(db, actor_id, ACTION_DENIED, None, outcome="denied", reason_token="cancel_not_permitted", school_id=str(school_id))
         await db.commit()
@@ -192,8 +222,8 @@ async def cancel_transfer_request(request_id: UUID, user: User = Depends(_requir
     _audit(db, actor_id, ACTION_CANCELLED, row.id, school_id=str(school_id))
     await db.commit()
     logger.info("transfer_request_cancelled", extra={"extra_fields": {"actor_id": str(actor_id), "request_id_row": str(row.id), "school_id": str(school_id)}})
-    student = await db.get(SchoolStudent, row.school_student_id)
-    return _request_out(row, student, await db.get(School, row.from_school_id), await db.get(School, row.to_school_id))
+    student = await _get_or_404(db, SchoolStudent, row.school_student_id, "Student")
+    return _request_out(row, student, await _get_or_404(db, School, row.from_school_id, "School"), await _get_or_404(db, School, row.to_school_id, "School"))
 
 
 @coordinator_router.get("/students/{student_id}/transfer-history", response_model=TransferHistoryResponse)
@@ -235,10 +265,15 @@ async def file_outgoing_request(student_id: UUID, payload: TransferRequestCreate
     to_school = await db.get(School, payload.to_school_id)
     if to_school is None:
         raise HTTPException(422, "Unknown destination school")
-    from_school = await db.get(School, school_id)
+    from_school = await _get_or_404(db, School, school_id, "School")
     row = SchoolStudentTransferRequest(
-        school_student_id=student.id, from_school_id=school_id, to_school_id=to_school.id, requested_by_user_id=actor_id, filed_by_school_id=school_id,
-        status="pending", reason=payload.reason,
+        school_student_id=student.id,
+        from_school_id=school_id,
+        to_school_id=to_school.id,
+        requested_by_user_id=actor_id,
+        filed_by_school_id=school_id,
+        status="pending",
+        reason=payload.reason,
     )
     try:
         async with db.begin_nested():  # a savepoint: losing the race must not release the school lock before the denial is audited and committed
@@ -270,8 +305,13 @@ async def file_incoming_request(payload: IncomingTransferCreate, user: User = De
         token = "own_school"
     else:
         row = SchoolStudentTransferRequest(
-            school_student_id=student.id, from_school_id=student.school_id, to_school_id=school_id, requested_by_user_id=actor_id, filed_by_school_id=school_id,
-            status="pending", reason=payload.reason,
+            school_student_id=student.id,
+            from_school_id=student.school_id,
+            to_school_id=school_id,
+            requested_by_user_id=actor_id,
+            filed_by_school_id=school_id,
+            status="pending",
+            reason=payload.reason,
         )
         try:
             async with db.begin_nested():  # a savepoint, for the same reason as in the outgoing route
@@ -326,10 +366,23 @@ def _admin_rows_stmt(*conditions):
 def _admin_out(row, student, from_school, to_school, filed_by, requester, decider, preview=None) -> AdminTransferRequestOut:
     """The admin's view: always complete, no redaction."""
     return AdminTransferRequestOut(
-        id=row.id, direction=_direction(row), status=row.status, student_id=student.id,
-        student_code=student.student_code, student_name=student.full_name, from_school=_ref(from_school), to_school=_ref(to_school), filed_by_school=_ref(filed_by),
-        requester={"id": requester.id, "name": requester.full_name}, reason=row.reason, decision_note=row.decision_note,
-        decided_by={"id": decider.id, "name": decider.full_name} if decider else None, outcome=row.outcome, preview=preview, created_at=row.created_at, decided_at=row.decided_at,
+        id=row.id,
+        direction=_direction(row),
+        status=cast(TransferStatus, row.status),
+        student_id=student.id,
+        student_code=student.student_code,
+        student_name=student.full_name,
+        from_school=_ref(from_school),
+        to_school=_ref(to_school),
+        filed_by_school=_ref(filed_by),
+        requester=UserRef(id=requester.id, name=requester.full_name),
+        reason=row.reason,
+        decision_note=row.decision_note,
+        decided_by=UserRef(id=decider.id, name=decider.full_name) if decider else None,
+        outcome=row.outcome,
+        preview=preview,
+        created_at=row.created_at,
+        decided_at=row.decided_at,
     )
 
 
@@ -344,9 +397,11 @@ async def _approve(db: AsyncSession, request_id: UUID, admin_id: UUID):
     if request.status != "pending":
         raise HTTPException(409, ALREADY_DECIDED)
     student = await db.scalar(select(SchoolStudent).where(SchoolStudent.id == request.school_student_id).with_for_update())
+    if student is None:
+        raise HTTPException(404, "Student not found")
     if student.school_id != request.from_school_id:  # the student left by some other route since it was filed
         raise HTTPException(409, STALE_REQUEST)
-    from_school, to_school = await db.get(School, request.from_school_id), await db.get(School, request.to_school_id)
+    from_school, to_school = await _get_or_404(db, School, request.from_school_id, "School"), await _get_or_404(db, School, request.to_school_id, "School")
     from_id, to_id = str(from_school.id), str(to_school.id)
 
     # Parents (D1): the link is never touched. An account at the losing school whose only child there was this student follows the
@@ -359,7 +414,9 @@ async def _approve(db: AsyncSession, request_id: UUID, admin_id: UUID):
         if parent.role != "school_parent" or (parent.profile or {}).get("school_id") != from_id:
             continue
         others_at_from = await db.scalar(
-            select(func.count()).select_from(SchoolParentLink).join(SchoolStudent, SchoolStudent.id == SchoolParentLink.school_student_id)
+            select(func.count())
+            .select_from(SchoolParentLink)
+            .join(SchoolStudent, SchoolStudent.id == SchoolParentLink.school_student_id)
             .where(SchoolParentLink.parent_user_id == parent.id, SchoolStudent.school_id == request.from_school_id, SchoolStudent.id != student.id)
         )
         if others_at_from:
@@ -372,7 +429,10 @@ async def _approve(db: AsyncSession, request_id: UUID, admin_id: UUID):
     # In-flight results (D3): kept, frozen, hidden. Published results stay with the student.
     in_flight = (
         await db.scalars(
-            select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id == student.id, SchoolAcademicResult.status.in_(("draft", "verified"))).order_by(SchoolAcademicResult.id).with_for_update()
+            select(SchoolAcademicResult)
+            .where(SchoolAcademicResult.school_student_id == student.id, SchoolAcademicResult.status.in_(("draft", "verified")))
+            .order_by(SchoolAcademicResult.id)
+            .with_for_update()
         )
     ).all()
     for result in in_flight:
@@ -392,7 +452,9 @@ async def _notify_transfer_approved(db: AsyncSession, student: SchoolStudent, fr
     parents get the existing SCH-007 notice (in-app plus the email channel). The student is named to all of them: it is now, or was,
     their student."""
     parents_told = await _notify_student_parents(
-        db, student, title=f"{student.full_name} has moved to {to_school.name}",
+        db,
+        student,
+        title=f"{student.full_name} has moved to {to_school.name}",
         body=f"{student.full_name}'s school record has moved from {from_school.name} to {to_school.name}. You keep access to their profile and progress.",
         action_url=f"/school/parent/children/{student.id}",
     )
@@ -400,9 +462,25 @@ async def _notify_transfer_approved(db: AsyncSession, student: SchoolStudent, fr
     for coordinator in coordinators:
         school = (coordinator.profile or {}).get("school_id")
         if school == str(from_school.id):
-            db.add(Notification(user_id=coordinator.id, title=f"Transfer approved: {student.full_name} moved to {to_school.name}", body=f"{student.full_name} has left {from_school.name} for {to_school.name}.", read=False, action_url="/school/coordinator/transfers"))
+            db.add(
+                Notification(
+                    user_id=coordinator.id,
+                    title=f"Transfer approved: {student.full_name} moved to {to_school.name}",
+                    body=f"{student.full_name} has left {from_school.name} for {to_school.name}.",
+                    read=False,
+                    action_url="/school/coordinator/transfers",
+                )
+            )
         elif school == str(to_school.id):
-            db.add(Notification(user_id=coordinator.id, title=f"{student.full_name} has joined {to_school.name}", body=f"{student.full_name} has moved to your school from {from_school.name}.", read=False, action_url=f"/school/coordinator/students/{student.id}"))
+            db.add(
+                Notification(
+                    user_id=coordinator.id,
+                    title=f"{student.full_name} has joined {to_school.name}",
+                    body=f"{student.full_name} has moved to your school from {from_school.name}.",
+                    read=False,
+                    action_url=f"/school/coordinator/students/{student.id}",
+                )
+            )
     await db.commit()
     logger.info("transfer_notifications_sent", extra={"extra_fields": {"student_id": str(student.id), "parents": parents_told}})
 
@@ -455,8 +533,9 @@ async def reject_transfer_request(request_id: UUID, payload: TransferRejectReque
         _raise_if_conflict(exc, admin_id, request_id)
         raise
     logger.info("transfer_request_rejected", extra={"extra_fields": {"actor_id": str(admin_id), "request_id_row": str(request.id)}})
-    student, from_school, to_school = await db.get(SchoolStudent, request.school_student_id), await db.get(School, request.from_school_id), await db.get(School, request.to_school_id)
-    requester = await db.get(User, request.requested_by_user_id)
+    student = await _get_or_404(db, SchoolStudent, request.school_student_id, "Student")
+    from_school, to_school = await _get_or_404(db, School, request.from_school_id, "School"), await _get_or_404(db, School, request.to_school_id, "School")
+    requester = await _get_or_404(db, User, request.requested_by_user_id, "Requester")
     filed_by = from_school if request.filed_by_school_id == from_school.id else to_school
     out = _admin_out(request, student, from_school, to_school, filed_by, requester, admin)
     incoming = request.filed_by_school_id == request.to_school_id
@@ -464,7 +543,15 @@ async def reject_transfer_request(request_id: UUID, payload: TransferRejectReque
         # In-app only. To a coordinator who filed an INCOMING request the notice carries the Student ID they typed and nothing else:
         # naming the student or their school would tell a school about a student it does not own (security review S3/S8).
         title = f"Transfer request for Student ID {student.student_code} was not approved" if incoming else f"Transfer of {student.full_name} to {to_school.name} was not approved"
-        db.add(Notification(user_id=request.requested_by_user_id, title=title, body="An admin reviewed the request and did not approve it. Nothing has changed.", read=False, action_url="/school/coordinator/transfers"))
+        db.add(
+            Notification(
+                user_id=request.requested_by_user_id,
+                title=title,
+                body="An admin reviewed the request and did not approve it. Nothing has changed.",
+                read=False,
+                action_url="/school/coordinator/transfers",
+            )
+        )
         await db.commit()
     except Exception:  # noqa: BLE001 -- the decision has committed; a notification problem must never undo or fail it
         await db.rollback()
@@ -474,8 +561,11 @@ async def reject_transfer_request(request_id: UUID, payload: TransferRejectReque
 
 @admin_router.get("/school-transfer-requests", response_model=AdminTransferPage)
 async def admin_list_transfer_requests(
-    status: TransferStatusFilter = "pending", limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0),
-    admin: User = Depends(_require_transfer_admin), db: AsyncSession = Depends(get_db),
+    status: TransferStatusFilter = "pending",
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    admin: User = Depends(_require_transfer_admin),
+    db: AsyncSession = Depends(get_db),
 ):
     """The admin's queue, newest first, unredacted. A pending row carries a preview of what approval would touch; the three counts are
     computed with ONE grouped query each over the page's IDs, never per row."""
@@ -483,27 +573,39 @@ async def admin_list_transfer_requests(
     total = await db.scalar(select(func.count()).select_from(SchoolStudentTransferRequest).where(*conditions))
     rows = (await db.execute(_admin_rows_stmt(*conditions).limit(limit).offset(offset))).all()
     pending = [r for r in rows if r[0].status == "pending"]
-    parents, in_flight, staffed = {}, {}, set()
+    parents: dict[UUID, int] = {}
+    in_flight: dict[UUID, int] = {}
+    staffed: set[UUID] = set()
     if pending:
         student_ids, to_ids = [r[1].id for r in pending], {r[0].to_school_id for r in pending}
-        parents = dict((await db.execute(select(SchoolParentLink.school_student_id, func.count()).where(SchoolParentLink.school_student_id.in_(student_ids)).group_by(SchoolParentLink.school_student_id))).all())
-        in_flight = dict(
-            (
-                await db.execute(
-                    select(SchoolAcademicResult.school_student_id, func.count())
-                    .where(SchoolAcademicResult.school_student_id.in_(student_ids), SchoolAcademicResult.status.in_(("draft", "verified")))
-                    .group_by(SchoolAcademicResult.school_student_id)
-                )
-            ).all()
+        parent_counts = await db.execute(
+            select(SchoolParentLink.school_student_id, func.count()).where(SchoolParentLink.school_student_id.in_(student_ids)).group_by(SchoolParentLink.school_student_id)
         )
+        parents = {student_id: n for student_id, n in parent_counts.all()}
+        result_counts = await db.execute(
+            select(SchoolAcademicResult.school_student_id, func.count())
+            .where(SchoolAcademicResult.school_student_id.in_(student_ids), SchoolAcademicResult.status.in_(("draft", "verified")))
+            .group_by(SchoolAcademicResult.school_student_id)
+        )
+        in_flight = {student_id: n for student_id, n in result_counts.all()}
         staffed = set((await db.scalars(select(SchoolStaffAssignment.school_id).where(SchoolStaffAssignment.school_id.in_(to_ids)).distinct())).all())
     items = [
         _admin_out(
-            r, s, f, t, filed, requester, decider,
+            r,
+            s,
+            f,
+            t,
+            filed,
+            requester,
+            decider,
             AdminTransferPreview(
-                linked_parents=parents.get(s.id, 0), in_flight_results=in_flight.get(s.id, 0), to_school_has_portfolio_staff=r.to_school_id in staffed,
+                linked_parents=parents.get(s.id, 0),
+                in_flight_results=in_flight.get(s.id, 0),
+                to_school_has_portfolio_staff=r.to_school_id in staffed,
                 pending_parent_invite=s.pending_parent_email is not None,
-            ) if r.status == "pending" else None,
+            )
+            if r.status == "pending"
+            else None,
         )
         for r, s, f, t, filed, requester, decider in rows
     ]

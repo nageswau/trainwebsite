@@ -62,7 +62,17 @@ def test_blank_free_text_becomes_none_and_the_reject_note_is_checked_too():
 
 
 def test_a_redacted_request_row_has_the_same_schema_as_a_full_one():
-    base = dict(id=uuid.uuid4(), direction="incoming", status="pending", student_code="A3F9C21B", reason=None, decision_note=None, created_at=datetime.now(UTC), decided_at=None, to_school={"id": uuid.uuid4(), "name": "B"})
+    base = dict(
+        id=uuid.uuid4(),
+        direction="incoming",
+        status="pending",
+        student_code="A3F9C21B",
+        reason=None,
+        decision_note=None,
+        created_at=datetime.now(UTC),
+        decided_at=None,
+        to_school={"id": uuid.uuid4(), "name": "B"},
+    )
     redacted = TransferRequestOut(**base, student_id=None, student_name=None, from_school=None)
     full = TransferRequestOut(**base, student_id=uuid.uuid4(), student_name="Aarav", from_school={"id": uuid.uuid4(), "name": "A"})
     assert redacted.model_dump().keys() == full.model_dump().keys()

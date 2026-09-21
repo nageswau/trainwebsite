@@ -77,7 +77,14 @@ async def test_no_log_record_or_notification_link_leaks_a_code_reason_note_name_
     assert (await client.post(f"/api/v1/overseas-admin/school-transfer-requests/{extra.json()['id']}/reject", json={"note": "SECRET-NOTE"})).status_code == 200
 
     records = [r for r in caplog.records if r.name.startswith("app.school")]
-    assert {r.getMessage() for r in records} >= {"transfer_request_filed", "transfer_incoming_attempt", "transfer_request_cancelled", "student_transfer_approved", "transfer_request_rejected", "transfer_filing_throttled"}
+    assert {r.getMessage() for r in records} >= {
+        "transfer_request_filed",
+        "transfer_incoming_attempt",
+        "transfer_request_cancelled",
+        "student_transfer_approved",
+        "transfer_request_rejected",
+        "transfer_filing_throttled",
+    }
     text = " ".join(_flatten(r) for r in records)
     for secret in secrets:
         assert secret not in text, secret
