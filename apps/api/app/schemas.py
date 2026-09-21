@@ -4,6 +4,7 @@ from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic_core import PydanticCustomError
 
 
 class LoginRequest(BaseModel):
@@ -76,6 +77,15 @@ class ChangePasswordRequest(BaseModel):
     # long password still works while the input stays finite; new_password follows the registration/reset rule.
     current_password: str = Field(min_length=1, max_length=1024)
     new_password: str = Field(min_length=10, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_is_not_blank(cls, value: str) -> str:
+        # QA-007: ten spaces satisfy the length rule but are not a password. Only an ALL-whitespace value is refused; spaces
+        # inside or around real characters are kept exactly. A custom error keeps the message free of pydantic's "Value error, ".
+        if not value.strip():
+            raise PydanticCustomError("blank_password", "Password must not consist only of spaces")
+        return value
 
 
 class EmployerJobCreate(BaseModel):

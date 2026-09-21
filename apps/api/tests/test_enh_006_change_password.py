@@ -407,3 +407,26 @@ async def test_the_endpoint_does_not_accept_a_non_json_body(client, db_session):
         response = await client.post(URL, content=body, headers={"Content-Type": content_type})
         assert response.status_code == 422
     assert await _password_is(db_session, user, PASSWORD)
+
+
+# QA-007 (browser QA): a 10-space password satisfied the length rule and worked for login. Whitespace alone is not a password.
+@pytest.mark.asyncio
+@pytest.mark.parametrize("blank", [" " * 10, "\t" * 10, " \t\n " * 3, "\u00a0" * 10], ids=["spaces", "tabs", "mixed-whitespace", "non-breaking-spaces"])
+async def test_a_new_password_of_only_whitespace_is_422_with_a_clear_message(client, db_session, blank):
+    user = await _signed_in_user(client, db_session)
+    response = await client.post(URL, json={"current_password": PASSWORD, "new_password": blank})
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["msg"] == "Password must not consist only of spaces"
+    assert await _password_is(db_session, user, PASSWORD)
+    assert await _rows(db_session, user, FAILED) == []  # a refused rule uses no attempt
+    assert await _rows(db_session, user, CHANGED) == []
+
+
+@pytest.mark.asyncio
+async def test_spaces_inside_or_around_a_real_password_are_kept_exactly(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    spaced = "  spaced out pass  "  # not stripped, not normalised
+    assert (await client.post(URL, json={"current_password": PASSWORD, "new_password": spaced})).status_code == 200
+    login = {"email": user.email, "division": user.division}
+    assert (await client.post("/api/v1/auth/login", json={**login, "password": spaced})).status_code == 200
+    assert (await client.post("/api/v1/auth/login", json={**login, "password": spaced.strip()})).status_code == 401
