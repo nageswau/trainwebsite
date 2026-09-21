@@ -1,3 +1,4 @@
+import re
 import unicodedata
 from datetime import date, datetime
 from typing import Literal
@@ -557,3 +558,177 @@ class GradeHistoryStudent(BaseModel):
 class GradeHistoryResponse(BaseModel):
     student: GradeHistoryStudent
     history: list[GradeHistoryEntry]
+
+
+# --- ENH-005: student school transfer (docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md) ---
+
+FREE_TEXT_MAX = 500
+_BIDI_CONTROLS = {chr(c) for c in (*range(0x202A, 0x202F), *range(0x2066, 0x206A))}
+_STUDENT_CODE = re.compile(r"[0-9A-F]{8}")
+
+TransferStatus = Literal["pending", "approved", "rejected", "cancelled"]
+TransferStatusFilter = Literal["pending", "approved", "rejected", "cancelled", "all"]
+TransferDirection = Literal["outgoing", "incoming"]
+
+
+def clean_free_text(value: str | None) -> str | None:
+    """Coordinator/admin free text (`reason`, `note`). Blank becomes None. A NUL byte would surface as a 500 from
+    PostgreSQL text, and bidirectional overrides could visually reorder text shown to an admin (security review S7).
+    Line breaks and tabs stay (it is a textarea); zero-width joiners stay (Indic scripts need them)."""
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    if len(value) > FREE_TEXT_MAX:
+        raise ValueError(f"must be {FREE_TEXT_MAX} characters or fewer")
+    for ch in value:
+        if ch in _BIDI_CONTROLS or (unicodedata.category(ch) == "Cc" and ch not in "\n\t"):
+            raise ValueError("must not contain control or bidirectional-override characters")
+    return value
+
+
+class TransferRequestCreate(BaseModel):
+    # `extra="forbid"`: a client-supplied school, status or student is a loud 422; the from-school comes from the
+    # student row and the filing school from the caller's profile (spec §6).
+    model_config = {"extra": "forbid"}
+    to_school_id: UUID
+    reason: str | None = None
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, value: str | None) -> str | None:
+        return clean_free_text(value)
+
+
+class IncomingTransferCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+    student_code: str
+    reason: str | None = None
+
+    @field_validator("student_code")
+    @classmethod
+    def _code(cls, value: str) -> str:
+        code = value.strip().upper()
+        if not _STUDENT_CODE.fullmatch(code):  # explicit ASCII class: Unicode digits and look-alikes fail
+            raise ValueError("student_code must be 8 characters, 0-9 and A-F")
+        return code
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, value: str | None) -> str | None:
+        return clean_free_text(value)
+
+
+class TransferRejectRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    note: str | None = None
+
+    @field_validator("note")
+    @classmethod
+    def _note(cls, value: str | None) -> str | None:
+        return clean_free_text(value)
+
+
+class SchoolRef(BaseModel):
+    id: UUID
+    name: str
+
+
+class UserRef(BaseModel):
+    id: UUID
+    name: str
+
+
+class AcceptedOut(BaseModel):
+    accepted: bool
+
+
+class TransferRequestOut(BaseModel):
+    """One shape for every coordinator-facing request row. A not-yet-approved incoming row has `student_id`,
+    `student_name` and `from_school` set to null (the gaining coordinator knows only the code they typed)."""
+
+    id: UUID
+    direction: TransferDirection
+    status: TransferStatus
+    student_id: UUID | None
+    student_code: str
+    student_name: str | None
+    from_school: SchoolRef | None
+    to_school: SchoolRef
+    reason: str | None
+    decision_note: str | None
+    created_at: datetime
+    decided_at: datetime | None
+
+
+class TransferRequestPage(BaseModel):
+    items: list[TransferRequestOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class TransferHistoryEntry(BaseModel):
+    id: UUID
+    decided_at: datetime
+    from_school: SchoolRef
+    to_school: SchoolRef
+
+
+class TransferHistoryStudent(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class TransferHistoryResponse(BaseModel):
+    student: TransferHistoryStudent
+    history: list[TransferHistoryEntry]
+
+
+class TransferOutcome(BaseModel):
+    parents_moved: int = 0
+    parents_kept: int = 0
+    results_withdrawn: int = 0
+    teacher_cleared: bool = False
+    pending_parent_email_cleared: bool = False
+
+
+class AdminTransferPreview(BaseModel):
+    linked_parents: int
+    in_flight_results: int
+    to_school_has_portfolio_staff: bool
+
+
+class AdminTransferRequestOut(BaseModel):
+    """Admin view: always complete (no redaction)."""
+
+    id: UUID
+    direction: TransferDirection
+    status: TransferStatus
+    student_id: UUID
+    student_code: str
+    student_name: str
+    from_school: SchoolRef
+    to_school: SchoolRef
+    filed_by_school: SchoolRef
+    requester: UserRef
+    reason: str | None
+    decision_note: str | None
+    decided_by: UserRef | None
+    outcome: TransferOutcome | None
+    preview: AdminTransferPreview | None
+    created_at: datetime
+    decided_at: datetime | None
+
+
+class AdminTransferPage(BaseModel):
+    items: list[AdminTransferRequestOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class AdminTransferHistoryResponse(BaseModel):
+    student: TransferHistoryStudent
+    history: list[AdminTransferRequestOut]
