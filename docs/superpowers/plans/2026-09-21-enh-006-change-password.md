@@ -1209,6 +1209,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 **Files:**
 - Create: `apps/web/app/account/password/page.tsx`
 - Modify: `apps/web/components/HeaderAuthActions.tsx` (one line after the "Privacy" link, line 54)
+- Test (added during execution, written and seen failing before the code): `apps/web/tests/components/HeaderAuthActions.test.tsx`, `apps/web/tests/components/AccountPasswordPage.test.tsx` (the page's own decisions — division→forgot-password link, back link, `?next=` links, signed-out card — asserted on the returned element tree without rendering the site shell)
 
 **Interfaces:**
 - Consumes: `ChangePasswordForm` (Task 4); `PublicShell` (existing: site header, `<main>`, footer); `serverApi<User>`; `ROLE_DASHBOARD_PATH`.
