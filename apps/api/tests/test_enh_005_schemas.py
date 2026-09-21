@@ -44,11 +44,11 @@ def test_a_malformed_school_id_is_a_validation_error_not_a_crash():
 
 
 def test_free_text_accepts_line_breaks_and_indic_joiners():
-    ok = TransferRequestCreate(to_school_id=uuid.uuid4(), reason="line one\nline two\tक्‍ष")
-    assert "‍" in ok.reason and "\n" in ok.reason
+    ok = TransferRequestCreate(to_school_id=uuid.uuid4(), reason="line one\nline two\tक्\u200dष")
+    assert "\u200d" in ok.reason and "\n" in ok.reason
 
 
-@pytest.mark.parametrize("bad", ["a\x00b", "a‮b", "a⁦b", "a\x1bb", "x" * 501])
+@pytest.mark.parametrize("bad", ["a\x00b", "a\u202eb", "a\u2066b", "a\x1bb", "x" * 501])
 def test_free_text_rejects_control_bidi_and_overlong_input(bad):
     with pytest.raises(ValidationError):
         TransferRequestCreate(to_school_id=uuid.uuid4(), reason=bad)
@@ -58,7 +58,7 @@ def test_blank_free_text_becomes_none_and_the_reject_note_is_checked_too():
     assert TransferRejectRequest(note="   ").note is None
     assert TransferRequestCreate(to_school_id=uuid.uuid4()).reason is None
     with pytest.raises(ValidationError):
-        TransferRejectRequest(note="a‮b")
+        TransferRejectRequest(note="a\u202eb")
 
 
 def test_a_redacted_request_row_has_the_same_schema_as_a_full_one():

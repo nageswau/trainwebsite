@@ -109,14 +109,14 @@ def test_client_supplied_server_fields_are_a_422(model, kwargs, extra):
 
 
 def test_free_text_rules():
-    ok = TransferRequestCreate(to_school_id=uuid.uuid4(), reason="line one\nline two\tक्‍ष")
-    assert "‍" in ok.reason
-    for bad in ("a\x00b", "a‮b", "a⁦b", "x" * 501):
+    ok = TransferRequestCreate(to_school_id=uuid.uuid4(), reason="line one\nline two\tक्\u200dष")
+    assert "\u200d" in ok.reason
+    for bad in ("a\x00b", "a\u202eb", "a\u2066b", "x" * 501):
         with pytest.raises(ValidationError):
             TransferRequestCreate(to_school_id=uuid.uuid4(), reason=bad)
     assert TransferRejectRequest(note="  ").note is None  # blank normalises to None
     with pytest.raises(ValidationError):
-        TransferRejectRequest(note="a‮b")
+        TransferRejectRequest(note="a\u202eb")
 ```
 
 - [ ] **Step 2: Run, confirm RED** — `ImportError: cannot import name 'IncomingTransferCreate'` (expected: the names do not exist yet).
