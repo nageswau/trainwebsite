@@ -43,3 +43,8 @@ Thumbs.db
 
 # Local git worktrees
 .worktrees/
+
+# graphify local build state (the graph itself, graphify-out/graph.*, stays tracked)
+graphify-out/cache/
+graphify-out/manifest.json
+graphify-out/.graphify_*
