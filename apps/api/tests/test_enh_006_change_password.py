@@ -4,6 +4,10 @@ Spec: docs/superpowers/specs/2026-09-21-enh-006-change-password-design.md
 Every test creates its own user: never change a seeded account's password (other suites log in with it).
 """
 
+import asyncio
+import hashlib
+import json
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -11,7 +15,7 @@ import pytest
 from sqlalchemy import select
 
 from app.core.security import hash_password, verify_password
-from app.models import AuditLog, User
+from app.models import AuditLog, PasswordResetToken, User
 
 PASSWORD = "Sup3r-Secret-Pass!"
 NEW_PASSWORD = "Brand-New-Pass-1!"
@@ -207,3 +211,63 @@ async def test_the_limit_is_per_user(client, db_session):
     assert (await client.post(URL, json={"current_password": PASSWORD, "new_password": NEW_PASSWORD})).status_code == 200
     assert await _password_is(db_session, other, NEW_PASSWORD)
     assert len(await _rows(db_session, blocked_user, FAILED)) == 5
+
+
+@pytest.mark.asyncio
+async def test_two_simultaneous_wrong_guesses_at_attempt_five_yield_one_400_and_one_429(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    await _seed_failures(db_session, user, [1, 1, 1, 1])
+    results = await asyncio.gather(client.post(URL, json=WRONG), client.post(URL, json=WRONG))
+    assert sorted(r.status_code for r in results) == [400, 429]
+    assert len(await _rows(db_session, user, FAILED)) == 5
+
+
+@pytest.mark.asyncio
+async def test_two_simultaneous_changes_with_the_same_current_password_yield_one_200_and_one_400(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    first = {"current_password": PASSWORD, "new_password": "First-New-Pass-1!"}
+    second = {"current_password": PASSWORD, "new_password": "Second-New-Pass-1!"}
+    results = await asyncio.gather(client.post(URL, json=first), client.post(URL, json=second))
+    assert sorted(r.status_code for r in results) == [200, 400]
+    winner = first["new_password"] if results[0].status_code == 200 else second["new_password"]
+    assert await _password_is(db_session, user, winner)
+    assert len(await _rows(db_session, user, CHANGED)) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_change_racing_a_reset_password_completes_without_error_or_deadlock(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    raw = uuid.uuid4().hex + uuid.uuid4().hex
+    db_session.add(PasswordResetToken(user_id=user.id, token_hash=hashlib.sha256(raw.encode()).hexdigest(), expires_at=datetime.now(UTC) + timedelta(minutes=30)))
+    await db_session.commit()
+    results = await asyncio.wait_for(
+        asyncio.gather(
+            client.post(URL, json={"current_password": PASSWORD, "new_password": NEW_PASSWORD}),
+            client.post("/api/v1/auth/reset-password", json={"token": raw, "new_password": "Reset-New-Pass-1!"}),
+        ),
+        timeout=30,
+    )
+    statuses = [r.status_code for r in results]
+    assert 500 not in statuses  # a deadlock surfaces as a 500 (Postgres aborts one transaction)
+    assert 200 in statuses
+
+
+@pytest.mark.asyncio
+async def test_no_password_or_hash_reaches_the_logs_or_audit_rows(client, db_session, caplog):
+    caplog.set_level(logging.INFO, logger="app.auth")
+    changed = await _signed_in_user(client, db_session)
+    old_hash = changed.password_hash
+    assert (await client.post(URL, json=WRONG)).status_code == 400
+    assert (await client.post(URL, json={"current_password": PASSWORD, "new_password": NEW_PASSWORD})).status_code == 200
+    await db_session.refresh(changed)
+    blocked = await _signed_in_user(client, db_session)
+    await _seed_failures(db_session, blocked, [1, 1, 1, 1, 1])
+    assert (await client.post(URL, json=WRONG)).status_code == 429
+
+    messages = {r.getMessage() for r in caplog.records}
+    assert {"password_changed", "change_password_throttled"} <= messages  # the records exist, so the scan below is not vacuous
+    haystack = "\n".join(r.getMessage() + json.dumps(getattr(r, "extra_fields", {}), default=str) for r in caplog.records)
+    for user in (changed, blocked):
+        haystack += json.dumps([row.metadata_json for row in await _rows(db_session, user, FAILED) + await _rows(db_session, user, CHANGED)])
+    for secret in (PASSWORD, NEW_PASSWORD, WRONG["current_password"], old_hash, changed.password_hash):
+        assert secret not in haystack
