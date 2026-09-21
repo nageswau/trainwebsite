@@ -9,18 +9,29 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.api.deps import get_current_user
-from app.api.schools import _load_readable_student, _own_school_id, _require_coordinator_user
+from app.api.schools import _load_readable_student, _notify_student_parents, _own_school_id, _require_coordinator_user
 from app.core.database import get_db
 from app.core.logging import get_logger, request_id_ctx
-from app.models import AuditLog, School, SchoolStudent, SchoolStudentTransferRequest, User
+from app.models import (
+    AuditLog,
+    Notification,
+    School,
+    SchoolAcademicResult,
+    SchoolParentLink,
+    SchoolResultStatusHistory,
+    SchoolStudent,
+    SchoolStudentTransferRequest,
+    User,
+)
 from app.schemas import (
     AcceptedOut,
+    AdminTransferRequestOut,
     IncomingTransferCreate,
     SchoolRef,
     TransferHistoryResponse,
@@ -37,6 +48,7 @@ logger = get_logger("app.school.transfers")
 # Module constants, read at call time so a test can shorten them; none is ever request input.
 MAX_OPEN_TRANSFER_REQUESTS_PER_SCHOOL = 50  # D7
 TRANSFER_FILINGS_PER_HOUR = 30  # D8, per coordinator
+TRANSFER_LOCK_TIMEOUT = "5s"  # bounded wait for the row locks an approval takes (spec §5.4); passed as a bound parameter, never request input
 
 # The `detail` strings are a contract (spec §5.3a): a client may match on them.
 NOT_AT_INSTITUTION = "This student is not at your institution"
@@ -44,10 +56,14 @@ ALREADY_PENDING = "A transfer request is already pending for this student"
 TOO_MANY_OPEN = "Too many open transfer requests; wait for a decision or cancel one"
 NOT_PERMITTED = "Not permitted for this transfer request"
 ALREADY_DECIDED = "This transfer request has already been decided"
+STALE_REQUEST = "The student is no longer at the school this request was filed for; reject it and file a new one"
+LOCK_BUSY = "Another change to this student is in progress; retry"
 
 ACTION_FILED = "school.transfer_request_filed"
 ACTION_DENIED = "school.transfer_request_denied"
 ACTION_CANCELLED = "school.transfer_request_cancelled"
+ACTION_TRANSFER = "school.student_transfer"
+ACTION_SCOPE_CHANGED = "school.user_school_scope_changed"
 FILING_ACTIONS = (ACTION_FILED, ACTION_DENIED)
 
 
@@ -244,3 +260,131 @@ async def file_incoming_request(payload: IncomingTransferCreate, user: User = De
     await db.commit()
     logger.info("transfer_incoming_attempt", extra={"extra_fields": {"actor_id": str(actor_id), "school_id": str(school_id), "created": row is not None}})
     return {"accepted": True}
+
+
+# ---------------------------------------------------------------------------------------------- admin: approve (spec §5.4)
+
+
+async def _require_transfer_admin(user: User = Depends(get_current_user)) -> User:
+    """Approve and reject are admin-only, and a coordinator can never reach them (filers and approvers are disjoint roles).
+    Checked as a dependency so a wrong role gets 403 before any 404/422/409 can hint at a request's existence."""
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    return user
+
+
+def _admin_out(row, student, from_school, to_school, filed_by, requester, decider, preview=None) -> AdminTransferRequestOut:
+    """The admin's view: always complete, no redaction."""
+    def ref(school):
+        return {"id": school.id, "name": school.name}
+
+    return AdminTransferRequestOut(
+        id=row.id, direction="outgoing" if row.filed_by_school_id == row.from_school_id else "incoming", status=row.status, student_id=student.id,
+        student_code=student.student_code, student_name=student.full_name, from_school=ref(from_school), to_school=ref(to_school), filed_by_school=ref(filed_by),
+        requester={"id": requester.id, "name": requester.full_name}, reason=row.reason, decision_note=row.decision_note,
+        decided_by={"id": decider.id, "name": decider.full_name} if decider else None, outcome=row.outcome, preview=preview, created_at=row.created_at, decided_at=row.decided_at,
+    )
+
+
+async def _approve(db: AsyncSession, request_id: UUID, admin_id: UUID):
+    """The whole move, inside the caller's transaction. Lock order is fixed -- request, then student, then parent users by id, then
+    in-flight results by id -- so it cannot deadlock with itself, with a promotion (which locks students) or with a result
+    verify (which locks a result and only reads the student). The parent count runs AFTER the parent locks, so two siblings
+    transferred at once serialise on their shared parent and both see the other's committed move."""
+    request = await db.scalar(select(SchoolStudentTransferRequest).where(SchoolStudentTransferRequest.id == request_id).with_for_update())
+    if request is None:
+        raise HTTPException(404, "Transfer request not found")
+    if request.status != "pending":
+        raise HTTPException(409, ALREADY_DECIDED)
+    student = await db.scalar(select(SchoolStudent).where(SchoolStudent.id == request.school_student_id).with_for_update())
+    if student.school_id != request.from_school_id:  # the student left by some other route since it was filed
+        raise HTTPException(409, STALE_REQUEST)
+    from_school, to_school = await db.get(School, request.from_school_id), await db.get(School, request.to_school_id)
+    from_id, to_id = str(from_school.id), str(to_school.id)
+
+    # Parents (D1): the link is never touched. An account at the losing school whose only child there was this student follows the
+    # child; one with another child still there stays. The ONLY field ever written on a user is `profile.school_id`, and only on a
+    # `school_parent` account at the losing school (security review S5) -- and each such change is audited (S4).
+    linked = select(SchoolParentLink.parent_user_id).where(SchoolParentLink.school_student_id == student.id)
+    parents = (await db.scalars(select(User).where(User.id.in_(linked)).order_by(User.id).with_for_update())).all()
+    moved = kept = 0
+    for parent in parents:
+        if parent.role != "school_parent" or (parent.profile or {}).get("school_id") != from_id:
+            continue
+        others_at_from = await db.scalar(
+            select(func.count()).select_from(SchoolParentLink).join(SchoolStudent, SchoolStudent.id == SchoolParentLink.school_student_id)
+            .where(SchoolParentLink.parent_user_id == parent.id, SchoolStudent.school_id == request.from_school_id, SchoolStudent.id != student.id)
+        )
+        if others_at_from:
+            kept += 1
+            continue
+        parent.profile = {**(parent.profile or {}), "school_id": to_id}  # a whole-dict reassignment, so the JSON change is detected
+        moved += 1
+        _audit(db, admin_id, ACTION_SCOPE_CHANGED, parent.id, from_school_id=from_id, to_school_id=to_id, transfer_request_id=str(request.id))
+
+    # In-flight results (D3): kept, frozen, hidden. Published results stay with the student.
+    in_flight = (
+        await db.scalars(
+            select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id == student.id, SchoolAcademicResult.status.in_(("draft", "verified"))).order_by(SchoolAcademicResult.id).with_for_update()
+        )
+    ).all()
+    for result in in_flight:
+        db.add(SchoolResultStatusHistory(result_id=result.id, from_status=result.status, to_status="withdrawn", changed_by_user_id=admin_id))
+        result.status = "withdrawn"
+
+    teacher_cleared, pending_email_cleared = student.assigned_teacher_user_id is not None, student.pending_parent_email is not None
+    student.school_id, student.assigned_teacher_user_id, student.pending_parent_email = request.to_school_id, None, None
+    request.status, request.decided_by_user_id, request.decided_at = "approved", admin_id, datetime.now(UTC)
+    request.outcome = {"parents_moved": moved, "parents_kept": kept, "results_withdrawn": len(in_flight), "teacher_cleared": teacher_cleared, "pending_parent_email_cleared": pending_email_cleared}
+    _audit(db, admin_id, ACTION_TRANSFER, request.id, from_school_id=from_id, to_school_id=to_id, **request.outcome)
+    return request, student, from_school, to_school
+
+
+async def _notify_transfer_approved(db: AsyncSession, student: SchoolStudent, from_school: School, to_school: School) -> None:
+    """After the commit (a rolled-back approval can never have told anyone). Both schools' coordinators are told in-app only; the
+    parents get the existing SCH-007 notice (in-app plus the email channel). The student is named to all of them: it is now, or was,
+    their student."""
+    parents_told = await _notify_student_parents(
+        db, student, title=f"{student.full_name} has moved to {to_school.name}",
+        body=f"{student.full_name}'s school record has moved from {from_school.name} to {to_school.name}. You keep access to their profile and progress.",
+        action_url=f"/school/parent/children/{student.id}",
+    )
+    coordinators = (await db.scalars(select(User).where(User.role == "school_coordinator", User.active.is_(True)))).all()
+    for coordinator in coordinators:
+        school = (coordinator.profile or {}).get("school_id")
+        if school == str(from_school.id):
+            db.add(Notification(user_id=coordinator.id, title=f"Transfer approved: {student.full_name} moved to {to_school.name}", body=f"{student.full_name} has left {from_school.name} for {to_school.name}.", read=False, action_url="/school/coordinator/transfers"))
+        elif school == str(to_school.id):
+            db.add(Notification(user_id=coordinator.id, title=f"{student.full_name} has joined {to_school.name}", body=f"{student.full_name} has moved to your school from {from_school.name}.", read=False, action_url=f"/school/coordinator/students/{student.id}"))
+    await db.commit()
+    logger.info("transfer_notifications_sent", extra={"extra_fields": {"student_id": str(student.id), "parents": parents_told}})
+
+
+@admin_router.post("/school-transfer-requests/{request_id}/approve", response_model=AdminTransferRequestOut)
+async def approve_transfer_request(request_id: UUID, admin: User = Depends(_require_transfer_admin), db: AsyncSession = Depends(get_db)):
+    """Approve a pending request: the one action that moves the student. Everything below is one transaction; a lock wait longer than
+    the bound, or a concurrent conflict, is a clean 409 with nothing written."""
+    admin_id = admin.id
+    # `set_config(..., true)` is SET LOCAL with a bound parameter, so no SQL is built from a string.
+    await db.execute(text("SELECT set_config('lock_timeout', :timeout, true)"), {"timeout": TRANSFER_LOCK_TIMEOUT})
+    try:
+        request, student, from_school, to_school = await _approve(db, request_id, admin_id)
+        await db.commit()
+    except DBAPIError as exc:
+        await db.rollback()
+        if isinstance(exc, IntegrityError) or getattr(exc.orig, "sqlstate", None) == "55P03":  # a concurrent conflict, or lock_not_available
+            logger.warning("transfer_approval_conflict", extra={"extra_fields": {"actor_id": str(admin_id), "request_id_row": str(request_id), "timeout": TRANSFER_LOCK_TIMEOUT}})
+            raise HTTPException(409, LOCK_BUSY) from exc
+        raise
+    logger.info("student_transfer_approved", extra={"extra_fields": {"actor_id": str(admin_id), "request_id_row": str(request.id), **request.outcome}})
+    # The response is built BEFORE the notification step: a failure there rolls the session back, which expires every loaded object.
+    requester = await db.get(User, request.requested_by_user_id)
+    filed_by = from_school if request.filed_by_school_id == from_school.id else to_school
+    out = _admin_out(request, student, from_school, to_school, filed_by, requester, admin)
+    request_row_id = str(request.id)
+    try:
+        await _notify_transfer_approved(db, student, from_school, to_school)
+    except Exception:  # noqa: BLE001 -- the transfer has committed; a notification problem must never undo or fail it (SCH-007-AC04)
+        await db.rollback()
+        logger.warning("transfer_notification_failed", extra={"extra_fields": {"request_id_row": request_row_id}}, exc_info=True)
+    return out
