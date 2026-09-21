@@ -31,13 +31,14 @@ describe("PortalShell change-password entry point (ENH-006)", () => {
     expect(within(footer).getByRole("button", { name: "Sign out" })).toBeInTheDocument();
   });
 
-  it("appends it to the mobile menu after the role's own items, and leaves the desktop nav untouched", () => {
+  // QA-004: last of 17 items on a phone meant scrolling the menu to find it; first means it is always in view.
+  it("puts it first in the mobile menu, ahead of the role's own items, and leaves the desktop nav untouched", () => {
     const { container } = renderShell();
     const desktop = container.querySelector(".portal-nav") as HTMLElement;
     expect(within(desktop).getAllByRole("link").map((link) => link.textContent)).toEqual(["Dashboard", "My courses"]);
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
     const mobile = container.querySelector("#portal-mobile-nav-panel") as HTMLElement;
-    expect(within(mobile).getAllByRole("link").map((link) => link.textContent)).toEqual(["Dashboard", "My courses", "Change password"]);
+    expect(within(mobile).getAllByRole("link").map((link) => link.textContent)).toEqual(["Change password", "Dashboard", "My courses"]);
   });
 
   it("still renders the page content", () => {

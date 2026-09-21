@@ -113,7 +113,10 @@ test("on a 375px phone the portal menu leads to a usable page with no horizontal
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto("/it/student/dashboard");
   await page.getByRole("button", { name: "Open menu" }).click();
-  await page.locator("#portal-mobile-nav-panel").getByRole("link", { name: "Change password" }).click();
+  const menuLink = page.locator("#portal-mobile-nav-panel").getByRole("link", { name: "Change password" });
+  const menuBox = (await menuLink.boundingBox())!;
+  expect(menuBox.y + menuBox.height, "Change password is visible without scrolling the menu (QA-004)").toBeLessThanOrEqual(667);
+  await menuLink.click();
   await page.waitForURL("**/account/password");
   await expect(page.getByLabel("Current password")).toBeVisible();
   await expect(page.getByLabel("New password")).toBeVisible();
@@ -184,4 +187,27 @@ test("an employer, whose dashboard has no portal shell, reaches the page from a 
   await page.getByRole("link", { name: "Change password" }).click();
   await page.waitForURL("**/account/password");
   await expect(page.getByRole("link", { name: "← Back to dashboard" })).toHaveAttribute("href", "/it/employer/dashboard");
+});
+
+test("a keyboard user can skip the site header: one Tab reaches the skip link, Enter lands in the content (QA-008)", async ({ page }) => {
+  await registerStudent(page);
+  await page.goto("/account/password");
+  await page.keyboard.press("Tab");
+  const skip = page.getByRole("link", { name: "Skip to main content" });
+  await expect(skip).toBeFocused();
+  const box = (await skip.boundingBox())!;
+  expect(box.x, "the skip link is on screen when focused").toBeGreaterThanOrEqual(0);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#main-content$/);
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "← Back to dashboard" })).toBeFocused();
+});
+
+test("a whitespace-only new password is refused with a clear message and the field is focused (QA-007)", async ({ page }) => {
+  await registerStudent(page);
+  await page.goto("/account/password");
+  await fillAndSubmit(page, OLD_PASSWORD, " ".repeat(12));
+  await expect(page.locator(".form-error")).toContainText("Password must not consist only of spaces");
+  await expect(page.getByLabel("New password")).toBeFocused();
 });
