@@ -14,6 +14,7 @@ from app.models import (
     SchoolParentLink,
     SchoolStaffAssignment,
     SchoolStudent,
+    SchoolStudentTransferRequest,
     User,
     UserRoleAssignment,
 )
@@ -78,6 +79,17 @@ async def mk_result(db, student, uploader, status: str = "draft", subject: str =
     db.add(result)
     await db.commit()
     return result
+
+
+async def mk_request(db, student, *, from_school, to_school, filed_by_school, requester, status: str = "pending", reason: str | None = None) -> SchoolStudentTransferRequest:
+    """A transfer request row inserted directly (for tests that need one to exist without going through filing)."""
+    row = SchoolStudentTransferRequest(
+        school_student_id=student.id, from_school_id=from_school.id, to_school_id=to_school.id, requested_by_user_id=requester.id,
+        filed_by_school_id=filed_by_school.id, status=status, reason=reason,
+    )
+    db.add(row)
+    await db.commit()
+    return row
 
 
 async def move_student_directly(db, student, school) -> None:
