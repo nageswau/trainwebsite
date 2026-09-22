@@ -75,3 +75,70 @@ async def test_explicit_null_full_name_is_rejected_not_a_crash(client, db_sessio
     assert response.status_code == 422, response.text
     await db_session.refresh(user)
     assert user.full_name == "ENH-007 User"  # unchanged
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "role",
+    ["school_coordinator", "school_principal", "school_teacher", "school_parent", "academic_team", "career_counselor", "psychometric_team"],
+)
+async def test_full_name_and_phone_update_succeeds_for_every_school_domain_role(client, db_session, role):
+    user = await _signed_in_user(client, db_session, role=role)
+    response = await client.patch(URL, json={"full_name": "  Updated Name  ", "phone": "+91 90000 00000"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["full_name"] == "Updated Name"  # server-trimmed (auth.py:191)
+    assert body["phone"] == "+91 90000 00000"
+    await db_session.refresh(user)
+    assert user.full_name == "Updated Name"
+    assert user.phone == "+91 90000 00000"
+
+
+@pytest.mark.asyncio
+async def test_omitting_phone_leaves_it_unchanged(client, db_session):
+    user = await _make_user(db_session)
+    user.phone = "+91 11111 11111"
+    await db_session.commit()
+    await _sign_in(client, user)
+    response = await client.patch(URL, json={"full_name": "New Name"})
+    assert response.status_code == 200, response.text
+    await db_session.refresh(user)
+    assert user.phone == "+91 11111 11111"  # untouched
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_request_is_401(client):
+    response = await client.patch(URL, json={"full_name": "New Name"})
+    assert response.status_code == 401, response.text
+
+
+@pytest.mark.asyncio
+async def test_a_full_name_and_phone_only_request_never_touches_the_profile_json(client, db_session):
+    user = await _make_user(db_session)
+    original_profile = dict(user.profile)
+    await _sign_in(client, user)
+    response = await client.patch(URL, json={"full_name": "New Name", "phone": "+91 22222 22222"})
+    assert response.status_code == 200, response.text
+    await db_session.refresh(user)
+    # school_id (server-owned) and every other profile key are byte-identical -- the request never
+    # included a `profile` key, so `update_me()`'s exclude_unset check means user.profile is untouched.
+    assert user.profile == original_profile
+
+
+@pytest.mark.asyncio
+async def test_full_name_under_two_characters_is_rejected_and_nothing_is_saved(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    response = await client.patch(URL, json={"full_name": "A"})
+    assert response.status_code == 422, response.text
+    await db_session.refresh(user)
+    assert user.full_name == "ENH-007 User"  # unchanged -- AC-04
+
+
+@pytest.mark.asyncio
+async def test_omitting_full_name_entirely_leaves_it_unchanged(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    response = await client.patch(URL, json={"phone": "+91 33333 33333"})
+    assert response.status_code == 200, response.text
+    await db_session.refresh(user)
+    assert user.full_name == "ENH-007 User"  # unchanged -- AC-10's "omit to skip" contract
+    assert user.phone == "+91 33333 33333"
