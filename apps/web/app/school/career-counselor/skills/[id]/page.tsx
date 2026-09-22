@@ -1,8 +1,10 @@
 import Link from "next/link";
 
 import PortalShell from "@/components/PortalShell";
+import SchoolSkillAttendance from "@/components/SchoolSkillAttendance";
 import SchoolSkillBatchHeader from "@/components/SchoolSkillBatchHeader";
 import SchoolSkillEnrolments from "@/components/SchoolSkillEnrolments";
+import SchoolSkillScores from "@/components/SchoolSkillScores";
 import { ApiError, serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { PortfolioStudent, SkillBatchDetail } from "@/lib/skills";
@@ -39,6 +41,8 @@ export default async function SchoolSkillBatchPage({ params }: { params: Promise
         <Link href="/school/career-counselor/skills">← All skills batches</Link>
         <SchoolSkillBatchHeader batch={batch} />
         <SchoolSkillEnrolments batch={batch} students={students.filter((s) => s.school_id === batch.school.id)} />
+        <SchoolSkillAttendance batch={batch} />
+        <SchoolSkillScores batch={batch} />
       </div>
     </PortalShell>
   );
