@@ -143,3 +143,28 @@ async def test_unauthenticated_cannot_toggle_team_account(client, db_session):
     ctx = await _create_school_with_roles(db_session)
     response = await client.patch(f"/api/v1/school/team/accounts/{ctx['school_teacher'].id}", json={"active": False})
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_toggle_ignores_extra_fields_and_changes_only_active(client, db_session):
+    ctx = await _create_school_with_roles(db_session)
+    await _login(client, ctx["school_coordinator"].email)
+    teacher = ctx["school_teacher"]
+    original = (teacher.role, teacher.division, teacher.email, teacher.full_name, teacher.password_hash)
+
+    response = await client.patch(
+        f"/api/v1/school/team/accounts/{teacher.id}",
+        json={
+            "active": False,
+            "role": "super_admin",
+            "division": "global",
+            "email": "attacker@example.local",
+            "full_name": "Hacked",
+            "password_hash": "x",
+        },
+    )
+    assert response.status_code == 200
+
+    await db_session.refresh(teacher)
+    assert (teacher.role, teacher.division, teacher.email, teacher.full_name, teacher.password_hash) == original
+    assert teacher.active is False
