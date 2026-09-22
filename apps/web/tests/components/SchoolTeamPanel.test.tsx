@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import SchoolTeamPanel from "@/components/SchoolTeamPanel";
@@ -21,9 +21,11 @@ describe("SchoolTeamPanel (ENH010-QA-01)", () => {
 
     render(<SchoolTeamPanel accounts={[ACCOUNT]} pendingInvites={[]} />);
     const button = screen.getByRole("button", { name: "Deactivate" });
-    fireEvent.click(button);
-    fireEvent.click(button);
-    fireEvent.click(button);
+    act(() => {
+      fireEvent.click(button);
+      fireEvent.click(button);
+      fireEvent.click(button);
+    });
 
     expect(mock).toHaveBeenCalledTimes(1);
     release(new Response(JSON.stringify({ id: ACCOUNT.id, active: false }), { status: 200 }));
