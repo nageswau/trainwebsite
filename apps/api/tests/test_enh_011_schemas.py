@@ -31,7 +31,9 @@ def test_batch_create_accepts_minimal_valid_payload():
     assert SkillBatchCreate(**_batch(module_type="digital_skills", end_date="2026-10-01")).end_date == date(2026, 10, 1)
 
 
-@pytest.mark.parametrize("over", [{"module_type": "ielts"}, {"status": "closed"}, {"created_by_user_id": str(uuid.uuid4())}, {"title": ""}, {"title": "x" * 161}, {"topic": "t" * 121}, {"trainer_name": "a‮b"}])
+@pytest.mark.parametrize(
+    "over", [{"module_type": "ielts"}, {"status": "closed"}, {"created_by_user_id": str(uuid.uuid4())}, {"title": ""}, {"title": "x" * 161}, {"topic": "t" * 121}, {"trainer_name": "a‮b"}]
+)
 def test_batch_create_rejects_bad_values_and_server_fields(over):
     with pytest.raises(ValidationError):
         SkillBatchCreate(**_batch(**over))

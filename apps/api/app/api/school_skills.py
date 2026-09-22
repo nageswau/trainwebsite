@@ -118,12 +118,7 @@ def _batch_out(batch: SchoolSkillBatch, school_name: str, enrolled_count: int) -
 
 def _active_counts():
     """Enrolments that still count (not withdrawn), per batch."""
-    return (
-        select(SchoolSkillEnrollment.batch_id, func.count().label("n"))
-        .where(SchoolSkillEnrollment.status != "withdrawn")
-        .group_by(SchoolSkillEnrollment.batch_id)
-        .subquery()
-    )
+    return select(SchoolSkillEnrollment.batch_id, func.count().label("n")).where(SchoolSkillEnrollment.status != "withdrawn").group_by(SchoolSkillEnrollment.batch_id).subquery()
 
 
 def enrollment_out(enrollment: SchoolSkillEnrollment, student: SchoolStudent, batch: SchoolSkillBatch, attendance: dict, scores: list[dict]) -> dict:
@@ -155,9 +150,7 @@ async def _detail(db: AsyncSession, batch: SchoolSkillBatch) -> dict:
         )
     ).all()
     sessions = (await db.scalars(select(SchoolSkillSession).where(SchoolSkillSession.batch_id == batch.id).order_by(SchoolSkillSession.session_date.asc()))).all()
-    marks = (
-        await db.scalars(select(SchoolSkillAttendance).join(SchoolSkillSession, SchoolSkillSession.id == SchoolSkillAttendance.session_id).where(SchoolSkillSession.batch_id == batch.id))
-    ).all()
+    marks = (await db.scalars(select(SchoolSkillAttendance).join(SchoolSkillSession, SchoolSkillSession.id == SchoolSkillAttendance.session_id).where(SchoolSkillSession.batch_id == batch.id))).all()
     assessments = (
         await db.scalars(select(SchoolSkillAssessment).where(SchoolSkillAssessment.batch_id == batch.id).order_by(SchoolSkillAssessment.created_at.asc(), SchoolSkillAssessment.name.asc()))
     ).all()

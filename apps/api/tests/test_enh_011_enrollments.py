@@ -67,7 +67,7 @@ async def test_enrol_student_outside_portfolio_is_403(client, db_session):
 
 @pytest.mark.asyncio
 async def test_unknown_student_is_404_and_unknown_batch_is_404(client, db_session):
-    w =await skills_world(db_session)
+    w = await skills_world(db_session)
     await login(client, w["counselor"].email)
     batch = await create_batch(client, w["a"]["school"].id)
     assert (await client.post(f"{BATCHES}/{batch['id']}/enrollments", json={"school_student_ids": [str(uuid.uuid4())]})).status_code == 404

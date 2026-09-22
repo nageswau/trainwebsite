@@ -55,7 +55,10 @@ async def test_overview_skills_rollup_and_empty_block(client, db_session):
     [row] = await enrol(client, batch["id"], kid0)
     await login(client, w["a"]["coordinator"].email)
     assert (await client.get(OVERVIEW.format(sid=kid0.id))).json()["skills"]["soft_skills"]["status"] == "in_progress"
-    assert (await client.get(OVERVIEW.format(sid=kid1.id))).json()["skills"] == {"soft_skills": {"status": "not_started", "enrollments": []}, "digital_skills": {"status": "not_started", "enrollments": []}}
+    assert (await client.get(OVERVIEW.format(sid=kid1.id))).json()["skills"] == {
+        "soft_skills": {"status": "not_started", "enrollments": []},
+        "digital_skills": {"status": "not_started", "enrollments": []},
+    }
     await login(client, w["counselor"].email)
     await client.patch(f"{ENROLMENTS}/{row['id']}", json={"status": "completed"})
     await login(client, w["a"]["coordinator"].email)

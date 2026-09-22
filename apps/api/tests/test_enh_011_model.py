@@ -23,7 +23,11 @@ def _names(model, kind):
 @pytest.mark.parametrize(
     "model,table,columns",
     [
-        (SchoolSkillBatch, "school_skill_batches", {"id", "school_id", "module_type", "title", "topic", "trainer_name", "start_date", "end_date", "status", "created_by_user_id", "created_at", "updated_at"}),
+        (
+            SchoolSkillBatch,
+            "school_skill_batches",
+            {"id", "school_id", "module_type", "title", "topic", "trainer_name", "start_date", "end_date", "status", "created_by_user_id", "created_at", "updated_at"},
+        ),
         (SchoolSkillEnrollment, "school_skill_enrollments", {"id", "batch_id", "school_student_id", "status", "completed_at", "certified_at", "enrolled_by_user_id", "created_at", "updated_at"}),
         (SchoolSkillSession, "school_skill_sessions", {"id", "batch_id", "session_date", "topic", "created_by_user_id", "created_at", "updated_at"}),
         (SchoolSkillAttendance, "school_skill_attendance", {"id", "session_id", "enrollment_id", "present", "marked_by_user_id", "created_at", "updated_at"}),
