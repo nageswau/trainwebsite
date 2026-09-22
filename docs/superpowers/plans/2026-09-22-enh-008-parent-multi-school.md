@@ -17,7 +17,8 @@
 - `TransferOutcome`'s `parents_moved`/`parents_kept` response fields keep their exact current names and shape — the new per-parent audit detail goes into `AuditLog.metadata_json` only, never into the HTTP response, so the API contract is untouched.
 - Every `AuditLog.metadata_json` write in this codebase stores IDs and reason tokens only, never a name, email, or free-text reason (`school_transfers.py:_audit()`'s own docstring, security review S8) — any new metadata added here must follow that rule (parent UUIDs, never emails).
 - Backend tests do NOT run against the host — this project's tests run inside a Docker container (`api-test`, built from `apps/api/Dockerfile.ci`) against Postgres/Redis reachable only on the internal Docker network. An isolated Postgres+Redis stack for this worktree is already up under Docker Compose project name `enh008-sdd` (brought up and migrated by the controller before dispatching Task 1) — do not start, stop, or rebuild this stack yourself; if a test run fails with a connection error, stop and report it rather than trying to fix the stack.
-- Run backend tests from the **repository root** (not `apps/api/`): `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/<file>.py -v` (optionally `::test_name` on the file path, or `-k <pattern>`, for one test). The three `-v` mounts make an edit to `apps/api/app`, `apps/api/tests`, or `apps/api/alembic` visible to the container immediately, with no image rebuild needed. `testpaths = ["tests"]` and `asyncio_mode = "strict"` are already configured in `apps/api/pyproject.toml`. This exact pattern is precedented in `docs/superpowers/plans/2026-09-21-enh-005-student-school-transfer.md`'s own Global Constraints.
+- Run backend tests from the **repository root** (not `apps/api/`): `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/<file>.py -v` (optionally `::test_name` on the file path, or `-k <pattern>`, for one test). The three `-v` mounts make an edit to `apps/api/app`, `apps/api/tests`, or `apps/api/alembic` visible to the container immediately, with no image rebuild needed. `testpaths = ["tests"]` and `asyncio_mode = "strict"` are already configured in `apps/api/pyproject.toml`. This exact pattern is precedented in `docs/superpowers/plans/2026-09-21-enh-005-student-school-transfer.md`'s own Global Constraints.
+- **`MSYS_NO_PATHCONV=1` is not optional on this Windows/Git-Bash session.** Without it, Git Bash's automatic POSIX-to-Windows path conversion silently mangles the container-side half of every `-v host:container` argument — the mount does not error, it just does not take effect, and the container falls back to whatever was baked into the image at its last build (i.e. stale code from before this branch's edits). This produces a false-positive GREEN: pytest runs, passes, and reports a plausible-looking summary, but against old code. Confirmed directly (controller ran the identical command with and without the prefix on 2026-09-22: without it, the container saw a stale copy of `test_enh_005_scope.py` missing that session's newest test function entirely; with it, the mount was live and correct). Every implementer and reviewer subagent must use the prefix on every Docker test command, with no exceptions, and should verify a mount is live (e.g. `python -c "print('<a distinctive string only in your latest edit>' in open('/app/tests/<file>').read())"`) before trusting a PASS if anything about the result looks stale or surprising.
 - Every task's commit is a separate commit on `feature/enh-008-parent-multi-school-link` (already created, currently at `main`'s HEAD after the spec-doc commit).
 
 ---
@@ -58,7 +59,7 @@ async def test_adding_a_student_at_school_a_can_use_a_parent_already_linked_at_s
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py::test_adding_a_student_at_school_a_can_use_a_parent_already_linked_at_school_b -v` (from the repository root)
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py::test_adding_a_student_at_school_a_can_use_a_parent_already_linked_at_school_b -v` (from the repository root)
 Expected: FAIL — `assert response.status_code == 201` fails because the server still returns `422` (today's cross-school rejection).
 
 - [ ] **Step 3: Write minimal implementation**
@@ -86,12 +87,12 @@ Update its one existing caller, `_link_or_invite_parent()` at `schools.py:624`, 
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py::test_adding_a_student_at_school_a_can_use_a_parent_already_linked_at_school_b -v`
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py::test_adding_a_student_at_school_a_can_use_a_parent_already_linked_at_school_b -v`
 Expected: PASS
 
 - [ ] **Step 5: Verify the AC4 regression pin still passes unchanged**
 
-Run: `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_sch_roster_parent_invite.py::test_parent_email_belonging_to_a_non_parent_account_is_rejected -v`
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_sch_roster_parent_invite.py::test_parent_email_belonging_to_a_non_parent_account_is_rejected -v`
 Expected: PASS, with no code change to that test — this is the "must not regress" check for AC4 (a non-`school_parent` email, e.g. an `academic_team` member's, is still rejected). If it fails, the role-mismatch branch in Step 3 was written incorrectly — do not weaken this test to make it pass.
 
 - [ ] **Step 6: Refactor — none needed beyond Step 3's signature cleanup**
@@ -137,7 +138,7 @@ async def test_link_parent_accepts_a_parent_already_linked_at_another_school(cli
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py::test_link_parent_accepts_a_parent_already_linked_at_another_school -v`
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py::test_link_parent_accepts_a_parent_already_linked_at_another_school -v`
 Expected: FAIL — `422` today.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -175,12 +176,12 @@ Note the two checks: `_parent_email_conflict()` alone would treat "no account wi
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py::test_link_parent_accepts_a_parent_already_linked_at_another_school -v`
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py::test_link_parent_accepts_a_parent_already_linked_at_another_school -v`
 Expected: PASS
 
 - [ ] **Step 5: Verify existing "not found at all" and "wrong role" cases still 422**
 
-Run: `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py -v` (whole file) and `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_sch_roster_parent_invite.py -v` (whole file)
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py -v` (whole file) and `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_sch_roster_parent_invite.py -v` (whole file)
 Expected: all PASS. This confirms `link_parent()`'s split-check design (Step 3) didn't silently let an unknown email or a wrong-role email through.
 
 - [ ] **Step 6: Refactor**
@@ -261,7 +262,7 @@ async def test_a_parent_with_zero_links_at_a_school_sees_none_of_its_data(client
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py -k "unlinked or two_schools or zero_links" -v`
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py -k "unlinked or two_schools or zero_links" -v`
 Expected: `test_a_parent_with_children_at_two_schools_sees_both` FAILs (today's `_own_school_id()` 403s before the cross-school link is even considered, since `a["parent"]`'s `profile.school_id` is School A but they're now also linked at School B); the rewritten `test_a_parent_still_cannot_read_an_unlinked_student` FAILs on its second assertion (today still returns `DIFFERENT_INSTITUTION`, not `NOT_LINKED`); `test_a_parent_with_zero_links_at_a_school_sees_none_of_its_data` currently PASSES already (not a new failure) — note this and move on, it's a valid regression guard even though it doesn't newly fail.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -325,7 +326,7 @@ async def _readable_students(db: AsyncSession, user: User) -> set:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py -v` (whole file)
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_scope.py -v` (whole file)
 Expected: all PASS, including `test_teacher_and_principal_scopes_are_unchanged_by_the_parent_change` and `test_a_parent_reads_a_linked_child_who_lives_at_another_school` (both must keep passing unmodified — they exercise the staff-role and single-link-elsewhere-school branches, which Step 3 does not touch).
 
 - [ ] **Step 5: Refactor**
@@ -376,7 +377,7 @@ async def test_accepting_a_parent_invite_does_not_set_profile_school_id(client, 
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_sch_roster_parent_invite.py::test_accepting_a_parent_invite_does_not_set_profile_school_id -v`
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_sch_roster_parent_invite.py::test_accepting_a_parent_invite_does_not_set_profile_school_id -v`
 Expected: FAIL — `account.profile == {"school_id": "<uuid>"}` today, not `{}`.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -389,7 +390,7 @@ In `apps/api/app/api/schools.py`, replace the `profile=` line inside `accept_inv
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_sch_roster_parent_invite.py -v` (whole file)
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_sch_roster_parent_invite.py -v` (whole file)
 Expected: all PASS, including every non-parent-role accept-invite test already in this file (unaffected — they still get `profile={"school_id": ...}`).
 
 - [ ] **Step 5: Refactor**
@@ -530,7 +531,7 @@ async def test_two_siblings_transferred_at_once_leave_their_shared_parent_at_the
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_approve.py tests/test_enh_005_concurrency.py -v`
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_approve.py tests/test_enh_005_concurrency.py -v`
 Expected: the 5 rewritten tests FAIL against today's code (the profile-write/audit-row-based assertions no longer match what the new test bodies expect); every other test in both files still PASSes (they don't touch this behavior).
 
 - [ ] **Step 3: Write minimal implementation**
@@ -578,7 +579,7 @@ Update the final `_audit()` call, line 446 (`request.outcome` is assigned just a
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_approve.py tests/test_enh_005_concurrency.py -v`
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_enh_005_approve.py tests/test_enh_005_concurrency.py -v`
 Expected: all PASS, including the 6 untouched tests in `test_enh_005_approve.py` (`test_only_overseas_admin_and_super_admin_may_approve...`, `test_approval_moves_the_student_and_flips_every_scope`, `test_the_teacher_assignment_and_pending_parent_email_are_cleared_and_the_grade_is_kept` — its `outcome` dict assertion at line 122 should pass with identical values, computed a different way — `test_in_flight_results_are_withdrawn_with_history_and_published_ones_stay`, `test_career_psychometric_test_prep_and_language_records_follow_the_student_unchanged`, `test_a_second_approval_a_stale_request_and_an_unknown_id_change_nothing`, `test_a_stale_request_is_409_and_stays_pending`, `test_a_rejected_or_cancelled_request_cannot_be_approved`, `test_notifications_go_out_after_the_commit_and_a_failure_never_undoes_the_approval`, `test_a_lock_wait_past_the_timeout_is_409_and_changes_nothing`) and every untouched test in `test_enh_005_concurrency.py`.
 
 - [ ] **Step 5: Refactor**
@@ -603,7 +604,7 @@ git commit -m "feat(enh-008): transfer approval stops re-scoping parent accounts
 Run from the repository root:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_sch_001_school_portal_access.py tests/test_sch_002_bulk_roster_upload.py tests/test_sch_007_parent_portal.py tests/test_sch_008_student_timeline.py tests/test_sch_011_entitlements.py tests/test_sch_roster_parent_invite.py tests/test_enh_004_student_promotion.py tests/test_enh_005_scope.py tests/test_enh_005_approve.py tests/test_enh_005_concurrency.py tests/test_enh_005_hardening.py -v
+MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_sch_001_school_portal_access.py tests/test_sch_002_bulk_roster_upload.py tests/test_sch_007_parent_portal.py tests/test_sch_008_student_timeline.py tests/test_sch_011_entitlements.py tests/test_sch_roster_parent_invite.py tests/test_enh_004_student_promotion.py tests/test_enh_005_scope.py tests/test_enh_005_approve.py tests/test_enh_005_concurrency.py tests/test_enh_005_hardening.py -v
 ```
 
 Expected: all PASS. This is the spec's named targeted gate (§8), run now rather than deferred to the project's usual batched 3-4-feature cadence, since this is an authorization-model change.
