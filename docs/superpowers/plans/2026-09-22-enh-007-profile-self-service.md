@@ -37,6 +37,17 @@ additive Pydantic validator fix; no new route, table, migration, or RBAC change.
 - Every test file creates its own throwaway user (never a seeded/shared account), per this repo's
   established pytest convention (`test_enh_006_change_password.py`'s header comment).
 
+**Environment note (added mid-execution, ledger `Task 1: Ruling`):** this worktree's docker compose stack
+runs on non-default ports — `API_PORT=8020`, `WEB_PORT=3020` (the defaults, 8000/3000, were already held
+by another worktree's stack on this shared machine) — and without the `docker-compose.override.yml`
+`caddy` service (its ports 80/443 are hardcoded, no env override, and were also already held elsewhere;
+not needed to run tests). Every backend pytest command in this plan runs as
+`docker compose exec api python -m pytest ...` from the worktree root, never `cd apps/api && python -m
+pytest` on the host — `db_session`'s `DATABASE_URL` hostname (`postgres`) only resolves inside the compose
+network. Frontend vitest commands are unaffected (`cd apps/web && npx vitest run ...` on the host — no
+server needed, jsdom only). Playwright (Task 7) needs `E2E_BASE_URL=http://localhost:3020` set in its
+environment, since the config's default is `http://localhost:3000`.
+
 ---
 
 ### Task 1: Backend — fix explicit-null `full_name` crash
@@ -109,7 +120,7 @@ async def test_explicit_null_full_name_is_rejected_not_a_crash(client, db_sessio
 
 - [ ] **Step 2: Run test to verify it fails for the expected reason**
 
-Run: `cd apps/api && python -m pytest tests/test_enh_007_profile_self_service.py::test_explicit_null_full_name_is_rejected_not_a_crash -v`
+Run: `docker compose exec api python -m pytest tests/test_enh_007_profile_self_service.py::test_explicit_null_full_name_is_rejected_not_a_crash -v`
 
 Expected: **FAILS**, but not as a clean assertion mismatch — the test's own `client` fixture
 (`apps/api/tests/conftest.py`) uses `httpx.ASGITransport` with its default `raise_app_exceptions=True`, so
@@ -156,7 +167,7 @@ no new import needed.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd apps/api && python -m pytest tests/test_enh_007_profile_self_service.py::test_explicit_null_full_name_is_rejected_not_a_crash -v`
+Run: `docker compose exec api python -m pytest tests/test_enh_007_profile_self_service.py::test_explicit_null_full_name_is_rejected_not_a_crash -v`
 
 Expected: PASS — `422`, `user.full_name` unchanged.
 
@@ -259,7 +270,7 @@ async def test_omitting_full_name_entirely_leaves_it_unchanged(client, db_sessio
 
 - [ ] **Step 2: Run tests to verify they pass immediately**
 
-Run: `cd apps/api && python -m pytest tests/test_enh_007_profile_self_service.py -v`
+Run: `docker compose exec api python -m pytest tests/test_enh_007_profile_self_service.py -v`
 
 Expected: **PASS**, all of them, on the first run — this is characterization, not TDD-driven
 implementation. `update_me()`'s `full_name`/`phone` path and its `profile`-untouched behavior are already
@@ -269,7 +280,7 @@ these fail, stop and investigate rather than "fixing" the route.
 
 - [ ] **Step 3: Run the targeted backend regression scope from spec §8**
 
-Run: `cd apps/api && python -m pytest tests/test_enh_004_student_promotion.py tests/test_role_assignments.py tests/test_stu_011_profile_documents.py -v`
+Run: `docker compose exec api python -m pytest tests/test_enh_004_student_promotion.py tests/test_role_assignments.py tests/test_stu_011_profile_documents.py -v`
 
 Expected: PASS — confirms the Task 1 validator addition didn't regress the `school_id`/`university_id`
 denial path (`test_enh_004_student_promotion.py`'s `test_a_coordinator_cannot_re_point_their_own_school_via_profile_update`
