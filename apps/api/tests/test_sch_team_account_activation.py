@@ -9,7 +9,7 @@ import uuid
 import pytest
 
 from app.core.security import hash_password
-from app.models import School, SchoolStudent, User, UserRoleAssignment
+from app.models import School, SchoolParentLink, SchoolStudent, User, UserRoleAssignment
 
 PASSWORD = "Sup3r-Secret-Pass!"
 
@@ -124,3 +124,42 @@ async def test_unauthenticated_cannot_toggle_team_account(client, db_session):
     ctx = await _create_school_with_roles(db_session)
     response = await client.patch(f"/api/v1/school/team/accounts/{ctx['school_teacher'].id}", json={"active": False})
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_a_parent_with_a_link_at_this_school_appears_in_team_and_can_be_toggled(client, db_session):
+    ctx = await _create_school_with_roles(db_session)
+    parent = ctx["school_parent"]
+    await _login(client, ctx["school_coordinator"].email)
+    created = await client.post("/api/v1/school/students", json={"full_name": "Linked For Team Test"})
+    assert created.status_code == 201, created.text
+    student_id = uuid.UUID(created.json()["id"])
+    db_session.add(SchoolParentLink(parent_user_id=parent.id, school_student_id=student_id, linked_by_user_id=ctx["school_coordinator"].id))
+    await db_session.commit()
+
+    listed = await client.get("/api/v1/school/team")
+    assert any(a["id"] == str(parent.id) for a in listed.json()["accounts"])
+
+    toggled = await client.patch(f"/api/v1/school/team/accounts/{parent.id}", json={"active": False})
+    assert toggled.status_code == 200, toggled.text
+    assert toggled.json()["active"] is False
+
+
+@pytest.mark.asyncio
+async def test_a_parent_linked_only_at_another_school_is_neither_listed_nor_manageable_here(client, db_session):
+    ctx_a = await _create_school_with_roles(db_session)
+    ctx_b = await _create_school_with_roles(db_session)
+    parent_b = ctx_b["school_parent"]
+    await _login(client, ctx_b["school_coordinator"].email)
+    created = await client.post("/api/v1/school/students", json={"full_name": "Linked At B"})
+    assert created.status_code == 201, created.text
+    student_b_id = uuid.UUID(created.json()["id"])
+    db_session.add(SchoolParentLink(parent_user_id=parent_b.id, school_student_id=student_b_id, linked_by_user_id=ctx_b["school_coordinator"].id))
+    await db_session.commit()
+
+    await _login(client, ctx_a["school_coordinator"].email)
+    listed = await client.get("/api/v1/school/team")
+    assert not any(a["id"] == str(parent_b.id) for a in listed.json()["accounts"])
+
+    toggled = await client.patch(f"/api/v1/school/team/accounts/{parent_b.id}", json={"active": False})
+    assert toggled.status_code == 403

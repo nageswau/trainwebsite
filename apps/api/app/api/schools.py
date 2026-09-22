@@ -163,7 +163,27 @@ async def list_team(user: User = Depends(get_current_user), db: AsyncSession = D
     accounts = (
         await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent", "school_coordinator"))))
     ).all()
-    accounts = [a for a in accounts if (a.profile or {}).get("school_id") == str(school_id)]
+    # ENH-008: a school_parent's membership in this school's Team is derived from SchoolParentLink
+    # (they can now legitimately be linked at more than one school), never from profile.school_id,
+    # which is no longer set for newly-provisioned parent accounts. Every other role still uses
+    # profile.school_id, unchanged.
+    parent_ids_at_school = set(
+        (
+            await db.scalars(
+                select(SchoolParentLink.parent_user_id)
+                .join(SchoolStudent, SchoolStudent.id == SchoolParentLink.school_student_id)
+                .where(SchoolStudent.school_id == school_id)
+                .distinct()
+            )
+        ).all()
+    )
+
+    def _belongs_to_school(a: User) -> bool:
+        if a.role == "school_parent":
+            return a.id in parent_ids_at_school
+        return (a.profile or {}).get("school_id") == str(school_id)
+
+    accounts = [a for a in accounts if _belongs_to_school(a)]
     invites = (
         await db.scalars(select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school_id, SchoolAccountInvite.status == "pending").order_by(SchoolAccountInvite.created_at.desc()))
     ).all()
@@ -192,7 +212,16 @@ async def update_team_account(user_id: UUID, payload: dict, user: User = Depends
     # INVITABLE_ROLES doubles as the guard against targeting a Coordinator, self or peer.
     if target.role not in INVITABLE_ROLES:
         raise HTTPException(403, "Can only activate/deactivate Principal, Teacher, or Parent accounts")
-    if (target.profile or {}).get("school_id") != str(school_id):
+    if target.role == "school_parent":
+        linked_here = await db.scalar(
+            select(SchoolParentLink.id)
+            .join(SchoolStudent, SchoolStudent.id == SchoolParentLink.school_student_id)
+            .where(SchoolParentLink.parent_user_id == target.id, SchoolStudent.school_id == school_id)
+            .limit(1)
+        )
+        if not linked_here:
+            raise HTTPException(403, "This account is not at your institution")
+    elif (target.profile or {}).get("school_id") != str(school_id):
         raise HTTPException(403, "This account is not at your institution")
     target.active = payload["active"]
     db.add(AuditLog(
