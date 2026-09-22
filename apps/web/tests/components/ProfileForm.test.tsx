@@ -51,4 +51,44 @@ describe("ProfileForm (ENH-007)", () => {
     // from that canonical value until the next reload.
     expect(screen.getByLabelText("Full name")).toHaveValue("Trimmed Name");
   });
+
+  it("shows a signed-out banner with both division sign-in links on 401", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify({ detail: "Not authenticated" }), { status: 401 }));
+    render(<ProfileForm fullName="Asha Rao" phone={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText(/session has expired/);
+    expect(screen.getByRole("link", { name: "IT Training sign in" })).toHaveAttribute("href", "/it/login?next=%2Faccount%2Fprofile");
+    expect(screen.getByRole("link", { name: "Overseas Education sign in" })).toHaveAttribute("href", "/overseas/login?next=%2Faccount%2Fprofile");
+  });
+
+  it("shows an inline field error and focuses full name on 422", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ detail: [{ msg: "String should have at least 2 characters" }] }), { status: 422 }),
+    );
+    render(<ProfileForm fullName="Asha Rao" phone={null} />);
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "A" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("String should have at least 2 characters");
+    expect(screen.getByLabelText("Full name")).toHaveAttribute("aria-invalid", "true");
+    await waitFor(() => expect(screen.getByLabelText("Full name")).toHaveFocus());
+  });
+
+  it("shows a network-error banner and never claims success", async () => {
+    vi.mocked(global.fetch).mockRejectedValue(new TypeError("fetch failed"));
+    render(<ProfileForm fullName="Asha Rao" phone={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Network error. Try again.");
+    expect(screen.queryByText("Your profile was updated.")).not.toBeInTheDocument();
+  });
+
+  it("ignores a second submit while one is pending", async () => {
+    let resolveFirst: (value: Response) => void = () => {};
+    vi.mocked(global.fetch).mockReturnValue(new Promise((resolve) => { resolveFirst = resolve; }));
+    render(<ProfileForm fullName="Asha Rao" phone={null} />);
+    const button = screen.getByRole("button", { name: /Save changes|Saving/ });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    resolveFirst(new Response(JSON.stringify({ full_name: "Asha Rao", phone: null }), { status: 200 }));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+  });
 });
