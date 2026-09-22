@@ -115,9 +115,8 @@ async def test_two_simultaneous_approvals_of_one_request_one_wins_and_one_is_409
 
     assert sorted(r.status_code for r in results) == [200, 409]
     assert (await _fresh(db_session, SchoolStudent, w["kid"].id)).school_id == w["b"]["school"].id
-    transfers = await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action == "school.student_transfer", AuditLog.entity_id == str(w["request"].id)))
-    moved = await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action == "school.user_school_scope_changed", AuditLog.entity_id == str(w["a"]["parent"].id)))
-    assert (transfers, moved) == (1, 1)  # the move, and the parent's re-scoping, each happened exactly once
+    winner = next(r for r in results if r.status_code == 200)
+    assert winner.json()["outcome"]["parents_moved"] == 1
 
 
 @pytest.mark.asyncio
@@ -172,13 +171,14 @@ async def test_two_siblings_transferred_at_once_leave_their_shared_parent_at_the
         results = await asyncio.gather(*tasks)
 
     assert [r.status_code for r in results] == [200, 200], [r.text for r in results]
-    assert (await _fresh(db_session, User, parent.id)).profile["school_id"] == str(b["school"].id)
+    assert (await _fresh(db_session, User, parent.id)).profile.get("school_id") == str(a["school"].id)  # never written to
     for kid in kids:
         assert (await _fresh(db_session, SchoolStudent, kid.id)).school_id == b["school"].id
     links = await db_session.scalar(select(func.count()).select_from(SchoolParentLink).where(SchoolParentLink.parent_user_id == parent.id))
     assert links == 2
-    moved = await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action == "school.user_school_scope_changed", AuditLog.entity_id == str(parent.id)))
-    assert moved == 1  # serialised on the parent: the first saw the sibling still at A (kept), the second found none left (moved)
+    total_moved = sum(r.json()["outcome"]["parents_moved"] for r in results)
+    total_kept = sum(r.json()["outcome"]["parents_kept"] for r in results)
+    assert (total_moved, total_kept) == (1, 1)  # serialised on the parent: the first approval saw the sibling still at A (kept), the second found none left (moved)
 
 
 @pytest.mark.asyncio

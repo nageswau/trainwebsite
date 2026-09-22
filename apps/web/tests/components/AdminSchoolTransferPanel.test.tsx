@@ -118,7 +118,7 @@ describe("AdminSchoolTransferPanel", () => {
     await waitFor(() => expect(screen.queryAllByRole("listitem").some((li) => /Child 1/.test(li.textContent ?? ""))).toBe(false));
     const announced = screen.getByRole("status").textContent ?? "";
     expect(announced).toContain("Moved Child 1 to Lakeview School.");
-    expect(announced).toContain("1 parent moved, 1 kept, 3 results withdrawn");
+    expect(announced).toContain("1 parent now only at the new school, 1 still also at the previous school, 3 results withdrawn");
   });
 
   it("rejects with an optional note, shown with the visibility hint, and sends it", async () => {

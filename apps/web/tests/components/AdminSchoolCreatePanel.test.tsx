@@ -65,6 +65,21 @@ describe("AdminSchoolCreatePanel (ENH-003: no password is shown, chosen or sent)
     const outcome = await screen.findByText("A valid email address is required");
     expect(outcome).toHaveClass("form-error");
   });
+
+  it("submits the new profile fields alongside the existing ones", async () => {
+    const mock = stubFetch(json({ coordinator_email: "coord@example.local", email_status: "sent", school_code: "ABCD1234" }, 201));
+    render(<AdminSchoolCreatePanel />);
+    fireEvent.change(screen.getByLabelText("School name"), { target: { value: "Test School" } });
+    fireEvent.change(screen.getByLabelText("Coordinator full name"), { target: { value: "Coord One" } });
+    fireEvent.change(screen.getByLabelText("Coordinator email"), { target: { value: "coord@example.local" } });
+    fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "North Campus" } });
+    fireEvent.change(screen.getByLabelText("Board"), { target: { value: "CBSE" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create school + seed Coordinator" }));
+    await screen.findByRole("status");
+    const body = JSON.parse(mock.mock.calls[0][1].body);
+    expect(body.branch).toBe("North Campus");
+    expect(body.board).toBe("CBSE");
+  });
 });
 
 describe("AdminSchoolCreatePanel: network failure (QA-008)", () => {

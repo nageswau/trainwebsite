@@ -110,7 +110,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-007 | Profile self-service — cross-role completion audit | Medium | Low | Possibly (TBD) | ENH-003 (shares provisioning fields) |
 | ENH-008 | Parent account linked to children across multiple schools | Medium | Medium | Yes | — |
 | ENH-009 | School profile — **mandatory** full field coverage (School ID, Branch, +21 more; see corrected entry below) | Large | High | Yes | — (should land early; see §2) |
-| ENH-010 | Account activation / deactivation (School Master capability) | Small | Medium | Possibly (TBD) | — |
+| ENH-010 | Account activation / deactivation (School Master capability) | Small | Medium | No | — |
 | ENH-011 | School-domain skills tracker generalization (Soft Skills, Digital/Web Skills) | Medium | Low | Yes | Reuses SCH-009 pattern |
 | ENH-012 | Digital Portfolio module | Large | Medium | Yes | ENH-001 (portfolio entries reference academic year) |
 | ENH-013 | Student 360° unified profile / Career Passport view | Large | Medium | Possibly (TBD) | ENH-011, ENH-012 |
@@ -831,10 +831,18 @@ to show which school each child belongs to, not just grade).
 parent has exactly one school must be found and updated to derive scope per-request from
 `SchoolParentLink` instead.
 
-**Database impact.** No new table needed (`SchoolParentLink` already supports this) — but a migration
-is still required: existing `school_parent` accounts' `profile["school_id"]` becomes ambiguous/
-misleading once a parent can have links at multiple schools, so it should be deprecated in favor of a
-derived value, with a backfill/cleanup pass over existing rows.
+**Database impact.** No new table needed (`SchoolParentLink` already supports this).
+
+**Correction (design session, 2026-09-22, `EXPLICIT_APPROVAL`):** this entry originally said a
+migration was still required, to deprecate/backfill `school_parent` accounts' now-ambiguous
+`profile["school_id"]`. Put to the user directly during design (`docs/superpowers/specs/2026-09-22-
+enh-008-parent-multi-school-design.md` §3), the decision was: leave existing `profile["school_id"]`
+values alone, no migration, no backfill -- the field is simply never read for authorization for the
+`school_parent` role again (confirmed by direct code audit: every read site derives parent scope from
+`SchoolParentLink` rows only). Zero risk of a migration touching production data incorrectly, and
+nothing downstream can accidentally resurrect the old behavior since the reading code is gone, not
+merely bypassed. `accept_invite()` also stops *writing* `profile["school_id"]` for new `school_parent`
+accounts (`schools.py:262`); existing stale values on older accounts are inert.
 
 **API impact.** Parent-facing "my children" read endpoint(s) must return each child's school
 explicitly rather than assuming one school for the whole response.
@@ -937,7 +945,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 35 | Student 360° View | ❌ Gap | See **ENH-013** |
 | 36 | Complete School CRM Flow (pipeline diagram) | — No action | Conceptual/architectural map, not itself a buildable feature |
 | B1 | School CRM Login Hierarchy (diagram) | — No action | Conceptual; matches confirmed role structure |
-| B2 | School Master Login capabilities | ⚠️ Partial | Most covered by `SCH-002`/`SCH-003`; **"Activate/deactivate users"** not confirmed — see **ENH-010** |
+| B2 | School Master Login capabilities | ✅ Built | Fully covered by `SCH-002`/`SCH-003`; **"Activate/deactivate users"** verified 2026-09-22 (`ENH-010`, `DEC-SCOPE-025` drafted) — see the `ENH-010` backlog entry |
 | B3 | Teacher Login | ✅ Built | `DEC-SCOPE-011`, `school_teacher` |
 | B4 | Parent Login | ⚠️ Partial | Built for one school; multi-school case is **ENH-008** |
 | B5 | Student Login | ⚠️ Partial | Inherits the `DEC-ROLE-004`/`DEC-SCOPE-011` conflict, §0. Dashboard field breadth feeds **ENH-013** |
@@ -1112,6 +1120,21 @@ exactly the case the Branch-scope decision must resolve; do not silently assume 
 
 **Complexity:** Large. **Risk:** High.
 
+**Addendum, 2026-09-22 (`DEC-SCOPE-025`) — Branch design decision resolved, implementation in
+progress.** The Branch design question above is resolved: `DEC-SCOPE-025`
+(`PRODUCT_DECISION_REGISTER.md`) confirms Branch as a free-text field on `School`, not a separate
+`SchoolBranch` entity — the user's explicit, in-session choice, made before any migration shipped,
+so `RBAC_MATRIX.md §2.12`'s one-`School`-row-per-tenant assumption is preserved unchanged. The same
+decision also confirms all 24 `EVID-014` fields in scope (per Revision 4 above), the admin-only
+access model, and the introduction of real `SchoolCreate`/`SchoolUpdate`/`SchoolOut` Pydantic
+schemas. Full design: `docs/superpowers/specs/2026-09-22-enh-009-school-profile-design.md`.
+Implementation plan and status: `docs/superpowers/plans/2026-09-22-enh-009-school-profile-field-coverage.md`
+(13 tasks, each independently TDD'd and reviewed, plus a whole-branch review and one fix wave — all
+complete on branch `feature/enh-009-school-profile-field-coverage`). **Not yet complete:** real
+browser validation of the finished feature and an independent Codex review disposition are still
+outstanding before this item can be marked `COMPLETE` (see `docs/quality/RTM.md`'s ENH-009 addendum
+for current status).
+
 ---
 
 ## ENH-010 — Account Activation / Deactivation (School Master Capability)
@@ -1126,6 +1149,21 @@ exists and is checked by `_assignment_is_usable()` (per the earlier implementati
 survey found it gates permission grants at the assignment level — whether a `school_coordinator` has
 any endpoint to toggle it for their own institution's users was not confirmed either way; this item is
 an audit-then-build, not a presumed gap.
+
+**Resolution, 2026-09-22 (SUPERSEDES the "not confirmed" reading above):** audit found the
+capability already shipped under the `SCH-003` addendum (`apps/api/app/api/schools.py`
+`update_team_account`, `PATCH /api/v1/school/team/accounts/{user_id}`), predating this backlog
+entry. All four acceptance criteria verified — 9/9 automated tests
+(`apps/api/tests/test_sch_team_account_activation.py`, including two new mutation-checked
+characterization tests for AC2 and mass-assignment immunity) plus a live browser QA pass. A
+defensive per-row re-entrancy guard was added to `SchoolTeamPanel.tsx` after a rapid-click QA
+observation (`ENH010-QA-01`); the duplicate `PATCH` requests it guards against are idempotent
+server-side (same `active` value each time), so the exposure was duplicate `AuditLog` rows, not a
+state flip — the guard is real defense-in-depth, matching `ChangePasswordForm`'s pattern, and
+becomes load-bearing if this button is ever switched from `disabled` to `aria-disabled`. Decision
+`DEC-SCOPE-025` (drafted, `UNCONFIRMED`) records the
+`School CRM.md` Part B §2 → `school_coordinator` mapping this relies on. See
+`docs/superpowers/specs/2026-09-22-enh-010-account-activation-design.md`.
 
 **Expected behavior.** A coordinator can deactivate a user (teacher/parent/student, scoped to their own
 institution) such that the account can no longer authenticate or be granted permissions, and reactivate
@@ -2720,7 +2758,9 @@ is confirmed correct).
   copied from `mark_attendance` (`schools.py:1091-1116`) — read that function before designing this
   one's payload shape, don't redesign from scratch.
 
-**Require migrations:** ENH-001, ENH-004, ENH-005, ENH-008 (as before); **ENH-009** (School ID column,
+**Require migrations:** ENH-001, ENH-004, ENH-005 (as before); **ENH-008 no longer requires one** --
+see the corrected Database impact note under ENH-008 below (design-time decision, not an oversight);
+**ENH-009** (School ID column,
 possibly a new `SchoolBranch` table), **ENH-011** (module-type column/table), **ENH-012** (new
 portfolio tables), **ENH-013** (five small new sub-entity tables), **ENH-014** (notification-
 preference/delivery-log tables), **ENH-018/ENH-019/ENH-020/ENH-021** (each a small new table),
@@ -2794,14 +2834,15 @@ item, only for the progress-view question).
 | ENH-003 | None structurally required — this is a security-hardening audit of an already-decided
   provisioning path (`DEC-SCOPE-014`), not a new scope question | N/A |
 | ENH-002, ENH-006, ENH-007 | None — these operate entirely within already-`CONFIRMED_CURRENT` scope | N/A |
-| ENH-009 | Scope is now mandatory per the user's explicit directive (this turn) — no scope decision needed. Still needs a *design* decision: `DEC-SCOPE-0xx` on whether "Branch" is a field or a new scoping entity | None exists |
+| ENH-009 | Scope is now mandatory per the user's explicit directive (this turn) — no scope decision needed. Design decision on whether "Branch" is a field or a new scoping entity | **Resolved: `DEC-SCOPE-025`** (2026-09-22, Branch is a field) |
 | ENH-025 | Scope is mandatory (same directive). Needs a *design* decision on whether Career interests/Global education interest/Preferred countries/Preferred courses live on `SchoolStudent` directly or inside a `SCH-004` career-guidance record | None exists |
 | ENH-014 | `DEC-INTEGRATION-0xx` — WhatsApp/SMS provider selection, plus a DPDP/privacy-consent review | None exists |
 | ENH-016 | Indirectly blocked on Appendix A item 3 (entitlement quota vs. `DEC-SCOPE-017`) before its Service Utilization view is meaningful | See Appendix A |
 | ENH-020 | Audit-first: confirm whether this duplicates an existing Overseas-domain capability before any Decision ID is even drafted | None exists |
 | ENH-022 | `DEC-SCOPE-0xx` — enforcement strictness (hard `403` vs. soft warning) for out-of-tier or expired-partnership access | None exists |
 | ENH-023 | `DEC-SCOPE-0xx` — downgrade policy for in-flight Platinum-tier commitments (grandfather / wind-down / immediate) | None exists |
-| ENH-010, ENH-011, ENH-012, ENH-013, ENH-015, ENH-017, ENH-018, ENH-019, ENH-021, ENH-024, ENH-026, ENH-027, ENH-028, ENH-029, ENH-030 | None structurally required — each operates within already-confirmed School-domain scope (`DEC-SCOPE-011/012/013/017`) as a completion/extension, not a new scope question. ENH-026/ENH-027 additionally need a *design* choice (shared shape for "Recommended..."/"Career recommendations" fields); ENH-028's batch-size limit and ENH-030's session-vs-period granularity are also design, not scope, questions | N/A |
+| ENH-010 | `DEC-SCOPE-025` — "School Master" (`School CRM.md` Part B §2) = `school_coordinator`; activate/deactivate scope mapping proposed, drafted 2026-09-22 | Drafted, `UNCONFIRMED` |
+| ENH-011, ENH-012, ENH-013, ENH-015, ENH-017, ENH-018, ENH-019, ENH-021, ENH-024, ENH-026, ENH-027, ENH-028, ENH-029, ENH-030 | None structurally required — each operates within already-confirmed School-domain scope (`DEC-SCOPE-011/012/013/017`) as a completion/extension, not a new scope question. ENH-026/ENH-027 additionally need a *design* choice (shared shape for "Recommended..."/"Career recommendations" fields); ENH-028's batch-size limit and ENH-030's session-vs-period granularity are also design, not scope, questions | N/A |
 | ENH-016 | None — corrected in Revision 3 to a narrower scope entirely within already-confirmed `DEC-SCOPE-017` | N/A |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`

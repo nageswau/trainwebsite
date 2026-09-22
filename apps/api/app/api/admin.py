@@ -12,9 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.identifiers import uuid_reference
-from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, University, User, UserRoleAssignment
-from app.schemas import BatchCreate
+from app.core.identifiers import unique_student_code, uuid_reference
+from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, SchoolStaffAssignment, SchoolStudent, University, User, UserRoleAssignment
+from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.storage import storage
 
@@ -60,6 +60,82 @@ def _fit(value, label: str, limit: int):
     if value is not None and len(str(value)) > limit:
         raise HTTPException(422, f"{label} must be at most {limit} characters")
     return value
+
+
+async def _school_out(db: AsyncSession, school: "School") -> "SchoolOut":
+    """ENH-009 / DEC-SCOPE-025: the one place that assembles a School's full profile response,
+    including the fields that are deliberately computed rather than stored -- student/teacher
+    counts, and the Principal/Coordinator/Career Counsellor names, all of which are derived from
+    role assignments rather than duplicated onto `School` itself (see the design doc §2).
+
+    A thin, single-record wrapper over `_school_outs_batch()` -- kept as its own function because
+    every call site here wants one `SchoolOut`, not a list, but the query logic lives in exactly
+    one place (simplification pass, ENH-009)."""
+    return (await _school_outs_batch(db, [school]))[0]
+
+
+async def _school_outs_batch(db: AsyncSession, schools: list["School"]) -> list["SchoolOut"]:
+    """Same shape as _school_out(), batched across many schools in O(1) queries instead of
+    O(N) -- used by list_schools(), where N is unbounded (final-review finding, ENH-009)."""
+    if not schools:
+        return []
+    ids = [s.id for s in schools]
+    str_ids = [str(i) for i in ids]
+
+    student_counts = dict((await db.execute(
+        select(SchoolStudent.school_id, func.count()).where(SchoolStudent.school_id.in_(ids)).group_by(SchoolStudent.school_id)
+    )).all())
+
+    # Grouped by the *label*, not by a second copy of the JSON-path expression: re-rendering it
+    # emits a different bind parameter for the `'school_id'` key, which PostgreSQL then treats as
+    # a distinct expression ("column users.profile must appear in the GROUP BY clause").
+    school_key = User.profile["school_id"].as_string().label("school_key")
+    teacher_rows = (await db.execute(
+        select(school_key, func.count()).where(
+            User.role == "school_teacher", User.profile["school_id"].as_string().in_(str_ids)
+        ).group_by(school_key)
+    )).all()
+    teacher_counts = {row[0]: row[1] for row in teacher_rows}
+
+    role_rows = (await db.scalars(
+        select(User).where(User.role.in_(["school_principal", "school_coordinator"]), User.profile["school_id"].as_string().in_(str_ids))
+    )).all()
+    principal_by_school: dict[str, str] = {}
+    coordinator_by_school: dict[str, str] = {}
+    for u in role_rows:
+        sid = (u.profile or {}).get("school_id")
+        if u.role == "school_principal":
+            principal_by_school[sid] = u.full_name
+        elif u.role == "school_coordinator":
+            coordinator_by_school[sid] = u.full_name
+
+    counsellor_rows = (await db.execute(
+        select(SchoolStaffAssignment.school_id, User)
+        .join(User, User.id == SchoolStaffAssignment.user_id)
+        .where(SchoolStaffAssignment.school_id.in_(ids), SchoolStaffAssignment.role == "career_counselor")
+    )).all()
+    counsellors_by_school: dict = {}
+    for sid, u in counsellor_rows:
+        counsellors_by_school.setdefault(sid, []).append(u.full_name)
+
+    results = []
+    for school in schools:
+        sid_str = str(school.id)
+        results.append(SchoolOut(
+            id=school.id, name=school.name, city=school.city, state=school.state,
+            tier=school.tier, tier_valid_until=school.tier_valid_until,
+            school_code=school.school_code, branch=school.branch, address=school.address,
+            contact_number=school.contact_number, email=school.email, website=school.website,
+            grades_available=school.grades_available, board=school.board,
+            partnership_date=school.partnership_date, mou_reference=school.mou_reference,
+            edusphere_bdm=school.edusphere_bdm, monthly_visit_schedule=school.monthly_visit_schedule,
+            vice_principal_name=school.vice_principal_name,
+            student_count=student_counts.get(school.id, 0), teacher_count=teacher_counts.get(sid_str, 0),
+            principal_name=principal_by_school.get(sid_str), school_coordinator_name=coordinator_by_school.get(sid_str),
+            career_counsellor_names=counsellors_by_school.get(school.id, []),
+            created_at=school.created_at,
+        ))
+    return results
 
 
 async def _flush_unique_email(db: AsyncSession) -> None:
@@ -1003,38 +1079,37 @@ async def approve_commission_payout(commission_id: UUID, user: User = Depends(ge
 # (`DEC-SCOPE-012`). Same `/overseas-admin` namespace as the Agent approval routes above,
 # per `API_CONTRACT.md` §12A.
 @agents_router.post("/schools", status_code=201)
-async def create_school(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def create_school(payload: SchoolCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
-    _reject_supplied_password(payload, user, "/api/v1/overseas-admin/schools", "coordinator_password")
-    email = str(payload.get("coordinator_email", "")).lower().strip()
-    if not payload.get("name") or not email or not payload.get("coordinator_full_name"):
-        raise HTTPException(422, "School name and Coordinator name/email are required")
-    email = _valid_email(email)
+    # SchoolCreate's `extra="forbid"` already rejects a supplied `coordinator_password` at the
+    # Pydantic layer, before this function body runs at all -- an explicit
+    # _reject_supplied_password() call here would be unreachable dead code (simplification pass,
+    # ENH-009). This does lose the WARNING-level `provisioning_password_field_rejected` telemetry
+    # that call used to emit; already noted and accepted in DEC-SCOPE-025's addendum.
+    email = _valid_email(payload.coordinator_email)
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
-    tier = payload.get("tier")
-    if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
+    if payload.tier and payload.tier not in {"bronze", "silver", "gold", "platinum"}:
         raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
-    tier_valid_until = date.fromisoformat(payload["tier_valid_until"]) if payload.get("tier_valid_until") else None
+    school_code = await unique_student_code(db, School.school_code)
     school = School(
-        name=_fit(payload["name"], "School name", 200),
-        city=_fit(payload.get("city"), "City", 120),
-        state=_fit(payload.get("state"), "State", 120),
-        created_by_user_id=user.id,
-        tier=tier,
-        tier_valid_until=tier_valid_until,
+        name=payload.name, city=payload.city, state=payload.state,
+        created_by_user_id=user.id, tier=payload.tier, tier_valid_until=payload.tier_valid_until,
+        school_code=school_code,
+        branch=payload.branch, address=payload.address, contact_number=payload.contact_number,
+        email=payload.email, website=payload.website, grades_available=payload.grades_available,
+        board=payload.board, partnership_date=payload.partnership_date,
+        mou_reference=payload.mou_reference, edusphere_bdm=payload.edusphere_bdm,
+        monthly_visit_schedule=payload.monthly_visit_schedule,
+        vice_principal_name=payload.vice_principal_name,
     )
     db.add(school)
     await db.flush()
     coordinator = User(
-        email=email,
-        password_hash=unusable_password_hash(),
-        full_name=_fit(payload["coordinator_full_name"], "Coordinator name", 160),
-        role="school_coordinator",
-        division="overseas",
-        active=True,
-        email_verified=False,
+        email=email, password_hash=unusable_password_hash(),
+        full_name=_fit(payload.coordinator_full_name, "Coordinator name", 160),
+        role="school_coordinator", division="overseas", active=True, email_verified=False,
         profile={"school_id": str(school.id)},
     )
     db.add(coordinator)
@@ -1046,11 +1121,12 @@ async def create_school(payload: dict, user: User = Depends(get_current_user), d
     # satisfying the provisioning audit trail (RBAC_MATRIX.md §3) without waiting for the
     # Coordinator's first login.
     db.add(UserRoleAssignment(user_id=coordinator.id, division="overseas", role="school_coordinator", is_active=True, assigned_by_user_id=user.id, approval_status="approved"))
-    db.add(AuditLog(user_id=user.id, action="school.create", entity_type="school", entity_id=str(school.id), metadata_json={"name": school.name}))
+    db.add(AuditLog(user_id=user.id, action="school.create", entity_type="school", entity_id=str(school.id), metadata_json={"name": school.name, "school_code": school_code}))
     db.add(AuditLog(user_id=user.id, action="school.coordinator_seed", entity_type="user", entity_id=str(coordinator.id), metadata_json={"school_id": str(school.id)}))
     await db.commit()
     delivery = await deliver_welcome_link(user=coordinator, issued=issued, issued_by=user)
-    return {"id": school.id, "name": school.name, "coordinator_id": coordinator.id, "coordinator_email": coordinator.email, **delivery}
+    out = await _school_out(db, school)
+    return {**out.model_dump(mode="json"), "coordinator_id": coordinator.id, "coordinator_email": coordinator.email, **delivery}
 
 
 @agents_router.get("/schools")
@@ -1058,29 +1134,36 @@ async def list_schools(user: User = Depends(get_current_user), db: AsyncSession 
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
     rows = (await db.scalars(select(School).order_by(School.created_at.desc()))).all()
-    return [{"id": s.id, "name": s.name, "city": s.city, "state": s.state, "tier": s.tier, "tier_valid_until": s.tier_valid_until, "created_at": s.created_at} for s in rows]
+    return await _school_outs_batch(db, rows)
 
 
 @agents_router.patch("/schools/{school_id}")
-async def update_school_tier(school_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """`DEC-SCOPE-017` -- Overseas Admin sets/changes a School's partnership tier after
-    creation. Deliberately narrow: only tier/tier_valid_until are editable here, not the
-    identity fields `create_school` already owns."""
+async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-025) -- Overseas Admin updates a School's partnership
+    tier and/or profile fields. `name`/`city`/`state`/`coordinator_*` stay out of scope for this
+    endpoint -- they were never editable before and no acceptance criterion asks for that."""
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
     school = await db.get(School, school_id)
     if not school:
         raise HTTPException(404, "School not found")
-    if "tier" in payload:
-        tier = payload["tier"]
+    fields = payload.model_dump(exclude_unset=True)
+    if "tier" in fields:
+        tier = fields["tier"]
         if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
             raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
         school.tier = tier
-    if "tier_valid_until" in payload:
-        school.tier_valid_until = date.fromisoformat(payload["tier_valid_until"]) if payload["tier_valid_until"] else None
-    db.add(AuditLog(user_id=user.id, action="school.tier_update", entity_type="school", entity_id=str(school.id), metadata_json={"tier": school.tier}))
+    if "tier_valid_until" in fields:
+        school.tier_valid_until = fields["tier_valid_until"]
+    if "tier" in fields or "tier_valid_until" in fields:
+        db.add(AuditLog(user_id=user.id, action="school.tier_update", entity_type="school", entity_id=str(school.id), metadata_json={"tier": school.tier}))
+    profile_fields = [k for k in fields if k not in {"tier", "tier_valid_until"}]
+    for key in profile_fields:
+        setattr(school, key, fields[key])
+    if profile_fields:
+        db.add(AuditLog(user_id=user.id, action="school.profile_update", entity_type="school", entity_id=str(school.id), metadata_json={"changed_fields": sorted(profile_fields)}))
     await db.commit()
-    return {"id": school.id, "tier": school.tier, "tier_valid_until": school.tier_valid_until}
+    return await _school_out(db, school)
 
 
 ACADEMIC_YEAR_STATUSES = ["draft", "active", "closed"]
@@ -1235,6 +1318,21 @@ async def list_school_staff(user: User = Depends(get_current_user), db: AsyncSes
     for a in assignments:
         portfolio_by_user.setdefault(a.user_id, []).append(a.school_id)
     return [{"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "school_ids": [str(sid) for sid in portfolio_by_user.get(u.id, [])]} for u in rows]
+
+
+@agents_router.get("/schools/lookup")
+async def lookup_school_by_code(code: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-009 / DEC-SCOPE-025 -- resolves a School's business-facing `school_code` to its full
+    profile, for the admin edit panel. Deliberately narrower than the analogous
+    `school-students/lookup` endpoint: Counselor has a real reason to look up a School *student*
+    (the School->Overseas bridge, DEC-SCOPE-018) but no legitimate reason to see or edit a
+    School's own profile."""
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    school = await db.scalar(select(School).where(School.school_code == code.strip().upper()))
+    if not school:
+        raise HTTPException(404, "No school found with that School ID")
+    return await _school_out(db, school)
 
 
 @agents_router.get("/school-students/lookup")

@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from enh005_helpers import login, mk_result, mk_school, mk_staff, mk_student, move_student_directly
+from enh005_helpers import login, mk_result, mk_school, mk_staff, mk_student, mk_user, move_student_directly
 from sqlalchemy import select
 
 from app.models import SchoolAccountInvite, SchoolParentLink, SchoolStudent, User
@@ -12,7 +12,6 @@ from app.models import SchoolAccountInvite, SchoolParentLink, SchoolStudent, Use
 # another school than the parent's account), and `withdrawn` results are invisible. Everything here runs against Postgres.
 
 NOT_LINKED = "This student is not linked to your account"
-DIFFERENT_INSTITUTION = "This student is at a different institution"
 
 
 async def _moved_child_world(db_session):
@@ -38,7 +37,7 @@ async def test_a_parent_reads_a_linked_child_who_lives_at_another_school(client,
 
 
 @pytest.mark.asyncio
-async def test_a_parent_still_cannot_read_an_unlinked_student_and_keeps_todays_messages(client, db_session):
+async def test_a_parent_still_cannot_read_an_unlinked_student(client, db_session):
     a = await mk_school(db_session, label="A", students=2)
     b = await mk_school(db_session, label="B")
     same_school_unlinked = a["students"][1]
@@ -48,9 +47,50 @@ async def test_a_parent_still_cannot_read_an_unlinked_student_and_keeps_todays_m
     r = await client.get(f"/api/v1/school/students/{same_school_unlinked.id}")
     assert (r.status_code, r.json()["detail"]) == (403, NOT_LINKED)
     r = await client.get(f"/api/v1/school/students/{other_school.id}")
-    assert (r.status_code, r.json()["detail"]) == (403, DIFFERENT_INSTITUTION)
+    assert (r.status_code, r.json()["detail"]) == (403, NOT_LINKED)
     listing = await client.get("/api/v1/school/students")
     assert [s["id"] for s in listing.json()] == [str(a["students"][0].id)]
+
+
+@pytest.mark.asyncio
+async def test_a_parent_with_children_at_two_schools_sees_both(client, db_session):
+    a = await mk_school(db_session, label="A")
+    b = await mk_school(db_session, label="B")
+    db_session.add(SchoolParentLink(parent_user_id=a["parent"].id, school_student_id=b["students"][0].id, linked_by_user_id=b["coordinator"].id))
+    await db_session.commit()
+    await login(client, a["parent"].email)
+
+    listing = await client.get("/api/v1/school/students")
+
+    assert {s["id"] for s in listing.json()} == {str(a["students"][0].id), str(b["students"][0].id)}
+    for student in (a["students"][0], b["students"][0]):
+        assert (await client.get(f"/api/v1/school/students/{student.id}")).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_a_parent_with_zero_links_at_a_school_sees_none_of_its_data(client, db_session):
+    a = await mk_school(db_session, label="A", students=0)
+    b = await mk_school(db_session, label="B")
+    await login(client, a["parent"].email)
+
+    listing = await client.get("/api/v1/school/students")
+
+    assert listing.json() == []
+    assert (await client.get(f"/api/v1/school/students/{b['students'][0].id}")).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_a_parent_with_no_profile_school_id_still_reads_their_linked_child(client, db_session):
+    a = await mk_school(db_session, label="A")
+    parent = await mk_user(db_session, role="school_parent", name="No School Parent", school_id=None, assigned_by=a["coordinator"])
+    db_session.add(SchoolParentLink(parent_user_id=parent.id, school_student_id=a["students"][0].id, linked_by_user_id=a["coordinator"].id))
+    await db_session.commit()
+    await login(client, parent.email)
+
+    listing = await client.get("/api/v1/school/students")
+
+    assert [s["id"] for s in listing.json()] == [str(a["students"][0].id)]
+    assert (await client.get(f"/api/v1/school/students/{a['students'][0].id}")).status_code == 200
 
 
 @pytest.mark.asyncio
@@ -103,23 +143,56 @@ async def test_withdrawn_results_are_hidden_from_the_academic_team_and_cannot_be
 
 
 @pytest.mark.asyncio
-async def test_link_parent_refuses_a_parent_from_another_school(client, db_session):
+async def test_link_parent_accepts_a_parent_already_linked_at_another_school(client, db_session):
     a = await mk_school(db_session, label="A")
     b = await mk_school(db_session, label="B")
     await login(client, a["coordinator"].email)
+
     response = await client.post(f"/api/v1/school/students/{a['students'][0].id}/parents", json={"parent_email": b["parent"].email})
-    assert response.status_code == 422, response.text
+
+    assert response.status_code == 201, response.text
+    link = await db_session.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == b["parent"].id, SchoolParentLink.school_student_id == a["students"][0].id))
+    assert link is not None
 
 
 @pytest.mark.asyncio
-async def test_adding_a_student_refuses_a_parent_email_that_belongs_to_another_school(client, db_session):
+async def test_link_parent_rejects_an_unknown_parent_email(client, db_session):
+    a = await mk_school(db_session, label="A")
+    await login(client, a["coordinator"].email)
+
+    response = await client.post(f"/api/v1/school/students/{a['students'][0].id}/parents", json={"parent_email": "never-used-email@example.com"})
+
+    assert response.status_code == 422, response.text
+    assert "parent_email must belong to an existing Parent account" in response.text
+
+
+@pytest.mark.asyncio
+async def test_link_parent_rejects_a_parent_email_belonging_to_a_non_parent_account(client, db_session):
+    a = await mk_school(db_session, label="A")
+    await login(client, a["coordinator"].email)
+    teacher = a["teacher"]
+
+    response = await client.post(f"/api/v1/school/students/{a['students'][0].id}/parents", json={"parent_email": teacher.email})
+
+    assert response.status_code == 422, response.text
+    assert "belongs to an existing account that is not a Parent" in response.text
+
+
+@pytest.mark.asyncio
+async def test_adding_a_student_at_school_a_can_use_a_parent_already_linked_at_school_b(client, db_session):
     a = await mk_school(db_session, label="A")
     b = await mk_school(db_session, label="B")
     await login(client, a["coordinator"].email)
     name = f"Cross Link {uuid.uuid4().hex[:6]}"
+
     response = await client.post("/api/v1/school/students", json={"full_name": name, "parent_email": b["parent"].email})
-    assert response.status_code == 422, response.text
-    assert await db_session.scalar(select(SchoolStudent).where(SchoolStudent.full_name == name)) is None
+
+    assert response.status_code == 201, response.text
+    assert response.json()["parent_status"] == "linked"
+    student = await db_session.scalar(select(SchoolStudent).where(SchoolStudent.full_name == name))
+    assert student is not None
+    link = await db_session.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == b["parent"].id, SchoolParentLink.school_student_id == student.id))
+    assert link is not None
 
 
 @pytest.mark.asyncio

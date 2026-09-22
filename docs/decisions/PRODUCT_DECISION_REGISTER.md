@@ -2172,10 +2172,169 @@ Assumptions taken with the design and approved with it: "admin" means `overseas_
 
 Design, API, UI and security review: `docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md` (§5.5, §6.1, §7.1).
 
-**Consequences:** new table `school_student_transfer_requests` (migration `0034`) that is both the request workflow and the transfer history; ten endpoints (six under `/school`, four under `/overseas-admin`); the value `withdrawn` in `school_academic_results.status` (never returned by any response); a parent's read scope becomes link-only, so "a `SchoolParentLink` joins a parent and a student of the same school" is now the invariant that keeps a parent out of other students (all three link creators enforce it and tests pin each); a parent moved to the gaining school comes under that school's coordinator's account authority (`list_team`, `update_team_account`) and leaves the losing coordinator's; the promotion comment claiming `school_id` never changes is corrected, and a transfer racing a promotion is refused with the promotion's generic `403` having written nothing.
+**Consequences:** new table `school_student_transfer_requests` (migration `0034`) that is both the request workflow and the transfer history; ten endpoints (six under `/school`, four under `/overseas-admin`); the value `withdrawn` in `school_academic_results.status` (never returned by any response); a parent's read scope becomes link-only, so "a `SchoolParentLink` joins a parent and a student of the same school" was, at the time this decision was made, still the invariant the three link creators enforced when *creating* a fresh link (superseded by `ENH-008`, see the closing note below — it no longer holds for new links, only ever described link creation, not the read-side scope check, which was already link-only); a parent moved to the gaining school comes under that school's coordinator's account authority (`list_team`, `update_team_account`) and leaves the losing coordinator's; the promotion comment claiming `school_id` never changes is corrected, and a transfer racing a promotion is refused with the promotion's generic `403` having written nothing.
 
-**`NEEDS_CONFIRMATION` (known limits, not decided here):** the unaccepted-parent-invite limit (**decided by the owner on 2026-09-21**, see the paragraph below); full multi-school parent management (`ENH-008`): a parent kept at the losing school because of another child there does not appear in the gaining school's team list and cannot be linked by the gaining coordinator; branch moves within a school (`ENH-009`); bulk transfer; graduation/alumni; whether the other school should be consulted before an admin decides (no consent step exists); reversal is simply a new request in the opposite direction.
+**`NEEDS_CONFIRMATION` (known limits, not decided here):** the unaccepted-parent-invite limit (**decided by the owner on 2026-09-21**, see the paragraph below); ~~full multi-school parent management (`ENH-008`): a parent kept at the losing school because of another child there does not appear in the gaining school's team list and cannot be linked by the gaining coordinator~~ **RESOLVED by `ENH-008`, see the closing note below**; branch moves within a school (`ENH-009`); bulk transfer; graduation/alumni; whether the other school should be consulted before an admin decides (no consent step exists); reversal is simply a new request in the opposite direction.
 
 **Owner decision, 2026-09-21 — unaccepted parent invites: DECIDED, keep the admin warning** (`EXPLICIT_APPROVAL`: the owner chose this option in the session; the options were the ones listed in spec §13). A parent who was invited but had not accepted when their student transferred keeps today's behavior: approval clears the student's `pending_parent_email`, the parent later has an account at the losing school and no linked child, and the gaining coordinator cannot link them. The admin is warned in the queue row and again at the confirm step (`pending_parent_invite`) and can ask the parent to accept first. **Not chosen:** carrying the invite to the gaining school (needs a cross-school exception to the same-school link invariant S2/AC-29 and a rule for invites that cover siblings still at the losing school), and blocking filing or approval while an invite is unaccepted (can stall a transfer on a parent who never responds). Multi-school parent handling can be revisited with `ENH-008`.
 
 **Security findings and status.** Found by the review before code (spec §6.1): HTML injection in parent emails (fixed, D9); the parent read filter no longer double-checking the school (link creators verified and tested); a code-probing oracle through the requester's own list (throttle D8, cap D7, every attempt audited, residual documented); an unrecorded authorization-scope change (one audit row per re-scoped parent); approval as a general write path (restricted to `profile.school_id` on `school_parent` accounts). Reported, not changed (outside ENH-005): the API has no rate limiting on login or elsewhere; no CSRF token exists (`SameSite=Lax` only); `secret_key` defaults to `"change-me"` and `cookie_secure` to `False`; admin routes gate on the `users.role` column rather than active role assignments.
+
+**Closing note, 2026-09-22 (`ENH-008`, `DEC-SCOPE-024`).** The `NEEDS_CONFIRMATION` limitation named above by title — "a parent kept at the losing school … cannot be linked by the gaining coordinator" — is resolved. `ENH-008` removed the same-school restriction on *new* `SchoolParentLink` creation entirely (`link_parent`, `_link_or_invite_parent`, `accept_invite`): a parent already linked at one or more schools can now be linked by any coordinator at any school, including one they were previously kept out of after a transfer. See `DEC-SCOPE-024` below for the full decision record. Also folded into the same wave: the parallel gap in *this* decision's own Consequences paragraph above, where an orphaned `school_parent` (zero links) could vanish from a Team page — fixed in `list_team()`/`update_team_account()` by treating Team membership as the union of "has a link here" OR "`profile.school_id` still matches," not link-only (ENH-008 final-review Finding 2).
+
+### DEC-SCOPE-023 — School Master (`School CRM.md` Part B §2) = `school_coordinator`; account activate/deactivate confirmed in scope (`ENH-010`)
+
+**Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-22.
+
+**Question:** Is `School CRM.md` Part B §2's "School Master" role the same actor as the
+already-confirmed `school_coordinator` role (`DEC-SCOPE-011`), and is "Activate/deactivate
+users" confirmed in scope for that role, scoped to their own institution?
+
+**Evidence:** `School CRM.md` (`EVID-014`, `DERIVED_BLUEPRINT`, unattributed) Part B §2,
+verbatim: *"School Master can: … Activate/deactivate users."* Per `CLAUDE.md`, this document's
+own claim is not `EXPLICIT_APPROVAL` by itself.
+
+**Current state:** `apps/api/app/api/schools.py`'s `update_team_account` (added in the initial
+School-domain commit) already implements this and its own docstring asserts it was resolved
+"per direct user confirmation" — but no matching entry exists anywhere in this register.
+`DEC-SCOPE-011` confirms Coordinator "write access" broadly ("add/manage students… monitor
+services") but never names account activation specifically. This entry does not assume which:
+an undocumented earlier confirmation, or an inference never actually put to the user.
+
+**Proposed resolution (drafted, not self-approved):** adopt "School Master" (§2) as the same
+actor as `school_coordinator` (§33, `DEC-SCOPE-011`) — consistent with `DEC-SCOPE-011` already
+treating that role as having broad write access over the school's accounts and data — and
+confirm "Activate/deactivate users" as in-scope write access, scoped to the coordinator's own
+institution, excluding the coordinator's own account and any peer Coordinator account. This
+matches exactly what the shipped code (tested by `test_sch_team_account_activation.py`) already
+does.
+
+**Verified 2026-09-22:** the implementation satisfies all four ENH-010 acceptance criteria, by
+both a real automated test run (9/9 in `test_sch_team_account_activation.py`, including two new
+mutation-checked characterization tests) and a live browser QA pass (all four ACs individually
+observed, not read from code) — see `docs/superpowers/specs/2026-09-22-enh-010-account-
+activation-design.md` §6 and the ENH010-QA findings for the evidence.
+
+**Not resolved by this entry:** whether the two frontend a11y items considered during design
+(`refocus`, differentiated `role="alert"`) should ever be applied — investigated and found to
+already match this component's true sibling's convention, not to deviate from it; left open,
+not part of this decision either way.
+
+### DEC-SCOPE-024 — Parent account linked to children across multiple schools (`ENH-008`)
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-008 (source: the user's direct instruction "parent may [have] children from different schools") had no Decision ID or Feature ID. `DEC-SCOPE-022` (`ENH-005`) independently flagged the gap this closes as `NEEDS_CONFIRMATION`, deferred to this item by name. Should a `school_parent` account be linkable to students at more than one school, and if so, what does that do to every place a parent's "own school" was assumed to be singular?
+
+**Evidence:** Audit of the code, 2026-09-22: `SchoolParentLink` (`apps/api/app/models.py:1027-1036`) was already many-to-many (`UniqueConstraint(parent_user_id, school_student_id)`, no school-uniqueness constraint) — the block was entirely application-level: `_parent_email_conflict()` and `link_parent()` each independently rejected a parent email whose existing account's `profile.school_id` named a different school; `_own_school_id()` was called unconditionally at the top of `list_students()`/`_load_readable_student()`/`_readable_students()` and would 403 a parent the moment `profile.school_id` stopped naming "the" school; `accept_invite()` wrote `profile.school_id` on every provisioned account including parents; `school_transfers.py:_approve()` rewrote a parent's `profile.school_id` on transfer, built entirely on the single-school-per-parent assumption this feature removes.
+
+**Resolution:** Design approved in-session, 2026-09-22 (brainstorming session; `EXPLICIT_APPROVAL`), full design in `docs/superpowers/specs/2026-09-22-enh-008-parent-multi-school-design.md`:
+
+1. **Core decision:** `profile.school_id` is fully deprecated for the `school_parent` role — never read for authorization, never written, anywhere — unchanged for `school_coordinator`/`school_principal`/`school_teacher`. A parent's scope is derived 100% from their `SchoolParentLink` rows. No schema change, no data migration/backfill — existing stale `profile.school_id` values on parent accounts are simply never read again.
+2. **Conflict checks:** `_parent_email_conflict()` and `link_parent()` drop the cross-school comparison; both reject only when an existing account under that email has a role other than `school_parent`. Error message text drops the "...at this/your school" qualifier it previously carried.
+3. **Read scope:** `list_students()`, `_load_readable_student()`, `_readable_students()` skip `_own_school_id(user)` entirely for `school_parent` — `_scoped_students_query()`'s existing parent branch (built in `ENH-005`) already derives scope from `SchoolParentLink.parent_user_id == user.id` alone. Fails closed by construction: a parent mis-routed into the non-parent branch would pass `school_id=None`, which compiles to `IS NULL` against a `NOT NULL` column — zero rows, never all schools.
+4. **Provisioning:** `accept_invite()` skips writing `profile.school_id` for a `school_parent` invite (every other invited role is unchanged).
+5. **Transfers:** `school_transfers.py:_approve()` no longer rewrites any parent's `profile.school_id`; the per-parent `AuditLog(action=ACTION_SCOPE_CHANGED, ...)` rows this used to write are gone, replaced by folding the affected parent UUIDs into the existing `ACTION_TRANSFER` audit entry's own metadata (`parents_moved_ids`/`parents_kept_ids`) — traceability preserved, shape changed from N rows to one list field. The `parents_moved`/`parents_kept` response field names are unchanged (API contract preserved); their meaning changes to "has no other link at the losing school" / "still has ≥1 link there."
+6. **Frontend:** no functional/data change required (`ENH-005` already built a per-child `school_name` and `childrenSpanSchools()`); two UI-quality improvements bundled in: group child cards by school on the parent dashboard when `childrenSpanSchools()` is true, and add `loading.tsx` skeletons to `/school/parent/dashboard` and `/school/parent/children/[id]/`.
+
+Design, security review: `docs/superpowers/specs/2026-09-22-enh-008-parent-multi-school-design.md` (§3, §5). Implementation plan: `docs/superpowers/plans/2026-09-22-enh-008-parent-multi-school.md` (8 tasks).
+
+**Consequences:** the same-school invariant `DEC-SCOPE-022` described for `SchoolParentLink` *creation* no longer holds — a coordinator at any school can link an existing `school_parent` account regardless of which other school(s) they're already linked at (this is `AC1`, the feature itself, not a defect); the read-side IDOR boundary (`SchoolParentLink.parent_user_id == user.id`) is untouched, since `_own_school_id()`'s parent-branch return value was already discarded downstream before this change; email-enumeration surface via `_parent_email_conflict()` widens from "within one coordinator's school" to platform-wide (bounded by requiring an authenticated `school_coordinator`, every successful link audited, no rate limiting anywhere in this codebase today — accepted, not fixed, same as every other unthrottled endpoint per `SECURITY_CONTROLS.md` §1); `DEC-SCOPE-022`'s own closing note (above) records this decision resolving its `NEEDS_CONFIRMATION` item.
+
+**Final-review fix wave, 2026-09-22 (post-implementation, all 8 tasks already merged):** two Important findings closed in the same commit wave as this record — (1) `_school_dashboard_payload()` undercounted `parent_count` on `/school/dashboard` and `/school/reports` by filtering `school_parent` accounts via `profile.school_id` alone, the same bug class already fixed in `list_team()`; fixed with the identical link-or-stale-profile union pattern. (2) `list_team()`/`update_team_account()` treated a `school_parent`'s Team membership as link-only, so an orphaned parent (zero links — a direct `POST /school/team/invites`, which names no student, or a pre-existing account per `DEC-SCOPE-022`) silently vanished from the Team page and became unmanageable; fixed with a union (link OR matching `profile.school_id`), the option the user explicitly chose over restricting the invite endpoint.
+
+**`NEEDS_CONFIRMATION` (not decided here):** whether `profile.school_id` should eventually be backfilled to `null`/removed from parent accounts rather than left stale-and-unread indefinitely; rate limiting on `_parent_email_conflict()`'s now-platform-wide probe surface.
+
+**Status:** CONFIRMED_CURRENT — Approved by: user (in-session, brainstorming) — Approval date: 2026-09-22.
+
+---
+
+### DEC-SCOPE-025 — School Profile field-by-field scope, and Branch modeled as a field, not an entity
+
+**Renumbered 2026-09-22, on merge with `main`:** this decision was recorded as `DEC-SCOPE-023` at
+the time it was made, in-session, before `ENH-010`'s independent, unrelated use of that same ID had
+landed on `main`. Same precedent as `ENH-008`'s `DEC-SCOPE-024` above (also renumbered on merge for
+an identical collision) — the later-merging branch's ID moves, the content does not. Every reference
+to `DEC-SCOPE-023` elsewhere in this branch's own files (design doc, plan, code comments, tests,
+`ENHANCEMENT_BACKLOG.md`, `RTM.md`) is updated to `DEC-SCOPE-025` to match.
+
+**Status:** CONFIRMED_CURRENT — resolved 2026-09-22, in-session.
+
+**Trigger:** `School CRM.md §2` (`docs/sources/School CRM.md:64-116`, `EVID-014`) lists a full School
+Profile of ~24 fields; `ENHANCEMENT_BACKLOG.md`'s `ENH-009` entry (Revision 4) already recorded the
+user's direct, explicit, `EXPLICIT_APPROVAL`-grade instruction that full field coverage is mandatory
+for this release, leaving two open questions unresolved: (1) whether Branch is a field or a separate
+scoping entity, and (2) whether the resulting design should introduce real Pydantic schemas for
+`School` for the first time, given `create_school`/`list_schools`/`update_school_tier` currently use
+untyped `payload: dict`. Both were put to the user directly during this session's `superpowers:brainstorming`
+pass (`docs/superpowers/specs/2026-09-22-enh-009-school-profile-design.md`).
+
+**Resolution — Branch (`EXPLICIT_APPROVAL`, user, in-session):** Branch is a **free-text field** on
+`School` (`branch: String(200), nullable`), not a separate `SchoolBranch` entity. No new table, no new
+RBAC scoping boundary — `RBAC_MATRIX.md` §2.12's "one `School` row = one isolated tenant" assumption is
+preserved unchanged. This closes `ENH-009`'s own acceptance criterion ("Branch's scope explicitly
+decided and documented before any migration ships") and removes the item's previously-identified High
+regression-risk driver (every `school:coordinator:own_institution`-style check in `schools.py` would
+otherwise have needed to become branch-aware).
+
+**Resolution — field-by-field scope (`EXPLICIT_APPROVAL`, user, in-session, confirming `ENH-009`
+Revision 4's mandatory-coverage directive):** all 24 fields are in scope for this release except two
+carve-outs already recorded in `ENH-009`: (a) populating `Edusphere BDM`'s value is blocked separately
+on the unapproved `BDM` role (`PRD_OPEN_ITEMS.md` item 61) — the field itself ships, as plain text, not
+a role reference; (b) Monthly visit schedule ships as a descriptive text field only — a real
+forward-scheduling engine remains `ENH-019`'s job, unchanged. Number of students/teachers, Principal
+name, School Coordinator name, and Career Counsellor name(s) are exposed **computed** (live query,
+never stored) — the first two per the existing backlog recommendation, the latter two because a
+design self-review during this session caught that Principal/Coordinator/Career Counsellor had been
+left "unchanged, no design gap" despite being 3 of the backlog's own 15 mandatory-missing fields;
+they are role-derived and already queryable, so computed exposure (not a new stored column) is the
+correct fix, matching how Dedicated Counsellor is already handled via `SchoolStaffAssignment` rather
+than a flat field. Vice Principal has no role or account type anywhere in this system to derive from
+— ships as a plain nullable text field (`vice_principal_name`, no login/role), the same
+"field ships, larger structural question deferred" treatment as `edusphere_bdm`. Agreement/MoU ships
+as a plain reference-string field (`mou_reference`), not a document-upload feature — a generic
+`ProfileDocumentUpload`/`StorageService` pattern already exists in this codebase but generalizing it to
+`School` is judged out of scope for a field-coverage item; flagged in the design doc as a deliberate,
+smaller-scope choice rather than a silent omission.
+
+**Resolution — schemas (`EXPLICIT_APPROVAL`, user, in-session):** `SchoolCreate`/`SchoolUpdate`/
+`SchoolOut` Pydantic schemas are introduced in `schemas.py` for the first time for this entity
+(`model_config = {"extra": "forbid"}`, the exact pattern already used for ENH-005's
+`TransferRequestCreate`/`IncomingTransferCreate` — not this file's universal default, but the
+established choice for a security-sensitive create schema), replacing `create_school`/
+`update_school_tier`'s untyped `payload: dict`. Request/response JSON shape stays additive-compatible
+with existing callers (`AdminSchoolCreatePanel.tsx`).
+
+**Resolution — access model (`EXPLICIT_APPROVAL`, user, in-session):** admin-only (`overseas_admin`/
+`super_admin`) create **and** edit, matching who already owns this data today. No new School Coordinator/
+Principal self-service profile page in this pass.
+
+**Evidence:** `EVID-014` (`docs/sources/School CRM.md`); `ENHANCEMENT_BACKLOG.md`'s `ENH-009` entry
+(Revision 4, `EXPLICIT_APPROVAL` already recorded there for mandatory field coverage); this session's
+direct codebase verification against `apps/api/app/models.py:928-948`, `apps/api/app/api/admin.py`,
+`apps/api/app/services/portal.py:1360-1371`, and `apps/api/app/core/identifiers.py`.
+
+**New Feature ID:** none — this is additive scope on the existing `ENH-009` item, not a new feature.
+
+**Consequences:** one additive migration on `schools` (`school_code`, `branch`, `address`,
+`contact_number`, `email`, `website`, `grades_available`, `board`, `partnership_date`, `mou_reference`,
+`edusphere_bdm`, `monthly_visit_schedule`, `vice_principal_name` — all nullable, no backfill); three
+new computed (never stored) fields in `SchoolOut` — Principal name, School Coordinator name, Career
+Counsellor name(s) — alongside the existing computed student/teacher counts; `school_code` reuses
+`core/identifiers.py`'s existing `generate_student_code()`/`unique_student_code()` pattern verbatim;
+`GET /overseas-admin/schools/lookup?code=` (new, `overseas_admin`/`super_admin` only — deliberately
+narrower than the analogous `school-students/lookup` endpoint's role set, which includes `counselor`
+for an unrelated bridge use case that doesn't apply to School-profile edit); `PATCH
+/overseas-admin/schools/{id}` widened from tier-only to all profile fields, true partial-update
+semantics; new `AuditLog` action `school.profile_update` (field-names-only in `metadata_json`, not full
+values, to avoid duplicating partner contact info into the permanent audit trail) alongside the
+existing `school.tier_update`.
+
+**Security review findings and status** (full detail in the design doc's §4): no new authentication,
+CSRF, XSS, or SQL-injection surface (existing patterns reused unchanged); no IDOR fix needed (admin
+roles are intentionally not school-scoped); one real authorization finding closed before code (the new
+lookup endpoint's role set, above). Reported, not changed (pre-existing, outside `ENH-009`, consistent
+with the same items already reported and left unchanged in `DEC-SCOPE-` entries for `ENH-005`): no rate
+limiting anywhere in the API; no CSRF token (`SameSite=Lax` only); admin routes gate on `user.role`
+directly rather than active role assignments.
+
+**Stated by:** user (in-session) — **Date:** 2026-09-22. Resolves `ENH-009`'s two open acceptance-
+criteria blockers (field-by-field scope, Branch design).
