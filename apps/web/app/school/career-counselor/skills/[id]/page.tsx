@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { accessUnavailable } from "@/components/AccessUnavailable";
 import PortalShell from "@/components/PortalShell";
 import SchoolSkillAttendance from "@/components/SchoolSkillAttendance";
 import SchoolSkillBatchHeader from "@/components/SchoolSkillBatchHeader";
@@ -24,13 +25,13 @@ export default async function SchoolSkillBatchPage({ params }: { params: Promise
       serverApi<PortfolioStudent[]>("/api/v1/school/portfolio-students"),
     ]);
   } catch (e) {
-    const missing = e instanceof ApiError && (e.status === 404 || e.status === 422);
+    if (!(e instanceof ApiError && (e.status === 404 || e.status === 422))) return accessUnavailable(e);
     return (
       <div className="section">
         <div className="container card">
-          <h1>{missing ? "Batch not found" : "Access unavailable"}</h1>
-          <p>{missing ? "This skills batch does not exist, or it belongs to a school outside your portfolio." : e instanceof Error ? e.message : "Unable to load this workspace"}</p>
-          {missing ? <Link className="btn" href="/school/career-counselor/skills">Back to skills batches</Link> : <a className="btn" href="/overseas/login">Return to login</a>}
+          <h1>Batch not found</h1>
+          <p>This skills batch does not exist, or it belongs to a school outside your portfolio.</p>
+          <Link className="btn" href="/school/career-counselor/skills">Back to skills batches</Link>
         </div>
       </div>
     );

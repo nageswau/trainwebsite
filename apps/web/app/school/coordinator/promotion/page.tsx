@@ -1,23 +1,12 @@
 import PortalShell from "@/components/PortalShell";
 import SchoolPromotionPanel from "@/components/SchoolPromotionPanel";
 import type { PromotionStudent } from "@/components/SchoolPromotionRow";
-import { serverApi } from "@/lib/api";
+import { ApiError, serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
+import { accessUnavailable } from "@/components/AccessUnavailable";
 
 type ActiveYear = { id: string; label: string } | null;
-
-function AccessUnavailable({ message }: { message: string }) {
-  return (
-    <div className="section">
-      <div className="container card">
-        <h1>Access unavailable</h1>
-        <p>{message}</p>
-        <a className="btn" href="/overseas/login">Return to login</a>
-      </div>
-    </div>
-  );
-}
 
 // ENH-004: academic-year rollover -- promote or hold back students, own institution only.
 // Coordinator-only, like the API (`POST /school/students/promotions` returns 403 for every other role): the role is
@@ -29,13 +18,13 @@ export default async function SchoolCoordinatorPromotionPage() {
   let activeYear: ActiveYear;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
-    if (user.role !== "school_coordinator") return <AccessUnavailable message="School Coordinator role required" />;
+    if (user.role !== "school_coordinator") return accessUnavailable(new ApiError("School Coordinator role required", 403));
     [students, activeYear] = await Promise.all([
       serverApi<PromotionStudent[]>("/api/v1/school/students"),
       serverApi<ActiveYear>("/api/v1/school/academic-years/active"),
     ]);
   } catch (e) {
-    return <AccessUnavailable message={e instanceof Error ? e.message : "Unable to load this workspace"} />;
+    return accessUnavailable(e);
   }
   return (
     <PortalShell nav={SCHOOL_NAV.coordinator} roleLabel="School Coordinator" userName={user.full_name}>

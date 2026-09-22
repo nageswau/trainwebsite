@@ -6,7 +6,8 @@ import { serverApi } from "@/lib/api";
 
 // The page is an async server component: `serverApi` reads next/headers cookies, so it is mocked; the shell and the
 // panel are stubbed because this test is only about who is allowed to see the page.
-vi.mock("@/lib/api", () => ({ serverApi: vi.fn() }));
+// The page imports ApiError (QA-14: its role check is a signed-in 403), so the real class is kept; only serverApi is mocked.
+vi.mock("@/lib/api", async () => ({ ...(await vi.importActual<typeof import("@/lib/api")>("@/lib/api")), serverApi: vi.fn() }));
 vi.mock("@/components/PortalShell", () => ({ default: ({ children }: { children: React.ReactNode }) => <div data-testid="shell">{children}</div> }));
 vi.mock("@/components/SchoolPromotionPanel", () => ({ default: () => <div data-testid="panel">promotion panel</div> }));
 
