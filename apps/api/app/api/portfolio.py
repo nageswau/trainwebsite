@@ -179,7 +179,7 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
     # Date-range merge-validation fix: after merging payload fields onto entry, validate the merged result
     # if both date_from and date_to are now set and date_to < date_from, reject the update
     if entry.date_from is not None and entry.date_to is not None and entry.date_to < entry.date_from:
-        raise HTTPException(422, "date_to must not be before date_from")
+        raise HTTPException(422, "End date must not be before start date")
     entry.updated_by_user_id = user.id
     await db.flush()
     db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_update", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json={"section": entry.section, "school_student_id": str(student.id)}))

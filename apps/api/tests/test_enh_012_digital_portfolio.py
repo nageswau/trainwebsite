@@ -59,6 +59,19 @@ def test_portfolio_entry_create_rejects_date_to_before_date_from():
         PortfolioEntryCreate(section="project", title="X", date_from="2026-06-01", date_to="2026-01-01")
 
 
+def test_date_range_error_is_human_readable_not_raw_field_names():
+    # QA-02: the raw internal field names ("date_to"/"date_from") must never reach the end user --
+    # detailMessage() on the frontend reads exactly this `msg` field verbatim into an alert. (Pydantic's
+    # own str(ValidationError) also dumps the raw input dict for debugging -- that's not what a user
+    # sees, so this checks the actual `msg` field, not the full exception repr.)
+    with pytest.raises(ValidationError) as exc_info:
+        PortfolioEntryCreate(section="project", title="X", date_from="2026-06-01", date_to="2026-01-01")
+    msg = exc_info.value.errors()[0]["msg"]
+    assert "date_to" not in msg
+    assert "date_from" not in msg
+    assert "End date must not be before start date" in msg
+
+
 def test_portfolio_entry_create_rejects_description_over_length_cap():
     with pytest.raises(ValidationError):
         PortfolioEntryCreate(section="project", title="X", description="a" * 2001)

@@ -807,8 +807,11 @@ class PortfolioEntryCreate(BaseModel):
 
     @model_validator(mode="after")
     def _date_range_is_ordered(self):
+        # ENH-012 QA-02: "date_to"/"date_from" are internal field names -- Pydantic's model_validator
+        # error surfaces this text verbatim to the end user (via detailMessage() on the frontend), so it
+        # must already be in plain language, not something a UI layer patches after the fact.
         if self.date_from is not None and self.date_to is not None and self.date_to < self.date_from:
-            raise ValueError("date_to must not be before date_from")
+            raise ValueError("End date must not be before start date")
         return self
 
 
@@ -833,7 +836,7 @@ class PortfolioEntryUpdate(BaseModel):
     @model_validator(mode="after")
     def _date_range_is_ordered(self):
         if self.date_from is not None and self.date_to is not None and self.date_to < self.date_from:
-            raise ValueError("date_to must not be before date_from")
+            raise ValueError("End date must not be before start date")
         return self
 
 
