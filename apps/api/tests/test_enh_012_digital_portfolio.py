@@ -241,3 +241,30 @@ async def test_patching_entry_date_from_after_existing_date_to_returns_422(clien
     portfolio = (await client.get(f"/api/v1/school/students/{student.id}/portfolio")).json()
     entry = portfolio["entries"]["project"][0]
     assert entry["date_from"] is None
+
+
+@pytest.mark.asyncio
+async def test_coordinator_deletes_their_own_entry(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-DELETE")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    created = (await client.post(f"/api/v1/school/students/{student.id}/portfolio/entries", json={"section": "project", "title": "To be deleted"})).json()
+    response = await client.delete(f"/api/v1/school/students/{student.id}/portfolio/entries/{created['id']}")
+    assert response.status_code == 204
+
+    portfolio = (await client.get(f"/api/v1/school/students/{student.id}/portfolio")).json()
+    assert portfolio["entries"]["project"] == []
+
+
+@pytest.mark.asyncio
+async def test_read_only_role_cannot_delete_an_entry(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-DELETE-RO")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    created = (await client.post(f"/api/v1/school/students/{student.id}/portfolio/entries", json={"section": "project", "title": "Should survive"})).json()
+
+    await login(client, ctx["principal"].email)
+    response = await client.delete(f"/api/v1/school/students/{student.id}/portfolio/entries/{created['id']}")
+    assert response.status_code == 403

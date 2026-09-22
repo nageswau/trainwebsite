@@ -175,3 +175,15 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
     await db.refresh(entry)
     logger.info("portfolio_entry_update", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id)}})
     return _entry_out(entry)
+
+
+@router.delete("/students/{student_id}/portfolio/entries/{entry_id}", status_code=204)
+async def delete_portfolio_entry(student_id: UUID, entry_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    student = await _load_portfolio_student(db, user, student_id)
+    _require_portfolio_write(user, student)
+    entry = await _load_portfolio_entry(db, student.id, entry_id)
+    section, entry_id_str = entry.section, str(entry.id)
+    await db.delete(entry)
+    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_delete", entity_type="portfolio_entry", entity_id=entry_id_str, metadata_json={"section": section, "school_student_id": str(student.id)}))
+    await db.commit()
+    logger.info("portfolio_entry_delete", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": entry_id_str}})
