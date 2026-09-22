@@ -426,3 +426,56 @@ async def test_patch_school_tier_only_still_works_unchanged(client, db_session):
     )
     assert tier_log is not None
     assert tier_log.metadata_json == {"tier": "gold"}
+
+
+@pytest.mark.asyncio
+async def test_patch_school_with_tier_and_profile_fields_logs_both_audit_rows(client, db_session):
+    result = await _create_school(client, db_session)
+    await _login(client, result["admin"].email)
+
+    response = await client.patch(
+        f"/api/v1/overseas-admin/schools/{result['id']}",
+        json={"tier": "silver", "branch": "New Branch"},
+    )
+    assert response.status_code == 200, response.text
+
+    school = await db_session.get(School, result["id"])
+
+    from app.models import AuditLog
+    tier_logs = (await db_session.scalars(
+        select(AuditLog).where(AuditLog.action == "school.tier_update", AuditLog.entity_id == str(school.id))
+    )).all()
+    assert len(tier_logs) == 1
+    assert tier_logs[0].metadata_json == {"tier": "silver"}
+
+    profile_logs = (await db_session.scalars(
+        select(AuditLog).where(AuditLog.action == "school.profile_update", AuditLog.entity_id == str(school.id))
+    )).all()
+    assert len(profile_logs) == 1
+    assert profile_logs[0].metadata_json == {"changed_fields": ["branch"]}
+
+
+@pytest.mark.asyncio
+async def test_patch_school_profile_only_logs_zero_tier_update_rows(client, db_session):
+    result = await _create_school(client, db_session)
+    await _login(client, result["admin"].email)
+
+    response = await client.patch(
+        f"/api/v1/overseas-admin/schools/{result['id']}",
+        json={"branch": "X"},
+    )
+    assert response.status_code == 200, response.text
+
+    school = await db_session.get(School, result["id"])
+
+    from app.models import AuditLog
+    tier_logs = (await db_session.scalars(
+        select(AuditLog).where(AuditLog.action == "school.tier_update", AuditLog.entity_id == str(school.id))
+    )).all()
+    assert tier_logs == []
+
+    profile_log = await db_session.scalar(
+        select(AuditLog).where(AuditLog.action == "school.profile_update", AuditLog.entity_id == str(school.id))
+    )
+    assert profile_log is not None
+    assert profile_log.metadata_json == {"changed_fields": ["branch"]}
