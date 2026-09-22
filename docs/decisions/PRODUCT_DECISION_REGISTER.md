@@ -2180,9 +2180,9 @@ Design, API, UI and security review: `docs/superpowers/specs/2026-09-21-enh-005-
 
 **Security findings and status.** Found by the review before code (spec §6.1): HTML injection in parent emails (fixed, D9); the parent read filter no longer double-checking the school (link creators verified and tested); a code-probing oracle through the requester's own list (throttle D8, cap D7, every attempt audited, residual documented); an unrecorded authorization-scope change (one audit row per re-scoped parent); approval as a general write path (restricted to `profile.school_id` on `school_parent` accounts). Reported, not changed (outside ENH-005): the API has no rate limiting on login or elsewhere; no CSRF token exists (`SameSite=Lax` only); `secret_key` defaults to `"change-me"` and `cookie_secure` to `False`; admin routes gate on the `users.role` column rather than active role assignments.
 
-### DEC-SCOPE-023 — School Master (`School CRM.md` Part B §2) = `school_coordinator`; account activate/deactivate — scope mapping proposed (`ENH-010`)
+### DEC-SCOPE-023 — School Master (`School CRM.md` Part B §2) = `school_coordinator`; account activate/deactivate confirmed in scope (`ENH-010`)
 
-**Status:** UNCONFIRMED — drafted 2026-09-22, not yet approved by the user.
+**Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-22.
 
 **Question:** Is `School CRM.md` Part B §2's "School Master" role the same actor as the
 already-confirmed `school_coordinator` role (`DEC-SCOPE-011`), and is "Activate/deactivate
