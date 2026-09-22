@@ -39,6 +39,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
+    op.create_index("ix_portfolio_entries_school_student_id", ENTRIES_TABLE, ["school_student_id"])
     op.create_index("ix_portfolio_entries_student_section", ENTRIES_TABLE, ["school_student_id", "section"])
     op.create_table(
         PROFILES_TABLE,
@@ -56,4 +57,5 @@ def downgrade() -> None:
     op.drop_index("ix_portfolio_profiles_student", table_name=PROFILES_TABLE)
     op.drop_table(PROFILES_TABLE)
     op.drop_index("ix_portfolio_entries_student_section", table_name=ENTRIES_TABLE)
+    op.drop_index("ix_portfolio_entries_school_student_id", table_name=ENTRIES_TABLE)
     op.drop_table(ENTRIES_TABLE)
