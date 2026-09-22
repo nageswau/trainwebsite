@@ -39,6 +39,43 @@ export default async function SchoolParentDashboardPage() {
   const latest = notifications.slice(0, 5);
   const unread = notifications.filter((n) => !n.read).length;
 
+  const cards = children.map((c, i) => {
+    const o = overviews[i];
+    return (
+      <div className="card" key={c.id} data-testid={`child-card-${c.id}`}>
+        <h2>{c.full_name} <span className="muted" style={{ fontSize: 14 }}>({c.student_code})</span></h2>
+        <p><strong>Grade/Class:</strong> {c.grade_or_class || "-"}</p>
+        <p><strong>Date of birth:</strong> {formatDate(c.date_of_birth)}</p>
+        {o ? (
+          <>
+            <p><strong>Class teacher:</strong> {o.student.assigned_teacher_name || "Not assigned yet"}</p>
+            <ChildStatusRow overview={o} />
+            {o.recommended_careers.length > 0 && (
+              <p><strong>Recommended careers:</strong> {o.recommended_careers.map((r) => <span className="badge" key={r.id} style={{ marginRight: 6 }}>{r.notes}</span>)}</p>
+            )}
+          </>
+        ) : (
+          <p className="muted">Progress details are unavailable right now.</p>
+        )}
+        <a className="btn" href={`/school/parent/children/${c.id}`}>View full profile &amp; progress</a>
+      </div>
+    );
+  });
+  let renderedChildren: React.ReactNode = cards;
+  if (multiSchool) {
+    const bySchool = new Map<string, typeof cards>();
+    children.forEach((c, i) => {
+      const school = overviews[i]?.student.school_name || "Other";
+      bySchool.set(school, [...(bySchool.get(school) ?? []), cards[i]]);
+    });
+    renderedChildren = [...bySchool.entries()].map(([school, group]) => (
+      <div key={school}>
+        <h2 style={{ marginTop: 24 }}>{school}</h2>
+        {group}
+      </div>
+    ));
+  }
+
   return (
     <PortalShell nav={SCHOOL_NAV.parent} roleLabel="Parent" userName={user.full_name}>
       <div className="portal-content">
@@ -48,42 +85,7 @@ export default async function SchoolParentDashboardPage() {
             <p className="muted">No child linked to your account yet. Contact your school to get set up.</p>
           </div>
         ) : (
-          (() => {
-            const cards = children.map((c, i) => {
-              const o = overviews[i];
-              return (
-                <div className="card" key={c.id} data-testid={`child-card-${c.id}`}>
-                  <h2>{c.full_name} <span className="muted" style={{ fontSize: 14 }}>({c.student_code})</span></h2>
-                  <p><strong>Grade/Class:</strong> {c.grade_or_class || "-"}</p>
-                  <p><strong>Date of birth:</strong> {formatDate(c.date_of_birth)}</p>
-                  {o ? (
-                    <>
-                      <p><strong>Class teacher:</strong> {o.student.assigned_teacher_name || "Not assigned yet"}</p>
-                      <ChildStatusRow overview={o} />
-                      {o.recommended_careers.length > 0 && (
-                        <p><strong>Recommended careers:</strong> {o.recommended_careers.map((r) => <span className="badge" key={r.id} style={{ marginRight: 6 }}>{r.notes}</span>)}</p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="muted">Progress details are unavailable right now.</p>
-                  )}
-                  <a className="btn" href={`/school/parent/children/${c.id}`}>View full profile &amp; progress</a>
-                </div>
-              );
-            });
-            if (!multiSchool) return cards;
-            const bySchool = new Map<string, typeof cards>();
-            children.forEach((c, i) => {
-              const school = overviews[i]?.student.school_name || "Other";
-              bySchool.set(school, [...(bySchool.get(school) ?? []), cards[i]]);
-            });
-            return [...bySchool.entries()].map(([school, group]) => (
-              <div key={school}>
-                <h2 style={{ marginTop: 24 }}>{school}</h2>
-                {group}
-              </div>
-            ));
-          })()
+          renderedChildren
         )}
 
         <div className="card">

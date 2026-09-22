@@ -157,17 +157,9 @@ async def create_invite(payload: dict, user: User = Depends(get_current_user), d
     return response
 
 
-@router.get("/team")
-async def list_team(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    school_id = _require_coordinator(user)
-    accounts = (
-        await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent", "school_coordinator"))))
-    ).all()
-    # ENH-008: a school_parent's membership in this school's Team is derived from SchoolParentLink
-    # (they can now legitimately be linked at more than one school), never from profile.school_id,
-    # which is no longer set for newly-provisioned parent accounts. Every other role still uses
-    # profile.school_id, unchanged.
-    parent_ids_at_school = set(
+async def _parent_ids_at_school(db: AsyncSession, school_id: UUID) -> set[UUID]:
+    """Every school_parent user_id with a SchoolParentLink to a student at this school."""
+    return set(
         (
             await db.scalars(
                 select(SchoolParentLink.parent_user_id)
@@ -178,12 +170,25 @@ async def list_team(user: User = Depends(get_current_user), db: AsyncSession = D
         ).all()
     )
 
-    def _belongs_to_school(a: User) -> bool:
-        if a.role == "school_parent":
-            return a.id in parent_ids_at_school or (a.profile or {}).get("school_id") == str(school_id)
-        return (a.profile or {}).get("school_id") == str(school_id)
 
-    accounts = [a for a in accounts if _belongs_to_school(a)]
+def _account_belongs_to_school(a: User, *, school_id: UUID, parent_ids_at_school: set[UUID]) -> bool:
+    """ENH-008: a school_parent's membership is derived from SchoolParentLink (or a still-stale
+    profile.school_id, for accounts that predate the deprecation) -- never profile.school_id alone,
+    which is no longer set for new parent accounts. Every other role still uses profile.school_id,
+    unchanged. Shared by list_team() and _school_dashboard_payload()."""
+    if a.role == "school_parent":
+        return a.id in parent_ids_at_school or (a.profile or {}).get("school_id") == str(school_id)
+    return (a.profile or {}).get("school_id") == str(school_id)
+
+
+@router.get("/team")
+async def list_team(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    school_id = _require_coordinator(user)
+    accounts = (
+        await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent", "school_coordinator"))))
+    ).all()
+    parent_ids_at_school = await _parent_ids_at_school(db, school_id)
+    accounts = [a for a in accounts if _account_belongs_to_school(a, school_id=school_id, parent_ids_at_school=parent_ids_at_school)]
     invites = (
         await db.scalars(select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school_id, SchoolAccountInvite.status == "pending").order_by(SchoolAccountInvite.created_at.desc()))
     ).all()
@@ -219,9 +224,10 @@ async def update_team_account(user_id: UUID, payload: dict, user: User = Depends
             .where(SchoolParentLink.parent_user_id == target.id, SchoolStudent.school_id == school_id)
             .limit(1)
         )
-        if not linked_here and (target.profile or {}).get("school_id") != str(school_id):
-            raise HTTPException(403, "This account is not at your institution")
-    elif (target.profile or {}).get("school_id") != str(school_id):
+        at_school = linked_here is not None or (target.profile or {}).get("school_id") == str(school_id)
+    else:
+        at_school = (target.profile or {}).get("school_id") == str(school_id)
+    if not at_school:
         raise HTTPException(403, "This account is not at your institution")
     target.active = payload["active"]
     db.add(AuditLog(
@@ -299,6 +305,15 @@ def _own_school_id(user: User) -> UUID:
     return UUID(str(school_id))
 
 
+def _own_school_id_or_none_for_parent(user: User) -> UUID | None:
+    """ENH-008: a school_parent's scope is their SchoolParentLink rows alone, not a single school
+    (see _scoped_students_query) -- so unlike every other School role, calling _own_school_id() for
+    them would incorrectly 403 an account with no profile.school_id instead of reading their links.
+    Used by list_students() and _readable_students(), which both hand this straight to
+    _scoped_students_query()."""
+    return None if user.role == "school_parent" else _own_school_id(user)
+
+
 def _school_dashboard_kpi(key: str, label: str, value: int | None, *, tracked: bool = True, note: str | None = None) -> dict:
     return {"key": key, "label": label, "value": value, "tracked": tracked, "note": note}
 
@@ -347,26 +362,8 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     students_with_teacher = sum(1 for s in students if s.assigned_teacher_user_id)
 
     school_accounts = (await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent"))))).all()
-    parent_ids_at_school = set(
-        (
-            await db.scalars(
-                select(SchoolParentLink.parent_user_id)
-                .join(SchoolStudent, SchoolStudent.id == SchoolParentLink.school_student_id)
-                .where(SchoolStudent.school_id == school_id)
-                .distinct()
-            )
-        ).all()
-    )
-
-    # ENH-008: a school_parent's membership here is derived from SchoolParentLink (or a still-stale
-    # profile.school_id for legacy accounts), same rule as list_team()/update_team_account() elsewhere
-    # in this file -- never profile.school_id alone, which is no longer set for new parent accounts.
-    def _belongs_to_school(a: User) -> bool:
-        if a.role == "school_parent":
-            return a.id in parent_ids_at_school or (a.profile or {}).get("school_id") == str(school_id)
-        return (a.profile or {}).get("school_id") == str(school_id)
-
-    school_accounts = [a for a in school_accounts if _belongs_to_school(a)]
+    parent_ids_at_school = await _parent_ids_at_school(db, school_id)
+    school_accounts = [a for a in school_accounts if _account_belongs_to_school(a, school_id=school_id, parent_ids_at_school=parent_ids_at_school)]
     teacher_count = sum(1 for a in school_accounts if a.role == "school_teacher")
     parent_count = sum(1 for a in school_accounts if a.role == "school_parent")
     principal_count = sum(1 for a in school_accounts if a.role == "school_principal")
@@ -645,16 +642,18 @@ async def _notify_school_parents(db: AsyncSession, school_id: UUID, *, title: st
     return len(parents)
 
 
-async def _parent_email_conflict(db: AsyncSession, *, parent_email: str) -> str | None:
-    """None means the email is safe to use as a parent_email (either genuinely new, or
-    already a school_parent at any school); a string explains why it can't be --
-    an existing account under that email with a role other than school_parent. Shared by
-    single-add/edit (raises 422) and bulk upload (rejects just that row, `SCH-002-AC04`'s
-    never-block-the-batch discipline)."""
+async def _parent_email_conflict(db: AsyncSession, *, parent_email: str) -> tuple[User | None, str | None]:
+    """Returns (existing_user, conflict). conflict is None when the email is safe to use as a
+    parent_email (either genuinely new, or already a school_parent at any school) -- in that case
+    existing_user is the resolved account (school_parent) or None (no account yet), so callers that
+    need it never have to re-query by email. A conflict string means an existing account under that
+    email has a role other than school_parent; existing_user is None in that case, since no caller
+    may use that account. Shared by single-add/edit (raises 422), bulk upload (rejects just that
+    row, `SCH-002-AC04`'s never-block-the-batch discipline), and link_parent()."""
     existing_user = await db.scalar(select(User).where(User.email == parent_email))
     if existing_user and existing_user.role != "school_parent":
-        return f"parent_email '{parent_email}' belongs to an existing account that is not a Parent"
-    return None
+        return None, f"parent_email '{parent_email}' belongs to an existing account that is not a Parent"
+    return existing_user, None
 
 
 async def _link_or_invite_parent(db: AsyncSession, *, school: School, student: SchoolStudent, parent_email: str, parent_name: str | None, coordinator: User) -> tuple[str, str | None, str | None]:
@@ -669,10 +668,9 @@ async def _link_or_invite_parent(db: AsyncSession, *, school: School, student: S
     dev-only exposure as `/team/invites`.
     """
     parent_email = parent_email.lower().strip()
-    conflict = await _parent_email_conflict(db, parent_email=parent_email)
+    existing_user, conflict = await _parent_email_conflict(db, parent_email=parent_email)
     if conflict:
         return "rejected", conflict, None
-    existing_user = await db.scalar(select(User).where(User.email == parent_email))
     if existing_user:
         already = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == existing_user.id, SchoolParentLink.school_student_id == student.id))
         if not already:
@@ -697,7 +695,7 @@ async def _scoped_students_query(db: AsyncSession, user: User, school_id: UUID |
     portfolio-vs-institution distinction for the School service-delivery roles).
 
     ENH-005 + ENH-008: a Parent's scope is their LINKS alone, not their account's school. This query's security
-    guarantee is: a parent can only read students they have an explicit SchoolParentLink to (lines 656-658),
+    guarantee is: a parent can only read students they have an explicit SchoolParentLink to (below),
     regardless of whether the link's school matches the parent's account's school. ENH-008 allows fresh links
     to be cross-school; ENH-005 already tolerated cross-school links for transfers. The scoping is link-driven,
     not school-driven, so the link table is the sole enforcement point. (Security review S2, pinned by
@@ -883,7 +881,7 @@ async def school_entitlements(user: User = Depends(get_current_user), db: AsyncS
 
 @router.get("/students")
 async def list_students(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    school_id = None if user.role == "school_parent" else _own_school_id(user)
+    school_id = _own_school_id_or_none_for_parent(user)
     stmt = await _scoped_students_query(db, user, school_id)
     rows = (await db.scalars(stmt.order_by(SchoolStudent.full_name.asc()))).all()
     return [_student_out(s) for s in rows]
@@ -1255,10 +1253,9 @@ async def link_parent(student_id: UUID, payload: dict, user: User = Depends(get_
     if not student or student.school_id != school_id:
         raise HTTPException(404, "Student not found")
     parent_email = str(payload.get("parent_email", "")).lower().strip()
-    conflict = await _parent_email_conflict(db, parent_email=parent_email)
+    parent, conflict = await _parent_email_conflict(db, parent_email=parent_email)
     if conflict:
         raise HTTPException(422, conflict)
-    parent = await db.scalar(select(User).where(User.email == parent_email, User.role == "school_parent"))
     if not parent:
         raise HTTPException(422, "parent_email must belong to an existing Parent account")
     existing = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == parent.id, SchoolParentLink.school_student_id == student.id))
@@ -1519,7 +1516,7 @@ async def bulk_upload_students(
             parent_email = (row.get("parent_email") or "").strip().lower() or None
             parent_name = (row.get("parent_name") or "").strip() or None
             if parent_email:
-                error = await _parent_email_conflict(db, parent_email=parent_email)
+                _, error = await _parent_email_conflict(db, parent_email=parent_email)
         grade_level = None
         if not error:
             raw_grade_level = (row.get("grade_level") or "").strip()
@@ -1595,7 +1592,7 @@ async def _readable_students(db: AsyncSession, user: User) -> set:
     Teacher/Parent) may see published/visible service-delivery content for -- reuses the
     exact same scoping as SCH-001's own roster access, since it's the same underlying
     own-institution/assigned/own-child rule (SCH-001-AC02/AC03)."""
-    school_id = None if user.role == "school_parent" else _own_school_id(user)
+    school_id = _own_school_id_or_none_for_parent(user)
     stmt = await _scoped_students_query(db, user, school_id)
     return set((await db.scalars(stmt.with_only_columns(SchoolStudent.id))).all())
 
