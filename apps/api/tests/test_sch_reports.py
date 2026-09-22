@@ -9,6 +9,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import select
 
 from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
@@ -174,6 +175,43 @@ async def test_empty_school_reports_honest_zeros_not_fabricated_figures(client, 
     assert data["psychometric"] == {"completed": 0, "assigned_only": 0, "total_students": 0}
     assert data["results_published"] == {"students_covered": 0, "total_students": 0}
     assert data["attendance"] == {"present": 0, "total": 0}
+
+
+@pytest.mark.asyncio
+async def test_parent_count_includes_a_parent_provisioned_via_roster_invite_accept(client, db_session):
+    """ENH-008 final-review Finding 1: the fixture above creates its `school_parent` directly
+    with `profile={"school_id": ...}`, which never exercises the real bug -- newly-provisioned
+    parent accounts (via accept_invite()) get `profile={}` and are only ever findable via
+    SchoolParentLink. This drives the real roster -> invite -> accept flow (same pattern as
+    test_sch_roster_parent_invite.py's test_accept_flow_links_every_student_with_the_same_pending_email)
+    and asserts parent_count on both /school/dashboard and /school/reports counts that parent.
+    """
+    ctx = await _create_school_with_roles(db_session)
+    school = ctx["school"]
+    parent_email = f"sch-rpt-invited-parent-{uuid.uuid4().hex[:8]}@example.local"
+
+    await _login(client, ctx["school_coordinator"].email)
+    created = await client.post("/api/v1/school/students", json={"full_name": "Invited Parent Student", "parent_name": "Invited Parent", "parent_email": parent_email})
+    assert created.status_code == 201, created.text
+    token = created.json()["development_invite_token"]
+    assert token, "expected a development_invite_token so this test can accept the invite directly"
+
+    await client.post("/api/v1/auth/logout")
+    accept = await client.post(f"/api/v1/school/invites/{token}/accept", json={"password": PASSWORD})
+    assert accept.status_code == 201, accept.text
+    new_parent = await db_session.scalar(select(User).where(User.id == uuid.UUID(accept.json()["id"])))
+    assert new_parent.profile == {}, "this test must exercise the real current provisioning behavior (no profile.school_id)"
+
+    await _login(client, ctx["school_coordinator"].email)
+    dashboard = await client.get("/api/v1/school/dashboard")
+    assert dashboard.status_code == 200, dashboard.text
+    # The fixture's own school_parent (profile.school_id-only, no link) plus the newly
+    # roster-invited-and-accepted parent (link-only, no profile.school_id) must both count.
+    assert dashboard.json()["parent_count"] == 2
+
+    reports = await client.get("/api/v1/school/reports")
+    assert reports.status_code == 200, reports.text
+    assert reports.json()["parent_count"] == 2
 
 
 @pytest.mark.asyncio

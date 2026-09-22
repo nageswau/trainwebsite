@@ -7,6 +7,7 @@ guard like ADM-001-AC02's trainer/batch check -- see the endpoint's own docstrin
 import uuid
 
 import pytest
+from sqlalchemy import select
 
 from app.core.security import hash_password
 from app.models import School, SchoolParentLink, SchoolStudent, User, UserRoleAssignment
@@ -143,6 +144,35 @@ async def test_a_parent_with_a_link_at_this_school_appears_in_team_and_can_be_to
     toggled = await client.patch(f"/api/v1/school/team/accounts/{parent.id}", json={"active": False})
     assert toggled.status_code == 200, toggled.text
     assert toggled.json()["active"] is False
+
+
+@pytest.mark.asyncio
+async def test_a_parent_with_no_link_but_matching_stale_profile_still_appears_in_team_and_can_be_toggled(client, db_session):
+    """Final-review Finding 2: an orphaned school_parent account -- zero SchoolParentLink rows,
+    either pre-existing (DEC-SCOPE-022) or invited directly via POST /school/team/invites (which
+    names no student) -- must not silently vanish from the Team page or become unmanageable.
+    The fixture's own default school_parent has exactly this shape (profile.school_id set, no
+    link ever created for it), so this is close to test_coordinator_deactivates_and_reactivates_a_teacher
+    but targeting ctx["school_parent"] to prove the union (link OR stale profile.school_id) fix.
+    """
+    ctx = await _create_school_with_roles(db_session)
+    parent = ctx["school_parent"]
+    await _login(client, ctx["school_coordinator"].email)
+
+    links = (await db_session.scalars(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == parent.id))).all()
+    assert links == [], "this test only proves the no-link case; a link would exercise the already-covered path instead"
+
+    listed = await client.get("/api/v1/school/team")
+    assert listed.status_code == 200
+    assert any(a["id"] == str(parent.id) for a in listed.json()["accounts"]), "an orphaned parent with a matching profile.school_id must still be listed"
+
+    deactivated = await client.patch(f"/api/v1/school/team/accounts/{parent.id}", json={"active": False})
+    assert deactivated.status_code == 200, deactivated.text
+    assert deactivated.json()["active"] is False
+
+    reactivated = await client.patch(f"/api/v1/school/team/accounts/{parent.id}", json={"active": True})
+    assert reactivated.status_code == 200
+    assert reactivated.json()["active"] is True
 
 
 @pytest.mark.asyncio

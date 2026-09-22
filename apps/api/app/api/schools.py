@@ -180,7 +180,7 @@ async def list_team(user: User = Depends(get_current_user), db: AsyncSession = D
 
     def _belongs_to_school(a: User) -> bool:
         if a.role == "school_parent":
-            return a.id in parent_ids_at_school
+            return a.id in parent_ids_at_school or (a.profile or {}).get("school_id") == str(school_id)
         return (a.profile or {}).get("school_id") == str(school_id)
 
     accounts = [a for a in accounts if _belongs_to_school(a)]
@@ -219,7 +219,7 @@ async def update_team_account(user_id: UUID, payload: dict, user: User = Depends
             .where(SchoolParentLink.parent_user_id == target.id, SchoolStudent.school_id == school_id)
             .limit(1)
         )
-        if not linked_here:
+        if not linked_here and (target.profile or {}).get("school_id") != str(school_id):
             raise HTTPException(403, "This account is not at your institution")
     elif (target.profile or {}).get("school_id") != str(school_id):
         raise HTTPException(403, "This account is not at your institution")
@@ -347,7 +347,26 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     students_with_teacher = sum(1 for s in students if s.assigned_teacher_user_id)
 
     school_accounts = (await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent"))))).all()
-    school_accounts = [a for a in school_accounts if (a.profile or {}).get("school_id") == str(school_id)]
+    parent_ids_at_school = set(
+        (
+            await db.scalars(
+                select(SchoolParentLink.parent_user_id)
+                .join(SchoolStudent, SchoolStudent.id == SchoolParentLink.school_student_id)
+                .where(SchoolStudent.school_id == school_id)
+                .distinct()
+            )
+        ).all()
+    )
+
+    # ENH-008: a school_parent's membership here is derived from SchoolParentLink (or a still-stale
+    # profile.school_id for legacy accounts), same rule as list_team()/update_team_account() elsewhere
+    # in this file -- never profile.school_id alone, which is no longer set for new parent accounts.
+    def _belongs_to_school(a: User) -> bool:
+        if a.role == "school_parent":
+            return a.id in parent_ids_at_school or (a.profile or {}).get("school_id") == str(school_id)
+        return (a.profile or {}).get("school_id") == str(school_id)
+
+    school_accounts = [a for a in school_accounts if _belongs_to_school(a)]
     teacher_count = sum(1 for a in school_accounts if a.role == "school_teacher")
     parent_count = sum(1 for a in school_accounts if a.role == "school_parent")
     principal_count = sum(1 for a in school_accounts if a.role == "school_principal")
@@ -905,15 +924,18 @@ async def _load_readable_student(db: AsyncSession, user: User, student_id: UUID)
     "own school" -- a Parent can legitimately have links at more than one school, so there is
     no single institution left to distinguish "wrong institution" from "not linked" against;
     an unlinked student always gets the one generic message below."""
-    student = await db.get(SchoolStudent, student_id)
-    if not student:
-        raise HTTPException(404, "Student not found")
     if user.role == "school_parent":
+        student = await db.get(SchoolStudent, student_id)
+        if not student:
+            raise HTTPException(404, "Student not found")
         linked = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == user.id, SchoolParentLink.school_student_id == student.id))
         if not linked:
             raise HTTPException(403, "This student is not linked to your account")
         return student
     school_id = _own_school_id(user)
+    student = await db.get(SchoolStudent, student_id)
+    if not student:
+        raise HTTPException(404, "Student not found")
     if student.school_id != school_id:
         raise HTTPException(403, "This student is at a different institution")
     if user.role == "school_teacher" and student.assigned_teacher_user_id != user.id:
