@@ -127,3 +127,22 @@ async def get_portfolio(student_id: UUID, user: User = Depends(get_current_user)
         "entries": entries_by_section,
         "personal_statement": personal_statement,
     }
+
+
+@router.post("/students/{student_id}/portfolio/entries", status_code=201, response_model=PortfolioEntryOut)
+async def create_portfolio_entry(student_id: UUID, payload: PortfolioEntryCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    student = await _load_portfolio_student(db, user, student_id)
+    _require_portfolio_write(user, student)
+    entry = PortfolioEntry(
+        school_student_id=student.id, section=payload.section, title=payload.title,
+        description=payload.description, organization=payload.organization,
+        date_from=payload.date_from, date_to=payload.date_to,
+        created_by_user_id=user.id, updated_by_user_id=user.id,
+    )
+    db.add(entry)
+    await db.flush()
+    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_create", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json={"section": entry.section, "school_student_id": str(student.id)}))
+    await db.commit()
+    await db.refresh(entry)
+    logger.info("portfolio_entry_create", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id), "section": entry.section}})
+    return _entry_out(entry)

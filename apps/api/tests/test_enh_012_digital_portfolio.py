@@ -130,3 +130,55 @@ async def test_academic_team_reads_via_their_portfolio_scope(client, db_session)
     response = await client.get(f"/api/v1/school/students/{ctx['students'][0].id}/portfolio")
     assert response.status_code == 200
     assert response.json()["can_edit"] is True
+
+
+@pytest.mark.asyncio
+async def test_coordinator_creates_an_entry(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-POST")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    response = await client.post(f"/api/v1/school/students/{student.id}/portfolio/entries", json={"section": "award", "title": "Regional Science Fair — 1st place", "organization": "State Science Council"})
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["section"] == "award"
+    assert body["school_student_id"] == str(student.id)
+
+    portfolio = (await client.get(f"/api/v1/school/students/{student.id}/portfolio")).json()
+    assert len(portfolio["entries"]["award"]) == 1
+    assert portfolio["completion_percentage"] == round(1 / 16 * 100)
+
+
+@pytest.mark.asyncio
+async def test_teacher_outside_assignment_cannot_create_an_entry(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-POST-Teacher", students=2, with_teacher=True)
+    unassigned_student = ctx["students"][1]  # only students[0] is assigned to the teacher
+    await login(client, ctx["teacher"].email)
+    response = await client.post(f"/api/v1/school/students/{unassigned_student.id}/portfolio/entries", json={"section": "project", "title": "X"})
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_parent_cannot_create_an_entry(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-POST-Parent")
+    await login(client, ctx["parent"].email)
+    response = await client.post(f"/api/v1/school/students/{ctx['students'][0].id}/portfolio/entries", json={"section": "project", "title": "X"})
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_create_entry_writes_an_audit_log_without_free_text(client, db_session):
+    from sqlalchemy import select as sa_select
+
+    from app.models import AuditLog
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-POST-Audit")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    await client.post(f"/api/v1/school/students/{student.id}/portfolio/entries", json={"section": "project", "title": "Secret project title should not be logged"})
+    row = await db_session.scalar(sa_select(AuditLog).where(AuditLog.action == "school.portfolio_entry_create").order_by(AuditLog.created_at.desc()))
+    assert row is not None
+    assert row.metadata_json == {"section": "project", "school_student_id": str(student.id)}
+    assert "Secret project title" not in str(row.metadata_json)
