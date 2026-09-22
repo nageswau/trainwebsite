@@ -1086,6 +1086,38 @@ class SchoolStudentTransferRequest(Base, TimestampMixin):
     outcome: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # set on approval: the counts of what the transfer changed
 
 
+class PortfolioEntry(Base, TimestampMixin):
+    """ENH-012 -- self-entry Digital Portfolio content
+    (docs/superpowers/specs/2026-09-22-enh-012-digital-portfolio-design.md §5). One generic table with
+    a `section` discriminator covers every list-shaped section (project/internship/competition/sport/
+    leadership/volunteering/extracurricular/award/certification/skill) -- per-section tables were
+    rejected in the spec's Approach section as unnecessary duplication of one shared shape. Net-new."""
+
+    __tablename__ = "portfolio_entries"
+    __table_args__ = (Index("ix_portfolio_entries_student_section", "school_student_id", "section"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    section: Mapped[str] = mapped_column(String(40))
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    date_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    date_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class PortfolioProfile(Base, TimestampMixin):
+    """ENH-012 -- one row per student holding the free-text personal statement; separate from
+    `PortfolioEntry` because it isn't list-shaped (spec §5). Net-new."""
+
+    __tablename__ = "portfolio_profiles"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), unique=True, index=True)
+    personal_statement: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 class SchoolActivity(Base, TimestampMixin):
     """School-wide scheduled activity (SCH-001's "schedule activities, track attendance"
     main workflow). Net-new -- no equivalent exists in `DATA_MODEL.md`'s original §6.11-6.18
