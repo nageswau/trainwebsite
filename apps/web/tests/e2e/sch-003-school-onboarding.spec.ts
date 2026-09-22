@@ -116,3 +116,76 @@ test("a consumed invite token shows an honest, specific message, not a generic b
   await page.click('button:has-text("Accept and set up login")');
   await expect(page.getByText(/already been used, expired, or was revoked/)).toBeVisible();
 });
+
+// ENH-009 -- School Profile field coverage. The success text below is
+// AdminSchoolCreatePanel.tsx's real wording ("School created. School code XXXXXXXX.
+// Coordinator account ready for ...", via welcomeLinkFeedback()), not a generic
+// "School created." -- School ID is an 8-char uppercase hex code (unique_student_code()).
+test("School ID is generated and shown on both the create panel and the Partner Schools list (ENH-009)", async ({ page }) => {
+  const unique = Date.now();
+  const coordinatorEmail = `sch009-e2e-coord-${unique}@example.local`;
+  const schoolName = `E2E Profile School ${unique}`;
+
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", "overseasadmin@edusphere.local");
+  await page.fill("#login-password", "Demo@123");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/overseas/admin/dashboard");
+
+  await page.goto("/overseas/admin/schools");
+  await page.fill("#school-name", schoolName);
+  await page.fill("#school-branch", "North Campus");
+  await page.selectOption("#school-board", "CBSE");
+  await page.fill("#school-coordinator-name", "E2E Profile Coordinator");
+  await page.fill("#school-coordinator-email", coordinatorEmail);
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
+
+  const successMessage = page.getByText(/School created\. School code [A-Z0-9]{8}\./);
+  await expect(successMessage).toBeVisible();
+  const schoolIdText = await successMessage.textContent();
+  const schoolId = schoolIdText!.match(/School code ([A-Z0-9]{8})/)![1];
+
+  // Scope to the row for this test's own school (not a bare page-wide cell lookup) so a
+  // leftover "North Campus" from an earlier manual QA session against this same stack can't
+  // produce a false match or a strict-mode multiple-match failure.
+  const schoolRow = page.locator("tr", { hasText: schoolName });
+  await expect(schoolRow).toBeVisible();
+  await expect(schoolRow.getByRole("cell", { name: schoolId })).toBeVisible();
+  await expect(schoolRow.getByRole("cell", { name: "North Campus" })).toBeVisible();
+});
+
+test("admin can look up a school by its School ID and edit its profile (ENH-009)", async ({ page }) => {
+  const unique = Date.now();
+  const coordinatorEmail = `sch009-e2e-edit-${unique}@example.local`;
+  const schoolName = `E2E Edit School ${unique}`;
+
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", "overseasadmin@edusphere.local");
+  await page.fill("#login-password", "Demo@123");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/overseas/admin/dashboard");
+
+  await page.goto("/overseas/admin/schools");
+  await page.fill("#school-name", schoolName);
+  await page.fill("#school-coordinator-name", "E2E Edit Coordinator");
+  await page.fill("#school-coordinator-email", coordinatorEmail);
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
+  const successMessage = page.getByText(/School created\. School code [A-Z0-9]{8}\./);
+  await expect(successMessage).toBeVisible();
+  const schoolIdText = await successMessage.textContent();
+  const schoolId = schoolIdText!.match(/School code ([A-Z0-9]{8})/)![1];
+
+  // AdminSchoolCreatePanel and AdminSchoolEditPanel both mount on this same page, so the
+  // lookup-by-code panel's own field/button IDs (#school-lookup-code, #edit-branch) are used
+  // rather than a label-text query, which would ambiguously match both panels' "Branch" labels.
+  await page.fill("#school-lookup-code", schoolId);
+  await page.click('button:has-text("Look up")');
+  await expect(page.locator("#edit-branch")).toBeVisible();
+  await page.fill("#edit-branch", "South Campus");
+  await page.click('button:has-text("Save changes")');
+  await expect(page.getByText("School profile updated.")).toBeVisible();
+
+  await page.reload();
+  const editedRow = page.locator("tr", { hasText: schoolName });
+  await expect(editedRow.getByRole("cell", { name: "South Campus" })).toBeVisible();
+});
