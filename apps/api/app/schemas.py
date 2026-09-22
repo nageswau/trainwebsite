@@ -72,6 +72,29 @@ class ProfileUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=40)
     profile: dict | None = None
 
+    @field_validator("full_name")
+    @classmethod
+    def full_name_is_a_real_name(cls, value: str | None) -> str:
+        # ENH-007: `str | None` lets an explicit `null` or an all-whitespace string satisfy
+        # min_length (which only constrains RAW string length, not content, and runs before this
+        # validator) and reach auth.py's `changes["full_name"].strip()`, which either crashes
+        # (None -> AttributeError, unhandled 500) or silently blanks the account's display name
+        # (whitespace -> "", 200 "success"). Pydantic v2 does not validate unset defaults, so this
+        # only fires when the key is actually present -- omitting `full_name` is unaffected (still
+        # means "don't change it"). Mirrors ChangePasswordRequest.new_password_is_not_blank below --
+        # same bug class, same fix shape.
+        if value is None:
+            raise PydanticCustomError("null_full_name", "full_name cannot be null")
+        stripped = value.strip()
+        if not stripped:
+            raise PydanticCustomError("blank_full_name", "full_name must not consist only of spaces")
+        # Codex review: raw min_length=2 lets padding through -- "A " has raw length 2 but strips to
+        # a single character, which auth.py then saves as-is, bypassing the "at least 2 real
+        # characters" intent. Check the STRIPPED length, not the raw one.
+        if len(stripped) < 2:
+            raise PydanticCustomError("full_name_too_short_after_trim", "full_name must be at least 2 characters, not counting leading/trailing spaces")
+        return value
+
 
 class ChangePasswordRequest(BaseModel):
     # ENH-006. Passwords are never stripped or normalised. current_password is bounded (not at 128) so a legacy

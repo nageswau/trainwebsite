@@ -170,8 +170,13 @@ async def me(user: User = Depends(get_current_user)):
 # Profile keys that carry an authorization scope. A user may echo their own current value back (the web
 # "Update profile" form sends the whole profile) but may never change it: only an admin route sets these.
 # school_id scopes the School portal (schools.py); university_id scopes a University Rep's access to applications
-# (workflows.py, portal.py, inbound.py). Add a key here if a new profile key is ever used to authorize access.
-SERVER_OWNED_PROFILE_KEYS = ("school_id", "university_id")
+# (workflows.py, portal.py, inbound.py). assigned_grade/assigned_section are reserved, not yet backed by any
+# real field or route (ENH-007's own acceptance criteria names them as the negative scenario a School
+# Coordinator's teacher-assignment authority must never be bypassable through -- ENHANCEMENT_BACKLOG.md
+# ENH-007, "Authorization impact"): blocked pre-emptively so a future feature that adds them to User.profile
+# doesn't have to remember to add the guard too. Add a key here if a new profile key is ever used to
+# authorize access.
+SERVER_OWNED_PROFILE_KEYS = ("school_id", "university_id", "assigned_grade", "assigned_section")
 
 
 @router.patch("/me", response_model=UserOut)

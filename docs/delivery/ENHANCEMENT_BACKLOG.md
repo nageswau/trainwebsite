@@ -708,7 +708,12 @@ to that role (e.g. a teacher's assigned-subject list is read-only/admin-set but 
 are self-editable; a parent's own contact details are self-editable but their linked-children list is
 not, since that's roster-driven per ENH-008).
 
-**User roles affected.** All eight School-domain roles listed above.
+**User roles affected.** The 7 School-domain roles with real RBAC grants (`school_coordinator`,
+`school_principal`, `school_teacher`, `school_parent`, `academic_team`, `career_counselor`,
+`psychometric_team`). **Correction, post-audit:** the eighth role named above, `school_partnership_manager`,
+has no RBAC grants and is explicitly deferred (`RBAC_MATRIX.md:239-241`, `PRD_OPEN_ITEMS.md` item 75) — it
+cannot be given a working profile screen and is out of this item's scope; see
+`docs/quality/ENH-007_ROLE_AUDIT.md`.
 
 **Frontend impact.** Audit existing portal shells per role; build missing profile screens.
 
@@ -758,6 +763,32 @@ falls out of this item's scope entirely.
 outside the School domain.
 
 **Complexity:** Medium. **Risk:** Low.
+
+**Status (2026-09-22).** Designed and decided in
+`docs/superpowers/specs/2026-09-22-enh-007-profile-self-service-design.md`; implemented via strict TDD on
+branch `feature/enh-007-profile-self-service-audit` (7 tasks, each with an implementer + reviewer cycle,
+all reviewed clean; a final whole-branch review found no Critical issues, and this status block records
+that review's fix wave). **Browser validation complete, 2026-09-22** (real Chrome via `browser-use`
+against the live stack, :3020): all 7 School-domain roles individually verified (correct dashboard
+landing, "My profile" front-loaded in the desktop sidebar footer right after "Change password", page
+renders with current name/phone, edit + save + reload-persistence, then restored to seeded values); the
+mobile menu at 375px confirmed "My profile" front-loaded there too, no overflow; a 1-character full name
+submission produced a real inline 422 error with nothing saved server-side (confirmed via the API
+directly); a simulated offline network showed the "Network error. Try again." message with no false
+success; a signed-out visit showed "Sign in required" with working sign-in links. No defects found in any
+of the 7 roles or the 4 cross-cutting states. **Independent Codex review run and dispositioned, 2026-09-22**
+(`codex review --base main`): one real finding (P2) -- a padded single-character `full_name` (e.g. `"A "`)
+passed raw `min_length=2` and the blank-check, then saved post-trim as one character, bypassing AC-04.
+Fixed test-first (3 parametrized RED cases, reproduced live against the API before the fix), full ENH-007
+suite and the targeted regression scope re-run clean after. **COMPLETE for ENH-007's scope, 2026-09-22.**
+Final evidence: `apps/api/tests/test_enh_007_profile_self_service.py` (23 passed), full backend suite (1043
+passed / 14 failed, the 14 being the same pre-existing Razorpay/Zoho credential-gated failures recorded
+against ENH-005/006, none in ENH-007), `apps/web/tests/components/{ProfileForm,AccountProfilePage,
+PortalShell}.test.tsx` plus the full frontend suite (351 passed, 37 files), `apps/web/tests/e2e/
+enh-007-profile-self-service.spec.ts` + regression scope (14 passed), `tsc --noEmit` and `eslint` (0
+errors/warnings), `next build` (exit 0, `/account/profile` present in the route table), no migration
+(`alembic check` confirms no drift), no disabled tests/debugging code/exposed secrets, 16 files changed,
+all ENH-007-scoped. Full detail: `docs/quality/RTM.md` `ENH-007` row.
 
 ---
 
