@@ -17,7 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.schools import _notify_student_parents, _portfolio_school_ids, _student_in_portfolio
+from app.api.schools import _notify_student_parents, _portfolio_school_ids
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import (
@@ -62,6 +62,8 @@ ENROLMENT_NOT_FOUND = "Enrolment not found"
 BATCH_CLOSED = "This batch is closed. Reopen it to make this change."
 STUDENT_MOVED = "This student has moved to another school; their record in this batch is read-only"
 MODULE_LABEL = {"soft_skills": "Soft Skills", "digital_skills": "Digital Skills"}
+# The summary for an enrolment nobody has marked yet. Read-only: copy it (`dict(NO_ATTENDANCE)`) anywhere it is counted into.
+NO_ATTENDANCE = {"present": 0, "marked": 0}
 
 # Read at call time so a test can shorten it; never request input. Bounds the unpaginated batch detail (spec §5.1).
 MAX_ENROLMENTS_PER_BATCH = 200
@@ -95,7 +97,7 @@ async def _batch_in_portfolio(db: AsyncSession, user: User, batch_id: UUID, lock
         stmt = stmt.with_for_update(key_share=True)
     elif lock == "share":
         stmt = stmt.with_for_update(read=True)
-    batch = await db.scalar(stmt) if portfolio else None
+    batch = await db.scalar(stmt)  # an empty portfolio matches nothing, so this is the same 404
     if batch is None:
         raise HTTPException(404, BATCH_NOT_FOUND)
     return batch
@@ -117,9 +119,8 @@ def _batch_out(batch: SchoolSkillBatch, school_name: str, enrolled_count: int) -
     }
 
 
-def _active_counts():
-    """Enrolments that still count (not withdrawn), per batch."""
-    return select(SchoolSkillEnrollment.batch_id, func.count().label("n")).where(SchoolSkillEnrollment.status != "withdrawn").group_by(SchoolSkillEnrollment.batch_id).subquery()
+# Enrolments that still count (not withdrawn), per batch.
+ACTIVE_COUNTS = select(SchoolSkillEnrollment.batch_id, func.count().label("n")).where(SchoolSkillEnrollment.status != "withdrawn").group_by(SchoolSkillEnrollment.batch_id).subquery()
 
 
 def enrollment_out(enrollment: SchoolSkillEnrollment, student: SchoolStudent, batch: SchoolSkillBatch, attendance: dict, scores: list[dict]) -> dict:
@@ -175,7 +176,7 @@ async def _detail(db: AsyncSession, batch: SchoolSkillBatch) -> dict:
     summary: dict[UUID, dict] = {}
     for mark in marks:
         marks_by_session.setdefault(mark.session_id, []).append({"enrollment_id": mark.enrollment_id, "present": mark.present})
-        counts = summary.setdefault(mark.enrollment_id, {"present": 0, "marked": 0})
+        counts = summary.setdefault(mark.enrollment_id, dict(NO_ATTENDANCE))  # its own dict: the rows below count into it
         counts["marked"] += 1
         counts["present"] += int(mark.present)
     scores_by_enrolment: dict[UUID, list] = {}
@@ -185,7 +186,7 @@ async def _detail(db: AsyncSession, batch: SchoolSkillBatch) -> dict:
     active = sum(1 for e, _s in enrolments if e.status != "withdrawn")
     return {
         **_batch_out(batch, school.name if school else "", active),
-        "enrollments": [enrollment_out(e, s, batch, summary.get(e.id, {"present": 0, "marked": 0}), scores_by_enrolment.get(e.id, [])) for e, s in enrolments],
+        "enrollments": [enrollment_out(e, s, batch, summary.get(e.id, NO_ATTENDANCE), scores_by_enrolment.get(e.id, [])) for e, s in enrolments],
         "sessions": [{"id": s.id, "session_date": s.session_date, "topic": s.topic, "attendance": marks_by_session.get(s.id, [])} for s in sessions],
         "assessments": [{"id": a.id, "name": a.name, "max_score": float(a.max_score)} for a in assessments],
     }
@@ -228,12 +229,11 @@ async def list_skill_batches(
     if status:
         filters.append(SchoolSkillBatch.status == status)
     total = await db.scalar(select(func.count()).select_from(SchoolSkillBatch).where(*filters))
-    counts = _active_counts()
     rows = (
         await db.execute(
-            select(SchoolSkillBatch, School.name, func.coalesce(counts.c.n, 0))
+            select(SchoolSkillBatch, School.name, func.coalesce(ACTIVE_COUNTS.c.n, 0))
             .join(School, School.id == SchoolSkillBatch.school_id)
-            .outerjoin(counts, counts.c.batch_id == SchoolSkillBatch.id)
+            .outerjoin(ACTIVE_COUNTS, ACTIVE_COUNTS.c.batch_id == SchoolSkillBatch.id)
             .where(*filters)
             .order_by(SchoolSkillBatch.created_at.desc(), SchoolSkillBatch.id.desc())
             .limit(limit)
@@ -313,7 +313,15 @@ async def enrol_students(batch_id: UUID, payload: SkillEnrollCreate, user: User 
     batch = await _batch_in_portfolio(db, user, batch_id, lock="update")
     if batch.status != "open":
         raise HTTPException(409, BATCH_CLOSED)
-    students = [await _student_in_portfolio(db, user, student_id) for student_id in payload.school_student_ids]
+    # One query for the whole roster, then the same checks `_student_in_portfolio` makes one at a time, against the portfolio
+    # `_batch_in_portfolio` already read: 404 for an unknown student, 403 outside the portfolio, 422 at another school.
+    found = {s.id: s for s in (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(payload.school_student_ids)))).all()}
+    students = [found[student_id] for student_id in payload.school_student_ids if student_id in found]
+    if len(students) != len(payload.school_student_ids):
+        raise HTTPException(404, "Student not found")
+    portfolio = await _portfolio_school_ids(db, user)
+    if any(s.school_id not in portfolio for s in students):
+        raise HTTPException(403, "This student is at a school outside your own portfolio")
     if any(s.school_id != batch.school_id for s in students):
         raise HTTPException(422, "A student in this request is at a different school than this batch")
     existing = set((await db.scalars(select(SchoolSkillEnrollment.school_student_id).where(SchoolSkillEnrollment.batch_id == batch.id))).all())
@@ -332,10 +340,10 @@ async def enrol_students(batch_id: UUID, payload: SkillEnrollCreate, user: User 
         raise HTTPException(409, "A student in this request is already enrolled in this batch") from exc
     _audit(db, user, "school.skill_enrollment_create", "school_skill_batch", batch.id, count=len(rows))
     await db.commit()
-    for row in rows:
-        await db.refresh(row)
+    # One query repopulates every row's server-side defaults (created_at) in the identity map, rather than one refresh each.
+    await db.execute(select(SchoolSkillEnrollment).where(SchoolSkillEnrollment.id.in_([row.id for row in rows])))
     logger.info("skill_students_enrolled", extra={"extra_fields": {"actor_id": str(user.id), "batch_id": str(batch.id), "count": len(rows)}})
-    out = [enrollment_out(row, student, batch, {"present": 0, "marked": 0}, []) for row, student in zip(rows, students, strict=True)]
+    out = [enrollment_out(row, student, batch, NO_ATTENDANCE, []) for row, student in zip(rows, students, strict=True)]
     await _notify_after_commit(db, [_status_notice(s, batch, "enrolled") for s in students])
     return out
 
@@ -345,20 +353,20 @@ async def update_enrolment_status(enrollment_id: UUID, payload: SkillEnrollmentU
     """The enrolment row is locked, so two concurrent "certify" clicks give one transition and one notice. Allowed on a
     closed batch: certifying after the last session is the normal case."""
     portfolio = await _portfolio_school_ids(db, user)
-    row = None
-    if portfolio:
-        row = await db.scalar(
-            select(SchoolSkillEnrollment)
+    # The enrolment with its batch and student in one locked read: each is needed below, and the join is what scopes the
+    # enrolment to this counselor's portfolio.
+    loaded = (
+        await db.execute(
+            select(SchoolSkillEnrollment, SchoolSkillBatch, SchoolStudent)
             .join(SchoolSkillBatch, SchoolSkillBatch.id == SchoolSkillEnrollment.batch_id)
+            .join(SchoolStudent, SchoolStudent.id == SchoolSkillEnrollment.school_student_id)
             .where(SchoolSkillEnrollment.id == enrollment_id, SchoolSkillBatch.school_id.in_(portfolio))
             .with_for_update(of=SchoolSkillEnrollment)
         )
-    if row is None:
+    ).first()
+    if loaded is None:
         raise HTTPException(404, ENROLMENT_NOT_FOUND)
-    batch = await db.get(SchoolSkillBatch, row.batch_id)
-    student = await db.get(SchoolStudent, row.school_student_id)
-    if batch is None or student is None:
-        raise HTTPException(404, ENROLMENT_NOT_FOUND)
+    row, batch, student = loaded
     if student.school_id != batch.school_id:
         raise HTTPException(409, STUDENT_MOVED)
     old, new = row.status, payload.status
@@ -572,7 +580,7 @@ async def skills_overview(db: AsyncSession, student: SchoolStudent) -> dict:
             "frozen": student.school_id != b.school_id,
             "completed_at": e.completed_at,
             "certified_at": e.certified_at,
-            "attendance": attendance.get(e.id, {"present": 0, "marked": 0}),
+            "attendance": attendance.get(e.id, NO_ATTENDANCE),
             "assessments": [
                 {
                     "name": a.name,
