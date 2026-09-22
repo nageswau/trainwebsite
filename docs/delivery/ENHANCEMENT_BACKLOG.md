@@ -1081,6 +1081,21 @@ exactly the case the Branch-scope decision must resolve; do not silently assume 
 
 **Complexity:** Large. **Risk:** High.
 
+**Addendum, 2026-09-22 (`DEC-SCOPE-023`) — Branch design decision resolved, implementation in
+progress.** The Branch design question above is resolved: `DEC-SCOPE-023`
+(`PRODUCT_DECISION_REGISTER.md`) confirms Branch as a free-text field on `School`, not a separate
+`SchoolBranch` entity — the user's explicit, in-session choice, made before any migration shipped,
+so `RBAC_MATRIX.md §2.12`'s one-`School`-row-per-tenant assumption is preserved unchanged. The same
+decision also confirms all 24 `EVID-014` fields in scope (per Revision 4 above), the admin-only
+access model, and the introduction of real `SchoolCreate`/`SchoolUpdate`/`SchoolOut` Pydantic
+schemas. Full design: `docs/superpowers/specs/2026-09-22-enh-009-school-profile-design.md`.
+Implementation plan and status: `docs/superpowers/plans/2026-09-22-enh-009-school-profile-field-coverage.md`
+(13 tasks, each independently TDD'd and reviewed, plus a whole-branch review and one fix wave — all
+complete on branch `feature/enh-009-school-profile-field-coverage`). **Not yet complete:** real
+browser validation of the finished feature and an independent Codex review disposition are still
+outstanding before this item can be marked `COMPLETE` (see `docs/quality/RTM.md`'s ENH-009 addendum
+for current status).
+
 ---
 
 ## ENH-010 — Account Activation / Deactivation (School Master Capability)
@@ -2763,7 +2778,7 @@ item, only for the progress-view question).
 | ENH-003 | None structurally required — this is a security-hardening audit of an already-decided
   provisioning path (`DEC-SCOPE-014`), not a new scope question | N/A |
 | ENH-002, ENH-006, ENH-007 | None — these operate entirely within already-`CONFIRMED_CURRENT` scope | N/A |
-| ENH-009 | Scope is now mandatory per the user's explicit directive (this turn) — no scope decision needed. Still needs a *design* decision: `DEC-SCOPE-0xx` on whether "Branch" is a field or a new scoping entity | None exists |
+| ENH-009 | Scope is now mandatory per the user's explicit directive (this turn) — no scope decision needed. Design decision on whether "Branch" is a field or a new scoping entity | **Resolved: `DEC-SCOPE-023`** (2026-09-22, Branch is a field) |
 | ENH-025 | Scope is mandatory (same directive). Needs a *design* decision on whether Career interests/Global education interest/Preferred countries/Preferred courses live on `SchoolStudent` directly or inside a `SCH-004` career-guidance record | None exists |
 | ENH-014 | `DEC-INTEGRATION-0xx` — WhatsApp/SMS provider selection, plus a DPDP/privacy-consent review | None exists |
 | ENH-016 | Indirectly blocked on Appendix A item 3 (entitlement quota vs. `DEC-SCOPE-017`) before its Service Utilization view is meaningful | See Appendix A |
