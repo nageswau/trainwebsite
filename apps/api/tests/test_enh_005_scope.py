@@ -80,6 +80,20 @@ async def test_a_parent_with_zero_links_at_a_school_sees_none_of_its_data(client
 
 
 @pytest.mark.asyncio
+async def test_a_parent_with_no_profile_school_id_still_reads_their_linked_child(client, db_session):
+    a = await mk_school(db_session, label="A")
+    parent = await mk_user(db_session, role="school_parent", name="No School Parent", school_id=None, assigned_by=a["coordinator"])
+    db_session.add(SchoolParentLink(parent_user_id=parent.id, school_student_id=a["students"][0].id, linked_by_user_id=a["coordinator"].id))
+    await db_session.commit()
+    await login(client, parent.email)
+
+    listing = await client.get("/api/v1/school/students")
+
+    assert [s["id"] for s in listing.json()] == [str(a["students"][0].id)]
+    assert (await client.get(f"/api/v1/school/students/{a['students'][0].id}")).status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_published_results_and_other_readers_follow_the_link(client, db_session):
     a, b, child = await _moved_child_world(db_session)
     staff = await mk_staff(db_session, b["school"], a["admin"])
