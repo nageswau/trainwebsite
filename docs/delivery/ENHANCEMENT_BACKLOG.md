@@ -1107,7 +1107,7 @@ observation (`ENH010-QA-01`); the duplicate `PATCH` requests it guards against a
 server-side (same `active` value each time), so the exposure was duplicate `AuditLog` rows, not a
 state flip — the guard is real defense-in-depth, matching `ChangePasswordForm`'s pattern, and
 becomes load-bearing if this button is ever switched from `disabled` to `aria-disabled`. Decision
-`DEC-SCOPE-023` (drafted, `PENDING_CONFIRMATION`) records the
+`DEC-SCOPE-023` (drafted, `UNCONFIRMED`) records the
 `School CRM.md` Part B §2 → `school_coordinator` mapping this relies on. See
 `docs/superpowers/specs/2026-09-22-enh-010-account-activation-design.md`.
 
