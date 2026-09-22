@@ -274,3 +274,34 @@ async def test_read_only_role_cannot_delete_an_entry(client, db_session):
     portfolio = (await client.get(f"/api/v1/school/students/{student.id}/portfolio")).json()
     assert len(portfolio["entries"]["project"]) == 1
     assert portfolio["entries"]["project"][0]["id"] == created["id"]
+
+
+@pytest.mark.asyncio
+async def test_coordinator_sets_the_personal_statement(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-STMT")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    response = await client.patch(f"/api/v1/school/students/{student.id}/portfolio/personal-statement", json={"personal_statement": "I want to study engineering."})
+    assert response.status_code == 200, response.text
+    assert response.json()["personal_statement"] == "I want to study engineering."
+
+    portfolio = (await client.get(f"/api/v1/school/students/{student.id}/portfolio")).json()
+    assert portfolio["personal_statement"] == "I want to study engineering."
+
+
+@pytest.mark.asyncio
+async def test_setting_the_statement_twice_updates_the_same_row(client, db_session):
+    from sqlalchemy import func, select as sa_select
+
+    from app.models import PortfolioProfile
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-STMT-Twice")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    await client.patch(f"/api/v1/school/students/{student.id}/portfolio/personal-statement", json={"personal_statement": "First draft."})
+    await client.patch(f"/api/v1/school/students/{student.id}/portfolio/personal-statement", json={"personal_statement": "Revised."})
+    count = await db_session.scalar(sa_select(func.count()).select_from(PortfolioProfile).where(PortfolioProfile.school_student_id == student.id))
+    assert count == 1
+    row = await db_session.scalar(sa_select(PortfolioProfile).where(PortfolioProfile.school_student_id == student.id))
+    assert row.personal_statement == "Revised."

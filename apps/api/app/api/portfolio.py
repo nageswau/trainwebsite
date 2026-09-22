@@ -187,3 +187,29 @@ async def delete_portfolio_entry(student_id: UUID, entry_id: UUID, user: User = 
     db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_delete", entity_type="portfolio_entry", entity_id=entry_id_str, metadata_json={"section": section, "school_student_id": str(student.id)}))
     await db.commit()
     logger.info("portfolio_entry_delete", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": entry_id_str}})
+
+
+@router.patch("/students/{student_id}/portfolio/personal-statement", response_model=PersonalStatementOut)
+async def update_personal_statement(student_id: UUID, payload: PersonalStatementUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Upsert via the same begin_nested()/IntegrityError idiom as school_transfers.py:277-284, but
+    resolved as an update-on-conflict rather than a 409: a second concurrent "set the statement" is not
+    a duplicate-intent conflict like a transfer filing (spec §6)."""
+    student = await _load_portfolio_student(db, user, student_id)
+    _require_portfolio_write(user, student)
+    statement = payload.personal_statement.strip() if payload.personal_statement else None
+    row = None
+    try:
+        async with db.begin_nested():
+            row = PortfolioProfile(school_student_id=student.id, personal_statement=statement, updated_by_user_id=user.id)
+            db.add(row)
+            await db.flush()
+    except IntegrityError:
+        row = await db.scalar(select(PortfolioProfile).where(PortfolioProfile.school_student_id == student.id))
+        row.personal_statement = statement
+        row.updated_by_user_id = user.id
+        await db.flush()
+    db.add(AuditLog(user_id=user.id, action="school.portfolio_personal_statement_update", entity_type="portfolio_profile", entity_id=str(row.id), metadata_json={"school_student_id": str(student.id)}))
+    await db.commit()
+    await db.refresh(row)
+    logger.info("portfolio_personal_statement_update", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id)}})
+    return {"personal_statement": row.personal_statement, "updated_at": row.updated_at}
