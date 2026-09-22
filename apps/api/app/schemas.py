@@ -74,23 +74,16 @@ class ProfileUpdate(BaseModel):
 
     @field_validator("full_name")
     @classmethod
-    def full_name_is_not_null(cls, value: str | None) -> str:
-        # ENH-007: `str | None` lets an explicit `null` satisfy validation (`min_length` only
-        # constrains strings) and reach auth.py's `changes["full_name"].strip()`, which raises an
-        # unhandled 500 on None. Pydantic v2 does not validate unset defaults, so this only fires
-        # when the key is actually present -- omitting `full_name` is unaffected (still means
-        # "don't change it").
+    def full_name_is_a_real_name(cls, value: str | None) -> str:
+        # ENH-007: `str | None` lets an explicit `null` or an all-whitespace string satisfy
+        # min_length (which only constrains string length, not content) and reach auth.py's
+        # `changes["full_name"].strip()`, which either crashes (None -> AttributeError, unhandled
+        # 500) or silently blanks the account's display name (whitespace -> "", 200 "success").
+        # Pydantic v2 does not validate unset defaults, so this only fires when the key is actually
+        # present -- omitting `full_name` is unaffected (still means "don't change it"). Mirrors
+        # ChangePasswordRequest.new_password_is_not_blank below -- same bug class, same fix shape.
         if value is None:
             raise PydanticCustomError("null_full_name", "full_name cannot be null")
-        return value
-
-    @field_validator("full_name")
-    @classmethod
-    def full_name_is_not_blank(cls, value: str) -> str:
-        # Browser QA (ENH007-QA-01): `min_length=2` counts raw length, so an all-whitespace value
-        # (e.g. "     ") satisfies it, then auth.py:191's .strip() silently blanks the account's
-        # display name with a 200 response. Mirrors ChangePasswordRequest.new_password_is_not_blank
-        # below -- same bug class, same fix shape, in the same file.
         if not value.strip():
             raise PydanticCustomError("blank_full_name", "full_name must not consist only of spaces")
         return value

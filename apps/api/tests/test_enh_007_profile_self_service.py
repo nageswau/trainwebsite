@@ -45,14 +45,14 @@ async def _signed_in_user(client, db_session, **kwargs) -> User:
     return user
 
 
-def test_schema_rejects_explicit_null_full_name():
-    """Unit test: Pydantic validator rejects explicit null full_name."""
+@pytest.mark.parametrize("value,expected_type", [(None, "null_full_name"), ("     ", "blank_full_name")])
+def test_schema_rejects_invalid_full_name(value, expected_type):
+    """Unit test: full_name_is_a_real_name rejects both null and whitespace-only, each with its own error type."""
     with pytest.raises(ValidationError) as exc_info:
-        ProfileUpdate(full_name=None)
-    # Verify the error is from our validator
+        ProfileUpdate(full_name=value)
     errors = exc_info.value.errors()
     assert len(errors) == 1
-    assert errors[0]["type"] == "null_full_name"
+    assert errors[0]["type"] == expected_type
 
 
 def test_schema_accepts_valid_full_name():
@@ -177,11 +177,3 @@ async def test_whitespace_only_full_name_is_rejected_not_saved_as_empty(client, 
     assert response.status_code == 422, response.text
     await db_session.refresh(user)
     assert user.full_name == "ENH-007 User"  # unchanged, never blanked
-
-
-def test_schema_rejects_whitespace_only_full_name():
-    with pytest.raises(ValidationError) as exc_info:
-        ProfileUpdate(full_name="     ")
-    errors = exc_info.value.errors()
-    assert len(errors) == 1
-    assert errors[0]["type"] == "blank_full_name"
