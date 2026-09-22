@@ -1202,9 +1202,12 @@ async def link_parent(student_id: UUID, payload: dict, user: User = Depends(get_
     if not student or student.school_id != school_id:
         raise HTTPException(404, "Student not found")
     parent_email = str(payload.get("parent_email", "")).lower().strip()
+    conflict = await _parent_email_conflict(db, parent_email=parent_email)
+    if conflict:
+        raise HTTPException(422, conflict)
     parent = await db.scalar(select(User).where(User.email == parent_email, User.role == "school_parent"))
-    if not parent or (parent.profile or {}).get("school_id") != str(school_id):
-        raise HTTPException(422, "parent_email must be an existing Parent at your own school")
+    if not parent:
+        raise HTTPException(422, "parent_email must belong to an existing Parent account")
     existing = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == parent.id, SchoolParentLink.school_student_id == student.id))
     if existing:
         raise HTTPException(409, "This parent is already linked to this student")

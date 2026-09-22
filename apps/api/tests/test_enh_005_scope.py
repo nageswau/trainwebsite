@@ -103,12 +103,16 @@ async def test_withdrawn_results_are_hidden_from_the_academic_team_and_cannot_be
 
 
 @pytest.mark.asyncio
-async def test_link_parent_refuses_a_parent_from_another_school(client, db_session):
+async def test_link_parent_accepts_a_parent_already_linked_at_another_school(client, db_session):
     a = await mk_school(db_session, label="A")
     b = await mk_school(db_session, label="B")
     await login(client, a["coordinator"].email)
+
     response = await client.post(f"/api/v1/school/students/{a['students'][0].id}/parents", json={"parent_email": b["parent"].email})
-    assert response.status_code == 422, response.text
+
+    assert response.status_code == 201, response.text
+    link = await db_session.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == b["parent"].id, SchoolParentLink.school_student_id == a["students"][0].id))
+    assert link is not None
 
 
 @pytest.mark.asyncio
