@@ -2,10 +2,17 @@
 
 A Coordinator now enters a parent's name/email directly on the roster (single-add, edit,
 or bulk upload) instead of only via the separate Team invite page. If the email doesn't
-already belong to a school_parent account at this school, an invite is created and
-emailed automatically; accepting it links every student that named that exact email, not
-just the one that triggered it. Coordinator-only creation of Teacher/Principal/Parent
+already belong to a school_parent account, an invite is created and emailed
+automatically; accepting it links every student that named that exact email, not just
+the one that triggered it. Coordinator-only creation of Teacher/Principal/Parent
 accounts was already true before this addendum (SCH-003) -- not re-tested here.
+
+ENH-008: an email that already belongs to a school_parent account at a *different*
+school is also linked immediately here, not just the same-school case this file's own
+tests happen to name -- see apps/api/tests/test_enh_005_scope.py for the cross-school
+tests (test_adding_a_student_at_school_a_can_use_a_parent_already_linked_at_school_b and
+neighbors), which exercise this exact `_link_or_invite_parent()`/`_parent_email_conflict()`
+code path from a different fixture set.
 """
 
 import io
