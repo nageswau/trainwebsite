@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Account = { id: string; name: string; email: string; role: string; active: boolean };
@@ -30,7 +30,14 @@ export default function SchoolTeamPanel({ accounts, pendingInvites }: { accounts
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rowMessage, setRowMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
 
+  // ENH010-QA-01: busyId alone doesn't guard against a 2nd/3rd click landing before the
+  // first click's setBusyId re-render commits (all in the same tick) -- mirrors
+  // ChangePasswordForm's `submitting` ref, but per-row since multiple accounts can toggle independently.
+  const inFlight = useRef<Set<string>>(new Set());
+
   async function toggleActive(account: Account) {
+    if (inFlight.current.has(account.id)) return;
+    inFlight.current.add(account.id);
     setBusyId(account.id);
     setRowMessage(null);
     const response = await fetch(`/api/v1/school/team/accounts/${account.id}`, {
@@ -39,6 +46,7 @@ export default function SchoolTeamPanel({ accounts, pendingInvites }: { accounts
       body: JSON.stringify({ active: !account.active }),
     });
     const data = await response.json().catch(() => ({}));
+    inFlight.current.delete(account.id);
     setBusyId(null);
     if (!response.ok) {
       setRowMessage({ id: account.id, text: detailMessage(data.detail), failed: true });

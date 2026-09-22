@@ -2180,9 +2180,47 @@ Design, API, UI and security review: `docs/superpowers/specs/2026-09-21-enh-005-
 
 **Security findings and status.** Found by the review before code (spec §6.1): HTML injection in parent emails (fixed, D9); the parent read filter no longer double-checking the school (link creators verified and tested); a code-probing oracle through the requester's own list (throttle D8, cap D7, every attempt audited, residual documented); an unrecorded authorization-scope change (one audit row per re-scoped parent); approval as a general write path (restricted to `profile.school_id` on `school_parent` accounts). Reported, not changed (outside ENH-005): the API has no rate limiting on login or elsewhere; no CSRF token exists (`SameSite=Lax` only); `secret_key` defaults to `"change-me"` and `cookie_secure` to `False`; admin routes gate on the `users.role` column rather than active role assignments.
 
-**Closing note, 2026-09-22 (`ENH-008`, `DEC-SCOPE-023`).** The `NEEDS_CONFIRMATION` limitation named above by title — "a parent kept at the losing school … cannot be linked by the gaining coordinator" — is resolved. `ENH-008` removed the same-school restriction on *new* `SchoolParentLink` creation entirely (`link_parent`, `_link_or_invite_parent`, `accept_invite`): a parent already linked at one or more schools can now be linked by any coordinator at any school, including one they were previously kept out of after a transfer. See `DEC-SCOPE-023` below for the full decision record. Also folded into the same wave: the parallel gap in *this* decision's own Consequences paragraph above, where an orphaned `school_parent` (zero links) could vanish from a Team page — fixed in `list_team()`/`update_team_account()` by treating Team membership as the union of "has a link here" OR "`profile.school_id` still matches," not link-only (ENH-008 final-review Finding 2).
+**Closing note, 2026-09-22 (`ENH-008`, `DEC-SCOPE-024`).** The `NEEDS_CONFIRMATION` limitation named above by title — "a parent kept at the losing school … cannot be linked by the gaining coordinator" — is resolved. `ENH-008` removed the same-school restriction on *new* `SchoolParentLink` creation entirely (`link_parent`, `_link_or_invite_parent`, `accept_invite`): a parent already linked at one or more schools can now be linked by any coordinator at any school, including one they were previously kept out of after a transfer. See `DEC-SCOPE-024` below for the full decision record. Also folded into the same wave: the parallel gap in *this* decision's own Consequences paragraph above, where an orphaned `school_parent` (zero links) could vanish from a Team page — fixed in `list_team()`/`update_team_account()` by treating Team membership as the union of "has a link here" OR "`profile.school_id` still matches," not link-only (ENH-008 final-review Finding 2).
 
-### DEC-SCOPE-023 — Parent account linked to children across multiple schools (`ENH-008`)
+### DEC-SCOPE-023 — School Master (`School CRM.md` Part B §2) = `school_coordinator`; account activate/deactivate confirmed in scope (`ENH-010`)
+
+**Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-22.
+
+**Question:** Is `School CRM.md` Part B §2's "School Master" role the same actor as the
+already-confirmed `school_coordinator` role (`DEC-SCOPE-011`), and is "Activate/deactivate
+users" confirmed in scope for that role, scoped to their own institution?
+
+**Evidence:** `School CRM.md` (`EVID-014`, `DERIVED_BLUEPRINT`, unattributed) Part B §2,
+verbatim: *"School Master can: … Activate/deactivate users."* Per `CLAUDE.md`, this document's
+own claim is not `EXPLICIT_APPROVAL` by itself.
+
+**Current state:** `apps/api/app/api/schools.py`'s `update_team_account` (added in the initial
+School-domain commit) already implements this and its own docstring asserts it was resolved
+"per direct user confirmation" — but no matching entry exists anywhere in this register.
+`DEC-SCOPE-011` confirms Coordinator "write access" broadly ("add/manage students… monitor
+services") but never names account activation specifically. This entry does not assume which:
+an undocumented earlier confirmation, or an inference never actually put to the user.
+
+**Proposed resolution (drafted, not self-approved):** adopt "School Master" (§2) as the same
+actor as `school_coordinator` (§33, `DEC-SCOPE-011`) — consistent with `DEC-SCOPE-011` already
+treating that role as having broad write access over the school's accounts and data — and
+confirm "Activate/deactivate users" as in-scope write access, scoped to the coordinator's own
+institution, excluding the coordinator's own account and any peer Coordinator account. This
+matches exactly what the shipped code (tested by `test_sch_team_account_activation.py`) already
+does.
+
+**Verified 2026-09-22:** the implementation satisfies all four ENH-010 acceptance criteria, by
+both a real automated test run (9/9 in `test_sch_team_account_activation.py`, including two new
+mutation-checked characterization tests) and a live browser QA pass (all four ACs individually
+observed, not read from code) — see `docs/superpowers/specs/2026-09-22-enh-010-account-
+activation-design.md` §6 and the ENH010-QA findings for the evidence.
+
+**Not resolved by this entry:** whether the two frontend a11y items considered during design
+(`refocus`, differentiated `role="alert"`) should ever be applied — investigated and found to
+already match this component's true sibling's convention, not to deviate from it; left open,
+not part of this decision either way.
+
+### DEC-SCOPE-024 — Parent account linked to children across multiple schools (`ENH-008`)
 
 **Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-008 (source: the user's direct instruction "parent may [have] children from different schools") had no Decision ID or Feature ID. `DEC-SCOPE-022` (`ENH-005`) independently flagged the gap this closes as `NEEDS_CONFIRMATION`, deferred to this item by name. Should a `school_parent` account be linkable to students at more than one school, and if so, what does that do to every place a parent's "own school" was assumed to be singular?
 
