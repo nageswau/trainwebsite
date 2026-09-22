@@ -261,6 +261,14 @@ async def accept_invite(token: str, payload: dict, response: Response, db: Async
 SCHOOL_ROLES = {"school_principal", "school_coordinator", "school_teacher", "school_parent"}
 
 
+def _skills():
+    """ENH-011's module, imported at call time: `school_skills` imports this module's helpers, so a top-level import here
+    would be circular."""
+    from app.api import school_skills  # noqa: PLC0415
+
+    return school_skills
+
+
 def _own_school_id(user: User) -> UUID:
     if user.role not in SCHOOL_ROLES:
         raise HTTPException(403, "School role required")
@@ -824,6 +832,7 @@ async def school_entitlements(user: User = Depends(get_current_user), db: AsyncS
     usage["parent_orientation"] = await _activity_count("parent_orientation")
     usage["monthly_campus_visits"] = await _activity_count("campus_visit")
     usage["dedicated_counselor"] = bool(await db.scalar(select(SchoolStaffAssignment.id).where(SchoolStaffAssignment.school_id == school_id)))
+    usage.update(await _skills().skill_usage(db, school_id))  # ENH-011: soft_skills / web_designing are tracked now
 
     return {
         "tier": school.tier if school else None,
@@ -975,6 +984,8 @@ async def student_overview(student_id: UUID, user: User = Depends(get_current_us
                 for a, u in application_rows
             ],
         },
+        # ENH-011 (`DEC-SCOPE-023`): additive key; same reader scope as everything above.
+        "skills": await _skills().skills_overview(db, student),
     }
 
 
@@ -1053,6 +1064,7 @@ async def student_timeline(student_id: UUID, user: User = Depends(get_current_us
         visa_r = await db.scalar(select(VisaCase).where(VisaCase.application_id == app_r.id))
         if visa_r:
             events.append({"date": visa_r.updated_at, "category": "global_education", "type": "visa_status", "title": f"Visa status: {visa_r.status}", "detail": uni_r.name})
+    events.extend(await _skills().skill_timeline_events(db, student.id))  # ENH-011: soft_skills / digital_skills
     events.sort(key=lambda e: e["date"])
     return {"student": {"id": student.id, "full_name": student.full_name}, "events": events}
 

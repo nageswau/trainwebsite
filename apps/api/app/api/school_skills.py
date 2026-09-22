@@ -508,3 +508,116 @@ async def record_skill_scores(assessment_id: UUID, payload: SkillScoresIn, user:
         "max_score": float(assessment.max_score),
         "scores": [{"enrollment_id": r.enrollment_id, "score": float(r.score), "remarks": r.remarks} for r in rows],
     }
+
+
+# --- Read surfaces: called by schools.py's overview (SCH-007), timeline (SCH-008) and entitlements (SCH-011) ------------
+# No scope check here: the caller has already applied the reader's own scope (`_load_readable_student`/`_own_school_id`).
+
+
+def _rollup(statuses: list[str]) -> str:
+    live = set(statuses) - {"withdrawn"}
+    for status, label in (("certified", "certified"), ("completed", "completed"), ("enrolled", "in_progress")):
+        if status in live:
+            return label
+    return "not_started"
+
+
+async def skills_overview(db: AsyncSession, student: SchoolStudent) -> dict:
+    """`{soft_skills: {status, enrollments}, digital_skills: {...}}` for one student, in four queries."""
+    rows = (
+        await db.execute(
+            select(SchoolSkillEnrollment, SchoolSkillBatch)
+            .join(SchoolSkillBatch, SchoolSkillBatch.id == SchoolSkillEnrollment.batch_id)
+            .where(SchoolSkillEnrollment.school_student_id == student.id)
+            .order_by(SchoolSkillEnrollment.created_at.desc(), SchoolSkillEnrollment.id.asc())
+        )
+    ).all()
+    enrolment_ids = [e.id for e, _b in rows]
+    batch_ids = list({b.id for _e, b in rows})
+    attendance: dict[UUID, dict] = {}
+    scores: dict[tuple[UUID, UUID], SchoolSkillScore] = {}
+    assessments: dict[UUID, list[SchoolSkillAssessment]] = {}
+    if rows:
+        for enrollment_id, present, marked in (
+            await db.execute(
+                select(SchoolSkillAttendance.enrollment_id, func.count().filter(SchoolSkillAttendance.present.is_(True)), func.count())
+                .where(SchoolSkillAttendance.enrollment_id.in_(enrolment_ids))
+                .group_by(SchoolSkillAttendance.enrollment_id)
+            )
+        ).all():
+            attendance[enrollment_id] = {"present": present, "marked": marked}
+        for score in (await db.scalars(select(SchoolSkillScore).where(SchoolSkillScore.enrollment_id.in_(enrolment_ids)))).all():
+            scores[(score.enrollment_id, score.assessment_id)] = score
+        for assessment in (
+            await db.scalars(select(SchoolSkillAssessment).where(SchoolSkillAssessment.batch_id.in_(batch_ids)).order_by(SchoolSkillAssessment.created_at.asc(), SchoolSkillAssessment.name.asc()))
+        ).all():
+            assessments.setdefault(assessment.batch_id, []).append(assessment)
+
+    def _one(e: SchoolSkillEnrollment, b: SchoolSkillBatch) -> dict:
+        return {
+            "id": e.id,
+            "batch_id": b.id,
+            "batch_title": b.title,
+            "topic": b.topic,
+            "trainer_name": b.trainer_name,
+            "start_date": b.start_date,
+            "end_date": b.end_date,
+            "status": e.status,
+            "frozen": student.school_id != b.school_id,
+            "completed_at": e.completed_at,
+            "certified_at": e.certified_at,
+            "attendance": attendance.get(e.id, {"present": 0, "marked": 0}),
+            "assessments": [
+                {
+                    "name": a.name,
+                    "max_score": float(a.max_score),
+                    "score": float(scores[(e.id, a.id)].score) if (e.id, a.id) in scores else None,
+                    "remarks": scores[(e.id, a.id)].remarks if (e.id, a.id) in scores else None,
+                }
+                for a in assessments.get(b.id, [])
+            ],
+        }
+
+    out = {}
+    for module in ("soft_skills", "digital_skills"):
+        mine = [(e, b) for e, b in rows if b.module_type == module]
+        out[module] = {"status": _rollup([e.status for e, _b in mine]), "enrollments": [_one(e, b) for e, b in mine]}
+    return out
+
+
+async def skill_timeline_events(db: AsyncSession, student_id: UUID) -> list[dict]:
+    """SCH-008 events from each enrolment's own timestamps -- nothing synthesized (D5 reverses DEC-SCOPE-016's exclusion)."""
+    rows = (
+        await db.execute(
+            select(SchoolSkillEnrollment, SchoolSkillBatch).join(SchoolSkillBatch, SchoolSkillBatch.id == SchoolSkillEnrollment.batch_id).where(SchoolSkillEnrollment.school_student_id == student_id)
+        )
+    ).all()
+    events: list[dict] = []
+    for e, b in rows:
+        events.append({"date": e.created_at, "category": b.module_type, "type": "skill_enrolled", "title": f"Enrolled in {b.title}", "detail": b.topic})
+        if e.completed_at:
+            events.append({"date": e.completed_at, "category": b.module_type, "type": "skill_completed", "title": f"Completed {b.title}", "detail": b.topic})
+        if e.certified_at:
+            events.append({"date": e.certified_at, "category": b.module_type, "type": "skill_certified", "title": f"Certified in {b.title}", "detail": b.topic})
+    return events
+
+
+# Entitlement service key (DEC-SCOPE-017's brochure wording) -> module.
+USAGE_KEYS = {"soft_skills": "soft_skills", "digital_skills": "web_designing"}
+
+
+async def skill_usage(db: AsyncSession, school_id: UUID) -> dict[str, int]:
+    """Non-withdrawn enrolments in this school's batches, per entitlement service key (spec §5.2)."""
+    counted = dict(
+        (
+            await db.execute(
+                select(SchoolSkillBatch.module_type, func.count())
+                .join(SchoolSkillEnrollment, SchoolSkillEnrollment.batch_id == SchoolSkillBatch.id)
+                .where(SchoolSkillBatch.school_id == school_id, SchoolSkillEnrollment.status != "withdrawn")
+                .group_by(SchoolSkillBatch.module_type)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    return {key: counted.get(module, 0) for module, key in USAGE_KEYS.items()}
