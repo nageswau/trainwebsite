@@ -2244,3 +2244,122 @@ Design, security review: `docs/superpowers/specs/2026-09-22-enh-008-parent-multi
 **`NEEDS_CONFIRMATION` (not decided here):** whether `profile.school_id` should eventually be backfilled to `null`/removed from parent accounts rather than left stale-and-unread indefinitely; rate limiting on `_parent_email_conflict()`'s now-platform-wide probe surface.
 
 **Status:** CONFIRMED_CURRENT — Approved by: user (in-session, brainstorming) — Approval date: 2026-09-22.
+
+---
+
+### DEC-SCOPE-025 — School Profile field-by-field scope, and Branch modeled as a field, not an entity
+
+**Renumbered 2026-09-22, on merge with `main`:** this decision was recorded as `DEC-SCOPE-023` at
+the time it was made, in-session, before `ENH-010`'s independent, unrelated use of that same ID had
+landed on `main`. Same precedent as `ENH-008`'s `DEC-SCOPE-024` above (also renumbered on merge for
+an identical collision) — the later-merging branch's ID moves, the content does not. Every reference
+to `DEC-SCOPE-023` elsewhere in this branch's own files (design doc, plan, code comments, tests,
+`ENHANCEMENT_BACKLOG.md`, `RTM.md`) is updated to `DEC-SCOPE-025` to match.
+
+**Status:** CONFIRMED_CURRENT — resolved 2026-09-22, in-session.
+
+**Trigger:** `School CRM.md §2` (`docs/sources/School CRM.md:64-116`, `EVID-014`) lists a full School
+Profile of ~24 fields; `ENHANCEMENT_BACKLOG.md`'s `ENH-009` entry (Revision 4) already recorded the
+user's direct, explicit, `EXPLICIT_APPROVAL`-grade instruction that full field coverage is mandatory
+for this release, leaving two open questions unresolved: (1) whether Branch is a field or a separate
+scoping entity, and (2) whether the resulting design should introduce real Pydantic schemas for
+`School` for the first time, given `create_school`/`list_schools`/`update_school_tier` currently use
+untyped `payload: dict`. Both were put to the user directly during this session's `superpowers:brainstorming`
+pass (`docs/superpowers/specs/2026-09-22-enh-009-school-profile-design.md`).
+
+**Resolution — Branch (`EXPLICIT_APPROVAL`, user, in-session):** Branch is a **free-text field** on
+`School` (`branch: String(200), nullable`), not a separate `SchoolBranch` entity. No new table, no new
+RBAC scoping boundary — `RBAC_MATRIX.md` §2.12's "one `School` row = one isolated tenant" assumption is
+preserved unchanged. This closes `ENH-009`'s own acceptance criterion ("Branch's scope explicitly
+decided and documented before any migration ships") and removes the item's previously-identified High
+regression-risk driver (every `school:coordinator:own_institution`-style check in `schools.py` would
+otherwise have needed to become branch-aware).
+
+**Resolution — field-by-field scope (`EXPLICIT_APPROVAL`, user, in-session, confirming `ENH-009`
+Revision 4's mandatory-coverage directive):** all 24 fields are in scope for this release except two
+carve-outs already recorded in `ENH-009`: (a) populating `Edusphere BDM`'s value is blocked separately
+on the unapproved `BDM` role (`PRD_OPEN_ITEMS.md` item 61) — the field itself ships, as plain text, not
+a role reference; (b) Monthly visit schedule ships as a descriptive text field only — a real
+forward-scheduling engine remains `ENH-019`'s job, unchanged. Number of students/teachers, Principal
+name, School Coordinator name, and Career Counsellor name(s) are exposed **computed** (live query,
+never stored) — the first two per the existing backlog recommendation, the latter two because a
+design self-review during this session caught that Principal/Coordinator/Career Counsellor had been
+left "unchanged, no design gap" despite being 3 of the backlog's own 15 mandatory-missing fields;
+they are role-derived and already queryable, so computed exposure (not a new stored column) is the
+correct fix, matching how Dedicated Counsellor is already handled via `SchoolStaffAssignment` rather
+than a flat field. Vice Principal has no role or account type anywhere in this system to derive from
+— ships as a plain nullable text field (`vice_principal_name`, no login/role), the same
+"field ships, larger structural question deferred" treatment as `edusphere_bdm`. Agreement/MoU ships
+as a plain reference-string field (`mou_reference`), not a document-upload feature — a generic
+`ProfileDocumentUpload`/`StorageService` pattern already exists in this codebase but generalizing it to
+`School` is judged out of scope for a field-coverage item; flagged in the design doc as a deliberate,
+smaller-scope choice rather than a silent omission.
+
+**Resolution — schemas (`EXPLICIT_APPROVAL`, user, in-session):** `SchoolCreate`/`SchoolUpdate`/
+`SchoolOut` Pydantic schemas are introduced in `schemas.py` for the first time for this entity
+(`model_config = {"extra": "forbid"}`, the exact pattern already used for ENH-005's
+`TransferRequestCreate`/`IncomingTransferCreate` — not this file's universal default, but the
+established choice for a security-sensitive create schema), replacing `create_school`/
+`update_school_tier`'s untyped `payload: dict`. Request/response JSON shape stays additive-compatible
+with existing callers (`AdminSchoolCreatePanel.tsx`).
+
+**Resolution — access model (`EXPLICIT_APPROVAL`, user, in-session):** admin-only (`overseas_admin`/
+`super_admin`) create **and** edit, matching who already owns this data today. No new School Coordinator/
+Principal self-service profile page in this pass.
+
+**Evidence:** `EVID-014` (`docs/sources/School CRM.md`); `ENHANCEMENT_BACKLOG.md`'s `ENH-009` entry
+(Revision 4, `EXPLICIT_APPROVAL` already recorded there for mandatory field coverage); this session's
+direct codebase verification against `apps/api/app/models.py:928-948`, `apps/api/app/api/admin.py`,
+`apps/api/app/services/portal.py:1360-1371`, and `apps/api/app/core/identifiers.py`.
+
+**New Feature ID:** none — this is additive scope on the existing `ENH-009` item, not a new feature.
+
+**Consequences:** one additive migration on `schools` (`school_code`, `branch`, `address`,
+`contact_number`, `email`, `website`, `grades_available`, `board`, `partnership_date`, `mou_reference`,
+`edusphere_bdm`, `monthly_visit_schedule`, `vice_principal_name` — all nullable, no backfill); three
+new computed (never stored) fields in `SchoolOut` — Principal name, School Coordinator name, Career
+Counsellor name(s) — alongside the existing computed student/teacher counts; `school_code` reuses
+`core/identifiers.py`'s existing `generate_student_code()`/`unique_student_code()` pattern verbatim;
+`GET /overseas-admin/schools/lookup?code=` (new, `overseas_admin`/`super_admin` only — deliberately
+narrower than the analogous `school-students/lookup` endpoint's role set, which includes `counselor`
+for an unrelated bridge use case that doesn't apply to School-profile edit); `PATCH
+/overseas-admin/schools/{id}` widened from tier-only to all profile fields, true partial-update
+semantics; new `AuditLog` action `school.profile_update` (field-names-only in `metadata_json`, not full
+values, to avoid duplicating partner contact info into the permanent audit trail) alongside the
+existing `school.tier_update`.
+
+**Security review findings and status** (full detail in the design doc's §4): no new authentication,
+CSRF, XSS, or SQL-injection surface (existing patterns reused unchanged); no IDOR fix needed (admin
+roles are intentionally not school-scoped); one real authorization finding closed before code (the new
+lookup endpoint's role set, above). Reported, not changed (pre-existing, outside `ENH-009`, consistent
+with the same items already reported and left unchanged in `DEC-SCOPE-` entries for `ENH-005`): no rate
+limiting anywhere in the API; no CSRF token (`SameSite=Lax` only); admin routes gate on `user.role`
+directly rather than active role assignments.
+
+**Stated by:** user (in-session) — **Date:** 2026-09-22. Resolves `ENH-009`'s two open acceptance-
+criteria blockers (field-by-field scope, Branch design).
+
+### DEC-SCOPE-026 — School skills tracker: Soft Skills and Digital/Web Skills (`ENH-011`)
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-011 asked to "generalize SCH-009" into Soft Skills (`School CRM.md` §9) and Digital/Web Skills (§10) trackers. Both sections are `EVID-014` (`DERIVED_BLUEPRINT`) and were `OPEN` (`PRD_OPEN_ITEMS.md` item 77, `DEC-SCOPE-015`'s Skills row, `DATA_MODEL.md` "requires their own decisions first"). Are they in scope, in what shape, and who delivers them?
+
+**Evidence:** Audit of the code, 2026-09-22 (Graphify rebuilt from `0e7f400` + reads): SCH-009 has no batch, enrolment or per-session attendance — `SchoolTestPrepRecord`/`SchoolLanguageRecord` are per-student rows — so the backlog's premise ("structurally identical… student → course/batch → attendance → assessment → certification") and its acceptance criterion ("a batch can be created, students enrolled") cannot both hold by reusing SCH-009. Entitlements already declared `soft_skills` (Bronze) and `web_designing` (Silver) with `used: null` (`DEC-SCOPE-017`).
+
+**Resolution:** User confirmed in-session, 2026-09-22 (`EXPLICIT_APPROVAL`), D1–D9 in `docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md` §3:
+
+1. **D1 Scope:** §9 Soft Skills and §10 Digital/Web Skills are both `CURRENT` (closes the Skills half of item 77; Portfolio stays open).
+2. **D2 Shape:** a new school-scoped batch → enrolment → per-session attendance → assessments → completion/certification model with `module_type` `soft_skills` | `digital_skills`.
+3. **D3 SCH-009:** unchanged — no table, route, UI or data change.
+4. **D4 Role:** `career_counselor`, scoped by the `SchoolStaffAssignment` portfolio.
+5. **D5 Surfaces:** staff read-only in their existing scope; Parent Portal Skills section; the SCH-008 timeline (**reverses `DEC-SCOPE-016`'s exclusion of Soft Skills from the timeline**); real entitlement usage.
+6. **D6 Notifications:** parents on enrolment and on completion/certification.
+7. **D7 Batch:** one school per batch; title, module, school, dates, topic, trainer name.
+8. **D8 Assessment/completion:** several named assessments per batch; the counselor marks completion/certification manually.
+9. **D9 Transfer:** an enrolment whose student has moved school is read-only ("frozen"), computed, not stored; ENH-005 unchanged.
+
+**D10–D12, confirmed by the user in-session 2026-09-22 (`EXPLICIT_APPROVAL`), after being adopted on the instruction to proceed:** D10 one session per batch per day; D11 `certified` is terminal (no un-certify); D12 `loading.tsx` skeletons on the two new counselor routes.
+
+**D13 — the two QA observations, kept as designed (user, in-session, 2026-09-22, `EXPLICIT_APPROVAL`):** coordinators and teachers see Skills through the SCH-008 timeline only, with no attendance/score detail on their student pages; and after an ENH-005 transfer the losing school's counselor keeps a read-only view of that student's batch history (D9's frozen enrolment). Neither is a follow-up item.
+
+**Consequences:** migration `0037_school_skills` (six create-only tables); router `app/api/school_skills.py` (ten endpoints under `/school/career-counselor`); additive `skills` key on `GET /school/students/{id}/overview`; timeline categories `soft_skills`/`digital_skills`; `GET /school/entitlements` reports `used` for `soft_skills`/`web_designing`. `SCH-008-AC04`'s "Skills… never appear" no longer holds for Skills (Portfolio still absent).
+

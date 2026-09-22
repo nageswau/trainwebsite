@@ -1,6 +1,7 @@
 import re
 import unicodedata
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -71,6 +72,29 @@ class ProfileUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=2, max_length=160)
     phone: str | None = Field(default=None, max_length=40)
     profile: dict | None = None
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_is_a_real_name(cls, value: str | None) -> str:
+        # ENH-007: `str | None` lets an explicit `null` or an all-whitespace string satisfy
+        # min_length (which only constrains RAW string length, not content, and runs before this
+        # validator) and reach auth.py's `changes["full_name"].strip()`, which either crashes
+        # (None -> AttributeError, unhandled 500) or silently blanks the account's display name
+        # (whitespace -> "", 200 "success"). Pydantic v2 does not validate unset defaults, so this
+        # only fires when the key is actually present -- omitting `full_name` is unaffected (still
+        # means "don't change it"). Mirrors ChangePasswordRequest.new_password_is_not_blank below --
+        # same bug class, same fix shape.
+        if value is None:
+            raise PydanticCustomError("null_full_name", "full_name cannot be null")
+        stripped = value.strip()
+        if not stripped:
+            raise PydanticCustomError("blank_full_name", "full_name must not consist only of spaces")
+        # Codex review: raw min_length=2 lets padding through -- "A " has raw length 2 but strips to
+        # a single character, which auth.py then saves as-is, bypassing the "at least 2 real
+        # characters" intent. Check the STRIPPED length, not the raw one.
+        if len(stripped) < 2:
+            raise PydanticCustomError("full_name_too_short_after_trim", "full_name must be at least 2 characters, not counting leading/trailing spaces")
+        return value
 
 
 class ChangePasswordRequest(BaseModel):
@@ -588,17 +612,18 @@ TransferStatusFilter = Literal["pending", "approved", "rejected", "cancelled", "
 TransferDirection = Literal["outgoing", "incoming"]
 
 
-def clean_free_text(value: str | None) -> str | None:
+def clean_free_text(value: str | None, limit: int = FREE_TEXT_MAX) -> str | None:
     """Coordinator/admin free text (`reason`, `note`). Blank becomes None. A NUL byte would surface as a 500 from
     PostgreSQL text, and bidirectional overrides could visually reorder text shown to an admin (security review S7).
-    Line breaks and tabs stay (it is a textarea); zero-width joiners stay (Indic scripts need them)."""
+    Line breaks and tabs stay (it is a textarea); zero-width joiners stay (Indic scripts need them).
+    ENH-011 reuses the same rule with its own length `limit`."""
     if value is None:
         return None
     value = value.strip()
     if not value:
         return None
-    if len(value) > FREE_TEXT_MAX:
-        raise ValueError(f"must be {FREE_TEXT_MAX} characters or fewer")
+    if len(value) > limit:
+        raise ValueError(f"must be {limit} characters or fewer")
     for ch in value:
         if ch in _BIDI_CONTROLS or (unicodedata.category(ch) == "Cc" and ch not in "\n\t"):
             raise ValueError("must not contain control or bidirectional-override characters")
@@ -895,3 +920,288 @@ class PersonalStatementUpdate(BaseModel):
 class PersonalStatementOut(BaseModel):
     personal_statement: str | None
     updated_at: datetime
+
+
+# --- ENH-011: school skills tracker (docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md §5) ---
+
+SkillModule = Literal["soft_skills", "digital_skills"]
+SkillBatchStatus = Literal["open", "closed"]
+SkillEnrollmentStatus = Literal["enrolled", "completed", "certified", "withdrawn"]
+# Shown to the counselor as written (browser QA-05): user-facing wording, not field names. Shared with the PATCH endpoint's check.
+END_BEFORE_START = "The end date must be on or after the start date"
+
+
+def _optional(limit: int):
+    return lambda value: clean_free_text(value, limit)
+
+
+def _required(limit: int):
+    def check(value: str) -> str:
+        cleaned = clean_free_text(value, limit)
+        if cleaned is None:
+            raise ValueError("must not be blank")
+        return cleaned
+
+    return check
+
+
+SkillTitle = Annotated[str, AfterValidator(_required(160))]
+SkillName = Annotated[str, AfterValidator(_required(120))]
+SkillShortText = Annotated[str | None, AfterValidator(_optional(120))]
+SkillSessionTopic = Annotated[str | None, AfterValidator(_optional(160))]
+SkillRemarks = Annotated[str | None, AfterValidator(_optional(2000))]
+
+
+def _unique_ids(ids: list[UUID]) -> list[UUID]:
+    if len(set(ids)) != len(ids):
+        raise ValueError("must not repeat an id")
+    return ids
+
+
+def _unique_enrollments(rows: list) -> list:
+    _unique_ids([r.enrollment_id for r in rows])
+    return rows
+
+
+def _check_dates(start: date | None, end: date | None) -> None:
+    if start and end and end < start:
+        raise ValueError(END_BEFORE_START)
+
+
+class SkillBatchCreate(BaseModel):
+    # `extra="forbid"`: status, creator and ids are server-owned (spec §5.1).
+    model_config = {"extra": "forbid"}
+    school_id: UUID
+    module_type: SkillModule
+    title: SkillTitle
+    topic: SkillShortText = None
+    trainer_name: SkillShortText = None
+    start_date: date
+    end_date: date | None = None
+
+    @model_validator(mode="after")
+    def _dates(self):
+        _check_dates(self.start_date, self.end_date)
+        return self
+
+
+class SkillBatchUpdate(BaseModel):
+    # A batch never changes school or module: sending either is a loud 422. A date sent alone is checked against the
+    # stored other date by the endpoint.
+    model_config = {"extra": "forbid"}
+    title: SkillTitle | None = None
+    topic: SkillShortText = None
+    trainer_name: SkillShortText = None
+    start_date: date | None = None
+    end_date: date | None = None
+    status: SkillBatchStatus | None = None
+
+    @model_validator(mode="after")
+    def _dates(self):
+        _check_dates(self.start_date, self.end_date)
+        return self
+
+
+class SkillEnrollCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+    school_student_ids: Annotated[list[UUID], Field(min_length=1, max_length=100), AfterValidator(_unique_ids)]
+
+
+class SkillEnrollmentUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+    status: SkillEnrollmentStatus
+
+
+class SkillSessionCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+    session_date: date
+    topic: SkillSessionTopic = None
+
+
+class SkillAttendanceMark(BaseModel):
+    model_config = {"extra": "forbid"}
+    enrollment_id: UUID
+    present: bool
+
+
+class SkillAttendanceIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    records: Annotated[list[SkillAttendanceMark], Field(min_length=1, max_length=200), AfterValidator(_unique_enrollments)]
+
+
+class SkillAssessmentCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+    name: SkillName
+    max_score: Annotated[Decimal, Field(gt=0, le=1000, max_digits=6, decimal_places=2)]
+
+
+class SkillScoreIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    enrollment_id: UUID
+    score: Annotated[Decimal, Field(ge=0, max_digits=6, decimal_places=2)]
+    remarks: SkillRemarks = None
+
+
+class SkillScoresIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    scores: Annotated[list[SkillScoreIn], Field(min_length=1, max_length=200), AfterValidator(_unique_enrollments)]
+
+
+class SkillBatchOut(BaseModel):
+    id: UUID
+    school: SchoolRef
+    module_type: SkillModule
+    title: str
+    topic: str | None
+    trainer_name: str | None
+    start_date: date
+    end_date: date | None
+    status: SkillBatchStatus
+    enrolled_count: int
+    created_at: datetime
+
+
+class SkillBatchPage(BaseModel):
+    items: list[SkillBatchOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class SkillAttendanceSummary(BaseModel):
+    present: int
+    marked: int
+
+
+class SkillScoreOut(BaseModel):
+    assessment_id: UUID
+    score: float
+    remarks: str | None
+
+
+class SkillEnrollmentOut(BaseModel):
+    id: UUID
+    batch_id: UUID
+    school_student_id: UUID
+    student_name: str
+    status: SkillEnrollmentStatus
+    frozen: bool
+    completed_at: datetime | None
+    certified_at: datetime | None
+    created_at: datetime
+    attendance: SkillAttendanceSummary
+    scores: list[SkillScoreOut]
+
+
+class SkillAttendanceOut(BaseModel):
+    enrollment_id: UUID
+    present: bool
+
+
+class SkillSessionOut(BaseModel):
+    id: UUID
+    session_date: date
+    topic: str | None
+    attendance: list[SkillAttendanceOut]
+
+
+class SkillAssessmentOut(BaseModel):
+    id: UUID
+    name: str
+    max_score: float
+
+
+class SkillAssessmentScoreOut(BaseModel):
+    enrollment_id: UUID
+    score: float
+    remarks: str | None
+
+
+class SkillAssessmentScoresOut(SkillAssessmentOut):
+    scores: list[SkillAssessmentScoreOut]
+
+
+class SkillBatchDetail(SkillBatchOut):
+    enrollments: list[SkillEnrollmentOut]
+    sessions: list[SkillSessionOut]
+    assessments: list[SkillAssessmentOut]
+
+
+# --- ENH-009 / DEC-SCOPE-025: School Profile field coverage (EVID-014) ---
+
+SchoolBoard = Literal["CBSE", "ICSE", "State", "IB", "Other"]
+
+
+class SchoolCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+    name: str = Field(min_length=1, max_length=200)
+    city: str | None = Field(default=None, max_length=120)
+    state: str | None = Field(default=None, max_length=120)
+    tier: str | None = None
+    # Restored (ENH-009 final review): the pre-ENH-009 dict-bodied create_school() accepted this,
+    # so dropping it would have quietly narrowed a contract the design doc calls additive-compatible.
+    tier_valid_until: date | None = None
+    coordinator_full_name: str = Field(min_length=1, max_length=160)
+    coordinator_email: str
+    branch: str | None = Field(default=None, max_length=200)
+    address: str | None = Field(default=None, max_length=500)
+    contact_number: str | None = Field(default=None, max_length=30)
+    # Demo/seed accounts intentionally use the reserved `.local` domain, which
+    # EmailStr rejects even though these addresses are valid application accounts.
+    email: str | None = Field(default=None, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=255)
+    website: str | None = Field(default=None, max_length=255)
+    grades_available: str | None = Field(default=None, max_length=200)
+    board: SchoolBoard | None = None
+    partnership_date: date | None = None
+    mou_reference: str | None = Field(default=None, max_length=255)
+    edusphere_bdm: str | None = Field(default=None, max_length=200)
+    monthly_visit_schedule: str | None = Field(default=None, max_length=200)
+    vice_principal_name: str | None = Field(default=None, max_length=200)
+
+
+class SchoolUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+    tier: str | None = None
+    tier_valid_until: date | None = None
+    branch: str | None = Field(default=None, max_length=200)
+    address: str | None = Field(default=None, max_length=500)
+    contact_number: str | None = Field(default=None, max_length=30)
+    # Demo/seed accounts intentionally use the reserved `.local` domain, which
+    # EmailStr rejects even though these addresses are valid application accounts.
+    email: str | None = Field(default=None, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=255)
+    website: str | None = Field(default=None, max_length=255)
+    grades_available: str | None = Field(default=None, max_length=200)
+    board: SchoolBoard | None = None
+    partnership_date: date | None = None
+    mou_reference: str | None = Field(default=None, max_length=255)
+    edusphere_bdm: str | None = Field(default=None, max_length=200)
+    monthly_visit_schedule: str | None = Field(default=None, max_length=200)
+    vice_principal_name: str | None = Field(default=None, max_length=200)
+
+
+class SchoolOut(BaseModel):
+    id: UUID
+    name: str
+    city: str | None
+    state: str | None
+    tier: str | None
+    tier_valid_until: date | None
+    school_code: str | None
+    branch: str | None
+    address: str | None
+    contact_number: str | None
+    email: str | None
+    website: str | None
+    grades_available: str | None
+    board: str | None
+    partnership_date: date | None
+    mou_reference: str | None
+    edusphere_bdm: str | None
+    monthly_visit_schedule: str | None
+    vice_principal_name: str | None
+    student_count: int
+    teacher_count: int
+    principal_name: str | None
+    school_coordinator_name: str | None
+    career_counsellor_names: list[str]
+    created_at: datetime

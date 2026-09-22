@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid, text
@@ -926,13 +927,9 @@ class PasswordResetToken(Base, TimestampMixin):
 
 
 class School(Base, TimestampMixin):
-    """School partner record (SCH-003, DATA_MODEL.md §6.11). Net-new.
-
-    Minimal, confirmed-scope-only fields -- EVID-014's elaborate profile field list
-    (Board, Principal name, partnership package, MoU, BDM assignment, etc.) is
-    DERIVED_BLUEPRINT only, not confirmed (DEC-SCOPE-012). Add fields as BRD/PRD
-    confirms them, not preemptively from that document.
-    """
+    """School partner record (SCH-003, DATA_MODEL.md §6.11; profile fields added ENH-009,
+    DEC-SCOPE-025). `EVID-014`'s full field list is now confirmed in scope -- see the
+    design doc for what's stored here vs. computed at read time in `SchoolOut`."""
 
     __tablename__ = "schools"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -940,12 +937,22 @@ class School(Base, TimestampMixin):
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     state: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
-    # Partnership tier (Bronze/Silver/Gold/Platinum), resolved 2026-09-15 (`DEC-SCOPE-017`,
-    # closes `CLIENT_QUESTIONS.md` item 9) -- unlike the rest of EVID-014's field list, this
-    # one is now confirmed, not derived-blueprint-only. Nullable: a School can exist before
-    # a tier is assigned.
     tier: Mapped[str | None] = mapped_column(String(20), nullable=True)
     tier_valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # ENH-009 / DEC-SCOPE-025: School Profile fields (EVID-014). All nullable, additive.
+    school_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    branch: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    contact_number: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    website: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    grades_available: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    board: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    partnership_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    mou_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    edusphere_bdm: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    monthly_visit_schedule: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    vice_principal_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class AcademicYear(Base, TimestampMixin):
@@ -1242,6 +1249,94 @@ class SchoolLanguageRecord(Base, TimestampMixin):
     classes_attended: Mapped[int] = mapped_column(Integer, default=0)
     assessment_score: Mapped[str | None] = mapped_column(String(20), nullable=True)
     certification_status: Mapped[str] = mapped_column(String(20), default="not_started")
+
+
+# --- ENH-011: school skills tracker (docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md §4) ---
+# Soft Skills / Digital Skills batches run by a `career_counselor` for ONE school (`DEC-SCOPE-026`). Deliberately separate
+# from SCH-009's per-student rows (left as-is, D3) and from the IT training `Batch`/`Enrollment` (keyed to `users`, not
+# school students). "Frozen" (the student has since transferred) is computed, never stored (D9).
+
+
+class SchoolSkillBatch(Base, TimestampMixin):
+    __tablename__ = "school_skill_batches"
+    __table_args__ = (
+        CheckConstraint("module_type IN ('soft_skills', 'digital_skills')", name="ck_skill_batch_module"),
+        CheckConstraint("status IN ('open', 'closed')", name="ck_skill_batch_status"),
+        CheckConstraint("end_date IS NULL OR end_date >= start_date", name="ck_skill_batch_dates"),
+        Index("ix_school_skill_batches_school_module", "school_id", "module_type"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    module_type: Mapped[str] = mapped_column(String(20))
+    title: Mapped[str] = mapped_column(String(160))
+    topic: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    trainer_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="open")
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolSkillEnrollment(Base, TimestampMixin):
+    __tablename__ = "school_skill_enrollments"
+    __table_args__ = (
+        UniqueConstraint("batch_id", "school_student_id", name="uq_skill_enrollment_batch_student"),
+        CheckConstraint("status IN ('enrolled', 'completed', 'certified', 'withdrawn')", name="ck_skill_enrollment_status"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_batches.id"))
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="enrolled")
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    certified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    enrolled_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolSkillSession(Base, TimestampMixin):
+    __tablename__ = "school_skill_sessions"
+    __table_args__ = (UniqueConstraint("batch_id", "session_date", name="uq_skill_session_batch_date"),)  # D10
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_batches.id"))
+    session_date: Mapped[date] = mapped_column(Date)
+    topic: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolSkillAttendance(Base, TimestampMixin):
+    __tablename__ = "school_skill_attendance"
+    __table_args__ = (UniqueConstraint("session_id", "enrollment_id", name="uq_skill_attendance_session_enrollment"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_sessions.id"))
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_enrollments.id"), index=True)
+    present: Mapped[bool] = mapped_column(Boolean)
+    marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolSkillAssessment(Base, TimestampMixin):
+    __tablename__ = "school_skill_assessments"
+    __table_args__ = (
+        UniqueConstraint("batch_id", "name", name="uq_skill_assessment_batch_name"),
+        CheckConstraint("max_score > 0", name="ck_skill_assessment_max"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_batches.id"))
+    name: Mapped[str] = mapped_column(String(120))
+    max_score: Mapped[Decimal] = mapped_column(Numeric(6, 2))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolSkillScore(Base, TimestampMixin):
+    __tablename__ = "school_skill_scores"
+    __table_args__ = (
+        UniqueConstraint("assessment_id", "enrollment_id", name="uq_skill_score_assessment_enrollment"),
+        CheckConstraint("score >= 0", name="ck_skill_score_nonneg"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    assessment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_assessments.id"))
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_enrollments.id"), index=True)
+    score: Mapped[Decimal] = mapped_column(Numeric(6, 2))
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recorded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 class SchoolAcademicResult(Base, TimestampMixin):

@@ -17,6 +17,8 @@ const emitted = [
   { category: "test_prep", label: "Test prep" },
   { category: "foreign_language", label: "Foreign language" },
   { category: "global_education", label: "Global education" },
+  { category: "soft_skills", label: "Soft skills" }, // ENH-011
+  { category: "digital_skills", label: "Digital skills" }, // ENH-011
 ] as const;
 
 afterEach(cleanup);
@@ -39,5 +41,12 @@ describe("SchoolStudentTimeline", () => {
     render(<SchoolStudentTimeline events={[event]} />);
     expect(screen.getByText("Future stage")).toBeTruthy();
     expect(screen.getByText("Visa planning")).toBeTruthy();
+  });
+
+  it.each(["soft_skills", "digital_skills"])("gives the ENH-011 %s category its own colour, not the unknown-category grey", (category) => {
+    const event = { date: at, category, type: "skill_enrolled", title: "Enrolled", detail: null } as TimelineEvent;
+    render(<SchoolStudentTimeline events={[event]} />);
+    const badge = document.querySelector(".jtl-badge") as HTMLElement;
+    expect(badge.style.getPropertyValue("--jtl-color")).not.toBe("#475569");
   });
 });

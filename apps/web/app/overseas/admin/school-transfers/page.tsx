@@ -3,18 +3,7 @@ import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
-
-function AccessUnavailable({ message }: { message: string }) {
-  return (
-    <div className="section">
-      <div className="container card">
-        <h1>Access unavailable</h1>
-        <p>{message}</p>
-        <a className="btn" href="/overseas/login">Return to login</a>
-      </div>
-    </div>
-  );
-}
+import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 
 // ENH-005: the admin's transfer queue as its own page. It used to be the portal's generic section, whose read-only table (raw UUIDs, ISO
 // timestamps, capped at 200 rows, counted differently from the queue) sat above the queue and pushed the approve/reject controls below the
@@ -28,9 +17,9 @@ export default async function AdminSchoolTransfersPage() {
   try {
     user = await serverApi<User>("/api/v1/auth/me");
   } catch (e) {
-    return <AccessUnavailable message={e instanceof Error ? e.message : "Unable to load this workspace"} />;
+    return accessUnavailable(e);
   }
-  if (!ADMIN_ROLES.includes(user.role)) return <AccessUnavailable message="Overseas Administrator role required" />;
+  if (!ADMIN_ROLES.includes(user.role)) return accessDenied(user, "Overseas Administrator role required");
   return (
     <PortalShell nav={PORTAL_NAV["overseas/admin"]} roleLabel="Overseas Administrator" userName={user.full_name}>
       <div className="portal-content">
