@@ -38,6 +38,12 @@ describe("PortfolioEntryForm", () => {
     render(<PortfolioEntryForm studentId="s1" section="project" entryId="e1" initial={{ title: "Old", description: null, organization: null, date_from: null, date_to: null }} onDone={() => {}} onCancel={() => {}} />);
     fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "Updated" } });
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/v1/school/students/s1/portfolio/entries/e1", expect.objectContaining({ method: "PATCH" })));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/v1/school/students/s1/portfolio/entries/e1", expect.objectContaining({ method: "PATCH" }));
+      const [, init] = fetchMock.mock.calls[0];
+      const body = JSON.parse(init.body as string);
+      expect(body).not.toHaveProperty("section");
+      expect(body.title).toBe("Updated");
+    });
   });
 });
