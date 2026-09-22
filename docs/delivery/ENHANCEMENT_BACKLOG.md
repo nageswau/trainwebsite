@@ -759,6 +759,18 @@ outside the School domain.
 
 **Complexity:** Medium. **Risk:** Low.
 
+**Status (2026-09-22).** Designed and decided in
+`docs/superpowers/specs/2026-09-22-enh-007-profile-self-service-design.md`; implemented via strict TDD on
+branch `feature/enh-007-profile-self-service-audit` (7 tasks, each with an implementer + reviewer cycle,
+all reviewed clean; a final whole-branch review found no Critical issues, and this status block records
+that review's fix wave). **NOT YET COMPLETE:** pending a browser validation pass across all 7 School-domain
+roles (including the mobile menu at a narrow viewport) and an independent Codex review, per
+`docs/superpowers/plans/2026-09-22-enh-007-profile-self-service.md`'s "After all tasks" section. Evidence
+so far: `apps/api/tests/test_enh_007_profile_self_service.py` (16 passed), backend regression suite
+passing, `apps/web/tests/components/{ProfileForm,AccountProfilePage,PortalShell}.test.tsx` (all passing),
+`apps/web/tests/e2e/enh-007-profile-self-service.spec.ts` (3 passed against a live stack), `tsc --noEmit`
+and `eslint` clean, no migration (`alembic check` confirms no drift).
+
 ---
 
 ## ENH-008 — Parent Account Linked to Children Across Multiple Schools

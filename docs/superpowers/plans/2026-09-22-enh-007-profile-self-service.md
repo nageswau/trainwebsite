@@ -1021,5 +1021,8 @@ Still outstanding after this plan's tasks are green:
    the 7 School-domain roles' portal entry points, mobile menu at a real narrow viewport, and the
    401/422/network-error states, the way ENH-006's own spec §13 recorded its browser-QA findings.
 2. **Independent Codex review** — a second, independent review of the diff before this is merged.
+3. **Documentation** — the spec §10 updates (`RTM.md`, `ENHANCEMENT_BACKLOG.md`) should be current before
+   merge; this fix wave already did them (final whole-branch review, 2026-09-22), but note it here so a
+   future plan doesn't drop this the way this one did.
 
-Do not report ENH-007 as complete until both of these have actually run and their results are recorded.
+Do not report ENH-007 as complete until all three of these have actually run and their results are recorded.
