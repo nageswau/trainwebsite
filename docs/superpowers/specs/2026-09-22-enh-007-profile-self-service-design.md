@@ -171,6 +171,13 @@ role's own `nav` array are unchanged.
 - **Accessibility/responsive:** labelled inputs, errors tied to the field via `aria-describedby`, fully
   keyboard-completable, no horizontal scroll at 375px, tap targets >=44px — same bar `ChangePasswordForm`
   already meets.
+- **`noValidate` on the `<form>`:** server-side validation (the error table above) is the single source
+  of truth. Without `noValidate`, the browser's native `minLength=2` constraint on `full_name` would block
+  `submit()`/`fetch()` from ever running on a too-short name — the 422 inline error and `aria-invalid`
+  focus handling would never fire in a real browser, even though the browser's own (incorrect, tooltip-only)
+  validation UI would appear to work. This is invisible to jsdom-based unit tests (jsdom does not implement
+  constraint validation the same way, and `fireEvent.click` bypasses it) — only a real-browser e2e run
+  catches a regression here.
 
 ## 7. Acceptance criteria
 

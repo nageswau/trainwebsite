@@ -88,6 +88,13 @@ export default function ProfileForm({ fullName, phone }: { fullName: string; pho
   }
 
   return (
+    // noValidate: server-side validation is the single source of truth (design spec §6's error
+    // table). Without it, the browser's native minLength=2 constraint would block submit() from
+    // ever running on a too-short name, so the 422 inline error and aria-invalid focus handling
+    // below would never fire -- only the browser's own tooltip would (incorrectly) appear to
+    // handle it. Removing this is invisible to jsdom-based unit tests (jsdom doesn't implement
+    // constraint validation the same way, and fireEvent.click bypasses it) -- only a real browser
+    // (e2e) would catch the regression.
     <form className="form" onSubmit={submit} aria-label="Your profile" aria-busy={busy} noValidate>
       <div className="field">
         <label htmlFor="profile-full-name">Full name</label>
