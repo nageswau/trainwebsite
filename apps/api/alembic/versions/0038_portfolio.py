@@ -1,10 +1,16 @@
 """ENH-012 -- portfolio_entries and portfolio_profiles.
 
-Revision ID: 0035_portfolio
-Revises: 0034_school_transfer_requests
+Revision ID: 0038_portfolio
+Revises: 0037_school_skills
 
 docs/superpowers/specs/2026-09-22-enh-012-digital-portfolio-design.md §5. Create-table only: no existing
 table is altered and no existing row is read or written. `downgrade()` drops both tables.
+
+Re-chained on merge with `main`, 2026-09-23: originally cut as `0035_portfolio` on top of
+`0034_school_transfer_requests`, the same parent ENH-009's `0035_school_profile_fields` used
+independently. Renumbered past ENH-009's `0035`/`0036` and ENH-011's `0037_school_skills` (the
+same collision-and-renumber precedent recorded for those two in `docs/quality/RTM.md`), leaving a
+single alembic head.
 """
 
 import sqlalchemy as sa
@@ -12,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0035_portfolio"
-down_revision = "0034_school_transfer_requests"
+revision = "0038_portfolio"
+down_revision = "0037_school_skills"
 branch_labels = None
 depends_on = None
 
