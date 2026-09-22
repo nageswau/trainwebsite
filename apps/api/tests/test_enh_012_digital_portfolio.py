@@ -182,3 +182,62 @@ async def test_create_entry_writes_an_audit_log_without_free_text(client, db_ses
     assert row is not None
     assert row.metadata_json == {"section": "project", "school_student_id": str(student.id)}
     assert "Secret project title" not in str(row.metadata_json)
+
+
+@pytest.mark.asyncio
+async def test_coordinator_updates_their_own_entry(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-PATCH")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    created = (await client.post(f"/api/v1/school/students/{student.id}/portfolio/entries", json={"section": "project", "title": "Draft title"})).json()
+    response = await client.patch(f"/api/v1/school/students/{student.id}/portfolio/entries/{created['id']}", json={"title": "Final title"})
+    assert response.status_code == 200, response.text
+    assert response.json()["title"] == "Final title"
+
+
+@pytest.mark.asyncio
+async def test_patching_an_entry_that_belongs_to_a_different_student_is_404(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx_a = await mk_school(db_session, label="ENH012-PATCH-A")
+    ctx_b = await mk_school(db_session, label="ENH012-PATCH-B")
+    await login(client, ctx_a["coordinator"].email)
+    created = (await client.post(f"/api/v1/school/students/{ctx_a['students'][0].id}/portfolio/entries", json={"section": "project", "title": "A's entry"})).json()
+
+    await login(client, ctx_b["coordinator"].email)
+    response = await client.patch(f"/api/v1/school/students/{ctx_b['students'][0].id}/portfolio/entries/{created['id']}", json={"title": "Hijacked"})
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_patching_entry_date_to_before_existing_date_from_returns_422(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-PATCH-DateRange")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    # Create entry with date_from but no date_to
+    created = (await client.post(f"/api/v1/school/students/{student.id}/portfolio/entries", json={"section": "project", "title": "Entry with date_from", "date_from": "2026-06-01"})).json()
+    # Try to PATCH with only date_to that's before the existing date_from
+    response = await client.patch(f"/api/v1/school/students/{student.id}/portfolio/entries/{created['id']}", json={"date_to": "2026-01-01"})
+    assert response.status_code == 422, response.text
+    # Verify the date_to was NOT changed
+    portfolio = (await client.get(f"/api/v1/school/students/{student.id}/portfolio")).json()
+    entry = portfolio["entries"]["project"][0]
+    assert entry["date_to"] is None
+
+
+@pytest.mark.asyncio
+async def test_patching_entry_date_from_after_existing_date_to_returns_422(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-PATCH-DateRange2")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    # Create entry with date_to but no date_from
+    created = (await client.post(f"/api/v1/school/students/{student.id}/portfolio/entries", json={"section": "project", "title": "Entry with date_to", "date_to": "2026-06-01"})).json()
+    # Try to PATCH with only date_from that's after the existing date_to
+    response = await client.patch(f"/api/v1/school/students/{student.id}/portfolio/entries/{created['id']}", json={"date_from": "2026-12-01"})
+    assert response.status_code == 422, response.text
+    # Verify the date_from was NOT changed
+    portfolio = (await client.get(f"/api/v1/school/students/{student.id}/portfolio")).json()
+    entry = portfolio["entries"]["project"][0]
+    assert entry["date_from"] is None

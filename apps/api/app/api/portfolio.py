@@ -146,3 +146,32 @@ async def create_portfolio_entry(student_id: UUID, payload: PortfolioEntryCreate
     await db.refresh(entry)
     logger.info("portfolio_entry_create", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id), "section": entry.section}})
     return _entry_out(entry)
+
+
+async def _load_portfolio_entry(db: AsyncSession, student_id: UUID, entry_id: UUID) -> PortfolioEntry:
+    entry = await db.get(PortfolioEntry, entry_id)
+    if not entry or entry.school_student_id != student_id:
+        raise HTTPException(404, "Portfolio entry not found")
+    return entry
+
+
+@router.patch("/students/{student_id}/portfolio/entries/{entry_id}", response_model=PortfolioEntryOut)
+async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: PortfolioEntryUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    student = await _load_portfolio_student(db, user, student_id)
+    _require_portfolio_write(user, student)  # role/scope checked before the entry lookup below (spec §6)
+    entry = await _load_portfolio_entry(db, student.id, entry_id)
+    for field in ("title", "description", "organization", "date_from", "date_to"):
+        value = getattr(payload, field)
+        if value is not None:
+            setattr(entry, field, value)
+    # Date-range merge-validation fix: after merging payload fields onto entry, validate the merged result
+    # if both date_from and date_to are now set and date_to < date_from, reject the update
+    if entry.date_from is not None and entry.date_to is not None and entry.date_to < entry.date_from:
+        raise HTTPException(422, "date_to must not be before date_from")
+    entry.updated_by_user_id = user.id
+    await db.flush()
+    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_update", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json={"section": entry.section, "school_student_id": str(student.id)}))
+    await db.commit()
+    await db.refresh(entry)
+    logger.info("portfolio_entry_update", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id)}})
+    return _entry_out(entry)
