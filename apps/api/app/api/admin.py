@@ -1282,6 +1282,21 @@ async def list_school_staff(user: User = Depends(get_current_user), db: AsyncSes
     return [{"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "school_ids": [str(sid) for sid in portfolio_by_user.get(u.id, [])]} for u in rows]
 
 
+@agents_router.get("/schools/lookup")
+async def lookup_school_by_code(code: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-009 / DEC-SCOPE-023 -- resolves a School's business-facing `school_code` to its full
+    profile, for the admin edit panel. Deliberately narrower than the analogous
+    `school-students/lookup` endpoint: Counselor has a real reason to look up a School *student*
+    (the School->Overseas bridge, DEC-SCOPE-018) but no legitimate reason to see or edit a
+    School's own profile."""
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    school = await db.scalar(select(School).where(School.school_code == code.strip().upper()))
+    if not school:
+        raise HTTPException(404, "No school found with that School ID")
+    return await _school_out(db, school)
+
+
 @agents_router.get("/school-students/lookup")
 async def lookup_school_student_by_code(code: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Resolves a School student's business-facing `student_code` (added 2026-09-15,

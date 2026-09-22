@@ -479,3 +479,37 @@ async def test_patch_school_profile_only_logs_zero_tier_update_rows(client, db_s
     )
     assert profile_log is not None
     assert profile_log.metadata_json == {"changed_fields": ["branch"]}
+
+
+@pytest.mark.asyncio
+async def test_lookup_school_by_code_returns_the_school(client, db_session):
+    result = await _create_school(client, db_session)
+    await _login(client, result["admin"].email)
+    school = await db_session.get(School, result["id"])
+
+    response = await client.get(f"/api/v1/overseas-admin/schools/lookup?code={school.school_code}")
+    assert response.status_code == 200
+    assert response.json()["id"] == str(school.id)
+
+
+@pytest.mark.asyncio
+async def test_lookup_school_by_code_404_when_not_found(client, db_session):
+    admin = await _create_overseas_admin(db_session)
+    await _login(client, admin.email)
+    response = await client.get("/api/v1/overseas-admin/schools/lookup?code=ZZZZZZZZ")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_lookup_school_by_code_excludes_counselor(client, db_session):
+    result = await _create_school(client, db_session)
+    counselor = User(
+        email=f"counselor-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD),
+        full_name="Test Counselor", role="counselor", division="overseas", active=True,
+    )
+    db_session.add(counselor)
+    await db_session.commit()
+    await _login(client, counselor.email)
+    school = await db_session.get(School, result["id"])
+    response = await client.get(f"/api/v1/overseas-admin/schools/lookup?code={school.school_code}")
+    assert response.status_code == 403
