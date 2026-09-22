@@ -33,7 +33,7 @@
 | QA-11 | Low | Buttons under 40 px on a phone | **Fixed** `dfbc02b` | Phone-only rule scoped to `.skills-page`. The E2E spec asserts every visible button is at least 44 px at 390 px (RED: 4 buttons → GREEN) |
 | QA-12 | Low | Certified row had a blank "Change" cell | **Fixed** `c4bb74f` | "No further changes" |
 | QA-13 | Low | List page had no `<h1>` | **Fixed** `c4bb74f` | "Skills batches" is the `h1` |
-| QA-14 | Low | Wrong role or signed out: the access card offers "Return to login" even to a signed-in user; no redirect | **Not fixed — out of ENH-011 scope** | The app-wide pattern of every school page; changing it alone here would make the skills pages inconsistent |
+| QA-14 | Low | Wrong role or signed out: the access card offers "Return to login" even to a signed-in user | **Fixed app-wide** `58245c5` (on the owner's instruction) | One shared helper replaces the 23 copies (21 school pages, the admin transfers page, `PortalPage`): 401 → "Return to login"; signed in → "Go to your dashboard" (`ROLE_DASHBOARD_PATH`). Unit tests; on the running app a signed-in Academic Team user gets `/school/academic-team/dashboard` on a skills page, a coordinator page and the admin transfers page, and a signed-out visitor gets `/overseas/login` |
 
 ## Observations (by design, for review)
 
@@ -67,6 +67,21 @@
   - no broken images;
   - no JavaScript errors;
   - no unexpected redirects.
+
+## Targeted Playwright run after QA-14 (2026-09-22)
+
+The specs that assert "Access unavailable", plus ENH-011's own, were run on the rebuilt stack: `agt-001`, `auth-002`, `sch-001`, `sch-007`, `sch-008`, `sch-reports`, `enh-011`. Result: **11 passed, 1 failed**.
+
+The failure is `sch-001:63`, which timed out on `page.request.post("/api/v1/auth/logout")` (line 92). It failed on 3 of 3 attempts; a repeated run also failed `sch-001` AC03 once, which passes alone.
+
+Why it is not attributed to QA-14:
+- The hang happens before the test reaches any "Access unavailable" page.
+- The API logged every logout it received as `200` in a few milliseconds, with no errors.
+- The same logout takes 6–20 ms when called directly on the API.
+
+So the request is lost on the Next.js rewrite / CI proxy path. This matches the unexplained intermittent logout hang already recorded by ENH-004.
+
+**Not proven by an A/B run:** the same spec has not been run against a build without `58245c5`.
 
 ## Harness notes (not app defects)
 
