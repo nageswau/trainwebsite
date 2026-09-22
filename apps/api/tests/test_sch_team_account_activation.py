@@ -7,9 +7,10 @@ guard like ADM-001-AC02's trainer/batch check -- see the endpoint's own docstrin
 import uuid
 
 import pytest
+from sqlalchemy import select
 
 from app.core.security import hash_password
-from app.models import School, SchoolStudent, User, UserRoleAssignment
+from app.models import AuditLog, School, SchoolStudent, User, UserRoleAssignment
 
 PASSWORD = "Sup3r-Secret-Pass!"
 
@@ -52,6 +53,15 @@ async def test_coordinator_deactivates_and_reactivates_a_teacher(client, db_sess
     assert deactivated.status_code == 200, deactivated.text
     assert deactivated.json()["active"] is False
 
+    audit_rows = (
+        await db_session.scalars(
+            select(AuditLog).where(AuditLog.action == "school.team_account_update", AuditLog.entity_id == str(teacher.id))
+        )
+    ).all()
+    assert len(audit_rows) >= 1
+    assert audit_rows[0].user_id == ctx["school_coordinator"].id
+    assert audit_rows[0].created_at is not None
+
     listed = await client.get("/api/v1/school/team")
     row = next(a for a in listed.json()["accounts"] if a["id"] == str(teacher.id))
     assert row["active"] is False
@@ -59,6 +69,25 @@ async def test_coordinator_deactivates_and_reactivates_a_teacher(client, db_sess
     reactivated = await client.patch(f"/api/v1/school/team/accounts/{teacher.id}", json={"active": True})
     assert reactivated.status_code == 200
     assert reactivated.json()["active"] is True
+
+
+@pytest.mark.asyncio
+async def test_deactivated_teacher_cannot_log_in_and_reactivation_restores_access(client, db_session):
+    ctx = await _create_school_with_roles(db_session)
+    await _login(client, ctx["school_coordinator"].email)
+    teacher = ctx["school_teacher"]
+
+    deactivated = await client.patch(f"/api/v1/school/team/accounts/{teacher.id}", json={"active": False})
+    assert deactivated.status_code == 200
+
+    blocked = await client.post("/api/v1/auth/login", json={"email": teacher.email, "password": PASSWORD, "division": "overseas"})
+    assert blocked.status_code == 401
+
+    reactivated = await client.patch(f"/api/v1/school/team/accounts/{teacher.id}", json={"active": True})
+    assert reactivated.status_code == 200
+
+    restored = await client.post("/api/v1/auth/login", json={"email": teacher.email, "password": PASSWORD, "division": "overseas"})
+    assert restored.status_code == 200
 
 
 @pytest.mark.asyncio
@@ -124,3 +153,28 @@ async def test_unauthenticated_cannot_toggle_team_account(client, db_session):
     ctx = await _create_school_with_roles(db_session)
     response = await client.patch(f"/api/v1/school/team/accounts/{ctx['school_teacher'].id}", json={"active": False})
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_toggle_ignores_extra_fields_and_changes_only_active(client, db_session):
+    ctx = await _create_school_with_roles(db_session)
+    await _login(client, ctx["school_coordinator"].email)
+    teacher = ctx["school_teacher"]
+    original = (teacher.role, teacher.division, teacher.email, teacher.full_name, teacher.password_hash)
+
+    response = await client.patch(
+        f"/api/v1/school/team/accounts/{teacher.id}",
+        json={
+            "active": False,
+            "role": "super_admin",
+            "division": "global",
+            "email": "attacker@example.local",
+            "full_name": "Hacked",
+            "password_hash": "x",
+        },
+    )
+    assert response.status_code == 200
+
+    await db_session.refresh(teacher)
+    assert (teacher.role, teacher.division, teacher.email, teacher.full_name, teacher.password_hash) == original
+    assert teacher.active is False
