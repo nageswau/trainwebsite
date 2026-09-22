@@ -113,7 +113,7 @@ export default function ProfileForm({ fullName, phone }: { fullName: string; pho
       </div>
       <div className="field">
         <label htmlFor="profile-phone">Phone</label>
-        <input id="profile-phone" key={saved.phone} name="phone" type="text" maxLength={40} defaultValue={saved.phone} />
+        <input id="profile-phone" key={saved.phone} name="phone" type="tel" autoComplete="tel" inputMode="tel" maxLength={40} defaultValue={saved.phone} />
       </div>
       {error && (
         <div id="profile-error" className="form-error" role="alert" aria-live="assertive">
