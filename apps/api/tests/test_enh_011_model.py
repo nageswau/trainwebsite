@@ -12,7 +12,7 @@ from app.models import SchoolSkillAssessment, SchoolSkillAttendance, SchoolSkill
 # ENH-011 spec §4: six create-only tables. No database needed: models are checked through their metadata, the migration by
 # rendering its SQL offline (what `alembic upgrade --sql` does).
 
-MIGRATION = Path(__file__).resolve().parent.parent / "alembic" / "versions" / "0035_school_skills.py"
+MIGRATION = Path(__file__).resolve().parent.parent / "alembic" / "versions" / "0037_school_skills.py"
 TABLES = ["school_skill_batches", "school_skill_enrollments", "school_skill_sessions", "school_skill_attendance", "school_skill_assessments", "school_skill_scores"]
 
 
@@ -58,7 +58,7 @@ def _render(fn_name: str) -> str:
     spec = importlib.util.spec_from_file_location("migration_0035", MIGRATION)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert module.revision == "0035_school_skills" and module.down_revision == "0034_school_transfer_requests"
+    assert module.revision == "0037_school_skills" and module.down_revision == "0036_backfill_school_code"
     buffer = io.StringIO()
     context = MigrationContext.configure(dialect_name="postgresql", opts={"as_sql": True, "output_buffer": buffer})
     with Operations.context(context):

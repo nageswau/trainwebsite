@@ -1,6 +1,6 @@
 # ENH-011 — Browser QA and fixes (2026-09-22)
 
-**Scope:** first exploratory QA pass of ENH-011 (`DEC-SCOPE-023`), then test-first fixes.
+**Scope:** first exploratory QA pass of ENH-011 (`DEC-SCOPE-026`), then test-first fixes.
 
 **Environment:**
 - **Build:** branch `feature/enh-011-skills-tracker-generalization`. QA ran on `ea90fa5`; fixes are `4604dd8`…`dfbc02b`.
@@ -38,7 +38,7 @@
 ## Observations (by design, for review)
 
 - **O-1:** coordinators and teachers see Skills only as timeline events. There is no Skills card with attendance or scores on their student pages (spec §5.2).
-- **O-2:** after a transfer, the losing school's counselor keeps a read-only view of the student's batch history (`DEC-SCOPE-023` D9).
+- **O-2:** after a transfer, the losing school's counselor keeps a read-only view of the student's batch history (`DEC-SCOPE-026` D9).
 
 ## Passed in the first pass (unchanged by the fixes)
 

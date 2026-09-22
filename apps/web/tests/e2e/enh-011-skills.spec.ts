@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
-// ENH-011 (DEC-SCOPE-023) -- a Career Counselor runs a Soft Skills batch end to end: create -> enrol -> session + attendance ->
+// ENH-011 (DEC-SCOPE-026) -- a Career Counselor runs a Soft Skills batch end to end: create -> enrol -> session + attendance ->
 // assessment + score -> certify; the linked parent then sees it in the Parent Portal's Skills section and on the timeline.
 // Registers its own throwaway School + Coordinator + Career Counselor + student + parent (dev invite token, like
 // sch-roster-parent-invite). The create form is submitted from the keyboard.

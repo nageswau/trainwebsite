@@ -73,7 +73,6 @@ ACTION_DENIED = "school.transfer_request_denied"
 ACTION_CANCELLED = "school.transfer_request_cancelled"
 ACTION_REJECTED = "school.transfer_request_rejected"
 ACTION_TRANSFER = "school.student_transfer"
-ACTION_SCOPE_CHANGED = "school.user_school_scope_changed"
 FILING_ACTIONS = (ACTION_FILED, ACTION_DENIED)
 
 
@@ -405,13 +404,15 @@ async def _approve(db: AsyncSession, request_id: UUID, admin_id: UUID):
     from_id, to_id = str(from_school.id), str(to_school.id)
 
     # Parents (D1): the link is never touched. An account at the losing school whose only child there was this student follows the
-    # child; one with another child still there stays. The ONLY field ever written on a user is `profile.school_id`, and only on a
-    # `school_parent` account at the losing school (security review S5) -- and each such change is audited (S4).
+    # child conceptually (this and every other place a Parent's data is scoped reads that from SchoolParentLink alone, per ENH-008) --
+    # nothing is written to the parent's own account. The row lock below still matters: it's what makes two siblings transferred at
+    # once serialise on their shared parent, so the moved/kept read below sees a consistent view (security review S2/S4).
     linked = select(SchoolParentLink.parent_user_id).where(SchoolParentLink.school_student_id == student.id)
     parents = (await db.scalars(select(User).where(User.id.in_(linked)).order_by(User.id).with_for_update())).all()
-    moved = kept = 0
+    moved_parent_ids: list[str] = []
+    kept_parent_ids: list[str] = []
     for parent in parents:
-        if parent.role != "school_parent" or (parent.profile or {}).get("school_id") != from_id:
+        if parent.role != "school_parent":
             continue
         others_at_from = await db.scalar(
             select(func.count())
@@ -420,11 +421,10 @@ async def _approve(db: AsyncSession, request_id: UUID, admin_id: UUID):
             .where(SchoolParentLink.parent_user_id == parent.id, SchoolStudent.school_id == request.from_school_id, SchoolStudent.id != student.id)
         )
         if others_at_from:
-            kept += 1
-            continue
-        parent.profile = {**(parent.profile or {}), "school_id": to_id}  # a whole-dict reassignment, so the JSON change is detected
-        moved += 1
-        _audit(db, admin_id, ACTION_SCOPE_CHANGED, parent.id, from_school_id=from_id, to_school_id=to_id, transfer_request_id=str(request.id))
+            kept_parent_ids.append(str(parent.id))
+        else:
+            moved_parent_ids.append(str(parent.id))
+    moved, kept = len(moved_parent_ids), len(kept_parent_ids)
 
     # In-flight results (D3): kept, frozen, hidden. Published results stay with the student.
     in_flight = (
@@ -443,7 +443,7 @@ async def _approve(db: AsyncSession, request_id: UUID, admin_id: UUID):
     student.school_id, student.assigned_teacher_user_id, student.pending_parent_email = request.to_school_id, None, None
     request.status, request.decided_by_user_id, request.decided_at = "approved", admin_id, datetime.now(UTC)
     request.outcome = {"parents_moved": moved, "parents_kept": kept, "results_withdrawn": len(in_flight), "teacher_cleared": teacher_cleared, "pending_parent_email_cleared": pending_email_cleared}
-    _audit(db, admin_id, ACTION_TRANSFER, request.id, from_school_id=from_id, to_school_id=to_id, **request.outcome)
+    _audit(db, admin_id, ACTION_TRANSFER, request.id, from_school_id=from_id, to_school_id=to_id, parents_moved_ids=moved_parent_ids, parents_kept_ids=kept_parent_ids, **request.outcome)
     return request, student, from_school, to_school
 
 

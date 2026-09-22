@@ -2496,7 +2496,7 @@ correction, not deleted, per this project's traceability convention.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** SchoolTransferRequestForm.test.tsx, SchoolTransferHistory.test.tsx (passing); enh-005-school-transfer.spec.ts (browser, 2026-09-21); test_enh_005_filing.py.
 
-### `SCR-SCH-033` *(added 2026-09-22, `ENH-011` / `DEC-SCOPE-023`)*
+### `SCR-SCH-033` *(added 2026-09-22, `ENH-011` / `DEC-SCOPE-026`)*
 - **Route:** `/school/career-counselor/skills`
 - **Role(s):** Career Counselor
 - **Purpose:** The counselor's Soft Skills / Digital Skills batches across their school portfolio, and the form that creates one.
@@ -2514,7 +2514,7 @@ correction, not deleted, per this project's traceability convention.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** SchoolSkillBatchesPanel.test.tsx, lib/skills.test.ts (passing); enh-011-skills.spec.ts; the browser QA record `docs/quality/ENH-011_BROWSER_QA_2026-09-22.md`.
 
-### `SCR-SCH-034` *(added 2026-09-22, `ENH-011` / `DEC-SCOPE-023`)*
+### `SCR-SCH-034` *(added 2026-09-22, `ENH-011` / `DEC-SCOPE-026`)*
 - **Route:** `/school/career-counselor/skills/[id]`
 - **Role(s):** Career Counselor
 - **Purpose:** One batch end to end: its details, the enrolled students and their status, sessions with attendance, and assessments with scores.

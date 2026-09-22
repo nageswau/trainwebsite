@@ -73,6 +73,29 @@ class ProfileUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=40)
     profile: dict | None = None
 
+    @field_validator("full_name")
+    @classmethod
+    def full_name_is_a_real_name(cls, value: str | None) -> str:
+        # ENH-007: `str | None` lets an explicit `null` or an all-whitespace string satisfy
+        # min_length (which only constrains RAW string length, not content, and runs before this
+        # validator) and reach auth.py's `changes["full_name"].strip()`, which either crashes
+        # (None -> AttributeError, unhandled 500) or silently blanks the account's display name
+        # (whitespace -> "", 200 "success"). Pydantic v2 does not validate unset defaults, so this
+        # only fires when the key is actually present -- omitting `full_name` is unaffected (still
+        # means "don't change it"). Mirrors ChangePasswordRequest.new_password_is_not_blank below --
+        # same bug class, same fix shape.
+        if value is None:
+            raise PydanticCustomError("null_full_name", "full_name cannot be null")
+        stripped = value.strip()
+        if not stripped:
+            raise PydanticCustomError("blank_full_name", "full_name must not consist only of spaces")
+        # Codex review: raw min_length=2 lets padding through -- "A " has raw length 2 but strips to
+        # a single character, which auth.py then saves as-is, bypassing the "at least 2 real
+        # characters" intent. Check the STRIPPED length, not the raw one.
+        if len(stripped) < 2:
+            raise PydanticCustomError("full_name_too_short_after_trim", "full_name must be at least 2 characters, not counting leading/trailing spaces")
+        return value
+
 
 class ChangePasswordRequest(BaseModel):
     # ENH-006. Passwords are never stripped or normalised. current_password is bounded (not at 128) so a legacy
@@ -947,3 +970,83 @@ class SkillBatchDetail(SkillBatchOut):
     enrollments: list[SkillEnrollmentOut]
     sessions: list[SkillSessionOut]
     assessments: list[SkillAssessmentOut]
+
+
+# --- ENH-009 / DEC-SCOPE-025: School Profile field coverage (EVID-014) ---
+
+SchoolBoard = Literal["CBSE", "ICSE", "State", "IB", "Other"]
+
+
+class SchoolCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+    name: str = Field(min_length=1, max_length=200)
+    city: str | None = Field(default=None, max_length=120)
+    state: str | None = Field(default=None, max_length=120)
+    tier: str | None = None
+    # Restored (ENH-009 final review): the pre-ENH-009 dict-bodied create_school() accepted this,
+    # so dropping it would have quietly narrowed a contract the design doc calls additive-compatible.
+    tier_valid_until: date | None = None
+    coordinator_full_name: str = Field(min_length=1, max_length=160)
+    coordinator_email: str
+    branch: str | None = Field(default=None, max_length=200)
+    address: str | None = Field(default=None, max_length=500)
+    contact_number: str | None = Field(default=None, max_length=30)
+    # Demo/seed accounts intentionally use the reserved `.local` domain, which
+    # EmailStr rejects even though these addresses are valid application accounts.
+    email: str | None = Field(default=None, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=255)
+    website: str | None = Field(default=None, max_length=255)
+    grades_available: str | None = Field(default=None, max_length=200)
+    board: SchoolBoard | None = None
+    partnership_date: date | None = None
+    mou_reference: str | None = Field(default=None, max_length=255)
+    edusphere_bdm: str | None = Field(default=None, max_length=200)
+    monthly_visit_schedule: str | None = Field(default=None, max_length=200)
+    vice_principal_name: str | None = Field(default=None, max_length=200)
+
+
+class SchoolUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+    tier: str | None = None
+    tier_valid_until: date | None = None
+    branch: str | None = Field(default=None, max_length=200)
+    address: str | None = Field(default=None, max_length=500)
+    contact_number: str | None = Field(default=None, max_length=30)
+    # Demo/seed accounts intentionally use the reserved `.local` domain, which
+    # EmailStr rejects even though these addresses are valid application accounts.
+    email: str | None = Field(default=None, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=255)
+    website: str | None = Field(default=None, max_length=255)
+    grades_available: str | None = Field(default=None, max_length=200)
+    board: SchoolBoard | None = None
+    partnership_date: date | None = None
+    mou_reference: str | None = Field(default=None, max_length=255)
+    edusphere_bdm: str | None = Field(default=None, max_length=200)
+    monthly_visit_schedule: str | None = Field(default=None, max_length=200)
+    vice_principal_name: str | None = Field(default=None, max_length=200)
+
+
+class SchoolOut(BaseModel):
+    id: UUID
+    name: str
+    city: str | None
+    state: str | None
+    tier: str | None
+    tier_valid_until: date | None
+    school_code: str | None
+    branch: str | None
+    address: str | None
+    contact_number: str | None
+    email: str | None
+    website: str | None
+    grades_available: str | None
+    board: str | None
+    partnership_date: date | None
+    mou_reference: str | None
+    edusphere_bdm: str | None
+    monthly_visit_schedule: str | None
+    vice_principal_name: str | None
+    student_count: int
+    teacher_count: int
+    principal_name: str | None
+    school_coordinator_name: str | None
+    career_counsellor_names: list[str]
+    created_at: datetime

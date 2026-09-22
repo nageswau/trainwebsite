@@ -79,7 +79,7 @@ async def test_bronze_tier_excludes_higher_tier_services(client, db_session):
     body = response.json()
     keys = {s["key"] for s in body["services"]}
     assert keys == {"career_seminar", "career_awareness_session", "parent_orientation", "psychometric_test", "soft_skills"}
-    assert _service(body, "soft_skills")["used"] == 0  # ENH-011: tracked now (DEC-SCOPE-023); no batches yet
+    assert _service(body, "soft_skills")["used"] == 0  # ENH-011: tracked now (DEC-SCOPE-026); no batches yet
 
 
 @pytest.mark.asyncio

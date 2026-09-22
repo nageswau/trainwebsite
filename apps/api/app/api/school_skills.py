@@ -1,5 +1,5 @@
 """ENH-011 -- School skills tracker: Soft Skills / Digital Skills batches run by a Career Counselor
-(docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md, `DEC-SCOPE-023`).
+(docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md, `DEC-SCOPE-026`).
 
 Its own router, like ENH-005's, so `schools.py` does not grow. The portfolio and parent-notification helpers are reused
 unchanged from `schools.py`. A batch belongs to one school in the counselor's `SchoolStaffAssignment` portfolio; anything

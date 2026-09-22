@@ -700,7 +700,7 @@ recipient is the linked `school_parent` user, `channel='email'`, `status` carrie
 webhook fallback) outcome. **Deliberately absent, not forgotten:** no `portfolio` or
 overseas-progress tables — `EVID-014` §14/§15–20 remain unconfirmed `DERIVED_BLUEPRINT`
 (`PRD_OPEN_ITEMS.md` items 77/78); adding those tables requires their own decisions first.
-**Skills (§9/§10) were confirmed 2026-09-22 (`DEC-SCOPE-023`, `ENH-011`)** and are §6.21; the
+**Skills (§9/§10) were confirmed 2026-09-22 (`DEC-SCOPE-026`, `ENH-011`)** and are §6.21; the
 overview gains an additive `skills` key read from them.
 
 ### 6.20 Student Journey Timeline (`SCH-008`) — added 2026-09-15, propagating `DEC-SCOPE-016`; no new tables
@@ -714,10 +714,10 @@ a report attach, `SchoolAcademicResult.published_at` for a Published result, `Sc
 scheduled_at` for an attended session. **Deliberately absent:** any Foreign Language /
 English Test / University Planning / Soft-Skills stage from `EVID-014`'s own illustrative
 timeline — none of those are confirmed modules (`DEC-SCOPE-015`/`016`). **Superseded in part
-2026-09-22 (`DEC-SCOPE-023` D5):** Soft Skills / Digital Skills events now appear, derived from
+2026-09-22 (`DEC-SCOPE-026` D5):** Soft Skills / Digital Skills events now appear, derived from
 §6.21 enrolment timestamps (`created_at`, `completed_at`, `certified_at`).
 
-### 6.21 School skills tracker (`ENH-011`) — added 2026-09-22, propagating `DEC-SCOPE-023`; migration `0035_school_skills`
+### 6.21 School skills tracker (`ENH-011`) — added 2026-09-22, propagating `DEC-SCOPE-026`; migration `0037_school_skills`
 
 Six create-only tables; no existing table altered. A **batch** belongs to one school and one
 module (`module_type` `soft_skills` | `digital_skills`) and is run by a `career_counselor` whose

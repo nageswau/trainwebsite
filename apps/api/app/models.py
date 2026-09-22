@@ -927,13 +927,9 @@ class PasswordResetToken(Base, TimestampMixin):
 
 
 class School(Base, TimestampMixin):
-    """School partner record (SCH-003, DATA_MODEL.md §6.11). Net-new.
-
-    Minimal, confirmed-scope-only fields -- EVID-014's elaborate profile field list
-    (Board, Principal name, partnership package, MoU, BDM assignment, etc.) is
-    DERIVED_BLUEPRINT only, not confirmed (DEC-SCOPE-012). Add fields as BRD/PRD
-    confirms them, not preemptively from that document.
-    """
+    """School partner record (SCH-003, DATA_MODEL.md §6.11; profile fields added ENH-009,
+    DEC-SCOPE-025). `EVID-014`'s full field list is now confirmed in scope -- see the
+    design doc for what's stored here vs. computed at read time in `SchoolOut`."""
 
     __tablename__ = "schools"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -941,12 +937,22 @@ class School(Base, TimestampMixin):
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     state: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
-    # Partnership tier (Bronze/Silver/Gold/Platinum), resolved 2026-09-15 (`DEC-SCOPE-017`,
-    # closes `CLIENT_QUESTIONS.md` item 9) -- unlike the rest of EVID-014's field list, this
-    # one is now confirmed, not derived-blueprint-only. Nullable: a School can exist before
-    # a tier is assigned.
     tier: Mapped[str | None] = mapped_column(String(20), nullable=True)
     tier_valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # ENH-009 / DEC-SCOPE-025: School Profile fields (EVID-014). All nullable, additive.
+    school_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    branch: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    contact_number: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    website: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    grades_available: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    board: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    partnership_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    mou_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    edusphere_bdm: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    monthly_visit_schedule: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    vice_principal_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class AcademicYear(Base, TimestampMixin):
@@ -1214,7 +1220,7 @@ class SchoolLanguageRecord(Base, TimestampMixin):
 
 
 # --- ENH-011: school skills tracker (docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md §4) ---
-# Soft Skills / Digital Skills batches run by a `career_counselor` for ONE school (`DEC-SCOPE-023`). Deliberately separate
+# Soft Skills / Digital Skills batches run by a `career_counselor` for ONE school (`DEC-SCOPE-026`). Deliberately separate
 # from SCH-009's per-student rows (left as-is, D3) and from the IT training `Batch`/`Enrollment` (keyed to `users`, not
 # school students). "Frozen" (the student has since transferred) is computed, never stored (D9).
 

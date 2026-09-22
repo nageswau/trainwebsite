@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0035_school_skills"
-down_revision = "0034_school_transfer_requests"
+revision = "0037_school_skills"
+down_revision = "0036_backfill_school_code"
 branch_labels = None
 depends_on = None
 

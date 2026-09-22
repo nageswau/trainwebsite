@@ -50,7 +50,7 @@ test("overseas admin sets a tier, coordinator and principal see real entitlement
   const careerSeminarRow = page.locator("tr", { hasText: "Career seminar" });
   await expect(careerSeminarRow.getByRole("cell", { name: "1", exact: true })).toBeVisible();
   const softSkillsRow = page.locator("tr", { hasText: "Soft skills" });
-  // ENH-011 (DEC-SCOPE-023): Soft skills is tracked now; this school has no skills batch, so the real count is 0.
+  // ENH-011 (DEC-SCOPE-026): Soft skills is tracked now; this school has no skills batch, so the real count is 0.
   await expect(softSkillsRow.getByRole("cell", { name: "0", exact: true })).toBeVisible();
   // Bronze tier only -- a Gold/Platinum-only service must not appear at all.
   await expect(page.getByText("IELTS coaching")).toHaveCount(0);

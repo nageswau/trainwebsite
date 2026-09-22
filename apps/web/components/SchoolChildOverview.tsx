@@ -8,7 +8,7 @@ import { attendanceText, ENROLMENT_LABEL, MODULE_LABEL, type SkillModule } from 
 // /school/parent/children/[id]. Portfolio and overseas-education progress are deliberately
 // absent -- no confirmed module produces that data yet (`DEC-SCOPE-015`); showing an empty
 // section for them would imply a record set that does not exist. Skills is shown since
-// ENH-011 (`DEC-SCOPE-023`): the Career Counselor's Soft Skills / Digital Skills batches.
+// ENH-011 (`DEC-SCOPE-026`): the Career Counselor's Soft Skills / Digital Skills batches.
 
 type CareerRecord = { id: string; record_type: string; notes: string; created_at: string };
 type Assessment = { id: string; assessment_type: string; status: string; created_at: string };

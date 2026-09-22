@@ -1,6 +1,6 @@
 # ENH-011 — School Skills Tracker (Soft Skills, Digital/Web Skills) — Design
 
-**Status:** Policy decisions D1–D9 confirmed by the user in-session, 2026-09-22 (`EXPLICIT_APPROVAL`, §3); D10–D12 confirmed the same day after implementation (see `DEC-SCOPE-023`).
+**Status:** Policy decisions D1–D9 confirmed by the user in-session, 2026-09-22 (`EXPLICIT_APPROVAL`, §3); D10–D12 confirmed the same day after implementation (see `DEC-SCOPE-026`).
 The section-by-section design (backend/API after an `api-and-interface-design` review, §5; frontend after a
 `frontend-ui-engineering` review, §7) was presented in-session; the user then instructed "Proceed with ENH-011"
 without answering three small points, which this spec adopted as recommended (D10–D12); the user confirmed all three on
@@ -8,11 +8,11 @@ without answering three small points, which this spec adopted as recommended (D1
 `docs/superpowers/plans/2026-09-22-enh-011-skills-tracker.md`.
 
 **Traceability:** `School CRM.md` §9/§10 (`EVID-014`, `DERIVED_BLUEPRINT`) → backlog ENH-011
-(`docs/delivery/ENHANCEMENT_BACKLOG.md`, `DERIVED_BACKLOG`) → user decisions 2026-09-22 → `DEC-SCOPE-023`
+(`docs/delivery/ENHANCEMENT_BACKLOG.md`, `DERIVED_BACKLOG`) → user decisions 2026-09-22 → `DEC-SCOPE-026`
 (proposed by this spec, registered by the plan) → this spec → plan → tests → code. Closes the **Skills** half
 of `PRD_OPEN_ITEMS.md` item 77; Portfolio (ENH-012) stays open.
 
-**Acceptance-criteria numbering:** `AC-nn` is local to this spec; cite `DEC-SCOPE-023` / `ENH-011` elsewhere.
+**Acceptance-criteria numbering:** `AC-nn` is local to this spec; cite `DEC-SCOPE-026` / `ENH-011` elsewhere.
 
 ## 1. Problem (audit result)
 
@@ -54,7 +54,7 @@ D7); a shared attendance-roster component with SCH-001's `SchoolActivitiesPanel`
 | D11 | Certification | `certified` is terminal (no un-certify) | EXPLICIT_APPROVAL (2026-09-22, after implementation) |
 | D12 | Route skeletons | Add `loading.tsx` skeletons for the two new counselor routes only | EXPLICIT_APPROVAL (2026-09-22, after implementation) |
 
-## 4. Data model — migration `0035_school_skills` (create-table only)
+## 4. Data model — migration `0037_school_skills` (create-table only)
 
 No existing table is altered and no existing row is read or written; `downgrade()` drops only these tables.
 
@@ -224,8 +224,8 @@ of this plan's completion claim.
 
 ## 11. Open items
 
-**Closed 2026-09-22:** D10–D12 were confirmed by the user after implementation (`DEC-SCOPE-023`), as were the
-two browser-QA observations, kept as designed (`DEC-SCOPE-023` D13): staff read Skills through the timeline
+**Closed 2026-09-22:** D10–D12 were confirmed by the user after implementation (`DEC-SCOPE-026`), as were the
+two browser-QA observations, kept as designed (`DEC-SCOPE-026` D13): staff read Skills through the timeline
 only, and a transferred student's former counselor keeps a read-only view of their batch history.
 
 **Still out unless requested:** §10's "Project" and "Duration" were not selected (D7).

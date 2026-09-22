@@ -29,7 +29,7 @@ const CATEGORY: Record<TimelineEvent["category"], { label: string; color: string
   test_prep: { label: "Test prep", color: "#b45309" },
   foreign_language: { label: "Foreign language", color: "#be185d" },
   global_education: { label: "Global education", color: "#0369a1" },
-  // ENH-011 (DEC-SCOPE-023): Skills batches. Both colours are over 7:1 against white, like the others.
+  // ENH-011 (DEC-SCOPE-026): Skills batches. Both colours are over 7:1 against white, like the others.
   soft_skills: { label: "Soft skills", color: "#7c2d12" },
   digital_skills: { label: "Digital skills", color: "#1e3a8a" },
 };

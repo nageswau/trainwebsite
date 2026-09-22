@@ -4,7 +4,7 @@
 
 **Goal:** Career Counselors run Soft Skills / Digital Skills batches (enrol → attendance → assessments → completion/certification) for one school each; parents and school staff see progress read-only.
 
-**Architecture:** Six create-only tables (migration `0035_school_skills`), one new router module `app/api/school_skills.py` reusing `schools.py` helpers, Pydantic models in `app/schemas.py`; additive edits to the overview, timeline and entitlements handlers; four focused client components plus `lib/skills.ts` in the web app.
+**Architecture:** Six create-only tables (migration `0037_school_skills`), one new router module `app/api/school_skills.py` reusing `schools.py` helpers, Pydantic models in `app/schemas.py`; additive edits to the overview, timeline and entitlements handlers; four focused client components plus `lib/skills.ts` in the web app.
 
 **Tech Stack:** FastAPI + SQLAlchemy async + PostgreSQL + Alembic; Pydantic v2; Next.js/React + vitest + Playwright. **No new dependency.**
 
@@ -56,11 +56,11 @@
 
 ### Task 2: Models + migration 0035 (no DB)
 
-**Files:** Modify `apps/api/app/models.py` (after `SchoolLanguageRecord`); Create `apps/api/alembic/versions/0035_school_skills.py`; Test `apps/api/tests/test_enh_011_model.py`.
+**Files:** Modify `apps/api/app/models.py` (after `SchoolLanguageRecord`); Create `apps/api/alembic/versions/0037_school_skills.py`; Test `apps/api/tests/test_enh_011_model.py`.
 
 **Produces:** `SchoolSkillBatch`, `SchoolSkillEnrollment`, `SchoolSkillSession`, `SchoolSkillAttendance`, `SchoolSkillAssessment`, `SchoolSkillScore`.
 
-- [ ] **Step 1: failing tests** — table names/columns per spec §4; defaults (`status` open / enrolled); named constraints `ck_skill_batch_module`, `ck_skill_batch_status`, `ck_skill_batch_dates`, `ck_skill_enrollment_status`, `ck_skill_assessment_max`, `ck_skill_score_nonneg`, uniques `uq_skill_enrollment_batch_student`, `uq_skill_session_batch_date`, `uq_skill_attendance_session_enrollment`, `uq_skill_assessment_batch_name`, `uq_skill_score_assessment_enrollment`; offline render of `0035` upgrade contains each `CREATE TABLE`, and `downgrade` renders `DROP TABLE` for all six and nothing else (`ALTER TABLE` absent); `revision="0035_school_skills"`, `down_revision="0034_school_transfer_requests"`.
+- [ ] **Step 1: failing tests** — table names/columns per spec §4; defaults (`status` open / enrolled); named constraints `ck_skill_batch_module`, `ck_skill_batch_status`, `ck_skill_batch_dates`, `ck_skill_enrollment_status`, `ck_skill_assessment_max`, `ck_skill_score_nonneg`, uniques `uq_skill_enrollment_batch_student`, `uq_skill_session_batch_date`, `uq_skill_attendance_session_enrollment`, `uq_skill_assessment_batch_name`, `uq_skill_score_assessment_enrollment`; offline render of `0035` upgrade contains each `CREATE TABLE`, and `downgrade` renders `DROP TABLE` for all six and nothing else (`ALTER TABLE` absent); `revision="0037_school_skills"`, `down_revision="0034_school_transfer_requests"`.
 - [ ] **Step 2: RED** — ImportError `SchoolSkillBatch`.
 - [ ] **Step 3: implement** models + migration (same inspector guard as 0034; indexes per spec).
 - [ ] **Step 4: GREEN.**
@@ -161,7 +161,7 @@
 
 ### Task 15: Documentation propagation
 
-**Files:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` (DEC-SCOPE-023), `docs/product/PRD_OPEN_ITEMS.md` item 77, `docs/architecture/DATA_MODEL.md`, `docs/architecture/API_CONTRACT.md` §12A, `docs/architecture/RBAC_MATRIX.md`, `docs/features/FEATURE_ACCEPTANCE_CRITERIA.md` (SCH-008-AC04 note), `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-011 status. Commit `docs(enh-011): register DEC-SCOPE-023 and propagate`.
+**Files:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` (DEC-SCOPE-026), `docs/product/PRD_OPEN_ITEMS.md` item 77, `docs/architecture/DATA_MODEL.md`, `docs/architecture/API_CONTRACT.md` §12A, `docs/architecture/RBAC_MATRIX.md`, `docs/features/FEATURE_ACCEPTANCE_CRITERIA.md` (SCH-008-AC04 note), `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-011 status. Commit `docs(enh-011): register DEC-SCOPE-026 and propagate`.
 
 ### Task 16: Full regression run (not a completion claim)
 

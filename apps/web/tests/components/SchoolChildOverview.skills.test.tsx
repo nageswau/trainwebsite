@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import SchoolChildOverview, { ChildStatusRow, type ChildOverview } from "@/components/SchoolChildOverview";
 
-// ENH-011 spec §7: the Parent Portal Skills section (DEC-SCOPE-023 D5) and its two status chips. `serverApi` reads next/headers
+// ENH-011 spec §7: the Parent Portal Skills section (DEC-SCOPE-026 D5) and its two status chips. `serverApi` reads next/headers
 // cookies, so it is mocked like the other server-component tests.
 vi.mock("@/lib/api", () => ({ serverApi: vi.fn() }));
 
