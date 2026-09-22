@@ -1,7 +1,9 @@
 # ENH-007 — Profile Self-Service: Cross-Role Completion Audit — Design
 
 **Status:** Design approved by the user in-session, 2026-09-22 (uniform `full_name`/`phone` scope; single
-shared `/account/profile` route linked from `PortalShell`, approach A of three presented).
+shared `/account/profile` route linked from `PortalShell`, approach A of three presented). Backend/API
+portion reviewed against `api-and-interface-design` 2026-09-22 (§4a) — one small, additive validation fix
+approved for inclusion.
 
 **Traceability:** `EVID` user instruction ("user profile, updating profile") →
 `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-007 (lines 690-734) → cross-role completion audit (this
@@ -32,9 +34,10 @@ real UI, using the existing `PATCH /auth/me`. Reachable from the same shared por
 already uses.
 
 **Non-goals (do not do here).**
-- Any new backend route, Pydantic field, database column, migration, or RBAC change. The user confirmed
-  scope is the uniform baseline already supported by `ProfileUpdate` (`full_name`, `phone`) — no
-  per-role fields this pass.
+- Any new backend route, new Pydantic field, database column, migration, or RBAC change. The user
+  confirmed scope is the uniform baseline already supported by `ProfileUpdate` (`full_name`, `phone`) — no
+  per-role fields this pass. (One narrow exception, added after backend review: a validator on the
+  existing `full_name` field — see §4a/§5. Not a new field, route, column, migration, or RBAC change.)
 - Anything touching `User.profile` (the JSON blob) from this new UI. The form never sends a `profile`
   key at all (see §4) — this is a design constraint, not an oversight.
 - `school_partnership_manager` — no role, no grant, no screen. Blocked on `PRD_OPEN_ITEMS.md` item 75.
@@ -77,13 +80,46 @@ Existing response contract reused as-is: `200` (updated `UserOut`), `401` (no/ex
 unreachable from this form since it only fires when `profile.school_id`/`profile.university_id` is
 present in the request, which this form never sends.
 
+**Safe to retry?** Yes, unconditionally. Unlike `change-password`, this is a flat field overwrite with no
+rate limiter, no one-shot side effect, and no ordering dependency on prior state — retrying an identical
+request produces an identical end state. `API_CONTRACT.md`'s `Idempotency-Key` requirement (§0.2) applies
+only to financial/record-creating endpoints and does not apply here.
+
+### 4a. Backend/API review (`api-and-interface-design`, 2026-09-22)
+
+Checked against contracts, validation, HTTP semantics, authorization, backward compatibility,
+transactions, error handling, and database usage. Sound as-is on every axis except one:
+
+**Finding — explicit `full_name: null` crashes `update_me()` today.** `schemas.py:71`
+(`full_name: str | None = Field(default=None, min_length=2, max_length=160)`) accepts an *explicit*
+`null` as a valid value (Pydantic's `min_length` only constrains strings, not `None`); `auth.py:190-191`
+then unconditionally calls `changes["full_name"].strip()`, which raises `AttributeError` on `None` →
+unhandled `500`. `User.full_name` is also non-nullable (`models.py:23`), so persisting `None` was never a
+valid outcome either. Pre-existing, reachable by any direct API caller today — not introduced by this
+feature, but this feature is the first real UI to drive traffic at this route, so it is being fixed
+alongside it (user-approved, 2026-09-22) rather than shipped over a known crash. `phone` has no equivalent
+bug (nullable column, direct assignment, no `.strip()`).
+
+Everything else — self-only authorization via `get_current_user` with no role check needed, single-commit
+transaction with no locking requirement (flat overwrite, not a read-modify-merge like the `profile` path),
+database usage, and snake_case naming (kept, over the skill's generic camelCase default, to match this
+codebase's existing convention) — required no change.
+
 ## 5. Backend design
 
-**No production code changes.** The audit found `PATCH /auth/me`'s general `full_name`/`phone` path has
-zero existing test coverage (only the `school_id`/`university_id` denial path is tested, in
-`test_enh_004_student_promotion.py`). Since a real UI will now depend on this path, add one test-only
-file: `apps/api/tests/test_enh_007_profile_self_service.py` covering the success/validation/auth cases in
-§8. No route, schema, model, or migration is touched.
+No new route, database column, migration, or RBAC change. One small, additive fix per §4a:
+
+- `apps/api/app/schemas.py`: add a `field_validator` on `ProfileUpdate.full_name` rejecting an explicit
+  `None` when the key is present (mirroring the existing `new_password_is_not_blank` validator pattern
+  already in the same file on `ChangePasswordRequest`), so `{"full_name": null}` becomes a `422` instead
+  of a `500`. Omitting the key entirely is unaffected — still means "don't change `full_name`."
+- No change to `auth.py`'s route logic; the validator alone closes the gap before `update_me()` ever sees
+  the bad value.
+
+The audit found `PATCH /auth/me`'s general `full_name`/`phone` path has zero existing test coverage (only
+the `school_id`/`university_id` denial path is tested, in `test_enh_004_student_promotion.py`). Since a
+real UI will now depend on this path, add one test-only file:
+`apps/api/tests/test_enh_007_profile_self_service.py` covering the success/validation/auth cases in §8.
 
 ## 6. Frontend design
 
@@ -150,14 +186,19 @@ existing "Change password" link, and to the array passed to the mobile `MobileNa
 - **AC-08** `school_partnership_manager` gets no new UI, route, or RBAC grant from this change.
 - **AC-09** Existing behavior is unchanged: `login`, `register`, `/auth/me` GET, `PATCH /admin/users/{id}`,
   and the `school_id`/`university_id` denial path all behave exactly as before.
+- **AC-10** `PATCH /auth/me` with an explicit `{"full_name": null}` returns `422`, not `500`, and changes
+  nothing; omitting `full_name` from the request entirely still leaves it unchanged (the "omit to skip"
+  contract is unaffected by the new null check).
 
 ## 8. Test plan (written first, seen failing)
 
 - **pytest** `apps/api/tests/test_enh_007_profile_self_service.py`: successful `full_name`+`phone`
-  update (AC-03), `full_name` too short → 422 unchanged (AC-04), phone omitted → `full_name` alone
-  changes, `phone` untouched, unauthenticated → 401 (AC-05), a request with only `full_name`/`phone` never
-  alters `profile.school_id`/`profile.university_id`/other profile keys (AC-06/AC-07), run once per a
-  School-domain role (parametrized, not one test per role — the code path does not branch on role).
+  update (AC-03), `full_name` too short → 422 unchanged (AC-04), explicit `full_name: null` → 422 unchanged,
+  not 500 (AC-10), `full_name` omitted entirely → unchanged (AC-10's negative case), phone omitted →
+  `full_name` alone changes, `phone` untouched, unauthenticated → 401 (AC-05), a request with only
+  `full_name`/`phone` never alters `profile.school_id`/`profile.university_id`/other profile keys
+  (AC-06/AC-07), run once per a School-domain role (parametrized, not one test per role — the code path
+  does not branch on role).
 - **vitest** `apps/web/tests/components/ProfileForm.test.tsx`: mocked fetch, asserts the exact 2-key
   request payload (AC-06), initial-value rendering (AC-02), success/401/422/network rendering, focus
   management, double-submit guard. `apps/web/tests/components/PortalShell.test.tsx`: extend for the new
@@ -169,9 +210,11 @@ existing "Change password" link, and to the array passed to the mobile `MobileNa
   and save `full_name`/`phone`, verify persistence after reload, verify the field-level 422 case, verify
   the signed-out state.
 - **Regression scope (targeted):** `test_enh_004_student_promotion.py` (school_id/university_id denial
-  path, must be unaffected), `AccountPasswordPage.test.tsx`/`ChangePasswordForm.test.tsx` (unaffected by
-  `PortalShell`'s footer edit, but the shared component means they must still pass), the portal E2E specs
-  that assert on `PortalShell`'s mobile menu (`stu-011-profile-documents`, any `trn-*` nav spec).
+  path, must be unaffected), `test_role_assignments.py` and `test_stu_011_profile_documents.py` (both
+  exercise `/auth/me`, must be unaffected by the new validator), `AccountPasswordPage.test.tsx`/
+  `ChangePasswordForm.test.tsx` (unaffected by `PortalShell`'s footer edit, but the shared component means
+  they must still pass), the portal E2E specs that assert on `PortalShell`'s mobile menu
+  (`stu-011-profile-documents`, any `trn-*` nav spec).
 
 ## 9. Regression risks and mitigations
 
@@ -180,6 +223,7 @@ existing "Change password" link, and to the array passed to the mobile `MobileNa
 | `PortalShell` is shared by every portal role; a layout/selector change could regress all of them | Additive only (one sidebar link, one mobile-menu item; existing nav arrays untouched); extend `PortalShell.test.tsx`; run existing portal E2E specs that touch its mobile menu |
 | `PATCH /auth/me` is shared by every division/role in the system, not just School-domain | This feature sends only `{full_name, phone}`, never `profile` — by construction it cannot exercise any code path other roles' existing behavior doesn't already exercise; new backend test (§8) covers the previously-untested general path without touching route code |
 | Untyped `User.profile` JSON blob could be clobbered by a naive "send the whole profile" implementation | Explicitly designed against in §4/§6: the form never reads or sends `profile` |
+| The new `full_name` null-validator changes shared, division-wide `PATCH /auth/me` behavior | Strictly additive: only a request that was already crashing (`500`) is affected, and it now gets a correct `422`; no request that succeeded before still succeeds and produces a different result. Covered by AC-10 and the targeted regression run below. |
 | Confusing this feature's scope with STU-011's documented-but-missing `/student/profile` route | Out of scope (§2); flagged separately as `NEEDS_CONFIRMATION`, not silently folded in here |
 
 ## 10. Documentation to update with the code
