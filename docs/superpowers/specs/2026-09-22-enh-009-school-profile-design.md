@@ -74,8 +74,14 @@ logic every time a role assignment changes.
 
 **New Pydantic schemas** (`schemas.py`): `SchoolCreate`, `SchoolUpdate`, `SchoolOut` — the first
 real schemas for this entity, replacing `create_school`/`update_school_tier`'s untyped
-`payload: dict`. `model_config = ConfigDict(extra="forbid")`, matching this codebase's existing
-convention. `board` and `tier` both become `Literal[...]` fields (folding `tier`'s existing manual
+`payload: dict`. `model_config = {"extra": "forbid"}` (verified exact syntax: this codebase uses a
+plain dict literal, not `pydantic.ConfigDict`) — not a universal convention in this file (most
+`*Create` schemas don't set it), but the deliberate pattern already used for ENH-005's most
+security-sensitive create schemas (`TransferRequestCreate`/`IncomingTransferCreate`,
+`schemas.py:611-622`) to block a smuggled unexpected field. Applying it here is justified the same
+way: it closes the role-escalation check in §5 (a client-supplied `role`/`coordinator_password`
+alongside the profile fields becomes a loud 422 by construction, not something to defend against
+in handler code). `board` and `tier` both become `Literal[...]` fields (folding `tier`'s existing manual
 `if tier not in {...}` check into the schema, so the whole entity validates one way, not two).
 Email fields validate via the existing `_valid_email()` helper (via a field validator), not bare
 `EmailStr` — preserves the existing error message text (`"A valid email address is required"`)

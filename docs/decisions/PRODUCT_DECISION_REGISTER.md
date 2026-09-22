@@ -2225,7 +2225,9 @@ smaller-scope choice rather than a silent omission.
 
 **Resolution — schemas (`EXPLICIT_APPROVAL`, user, in-session):** `SchoolCreate`/`SchoolUpdate`/
 `SchoolOut` Pydantic schemas are introduced in `schemas.py` for the first time for this entity
-(`extra="forbid"`, matching this codebase's existing convention), replacing `create_school`/
+(`model_config = {"extra": "forbid"}`, the exact pattern already used for ENH-005's
+`TransferRequestCreate`/`IncomingTransferCreate` — not this file's universal default, but the
+established choice for a security-sensitive create schema), replacing `create_school`/
 `update_school_tier`'s untyped `payload: dict`. Request/response JSON shape stays additive-compatible
 with existing callers (`AdminSchoolCreatePanel.tsx`).
 
