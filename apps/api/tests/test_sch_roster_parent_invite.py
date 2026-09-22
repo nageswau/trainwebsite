@@ -113,6 +113,24 @@ async def test_accept_flow_links_every_student_with_the_same_pending_email(clien
 
 
 @pytest.mark.asyncio
+async def test_accepting_a_parent_invite_does_not_set_profile_school_id(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    await _login(client, ctx["coordinator"].email)
+    parent_email = f"sch-roster-parent-{uuid.uuid4().hex[:8]}@example.local"
+
+    created = await client.post("/api/v1/school/students", json={"full_name": "Profile Check Student", "parent_email": parent_email})
+    assert created.status_code == 201, created.text
+    token = created.json()["development_invite_token"]
+
+    await client.post("/api/v1/auth/logout")
+    accept = await client.post(f"/api/v1/school/invites/{token}/accept", json={"password": PASSWORD})
+    assert accept.status_code == 201, accept.text
+
+    account = await db_session.scalar(select(User).where(User.id == uuid.UUID(accept.json()["id"])))
+    assert account.profile == {}
+
+
+@pytest.mark.asyncio
 async def test_an_existing_parent_at_the_same_school_is_linked_immediately_no_invite(client, db_session):
     ctx = await _create_school_with_coordinator(db_session)
     existing_parent = User(

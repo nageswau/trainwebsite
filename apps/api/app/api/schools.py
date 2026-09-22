@@ -218,10 +218,10 @@ async def accept_invite(token: str, payload: dict, response: Response, db: Async
         raise HTTPException(422, "Password must be at least 10 characters")
     if await db.scalar(select(User).where(User.email == invite.email)):
         raise HTTPException(409, "Email already exists")
-    # SCH-003-AC06 / DATA_MODEL.md §6.15: the resulting account's `school_id` is always the
-    # invite's own `school_id`, never a value supplied at acceptance time -- closes the
-    # same class of IDOR risk `AGT-002`/`UNI-001` already guard against, applied here to
-    # account creation.
+    # SCH-003-AC06 / DATA_MODEL.md §6.15: for non-parent roles, the account's `school_id` is
+    # always the invite's own `school_id`, never a value supplied at acceptance time -- closes
+    # the same class of IDOR risk `AGT-002`/`UNI-001` already guard against. For parent roles,
+    # school_id is not set (parents can be linked to multiple schools via SchoolParentLink).
     account = User(
         email=invite.email,
         password_hash=hash_password(password),
@@ -230,7 +230,7 @@ async def accept_invite(token: str, payload: dict, response: Response, db: Async
         division="overseas",
         active=True,
         email_verified=False,
-        profile={"school_id": str(invite.school_id)},
+        profile={} if invite.role == "school_parent" else {"school_id": str(invite.school_id)},
     )
     db.add(account)
     await db.flush()
