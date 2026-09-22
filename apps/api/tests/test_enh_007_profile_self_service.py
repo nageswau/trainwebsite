@@ -177,3 +177,21 @@ async def test_whitespace_only_full_name_is_rejected_not_saved_as_empty(client, 
     assert response.status_code == 422, response.text
     await db_session.refresh(user)
     assert user.full_name == "ENH-007 User"  # unchanged, never blanked
+
+
+# ------------------------------- padded single-character full_name (Codex review, P2)
+# min_length=2 is checked on the RAW value before this validator runs; "A " has raw length 2 (passes)
+# and a non-empty .strip() (passes the blank check), so it reached auth.py's own .strip(), which then
+# stored a bare one-character name -- bypassing AC-04's "full_name under 2 characters is rejected"
+# requirement via padding. Reproduced live against the running API before this fix (PATCH
+# {"full_name": "A "} -> 200, full_name saved as "A").
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("padded_value", ["A ", " A", " A "])
+async def test_padded_single_character_full_name_is_rejected_not_saved(client, db_session, padded_value):
+    user = await _signed_in_user(client, db_session)
+    response = await client.patch(URL, json={"full_name": padded_value})
+    assert response.status_code == 422, response.text
+    await db_session.refresh(user)
+    assert user.full_name == "ENH-007 User"  # unchanged, never saved as a 1-char name
