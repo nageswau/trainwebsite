@@ -2,7 +2,7 @@
 
 import { FormEvent, useRef, useState } from "react";
 
-import { detailMessage, isPortfolioEntryBody, NOT_COMPLETED } from "@/lib/apiErrors";
+import { detailMessage, isRequestBody, NOT_COMPLETED } from "@/lib/apiErrors";
 import { refocus } from "@/lib/focus";
 
 // ENH-012 -- one form for all 10 self-entry sections (same shape: title/organization/dates/description),
@@ -64,7 +64,7 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
       refocus("pf-save-btn");
       return;
     }
-    if (!isPortfolioEntryBody(data)) {
+    if (!isRequestBody(data)) {
       setAlert("The save could not be confirmed. Please check the list before retrying.");
       refocus("pf-save-btn");
       return;

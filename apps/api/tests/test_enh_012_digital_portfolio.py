@@ -128,11 +128,6 @@ def test_personal_statement_rejects_a_bidi_override_character():
         PersonalStatementUpdate(personal_statement="Normal ‮reversed")
 
 
-async def _add_academic_team(db_session, admin, school):
-    from tests.enh005_helpers import mk_staff
-    return await mk_staff(db_session, school, admin, role="academic_team")
-
-
 @pytest.mark.asyncio
 async def test_coordinator_reads_their_own_institution_students_portfolio(client, db_session):
     from tests.enh005_helpers import login, mk_school
@@ -171,31 +166,21 @@ async def test_coordinator_at_a_different_institution_gets_403(client, db_sessio
 
 @pytest.mark.asyncio
 async def test_academic_team_reads_via_their_portfolio_scope(client, db_session):
-    from tests.enh005_helpers import login, mk_school
+    from tests.enh005_helpers import login, mk_school, mk_staff
     ctx = await mk_school(db_session, label="ENH012-GET-Academic")
-    member = await _add_academic_team(db_session, ctx["admin"], ctx["school"])
+    member = await mk_staff(db_session, ctx["school"], ctx["admin"], role="academic_team")
     await login(client, member.email)
     response = await client.get(f"/api/v1/school/students/{ctx['students'][0].id}/portfolio")
     assert response.status_code == 200
     assert response.json()["can_edit"] is True
 
 
-async def _add_career_counselor(db_session, admin, school):
-    from tests.enh005_helpers import mk_staff
-    return await mk_staff(db_session, school, admin, role="career_counselor")
-
-
-async def _add_psychometric_team(db_session, admin, school):
-    from tests.enh005_helpers import mk_staff
-    return await mk_staff(db_session, school, admin, role="psychometric_team")
-
-
 @pytest.mark.asyncio
 async def test_career_counselor_reads_via_their_portfolio_scope(client, db_session):
     # AC-04 names 7 read-capable roles; career_counselor had no coverage at all before this test.
-    from tests.enh005_helpers import login, mk_school
+    from tests.enh005_helpers import login, mk_school, mk_staff
     ctx = await mk_school(db_session, label="ENH012-GET-CareerCounselor")
-    member = await _add_career_counselor(db_session, ctx["admin"], ctx["school"])
+    member = await mk_staff(db_session, ctx["school"], ctx["admin"], role="career_counselor")
     await login(client, member.email)
     response = await client.get(f"/api/v1/school/students/{ctx['students'][0].id}/portfolio")
     assert response.status_code == 200
@@ -205,9 +190,9 @@ async def test_career_counselor_reads_via_their_portfolio_scope(client, db_sessi
 @pytest.mark.asyncio
 async def test_psychometric_team_reads_via_their_portfolio_scope(client, db_session):
     # AC-04's other previously-uncovered read-capable role.
-    from tests.enh005_helpers import login, mk_school
+    from tests.enh005_helpers import login, mk_school, mk_staff
     ctx = await mk_school(db_session, label="ENH012-GET-Psychometric")
-    member = await _add_psychometric_team(db_session, ctx["admin"], ctx["school"])
+    member = await mk_staff(db_session, ctx["school"], ctx["admin"], role="psychometric_team")
     await login(client, member.email)
     response = await client.get(f"/api/v1/school/students/{ctx['students'][0].id}/portfolio")
     assert response.status_code == 200
@@ -267,9 +252,9 @@ async def test_assigned_teacher_creates_an_entry(client, db_session):
 
 @pytest.mark.asyncio
 async def test_academic_team_creates_an_entry(client, db_session):
-    from tests.enh005_helpers import login, mk_school
+    from tests.enh005_helpers import login, mk_school, mk_staff
     ctx = await mk_school(db_session, label="ENH012-POST-AcademicTeam")
-    member = await _add_academic_team(db_session, ctx["admin"], ctx["school"])
+    member = await mk_staff(db_session, ctx["school"], ctx["admin"], role="academic_team")
     await login(client, member.email)
     response = await client.post(f"/api/v1/school/students/{ctx['students'][0].id}/portfolio/entries", json={"section": "award", "title": "Academic team entry"})
     assert response.status_code == 201, response.text
@@ -277,10 +262,10 @@ async def test_academic_team_creates_an_entry(client, db_session):
 
 @pytest.mark.asyncio
 async def test_academic_team_outside_portfolio_gets_403(client, db_session):
-    from tests.enh005_helpers import login, mk_school
+    from tests.enh005_helpers import login, mk_school, mk_staff
     ctx_a = await mk_school(db_session, label="ENH012-POST-AcademicTeam-A")
     ctx_b = await mk_school(db_session, label="ENH012-POST-AcademicTeam-B")
-    member = await _add_academic_team(db_session, ctx_a["admin"], ctx_a["school"])  # only in A's portfolio
+    member = await mk_staff(db_session, ctx_a["school"], ctx_a["admin"], role="academic_team")  # only in A's portfolio
     await login(client, member.email)
     response = await client.post(f"/api/v1/school/students/{ctx_b['students'][0].id}/portfolio/entries", json={"section": "award", "title": "Should be denied"})
     assert response.status_code == 403

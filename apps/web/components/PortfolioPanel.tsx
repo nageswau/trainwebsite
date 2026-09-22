@@ -35,20 +35,27 @@ function singular(section: string): string {
   return (SECTION_LABELS[section] ?? section).toLowerCase().replace(/s$/, "");
 }
 
+// Code-review simplification pass: openSection/editing used to be two separately-set optionals that were
+// mutually exclusive only by every setter's own discipline (every place that set one had to remember to
+// null the other) -- "only one entry form open" was a convention, not something the state shape made
+// true by construction. One discriminated union makes the illegal state (both set, or neither in sync
+// with anyFormOpen) unrepresentable instead of merely avoided.
+type ActiveEntryForm = { kind: "add"; section: string } | { kind: "edit"; entry: PortfolioEntry } | null;
+
 // Hoisted out of PortfolioPanel (unlike this task's source draft, which nested it): a component defined
 // inside another component's render body gets a new function identity every render, so React treats it as
 // a different type each time and remounts its whole subtree -- including any *other* section's open
 // add/edit form -- on every state change anywhere in the panel (e.g. clicking Delete once on one entry
 // would wipe a draft being typed into an unrelated section's open form). Taking the shared state as props
 // instead avoids that.
-function EntryList({ section, entries, studentId, canEdit, openSection, editing, confirmingId, deleteBusy, anyFormOpen, onAdd, onEdit, onDelete, onFormDone, onCancel }: {
+function EntryList({ section, entries, studentId, canEdit, activeForm, confirmingId, deleteBusy, anyFormOpen, onAdd, onEdit, onDelete, onFormDone, onCancel }: {
   section: string; entries: PortfolioEntry[]; studentId: string; canEdit: boolean;
-  openSection: string | null; editing: PortfolioEntry | null; confirmingId: string | null; deleteBusy: boolean;
+  activeForm: ActiveEntryForm; confirmingId: string | null; deleteBusy: boolean;
   anyFormOpen: boolean;
   onAdd: (section: string) => void; onEdit: (entry: PortfolioEntry) => void; onDelete: (entry: PortfolioEntry) => void;
   onFormDone: () => void; onCancel: () => void;
 }) {
-  const formOpenHere = openSection === section && !editing;
+  const formOpenHere = activeForm?.kind === "add" && activeForm.section === section;
   return (
     <div className="pf-section">
       <h4>{SECTION_LABELS[section] ?? section}</h4>
@@ -56,26 +63,29 @@ function EntryList({ section, entries, studentId, canEdit, openSection, editing,
         <p className="muted">No entries yet.</p>
       ) : (
         <ul className="pf-entry-list">
-          {entries.map((e) => (
-            <li className="pf-entry" key={e.id}>
-              {editing?.id === e.id ? (
-                <PortfolioEntryForm studentId={studentId} section={e.section} entryId={e.id} initial={{ title: e.title, description: e.description, organization: e.organization, date_from: e.date_from, date_to: e.date_to }} onDone={onFormDone} onCancel={onCancel} />
-              ) : (
-                <>
-                  <strong>{e.title}</strong>
-                  {e.organization && <span className="pf-entry-org"> — {e.organization}</span>}
-                  {e.date_from && <span className="pf-entry-date"> ({formatDate(e.date_from)}{e.date_to ? ` – ${formatDate(e.date_to)}` : ""})</span>}
-                  {e.description && <p className="pf-entry-desc">{e.description}</p>}
-                  {canEdit && (
-                    <div className="pf-entry-actions">
-                      <button type="button" className="btn secondary" disabled={deleteBusy || anyFormOpen} onClick={() => onEdit(e)}>Edit {e.title}</button>
-                      <button id={`pf-delete-btn-${e.id}`} type="button" className="btn secondary" disabled={deleteBusy || anyFormOpen} onClick={() => onDelete(e)}>{confirmingId === e.id ? `Confirm delete ${e.title}` : `Delete ${e.title}`}</button>
-                    </div>
-                  )}
-                </>
-              )}
-            </li>
-          ))}
+          {entries.map((e) => {
+            const isEditingThisEntry = activeForm?.kind === "edit" && activeForm.entry.id === e.id;
+            return (
+              <li className="pf-entry" key={e.id}>
+                {isEditingThisEntry ? (
+                  <PortfolioEntryForm studentId={studentId} section={e.section} entryId={e.id} initial={{ title: e.title, description: e.description, organization: e.organization, date_from: e.date_from, date_to: e.date_to }} onDone={onFormDone} onCancel={onCancel} />
+                ) : (
+                  <>
+                    <strong>{e.title}</strong>
+                    {e.organization && <span className="pf-entry-org"> — {e.organization}</span>}
+                    {e.date_from && <span className="pf-entry-date"> ({formatDate(e.date_from)}{e.date_to ? ` – ${formatDate(e.date_to)}` : ""})</span>}
+                    {e.description && <p className="pf-entry-desc">{e.description}</p>}
+                    {canEdit && (
+                      <div className="pf-entry-actions">
+                        <button type="button" className="btn secondary" disabled={deleteBusy || anyFormOpen} onClick={() => onEdit(e)}>Edit {e.title}</button>
+                        <button id={`pf-delete-btn-${e.id}`} type="button" className="btn secondary" disabled={deleteBusy || anyFormOpen} onClick={() => onDelete(e)}>{confirmingId === e.id ? `Confirm delete ${e.title}` : `Delete ${e.title}`}</button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
       {canEdit && !formOpenHere && (
@@ -170,8 +180,7 @@ function PersonalStatementSection({ studentId, statement, canEdit, disabled, onE
 
 export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   const router = useRouter();
-  const [openSection, setOpenSection] = useState<string | null>(null);
-  const [editing, setEditing] = useState<PortfolioEntry | null>(null);
+  const [activeForm, setActiveForm] = useState<ActiveEntryForm>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -184,11 +193,10 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   // form used to silently unmount (and discard) whatever form was already open elsewhere; anyFormOpen
   // disables every OTHER "start something new" button instead, so at most one form is open at a time and
   // nothing gets silently discarded.
-  const anyFormOpen = openSection !== null || editing !== null || statementEditing;
+  const anyFormOpen = activeForm !== null || statementEditing;
 
   function closeForm() {
-    setOpenSection(null);
-    setEditing(null);
+    setActiveForm(null);
     setConfirmingId(null);
   }
 
@@ -238,14 +246,12 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   }
 
   function openAdd(section: string) {
-    setOpenSection(section);
-    setEditing(null);
+    setActiveForm({ kind: "add", section });
     setConfirmingId(null);
   }
 
   function startEdit(entry: PortfolioEntry) {
-    setEditing(entry);
-    setOpenSection(null);
+    setActiveForm({ kind: "edit", entry });
     setConfirmingId(null);
   }
 
@@ -290,14 +296,14 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
       {Object.keys(data.entries).sort().map((section) => (
         <EntryList
           key={section} section={section} entries={data.entries[section]} studentId={data.student.id} canEdit={data.can_edit}
-          openSection={openSection} editing={editing} confirmingId={confirmingId} deleteBusy={deleteBusy} anyFormOpen={anyFormOpen}
+          activeForm={activeForm} confirmingId={confirmingId} deleteBusy={deleteBusy} anyFormOpen={anyFormOpen}
           onAdd={openAdd} onEdit={startEdit} onDelete={deleteEntry} onFormDone={onFormDone} onCancel={closeForm}
         />
       ))}
 
       <PersonalStatementSection
         studentId={data.student.id} statement={data.personal_statement} canEdit={data.can_edit}
-        disabled={openSection !== null || editing !== null} onEditingChange={handleStatementEditingChange}
+        disabled={activeForm !== null} onEditingChange={handleStatementEditingChange}
         onDone={() => router.refresh()}
       />
     </div>

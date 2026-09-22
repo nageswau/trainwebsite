@@ -779,6 +779,18 @@ def _clean_multiline_text(value: str | None) -> str | None:
     return value
 
 
+# Code-review simplification pass: PortfolioEntryCreate/Update's own model_validators AND
+# portfolio.py's post-merge PATCH check all need the identical date-range rule -- declared once here
+# (with the one user-facing message it raises) and imported by both, instead of the same condition and
+# string being copied three times. No leading underscore: this is a deliberate cross-module export, not
+# schemas.py-internal.
+DATE_RANGE_ERROR = "End date must not be before start date"
+
+
+def date_range_is_invalid(date_from: date | None, date_to: date | None) -> bool:
+    return date_from is not None and date_to is not None and date_to < date_from
+
+
 class PortfolioEntryCreate(BaseModel):
     model_config = {"str_strip_whitespace": True, "extra": "forbid"}
     section: str
@@ -810,8 +822,8 @@ class PortfolioEntryCreate(BaseModel):
         # ENH-012 QA-02: "date_to"/"date_from" are internal field names -- Pydantic's model_validator
         # error surfaces this text verbatim to the end user (via detailMessage() on the frontend), so it
         # must already be in plain language, not something a UI layer patches after the fact.
-        if self.date_from is not None and self.date_to is not None and self.date_to < self.date_from:
-            raise ValueError("End date must not be before start date")
+        if date_range_is_invalid(self.date_from, self.date_to):
+            raise ValueError(DATE_RANGE_ERROR)
         return self
 
 
@@ -835,12 +847,27 @@ class PortfolioEntryUpdate(BaseModel):
 
     @model_validator(mode="after")
     def _date_range_is_ordered(self):
-        if self.date_from is not None and self.date_to is not None and self.date_to < self.date_from:
-            raise ValueError("End date must not be before start date")
+        if date_range_is_invalid(self.date_from, self.date_to):
+            raise ValueError(DATE_RANGE_ERROR)
+        return self
+
+    @model_validator(mode="after")
+    def _title_not_explicitly_nulled(self):
+        # `title` is NOT NULL at the database level. The PATCH endpoint's field-presence-aware merge
+        # (model_fields_set) otherwise treats an explicit `title: null` the same as clearing any other
+        # optional field, and would only fail later as an unhandled IntegrityError on flush. Reject it
+        # here instead, at the same validation layer as every other portfolio schema rule, so the
+        # response is the same structured 422 shape as every other rejection on this endpoint (a router-
+        # level HTTPException with a bare string, which this replaces, breaks that shape's contract with
+        # the frontend's detailMessage() -- see apps/web/lib/apiErrors.ts's own comment on the two 4xx
+        # payload shapes it expects).
+        if "title" in self.model_fields_set and self.title is None:
+            raise ValueError("title must not be null")
         return self
 
 
 class PortfolioEntryOut(BaseModel):
+    model_config = {"from_attributes": True}  # fields map 1:1 onto PortfolioEntry -- serialize the ORM row directly
     id: UUID
     school_student_id: UUID
     section: str

@@ -29,12 +29,14 @@ from app.models import (
     User,
 )
 from app.schemas import (
+    DATE_RANGE_ERROR,
     PORTFOLIO_SECTIONS,
     PersonalStatementOut,
     PersonalStatementUpdate,
     PortfolioEntryCreate,
     PortfolioEntryOut,
     PortfolioEntryUpdate,
+    date_range_is_invalid,
 )
 
 router = APIRouter(prefix="/school", tags=["school-portfolio"])
@@ -92,6 +94,7 @@ async def get_portfolio(student_id: UUID, user: User = Depends(get_current_user)
     endpoint (schools.py:1040), the closest existing precedent this feature is modeled on."""
     student = await _load_portfolio_student(db, user, student_id)
     can_edit = _can_edit_portfolio(user, student)
+    profile_complete = _profile_complete(student)
 
     entries_by_section: dict[str, list[dict]] = {section: [] for section in sorted(PORTFOLIO_SECTIONS)}
     rows = (await db.scalars(select(PortfolioEntry).where(PortfolioEntry.school_student_id == student.id).order_by(PortfolioEntry.date_from.desc().nullslast(), PortfolioEntry.created_at.desc()))).all()
@@ -110,19 +113,19 @@ async def get_portfolio(student_id: UUID, user: User = Depends(get_current_user)
     profile_row = await db.scalar(select(PortfolioProfile).where(PortfolioProfile.school_student_id == student.id))
     personal_statement = profile_row.personal_statement if profile_row else None
 
-    filled = sum([
-        _profile_complete(student),
+    completion_components = [
+        profile_complete,
         len(academic) > 0, len(psychometric) > 0, len(career) > 0, len(languages) > 0,
         *(len(entries_by_section[s]) > 0 for s in PORTFOLIO_SECTIONS),
         bool(personal_statement and personal_statement.strip()),
-    ])
-    completion_percentage = round(filled / 16 * 100)
+    ]
+    completion_percentage = round(sum(completion_components) / len(completion_components) * 100)
 
     return {
         "student": {"id": student.id, "full_name": student.full_name},
         "completion_percentage": completion_percentage,
         "can_edit": can_edit,
-        "profile_complete": _profile_complete(student),
+        "profile_complete": profile_complete,
         "academic_achievements": [{"id": r.id, "term": r.term, "subject": r.subject, "grade": r.grade, "published_at": r.published_at} for r in academic],
         "psychometric_report": [{"id": r.id, "assessment_type": r.assessment_type, "report_url": r.report_url, "created_at": r.created_at} for r in psychometric],
         "career_guidance": [{"id": r.id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in career],
@@ -148,7 +151,7 @@ async def create_portfolio_entry(student_id: UUID, payload: PortfolioEntryCreate
     await db.commit()
     await db.refresh(entry)
     logger.info("portfolio_entry_create", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id), "section": entry.section}})
-    return _entry_out(entry)
+    return entry
 
 
 async def _load_portfolio_entry(db: AsyncSession, student_id: UUID, entry_id: UUID) -> PortfolioEntry:
@@ -167,26 +170,25 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
     # when the value is None -- that's the clear-the-field case) from "field omitted" (leave the entry's
     # existing value untouched). A plain `if value is not None` check (the previous logic) could never
     # tell those two apart, so there was no way to ever clear description/organization/date_from/date_to
-    # via PATCH -- an explicit `null` looked identical to "didn't send this field".
-    # Exception: `title` is NOT NULL at the database level, so an explicit null is a validation error (422),
-    # not a clear-field operation. Reject it before merging any fields.
+    # via PATCH -- an explicit `null` looked identical to "didn't send this field". (`title`'s NOT NULL
+    # constraint is guarded at the schema layer -- PortfolioEntryUpdate rejects an explicit null there,
+    # before this handler ever runs -- so nothing special-cases it in this merge loop.)
     fields_set = payload.model_fields_set
-    if "title" in fields_set and payload.title is None:
-        raise HTTPException(422, "title must not be null")
     for field in ("title", "description", "organization", "date_from", "date_to"):
         if field in fields_set:
             setattr(entry, field, getattr(payload, field))
-    # Date-range merge-validation fix: after merging payload fields onto entry, validate the merged result
-    # if both date_from and date_to are now set and date_to < date_from, reject the update
-    if entry.date_from is not None and entry.date_to is not None and entry.date_to < entry.date_from:
-        raise HTTPException(422, "End date must not be before start date")
+    # Date-range merge-validation: after merging payload fields onto entry, validate the merged result --
+    # a payload-only schema validator can't see the entry's already-stored values, so this re-checks the
+    # same rule (schemas.py's date_range_is_invalid/DATE_RANGE_ERROR) against the post-merge state.
+    if date_range_is_invalid(entry.date_from, entry.date_to):
+        raise HTTPException(422, DATE_RANGE_ERROR)
     entry.updated_by_user_id = user.id
     await db.flush()
     db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_update", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json={"section": entry.section, "school_student_id": str(student.id)}))
     await db.commit()
     await db.refresh(entry)
     logger.info("portfolio_entry_update", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id)}})
-    return _entry_out(entry)
+    return entry
 
 
 @router.delete("/students/{student_id}/portfolio/entries/{entry_id}", status_code=204)
