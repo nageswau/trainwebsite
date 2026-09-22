@@ -7,6 +7,7 @@ no equivalent exists anywhere in the base codebase.
 """
 
 import uuid
+from datetime import date
 
 import pytest
 from sqlalchemy import event, select
@@ -538,6 +539,31 @@ async def test_list_schools_query_count_does_not_scale_with_the_number_of_school
     assert schools_after == schools_before + 3  # the list really did grow
     assert after_count == before_count  # ... but the query count did not
     assert before_count < 10, statements  # and it is a small constant, not O(N)
+
+
+@pytest.mark.asyncio
+async def test_create_school_accepts_tier_valid_until(client, db_session):
+    """ENH-009 final review: the pre-ENH-009 dict-bodied create_school() accepted
+    `tier_valid_until`; `SchoolCreate` silently dropped it. Restored so the request shape
+    really is additive-compatible with existing callers, as the design doc claims."""
+    admin = await _create_overseas_admin(db_session)
+    await _login(client, admin.email)
+    suffix = uuid.uuid4().hex[:8]
+    response = await client.post(
+        "/api/v1/overseas-admin/schools",
+        json={
+            "name": f"Tier School {suffix}",
+            "coordinator_full_name": "Test Coordinator",
+            "coordinator_email": f"sch003-tvu-{suffix}@example.local",
+            "tier": "gold",
+            "tier_valid_until": "2027-06-30",
+        },
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["tier_valid_until"] == "2027-06-30"
+
+    school = await db_session.get(School, response.json()["id"])
+    assert school.tier_valid_until == date(2027, 6, 30)
 
 
 @pytest.mark.asyncio

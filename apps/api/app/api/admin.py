@@ -1120,7 +1120,8 @@ async def create_school(payload: SchoolCreate, user: User = Depends(get_current_
     school_code = await unique_student_code(db, School.school_code)
     school = School(
         name=payload.name, city=payload.city, state=payload.state,
-        created_by_user_id=user.id, tier=payload.tier, school_code=school_code,
+        created_by_user_id=user.id, tier=payload.tier, tier_valid_until=payload.tier_valid_until,
+        school_code=school_code,
         branch=payload.branch, address=payload.address, contact_number=payload.contact_number,
         email=payload.email, website=payload.website, grades_available=payload.grades_available,
         board=payload.board, partnership_date=payload.partnership_date,

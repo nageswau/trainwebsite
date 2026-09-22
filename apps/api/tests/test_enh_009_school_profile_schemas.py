@@ -1,5 +1,7 @@
 """ENH-009 / DEC-SCOPE-023 -- SchoolCreate/SchoolUpdate/SchoolOut schema behavior."""
 
+from datetime import date
+
 import pytest
 from pydantic import ValidationError
 
@@ -68,3 +70,14 @@ def test_school_create_email_max_length_matches_its_column():
         )
     with pytest.raises(ValidationError):
         SchoolUpdate(email=too_long)
+
+
+def test_school_create_accepts_tier_valid_until():
+    """ENH-009 final review: restored so POST stays additive-compatible with the pre-ENH-009
+    dict-bodied create_school(), which parsed `tier_valid_until` via date.fromisoformat."""
+    school = SchoolCreate(
+        name="X", coordinator_full_name="Y", coordinator_email="y@example.local",
+        tier="gold", tier_valid_until="2027-06-30",
+    )
+    assert school.tier_valid_until == date(2027, 6, 30)
+    assert SchoolCreate(name="X", coordinator_full_name="Y", coordinator_email="y@example.local").tier_valid_until is None

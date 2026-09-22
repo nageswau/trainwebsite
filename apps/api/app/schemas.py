@@ -753,6 +753,9 @@ class SchoolCreate(BaseModel):
     city: str | None = Field(default=None, max_length=120)
     state: str | None = Field(default=None, max_length=120)
     tier: str | None = None
+    # Restored (ENH-009 final review): the pre-ENH-009 dict-bodied create_school() accepted this,
+    # so dropping it would have quietly narrowed a contract the design doc calls additive-compatible.
+    tier_valid_until: date | None = None
     coordinator_full_name: str = Field(min_length=1, max_length=160)
     coordinator_email: str
     branch: str | None = Field(default=None, max_length=200)
