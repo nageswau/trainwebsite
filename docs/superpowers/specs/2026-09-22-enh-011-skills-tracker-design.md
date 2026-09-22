@@ -1,10 +1,10 @@
 # ENH-011 — School Skills Tracker (Soft Skills, Digital/Web Skills) — Design
 
-**Status:** Policy decisions D1–D9 confirmed by the user in-session, 2026-09-22 (`EXPLICIT_APPROVAL`, §3).
+**Status:** Policy decisions D1–D9 confirmed by the user in-session, 2026-09-22 (`EXPLICIT_APPROVAL`, §3); D10–D12 confirmed the same day after implementation (see `DEC-SCOPE-023`).
 The section-by-section design (backend/API after an `api-and-interface-design` review, §5; frontend after a
 `frontend-ui-engineering` review, §7) was presented in-session; the user then instructed "Proceed with ENH-011"
-without answering three small points, which this spec **adopts as recommended and flags** (D10–D12, marked
-`ADOPTED_ON_PROCEED`, not `EXPLICIT_APPROVAL`). Implementation follows the plan in
+without answering three small points, which this spec adopted as recommended (D10–D12); the user confirmed all three on
+2026-09-22 after implementation. Implementation follows the plan in
 `docs/superpowers/plans/2026-09-22-enh-011-skills-tracker.md`.
 
 **Traceability:** `School CRM.md` §9/§10 (`EVID-014`, `DERIVED_BLUEPRINT`) → backlog ENH-011
@@ -50,9 +50,9 @@ D7); a shared attendance-roster component with SCH-001's `SchoolActivitiesPanel`
 | D7 | Batch scope and fields | One school per batch; fields: title, module type, school, start/end dates, topic, trainer name | EXPLICIT_APPROVAL |
 | D8 | Assessments / completion | Multiple named assessments per batch; the counselor sets completion/certification manually (no auto rule) | EXPLICIT_APPROVAL |
 | D9 | Transfer (ENH-005) | Derived freeze: an enrolment whose student's current school ≠ the batch's school is read-only and shown "Transferred out"; ENH-005 code untouched | EXPLICIT_APPROVAL |
-| D10 | Sessions per day | At most one session per batch per calendar day (unique) | ADOPTED_ON_PROCEED |
-| D11 | Certification | `certified` is terminal (no un-certify) | ADOPTED_ON_PROCEED |
-| D12 | Route skeletons | Add `loading.tsx` skeletons for the two new counselor routes only | ADOPTED_ON_PROCEED |
+| D10 | Sessions per day | At most one session per batch per calendar day (unique) | EXPLICIT_APPROVAL (2026-09-22, after implementation) |
+| D11 | Certification | `certified` is terminal (no un-certify) | EXPLICIT_APPROVAL (2026-09-22, after implementation) |
+| D12 | Route skeletons | Add `loading.tsx` skeletons for the two new counselor routes only | EXPLICIT_APPROVAL (2026-09-22, after implementation) |
 
 ## 4. Data model — migration `0035_school_skills` (create-table only)
 
@@ -222,7 +222,10 @@ Backend (pytest, isolated compose DB): schema validation (no DB); offline migrat
 `sch-011` update. Browser validation and independent (Codex) review follow implementation and are **not** part
 of this plan's completion claim.
 
-## 11. Open items (`NEEDS_CONFIRMATION`)
+## 11. Open items
 
-D10–D12 were adopted on the instruction to proceed and should be confirmed. §10's "Project" and
-"Duration" were not selected (D7) — they stay out unless requested.
+**Closed 2026-09-22:** D10–D12 were confirmed by the user after implementation (`DEC-SCOPE-023`), as were the
+two browser-QA observations, kept as designed (`DEC-SCOPE-023` D13): staff read Skills through the timeline
+only, and a transferred student's former counselor keeps a read-only view of their batch history.
+
+**Still out unless requested:** §10's "Project" and "Duration" were not selected (D7).

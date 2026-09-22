@@ -1225,10 +1225,11 @@ counselor Skills pages, the Parent Portal Skills section, timeline categories an
 - **Migration:** `0035` upgrade, downgrade and `alembic check` pass.
 - **Full Playwright:** 249/259 on a reused database. On a fresh one, the remaining failures are a flaky pair and `stu-007`, which also fails on `main` (a spec/API mismatch).
 
+**Confirmed by the owner, 2026-09-22:** D10–D12 (one session per batch per day; `certified` is terminal; the route skeletons), and the two QA observations kept as designed (`DEC-SCOPE-023` D13).
+
 **Not done:**
 - The independent Codex review was waived by the owner (2026-09-22).
-- D10–D12 of the spec were adopted on the instruction to proceed and still need the owner's confirmation.
-- Not merged.
+- Branch pushed, no pull request opened yet; not merged.
 
 **Complexity:** Medium. **Risk:** Low.
 

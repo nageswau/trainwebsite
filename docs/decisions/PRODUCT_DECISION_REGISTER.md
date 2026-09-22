@@ -2198,6 +2198,8 @@ Design, API, UI and security review: `docs/superpowers/specs/2026-09-21-enh-005-
 8. **D8 Assessment/completion:** several named assessments per batch; the counselor marks completion/certification manually.
 9. **D9 Transfer:** an enrolment whose student has moved school is read-only ("frozen"), computed, not stored; ENH-005 unchanged.
 
-**Adopted on the instruction to proceed, not explicitly confirmed (`NEEDS_CONFIRMATION`):** D10 one session per batch per day; D11 `certified` is terminal; D12 `loading.tsx` skeletons on the two new counselor routes.
+**D10–D12, confirmed by the user in-session 2026-09-22 (`EXPLICIT_APPROVAL`), after being adopted on the instruction to proceed:** D10 one session per batch per day; D11 `certified` is terminal (no un-certify); D12 `loading.tsx` skeletons on the two new counselor routes.
+
+**D13 — the two QA observations, kept as designed (user, in-session, 2026-09-22, `EXPLICIT_APPROVAL`):** coordinators and teachers see Skills through the SCH-008 timeline only, with no attendance/score detail on their student pages; and after an ENH-005 transfer the losing school's counselor keeps a read-only view of that student's batch history (D9's frozen enrolment). Neither is a follow-up item.
 
 **Consequences:** migration `0035_school_skills` (six create-only tables); router `app/api/school_skills.py` (ten endpoints under `/school/career-counselor`); additive `skills` key on `GET /school/students/{id}/overview`; timeline categories `soft_skills`/`digital_skills`; `GET /school/entitlements` reports `used` for `soft_skills`/`web_designing`. `SCH-008-AC04`'s "Skills… never appear" no longer holds for Skills (Portfolio still absent).
