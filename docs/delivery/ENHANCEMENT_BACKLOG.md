@@ -763,10 +763,17 @@ outside the School domain.
 `docs/superpowers/specs/2026-09-22-enh-007-profile-self-service-design.md`; implemented via strict TDD on
 branch `feature/enh-007-profile-self-service-audit` (7 tasks, each with an implementer + reviewer cycle,
 all reviewed clean; a final whole-branch review found no Critical issues, and this status block records
-that review's fix wave). **NOT YET COMPLETE:** pending a browser validation pass across all 7 School-domain
-roles (including the mobile menu at a narrow viewport) and an independent Codex review, per
-`docs/superpowers/plans/2026-09-22-enh-007-profile-self-service.md`'s "After all tasks" section. Evidence
-so far: `apps/api/tests/test_enh_007_profile_self_service.py` (16 passed), backend regression suite
+that review's fix wave). **Browser validation complete, 2026-09-22** (real Chrome via `browser-use`
+against the live stack, :3020): all 7 School-domain roles individually verified (correct dashboard
+landing, "My profile" front-loaded in the desktop sidebar footer right after "Change password", page
+renders with current name/phone, edit + save + reload-persistence, then restored to seeded values); the
+mobile menu at 375px confirmed "My profile" front-loaded there too, no overflow; a 1-character full name
+submission produced a real inline 422 error with nothing saved server-side (confirmed via the API
+directly); a simulated offline network showed the "Network error. Try again." message with no false
+success; a signed-out visit showed "Sign in required" with working sign-in links. No defects found in any
+of the 7 roles or the 4 cross-cutting states. **NOT YET COMPLETE:** pending an independent Codex review,
+per `docs/superpowers/plans/2026-09-22-enh-007-profile-self-service.md`'s "After all tasks" section.
+Evidence so far: `apps/api/tests/test_enh_007_profile_self_service.py` (16 passed), backend regression suite
 passing, `apps/web/tests/components/{ProfileForm,AccountProfilePage,PortalShell}.test.tsx` (all passing),
 `apps/web/tests/e2e/enh-007-profile-self-service.spec.ts` (3 passed against a live stack), `tsc --noEmit`
 and `eslint` clean, no migration (`alembic check` confirms no drift).
