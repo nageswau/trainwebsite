@@ -168,7 +168,11 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
     # existing value untouched). A plain `if value is not None` check (the previous logic) could never
     # tell those two apart, so there was no way to ever clear description/organization/date_from/date_to
     # via PATCH -- an explicit `null` looked identical to "didn't send this field".
+    # Exception: `title` is NOT NULL at the database level, so an explicit null is a validation error (422),
+    # not a clear-field operation. Reject it before merging any fields.
     fields_set = payload.model_fields_set
+    if "title" in fields_set and payload.title is None:
+        raise HTTPException(422, "title must not be null")
     for field in ("title", "description", "organization", "date_from", "date_to"):
         if field in fields_set:
             setattr(entry, field, getattr(payload, field))

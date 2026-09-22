@@ -397,6 +397,26 @@ async def test_patching_entry_date_from_after_existing_date_to_returns_422(clien
 
 
 @pytest.mark.asyncio
+async def test_patching_entry_with_null_title_returns_422(client, db_session):
+    # title is NOT NULL at the database level, so an explicit `{"title": null}` must be rejected with
+    # a 422 (validation error), not silently discarded or attempt a null insert which would raise 500.
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-PATCH-TitleNull")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    # Create entry with a title
+    created = (await client.post(f"/api/v1/school/students/{student.id}/portfolio/entries", json={"section": "project", "title": "Original title"})).json()
+    original_title = created["title"]
+    # Try to PATCH with an explicit null title
+    response = await client.patch(f"/api/v1/school/students/{student.id}/portfolio/entries/{created['id']}", json={"title": None})
+    assert response.status_code == 422, response.text
+    # Verify the title was NOT changed in the database
+    portfolio = (await client.get(f"/api/v1/school/students/{student.id}/portfolio")).json()
+    entry = portfolio["entries"]["project"][0]
+    assert entry["title"] == original_title
+
+
+@pytest.mark.asyncio
 async def test_coordinator_deletes_their_own_entry(client, db_session):
     from tests.enh005_helpers import login, mk_school
     ctx = await mk_school(db_session, label="ENH012-DELETE")
