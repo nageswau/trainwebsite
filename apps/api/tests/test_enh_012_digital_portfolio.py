@@ -78,3 +78,55 @@ def test_personal_statement_rejects_payload_over_length_cap():
     from app.schemas import PersonalStatementUpdate
     with pytest.raises(ValidationError):
         PersonalStatementUpdate(personal_statement="a" * 4001)
+
+
+async def _add_academic_team(db_session, admin, school):
+    from tests.enh005_helpers import mk_staff
+    return await mk_staff(db_session, school, admin, role="academic_team")
+
+
+@pytest.mark.asyncio
+async def test_coordinator_reads_their_own_institution_students_portfolio(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-GET")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    response = await client.get(f"/api/v1/school/students/{student.id}/portfolio")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["student"]["id"] == str(student.id)
+    assert body["completion_percentage"] == 0
+    assert body["can_edit"] is True
+    assert set(body["entries"].keys()) == {"project", "internship", "competition", "sport", "leadership", "volunteering", "extracurricular", "award", "certification", "skill"}
+
+
+@pytest.mark.asyncio
+async def test_principal_can_read_but_can_edit_is_false(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-GET-Principal")
+    student = ctx["students"][0]
+    await login(client, ctx["principal"].email)
+    response = await client.get(f"/api/v1/school/students/{student.id}/portfolio")
+    assert response.status_code == 200
+    assert response.json()["can_edit"] is False
+
+
+@pytest.mark.asyncio
+async def test_coordinator_at_a_different_institution_gets_403(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx_a = await mk_school(db_session, label="ENH012-GET-A")
+    ctx_b = await mk_school(db_session, label="ENH012-GET-B")
+    await login(client, ctx_b["coordinator"].email)
+    response = await client.get(f"/api/v1/school/students/{ctx_a['students'][0].id}/portfolio")
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_academic_team_reads_via_their_portfolio_scope(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-GET-Academic")
+    member = await _add_academic_team(db_session, ctx["admin"], ctx["school"])
+    await login(client, member.email)
+    response = await client.get(f"/api/v1/school/students/{ctx['students'][0].id}/portfolio")
+    assert response.status_code == 200
+    assert response.json()["can_edit"] is True
