@@ -84,6 +84,17 @@ class ProfileUpdate(BaseModel):
             raise PydanticCustomError("null_full_name", "full_name cannot be null")
         return value
 
+    @field_validator("full_name")
+    @classmethod
+    def full_name_is_not_blank(cls, value: str) -> str:
+        # Browser QA (ENH007-QA-01): `min_length=2` counts raw length, so an all-whitespace value
+        # (e.g. "     ") satisfies it, then auth.py:191's .strip() silently blanks the account's
+        # display name with a 200 response. Mirrors ChangePasswordRequest.new_password_is_not_blank
+        # below -- same bug class, same fix shape, in the same file.
+        if not value.strip():
+            raise PydanticCustomError("blank_full_name", "full_name must not consist only of spaces")
+        return value
+
 
 class ChangePasswordRequest(BaseModel):
     # ENH-006. Passwords are never stripped or normalised. current_password is bounded (not at 128) so a legacy

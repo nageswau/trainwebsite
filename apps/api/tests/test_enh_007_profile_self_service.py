@@ -142,3 +142,46 @@ async def test_omitting_full_name_entirely_leaves_it_unchanged(client, db_sessio
     await db_session.refresh(user)
     assert user.full_name == "ENH-007 User"  # unchanged -- AC-10's "omit to skip" contract
     assert user.phone == "+91 33333 33333"
+
+
+# ------------------------------- reserved profile keys: assigned_grade/assigned_section (Codex review, BLOCKER)
+# ENH-007's own acceptance criteria (ENHANCEMENT_BACKLOG.md:725-730, negative scenario at :749) names a
+# school_teacher self-editing their assigned_grade/assigned_section as the example that must be rejected,
+# the same way school_id/university_id already are. Neither field is read anywhere for authorization today
+# (teacher-student scoping is SchoolStudent.assigned_teacher_user_id, not User.profile) -- so this closes
+# the acceptance criterion and hardens against a future field landing in User.profile without remembering
+# to protect it, rather than fixing a currently-exploitable path.
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reserved_key", ["assigned_grade", "assigned_section"])
+async def test_a_teacher_cannot_self_assign_a_reserved_scheduling_field(client, db_session, reserved_key):
+    user = await _signed_in_user(client, db_session, role="school_teacher")
+    response = await client.patch(URL, json={"profile": {reserved_key: "10-A"}})
+    assert response.status_code == 403, response.text
+    await db_session.refresh(user)
+    assert reserved_key not in (user.profile or {})
+
+
+# ------------------------------- whitespace-only full_name (browser QA, ENH007-QA-01)
+# min_length=2 counts raw string length, so an all-whitespace value satisfies it; auth.py:191's
+# server-side .strip() then turns it into an empty string, silently blanking the account's display
+# name with a 200/"success" response. Mirrors ChangePasswordRequest.new_password_is_not_blank, the
+# existing pattern in this same file for exactly this class of bug.
+
+
+@pytest.mark.asyncio
+async def test_whitespace_only_full_name_is_rejected_not_saved_as_empty(client, db_session):
+    user = await _signed_in_user(client, db_session)
+    response = await client.patch(URL, json={"full_name": "     "})
+    assert response.status_code == 422, response.text
+    await db_session.refresh(user)
+    assert user.full_name == "ENH-007 User"  # unchanged, never blanked
+
+
+def test_schema_rejects_whitespace_only_full_name():
+    with pytest.raises(ValidationError) as exc_info:
+        ProfileUpdate(full_name="     ")
+    errors = exc_info.value.errors()
+    assert len(errors) == 1
+    assert errors[0]["type"] == "blank_full_name"
