@@ -22,12 +22,14 @@ export default function SchoolSkillBatchForm({ schools, titleRef }: { schools: S
   const sending = useRef(false); // state is one render late: two clicks in one task would both see busy=false
 
   const set = (name: keyof Draft) => (e: { target: { value: string } }) => setDraft((d) => ({ ...d, [name]: e.target.value }));
+  // One place builds a field's id, so the input, its error message, its `aria-describedby` and the focus lookup cannot drift apart.
+  const fieldId = (name: string) => `skill-batch-${name.replaceAll("_", "-")}`;
   const describe = (name: string) => ({
-    id: `skill-batch-${name.replaceAll("_", "-")}`,
+    id: fieldId(name),
     "aria-invalid": errors[name] ? true : undefined,
-    "aria-describedby": errors[name] ? `skill-batch-${name.replaceAll("_", "-")}-error` : undefined,
+    "aria-describedby": errors[name] ? `${fieldId(name)}-error` : undefined,
   });
-  const error = (name: string) => errors[name] && <span id={`skill-batch-${name.replaceAll("_", "-")}-error`} className="form-error">{errors[name]}</span>;
+  const error = (name: string) => errors[name] && <span id={`${fieldId(name)}-error`} className="form-error">{errors[name]}</span>;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -38,7 +40,7 @@ export default function SchoolSkillBatchForm({ schools, titleRef }: { schools: S
       setErrors(found);
       // Focus the first invalid field in on-screen order, so a keyboard or screen-reader user lands on what to fix.
       const first = FIELD_ORDER.find((name) => found[name]);
-      if (first) document.getElementById(`skill-batch-${first.replaceAll("_", "-")}`)?.focus();
+      if (first) document.getElementById(fieldId(first))?.focus();
       return;
     }
     sending.current = true;
@@ -51,7 +53,7 @@ export default function SchoolSkillBatchForm({ schools, titleRef }: { schools: S
     sending.current = false;
     setBusy(false);
     setErrors(result.fields);
-    setAlert(alertFor(result, undefined, true));
+    setAlert(alertFor(result, true));
   }
 
   return (

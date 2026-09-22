@@ -11,9 +11,9 @@ export type SkillAlertState = { text: string; expired?: boolean; retry?: () => v
 
 /** `fieldsShown`: the caller marks each named field with its own message, so the alert points at them instead of repeating the
  * same text a second time (browser QA-07). A caller that shows no field messages gets the full text. */
-export function alertFor(failure: SendFailure, retry?: () => void, fieldsShown = false): SkillAlertState {
+export function alertFor(failure: SendFailure, fieldsShown = false): SkillAlertState {
   const text = fieldsShown && Object.keys(failure.fields).length > 0 ? "Check the highlighted fields." : failure.message;
-  return { text, expired: failure.expired, retry };
+  return { text, expired: failure.expired };
 }
 
 export default function SchoolSkillAlert({ alert }: { alert: SkillAlertState | null }) {

@@ -2,6 +2,7 @@
 // status is shown. Status is always a text label plus a class, never colour alone. Safe for client components (no server imports).
 
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
+import { formatDate } from "@/lib/formatDate";
 import type { SchoolRef } from "@/lib/transfers";
 
 export type SkillModule = "soft_skills" | "digital_skills";
@@ -73,7 +74,12 @@ export function canMark(enrolment: Pick<SkillEnrollment, "status" | "frozen">): 
 // Browser QA-10: a 5xx is not the counselor's mistake; say nothing was saved and that trying again is safe.
 export const SERVER_FAILED = "The change was not saved because of a problem on our side. Your entry is kept; please try again in a moment.";
 // Browser QA-05/06: the batch form's own checks, in plain words, so a server message never has to explain a field name or a parser.
-export const END_BEFORE_START = "The end date must be on or after the start date";
+const END_BEFORE_START = "The end date must be on or after the start date";
+
+/** A batch's dates: the range when it has an end, otherwise just the start. Callers add their own "from"/"From". */
+export function dateRange(start: string, end: string | null): string {
+  return end ? `${formatDate(start)} – ${formatDate(end)}` : formatDate(start);
+}
 
 /** Field errors for a batch's title and dates, keyed like the API's fields. Empty when the draft may be sent. */
 export function batchDraftErrors(draft: { title: string; start_date: string; end_date: string }): Record<string, string> {

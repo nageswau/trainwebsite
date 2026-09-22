@@ -6,8 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import SchoolSkillAlert, { type SkillAlertState } from "@/components/SchoolSkillAlert";
 import SchoolSkillBatchForm from "@/components/SchoolSkillBatchForm";
 import { isPage, type Page } from "@/lib/apiErrors";
-import { formatDate } from "@/lib/formatDate";
-import { MODULE_LABEL, type SkillBatch, type SkillBatchStatus, type SkillModule } from "@/lib/skills";
+import { MODULE_LABEL, dateRange, type SkillBatch, type SkillBatchStatus, type SkillModule } from "@/lib/skills";
 import type { SchoolRef } from "@/lib/transfers";
 
 // ENH-011 spec §7: the counselor's batches. The first page is read on the server, so first paint has no spinner. A filter change
@@ -20,10 +19,6 @@ function query(module: SkillModule | "", status: SkillBatchStatus | "", offset: 
   if (module) params.set("module_type", module);
   if (status) params.set("status", status);
   return `${URL}?${params}`;
-}
-
-function dates(b: SkillBatch): string {
-  return b.end_date ? `${formatDate(b.start_date)} – ${formatDate(b.end_date)}` : `from ${formatDate(b.start_date)}`;
 }
 
 export default function SchoolSkillBatchesPanel({ initial, schools }: { initial: Page<SkillBatch>; schools: SchoolRef[] }) {
@@ -112,7 +107,7 @@ export default function SchoolSkillBatchesPanel({ initial, schools }: { initial:
                 <li key={b.id}>
                   <div className="who">
                     <Link href={`/school/career-counselor/skills/${b.id}`}><strong>{b.title}</strong></Link>
-                    <span>{MODULE_LABEL[b.module_type]} · {b.school.name} · {dates(b)}{b.topic ? ` · ${b.topic}` : ""}</span>
+                    <span>{MODULE_LABEL[b.module_type]} · {b.school.name} · {b.end_date ? "" : "from "}{dateRange(b.start_date, b.end_date)}{b.topic ? ` · ${b.topic}` : ""}</span>
                   </div>
                   <div className="meta">
                     <span className="muted">{b.enrolled_count} enrolled</span>

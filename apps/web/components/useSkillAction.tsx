@@ -13,6 +13,8 @@ import { send } from "@/lib/skills";
 // has announced it by then.
 export const MESSAGE_MS = 8000;
 
+export type SkillAction = ReturnType<typeof useSkillAction>;
+
 export function useSkillAction() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -27,7 +29,7 @@ export function useSkillAction() {
     return () => clearTimeout(timer);
   }, [message]);
 
-  async function run<T>(url: string, method: "POST" | "PATCH" | "PUT", body: unknown, success: (data: T) => string, options: { fieldsShown?: boolean } = {}): Promise<T | null> {
+  async function run<T>(url: string, method: "POST" | "PATCH" | "PUT", body: unknown, success: (data: T) => string, fieldsShown = false): Promise<T | null> {
     if (running.current) return null;
     running.current = true;
     setBusy(true);
@@ -39,7 +41,7 @@ export function useSkillAction() {
     setBusy(false);
     if (!result.ok) {
       setFields(result.fields);
-      setAlert(alertFor(result, undefined, options.fieldsShown));
+      setAlert(alertFor(result, fieldsShown));
       return null;
     }
     setMessage(success(result.data));

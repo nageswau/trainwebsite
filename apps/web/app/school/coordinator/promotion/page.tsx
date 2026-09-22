@@ -1,10 +1,10 @@
 import PortalShell from "@/components/PortalShell";
 import SchoolPromotionPanel from "@/components/SchoolPromotionPanel";
 import type { PromotionStudent } from "@/components/SchoolPromotionRow";
-import { ApiError, serverApi } from "@/lib/api";
+import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
-import { accessUnavailable } from "@/components/AccessUnavailable";
+import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 
 type ActiveYear = { id: string; label: string } | null;
 
@@ -18,7 +18,7 @@ export default async function SchoolCoordinatorPromotionPage() {
   let activeYear: ActiveYear;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
-    if (user.role !== "school_coordinator") return accessUnavailable(new ApiError("School Coordinator role required", 403));
+    if (user.role !== "school_coordinator") return accessDenied(user, "School Coordinator role required");
     [students, activeYear] = await Promise.all([
       serverApi<PromotionStudent[]>("/api/v1/school/students"),
       serverApi<ActiveYear>("/api/v1/school/academic-years/active"),

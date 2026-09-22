@@ -6,7 +6,7 @@ import type { User } from "@/lib/types";
 // user who simply lacks the role (browser QA-14, found in ENH-011's QA). Signed out (401) still gets the login link; anyone else is
 // sent to their own dashboard, looked up from the session -- and if even that cannot be read, back to login.
 
-export function AccessUnavailableCard({ message, home, loginHref }: { message: string; home: string | null; loginHref: string }) {
+function AccessUnavailableCard({ message, home, loginHref }: { message: string; home: string | null; loginHref: string }) {
   return (
     <div className="section">
       <div className="container card">
@@ -16,6 +16,12 @@ export function AccessUnavailableCard({ message, home, loginHref }: { message: s
       </div>
     </div>
   );
+}
+
+/** For a page that has already read the session and is refusing the user itself: no lookup, the dashboard comes from the user in
+ * hand. `accessUnavailable` is for the catch path, where there may be no session at all. */
+export function accessDenied(user: User, message: string) {
+  return <AccessUnavailableCard message={message} home={ROLE_DASHBOARD_PATH[user.role] ?? "/"} loginHref="/overseas/login" />;
 }
 
 /** Pages `return accessUnavailable(e)` from their own async body, so the lookup happens there and the page still resolves to plain

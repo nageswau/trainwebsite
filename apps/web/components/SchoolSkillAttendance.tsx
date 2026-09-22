@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 
 import SchoolSkillAlert from "@/components/SchoolSkillAlert";
-import { SkillStatus, useSkillAction } from "@/components/useSkillAction";
+import { SkillStatus, useSkillAction, type SkillAction } from "@/components/useSkillAction";
 import { formatDate } from "@/lib/formatDate";
 import { canMark, type SkillBatchDetail, type SkillSession } from "@/lib/skills";
 
@@ -11,7 +11,6 @@ import { canMark, type SkillBatchDetail, type SkillSession } from "@/lib/skills"
 // listed (not certified, withdrawn or transferred out). Unsaved marks are flagged and guarded against leaving the page; a failed save
 // keeps them. On a closed batch the section is read-only.
 const BASE = "/api/v1/school/career-counselor";
-type Action = ReturnType<typeof useSkillAction>;
 const LEAVE_WITH_UNSAVED = "You have unsaved attendance. Leave this page without saving it?";
 const sessionLabel = (s: SkillSession) => `${formatDate(s.session_date)}${s.topic ? ` — ${s.topic}` : ""}`;
 
@@ -79,7 +78,7 @@ export default function SchoolSkillAttendance({ batch }: { batch: SkillBatchDeta
   );
 }
 
-function AttendanceRoster({ batch, session, action }: { batch: SkillBatchDetail; session: SkillSession; action: Action }) {
+function AttendanceRoster({ batch, session, action }: { batch: SkillBatchDetail; session: SkillSession; action: SkillAction }) {
   const markable = batch.enrollments.filter(canMark);
   const saved = Object.fromEntries(session.attendance.map((a) => [a.enrollment_id, a.present]));
   const [present, setPresent] = useState<Record<string, boolean>>(() => Object.fromEntries(markable.map((e) => [e.id, saved[e.id] ?? false])));
@@ -112,7 +111,7 @@ function AttendanceRoster({ batch, session, action }: { batch: SkillBatchDetail;
 
   function save(e: FormEvent) {
     e.preventDefault();
-    const records = markable.map((m) => ({ enrollment_id: m.id, present: !!present[m.id] }));
+    const records = markable.map((m) => ({ enrollment_id: m.id, present: present[m.id] }));
     void action.run(`${BASE}/skill-sessions/${session.id}/attendance`, "PUT", { records }, () => `Attendance saved for ${formatDate(session.session_date)}.`);
   }
 
@@ -124,7 +123,7 @@ function AttendanceRoster({ batch, session, action }: { batch: SkillBatchDetail;
         <div style={{ display: "grid", gap: 4 }}>
           {markable.map((m) => (
             <label key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44 }}>
-              <input type="checkbox" checked={!!present[m.id]} disabled={action.busy} onChange={(e) => setPresent((p) => ({ ...p, [m.id]: e.target.checked }))} />
+              <input type="checkbox" checked={present[m.id]} disabled={action.busy} onChange={(e) => setPresent((p) => ({ ...p, [m.id]: e.target.checked }))} />
               {m.student_name}
             </label>
           ))}

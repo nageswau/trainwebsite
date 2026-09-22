@@ -3,14 +3,13 @@
 import { type FormEvent, useState } from "react";
 
 import SchoolSkillAlert from "@/components/SchoolSkillAlert";
-import { SkillStatus, useSkillAction } from "@/components/useSkillAction";
+import { SkillStatus, useSkillAction, type SkillAction } from "@/components/useSkillAction";
 import { canMark, type SkillAssessment, type SkillBatchDetail } from "@/lib/skills";
 
 // ENH-011 spec §7: several assessments per batch (D8), each with a score grid labelled "Score for <student> (out of <max>)" and an
 // optional remark (§9 "improvement required"). A score outside 0..max is caught on its field before anything is sent. Read-only on a
 // closed batch.
 const BASE = "/api/v1/school/career-counselor";
-type Action = ReturnType<typeof useSkillAction>;
 
 export default function SchoolSkillScores({ batch }: { batch: SkillBatchDetail }) {
   const action = useSkillAction();
@@ -76,7 +75,7 @@ export default function SchoolSkillScores({ batch }: { batch: SkillBatchDetail }
   );
 }
 
-function ScoreGrid({ batch, assessment, action }: { batch: SkillBatchDetail; assessment: SkillAssessment; action: Action }) {
+function ScoreGrid({ batch, assessment, action }: { batch: SkillBatchDetail; assessment: SkillAssessment; action: SkillAction }) {
   const markable = batch.enrollments.filter(canMark);
   const [values, setValues] = useState<Record<string, { score: string; remarks: string }>>(() =>
     Object.fromEntries(markable.map((e) => {

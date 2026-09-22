@@ -1,6 +1,6 @@
 import { serverApi } from "@/lib/api";
 import { formatDate } from "@/lib/formatDate";
-import { attendanceText } from "@/lib/skills";
+import { attendanceText, ENROLMENT_LABEL, MODULE_LABEL, type SkillModule } from "@/lib/skills";
 
 // SCH-007: one child's complete picture for the Parent Portal, read from
 // GET /school/students/{id}/overview (own-child scope enforced server-side, SCH-001-AC03).
@@ -47,9 +47,9 @@ export function childrenSpanSchools(overviews: (ChildOverview | null)[]): boolea
 export { formatDate };
 
 const STATUS_LABEL: Record<string, string> = {
-  completed: "Completed", assigned: "Assigned", not_started: "Not started",
-  // ENH-011 skills statuses (module rollup and enrolment).
-  certified: "Certified", in_progress: "In progress", enrolled: "Enrolled", withdrawn: "Withdrawn",
+  // ENH-011: the enrolment statuses (including "Completed") come from the skills module itself; the rest are this page's own.
+  ...ENROLMENT_LABEL,
+  assigned: "Assigned", not_started: "Not started", in_progress: "In progress",
 };
 
 export function StatusChip({ status }: { status: string }) {
@@ -74,7 +74,8 @@ export function ChildStatusRow({ overview }: { overview: ChildOverview }) {
   );
 }
 
-const SKILL_MODULES = [["soft_skills", "Soft Skills"], ["digital_skills", "Digital Skills"]] as const;
+// The counselor screens' own labels, so the Parent Portal cannot word a module differently.
+const SKILL_MODULES = Object.entries(MODULE_LABEL) as [SkillModule, string][];
 
 function SkillsCard({ skills }: { skills: NonNullable<ChildOverview["skills"]> }) {
   return (
