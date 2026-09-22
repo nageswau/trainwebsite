@@ -38,11 +38,30 @@ describe("PortalShell change-password entry point (ENH-006)", () => {
     expect(within(desktop).getAllByRole("link").map((link) => link.textContent)).toEqual(["Dashboard", "My courses"]);
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
     const mobile = container.querySelector("#portal-mobile-nav-panel") as HTMLElement;
-    expect(within(mobile).getAllByRole("link").map((link) => link.textContent)).toEqual(["Change password", "Dashboard", "My courses"]);
+    expect(within(mobile).getAllByRole("link").map((link) => link.textContent)).toEqual(["Change password", "My profile", "Dashboard", "My courses"]);
   });
 
   it("still renders the page content", () => {
     renderShell();
     expect(screen.getByText("page content")).toBeInTheDocument();
+  });
+});
+
+describe("PortalShell my-profile entry point (ENH-007)", () => {
+  it("offers My profile in the desktop sidebar footer, right after Change password", () => {
+    const { container } = renderShell();
+    const footer = container.querySelector(".sidebar-footer") as HTMLElement;
+    const links = within(footer).getAllByRole("link").map((link) => link.textContent);
+    expect(links).toEqual(["Change password", "My profile"]);
+    expect(within(footer).getByRole("link", { name: "My profile" })).toHaveAttribute("href", "/account/profile");
+  });
+
+  // Mirrors the QA-004 lesson this file already tests for "Change password": a shared link must stay
+  // front-loaded in the mobile menu, not appended after the role's own (much longer) nav array.
+  it("keeps My profile front-loaded in the mobile menu too, not buried after the role's items", () => {
+    const { container } = renderShell();
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const mobile = container.querySelector("#portal-mobile-nav-panel") as HTMLElement;
+    expect(within(mobile).getAllByRole("link").map((link) => link.textContent)).toEqual(["Change password", "My profile", "Dashboard", "My courses"]);
   });
 });
