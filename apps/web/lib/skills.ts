@@ -1,6 +1,7 @@
 // ENH-011 -- shapes of the skills-tracker API (docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md §5) and how a
 // status is shown. Status is always a text label plus a class, never colour alone. Safe for client components (no server imports).
 
+import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import type { SchoolRef } from "@/lib/transfers";
 
 export type SkillModule = "soft_skills" | "digital_skills";
@@ -67,4 +68,34 @@ export function attendanceText({ present, marked }: SkillAttendanceSummary): str
 /** Attendance and scores are taken only for a live enrolment of a student still at the batch's school. */
 export function canMark(enrolment: Pick<SkillEnrollment, "status" | "frozen">): boolean {
   return !enrolment.frozen && (enrolment.status === "enrolled" || enrolment.status === "completed");
+}
+
+export type SendFailure = { ok: false; message: string; fields: Record<string, string>; expired?: boolean };
+export type SendResult<T> = { ok: true; data: T } | SendFailure;
+
+/** FastAPI's 422 list keyed by field name (the last string in `loc`), worded like `detailMessage`. */
+function fieldErrors(detail: unknown): Record<string, string> {
+  if (!Array.isArray(detail)) return {};
+  const fields: Record<string, string> = {};
+  for (const item of detail as { loc?: unknown[] }[]) {
+    const name = [...(item?.loc ?? [])].reverse().find((part) => typeof part === "string" && part !== "body");
+    if (typeof name === "string" && !fields[name]) fields[name] = detailMessage([item]);
+  }
+  return fields;
+}
+
+/** Every skills write goes through here, so the counselor screens share one reading of 401, 4xx/422, a dropped connection and a
+ * 2xx that is not JSON (a proxy page must not read as saved). */
+export async function send<T>(url: string, method: "GET" | "POST" | "PATCH" | "PUT", body?: unknown): Promise<SendResult<T>> {
+  let response: Response;
+  try {
+    response = await fetch(url, body === undefined ? { method } : { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  } catch {
+    return { ok: false, message: NOT_COMPLETED, fields: {} };
+  }
+  const data = await response.json().catch(() => null);
+  if (response.status === 401) return { ok: false, expired: true, message: "Your session has expired.", fields: {} };
+  if (!response.ok) return { ok: false, message: detailMessage(data?.detail), fields: fieldErrors(data?.detail) };
+  if (data === null || typeof data !== "object") return { ok: false, message: "The change could not be confirmed. Reload the page to see where it stands.", fields: {} };
+  return { ok: true, data: data as T };
 }

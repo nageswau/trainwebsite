@@ -1,7 +1,41 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { NOT_COMPLETED } from "@/lib/apiErrors";
 import { SCHOOL_NAV } from "@/lib/navigation";
-import { ENROLMENT_CLASS, ENROLMENT_LABEL, ENROLMENT_STATUSES, MODULE_LABEL, TRANSITIONS, attendanceText, canMark, type SkillEnrollment } from "@/lib/skills";
+import { ENROLMENT_CLASS, ENROLMENT_LABEL, ENROLMENT_STATUSES, MODULE_LABEL, TRANSITIONS, attendanceText, canMark, send, type SkillEnrollment } from "@/lib/skills";
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("send", () => {
+  const reply = (body: unknown, status = 200) => vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(body), { status }))));
+
+  it("returns the body of a 2xx and sends JSON", async () => {
+    reply({ id: "b1" }, 201);
+    expect(await send("/x", "POST", { a: 1 })).toEqual({ ok: true, data: { id: "b1" } });
+    const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(init).toMatchObject({ method: "POST", body: '{"a":1}', headers: { "Content-Type": "application/json" } });
+  });
+
+  it("maps a 422 list to a message and per-field errors", async () => {
+    reply({ detail: [{ loc: ["body", "title"], msg: "Value error, must not be blank" }, { loc: ["body", "end_date"], msg: "Input should be a valid date" }] }, 422);
+    const result = await send("/x", "POST", {});
+    expect(result).toEqual({ ok: false, message: "Must not be blank; Input should be a valid date", fields: { title: "Must not be blank", end_date: "Input should be a valid date" } });
+  });
+
+  it("shows a string detail as written, flags an expired session, and keeps the entry on a network failure", async () => {
+    reply({ detail: "This batch is closed. Reopen it to make this change." }, 409);
+    expect(await send("/x", "PUT", {})).toEqual({ ok: false, message: "This batch is closed. Reopen it to make this change.", fields: {} });
+    reply({ detail: "Not authenticated" }, 401);
+    expect(await send("/x", "GET")).toMatchObject({ ok: false, expired: true });
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
+    expect(await send("/x", "GET")).toEqual({ ok: false, message: NOT_COMPLETED, fields: {} });
+  });
+
+  it("does not report success for a 2xx without a JSON body", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("<html>login</html>", { status: 200 }))));
+    expect(await send("/x", "GET")).toMatchObject({ ok: false, fields: {} });
+  });
+});
 
 // ENH-011 (docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md §5.1, §7): the shared labels and rules the
 // counselor screens use. TRANSITIONS must equal the API's table exactly, so the UI never offers a change the API refuses.
