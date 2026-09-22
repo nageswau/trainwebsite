@@ -47,29 +47,42 @@ export default async function SchoolParentDashboardPage() {
             <p className="muted">No child linked to your account yet. Contact your school to get set up.</p>
           </div>
         ) : (
-          children.map((c, i) => {
-            const o = overviews[i];
-            return (
-              <div className="card" key={c.id} data-testid={`child-card-${c.id}`}>
-                <h2>{c.full_name} <span className="muted" style={{ fontSize: 14 }}>({c.student_code})</span></h2>
-                <p><strong>Grade/Class:</strong> {c.grade_or_class || "-"}</p>
-                <p><strong>Date of birth:</strong> {formatDate(c.date_of_birth)}</p>
-                {multiSchool && o?.student.school_name && <p><strong>School:</strong> {o.student.school_name}</p>}
-                {o ? (
-                  <>
-                    <p><strong>Class teacher:</strong> {o.student.assigned_teacher_name || "Not assigned yet"}</p>
-                    <ChildStatusRow overview={o} />
-                    {o.recommended_careers.length > 0 && (
-                      <p><strong>Recommended careers:</strong> {o.recommended_careers.map((r) => <span className="badge" key={r.id} style={{ marginRight: 6 }}>{r.notes}</span>)}</p>
-                    )}
-                  </>
-                ) : (
-                  <p className="muted">Progress details are unavailable right now.</p>
-                )}
-                <a className="btn" href={`/school/parent/children/${c.id}`}>View full profile &amp; progress</a>
+          (() => {
+            const cards = children.map((c, i) => {
+              const o = overviews[i];
+              return (
+                <div className="card" key={c.id} data-testid={`child-card-${c.id}`}>
+                  <h2>{c.full_name} <span className="muted" style={{ fontSize: 14 }}>({c.student_code})</span></h2>
+                  <p><strong>Grade/Class:</strong> {c.grade_or_class || "-"}</p>
+                  <p><strong>Date of birth:</strong> {formatDate(c.date_of_birth)}</p>
+                  {o ? (
+                    <>
+                      <p><strong>Class teacher:</strong> {o.student.assigned_teacher_name || "Not assigned yet"}</p>
+                      <ChildStatusRow overview={o} />
+                      {o.recommended_careers.length > 0 && (
+                        <p><strong>Recommended careers:</strong> {o.recommended_careers.map((r) => <span className="badge" key={r.id} style={{ marginRight: 6 }}>{r.notes}</span>)}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="muted">Progress details are unavailable right now.</p>
+                  )}
+                  <a className="btn" href={`/school/parent/children/${c.id}`}>View full profile &amp; progress</a>
+                </div>
+              );
+            });
+            if (!multiSchool) return cards;
+            const bySchool = new Map<string, typeof cards>();
+            children.forEach((c, i) => {
+              const school = overviews[i]?.student.school_name || "Other";
+              bySchool.set(school, [...(bySchool.get(school) ?? []), cards[i]]);
+            });
+            return [...bySchool.entries()].map(([school, group]) => (
+              <div key={school}>
+                <h2 style={{ marginTop: 24 }}>{school}</h2>
+                {group}
               </div>
-            );
-          })
+            ));
+          })()
         )}
 
         <div className="card">
