@@ -110,7 +110,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-007 | Profile self-service — cross-role completion audit | Medium | Low | Possibly (TBD) | ENH-003 (shares provisioning fields) |
 | ENH-008 | Parent account linked to children across multiple schools | Medium | Medium | Yes | — |
 | ENH-009 | School profile — **mandatory** full field coverage (School ID, Branch, +21 more; see corrected entry below) | Large | High | Yes | — (should land early; see §2) |
-| ENH-010 | Account activation / deactivation (School Master capability) | Small | Medium | Possibly (TBD) | — |
+| ENH-010 | Account activation / deactivation (School Master capability) | Small | Medium | Yes (verified) | — |
 | ENH-011 | School-domain skills tracker generalization (Soft Skills, Digital/Web Skills) | Medium | Low | Yes | Reuses SCH-009 pattern |
 | ENH-012 | Digital Portfolio module | Large | Medium | Yes | ENH-001 (portfolio entries reference academic year) |
 | ENH-013 | Student 360° unified profile / Career Passport view | Large | Medium | Possibly (TBD) | ENH-011, ENH-012 |
@@ -906,7 +906,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 35 | Student 360° View | ❌ Gap | See **ENH-013** |
 | 36 | Complete School CRM Flow (pipeline diagram) | — No action | Conceptual/architectural map, not itself a buildable feature |
 | B1 | School CRM Login Hierarchy (diagram) | — No action | Conceptual; matches confirmed role structure |
-| B2 | School Master Login capabilities | ⚠️ Partial | Most covered by `SCH-002`/`SCH-003`; **"Activate/deactivate users"** not confirmed — see **ENH-010** |
+| B2 | School Master Login capabilities | ✅ Built | Fully covered by `SCH-002`/`SCH-003`; **"Activate/deactivate users"** verified 2026-09-22 (`ENH-010`, `DEC-SCOPE-023` drafted) — see the `ENH-010` backlog entry |
 | B3 | Teacher Login | ✅ Built | `DEC-SCOPE-011`, `school_teacher` |
 | B4 | Parent Login | ⚠️ Partial | Built for one school; multi-school case is **ENH-008** |
 | B5 | Student Login | ⚠️ Partial | Inherits the `DEC-ROLE-004`/`DEC-SCOPE-011` conflict, §0. Dashboard field breadth feeds **ENH-013** |
@@ -1095,6 +1095,17 @@ exists and is checked by `_assignment_is_usable()` (per the earlier implementati
 survey found it gates permission grants at the assignment level — whether a `school_coordinator` has
 any endpoint to toggle it for their own institution's users was not confirmed either way; this item is
 an audit-then-build, not a presumed gap.
+
+**Resolution, 2026-09-22 (SUPERSEDES the "not confirmed" reading above):** audit found the
+capability already shipped under the `SCH-003` addendum (`apps/api/app/api/schools.py`
+`update_team_account`, `PATCH /api/v1/school/team/accounts/{user_id}`), predating this backlog
+entry. All four acceptance criteria verified — 9/9 automated tests
+(`apps/api/tests/test_sch_team_account_activation.py`, including two new mutation-checked
+characterization tests for AC2 and mass-assignment immunity) plus a live browser QA pass. One
+real bug found and fixed during QA: `ENH010-QA-01`, a rapid-click re-entrancy gap in
+`SchoolTeamPanel.tsx`. Decision `DEC-SCOPE-023` (drafted, `PENDING_CONFIRMATION`) records the
+`School CRM.md` Part B §2 → `school_coordinator` mapping this relies on. See
+`docs/superpowers/specs/2026-09-22-enh-010-account-activation-design.md`.
 
 **Expected behavior.** A coordinator can deactivate a user (teacher/parent/student, scoped to their own
 institution) such that the account can no longer authenticate or be granted permissions, and reactivate
