@@ -1,6 +1,7 @@
 import re
 import unicodedata
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -588,17 +589,18 @@ TransferStatusFilter = Literal["pending", "approved", "rejected", "cancelled", "
 TransferDirection = Literal["outgoing", "incoming"]
 
 
-def clean_free_text(value: str | None) -> str | None:
+def clean_free_text(value: str | None, limit: int = FREE_TEXT_MAX) -> str | None:
     """Coordinator/admin free text (`reason`, `note`). Blank becomes None. A NUL byte would surface as a 500 from
     PostgreSQL text, and bidirectional overrides could visually reorder text shown to an admin (security review S7).
-    Line breaks and tabs stay (it is a textarea); zero-width joiners stay (Indic scripts need them)."""
+    Line breaks and tabs stay (it is a textarea); zero-width joiners stay (Indic scripts need them).
+    ENH-011 reuses the same rule with its own length `limit`."""
     if value is None:
         return None
     value = value.strip()
     if not value:
         return None
-    if len(value) > FREE_TEXT_MAX:
-        raise ValueError(f"must be {FREE_TEXT_MAX} characters or fewer")
+    if len(value) > limit:
+        raise ValueError(f"must be {limit} characters or fewer")
     for ch in value:
         if ch in _BIDI_CONTROLS or (unicodedata.category(ch) == "Cc" and ch not in "\n\t"):
             raise ValueError("must not contain control or bidirectional-override characters")
@@ -740,3 +742,196 @@ class AdminTransferPage(BaseModel):
 class AdminTransferHistoryResponse(BaseModel):
     student: TransferHistoryStudent
     history: list[AdminTransferRequestOut]
+
+
+# --- ENH-011: school skills tracker (docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md §5) ---
+
+SkillModule = Literal["soft_skills", "digital_skills"]
+SkillBatchStatus = Literal["open", "closed"]
+SkillEnrollmentStatus = Literal["enrolled", "completed", "certified", "withdrawn"]
+
+
+def _optional(limit: int):
+    return lambda value: clean_free_text(value, limit)
+
+
+def _required(limit: int):
+    def check(value: str) -> str:
+        cleaned = clean_free_text(value, limit)
+        if cleaned is None:
+            raise ValueError("must not be blank")
+        return cleaned
+
+    return check
+
+
+SkillTitle = Annotated[str, AfterValidator(_required(160))]
+SkillName = Annotated[str, AfterValidator(_required(120))]
+SkillShortText = Annotated[str | None, AfterValidator(_optional(120))]
+SkillSessionTopic = Annotated[str | None, AfterValidator(_optional(160))]
+SkillRemarks = Annotated[str | None, AfterValidator(_optional(2000))]
+
+
+def _unique_ids(ids: list[UUID]) -> list[UUID]:
+    if len(set(ids)) != len(ids):
+        raise ValueError("must not repeat an id")
+    return ids
+
+
+def _unique_enrollments(rows: list) -> list:
+    _unique_ids([r.enrollment_id for r in rows])
+    return rows
+
+
+def _check_dates(start: date | None, end: date | None) -> None:
+    if start and end and end < start:
+        raise ValueError("end_date must be on or after start_date")
+
+
+class SkillBatchCreate(BaseModel):
+    # `extra="forbid"`: status, creator and ids are server-owned (spec §5.1).
+    model_config = {"extra": "forbid"}
+    school_id: UUID
+    module_type: SkillModule
+    title: SkillTitle
+    topic: SkillShortText = None
+    trainer_name: SkillShortText = None
+    start_date: date
+    end_date: date | None = None
+
+    @model_validator(mode="after")
+    def _dates(self):
+        _check_dates(self.start_date, self.end_date)
+        return self
+
+
+class SkillBatchUpdate(BaseModel):
+    # A batch never changes school or module: sending either is a loud 422. A date sent alone is checked against the
+    # stored other date by the endpoint.
+    model_config = {"extra": "forbid"}
+    title: SkillTitle | None = None
+    topic: SkillShortText = None
+    trainer_name: SkillShortText = None
+    start_date: date | None = None
+    end_date: date | None = None
+    status: SkillBatchStatus | None = None
+
+    @model_validator(mode="after")
+    def _dates(self):
+        _check_dates(self.start_date, self.end_date)
+        return self
+
+
+class SkillEnrollCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+    school_student_ids: Annotated[list[UUID], Field(min_length=1, max_length=100), AfterValidator(_unique_ids)]
+
+
+class SkillEnrollmentUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+    status: SkillEnrollmentStatus
+
+
+class SkillSessionCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+    session_date: date
+    topic: SkillSessionTopic = None
+
+
+class SkillAttendanceMark(BaseModel):
+    model_config = {"extra": "forbid"}
+    enrollment_id: UUID
+    present: bool
+
+
+class SkillAttendanceIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    records: Annotated[list[SkillAttendanceMark], Field(min_length=1, max_length=200), AfterValidator(_unique_enrollments)]
+
+
+class SkillAssessmentCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+    name: SkillName
+    max_score: Annotated[Decimal, Field(gt=0, le=1000, max_digits=6, decimal_places=2)]
+
+
+class SkillScoreIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    enrollment_id: UUID
+    score: Annotated[Decimal, Field(ge=0, max_digits=6, decimal_places=2)]
+    remarks: SkillRemarks = None
+
+
+class SkillScoresIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    scores: Annotated[list[SkillScoreIn], Field(min_length=1, max_length=200), AfterValidator(_unique_enrollments)]
+
+
+class SkillBatchOut(BaseModel):
+    id: UUID
+    school: SchoolRef
+    module_type: SkillModule
+    title: str
+    topic: str | None
+    trainer_name: str | None
+    start_date: date
+    end_date: date | None
+    status: SkillBatchStatus
+    enrolled_count: int
+    created_at: datetime
+
+
+class SkillBatchPage(BaseModel):
+    items: list[SkillBatchOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class SkillAttendanceSummary(BaseModel):
+    present: int
+    marked: int
+
+
+class SkillScoreOut(BaseModel):
+    assessment_id: UUID
+    score: float
+    remarks: str | None
+
+
+class SkillEnrollmentOut(BaseModel):
+    id: UUID
+    batch_id: UUID
+    school_student_id: UUID
+    student_name: str
+    status: SkillEnrollmentStatus
+    frozen: bool
+    completed_at: datetime | None
+    certified_at: datetime | None
+    created_at: datetime
+    attendance: SkillAttendanceSummary
+    scores: list[SkillScoreOut]
+
+
+class SkillAttendanceOut(BaseModel):
+    enrollment_id: UUID
+    present: bool
+
+
+class SkillSessionOut(BaseModel):
+    id: UUID
+    session_date: date
+    topic: str | None
+    attendance: list[SkillAttendanceOut]
+
+
+class SkillAssessmentOut(BaseModel):
+    id: UUID
+    name: str
+    max_score: float
+
+
+class SkillBatchDetail(SkillBatchOut):
+    enrollments: list[SkillEnrollmentOut]
+    sessions: list[SkillSessionOut]
+    assessments: list[SkillAssessmentOut]
