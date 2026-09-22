@@ -6,6 +6,8 @@ Teacher/Parent accounts for the same institution, also active immediately. Net-n
 no equivalent exists anywhere in the base codebase.
 """
 
+import importlib.util
+import pathlib
 import uuid
 from datetime import date
 
@@ -17,6 +19,16 @@ from app.core.security import hash_password
 from app.models import School, SchoolAccountInvite, User, UserRoleAssignment
 
 PASSWORD = "Sup3r-Secret-Pass!"
+
+
+def _load_backfill_migration():
+    """0036 lives outside any importable package (alembic/versions is a script directory),
+    so it is loaded by path -- the same way alembic itself loads it."""
+    path = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0036_backfill_school_code.py"
+    spec = importlib.util.spec_from_file_location("migration_0036_backfill_school_code", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 async def _create_overseas_admin(db_session) -> User:
@@ -564,6 +576,59 @@ async def test_create_school_accepts_tier_valid_until(client, db_session):
 
     school = await db_session.get(School, response.json()["id"])
     assert school.tier_valid_until == date(2027, 6, 30)
+
+
+def test_backfill_migration_0036_generates_unique_eight_character_codes():
+    """ENH-009 final review, Fix 5. Unit-level proof of `0036_backfill_school_code`'s code
+    generator: every code is a non-null 8-char uppercase-hex value and never collides with
+    one already taken. Full end-to-end replay of the backfill would need a fresh
+    un-migrated database (the test database is already at head), which this suite has no
+    harness for -- the DB-side half is covered by the test below."""
+    module = _load_backfill_migration()
+    assert module.revision == "0036_backfill_school_code"
+    assert module.down_revision == "0035_school_profile_fields"
+
+    taken: set[str] = set()
+    for _ in range(50):
+        code = module._generate_code(taken)
+        assert code not in taken
+        assert len(code) == 8
+        assert all(character in "0123456789ABCDEF" for character in code)
+        taken.add(code)
+    assert len(taken) == 50
+
+
+@pytest.mark.asyncio
+async def test_a_pre_existing_school_row_has_a_null_code_that_0036_would_backfill(client, db_session):
+    """The other half of Fix 5: a School created outside `create_school()` -- i.e. every row
+    that predates the 0035 migration, including all seed data -- really does have
+    `school_code IS NULL`, matches the exact predicate 0036's `upgrade()` selects on, and
+    accepts the generated code."""
+    module = _load_backfill_migration()
+    admin = await _create_overseas_admin(db_session)
+    school = School(name=f"Legacy School {uuid.uuid4().hex[:8]}", created_by_user_id=admin.id)
+    db_session.add(school)
+    await db_session.commit()
+    assert school.school_code is None
+
+    selected = await db_session.scalar(
+        select(School.id).where(School.id == school.id, School.school_code.is_(None))
+    )
+    assert selected == school.id
+
+    existing = set((await db_session.scalars(select(School.school_code).where(School.school_code.is_not(None)))).all())
+    code = module._generate_code(existing)
+    school.school_code = code
+    await db_session.commit()
+
+    await db_session.refresh(school)
+    assert school.school_code == code
+
+    # and the backfilled row is now reachable by the edit panel's lookup-by-code flow
+    await _login(client, admin.email)
+    response = await client.get(f"/api/v1/overseas-admin/schools/lookup?code={code}")
+    assert response.status_code == 200
+    assert response.json()["id"] == str(school.id)
 
 
 @pytest.mark.asyncio
