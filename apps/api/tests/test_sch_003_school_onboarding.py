@@ -236,3 +236,22 @@ async def test_school_table_has_the_new_profile_columns(db_session):
         "grades_available", "board", "partnership_date", "mou_reference",
         "edusphere_bdm", "monthly_visit_schedule", "vice_principal_name",
     }
+
+
+@pytest.mark.asyncio
+async def test_school_model_exposes_the_new_profile_attributes(db_session):
+    school = School(
+        name="Attr Test School", created_by_user_id=uuid.uuid4(),
+        school_code="ABCD1234", branch="North Campus", address="1 Test Rd",
+        contact_number="+91-9000000000", email="school@example.local",
+        website="https://example.local", grades_available="1-10", board="CBSE",
+        mou_reference="MOU-2026-001", edusphere_bdm="Jane BDM",
+        monthly_visit_schedule="2nd Tuesday monthly", vice_principal_name="John VP",
+    )
+    db_session.add(school)
+    await db_session.commit()
+    reloaded = await db_session.get(School, school.id)
+    assert reloaded.school_code == "ABCD1234"
+    assert reloaded.branch == "North Campus"
+    assert reloaded.board == "CBSE"
+    assert reloaded.vice_principal_name == "John VP"
