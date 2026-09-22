@@ -597,15 +597,15 @@ async def _notify_school_parents(db: AsyncSession, school_id: UUID, *, title: st
     return len(parents)
 
 
-async def _parent_email_conflict(db: AsyncSession, *, school_id: UUID, parent_email: str) -> str | None:
+async def _parent_email_conflict(db: AsyncSession, *, parent_email: str) -> str | None:
     """None means the email is safe to use as a parent_email (either genuinely new, or
-    already a school_parent at this same school); a string explains why it can't be --
-    an existing account under that email with a different role, or a Parent at a
-    different school. Shared by single-add/edit (raises 422) and bulk upload (rejects
-    just that row, `SCH-002-AC04`'s never-block-the-batch discipline)."""
+    already a school_parent at any school); a string explains why it can't be --
+    an existing account under that email with a role other than school_parent. Shared by
+    single-add/edit (raises 422) and bulk upload (rejects just that row, `SCH-002-AC04`'s
+    never-block-the-batch discipline)."""
     existing_user = await db.scalar(select(User).where(User.email == parent_email))
-    if existing_user and (existing_user.role != "school_parent" or (existing_user.profile or {}).get("school_id") != str(school_id)):
-        return f"parent_email '{parent_email}' belongs to an existing account that is not a Parent at this school"
+    if existing_user and existing_user.role != "school_parent":
+        return f"parent_email '{parent_email}' belongs to an existing account that is not a Parent"
     return None
 
 
@@ -621,7 +621,7 @@ async def _link_or_invite_parent(db: AsyncSession, *, school: School, student: S
     environment and only for "invited" -- same dev-only exposure as `/team/invites`.
     """
     parent_email = parent_email.lower().strip()
-    conflict = await _parent_email_conflict(db, school_id=school.id, parent_email=parent_email)
+    conflict = await _parent_email_conflict(db, parent_email=parent_email)
     if conflict:
         return "rejected", conflict, None
     existing_user = await db.scalar(select(User).where(User.email == parent_email))
@@ -1462,7 +1462,7 @@ async def bulk_upload_students(
             parent_email = (row.get("parent_email") or "").strip().lower() or None
             parent_name = (row.get("parent_name") or "").strip() or None
             if parent_email:
-                error = await _parent_email_conflict(db, school_id=school_id, parent_email=parent_email)
+                error = await _parent_email_conflict(db, parent_email=parent_email)
         grade_level = None
         if not error:
             raw_grade_level = (row.get("grade_level") or "").strip()

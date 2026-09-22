@@ -112,14 +112,20 @@ async def test_link_parent_refuses_a_parent_from_another_school(client, db_sessi
 
 
 @pytest.mark.asyncio
-async def test_adding_a_student_refuses_a_parent_email_that_belongs_to_another_school(client, db_session):
+async def test_adding_a_student_at_school_a_can_use_a_parent_already_linked_at_school_b(client, db_session):
     a = await mk_school(db_session, label="A")
     b = await mk_school(db_session, label="B")
     await login(client, a["coordinator"].email)
     name = f"Cross Link {uuid.uuid4().hex[:6]}"
+
     response = await client.post("/api/v1/school/students", json={"full_name": name, "parent_email": b["parent"].email})
-    assert response.status_code == 422, response.text
-    assert await db_session.scalar(select(SchoolStudent).where(SchoolStudent.full_name == name)) is None
+
+    assert response.status_code == 201, response.text
+    assert response.json()["parent_status"] == "linked"
+    student = await db_session.scalar(select(SchoolStudent).where(SchoolStudent.full_name == name))
+    assert student is not None
+    link = await db_session.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == b["parent"].id, SchoolParentLink.school_student_id == student.id))
+    assert link is not None
 
 
 @pytest.mark.asyncio
