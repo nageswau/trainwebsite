@@ -66,6 +66,27 @@ describe("SchoolSkillAttendance", () => {
     add.mockRestore();
   });
 
+  it("asks before an in-app link discards unsaved marks, and not when there is nothing unsaved (QA-02)", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(
+      <>
+        <a href="/school/career-counselor/dashboard">Dashboard</a>
+        <SchoolSkillAttendance batch={withSession()} />
+      </>,
+    );
+    const link = screen.getByRole("link", { name: "Dashboard" });
+    expect(fireEvent.click(link)).toBe(true); // clean: the click goes through, nobody is asked
+    expect(confirm).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByLabelText("Student 2"));
+    expect(fireEvent.click(link)).toBe(false); // dirty + "stay": the navigation is cancelled
+    expect(confirm).toHaveBeenCalledWith("You have unsaved attendance. Leave this page without saving it?");
+
+    confirm.mockReturnValue(true);
+    expect(fireEvent.click(link)).toBe(true); // dirty + "leave": it goes through
+    confirm.mockRestore();
+  });
+
   it("keeps the marks when saving fails", async () => {
     stubFetch(() => json({ detail: "This batch is closed. Reopen it to make this change." }, 409));
     render(<SchoolSkillAttendance batch={withSession()} />);

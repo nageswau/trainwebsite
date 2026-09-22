@@ -12,6 +12,7 @@ import { canMark, type SkillBatchDetail, type SkillSession } from "@/lib/skills"
 // keeps them. On a closed batch the section is read-only.
 const BASE = "/api/v1/school/career-counselor";
 type Action = ReturnType<typeof useSkillAction>;
+const LEAVE_WITH_UNSAVED = "You have unsaved attendance. Leave this page without saving it?";
 const sessionLabel = (s: SkillSession) => `${formatDate(s.session_date)}${s.topic ? ` — ${s.topic}` : ""}`;
 
 export default function SchoolSkillAttendance({ batch }: { batch: SkillBatchDetail }) {
@@ -86,12 +87,27 @@ function AttendanceRoster({ batch, session, action }: { batch: SkillBatchDetail;
 
   useEffect(() => {
     if (!dirty) return;
+    // A reload or closing the tab: the browser's own prompt.
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
+    // An in-app link (sidebar, "All skills batches") is a client navigation that never fires `beforeunload` (browser QA-02). This
+    // capture-phase listener runs before Next's <Link> handler; "stay" stops both it and the browser's own navigation.
+    const guardLinks = (event: MouseEvent) => {
+      const link = (event.target as Element | null)?.closest?.("a[href]");
+      if (!link || link.getAttribute("target") === "_blank") return;
+      if (!window.confirm(LEAVE_WITH_UNSAVED)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
     window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
+    document.addEventListener("click", guardLinks, true);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      document.removeEventListener("click", guardLinks, true);
+    };
   }, [dirty]);
 
   function save(e: FormEvent) {
