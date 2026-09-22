@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, University, User, UserRoleAssignment
-from app.schemas import BatchCreate
+from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.storage import storage
 
@@ -60,6 +60,49 @@ def _fit(value, label: str, limit: int):
     if value is not None and len(str(value)) > limit:
         raise HTTPException(422, f"{label} must be at most {limit} characters")
     return value
+
+
+async def _school_out(db: AsyncSession, school: "School") -> "SchoolOut":
+    """ENH-009 / DEC-SCOPE-023: the one place that assembles a School's full profile response,
+    including the fields that are deliberately computed rather than stored -- student/teacher
+    counts, and the Principal/Coordinator/Career Counsellor names, all of which are derived from
+    role assignments rather than duplicated onto `School` itself (see the design doc §2)."""
+    from app.models import SchoolStaffAssignment, SchoolStudent
+
+    student_count = await db.scalar(
+        select(func.count()).select_from(SchoolStudent).where(SchoolStudent.school_id == school.id)
+    )
+    teacher_count = await db.scalar(
+        select(func.count()).select_from(User).where(
+            User.role == "school_teacher", User.profile["school_id"].as_string() == str(school.id)
+        )
+    )
+    principal = await db.scalar(
+        select(User).where(User.role == "school_principal", User.profile["school_id"].as_string() == str(school.id))
+    )
+    coordinator = await db.scalar(
+        select(User).where(User.role == "school_coordinator", User.profile["school_id"].as_string() == str(school.id))
+    )
+    counsellor_rows = (await db.scalars(
+        select(User).join(SchoolStaffAssignment, SchoolStaffAssignment.user_id == User.id)
+        .where(SchoolStaffAssignment.school_id == school.id, SchoolStaffAssignment.role == "career_counselor")
+    )).all()
+
+    return SchoolOut(
+        id=school.id, name=school.name, city=school.city, state=school.state,
+        tier=school.tier, tier_valid_until=school.tier_valid_until,
+        school_code=school.school_code, branch=school.branch, address=school.address,
+        contact_number=school.contact_number, email=school.email, website=school.website,
+        grades_available=school.grades_available, board=school.board,
+        partnership_date=school.partnership_date, mou_reference=school.mou_reference,
+        edusphere_bdm=school.edusphere_bdm, monthly_visit_schedule=school.monthly_visit_schedule,
+        vice_principal_name=school.vice_principal_name,
+        student_count=student_count or 0, teacher_count=teacher_count or 0,
+        principal_name=principal.full_name if principal else None,
+        school_coordinator_name=coordinator.full_name if coordinator else None,
+        career_counsellor_names=[c.full_name for c in counsellor_rows],
+        created_at=school.created_at,
+    )
 
 
 async def _flush_unique_email(db: AsyncSession) -> None:

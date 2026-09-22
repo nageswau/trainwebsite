@@ -266,3 +266,38 @@ async def test_school_model_exposes_the_new_profile_attributes(db_session):
     assert reloaded.branch == "North Campus"
     assert reloaded.board == "CBSE"
     assert reloaded.vice_principal_name == "John VP"
+
+
+@pytest.mark.asyncio
+async def test_school_out_computes_counts_and_role_derived_names(client, db_session):
+    from app.api.admin import _school_out
+    from app.core.identifiers import unique_student_code
+    from app.models import SchoolStaffAssignment, SchoolStudent
+
+    result = await _create_school(client, db_session)
+    school = await db_session.get(School, result["id"])
+
+    principal = User(
+        email=f"vp-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD),
+        full_name="Test Principal", role="school_principal", division="overseas", active=True,
+        profile={"school_id": str(school.id)},
+    )
+    counsellor = User(
+        email=f"cc-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD),
+        full_name="Test Counsellor", role="career_counselor", division="overseas", active=True,
+    )
+    db_session.add_all([principal, counsellor])
+    await db_session.flush()
+    db_session.add(SchoolStaffAssignment(user_id=counsellor.id, school_id=school.id, role="career_counselor", assigned_by_user_id=result["admin"].id))
+    db_session.add(SchoolStudent(
+        school_id=school.id, student_code=await unique_student_code(db_session, SchoolStudent.student_code),
+        full_name="A Student", grade_level=5, created_by_user_id=result["admin"].id,
+    ))
+    await db_session.commit()
+
+    out = await _school_out(db_session, school)
+    assert out.student_count == 1
+    assert out.teacher_count == 0
+    assert out.principal_name == "Test Principal"
+    assert out.school_coordinator_name is not None  # the seed Coordinator from _create_school
+    assert out.career_counsellor_names == ["Test Counsellor"]
