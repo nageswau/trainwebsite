@@ -1,9 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import PortfolioEntryForm from "@/components/PortfolioEntryForm";
+import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
+import { refocus } from "@/lib/focus";
 import { formatDate } from "@/lib/formatDate";
 import type { PortfolioData, PortfolioEntry } from "@/lib/portfolio";
 
@@ -39,9 +41,9 @@ function singular(section: string): string {
 // add/edit form -- on every state change anywhere in the panel (e.g. clicking Delete once on one entry
 // would wipe a draft being typed into an unrelated section's open form). Taking the shared state as props
 // instead avoids that.
-function EntryList({ section, entries, studentId, canEdit, openSection, editing, confirmingId, onAdd, onEdit, onDelete, onFormDone, onCancel }: {
+function EntryList({ section, entries, studentId, canEdit, openSection, editing, confirmingId, deleteBusy, onAdd, onEdit, onDelete, onFormDone, onCancel }: {
   section: string; entries: PortfolioEntry[]; studentId: string; canEdit: boolean;
-  openSection: string | null; editing: PortfolioEntry | null; confirmingId: string | null;
+  openSection: string | null; editing: PortfolioEntry | null; confirmingId: string | null; deleteBusy: boolean;
   onAdd: (section: string) => void; onEdit: (entry: PortfolioEntry) => void; onDelete: (entry: PortfolioEntry) => void;
   onFormDone: () => void; onCancel: () => void;
 }) {
@@ -65,8 +67,8 @@ function EntryList({ section, entries, studentId, canEdit, openSection, editing,
                   {e.description && <p className="pf-entry-desc">{e.description}</p>}
                   {canEdit && (
                     <div className="pf-entry-actions">
-                      <button type="button" className="btn secondary" onClick={() => onEdit(e)}>Edit {e.title}</button>
-                      <button type="button" className="btn secondary" onClick={() => onDelete(e)}>{confirmingId === e.id ? `Confirm delete ${e.title}` : `Delete ${e.title}`}</button>
+                      <button type="button" className="btn secondary" disabled={deleteBusy} onClick={() => onEdit(e)}>Edit {e.title}</button>
+                      <button id={`pf-delete-btn-${e.id}`} type="button" className="btn secondary" disabled={deleteBusy} onClick={() => onDelete(e)}>{confirmingId === e.id ? `Confirm delete ${e.title}` : `Delete ${e.title}`}</button>
                     </div>
                   )}
                 </>
@@ -83,12 +85,92 @@ function EntryList({ section, entries, studentId, canEdit, openSection, editing,
   );
 }
 
+// Extracted from PortfolioPanel's render body for the same reason EntryList is hoisted above: a
+// function defined inline gets a new identity every render and would remount on unrelated state
+// changes. Same interaction shape as PortfolioEntryForm.tsx (busy/inFlight guard, raw fetch(), no
+// optimistic UI, refocus on error) but small enough (one textarea, one PATCH) that a full second form
+// component would be overkill -- inlined here instead (Task 1).
+function PersonalStatementSection({ studentId, statement, canEdit, onDone }: {
+  studentId: string; statement: string | null; canEdit: boolean; onDone: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(statement ?? "");
+  const [busy, setBusy] = useState(false);
+  const [alert, setAlert] = useState<string | null>(null);
+  const inFlight = useRef(false);
+
+  function startEdit() {
+    setValue(statement ?? "");
+    setAlert(null);
+    setEditing(true);
+  }
+
+  function cancel() {
+    setAlert(null);
+    setEditing(false);
+  }
+
+  async function save() {
+    if (busy || inFlight.current) return;
+    setAlert(null);
+    inFlight.current = true;
+    setBusy(true);
+    const body = { personal_statement: value.trim() || null };
+    let response: Response;
+    try {
+      response = await fetch(`/api/v1/school/students/${studentId}/portfolio/personal-statement`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+    } catch {
+      inFlight.current = false;
+      setBusy(false);
+      setAlert(NOT_COMPLETED);
+      refocus("pf-statement-save-btn");
+      return;
+    }
+    const responseBody = await response.json().catch(() => null);
+    inFlight.current = false;
+    setBusy(false);
+    if (!response.ok) {
+      setAlert(detailMessage(responseBody?.detail));
+      refocus("pf-statement-save-btn");
+      return;
+    }
+    setEditing(false);
+    onDone();
+  }
+
+  return (
+    <div className="pf-section">
+      <h4>Personal statement</h4>
+      {editing ? (
+        <div className="form">
+          <div className="field">
+            <label htmlFor="pf-statement-textarea">Personal statement</label>
+            <textarea id="pf-statement-textarea" className="search" rows={5} maxLength={4000} value={value} disabled={busy} onChange={(e) => setValue(e.target.value)} />
+          </div>
+          <button id="pf-statement-save-btn" type="button" className="btn" disabled={busy} onClick={save}>{busy ? "Saving…" : "Save"}</button>
+          <button type="button" className="btn secondary" disabled={busy} onClick={cancel}>Cancel</button>
+          {alert && <div role="alert" className="form-error">{alert}</div>}
+        </div>
+      ) : (
+        <>
+          {statement ? <p className="pf-statement">{statement}</p> : <p className="muted">No entries yet.</p>}
+          {canEdit && <button type="button" className="btn secondary" onClick={startEdit}>{statement ? "Edit statement" : "Add statement"}</button>}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   const router = useRouter();
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [editing, setEditing] = useState<PortfolioEntry | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const deleteInFlight = useRef(false);
 
   function closeForm() {
     setOpenSection(null);
@@ -105,19 +187,31 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
       setConfirmingId(entry.id);
       return;
     }
+    // Guard a fast double-click on "Confirm delete": without this, the second click's DELETE races the
+    // first, lands after the entry is already gone, and its 404 would incorrectly surface to a user
+    // whose delete actually worked (matching PortfolioEntryForm.tsx's own busy/inFlight submit guard).
+    if (deleteBusy || deleteInFlight.current) return;
     setDeleteError(null);
+    deleteInFlight.current = true;
+    setDeleteBusy(true);
     let response: Response;
     try {
       response = await fetch(`/api/v1/school/students/${data.student.id}/portfolio/entries/${entry.id}`, { method: "DELETE" });
     } catch {
-      setDeleteError("The request did not complete. Check your connection and try again; your entry is kept.");
+      deleteInFlight.current = false;
+      setDeleteBusy(false);
       setConfirmingId(null);
+      setDeleteError("The request did not complete. Check your connection and try again; your entry is kept.");
+      refocus(`pf-delete-btn-${entry.id}`);
       return;
     }
+    deleteInFlight.current = false;
+    setDeleteBusy(false);
     setConfirmingId(null);
     if (!response.ok && response.status !== 204) {
       const body = await response.json().catch(() => null);
       setDeleteError(typeof body?.detail === "string" ? body.detail : "Delete failed.");
+      refocus(`pf-delete-btn-${entry.id}`);
       return;
     }
     router.refresh();
@@ -142,6 +236,10 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
       <p className="pf-meter-label">{data.completion_percentage}% complete</p>
       {deleteError && <div role="alert" className="form-error">{deleteError}</div>}
 
+      <div className="pf-section">
+        <h4>Profile</h4>
+        <p>{data.profile_complete ? "Profile complete" : "Profile incomplete"}</p>
+      </div>
       <div className="pf-section">
         <h4>Academic achievements</h4>
         {data.academic_achievements.length === 0 ? <p className="muted">No entries yet.</p> : (
@@ -170,15 +268,12 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
       {Object.keys(data.entries).sort().map((section) => (
         <EntryList
           key={section} section={section} entries={data.entries[section]} studentId={data.student.id} canEdit={data.can_edit}
-          openSection={openSection} editing={editing} confirmingId={confirmingId}
+          openSection={openSection} editing={editing} confirmingId={confirmingId} deleteBusy={deleteBusy}
           onAdd={openAdd} onEdit={startEdit} onDelete={deleteEntry} onFormDone={onFormDone} onCancel={closeForm}
         />
       ))}
 
-      <div className="pf-section">
-        <h4>Personal statement</h4>
-        {data.personal_statement ? <p className="pf-statement">{data.personal_statement}</p> : <p className="muted">No entries yet.</p>}
-      </div>
+      <PersonalStatementSection studentId={data.student.id} statement={data.personal_statement} canEdit={data.can_edit} onDone={() => router.refresh()} />
     </div>
   );
 }
