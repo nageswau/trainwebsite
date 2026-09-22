@@ -216,3 +216,23 @@ async def test_a_coordinator_never_sees_another_schools_team(client, db_session)
     assert data["pending_invites"] == []
     assert teacher_b_email not in [a["email"] for a in data["accounts"]]
     assert {a["email"] for a in data["accounts"]} == {coordinator_a.email}
+
+
+@pytest.mark.asyncio
+async def test_school_table_has_the_new_profile_columns(db_session):
+    from sqlalchemy import text
+
+    row = await db_session.execute(text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_name = 'schools' AND column_name = ANY(:cols)"
+    ), {"cols": [
+        "school_code", "branch", "address", "contact_number", "email", "website",
+        "grades_available", "board", "partnership_date", "mou_reference",
+        "edusphere_bdm", "monthly_visit_schedule", "vice_principal_name",
+    ]})
+    found = {r[0] for r in row.fetchall()}
+    assert found == {
+        "school_code", "branch", "address", "contact_number", "email", "website",
+        "grades_available", "board", "partnership_date", "mou_reference",
+        "edusphere_bdm", "monthly_visit_schedule", "vice_principal_name",
+    }
