@@ -3,18 +3,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import SchoolStudentDetailPanel from "@/components/SchoolStudentDetailPanel";
 import { serverApi } from "@/lib/api";
+import { loadPortfolio } from "@/lib/portfolio";
 
 // ENH-005 -- the coordinator's student page gains an opt-in transfer request and history (spec §7.1, AC-25). `serverApi` reads next/headers
 // cookies, so it is mocked and answers by path.
 vi.mock("@/lib/api", () => ({ serverApi: vi.fn() }));
+vi.mock("@/lib/portfolio", () => ({ loadPortfolio: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const student = { id: "s1", student_code: "A3F9C21B", full_name: "Aarav Mehta", date_of_birth: "2015-04-12", grade_or_class: "Grade 5" };
 const SCHOOLS = [{ id: "b", name: "Lakeview School" }];
 const HISTORY = { student: { id: "s1", full_name: "Aarav Mehta" }, history: [{ id: "t1", decided_at: "2026-09-21T10:00:00Z", from_school: { id: "a", name: "Sunrise School" }, to_school: { id: "b", name: "Lakeview School" } }] };
+const PORTFOLIO = { student: { id: "s1", full_name: "Aarav Mehta" }, completion_percentage: 50, can_edit: true, profile_complete: false, academic_achievements: [], psychometric_report: [], career_guidance: [], languages: [], entries: {}, personal_statement: null };
 const pendingFor = (studentId: string) => ({ items: [{ id: "r1", direction: "outgoing", status: "pending", student_id: studentId, student_code: "A3F9C21B", student_name: "Aarav Mehta", from_school: { id: "a", name: "Sunrise School" }, to_school: { id: "b", name: "Lakeview School" }, reason: null, decision_note: null, created_at: "2026-09-20T10:00:00Z", decided_at: null }], total: 1, limit: 100, offset: 0 });
 
-type Overrides = { destinations?: unknown; pending?: unknown; history?: unknown };
+type Overrides = { destinations?: unknown; pending?: unknown; history?: unknown; portfolio?: unknown };
 function api(over: Overrides = {}) {
   vi.mocked(serverApi).mockImplementation(async (path: string) => {
     const pick = (key: keyof Overrides, fallback: unknown) => {
@@ -28,6 +31,11 @@ function api(over: Overrides = {}) {
     if (path.includes("grade-history")) return { student: HISTORY.student, history: [] } as never;
     return { events: [] } as never;
   });
+  vi.mocked(loadPortfolio).mockImplementation(async () => {
+    const value = "portfolio" in over ? over.portfolio : PORTFOLIO;
+    if (value instanceof Error) throw value;
+    return value as never;
+  });
 }
 const paths = () => vi.mocked(serverApi).mock.calls.map(([p]) => String(p));
 async function show(props: { showTransfer?: boolean; showGradeHistory?: boolean } = {}) {
@@ -37,6 +45,7 @@ async function show(props: { showTransfer?: boolean; showGradeHistory?: boolean 
 afterEach(() => {
   cleanup();
   vi.mocked(serverApi).mockReset();
+  vi.mocked(loadPortfolio).mockReset();
 });
 
 describe("SchoolStudentDetailPanel transfer wiring", () => {

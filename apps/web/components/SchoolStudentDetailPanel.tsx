@@ -2,10 +2,12 @@ import SchoolGradeHistory, { loadGradeHistory } from "@/components/SchoolGradeHi
 import SchoolStudentTimeline, { loadStudentTimeline } from "@/components/SchoolStudentTimeline";
 import SchoolTransferHistory, { loadTransferHistory } from "@/components/SchoolTransferHistory";
 import SchoolTransferRequestForm from "@/components/SchoolTransferRequestForm";
+import PortfolioPanel from "@/components/PortfolioPanel";
 import { formatDate } from "@/components/SchoolChildOverview";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import type { SchoolRef, TransferRequest } from "@/lib/transfers";
+import { loadPortfolio } from "@/lib/portfolio";
 
 // Shared read-only student header + Journey Timeline, reused across every School role that
 // can open one student's page within their own SCH-001 scope: Teacher (assigned), School
@@ -23,12 +25,13 @@ import type { SchoolRef, TransferRequest } from "@/lib/transfers";
 type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
 
 export default async function SchoolStudentDetailPanel({ student, backHref, backLabel, showGradeHistory = false, showTransfer = false }: { student: Student; backHref: string; backLabel: string; showGradeHistory?: boolean; showTransfer?: boolean }) {
-  const [timeline, gradeHistory, transferHistory, destinations, pendingPage] = await Promise.all([
+  const [timeline, gradeHistory, transferHistory, destinations, pendingPage, portfolio] = await Promise.all([
     loadStudentTimeline(student.id).catch(() => null),
     showGradeHistory ? loadGradeHistory(student.id).catch(() => null) : Promise.resolve(null),
     showTransfer ? loadTransferHistory(student.id) : Promise.resolve([]),
     showTransfer ? serverApi<SchoolRef[]>("/api/v1/school/transfer-destinations").catch(() => null) : Promise.resolve([]),
     showTransfer ? serverApi<Page<TransferRequest>>("/api/v1/school/transfer-requests?status=pending&limit=100").catch(() => null) : Promise.resolve(null),
+    loadPortfolio(student.id).catch(() => null),
   ]);
   // A school has at most 50 open requests, so one page of pending requests always contains this student's if it has one. If the lookup
   // failed the form is still offered: the server refuses a duplicate with a clear message.
@@ -59,6 +62,7 @@ export default async function SchoolStudentDetailPanel({ student, backHref, back
         <h3>Journey timeline</h3>
         {timeline ? <SchoolStudentTimeline events={timeline.events} /> : <p className="muted">Timeline is unavailable right now.</p>}
       </div>
+      {portfolio ? <PortfolioPanel data={portfolio} /> : <div className="card"><h3>Digital Portfolio</h3><p className="muted">Portfolio is unavailable right now.</p></div>}
     </div>
   );
 }

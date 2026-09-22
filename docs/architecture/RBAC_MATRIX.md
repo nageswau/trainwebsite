@@ -293,6 +293,20 @@ matches" — not link-only — so an orphaned parent (zero links, e.g. invited d
 `POST /school/team/invites`, or a pre-existing account per `DEC-SCOPE-022`) stays visible/manageable
 rather than silently disappearing. Covered by `test_sch_team_account_activation.py`.
 
+**Addendum, 2026-09-23 (`ENH-012`) — Digital Portfolio read/write scope.**
+
+| Action | Granted | Denied |
+|---|---|---|
+| Read a student's portfolio (`GET .../portfolio`) | `school_coordinator`/`school_principal` (own institution), `school_teacher` (own institution, assigned only), `school_parent` (own child(ren) only), `academic_team`/`career_counselor`/`psychometric_team` (own school portfolio) — 7 roles total, per the design spec's AC-04 | every other role (`403`); a student outside the caller's scope gives the same `403` as `GET /school/students/{id}` (no existence leak) |
+| Write a portfolio entry or the personal statement (`POST`/`PATCH`/`DELETE .../entries*`, `PATCH .../personal-statement`) | `school_coordinator` (own institution), `school_teacher` (own institution, assigned only), `academic_team` (own school portfolio) — 3 of the 7 readers above | the other 4 readers (`school_principal`, `school_parent`, `career_counselor`, `psychometric_team`): `403`, even though they can read; role/scope is checked before the entry lookup, so an unknown entry ID from a denied role is still `403`, not `404` |
+| Act on an entry belonging to a different student (via a direct entry ID under the wrong student's URL) | — | `404` for `PATCH`/`DELETE`, identical whether the entry doesn't exist or belongs to someone else — no ownership leak, same masking convention as `ENH-005`'s transfer-request rows |
+
+`school_teacher`'s portfolio write grant reuses the same per-student `assigned_teacher_user_id` check
+`SCH-001` already enforces for read (§2.12 above), not a separate mechanism. `academic_team`'s grant
+reuses the same `SchoolStaffAssignment` portfolio scope (`DEC-SCOPE-013`) as its existing results/
+test-prep grants (§2.12 above) — a student at a school outside the acting member's portfolio is `403`
+even via direct ID, same as every other use of that mechanism. Covered by `test_enh_012_digital_portfolio.py`.
+
 ---
 
 ## 3. Support / admin audit controls

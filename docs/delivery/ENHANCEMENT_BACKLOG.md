@@ -1314,18 +1314,27 @@ referenced again in §8 (Career Passport: "Portfolio: 80% completed"), §23 (Par
 `docs/product/PRD_OPEN_ITEMS.md` item 77 alongside "Skills" — this is a known, already-flagged gap,
 not newly discovered here, but it had no ENH item until now.
 
-**Existing behavior.** None. No portfolio entity, completion-percentage tracking, or portfolio-section
-model (profile, academic achievements, certifications, projects, internships, competitions, sports,
-leadership, volunteering, languages, skills, psychometric report, career guidance, awards,
-extracurriculars, personal statement) exists in the codebase.
+**Existing behavior (as of `ENH-012`'s build).** A per-student Digital Portfolio entity aggregating
+profile, academic achievements, psychometric report, career guidance, languages, and 10 self-entry
+sections (project, internship, competition, sport, leadership, volunteering, extracurricular, award,
+certification, skill), plus a personal statement, now exists. `school_student` has no login at all
+(`DEC-ROLE-004`) and is not, and was never going to be, the editor — there is no student-facing surface
+anywhere in the codebase for this or any other School-domain feature.
 
-**Expected behavior.** A per-student Digital Portfolio entity aggregating the sections above, with a
-completion-percentage indicator, editable by the student (self-entry sections like projects/awards) and
-populated automatically where data already exists elsewhere (psychometric report, career guidance —
-pull, don't duplicate).
+**Expected/built behavior.** A per-student Digital Portfolio with a completion-percentage indicator
+(computed over 16 sections). The 10 self-entry sections and the personal statement are entered **on the
+student's behalf** by staff — `school_coordinator` (own institution), `school_teacher` (own institution,
+assigned students only), and `academic_team` (own school portfolio) — not by the student. The
+auto-populated sections (academic achievements, psychometric report, career guidance, languages)
+pull from existing data rather than duplicating it, exactly as originally proposed. Read access is
+extended to `school_principal`, `school_parent` (own child(ren) only), `career_counselor`, and
+`psychometric_team`, alongside the three writer roles above (7 read-capable roles total, per the
+design spec's AC-04).
 
-**User roles affected.** `school_student` (primary editor, inheriting the `DEC-ROLE-004`/
-`DEC-SCOPE-011` login conflict from §0), `school_parent`/`school_teacher`/`academic_team` (viewers).
+**User roles affected.** `school_coordinator`/`school_teacher`/`academic_team` (writers, entering
+content on the student's behalf); `school_principal`/`school_parent`/`career_counselor`/
+`psychometric_team` (read-only viewers). **Not** `school_student` — no such login exists
+(`DEC-ROLE-004`/`DEC-SCOPE-011`, §0).
 
 **Frontend impact.** New portfolio screen with section-by-section editing and a completion meter.
 
@@ -1343,8 +1352,10 @@ the existing document-upload infrastructure (`STU-011`'s pattern) — reuse it, 
 
 **Authentication impact.** None.
 
-**Authorization impact.** Student edits only their own portfolio; parent/teacher/academic team get
-read access per the existing per-role scoping already established elsewhere in the School domain.
+**Authorization impact.** `school_coordinator`/`school_teacher` (assigned-only)/`academic_team` (own
+school portfolio) write on the student's behalf; `school_principal`/`school_parent`/`career_counselor`/
+`psychometric_team` get read access — per the existing per-role scoping already established elsewhere
+in the School domain.
 
 **Security impact.** Medium if file uploads are included (same considerations as any user-uploaded
 content — validate file type/size, scan if the existing document-upload path already does).
@@ -1357,13 +1368,15 @@ guidance/results read models for the auto-populated sections.
 **Dependencies.** Benefits from ENH-001 (academic year, for dating portfolio entries) but not hard-
 blocked by it.
 
-**Acceptance criteria.** A student can build a portfolio across the defined sections; completion
-percentage updates as sections are filled; parent/teacher can view (not edit) it.
+**Acceptance criteria.** A writer (Coordinator/assigned Teacher/Academic Team) can build a student's
+portfolio across the defined sections on their behalf; completion percentage updates as sections are
+filled; Principal/Parent/Career Counselor/Psychometric Team can view (not edit) it.
 
-**Positive scenarios.** Student adds a project and an award; completion percentage increases; parent
-sees the update. **Negative scenarios.** A parent attempts to edit the portfolio directly — rejected.
-**Edge cases.** Auto-populated sections (psychometric, career guidance) conflicting with a student's
-manual entry for the same area — pull-only, no manual override of system-sourced sections.
+**Positive scenarios.** Coordinator adds a project and an award for a student; completion percentage
+increases; parent sees the update. **Negative scenarios.** A parent attempts to edit the portfolio
+directly — rejected. **Edge cases.** Auto-populated sections (psychometric, career guidance)
+conflicting with a manually entered one for the same area — pull-only, no manual override of
+system-sourced sections.
 
 **Regression risks.** None on existing modules if this stays purely additive.
 

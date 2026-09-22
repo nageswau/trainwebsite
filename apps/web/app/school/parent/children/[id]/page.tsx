@@ -3,9 +3,11 @@ import SchoolChildOverview, { loadChildOverview, type ChildOverview } from "@/co
 import SchoolGradeHistory, { loadGradeHistory, type StudentGradeHistory } from "@/components/SchoolGradeHistory";
 import SchoolStudentTimeline, { loadStudentTimeline, type StudentTimeline } from "@/components/SchoolStudentTimeline";
 import SchoolTransferHistory, { loadTransferHistory, type TransferHistoryEntry } from "@/components/SchoolTransferHistory";
+import PortfolioPanel from "@/components/PortfolioPanel";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
+import { loadPortfolio, type PortfolioData } from "@/lib/portfolio";
 
 // SCH-007: one child's full profile & progress for their Parent. Same own-child deny as
 // the dashboard, verified server-side even via this direct record ID (SCH-001-AC03).
@@ -28,10 +30,11 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
       </div>
     );
   }
-  const [timeline, gradeHistory, transferHistory]: [StudentTimeline | null, StudentGradeHistory | null, TransferHistoryEntry[] | null] = await Promise.all([
+  const [timeline, gradeHistory, transferHistory, portfolio]: [StudentTimeline | null, StudentGradeHistory | null, TransferHistoryEntry[] | null, PortfolioData | null] = await Promise.all([
     loadStudentTimeline(id).catch(() => null),
     loadGradeHistory(id).catch(() => null),
     loadTransferHistory(id),
+    loadPortfolio(id).catch(() => null),
   ]);
   return (
     <PortalShell nav={SCHOOL_NAV.parent} roleLabel="Parent" userName={user.full_name}>
@@ -47,6 +50,7 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
           <h3>Journey timeline</h3>
           {timeline ? <SchoolStudentTimeline events={timeline.events} /> : <p className="muted">Timeline is unavailable right now.</p>}
         </div>
+        {portfolio ? <PortfolioPanel data={portfolio} /> : <div className="card"><h3>Digital Portfolio</h3><p className="muted">Portfolio is unavailable right now.</p></div>}
       </div>
     </PortalShell>
   );

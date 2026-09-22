@@ -767,6 +767,161 @@ class AdminTransferHistoryResponse(BaseModel):
     history: list[AdminTransferRequestOut]
 
 
+# --- ENH-012: digital portfolio (docs/superpowers/specs/2026-09-22-enh-012-digital-portfolio-design.md) ---
+
+
+PORTFOLIO_SECTIONS: frozenset[str] = frozenset({
+    "project", "internship", "competition", "sport", "leadership", "volunteering",
+    "extracurricular", "award", "certification", "skill",
+})
+
+
+def _no_control_characters(value: str | None) -> str | None:
+    # Same rule as PromotionItem.grade_or_class (line ~501 above): a NUL byte cannot be stored in
+    # PostgreSQL text and would surface as a 500; other control characters have no place in text that
+    # is later rendered. Kept for genuinely single-line fields only (title/organization) -- a newline
+    # in either would be a data problem, not a feature.
+    if value is not None and any(unicodedata.category(ch) == "Cc" for ch in value):
+        raise ValueError("must not contain control characters")
+    return value
+
+
+def _clean_multiline_text(value: str | None) -> str | None:
+    """Same bidi-override/control-character rule as `clean_free_text` (line ~591), reused here rather
+    than duplicated ad hoc: it is the house precedent for any field that renders with line breaks
+    (a <textarea> / `white-space: pre-wrap`), unlike the single-line `_no_control_characters` above.
+    `description` and `personal_statement` both fit that shape -- pressing Enter in either must not be
+    a 422. Length is enforced by each field's own `Field(max_length=...)`, not duplicated here (this
+    lets `description` (2000) and `personal_statement` (4000) share one function with different caps)."""
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    for ch in value:
+        if ch in _BIDI_CONTROLS or (unicodedata.category(ch) == "Cc" and ch not in "\n\t"):
+            raise ValueError("must not contain control or bidirectional-override characters")
+    return value
+
+
+# Code-review simplification pass: PortfolioEntryCreate/Update's own model_validators AND
+# portfolio.py's post-merge PATCH check all need the identical date-range rule -- declared once here
+# (with the one user-facing message it raises) and imported by both, instead of the same condition and
+# string being copied three times. No leading underscore: this is a deliberate cross-module export, not
+# schemas.py-internal.
+DATE_RANGE_ERROR = "End date must not be before start date"
+
+
+def date_range_is_invalid(date_from: date | None, date_to: date | None) -> bool:
+    return date_from is not None and date_to is not None and date_to < date_from
+
+
+class PortfolioEntryCreate(BaseModel):
+    model_config = {"str_strip_whitespace": True, "extra": "forbid"}
+    section: str
+    title: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
+    organization: str | None = Field(default=None, max_length=200)
+    date_from: date | None = None
+    date_to: date | None = None
+
+    @field_validator("section")
+    @classmethod
+    def _known_section(cls, value: str) -> str:
+        if value not in PORTFOLIO_SECTIONS:
+            raise ValueError(f"section must be one of {sorted(PORTFOLIO_SECTIONS)}")
+        return value
+
+    @field_validator("title", "organization")
+    @classmethod
+    def _clean_text(cls, value: str | None) -> str | None:
+        return _no_control_characters(value)
+
+    @field_validator("description")
+    @classmethod
+    def _clean_description(cls, value: str | None) -> str | None:
+        return _clean_multiline_text(value)
+
+    @model_validator(mode="after")
+    def _date_range_is_ordered(self):
+        # ENH-012 QA-02: "date_to"/"date_from" are internal field names -- Pydantic's model_validator
+        # error surfaces this text verbatim to the end user (via detailMessage() on the frontend), so it
+        # must already be in plain language, not something a UI layer patches after the fact.
+        if date_range_is_invalid(self.date_from, self.date_to):
+            raise ValueError(DATE_RANGE_ERROR)
+        return self
+
+
+class PortfolioEntryUpdate(BaseModel):
+    model_config = {"str_strip_whitespace": True, "extra": "forbid"}
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
+    organization: str | None = Field(default=None, max_length=200)
+    date_from: date | None = None
+    date_to: date | None = None
+
+    @field_validator("title", "organization")
+    @classmethod
+    def _clean_text(cls, value: str | None) -> str | None:
+        return _no_control_characters(value)
+
+    @field_validator("description")
+    @classmethod
+    def _clean_description(cls, value: str | None) -> str | None:
+        return _clean_multiline_text(value)
+
+    @model_validator(mode="after")
+    def _date_range_is_ordered(self):
+        if date_range_is_invalid(self.date_from, self.date_to):
+            raise ValueError(DATE_RANGE_ERROR)
+        return self
+
+    @model_validator(mode="after")
+    def _title_not_explicitly_nulled(self):
+        # `title` is NOT NULL at the database level. The PATCH endpoint's field-presence-aware merge
+        # (model_fields_set) otherwise treats an explicit `title: null` the same as clearing any other
+        # optional field, and would only fail later as an unhandled IntegrityError on flush. Reject it
+        # here instead, at the same validation layer as every other portfolio schema rule, so the
+        # response is the same structured 422 shape as every other rejection on this endpoint (a router-
+        # level HTTPException with a bare string, which this replaces, breaks that shape's contract with
+        # the frontend's detailMessage() -- see apps/web/lib/apiErrors.ts's own comment on the two 4xx
+        # payload shapes it expects).
+        if "title" in self.model_fields_set and self.title is None:
+            raise ValueError("title must not be null")
+        return self
+
+
+class PortfolioEntryOut(BaseModel):
+    model_config = {"from_attributes": True}  # fields map 1:1 onto PortfolioEntry -- serialize the ORM row directly
+    id: UUID
+    school_student_id: UUID
+    section: str
+    title: str
+    description: str | None
+    organization: str | None
+    date_from: date | None
+    date_to: date | None
+    created_by_user_id: UUID
+    updated_by_user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class PersonalStatementUpdate(BaseModel):
+    model_config = {"str_strip_whitespace": True, "extra": "forbid"}
+    personal_statement: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("personal_statement")
+    @classmethod
+    def _clean_text(cls, value: str | None) -> str | None:
+        return _clean_multiline_text(value)
+
+
+class PersonalStatementOut(BaseModel):
+    personal_statement: str | None
+    updated_at: datetime
+
+
 # --- ENH-011: school skills tracker (docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md §5) ---
 
 SkillModule = Literal["soft_skills", "digital_skills"]
