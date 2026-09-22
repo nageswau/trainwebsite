@@ -931,6 +931,16 @@ class SkillAssessmentOut(BaseModel):
     max_score: float
 
 
+class SkillAssessmentScoreOut(BaseModel):
+    enrollment_id: UUID
+    score: float
+    remarks: str | None
+
+
+class SkillAssessmentScoresOut(SkillAssessmentOut):
+    scores: list[SkillAssessmentScoreOut]
+
+
 class SkillBatchDetail(SkillBatchOut):
     enrollments: list[SkillEnrollmentOut]
     sessions: list[SkillSessionOut]

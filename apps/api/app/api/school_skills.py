@@ -33,6 +33,9 @@ from app.models import (
     User,
 )
 from app.schemas import (
+    SkillAssessmentCreate,
+    SkillAssessmentOut,
+    SkillAssessmentScoresOut,
     SkillAttendanceIn,
     SkillBatchCreate,
     SkillBatchDetail,
@@ -44,6 +47,7 @@ from app.schemas import (
     SkillEnrollmentOut,
     SkillEnrollmentUpdate,
     SkillModule,
+    SkillScoresIn,
     SkillSessionCreate,
     SkillSessionOut,
 )
@@ -452,3 +456,55 @@ async def mark_skill_attendance(session_id: UUID, payload: SkillAttendanceIn, us
     await db.commit()
     logger.info("skill_attendance_marked", extra={"extra_fields": {"actor_id": str(user.id), "session_id": str(session.id), "count": len(payload.records)}})
     return await _session_out(db, session)
+
+
+# --- Assessments and scores -----------------------------------------------------------------------------------------
+
+
+@router.post(f"{BASE}/skill-batches/{{batch_id}}/assessments", status_code=201, response_model=SkillAssessmentOut)
+async def create_skill_assessment(batch_id: UUID, payload: SkillAssessmentCreate, user: User = Depends(_require_career_counselor), db: AsyncSession = Depends(get_db)):
+    batch = await _batch_in_portfolio(db, user, batch_id, lock="share")
+    _require_open(batch)
+    assessment = SchoolSkillAssessment(batch_id=batch.id, name=payload.name, max_score=payload.max_score, created_by_user_id=user.id)
+    db.add(assessment)
+    try:
+        await db.flush()
+    except IntegrityError as exc:  # uq_skill_assessment_batch_name
+        await db.rollback()
+        raise HTTPException(409, "This batch already has an assessment with that name") from exc
+    _audit(db, user, "school.skill_assessment_create", "school_skill_assessment", assessment.id, batch_id=str(batch.id))
+    await db.commit()
+    logger.info("skill_assessment_created", extra={"extra_fields": {"actor_id": str(user.id), "batch_id": str(batch.id), "assessment_id": str(assessment.id)}})
+    return {"id": assessment.id, "name": assessment.name, "max_score": float(assessment.max_score)}
+
+
+@router.put(f"{BASE}/skill-assessments/{{assessment_id}}/scores", response_model=SkillAssessmentScoresOut)
+async def record_skill_scores(assessment_id: UUID, payload: SkillScoresIn, user: User = Depends(_require_career_counselor), db: AsyncSession = Depends(get_db)):
+    """Upserts the listed scores only, all or nothing; same locking as attendance."""
+    assessment = await db.get(SchoolSkillAssessment, assessment_id)
+    if assessment is None:
+        raise HTTPException(404, "Assessment not found")
+    batch = await _batch_in_portfolio(db, user, assessment.batch_id, lock="share")
+    _require_open(batch)
+    if any(s.score > assessment.max_score for s in payload.scores):
+        raise HTTPException(422, f"Scores must be out of {float(assessment.max_score):g}")
+    await _require_editable(db, batch, [s.enrollment_id for s in payload.scores])
+    stmt = pg_insert(SchoolSkillScore).values(
+        [{"id": uuid4(), "assessment_id": assessment.id, "enrollment_id": s.enrollment_id, "score": s.score, "remarks": s.remarks, "recorded_by_user_id": user.id} for s in payload.scores]
+    )
+    await db.execute(
+        stmt.on_conflict_do_update(
+            constraint="uq_skill_score_assessment_enrollment",
+            set_={"score": stmt.excluded.score, "remarks": stmt.excluded.remarks, "recorded_by_user_id": stmt.excluded.recorded_by_user_id, "updated_at": func.now()},
+        )
+    )
+    _audit(db, user, "school.skill_scores_record", "school_skill_assessment", assessment.id, count=len(payload.scores))
+    await db.commit()
+    logger.info("skill_scores_recorded", extra={"extra_fields": {"actor_id": str(user.id), "assessment_id": str(assessment.id), "count": len(payload.scores)}})
+    rows = (await db.scalars(select(SchoolSkillScore).where(SchoolSkillScore.assessment_id == assessment.id))).all()
+    return {
+        "id": assessment.id,
+        "name": assessment.name,
+        "max_score": float(assessment.max_score),
+        "scores": [{"enrollment_id": r.enrollment_id, "score": float(r.score), "remarks": r.remarks} for r in rows],
+    }
