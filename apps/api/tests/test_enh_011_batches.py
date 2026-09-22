@@ -91,7 +91,8 @@ async def test_patch_edits_closes_reopens_and_validates(client, db_session):
     assert (await client.patch(url, json={"school_id": str(w["a"]["school"].id)})).status_code == 422
     assert (await client.patch(url, json={"module_type": "digital_skills"})).status_code == 422
     # A date sent alone is checked against the stored other date.
-    assert (await client.patch(url, json={"start_date": "2026-11-01"})).status_code == 422
+    later_start = await client.patch(url, json={"start_date": "2026-11-01"})
+    assert later_start.status_code == 422 and later_start.json()["detail"] == "The end date must be on or after the start date"
     assert (await client.patch(url, json={"end_date": "2026-09-01"})).status_code == 422
     assert (await client.patch(url, json={"title": "   "})).status_code == 422
     assert (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.skill_batch_update", AuditLog.entity_id == batch["id"]))).all()

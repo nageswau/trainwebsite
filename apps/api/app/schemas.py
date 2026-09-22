@@ -749,6 +749,8 @@ class AdminTransferHistoryResponse(BaseModel):
 SkillModule = Literal["soft_skills", "digital_skills"]
 SkillBatchStatus = Literal["open", "closed"]
 SkillEnrollmentStatus = Literal["enrolled", "completed", "certified", "withdrawn"]
+# Shown to the counselor as written (browser QA-05): user-facing wording, not field names. Shared with the PATCH endpoint's check.
+END_BEFORE_START = "The end date must be on or after the start date"
 
 
 def _optional(limit: int):
@@ -785,7 +787,7 @@ def _unique_enrollments(rows: list) -> list:
 
 def _check_dates(start: date | None, end: date | None) -> None:
     if start and end and end < start:
-        raise ValueError("end_date must be on or after start_date")
+        raise ValueError(END_BEFORE_START)
 
 
 class SkillBatchCreate(BaseModel):

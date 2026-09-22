@@ -40,8 +40,11 @@ def test_batch_create_rejects_bad_values_and_server_fields(over):
 
 
 def test_batch_create_rejects_end_before_start():
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as caught:
         SkillBatchCreate(**_batch(end_date="2026-09-30"))
+    # Browser QA-05: user-facing wording, not raw field names ("End_date must be on or after start_date").
+    assert "The end date must be on or after the start date" in str(caught.value)
+    assert "end_date" not in caught.value.errors()[0]["msg"]
 
 
 @pytest.mark.parametrize("extra", ["school_id", "module_type", "created_by_user_id"])

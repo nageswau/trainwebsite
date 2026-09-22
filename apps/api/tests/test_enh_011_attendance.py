@@ -30,7 +30,7 @@ async def test_add_session_and_duplicate_date_409(client, db_session):
     session = await _session(client, batch["id"], topic="  Body language ")
     assert session["session_date"] == "2026-10-05" and session["topic"] == "Body language" and session["attendance"] == []
     duplicate = await client.post(f"{BATCHES}/{batch['id']}/sessions", json={"session_date": "2026-10-05"})
-    assert duplicate.status_code == 409 and "already has a session" in duplicate.json()["detail"]
+    assert duplicate.status_code == 409 and duplicate.json()["detail"] == "This batch already has a session on 05 Oct 2026"  # QA-09: the UI's date format
     assert (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.skill_session_create", AuditLog.entity_id == session["id"]))).one()
 
 

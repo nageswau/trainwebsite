@@ -33,6 +33,7 @@ from app.models import (
     User,
 )
 from app.schemas import (
+    END_BEFORE_START,
     SkillAssessmentCreate,
     SkillAssessmentOut,
     SkillAssessmentScoresOut,
@@ -257,7 +258,7 @@ async def update_skill_batch(batch_id: UUID, payload: SkillBatchUpdate, user: Us
         raise HTTPException(422, "title must not be blank")
     start, end = changes.get("start_date", batch.start_date), changes.get("end_date", batch.end_date)
     if start is None or (end is not None and end < start):
-        raise HTTPException(422, "end_date must be on or after start_date")
+        raise HTTPException(422, END_BEFORE_START)
     for field, value in changes.items():
         setattr(batch, field, value)
     _audit(db, user, "school.skill_batch_update", "school_skill_batch", batch.id, fields=sorted(changes))
@@ -431,7 +432,7 @@ async def create_skill_session(batch_id: UUID, payload: SkillSessionCreate, user
         await db.flush()
     except IntegrityError as exc:  # D10: uq_skill_session_batch_date
         await db.rollback()
-        raise HTTPException(409, f"This batch already has a session on {payload.session_date.isoformat()}") from exc
+        raise HTTPException(409, f"This batch already has a session on {payload.session_date.strftime('%d %b %Y')}") from exc
     _audit(db, user, "school.skill_session_create", "school_skill_session", session.id, batch_id=str(batch.id))
     await db.commit()
     logger.info("skill_session_created", extra={"extra_fields": {"actor_id": str(user.id), "batch_id": str(batch.id), "session_id": str(session.id)}})
