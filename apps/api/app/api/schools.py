@@ -640,7 +640,7 @@ async def _link_or_invite_parent(db: AsyncSession, *, school: School, student: S
     return "invited", None, invite_response.get("development_invite_token")
 
 
-async def _scoped_students_query(db: AsyncSession, user: User, school_id: UUID):
+async def _scoped_students_query(db: AsyncSession, user: User, school_id: UUID | None):
     """SCH-001-AC02/AC03: every query is filtered server-side by the acting role's own
     scope -- own institution for Principal/Coordinator, own institution + assigned only for
     Teacher, own institution + own child(ren) only for Parent. Never a client-supplied
@@ -835,7 +835,7 @@ async def school_entitlements(user: User = Depends(get_current_user), db: AsyncS
 
 @router.get("/students")
 async def list_students(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    school_id = _own_school_id(user)
+    school_id = None if user.role == "school_parent" else _own_school_id(user)
     stmt = await _scoped_students_query(db, user, school_id)
     rows = (await db.scalars(stmt.order_by(SchoolStudent.full_name.asc()))).all()
     return [_student_out(s) for s in rows]
@@ -871,18 +871,20 @@ async def active_academic_year(user: User = Depends(get_current_user), db: Async
 async def _load_readable_student(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
     """One student, checked against the acting School role's own scope (SCH-001-AC02/AC03):
     own institution for every role, plus assigned-only for Teacher and own-child-only for
-    Parent -- the same rule as the list, applied to a direct record ID. ENH-005: a Parent is
-    scoped by their link alone (see `_scoped_students_query`); an unlinked student keeps today's
-    two messages, so no status code or text a client sees changes."""
-    school_id = _own_school_id(user)
+    Parent -- the same rule as the list, applied to a direct record ID. ENH-005/ENH-008: a
+    Parent is scoped by their links alone (see `_scoped_students_query`), never by a single
+    "own school" -- a Parent can legitimately have links at more than one school, so there is
+    no single institution left to distinguish "wrong institution" from "not linked" against;
+    an unlinked student always gets the one generic message below."""
     student = await db.get(SchoolStudent, student_id)
     if not student:
         raise HTTPException(404, "Student not found")
     if user.role == "school_parent":
         linked = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == user.id, SchoolParentLink.school_student_id == student.id))
         if not linked:
-            raise HTTPException(403, "This student is at a different institution" if student.school_id != school_id else "This student is not linked to your account")
+            raise HTTPException(403, "This student is not linked to your account")
         return student
+    school_id = _own_school_id(user)
     if student.school_id != school_id:
         raise HTTPException(403, "This student is at a different institution")
     if user.role == "school_teacher" and student.assigned_teacher_user_id != user.id:
@@ -1542,7 +1544,7 @@ async def _readable_students(db: AsyncSession, user: User) -> set:
     Teacher/Parent) may see published/visible service-delivery content for -- reuses the
     exact same scoping as SCH-001's own roster access, since it's the same underlying
     own-institution/assigned/own-child rule (SCH-001-AC02/AC03)."""
-    school_id = _own_school_id(user)
+    school_id = None if user.role == "school_parent" else _own_school_id(user)
     stmt = await _scoped_students_query(db, user, school_id)
     return set((await db.scalars(stmt.with_only_columns(SchoolStudent.id))).all())
 

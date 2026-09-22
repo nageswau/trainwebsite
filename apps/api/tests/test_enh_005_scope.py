@@ -12,7 +12,6 @@ from app.models import SchoolAccountInvite, SchoolParentLink, SchoolStudent, Use
 # another school than the parent's account), and `withdrawn` results are invisible. Everything here runs against Postgres.
 
 NOT_LINKED = "This student is not linked to your account"
-DIFFERENT_INSTITUTION = "This student is at a different institution"
 
 
 async def _moved_child_world(db_session):
@@ -38,7 +37,7 @@ async def test_a_parent_reads_a_linked_child_who_lives_at_another_school(client,
 
 
 @pytest.mark.asyncio
-async def test_a_parent_still_cannot_read_an_unlinked_student_and_keeps_todays_messages(client, db_session):
+async def test_a_parent_still_cannot_read_an_unlinked_student(client, db_session):
     a = await mk_school(db_session, label="A", students=2)
     b = await mk_school(db_session, label="B")
     same_school_unlinked = a["students"][1]
@@ -48,9 +47,36 @@ async def test_a_parent_still_cannot_read_an_unlinked_student_and_keeps_todays_m
     r = await client.get(f"/api/v1/school/students/{same_school_unlinked.id}")
     assert (r.status_code, r.json()["detail"]) == (403, NOT_LINKED)
     r = await client.get(f"/api/v1/school/students/{other_school.id}")
-    assert (r.status_code, r.json()["detail"]) == (403, DIFFERENT_INSTITUTION)
+    assert (r.status_code, r.json()["detail"]) == (403, NOT_LINKED)
     listing = await client.get("/api/v1/school/students")
     assert [s["id"] for s in listing.json()] == [str(a["students"][0].id)]
+
+
+@pytest.mark.asyncio
+async def test_a_parent_with_children_at_two_schools_sees_both(client, db_session):
+    a = await mk_school(db_session, label="A")
+    b = await mk_school(db_session, label="B")
+    db_session.add(SchoolParentLink(parent_user_id=a["parent"].id, school_student_id=b["students"][0].id, linked_by_user_id=b["coordinator"].id))
+    await db_session.commit()
+    await login(client, a["parent"].email)
+
+    listing = await client.get("/api/v1/school/students")
+
+    assert {s["id"] for s in listing.json()} == {str(a["students"][0].id), str(b["students"][0].id)}
+    for student in (a["students"][0], b["students"][0]):
+        assert (await client.get(f"/api/v1/school/students/{student.id}")).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_a_parent_with_zero_links_at_a_school_sees_none_of_its_data(client, db_session):
+    a = await mk_school(db_session, label="A", students=0)
+    b = await mk_school(db_session, label="B")
+    await login(client, a["parent"].email)
+
+    listing = await client.get("/api/v1/school/students")
+
+    assert listing.json() == []
+    assert (await client.get(f"/api/v1/school/students/{b['students'][0].id}")).status_code == 403
 
 
 @pytest.mark.asyncio
