@@ -5,7 +5,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import SchoolSkillAlert from "@/components/SchoolSkillAlert";
 import { SkillStatus, useSkillAction } from "@/components/useSkillAction";
 import { formatDate } from "@/lib/formatDate";
-import { MODULE_LABEL, type SkillBatch } from "@/lib/skills";
+import { MODULE_LABEL, batchDraftErrors, type SkillBatch } from "@/lib/skills";
 
 // ENH-011 spec §7: the batch as the page heading, its details, an inline edit, and close/reopen. A closed batch says what closing
 // means; the sections below hide their write controls.
@@ -36,8 +36,10 @@ export default function SchoolSkillBatchHeader({ batch }: { batch: SkillBatch })
 
   async function save(e: FormEvent) {
     e.preventDefault();
+    const found = batchDraftErrors(draft);
+    if (Object.keys(found).length > 0) return action.invalid(found);
     const body = { title: draft.title, topic: draft.topic.trim() || null, trainer_name: draft.trainer_name.trim() || null, start_date: draft.start_date, end_date: draft.end_date || null };
-    if (await action.run(url, "PATCH", body, () => "Details saved.")) stopEditing();
+    if (await action.run(url, "PATCH", body, () => "Details saved.", { fieldsShown: true })) stopEditing();
   }
 
   const set = (name: keyof Draft) => (e: { target: { value: string } }) => setDraft((d) => ({ ...d, [name]: e.target.value }));

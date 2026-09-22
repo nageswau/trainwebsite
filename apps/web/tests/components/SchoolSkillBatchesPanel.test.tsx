@@ -117,15 +117,42 @@ describe("create form", () => {
     expect(screen.getByRole("button", { name: "Creating…" }).hasAttribute("disabled")).toBe(true);
   });
 
-  it("marks the field the server rejected and keeps the entry", async () => {
-    stubFetch(() => json({ detail: [{ loc: ["body", "end_date"], msg: "Value error, end_date must be on or after start_date" }] }, 422));
+  it("marks the field the server rejected, keeps the entry, and does not repeat the message in the alert (QA-07)", async () => {
+    stubFetch(() => json({ detail: [{ loc: ["body", "topic"], msg: "Value error, must not contain control or bidirectional-override characters" }] }, 422));
     render(<SchoolSkillBatchesPanel initial={page([])} schools={[SUN]} />);
     fill();
     fireEvent.click(screen.getByRole("button", { name: "Create batch" }));
-    const end = screen.getByLabelText("End date (optional)");
-    await waitFor(() => expect(end.getAttribute("aria-invalid")).toBe("true"));
-    expect(document.getElementById(end.getAttribute("aria-describedby")!)!.textContent).toBe("End_date must be on or after start_date");
+    const topic = screen.getByLabelText("Topic (optional)");
+    await waitFor(() => expect(topic.getAttribute("aria-invalid")).toBe("true"));
+    expect(document.getElementById(topic.getAttribute("aria-describedby")!)!.textContent).toBe("Must not contain control or bidirectional-override characters");
+    expect(screen.getByRole("alert").textContent).toBe("Check the highlighted fields.");
     expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe("Public speaking");
+  });
+
+  it("checks the required fields and the date order in the browser, in plain words, before sending (QA-05, QA-06)", () => {
+    const fetchMock = stubFetch(() => json({}));
+    render(<SchoolSkillBatchesPanel initial={page([])} schools={[SUN]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Create batch" }));
+    expect(fetchMock).not.toHaveBeenCalled();
+    const title = screen.getByLabelText("Title");
+    const start = screen.getByLabelText("Start date");
+    expect(title.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(title.getAttribute("aria-describedby")!)!.textContent).toBe("Enter a title");
+    expect(document.getElementById(start.getAttribute("aria-describedby")!)!.textContent).toBe("Choose a start date");
+    expect(document.activeElement).toBe(title); // the first invalid field
+
+    fill();
+    fireEvent.change(screen.getByLabelText("End date (optional)"), { target: { value: "2026-09-30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create batch" }));
+    expect(fetchMock).not.toHaveBeenCalled();
+    const end = screen.getByLabelText("End date (optional)");
+    expect(end.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(end.getAttribute("aria-describedby")!)!.textContent).toBe("The end date must be on or after the start date");
+  });
+
+  it("names the page with a level-1 heading (QA-13)", () => {
+    render(<SchoolSkillBatchesPanel initial={page([batch("1")])} schools={[SUN]} />);
+    expect(screen.getByRole("heading", { level: 1, name: "Skills batches" })).toBeTruthy();
   });
 
   it("offers sign-in again when the session has expired", async () => {

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import SchoolSkillBatchHeader from "@/components/SchoolSkillBatchHeader";
@@ -40,6 +40,31 @@ describe("SchoolSkillBatchHeader", () => {
     expect(init?.method).toBe("PATCH");
     expect(JSON.parse(String(init?.body))).toEqual({ title: "Debate", topic: "Presentation", trainer_name: null, start_date: "2026-10-01", end_date: "2026-12-01" });
     expect(screen.getByRole("status").textContent).toBe("Details saved.");
+  });
+
+  it("checks the date order before sending an edit (QA-05)", () => {
+    const fetchMock = stubFetch(() => json(detail()));
+    render(<SchoolSkillBatchHeader batch={detail()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit details" }));
+    fireEvent.change(screen.getByLabelText("End date (optional)"), { target: { value: "2026-09-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save details" }));
+    expect(fetchMock).not.toHaveBeenCalled();
+    const end = screen.getByLabelText("End date (optional)");
+    expect(end.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(end.getAttribute("aria-describedby")!)!.textContent).toBe("The end date must be on or after the start date");
+  });
+
+  it("clears a success message after a few seconds so they do not pile up (QA-08)", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    stubFetch(() => json(detail({ status: "closed" })));
+    render(<SchoolSkillBatchHeader batch={detail()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Close batch" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Batch closed."));
+    await act(async () => { await vi.advanceTimersByTimeAsync(7000); });
+    expect(screen.getByRole("status").textContent).toBe("Batch closed."); // still there before the delay
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    expect(screen.getByRole("status").textContent).toBe("");
+    vi.useRealTimers();
   });
 
   it("cancelling the edit returns focus to the Edit button", () => {

@@ -27,6 +27,7 @@ describe("roster", () => {
     expect(within(one).getAllByRole("button").map((b) => b.textContent)).toEqual(["Mark completed", "Certify", "Withdraw"]);
     expect(within(one).getByRole("button", { name: "Certify Student 1" })).toBeTruthy();
     expect(within(rowOf("Student 2")).queryAllByRole("button")).toEqual([]);
+    expect(within(rowOf("Student 2")).getByText("No further changes")).toBeTruthy(); // QA-12: not a blank cell
     expect(within(rowOf("Student 3")).getAllByRole("button").map((b) => b.textContent)).toEqual(["Re-enrol"]);
   });
 

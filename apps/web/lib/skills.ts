@@ -70,6 +70,20 @@ export function canMark(enrolment: Pick<SkillEnrollment, "status" | "frozen">): 
   return !enrolment.frozen && (enrolment.status === "enrolled" || enrolment.status === "completed");
 }
 
+// Browser QA-10: a 5xx is not the counselor's mistake; say nothing was saved and that trying again is safe.
+export const SERVER_FAILED = "The change was not saved because of a problem on our side. Your entry is kept; please try again in a moment.";
+// Browser QA-05/06: the batch form's own checks, in plain words, so a server message never has to explain a field name or a parser.
+export const END_BEFORE_START = "The end date must be on or after the start date";
+
+/** Field errors for a batch's title and dates, keyed like the API's fields. Empty when the draft may be sent. */
+export function batchDraftErrors(draft: { title: string; start_date: string; end_date: string }): Record<string, string> {
+  const errors: Record<string, string> = {};
+  if (!draft.title.trim()) errors.title = "Enter a title";
+  if (!draft.start_date) errors.start_date = "Choose a start date";
+  else if (draft.end_date && draft.end_date < draft.start_date) errors.end_date = END_BEFORE_START;
+  return errors;
+}
+
 export type SendFailure = { ok: false; message: string; fields: Record<string, string>; expired?: boolean };
 export type SendResult<T> = { ok: true; data: T } | SendFailure;
 
@@ -95,6 +109,7 @@ export async function send<T>(url: string, method: "GET" | "POST" | "PATCH" | "P
   }
   const data = await response.json().catch(() => null);
   if (response.status === 401) return { ok: false, expired: true, message: "Your session has expired.", fields: {} };
+  if (response.status >= 500) return { ok: false, message: SERVER_FAILED, fields: {} };
   if (!response.ok) return { ok: false, message: detailMessage(data?.detail), fields: fieldErrors(data?.detail) };
   if (data === null || typeof data !== "object") return { ok: false, message: "The change could not be confirmed. Reload the page to see where it stands.", fields: {} };
   return { ok: true, data: data as T };

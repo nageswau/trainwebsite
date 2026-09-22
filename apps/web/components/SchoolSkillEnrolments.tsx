@@ -79,6 +79,8 @@ export default function SchoolSkillEnrolments({ batch, students }: { batch: Skil
                         <button type="button" className="btn small" aria-label={`Confirm certify ${e.student_name}`} disabled={action.busy} onClick={() => void change(e, "certified")}>Confirm</button>
                         <button type="button" className="btn secondary small" onClick={() => { setConfirming(null); setFocusNext(byLabel(`Certify ${e.student_name}`)); }}>Cancel</button>
                       </span>
+                    ) : TRANSITIONS[e.status].length === 0 ? (
+                      <span className="muted">No further changes</span>
                     ) : (
                       <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
                         {TRANSITIONS[e.status].map((to) => (

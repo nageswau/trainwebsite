@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { NOT_COMPLETED } from "@/lib/apiErrors";
 import { SCHOOL_NAV } from "@/lib/navigation";
-import { ENROLMENT_CLASS, ENROLMENT_LABEL, ENROLMENT_STATUSES, MODULE_LABEL, TRANSITIONS, attendanceText, canMark, send, type SkillEnrollment } from "@/lib/skills";
+import { ENROLMENT_CLASS, ENROLMENT_LABEL, ENROLMENT_STATUSES, MODULE_LABEL, SERVER_FAILED, TRANSITIONS, attendanceText, canMark, send, type SkillEnrollment } from "@/lib/skills";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -29,6 +29,12 @@ describe("send", () => {
     expect(await send("/x", "GET")).toMatchObject({ ok: false, expired: true });
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
     expect(await send("/x", "GET")).toEqual({ ok: false, message: NOT_COMPLETED, fields: {} });
+  });
+
+  it("says a server failure did not save anything, and that the entry is kept (QA-10)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("Internal Server Error", { status: 500 }))));
+    expect(await send("/x", "PUT", {})).toEqual({ ok: false, message: SERVER_FAILED, fields: {} });
+    expect(SERVER_FAILED).toBe("The change was not saved because of a problem on our side. Your entry is kept; please try again in a moment.");
   });
 
   it("does not report success for a 2xx without a JSON body", async () => {

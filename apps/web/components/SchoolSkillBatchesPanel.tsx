@@ -73,7 +73,7 @@ export default function SchoolSkillBatchesPanel({ initial, schools }: { initial:
   return (
     <div className="portal-content">
       <div className="card">
-        <h2>Skills batches</h2>
+        <h1>Skills batches</h1>
         <p className="muted">Soft Skills and Digital Skills batches at the schools you support.</p>
         <div className="table-controls">
           <div>

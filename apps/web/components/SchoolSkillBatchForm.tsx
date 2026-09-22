@@ -4,12 +4,13 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, type RefObject, useRef, useState } from "react";
 
 import SchoolSkillAlert, { alertFor, type SkillAlertState } from "@/components/SchoolSkillAlert";
-import { MODULE_LABEL, send, type SkillBatch, type SkillModule } from "@/lib/skills";
+import { MODULE_LABEL, batchDraftErrors, send, type SkillBatch, type SkillModule } from "@/lib/skills";
 import type { SchoolRef } from "@/lib/transfers";
 
 // ENH-011 spec §7: create a batch for one school in the counselor's portfolio, then open it. A server 422 marks the field it names;
 // the entry is always kept on a failure.
 const URL = "/api/v1/school/career-counselor/skill-batches";
+const FIELD_ORDER = ["school_id", "title", "topic", "trainer_name", "start_date", "end_date"];
 type Draft = { school_id: string; module_type: SkillModule; title: string; topic: string; trainer_name: string; start_date: string; end_date: string };
 
 export default function SchoolSkillBatchForm({ schools, titleRef }: { schools: SchoolRef[]; titleRef: RefObject<HTMLInputElement | null> }) {
@@ -31,7 +32,15 @@ export default function SchoolSkillBatchForm({ schools, titleRef }: { schools: S
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (sending.current) return;
-    if (!draft.school_id) return setErrors({ school_id: "Choose a school" });
+    const found: Record<string, string> = { ...(draft.school_id ? {} : { school_id: "Choose a school" }), ...batchDraftErrors(draft) };
+    if (Object.keys(found).length > 0) {
+      setAlert(null);
+      setErrors(found);
+      // Focus the first invalid field in on-screen order, so a keyboard or screen-reader user lands on what to fix.
+      const first = FIELD_ORDER.find((name) => found[name]);
+      if (first) document.getElementById(`skill-batch-${first.replaceAll("_", "-")}`)?.focus();
+      return;
+    }
     sending.current = true;
     setBusy(true);
     setAlert(null);
@@ -42,7 +51,7 @@ export default function SchoolSkillBatchForm({ schools, titleRef }: { schools: S
     sending.current = false;
     setBusy(false);
     setErrors(result.fields);
-    setAlert(alertFor(result));
+    setAlert(alertFor(result, undefined, true));
   }
 
   return (
