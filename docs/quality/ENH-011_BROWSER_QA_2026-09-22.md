@@ -83,6 +83,21 @@ So the request is lost on the Next.js rewrite / CI proxy path. This matches the 
 
 **Not proven by an A/B run:** the same spec has not been run against a build without `58245c5`.
 
+## Full Playwright suite (2026-09-22, HEAD `40d8590`)
+
+**Run 1:** `--grep-invert @external`, 259 tests, isolated stack rebuilt from HEAD, on a database reused through two full backend runs, the QA session and three seedings. Result: **249 passed, 10 failed**, 11.8 minutes. Every ENH-011, school and access-card spec passed, including `sch-001`, which timed out earlier on the intermittent logout hang.
+
+**The 10 failures, re-run on a fresh, seeded database** (the stack's volume reset, as `scripts/ci-local.ps1` does before its Playwright step):
+
+| Spec | Run 1 (reused DB) | Fresh DB | Cause |
+|---|---|---|---|
+| `sch-004-005-006:189`, `:241`, `sch-team-management:79` | failed | **passed** | Database state; the same three were shown pre-existing on `main` under a reused DB by ENH-005 |
+| `trn-001:6`, `ovs-007:8`, `ovs-007:27`, `pub-004:22` | failed | **passed** | Database state |
+| `ovs-006:15`, `pub-004:7` | failed | failed once, then **passed** on the next run | Flaky or order-dependent; not in any file ENH-011 changed |
+| `stu-007:8` | failed | **failed** | **Pre-existing on `main`:** `POST /workflows/it/certificates/{id}/issue` answers 422 "override_reason is required…" (the rule is in `main`'s `workflows.py:1221`); the spec sends only `{override: true}`. Neither file is changed by this branch |
+
+**Net:** apart from the flaky pair, the only failure is one that predates ENH-011 on `main`.
+
 ## Harness notes (not app defects)
 
 - A hidden Chrome window does not paint. React 19 reveals streamed Suspense content (the `loading.tsx` routes) on a painted frame, so while the QA window was hidden the skills pages did not hydrate and a click did a native GET submit. With the window visible, hydration took 0.4 s.

@@ -1215,9 +1215,20 @@ batch" to copy. The user therefore decided a new school-scoped batch model, left
 `docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md`; plan
 `docs/superpowers/plans/2026-09-22-enh-011-skills-tracker.md`). Implemented test-first on branch
 `feature/enh-011-skills-tracker-generalization`: migration `0035_school_skills`, `app/api/school_skills.py`, the
-counselor Skills pages, the Parent Portal Skills section, timeline categories and entitlement usage. **Outstanding
-before it can be called complete:** browser validation and an independent (Codex) review; D10–D12 of the spec
-were adopted on the instruction to proceed and still need the user's confirmation.
+counselor Skills pages, the Parent Portal Skills section, timeline categories and entitlement usage.
+
+**Verified (2026-09-22):**
+- **Browser QA:** 14 findings, all fixed. QA-14 was fixed app-wide on the owner's instruction. Record: `docs/quality/ENH-011_BROWSER_QA_2026-09-22.md`.
+- **Backend:** 1119 passed / 14 failed. The 14 are the provider-credential tests that also fail on `main`.
+- **Web:** 43 files / 405 tests.
+- **Static checks:** `tsc` clean; lint 0 errors; `ruff check` 33 and `mypy` 154, both equal to `main`.
+- **Migration:** `0035` upgrade, downgrade and `alembic check` pass.
+- **Full Playwright:** 249/259 on a reused database. On a fresh one, the remaining failures are a flaky pair and `stu-007`, which also fails on `main` (a spec/API mismatch).
+
+**Not done:**
+- The independent Codex review was waived by the owner (2026-09-22).
+- D10–D12 of the spec were adopted on the instruction to proceed and still need the owner's confirmation.
+- Not merged.
 
 **Complexity:** Medium. **Risk:** Low.
 
