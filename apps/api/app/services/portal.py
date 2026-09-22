@@ -1358,16 +1358,16 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 ({"id": agent.id, "name": agent.full_name, "email": agent.email, "status": assignment.approval_status} for agent, assignment in rows),
             )
         if section == "schools" and division == "overseas":
-            # SCH-003: Overseas Admin's own partner-school list -- creation itself
-            # (POST /overseas-admin/schools) is handled by AdminSchoolCreatePanel.tsx,
-            # same "read via the generic portal section, write via a dedicated panel"
-            # split already established for `universities` (RAID.md I-32).
+            # SCH-003 / ENH-009 (DEC-SCOPE-025): Overseas Admin's own partner-school list --
+            # creation/edit handled by AdminSchoolCreatePanel.tsx/AdminSchoolEditPanel.tsx, same
+            # "read via the generic portal section, write via a dedicated panel" split already
+            # established for `universities` (RAID.md I-32).
             rows = (await db.scalars(select(School).order_by(School.created_at.desc()))).all()
             return _payload(
                 "Partner Schools",
                 "Every School partner record. Create a new one to seed its Coordinator account.",
-                (("id", "reference"), ("name", "Name"), ("city", "City"), ("state", "State"), ("created_at", "Created")),
-                ({"id": s.id, "name": s.name, "city": s.city or "-", "state": s.state or "-", "created_at": s.created_at} for s in rows),
+                (("id", "reference"), ("school_code", "School ID"), ("name", "Name"), ("branch", "Branch"), ("city", "City"), ("state", "State"), ("board", "Board"), ("tier", "Tier"), ("created_at", "Created")),
+                ({"id": s.id, "school_code": s.school_code or "-", "name": s.name, "branch": s.branch or "-", "city": s.city or "-", "state": s.state or "-", "board": s.board or "-", "tier": s.tier or "-", "created_at": s.created_at} for s in rows),
             )
         if section == "school-staff" and division == "overseas":
             # SCH-004/005/006 (DEC-SCOPE-014): Academic Team/Career Counselor/Psychometric
