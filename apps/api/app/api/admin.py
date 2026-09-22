@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.identifiers import uuid_reference
+from app.core.identifiers import unique_student_code, uuid_reference
 from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, University, User, UserRoleAssignment
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
@@ -1046,38 +1046,32 @@ async def approve_commission_payout(commission_id: UUID, user: User = Depends(ge
 # (`DEC-SCOPE-012`). Same `/overseas-admin` namespace as the Agent approval routes above,
 # per `API_CONTRACT.md` §12A.
 @agents_router.post("/schools", status_code=201)
-async def create_school(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def create_school(payload: SchoolCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
-    _reject_supplied_password(payload, user, "/api/v1/overseas-admin/schools", "coordinator_password")
-    email = str(payload.get("coordinator_email", "")).lower().strip()
-    if not payload.get("name") or not email or not payload.get("coordinator_full_name"):
-        raise HTTPException(422, "School name and Coordinator name/email are required")
-    email = _valid_email(email)
+    _reject_supplied_password(payload.model_dump(), user, "/api/v1/overseas-admin/schools", "coordinator_password")
+    email = _valid_email(payload.coordinator_email)
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
-    tier = payload.get("tier")
-    if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
+    if payload.tier and payload.tier not in {"bronze", "silver", "gold", "platinum"}:
         raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
-    tier_valid_until = date.fromisoformat(payload["tier_valid_until"]) if payload.get("tier_valid_until") else None
+    school_code = await unique_student_code(db, School.school_code)
     school = School(
-        name=_fit(payload["name"], "School name", 200),
-        city=_fit(payload.get("city"), "City", 120),
-        state=_fit(payload.get("state"), "State", 120),
-        created_by_user_id=user.id,
-        tier=tier,
-        tier_valid_until=tier_valid_until,
+        name=payload.name, city=payload.city, state=payload.state,
+        created_by_user_id=user.id, tier=payload.tier, school_code=school_code,
+        branch=payload.branch, address=payload.address, contact_number=payload.contact_number,
+        email=payload.email, website=payload.website, grades_available=payload.grades_available,
+        board=payload.board, partnership_date=payload.partnership_date,
+        mou_reference=payload.mou_reference, edusphere_bdm=payload.edusphere_bdm,
+        monthly_visit_schedule=payload.monthly_visit_schedule,
+        vice_principal_name=payload.vice_principal_name,
     )
     db.add(school)
     await db.flush()
     coordinator = User(
-        email=email,
-        password_hash=unusable_password_hash(),
-        full_name=_fit(payload["coordinator_full_name"], "Coordinator name", 160),
-        role="school_coordinator",
-        division="overseas",
-        active=True,
-        email_verified=False,
+        email=email, password_hash=unusable_password_hash(),
+        full_name=_fit(payload.coordinator_full_name, "Coordinator name", 160),
+        role="school_coordinator", division="overseas", active=True, email_verified=False,
         profile={"school_id": str(school.id)},
     )
     db.add(coordinator)
@@ -1089,11 +1083,12 @@ async def create_school(payload: dict, user: User = Depends(get_current_user), d
     # satisfying the provisioning audit trail (RBAC_MATRIX.md §3) without waiting for the
     # Coordinator's first login.
     db.add(UserRoleAssignment(user_id=coordinator.id, division="overseas", role="school_coordinator", is_active=True, assigned_by_user_id=user.id, approval_status="approved"))
-    db.add(AuditLog(user_id=user.id, action="school.create", entity_type="school", entity_id=str(school.id), metadata_json={"name": school.name}))
+    db.add(AuditLog(user_id=user.id, action="school.create", entity_type="school", entity_id=str(school.id), metadata_json={"name": school.name, "school_code": school_code}))
     db.add(AuditLog(user_id=user.id, action="school.coordinator_seed", entity_type="user", entity_id=str(coordinator.id), metadata_json={"school_id": str(school.id)}))
     await db.commit()
     delivery = await deliver_welcome_link(user=coordinator, issued=issued, issued_by=user)
-    return {"id": school.id, "name": school.name, "coordinator_id": coordinator.id, "coordinator_email": coordinator.email, **delivery}
+    out = await _school_out(db, school)
+    return {**out.model_dump(mode="json"), "coordinator_id": coordinator.id, "coordinator_email": coordinator.email, **delivery}
 
 
 @agents_router.get("/schools")

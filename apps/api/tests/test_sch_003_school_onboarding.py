@@ -301,3 +301,65 @@ async def test_school_out_computes_counts_and_role_derived_names(client, db_sess
     assert out.principal_name == "Test Principal"
     assert out.school_coordinator_name is not None  # the seed Coordinator from _create_school
     assert out.career_counsellor_names == ["Test Counsellor"]
+
+
+@pytest.mark.asyncio
+async def test_create_school_generates_a_unique_school_code_and_stores_new_fields(client, db_session):
+    admin = await _create_overseas_admin(db_session)
+    await _login(client, admin.email)
+    suffix = uuid.uuid4().hex[:8]
+    response = await client.post(
+        "/api/v1/overseas-admin/schools",
+        json={
+            "name": f"Full Profile School {suffix}", "city": "Testville",
+            "coordinator_full_name": "Test Coordinator",
+            "coordinator_email": f"sch009-coord-{suffix}@example.local",
+            "branch": "North Campus", "address": "1 Test Road", "board": "CBSE",
+            # NOTE: SchoolCreate.email is typed `EmailStr` (Task 3), which rejects the
+            # `.local` TLD this suite otherwise uses everywhere else (see LoginRequest's
+            # comment in schemas.py -- it deliberately avoids EmailStr for that exact
+            # reason). `coordinator_email` above is a plain `str` field so `.local` is
+            # fine there; this one field needs a non-reserved domain to pass validation.
+            "email": "school-contact@example.com", "grades_available": "1-10",
+        },
+    )
+    assert response.status_code == 201, response.text
+    data = response.json()
+    assert data["school_code"] is not None
+    assert len(data["school_code"]) == 8
+
+    school = await db_session.get(School, data["id"])
+    assert school.branch == "North Campus"
+    assert school.address == "1 Test Road"
+    assert school.board == "CBSE"
+    assert school.email == "school-contact@example.com"
+
+
+@pytest.mark.asyncio
+async def test_create_school_rejects_an_invalid_board_value(client, db_session):
+    admin = await _create_overseas_admin(db_session)
+    await _login(client, admin.email)
+    response = await client.post(
+        "/api/v1/overseas-admin/schools",
+        json={
+            "name": "X", "coordinator_full_name": "Y",
+            "coordinator_email": f"y-{uuid.uuid4().hex[:8]}@example.local",
+            "board": "Cambridge",
+        },
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_school_rejects_a_smuggled_role_field(client, db_session):
+    admin = await _create_overseas_admin(db_session)
+    await _login(client, admin.email)
+    response = await client.post(
+        "/api/v1/overseas-admin/schools",
+        json={
+            "name": "X", "coordinator_full_name": "Y",
+            "coordinator_email": f"y-{uuid.uuid4().hex[:8]}@example.local",
+            "role": "super_admin",
+        },
+    )
+    assert response.status_code == 422
