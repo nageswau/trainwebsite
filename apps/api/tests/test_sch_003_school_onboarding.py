@@ -380,3 +380,49 @@ async def test_create_school_rejects_a_smuggled_role_field(client, db_session):
         },
     )
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_patch_school_updates_profile_fields_and_logs_changed_field_names_only(client, db_session):
+    result = await _create_school(client, db_session)
+    await _login(client, result["admin"].email)
+
+    response = await client.patch(
+        f"/api/v1/overseas-admin/schools/{result['id']}",
+        json={"branch": "South Campus", "board": "ICSE", "email": "new-contact@example.local"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["branch"] == "South Campus"
+    assert response.json()["board"] == "ICSE"
+
+    school = await db_session.get(School, result["id"])
+    assert school.branch == "South Campus"
+    assert school.email == "new-contact@example.local"
+
+    from app.models import AuditLog
+    log = await db_session.scalar(
+        select(AuditLog).where(AuditLog.action == "school.profile_update", AuditLog.entity_id == str(school.id))
+    )
+    assert log is not None
+    assert set(log.metadata_json["changed_fields"]) == {"branch", "board", "email"}
+    # field names only -- the actual new values are never written into the audit trail
+    assert "South Campus" not in str(log.metadata_json)
+
+
+@pytest.mark.asyncio
+async def test_patch_school_tier_only_still_works_unchanged(client, db_session):
+    result = await _create_school(client, db_session)
+    await _login(client, result["admin"].email)
+    response = await client.patch(
+        f"/api/v1/overseas-admin/schools/{result['id']}",
+        json={"tier": "gold", "tier_valid_until": "2027-01-01"},
+    )
+    assert response.status_code == 200
+    assert response.json()["tier"] == "gold"
+
+    from app.models import AuditLog
+    tier_log = await db_session.scalar(
+        select(AuditLog).where(AuditLog.action == "school.tier_update", AuditLog.entity_id == result["id"])
+    )
+    assert tier_log is not None
+    assert tier_log.metadata_json == {"tier": "gold"}

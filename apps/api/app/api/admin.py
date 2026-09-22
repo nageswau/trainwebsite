@@ -1100,25 +1100,32 @@ async def list_schools(user: User = Depends(get_current_user), db: AsyncSession 
 
 
 @agents_router.patch("/schools/{school_id}")
-async def update_school_tier(school_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """`DEC-SCOPE-017` -- Overseas Admin sets/changes a School's partnership tier after
-    creation. Deliberately narrow: only tier/tier_valid_until are editable here, not the
-    identity fields `create_school` already owns."""
+async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-023) -- Overseas Admin updates a School's partnership
+    tier and/or profile fields. `name`/`city`/`state`/`coordinator_*` stay out of scope for this
+    endpoint -- they were never editable before and no acceptance criterion asks for that."""
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
     school = await db.get(School, school_id)
     if not school:
         raise HTTPException(404, "School not found")
-    if "tier" in payload:
-        tier = payload["tier"]
+    fields = payload.model_dump(exclude_unset=True)
+    if "tier" in fields:
+        tier = fields["tier"]
         if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
             raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
         school.tier = tier
-    if "tier_valid_until" in payload:
-        school.tier_valid_until = date.fromisoformat(payload["tier_valid_until"]) if payload["tier_valid_until"] else None
-    db.add(AuditLog(user_id=user.id, action="school.tier_update", entity_type="school", entity_id=str(school.id), metadata_json={"tier": school.tier}))
+    if "tier_valid_until" in fields:
+        school.tier_valid_until = fields["tier_valid_until"]
+    if "tier" in fields or "tier_valid_until" in fields:
+        db.add(AuditLog(user_id=user.id, action="school.tier_update", entity_type="school", entity_id=str(school.id), metadata_json={"tier": school.tier}))
+    profile_fields = [k for k in fields if k not in {"tier", "tier_valid_until"}]
+    for key in profile_fields:
+        setattr(school, key, fields[key])
+    if profile_fields:
+        db.add(AuditLog(user_id=user.id, action="school.profile_update", entity_type="school", entity_id=str(school.id), metadata_json={"changed_fields": sorted(profile_fields)}))
     await db.commit()
-    return {"id": school.id, "tier": school.tier, "tier_valid_until": school.tier_valid_until}
+    return await _school_out(db, school)
 
 
 ACADEMIC_YEAR_STATUSES = ["draft", "active", "closed"]
