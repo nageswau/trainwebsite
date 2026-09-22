@@ -1,9 +1,10 @@
 # ENH-007 — Profile Self-Service: Cross-Role Completion Audit — Design
 
 **Status:** Design approved by the user in-session, 2026-09-22 (uniform `full_name`/`phone` scope; single
-shared `/account/profile` route linked from `PortalShell`, approach A of three presented). Backend/API
-portion reviewed against `api-and-interface-design` 2026-09-22 (§4a) — one small, additive validation fix
-approved for inclusion.
+shared `/account/profile` route linked from `PortalShell`, approach A of three presented). Reviewed against
+`api-and-interface-design` (§4a — one small, additive validation fix approved), `frontend-ui-engineering`
+(§6 — nav-ordering and post-save value-sync findings folded in), and `security-and-hardening` (§10a — no
+plan changes beyond the §4a fix). Ready for `writing-plans`.
 
 **Traceability:** `EVID` user instruction ("user profile, updating profile") →
 `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-007 (lines 690-734) → cross-role completion audit (this
@@ -129,9 +130,15 @@ forms is a direct `fetch` inside the client component, as `ChangePasswordForm.ts
 not replaced with a new `lib/api.ts` helper).
 
 **Entry point.** `apps/web/components/PortalShell.tsx` (every portal role, all 7 School-domain dashboards
-confirmed to render through it): one new link, "My profile", added to the sidebar footer next to the
-existing "Change password" link, and to the array passed to the mobile `MobileNavToggle`. Additive only —
-`.portal-nav` and each role's own `nav` array are unchanged.
+confirmed to render through it): one new link, "My profile", added immediately after the existing "Change
+password" link in both places it appears — the desktop sidebar footer, and the front of the array passed
+to the mobile `MobileNavToggle` (currently `nav={[{href:"/account/password",...}, ...nav]}`). **Frontend
+review finding (2026-09-22):** appending "My profile" after `...nav` instead would reintroduce QA-004
+(ENH-006) — "Change password" was deliberately moved to position 1 of ~18 mobile items after it was found
+buried at the bottom; a naive append puts the new link right back there. Both links must stay front-loaded,
+in the same relative order on desktop and mobile. Confirmed safe against the desktop layout too: `.sidebar{height:100vh;overflow:auto}`
+(`globals.css`) scrolls rather than clips if the footer grows. Additive only — `.portal-nav` and each
+role's own `nav` array are unchanged.
 
 **Page** `apps/web/app/account/profile/page.tsx` (server component), modelled directly on
 `apps/web/app/account/password/page.tsx`:
@@ -152,7 +159,7 @@ existing "Change password" link, and to the array passed to the mobile `MobileNa
 
 | Outcome | UI |
 |---|---|
-| 200 | "Your profile was updated." (`role=status`); fields stay populated with the saved values (unlike password fields, there is nothing to clear) |
+| 200 | "Your profile was updated." (`role=status`); fields are set from the response body's `full_name`/`phone` (the canonical, server-trimmed values `UserOut` already returns), not left as raw DOM input — **frontend review finding (2026-09-22):** `auth.py:191` calls `.strip()` server-side, so a typed `" John "` would otherwise show untrimmed until reload; syncing from the response avoids that drift |
 | 401 | "Your session has expired…" banner with both division sign-in links |
 | 422 | inline error under the offending field (`full_name` too short/long, or general `detail` message), focus moves there |
 | network failure | "Network error — try again." (safe to retry; unlike password-change this request has no rate-limiter/one-shot side effect that a retry could disturb) |
@@ -230,6 +237,22 @@ existing "Change password" link, and to the array passed to the mobile `MobileNa
 
 `docs/delivery/ENHANCEMENT_BACKLOG.md` (ENH-007 status, record the uniform-baseline scope decision);
 `RTM.md` (ENH-007 row) if this project maintains one at implementation time.
+
+## 10a. Security review (`security-and-hardening`, 2026-09-22)
+
+Checked against authentication, authorization, IDOR, role escalation, input validation, XSS, CSRF, SQL
+injection, token/session handling, secret exposure, sensitive logs, rate limiting, and audit requirements.
+No new attack surface — self-only by construction (no id in path/body, so no IDOR surface exists to
+check); `ProfileUpdate` declares only `full_name`/`phone`/`profile` and drops unknown fields by default,
+and `update_me()` assigns via an explicit allowlist (`auth.py:190-195`), so body-stuffing `role`/`division`/
+`active` cannot escalate privilege; no raw SQL (ORM assignment only); no new logging of field values (only
+field *names* are ever logged/audited, `auth.py:188,196`); cookies are already `HttpOnly`/`SameSite=Lax`
+app-wide, covering this form the same as every other authenticated one. **Deliberately not adding:** a
+rate limiter (nothing secret is being verified here, unlike `change-password`; singling out this route
+would be scope creep past a cross-cutting, already-tracked, open item), a phone-format validator (data
+quality, not a security control), or CSRF tokens (existing cookie policy already covers this). The
+already-approved `full_name: null` fix (§4a/§5) additionally closes an unhandled-exception path as
+defense in depth.
 
 ## 11. Open, not decided here
 
