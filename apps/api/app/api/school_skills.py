@@ -6,15 +6,17 @@ unchanged from `schools.py`. A batch belongs to one school in the counselor's `S
 outside that portfolio is a 404 (existence is not revealed), except a student, which keeps `_student_in_portfolio`'s 403 so
 this matches SCH-004/009. Every route depends on `_require_career_counselor`, so a wrong role is a 403 before any lookup."""
 
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import ColumnElement, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.schools import _portfolio_school_ids
+from app.api.schools import _notify_student_parents, _portfolio_school_ids, _student_in_portfolio
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import (
@@ -29,13 +31,38 @@ from app.models import (
     SchoolStudent,
     User,
 )
-from app.schemas import SkillBatchCreate, SkillBatchDetail, SkillBatchOut, SkillBatchPage, SkillBatchStatus, SkillBatchUpdate, SkillModule
+from app.schemas import (
+    SkillBatchCreate,
+    SkillBatchDetail,
+    SkillBatchOut,
+    SkillBatchPage,
+    SkillBatchStatus,
+    SkillBatchUpdate,
+    SkillEnrollCreate,
+    SkillEnrollmentOut,
+    SkillEnrollmentUpdate,
+    SkillModule,
+)
 
 router = APIRouter(prefix="/school", tags=["school-skills"])
 logger = get_logger("app.school.skills")
 
 BASE = "/career-counselor"
 BATCH_NOT_FOUND = "Skills batch not found"
+ENROLMENT_NOT_FOUND = "Enrolment not found"
+BATCH_CLOSED = "This batch is closed. Reopen it to make this change."
+STUDENT_MOVED = "This student has moved to another school; their record in this batch is read-only"
+MODULE_LABEL = {"soft_skills": "Soft Skills", "digital_skills": "Digital Skills"}
+
+# Read at call time so a test can shorten it; never request input. Bounds the unpaginated batch detail (spec §5.1).
+MAX_ENROLMENTS_PER_BATCH = 200
+# D8/D11: the counselor decides; `certified` is terminal.
+TRANSITIONS: dict[str, set[str]] = {
+    "enrolled": {"completed", "certified", "withdrawn"},
+    "completed": {"certified", "enrolled"},
+    "withdrawn": {"enrolled"},
+    "certified": set(),
+}
 
 
 async def _require_career_counselor(user: User = Depends(get_current_user)) -> User:
@@ -227,3 +254,119 @@ async def update_skill_batch(batch_id: UUID, payload: SkillBatchUpdate, user: Us
     counts = await db.scalar(select(func.count()).select_from(SchoolSkillEnrollment).where(SchoolSkillEnrollment.batch_id == batch.id, SchoolSkillEnrollment.status != "withdrawn"))
     school = await db.get(School, batch.school_id)
     return _batch_out(batch, school.name if school else "", counts or 0)
+
+
+# --- Enrolment and completion ---------------------------------------------------------------------------------------
+
+
+async def _notify_after_commit(db: AsyncSession, notices: list[tuple[UUID, str, str]]) -> None:
+    """Parent notices for writes that have ALREADY committed (a rolled-back write never tells anyone). A failure is logged
+    and swallowed: it must never undo or fail the write (SCH-007-AC04, spec §5.4). Notices carry the student's id, not the
+    row: a rollback after one failure expires every loaded object, so each student is re-read inside its own attempt."""
+    for student_id, title, body in notices:
+        try:
+            student = await db.get(SchoolStudent, student_id, populate_existing=True)
+            if student is not None:
+                await _notify_student_parents(db, student, title=title, body=body, action_url=f"/school/parent/children/{student_id}")
+            await db.commit()
+        except Exception:  # noqa: BLE001 -- the write has committed; see docstring
+            await db.rollback()
+            logger.warning("skill_notification_failed", extra={"extra_fields": {"student_id": str(student_id)}}, exc_info=True)
+
+
+def _status_notice(student: SchoolStudent, batch: SchoolSkillBatch, status: str) -> tuple[UUID, str, str]:
+    label = MODULE_LABEL[batch.module_type]
+    if status == "enrolled":
+        return student.id, f"{student.full_name} enrolled in {batch.title}", f'{student.full_name} has been enrolled in the {label} batch "{batch.title}".'
+    if status == "completed":
+        return student.id, f"{student.full_name} completed {batch.title}", f'{student.full_name} has completed the {label} batch "{batch.title}".'
+    return student.id, f"{student.full_name} certified in {batch.title}", f'{student.full_name} has been certified in the {label} batch "{batch.title}".'
+
+
+async def _enrolment_summary(db: AsyncSession, enrollment_id: UUID) -> tuple[dict, list[dict]]:
+    marks = (await db.scalars(select(SchoolSkillAttendance.present).where(SchoolSkillAttendance.enrollment_id == enrollment_id))).all()
+    scores = (await db.scalars(select(SchoolSkillScore).where(SchoolSkillScore.enrollment_id == enrollment_id))).all()
+    return (
+        {"present": sum(1 for present in marks if present), "marked": len(marks)},
+        [{"assessment_id": s.assessment_id, "score": float(s.score), "remarks": s.remarks} for s in scores],
+    )
+
+
+@router.post(f"{BASE}/skill-batches/{{batch_id}}/enrollments", status_code=201, response_model=list[SkillEnrollmentOut])
+async def enrol_students(batch_id: UUID, payload: SkillEnrollCreate, user: User = Depends(_require_career_counselor), db: AsyncSession = Depends(get_db)):
+    """All or nothing. The batch row is locked first, so the cap and the open check cannot be raced; the unique index
+    turns a concurrent duplicate into a 409 (spec §5.4)."""
+    batch = await _batch_in_portfolio(db, user, batch_id, lock="update")
+    if batch.status != "open":
+        raise HTTPException(409, BATCH_CLOSED)
+    students = [await _student_in_portfolio(db, user, student_id) for student_id in payload.school_student_ids]
+    if any(s.school_id != batch.school_id for s in students):
+        raise HTTPException(422, "A student in this request is at a different school than this batch")
+    existing = set((await db.scalars(select(SchoolSkillEnrollment.school_student_id).where(SchoolSkillEnrollment.batch_id == batch.id))).all())
+    if existing & {s.id for s in students}:
+        raise HTTPException(409, "A student in this request is already enrolled in this batch")
+    if len(existing) + len(students) > MAX_ENROLMENTS_PER_BATCH:
+        logger.warning("skill_batch_cap_reached", extra={"extra_fields": {"actor_id": str(user.id), "batch_id": str(batch.id)}})
+        raise HTTPException(409, f"A batch can hold at most {MAX_ENROLMENTS_PER_BATCH} students")
+    rows = [SchoolSkillEnrollment(batch_id=batch.id, school_student_id=s.id, status="enrolled", enrolled_by_user_id=user.id) for s in students]
+    db.add_all(rows)
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        await db.rollback()
+        logger.warning("skill_enrolment_conflict", extra={"extra_fields": {"actor_id": str(user.id), "batch_id": str(batch_id)}})
+        raise HTTPException(409, "A student in this request is already enrolled in this batch") from exc
+    _audit(db, user, "school.skill_enrollment_create", "school_skill_batch", batch.id, count=len(rows))
+    await db.commit()
+    for row in rows:
+        await db.refresh(row)
+    logger.info("skill_students_enrolled", extra={"extra_fields": {"actor_id": str(user.id), "batch_id": str(batch.id), "count": len(rows)}})
+    out = [enrollment_out(row, student, batch, {"present": 0, "marked": 0}, []) for row, student in zip(rows, students, strict=True)]
+    await _notify_after_commit(db, [_status_notice(s, batch, "enrolled") for s in students])
+    return out
+
+
+@router.patch(f"{BASE}/skill-enrollments/{{enrollment_id}}", response_model=SkillEnrollmentOut)
+async def update_enrolment_status(enrollment_id: UUID, payload: SkillEnrollmentUpdate, user: User = Depends(_require_career_counselor), db: AsyncSession = Depends(get_db)):
+    """The enrolment row is locked, so two concurrent "certify" clicks give one transition and one notice. Allowed on a
+    closed batch: certifying after the last session is the normal case."""
+    portfolio = await _portfolio_school_ids(db, user)
+    row = None
+    if portfolio:
+        row = await db.scalar(
+            select(SchoolSkillEnrollment)
+            .join(SchoolSkillBatch, SchoolSkillBatch.id == SchoolSkillEnrollment.batch_id)
+            .where(SchoolSkillEnrollment.id == enrollment_id, SchoolSkillBatch.school_id.in_(portfolio))
+            .with_for_update(of=SchoolSkillEnrollment)
+        )
+    if row is None:
+        raise HTTPException(404, ENROLMENT_NOT_FOUND)
+    batch = await db.get(SchoolSkillBatch, row.batch_id)
+    student = await db.get(SchoolStudent, row.school_student_id)
+    if batch is None or student is None:
+        raise HTTPException(404, ENROLMENT_NOT_FOUND)
+    if student.school_id != batch.school_id:
+        raise HTTPException(409, STUDENT_MOVED)
+    old, new = row.status, payload.status
+    if new == old:
+        # Nothing changed and nobody is told. Commit (not rollback) to release the row lock: a rollback would expire the
+        # loaded rows that the response is built from.
+        await db.commit()
+    else:
+        if new not in TRANSITIONS[old]:
+            raise HTTPException(409, f"An enrolment cannot change from {old} to {new}")
+        now = datetime.now(UTC)
+        row.status = new
+        if new == "completed" and row.completed_at is None:
+            row.completed_at = now
+        if new == "certified":
+            row.certified_at = now
+        _audit(db, user, "school.skill_enrollment_status_change", "school_skill_enrollment", row.id, from_status=old, to_status=new)
+        await db.commit()
+        await db.refresh(row)
+        logger.info("skill_enrolment_status_changed", extra={"extra_fields": {"actor_id": str(user.id), "enrollment_id": str(row.id), "from": old, "to": new}})
+    attendance, scores = await _enrolment_summary(db, row.id)
+    out = enrollment_out(row, student, batch, attendance, scores)
+    if new != old and new in {"completed", "certified"}:
+        await _notify_after_commit(db, [_status_notice(student, batch, new)])
+    return out
