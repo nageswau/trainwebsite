@@ -49,6 +49,18 @@ export default function AdminSchoolEditPanel() {
     event.preventDefault();
     if (!school) return;
     const form = new FormData(event.currentTarget);
+    // Diff against the loaded school, so only genuinely-changed fields are sent: an emptied
+    // field goes as an explicit `null` (the backend's `exclude_unset=True` clears it), and an
+    // untouched field is omitted entirely -- otherwise the `school.profile_update` audit row's
+    // `changed_fields` would list all 12 fields on every save (final-review finding, ENH-009).
+    const FIELDS = ["branch", "address", "contact_number", "email", "website", "grades_available", "board", "partnership_date", "mou_reference", "edusphere_bdm", "monthly_visit_schedule", "vice_principal_name"] as const;
+    const body: Record<string, string | null> = {};
+    for (const field of FIELDS) {
+      const raw = String(form.get(field) ?? "").trim();
+      const next = raw === "" ? null : raw;
+      const current = school[field] ?? null;
+      if (next !== current) body[field] = next;
+    }
     setBusy(true);
     setMessage(null);
     let response: Response;
@@ -56,20 +68,7 @@ export default function AdminSchoolEditPanel() {
       response = await fetch(`/api/v1/overseas-admin/schools/${school.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          branch: form.get("branch") || undefined,
-          address: form.get("address") || undefined,
-          contact_number: form.get("contact_number") || undefined,
-          email: form.get("email") || undefined,
-          website: form.get("website") || undefined,
-          grades_available: form.get("grades_available") || undefined,
-          board: form.get("board") || undefined,
-          partnership_date: form.get("partnership_date") || undefined,
-          mou_reference: form.get("mou_reference") || undefined,
-          edusphere_bdm: form.get("edusphere_bdm") || undefined,
-          monthly_visit_schedule: form.get("monthly_visit_schedule") || undefined,
-          vice_principal_name: form.get("vice_principal_name") || undefined,
-        }),
+        body: JSON.stringify(body),
       });
     } catch {
       setBusy(false);
