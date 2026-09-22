@@ -268,3 +268,9 @@ async def test_read_only_role_cannot_delete_an_entry(client, db_session):
     await login(client, ctx["principal"].email)
     response = await client.delete(f"/api/v1/school/students/{student.id}/portfolio/entries/{created['id']}")
     assert response.status_code == 403
+
+    # Verify entry actually survived the failed deletion attempt
+    await login(client, ctx["coordinator"].email)
+    portfolio = (await client.get(f"/api/v1/school/students/{student.id}/portfolio")).json()
+    assert len(portfolio["entries"]["project"]) == 1
+    assert portfolio["entries"]["project"][0]["id"] == created["id"]
