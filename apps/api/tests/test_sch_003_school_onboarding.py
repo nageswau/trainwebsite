@@ -9,8 +9,9 @@ no equivalent exists anywhere in the base codebase.
 import uuid
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
 
+from app.core.database import engine
 from app.core.security import hash_password
 from app.models import School, SchoolAccountInvite, User, UserRoleAssignment
 
@@ -498,6 +499,45 @@ async def test_lookup_school_by_code_404_when_not_found(client, db_session):
     await _login(client, admin.email)
     response = await client.get("/api/v1/overseas-admin/schools/lookup?code=ZZZZZZZZ")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_list_schools_query_count_does_not_scale_with_the_number_of_schools(client, db_session):
+    """ENH-009 final review: `GET /overseas-admin/schools` is unpaginated and used to call
+    the 5-query `_school_out()` once per row, so N schools meant 5N queries. Proof of the
+    batched fix -- the statement count for one list call is unchanged after 3 more schools
+    exist (a linear implementation would have grown it by 15)."""
+    admin = await _create_overseas_admin(db_session)
+    await _login(client, admin.email)
+
+    statements: list[str] = []
+
+    def _record(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    async def _statements_for_one_list_call() -> int:
+        statements.clear()
+        event.listen(engine.sync_engine, "before_cursor_execute", _record)
+        try:
+            response = await client.get("/api/v1/overseas-admin/schools")
+        finally:
+            event.remove(engine.sync_engine, "before_cursor_execute", _record)
+        assert response.status_code == 200
+        return len(statements)
+
+    before_count = await _statements_for_one_list_call()
+    schools_before = len((await client.get("/api/v1/overseas-admin/schools")).json())
+
+    for _ in range(3):
+        await _create_school(client, db_session)
+    await _login(client, admin.email)
+
+    after_count = await _statements_for_one_list_call()
+    schools_after = len((await client.get("/api/v1/overseas-admin/schools")).json())
+
+    assert schools_after == schools_before + 3  # the list really did grow
+    assert after_count == before_count  # ... but the query count did not
+    assert before_count < 10, statements  # and it is a small constant, not O(N)
 
 
 @pytest.mark.asyncio

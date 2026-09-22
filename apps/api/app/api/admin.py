@@ -13,7 +13,7 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code, uuid_reference
-from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, University, User, UserRoleAssignment
+from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, SchoolStaffAssignment, SchoolStudent, University, User, UserRoleAssignment
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.storage import storage
@@ -67,8 +67,6 @@ async def _school_out(db: AsyncSession, school: "School") -> "SchoolOut":
     including the fields that are deliberately computed rather than stored -- student/teacher
     counts, and the Principal/Coordinator/Career Counsellor names, all of which are derived from
     role assignments rather than duplicated onto `School` itself (see the design doc §2)."""
-    from app.models import SchoolStaffAssignment, SchoolStudent
-
     student_count = await db.scalar(
         select(func.count()).select_from(SchoolStudent).where(SchoolStudent.school_id == school.id)
     )
@@ -103,6 +101,70 @@ async def _school_out(db: AsyncSession, school: "School") -> "SchoolOut":
         career_counsellor_names=[c.full_name for c in counsellor_rows],
         created_at=school.created_at,
     )
+
+
+async def _school_outs_batch(db: AsyncSession, schools: list["School"]) -> list["SchoolOut"]:
+    """Same shape as _school_out(), batched across many schools in O(1) queries instead of
+    O(N) -- used by list_schools(), where N is unbounded (final-review finding, ENH-009)."""
+    if not schools:
+        return []
+    ids = [s.id for s in schools]
+    str_ids = [str(i) for i in ids]
+
+    student_counts = dict((await db.execute(
+        select(SchoolStudent.school_id, func.count()).where(SchoolStudent.school_id.in_(ids)).group_by(SchoolStudent.school_id)
+    )).all())
+
+    # Grouped by the *label*, not by a second copy of the JSON-path expression: re-rendering it
+    # emits a different bind parameter for the `'school_id'` key, which PostgreSQL then treats as
+    # a distinct expression ("column users.profile must appear in the GROUP BY clause").
+    school_key = User.profile["school_id"].as_string().label("school_key")
+    teacher_rows = (await db.execute(
+        select(school_key, func.count()).where(
+            User.role == "school_teacher", User.profile["school_id"].as_string().in_(str_ids)
+        ).group_by(school_key)
+    )).all()
+    teacher_counts = {row[0]: row[1] for row in teacher_rows}
+
+    role_rows = (await db.scalars(
+        select(User).where(User.role.in_(["school_principal", "school_coordinator"]), User.profile["school_id"].as_string().in_(str_ids))
+    )).all()
+    principal_by_school: dict[str, str] = {}
+    coordinator_by_school: dict[str, str] = {}
+    for u in role_rows:
+        sid = (u.profile or {}).get("school_id")
+        if u.role == "school_principal":
+            principal_by_school[sid] = u.full_name
+        elif u.role == "school_coordinator":
+            coordinator_by_school[sid] = u.full_name
+
+    counsellor_rows = (await db.execute(
+        select(SchoolStaffAssignment.school_id, User)
+        .join(User, User.id == SchoolStaffAssignment.user_id)
+        .where(SchoolStaffAssignment.school_id.in_(ids), SchoolStaffAssignment.role == "career_counselor")
+    )).all()
+    counsellors_by_school: dict = {}
+    for sid, u in counsellor_rows:
+        counsellors_by_school.setdefault(sid, []).append(u.full_name)
+
+    results = []
+    for school in schools:
+        sid_str = str(school.id)
+        results.append(SchoolOut(
+            id=school.id, name=school.name, city=school.city, state=school.state,
+            tier=school.tier, tier_valid_until=school.tier_valid_until,
+            school_code=school.school_code, branch=school.branch, address=school.address,
+            contact_number=school.contact_number, email=school.email, website=school.website,
+            grades_available=school.grades_available, board=school.board,
+            partnership_date=school.partnership_date, mou_reference=school.mou_reference,
+            edusphere_bdm=school.edusphere_bdm, monthly_visit_schedule=school.monthly_visit_schedule,
+            vice_principal_name=school.vice_principal_name,
+            student_count=student_counts.get(school.id, 0), teacher_count=teacher_counts.get(sid_str, 0),
+            principal_name=principal_by_school.get(sid_str), school_coordinator_name=coordinator_by_school.get(sid_str),
+            career_counsellor_names=counsellors_by_school.get(school.id, []),
+            created_at=school.created_at,
+        ))
+    return results
 
 
 async def _flush_unique_email(db: AsyncSession) -> None:
@@ -1096,7 +1158,7 @@ async def list_schools(user: User = Depends(get_current_user), db: AsyncSession 
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
     rows = (await db.scalars(select(School).order_by(School.created_at.desc()))).all()
-    return [await _school_out(db, s) for s in rows]
+    return await _school_outs_batch(db, rows)
 
 
 @agents_router.patch("/schools/{school_id}")
