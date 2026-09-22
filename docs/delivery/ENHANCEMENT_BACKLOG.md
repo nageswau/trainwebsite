@@ -708,7 +708,12 @@ to that role (e.g. a teacher's assigned-subject list is read-only/admin-set but 
 are self-editable; a parent's own contact details are self-editable but their linked-children list is
 not, since that's roster-driven per ENH-008).
 
-**User roles affected.** All eight School-domain roles listed above.
+**User roles affected.** The 7 School-domain roles with real RBAC grants (`school_coordinator`,
+`school_principal`, `school_teacher`, `school_parent`, `academic_team`, `career_counselor`,
+`psychometric_team`). **Correction, post-audit:** the eighth role named above, `school_partnership_manager`,
+has no RBAC grants and is explicitly deferred (`RBAC_MATRIX.md:239-241`, `PRD_OPEN_ITEMS.md` item 75) — it
+cannot be given a working profile screen and is out of this item's scope; see
+`docs/quality/ENH-007_ROLE_AUDIT.md`.
 
 **Frontend impact.** Audit existing portal shells per role; build missing profile screens.
 
