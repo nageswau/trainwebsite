@@ -40,3 +40,15 @@ def test_school_create_validates_the_new_contact_email_format():
             name="X", coordinator_full_name="Y", coordinator_email="y@example.local",
             email="not-an-email",
         )
+
+
+def test_school_create_accepts_local_domain_email():
+    """ENH-009 fix: .local addresses (used throughout the test suite and demo data)
+    must be accepted for the School.email field, not rejected by EmailStr."""
+    school = SchoolCreate(
+        name="X",
+        coordinator_full_name="Y",
+        coordinator_email="y@example.local",
+        email="school@example.local",
+    )
+    assert school.email == "school@example.local"

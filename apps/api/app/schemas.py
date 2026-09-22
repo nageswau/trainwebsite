@@ -758,7 +758,9 @@ class SchoolCreate(BaseModel):
     branch: str | None = Field(default=None, max_length=200)
     address: str | None = Field(default=None, max_length=500)
     contact_number: str | None = Field(default=None, max_length=30)
-    email: EmailStr | None = None
+    # Demo/seed accounts intentionally use the reserved `.local` domain, which
+    # EmailStr rejects even though these addresses are valid application accounts.
+    email: str | None = Field(default=None, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=320)
     website: str | None = Field(default=None, max_length=255)
     grades_available: str | None = Field(default=None, max_length=200)
     board: SchoolBoard | None = None
@@ -776,7 +778,9 @@ class SchoolUpdate(BaseModel):
     branch: str | None = Field(default=None, max_length=200)
     address: str | None = Field(default=None, max_length=500)
     contact_number: str | None = Field(default=None, max_length=30)
-    email: EmailStr | None = None
+    # Demo/seed accounts intentionally use the reserved `.local` domain, which
+    # EmailStr rejects even though these addresses are valid application accounts.
+    email: str | None = Field(default=None, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=320)
     website: str | None = Field(default=None, max_length=255)
     grades_available: str | None = Field(default=None, max_length=200)
     board: SchoolBoard | None = None
