@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from enh005_helpers import login, mk_result, mk_school, mk_staff, mk_student, move_student_directly
+from enh005_helpers import login, mk_result, mk_school, mk_staff, mk_student, mk_user, move_student_directly
 from sqlalchemy import select
 
 from app.models import SchoolAccountInvite, SchoolParentLink, SchoolStudent, User
@@ -113,6 +113,29 @@ async def test_link_parent_accepts_a_parent_already_linked_at_another_school(cli
     assert response.status_code == 201, response.text
     link = await db_session.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == b["parent"].id, SchoolParentLink.school_student_id == a["students"][0].id))
     assert link is not None
+
+
+@pytest.mark.asyncio
+async def test_link_parent_rejects_an_unknown_parent_email(client, db_session):
+    a = await mk_school(db_session, label="A")
+    await login(client, a["coordinator"].email)
+
+    response = await client.post(f"/api/v1/school/students/{a['students'][0].id}/parents", json={"parent_email": "never-used-email@example.com"})
+
+    assert response.status_code == 422, response.text
+    assert "parent_email must belong to an existing Parent account" in response.text
+
+
+@pytest.mark.asyncio
+async def test_link_parent_rejects_a_parent_email_belonging_to_a_non_parent_account(client, db_session):
+    a = await mk_school(db_session, label="A")
+    await login(client, a["coordinator"].email)
+    teacher = a["teacher"]
+
+    response = await client.post(f"/api/v1/school/students/{a['students'][0].id}/parents", json={"parent_email": teacher.email})
+
+    assert response.status_code == 422, response.text
+    assert "belongs to an existing account that is not a Parent" in response.text
 
 
 @pytest.mark.asyncio
