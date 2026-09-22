@@ -776,12 +776,19 @@ mobile menu at 375px confirmed "My profile" front-loaded there too, no overflow;
 submission produced a real inline 422 error with nothing saved server-side (confirmed via the API
 directly); a simulated offline network showed the "Network error. Try again." message with no false
 success; a signed-out visit showed "Sign in required" with working sign-in links. No defects found in any
-of the 7 roles or the 4 cross-cutting states. **NOT YET COMPLETE:** pending an independent Codex review,
-per `docs/superpowers/plans/2026-09-22-enh-007-profile-self-service.md`'s "After all tasks" section.
-Evidence so far: `apps/api/tests/test_enh_007_profile_self_service.py` (16 passed), backend regression suite
-passing, `apps/web/tests/components/{ProfileForm,AccountProfilePage,PortalShell}.test.tsx` (all passing),
-`apps/web/tests/e2e/enh-007-profile-self-service.spec.ts` (3 passed against a live stack), `tsc --noEmit`
-and `eslint` clean, no migration (`alembic check` confirms no drift).
+of the 7 roles or the 4 cross-cutting states. **Independent Codex review run and dispositioned, 2026-09-22**
+(`codex review --base main`): one real finding (P2) -- a padded single-character `full_name` (e.g. `"A "`)
+passed raw `min_length=2` and the blank-check, then saved post-trim as one character, bypassing AC-04.
+Fixed test-first (3 parametrized RED cases, reproduced live against the API before the fix), full ENH-007
+suite and the targeted regression scope re-run clean after. **COMPLETE for ENH-007's scope, 2026-09-22.**
+Final evidence: `apps/api/tests/test_enh_007_profile_self_service.py` (23 passed), full backend suite (1043
+passed / 14 failed, the 14 being the same pre-existing Razorpay/Zoho credential-gated failures recorded
+against ENH-005/006, none in ENH-007), `apps/web/tests/components/{ProfileForm,AccountProfilePage,
+PortalShell}.test.tsx` plus the full frontend suite (351 passed, 37 files), `apps/web/tests/e2e/
+enh-007-profile-self-service.spec.ts` + regression scope (14 passed), `tsc --noEmit` and `eslint` (0
+errors/warnings), `next build` (exit 0, `/account/profile` present in the route table), no migration
+(`alembic check` confirms no drift), no disabled tests/debugging code/exposed secrets, 16 files changed,
+all ENH-007-scoped. Full detail: `docs/quality/RTM.md` `ENH-007` row.
 
 ---
 
