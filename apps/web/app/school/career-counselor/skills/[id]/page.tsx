@@ -39,7 +39,7 @@ export default async function SchoolSkillBatchPage({ params }: { params: Promise
     <PortalShell nav={SCHOOL_NAV["career-counselor"]} roleLabel="Career Counselor" userName={user.full_name}>
       {/* `minmax(0, 1fr)`: a grid item's default `min-width: auto` let the roster table's 650px min-width widen the whole page on a
           phone (browser QA-01); with it the card stays at screen width and the table scrolls inside `.table-wrap`. */}
-      <div className="portal-content" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 20 }}>
+      <div className="portal-content skills-page" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 20 }}>
         <Link href="/school/career-counselor/skills">← All skills batches</Link>
         <SchoolSkillBatchHeader batch={batch} />
         <SchoolSkillEnrolments batch={batch} students={students.filter((s) => s.school_id === batch.school.id)} />

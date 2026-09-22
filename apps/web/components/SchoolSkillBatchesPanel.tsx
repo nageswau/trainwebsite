@@ -71,7 +71,7 @@ export default function SchoolSkillBatchesPanel({ initial, schools }: { initial:
   const filtered = module !== "" || status !== "";
   const skeleton = loading === "filter";
   return (
-    <div className="portal-content">
+    <div className="portal-content skills-page">
       <div className="card">
         <h1>Skills batches</h1>
         <p className="muted">Soft Skills and Digital Skills batches at the schools you support.</p>

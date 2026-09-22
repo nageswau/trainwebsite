@@ -96,6 +96,11 @@ test("career counselor runs a Soft Skills batch; the parent sees Skills progress
   // QA-01: on a phone the batch page must fit the screen; only the roster table scrolls, inside its own container.
   await page.setViewportSize({ width: 390, height: 844 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  // QA-11: every button on the page is a comfortable touch target on a phone.
+  const shortButtons = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>(".portal-content button")].filter((b) => b.offsetParent !== null && b.getBoundingClientRect().height < 44).map((b) => b.textContent),
+  );
+  expect(shortButtons).toEqual([]);
   await page.setViewportSize({ width: 1280, height: 800 });
 
   // Parent: accepts the invite, sees the Skills section and the timeline events.

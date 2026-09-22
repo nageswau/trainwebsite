@@ -47,3 +47,5 @@ main:focus{outline:none}
 @keyframes skeleton-pulse{50%{opacity:.5}}
 @media(prefers-reduced-motion:reduce){.skeleton-line{animation:none}}
 @media(max-width:640px){.link-list .meta{width:100%}.link-list .btn{width:100%;min-height:44px}}
+/* ENH-011 browser QA-11: comfortable touch targets on the skills pages on a phone (scoped, so no other screen changes). */
+@media(max-width:640px){.skills-page .btn{min-height:44px}}
