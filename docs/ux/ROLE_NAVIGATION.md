@@ -214,6 +214,8 @@ distinct from the existing Trainer/"Teacher" role above)*
 
 - `SCR-SCH-017` — /school/career-counselor (Dashboard: assigned students) — Assigned student list.
 - `SCR-SCH-018` — /school/career-counselor/students/[id]/records — Career guidance/counselling records.
+- `SCR-SCH-033` — /school/career-counselor/skills — Soft Skills / Digital Skills batches across the portfolio, and batch creation (`ENH-011`, added 2026-09-22).
+- `SCR-SCH-034` — /school/career-counselor/skills/[id] — One batch: enrolments, attendance, assessments, certification (`ENH-011`, added 2026-09-22).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Psychometric Team *(net-new, added 2026-09-14, `DEC-ROLE-006`)*

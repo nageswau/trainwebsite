@@ -3,6 +3,7 @@ import { ChildStatusRow, childrenSpanSchools, formatDate, loadChildOverview, typ
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
+import { accessUnavailable } from "@/components/AccessUnavailable";
 
 type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
 type NotificationItem = { id: string; title: string; body: string; read: boolean; action_url: string | null; created_at: string };
@@ -21,15 +22,7 @@ export default async function SchoolParentDashboardPage() {
     [user, children] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<Student[]>("/api/v1/school/students")]);
     notifications = await serverApi<NotificationItem[]>("/api/v1/workflows/notifications").catch(() => []);
   } catch (e) {
-    return (
-      <div className="section">
-        <div className="container card">
-          <h1>Access unavailable</h1>
-          <p>{e instanceof Error ? e.message : "Unable to load this workspace"}</p>
-          <a className="btn" href="/overseas/login">Return to login</a>
-        </div>
-      </div>
-    );
+    return accessUnavailable(e);
   }
   const overviews = await Promise.all(children.map((c) => loadChildOverview(c.id).catch(() => null)));
   const multiSchool = childrenSpanSchools(overviews); // ENH-008 Task 8: only then are cards grouped under a school heading (not a per-card name)

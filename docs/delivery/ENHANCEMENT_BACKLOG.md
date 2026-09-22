@@ -1277,6 +1277,29 @@ batches simultaneously — must not conflict.
 **Regression risks.** Existing SCH-009 Foreign Language/IELTS/SAT trackers must not break if the
 underlying model is generalized.
 
+**Status (2026-09-22) — implemented, NOT complete.** The audit found this entry's premise does not hold:
+SCH-009 has no batch, enrolment or per-session attendance (two per-student tables), and there is no "IELTS
+batch" to copy. The user therefore decided a new school-scoped batch model, left SCH-009 unchanged, and chose
+`career_counselor` as the delivering role (`DEC-SCOPE-026`; design
+`docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md`; plan
+`docs/superpowers/plans/2026-09-22-enh-011-skills-tracker.md`). Implemented test-first on branch
+`feature/enh-011-skills-tracker-generalization`: migration `0037_school_skills`, `app/api/school_skills.py`, the
+counselor Skills pages, the Parent Portal Skills section, timeline categories and entitlement usage.
+
+**Verified (2026-09-22):**
+- **Browser QA:** 14 findings, all fixed. QA-14 was fixed app-wide on the owner's instruction. Record: `docs/quality/ENH-011_BROWSER_QA_2026-09-22.md`.
+- **Backend:** 1119 passed / 14 failed. The 14 are the provider-credential tests that also fail on `main`.
+- **Web:** 43 files / 405 tests.
+- **Static checks:** `tsc` clean; lint 0 errors; `ruff check` 33 and `mypy` 154, both equal to `main`.
+- **Migration:** `0037` upgrade, downgrade and `alembic check` pass.
+- **Full Playwright:** 249/259 on a reused database. On a fresh one, the remaining failures are a flaky pair and `stu-007`, which also fails on `main` (a spec/API mismatch).
+
+**Confirmed by the owner, 2026-09-22:** D10–D12 (one session per batch per day; `certified` is terminal; the route skeletons), and the two QA observations kept as designed (`DEC-SCOPE-026` D13).
+
+**Not done:**
+- The independent Codex review was waived by the owner (2026-09-22).
+- Branch pushed, no pull request opened yet; not merged.
+
 **Complexity:** Medium. **Risk:** Low.
 
 ---
