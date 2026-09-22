@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from app.models import PortfolioEntry, PortfolioProfile
 from app.schemas import PortfolioEntryCreate, PORTFOLIO_SECTIONS
-from tests.enh005_helpers import mk_school, mk_staff
+from tests.enh005_helpers import mk_school
 
 
 @pytest.mark.asyncio
@@ -80,6 +80,41 @@ def test_personal_statement_rejects_payload_over_length_cap():
         PersonalStatementUpdate(personal_statement="a" * 4001)
 
 
+# --- Free-text validation fix: `description`/`personal_statement` must follow the `clean_free_text`
+# house precedent (permits \n/\t, blocks bidi-override characters), not the single-line
+# `_no_control_characters` rule that `title`/`organization` correctly keep. Before the fix, a `\n`
+# in either field was rejected with a 422 -- impossible to ever store a line break in a multi-line
+# textarea / `white-space: pre-wrap` field. ---
+
+
+def test_portfolio_entry_create_accepts_description_with_a_newline():
+    entry = PortfolioEntryCreate(section="project", title="X", description="Line one.\nLine two.")
+    assert entry.description == "Line one.\nLine two."
+
+
+def test_portfolio_entry_create_rejects_description_with_a_bidi_override_character():
+    with pytest.raises(ValidationError):
+        PortfolioEntryCreate(section="project", title="X", description="Normal text ‮reversed text")
+
+
+def test_portfolio_entry_create_still_rejects_newline_in_title():
+    # Regression: title/organization stay single-line -- only description's rule changed.
+    with pytest.raises(ValidationError):
+        PortfolioEntryCreate(section="project", title="Line one\nLine two")
+
+
+def test_personal_statement_accepts_a_value_with_newlines():
+    from app.schemas import PersonalStatementUpdate
+    stmt = PersonalStatementUpdate(personal_statement="First paragraph.\n\nSecond paragraph.")
+    assert stmt.personal_statement == "First paragraph.\n\nSecond paragraph."
+
+
+def test_personal_statement_rejects_a_bidi_override_character():
+    from app.schemas import PersonalStatementUpdate
+    with pytest.raises(ValidationError):
+        PersonalStatementUpdate(personal_statement="Normal ‮reversed")
+
+
 async def _add_academic_team(db_session, admin, school):
     from tests.enh005_helpers import mk_staff
     return await mk_staff(db_session, school, admin, role="academic_team")
@@ -132,6 +167,52 @@ async def test_academic_team_reads_via_their_portfolio_scope(client, db_session)
     assert response.json()["can_edit"] is True
 
 
+async def _add_career_counselor(db_session, admin, school):
+    from tests.enh005_helpers import mk_staff
+    return await mk_staff(db_session, school, admin, role="career_counselor")
+
+
+async def _add_psychometric_team(db_session, admin, school):
+    from tests.enh005_helpers import mk_staff
+    return await mk_staff(db_session, school, admin, role="psychometric_team")
+
+
+@pytest.mark.asyncio
+async def test_career_counselor_reads_via_their_portfolio_scope(client, db_session):
+    # AC-04 names 7 read-capable roles; career_counselor had no coverage at all before this test.
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-GET-CareerCounselor")
+    member = await _add_career_counselor(db_session, ctx["admin"], ctx["school"])
+    await login(client, member.email)
+    response = await client.get(f"/api/v1/school/students/{ctx['students'][0].id}/portfolio")
+    assert response.status_code == 200
+    assert response.json()["can_edit"] is False
+
+
+@pytest.mark.asyncio
+async def test_psychometric_team_reads_via_their_portfolio_scope(client, db_session):
+    # AC-04's other previously-uncovered read-capable role.
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-GET-Psychometric")
+    member = await _add_psychometric_team(db_session, ctx["admin"], ctx["school"])
+    await login(client, member.email)
+    response = await client.get(f"/api/v1/school/students/{ctx['students'][0].id}/portfolio")
+    assert response.status_code == 200
+    assert response.json()["can_edit"] is False
+
+
+@pytest.mark.asyncio
+async def test_parent_reads_their_own_childs_portfolio(client, db_session):
+    # AC-04 also names school_parent as a reader; only can_edit=True/False coverage existed for
+    # coordinator/principal/academic_team before this test -- no API-level parent-read-200 test.
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-GET-Parent")
+    await login(client, ctx["parent"].email)
+    response = await client.get(f"/api/v1/school/students/{ctx['students'][0].id}/portfolio")
+    assert response.status_code == 200
+    assert response.json()["can_edit"] is False
+
+
 @pytest.mark.asyncio
 async def test_coordinator_creates_an_entry(client, db_session):
     from tests.enh005_helpers import login, mk_school
@@ -156,6 +237,39 @@ async def test_teacher_outside_assignment_cannot_create_an_entry(client, db_sess
     unassigned_student = ctx["students"][1]  # only students[0] is assigned to the teacher
     await login(client, ctx["teacher"].email)
     response = await client.post(f"/api/v1/school/students/{unassigned_student.id}/portfolio/entries", json={"section": "project", "title": "X"})
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_assigned_teacher_creates_an_entry(client, db_session):
+    # Positive counterpart to the assignment-scope 403 above -- an assigned teacher must actually be
+    # able to write, not just be correctly denied when unassigned.
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-POST-Teacher-Assigned", with_teacher=True)
+    assigned_student = ctx["students"][0]  # mk_school assigns students[0] to the teacher
+    await login(client, ctx["teacher"].email)
+    response = await client.post(f"/api/v1/school/students/{assigned_student.id}/portfolio/entries", json={"section": "project", "title": "Assigned teacher entry"})
+    assert response.status_code == 201, response.text
+
+
+@pytest.mark.asyncio
+async def test_academic_team_creates_an_entry(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-POST-AcademicTeam")
+    member = await _add_academic_team(db_session, ctx["admin"], ctx["school"])
+    await login(client, member.email)
+    response = await client.post(f"/api/v1/school/students/{ctx['students'][0].id}/portfolio/entries", json={"section": "award", "title": "Academic team entry"})
+    assert response.status_code == 201, response.text
+
+
+@pytest.mark.asyncio
+async def test_academic_team_outside_portfolio_gets_403(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx_a = await mk_school(db_session, label="ENH012-POST-AcademicTeam-A")
+    ctx_b = await mk_school(db_session, label="ENH012-POST-AcademicTeam-B")
+    member = await _add_academic_team(db_session, ctx_a["admin"], ctx_a["school"])  # only in A's portfolio
+    await login(client, member.email)
+    response = await client.post(f"/api/v1/school/students/{ctx_b['students'][0].id}/portfolio/entries", json={"section": "award", "title": "Should be denied"})
     assert response.status_code == 403
 
 
@@ -194,6 +308,45 @@ async def test_coordinator_updates_their_own_entry(client, db_session):
     response = await client.patch(f"/api/v1/school/students/{student.id}/portfolio/entries/{created['id']}", json={"title": "Final title"})
     assert response.status_code == 200, response.text
     assert response.json()["title"] == "Final title"
+
+
+@pytest.mark.asyncio
+async def test_patching_an_entry_clears_organization_with_explicit_null(client, db_session):
+    # Fix for PATCH silently discarding "clear this field" intent: an explicit `{"organization": null}`
+    # must actually clear a previously-set value, not be treated the same as "field omitted"
+    # (the previous `if value is not None` merge logic could never tell those two apart).
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-PATCH-Clear")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    created = (await client.post(f"/api/v1/school/students/{student.id}/portfolio/entries", json={"section": "project", "title": "Has org", "organization": "Some Org"})).json()
+    assert created["organization"] == "Some Org"
+
+    response = await client.patch(f"/api/v1/school/students/{student.id}/portfolio/entries/{created['id']}", json={"organization": None})
+    assert response.status_code == 200, response.text
+    assert response.json()["organization"] is None
+
+    portfolio = (await client.get(f"/api/v1/school/students/{student.id}/portfolio")).json()
+    entry = portfolio["entries"]["project"][0]
+    assert entry["organization"] is None
+
+
+@pytest.mark.asyncio
+async def test_patching_only_title_leaves_other_fields_untouched(client, db_session):
+    # Regression check on the clear-field fix: a field genuinely omitted from the payload must still
+    # be left alone, not accidentally cleared now that omitted-vs-explicit-null is distinguished.
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-PATCH-Untouched")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    created = (await client.post(f"/api/v1/school/students/{student.id}/portfolio/entries", json={"section": "project", "title": "Draft title", "organization": "Keep me", "description": "Keep me too"})).json()
+
+    response = await client.patch(f"/api/v1/school/students/{student.id}/portfolio/entries/{created['id']}", json={"title": "Final title"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["title"] == "Final title"
+    assert body["organization"] == "Keep me"
+    assert body["description"] == "Keep me too"
 
 
 @pytest.mark.asyncio
@@ -255,6 +408,44 @@ async def test_coordinator_deletes_their_own_entry(client, db_session):
 
     portfolio = (await client.get(f"/api/v1/school/students/{student.id}/portfolio")).json()
     assert portfolio["entries"]["project"] == []
+
+
+@pytest.mark.asyncio
+async def test_deleting_a_nonexistent_entry_is_404(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-DELETE-404")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    response = await client.delete(f"/api/v1/school/students/{student.id}/portfolio/entries/{uuid.uuid4()}")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_deleting_an_already_deleted_entry_is_404(client, db_session):
+    from tests.enh005_helpers import login, mk_school
+    ctx = await mk_school(db_session, label="ENH012-DELETE-Twice")
+    student = ctx["students"][0]
+    await login(client, ctx["coordinator"].email)
+    created = (await client.post(f"/api/v1/school/students/{student.id}/portfolio/entries", json={"section": "project", "title": "Delete me"})).json()
+    first = await client.delete(f"/api/v1/school/students/{student.id}/portfolio/entries/{created['id']}")
+    assert first.status_code == 204
+    second = await client.delete(f"/api/v1/school/students/{student.id}/portfolio/entries/{created['id']}")
+    assert second.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_deleting_an_entry_that_belongs_to_a_different_student_is_404(client, db_session):
+    # DELETE had no ownership-mismatch (IDOR) test even though PATCH did -- this is the one
+    # destructive endpoint in this feature, so the gap mattered most here.
+    from tests.enh005_helpers import login, mk_school
+    ctx_a = await mk_school(db_session, label="ENH012-DELETE-A")
+    ctx_b = await mk_school(db_session, label="ENH012-DELETE-B")
+    await login(client, ctx_a["coordinator"].email)
+    created = (await client.post(f"/api/v1/school/students/{ctx_a['students'][0].id}/portfolio/entries", json={"section": "project", "title": "A's entry"})).json()
+
+    await login(client, ctx_b["coordinator"].email)
+    response = await client.delete(f"/api/v1/school/students/{ctx_b['students'][0].id}/portfolio/entries/{created['id']}")
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

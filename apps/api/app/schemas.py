@@ -754,9 +754,28 @@ PORTFOLIO_SECTIONS: frozenset[str] = frozenset({
 def _no_control_characters(value: str | None) -> str | None:
     # Same rule as PromotionItem.grade_or_class (line ~501 above): a NUL byte cannot be stored in
     # PostgreSQL text and would surface as a 500; other control characters have no place in text that
-    # is later rendered.
+    # is later rendered. Kept for genuinely single-line fields only (title/organization) -- a newline
+    # in either would be a data problem, not a feature.
     if value is not None and any(unicodedata.category(ch) == "Cc" for ch in value):
         raise ValueError("must not contain control characters")
+    return value
+
+
+def _clean_multiline_text(value: str | None) -> str | None:
+    """Same bidi-override/control-character rule as `clean_free_text` (line ~591), reused here rather
+    than duplicated ad hoc: it is the house precedent for any field that renders with line breaks
+    (a <textarea> / `white-space: pre-wrap`), unlike the single-line `_no_control_characters` above.
+    `description` and `personal_statement` both fit that shape -- pressing Enter in either must not be
+    a 422. Length is enforced by each field's own `Field(max_length=...)`, not duplicated here (this
+    lets `description` (2000) and `personal_statement` (4000) share one function with different caps)."""
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    for ch in value:
+        if ch in _BIDI_CONTROLS or (unicodedata.category(ch) == "Cc" and ch not in "\n\t"):
+            raise ValueError("must not contain control or bidirectional-override characters")
     return value
 
 
@@ -776,10 +795,15 @@ class PortfolioEntryCreate(BaseModel):
             raise ValueError(f"section must be one of {sorted(PORTFOLIO_SECTIONS)}")
         return value
 
-    @field_validator("title", "description", "organization")
+    @field_validator("title", "organization")
     @classmethod
     def _clean_text(cls, value: str | None) -> str | None:
         return _no_control_characters(value)
+
+    @field_validator("description")
+    @classmethod
+    def _clean_description(cls, value: str | None) -> str | None:
+        return _clean_multiline_text(value)
 
     @model_validator(mode="after")
     def _date_range_is_ordered(self):
@@ -796,10 +820,15 @@ class PortfolioEntryUpdate(BaseModel):
     date_from: date | None = None
     date_to: date | None = None
 
-    @field_validator("title", "description", "organization")
+    @field_validator("title", "organization")
     @classmethod
     def _clean_text(cls, value: str | None) -> str | None:
         return _no_control_characters(value)
+
+    @field_validator("description")
+    @classmethod
+    def _clean_description(cls, value: str | None) -> str | None:
+        return _clean_multiline_text(value)
 
     @model_validator(mode="after")
     def _date_range_is_ordered(self):
@@ -830,7 +859,7 @@ class PersonalStatementUpdate(BaseModel):
     @field_validator("personal_statement")
     @classmethod
     def _clean_text(cls, value: str | None) -> str | None:
-        return _no_control_characters(value)
+        return _clean_multiline_text(value)
 
 
 class PersonalStatementOut(BaseModel):

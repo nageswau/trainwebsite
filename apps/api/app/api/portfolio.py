@@ -6,7 +6,6 @@ deliberately: schools.py already has an unrelated existing meaning for "portfoli
 assigned-schools caseload). This module only imports and calls those, never modifies them.
 """
 
-from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -97,7 +96,11 @@ async def get_portfolio(student_id: UUID, user: User = Depends(get_current_user)
     entries_by_section: dict[str, list[dict]] = {section: [] for section in sorted(PORTFOLIO_SECTIONS)}
     rows = (await db.scalars(select(PortfolioEntry).where(PortfolioEntry.school_student_id == student.id).order_by(PortfolioEntry.date_from.desc().nullslast(), PortfolioEntry.created_at.desc()))).all()
     for row in rows:
-        entries_by_section[row.section].append(_entry_out(row))
+        # Guard against a stored `section` value that isn't in PORTFOLIO_SECTIONS today (forward/
+        # backward compatibility: a future deploy could add a section and then roll back) -- skip
+        # rather than KeyError -> uncaught 500.
+        if row.section in entries_by_section:
+            entries_by_section[row.section].append(_entry_out(row))
 
     academic = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id == student.id, SchoolAcademicResult.status == "published"))).all()
     psychometric = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id == student.id))).all()
@@ -160,10 +163,15 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
     student = await _load_portfolio_student(db, user, student_id)
     _require_portfolio_write(user, student)  # role/scope checked before the entry lookup below (spec §6)
     entry = await _load_portfolio_entry(db, student.id, entry_id)
+    # `model_fields_set` distinguishes "field explicitly present in the request payload" (apply it, even
+    # when the value is None -- that's the clear-the-field case) from "field omitted" (leave the entry's
+    # existing value untouched). A plain `if value is not None` check (the previous logic) could never
+    # tell those two apart, so there was no way to ever clear description/organization/date_from/date_to
+    # via PATCH -- an explicit `null` looked identical to "didn't send this field".
+    fields_set = payload.model_fields_set
     for field in ("title", "description", "organization", "date_from", "date_to"):
-        value = getattr(payload, field)
-        if value is not None:
-            setattr(entry, field, value)
+        if field in fields_set:
+            setattr(entry, field, getattr(payload, field))
     # Date-range merge-validation fix: after merging payload fields onto entry, validate the merged result
     # if both date_from and date_to are now set and date_to < date_from, reject the update
     if entry.date_from is not None and entry.date_to is not None and entry.date_to < entry.date_from:
@@ -205,6 +213,11 @@ async def update_personal_statement(student_id: UUID, payload: PersonalStatement
             await db.flush()
     except IntegrityError:
         row = await db.scalar(select(PortfolioProfile).where(PortfolioProfile.school_student_id == student.id))
+        if row is None:
+            # The IntegrityError wasn't the expected unique-constraint collision on
+            # school_student_id (a concurrent first insert) -- re-raise rather than fall through to an
+            # AttributeError on `row.personal_statement` below.
+            raise
         row.personal_statement = statement
         row.updated_by_user_id = user.id
         await db.flush()
