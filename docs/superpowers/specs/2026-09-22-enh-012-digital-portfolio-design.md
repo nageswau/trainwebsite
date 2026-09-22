@@ -107,7 +107,7 @@ than duplicating them.
 | `school_student_id` | UUID FK → `school_students.id` | `index=True`; composite index `(school_student_id, section)` |
 | `section` | `String(40)` | App-validated against the 10-value allow-list; not a DB enum |
 | `title` | `String(200)` | Required |
-| `description` | `Text` | Nullable |
+| `description` | `Text` | Nullable; app-validated max 2000 chars (unbounded `Text` + no rate limiting on this endpoint is an easy storage/payload-bloat vector otherwise — security review, §6) |
 | `organization` | `String(200)` | Nullable |
 | `date_from` | `Date` | Nullable |
 | `date_to` | `Date` | Nullable; must be ≥ `date_from` when both are set (422 otherwise) |
@@ -121,7 +121,7 @@ than duplicating them.
 |---|---|---|
 | `id` | UUID PK | |
 | `school_student_id` | UUID FK → `school_students.id`, **UNIQUE** | one row per student |
-| `personal_statement` | `Text` | Nullable; empty string is normalized to `NULL` on write |
+| `personal_statement` | `Text` | Nullable; app-validated max 4000 chars (same rationale as `description` above); empty string is normalized to `NULL` on write |
 | `updated_by_user_id` | UUID FK → `users.id` | Nullable |
 | + `TimestampMixin` | | |
 
@@ -174,6 +174,42 @@ constraint on `school_student_id`. Unlike the transfer-filing case (a genuine du
 loading and updating the existing row instead of rejecting.
 
 **Completion percentage** is never stored, so it has no race condition of its own.
+
+**Audit logging (required — matches every comparable write in this domain).** Every existing
+create/update in the School domain calls `AuditLog` (`create_career_record`,
+`create_psychometric_record`, `update_academic_result`, etc. — all in `schools.py`). This design
+currently had none; adding it is not optional:
+- `AuditLog(user_id=user.id, action="school.portfolio_entry_create", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json={"section": entry.section, "school_student_id": str(student_id)})`,
+  and the equivalent `_update` / `_delete` actions.
+- `AuditLog(user_id=user.id, action="school.portfolio_personal_statement_update", entity_type="portfolio_profile", entity_id=str(profile.id), metadata_json={"school_student_id": str(student_id)})`.
+- `metadata_json` never carries `title`/`description`/`personal_statement` content — matching the
+  existing convention exactly (`career_record_create` logs only `{"record_type": ...}`, never `notes`;
+  `admin.py`'s `user.update` explicitly filters `password` out of its metadata). The same rule applies to
+  any `logger.info(...)` calls added, matching `school_transfers.py`'s `extra_fields` pattern, which also
+  never logs free text.
+
+**Security review (2026-09-22), applying `security-and-hardening`.** Verified as already covered by
+existing infrastructure, no new work needed: **CSRF** (the session cookie is `samesite="lax"`,
+`httponly=True` — set in `auth.py:88-90` — so it's never attached to a cross-site state-changing request;
+ENH-012 inherits this via the same `get_current_user` cookie dependency every endpoint uses). **SQL
+injection** (all queries go through SQLAlchemy's parameterized `select()`/`where()`, no raw string SQL
+anywhere in this codebase — a build-time discipline to hold, not a design change). **IDOR** (closed by
+the ownership check in §6 above — role/scope checked against `student_id` before any entry lookup,
+`entry.school_student_id == student_id` verified before every mutate). **Role escalation** (`can_edit` in
+the `GET` response is a UI display hint only; every write endpoint independently re-checks role/scope
+server-side — this must remain true through implementation, not be shortcut because "the GET already said
+`can_edit: true`"). **XSS** (no `dangerouslySetInnerHTML` exists anywhere in this codebase; `title`/
+`description`/`personal_statement` must render via plain JSX interpolation like `SchoolStudentTimeline.tsx`
+does, never raw HTML). **Token/session handling, secret exposure** (no new auth flow or secret — reuses
+`get_current_user` unchanged). **Rate limiting** (confirmed absent API-wide — no rate-limiting middleware
+exists anywhere in this codebase today; this is a pre-existing condition ENH-012 inherits identically to
+every other endpoint, not a gap this feature introduces or is in scope to fix).
+
+The one place this review changes the calculus on an already-open item: **§13.2's hard-delete question.**
+With no rate limiting and no soft-delete flag, a compromised or careless writer-role account could script
+repeated deletes with no recovery path beyond the audit-log row added above. This doesn't flip the
+recommendation (a single entry's hard delete stays low-blast-radius, and the audit trail now provides
+forensic evidence), but it's a materially relevant fact for the open sign-off, not a silent decision.
 
 ## 7. Frontend
 
@@ -250,6 +286,11 @@ changed.
   `_load_readable_student()`'s existing own-child-only guarantee.
 - **AC-08**: All existing `SCH-004`/`005`/`006`/`008`/`009` endpoints and the Timeline endpoint are
   unaffected — verified by running their existing test suites unchanged.
+- **AC-09**: Every entry create/update/delete and every personal-statement update writes an `AuditLog`
+  row with the correct `action`/`entity_type`/`entity_id`, and that row's `metadata_json` never contains
+  `title`/`description`/`personal_statement` content.
+- **AC-10**: `description` and `personal_statement` reject payloads over their length caps (2000 / 4000
+  chars respectively) with 422.
 
 ## 11. Regression risks and test plan (written before code)
 
@@ -264,7 +305,8 @@ changed.
 - `apps/api/tests/test_enh_012_digital_portfolio.py` (pytest, `enh005_helpers.py`-style fixtures):
   RBAC per role (all 7 read-capable roles × all 3 write-capable roles × out-of-scope denial), entry CRUD
   + ownership checks, completion-percentage correctness at 0/partial/full, personal-statement upsert
-  including the concurrent-write race, 404/422 edge cases from §9.
+  including the concurrent-write race, 404/422 edge cases from §9, `AuditLog` rows written with correct
+  action/entity fields and no free-text leakage (AC-09), and length-cap rejection (AC-10).
 - Playwright: `enh-012-digital-portfolio.spec.ts` — coordinator adds an entry, completion percentage
   updates in the UI, parent viewing the same student sees it read-only with no edit controls, teacher
   sees 403/no access for a student outside their assignment.
@@ -292,7 +334,10 @@ changed.
    there's no domain nuance requiring a withdrawn-vs-removed distinction (unlike `JobApplication.withdrawn`,
    the one soft-delete precedent in this codebase, which exists for a specific dual-state reason that
    doesn't apply here). This is the first `DELETE` endpoint in the API — flagged for final sign-off before
-   implementation, not yet explicitly confirmed by the user.
+   implementation, not yet explicitly confirmed by the user. **Security review update (§6):** with no
+   rate limiting and no soft-delete flag anywhere in this design, a compromised/careless writer-role
+   account deleting entries has no recovery path beyond the `AuditLog` row now required by §6 — this
+   doesn't change the recommendation, but is part of what the sign-off should weigh.
 3. **Auto-populated section payload shape.** Whether `GET /portfolio` embeds full record data for the 4
    auto-populated sections (fuller, matches Timeline's own depth) or a lighter summary/count with links
    back to the existing SCH-004/005/006/009 read endpoints (avoids any risk of the two response shapes
