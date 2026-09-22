@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import SchoolSkillAlert from "@/components/SchoolSkillAlert";
 import { SkillStatus, useSkillAction } from "@/components/useSkillAction";
@@ -17,14 +17,25 @@ export default function SchoolSkillEnrolments({ batch, students }: { batch: Skil
   const [confirming, setConfirming] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
+  // Browser QA-03: the focused button is removed when the confirmation opens, closes or a change succeeds, which dropped keyboard
+  // focus to <body>. Whatever should take focus next is named here (a CSS selector inside this card) and focused after the render.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [focusNext, setFocusNext] = useState<string | null>(null);
+  useEffect(() => {
+    if (!focusNext) return;
+    cardRef.current?.querySelector<HTMLElement>(focusNext)?.focus();
+    setFocusNext(null);
+  }, [focusNext]);
+  const byLabel = (label: string) => `button[aria-label="${CSS.escape(label)}"]`;
 
   const enrolled = new Set(batch.enrollments.map((e) => e.school_student_id));
   const available = students.filter((s) => !enrolled.has(s.id));
   const shown = available.filter((s) => s.full_name.toLowerCase().includes(filter.trim().toLowerCase()));
 
-  function change(e: SkillEnrollment, to: SkillEnrollmentStatus) {
+  async function change(e: SkillEnrollment, to: SkillEnrollmentStatus) {
     setConfirming(null);
-    void action.run<SkillEnrollment>(`${BASE}/skill-enrollments/${e.id}`, "PATCH", { status: to }, (data) => `${e.student_name}: ${ENROLMENT_LABEL[data.status]}.`);
+    setFocusNext(`th[data-enrolment="${e.id}"]`); // the row's own buttons change or disappear; keep focus on the row
+    await action.run<SkillEnrollment>(`${BASE}/skill-enrollments/${e.id}`, "PATCH", { status: to }, (data) => `${e.student_name}: ${ENROLMENT_LABEL[data.status]}.`);
   }
 
   async function enrol() {
@@ -43,7 +54,7 @@ export default function SchoolSkillEnrolments({ batch, students }: { batch: Skil
   }
 
   return (
-    <div className="card" aria-busy={action.busy}>
+    <div ref={cardRef} className="card" aria-busy={action.busy}>
       <h2>Students</h2>
       <SkillStatus message={action.message} />
       <SchoolSkillAlert alert={action.alert} />
@@ -56,7 +67,7 @@ export default function SchoolSkillEnrolments({ batch, students }: { batch: Skil
             <tbody>
               {batch.enrollments.map((e) => (
                 <tr key={e.id}>
-                  <th scope="row">{e.student_name}</th>
+                  <th scope="row" tabIndex={-1} data-enrolment={e.id}>{e.student_name}</th>
                   <td>{e.frozen ? <span className="status pending">Transferred out</span> : <span className={ENROLMENT_CLASS[e.status]}>{ENROLMENT_LABEL[e.status]}</span>}</td>
                   <td>{attendanceText(e.attendance)}</td>
                   <td>
@@ -65,14 +76,14 @@ export default function SchoolSkillEnrolments({ batch, students }: { batch: Skil
                     ) : confirming === e.id ? (
                       <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                         Certify {e.student_name}? A certificate cannot be undone.
-                        <button type="button" className="btn small" aria-label={`Confirm certify ${e.student_name}`} disabled={action.busy} onClick={() => change(e, "certified")}>Confirm</button>
-                        <button type="button" className="btn secondary small" onClick={() => setConfirming(null)}>Cancel</button>
+                        <button type="button" className="btn small" aria-label={`Confirm certify ${e.student_name}`} disabled={action.busy} onClick={() => void change(e, "certified")}>Confirm</button>
+                        <button type="button" className="btn secondary small" onClick={() => { setConfirming(null); setFocusNext(byLabel(`Certify ${e.student_name}`)); }}>Cancel</button>
                       </span>
                     ) : (
                       <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
                         {TRANSITIONS[e.status].map((to) => (
                           <button key={to} type="button" className="btn secondary small" aria-label={`${ACTION_LABEL[to]} ${e.student_name}`} disabled={action.busy}
-                            onClick={() => (to === "certified" ? setConfirming(e.id) : change(e, to))}>
+                            onClick={() => { if (to === "certified") { setConfirming(e.id); setFocusNext(byLabel(`Confirm certify ${e.student_name}`)); } else void change(e, to); }}>
                             {ACTION_LABEL[to]}
                           </button>
                         ))}

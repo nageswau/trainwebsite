@@ -49,6 +49,15 @@ describe("roster", () => {
     expect(url).toBe("/api/v1/school/career-counselor/skill-enrollments/e1");
     expect(JSON.parse(String(init?.body))).toEqual({ status: "certified" });
     expect(screen.getByRole("status").textContent).toBe("Student 1: Certified.");
+    expect(document.activeElement).toBe(screen.getByRole("rowheader", { name: "Student 1" })); // QA-03: not <body>
+  });
+
+  it("keeps keyboard focus through the certify confirmation (QA-03)", () => {
+    render(<SchoolSkillEnrolments batch={detail()} students={[]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Certify Student 1" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Confirm certify Student 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Certify Student 1" }));
   });
 
   it("shows the server's reason when a change is refused", async () => {
