@@ -8,10 +8,11 @@ this matches SCH-004/009. Every route depends on `_require_career_counselor`, so
 
 from datetime import UTC, datetime
 from typing import Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import ColumnElement, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +33,7 @@ from app.models import (
     User,
 )
 from app.schemas import (
+    SkillAttendanceIn,
     SkillBatchCreate,
     SkillBatchDetail,
     SkillBatchOut,
@@ -42,6 +44,8 @@ from app.schemas import (
     SkillEnrollmentOut,
     SkillEnrollmentUpdate,
     SkillModule,
+    SkillSessionCreate,
+    SkillSessionOut,
 )
 
 router = APIRouter(prefix="/school", tags=["school-skills"])
@@ -370,3 +374,81 @@ async def update_enrolment_status(enrollment_id: UUID, payload: SkillEnrollmentU
     if new != old and new in {"completed", "certified"}:
         await _notify_after_commit(db, [_status_notice(student, batch, new)])
     return out
+
+
+# --- Sessions, attendance, assessments, scores (shared rules) ---------------------------------------------------------
+
+
+def _require_open(batch: SchoolSkillBatch) -> None:
+    if batch.status != "open":
+        raise HTTPException(409, BATCH_CLOSED)
+
+
+async def _require_editable(db: AsyncSession, batch: SchoolSkillBatch, enrollment_ids: list[UUID]) -> None:
+    """Every listed enrolment must belong to this batch (else 422) and still take marks: not withdrawn, not certified
+    (D11 -- a certificate is not quietly re-scored) and not frozen by a transfer (D9) -- else 409."""
+    rows = (
+        await db.execute(
+            select(SchoolSkillEnrollment.status, SchoolStudent.school_id)
+            .join(SchoolStudent, SchoolStudent.id == SchoolSkillEnrollment.school_student_id)
+            .where(SchoolSkillEnrollment.batch_id == batch.id, SchoolSkillEnrollment.id.in_(enrollment_ids))
+        )
+    ).all()
+    if len(rows) != len(enrollment_ids):
+        raise HTTPException(422, "An enrolment in this request is not in this batch")
+    if any(school_id != batch.school_id for _status, school_id in rows):
+        raise HTTPException(409, STUDENT_MOVED)
+    if any(status in {"withdrawn", "certified"} for status, _school in rows):
+        raise HTTPException(409, "A withdrawn or certified enrolment cannot be changed")
+
+
+# --- Sessions and attendance --------------------------------------------------------------------------------------------
+
+
+async def _session_out(db: AsyncSession, session: SchoolSkillSession) -> dict:
+    marks = (await db.scalars(select(SchoolSkillAttendance).where(SchoolSkillAttendance.session_id == session.id))).all()
+    return {"id": session.id, "session_date": session.session_date, "topic": session.topic, "attendance": [{"enrollment_id": m.enrollment_id, "present": m.present} for m in marks]}
+
+
+@router.post(f"{BASE}/skill-batches/{{batch_id}}/sessions", status_code=201, response_model=SkillSessionOut)
+async def create_skill_session(batch_id: UUID, payload: SkillSessionCreate, user: User = Depends(_require_career_counselor), db: AsyncSession = Depends(get_db)):
+    batch = await _batch_in_portfolio(db, user, batch_id, lock="share")
+    _require_open(batch)
+    if payload.session_date < batch.start_date or (batch.end_date is not None and payload.session_date > batch.end_date):
+        raise HTTPException(422, "The session date must be within the batch's dates")
+    session = SchoolSkillSession(batch_id=batch.id, session_date=payload.session_date, topic=payload.topic, created_by_user_id=user.id)
+    db.add(session)
+    try:
+        await db.flush()
+    except IntegrityError as exc:  # D10: uq_skill_session_batch_date
+        await db.rollback()
+        raise HTTPException(409, f"This batch already has a session on {payload.session_date.isoformat()}") from exc
+    _audit(db, user, "school.skill_session_create", "school_skill_session", session.id, batch_id=str(batch.id))
+    await db.commit()
+    logger.info("skill_session_created", extra={"extra_fields": {"actor_id": str(user.id), "batch_id": str(batch.id), "session_id": str(session.id)}})
+    return {"id": session.id, "session_date": session.session_date, "topic": session.topic, "attendance": []}
+
+
+@router.put(f"{BASE}/skill-sessions/{{session_id}}/attendance", response_model=SkillSessionOut)
+async def mark_skill_attendance(session_id: UUID, payload: SkillAttendanceIn, user: User = Depends(_require_career_counselor), db: AsyncSession = Depends(get_db)):
+    """Upserts the listed marks only (unlisted ones are untouched), so a retry is harmless. The batch is held FOR SHARE,
+    so a concurrent close waits for this write to finish (spec §5.4)."""
+    session = await db.get(SchoolSkillSession, session_id)
+    if session is None:
+        raise HTTPException(404, "Session not found")
+    batch = await _batch_in_portfolio(db, user, session.batch_id, lock="share")
+    _require_open(batch)
+    await _require_editable(db, batch, [r.enrollment_id for r in payload.records])
+    stmt = pg_insert(SchoolSkillAttendance).values(
+        [{"id": uuid4(), "session_id": session.id, "enrollment_id": r.enrollment_id, "present": r.present, "marked_by_user_id": user.id} for r in payload.records]
+    )
+    await db.execute(
+        stmt.on_conflict_do_update(
+            constraint="uq_skill_attendance_session_enrollment",
+            set_={"present": stmt.excluded.present, "marked_by_user_id": stmt.excluded.marked_by_user_id, "updated_at": func.now()},
+        )
+    )
+    _audit(db, user, "school.skill_attendance_mark", "school_skill_session", session.id, count=len(payload.records))
+    await db.commit()
+    logger.info("skill_attendance_marked", extra={"extra_fields": {"actor_id": str(user.id), "session_id": str(session.id), "count": len(payload.records)}})
+    return await _session_out(db, session)
