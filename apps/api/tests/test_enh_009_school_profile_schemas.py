@@ -52,3 +52,19 @@ def test_school_create_accepts_local_domain_email():
         email="school@example.local",
     )
     assert school.email == "school@example.local"
+
+
+def test_school_create_email_max_length_matches_its_column():
+    """ENH-009 final review: `max_length` was 320 while `schools.email` is VARCHAR(255), so a
+    256-360 character address passed validation and only failed at the database layer with a
+    raw StringDataRightTruncation -- the exact QA-001 anti-pattern `_fit()` exists to prevent.
+    A syntactically valid address of 256 characters must now be a ValidationError."""
+    too_long = "a" * 256 + "@example.local"
+    assert len(too_long) < 320
+    with pytest.raises(ValidationError):
+        SchoolCreate(
+            name="X", coordinator_full_name="Y", coordinator_email="y@example.local",
+            email=too_long,
+        )
+    with pytest.raises(ValidationError):
+        SchoolUpdate(email=too_long)
