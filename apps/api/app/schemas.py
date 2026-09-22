@@ -740,3 +740,99 @@ class AdminTransferPage(BaseModel):
 class AdminTransferHistoryResponse(BaseModel):
     student: TransferHistoryStudent
     history: list[AdminTransferRequestOut]
+
+
+# --- ENH-012: digital portfolio (docs/superpowers/specs/2026-09-22-enh-012-digital-portfolio-design.md) ---
+
+
+PORTFOLIO_SECTIONS: frozenset[str] = frozenset({
+    "project", "internship", "competition", "sport", "leadership", "volunteering",
+    "extracurricular", "award", "certification", "skill",
+})
+
+
+def _no_control_characters(value: str | None) -> str | None:
+    # Same rule as PromotionItem.grade_or_class (line ~501 above): a NUL byte cannot be stored in
+    # PostgreSQL text and would surface as a 500; other control characters have no place in text that
+    # is later rendered.
+    if value is not None and any(unicodedata.category(ch) == "Cc" for ch in value):
+        raise ValueError("must not contain control characters")
+    return value
+
+
+class PortfolioEntryCreate(BaseModel):
+    model_config = {"str_strip_whitespace": True, "extra": "forbid"}
+    section: str
+    title: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
+    organization: str | None = Field(default=None, max_length=200)
+    date_from: date | None = None
+    date_to: date | None = None
+
+    @field_validator("section")
+    @classmethod
+    def _known_section(cls, value: str) -> str:
+        if value not in PORTFOLIO_SECTIONS:
+            raise ValueError(f"section must be one of {sorted(PORTFOLIO_SECTIONS)}")
+        return value
+
+    @field_validator("title", "description", "organization")
+    @classmethod
+    def _clean_text(cls, value: str | None) -> str | None:
+        return _no_control_characters(value)
+
+    @model_validator(mode="after")
+    def _date_range_is_ordered(self):
+        if self.date_from is not None and self.date_to is not None and self.date_to < self.date_from:
+            raise ValueError("date_to must not be before date_from")
+        return self
+
+
+class PortfolioEntryUpdate(BaseModel):
+    model_config = {"str_strip_whitespace": True, "extra": "forbid"}
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
+    organization: str | None = Field(default=None, max_length=200)
+    date_from: date | None = None
+    date_to: date | None = None
+
+    @field_validator("title", "description", "organization")
+    @classmethod
+    def _clean_text(cls, value: str | None) -> str | None:
+        return _no_control_characters(value)
+
+    @model_validator(mode="after")
+    def _date_range_is_ordered(self):
+        if self.date_from is not None and self.date_to is not None and self.date_to < self.date_from:
+            raise ValueError("date_to must not be before date_from")
+        return self
+
+
+class PortfolioEntryOut(BaseModel):
+    id: UUID
+    school_student_id: UUID
+    section: str
+    title: str
+    description: str | None
+    organization: str | None
+    date_from: date | None
+    date_to: date | None
+    created_by_user_id: UUID
+    updated_by_user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class PersonalStatementUpdate(BaseModel):
+    model_config = {"str_strip_whitespace": True, "extra": "forbid"}
+    personal_statement: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("personal_statement")
+    @classmethod
+    def _clean_text(cls, value: str | None) -> str | None:
+        return _no_control_characters(value)
+
+
+class PersonalStatementOut(BaseModel):
+    personal_statement: str | None
+    updated_at: datetime
