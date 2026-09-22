@@ -150,12 +150,24 @@ async def _detail(db: AsyncSession, batch: SchoolSkillBatch) -> dict:
         )
     ).all()
     sessions = (await db.scalars(select(SchoolSkillSession).where(SchoolSkillSession.batch_id == batch.id).order_by(SchoolSkillSession.session_date.asc()))).all()
-    marks = (await db.scalars(select(SchoolSkillAttendance).join(SchoolSkillSession, SchoolSkillSession.id == SchoolSkillAttendance.session_id).where(SchoolSkillSession.batch_id == batch.id))).all()
+    marks = (
+        await db.scalars(
+            select(SchoolSkillAttendance)
+            .join(SchoolSkillSession, SchoolSkillSession.id == SchoolSkillAttendance.session_id)
+            .where(SchoolSkillSession.batch_id == batch.id)
+            .order_by(SchoolSkillAttendance.enrollment_id)
+        )
+    ).all()
     assessments = (
         await db.scalars(select(SchoolSkillAssessment).where(SchoolSkillAssessment.batch_id == batch.id).order_by(SchoolSkillAssessment.created_at.asc(), SchoolSkillAssessment.name.asc()))
     ).all()
     scores = (
-        await db.scalars(select(SchoolSkillScore).join(SchoolSkillAssessment, SchoolSkillAssessment.id == SchoolSkillScore.assessment_id).where(SchoolSkillAssessment.batch_id == batch.id))
+        await db.scalars(
+            select(SchoolSkillScore)
+            .join(SchoolSkillAssessment, SchoolSkillAssessment.id == SchoolSkillScore.assessment_id)
+            .where(SchoolSkillAssessment.batch_id == batch.id)
+            .order_by(SchoolSkillScore.assessment_id)
+        )
     ).all()
 
     marks_by_session: dict[UUID, list] = {}
@@ -286,7 +298,7 @@ def _status_notice(student: SchoolStudent, batch: SchoolSkillBatch, status: str)
 
 async def _enrolment_summary(db: AsyncSession, enrollment_id: UUID) -> tuple[dict, list[dict]]:
     marks = (await db.scalars(select(SchoolSkillAttendance.present).where(SchoolSkillAttendance.enrollment_id == enrollment_id))).all()
-    scores = (await db.scalars(select(SchoolSkillScore).where(SchoolSkillScore.enrollment_id == enrollment_id))).all()
+    scores = (await db.scalars(select(SchoolSkillScore).where(SchoolSkillScore.enrollment_id == enrollment_id).order_by(SchoolSkillScore.assessment_id))).all()
     return (
         {"present": sum(1 for present in marks if present), "marked": len(marks)},
         [{"assessment_id": s.assessment_id, "score": float(s.score), "remarks": s.remarks} for s in scores],
@@ -403,7 +415,7 @@ async def _require_editable(db: AsyncSession, batch: SchoolSkillBatch, enrollmen
 
 
 async def _session_out(db: AsyncSession, session: SchoolSkillSession) -> dict:
-    marks = (await db.scalars(select(SchoolSkillAttendance).where(SchoolSkillAttendance.session_id == session.id))).all()
+    marks = (await db.scalars(select(SchoolSkillAttendance).where(SchoolSkillAttendance.session_id == session.id).order_by(SchoolSkillAttendance.enrollment_id))).all()
     return {"id": session.id, "session_date": session.session_date, "topic": session.topic, "attendance": [{"enrollment_id": m.enrollment_id, "present": m.present} for m in marks]}
 
 
@@ -494,7 +506,7 @@ async def record_skill_scores(assessment_id: UUID, payload: SkillScoresIn, user:
     _audit(db, user, "school.skill_scores_record", "school_skill_assessment", assessment.id, count=len(payload.scores))
     await db.commit()
     logger.info("skill_scores_recorded", extra={"extra_fields": {"actor_id": str(user.id), "assessment_id": str(assessment.id), "count": len(payload.scores)}})
-    rows = (await db.scalars(select(SchoolSkillScore).where(SchoolSkillScore.assessment_id == assessment.id))).all()
+    rows = (await db.scalars(select(SchoolSkillScore).where(SchoolSkillScore.assessment_id == assessment.id).order_by(SchoolSkillScore.enrollment_id))).all()
     return {
         "id": assessment.id,
         "name": assessment.name,

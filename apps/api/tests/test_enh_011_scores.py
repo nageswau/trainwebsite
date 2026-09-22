@@ -54,6 +54,19 @@ async def test_scores_upsert_and_remarks_stored(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_score_lists_are_in_a_stated_order_after_an_upsert(client, db_session):
+    """QA-04: as for attendance -- the updated row must not move to the end of the returned list."""
+    w = await skills_world(db_session)
+    batch, rows = await _setup(client, w)
+    first, second = sorted(rows, key=lambda r: r["id"])
+    assessment = await _assessment(client, batch["id"])
+    url = f"{ASSESSMENTS}/{assessment['id']}/scores"
+    await client.put(url, json={"scores": [{"enrollment_id": first["id"], "score": 10}, {"enrollment_id": second["id"], "score": 11}]})
+    response = (await client.put(url, json={"scores": [{"enrollment_id": first["id"], "score": 12}]})).json()
+    assert [s["enrollment_id"] for s in response["scores"]] == [first["id"], second["id"]]
+
+
+@pytest.mark.asyncio
 async def test_score_above_max_is_422_and_nothing_written(client, db_session):
     w = await skills_world(db_session)
     batch, (r0, r1) = await _setup(client, w)

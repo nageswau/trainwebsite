@@ -62,6 +62,22 @@ async def test_attendance_upsert_is_idempotent_and_returns_full_set(client, db_s
 
 
 @pytest.mark.asyncio
+async def test_attendance_lists_are_in_a_stated_order_after_an_upsert(client, db_session):
+    """QA-04: an upsert moves the updated row to the end of the table, so an unordered read returns it last. Updating the row whose
+    id sorts first makes that visible; the lists must come back ordered by enrolment id (response and batch detail alike)."""
+    w = await skills_world(db_session)
+    batch, rows = await _batch_with_two(client, w)
+    first, second = sorted(rows, key=lambda r: r["id"])
+    session = await _session(client, batch["id"])
+    url = f"{SESSIONS}/{session['id']}/attendance"
+    await client.put(url, json={"records": [{"enrollment_id": first["id"], "present": True}, {"enrollment_id": second["id"], "present": True}]})
+    response = (await client.put(url, json={"records": [{"enrollment_id": first["id"], "present": False}]})).json()
+    assert [a["enrollment_id"] for a in response["attendance"]] == [first["id"], second["id"]]
+    detail = (await client.get(f"{BATCHES}/{batch['id']}")).json()
+    assert [a["enrollment_id"] for a in detail["sessions"][0]["attendance"]] == [first["id"], second["id"]]
+
+
+@pytest.mark.asyncio
 async def test_detail_attendance_summary_counts_present_and_marked(client, db_session):
     w = await skills_world(db_session)
     batch, (r0, r1) = await _batch_with_two(client, w)
