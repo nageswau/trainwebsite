@@ -98,6 +98,33 @@ So the request is lost on the Next.js rewrite / CI proxy path. This matches the 
 
 **Net:** apart from the flaky pair, the only failure is one that predates ENH-011 on `main`.
 
+## Final browser verification (2026-09-22, HEAD `86f91e1`, no source changed)
+
+Isolated stack (web `:3411`, API `:8411`, freshly seeded database), a separate local Chrome 153 with a
+throwaway profile. Fixtures: two schools, a Career Counselor for each, an Academic Team member, a
+coordinator, teacher, principal, parent, four students.
+
+| AC | Result | Evidence from the browser |
+|---|---|---|
+| **AC-01** create batches | **PASS** | Soft Skills and Digital Skills batches created, both listed; Academic Team refused with "Career Counselor role required" |
+| **AC-02** enrol + notify parents | **PASS** | Picker showed only school A's students (school B's Dara absent); "2 students enrolled."; the parent's notifications show enrolled, completed and certified |
+| **AC-03** sessions and attendance | **PASS** | Session added; "Unsaved changes" appeared then cleared; roster showed "Attended 1 of 1 session"; a duplicate date was refused ("…already has a session on 06 Oct 2026") with focus moved to the alert |
+| **AC-04** assessments and scores | **PASS** | Labels read "Score for Asha Rao (out of 20)"; a score of 25 was blocked with **no request sent**; valid scores saved |
+| **AC-05** status rules | **PASS (partly)** | Enrolled offered Mark completed / Certify / Withdraw; after completing, Certify / Re-enrol; certify asked first, with focus on Confirm; a certified row ended "No further changes" with no buttons. *Two counselors certifying at once is not reachable from one browser; the backend concurrency tests cover it.* |
+| **AC-06** closed batch | **PASS** | Banner shown; enrolment, session and assessment controls hidden; reopening restored them |
+| **AC-07** transferred student | **PASS** | After a real transfer: "Transferred out — Moved to another school; read-only here", excluded from attendance, scores and the picker; the new school's timeline keeps the history |
+| **AC-08** who can see it | **PASS** | Parent (card, chips, timeline), teacher (assigned student), principal and coordinator all saw it; an unlinked child, an unassigned student and another school's student were each refused |
+| **AC-09** entitlement counts | **PASS** | "Soft skills 2", "Web designing 0" |
+| **AC-10** SCH-009 untouched | **PASS** | The Academic Team console loads with its test-prep and language controls; its menu has no Skills entry |
+| **AC-11** UI states | **PASS** | Keyboard-only creation worked; loading skeleton, empty state, refresh, in-app links and browser Back all correct; 390/768/1440 all fit with no broken images; server error, dropped connection and expired session each handled with the entry kept |
+| **AC-12** audit records | **NOT TESTABLE** | Audit rows are not visible in any screen; covered by backend tests asserting a record per write with no student names |
+
+All fourteen earlier findings were re-checked and hold. Console and network were clean on every page and
+every flow; the only entries were the deliberately injected 500, dropped connection and 401, plus the QA
+machine's antivirus extension (excluded).
+
+**Not covered:** browsers other than Chrome, screen readers, real touch devices.
+
 ## Harness notes (not app defects)
 
 - A hidden Chrome window does not paint. React 19 reveals streamed Suspense content (the `loading.tsx` routes) on a painted frame, so while the QA window was hidden the skills pages did not hydrate and a click did a native GET submit. With the window visible, hydration took 0.4 s.

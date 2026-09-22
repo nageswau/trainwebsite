@@ -2496,6 +2496,42 @@ correction, not deleted, per this project's traceability convention.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** SchoolTransferRequestForm.test.tsx, SchoolTransferHistory.test.tsx (passing); enh-005-school-transfer.spec.ts (browser, 2026-09-21); test_enh_005_filing.py.
 
+### `SCR-SCH-033` *(added 2026-09-22, `ENH-011` / `DEC-SCOPE-023`)*
+- **Route:** `/school/career-counselor/skills`
+- **Role(s):** Career Counselor
+- **Purpose:** The counselor's Soft Skills / Digital Skills batches across their school portfolio, and the form that creates one.
+- **Linked Feature ID(s):** `ENH-011`
+- **Entry points:** "Skills" item in the Career Counselor navigation.
+- **Required data:** Server-rendered: GET /auth/me, GET /school/career-counselor/skill-batches?limit=25&offset=0, GET /school/portfolio-students (the schools a batch can be created for). Client: the same list endpoint for filtering and "Load more"; POST /school/career-counselor/skill-batches.
+- **Key actions:** Filter by module and by open/closed; "Load more"; create a batch (school, module, title, topic, trainer, dates), which opens the new batch.
+- **Empty state:** "No skills batches yet." with a "Create a batch" button that moves focus to the Title field; "No batches match these filters."; a counselor with no school assignment sees "You are not assigned to any school yet." and no form.
+- **Loading state:** First paint is server-rendered; `loading.tsx` skeleton on navigation; a filter change swaps the rows for a skeleton; "Load more" keeps the rows.
+- **Error state:** Title, start date and date order are checked in the browser (no request sent) and the first invalid field takes focus; a server 422 marks the field and the alert says "Check the highlighted fields."; 401 offers "Sign in again"; a dropped connection keeps the entry; a failed list read offers "Try again".
+- **Permissions/resource scope:** Career Counselor only (403 before any lookup); the school picker and the list are the counselor's `SchoolStaffAssignment` portfolio.
+- **Responsive behavior:** Fits 390px (verified: page width 390 at a 390px viewport); filters wrap; buttons are at least 44px tall on phones.
+- **Accessibility requirements:** "Skills batches" is the page `h1`; real labels on every control; errors tied by `aria-describedby` with `aria-invalid`; the list is a `role="list"` with `aria-busy` while loading; alerts take focus.
+- **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav. Mobile: single column, no horizontal scroll.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** SchoolSkillBatchesPanel.test.tsx, lib/skills.test.ts (passing); enh-011-skills.spec.ts; the browser QA record `docs/quality/ENH-011_BROWSER_QA_2026-09-22.md`.
+
+### `SCR-SCH-034` *(added 2026-09-22, `ENH-011` / `DEC-SCOPE-023`)*
+- **Route:** `/school/career-counselor/skills/[id]`
+- **Role(s):** Career Counselor
+- **Purpose:** One batch end to end: its details, the enrolled students and their status, sessions with attendance, and assessments with scores.
+- **Linked Feature ID(s):** `ENH-011`
+- **Entry points:** A batch row on SCR-SCH-033, or straight after creating a batch.
+- **Required data:** Server-rendered: GET /auth/me, GET /school/career-counselor/skill-batches/{id} (batch, enrolments with attendance summary and scores, sessions, assessments), GET /school/portfolio-students (filtered to the batch's school). Writes: PATCH .../skill-batches/{id}; POST .../{id}/enrollments; PATCH .../skill-enrollments/{id}; POST .../{id}/sessions; PUT .../skill-sessions/{id}/attendance; POST .../{id}/assessments; PUT .../skill-assessments/{id}/scores.
+- **Key actions:** Edit details; close/reopen; enrol students (filtered checkbox picker); mark completed / certify (with a confirm step, since a certificate cannot be undone) / withdraw / re-enrol; add a session and take attendance ("Mark all present", "Save attendance"); add an assessment and record scores with remarks.
+- **Empty state:** "No students enrolled yet."; "Every student at <school> is already enrolled."; "No sessions yet. Add one to start taking attendance."; "No assessments yet. Add one to record scores."; a certified row reads "No further changes".
+- **Loading state:** `loading.tsx` skeleton on navigation; each save keeps the content visible, marks the section `aria-busy` and shows "Saving…"; a success message clears after 8 seconds.
+- **Error state:** A score outside 0..max is caught on its field before any request; 409s (closed batch, duplicate session date, refused transition, transferred-out student) and 5xx/401/dropped connections render an alert that takes focus, and the entry is kept. Unsaved attendance is guarded on reload and on in-app navigation.
+- **Permissions/resource scope:** Career Counselor only; a batch outside the portfolio is a masking 404; a student outside it is 403; a student who has transferred is read-only ("Transferred out") and excluded from attendance, scores and the picker.
+- **Responsive behavior:** Fits 390px (the page grid uses `minmax(0,1fr)` so the roster table scrolls inside `.table-wrap`); buttons at least 44px tall on phones.
+- **Accessibility requirements:** The batch title is the page `h1`; the roster is a table with row headers; attendance and enrolment use `fieldset`/`legend` with labelled checkboxes; score inputs read "Score for <student> (out of <max>)"; focus is kept through the certify confirmation and after a status change.
+- **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav. Mobile: single column; only the roster table scrolls sideways.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** SchoolSkillBatchHeader/Enrolments/Attendance/Scores test files (passing); enh-011-skills.spec.ts; `docs/quality/ENH-011_BROWSER_QA_2026-09-22.md`.
+
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  
 - **Role(s):** IT Admin, Placement Team  
