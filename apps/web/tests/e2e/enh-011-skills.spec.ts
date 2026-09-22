@@ -93,6 +93,11 @@ test("career counselor runs a Soft Skills batch; the parent sees Skills progress
   await page.getByRole("button", { name: `Confirm certify ${studentName}` }).click();
   await expect(page.getByText(`${studentName}: Certified.`)).toBeVisible();
 
+  // QA-01: on a phone the batch page must fit the screen; only the roster table scrolls, inside its own container.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1280, height: 800 });
+
   // Parent: accepts the invite, sees the Skills section and the timeline events.
   await page.request.post("/api/v1/auth/logout");
   await page.goto(`/school/invite/${inviteToken}/accept`);
