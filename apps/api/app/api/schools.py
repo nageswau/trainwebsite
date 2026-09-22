@@ -612,13 +612,13 @@ async def _parent_email_conflict(db: AsyncSession, *, parent_email: str) -> str 
 async def _link_or_invite_parent(db: AsyncSession, *, school: School, student: SchoolStudent, parent_email: str, parent_name: str | None, coordinator: User) -> tuple[str, str | None, str | None]:
     """Roster-driven parent linkage (single-add, edit, or bulk upload all call this).
     Returns (status, error, development_invite_token): status is "linked" (an existing
-    school_parent account at this school was linked immediately, no email sent), "invited"
+    school_parent account was linked immediately, no email sent), "invited"
     (no account existed yet, a new invite was created and emailed), or "invite_reused"
     (another roster row already triggered a pending invite for this exact email -- reused,
     no duplicate email sent). "rejected" + an error message means the email belongs to an
-    account that can't be this student's parent (wrong role, or a Parent at a different
-    school) -- never invented. The token is only ever non-None in a development
-    environment and only for "invited" -- same dev-only exposure as `/team/invites`.
+    account that can't be this student's parent (wrong role) -- never invented. The token
+    is only ever non-None in a development environment and only for "invited" -- same
+    dev-only exposure as `/team/invites`.
     """
     parent_email = parent_email.lower().strip()
     conflict = await _parent_email_conflict(db, parent_email=parent_email)
@@ -648,11 +648,12 @@ async def _scoped_students_query(db: AsyncSession, user: User, school_id: UUID):
     institution check itself, not implied by it (same class as `DEC-SCOPE-013`'s
     portfolio-vs-institution distinction for the School service-delivery roles).
 
-    ENH-005: a Parent's scope is their LINKS alone, not their account's school, because after a transfer a
-    parent's child lives at another school than the parent's account. That makes "a `SchoolParentLink` only ever
-    joins a parent and a student of the same school" (until a transfer) the invariant that keeps a parent out of
-    other students -- so every place that creates a link (`link_parent`, `_link_or_invite_parent`,
-    `accept_invite`) must keep enforcing it (security review S2, pinned by tests/test_enh_005_scope.py)."""
+    ENH-005 + ENH-008: a Parent's scope is their LINKS alone, not their account's school. This query's security
+    guarantee is: a parent can only read students they have an explicit SchoolParentLink to (lines 656-658),
+    regardless of whether the link's school matches the parent's account's school. ENH-008 allows fresh links
+    to be cross-school; ENH-005 already tolerated cross-school links for transfers. The scoping is link-driven,
+    not school-driven, so the link table is the sole enforcement point. (Security review S2, pinned by
+    tests/test_enh_005_scope.py)."""
     if user.role == "school_parent":
         linked = select(SchoolParentLink.school_student_id).where(SchoolParentLink.parent_user_id == user.id)
         return select(SchoolStudent).where(SchoolStudent.id.in_(linked))
