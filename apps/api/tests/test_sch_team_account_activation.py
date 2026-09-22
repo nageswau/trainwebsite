@@ -62,6 +62,25 @@ async def test_coordinator_deactivates_and_reactivates_a_teacher(client, db_sess
 
 
 @pytest.mark.asyncio
+async def test_deactivated_teacher_cannot_log_in_and_reactivation_restores_access(client, db_session):
+    ctx = await _create_school_with_roles(db_session)
+    await _login(client, ctx["school_coordinator"].email)
+    teacher = ctx["school_teacher"]
+
+    deactivated = await client.patch(f"/api/v1/school/team/accounts/{teacher.id}", json={"active": False})
+    assert deactivated.status_code == 200
+
+    blocked = await client.post("/api/v1/auth/login", json={"email": teacher.email, "password": PASSWORD, "division": "overseas"})
+    assert blocked.status_code == 401
+
+    reactivated = await client.patch(f"/api/v1/school/team/accounts/{teacher.id}", json={"active": True})
+    assert reactivated.status_code == 200
+
+    restored = await client.post("/api/v1/auth/login", json={"email": teacher.email, "password": PASSWORD, "division": "overseas"})
+    assert restored.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_coordinator_cannot_toggle_another_schools_account(client, db_session):
     ctx_a = await _create_school_with_roles(db_session)
     ctx_b = await _create_school_with_roles(db_session)
