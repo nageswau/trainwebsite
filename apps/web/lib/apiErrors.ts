@@ -30,3 +30,9 @@ export function isPage<T = unknown>(data: unknown): data is Page<T> {
   const d = data as Partial<Page<T>> | null;
   return !!d && typeof d === "object" && Array.isArray(d.items) && typeof d.total === "number" && typeof d.limit === "number" && typeof d.offset === "number";
 }
+
+// ENH-012: same shape-check philosophy as isRequestBody() above -- a 2xx whose body isn't a real
+// portfolio entry (a proxy page, an empty body) must not be reported as saved.
+export function isPortfolioEntryBody(data: unknown): data is { id: string; section: string } {
+  return !!data && typeof data === "object" && typeof (data as { id?: unknown }).id === "string" && typeof (data as { section?: unknown }).section === "string";
+}
