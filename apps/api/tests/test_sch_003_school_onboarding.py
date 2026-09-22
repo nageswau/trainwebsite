@@ -219,6 +219,23 @@ async def test_a_coordinator_never_sees_another_schools_team(client, db_session)
 
 
 @pytest.mark.asyncio
+async def test_list_schools_includes_school_code_and_profile_fields(client, db_session):
+    admin = await _create_overseas_admin(db_session)
+    await _login(client, admin.email)
+    await client.post(
+        "/api/v1/overseas-admin/schools",
+        json={"name": f"List Test {uuid.uuid4().hex[:8]}", "coordinator_full_name": "C",
+              "coordinator_email": f"list-{uuid.uuid4().hex[:8]}@example.local", "branch": "East Wing"},
+    )
+    response = await client.get("/api/v1/overseas-admin/schools")
+    assert response.status_code == 200
+    row = response.json()[0]
+    assert "school_code" in row
+    assert "branch" in row
+    assert "student_count" in row
+
+
+@pytest.mark.asyncio
 async def test_school_table_has_the_new_profile_columns(db_session):
     from sqlalchemy import text
 

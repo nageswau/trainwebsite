@@ -1096,7 +1096,7 @@ async def list_schools(user: User = Depends(get_current_user), db: AsyncSession 
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
     rows = (await db.scalars(select(School).order_by(School.created_at.desc()))).all()
-    return [{"id": s.id, "name": s.name, "city": s.city, "state": s.state, "tier": s.tier, "tier_valid_until": s.tier_valid_until, "created_at": s.created_at} for s in rows]
+    return [await _school_out(db, s) for s in rows]
 
 
 @agents_router.patch("/schools/{school_id}")
