@@ -1208,6 +1208,17 @@ batches simultaneously — must not conflict.
 **Regression risks.** Existing SCH-009 Foreign Language/IELTS/SAT trackers must not break if the
 underlying model is generalized.
 
+**Status (2026-09-22) — implemented, NOT complete.** The audit found this entry's premise does not hold:
+SCH-009 has no batch, enrolment or per-session attendance (two per-student tables), and there is no "IELTS
+batch" to copy. The user therefore decided a new school-scoped batch model, left SCH-009 unchanged, and chose
+`career_counselor` as the delivering role (`DEC-SCOPE-023`; design
+`docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md`; plan
+`docs/superpowers/plans/2026-09-22-enh-011-skills-tracker.md`). Implemented test-first on branch
+`feature/enh-011-skills-tracker-generalization`: migration `0035_school_skills`, `app/api/school_skills.py`, the
+counselor Skills pages, the Parent Portal Skills section, timeline categories and entitlement usage. **Outstanding
+before it can be called complete:** browser validation and an independent (Codex) review; D10–D12 of the spec
+were adopted on the instruction to proceed and still need the user's confirmation.
+
 **Complexity:** Medium. **Risk:** Low.
 
 ---

@@ -2179,3 +2179,25 @@ Design, API, UI and security review: `docs/superpowers/specs/2026-09-21-enh-005-
 **Owner decision, 2026-09-21 — unaccepted parent invites: DECIDED, keep the admin warning** (`EXPLICIT_APPROVAL`: the owner chose this option in the session; the options were the ones listed in spec §13). A parent who was invited but had not accepted when their student transferred keeps today's behavior: approval clears the student's `pending_parent_email`, the parent later has an account at the losing school and no linked child, and the gaining coordinator cannot link them. The admin is warned in the queue row and again at the confirm step (`pending_parent_invite`) and can ask the parent to accept first. **Not chosen:** carrying the invite to the gaining school (needs a cross-school exception to the same-school link invariant S2/AC-29 and a rule for invites that cover siblings still at the losing school), and blocking filing or approval while an invite is unaccepted (can stall a transfer on a parent who never responds). Multi-school parent handling can be revisited with `ENH-008`.
 
 **Security findings and status.** Found by the review before code (spec §6.1): HTML injection in parent emails (fixed, D9); the parent read filter no longer double-checking the school (link creators verified and tested); a code-probing oracle through the requester's own list (throttle D8, cap D7, every attempt audited, residual documented); an unrecorded authorization-scope change (one audit row per re-scoped parent); approval as a general write path (restricted to `profile.school_id` on `school_parent` accounts). Reported, not changed (outside ENH-005): the API has no rate limiting on login or elsewhere; no CSRF token exists (`SameSite=Lax` only); `secret_key` defaults to `"change-me"` and `cookie_secure` to `False`; admin routes gate on the `users.role` column rather than active role assignments.
+
+### DEC-SCOPE-023 — School skills tracker: Soft Skills and Digital/Web Skills (`ENH-011`)
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-011 asked to "generalize SCH-009" into Soft Skills (`School CRM.md` §9) and Digital/Web Skills (§10) trackers. Both sections are `EVID-014` (`DERIVED_BLUEPRINT`) and were `OPEN` (`PRD_OPEN_ITEMS.md` item 77, `DEC-SCOPE-015`'s Skills row, `DATA_MODEL.md` "requires their own decisions first"). Are they in scope, in what shape, and who delivers them?
+
+**Evidence:** Audit of the code, 2026-09-22 (Graphify rebuilt from `0e7f400` + reads): SCH-009 has no batch, enrolment or per-session attendance — `SchoolTestPrepRecord`/`SchoolLanguageRecord` are per-student rows — so the backlog's premise ("structurally identical… student → course/batch → attendance → assessment → certification") and its acceptance criterion ("a batch can be created, students enrolled") cannot both hold by reusing SCH-009. Entitlements already declared `soft_skills` (Bronze) and `web_designing` (Silver) with `used: null` (`DEC-SCOPE-017`).
+
+**Resolution:** User confirmed in-session, 2026-09-22 (`EXPLICIT_APPROVAL`), D1–D9 in `docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md` §3:
+
+1. **D1 Scope:** §9 Soft Skills and §10 Digital/Web Skills are both `CURRENT` (closes the Skills half of item 77; Portfolio stays open).
+2. **D2 Shape:** a new school-scoped batch → enrolment → per-session attendance → assessments → completion/certification model with `module_type` `soft_skills` | `digital_skills`.
+3. **D3 SCH-009:** unchanged — no table, route, UI or data change.
+4. **D4 Role:** `career_counselor`, scoped by the `SchoolStaffAssignment` portfolio.
+5. **D5 Surfaces:** staff read-only in their existing scope; Parent Portal Skills section; the SCH-008 timeline (**reverses `DEC-SCOPE-016`'s exclusion of Soft Skills from the timeline**); real entitlement usage.
+6. **D6 Notifications:** parents on enrolment and on completion/certification.
+7. **D7 Batch:** one school per batch; title, module, school, dates, topic, trainer name.
+8. **D8 Assessment/completion:** several named assessments per batch; the counselor marks completion/certification manually.
+9. **D9 Transfer:** an enrolment whose student has moved school is read-only ("frozen"), computed, not stored; ENH-005 unchanged.
+
+**Adopted on the instruction to proceed, not explicitly confirmed (`NEEDS_CONFIRMATION`):** D10 one session per batch per day; D11 `certified` is terminal; D12 `loading.tsx` skeletons on the two new counselor routes.
+
+**Consequences:** migration `0035_school_skills` (six create-only tables); router `app/api/school_skills.py` (ten endpoints under `/school/career-counselor`); additive `skills` key on `GET /school/students/{id}/overview`; timeline categories `soft_skills`/`digital_skills`; `GET /school/entitlements` reports `used` for `soft_skills`/`web_designing`. `SCH-008-AC04`'s "Skills… never appear" no longer holds for Skills (Portfolio still absent).

@@ -697,9 +697,11 @@ have gone beyond `DEC-ROLE-006`'s confirmed scope. `status` moves `assigned → 
 sessions / counselling notes / recommended careers), and §6.18 (`SchoolPsychometricRecord.status`).
 Parent notifications reuse §7's existing `Notification` + `NotificationDelivery` rows unchanged —
 recipient is the linked `school_parent` user, `channel='email'`, `status` carries the real SMTP (or
-webhook fallback) outcome. **Deliberately absent, not forgotten:** no `skills`, `portfolio`, or
-overseas-progress tables — `EVID-014` §9/§10/§14/§15–20 remain unconfirmed `DERIVED_BLUEPRINT`
+webhook fallback) outcome. **Deliberately absent, not forgotten:** no `portfolio` or
+overseas-progress tables — `EVID-014` §14/§15–20 remain unconfirmed `DERIVED_BLUEPRINT`
 (`PRD_OPEN_ITEMS.md` items 77/78); adding those tables requires their own decisions first.
+**Skills (§9/§10) were confirmed 2026-09-22 (`DEC-SCOPE-023`, `ENH-011`)** and are §6.21; the
+overview gains an additive `skills` key read from them.
 
 ### 6.20 Student Journey Timeline (`SCH-008`) — added 2026-09-15, propagating `DEC-SCOPE-016`; no new tables
 
@@ -711,7 +713,30 @@ recommendation, `SchoolPsychometricRecord.created_at` for assignment and `.updat
 a report attach, `SchoolAcademicResult.published_at` for a Published result, `SchoolActivity.
 scheduled_at` for an attended session. **Deliberately absent:** any Foreign Language /
 English Test / University Planning / Soft-Skills stage from `EVID-014`'s own illustrative
-timeline — none of those are confirmed modules (`DEC-SCOPE-015`/`016`).
+timeline — none of those are confirmed modules (`DEC-SCOPE-015`/`016`). **Superseded in part
+2026-09-22 (`DEC-SCOPE-023` D5):** Soft Skills / Digital Skills events now appear, derived from
+§6.21 enrolment timestamps (`created_at`, `completed_at`, `certified_at`).
+
+### 6.21 School skills tracker (`ENH-011`) — added 2026-09-22, propagating `DEC-SCOPE-023`; migration `0035_school_skills`
+
+Six create-only tables; no existing table altered. A **batch** belongs to one school and one
+module (`module_type` `soft_skills` | `digital_skills`) and is run by a `career_counselor` whose
+`SchoolStaffAssignment` portfolio contains that school. Deliberately separate from SCH-009's
+per-student `SchoolTestPrepRecord`/`SchoolLanguageRecord` (unchanged) and from the IT-training
+`Batch`/`Enrollment` (keyed to `users`, not `school_students`).
+
+| Table | Key columns | Constraints |
+|---|---|---|
+| `school_skill_batches` | `school_id`, `module_type`, `title`, `topic?`, `trainer_name?`, `start_date`, `end_date?`, `status` (`open`/`closed`), `created_by_user_id` | module/status CHECKs; `end_date >= start_date`; index (`school_id`, `module_type`) |
+| `school_skill_enrollments` | `batch_id`, `school_student_id`, `status` (`enrolled`/`completed`/`certified`/`withdrawn`), `completed_at?`, `certified_at?`, `enrolled_by_user_id` | UNIQUE (`batch_id`, `school_student_id`); status CHECK |
+| `school_skill_sessions` | `batch_id`, `session_date`, `topic?` | UNIQUE (`batch_id`, `session_date`) — one per day |
+| `school_skill_attendance` | `session_id`, `enrollment_id`, `present`, `marked_by_user_id` | UNIQUE (`session_id`, `enrollment_id`) |
+| `school_skill_assessments` | `batch_id`, `name`, `max_score` numeric(6,2) | UNIQUE (`batch_id`, `name`); `max_score > 0` |
+| `school_skill_scores` | `assessment_id`, `enrollment_id`, `score` numeric(6,2), `remarks?`, `recorded_by_user_id` | UNIQUE (`assessment_id`, `enrollment_id`); `score >= 0` |
+
+An enrolment whose student has since transferred (`school_students.school_id` ≠ the batch's
+school, ENH-005) is **frozen**: computed at read/write time, never stored; it stays visible in the
+student's overview/timeline and rejects further writes. Enrolments are capped at 200 per batch.
 
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)
 
