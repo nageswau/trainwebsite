@@ -88,7 +88,7 @@ export default function ProfileForm({ fullName, phone }: { fullName: string; pho
   }
 
   return (
-    <form className="form" onSubmit={submit} aria-label="Your profile" aria-busy={busy}>
+    <form className="form" onSubmit={submit} aria-label="Your profile" aria-busy={busy} noValidate>
       <div className="field">
         <label htmlFor="profile-full-name">Full name</label>
         <input
