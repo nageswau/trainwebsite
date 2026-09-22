@@ -125,3 +125,100 @@ test("a parent email that already has an account at this school is linked immedi
   await expect(page.getByText(/Parent linked immediately/)).toBeVisible();
   await expect(page.getByText(/Invite email sent/)).not.toBeVisible();
 });
+
+// ENH-008 -- the same "already has an account" case above, but the account is at a DIFFERENT
+// school. Before ENH-008 this was a hard 422 rejection ("belongs to an existing account that is
+// not a Parent at this school"); it must now link immediately too, and the parent's dashboard must
+// show both children, each correctly attributed to their own school.
+test("an existing parent at a DIFFERENT school is linked immediately, and the parent's dashboard shows both children under their own school", async ({ page }) => {
+  // Two full school+coordinator setups plus three logins and an invite-accept -- genuinely more
+  // steps than any other test in this file, past the global 15s default. Scoped to this test only.
+  test.setTimeout(45_000);
+  const unique = Date.now();
+  const coordAEmail = `sch-roster-e2e-coordA-${unique}@example.local`;
+  const coordBEmail = `sch-roster-e2e-coordB-${unique}@example.local`;
+  const parentEmail = `sch-roster-e2e-crossschool-parent-${unique}@example.local`;
+  const schoolAName = `E2E Cross-School A ${unique}`;
+  const schoolBName = `E2E Cross-School B ${unique}`;
+
+  // --- Set up: School A, its coordinator, and a parent account already linked there. The
+  // roster-invite UI flow itself is already covered by the tests above in this file, so this half
+  // is done at the API level; only the actual cross-school scenario below needs the real UI. ---
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", "overseasadmin@edusphere.local");
+  await page.fill("#login-password", "Demo@123");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/overseas/admin/dashboard");
+
+  await page.goto("/overseas/admin/schools");
+  await page.fill("#school-name", schoolAName);
+  await page.fill("#school-coordinator-name", "E2E Coordinator A");
+  await page.fill("#school-coordinator-email", coordAEmail);
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
+  await expect(page.getByText(/School created\./)).toBeVisible();
+
+  await page.request.post("/api/v1/auth/logout");
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", coordAEmail);
+  await page.fill("#login-password", E2E_PASSWORD);
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/school/coordinator/dashboard");
+
+  const createdAtA = await page.request.post("/api/v1/school/students", { data: { full_name: "Child At School A", parent_email: parentEmail } });
+  const atA = await createdAtA.json();
+  expect(atA.parent_status).toBe("invited");
+  const token = atA.development_invite_token;
+  expect(token).toBeTruthy();
+
+  await page.request.post("/api/v1/auth/logout");
+  await page.goto(`/school/invite/${token}/accept`);
+  await page.fill("#invite-password", "Sup3r-Secret-Pass!");
+  await page.click('button:has-text("Accept and set up login")');
+  await page.waitForURL("**/school/parent/dashboard");
+  await page.request.post("/api/v1/auth/logout");
+
+  // --- School B, a different coordinator who has never heard of School A, adds a student naming
+  // the SAME parent email through the real roster UI. This is the behavior under test. ---
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", "overseasadmin@edusphere.local");
+  await page.fill("#login-password", "Demo@123");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/overseas/admin/dashboard");
+
+  await page.goto("/overseas/admin/schools");
+  await page.fill("#school-name", schoolBName);
+  await page.fill("#school-coordinator-name", "E2E Coordinator B");
+  await page.fill("#school-coordinator-email", coordBEmail);
+  await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
+  await expect(page.getByText(/School created\./)).toBeVisible();
+
+  await page.request.post("/api/v1/auth/logout");
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", coordBEmail);
+  await page.fill("#login-password", E2E_PASSWORD);
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/school/coordinator/dashboard");
+
+  await page.goto("/school/coordinator/students");
+  await page.fill("#new-full-name", "Child At School B");
+  await page.fill("#new-parent-email", parentEmail);
+  await page.click('button:has-text("Add student")');
+  await expect(page.getByText(/Parent linked immediately/)).toBeVisible();
+  await expect(page.getByText(/is not a Parent/)).not.toBeVisible();
+
+  // --- The parent now has children at two schools; the dashboard must show both, each attributed
+  // to their own school -- ENH-008's other stated acceptance criterion. ---
+  await page.request.post("/api/v1/auth/logout");
+  await page.goto("/overseas/login");
+  await page.fill("#login-email", parentEmail);
+  await page.fill("#login-password", "Sup3r-Secret-Pass!");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/school/parent/dashboard");
+
+  await expect(page.getByRole("heading", { name: schoolAName })).toBeVisible();
+  await expect(page.getByRole("heading", { name: schoolBName })).toBeVisible();
+  // Card headings (student names), not the "Parent of Child At School A/B" text underneath them --
+  // that string also contains this substring, so it must be scoped to the heading role.
+  await expect(page.getByRole("heading", { name: /^Child At School A/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Child At School B/ })).toBeVisible();
+});

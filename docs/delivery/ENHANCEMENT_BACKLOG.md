@@ -800,10 +800,18 @@ to show which school each child belongs to, not just grade).
 parent has exactly one school must be found and updated to derive scope per-request from
 `SchoolParentLink` instead.
 
-**Database impact.** No new table needed (`SchoolParentLink` already supports this) — but a migration
-is still required: existing `school_parent` accounts' `profile["school_id"]` becomes ambiguous/
-misleading once a parent can have links at multiple schools, so it should be deprecated in favor of a
-derived value, with a backfill/cleanup pass over existing rows.
+**Database impact.** No new table needed (`SchoolParentLink` already supports this).
+
+**Correction (design session, 2026-09-22, `EXPLICIT_APPROVAL`):** this entry originally said a
+migration was still required, to deprecate/backfill `school_parent` accounts' now-ambiguous
+`profile["school_id"]`. Put to the user directly during design (`docs/superpowers/specs/2026-09-22-
+enh-008-parent-multi-school-design.md` §3), the decision was: leave existing `profile["school_id"]`
+values alone, no migration, no backfill -- the field is simply never read for authorization for the
+`school_parent` role again (confirmed by direct code audit: every read site derives parent scope from
+`SchoolParentLink` rows only). Zero risk of a migration touching production data incorrectly, and
+nothing downstream can accidentally resurrect the old behavior since the reading code is gone, not
+merely bypassed. `accept_invite()` also stops *writing* `profile["school_id"]` for new `school_parent`
+accounts (`schools.py:262`); existing stale values on older accounts are inert.
 
 **API impact.** Parent-facing "my children" read endpoint(s) must return each child's school
 explicitly rather than assuming one school for the whole response.
@@ -2704,7 +2712,9 @@ is confirmed correct).
   copied from `mark_attendance` (`schools.py:1091-1116`) — read that function before designing this
   one's payload shape, don't redesign from scratch.
 
-**Require migrations:** ENH-001, ENH-004, ENH-005, ENH-008 (as before); **ENH-009** (School ID column,
+**Require migrations:** ENH-001, ENH-004, ENH-005 (as before); **ENH-008 no longer requires one** --
+see the corrected Database impact note under ENH-008 below (design-time decision, not an oversight);
+**ENH-009** (School ID column,
 possibly a new `SchoolBranch` table), **ENH-011** (module-type column/table), **ENH-012** (new
 portfolio tables), **ENH-013** (five small new sub-entity tables), **ENH-014** (notification-
 preference/delivery-log tables), **ENH-018/ENH-019/ENH-020/ENH-021** (each a small new table),
