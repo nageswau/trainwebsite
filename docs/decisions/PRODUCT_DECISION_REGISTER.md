@@ -2179,3 +2179,88 @@ Design, API, UI and security review: `docs/superpowers/specs/2026-09-21-enh-005-
 **Owner decision, 2026-09-21 — unaccepted parent invites: DECIDED, keep the admin warning** (`EXPLICIT_APPROVAL`: the owner chose this option in the session; the options were the ones listed in spec §13). A parent who was invited but had not accepted when their student transferred keeps today's behavior: approval clears the student's `pending_parent_email`, the parent later has an account at the losing school and no linked child, and the gaining coordinator cannot link them. The admin is warned in the queue row and again at the confirm step (`pending_parent_invite`) and can ask the parent to accept first. **Not chosen:** carrying the invite to the gaining school (needs a cross-school exception to the same-school link invariant S2/AC-29 and a rule for invites that cover siblings still at the losing school), and blocking filing or approval while an invite is unaccepted (can stall a transfer on a parent who never responds). Multi-school parent handling can be revisited with `ENH-008`.
 
 **Security findings and status.** Found by the review before code (spec §6.1): HTML injection in parent emails (fixed, D9); the parent read filter no longer double-checking the school (link creators verified and tested); a code-probing oracle through the requester's own list (throttle D8, cap D7, every attempt audited, residual documented); an unrecorded authorization-scope change (one audit row per re-scoped parent); approval as a general write path (restricted to `profile.school_id` on `school_parent` accounts). Reported, not changed (outside ENH-005): the API has no rate limiting on login or elsewhere; no CSRF token exists (`SameSite=Lax` only); `secret_key` defaults to `"change-me"` and `cookie_secure` to `False`; admin routes gate on the `users.role` column rather than active role assignments.
+
+---
+
+### DEC-SCOPE-023 — School Profile field-by-field scope, and Branch modeled as a field, not an entity
+
+**Status:** CONFIRMED_CURRENT — resolved 2026-09-22, in-session.
+
+**Trigger:** `School CRM.md §2` (`docs/sources/School CRM.md:64-116`, `EVID-014`) lists a full School
+Profile of ~24 fields; `ENHANCEMENT_BACKLOG.md`'s `ENH-009` entry (Revision 4) already recorded the
+user's direct, explicit, `EXPLICIT_APPROVAL`-grade instruction that full field coverage is mandatory
+for this release, leaving two open questions unresolved: (1) whether Branch is a field or a separate
+scoping entity, and (2) whether the resulting design should introduce real Pydantic schemas for
+`School` for the first time, given `create_school`/`list_schools`/`update_school_tier` currently use
+untyped `payload: dict`. Both were put to the user directly during this session's `superpowers:brainstorming`
+pass (`docs/superpowers/specs/2026-09-22-enh-009-school-profile-design.md`).
+
+**Resolution — Branch (`EXPLICIT_APPROVAL`, user, in-session):** Branch is a **free-text field** on
+`School` (`branch: String(200), nullable`), not a separate `SchoolBranch` entity. No new table, no new
+RBAC scoping boundary — `RBAC_MATRIX.md` §2.12's "one `School` row = one isolated tenant" assumption is
+preserved unchanged. This closes `ENH-009`'s own acceptance criterion ("Branch's scope explicitly
+decided and documented before any migration ships") and removes the item's previously-identified High
+regression-risk driver (every `school:coordinator:own_institution`-style check in `schools.py` would
+otherwise have needed to become branch-aware).
+
+**Resolution — field-by-field scope (`EXPLICIT_APPROVAL`, user, in-session, confirming `ENH-009`
+Revision 4's mandatory-coverage directive):** all 24 fields are in scope for this release except two
+carve-outs already recorded in `ENH-009`: (a) populating `Edusphere BDM`'s value is blocked separately
+on the unapproved `BDM` role (`PRD_OPEN_ITEMS.md` item 61) — the field itself ships, as plain text, not
+a role reference; (b) Monthly visit schedule ships as a descriptive text field only — a real
+forward-scheduling engine remains `ENH-019`'s job, unchanged. Number of students/teachers, Principal
+name, School Coordinator name, and Career Counsellor name(s) are exposed **computed** (live query,
+never stored) — the first two per the existing backlog recommendation, the latter two because a
+design self-review during this session caught that Principal/Coordinator/Career Counsellor had been
+left "unchanged, no design gap" despite being 3 of the backlog's own 15 mandatory-missing fields;
+they are role-derived and already queryable, so computed exposure (not a new stored column) is the
+correct fix, matching how Dedicated Counsellor is already handled via `SchoolStaffAssignment` rather
+than a flat field. Vice Principal has no role or account type anywhere in this system to derive from
+— ships as a plain nullable text field (`vice_principal_name`, no login/role), the same
+"field ships, larger structural question deferred" treatment as `edusphere_bdm`. Agreement/MoU ships
+as a plain reference-string field (`mou_reference`), not a document-upload feature — a generic
+`ProfileDocumentUpload`/`StorageService` pattern already exists in this codebase but generalizing it to
+`School` is judged out of scope for a field-coverage item; flagged in the design doc as a deliberate,
+smaller-scope choice rather than a silent omission.
+
+**Resolution — schemas (`EXPLICIT_APPROVAL`, user, in-session):** `SchoolCreate`/`SchoolUpdate`/
+`SchoolOut` Pydantic schemas are introduced in `schemas.py` for the first time for this entity
+(`extra="forbid"`, matching this codebase's existing convention), replacing `create_school`/
+`update_school_tier`'s untyped `payload: dict`. Request/response JSON shape stays additive-compatible
+with existing callers (`AdminSchoolCreatePanel.tsx`).
+
+**Resolution — access model (`EXPLICIT_APPROVAL`, user, in-session):** admin-only (`overseas_admin`/
+`super_admin`) create **and** edit, matching who already owns this data today. No new School Coordinator/
+Principal self-service profile page in this pass.
+
+**Evidence:** `EVID-014` (`docs/sources/School CRM.md`); `ENHANCEMENT_BACKLOG.md`'s `ENH-009` entry
+(Revision 4, `EXPLICIT_APPROVAL` already recorded there for mandatory field coverage); this session's
+direct codebase verification against `apps/api/app/models.py:928-948`, `apps/api/app/api/admin.py`,
+`apps/api/app/services/portal.py:1360-1371`, and `apps/api/app/core/identifiers.py`.
+
+**New Feature ID:** none — this is additive scope on the existing `ENH-009` item, not a new feature.
+
+**Consequences:** one additive migration on `schools` (`school_code`, `branch`, `address`,
+`contact_number`, `email`, `website`, `grades_available`, `board`, `partnership_date`, `mou_reference`,
+`edusphere_bdm`, `monthly_visit_schedule`, `vice_principal_name` — all nullable, no backfill); three
+new computed (never stored) fields in `SchoolOut` — Principal name, School Coordinator name, Career
+Counsellor name(s) — alongside the existing computed student/teacher counts; `school_code` reuses
+`core/identifiers.py`'s existing `generate_student_code()`/`unique_student_code()` pattern verbatim;
+`GET /overseas-admin/schools/lookup?code=` (new, `overseas_admin`/`super_admin` only — deliberately
+narrower than the analogous `school-students/lookup` endpoint's role set, which includes `counselor`
+for an unrelated bridge use case that doesn't apply to School-profile edit); `PATCH
+/overseas-admin/schools/{id}` widened from tier-only to all profile fields, true partial-update
+semantics; new `AuditLog` action `school.profile_update` (field-names-only in `metadata_json`, not full
+values, to avoid duplicating partner contact info into the permanent audit trail) alongside the
+existing `school.tier_update`.
+
+**Security review findings and status** (full detail in the design doc's §4): no new authentication,
+CSRF, XSS, or SQL-injection surface (existing patterns reused unchanged); no IDOR fix needed (admin
+roles are intentionally not school-scoped); one real authorization finding closed before code (the new
+lookup endpoint's role set, above). Reported, not changed (pre-existing, outside `ENH-009`, consistent
+with the same items already reported and left unchanged in `DEC-SCOPE-` entries for `ENH-005`): no rate
+limiting anywhere in the API; no CSRF token (`SameSite=Lax` only); admin routes gate on `user.role`
+directly rather than active role assignments.
+
+**Stated by:** user (in-session) — **Date:** 2026-09-22. Resolves `ENH-009`'s two open acceptance-
+criteria blockers (field-by-field scope, Branch design).
