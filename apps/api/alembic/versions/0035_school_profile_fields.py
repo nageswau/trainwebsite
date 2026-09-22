@@ -1,4 +1,4 @@
-"""Add School Profile fields (ENH-009, DEC-SCOPE-023).
+"""Add School Profile fields (ENH-009, DEC-SCOPE-025).
 
 Revision ID: 0035_school_profile_fields
 Revises: 0034_school_transfer_requests

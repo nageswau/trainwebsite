@@ -2,10 +2,17 @@
 
 A Coordinator now enters a parent's name/email directly on the roster (single-add, edit,
 or bulk upload) instead of only via the separate Team invite page. If the email doesn't
-already belong to a school_parent account at this school, an invite is created and
-emailed automatically; accepting it links every student that named that exact email, not
-just the one that triggered it. Coordinator-only creation of Teacher/Principal/Parent
+already belong to a school_parent account, an invite is created and emailed
+automatically; accepting it links every student that named that exact email, not just
+the one that triggered it. Coordinator-only creation of Teacher/Principal/Parent
 accounts was already true before this addendum (SCH-003) -- not re-tested here.
+
+ENH-008: an email that already belongs to a school_parent account at a *different*
+school is also linked immediately here, not just the same-school case this file's own
+tests happen to name -- see apps/api/tests/test_enh_005_scope.py for the cross-school
+tests (test_adding_a_student_at_school_a_can_use_a_parent_already_linked_at_school_b and
+neighbors), which exercise this exact `_link_or_invite_parent()`/`_parent_email_conflict()`
+code path from a different fixture set.
 """
 
 import io
@@ -110,6 +117,24 @@ async def test_accept_flow_links_every_student_with_the_same_pending_email(clien
     s2 = await db_session.get(SchoolStudent, uuid.UUID(second_id))
     assert s1.pending_parent_email is None
     assert s2.pending_parent_email is None
+
+
+@pytest.mark.asyncio
+async def test_accepting_a_parent_invite_does_not_set_profile_school_id(client, db_session):
+    ctx = await _create_school_with_coordinator(db_session)
+    await _login(client, ctx["coordinator"].email)
+    parent_email = f"sch-roster-parent-{uuid.uuid4().hex[:8]}@example.local"
+
+    created = await client.post("/api/v1/school/students", json={"full_name": "Profile Check Student", "parent_email": parent_email})
+    assert created.status_code == 201, created.text
+    token = created.json()["development_invite_token"]
+
+    await client.post("/api/v1/auth/logout")
+    accept = await client.post(f"/api/v1/school/invites/{token}/accept", json={"password": PASSWORD})
+    assert accept.status_code == 201, accept.text
+
+    account = await db_session.scalar(select(User).where(User.id == uuid.UUID(accept.json()["id"])))
+    assert account.profile == {}
 
 
 @pytest.mark.asyncio

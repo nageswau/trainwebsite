@@ -13,7 +13,7 @@ type School = {
   edusphere_bdm: string | null; monthly_visit_schedule: string | null; vice_principal_name: string | null;
 };
 
-// ENH-009 / DEC-SCOPE-023: lookup-by-code then PATCH, mirroring the existing
+// ENH-009 / DEC-SCOPE-025: lookup-by-code then PATCH, mirroring the existing
 // GET .../school-students/lookup?code= convention (admin.py:1240) -- the codebase has no
 // clickable-table-row-to-edit pattern anywhere, and the established convention is "read via the
 // generic portal section, write via a dedicated panel" (same split as AdminSchoolCreatePanel.tsx).

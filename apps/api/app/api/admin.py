@@ -63,7 +63,7 @@ def _fit(value, label: str, limit: int):
 
 
 async def _school_out(db: AsyncSession, school: "School") -> "SchoolOut":
-    """ENH-009 / DEC-SCOPE-023: the one place that assembles a School's full profile response,
+    """ENH-009 / DEC-SCOPE-025: the one place that assembles a School's full profile response,
     including the fields that are deliberately computed rather than stored -- student/teacher
     counts, and the Principal/Coordinator/Career Counsellor names, all of which are derived from
     role assignments rather than duplicated onto `School` itself (see the design doc §2).
@@ -1086,7 +1086,7 @@ async def create_school(payload: SchoolCreate, user: User = Depends(get_current_
     # Pydantic layer, before this function body runs at all -- an explicit
     # _reject_supplied_password() call here would be unreachable dead code (simplification pass,
     # ENH-009). This does lose the WARNING-level `provisioning_password_field_rejected` telemetry
-    # that call used to emit; already noted and accepted in DEC-SCOPE-023's addendum.
+    # that call used to emit; already noted and accepted in DEC-SCOPE-025's addendum.
     email = _valid_email(payload.coordinator_email)
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
@@ -1139,7 +1139,7 @@ async def list_schools(user: User = Depends(get_current_user), db: AsyncSession 
 
 @agents_router.patch("/schools/{school_id}")
 async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-023) -- Overseas Admin updates a School's partnership
+    """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-025) -- Overseas Admin updates a School's partnership
     tier and/or profile fields. `name`/`city`/`state`/`coordinator_*` stay out of scope for this
     endpoint -- they were never editable before and no acceptance criterion asks for that."""
     if user.role not in {"overseas_admin", "super_admin"}:
@@ -1322,7 +1322,7 @@ async def list_school_staff(user: User = Depends(get_current_user), db: AsyncSes
 
 @agents_router.get("/schools/lookup")
 async def lookup_school_by_code(code: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """ENH-009 / DEC-SCOPE-023 -- resolves a School's business-facing `school_code` to its full
+    """ENH-009 / DEC-SCOPE-025 -- resolves a School's business-facing `school_code` to its full
     profile, for the admin edit panel. Deliberately narrower than the analogous
     `school-students/lookup` endpoint: Counselor has a real reason to look up a School *student*
     (the School->Overseas bridge, DEC-SCOPE-018) but no legitimate reason to see or edit a

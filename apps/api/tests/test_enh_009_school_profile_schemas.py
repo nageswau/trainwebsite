@@ -1,4 +1,4 @@
-"""ENH-009 / DEC-SCOPE-023 -- SchoolCreate/SchoolUpdate/SchoolOut schema behavior."""
+"""ENH-009 / DEC-SCOPE-025 -- SchoolCreate/SchoolUpdate/SchoolOut schema behavior."""
 
 from datetime import date
 

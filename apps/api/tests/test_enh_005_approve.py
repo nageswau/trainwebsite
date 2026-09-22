@@ -133,8 +133,8 @@ async def test_a_parent_moves_only_when_no_other_child_remains_and_every_link_is
     await _approve(client, w)
 
     p1, p2 = await _fresh(db_session, User, w["p1"].id), await _fresh(db_session, User, w["p2"].id)
-    assert p1.profile["school_id"] == str(w["b"]["school"].id)  # their only child left: the account follows
-    assert p2.profile["school_id"] == str(w["a"]["school"].id)  # a sibling is still at A: the account stays
+    assert p1.profile.get("school_id") == str(w["a"]["school"].id)  # never written to -- stays exactly as created
+    assert p2.profile.get("school_id") == str(w["a"]["school"].id)
     links = {(row.parent_user_id, row.school_student_id) for row in (await db_session.scalars(select(SchoolParentLink).where(SchoolParentLink.school_student_id == w["kid"].id))).all()}
     assert links == {(w["p1"].id, w["kid"].id), (w["p2"].id, w["kid"].id)}
     for parent in (w["p1"], w["p2"]):  # both can still read the child, wherever their account is
@@ -145,7 +145,7 @@ async def test_a_parent_moves_only_when_no_other_child_remains_and_every_link_is
 
 
 @pytest.mark.asyncio
-async def test_approval_writes_only_profile_school_id_on_parent_accounts(client, db_session, world):
+async def test_approval_writes_nothing_on_any_linked_user_account(client, db_session, world):
     w = world
     odd = await mk_user(db_session, role="school_teacher", name="Teacher wrongly linked as a parent", school_id=w["a"]["school"].id, assigned_by=w["a"]["coordinator"])
     await db_session.flush()
@@ -158,13 +158,12 @@ async def test_approval_writes_only_profile_school_id_on_parent_accounts(client,
         for uid in linked:
             u = await _fresh(db_session, User, uid)
             assignments = (await db_session.scalars(select(UserRoleAssignment).where(UserRoleAssignment.user_id == uid))).all()
-            out[uid] = (u.role, u.division, u.active, u.email, u.password_hash, u.full_name, sorted((x.role, x.division, x.is_active, x.approval_status) for x in assignments))
+            out[uid] = (u.role, u.division, u.active, u.email, u.password_hash, u.full_name, u.profile, sorted((x.role, x.division, x.is_active, x.approval_status) for x in assignments))
         return out
 
     before = await snapshot()
     assert (await _approve(client, w)).status_code == 200
     assert await snapshot() == before
-    assert (await _fresh(db_session, User, odd.id)).profile["school_id"] == str(w["a"]["school"].id)  # a non-parent is never re-scoped
 
 
 # ------------------------------------------------------------------------------------------ results (D3) and other records (D4)
@@ -258,22 +257,24 @@ async def test_a_rejected_or_cancelled_request_cannot_be_approved(client, db_ses
 
 
 @pytest.mark.asyncio
-async def test_audit_rows_are_written_for_the_transfer_and_for_each_moved_parent(client, db_session, world):
+async def test_audit_row_names_the_moved_and_kept_parents_and_leaks_nothing_else(client, db_session, world):
     w = world
     assert (await _approve(client, w)).status_code == 200
 
     transfer = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.student_transfer", AuditLog.entity_id == str(w["request"].id)))).all()
     assert len(transfer) == 1 and transfer[0].user_id == w["admin"].id and transfer[0].outcome == "recorded"
-    assert transfer[0].metadata_json["parents_moved"] == 1 and "request_id" in transfer[0].metadata_json
-    moved = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.user_school_scope_changed", AuditLog.entity_id == str(w["p1"].id)))).all()
-    assert len(moved) == 1
-    assert (moved[0].metadata_json["from_school_id"], moved[0].metadata_json["to_school_id"], moved[0].metadata_json["transfer_request_id"]) == (
-        str(w["a"]["school"].id),
-        str(w["b"]["school"].id),
-        str(w["request"].id),
+    meta = transfer[0].metadata_json
+    assert meta["parents_moved"] == 1 and meta["parents_kept"] == 1 and "request_id" in meta
+    assert meta["parents_moved_ids"] == [str(w["p1"].id)]
+    assert meta["parents_kept_ids"] == [str(w["p2"].id)]
+    # Scoped to this test's own (freshly-minted) parent IDs rather than a bare global count: the shared dev/demo database
+    # (test_enh_001_academic_year.py's fixtures note there is no per-test transaction rollback here) still carries
+    # "school.user_school_scope_changed" rows from before this change existed, so an unscoped count is never 0 in practice.
+    no_scope_rows = await db_session.scalar(
+        select(func.count()).select_from(AuditLog).where(AuditLog.action == "school.user_school_scope_changed", AuditLog.entity_id.in_([str(w["p1"].id), str(w["p2"].id)]))
     )
-    assert await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action == "school.user_school_scope_changed", AuditLog.entity_id == str(w["p2"].id))) == 0
-    blob = json.dumps([x.metadata_json for x in transfer + moved])
+    assert no_scope_rows == 0  # the old per-parent audit action is no longer written at all, for either of this transfer's parents
+    blob = json.dumps([x.metadata_json for x in transfer])
     assert w["kid"].full_name not in blob and w["kid"].student_code not in blob and "Family is moving" not in blob
 
 
@@ -300,7 +301,6 @@ async def test_a_failure_inside_the_transaction_leaves_everything_exactly_as_it_
     assert (await _fresh(db_session, SchoolAcademicResult, draft.id)).status == "draft"
     request = await _fresh(db_session, SchoolStudentTransferRequest, w["request"].id)
     assert (request.status, request.outcome) == ("pending", None)
-    assert await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action == "school.user_school_scope_changed", AuditLog.entity_id == str(w["p1"].id))) == 0
 
 
 @pytest.mark.asyncio

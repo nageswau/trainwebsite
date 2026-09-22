@@ -742,7 +742,7 @@ class AdminTransferHistoryResponse(BaseModel):
     history: list[AdminTransferRequestOut]
 
 
-# --- ENH-009 / DEC-SCOPE-023: School Profile field coverage (EVID-014) ---
+# --- ENH-009 / DEC-SCOPE-025: School Profile field coverage (EVID-014) ---
 
 SchoolBoard = Literal["CBSE", "ICSE", "State", "IB", "Other"]
 

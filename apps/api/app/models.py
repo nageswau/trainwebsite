@@ -927,7 +927,7 @@ class PasswordResetToken(Base, TimestampMixin):
 
 class School(Base, TimestampMixin):
     """School partner record (SCH-003, DATA_MODEL.md §6.11; profile fields added ENH-009,
-    DEC-SCOPE-023). `EVID-014`'s full field list is now confirmed in scope -- see the
+    DEC-SCOPE-025). `EVID-014`'s full field list is now confirmed in scope -- see the
     design doc for what's stored here vs. computed at read time in `SchoolOut`."""
 
     __tablename__ = "schools"
@@ -938,7 +938,7 @@ class School(Base, TimestampMixin):
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     tier: Mapped[str | None] = mapped_column(String(20), nullable=True)
     tier_valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
-    # ENH-009 / DEC-SCOPE-023: School Profile fields (EVID-014). All nullable, additive.
+    # ENH-009 / DEC-SCOPE-025: School Profile fields (EVID-014). All nullable, additive.
     school_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
     branch: Mapped[str | None] = mapped_column(String(200), nullable=True)
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)

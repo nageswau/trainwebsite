@@ -18,7 +18,7 @@ httpx `AsyncClient` (backend tests); Vitest + Testing Library (frontend unit tes
 (E2E).
 
 **Spec:** `docs/superpowers/specs/2026-09-22-enh-009-school-profile-design.md`
-**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → `DEC-SCOPE-023`
+**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → `DEC-SCOPE-025`
 
 ## Global Constraints
 
@@ -43,7 +43,7 @@ httpx `AsyncClient` (backend tests); Vitest + Testing Library (frontend unit tes
 - `school_code` generation reuses `unique_student_code(db, School.school_code)`
   (`core/identifiers.py:23`) verbatim — no new ID-generation code.
 - `AuditLog.metadata_json` for the new `school.profile_update` action logs **changed field names
-  only**, never values (`DEC-SCOPE-023`).
+  only**, never values (`DEC-SCOPE-025`).
 - Running backend tests requires the project's own Postgres stack to be up (this session does not
   start/stop it — the user runs `docker compose` themselves). Confirm it's reachable before Task 1's
   RED step; if not, ask the user to start it rather than guessing.
@@ -98,7 +98,7 @@ Expected: FAIL — the assertion fails because `found` is an empty set (none of 
 
 ```python
 # apps/api/alembic/versions/0035_school_profile_fields.py
-"""Add School Profile fields (ENH-009, DEC-SCOPE-023).
+"""Add School Profile fields (ENH-009, DEC-SCOPE-025).
 
 Revision ID: 0035_school_profile_fields
 Revises: 0034_school_transfer_requests
@@ -221,7 +221,7 @@ column exists in the DB from Task 1, but the ORM model doesn't know about it yet
 
 class School(Base, TimestampMixin):
     """School partner record (SCH-003, DATA_MODEL.md §6.11; profile fields added ENH-009,
-    DEC-SCOPE-023). `EVID-014`'s full field list is now confirmed in scope -- see the
+    DEC-SCOPE-025). `EVID-014`'s full field list is now confirmed in scope -- see the
     design doc for what's stored here vs. computed at read time in `SchoolOut`."""
 
     __tablename__ = "schools"
@@ -232,7 +232,7 @@ class School(Base, TimestampMixin):
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     tier: Mapped[str | None] = mapped_column(String(20), nullable=True)
     tier_valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
-    # ENH-009 / DEC-SCOPE-023: School Profile fields (EVID-014). All nullable, additive.
+    # ENH-009 / DEC-SCOPE-025: School Profile fields (EVID-014). All nullable, additive.
     school_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
     branch: Mapped[str | None] = mapped_column(String(200), nullable=True)
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -287,7 +287,7 @@ git commit -m "feat(enh-009): map School Profile columns onto the School model"
 
 ```python
 # apps/api/tests/test_enh_009_school_profile_schemas.py
-"""ENH-009 / DEC-SCOPE-023 -- SchoolCreate/SchoolUpdate/SchoolOut schema behavior."""
+"""ENH-009 / DEC-SCOPE-025 -- SchoolCreate/SchoolUpdate/SchoolOut schema behavior."""
 
 import pytest
 from pydantic import ValidationError
@@ -341,7 +341,7 @@ Expected: FAIL with `ImportError: cannot import name 'SchoolCreate' from 'app.sc
 ```python
 # apps/api/app/schemas.py -- append at end of file
 
-# --- ENH-009 / DEC-SCOPE-023: School Profile field coverage (EVID-014) ---
+# --- ENH-009 / DEC-SCOPE-025: School Profile field coverage (EVID-014) ---
 
 SchoolBoard = Literal["CBSE", "ICSE", "State", "IB", "Other"]
 
@@ -492,7 +492,7 @@ Expected: FAIL with `ImportError: cannot import name '_school_out' from 'app.api
 # apps/api/app/api/admin.py -- add near the other module-level helpers (after _fit(), ~line 63)
 
 async def _school_out(db: AsyncSession, school: "School") -> "SchoolOut":
-    """ENH-009 / DEC-SCOPE-023: the one place that assembles a School's full profile response,
+    """ENH-009 / DEC-SCOPE-025: the one place that assembles a School's full profile response,
     including the fields that are deliberately computed rather than stored -- student/teacher
     counts, and the Principal/Coordinator/Career Counsellor names, all of which are derived from
     role assignments rather than duplicated onto `School` itself (see the design doc §2)."""
@@ -870,7 +870,7 @@ Expected: FAIL — the PATCH body's `branch`/`board`/`email` are silently ignore
 
 @agents_router.patch("/schools/{school_id}")
 async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-023) -- Overseas Admin updates a School's partnership
+    """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-025) -- Overseas Admin updates a School's partnership
     tier and/or profile fields. `name`/`city`/`state`/`coordinator_*` stay out of scope for this
     endpoint -- they were never editable before and no acceptance criterion asks for that."""
     if user.role not in {"overseas_admin", "super_admin"}:
@@ -922,7 +922,7 @@ git commit -m "feat(enh-009): widen school PATCH to full profile, add school.pro
 - Consumes: `_school_out()` (Task 4).
 - Produces: `GET /overseas-admin/schools/lookup?code=<school_code>` → `SchoolOut`-shaped JSON, 404 if
   not found, 403 for any role outside `{"overseas_admin","super_admin"}` (deliberately excluding
-  `counselor`, unlike the sibling student-lookup endpoint — `DEC-SCOPE-023`). Task 10 (frontend edit
+  `counselor`, unlike the sibling student-lookup endpoint — `DEC-SCOPE-025`). Task 10 (frontend edit
   panel) depends on this.
 
 - [ ] **Step 1: Write the failing test**
@@ -976,7 +976,7 @@ Expected: FAIL with 404 (route not found / method not allowed) — the endpoint 
 
 @agents_router.get("/schools/lookup")
 async def lookup_school_by_code(code: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """ENH-009 / DEC-SCOPE-023 -- resolves a School's business-facing `school_code` to its full
+    """ENH-009 / DEC-SCOPE-025 -- resolves a School's business-facing `school_code` to its full
     profile, for the admin edit panel. Deliberately narrower than the analogous
     `school-students/lookup` endpoint: Counselor has a real reason to look up a School *student*
     (the School->Overseas bridge, DEC-SCOPE-018) but no legitimate reason to see or edit a
@@ -1018,7 +1018,7 @@ git commit -m "feat(enh-009): add GET /overseas-admin/schools/lookup?code="
 
 ```python
 # apps/api/tests/test_enh_009_school_portal_list.py
-"""ENH-009 / DEC-SCOPE-023 -- the existing read-only Partner Schools portal list gains
+"""ENH-009 / DEC-SCOPE-025 -- the existing read-only Partner Schools portal list gains
 school_code/branch/board/tier columns (the acceptance criterion that School ID must be displayed
 everywhere a school is currently identified only by name)."""
 
@@ -1068,7 +1068,7 @@ Expected: FAIL — `column_keys` today is only `{"id","name","city","state","cre
 # apps/api/app/services/portal.py -- replace lines 1360-1371
 
         if section == "schools" and division == "overseas":
-            # SCH-003 / ENH-009 (DEC-SCOPE-023): Overseas Admin's own partner-school list --
+            # SCH-003 / ENH-009 (DEC-SCOPE-025): Overseas Admin's own partner-school list --
             # creation/edit handled by AdminSchoolCreatePanel.tsx/AdminSchoolEditPanel.tsx, same
             # "read via the generic portal section, write via a dedicated panel" split already
             # established for `universities` (RAID.md I-32).
@@ -1366,7 +1366,7 @@ type School = {
   edusphere_bdm: string | null; monthly_visit_schedule: string | null; vice_principal_name: string | null;
 };
 
-// ENH-009 / DEC-SCOPE-023: lookup-by-code then PATCH, mirroring the existing
+// ENH-009 / DEC-SCOPE-025: lookup-by-code then PATCH, mirroring the existing
 // GET .../school-students/lookup?code= convention (admin.py:1240) -- the codebase has no
 // clickable-table-row-to-edit pattern anywhere, and the established convention is "read via the
 // generic portal section, write via a dedicated panel" (same split as AdminSchoolCreatePanel.tsx).

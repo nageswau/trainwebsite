@@ -1,4 +1,4 @@
-"""ENH-009 / DEC-SCOPE-023 -- the existing read-only Partner Schools portal list gains
+"""ENH-009 / DEC-SCOPE-025 -- the existing read-only Partner Schools portal list gains
 school_code/branch/board/tier columns (the acceptance criterion that School ID must be displayed
 everywhere a school is currently identified only by name)."""
 

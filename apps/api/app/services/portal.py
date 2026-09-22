@@ -1358,7 +1358,7 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 ({"id": agent.id, "name": agent.full_name, "email": agent.email, "status": assignment.approval_status} for agent, assignment in rows),
             )
         if section == "schools" and division == "overseas":
-            # SCH-003 / ENH-009 (DEC-SCOPE-023): Overseas Admin's own partner-school list --
+            # SCH-003 / ENH-009 (DEC-SCOPE-025): Overseas Admin's own partner-school list --
             # creation/edit handled by AdminSchoolCreatePanel.tsx/AdminSchoolEditPanel.tsx, same
             # "read via the generic portal section, write via a dedicated panel" split already
             # established for `universities` (RAID.md I-32).

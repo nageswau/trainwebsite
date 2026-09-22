@@ -1,4 +1,4 @@
-"""Backfill school_code for existing School rows (ENH-009, DEC-SCOPE-023 final review).
+"""Backfill school_code for existing School rows (ENH-009, DEC-SCOPE-025 final review).
 
 Revision ID: 0036_backfill_school_code
 Revises: 0035_school_profile_fields

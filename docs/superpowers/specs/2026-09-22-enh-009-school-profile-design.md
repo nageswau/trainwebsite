@@ -1,12 +1,12 @@
 # ENH-009 — School Profile: mandatory full field coverage — Design
 
-**Status:** Approved in-session, 2026-09-22 (`DEC-SCOPE-023`). Superpowers architectural path:
+**Status:** Approved in-session, 2026-09-22 (`DEC-SCOPE-025`). Superpowers architectural path:
 brainstorming → this design doc → `writing-plans` next.
 
 **Source requirement:** `School CRM.md §2` (`docs/sources/School CRM.md:64-116`, `EVID-014`).
 **Backlog item:** `docs/delivery/ENHANCEMENT_BACKLOG.md:938-1084` (`ENH-009`, Revision 4 —
 `EXPLICIT_APPROVAL` already recorded there for mandatory field coverage).
-**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → `DEC-SCOPE-023`.
+**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → `DEC-SCOPE-025`.
 
 ## 1. Scope
 
@@ -33,7 +33,7 @@ for `edusphere_bdm`).
   (`PRD_OPEN_ITEMS.md` item 61). The field itself ships as plain text.
 - A real forward-looking visit-scheduling engine — `monthly_visit_schedule` ships as descriptive
   text only; automation is `ENH-019`.
-- A School Coordinator/Principal self-service profile page — admin-only this pass (`DEC-SCOPE-023`).
+- A School Coordinator/Principal self-service profile page — admin-only this pass (`DEC-SCOPE-025`).
 - A document-upload feature for Agreement/MoU — ships as a plain reference string
   (`mou_reference`). A generic `ProfileDocumentUpload`/`StorageService` pattern exists in this
   codebase; generalizing it to `School` is judged excess scope for a field-coverage item.
@@ -47,7 +47,7 @@ no data loss, existing rows unaffected.
 school_code            String(8), unique, indexed   — business ID, generated once at creation,
                                                         immutable, reuses core/identifiers.py's
                                                         generate_student_code()/unique_student_code()
-branch                 String(200), nullable          — free text (DEC-SCOPE-023: field, not entity)
+branch                 String(200), nullable          — free text (DEC-SCOPE-025: field, not entity)
 address                String(500), nullable
 contact_number         String(30), nullable
 email                  String(255), nullable
@@ -106,7 +106,7 @@ which is an unrelated-module change):
   `GET /overseas-admin/school-students/lookup?code=` (`admin.py:1240`) but with a narrower role set:
   `{"overseas_admin","super_admin"}` only, **excluding `counselor`** (unlike the student-lookup
   endpoint, which grants Counselor access for the unrelated School→Overseas bridge use case —
-  Counselor has no legitimate reason to see or edit a School's profile; `DEC-SCOPE-023`).
+  Counselor has no legitimate reason to see or edit a School's profile; `DEC-SCOPE-025`).
 
 **`school_code` generation:** reuses `unique_student_code(db, School.school_code)` verbatim, called
 inside the existing single-transaction creation flow (school + coordinator + role assignment +
@@ -163,7 +163,7 @@ Full detail already delivered in-session; summary of findings and disposition:
 | SQL injection | SQLAlchemy ORM only, no raw SQL | ✅ not applicable |
 | Token/session handling | Unchanged | ✅ unchanged |
 | Secret exposure | No secrets among new fields | ✅ not applicable |
-| Sensitive logs | Widened `PATCH` would log more partner-contact fields | **Addressed**: `school.profile_update` audit action logs changed **field names only**, not values (`DEC-SCOPE-023`) |
+| Sensitive logs | Widened `PATCH` would log more partner-contact fields | **Addressed**: `school.profile_update` audit action logs changed **field names only**, not values (`DEC-SCOPE-025`) |
 | Rate limiting | None exists anywhere in this API | Reported, not changed — pre-existing, codebase-wide, outside `ENH-009` scope |
 | Audit requirements | Tier-only audit action didn't cover profile fields | **Addressed**: new `school.profile_update` action alongside existing `school.tier_update` |
 
@@ -196,7 +196,7 @@ for `ENH-009`.
 - `create_school`/`list_schools` response shape grows additively — `AdminSchoolCreatePanel.tsx` and
   `sch-003-school-onboarding.spec.ts` read specific keys only, not the whole object shape.
 - No RBAC/scoping regression risk — Branch stays a field, not a new tenant boundary
-  (`DEC-SCOPE-023`), so `_own_school_id()` and every other School-domain authorization check in
+  (`DEC-SCOPE-025`), so `_own_school_id()` and every other School-domain authorization check in
   `schools.py` is untouched.
 
 ## 8. Open items carried forward (not blockers for this item)
