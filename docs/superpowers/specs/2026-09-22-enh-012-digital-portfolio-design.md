@@ -323,23 +323,18 @@ changed.
 - Update Graphify's knowledge graph after implementation (`/graphify --update`), matching the convention
   seen in recent commits (e.g. `24330b7 chore(enh-010): update graphify knowledge graph`).
 
-## 13. Open items (`NEEDS_CONFIRMATION`, not decided here)
+## 13. Open items
 
-1. **Exact "profile complete" definition.** Which `SchoolStudent` fields determine the computed profile
-   section is filled. `ENH-025` (Student Master mandatory field coverage — photo, gender, roll number,
-   city, +8 more) is a separate, not-yet-built backlog item; this feature should only check fields that
-   exist and are nullable on `SchoolStudent` *today*. Needs a short field audit as the first implementation
-   task, not a guess here.
-2. **Hard delete vs. soft-delete for `PortfolioEntry`.** Recommended: hard delete (`DELETE` → 204) since
-   there's no domain nuance requiring a withdrawn-vs-removed distinction (unlike `JobApplication.withdrawn`,
-   the one soft-delete precedent in this codebase, which exists for a specific dual-state reason that
-   doesn't apply here). This is the first `DELETE` endpoint in the API — flagged for final sign-off before
-   implementation, not yet explicitly confirmed by the user. **Security review update (§6):** with no
-   rate limiting and no soft-delete flag anywhere in this design, a compromised/careless writer-role
-   account deleting entries has no recovery path beyond the `AuditLog` row now required by §6 — this
-   doesn't change the recommendation, but is part of what the sign-off should weigh.
-3. **Auto-populated section payload shape.** Whether `GET /portfolio` embeds full record data for the 4
-   auto-populated sections (fuller, matches Timeline's own depth) or a lighter summary/count with links
-   back to the existing SCH-004/005/006/009 read endpoints (avoids any risk of the two response shapes
-   drifting apart over time). Leaning toward embedding full data (simpler for the frontend, matches
-   Timeline precedent) but not yet decided.
+1. **Exact "profile complete" definition — deferred to Task 1, not a design gap.** Which `SchoolStudent`
+   fields determine the computed profile section is filled needs a short field audit against the current
+   model (not `ENH-025`'s not-yet-built full field set) — this is the literal first implementation task
+   (§14), not a decision to make blind here.
+2. **Hard delete vs. soft-delete for `PortfolioEntry` — decided: hard delete.** `DELETE` → 204. No domain
+   nuance requires a withdrawn-vs-removed distinction (unlike `JobApplication.withdrawn`, the one
+   soft-delete precedent in this codebase, which exists for a specific dual-state reason that doesn't
+   apply here); the `AuditLog` row required by §6 provides the forensic trail the security review asked
+   for. Confirmed through two review passes with no objection.
+3. **Auto-populated section payload shape — decided: embed full data.** `GET /portfolio` embeds the
+   actual records for the 4 auto-populated sections (matching `student_timeline()`'s own depth) rather
+   than a summary/count with links back to SCH-004/005/006/009 — simpler for the frontend, and consistent
+   with the existing Timeline precedent it's modeled on.
