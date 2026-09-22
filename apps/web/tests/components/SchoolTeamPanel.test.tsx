@@ -11,6 +11,7 @@ const ACCOUNT = { id: "11111111-1111-1111-1111-111111111111", name: "Test Teache
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
 });
 
 describe("SchoolTeamPanel (ENH010-QA-01)", () => {

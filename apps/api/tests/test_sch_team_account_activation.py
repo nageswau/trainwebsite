@@ -7,9 +7,10 @@ guard like ADM-001-AC02's trainer/batch check -- see the endpoint's own docstrin
 import uuid
 
 import pytest
+from sqlalchemy import select
 
 from app.core.security import hash_password
-from app.models import School, SchoolStudent, User, UserRoleAssignment
+from app.models import AuditLog, School, SchoolStudent, User, UserRoleAssignment
 
 PASSWORD = "Sup3r-Secret-Pass!"
 
@@ -51,6 +52,16 @@ async def test_coordinator_deactivates_and_reactivates_a_teacher(client, db_sess
     deactivated = await client.patch(f"/api/v1/school/team/accounts/{teacher.id}", json={"active": False})
     assert deactivated.status_code == 200, deactivated.text
     assert deactivated.json()["active"] is False
+
+    audit_rows = (
+        await db_session.scalars(
+            select(AuditLog).where(AuditLog.action == "school.team_account_update", AuditLog.entity_id == str(teacher.id))
+        )
+    ).all()
+    assert len(audit_rows) >= 1
+    assert audit_rows[0].user_id == ctx["school_coordinator"].id
+    assert audit_rows[0].entity_id == str(teacher.id)
+    assert audit_rows[0].created_at is not None
 
     listed = await client.get("/api/v1/school/team")
     row = next(a for a in listed.json()["accounts"] if a["id"] == str(teacher.id))

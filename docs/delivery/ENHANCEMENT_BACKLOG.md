@@ -110,7 +110,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-007 | Profile self-service — cross-role completion audit | Medium | Low | Possibly (TBD) | ENH-003 (shares provisioning fields) |
 | ENH-008 | Parent account linked to children across multiple schools | Medium | Medium | Yes | — |
 | ENH-009 | School profile — **mandatory** full field coverage (School ID, Branch, +21 more; see corrected entry below) | Large | High | Yes | — (should land early; see §2) |
-| ENH-010 | Account activation / deactivation (School Master capability) | Small | Medium | Yes (verified) | — |
+| ENH-010 | Account activation / deactivation (School Master capability) | Small | Medium | No | — |
 | ENH-011 | School-domain skills tracker generalization (Soft Skills, Digital/Web Skills) | Medium | Low | Yes | Reuses SCH-009 pattern |
 | ENH-012 | Digital Portfolio module | Large | Medium | Yes | ENH-001 (portfolio entries reference academic year) |
 | ENH-013 | Student 360° unified profile / Career Passport view | Large | Medium | Possibly (TBD) | ENH-011, ENH-012 |
@@ -1101,9 +1101,13 @@ capability already shipped under the `SCH-003` addendum (`apps/api/app/api/schoo
 `update_team_account`, `PATCH /api/v1/school/team/accounts/{user_id}`), predating this backlog
 entry. All four acceptance criteria verified — 9/9 automated tests
 (`apps/api/tests/test_sch_team_account_activation.py`, including two new mutation-checked
-characterization tests for AC2 and mass-assignment immunity) plus a live browser QA pass. One
-real bug found and fixed during QA: `ENH010-QA-01`, a rapid-click re-entrancy gap in
-`SchoolTeamPanel.tsx`. Decision `DEC-SCOPE-023` (drafted, `PENDING_CONFIRMATION`) records the
+characterization tests for AC2 and mass-assignment immunity) plus a live browser QA pass. A
+defensive per-row re-entrancy guard was added to `SchoolTeamPanel.tsx` after a rapid-click QA
+observation (`ENH010-QA-01`); the duplicate `PATCH` requests it guards against are idempotent
+server-side (same `active` value each time), so the exposure was duplicate `AuditLog` rows, not a
+state flip — the guard is real defense-in-depth, matching `ChangePasswordForm`'s pattern, and
+becomes load-bearing if this button is ever switched from `disabled` to `aria-disabled`. Decision
+`DEC-SCOPE-023` (drafted, `PENDING_CONFIRMATION`) records the
 `School CRM.md` Part B §2 → `school_coordinator` mapping this relies on. See
 `docs/superpowers/specs/2026-09-22-enh-010-account-activation-design.md`.
 
@@ -2781,7 +2785,8 @@ item, only for the progress-view question).
 | ENH-020 | Audit-first: confirm whether this duplicates an existing Overseas-domain capability before any Decision ID is even drafted | None exists |
 | ENH-022 | `DEC-SCOPE-0xx` — enforcement strictness (hard `403` vs. soft warning) for out-of-tier or expired-partnership access | None exists |
 | ENH-023 | `DEC-SCOPE-0xx` — downgrade policy for in-flight Platinum-tier commitments (grandfather / wind-down / immediate) | None exists |
-| ENH-010, ENH-011, ENH-012, ENH-013, ENH-015, ENH-017, ENH-018, ENH-019, ENH-021, ENH-024, ENH-026, ENH-027, ENH-028, ENH-029, ENH-030 | None structurally required — each operates within already-confirmed School-domain scope (`DEC-SCOPE-011/012/013/017`) as a completion/extension, not a new scope question. ENH-026/ENH-027 additionally need a *design* choice (shared shape for "Recommended..."/"Career recommendations" fields); ENH-028's batch-size limit and ENH-030's session-vs-period granularity are also design, not scope, questions | N/A |
+| ENH-010 | `DEC-SCOPE-023` — "School Master" (`School CRM.md` Part B §2) = `school_coordinator`; activate/deactivate scope mapping proposed, drafted 2026-09-22 | Drafted, `UNCONFIRMED` |
+| ENH-011, ENH-012, ENH-013, ENH-015, ENH-017, ENH-018, ENH-019, ENH-021, ENH-024, ENH-026, ENH-027, ENH-028, ENH-029, ENH-030 | None structurally required — each operates within already-confirmed School-domain scope (`DEC-SCOPE-011/012/013/017`) as a completion/extension, not a new scope question. ENH-026/ENH-027 additionally need a *design* choice (shared shape for "Recommended..."/"Career recommendations" fields); ENH-028's batch-size limit and ENH-030's session-vs-period granularity are also design, not scope, questions | N/A |
 | ENH-016 | None — corrected in Revision 3 to a narrower scope entirely within already-confirmed `DEC-SCOPE-017` | N/A |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
