@@ -9,11 +9,11 @@ import { formatDate } from "@/components/SchoolChildOverview";
 // child's events only, never another student's, even at the same school.
 //
 // The categories below are the ones `GET /school/students/{id}/timeline` emits today:
-// the original five (`DEC-SCOPE-015`) plus test_prep / foreign_language / global_education,
+// the original five (`DEC-SCOPE-015`) plus test_prep / foreign_language / global_education and (ENH-011) soft_skills / digital_skills,
 // which the API began emitting once those modules were linked. A category the API adds later
 // must never take the whole student page down, so unknown ones fall back to a neutral badge.
 
-export type TimelineEvent = { date: string; category: "profile" | "career" | "psychometric" | "academic" | "activity" | "test_prep" | "foreign_language" | "global_education"; type: string; title: string; detail: string | null };
+export type TimelineEvent = { date: string; category: "profile" | "career" | "psychometric" | "academic" | "activity" | "test_prep" | "foreign_language" | "global_education" | "soft_skills" | "digital_skills"; type: string; title: string; detail: string | null };
 export type StudentTimeline = { student: { id: string; full_name: string }; events: TimelineEvent[] };
 
 export async function loadStudentTimeline(studentId: string): Promise<StudentTimeline> {
@@ -29,6 +29,9 @@ const CATEGORY: Record<TimelineEvent["category"], { label: string; color: string
   test_prep: { label: "Test prep", color: "#b45309" },
   foreign_language: { label: "Foreign language", color: "#be185d" },
   global_education: { label: "Global education", color: "#0369a1" },
+  // ENH-011 (DEC-SCOPE-023): Skills batches. Both colours are over 7:1 against white, like the others.
+  soft_skills: { label: "Soft skills", color: "#7c2d12" },
+  digital_skills: { label: "Digital skills", color: "#1e3a8a" },
 };
 
 const FALLBACK_COLOR = "#475569";
