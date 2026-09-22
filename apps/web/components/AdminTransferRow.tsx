@@ -22,7 +22,9 @@ const inviteWarning = (r: AdminTransferRequest) =>
 
 function describeOutcome(request: AdminTransferRequest) {
   const o = request.outcome;
-  return o ? `${plural(o.parents_moved, "parent")} moved, ${o.parents_kept} kept, ${plural(o.results_withdrawn, "result")} withdrawn` : "";
+  return o
+    ? `${plural(o.parents_moved, "parent")} now only at the new school, ${o.parents_kept} still also at the previous school, ${plural(o.results_withdrawn, "result")} withdrawn`
+    : "";
 }
 
 export default function AdminTransferRow({ request, onDecided, onFailure }: { request: AdminTransferRequest; onDecided: (d: Decision) => void; onFailure: (f: Failure) => void }) {

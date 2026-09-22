@@ -7,8 +7,9 @@ import type { User } from "@/lib/types";
 type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
 type NotificationItem = { id: string; title: string; body: string; read: boolean; action_url: string | null; created_at: string };
 
-// SCH-001 + SCH-007: a Parent's view of their own child(ren) -- own institution AND own
-// child(ren) only, read-only (SCH-001-AC03). One card per linked child with the child's
+// SCH-001 + SCH-007: a Parent's view of their own child(ren) -- own SchoolParentLink rows
+// only, read-only (SCH-001-AC03). ENH-008: a parent's links can span more than one
+// institution, so this is no longer "own institution AND own child(ren)". One card per linked child with the child's
 // career-guidance / counselling / psychometric status and published-result count, a link
 // to the full child page, the school's upcoming sessions, and the parent's latest
 // notifications. No switcher control: every child's summary is visible at once.
@@ -31,7 +32,7 @@ export default async function SchoolParentDashboardPage() {
     );
   }
   const overviews = await Promise.all(children.map((c) => loadChildOverview(c.id).catch(() => null)));
-  const multiSchool = childrenSpanSchools(overviews); // ENH-005: only then does a card need to name its school
+  const multiSchool = childrenSpanSchools(overviews); // ENH-008 Task 8: only then are cards grouped under a school heading (not a per-card name)
   const upcoming = new Map<string, ChildOverview["activities"]["upcoming"][number]>();
   for (const o of overviews) for (const a of o?.activities.upcoming ?? []) upcoming.set(a.id, a);
   const upcomingList = [...upcoming.values()].sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
