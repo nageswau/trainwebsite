@@ -66,41 +66,12 @@ async def _school_out(db: AsyncSession, school: "School") -> "SchoolOut":
     """ENH-009 / DEC-SCOPE-023: the one place that assembles a School's full profile response,
     including the fields that are deliberately computed rather than stored -- student/teacher
     counts, and the Principal/Coordinator/Career Counsellor names, all of which are derived from
-    role assignments rather than duplicated onto `School` itself (see the design doc §2)."""
-    student_count = await db.scalar(
-        select(func.count()).select_from(SchoolStudent).where(SchoolStudent.school_id == school.id)
-    )
-    teacher_count = await db.scalar(
-        select(func.count()).select_from(User).where(
-            User.role == "school_teacher", User.profile["school_id"].as_string() == str(school.id)
-        )
-    )
-    principal = await db.scalar(
-        select(User).where(User.role == "school_principal", User.profile["school_id"].as_string() == str(school.id))
-    )
-    coordinator = await db.scalar(
-        select(User).where(User.role == "school_coordinator", User.profile["school_id"].as_string() == str(school.id))
-    )
-    counsellor_rows = (await db.scalars(
-        select(User).join(SchoolStaffAssignment, SchoolStaffAssignment.user_id == User.id)
-        .where(SchoolStaffAssignment.school_id == school.id, SchoolStaffAssignment.role == "career_counselor")
-    )).all()
+    role assignments rather than duplicated onto `School` itself (see the design doc §2).
 
-    return SchoolOut(
-        id=school.id, name=school.name, city=school.city, state=school.state,
-        tier=school.tier, tier_valid_until=school.tier_valid_until,
-        school_code=school.school_code, branch=school.branch, address=school.address,
-        contact_number=school.contact_number, email=school.email, website=school.website,
-        grades_available=school.grades_available, board=school.board,
-        partnership_date=school.partnership_date, mou_reference=school.mou_reference,
-        edusphere_bdm=school.edusphere_bdm, monthly_visit_schedule=school.monthly_visit_schedule,
-        vice_principal_name=school.vice_principal_name,
-        student_count=student_count or 0, teacher_count=teacher_count or 0,
-        principal_name=principal.full_name if principal else None,
-        school_coordinator_name=coordinator.full_name if coordinator else None,
-        career_counsellor_names=[c.full_name for c in counsellor_rows],
-        created_at=school.created_at,
-    )
+    A thin, single-record wrapper over `_school_outs_batch()` -- kept as its own function because
+    every call site here wants one `SchoolOut`, not a list, but the query logic lives in exactly
+    one place (simplification pass, ENH-009)."""
+    return (await _school_outs_batch(db, [school]))[0]
 
 
 async def _school_outs_batch(db: AsyncSession, schools: list["School"]) -> list["SchoolOut"]:
@@ -1111,7 +1082,11 @@ async def approve_commission_payout(commission_id: UUID, user: User = Depends(ge
 async def create_school(payload: SchoolCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
-    _reject_supplied_password(payload.model_dump(), user, "/api/v1/overseas-admin/schools", "coordinator_password")
+    # SchoolCreate's `extra="forbid"` already rejects a supplied `coordinator_password` at the
+    # Pydantic layer, before this function body runs at all -- an explicit
+    # _reject_supplied_password() call here would be unreachable dead code (simplification pass,
+    # ENH-009). This does lose the WARNING-level `provisioning_password_field_rejected` telemetry
+    # that call used to emit; already noted and accepted in DEC-SCOPE-023's addendum.
     email = _valid_email(payload.coordinator_email)
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
