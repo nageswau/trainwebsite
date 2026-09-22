@@ -240,9 +240,20 @@ async def test_school_table_has_the_new_profile_columns(db_session):
 
 @pytest.mark.asyncio
 async def test_school_model_exposes_the_new_profile_attributes(db_session):
+    suffix = uuid.uuid4().hex[:4]
+    admin = User(
+        email=f"test-admin-{suffix}@example.local",
+        password_hash=hash_password(PASSWORD),
+        full_name="Test Admin",
+        role="overseas_admin",
+        division="overseas",
+        active=True,
+    )
+    db_session.add(admin)
+    await db_session.commit()
     school = School(
-        name="Attr Test School", created_by_user_id=uuid.uuid4(),
-        school_code="ABCD1234", branch="North Campus", address="1 Test Rd",
+        name="Attr Test School", created_by_user_id=admin.id,
+        school_code=f"TST{suffix}", branch="North Campus", address="1 Test Rd",
         contact_number="+91-9000000000", email="school@example.local",
         website="https://example.local", grades_available="1-10", board="CBSE",
         mou_reference="MOU-2026-001", edusphere_bdm="Jane BDM",
@@ -251,7 +262,7 @@ async def test_school_model_exposes_the_new_profile_attributes(db_session):
     db_session.add(school)
     await db_session.commit()
     reloaded = await db_session.get(School, school.id)
-    assert reloaded.school_code == "ABCD1234"
+    assert reloaded.school_code == f"TST{suffix}"
     assert reloaded.branch == "North Campus"
     assert reloaded.board == "CBSE"
     assert reloaded.vice_principal_name == "John VP"
