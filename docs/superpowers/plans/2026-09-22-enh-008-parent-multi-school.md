@@ -404,6 +404,138 @@ git add apps/api/app/api/schools.py apps/api/tests/test_sch_roster_parent_invite
 git commit -m "feat(enh-008): stop writing profile.school_id for newly-provisioned parent accounts"
 ```
 
+**Addendum found during Task 4's task review (plan-authoring gap, not anticipated by the original 8-task breakdown):** `list_team()` (`GET /school/team`, `schools.py:160-173`) and `update_team_account()` (`PATCH /school/team/accounts/{id}`, `schools.py:176-203`) both still gate `school_parent` accounts on `profile.school_id`. Once Step 3 above ships, every newly-invited parent has `profile={}`, so they silently vanish from the coordinator's Team page and become un-toggleable (403 "This account is not at your institution") — a real regression, and a direct violation of the spec's "profile.school_id ... never read for authorization anywhere [for the school_parent role]" (design doc §3). Fix in the same task, same commit family, reusing the exact `SchoolParentLink`-joined-to-`SchoolStudent`-filtered-by-`school_id` query pattern already used by `_notify_school_parents()` elsewhere in this file (`schools.py:585-590`) — not a new pattern.
+
+- [ ] **Step 7: Write the failing tests**
+
+Add to `apps/api/tests/test_sch_team_account_activation.py` (add `SchoolParentLink` to the existing `from app.models import School, SchoolStudent, User, UserRoleAssignment` import line):
+
+```python
+@pytest.mark.asyncio
+async def test_a_parent_with_a_link_at_this_school_appears_in_team_and_can_be_toggled(client, db_session):
+    ctx = await _create_school_with_roles(db_session)
+    parent = ctx["school_parent"]
+    await _login(client, ctx["school_coordinator"].email)
+    created = await client.post("/api/v1/school/students", json={"full_name": "Linked For Team Test"})
+    assert created.status_code == 201, created.text
+    student_id = uuid.UUID(created.json()["id"])
+    db_session.add(SchoolParentLink(parent_user_id=parent.id, school_student_id=student_id, linked_by_user_id=ctx["school_coordinator"].id))
+    await db_session.commit()
+
+    listed = await client.get("/api/v1/school/team")
+    assert any(a["id"] == str(parent.id) for a in listed.json()["accounts"])
+
+    toggled = await client.patch(f"/api/v1/school/team/accounts/{parent.id}", json={"active": False})
+    assert toggled.status_code == 200, toggled.text
+    assert toggled.json()["active"] is False
+
+
+@pytest.mark.asyncio
+async def test_a_parent_linked_only_at_another_school_is_neither_listed_nor_manageable_here(client, db_session):
+    ctx_a = await _create_school_with_roles(db_session)
+    ctx_b = await _create_school_with_roles(db_session)
+    parent_b = ctx_b["school_parent"]
+    await _login(client, ctx_b["school_coordinator"].email)
+    created = await client.post("/api/v1/school/students", json={"full_name": "Linked At B"})
+    assert created.status_code == 201, created.text
+    student_b_id = uuid.UUID(created.json()["id"])
+    db_session.add(SchoolParentLink(parent_user_id=parent_b.id, school_student_id=student_b_id, linked_by_user_id=ctx_b["school_coordinator"].id))
+    await db_session.commit()
+
+    await _login(client, ctx_a["school_coordinator"].email)
+    listed = await client.get("/api/v1/school/team")
+    assert not any(a["id"] == str(parent_b.id) for a in listed.json()["accounts"])
+
+    toggled = await client.patch(f"/api/v1/school/team/accounts/{parent_b.id}", json={"active": False})
+    assert toggled.status_code == 403
+```
+
+- [ ] **Step 8: Run tests to verify they fail**
+
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_sch_team_account_activation.py -v`
+Expected: the two new tests FAIL — today's `list_team()`/`update_team_account()` still filter/gate on `profile.school_id`, which this parent no longer has set (fixture still sets `profile={"school_id": ...}` directly for backward-compat coverage of the profile-based path, but the new tests' parent identity check is by `SchoolParentLink`, which today's code never consults, so — trace through carefully: since the fixture parent DOES have `profile.school_id` set, the *first* new test would actually currently PASS by coincidence via the old code path, not fail. To get a genuine RED, temporarily verify by asserting against a parent whose `profile` is empty instead — or, simpler and matching this task's actual shipped scenario, don't worry about a contrived RED here: run the two new tests now, and separately confirm they'd fail if `profile={}` (mentally or by a throwaway local check) — the important verification is Step 9's GREEN with the code fixed, plus that removing the fix and re-running fails. If you want an unambiguous RED signal, temporarily change `_create_school_with_roles`' parent construction to `profile={}` for a local throwaway run before restoring it — do not commit that throwaway edit.
+
+- [ ] **Step 9: Write minimal implementation**
+
+Replace `list_team()` (`schools.py:160-173`):
+
+```python
+@router.get("/team")
+async def list_team(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    school_id = _require_coordinator(user)
+    accounts = (
+        await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent", "school_coordinator"))))
+    ).all()
+    # ENH-008: a school_parent's membership in this school's Team is derived from SchoolParentLink
+    # (they can now legitimately be linked at more than one school), never from profile.school_id,
+    # which is no longer set for newly-provisioned parent accounts. Every other role still uses
+    # profile.school_id, unchanged.
+    parent_ids_at_school = set(
+        (
+            await db.scalars(
+                select(SchoolParentLink.parent_user_id)
+                .join(SchoolStudent, SchoolStudent.id == SchoolParentLink.school_student_id)
+                .where(SchoolStudent.school_id == school_id)
+                .distinct()
+            )
+        ).all()
+    )
+
+    def _belongs_to_school(a: User) -> bool:
+        if a.role == "school_parent":
+            return a.id in parent_ids_at_school
+        return (a.profile or {}).get("school_id") == str(school_id)
+
+    accounts = [a for a in accounts if _belongs_to_school(a)]
+    invites = (
+        await db.scalars(select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school_id, SchoolAccountInvite.status == "pending").order_by(SchoolAccountInvite.created_at.desc()))
+    ).all()
+    return {
+        "accounts": [{"id": a.id, "name": a.full_name, "email": a.email, "role": a.role, "active": a.active} for a in accounts],
+        "pending_invites": [{"id": i.id, "role": i.role, "email": i.email, "full_name": i.full_name, "expires_at": i.expires_at} for i in invites],
+    }
+```
+
+Replace the ownership check in `update_team_account()` (`schools.py:189-196`):
+
+```python
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Account not found")
+    # INVITABLE_ROLES doubles as the guard against targeting a Coordinator, self or peer.
+    if target.role not in INVITABLE_ROLES:
+        raise HTTPException(403, "Can only activate/deactivate Principal, Teacher, or Parent accounts")
+    if target.role == "school_parent":
+        linked_here = await db.scalar(
+            select(SchoolParentLink.id)
+            .join(SchoolStudent, SchoolStudent.id == SchoolParentLink.school_student_id)
+            .where(SchoolParentLink.parent_user_id == target.id, SchoolStudent.school_id == school_id)
+            .limit(1)
+        )
+        if not linked_here:
+            raise HTTPException(403, "This account is not at your institution")
+    elif (target.profile or {}).get("school_id") != str(school_id):
+        raise HTTPException(403, "This account is not at your institution")
+```
+
+`SchoolParentLink` and `SchoolStudent` are already imported in `schools.py` (used pervasively elsewhere in the file) — no new imports needed there.
+
+- [ ] **Step 10: Run tests to verify they pass**
+
+Run: `MSYS_NO_PATHCONV=1 docker compose -f docker-compose.yml -f docker-compose.ci.yml -p enh008-sdd --profile ci run --rm --no-deps -v "$(pwd)/apps/api/app:/app/app" -v "$(pwd)/apps/api/tests:/app/tests" -v "$(pwd)/apps/api/alembic:/app/alembic" api-test python -m pytest tests/test_sch_team_account_activation.py -v`
+Expected: all PASS, including every pre-existing test in the file (none of them target a `school_parent` account as the `PATCH`/list-membership subject, so none depend on the old `profile.school_id` check — confirmed by reading the whole file during planning).
+
+- [ ] **Step 11: Refactor**
+
+None needed — `_belongs_to_school()` is a small, already-minimal local closure matching this file's existing style (e.g. `_unchanged` inside `_decide_promotion`).
+
+- [ ] **Step 12: Commit**
+
+```bash
+git add apps/api/app/api/schools.py apps/api/tests/test_sch_team_account_activation.py
+git commit -m "fix(enh-008): derive a parent's Team-page membership from SchoolParentLink, not profile.school_id"
+```
+
 ---
 
 ### Task 5: `school_transfers.py:_approve()` — remove the parent profile-write and per-parent audit row, preserve response shape and locking
