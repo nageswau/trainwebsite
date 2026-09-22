@@ -72,6 +72,18 @@ class ProfileUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=40)
     profile: dict | None = None
 
+    @field_validator("full_name")
+    @classmethod
+    def full_name_is_not_null(cls, value: str | None) -> str:
+        # ENH-007: `str | None` lets an explicit `null` satisfy validation (`min_length` only
+        # constrains strings) and reach auth.py's `changes["full_name"].strip()`, which raises an
+        # unhandled 500 on None. Pydantic v2 does not validate unset defaults, so this only fires
+        # when the key is actually present -- omitting `full_name` is unaffected (still means
+        # "don't change it").
+        if value is None:
+            raise PydanticCustomError("null_full_name", "full_name cannot be null")
+        return value
+
 
 class ChangePasswordRequest(BaseModel):
     # ENH-006. Passwords are never stripped or normalised. current_password is bounded (not at 128) so a legacy
