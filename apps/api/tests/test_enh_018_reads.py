@@ -83,6 +83,35 @@ async def test_unlinked_principal_is_403_not_500(client, db_session):
     assert (await client.get(SCHOOL)).status_code == 403
 
 
+@pytest.mark.asyncio
+async def test_activity_id_narrows_the_list_to_that_one_activity_of_the_callers_school(client, db_session):
+    """QA-018-09: the Activities page links to one activity's feedback; the list must be able to return just that row."""
+    a = await mk_school(db_session, label="A")
+    b = await mk_school(db_session, label="B")
+    target = await mk_activity(db_session, a["school"], a["coordinator"], minutes=-30)
+    await mk_activity(db_session, a["school"], a["coordinator"], minutes=-60)
+    untyped = await mk_activity(db_session, a["school"], a["coordinator"], activity_type=None)
+    theirs = await mk_activity(db_session, b["school"], b["coordinator"])
+    await login(client, a["coordinator"].email)
+    one = (await client.get(SCHOOL, params={"activity_id": str(target.id)})).json()
+    assert (one["total"], [i["activity_id"] for i in one["items"]]) == (1, [str(target.id)])
+    for other in (untyped.id, theirs.id, "00000000-0000-0000-0000-000000000000"):  # ineligible, another school's, unknown: all simply empty
+        assert (await client.get(SCHOOL, params={"activity_id": str(other)})).json()["total"] == 0
+    assert (await client.get(SCHOOL, params={"activity_id": "not-a-uuid"})).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_activities_list_says_which_activities_already_have_feedback(client, db_session):
+    """QA-018-10: GET /school/activities gains an additive `feedback_submitted` flag; every existing field is unchanged."""
+    s = await mk_school(db_session, label="A")
+    done = await mk_activity(db_session, s["school"], s["coordinator"])
+    open_ = await mk_activity(db_session, s["school"], s["coordinator"], minutes=-120)
+    await _submit(client, s, done)
+    rows = {r["id"]: r for r in (await client.get("/api/v1/school/activities")).json()}
+    assert set(rows[str(done.id)]) == {"id", "title", "scheduled_at", "activity_type", "feedback_submitted"}
+    assert rows[str(done.id)]["feedback_submitted"] is True and rows[str(open_.id)]["feedback_submitted"] is False
+
+
 # ------------------------------------------------------------------------------------------------- admin list (Task 5)
 
 

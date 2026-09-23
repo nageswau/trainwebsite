@@ -42,6 +42,7 @@ from app.models import (
     SchoolAccountInvite,
     SchoolActivity,
     SchoolActivityAttendance,
+    SchoolActivityFeedback,
     SchoolCareerRecord,
     SchoolLanguageRecord,
     SchoolParentLink,
@@ -1380,7 +1381,9 @@ async def list_activities(user: User = Depends(get_current_user), db: AsyncSessi
         raise HTTPException(403, "School Coordinator role required")
     school_id = _own_school_id(user)
     rows = (await db.scalars(select(SchoolActivity).where(SchoolActivity.school_id == school_id).order_by(SchoolActivity.scheduled_at.desc()))).all()
-    return [{"id": a.id, "title": a.title, "scheduled_at": a.scheduled_at, "activity_type": a.activity_type} for a in rows]
+    # ENH-018 (QA-018-10): additive flag so the list can offer "View feedback" instead of "Give feedback" once it is recorded.
+    with_feedback = set((await db.scalars(select(SchoolActivityFeedback.activity_id).where(SchoolActivityFeedback.school_id == school_id))).all())
+    return [{"id": a.id, "title": a.title, "scheduled_at": a.scheduled_at, "activity_type": a.activity_type, "feedback_submitted": a.id in with_feedback} for a in rows]
 
 
 @router.post("/activities", status_code=201)

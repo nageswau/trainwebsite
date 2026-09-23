@@ -113,14 +113,18 @@ async def _require_school_reader(user: User = Depends(get_current_user)) -> User
 @coordinator_router.get("/activity-feedback", response_model=SchoolFeedbackPage)
 async def list_school_activity_feedback(
     status: FeedbackStatusFilter = "all",
+    activity_id: UUID | None = None,
     limit: int = Query(25, ge=1, le=100),
     offset: int = Query(0, ge=0),
     user: User = Depends(_require_school_reader),
     db: AsyncSession = Depends(get_db),
 ):
     """The caller's school's feedback-eligible activities (typed, already held -- D1/D7), newest first, each with its computed
-    participation and its feedback or null, so "awaiting" is visible."""
+    participation and its feedback or null, so "awaiting" is visible. `activity_id` narrows it to that one activity (the
+    Activities page's per-row link, QA-018-09); another school's or an ineligible activity is simply an empty page."""
     conditions = [SchoolActivity.school_id == _own_school_id(user), SchoolActivity.activity_type.is_not(None), SchoolActivity.scheduled_at <= datetime.now(UTC)]
+    if activity_id is not None:
+        conditions.append(SchoolActivity.id == activity_id)
     if status == "awaiting":
         conditions.append(SchoolActivityFeedback.id.is_(None))
     elif status == "submitted":
