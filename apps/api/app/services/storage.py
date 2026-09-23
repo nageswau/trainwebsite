@@ -34,5 +34,25 @@ class StorageService:
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(data)
 
+    def _local_path(self, key: str) -> Path:
+        """Resolve a key under the storage root. Keys are server-generated, but a read or delete still checks
+        the resolved target is strictly below the root (ENH-025 spec §5)."""
+        root = self.local_dir.resolve()
+        path = (self.local_dir / key).resolve()
+        if root not in path.parents:
+            raise ValueError("storage key resolves outside the upload root")
+        return path
+
+    def read_bytes(self, key: str) -> bytes:
+        if self.bucket:
+            return boto3.client("s3", region_name=settings.aws_region).get_object(Bucket=self.bucket, Key=key)["Body"].read()
+        return self._local_path(key).read_bytes()
+
+    def delete(self, key: str) -> None:
+        if self.bucket:
+            boto3.client("s3", region_name=settings.aws_region).delete_object(Bucket=self.bucket, Key=key)
+            return
+        self._local_path(key).unlink(missing_ok=True)
+
 
 storage = StorageService()
