@@ -307,7 +307,7 @@ reuses the same `SchoolStaffAssignment` portfolio scope (`DEC-SCOPE-013`) as its
 test-prep grants (§2.12 above) — a student at a school outside the acting member's portfolio is `403`
 even via direct ID, same as every other use of that mechanism. Covered by `test_enh_012_digital_portfolio.py`.
 
-**Addendum, 2026-09-23 (`ENH-013` / `DEC-SCOPE-027`) — Student 360° view and career goal.**
+**Addendum, 2026-09-23 (`ENH-013` / `DEC-SCOPE-028`) — Student 360° view and career goal.**
 
 | Action | Granted | Denied |
 |---|---|---|
@@ -369,6 +369,7 @@ Covered by `test_enh_013_360_view.py` (scope matrix, per-role projection, mutati
 | Any role other than `school_coordinator`/`school_principal` reading `GET /school/entitlements` | `DEC-SCOPE-017`, `SCH-011-AC01` |
 | Any client-supplied `used` value, or a fabricated `0`/invented cap, for a service with no confirmed underlying module on the entitlements view — must be `null` ("not tracked") | `DEC-SCOPE-017`, `SCH-011-AC02` |
 | A bridged `OverseasApplication` (`school_student_id` set, `student_id IS NULL`) appearing in any Overseas-student-centric self-service listing (`GET /overseas/applications`, agent/university-rep views, commission listings) | `DEC-SCOPE-018`, `SCH-010-AC04` — these all inner-join `User` on `student_id`, which a bridged row never matches |
+| **Any role** (including `overseas_admin`/`super_admin`/`counselor`) writing a tier-gated service record for a school whose valid, cumulative partnership tier does not include that service — no tier, an unknown tier, or `tier_valid_until` before today's Asia/Kolkata date all count as not entitled. A third dimension on top of role and own-institution/portfolio scope, checked **after** both, so an out-of-scope caller never learns a school's tier. Reads are not gated. The route → service map is `API_CONTRACT.md`'s ENH-022 addendum | `DEC-SCOPE-027`, `ENH-022` |
 
 ---
 

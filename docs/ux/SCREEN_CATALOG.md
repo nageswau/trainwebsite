@@ -2532,7 +2532,7 @@ correction, not deleted, per this project's traceability convention.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** SchoolSkillBatchHeader/Enrolments/Attendance/Scores test files (passing); enh-011-skills.spec.ts; `docs/quality/ENH-011_BROWSER_QA_2026-09-22.md`.
 
-### `SCR-SCH-035` *(added 2026-09-23, `ENH-013` / `DEC-SCOPE-027`)*
+### `SCR-SCH-035` *(added 2026-09-23, `ENH-013` / `DEC-SCOPE-028`)*
 - **Route:** one thin route per role, same body: `/school/{coordinator,principal,teacher}/students/[id]/360`, `/school/parent/children/[id]/360`, `/school/{academic-team,career-counselor,psychometric-team}/students/[id]/360`; `?tab=<key>` selects a tab.
 - **Role(s):** School Coordinator, Principal, Teacher (assigned students), Parent (linked children), Academic Team, Career Counselor, Psychometric Team (own school portfolio).
 - **Purpose:** The Student 360° view / Career Passport: one student's record in 16 tabs (Overview, Personal Details, Academic Records, Attendance, Examination Results, Career Guidance, Psychometric Assessment, Skills, Foreign Languages, English Testing, Activities, Certificates, Documents, Teacher Remarks, Parent Communication, Edusphere Programs), each scoped to what the viewing role may already read.

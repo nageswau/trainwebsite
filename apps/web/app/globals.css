@@ -49,3 +49,8 @@
 .s360-list li p { margin: 6px 0 0; }
 @media (max-width: 980px) { .s360-layout { grid-template-columns: 1fr; } .s360-tablist { flex-direction: row; overflow-x: auto; overflow-y: hidden; max-height: none; scroll-snap-type: x proximity; position: static; padding-bottom: 4px; } .s360-tab { flex: 0 0 auto; scroll-snap-align: start; white-space: nowrap; } }
 @media (prefers-reduced-motion: reduce) { .s360-tablist { scroll-behavior: auto; } }
+
+/* QA-022-05: grid items default to min-width:auto, so a <select> was as wide as its longest option ("Student - School")
+   and pushed forms -- and the whole page -- wider than a phone. Let form rows shrink; controls never exceed their row. */
+.action-card > *, .form > *, .field > * { min-width: 0; }
+.field input, .field select, .field textarea { max-width: 100%; }

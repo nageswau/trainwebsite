@@ -1,6 +1,6 @@
 # ENH-013 — Browser QA and fixes (2026-09-23)
 
-**Scope:** first exploratory QA pass of ENH-013a (`DEC-SCOPE-027`, Student 360° view / Career Passport), then test-first fixes.
+**Scope:** first exploratory QA pass of ENH-013a (`DEC-SCOPE-028`, Student 360° view / Career Passport), then test-first fixes.
 No code was changed during the QA pass itself.
 
 **Environment:**

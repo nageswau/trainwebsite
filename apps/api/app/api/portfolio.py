@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.schools import _load_student_for_reader
+from app.api.schools import _load_student_for_reader, require_school_entitlement
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import (
@@ -137,6 +137,7 @@ async def portfolio_payload(db: AsyncSession, user: User, student: SchoolStudent
 async def create_portfolio_entry(student_id: UUID, payload: PortfolioEntryCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     student = await _load_student_for_reader(db, user, student_id)
     _require_portfolio_write(user, student)
+    await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation")
     entry = PortfolioEntry(
         school_student_id=student.id, section=payload.section, title=payload.title,
         description=payload.description, organization=payload.organization,
@@ -163,6 +164,7 @@ async def _load_portfolio_entry(db: AsyncSession, student_id: UUID, entry_id: UU
 async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: PortfolioEntryUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     student = await _load_student_for_reader(db, user, student_id)
     _require_portfolio_write(user, student)  # role/scope checked before the entry lookup below (spec §6)
+    await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation")
     entry = await _load_portfolio_entry(db, student.id, entry_id)
     # `model_fields_set` distinguishes "field explicitly present in the request payload" (apply it, even
     # when the value is None -- that's the clear-the-field case) from "field omitted" (leave the entry's
@@ -193,6 +195,7 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
 async def delete_portfolio_entry(student_id: UUID, entry_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     student = await _load_student_for_reader(db, user, student_id)
     _require_portfolio_write(user, student)
+    await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation")
     entry = await _load_portfolio_entry(db, student.id, entry_id)
     section, entry_id_str = entry.section, str(entry.id)
     await db.delete(entry)
@@ -208,6 +211,7 @@ async def update_personal_statement(student_id: UUID, payload: PersonalStatement
     a duplicate-intent conflict like a transfer filing (spec §6)."""
     student = await _load_student_for_reader(db, user, student_id)
     _require_portfolio_write(user, student)
+    await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation")
     statement = payload.personal_statement.strip() if payload.personal_statement else None
     row = None
     try:
