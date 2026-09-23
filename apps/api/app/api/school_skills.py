@@ -103,10 +103,11 @@ async def _batch_in_portfolio(db: AsyncSession, user: User, batch_id: UUID, lock
     return batch
 
 
-async def _require_module_entitlement(db: AsyncSession, user: User, school_id: UUID, module_type: str) -> None:
+async def _require_module_entitlement(db: AsyncSession, user: User, school_id: UUID, module_type: str, *, grandfathered_since: datetime | None = None) -> None:
     """ENH-022: every skills write consumes the module's tier service (`digital_skills` is sold as `web_designing`). Called
-    after the route's portfolio check and before any write, so an out-of-portfolio caller never learns a school's tier."""
-    await require_school_entitlement(db, user, school_id, USAGE_KEYS[module_type])
+    after the route's portfolio check and before any write, so an out-of-portfolio caller never learns a school's tier.
+    ENH-023 D8: writes that finish an existing batch pass the batch's (or enrolment's) `created_at`; creates never do."""
+    await require_school_entitlement(db, user, school_id, USAGE_KEYS[module_type], grandfathered_since=grandfathered_since)
 
 
 def _batch_out(batch: SchoolSkillBatch, school_name: str, enrolled_count: int) -> dict:
@@ -260,7 +261,7 @@ async def get_skill_batch(batch_id: UUID, user: User = Depends(_require_career_c
 async def update_skill_batch(batch_id: UUID, payload: SkillBatchUpdate, user: User = Depends(_require_career_counselor), db: AsyncSession = Depends(get_db)):
     """Partial edit. Closing takes the batch row lock, so it waits for any in-flight child write (spec §5.4)."""
     batch = await _batch_in_portfolio(db, user, batch_id, lock="update")
-    await _require_module_entitlement(db, user, batch.school_id, batch.module_type)
+    await _require_module_entitlement(db, user, batch.school_id, batch.module_type, grandfathered_since=batch.created_at)
     changes = payload.model_dump(exclude_unset=True)
     if "title" in changes and changes["title"] is None:
         raise HTTPException(422, "title must not be blank")
@@ -376,7 +377,7 @@ async def update_enrolment_status(enrollment_id: UUID, payload: SkillEnrollmentU
     if loaded is None:
         raise HTTPException(404, ENROLMENT_NOT_FOUND)
     row, batch, student = loaded
-    await _require_module_entitlement(db, user, batch.school_id, batch.module_type)
+    await _require_module_entitlement(db, user, batch.school_id, batch.module_type, grandfathered_since=row.created_at)
     if student.school_id != batch.school_id:
         raise HTTPException(409, STUDENT_MOVED)
     old, new = row.status, payload.status
@@ -441,7 +442,7 @@ async def _session_out(db: AsyncSession, session: SchoolSkillSession) -> dict:
 @router.post(f"{BASE}/skill-batches/{{batch_id}}/sessions", status_code=201, response_model=SkillSessionOut)
 async def create_skill_session(batch_id: UUID, payload: SkillSessionCreate, user: User = Depends(_require_career_counselor), db: AsyncSession = Depends(get_db)):
     batch = await _batch_in_portfolio(db, user, batch_id, lock="share")
-    await _require_module_entitlement(db, user, batch.school_id, batch.module_type)
+    await _require_module_entitlement(db, user, batch.school_id, batch.module_type, grandfathered_since=batch.created_at)
     _require_open(batch)
     if payload.session_date < batch.start_date or (batch.end_date is not None and payload.session_date > batch.end_date):
         raise HTTPException(422, "The session date must be within the batch's dates")
@@ -466,7 +467,7 @@ async def mark_skill_attendance(session_id: UUID, payload: SkillAttendanceIn, us
     if session is None:
         raise HTTPException(404, "Session not found")
     batch = await _batch_in_portfolio(db, user, session.batch_id, lock="share")
-    await _require_module_entitlement(db, user, batch.school_id, batch.module_type)
+    await _require_module_entitlement(db, user, batch.school_id, batch.module_type, grandfathered_since=batch.created_at)
     _require_open(batch)
     await _require_editable(db, batch, [r.enrollment_id for r in payload.records])
     stmt = pg_insert(SchoolSkillAttendance).values(
@@ -490,7 +491,7 @@ async def mark_skill_attendance(session_id: UUID, payload: SkillAttendanceIn, us
 @router.post(f"{BASE}/skill-batches/{{batch_id}}/assessments", status_code=201, response_model=SkillAssessmentOut)
 async def create_skill_assessment(batch_id: UUID, payload: SkillAssessmentCreate, user: User = Depends(_require_career_counselor), db: AsyncSession = Depends(get_db)):
     batch = await _batch_in_portfolio(db, user, batch_id, lock="share")
-    await _require_module_entitlement(db, user, batch.school_id, batch.module_type)
+    await _require_module_entitlement(db, user, batch.school_id, batch.module_type, grandfathered_since=batch.created_at)
     _require_open(batch)
     assessment = SchoolSkillAssessment(batch_id=batch.id, name=payload.name, max_score=payload.max_score, created_by_user_id=user.id)
     db.add(assessment)
@@ -512,7 +513,7 @@ async def record_skill_scores(assessment_id: UUID, payload: SkillScoresIn, user:
     if assessment is None:
         raise HTTPException(404, "Assessment not found")
     batch = await _batch_in_portfolio(db, user, assessment.batch_id, lock="share")
-    await _require_module_entitlement(db, user, batch.school_id, batch.module_type)
+    await _require_module_entitlement(db, user, batch.school_id, batch.module_type, grandfathered_since=batch.created_at)
     _require_open(batch)
     if any(s.score > assessment.max_score for s in payload.scores):
         raise HTTPException(422, f"Scores must be out of {float(assessment.max_score):g}")

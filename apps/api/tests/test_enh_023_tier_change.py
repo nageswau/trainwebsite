@@ -376,3 +376,42 @@ async def test_work_created_after_the_downgrade_is_not_grandfathered(client, db_
     r = await client.post(f"/api/v1/school/activities/{visit['id']}/attendance", json=attendance(w))
     assert r.status_code == 403
     assert "Monthly campus visits" in r.json()["detail"]
+
+
+from enh011_helpers import ASSESSMENTS, BATCHES, ENROLMENTS, SESSIONS  # noqa: E402
+
+from app.models import SchoolSkillBatch  # noqa: E402
+
+
+@pytest.mark.asyncio
+async def test_digital_skills_batch_can_be_finished_after_a_downgrade_but_not_grown(client, db_session):
+    w = await world(db_session, "silver", staff_role="career_counselor")
+    await login(client, w["staff"].email)
+    today = date.today().isoformat()
+    sid = str(w["students"][0].id)
+    batch = (await client.post(BATCHES, json={"school_id": str(w["school"].id), "module_type": "digital_skills", "title": "T", "start_date": today})).json()
+    enrolment = (await client.post(f"{BATCHES}/{batch['id']}/enrollments", json={"school_student_ids": [sid]})).json()[0]
+    await change_tier(client, w, tier="bronze")  # web_designing lost
+    await login(client, w["staff"].email)
+
+    assert (await client.patch(f"{BATCHES}/{batch['id']}", json={"title": "Renamed"})).status_code == 200
+    session = await client.post(f"{BATCHES}/{batch['id']}/sessions", json={"session_date": today})
+    assert session.status_code == 201, session.text
+    marked = await client.put(f"{SESSIONS}/{session.json()['id']}/attendance", json={"records": [{"enrollment_id": enrolment["id"], "present": True}]})
+    assert marked.status_code == 200, marked.text
+    assessment = await client.post(f"{BATCHES}/{batch['id']}/assessments", json={"name": "Quiz", "max_score": 10})
+    assert assessment.status_code == 201, assessment.text
+    scored = await client.put(f"{ASSESSMENTS}/{assessment.json()['id']}/scores", json={"scores": [{"enrollment_id": enrolment["id"], "score": 7}]})
+    assert scored.status_code == 200, scored.text
+    assert (await client.patch(f"{ENROLMENTS}/{enrolment['id']}", json={"status": "completed"})).status_code == 200
+
+    # Growing the commitment is new work: refused (D8).
+    assert await grandfathered(db_session, w["school"].id) == 6  # batch edit, session, attendance, assessment, scores, status
+
+    grown = await client.post(f"{BATCHES}/{batch['id']}/enrollments", json={"school_student_ids": [sid]})
+    assert grown.status_code == 403
+    new_batch = await client.post(BATCHES, json={"school_id": str(w["school"].id), "module_type": "digital_skills", "title": "New", "start_date": today})
+    assert new_batch.status_code == 403
+    assert await denials(db_session, w["school"].id) == 2
+    stored = await db_session.get(SchoolSkillBatch, UUID(batch["id"]), populate_existing=True)
+    assert stored.title == "Renamed"
