@@ -1,4 +1,5 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import SchoolActivitiesPanel from "@/components/SchoolActivitiesPanel";
@@ -27,5 +28,11 @@ describe("SchoolActivitiesPanel (ENH-018 link)", () => {
     expect(within(rows[1]).queryByRole("link")).toBeNull();
     expect(within(rows[2]).queryByRole("link")).toBeNull();
     for (const row of rows) expect(within(row).getByRole("button", { name: "Mark attendance" })).toBeTruthy();
+  });
+
+  it("server-renders no local-time text, so hydration cannot mismatch across timezones (React #418 found by ENH-018 e2e)", () => {
+    const html = renderToString(<SchoolActivitiesPanel students={[]} activities={[{ id: "1", title: "Career Seminar", scheduled_at: past, activity_type: "career_seminar" }]} />);
+    expect(html).not.toContain(new Date(past).toLocaleString());
+    expect(html).toMatch(new RegExp(`<time dateTime="${past}">…</time>`));
   });
 });

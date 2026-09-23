@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import LocalDateTime from "@/components/LocalDateTime";
 import { isFeedbackEligible } from "@/lib/activityFeedback";
 
 type Activity = { id: string; title: string; scheduled_at: string; activity_type?: string | null };
@@ -89,7 +90,7 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
                 {activities.map((a) => (
                   <tr key={a.id}>
                     <td>{a.title}</td>
-                    <td>{new Date(a.scheduled_at).toLocaleString()}</td>
+                    <td><LocalDateTime value={a.scheduled_at} withTime /></td>
                     <td>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <button className="btn ghost small" onClick={() => startMarking(a.id)}>Mark attendance</button>
