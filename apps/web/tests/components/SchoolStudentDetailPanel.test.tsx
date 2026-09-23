@@ -113,3 +113,21 @@ describe("SchoolStudentDetailPanel transfer wiring", () => {
     expect(screen.getByLabelText("Destination school")).toBeTruthy();
   });
 });
+
+describe("SchoolStudentDetailPanel Student 360° link (ENH-013)", () => {
+  it.each([
+    ["school_coordinator", "/school/coordinator/students/s1/360"],
+    ["school_principal", "/school/principal/students/s1/360"],
+    ["school_teacher", "/school/teacher/students/s1/360"],
+  ])("links a %s to their own 360 route", async (role, href) => {
+    api();
+    render(await SchoolStudentDetailPanel({ student, role, backHref: "/back", backLabel: "Back" }));
+    expect(screen.getByRole("link", { name: "Open 360° view" }).getAttribute("href")).toBe(href);
+  });
+
+  it("shows no link when the caller passes no role (the pre-ENH-013 rendering)", async () => {
+    api();
+    await show();
+    expect(screen.queryByRole("link", { name: "Open 360° view" })).toBeNull();
+  });
+});
