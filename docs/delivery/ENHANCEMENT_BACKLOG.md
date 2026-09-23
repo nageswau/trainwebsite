@@ -2286,7 +2286,9 @@ lists 26 Student Master fields. Same mandatory-scope directive as ENH-009 applie
 
 **Existing behavior.** `SchoolStudent` (`apps/api/app/models.py:967-1002`) stores exactly: `id`,
 `school_id`, `student_code`, `full_name`, `date_of_birth`, `grade_or_class`, `created_by_user_id`,
-`assigned_teacher_user_id`, `pending_parent_email`. Checked field-by-field against §3:
+`assigned_teacher_user_id`, `pending_parent_email`. **Correction (2026-09-23, ENH-025 design):** ENH-001
+has since added `academic_year_id` and `grade_level` (`models.py:1030-1031`); the Grade/Section split therefore
+reduces to adding `section`. See `DEC-SCOPE-029`. Checked field-by-field against §3:
 
 | Field | Status | Note |
 |---|---|---|

@@ -21,6 +21,7 @@ from app.api import (
     public,
     school_feedback,
     school_skills,
+    school_student_profile,
     school_transfers,
     schools,
     student_360,
@@ -49,7 +50,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="EduSphere API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_url], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-for r in (auth.router, public.router, portal.router, admin.router, admin.agents_router, files.router, workflows.router, payments.router, cms.router, communications.router, inbound.router, account.router, employer.router, schools.router, school_transfers.coordinator_router, school_transfers.admin_router, portfolio.router, school_skills.router, student_360.router, school_feedback.coordinator_router, school_feedback.admin_router):
+for r in (auth.router, public.router, portal.router, admin.router, admin.agents_router, files.router, workflows.router, payments.router, cms.router, communications.router, inbound.router, account.router, employer.router, schools.router, school_transfers.coordinator_router, school_transfers.admin_router, portfolio.router, school_skills.router, student_360.router, school_feedback.coordinator_router, school_feedback.admin_router, school_student_profile.router):
     app.include_router(r, prefix="/api/v1")
 app.mount("/local-files", StaticFiles(directory=settings.local_upload_dir, check_dir=False), name="local-files")
 

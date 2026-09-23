@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-
+import CareerPreferencesCard from "@/components/CareerPreferencesCard";
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
 import { sendJson } from "@/lib/apiErrors";
 
@@ -94,6 +94,8 @@ export default function SchoolCareerRecordsPanel({ records, students }: { record
         )}
         {message && <FormMessage message={message} />}
       </div>
+
+      <CareerPreferencesCard students={students} />
     </div>
   );
 }

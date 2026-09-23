@@ -114,6 +114,46 @@ describe("SchoolStudentDetailPanel transfer wiring", () => {
   });
 });
 
+describe("SchoolStudentDetailPanel profile (ENH-025)", () => {
+  const master = { gender: "female", section: "A", roll_number: null, student_mobile: null, city: "Pune", subjects: ["Maths", "Physics"], career_interests: null, global_education_interest: false, preferred_countries: null, preferred_courses: null, has_photo: false };
+
+  it("shows the Student Master profile with 'Not recorded' for empty values and no photo controls by default", async () => {
+    api();
+    render(await SchoolStudentDetailPanel({ student: { ...student, ...master }, backHref: "/back", backLabel: "Back" }));
+    expect(screen.getByText("Female")).toBeTruthy();
+    expect(screen.getByText("Maths, Physics")).toBeTruthy();
+    expect(screen.getByText("No")).toBeTruthy();
+    // roll number, mobile, career interests, preferred countries, preferred courses
+    expect(screen.getAllByText("Not recorded").length).toBe(5);
+    expect(screen.getByRole("img", { name: "No photo for Aarav Mehta" })).toBeTruthy();
+    expect(screen.queryByLabelText(/upload a photo/i)).toBeNull();
+  });
+
+  it("offers photo controls only when canEditPhoto is set", async () => {
+    api();
+    render(await SchoolStudentDetailPanel({ student: { ...student, ...master }, backHref: "/back", backLabel: "Back", canEditPhoto: true }));
+    expect(screen.getByLabelText(/upload a photo/i)).toBeTruthy();
+  });
+
+  it("still renders a student record that predates the new fields", async () => {
+    api();
+    await show();
+    expect(screen.getByRole("img", { name: "No photo for Aarav Mehta" })).toBeTruthy();
+    expect(screen.getAllByText("Not recorded").length).toBe(10);
+  });
+
+  // QA2-08: one empty-value style across the profile (Grade/Class and Date of birth used to show "-").
+  it("labels an empty grade/class and date of birth 'Not recorded' like every other field", async () => {
+    api();
+    render(await SchoolStudentDetailPanel({ student: { ...student, ...master, grade_or_class: null, date_of_birth: null }, backHref: "/back", backLabel: "Back" }));
+    const value = (term: string) => [...document.querySelectorAll("dt")].find((d) => d.textContent === term)!.nextElementSibling!;
+    expect(value("Grade/Class").textContent).toBe("Not recorded");
+    expect(value("Date of birth").textContent).toBe("Not recorded");
+    expect(value("Grade/Class").className).toBe("muted");
+    expect(screen.queryAllByText("-").filter((e) => e.tagName === "DD")).toHaveLength(0);
+  });
+});
+
 describe("SchoolStudentDetailPanel Student 360° link (ENH-013)", () => {
   it.each([
     ["school_coordinator", "/school/coordinator/students/s1/360"],

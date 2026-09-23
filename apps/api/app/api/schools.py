@@ -21,6 +21,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,7 +61,7 @@ from app.models import (
     UserRoleAssignment,
     VisaCase,
 )
-from app.schemas import GradeHistoryResponse, StudentPromotionRequest, StudentPromotionResponse
+from app.schemas import LIST_FIELD_KEYS, MASTER_FIELD_KEYS, GradeHistoryResponse, StudentMasterFields, StudentPromotionRequest, StudentPromotionResponse, validation_message
 from app.services.integrations import send_notification
 from app.services.mailer import send_parent_notification_email, send_school_invite_email
 
@@ -594,7 +595,56 @@ def _student_out(s: SchoolStudent) -> dict:
         "pending_parent_email": s.pending_parent_email,
         "academic_year_id": s.academic_year_id,
         "grade_level": s.grade_level,
+        # ENH-025: additive; the photo itself is only ever served by GET .../photo, never as a key or URL.
+        **{name: getattr(s, name) for name in MASTER_FIELD_KEYS},
+        "has_photo": s.photo_key is not None,
     }
+
+
+# --- ENH-025: Student Master fields (DEC-SCOPE-029) -------------------------------------------------
+
+ROLL_CONSTRAINT = "uq_school_students_roll"
+ROLL_TAKEN = "roll_number '{roll}' is already used in this grade and section for this academic year"
+
+
+def _master_fields_or_422(model: type[BaseModel], data: dict) -> BaseModel:
+    try:
+        return model.model_validate(data)
+    except ValidationError as exc:
+        raise HTTPException(422, validation_message(exc)) from None
+
+
+def _master_subset(payload: dict) -> dict:
+    """Only the ENH-025 keys; every other key keeps its existing hand-written handling (or is ignored, as today)."""
+    return {key: payload[key] for key in MASTER_FIELD_KEYS if key in payload}
+
+
+def _apply_master_fields(student: SchoolStudent, fields: BaseModel) -> list[str]:
+    """Set every field the client sent; return the names that actually changed (for audit -- never values)."""
+    changed = []
+    for name in sorted(fields.model_fields_set):
+        value = getattr(fields, name)
+        if getattr(student, name) != value:
+            setattr(student, name, value)
+            changed.append(name)
+    return changed
+
+
+def _is_roll_conflict(exc: IntegrityError) -> bool:
+    return ROLL_CONSTRAINT in str(exc.orig)
+
+
+async def _flush_or_409(db: AsyncSession, roll_number: str | None) -> None:
+    """Flush inside a savepoint so a roll-number clash is a clean 409 decided by the unique index (no
+    read-then-check race). Any other integrity error is re-raised unchanged."""
+    try:
+        async with db.begin_nested():
+            await db.flush()
+    except IntegrityError as exc:
+        if _is_roll_conflict(exc):
+            logger.info("student_roll_conflict", extra={"extra_fields": {"outcome": "rejected"}})
+            raise HTTPException(409, ROLL_TAKEN.format(roll=roll_number)) from None
+        raise
 
 
 # --- SCH-007: Parent Portal notifications ---------------------------------------------------
@@ -967,7 +1017,7 @@ async def roster_template(user: User = Depends(get_current_user)):
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(ROSTER_TEMPLATE_HEADERS)
-    writer.writerow(["Jane Doe", "2015-04-12", "Grade 5", "", "Jane's Parent", "", "5"])
+    writer.writerow(ROSTER_TEMPLATE_EXAMPLE)
     return Response(content=buffer.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=school-roster-template.csv"})
 
 
@@ -1214,8 +1264,9 @@ async def _grade_history_rows(db: AsyncSession, student: SchoolStudent) -> list[
     return [
         {
             "id": h.id, "action": h.action, "created_at": h.created_at,
-            "from": {"academic_year_id": h.from_academic_year_id, "academic_year_label": from_y.label if from_y else None, "grade_level": h.from_grade_level, "grade_or_class": h.from_grade_or_class},
-            "to": {"academic_year_id": h.to_academic_year_id, "academic_year_label": to_y.label, "grade_level": h.to_grade_level, "grade_or_class": h.to_grade_or_class},
+            # ENH-025: section and the previous roll number (a year move clears the student's roll number).
+            "from": {"academic_year_id": h.from_academic_year_id, "academic_year_label": from_y.label if from_y else None, "grade_level": h.from_grade_level, "grade_or_class": h.from_grade_or_class, "section": h.from_section, "roll_number": h.from_roll_number},
+            "to": {"academic_year_id": h.to_academic_year_id, "academic_year_label": to_y.label, "grade_level": h.to_grade_level, "grade_or_class": h.to_grade_or_class, "section": h.to_section, "roll_number": None},
         }
         for h, from_y, to_y in rows
     ]
@@ -1229,6 +1280,7 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
     full_name = str(payload.get("full_name", "")).strip()
     if not full_name:
         raise HTTPException(422, "full_name is required")
+    master = _master_fields_or_422(StudentMasterFields, _master_subset(payload))
     # assigned_teacher_user_id (picker) takes precedence over assigned_teacher_email
     # (kept for SCH-002's bulk-upload CSV path, which only ever has an email column).
     assigned_teacher_user_id = None
@@ -1256,8 +1308,9 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
         created_by_user_id=user.id,
         assigned_teacher_user_id=assigned_teacher_user_id,
     )
+    changed_fields = _apply_master_fields(student, master)
     db.add(student)
-    await db.flush()
+    await _flush_or_409(db, student.roll_number)
     parent_status = None
     dev_token = None
     parent_email = payload.get("parent_email")
@@ -1266,7 +1319,7 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
         parent_status, error, dev_token = await _link_or_invite_parent(db, school=school, student=student, parent_email=str(parent_email), parent_name=payload.get("parent_name"), coordinator=user)
         if error:
             raise HTTPException(422, error)
-    db.add(AuditLog(user_id=user.id, action="school.student_create", entity_type="school_student", entity_id=str(student.id), metadata_json={"school_id": str(school_id), "parent_status": parent_status}))
+    db.add(AuditLog(user_id=user.id, action="school.student_create", entity_type="school_student", entity_id=str(student.id), metadata_json={"school_id": str(school_id), "parent_status": parent_status, "changed_fields": changed_fields}))
     await db.commit()
     out = {**_student_out(student), "parent_status": parent_status}
     if dev_token:
@@ -1284,6 +1337,7 @@ async def update_student(student_id: UUID, payload: dict, user: User = Depends(g
         raise HTTPException(404, "Student not found")
     if student.school_id != school_id:
         raise HTTPException(403, "This student is at a different institution")
+    master = _master_fields_or_422(StudentMasterFields, _master_subset(payload))
     if "full_name" in payload and payload["full_name"]:
         student.full_name = payload["full_name"]
     if "grade_or_class" in payload:
@@ -1310,6 +1364,8 @@ async def update_student(student_id: UUID, payload: dict, user: User = Depends(g
             student.assigned_teacher_user_id = teacher.id
         else:
             student.assigned_teacher_user_id = None
+    changed_fields = _apply_master_fields(student, master)
+    await _flush_or_409(db, student.roll_number)
     parent_status = None
     dev_token = None
     if "parent_email" in payload and payload["parent_email"]:
@@ -1317,7 +1373,7 @@ async def update_student(student_id: UUID, payload: dict, user: User = Depends(g
         parent_status, error, dev_token = await _link_or_invite_parent(db, school=school, student=student, parent_email=str(payload["parent_email"]), parent_name=payload.get("parent_name"), coordinator=user)
         if error:
             raise HTTPException(422, error)
-    db.add(AuditLog(user_id=user.id, action="school.student_update", entity_type="school_student", entity_id=str(student.id), metadata_json={"parent_status": parent_status}))
+    db.add(AuditLog(user_id=user.id, action="school.student_update", entity_type="school_student", entity_id=str(student.id), metadata_json={"parent_status": parent_status, "changed_fields": changed_fields}))
     await db.commit()
     out = {**_student_out(student), "parent_status": parent_status}
     if dev_token:
@@ -1419,12 +1475,17 @@ async def promote_students(payload: StudentPromotionRequest, user: User = Depend
                     school_student_id=student.id, action=decision.status,
                     from_academic_year_id=student.academic_year_id, from_grade_level=student.grade_level, from_grade_or_class=student.grade_or_class,
                     to_academic_year_id=active_year.id, to_grade_level=decision.grade_level, to_grade_or_class=decision.grade_or_class,
+                    # ENH-025 (DEC-SCOPE-029 item 6): previous class details survive the roll-number reset below.
+                    from_section=student.section, from_roll_number=student.roll_number, to_section=student.section,
                     performed_by_user_id=user.id,
                 )
             )
             student.academic_year_id = active_year.id
             student.grade_level = decision.grade_level
             student.grade_or_class = decision.grade_or_class
+            # Roll numbers are reassigned each year; NULL can never violate uq_school_students_roll, so this
+            # cannot fail the promotion's single transaction.
+            student.roll_number = None
         counts[decision.status] += 1
         results.append({"student_id": student.id, "status": decision.status, "reason": decision.reason, "message": decision.message, "grade_level": decision.grade_level, "grade_or_class": decision.grade_or_class})
 
@@ -1521,7 +1582,36 @@ async def mark_attendance(activity_id: UUID, payload: dict, user: User = Depends
 # not fixed by DATA_MODEL.md §6.13 -- resolved here as technical contract design, mapped
 # directly from SCH-001's own already-built SchoolStudent creation fields (POST /school/
 # students), not an invented field list.
-ROSTER_TEMPLATE_HEADERS = ["full_name", "date_of_birth", "grade_or_class", "assigned_teacher_email", "parent_name", "parent_email", "grade_level"]
+# ENH-025: the ten Student Master columns are appended after the original seven, so existing positions never move.
+ROSTER_TEMPLATE_HEADERS = [
+    "full_name", "date_of_birth", "grade_or_class", "assigned_teacher_email", "parent_name", "parent_email", "grade_level",
+    *MASTER_FIELD_KEYS,
+]
+ROSTER_TEMPLATE_EXAMPLE = ["Jane Doe", "2015-04-12", "Grade 5-A", "", "Jane's Parent", "", "5", "A", "12", "female", "+91 98765 43210", "Pune", "Maths;Science", "Engineering", "yes", "Germany;Canada", "Mechanical Engineering"]
+_CSV_BOOLEANS = {"yes": True, "true": True, "1": True, "no": False, "false": False, "0": False}
+
+
+def _master_fields_from_csv(row: dict) -> tuple[dict, str | None]:
+    """A CSV row -> the StudentMasterFields input shape. A missing column or a short row means "not set";
+    list cells split on ';'. Returns (data, error_message)."""
+    data: dict = {}
+    for key in MASTER_FIELD_KEYS:
+        raw = row.get(key)
+        if raw is None:
+            continue
+        raw = raw.strip()
+        if key in LIST_FIELD_KEYS:
+            data[key] = raw.split(";") if raw else None
+        elif key == "global_education_interest":
+            if not raw:
+                data[key] = None
+            elif raw.lower() in _CSV_BOOLEANS:
+                data[key] = _CSV_BOOLEANS[raw.lower()]
+            else:
+                return {}, "global_education_interest must be yes or no"
+        else:
+            data[key] = raw or None
+    return data, None
 
 
 async def _batch_report(db: AsyncSession, batch: SchoolRosterUploadBatch) -> dict:
@@ -1611,6 +1701,14 @@ async def bulk_upload_students(
                     grade_level = _validate_grade_level(int(raw_grade_level))
                 except (ValueError, HTTPException):
                     error = f"grade_level '{raw_grade_level}' must be an integer between 1 and 12"
+        master = None
+        if not error:
+            master_data, error = _master_fields_from_csv(row)
+            if not error:
+                try:
+                    master = StudentMasterFields.model_validate(master_data)
+                except ValidationError as exc:
+                    error = validation_message(exc)
         # SCH-002-AC04: a row that fails validation is recorded and skipped -- it never
         # blocks or discards the rows around it.
         if error:
@@ -1623,8 +1721,19 @@ async def bulk_upload_students(
             created_by_user_id=user.id, assigned_teacher_user_id=assigned_teacher_user_id,
             grade_level=grade_level, academic_year_id=current_year_id,
         )
-        db.add(student)
-        await db.flush()
+        _apply_master_fields(student, master)
+        # ENH-025: the insert runs in its own savepoint so a roll-number clash rejects this row only
+        # (SCH-002-AC04). The parent link/invite runs after, so a rolled-back row never sends an invite.
+        try:
+            async with db.begin_nested():
+                db.add(student)
+                await db.flush()
+        except IntegrityError as exc:
+            if not _is_roll_conflict(exc):
+                raise
+            db.add(SchoolRosterUploadRow(batch_id=batch.id, row_number=i, status="rejected", error_message=ROLL_TAKEN.format(roll=student.roll_number)))
+            rejected += 1
+            continue
         if parent_email:
             # Already validated above (no conflicting account) -- this call only ever
             # links or invites here, it does not reject.
@@ -1637,6 +1746,7 @@ async def bulk_upload_students(
     batch.status = "completed"
     db.add(AuditLog(user_id=user.id, action="school.roster_bulk_upload", entity_type="school_roster_upload_batch", entity_id=str(batch.id), metadata_json={"total": len(rows), "accepted": accepted, "rejected": rejected}))
     await db.commit()
+    logger.info("roster_bulk_upload_completed", extra={"extra_fields": {"batch_id": str(batch.id), "school_id": str(school_id), "total": len(rows), "accepted": accepted, "rejected": rejected}})
     return await _batch_report(db, batch)
 
 

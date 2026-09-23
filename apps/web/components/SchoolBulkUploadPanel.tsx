@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ROSTER_COLUMNS, friendlyMessage } from "@/lib/schoolStudents";
 
 type RowReport = { row_number: number; status: string; error_message: string | null; created_student_id: string | null };
 type BatchReport = { id: string; status: string; total_rows: number; accepted_count: number; rejected_count: number; rows: RowReport[] };
@@ -55,10 +56,27 @@ export default function SchoolBulkUploadPanel() {
     <div className="portal-content">
       <div className="card">
         <h2>1. Download the template</h2>
-        <p className="muted">Fill it in offline, then upload it below. Columns: full name (required), date of birth, grade/class, an existing Teacher&apos;s email if you want to assign one, and a parent&apos;s name/email if you want one invited (or linked, if they already have an account).</p>
+        <p className="muted">Fill it in offline, then upload it below. Only the full name is required; a parent email invites that parent (or links them, if they already have an account).</p>
         <button type="button" className="btn secondary" onClick={() => window.open("/api/v1/school/students/roster-template", "_blank", "noreferrer")}>
           Download template (.csv)
         </button>
+        {/* ENH-025: the template's columns, documented where the coordinator fills it in (AC6). */}
+        <details style={{ marginTop: 12 }}>
+          <summary><strong>Column reference</strong></summary>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr><th>Column</th><th>Required</th><th>Format</th><th>Example</th></tr>
+              </thead>
+              <tbody>
+                {ROSTER_COLUMNS.map((c) => (
+                  <tr key={c.name}><td><code>{c.name}</code></td><td>{c.required ? "Yes" : "No"}</td><td>{c.format}</td><td>{c.example}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="muted field-help">Photos can&apos;t be uploaded in the CSV — add them from each student&apos;s page after the upload.</p>
+        </details>
       </div>
 
       <div className="action-card">
@@ -95,7 +113,8 @@ export default function SchoolBulkUploadPanel() {
                   <tr key={r.row_number}>
                     <td>{r.row_number}</td>
                     <td>{r.status === "accepted" ? "Added" : "Rejected"}</td>
-                    <td>{r.error_message || "-"}</td>
+                    {/* QA2-05: the reason in the coordinator's words, like the single-student form. */}
+                    <td>{r.error_message ? friendlyMessage(r.error_message) : "-"}</td>
                   </tr>
                 ))}
               </tbody>

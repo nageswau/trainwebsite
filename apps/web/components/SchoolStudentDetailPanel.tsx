@@ -2,12 +2,14 @@ import SchoolGradeHistory, { loadGradeHistory } from "@/components/SchoolGradeHi
 import SchoolStudentTimeline, { loadStudentTimeline } from "@/components/SchoolStudentTimeline";
 import SchoolTransferHistory, { loadTransferHistory } from "@/components/SchoolTransferHistory";
 import SchoolTransferRequestForm from "@/components/SchoolTransferRequestForm";
+import SchoolStudentPhoto from "@/components/SchoolStudentPhoto";
 import PortfolioPanel from "@/components/PortfolioPanel";
 import { formatDate } from "@/components/SchoolChildOverview";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import type { SchoolRef, TransferRequest } from "@/lib/transfers";
 import { loadPortfolio } from "@/lib/portfolio";
+import { GENDER_LABEL, listText, type SchoolStudent } from "@/lib/schoolStudents";
 import { student360Href } from "@/lib/student360Links";
 
 // Shared read-only student header + Journey Timeline, reused across every School role that
@@ -23,11 +25,29 @@ import { student360Href } from "@/lib/student360Links";
 // record, but at the end of a long timeline it was hard to find on a phone (browser QA N4). Its destinations and this student's pending
 // request are read here, in the same Promise.all, so opening it needs no client round-trip and no loading state.
 
-type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
+// ENH-025: the Student Master fields are optional here so a caller (or a record) without them still renders --
+// every missing value reads "Not recorded". `canEditPhoto` (default off) is the coordinator's photo controls.
+type Student = Pick<SchoolStudent, "id" | "student_code" | "full_name" | "date_of_birth" | "grade_or_class"> & Partial<SchoolStudent>;
+
+// QA2-08: Grade/Class and Date of birth are rows like the rest, so an empty value reads "Not recorded" everywhere.
+const PROFILE_ROWS: [string, (s: Student) => string][] = [
+  ["Grade/Class", (s) => s.grade_or_class ?? ""],
+  ["Date of birth", (s) => (s.date_of_birth ? formatDate(s.date_of_birth) : "")],
+  ["Gender", (s) => (s.gender ? GENDER_LABEL[s.gender] ?? s.gender : "")],
+  ["Section", (s) => s.section ?? ""],
+  ["Roll number", (s) => s.roll_number ?? ""],
+  ["Student mobile", (s) => s.student_mobile ?? ""],
+  ["City", (s) => s.city ?? ""],
+  ["Subjects", (s) => listText(s.subjects)],
+  ["Career interests", (s) => listText(s.career_interests)],
+  ["Interested in studying abroad", (s) => (s.global_education_interest == null ? "" : s.global_education_interest ? "Yes" : "No")],
+  ["Preferred countries", (s) => listText(s.preferred_countries)],
+  ["Preferred courses", (s) => listText(s.preferred_courses)],
+];
 
 // ENH-013: `role` (the viewer's) picks which role's Student 360° route the "Open 360° view" link goes to -- the API does the scoping.
 // Optional so a caller that passes none renders exactly as before (no link).
-export default async function SchoolStudentDetailPanel({ student, role, backHref, backLabel, showGradeHistory = false, showTransfer = false }: { student: Student; role?: string; backHref: string; backLabel: string; showGradeHistory?: boolean; showTransfer?: boolean }) {
+export default async function SchoolStudentDetailPanel({ student, role, backHref, backLabel, showGradeHistory = false, showTransfer = false, canEditPhoto = false }: { student: Student; role?: string; backHref: string; backLabel: string; showGradeHistory?: boolean; showTransfer?: boolean; canEditPhoto?: boolean }) {
   const view360 = role ? student360Href(role, student.id) : null;
   const [timeline, gradeHistory, transferHistory, destinations, pendingPage, portfolio] = await Promise.all([
     loadStudentTimeline(student.id).catch(() => null),
@@ -44,8 +64,18 @@ export default async function SchoolStudentDetailPanel({ student, role, backHref
     <div className="portal-content">
       <div className="card">
         <h2>{student.full_name} <span className="muted" style={{ fontSize: 14 }}>({student.student_code})</span></h2>
-        <p><strong>Grade/Class:</strong> {student.grade_or_class || "-"}</p>
-        <p><strong>Date of birth:</strong> {formatDate(student.date_of_birth)}</p>
+        <div className="student-profile">
+          <SchoolStudentPhoto studentId={student.id} name={student.full_name} hasPhoto={Boolean(student.has_photo)} canEdit={canEditPhoto} />
+          <dl>
+            {PROFILE_ROWS.map(([label, value]) => {
+              const shown = value(student);
+              return [
+                <dt key={`${label}-term`}>{label}</dt>,
+                <dd key={`${label}-value`} className={shown ? undefined : "muted"}>{shown || "Not recorded"}</dd>,
+              ];
+            })}
+          </dl>
+        </div>
         {pending && <p><span className="status pending">Transfer requested</span> to {pending.to_school.name}</p>}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {view360 && <a className="btn" href={view360}>Open 360° view</a>}
