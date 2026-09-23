@@ -119,8 +119,14 @@ test("the roster edit form stacks to one column with no horizontal scroll at pho
   for (const legend of ["Identity", "Class placement", "Contact", "Studies & interests"]) {
     await expect(page.getByRole("group", { name: legend }).first()).toBeVisible();
   }
-  const section = await page.locator("#edit-section").boundingBox();
-  const roll = await page.locator("#edit-roll").boundingBox();
-  expect(roll!.y).toBeGreaterThan(section!.y); // stacked, not side by side
+  // Both positions in one evaluation, document-relative: opening Edit smooth-scrolls the page (the app sets
+  // scroll-behavior: smooth), so two separate viewport-relative boundingBox() calls could straddle the scroll.
+  const { sectionTop, rollTop, sectionLeft, rollLeft } = await page.evaluate(() => {
+    const s = document.querySelector("#edit-section")!.getBoundingClientRect();
+    const r = document.querySelector("#edit-roll")!.getBoundingClientRect();
+    return { sectionTop: s.top + window.scrollY, rollTop: r.top + window.scrollY, sectionLeft: s.left, rollLeft: r.left };
+  });
+  expect(rollTop).toBeGreaterThan(sectionTop); // stacked, not side by side
+  expect(rollLeft).toBe(sectionLeft);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 });
