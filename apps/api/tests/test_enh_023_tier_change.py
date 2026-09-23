@@ -262,3 +262,117 @@ async def test_failing_email_never_fails_or_undoes_the_tier_change(client, db_se
         assert record.extra_fields["error_type"] == "RuntimeError"
         assert record.exc_info is None
         assert "@" not in str(record.extra_fields)
+
+
+from datetime import UTC, datetime  # noqa: E402
+
+from app.models import SchoolLanguageRecord, SchoolTestPrepRecord  # noqa: E402
+
+
+def activity(activity_type=None) -> dict:
+    body = {"title": "Session", "scheduled_at": datetime.now(UTC).isoformat()}
+    return body | ({"activity_type": activity_type} if activity_type else {})
+
+
+def attendance(w) -> dict:
+    return {"records": [{"student_id": str(w["students"][0].id), "present": True}]}
+
+
+async def grandfathered(db, school_id) -> int:
+    return await db.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action == "school.tier_grandfathered", AuditLog.entity_id == str(school_id)))
+
+
+# --- Grandfathered work: activities and records (AC-6..AC-8) ----------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_campus_visit_scheduled_before_a_downgrade_can_still_take_attendance(client, db_session):
+    w = await world(db_session, "platinum")
+    await login(client, w["coordinator"].email)
+    visit = (await client.post("/api/v1/school/activities", json=activity("campus_visit"))).json()
+    await change_tier(client, w, tier="gold")
+    await login(client, w["coordinator"].email)
+    r = await client.post(f"/api/v1/school/activities/{visit['id']}/attendance", json=attendance(w))
+    assert r.status_code == 200, r.text
+    assert await grandfathered(db_session, w["school"].id) == 1  # D14: committed with the attendance
+    assert (await client.post("/api/v1/school/activities", json=activity("campus_visit"))).status_code == 403  # new work
+    assert await denials(db_session, w["school"].id) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_grandfathered_write_that_then_fails_leaves_no_grandfather_row(client, db_session):
+    w = await world(db_session, "platinum")
+    await login(client, w["coordinator"].email)
+    visit = (await client.post("/api/v1/school/activities", json=activity("campus_visit"))).json()
+    await change_tier(client, w, tier="gold")
+    await login(client, w["coordinator"].email)
+    r = await client.post(f"/api/v1/school/activities/{visit['id']}/attendance", json={"records": []})  # 422 after the tier check
+    assert r.status_code == 422
+    assert await grandfathered(db_session, w["school"].id) == 0
+
+
+@pytest.mark.asyncio
+async def test_free_text_activity_attendance_survives_removal(client, db_session):
+    w = await world(db_session, "bronze")
+    await login(client, w["coordinator"].email)
+    free = (await client.post("/api/v1/school/activities", json=activity())).json()
+    await change_tier(client, w, tier=None)
+    await login(client, w["coordinator"].email)
+    assert (await client.post(f"/api/v1/school/activities/{free['id']}/attendance", json=attendance(w))).status_code == 200
+    r = await client.post("/api/v1/school/activities", json=activity())
+    assert (r.status_code, r.json()["detail"]) == (403, NO_TIER)
+
+
+@pytest.mark.asyncio
+async def test_psychometric_record_survives_tier_removal(client, db_session):
+    w = await world(db_session, "bronze", staff_role="psychometric_team")
+    await login(client, w["staff"].email)
+    body = {"school_student_id": str(w["students"][0].id), "assessment_type": "Aptitude"}
+    record = (await client.post("/api/v1/school/psychometric-team/records", json=body)).json()
+    await change_tier(client, w, tier=None)
+    await login(client, w["staff"].email)
+    patched = await client.patch(f"/api/v1/school/psychometric-team/records/{record['id']}", json={"report_url": "https://example.local/r.pdf"})
+    assert patched.status_code == 200, patched.text
+    assert (await client.post("/api/v1/school/psychometric-team/records", json=body)).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_test_prep_and_language_records_survive_downgrades(client, db_session):
+    w = await world(db_session, "gold", staff_role="academic_team")
+    await login(client, w["staff"].email)
+    sid = str(w["students"][0].id)
+    sat = (await client.post("/api/v1/school/academic-team/test-prep-records", json={"school_student_id": sid, "test_type": "sat"})).json()
+    german = (await client.post("/api/v1/school/academic-team/language-records", json={"school_student_id": sid, "language": "German"})).json()
+    await change_tier(client, w, tier="bronze")
+    await login(client, w["staff"].email)
+    assert (await client.patch(f"/api/v1/school/academic-team/test-prep-records/{sat['id']}", json={"actual_score": "1400"})).status_code == 200
+    assert (await client.patch(f"/api/v1/school/academic-team/language-records/{german['id']}", json={"certification_status": "certified"})).status_code == 200
+    assert (await db_session.get(SchoolTestPrepRecord, UUID(sat["id"]), populate_existing=True)).actual_score == "1400"
+    assert (await db_session.get(SchoolLanguageRecord, UUID(german["id"]), populate_existing=True)).certification_status == "certified"
+    assert (await client.post("/api/v1/school/academic-team/test-prep-records", json={"school_student_id": sid, "test_type": "sat"})).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_expired_school_is_refused_even_on_grandfathered_work(client, db_session):
+    w = await world(db_session, "platinum")
+    await login(client, w["coordinator"].email)
+    visit = (await client.post("/api/v1/school/activities", json=activity("campus_visit"))).json()
+    await change_tier(client, w, tier="gold", tier_valid_until=EXPIRED_ON.isoformat())
+    await login(client, w["coordinator"].email)
+    r = await client.post(f"/api/v1/school/activities/{visit['id']}/attendance", json=attendance(w))
+    assert r.status_code == 403
+    assert r.json()["detail"].startswith("This school's partnership expired on")
+
+
+@pytest.mark.asyncio
+async def test_work_created_after_the_downgrade_is_not_grandfathered(client, db_session):
+    w = await world(db_session, "platinum")
+    await change_tier(client, w, tier="gold")
+    await change_tier(client, w, tier="platinum")
+    await login(client, w["coordinator"].email)
+    visit = (await client.post("/api/v1/school/activities", json=activity("campus_visit"))).json()
+    w["school"].tier = "gold"  # a direct database change leaves no transition row
+    await db_session.commit()
+    r = await client.post(f"/api/v1/school/activities/{visit['id']}/attendance", json=attendance(w))
+    assert r.status_code == 403
+    assert "Monthly campus visits" in r.json()["detail"]

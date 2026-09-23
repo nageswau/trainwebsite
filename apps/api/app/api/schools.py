@@ -907,15 +907,53 @@ def _entitlement_denial(tier: str | None, valid_until: date | None, service_key:
     return None
 
 
-async def require_school_entitlement(db: AsyncSession, user: User, school_id: UUID, service_key: str | None) -> None:
+TIER_GRANDFATHERED = "school.tier_grandfathered"
+
+
+def _grandfathers(metadata: dict, service_key: str | None) -> bool:
+    """ENH-023 §5: does this `school.tier_update` row take `service_key` away? Rows written before ENH-023 carry no
+    `direction` and never match; `service_key=None` (a free-text activity, ENH-022 D7) is taken away only by a removal."""
+    if metadata.get("direction") != "downgrade":
+        return False
+    if service_key is None:
+        return metadata.get("to_tier") is None
+    return service_key in metadata.get("lost", [])
+
+
+async def _lost_since(db: AsyncSession, school_id: UUID, service_key: str | None, since: datetime) -> bool:
+    """Was `service_key` taken from this school by a tier change after `since`? Filters on the indexed action in SQL and reads
+    the metadata in Python: no JSON operators, no migration. These rows are business inputs now and must not be pruned."""
+    rows = (
+        await db.scalars(select(AuditLog.metadata_json).where(AuditLog.action == TIER_UPDATE, AuditLog.entity_id == str(school_id), AuditLog.created_at > since))
+    ).all()
+    return any(_grandfathers(metadata or {}, service_key) for metadata in rows)
+
+
+async def _is_grandfathered(db: AsyncSession, school: School | None, reason: str, service_key: str | None, since: datetime) -> bool:
+    """ENH-023 D2/D6: only a `not_included`/`no_tier` denial on an unexpired school can be lifted; `expired` never is."""
+    if school is None or reason not in {"not_included", "no_tier"}:
+        return False
+    if school.tier_valid_until is not None and school.tier_valid_until < _today_ist():
+        return False
+    return await _lost_since(db, school.id, service_key, since)
+
+
+async def require_school_entitlement(db: AsyncSession, user: User, school_id: UUID, service_key: str | None, *, grandfathered_since: datetime | None = None) -> None:
     """403 unless the school's valid cumulative tier includes `service_key`. Call it after the route's own role and scope
-    checks and before any write: a denial commits its audit row (D12), so nothing else may be pending in the session."""
+    checks and before any write: a denial commits its audit row (D12), so nothing else may be pending in the session.
+    ENH-023 (DEC-SCOPE-029 D2/D8): a route finishing existing work passes that work's `created_at` as `grandfathered_since`;
+    the denial is then lifted when a tier change after that time took the service away (never for an expired partnership)."""
     school = await db.get(School, school_id)
     tier = school.tier if school else None
     denial = _entitlement_denial(tier, school.tier_valid_until if school else None, service_key, _today_ist())
     if denial is None:
         return
     reason, message = denial
+    if grandfathered_since is not None and await _is_grandfathered(db, school, reason, service_key, grandfathered_since):
+        # D14: added, NOT committed -- it rides on the route's own commit, so a route that fails later leaves no trace.
+        db.add(AuditLog(user_id=user.id, action=TIER_GRANDFATHERED, entity_type="school", entity_id=str(school_id), metadata_json={"service_key": service_key, "reason": reason, "tier": tier, "grandfathered_since": grandfathered_since.isoformat()}))
+        logger.info("tier_grandfathered", extra={"extra_fields": {"actor_id": str(user.id), "role": user.role, "school_id": str(school_id), "service_key": service_key}})
+        return
     fields = {"actor_id": str(user.id), "role": user.role, "school_id": str(school_id), "service_key": service_key, "reason": reason}
     db.add(AuditLog(user_id=user.id, action=TIER_DENIED, entity_type="school", entity_id=str(school_id), outcome="denied", metadata_json={"service_key": service_key, "reason": reason, "tier": tier}))
     try:
@@ -1519,7 +1557,7 @@ async def mark_attendance(activity_id: UUID, payload: dict, user: User = Depends
     activity = await db.get(SchoolActivity, activity_id)
     if not activity or activity.school_id != school_id:
         raise HTTPException(404, "Activity not found")
-    await require_school_entitlement(db, user, school_id, ACTIVITY_SERVICE_KEYS[activity.activity_type] if activity.activity_type else None)
+    await require_school_entitlement(db, user, school_id, ACTIVITY_SERVICE_KEYS[activity.activity_type] if activity.activity_type else None, grandfathered_since=activity.created_at)
     records = payload.get("records", [])
     if not isinstance(records, list) or not records:
         raise HTTPException(422, "records must be a non-empty list of {student_id, present}")
@@ -1827,7 +1865,7 @@ async def update_psychometric_record(record_id: UUID, payload: dict, user: User 
     if not record:
         raise HTTPException(404, "Record not found")
     student = await _student_in_portfolio(db, user, record.school_student_id)
-    await require_school_entitlement(db, user, student.school_id, "psychometric_test")
+    await require_school_entitlement(db, user, student.school_id, "psychometric_test", grandfathered_since=record.created_at)
     became_completed = False
     if "report_url" in payload:
         record.report_url = payload["report_url"]
@@ -1905,7 +1943,7 @@ async def update_test_prep_record(record_id: UUID, payload: dict, user: User = D
     if not record:
         raise HTTPException(404, "Record not found")
     student = await _student_in_portfolio(db, user, record.school_student_id)
-    await require_school_entitlement(db, user, student.school_id, TEST_PREP_SERVICE_KEYS[record.test_type])  # the stored test, never the body's
+    await require_school_entitlement(db, user, student.school_id, TEST_PREP_SERVICE_KEYS[record.test_type], grandfathered_since=record.created_at)  # the stored test, never the body's
     became_completed = False
     if "mock_scores" in payload:
         record.mock_scores = payload["mock_scores"] or []
@@ -1982,7 +2020,7 @@ async def update_language_record(record_id: UUID, payload: dict, user: User = De
     if not record:
         raise HTTPException(404, "Record not found")
     student = await _student_in_portfolio(db, user, record.school_student_id)
-    await require_school_entitlement(db, user, student.school_id, "foreign_language_classes")
+    await require_school_entitlement(db, user, student.school_id, "foreign_language_classes", grandfathered_since=record.created_at)
     became_certified = False
     if "classes_attended" in payload:
         record.classes_attended = int(payload["classes_attended"])
