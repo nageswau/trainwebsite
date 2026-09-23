@@ -869,7 +869,7 @@ def _entitlement_denial(tier: str | None, valid_until: date | None, service_key:
         return "no_tier", NO_ACTIVE_TIER
     if valid_until is not None and valid_until < today:
         return "expired", f"This school's partnership expired on {valid_until.strftime('%d %b %Y')}."
-    if minimum is not None and service_key not in {key for key, _ in _cumulative_services(tier)}:
+    if service_key is not None and service_key not in {key for key, _ in _cumulative_services(tier)}:
         return "not_included", (
             f"This school's {tier.capitalize()} partnership does not include {SERVICE_LABELS[service_key]} "
             f"(requires {minimum.capitalize()} or higher)."
