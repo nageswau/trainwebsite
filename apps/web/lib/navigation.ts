@@ -35,7 +35,7 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
 // (RBAC_MATRIX.md §2.12's role-name collision guard, SCH-001-AC05).
 export const SCHOOL_NAV: Record<string, NavItem[]> = {
   coordinator: ["dashboard", "students", "promotion", "transfers", "activities", "team", "reports", "entitlements", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/coordinator/${x}` })),
-  principal: ["dashboard", "reports", "entitlements"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/principal/${x}` })),
+  principal: ["dashboard", "reports", "entitlements", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/principal/${x}` })),
   teacher: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/teacher/${x}` })),
   parent: ["dashboard", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/parent/${x}` })),
   // SCH-004/005/006 -- single-item nav, same shape as principal/teacher/parent above.
