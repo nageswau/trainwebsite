@@ -14,11 +14,13 @@ afterEach(() => {
 const TIER_403 = "This school's Bronze partnership does not include Individual counselling (requires Silver or higher).";
 const STUDENTS = [{ id: "s1", full_name: "Asha", school_name: "Hill School" }];
 
+// Scoped to the "Add a record" card: the page also carries ENH-025's career-preferences card, which has its own "Student" select.
 function save() {
-  fireEvent.change(screen.getByLabelText("Student"), { target: { value: "s1" } });
-  fireEvent.change(screen.getByLabelText("Type"), { target: { value: "guidance_session" } });
-  fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "Discussed options." } });
-  fireEvent.click(screen.getByRole("button", { name: "Save record" }));
+  const card = within(screen.getByRole("heading", { name: "Add a record" }).closest(".action-card") as HTMLElement);
+  fireEvent.change(card.getByLabelText("Student"), { target: { value: "s1" } });
+  fireEvent.change(card.getByLabelText("Type"), { target: { value: "guidance_session" } });
+  fireEvent.change(card.getByLabelText("Notes"), { target: { value: "Discussed options." } });
+  fireEvent.click(card.getByRole("button", { name: "Save record" }));
 }
 
 // ENH-022: a partnership-tier 403 (or any failed save) is announced as an alert beside the form that failed.

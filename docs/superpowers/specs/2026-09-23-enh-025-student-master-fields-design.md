@@ -104,7 +104,7 @@ promotion in the same insert it already performs. Pre-existing history rows keep
   same statement that already clears `assigned_teacher_user_id`/`pending_parent_email`. Every other
   new field carries over.
 
-### 2.5 Migration `0040_student_master_fields` (revises `0039_student_career_goal`)
+### 2.5 Migration `0041_student_master_fields` (revises `0040_school_activity_feedback`)
 
 1. Add columns (guarded "add if missing", same style as `0030`), including the grade-history columns
    and the gender CHECK constraint.
@@ -117,8 +117,9 @@ promotion in the same insert it already performs. Pre-existing history rows keep
 4. `downgrade()` drops the index, the constraint and the columns. `grade_or_class` is never written.
 
 **Numbering:** `ENH-013` also added a `0039` (`0039_student_career_goal`, revising `0038`) and merged to
-`main` first, so this migration is `0040_student_master_fields`, revising `0039_student_career_goal`
-(`DEC-SCOPE-029` item 11; precedent: commit `6c66f9a`, ENH-012). A test asserts a single Alembic head.
+`main` first; `ENH-018` then merged `0040_school_activity_feedback` on top of it. So this migration is
+`0041_student_master_fields`, revising `0040_school_activity_feedback` (`DEC-SCOPE-029` item 11; precedent: commit
+`6c66f9a`, ENH-012). A test asserts a single Alembic head.
 
 ## 3. Backend / API
 
@@ -400,7 +401,7 @@ bulk row carrying a mobile number fails without echoing it.
 - Controlled vocabularies for subjects/countries/courses (no source defines them).
 - ~~`NEEDS_CONFIRMATION`: consent / legal basis for storing photos of minors~~ — resolved 2026-09-23: the school is
   responsible (`DEC-SCOPE-029` item 10).
-- Migration order: ENH-013 merged first; this migration is 0040, chained after `0039_student_career_goal` (`DEC-SCOPE-029` item 11).
+- Migration order: ENH-013 and then ENH-018 merged first; this migration is 0041, chained after `0040_school_activity_feedback` (`DEC-SCOPE-029` item 11).
 - Pre-existing: bulk upload has no file-size or row-count cap (DoS surface); ENH-025's per-row
   savepoints add round-trips but do not change the bound.
 - Pre-existing: the Next API proxy buffers whole request bodies before forwarding.

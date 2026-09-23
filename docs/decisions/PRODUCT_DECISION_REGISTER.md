@@ -2447,8 +2447,10 @@ ENH-025 commit messages that say `DEC-SCOPE-027` mean this decision.
     `NEEDS_CONFIRMATION` on consent / legal basis for storing photos of minors.
 11. **Migration order (2026-09-23, user, in-session):** first decided as "ENH-025 merges first", but ENH-013
     (PR #15) reached `main` before that could happen. When merging `main` in, the user chose to resolve on
-    ENH-025's side instead: ENH-025's migration is renumbered to `0040_student_master_fields` and re-chained onto
-    `0039_student_career_goal`. The two migrations touch different columns, so the order does not change
-    the schema.
+    ENH-025's side instead: ENH-025's migration was renumbered to `0040` and re-chained onto
+    `0039_student_career_goal`. ENH-018 (PR #16) then merged its own `0040_school_activity_feedback` on the same
+    parent, so on the next merge of `main` ENH-025's migration moved again to `0041_student_master_fields`, revising
+    `0040_school_activity_feedback`. Neither of the other migrations touches ENH-025's columns, so the order does not
+    change the schema.
 **New Feature ID:** none — additive scope on `ENH-025`.
 

@@ -11,9 +11,9 @@ from sqlalchemy.exc import DBAPIError
 from app.models import SchoolStudent
 
 # Import the migration's own parser by file path (same approach as test_enh_001_academic_year.py):
-# "0040_student_master_fields" is not an importable module name.
-_path = Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0040_student_master_fields.py"
-_spec = importlib.util.spec_from_file_location("_enh_025_migration_0040", _path)
+# "0041_student_master_fields" is not an importable module name.
+_path = Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0041_student_master_fields.py"
+_spec = importlib.util.spec_from_file_location("_enh_025_migration_0041", _path)
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
@@ -31,10 +31,11 @@ def test_derive_section_is_conservative(label, expected):
     assert _migration._derive_section(label) == expected
 
 
-def test_migration_follows_enh013_and_is_the_single_head():
-    # Re-chained on merge: ENH-013's 0039_student_career_goal merged to main first (DEC-SCOPE-029 item 11).
-    assert _migration.revision == "0040_student_master_fields"
-    assert _migration.down_revision == "0039_student_career_goal"
+def test_migration_follows_enh018_and_is_the_single_head():
+    # Re-chained on merge: ENH-013 (0039_student_career_goal) and then ENH-018 (0040_school_activity_feedback) merged to
+    # main first (DEC-SCOPE-029 item 11).
+    assert _migration.revision == "0041_student_master_fields"
+    assert _migration.down_revision == "0040_school_activity_feedback"
     parents = {}
     for file in (Path(__file__).resolve().parents[1] / "alembic" / "versions").glob("*.py"):
         lines = file.read_text(encoding="utf-8").splitlines()
@@ -42,7 +43,7 @@ def test_migration_follows_enh013_and_is_the_single_head():
         parent = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("down_revision =")), None)
         if rev:
             parents[rev] = parent
-    assert set(parents) - set(parents.values()) == {"0040_student_master_fields"}
+    assert set(parents) - set(parents.values()) == {"0041_student_master_fields"}
 
 
 @pytest.mark.asyncio

@@ -1390,3 +1390,69 @@ class SchoolOut(BaseModel):
     school_coordinator_name: str | None
     career_counsellor_names: list[str]
     created_at: datetime
+
+
+# --- ENH-018: school activity feedback (docs/superpowers/specs/2026-09-23-enh-018-school-activity-feedback-design.md §5) ---
+# Free text reuses the house `clean_free_text` rule (trim, blank -> None, no NUL/bidi overrides, newlines kept) through
+# `_required`/`_optional`; `trainer_name` is single-line, so it also takes `_no_control_characters`.
+FEEDBACK_TEXT_MAX = 5000
+FeedbackScore = Annotated[int, Field(strict=True, ge=1, le=5)]
+FeedbackStatusFilter = Literal["all", "awaiting", "submitted"]
+
+
+class ActivityFeedbackCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+    rating: FeedbackScore
+    satisfaction: FeedbackScore
+    feedback: Annotated[str, AfterValidator(_required(FEEDBACK_TEXT_MAX))]
+    suggestions: Annotated[str | None, AfterValidator(_optional(FEEDBACK_TEXT_MAX))] = None
+    trainer_name: Annotated[str | None, AfterValidator(_optional(200)), AfterValidator(_no_control_characters)] = None
+
+
+class ActivityParticipation(BaseModel):
+    present: int
+    marked: int
+
+
+class ActivityFeedbackOut(BaseModel):
+    id: UUID
+    activity_id: UUID
+    trainer_name: str | None
+    rating: int
+    satisfaction: int
+    feedback: str
+    suggestions: str | None
+    submitted_by_name: str
+    submitted_at: datetime
+
+
+class SchoolFeedbackActivity(BaseModel):
+    activity_id: UUID
+    title: str
+    activity_type: str
+    scheduled_at: datetime
+    participation: ActivityParticipation
+    feedback: ActivityFeedbackOut | None
+
+
+class SchoolFeedbackPage(BaseModel):
+    items: list[SchoolFeedbackActivity]
+    total: int
+    limit: int
+    offset: int
+
+
+class AdminActivityFeedbackOut(ActivityFeedbackOut):
+    school_id: UUID
+    school_name: str
+    activity_title: str
+    activity_type: str
+    scheduled_at: datetime
+    participation: ActivityParticipation
+
+
+class AdminFeedbackPage(BaseModel):
+    items: list[AdminActivityFeedbackOut]
+    total: int
+    limit: int
+    offset: int
