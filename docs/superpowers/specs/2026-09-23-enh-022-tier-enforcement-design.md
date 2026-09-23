@@ -80,8 +80,8 @@ def _today_ist() -> date: ...            # datetime.now(ZoneInfo("Asia/Kolkata")
 def _minimum_tier(service_key: str) -> str: ...   # first TIER_ORDER entry whose TIER_SERVICES lists the key;
                                                   # ValueError for an unknown key
 
-def _entitlement_denial(tier: str | None, valid_until: date | None, service_key: str | None, today: date) -> str | None:
-    """Pure: the 403 message, or None if allowed. service_key=None means 'any valid tier'."""
+def _entitlement_denial(tier: str | None, valid_until: date | None, service_key: str | None, today: date) -> tuple[str, str] | None:
+    """Pure: (reason token, 403 message), or None if allowed. service_key=None means 'any valid tier'."""
 
 async def require_school_entitlement(db: AsyncSession, user: User, school_id: UUID, service_key: str | None) -> None:
     """ENH-022 / DEC-SCOPE-027: raise HTTPException(403, message) unless allowed; a denial is
