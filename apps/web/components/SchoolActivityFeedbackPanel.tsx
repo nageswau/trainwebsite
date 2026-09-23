@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ActivityFeedbackDetails from "@/components/ActivityFeedbackDetails";
 import ActivityFeedbackForm from "@/components/ActivityFeedbackForm";
 import LocalDateTime from "@/components/LocalDateTime";
+import UnsentFeedbackNote from "@/components/UnsentFeedbackNote";
 import {
   type ActivityFeedback,
   activityTypeLabel,
@@ -16,6 +17,7 @@ import {
   participationText,
   SESSION_EXPIRED,
   SIGN_IN_PATH,
+  type UnsentText,
 } from "@/lib/activityFeedback";
 import { isPage, type Page } from "@/lib/apiErrors";
 
@@ -26,16 +28,20 @@ import { isPage, type Page } from "@/lib/apiErrors";
 // (QA-018-06); a 401 asks the user to sign in rather than retry (QA-018-14); the filter is never disabled, so keyboard focus
 // stays on it -- superseded requests are aborted instead (QA-018-05); "Load more" moves focus to the first new row (QA-018-04);
 // `focusActivityId` (from the Activities page's per-row link) shows just that activity, form open if it awaits feedback (QA-018-09).
+// The filter lives in the URL (`?status=`), so refresh, back/forward and shared links keep it (QA-018-07). A 409 refreshes only
+// that row, in place, and keeps the coordinator's unsent text beside it to copy (QA-018-03).
 const LIMIT = 25;
 const EMPTY: Record<FeedbackFilter, string> = { all: "No completed Edusphere activities yet.", awaiting: "Nothing awaiting feedback.", submitted: "No feedback submitted yet." };
 const ALL_PATH = "/school/coordinator/feedback";
+const LIST_API = "/api/v1/school/activity-feedback";
 
-type Props = { initial: Page<FeedbackActivity>; canSubmit: boolean; focusActivityId?: string };
+type Props = { initial: Page<FeedbackActivity>; canSubmit: boolean; focusActivityId?: string; initialFilter?: FeedbackFilter };
 
-export default function SchoolActivityFeedbackPanel({ initial, canSubmit, focusActivityId }: Props) {
+export default function SchoolActivityFeedbackPanel({ initial, canSubmit, focusActivityId, initialFilter = "all" }: Props) {
   const focusRow = focusActivityId ? initial.items.find((row) => row.activity_id === focusActivityId) : undefined;
   const [focused, setFocused] = useState(Boolean(focusActivityId));
-  const [filter, setFilter] = useState<FeedbackFilter>("all");
+  const [filter, setFilter] = useState<FeedbackFilter>(initialFilter);
+  const [unsent, setUnsent] = useState<Record<string, UnsentText>>({});
   const [items, setItems] = useState(initial.items);
   const [total, setTotal] = useState(initial.total);
   const [loading, setLoading] = useState<"first" | "more" | null>(null);
@@ -56,7 +62,7 @@ export default function SchoolActivityFeedbackPanel({ initial, canSubmit, focusA
     setFailure(null);
     if (mode === "first") setItems([]);
     try {
-      const response = await fetch(`/api/v1/school/activity-feedback?status=${next}&limit=${LIMIT}&offset=${offset}`, { signal: abort.signal });
+      const response = await fetch(`${LIST_API}?status=${next}&limit=${LIMIT}&offset=${offset}`, { signal: abort.signal });
       const data = await response.json().catch(() => null);
       if (response.status === 401) return setFailure("expired");
       if (!response.ok || !isPage<FeedbackActivity>(data)) return setFailure("failed");
@@ -89,7 +95,21 @@ export default function SchoolActivityFeedbackPanel({ initial, canSubmit, focusA
     setFocused(false);
     setMessage(null);
     setOpenId(null);
+    window.history.replaceState(null, "", next === "all" ? window.location.pathname : `?status=${next}`);
     void load(next, 0, "first");
+  }
+  /** Re-read one activity after a 409 and swap it in where it is, so the coordinator keeps their place in the list. */
+  async function refreshRow(activityId: string) {
+    try {
+      const response = await fetch(`${LIST_API}?status=all&limit=1&offset=0&activity_id=${activityId}`);
+      const data = await response.json().catch(() => null);
+      if (response.status === 401) return setFailure("expired");
+      const fresh = response.ok && isPage<FeedbackActivity>(data) ? data.items[0] : undefined;
+      if (!fresh) return void load(filter, 0, "first");
+      setItems((prev) => prev.map((row) => (row.activity_id === activityId ? fresh : row)));
+    } catch {
+      void load(filter, 0, "first");
+    }
   }
   function onSubmitted(activity: FeedbackActivity, feedback: ActivityFeedback) {
     setOpenId(null);
@@ -101,11 +121,11 @@ export default function SchoolActivityFeedbackPanel({ initial, canSubmit, focusA
     }
     announce(`Feedback saved for ${activity.title}.`);
   }
-  function onDuplicate() {
+  function onDuplicate(activity: FeedbackActivity, text: UnsentText) {
     setOpenId(null);
-    setFocused(false);
-    announce("Feedback had already been submitted for this activity; showing what was saved.");
-    void load(filter, 0, "first");
+    setUnsent((prev) => ({ ...prev, [activity.activity_id]: text }));
+    announce("Feedback had already been submitted for this activity; your text was not saved. You can copy it below.");
+    void refreshRow(activity.activity_id);
   }
   function onCancel(activityId: string) {
     setOpenId(null);
@@ -203,7 +223,13 @@ export default function SchoolActivityFeedbackPanel({ initial, canSubmit, focusA
                     </details>
                   )}
                   {openId === row.activity_id && (
-                    <ActivityFeedbackForm activity={row} onSubmitted={(feedback) => onSubmitted(row, feedback)} onDuplicate={onDuplicate} onCancel={() => onCancel(row.activity_id)} />
+                    <ActivityFeedbackForm activity={row} onSubmitted={(feedback) => onSubmitted(row, feedback)} onDuplicate={(text) => onDuplicate(row, text)} onCancel={() => onCancel(row.activity_id)} />
+                  )}
+                  {unsent[row.activity_id] && (
+                    <UnsentFeedbackNote
+                      unsent={unsent[row.activity_id]}
+                      onDismiss={() => setUnsent((prev) => Object.fromEntries(Object.entries(prev).filter(([id]) => id !== row.activity_id)))}
+                    />
                   )}
                 </li>
               ))}

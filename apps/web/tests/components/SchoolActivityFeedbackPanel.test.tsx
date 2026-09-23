@@ -76,13 +76,39 @@ describe("SchoolActivityFeedbackPanel", () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Give feedback for Seminar a2" })));
   });
 
-  it("on 409 it reloads the list so the stored feedback is shown", async () => {
-    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(String(url).includes("activity-feedback") ? json(page([row("a2", SAVED)])) : json({ detail: "Feedback has already been submitted for this activity" }, 409))));
-    render(<SchoolActivityFeedbackPanel initial={page([row("a2")])} canSubmit />);
+  it("on 409 it refreshes just that row in place and keeps the coordinator's unsent text to copy (QA-018-03)", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(String(url).includes("activity-feedback") ? json(page([row("a2", SAVED)])) : json({ detail: "Feedback has already been submitted for this activity" }, 409)),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<SchoolActivityFeedbackPanel initial={page([row("a1", SAVED), row("a2")], 30)} canSubmit />);
     fireEvent.click(screen.getByRole("button", { name: "Give feedback for Seminar a2" }));
     fillAndSubmit("Again");
-    expect(await screen.findByText(/already been submitted/)).toBeTruthy();
+    expect(await screen.findByText(/your text was not saved/)).toBeTruthy();
     await waitFor(() => expect(within(item("Seminar a2")).getByText("Submitted")).toBeTruthy());
+    expect(fetchMock.mock.calls.map((c) => String(c[0]))).toContain("/api/v1/school/activity-feedback?status=all&limit=1&offset=0&activity_id=a2");
+    expect(screen.getByText("Showing 2 of 30")).toBeTruthy(); // the page was not reset to page 1
+    const unsent = within(item("Seminar a2")).getByRole("group", { name: "Your unsent text" });
+    expect(within(unsent).getByLabelText("Your unsent feedback")).toHaveValue("Again");
+    fireEvent.click(within(unsent).getByRole("button", { name: "Copy text" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("Feedback: Again"));
+    expect(await within(unsent).findByText("Copied.")).toBeTruthy();
+    fireEvent.click(within(unsent).getByRole("button", { name: "Dismiss" }));
+    expect(within(item("Seminar a2")).queryByRole("group", { name: "Your unsent text" })).toBeNull();
+  });
+
+  it("starts on the filter from the URL and keeps the address in step as it changes (QA-018-07)", () => {
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+    render(<SchoolActivityFeedbackPanel initial={page([row("a2")])} canSubmit initialFilter="awaiting" />);
+    expect(screen.getByLabelText("Show")).toHaveValue("awaiting");
+    fireEvent.change(screen.getByLabelText("Show"), { target: { value: "submitted" } });
+    expect(replaceState).toHaveBeenLastCalledWith(null, "", "?status=submitted");
+    fireEvent.change(screen.getByLabelText("Show"), { target: { value: "all" } });
+    expect(replaceState).toHaveBeenLastCalledWith(null, "", window.location.pathname);
+    replaceState.mockRestore();
   });
 
   it("filter change fetches that status; a failed fetch shows a retryable alert", async () => {

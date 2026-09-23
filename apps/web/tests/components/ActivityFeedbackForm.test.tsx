@@ -71,12 +71,40 @@ describe("ActivityFeedbackForm", () => {
     expect(screen.getByLabelText("Feedback")).toHaveValue("Great");
   });
 
-  it("hands a 409 (already submitted, e.g. a retry after a lost response) to the parent instead of an error", async () => {
+  it("hands a 409 (already submitted, e.g. a retry after a lost response) to the parent with the unsent text (QA-018-03)", async () => {
     const { onDuplicate } = setup(() => Promise.resolve(json({ detail: "Feedback has already been submitted for this activity" }, 409)));
     fill();
+    fireEvent.change(screen.getByLabelText("Suggestions (optional)"), { target: { value: "More Q&A" } });
     submit();
-    await waitFor(() => expect(onDuplicate).toHaveBeenCalled());
+    await waitFor(() => expect(onDuplicate).toHaveBeenCalledWith({ trainer_name: "Ms. Rao", feedback: "Great", suggestions: "More Q&A" }));
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("warns before the page is left while the form has unsent input, and not otherwise (QA-018-08)", () => {
+    setup(() => Promise.resolve(json(SAVED, 201)));
+    const clean = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(clean);
+    expect(clean.defaultPrevented).toBe(false);
+    fireEvent.change(screen.getByLabelText("Feedback"), { target: { value: "Half typed" } });
+    const dirty = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(dirty);
+    expect(dirty.defaultPrevented).toBe(true);
+  });
+
+  it("Cancel asks before discarding unsent input, and does not ask for an untouched form (QA-018-08)", () => {
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
+    const { onCancel } = setup(() => Promise.resolve(json(SAVED, 201)));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByLabelText("3 – Good", { selector: "input[name=rating]" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(confirm).toHaveBeenCalledWith("Discard your unsent feedback?");
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onCancel).toHaveBeenCalledTimes(2);
   });
 
   it("blank feedback is caught before sending, named, and the field marked invalid (QA-018-01)", async () => {
@@ -126,6 +154,7 @@ describe("ActivityFeedbackForm", () => {
     fill();
     submit();
     expect((await screen.findByRole("alert")).textContent).toMatch(/your entry is kept/);
+    vi.stubGlobal("confirm", () => true); // the form holds unsent input, so Cancel confirms first (QA-018-08)
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCancel).toHaveBeenCalled();
   });

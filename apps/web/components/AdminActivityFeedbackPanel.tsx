@@ -13,13 +13,18 @@ import { isPage } from "@/lib/apiErrors";
 // filter reuses GET /overseas-admin/schools; if that fails the list still works, unfiltered.
 // Browser QA fixes: a 401 asks the user to sign in rather than retry (QA-018-14); the school filter is never disabled, so keyboard
 // focus stays on it (QA-018-05); the heading's total is only shown for a list that is actually on screen (QA-018-13 side effect);
-// "Load more" moves focus to the first new card (QA-018-04).
+// "Load more" moves focus to the first new card (QA-018-04). A "Search schools" box narrows the long dropdown as you type,
+// client-side, always keeping "All schools" and the current choice (QA-018-16).
 const LIMIT = 25;
 type SchoolOption = { id: string; name: string };
 
 export default function AdminActivityFeedbackPanel() {
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [schoolId, setSchoolId] = useState("");
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  const matching = needle ? schools.filter((s) => s.name.toLowerCase().includes(needle)) : schools;
+  const shownSchools = needle ? schools.filter((s) => s.id === schoolId || matching.includes(s)) : schools;
   const [items, setItems] = useState<AdminActivityFeedback[] | null>(null);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState<"first" | "more" | null>("first");
@@ -81,10 +86,23 @@ export default function AdminActivityFeedbackPanel() {
       </div>
       <div className="table-controls">
         <div>
+          <label htmlFor="feedback-school-search">Search schools</label>
+          <input
+            id="feedback-school-search"
+            className="search"
+            type="search"
+            value={query}
+            autoComplete="off"
+            aria-describedby="feedback-school-search-hint"
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <p id="feedback-school-search-hint" className="field-hint" aria-live="polite">{needle ? `${matching.length} of ${schools.length} schools match` : ""}</p>
+        </div>
+        <div>
           <label htmlFor="feedback-school">School</label>
           <select id="feedback-school" className="select" value={schoolId} onChange={(e) => changeSchool(e.target.value)}>
             <option value="">All schools</option>
-            {schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {shownSchools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
       </div>

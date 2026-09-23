@@ -102,6 +102,20 @@ describe("AdminActivityFeedbackPanel", () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByText("Seminar 2").closest("li")));
   });
 
+  it("a search box narrows the school dropdown as you type, keeping All schools and the current choice (QA-018-16)", async () => {
+    stub((url) => (url.endsWith("/schools") ? json(SCHOOLS) : json(page([fb("1")]))));
+    render(<AdminActivityFeedbackPanel />);
+    await screen.findByText("Seminar 1");
+    const select = screen.getByLabelText("School");
+    await waitFor(() => expect(within(select).getAllByRole("option")).toHaveLength(3));
+    fireEvent.change(select, { target: { value: "s1" } });
+    fireEvent.change(screen.getByLabelText("Search schools"), { target: { value: "LAKE" } });
+    expect(within(select).getAllByRole("option").map((o) => o.textContent)).toEqual(["All schools", "Sunrise School", "Lakeview School"]);
+    expect(screen.getByText("1 of 2 schools match")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Search schools"), { target: { value: "zzz" } });
+    expect(screen.getByText("0 of 2 schools match")).toBeTruthy();
+  });
+
   it("still lists feedback when the school list cannot load (filter just shows All schools)", async () => {
     stub((url) => (url.endsWith("/schools") ? json({}, 500) : json(page([fb("1")]))));
     render(<AdminActivityFeedbackPanel />);

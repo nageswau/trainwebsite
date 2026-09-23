@@ -11,13 +11,15 @@ import { serverApi } from "@/lib/api";
 vi.mock("@/lib/api", async () => ({ ...(await vi.importActual<typeof import("@/lib/api")>("@/lib/api")), serverApi: vi.fn() }));
 vi.mock("@/components/PortalShell", () => ({ default: ({ children, roleLabel }: { children: React.ReactNode; roleLabel: string }) => <div data-testid="shell" data-role={roleLabel}>{children}</div> }));
 vi.mock("@/components/SchoolActivityFeedbackPanel", () => ({
-  default: ({ canSubmit, focusActivityId }: { canSubmit: boolean; focusActivityId?: string }) => <div data-testid="panel" data-submit={String(canSubmit)} data-focus={focusActivityId ?? ""} />,
+  default: ({ canSubmit, focusActivityId, initialFilter }: { canSubmit: boolean; focusActivityId?: string; initialFilter?: string }) => (
+    <div data-testid="panel" data-submit={String(canSubmit)} data-focus={focusActivityId ?? ""} data-filter={initialFilter ?? ""} />
+  ),
 }));
 
 const ID = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const page = { items: [], total: 0, limit: 25, offset: 0 };
 const user = (role: string) => ({ id: "u1", email: "u@example.local", full_name: "Test User", role, division: "overseas", profile: { school_id: "s1" } });
-const params = (activity?: string) => ({ searchParams: Promise.resolve(activity === undefined ? {} : { activity }) });
+const params = (activity?: string, status?: string) => ({ searchParams: Promise.resolve({ ...(activity === undefined ? {} : { activity }), ...(status === undefined ? {} : { status }) }) });
 
 function serve(role: string) {
   const requested: string[] = [];
@@ -53,14 +55,14 @@ describe("Feedback pages", () => {
 
   it("principal page: a coordinator is refused rather than shown a shell labelled Principal (QA-018-12)", async () => {
     serve("school_coordinator");
-    render(await SchoolPrincipalFeedbackPage());
+    render(await SchoolPrincipalFeedbackPage(params()));
     expect(screen.getByText("Principal role required")).toBeTruthy();
     expect(screen.queryByTestId("panel")).toBeNull();
   });
 
   it("principal page: the principal reads, read-only", async () => {
     serve("school_principal");
-    render(await SchoolPrincipalFeedbackPage());
+    render(await SchoolPrincipalFeedbackPage(params()));
     expect(screen.getByTestId("panel").dataset.submit).toBe("false");
   });
 
@@ -69,6 +71,21 @@ describe("Feedback pages", () => {
     render(await SchoolCoordinatorFeedbackPage(params(ID)));
     expect(requested).toContain(`/api/v1/school/activity-feedback?status=all&limit=25&offset=0&activity_id=${ID}`);
     expect(screen.getByTestId("panel").dataset.focus).toBe(ID);
+  });
+
+  it.each([
+    ["coordinator", SchoolCoordinatorFeedbackPage, "school_coordinator"],
+    ["principal", SchoolPrincipalFeedbackPage, "school_principal"],
+  ] as const)("%s page: ?status= from the URL is rendered first; an unknown value falls back to All (QA-018-07)", async (_, Page, role) => {
+    let requested = serve(role);
+    render(await Page(params(undefined, "awaiting")));
+    expect(requested).toContain("/api/v1/school/activity-feedback?status=awaiting&limit=25&offset=0");
+    expect(screen.getByTestId("panel").dataset.filter).toBe("awaiting");
+    cleanup();
+    requested = serve(role);
+    render(await Page(params(undefined, "bogus")));
+    expect(requested).toContain("/api/v1/school/activity-feedback?status=all&limit=25&offset=0");
+    expect(screen.getByTestId("panel").dataset.filter).toBe("all");
   });
 
   it("a malformed ?activity= is ignored rather than turned into an error page", async () => {

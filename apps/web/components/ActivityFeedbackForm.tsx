@@ -4,10 +4,11 @@ import Link from "next/link";
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 
 import LocalDateTime from "@/components/LocalDateTime";
-import { type ActivityFeedback, type FeedbackActivity, participationText, SCORE_LABELS, SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
+import { type ActivityFeedback, type FeedbackActivity, participationText, SCORE_LABELS, SESSION_EXPIRED, SIGN_IN_PATH, type UnsentText } from "@/lib/activityFeedback";
 import { detailMessage, isRequestBody, NOT_COMPLETED } from "@/lib/apiErrors";
 
-type Props = { activity: FeedbackActivity; onSubmitted: (feedback: ActivityFeedback) => void; onDuplicate: () => void; onCancel: () => void };
+type Props = { activity: FeedbackActivity; onSubmitted: (feedback: ActivityFeedback) => void; onDuplicate: (unsent: UnsentText) => void; onCancel: () => void };
+const DISCARD_PROMPT = "Discard your unsent feedback?";
 type FieldName = "rating" | "satisfaction" | "trainer_name" | "feedback" | "suggestions";
 type FormError = { text: string; expired?: boolean; fields?: FieldName[] };
 
@@ -35,7 +36,9 @@ const countText = (n: number) => `${n} / ${TEXT_MAX} characters${n >= TEXT_MAX ?
 // ENH-018: the coordinator's feedback on one completed activity (spec §7.2). Native radios in a fieldset give arrow-key
 // navigation and a spoken group name; `required` on the radios and the feedback textarea gives native validation. On a
 // refusal the entry is kept, the alert takes focus and names the field, which is marked invalid (QA-018-01); a 409 goes to the
-// parent, which shows the feedback already stored. The long fields show how much of their limit is used (QA-018-02).
+// parent with the unsent text, which it shows next to the stored feedback (QA-018-03). The long fields show how much of their
+// limit is used (QA-018-02). Once anything is entered, leaving the page asks first and Cancel confirms (QA-018-08); nothing is
+// stored in the browser. (Next.js in-app links cannot be intercepted, so a sidebar click is not covered.)
 function ScoreField({ name, legend }: { name: string; legend: string }) {
   return (
     <fieldset className="score-field">
@@ -59,12 +62,27 @@ export default function ActivityFeedbackForm({ activity, onSubmitted, onDuplicat
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<FormError | null>(null);
   const [lengths, setLengths] = useState({ feedback: 0, suggestions: 0 });
+  const [dirty, setDirty] = useState(false);
   const invalid = (field: FieldName) => (error?.fields?.includes(field) ? true : undefined);
 
   useEffect(() => headingRef.current?.focus(), []);
   useEffect(() => {
     if (error) errorRef.current?.focus();
   }, [error]);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  function cancel() {
+    if (dirty && !window.confirm(DISCARD_PROMPT)) return;
+    onCancel();
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -80,7 +98,7 @@ export default function ActivityFeedbackForm({ activity, onSubmitted, onDuplicat
         body: JSON.stringify({ rating: Number(form.get("rating")), satisfaction: Number(form.get("satisfaction")), trainer_name: text("trainer_name"), feedback: String(form.get("feedback") ?? ""), suggestions: text("suggestions") }),
       });
       const data = await response.json().catch(() => null);
-      if (response.status === 409) return onDuplicate();
+      if (response.status === 409) return onDuplicate({ trainer_name: text("trainer_name"), feedback: String(form.get("feedback") ?? ""), suggestions: text("suggestions") });
       if (response.status === 401) return setError({ text: `${SESSION_EXPIRED} Your entry is kept; sign in again in a new tab, then submit.`, expired: true });
       const detail = (data as { detail?: unknown } | null)?.detail;
       if (response.status === 422 && fieldError(detail)) return setError(fieldError(detail));
@@ -95,7 +113,7 @@ export default function ActivityFeedbackForm({ activity, onSubmitted, onDuplicat
 
   return (
     <div className="action-card">
-      <form className="form" onSubmit={submit} aria-labelledby={`${id}-heading`}>
+      <form className="form" onSubmit={submit} onChange={() => setDirty(true)} aria-labelledby={`${id}-heading`}>
         <div>
           <h3 id={`${id}-heading`} ref={headingRef} tabIndex={-1}>{`Feedback: ${activity.title}`}</h3>
           <p className="muted" style={{ margin: 0 }}>
@@ -143,7 +161,7 @@ export default function ActivityFeedbackForm({ activity, onSubmitted, onDuplicat
         )}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <button className="btn" disabled={busy}>{busy ? "Saving…" : "Submit feedback"}</button>
-          <button type="button" className="btn secondary" onClick={onCancel} disabled={busy}>Cancel</button>
+          <button type="button" className="btn secondary" onClick={cancel} disabled={busy}>Cancel</button>
         </div>
       </form>
     </div>

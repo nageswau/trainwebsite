@@ -29,6 +29,11 @@ export const SCORE_LABELS = ["Poor", "Fair", "Good", "Very good", "Excellent"] a
 export const SESSION_EXPIRED = "Your session has expired.";
 export const SIGN_IN_PATH = "/overseas/login";
 
+/** What a coordinator typed but could not save because the activity already had feedback (QA-018-03). Kept only in memory. */
+export type UnsentText = { trainer_name: string | null; feedback: string; suggestions: string | null };
+
+export const isFeedbackFilter = (value: unknown): value is FeedbackFilter => FEEDBACK_FILTERS.some(([v]) => v === value);
+
 /** Why a list could not be shown: the session ended (sign in again) or the load failed (try again). */
 export type LoadFailure = "expired" | "failed" | null;
 
