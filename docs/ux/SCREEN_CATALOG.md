@@ -2532,6 +2532,24 @@ correction, not deleted, per this project's traceability convention.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** SchoolSkillBatchHeader/Enrolments/Attendance/Scores test files (passing); enh-011-skills.spec.ts; `docs/quality/ENH-011_BROWSER_QA_2026-09-22.md`.
 
+### `SCR-SCH-035` *(added 2026-09-23, `ENH-013` / `DEC-SCOPE-027`)*
+- **Route:** one thin route per role, same body: `/school/{coordinator,principal,teacher}/students/[id]/360`, `/school/parent/children/[id]/360`, `/school/{academic-team,career-counselor,psychometric-team}/students/[id]/360`; `?tab=<key>` selects a tab.
+- **Role(s):** School Coordinator, Principal, Teacher (assigned students), Parent (linked children), Academic Team, Career Counselor, Psychometric Team (own school portfolio).
+- **Purpose:** The Student 360° view / Career Passport: one student's record in 16 tabs (Overview, Personal Details, Academic Records, Attendance, Examination Results, Career Guidance, Psychometric Assessment, Skills, Foreign Languages, English Testing, Activities, Certificates, Documents, Teacher Remarks, Parent Communication, Edusphere Programs), each scoped to what the viewing role may already read.
+- **Linked Feature ID(s):** `ENH-013`
+- **Entry points:** "Open 360° view" on the Coordinator/Principal/Teacher student page (SCR-SCH-025 family) and on the Parent's child page; a "Student 360° view" list on the Academic Team, Career Counselor and Psychometric Team dashboards.
+- **Required data:** Server-rendered: GET /auth/me, GET /school/students/{id}/360-view. Client: PATCH /school/students/{id}/career-goal (Career Counselor only). Switching tabs makes no request (`history.replaceState`).
+- **Key actions:** Switch tabs (click, arrows, Home/End); Career Counselor sets/edits/clears the career goal on the Overview tab; follow a psychometric report link (same-origin or https only).
+- **Empty state:** Every tab without records shows a `role="status"` message naming who records the data (e.g. "No published results yet. Results appear after the Academic Team publishes them."); tabs a role cannot read show "This section is not available for your role."; sources not built yet show a "not tracked yet (ENH-030 / ENH-025 / ENH-013b / ENH-014)" note.
+- **Loading state:** `loading.tsx` skeleton (header, tab list, panel) with `aria-busy` on navigation; the career-goal form shows "Saving…", keeps the input read-only (still focusable) and disables Save.
+- **Error state:** 401/403/404/network → the shared Access Unavailable card with the server's reason (e.g. "This student is not assigned to you"); career goal: the server's message, or "The career goal could not be saved. Please try again." for a 5xx, and a kept-entry message for a dropped connection, with focus returned to the input.
+- **Permissions/resource scope:** The shared 7-role loader; per-tab projection so no role sees more than elsewhere (`RBAC_MATRIX.md` ENH-013 addendum); results Published only; career goal writable by the Career Counselor only.
+- **Responsive behavior:** Desktop (>980px): vertical tab list, sticky below the portal top bar and scrolling on its own. ≤980px: a horizontally scrolling tab strip; the page never scrolls sideways (verified: page width = viewport at 390 and 768); tabs ≥44px tall.
+- **Accessibility requirements:** WAI-ARIA tabs (roving tabindex, arrows in both axes, Home/End, visible focus); each tab's state (count / "no records yet" / "not available for your role") is in its accessible name, not colour alone; one `h1` (the student), `h2` per panel; tables named once.
+- **Desktop/tablet/mobile behavior:** As above; verified by browser QA at 1440, 1366×620, 1024, 768 and 390.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `Student360Tabs`, `Student360Panels`, `Student360Page`, `CareerGoalForm`, `SchoolStudentDetailPanel` and `lib/student360` vitest files; `test_enh_013_*.py`; `tests/e2e/enh-013-student-360.spec.ts`; `docs/quality/ENH-013_BROWSER_QA_2026-09-23.md`.
+
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  
 - **Role(s):** IT Admin, Placement Team  
