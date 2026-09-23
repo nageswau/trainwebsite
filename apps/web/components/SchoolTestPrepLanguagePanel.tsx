@@ -3,15 +3,14 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import FormMessage, { type FormMessageState } from "@/components/FormMessage";
+import { sendJson } from "@/lib/apiErrors";
+
 type Student = { id: string; full_name: string; school_name: string };
 type TestPrepRecord = { id: string; school_student_id: string; test_type: string; mock_scores: string[]; target_score: string | null; actual_score: string | null; status: string };
 type LanguageRecord = { id: string; school_student_id: string; language: string; level: string | null; classes_attended: number; assessment_score: string | null; certification_status: string };
-
-function detailMessage(detail: unknown) {
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
-  return "Something went wrong.";
-}
+// ENH-022: the card whose control produced the message, so it renders beside that control.
+type MessageCard = "scores" | "testprep" | "certify" | "language";
 
 // SCH-009 (DEC-SCOPE-018): Test Preparation (IELTS/SAT) and Foreign Language Classes,
 // delivered by the same Academic Team role that already owns Academic Results -- the user
@@ -19,7 +18,7 @@ function detailMessage(detail: unknown) {
 export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageRecords, students }: { testPrepRecords: TestPrepRecord[]; languageRecords: LanguageRecord[]; students: Student[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  const [message, setMessage] = useState<(FormMessageState & { card: MessageCard }) | null>(null);
   const [scoreDrafts, setScoreDrafts] = useState<Record<string, string>>({});
 
   function studentName(id: string) {
@@ -32,18 +31,13 @@ export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageR
     setBusy(true);
     setMessage(null);
     const form = new FormData(formElement);
-    const response = await fetch("/api/v1/school/academic-team/test-prep-records", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ school_student_id: form.get("school_student_id"), test_type: form.get("test_type"), target_score: form.get("target_score") || undefined }),
-    });
-    const data = await response.json().catch(() => ({}));
+    const result = await sendJson("/api/v1/school/academic-team/test-prep-records", "POST", { school_student_id: form.get("school_student_id"), test_type: form.get("test_type"), target_score: form.get("target_score") || undefined });
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!result.ok) {
+      setMessage({ text: result.message, failed: true, card: "testprep" });
       return;
     }
-    setMessage({ text: `${String(form.get("test_type")).toUpperCase()} preparation started.`, failed: false });
+    setMessage({ text: `${String(form.get("test_type")).toUpperCase()} preparation started.`, failed: false, card: "testprep" });
     formElement.reset();
     router.refresh();
   }
@@ -53,18 +47,13 @@ export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageR
     if (!actualScore) return;
     setBusy(true);
     setMessage(null);
-    const response = await fetch(`/api/v1/school/academic-team/test-prep-records/${recordId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ actual_score: actualScore }),
-    });
-    const data = await response.json().catch(() => ({}));
+    const result = await sendJson(`/api/v1/school/academic-team/test-prep-records/${recordId}`, "PATCH", { actual_score: actualScore });
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!result.ok) {
+      setMessage({ text: result.message, failed: true, card: "scores" });
       return;
     }
-    setMessage({ text: "Result recorded.", failed: false });
+    setMessage({ text: "Result recorded.", failed: false, card: "scores" });
     router.refresh();
   }
 
@@ -74,18 +63,13 @@ export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageR
     setBusy(true);
     setMessage(null);
     const form = new FormData(formElement);
-    const response = await fetch("/api/v1/school/academic-team/language-records", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ school_student_id: form.get("school_student_id"), language: form.get("language"), level: form.get("level") || undefined }),
-    });
-    const data = await response.json().catch(() => ({}));
+    const result = await sendJson("/api/v1/school/academic-team/language-records", "POST", { school_student_id: form.get("school_student_id"), language: form.get("language"), level: form.get("level") || undefined });
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!result.ok) {
+      setMessage({ text: result.message, failed: true, card: "language" });
       return;
     }
-    setMessage({ text: `${data.language} classes started.`, failed: false });
+    setMessage({ text: `${result.data.language} classes started.`, failed: false, card: "language" });
     formElement.reset();
     router.refresh();
   }
@@ -93,18 +77,13 @@ export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageR
   async function markCertified(recordId: string) {
     setBusy(true);
     setMessage(null);
-    const response = await fetch(`/api/v1/school/academic-team/language-records/${recordId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ certification_status: "certified" }),
-    });
-    const data = await response.json().catch(() => ({}));
+    const result = await sendJson(`/api/v1/school/academic-team/language-records/${recordId}`, "PATCH", { certification_status: "certified" });
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!result.ok) {
+      setMessage({ text: result.message, failed: true, card: "certify" });
       return;
     }
-    setMessage({ text: "Marked certified.", failed: false });
+    setMessage({ text: "Marked certified.", failed: false, card: "certify" });
     router.refresh();
   }
 
@@ -149,6 +128,7 @@ export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageR
             </table>
           </div>
         )}
+        {message?.card === "scores" && <FormMessage message={message} style={{ marginTop: 12 }} />}
       </div>
 
       <div className="action-card">
@@ -181,6 +161,7 @@ export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageR
             <button className="btn" disabled={busy}>{busy ? "Starting…" : "Start preparation"}</button>
           </form>
         )}
+        {message?.card === "testprep" && <FormMessage message={message} />}
       </div>
 
       <div className="card">
@@ -214,6 +195,7 @@ export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageR
             </table>
           </div>
         )}
+        {message?.card === "certify" && <FormMessage message={message} style={{ marginTop: 12 }} />}
       </div>
 
       <div className="action-card">
@@ -242,13 +224,8 @@ export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageR
             <button className="btn" disabled={busy}>{busy ? "Starting…" : "Start classes"}</button>
           </form>
         )}
+        {message?.card === "language" && <FormMessage message={message} />}
       </div>
-
-      {message && (
-        <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite">
-          {message.text}
-        </div>
-      )}
     </div>
   );
 }

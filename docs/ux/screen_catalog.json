@@ -2882,5 +2882,34 @@
     "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action reachable without horizontal scroll.",
     "visual": "None \u2014 not inspected. Do not claim parity.",
     "evidence": "SchoolSkillBatchHeader/Enrolments/Attendance/Scores test files (passing); tests/e2e/enh-011-skills.spec.ts; docs/quality/ENH-011_BROWSER_QA_2026-09-22.md."
+  },
+  {
+    "id": "SCR-SCH-035",
+    "roles": [
+      "School Coordinator",
+      "Principal",
+      "Teacher",
+      "Parent",
+      "Academic Team",
+      "Career Counselor",
+      "Psychometric Team"
+    ],
+    "route": "/school/{coordinator|principal|teacher}/students/[id]/360, /school/parent/children/[id]/360, /school/{academic-team|career-counselor|psychometric-team}/students/[id]/360",
+    "purpose": "Student 360\u00b0 view / Career Passport: one student's record in 16 tabs, each scoped to what the viewing role may already read.",
+    "features": [
+      "ENH-013"
+    ],
+    "entry": "\"Open 360\u00b0 view\" on the Coordinator/Principal/Teacher student page and the Parent's child page; a \"Student 360\u00b0 view\" list on the Academic Team, Career Counselor and Psychometric Team dashboards.",
+    "data": "GET /auth/me, GET /school/students/{id}/360-view (server-rendered); PATCH /school/students/{id}/career-goal (Career Counselor). Tab switches make no request.",
+    "actions": "Switch tabs (click, arrow keys, Home/End; ?tab= deep links); Career Counselor sets/edits/clears the career goal; open a psychometric report (same-origin or https only).",
+    "empty": "Each tab without records shows a role=status message naming who records the data; unreadable tabs show \"This section is not available for your role.\"; not-yet-built sources carry a \"not tracked yet\" note.",
+    "loading": "loading.tsx skeleton (header, tab list, panel) with aria-busy; career-goal save shows \"Saving\u2026\" with the input read-only.",
+    "error": "401/403/404/network render the Access Unavailable card with the server's reason; career-goal save shows the server's message or \"The career goal could not be saved. Please try again.\", keeps the entry and returns focus to the input.",
+    "perms": "Shared 7-role loader; per-tab projection (no new exposure); results Published only; career goal writable by the Career Counselor only.",
+    "responsive": "Desktop: vertical tab list, sticky below the portal top bar, scrolls on its own. \u2264980px: horizontally scrolling tab strip; the page never scrolls sideways (verified at 390 and 768); tabs \u226544px.",
+    "a11y": "WAI-ARIA tabs with roving tabindex, arrows, Home/End and visible focus; tab state in the accessible name; one h1, h2 per panel; tables named once.",
+    "dtm": "Desktop: vertical tab list beside the panel. Tablet/mobile: tab strip above the panel, horizontally scrollable; single column. Verified at 1440, 1366x620, 1024, 768 and 390.",
+    "visual": "None \u2014 not inspected. Do not claim parity.",
+    "evidence": "Student360Tabs/Panels/Page, CareerGoalForm, SchoolStudentDetailPanel and lib/student360 vitest files; test_enh_013_*.py; tests/e2e/enh-013-student-360.spec.ts; docs/quality/ENH-013_BROWSER_QA_2026-09-23.md."
   }
 ]

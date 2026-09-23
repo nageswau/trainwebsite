@@ -1,10 +1,14 @@
 """ENH-018 -- school_activity_feedback.
 
-Revision ID: 0039_school_activity_feedback
-Revises: 0038_portfolio
+Revision ID: 0040_school_activity_feedback
+Revises: 0039_student_career_goal
 
 docs/superpowers/specs/2026-09-23-enh-018-school-activity-feedback-design.md §4. Create-table only: no existing
 table is altered and no existing row is read or written. `downgrade()` drops the table.
+
+Re-chained on merge with `main`, 2026-09-23: originally cut as `0039_school_activity_feedback` on top of `0038_portfolio`,
+the same parent ENH-013's `0039_student_career_goal` used independently. Renumbered past it, leaving a single alembic head
+(the ENH-009/011/012 collision-and-renumber precedent recorded in `docs/quality/RTM.md`).
 """
 
 import sqlalchemy as sa
@@ -12,8 +16,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0039_school_activity_feedback"
-down_revision = "0038_portfolio"
+revision = "0040_school_activity_feedback"
+down_revision = "0039_student_career_goal"
 branch_labels = None
 depends_on = None
 

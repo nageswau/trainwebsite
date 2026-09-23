@@ -40,10 +40,11 @@ codebase; one write per activity bounds this endpoint).
 | D7 | Submission only once `scheduled_at <= now` (the table has no "completed" status). |
 | D8 | `school_principal` reads their own school's feedback (read-only). |
 | D9 | New module `apps/api/app/api/school_feedback.py` with a `/school` router and an `/overseas-admin` router — the ENH-005 `school_transfers.py` shape — so `schools.py`/`admin.py` do not grow. |
+| D10 | **Not tier-gated** (user, in-session, 2026-09-23, after merging ENH-022 / `DEC-SCOPE-027`): submitting feedback does not call `require_school_entitlement`. The activity was already gated when it was created, and Edusphere wants feedback on a delivered activity even if the partnership has since lapsed. Recorded the way ENH-013 recorded its D13. |
 
 ## 4. Data model
 
-New table `school_activity_feedback` (migration `0039_school_activity_feedback`, down `0038_portfolio`; create-only,
+New table `school_activity_feedback` (migration `0040_school_activity_feedback`, down `0039_student_career_goal` — renumbered from `0039` on the merge with `main`; create-only,
 `downgrade()` drops it; no existing table altered, no existing row read or written):
 
 | column | type | rule |

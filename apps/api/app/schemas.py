@@ -922,6 +922,58 @@ class PersonalStatementOut(BaseModel):
     updated_at: datetime
 
 
+# --- ENH-013: Student 360° view (docs/superpowers/specs/2026-09-23-enh-013a-student-360-view-design.md §6) ---
+
+CAREER_GOAL_MAX = 120
+TAB_360_KEYS: tuple[str, ...] = (
+    "overview", "personal_details", "academic_records", "attendance", "examination_results", "career_guidance",
+    "psychometric_assessment", "skills", "foreign_languages", "english_testing", "activities", "certificates",
+    "documents", "teacher_remarks", "parent_communication", "edusphere_programs",
+)
+
+
+class CareerGoalUpdate(BaseModel):
+    # `extra="forbid"`: this PATCH writes one column; a client-supplied school_id/assigned_teacher is a loud 422 (spec §9).
+    model_config = {"str_strip_whitespace": True, "extra": "forbid"}
+    career_goal: str | None = Field(...)
+
+    @field_validator("career_goal")
+    @classmethod
+    def _clean(cls, value: str | None) -> str | None:
+        # clean_free_text: blank -> None, length cap, no bidi/NUL; _no_control_characters: single line (no \n/\t).
+        return _no_control_characters(clean_free_text(value, CAREER_GOAL_MAX))
+
+
+class CareerGoalOut(BaseModel):
+    school_student_id: UUID
+    career_goal: str | None
+    updated_at: datetime
+
+
+class Tab360(BaseModel):
+    status: Literal["has_data", "empty", "restricted"]
+    count: int | None
+    not_tracked: list[str]
+    data: dict
+
+
+class Student360Header(BaseModel):
+    id: UUID
+    full_name: str
+    school_name: str | None
+    student_code: str | None
+    grade_or_class: str | None
+    date_of_birth: date | None
+    assigned_teacher_name: str | None
+
+
+class Student360Out(BaseModel):
+    student: Student360Header
+    career_goal: str | None
+    can_edit_career_goal: bool
+    tabs: dict[str, Tab360]
+
+
 # --- ENH-011: school skills tracker (docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md §5) ---
 
 SkillModule = Literal["soft_skills", "digital_skills"]

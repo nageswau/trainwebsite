@@ -27,7 +27,7 @@ export default async function SchoolPrincipalStudentDetailPage({ params }: { par
   }
   return (
     <PortalShell nav={SCHOOL_NAV.principal} roleLabel="Principal" userName={user.full_name}>
-      <SchoolStudentDetailPanel student={student} backHref="/school/principal/dashboard" backLabel="Back to dashboard" />
+      <SchoolStudentDetailPanel student={student} role="school_principal" backHref="/school/principal/dashboard" backLabel="Back to dashboard" />
     </PortalShell>
   );
 }

@@ -30,6 +30,7 @@ test("coordinator gives feedback by keyboard; principal and admin read it; a dup
   await page.fill("#school-name", schoolName);
   await page.fill("#school-coordinator-name", "E2E ENH-018 Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: scheduling an activity needs a valid partnership tier
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
 
   // The coordinator has a career seminar that took place an hour ago, and invites a principal.

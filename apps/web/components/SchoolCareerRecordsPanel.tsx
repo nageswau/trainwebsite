@@ -3,23 +3,20 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import FormMessage, { type FormMessageState } from "@/components/FormMessage";
+import { sendJson } from "@/lib/apiErrors";
+
 type Student = { id: string; full_name: string; school_name: string };
 type Record_ = { id: string; school_student_id: string; record_type: string; notes: string; created_at: string };
 
 const TYPE_LABEL: Record<string, string> = { guidance_session: "Guidance session", counselling_note: "Counselling note", recommendation: "Recommendation" };
-
-function detailMessage(detail: unknown) {
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
-  return "Something went wrong.";
-}
 
 // SCH-004: Career Counselor adds a guidance session, counselling note, or recommendation --
 // visible to readers immediately, no Draft/Published gate for this content unlike results.
 export default function SchoolCareerRecordsPanel({ records, students }: { records: Record_[]; students: Student[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  const [message, setMessage] = useState<FormMessageState | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -27,15 +24,10 @@ export default function SchoolCareerRecordsPanel({ records, students }: { record
     setBusy(true);
     setMessage(null);
     const form = new FormData(formElement);
-    const response = await fetch("/api/v1/school/career-counselor/records", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ school_student_id: form.get("school_student_id"), record_type: form.get("record_type"), notes: form.get("notes") }),
-    });
-    const data = await response.json().catch(() => ({}));
+    const result = await sendJson("/api/v1/school/career-counselor/records", "POST", { school_student_id: form.get("school_student_id"), record_type: form.get("record_type"), notes: form.get("notes") });
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!result.ok) {
+      setMessage({ text: result.message, failed: true });
       return;
     }
     setMessage({ text: "Record saved.", failed: false });
@@ -100,13 +92,8 @@ export default function SchoolCareerRecordsPanel({ records, students }: { record
             <button className="btn" disabled={busy}>{busy ? "Saving…" : "Save record"}</button>
           </form>
         )}
+        {message && <FormMessage message={message} />}
       </div>
-
-      {message && (
-        <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite">
-          {message.text}
-        </div>
-      )}
     </div>
   );
 }

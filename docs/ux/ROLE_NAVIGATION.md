@@ -171,6 +171,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-SCH-013` — /school/invite/[token]/accept — **True first entry point**: accepting the School Coordinator's invite (`DEC-SCOPE-012`), before any dashboard nav exists.
 - `SCR-SCH-001` — /school/principal (Dashboard) — School-wide read-only progress overview.
 - `SCR-SCH-026` — /school/principal/students/[id] — One student's Journey Timeline (`SCH-008`, added 2026-09-15).
+- `SCR-SCH-035` — /school/principal/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (from the student page's "Open 360° view") (`ENH-013`, added 2026-09-23).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## School Coordinator *(net-new, added 2026-09-14, `DEC-SCOPE-011`/`DEC-SCOPE-010` part 1/`DEC-SCOPE-012`)*
@@ -185,6 +186,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-SCH-005` — /school/coordinator/students/bulk-upload — Bulk roster upload (template-download-first).
 - `SCR-SCH-006` — /school/coordinator/activities — Schedule activities, track attendance.
 - `SCR-SCH-012` — /school/coordinator/team — Invite Principal/Teacher/Parent accounts.
+- `SCR-SCH-035` — /school/coordinator/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (from the student page's "Open 360° view") (`ENH-013`, added 2026-09-23).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Teacher (school-side) *(net-new, added 2026-09-14, `DEC-SCOPE-011` — role code `school_teacher`,
@@ -193,6 +195,7 @@ distinct from the existing Trainer/"Teacher" role above)*
 - `SCR-SCH-013` — /school/invite/[token]/accept — True first entry point: accepting the Coordinator's invite (`DEC-SCOPE-012`).
 - `SCR-SCH-007` — /school/teacher (Dashboard: assigned students) — Own class list only.
 - `SCR-SCH-008` — /school/teacher/students/[id] — One assigned student's attendance/activities/progress.
+- `SCR-SCH-035` — /school/teacher/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (assigned students only, from the student page's "Open 360° view") (`ENH-013`, added 2026-09-23).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Parent (school-side) *(net-new, added 2026-09-14, `DEC-SCOPE-011` — role code `school_parent`)*
@@ -201,6 +204,7 @@ distinct from the existing Trainer/"Teacher" role above)*
 - `SCR-SCH-009` — /school/parent (Dashboard: my children) — Own child(ren) only; per-child status chips, upcoming sessions, latest notifications (`SCH-007`, 2026-09-15).
 - `SCR-SCH-022` — /school/parent/children/[id] (Child profile & progress) — One child's full overview (`SCH-007`); embeds `SCR-SCH-024`'s Journey Timeline (`SCH-008`).
 - `SCR-SCH-023` — /school/parent/notifications — Own notification feed (`SCH-007`).
+- `SCR-SCH-035` — /school/parent/children/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (own child(ren) only, from the child page's "Open 360° view") (`ENH-013`, added 2026-09-23).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Academic Team *(net-new, added 2026-09-14, `DEC-ROLE-006` — supersedes `DEC-ROLE-005`'s single-Counselor-role framing)*
@@ -208,6 +212,7 @@ distinct from the existing Trainer/"Teacher" role above)*
 - `SCR-SCH-014` — /school/academic-team (Dashboard: assigned students) — Result status per assigned student.
 - `SCR-SCH-015` — /school/academic-team/results/new — Enter a result (starts as Draft).
 - `SCR-SCH-016` — /school/academic-team/results/[id] — Verify / Publish a result; status history.
+- `SCR-SCH-035` — /school/academic-team/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (own school portfolio, from the dashboard's "Student 360° view" list) (`ENH-013`, added 2026-09-23).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Career Counselor *(net-new, added 2026-09-14, `DEC-ROLE-006`)*
@@ -216,12 +221,14 @@ distinct from the existing Trainer/"Teacher" role above)*
 - `SCR-SCH-018` — /school/career-counselor/students/[id]/records — Career guidance/counselling records.
 - `SCR-SCH-033` — /school/career-counselor/skills — Soft Skills / Digital Skills batches across the portfolio, and batch creation (`ENH-011`, added 2026-09-22).
 - `SCR-SCH-034` — /school/career-counselor/skills/[id] — One batch: enrolments, attendance, assessments, certification (`ENH-011`, added 2026-09-22).
+- `SCR-SCH-035` — /school/career-counselor/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (own school portfolio, from the dashboard's "Student 360° view" list; sets the career goal) (`ENH-013`, added 2026-09-23).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Psychometric Team *(net-new, added 2026-09-14, `DEC-ROLE-006`)*
 
 - `SCR-SCH-019` — /school/psychometric-team (Dashboard: assigned students) — Assigned student list.
 - `SCR-SCH-020` — /school/psychometric-team/students/[id]/assessments — Assign assessments, upload reports.
+- `SCR-SCH-035` — /school/psychometric-team/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (own school portfolio, from the dashboard's "Student 360° view" list) (`ENH-013`, added 2026-09-23).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 *Note: `edusphere_school_manager` and `school_partnership_manager` (`DEC-ROLE-006`) have no nav

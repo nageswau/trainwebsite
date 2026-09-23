@@ -1363,7 +1363,7 @@ async def lookup_school_student_by_code(code: str, user: User = Depends(get_curr
 
 @agents_router.post("/school-students/{school_student_id}/applications", status_code=201)
 async def create_bridged_application(school_student_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    from app.api.schools import _notify_student_parents
+    from app.api.schools import _notify_student_parents, require_school_entitlement
     from app.models import ApplicationStatusHistory, SchoolStudent
 
     if user.role not in {"overseas_admin", "counselor", "super_admin"}:
@@ -1371,6 +1371,8 @@ async def create_bridged_application(school_student_id: UUID, payload: dict, use
     student = await db.get(SchoolStudent, school_student_id)
     if not student:
         raise HTTPException(404, "School student not found")
+    # ENH-022 (D4/D9): the school's entitlement applies whoever acts -- a bridged application is Gold's application support.
+    await require_school_entitlement(db, user, student.school_id, "application_support")
     university = await db.get(University, uuid_reference(payload.get("university_id"), "university"))
     if not university:
         raise HTTPException(404, "University not found")

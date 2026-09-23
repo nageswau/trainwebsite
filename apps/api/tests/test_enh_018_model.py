@@ -10,7 +10,7 @@ from app.models import SchoolActivityFeedback
 
 # ENH-018 spec §4: one create-only table. Checked through metadata and an offline SQL render; no database needed.
 
-MIGRATION = Path(__file__).resolve().parent.parent / "alembic" / "versions" / "0039_school_activity_feedback.py"
+MIGRATION = Path(__file__).resolve().parent.parent / "alembic" / "versions" / "0040_school_activity_feedback.py"
 
 
 def _names(kind):
@@ -33,10 +33,10 @@ def test_one_feedback_per_activity_and_scores_are_checked_in_the_database():
 
 
 def _render(fn_name: str) -> str:
-    spec = importlib.util.spec_from_file_location("migration_0039", MIGRATION)
+    spec = importlib.util.spec_from_file_location("migration_0040", MIGRATION)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert module.revision == "0039_school_activity_feedback" and module.down_revision == "0038_portfolio"
+    assert module.revision == "0040_school_activity_feedback" and module.down_revision == "0039_student_career_goal"
     buffer = io.StringIO()
     context = MigrationContext.configure(dialect_name="postgresql", opts={"as_sql": True, "output_buffer": buffer})
     with Operations.context(context):
