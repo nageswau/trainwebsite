@@ -1,10 +1,10 @@
 """ENH-025 -- photo type detection and metadata stripping (spec §5 privacy row), storage read/delete."""
 
 import pytest
+from enh025_helpers import jpeg_bytes, png_bytes
 
 from app.services.image_metadata import InvalidImage, detect_image_type, strip_metadata
 from app.services.storage import StorageService
-from enh025_helpers import jpeg_bytes, png_bytes
 
 
 def test_detects_by_magic_bytes_only():

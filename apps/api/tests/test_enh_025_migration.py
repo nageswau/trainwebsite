@@ -4,11 +4,11 @@ import importlib.util
 from pathlib import Path
 
 import pytest
+from enh005_helpers import mk_school
 from sqlalchemy import inspect, select, text
 from sqlalchemy.exc import DBAPIError
 
 from app.models import SchoolStudent
-from enh005_helpers import mk_school
 
 # Import the migration's own parser by file path (same approach as test_enh_001_academic_year.py):
 # "0039_student_master_fields" is not an importable module name.

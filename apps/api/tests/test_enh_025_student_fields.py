@@ -6,12 +6,12 @@ import uuid
 import httpx
 import pytest
 import pytest_asyncio
+from enh005_helpers import login, mk_school
 from httpx import ASGITransport
 from sqlalchemy import select
 
 from app.main import app
 from app.models import AuditLog, SchoolStudent
-from enh005_helpers import login, mk_school
 
 STUDENTS = "/api/v1/school/students"
 FULL = {

@@ -2,12 +2,12 @@
 
 import pytest
 import pytest_asyncio
+from enh005_helpers import login, mk_school, mk_staff
+from enh025_helpers import jpeg_bytes, png_bytes
 from sqlalchemy import select
 
 from app.models import AuditLog, SchoolStudent
 from app.services.storage import storage
-from enh005_helpers import login, mk_school, mk_staff
-from enh025_helpers import jpeg_bytes, png_bytes
 
 PHOTO = "/api/v1/school/students/{sid}/photo"
 

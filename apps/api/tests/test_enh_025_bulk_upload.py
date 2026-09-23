@@ -6,10 +6,10 @@ import uuid
 
 import pytest
 import pytest_asyncio
+from enh005_helpers import login, mk_school
 from sqlalchemy import select
 
 from app.models import SchoolAccountInvite, SchoolStudent
-from enh005_helpers import login, mk_school
 
 UPLOAD = "/api/v1/school/students/bulk-upload"
 ORIGINAL = ["full_name", "date_of_birth", "grade_or_class", "assigned_teacher_email", "parent_name", "parent_email", "grade_level"]
@@ -68,7 +68,7 @@ async def test_original_seven_column_csv_still_works(client, world):
 @pytest.mark.asyncio
 async def test_short_rows_and_trailing_empty_column_mean_not_set(client, world, db_session):
     await login(client, world["coordinator"].email)
-    raw = "full_name,grade_level,section,city,\nShort,6\nTrail,6,B,,\n".encode()
+    raw = b"full_name,grade_level,section,city,\nShort,6\nTrail,6,B,,\n"
     r = await _upload(client, raw)
     assert r.json()["accepted_count"] == 2, r.text
     rows = await _students(db_session, world["school"].id)

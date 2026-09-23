@@ -2,10 +2,10 @@
 
 import pytest
 import pytest_asyncio
+from enh005_helpers import login, mk_school, mk_staff
 from sqlalchemy import select
 
 from app.models import AuditLog, SchoolStudent
-from enh005_helpers import login, mk_school, mk_staff
 
 URL = "/api/v1/school/students/{sid}/career-preferences"
 

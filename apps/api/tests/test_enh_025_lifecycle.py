@@ -5,10 +5,10 @@ from datetime import date
 
 import pytest
 import pytest_asyncio
+from enh005_helpers import login, mk_request, mk_school
 from sqlalchemy import delete, or_, update
 
 from app.models import AcademicYear, SchoolStudent, SchoolStudentGradeHistory
-from enh005_helpers import login, mk_request, mk_school
 
 PROMOTE = "/api/v1/school/students/promotions"
 APPROVE = "/api/v1/overseas-admin/school-transfer-requests/{rid}/approve"
