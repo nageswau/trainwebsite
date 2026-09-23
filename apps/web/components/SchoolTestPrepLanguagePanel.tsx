@@ -128,7 +128,7 @@ export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageR
             </table>
           </div>
         )}
-        {message?.card === "scores" && <FormMessage message={message} />}
+        {message?.card === "scores" && <FormMessage message={message} style={{ marginTop: 12 }} />}
       </div>
 
       <div className="action-card">
@@ -195,7 +195,7 @@ export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageR
             </table>
           </div>
         )}
-        {message?.card === "certify" && <FormMessage message={message} />}
+        {message?.card === "certify" && <FormMessage message={message} style={{ marginTop: 12 }} />}
       </div>
 
       <div className="action-card">
