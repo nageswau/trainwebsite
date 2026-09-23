@@ -10,10 +10,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.schools import _load_readable_student, _own_school_id
+from app.api.schools import _apply_master_fields, _load_readable_student, _master_fields_or_422, _own_school_id, _student_in_portfolio
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import AuditLog, SchoolStudent, User
+from app.schemas import CAREER_PREFERENCE_KEYS, CareerPreferencesUpdate
 from app.services.image_metadata import InvalidImage, detect_image_type, strip_metadata
 from app.services.storage import storage
 
@@ -115,3 +116,30 @@ async def delete_student_photo(student_id: UUID, user: User = Depends(get_curren
     _discard(old_key, student.id)
     logger.info("student_photo_removed", extra={"extra_fields": {"student_id": str(student.id)}})
     return Response(status_code=204)
+
+
+async def _counselor_student(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
+    if user.role != "career_counselor":
+        raise HTTPException(403, "Career Counselor role required")
+    return await _student_in_portfolio(db, user, student_id)
+
+
+def _career_out(student: SchoolStudent) -> dict:
+    return {"student_id": student.id, **{key: getattr(student, key) for key in CAREER_PREFERENCE_KEYS}}
+
+
+@router.get("/students/{student_id}/career-preferences")
+async def get_career_preferences(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return _career_out(await _counselor_student(db, user, student_id))
+
+
+@router.patch("/students/{student_id}/career-preferences")
+async def update_career_preferences(student_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The whole body is validated (extra="forbid"): only the four career fields can ever be written here."""
+    student = await _counselor_student(db, user, student_id)
+    fields = _master_fields_or_422(CareerPreferencesUpdate, payload)
+    changed = _apply_master_fields(student, fields)
+    db.add(AuditLog(user_id=user.id, action="school.student_career_preferences_update", entity_type="school_student", entity_id=str(student.id), metadata_json={"school_id": str(student.school_id), "changed_fields": changed}))
+    await db.commit()
+    logger.info("student_career_preferences_updated", extra={"extra_fields": {"student_id": str(student.id), "changed": len(changed)}})
+    return _career_out(student)
