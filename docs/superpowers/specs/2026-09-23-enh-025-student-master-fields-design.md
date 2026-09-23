@@ -272,16 +272,42 @@ example — including the Photo exception note. Same table in `API_CONTRACT.md` 
 
 ## 5. Security review
 
-- New PII (photo, gender, mobile, city) uses the same read scopes as the existing record; the
-  counselor sees only career fields.
-- Photo: magic-byte type check, size cap, served only through an authorized route with `no-store` and
-  `nosniff`; storage key is random (128-bit), never serialized. **Residual risk (local mode only):**
-  objects live in the shared uploads volume that `/local-files` also serves (`main.py:35`); access
-  requires guessing the key. A dedicated private volume is an infrastructure change blocked by
-  `DEC-INFRA-001`. S3 buckets are private.
-- `extra="forbid"` on both models blocks mass assignment (e.g. `academic_year_id`, `photo_key`,
-  `school_id`), preserving ENH-001's "system-assigned only" rule (`models.py:1028`).
-- Audit logs record field names, never values.
+Reviewed with `security-and-hardening`, 2026-09-23. Scope: ENH-025 surfaces only; pre-existing issues
+are listed in §10, not changed.
+
+**Trust boundaries:** photo multipart upload; JSON bodies (create, update, counselor); bulk CSV;
+`student_id` path parameter. **Assets:** personal data about **minors** (photo, gender, mobile, city,
+interests) — treated as the *sensitive* class.
+
+| Area | Existing control (verified) | ENH-025 design |
+|---|---|---|
+| Authentication | httpOnly cookie `edusphere_access` → `get_current_user` (`deps.py:14`) | Every new route depends on `get_current_user`; no public route |
+| Authorization / IDOR | school match, teacher assigned-only, parent linked-only, counselor portfolio | Photo GET → `_load_readable_student`; photo PUT/DELETE → coordinator + `student.school_id == own`; counselor → `_student_in_portfolio`. Storage key is never client-supplied. Existing 403-vs-404 messages kept as-is (pre-existing behavior) |
+| Role escalation / mass assignment | ENH-001 "system-assigned only" (`models.py:1028`) | `extra="forbid"` on `StudentMasterFields` and `CareerPreferencesUpdate` rejects `school_id`, `academic_year_id`, `photo_key`, `photo_content_type`, `student_code`, `created_by_user_id`; counselor cannot write any non-career field |
+| Input validation | raw `dict` handlers | §2.1 rules at the boundary; list caps (≤20 × ≤80 chars) bound JSON size. Photo read is bounded: `await file.read(MAX_PHOTO_BYTES + 1)` — never an unbounded read. (The Next proxy buffers bodies, `app/api/[...path]/route.ts:9` — pre-existing, unchanged.) |
+| XSS | React auto-escaping | No `dangerouslySetInnerHTML`. Only JPEG/PNG by magic bytes (no SVG); stored content type comes from detection, never the client. Photo response headers: `Content-Type` (detected), `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; sandbox`, `Content-Disposition: inline`, `Cache-Control: private, no-store` — an image/HTML polyglot cannot execute as a document |
+| CSRF | `SameSite=Lax` cookies (`auth.py:88`); CORS allowlist = `frontend_url` with credentials (`main.py:32`) | Cross-site PUT/PATCH/DELETE/POST carry no cookie under Lax; the only new GET (photo) is side-effect free. No new CSRF mechanism (would be an app-wide change outside ENH-025) |
+| SQL injection | SQLAlchemy ORM | ORM only; migration backfill uses `sa.text()` with bound parameters exclusively (no f-string SQL); index DDL is static; section parsing is Python regex |
+| CSV / formula injection | no student CSV export exists | Not applicable now; see §10 |
+| Token / session | unchanged | No new tokens; photo URL carries no credential (`?v=` is a cache-buster); `no-store` keeps minors' photos out of shared/proxy caches |
+| Secret exposure | S3 credentials from env | No new secrets. `photo_key` is never serialized **or logged** (in local mode it is the only barrier, see residual risk). Storage exceptions → generic 500, never a key or path |
+| Sensitive logs | request logs record path/method only (`core/middleware.py`) | Audit metadata = field names only. New 422 messages name the field and never echo the value (e.g. no mobile number in a response or a bulk `error_message`); exception: `roll_number` in the 409 (not personal data, and needed to resolve the clash) |
+| Rate limiting | no global limiter; ENH-005 uses an audit-count throttle | None added (new infrastructure = speculative). Photo writes are coordinator-only, ≤2 MB, replace-semantics (one stored object per student) |
+| Audit | `AuditLog` | `changed_fields` on create/update; `school.student_photo_set` / `_remove`; `school.student_career_preferences_update`; promotion roll clearing captured in grade history; transfer already audited |
+| Privacy — photo metadata | none | **EXIF/metadata stripped before storage** (user decision): pure-Python function drops JPEG APP1–APP15 and COM segments and PNG `tEXt`/`iTXt`/`zTXt`/`eXIf`/`tIME` chunks; pixels are not decoded (no decompression-bomb surface); no new dependency. A malformed file that cannot be walked is rejected with 422 |
+| Privacy — consent | STU-009 consent exists for other domains | **`NEEDS_CONFIRMATION`** (user decision): legal basis/consent for storing photos of minors is recorded for client confirmation; Photo ships optional and school-entered, no consent gate now |
+
+**Residual risk (local storage mode only):** photo objects live in the shared uploads volume that
+`/local-files` also serves (`main.py:35`); reaching one requires guessing a 128-bit random key that is
+never serialized or logged. A dedicated private volume is an infrastructure change blocked by
+`DEC-INFRA-001`. S3 buckets are private.
+
+**Abuse cases (each becomes a test first):** coordinator of school B reads/writes a school-A student's
+photo or fields; teacher reads an unassigned student's photo; parent reads an unlinked child's photo;
+counselor edits a student outside their portfolio, or sends `roll_number`/`school_id`; any role sends
+`academic_year_id`/`photo_key`; upload of SVG, HTML renamed `.jpg`, a PNG with a JPEG content type, a
+2 MB + 1 byte file, an empty file, a truncated JPEG; a JPEG with GPS EXIF comes back without it; a
+bulk row carrying a mobile number fails without echoing it.
 
 ## 6. Acceptance criteria (testable)
 
@@ -310,13 +336,17 @@ example — including the Photo exception note. Same table in `API_CONTRACT.md` 
   number and new section in grade history; transfer approval clears `section` and `roll_number`.
 - **AC11** Forms are keyboard-operable, labelled, grouped, single-column at ≤640px, show busy /
   error / success states, and return focus correctly.
+- **AC12** Every abuse case in §5 is rejected with the stated status; stored photos contain no EXIF /
+  text metadata; photo responses carry the §5 headers; audit rows and logs contain no field values
+  and never the photo key.
 
 ## 7. Testing strategy (detail in the implementation plan)
 
 - **Backend (pytest, real Postgres):** migration backfill table + round-trip; `StudentMasterFields`
   rules; create/update set/clear/absent + compatibility; roll uniqueness incl. case, NULL group, other
   year, concurrency (pattern: `test_enh_005_concurrency.py`); bulk new columns, old CSV, row-level
-  rejection, `;` lists, template order; photo type/size/scope/headers/idempotent delete/replacement
+  rejection, `;` lists, template order; every §5 abuse case; metadata stripping (JPEG GPS EXIF, PNG text chunks, malformed file → 422);
+  bounded read; photo type/size/scope/headers/idempotent delete/replacement
   cleanup/no key leak; counselor route authz and key allowlist; promotion + history; transfer;
   audit metadata; single Alembic head.
 - **Frontend (vitest):** payload builder; field groups render labelled inputs; create/edit send new
@@ -355,6 +385,9 @@ example — including the Photo exception note. Same table in `API_CONTRACT.md` 
    section/roll number and new section.
 7. Transfer approval clears section and roll number.
 8. All new fields optional (no field is made mandatory).
+9. Photo metadata (EXIF etc.) stripped in pure Python before storage; no image library added.
+10. Consent / legal basis for photos of minors: `NEEDS_CONFIRMATION` with the client; Photo ships
+    without a consent gate.
 
 ## 10. Carried forward (not blockers)
 
@@ -365,3 +398,10 @@ example — including the Photo exception note. Same table in `API_CONTRACT.md` 
 - `ENH-013`'s counselor `career_goal` and `ENH-026`'s career-record restructure should read, not
   duplicate, the §2 career fields.
 - Controlled vocabularies for subjects/countries/courses (no source defines them).
+- `NEEDS_CONFIRMATION`: consent / legal basis for storing photos of minors (client).
+- Pre-existing: bulk upload has no file-size or row-count cap (DoS surface); ENH-025's per-row
+  savepoints add round-trips but do not change the bound.
+- Pre-existing: the Next API proxy buffers whole request bodies before forwarding.
+- Future: any CSV/XLSX export of the new free-text fields must neutralise leading `= + - @`.
+- Future: data-subject deletion/retention for school-student personal data (students are never
+  deleted today).
