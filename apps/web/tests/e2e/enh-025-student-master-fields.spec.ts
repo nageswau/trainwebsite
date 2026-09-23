@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
-// ENH-025 -- Student Master fields (DEC-SCOPE-027): coordinator edits the fields and the photo, a teacher reads them,
+// ENH-025 -- Student Master fields (DEC-SCOPE-029): coordinator edits the fields and the photo, a teacher reads them,
 // a career counsellor records career preferences, and the form works at phone width.
 // Requires the stack running with `python -m app.seed` applied (overseasadmin@edusphere.local/Demo@123).
 // Registers its own throwaway school, coordinator, teacher, counsellor and student per run.

@@ -7,9 +7,9 @@ next. Written spec awaiting user review.
 **Source requirement:** `School CRM.md §3` Student Master (`docs/sources/School CRM.md:118-177`,
 byte-identical to `functionalities/edusphere_markdown/School CRM.md`; `EVID-014`, `DERIVED_BLUEPRINT`).
 **Backlog item:** `docs/delivery/ENHANCEMENT_BACKLOG.md:2220-2330` (`ENH-025`).
-**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → `DEC-SCOPE-027` (to be added by
+**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → `DEC-SCOPE-029` (to be added by
 the implementation plan's first task; records the in-session answers in §9 below as
-`EXPLICIT_APPROVAL`, user, 2026-09-23). If another branch claims `DEC-SCOPE-027` first, renumber on
+`EXPLICIT_APPROVAL`, user, 2026-09-23). If another branch claims `DEC-SCOPE-029` first, renumber on
 merge (precedent: `DEC-SCOPE-024`/`025`).
 **Branch:** `feature/enh-025-student-master-field-coverage`.
 
@@ -117,7 +117,7 @@ promotion in the same insert it already performs. Pre-existing history rows keep
 4. `downgrade()` drops the index, the constraint and the columns. `grade_or_class` is never written.
 
 **Numbering:** unmerged `ENH-013` plans `0039_student_career_goal`, also revising `0038`. Decided
-2026-09-23 (`DEC-SCOPE-027` item 11): ENH-025 merges first and keeps `0039`; ENH-013 renames its file to
+2026-09-23 (`DEC-SCOPE-029` item 11): ENH-025 merges first and keeps `0039`; ENH-013 renames its file to
 `0040` and re-chains onto `0039_student_master_fields` (precedent: commit `6c66f9a`, ENH-012). A test
 asserts a single Alembic head.
 
@@ -296,7 +296,7 @@ interests) — treated as the *sensitive* class.
 | Rate limiting | no global limiter; ENH-005 uses an audit-count throttle | None added (new infrastructure = speculative). Photo writes are coordinator-only, ≤2 MB, replace-semantics (one stored object per student) |
 | Audit | `AuditLog` | `changed_fields` on create/update; `school.student_photo_set` / `_remove`; `school.student_career_preferences_update`; promotion roll clearing captured in grade history; transfer already audited |
 | Privacy — photo metadata | none | **EXIF/metadata stripped before storage** (user decision): pure-Python function drops JPEG APP1–APP15 and COM segments and PNG `tEXt`/`iTXt`/`zTXt`/`eXIf`/`tIME` chunks; pixels are not decoded (no decompression-bomb surface); no new dependency. A malformed file that cannot be walked is rejected with 422 |
-| Privacy — consent | STU-009 consent exists for other domains | **Resolved 2026-09-23 (user, `DEC-SCOPE-027` item 10):** the school, as data controller, obtains consent through its own enrolment process; Photo ships optional and school-entered with no EduSphere consent gate |
+| Privacy — consent | STU-009 consent exists for other domains | **Resolved 2026-09-23 (user, `DEC-SCOPE-029` item 10):** the school, as data controller, obtains consent through its own enrolment process; Photo ships optional and school-entered with no EduSphere consent gate |
 
 **Residual risk (local storage mode only):** photo objects live in the shared uploads volume that
 `/local-files` also serves (`main.py:35`); reaching one requires guessing a 128-bit random key that is
@@ -373,7 +373,7 @@ bulk row carrying a mobile number fails without echoing it.
 | Photo storage leaks via `/local-files` | random unserialized key; documented residual risk |
 | ~40 files display `grade_or_class` | not changed — no caller audit required for the label |
 
-## 9. Decisions made in-session (to record as `DEC-SCOPE-027`)
+## 9. Decisions made in-session (to record as `DEC-SCOPE-029`)
 
 1. Keep `grade_or_class`; add `section`; `grade_level` (ENH-001) is the Grade column.
 2. Career interests, Global education interest, Preferred countries, Preferred courses live on
@@ -400,8 +400,8 @@ bulk row carrying a mobile number fails without echoing it.
   duplicate, the §2 career fields.
 - Controlled vocabularies for subjects/countries/courses (no source defines them).
 - ~~`NEEDS_CONFIRMATION`: consent / legal basis for storing photos of minors~~ — resolved 2026-09-23: the school is
-  responsible (`DEC-SCOPE-027` item 10).
-- Migration order: ENH-025 merges first; ENH-013 renumbers its migration to 0040 (`DEC-SCOPE-027` item 11).
+  responsible (`DEC-SCOPE-029` item 10).
+- Migration order: ENH-025 merges first; ENH-013 renumbers its migration to 0040 (`DEC-SCOPE-029` item 11).
 - Pre-existing: bulk upload has no file-size or row-count cap (DoS surface); ENH-025's per-row
   savepoints add round-trips but do not change the bound.
 - Pre-existing: the Next API proxy buffers whole request bodies before forwarding.

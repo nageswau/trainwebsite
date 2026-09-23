@@ -1,5 +1,5 @@
 """ENH-025 -- Student Master photo and career-preference routes (docs/superpowers/specs/
-2026-09-23-enh-025-student-master-fields-design.md §3.4, DEC-SCOPE-027). Scope checks are imported from
+2026-09-23-enh-025-student-master-fields-design.md §3.4, DEC-SCOPE-029). Scope checks are imported from
 schools.py (same pattern as portfolio.py), never re-implemented here."""
 
 import hashlib

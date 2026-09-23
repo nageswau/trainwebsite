@@ -989,7 +989,7 @@ class SchoolAccountInvite(Base, TimestampMixin):
     accepted_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
-# ENH-025 (DEC-SCOPE-027 item 4): the fixed Gender list, shared by the CHECK below and schemas.StudentMasterFields.
+# ENH-025 (DEC-SCOPE-029 item 4): the fixed Gender list, shared by the CHECK below and schemas.StudentMasterFields.
 GENDERS = ("female", "male", "other", "prefer_not_to_say")
 
 
@@ -1010,7 +1010,7 @@ class SchoolStudent(Base, TimestampMixin):
 
     __tablename__ = "school_students"
     __table_args__ = (
-        # ENH-025 (DEC-SCOPE-027): a roll number is unique within school + academic year + grade + section.
+        # ENH-025 (DEC-SCOPE-029): a roll number is unique within school + academic year + grade + section.
         # NULLS NOT DISTINCT makes a blank section/grade/year its own group; students with no roll number are
         # never constrained. lower(section) so "A" and "a" are the same section.
         Index(
@@ -1044,7 +1044,7 @@ class SchoolStudent(Base, TimestampMixin):
     # this from a client payload (spec's security review, role-escalation finding).
     academic_year_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"), nullable=True, index=True)
     grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # ENH-025 (DEC-SCOPE-027): School CRM.md §3 Student Master fields. All optional; validated at the API
+    # ENH-025 (DEC-SCOPE-029): School CRM.md §3 Student Master fields. All optional; validated at the API
     # boundary by schemas.StudentMasterFields. grade_or_class stays the free-text display label.
     section: Mapped[str | None] = mapped_column(String(20), nullable=True)
     roll_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -1092,7 +1092,7 @@ class SchoolStudentGradeHistory(Base, TimestampMixin):
     to_academic_year_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"))
     to_grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     to_grade_or_class: Mapped[str | None] = mapped_column(String(60), nullable=True)
-    # ENH-025: previous class details survive roll-number clearing on a year move (DEC-SCOPE-027 item 6).
+    # ENH-025: previous class details survive roll-number clearing on a year move (DEC-SCOPE-029 item 6).
     from_section: Mapped[str | None] = mapped_column(String(20), nullable=True)
     from_roll_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     to_section: Mapped[str | None] = mapped_column(String(20), nullable=True)

@@ -1,4 +1,4 @@
-// ENH-025 (DEC-SCOPE-027): the shared shape and helpers for a School student record, so the roster, the
+// ENH-025 (DEC-SCOPE-029): the shared shape and helpers for a School student record, so the roster, the
 // student pages and the counsellor card read one definition instead of per-component copies.
 
 export type SchoolStudent = {

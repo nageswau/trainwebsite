@@ -3,13 +3,13 @@
 Revision ID: 0039_student_master_fields
 Revises: 0038_portfolio
 
-docs/superpowers/specs/2026-09-23-enh-025-student-master-fields-design.md §2 (DEC-SCOPE-027). Additive only:
+docs/superpowers/specs/2026-09-23-enh-025-student-master-fields-design.md §2 (DEC-SCOPE-029). Additive only:
 nullable columns, a CHECK on gender, a partial unique index on roll numbers, and a backfill of `section`
 from `grade_or_class` where the label unambiguously ends in a section letter. `grade_or_class` is read,
 never written. Unparseable labels leave `section` NULL (never guessed) and their student codes are printed,
 same as 0030. `downgrade()` drops everything this adds.
 
-Merge order (DEC-SCOPE-027 item 11): ENH-025 merges first and keeps 0039; ENH-013's `0039_student_career_goal`
+Merge order (DEC-SCOPE-029 item 11): ENH-025 merges first and keeps 0039; ENH-013's `0039_student_career_goal`
 (also on 0038) is renumbered to 0040 and re-chained onto this revision when it merges.
 """
 

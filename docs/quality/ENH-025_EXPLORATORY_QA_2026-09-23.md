@@ -1,6 +1,6 @@
 # ENH-025 — Exploratory QA record (2026-09-23)
 
-**Feature:** ENH-025 Student Master field coverage (`DEC-SCOPE-027`).
+**Feature:** ENH-025 Student Master field coverage (`DEC-SCOPE-029`).
 **Pass 1 (find, no code changes):** build `8ecb042`. **Fix pass:** commit `52929b3`.
 **Environment:** isolated Docker stack `enh025` (web `http://localhost:3025`, API `:8025`), seeded; Microsoft Edge 153 in
 an isolated InPrivate instance (own profile, sync and extensions disabled, occlusion tracking off), driven by Browser Use
@@ -48,7 +48,7 @@ message wording (an intended behaviour change, not a test adapted to hide a defe
 | QA2-13 | Info | Uploading the same file twice duplicates rows without a roll number (new Idempotency-Key per submit) | SCH-002 behaviour |
 | QA2-14 | Info | Malformed student id → "[object Object]" | Error rendering in a page ENH-025 did not change |
 | QA2-15 | Info | Expired session: "Not authenticated" with no route back to sign-in | Portal-wide pattern |
-| QA2-16 | Info | iPhone HEIC photos rejected without guidance | By design (`DEC-SCOPE-027` item 3); guidance text is a product decision |
+| QA2-16 | Info | iPhone HEIC photos rejected without guidance | By design (`DEC-SCOPE-029` item 3); guidance text is a product decision |
 
 ## Verified with no issue (pass 1)
 

@@ -2363,7 +2363,12 @@ criteria blockers (field-by-field scope, Branch design).
 
 **Consequences:** migration `0037_school_skills` (six create-only tables); router `app/api/school_skills.py` (ten endpoints under `/school/career-counselor`); additive `skills` key on `GET /school/students/{id}/overview`; timeline categories `soft_skills`/`digital_skills`; `GET /school/entitlements` reports `used` for `soft_skills`/`web_designing`. `SCH-008-AC04`'s "Skills… never appear" no longer holds for Skills (Portfolio still absent).
 
-### DEC-SCOPE-027 — Student Master field coverage (`ENH-025`)
+### DEC-SCOPE-029 — Student Master field coverage (`ENH-025`)
+
+**ID note:** recorded in-session as `DEC-SCOPE-027`, before `ENH-022` merged to `main` holding `DEC-SCOPE-027`
+(PR #14) and while the unmerged `ENH-013` branch uses `DEC-SCOPE-028`. Renumbered to `DEC-SCOPE-029` on this branch
+before merge (flagged by the ENH-013 session) — the same later-branch-moves precedent as `DEC-SCOPE-024`/`025`. Earlier
+ENH-025 commit messages that say `DEC-SCOPE-027` mean this decision.
 
 **Status:** `EXPLICIT_APPROVAL` — user, in-session, 2026-09-23 (brainstorming answers, recorded in
 `docs/superpowers/specs/2026-09-23-enh-025-student-master-fields-design.md` §9).

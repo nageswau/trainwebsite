@@ -653,7 +653,7 @@ def _clean_list(value) -> list[str] | None:
 
 
 class CareerPreferencesUpdate(BaseModel):
-    """The four career fields a Career Counsellor may write (DEC-SCOPE-027 item 2). extra="forbid": any other
+    """The four career fields a Career Counsellor may write (DEC-SCOPE-029 item 2). extra="forbid": any other
     key is a 422, so the counsellor route cannot reach roll number, mobile, photo, school or year."""
 
     model_config = {"extra": "forbid"}

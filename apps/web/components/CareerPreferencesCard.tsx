@@ -14,7 +14,7 @@ const LISTS = [
   ["preferred_courses", "Preferred courses"],
 ] as const;
 
-// ENH-025 (DEC-SCOPE-027 item 2): a Career Counsellor records a portfolio student's career interests and study-abroad
+// ENH-025 (DEC-SCOPE-029 item 2): a Career Counsellor records a portfolio student's career interests and study-abroad
 // preferences. Only these four fields are ever sent; the server rejects anything else.
 export default function CareerPreferencesCard({ students }: { students: Student[] }) {
   const [studentId, setStudentId] = useState("");

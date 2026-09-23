@@ -23,7 +23,7 @@
 - `photo_key` / `photo_content_type` never serialized, never logged.
 - Audit metadata carries field names only, never values.
 - Revision `0039_student_master_fields`, `down_revision = "0038_portfolio"` (renumber on merge if ENH-013 lands first).
-- Decision ID `DEC-SCOPE-027` (renumber on merge if taken).
+- Decision ID `DEC-SCOPE-029` (renumber on merge if taken).
 - Tests run against the local Postgres the user starts (`docker compose` is the user's — never start/stop it). Apply migrations with `cd apps/api && alembic upgrade head` before backend tests.
 - Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - pytest runs with `asyncio_mode = "strict"` (`apps/api/pyproject.toml:3`): **every** `async def test_…` in this
@@ -75,12 +75,12 @@
 - Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append after the last `DEC-SCOPE-026` entry)
 - Modify: `docs/delivery/ENHANCEMENT_BACKLOG.md` (ENH-025 entry, "Existing behavior" paragraph)
 
-**Interfaces:** Produces the ID `DEC-SCOPE-027` cited in code comments by later tasks.
+**Interfaces:** Produces the ID `DEC-SCOPE-029` cited in code comments by later tasks.
 
 - [ ] **Step 1: Append the decision**
 
 ```markdown
-### DEC-SCOPE-027 — Student Master field coverage (ENH-025)
+### DEC-SCOPE-029 — Student Master field coverage (ENH-025)
 
 **Status:** `EXPLICIT_APPROVAL` — user, in-session, 2026-09-23 (brainstorming answers, recorded in
 `docs/superpowers/specs/2026-09-23-enh-025-student-master-fields-design.md` §9).
@@ -106,13 +106,13 @@
 
 In the ENH-025 "Existing behavior" paragraph, after the list of stored columns, add:
 `**Correction (2026-09-23, ENH-025 design):** ENH-001 has since added academic_year_id and grade_level
-(models.py:1030-1031); the Grade/Section split therefore reduces to adding section. See DEC-SCOPE-027.`
+(models.py:1030-1031); the Grade/Section split therefore reduces to adding section. See DEC-SCOPE-029.`
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add docs/decisions/PRODUCT_DECISION_REGISTER.md docs/delivery/ENHANCEMENT_BACKLOG.md
-git commit -m "docs(enh-025): record DEC-SCOPE-027 and correct the backlog's model description"
+git commit -m "docs(enh-025): record DEC-SCOPE-029 and correct the backlog's model description"
 ```
 
 ---
@@ -224,7 +224,7 @@ In `models.py`, near the top-level constants, add `GENDERS = ("female", "male", 
 
 ```python
     __table_args__ = (
-        # ENH-025 (DEC-SCOPE-027): a roll number is unique within school + academic year + grade + section.
+        # ENH-025 (DEC-SCOPE-029): a roll number is unique within school + academic year + grade + section.
         # NULLS NOT DISTINCT makes a blank section/grade/year its own group; students with no roll number are
         # never constrained. lower(section) so "A" and "a" are the same section.
         Index(
@@ -237,7 +237,7 @@ In `models.py`, near the top-level constants, add `GENDERS = ("female", "male", 
 ```
 
 ```python
-    # ENH-025 (DEC-SCOPE-027): School CRM.md §3 Student Master fields. All optional; validated at the API
+    # ENH-025 (DEC-SCOPE-029): School CRM.md §3 Student Master fields. All optional; validated at the API
     # boundary by schemas.StudentMasterFields. grade_or_class stays the free-text display label.
     section: Mapped[str | None] = mapped_column(String(20), nullable=True)
     roll_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -257,7 +257,7 @@ In `models.py`, near the top-level constants, add `GENDERS = ("female", "male", 
 In `SchoolStudentGradeHistory`, after `to_grade_or_class`:
 
 ```python
-    # ENH-025: previous class details survive roll-number clearing on a year move (DEC-SCOPE-027 item 6).
+    # ENH-025: previous class details survive roll-number clearing on a year move (DEC-SCOPE-029 item 6).
     from_section: Mapped[str | None] = mapped_column(String(20), nullable=True)
     from_roll_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     to_section: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -271,7 +271,7 @@ In `SchoolStudentGradeHistory`, after `to_grade_or_class`:
 Revision ID: 0039_student_master_fields
 Revises: 0038_portfolio
 
-docs/superpowers/specs/2026-09-23-enh-025-student-master-fields-design.md §2 (DEC-SCOPE-027). Additive only:
+docs/superpowers/specs/2026-09-23-enh-025-student-master-fields-design.md §2 (DEC-SCOPE-029). Additive only:
 nullable columns, a CHECK on gender, a partial unique index on roll numbers, and a backfill of `section`
 from `grade_or_class` where the label unambiguously ends in a section letter. `grade_or_class` is read,
 never written. Unparseable labels leave `section` NULL (never guessed) and their student codes are printed,
@@ -543,7 +543,7 @@ def _clean_list(value) -> list[str] | None:
 
 
 class CareerPreferencesUpdate(BaseModel):
-    """The four career fields a Career Counsellor may write (DEC-SCOPE-027 item 2). extra="forbid": any other
+    """The four career fields a Career Counsellor may write (DEC-SCOPE-029 item 2). extra="forbid": any other
     key is a 422, so the counsellor route cannot reach roll number, mobile, photo, school or year."""
 
     model_config = {"extra": "forbid"}
@@ -817,7 +817,7 @@ Expected: FAIL — e.g. `KeyError: 'section'` / `has_photo` missing in responses
 Extend imports: `from pydantic import BaseModel, ValidationError` and `from app.schemas import MASTER_FIELD_KEYS, StudentMasterFields, validation_message` (append to the existing `app.schemas` import). Add near `_student_out`:
 
 ```python
-# --- ENH-025: Student Master fields (DEC-SCOPE-027) -------------------------------------------------
+# --- ENH-025: Student Master fields (DEC-SCOPE-029) -------------------------------------------------
 
 ROLL_CONSTRAINT = "uq_school_students_roll"
 ROLL_TAKEN = "roll_number '{roll}' is already used in this grade and section for this academic year"
@@ -1239,7 +1239,7 @@ Promotion loop — add the three history kwargs and clear the roll after recordi
                     school_student_id=student.id, action=decision.status,
                     from_academic_year_id=student.academic_year_id, from_grade_level=student.grade_level, from_grade_or_class=student.grade_or_class,
                     to_academic_year_id=active_year.id, to_grade_level=decision.grade_level, to_grade_or_class=decision.grade_or_class,
-                    # ENH-025 (DEC-SCOPE-027 item 6): previous class details survive the roll-number reset below.
+                    # ENH-025 (DEC-SCOPE-029 item 6): previous class details survive the roll-number reset below.
                     from_section=student.section, from_roll_number=student.roll_number, to_section=student.section,
                     performed_by_user_id=user.id,
                 )
@@ -1264,7 +1264,7 @@ Grade-history output:
 `school_transfers.py:443` becomes:
 
 ```python
-    # ENH-025 (DEC-SCOPE-027 item 7): section and roll number belong to the losing school, like the teacher.
+    # ENH-025 (DEC-SCOPE-029 item 7): section and roll number belong to the losing school, like the teacher.
     student.school_id, student.assigned_teacher_user_id, student.pending_parent_email = request.to_school_id, None, None
     student.section, student.roll_number = None, None
 ```
@@ -1708,7 +1708,7 @@ Expected: FAIL — 404/405 on `/photo` routes.
 
 ```python
 """ENH-025 -- Student Master photo and career-preference routes (docs/superpowers/specs/
-2026-09-23-enh-025-student-master-fields-design.md §3.4, DEC-SCOPE-027). Scope checks are imported from
+2026-09-23-enh-025-student-master-fields-design.md §3.4, DEC-SCOPE-029). Scope checks are imported from
 schools.py (same pattern as portfolio.py), never re-implemented here."""
 
 import hashlib
@@ -2105,7 +2105,7 @@ Expected: FAIL — module `@/lib/schoolStudents` not found.
 - [ ] **Step 3: Implement `lib/schoolStudents.ts`**
 
 ```ts
-// ENH-025 (DEC-SCOPE-027): shared shape and helpers for the School student record, replacing per-component copies.
+// ENH-025 (DEC-SCOPE-029): shared shape and helpers for the School student record, replacing per-component copies.
 
 export type SchoolStudent = {
   id: string;
@@ -2752,7 +2752,7 @@ const LISTS = [["career_interests", "Career interests"], ["preferred_countries",
 
 const split = (raw: FormDataEntryValue | null) => String(raw ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 
-// ENH-025 (DEC-SCOPE-027 item 2): a Career Counsellor records a portfolio student's career interests and study-abroad
+// ENH-025 (DEC-SCOPE-029 item 2): a Career Counsellor records a portfolio student's career interests and study-abroad
 // preferences. Only these four fields are sent; the server rejects anything else.
 export default function CareerPreferencesCard({ students }: { students: Student[] }) {
   const [studentId, setStudentId] = useState("");

@@ -1,6 +1,6 @@
 # ENH-025 — Browser QA record (2026-09-23)
 
-**Feature:** ENH-025 Student Master field coverage (`DEC-SCOPE-027`).
+**Feature:** ENH-025 Student Master field coverage (`DEC-SCOPE-029`).
 **Build under test:** branch `feature/enh-025-student-master-field-coverage`, code at `88d14b2` plus the CSS fixes below.
 **Environment:** isolated Docker stack `enh025` (web `http://localhost:3025`, API `:8025`), `python -m app.seed` applied,
 Chromium (Playwright, headless), desktop 1280×900 and phone 375×800.
