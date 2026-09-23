@@ -1,28 +1,15 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
-type Student = {
-  id: string;
-  student_code: string;
-  full_name: string;
-  date_of_birth: string | null;
-  grade_or_class: string | null;
-  academic_year_id: string | null;
-  grade_level: number | null;
-  assigned_teacher_user_id: string | null;
-  pending_parent_email: string | null;
-};
+import SchoolStudentFields from "@/components/SchoolStudentFields";
+import { detailMessage, toMasterPayload, type SchoolStudent } from "@/lib/schoolStudents";
 
 type TeacherOption = { id: string; name: string; active: boolean };
-
-function detailMessage(detail: unknown) {
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
-  return "Something went wrong.";
-}
+// "roster": a success that closes its card (edit, link parent) is reported on the roster the user returns to.
+type FormName = "edit" | "create" | "link" | "roster";
+type Message = { text: string; failed: boolean; form: FormName };
 
 function parentStatusNote(status: string | undefined, email: string) {
   if (status === "linked") return " Parent linked immediately (they already had an account).";
@@ -31,16 +18,27 @@ function parentStatusNote(status: string | undefined, email: string) {
   return "";
 }
 
+function FormMessage({ message }: { message: { text: string; failed: boolean } }) {
+  return message.failed ? (
+    <div className="form-error" role="alert">{message.text}</div>
+  ) : (
+    <div className="form-message" role="status" aria-live="polite">{message.text}</div>
+  );
+}
+
 // SCH-001: the Coordinator's working roster -- add one student by hand, edit an existing
-// one, link a Parent account to a student. Bulk upload is a separate Feature ID (SCH-002),
-// not built here.
-export default function SchoolStudentsPanel({ students }: { students: Student[] }) {
+// one, link a Parent account to a student. Bulk upload is a separate Feature ID (SCH-002).
+// ENH-025: both forms carry the Student Master fields via the shared SchoolStudentFields groups;
+// each form shows its own result message next to it, and focus follows the edit card.
+export default function SchoolStudentsPanel({ students }: { students: SchoolStudent[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  const [message, setMessage] = useState<Message | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
+  const editHeading = useRef<HTMLHeadingElement>(null);
+  const lastEditButton = useRef<HTMLButtonElement | null>(null);
 
   // SCH-001 addendum: a live picker of the school's own Teachers, replacing the
   // hand-typed email field -- the same "raw ID typed by hand" gap already fixed
@@ -62,6 +60,17 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
     };
   }, []);
 
+  useEffect(() => {
+    if (!editingId) return;
+    editHeading.current?.focus();
+    editHeading.current?.scrollIntoView?.({ block: "start" });
+  }, [editingId]);
+
+  function closeEdit() {
+    setEditingId(null);
+    lastEditButton.current?.focus();
+  }
+
   async function createStudent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
@@ -79,16 +88,17 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
         assigned_teacher_user_id: form.get("assigned_teacher_user_id") || undefined,
         parent_name: form.get("parent_name") || undefined,
         parent_email: form.get("parent_email") || undefined,
+        ...toMasterPayload(form, "create"),
       }),
-    });
-    const data = await response.json().catch(() => ({}));
+    }).catch(() => null);
+    const data = response ? await response.json().catch(() => ({})) : {};
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!response?.ok) {
+      setMessage({ text: detailMessage(data.detail), failed: true, form: "create" });
       return;
     }
     const parentEmail = String(form.get("parent_email") || "");
-    setMessage({ text: `${data.full_name} added to the roster.${parentStatusNote(data.parent_status, parentEmail)}`, failed: false });
+    setMessage({ text: `${data.full_name} added to the roster.${parentStatusNote(data.parent_status, parentEmail)}`, failed: false, form: "create" });
     formElement.reset();
     router.refresh();
   }
@@ -105,20 +115,22 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
         full_name: form.get("full_name"),
         grade_or_class: form.get("grade_or_class") || null,
         grade_level: form.get("grade_level") ? Number(form.get("grade_level")) : null,
+        date_of_birth: form.get("date_of_birth") || null,
         assigned_teacher_user_id: form.get("assigned_teacher_user_id") || null,
         parent_name: form.get("parent_name") || undefined,
         parent_email: form.get("parent_email") || undefined,
+        ...toMasterPayload(form, "edit"),
       }),
-    });
-    const data = await response.json().catch(() => ({}));
+    }).catch(() => null);
+    const data = response ? await response.json().catch(() => ({})) : {};
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!response?.ok) {
+      setMessage({ text: detailMessage(data.detail), failed: true, form: "edit" });
       return;
     }
     const parentEmail = String(form.get("parent_email") || "");
-    setMessage({ text: `Student updated.${parentStatusNote(data.parent_status, parentEmail)}`, failed: false });
-    setEditingId(null);
+    setMessage({ text: `Student updated.${parentStatusNote(data.parent_status, parentEmail)}`, failed: false, form: "roster" });
+    closeEdit();
     router.refresh();
   }
 
@@ -131,14 +143,14 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ parent_email: form.get("parent_email") }),
-    });
-    const data = await response.json().catch(() => ({}));
+    }).catch(() => null);
+    const data = response ? await response.json().catch(() => ({})) : {};
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!response?.ok) {
+      setMessage({ text: detailMessage(data.detail), failed: true, form: "link" });
       return;
     }
-    setMessage({ text: "Parent linked to this student.", failed: false });
+    setMessage({ text: "Parent linked to this student.", failed: false, form: "roster" });
     setLinkingId(null);
     router.refresh();
   }
@@ -151,12 +163,14 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
       <div className="card">
         <h2>Student roster</h2>
         {students.length === 0 ? (
-          <p className="muted">No students yet.</p>
+          <p className="muted">
+            No students yet. Add one below, or <Link href="/school/coordinator/students/bulk-upload">use bulk upload</Link> for many at once.
+          </p>
         ) : (
           <div className="table-wrap">
             <table className="table">
               <thead>
-                <tr><th>Student ID</th><th>Name</th><th>Grade/Class</th><th>Parent</th><th>Actions</th></tr>
+                <tr><th>Student ID</th><th>Name</th><th>Grade/Class</th><th>Section</th><th>Roll no.</th><th>Parent</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {students.map((s) => (
@@ -164,9 +178,11 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
                     <td><code>{s.student_code}</code></td>
                     <td>{s.full_name}</td>
                     <td>{s.grade_or_class || "-"}</td>
+                    <td>{s.section || "-"}</td>
+                    <td>{s.roll_number || "-"}</td>
                     <td>{s.pending_parent_email ? <span className="status pending">Invite sent to {s.pending_parent_email}</span> : "-"}</td>
                     <td style={{ display: "flex", gap: 8 }}>
-                      <button className="btn ghost small" onClick={() => { setEditingId(s.id); setLinkingId(null); }}>Edit</button>
+                      <button className="btn ghost small" onClick={(e) => { lastEditButton.current = e.currentTarget; setEditingId(s.id); setLinkingId(null); }}>Edit</button>
                       <button className="btn ghost small" onClick={() => { setLinkingId(s.id); setEditingId(null); }}>Link parent</button>
                       <a className="btn ghost small" href={`/school/coordinator/students/${s.id}`}>Timeline</a>
                     </td>
@@ -176,116 +192,57 @@ export default function SchoolStudentsPanel({ students }: { students: Student[] 
             </table>
           </div>
         )}
+        {message?.form === "roster" && <FormMessage message={message} />}
       </div>
 
       {editing && (
         <div className="action-card">
-          <h3>Edit {editing.full_name} <span className="muted" style={{ fontSize: 13 }}>({editing.student_code})</span></h3>
-          <form className="form" onSubmit={(e) => saveEdit(e, editing.id)}>
-            <div className="field">
-              <label htmlFor="edit-full-name">Full name</label>
-              <input id="edit-full-name" name="full_name" defaultValue={editing.full_name} required />
-            </div>
-            <div className="field">
-              <label htmlFor="edit-grade">Grade/Class</label>
-              <input id="edit-grade" name="grade_or_class" defaultValue={editing.grade_or_class || ""} />
-            </div>
-            <div className="field">
-              <label htmlFor="edit-grade-level">Grade level (1-12, optional)</label>
-              <input id="edit-grade-level" name="grade_level" type="number" min={1} max={12} step={1} defaultValue={editing.grade_level ?? ""} />
-            </div>
-            <div className="field">
-              <label htmlFor="edit-teacher">Assigned Teacher</label>
-              {/* Includes inactive teachers here (unlike the create form below) so an
-                  already-assigned Teacher who's since been deactivated still shows up as
-                  the selected option -- otherwise the select would silently fall back to
-                  "Unassigned" and an unrelated "Save changes" click would clear it. */}
-              <select id="edit-teacher" name="assigned_teacher_user_id" defaultValue={editing.assigned_teacher_user_id || ""}>
-                <option value="">Unassigned</option>
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}{t.active ? "" : " (inactive)"}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="edit-parent-name">Parent&apos;s name</label>
-              <input id="edit-parent-name" name="parent_name" placeholder={editing.pending_parent_email ? "" : "Only used if this parent has no account yet"} />
-            </div>
-            <div className="field">
-              <label htmlFor="edit-parent-email">Parent&apos;s email</label>
-              <input id="edit-parent-email" name="parent_email" type="email" defaultValue={editing.pending_parent_email || ""} placeholder="Sends an invite if they don't have an account yet" />
-            </div>
-            <div className="field" style={{ flexDirection: "row", gap: 12 }}>
-              <button className="btn" disabled={busy}>{busy ? "Saving…" : "Save changes"}</button>
-              <button type="button" className="btn secondary" onClick={() => setEditingId(null)}>Cancel</button>
-            </div>
+          <h3 id="edit-heading" ref={editHeading} tabIndex={-1}>Edit {editing.full_name} <span className="muted" style={{ fontSize: 13 }}>({editing.student_code})</span></h3>
+          {/* key: a different student remounts the form so every defaultValue is that student's. */}
+          <form className="form" key={editing.id} aria-busy={busy} onSubmit={(e) => saveEdit(e, editing.id)}>
+            <fieldset className="form-busy-wrap" disabled={busy}>
+              <SchoolStudentFields idPrefix="edit" student={editing} teachers={teachers} includeInactiveTeachers />
+              <div className="field" style={{ flexDirection: "row", gap: 12 }}>
+                <button className="btn">{busy ? "Saving…" : "Save changes"}</button>
+                <button type="button" className="btn secondary" onClick={closeEdit}>Cancel</button>
+              </div>
+            </fieldset>
           </form>
+          {message?.form === "edit" && <FormMessage message={message} />}
         </div>
       )}
 
       {linking && (
         <div className="action-card">
           <h3>Link a parent to {linking.full_name}</h3>
-          <form className="form" onSubmit={(e) => linkParent(e, linking.id)}>
-            <div className="field">
-              <label htmlFor="link-parent-email">Parent&apos;s email</label>
-              <input id="link-parent-email" name="parent_email" type="email" required />
-              <span className="muted" style={{ fontSize: 12 }}>Must already be an accepted Parent account at your own school.</span>
-            </div>
-            <div className="field" style={{ flexDirection: "row", gap: 12 }}>
-              <button className="btn" disabled={busy}>{busy ? "Linking…" : "Link parent"}</button>
-              <button type="button" className="btn secondary" onClick={() => setLinkingId(null)}>Cancel</button>
-            </div>
+          <form className="form" aria-busy={busy} onSubmit={(e) => linkParent(e, linking.id)}>
+            <fieldset className="form-busy-wrap" disabled={busy}>
+              <div className="field">
+                <label htmlFor="link-parent-email">Parent&apos;s email</label>
+                <input id="link-parent-email" name="parent_email" type="email" required />
+                <span className="muted" style={{ fontSize: 12 }}>Must already be an accepted Parent account at your own school.</span>
+              </div>
+              <div className="field" style={{ flexDirection: "row", gap: 12 }}>
+                <button className="btn">{busy ? "Linking…" : "Link parent"}</button>
+                <button type="button" className="btn secondary" onClick={() => setLinkingId(null)}>Cancel</button>
+              </div>
+            </fieldset>
           </form>
+          {message?.form === "link" && <FormMessage message={message} />}
         </div>
       )}
 
       <div className="action-card">
         <h3>Add one student</h3>
-        <form className="form" onSubmit={createStudent}>
-          <div className="field">
-            <label htmlFor="new-full-name">Full name</label>
-            <input id="new-full-name" name="full_name" required />
-          </div>
-          <div className="field">
-            <label htmlFor="new-dob">Date of birth</label>
-            <input id="new-dob" name="date_of_birth" type="date" />
-          </div>
-          <div className="field">
-            <label htmlFor="new-grade">Grade/Class</label>
-            <input id="new-grade" name="grade_or_class" />
-          </div>
-          <div className="field">
-            <label htmlFor="new-grade-level">Grade level (1-12, optional)</label>
-            <input id="new-grade-level" name="grade_level" type="number" min={1} max={12} step={1} />
-          </div>
-          <div className="field">
-            <label htmlFor="new-teacher">Assigned Teacher</label>
-            <select id="new-teacher" name="assigned_teacher_user_id" defaultValue="">
-              <option value="">Unassigned</option>
-              {teachers.filter((t) => t.active).map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="new-parent-name">Parent&apos;s name</label>
-            <input id="new-parent-name" name="parent_name" placeholder="Optional -- only used if they don't have an account yet" />
-          </div>
-          <div className="field">
-            <label htmlFor="new-parent-email">Parent&apos;s email</label>
-            <input id="new-parent-email" name="parent_email" type="email" placeholder="Optional -- sends them an invite" />
-          </div>
-          <button className="btn" disabled={busy}>{busy ? "Saving…" : "Add student"}</button>
+        <form className="form" aria-busy={busy} onSubmit={createStudent}>
+          <fieldset className="form-busy-wrap" disabled={busy}>
+            <SchoolStudentFields idPrefix="new" teachers={teachers} includeInactiveTeachers={false} />
+            <button className="btn">{busy ? "Saving…" : "Add student"}</button>
+          </fieldset>
         </form>
+        {message?.form === "create" && <FormMessage message={message} />}
         <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>Adding many students at once? <Link href="/school/coordinator/students/bulk-upload">Use bulk upload</Link> instead.</p>
       </div>
-
-      {message && (
-        <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite">
-          {message.text}
-        </div>
-      )}
     </div>
   );
 }
