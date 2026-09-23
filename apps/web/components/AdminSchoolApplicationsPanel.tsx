@@ -2,15 +2,12 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import FormMessage, { type FormMessageState } from "@/components/FormMessage";
+import { detailMessage, sendJson } from "@/lib/apiErrors";
+
 type UniversityOption = { id: string; name: string; city: string };
 type BridgedApplication = { id: string; student_name: string; student_code: string; university_name: string; status: string; created_at: string };
 type ResolvedStudent = { id: string; full_name: string; student_code: string; school_name: string | null };
-
-function detailMessage(detail: unknown) {
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
-  return "Unable to complete this action.";
-}
 
 // DEC-SCOPE-018 (2026-09-15): Overseas Admin/Counselor links a School-affiliated student
 // to a real Overseas application -- never school_coordinator, per direct decision. Looks
@@ -23,7 +20,7 @@ export default function AdminSchoolApplicationsPanel() {
   const [studentCode, setStudentCode] = useState("");
   const [resolved, setResolved] = useState<ResolvedStudent | null>(null);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  const [message, setMessage] = useState<FormMessageState | null>(null);
 
   function loadApplications() {
     fetch("/api/v1/overseas-admin/school-applications")
@@ -48,7 +45,7 @@ export default function AdminSchoolApplicationsPanel() {
     const response = await fetch(`/api/v1/overseas-admin/school-students/lookup?code=${encodeURIComponent(code)}`);
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+      setMessage({ text: detailMessage(data.detail, "Unable to complete this action."), failed: true });
       return;
     }
     setResolved(data);
@@ -63,15 +60,10 @@ export default function AdminSchoolApplicationsPanel() {
     const form = new FormData(event.currentTarget);
     setBusy(true);
     setMessage(null);
-    const response = await fetch(`/api/v1/overseas-admin/school-students/${resolved.id}/applications`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ university_id: form.get("university_id"), intake: form.get("intake") }),
-    });
-    const data = await response.json().catch(() => ({}));
+    const result = await sendJson(`/api/v1/overseas-admin/school-students/${resolved.id}/applications`, "POST", { university_id: form.get("university_id"), intake: form.get("intake") });
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!result.ok) {
+      setMessage({ text: result.message, failed: true });
       return;
     }
     setMessage({ text: `Application started for ${resolved.full_name}.`, failed: false });
@@ -111,11 +103,7 @@ export default function AdminSchoolApplicationsPanel() {
           <button className="btn" disabled={busy}>{busy ? "Starting…" : "Start application"}</button>
         </form>
       )}
-      {message && (
-        <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 8 }}>
-          {message.text}
-        </div>
-      )}
+      {message && <FormMessage message={message} />}
       <div className="table-wrap" style={{ marginTop: 16 }}>
         <h4>Linked applications</h4>
         {!applications || applications.length === 0 ? (

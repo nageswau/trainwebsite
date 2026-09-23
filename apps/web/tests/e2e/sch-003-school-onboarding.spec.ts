@@ -22,6 +22,7 @@ test("overseas admin creates a school + seed coordinator, who invites a principa
   await page.fill("#school-city", "Testville");
   await page.fill("#school-coordinator-name", "E2E Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
   await expect(page.getByRole("cell", { name: `E2E School ${unique}` })).toBeVisible();
@@ -89,6 +90,7 @@ test("a consumed invite token shows an honest, specific message, not a generic b
   await page.fill("#school-name", `E2E School B ${unique}`);
   await page.fill("#school-coordinator-name", "E2E Coordinator B");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
@@ -138,6 +140,7 @@ test("School ID is generated and shown on both the create panel and the Partner 
   await page.selectOption("#school-board", "CBSE");
   await page.fill("#school-coordinator-name", "E2E Profile Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
 
   const successMessage = page.getByText(/School created\. School code [A-Z0-9]{8}\./);
@@ -169,6 +172,7 @@ test("admin can look up a school by its School ID and edit its profile (ENH-009)
   await page.fill("#school-name", schoolName);
   await page.fill("#school-coordinator-name", "E2E Edit Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   const successMessage = page.getByText(/School created\. School code [A-Z0-9]{8}\./);
   await expect(successMessage).toBeVisible();

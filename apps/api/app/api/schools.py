@@ -18,10 +18,11 @@ import secrets
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from sqlalchemy import select, text
-from sqlalchemy.exc import DBAPIError, IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -808,7 +809,7 @@ TIER_SERVICES: dict[str, list[tuple[str, str]]] = {
     ],
     "silver": [
         ("individual_counselling", "Individual counselling"),
-        ("web_designing", "Web designing"),
+        ("web_designing", "Digital skills"),  # ENH-022 D13: named as the skills tracker names the module (key unchanged)
     ],
     "gold": [
         ("application_support", "Application support"),
@@ -837,6 +838,64 @@ def _cumulative_services(tier: str | None) -> list[tuple[str, str]]:
     for t in TIER_ORDER[: TIER_ORDER.index(tier) + 1]:
         services.extend(TIER_SERVICES[t])
     return services
+
+
+# ENH-022 / DEC-SCOPE-027: the tier is enforced on every write to a TIER_SERVICES service, not only reported above.
+TIER_TIMEZONE = ZoneInfo("Asia/Kolkata")  # D10: a partnership expires on the India calendar
+TIER_DENIED = "school.tier_access_denied"
+NO_ACTIVE_TIER = "This school has no active partnership tier."
+SERVICE_LABELS = {key: label for services in TIER_SERVICES.values() for key, label in services}
+# Request values -> the service they consume; also the allowlists those request fields are validated against.
+ACTIVITY_SERVICE_KEYS = {"career_seminar": "career_seminar", "career_awareness_session": "career_awareness_session", "parent_orientation": "parent_orientation", "campus_visit": "monthly_campus_visits"}
+TEST_PREP_SERVICE_KEYS = {"ielts": "ielts_coaching", "sat": "sat_coaching"}
+
+
+def _today_ist() -> date:
+    return datetime.now(TIER_TIMEZONE).date()
+
+
+def _minimum_tier(service_key: str) -> str:
+    for tier in TIER_ORDER:
+        if any(key == service_key for key, _ in TIER_SERVICES[tier]):
+            return tier
+    raise ValueError(f"Unknown tier service key: {service_key!r}")
+
+
+def _entitlement_denial(tier: str | None, valid_until: date | None, service_key: str | None, today: date) -> tuple[str, str] | None:
+    """(reason, 403 message) when the school may not use `service_key`, else None. `service_key=None` asks only for a
+    valid tier (D7). An unknown key raises: a mis-wired call site must fail loudly, never deny forever in silence."""
+    minimum = _minimum_tier(service_key) if service_key is not None else None
+    if tier not in TIER_ORDER:
+        return "no_tier", NO_ACTIVE_TIER
+    if valid_until is not None and valid_until < today:
+        return "expired", f"This school's partnership expired on {valid_until.strftime('%d %b %Y')}."
+    if service_key is not None and service_key not in {key for key, _ in _cumulative_services(tier)}:
+        return "not_included", (
+            f"This school's {tier.capitalize()} partnership does not include {SERVICE_LABELS[service_key]} "
+            f"(requires {minimum.capitalize()} or higher)."
+        )
+    return None
+
+
+async def require_school_entitlement(db: AsyncSession, user: User, school_id: UUID, service_key: str | None) -> None:
+    """403 unless the school's valid cumulative tier includes `service_key`. Call it after the route's own role and scope
+    checks and before any write: a denial commits its audit row (D12), so nothing else may be pending in the session."""
+    school = await db.get(School, school_id)
+    tier = school.tier if school else None
+    denial = _entitlement_denial(tier, school.tier_valid_until if school else None, service_key, _today_ist())
+    if denial is None:
+        return
+    reason, message = denial
+    fields = {"actor_id": str(user.id), "role": user.role, "school_id": str(school_id), "service_key": service_key, "reason": reason}
+    db.add(AuditLog(user_id=user.id, action=TIER_DENIED, entity_type="school", entity_id=str(school_id), outcome="denied", metadata_json={"service_key": service_key, "reason": reason, "tier": tier}))
+    try:
+        await db.commit()
+    except SQLAlchemyError:
+        # The denial stands even when its audit row cannot be written.
+        await db.rollback()
+        logger.exception("tier_access_denied_audit_failed", extra={"extra_fields": fields})
+    logger.warning("tier_access_denied", extra={"extra_fields": fields})
+    raise HTTPException(403, message)
 
 
 @router.get("/entitlements")
@@ -1396,8 +1455,10 @@ async def create_activity(payload: dict, user: User = Depends(get_current_user),
     # DEC-SCOPE-017: optional entitlement-tracking category -- lets an Entitlements-tracked
     # activity (career seminar, parent orientation, campus visit, ...) actually feed
     # `GET /school/entitlements`'s usage counts; free-text activities keep working unset.
-    if activity_type and activity_type not in {"career_seminar", "career_awareness_session", "parent_orientation", "campus_visit"}:
+    if activity_type and activity_type not in ACTIVITY_SERVICE_KEYS:
         raise HTTPException(422, "activity_type must be one of career_seminar, career_awareness_session, parent_orientation, campus_visit")
+    # ENH-022: a typed activity consumes its tier service; a free-text one still needs a valid partnership (D7).
+    await require_school_entitlement(db, user, school_id, ACTIVITY_SERVICE_KEYS[activity_type] if activity_type else None)
     activity = SchoolActivity(school_id=school_id, title=title, scheduled_at=datetime.fromisoformat(scheduled_at), created_by_user_id=user.id, activity_type=activity_type)
     db.add(activity)
     await db.flush()
@@ -1419,6 +1480,7 @@ async def mark_attendance(activity_id: UUID, payload: dict, user: User = Depends
     activity = await db.get(SchoolActivity, activity_id)
     if not activity or activity.school_id != school_id:
         raise HTTPException(404, "Activity not found")
+    await require_school_entitlement(db, user, school_id, ACTIVITY_SERVICE_KEYS[activity.activity_type] if activity.activity_type else None)
     records = payload.get("records", [])
     if not isinstance(records, list) or not records:
         raise HTTPException(422, "records must be a non-empty list of {student_id, present}")
@@ -1635,6 +1697,7 @@ async def create_career_record(payload: dict, user: User = Depends(get_current_u
     if not student_id:
         raise HTTPException(422, "school_student_id is required")
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    await require_school_entitlement(db, user, student.school_id, "individual_counselling")  # D5: every record type
     record_type = payload.get("record_type")
     if record_type not in {"guidance_session", "counselling_note", "recommendation"}:
         raise HTTPException(422, "record_type must be one of guidance_session, counselling_note, recommendation")
@@ -1687,6 +1750,7 @@ async def create_psychometric_record(payload: dict, user: User = Depends(get_cur
     if not student_id:
         raise HTTPException(422, "school_student_id is required")
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    await require_school_entitlement(db, user, student.school_id, "psychometric_test")
     assessment_type = str(payload.get("assessment_type", "")).strip()
     if not assessment_type:
         raise HTTPException(422, "assessment_type is required")
@@ -1713,7 +1777,8 @@ async def update_psychometric_record(record_id: UUID, payload: dict, user: User 
     record = await db.get(SchoolPsychometricRecord, record_id)
     if not record:
         raise HTTPException(404, "Record not found")
-    await _student_in_portfolio(db, user, record.school_student_id)
+    student = await _student_in_portfolio(db, user, record.school_student_id)
+    await require_school_entitlement(db, user, student.school_id, "psychometric_test")
     became_completed = False
     if "report_url" in payload:
         record.report_url = payload["report_url"]
@@ -1771,8 +1836,9 @@ async def create_test_prep_record(payload: dict, user: User = Depends(get_curren
         raise HTTPException(422, "school_student_id is required")
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
     test_type = payload.get("test_type")
-    if test_type not in {"ielts", "sat"}:
+    if test_type not in TEST_PREP_SERVICE_KEYS:
         raise HTTPException(422, "test_type must be one of ielts, sat")
+    await require_school_entitlement(db, user, student.school_id, TEST_PREP_SERVICE_KEYS[test_type])
     record = SchoolTestPrepRecord(school_student_id=student.id, academic_team_user_id=user.id, test_type=test_type, target_score=payload.get("target_score"))
     db.add(record)
     await db.flush()
@@ -1789,7 +1855,8 @@ async def update_test_prep_record(record_id: UUID, payload: dict, user: User = D
     record = await db.get(SchoolTestPrepRecord, record_id)
     if not record:
         raise HTTPException(404, "Record not found")
-    await _student_in_portfolio(db, user, record.school_student_id)
+    student = await _student_in_portfolio(db, user, record.school_student_id)
+    await require_school_entitlement(db, user, student.school_id, TEST_PREP_SERVICE_KEYS[record.test_type])  # the stored test, never the body's
     became_completed = False
     if "mock_scores" in payload:
         record.mock_scores = payload["mock_scores"] or []
@@ -1845,6 +1912,7 @@ async def create_language_record(payload: dict, user: User = Depends(get_current
     if not student_id:
         raise HTTPException(422, "school_student_id is required")
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    await require_school_entitlement(db, user, student.school_id, "foreign_language_classes")
     language = str(payload.get("language", "")).strip()
     if not language:
         raise HTTPException(422, "language is required")
@@ -1864,7 +1932,8 @@ async def update_language_record(record_id: UUID, payload: dict, user: User = De
     record = await db.get(SchoolLanguageRecord, record_id)
     if not record:
         raise HTTPException(404, "Record not found")
-    await _student_in_portfolio(db, user, record.school_student_id)
+    student = await _student_in_portfolio(db, user, record.school_student_id)
+    await require_school_entitlement(db, user, student.school_id, "foreign_language_classes")
     became_certified = False
     if "classes_attended" in payload:
         record.classes_attended = int(payload["classes_attended"])

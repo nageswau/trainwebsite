@@ -34,6 +34,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.fill("#school-name", schoolName);
   await page.fill("#school-coordinator-name", "E2E SVC Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
@@ -204,6 +205,7 @@ test("the School portfolio search narrows the dropdown without losing a selectio
     await page.fill("#school-name", name);
     await page.fill("#school-coordinator-name", "E2E Search Coordinator");
     await page.fill("#school-coordinator-email", `sch456-e2e-search-coord-${unique}-${name === alphaName ? "a" : "b"}@example.local`);
+    await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
     await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
     await expect(page.getByText(/School created\./)).toBeVisible();
   }
@@ -255,6 +257,7 @@ test("Select all / Select visible / Clear visible / Clear all act on the School 
     await page.fill("#school-name", name);
     await page.fill("#school-coordinator-name", "E2E Bulk Coordinator");
     await page.fill("#school-coordinator-email", `sch456-e2e-bulk-coord-${unique}-${name === alphaName ? "a" : "b"}@example.local`);
+    await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
     await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
     await expect(page.getByText(/School created\./)).toBeVisible();
   }

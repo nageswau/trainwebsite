@@ -51,7 +51,7 @@ async def _user(db_session, *, role: str, full_name: str, school_id=None, assign
 
 async def _school(db_session) -> dict:
     admin = await _user(db_session, role="overseas_admin", full_name="Overseas Admin")
-    school = School(name=f"SCH-007 Test School {uuid.uuid4().hex[:6]}", created_by_user_id=admin.id)
+    school = School(name=f"SCH-007 Test School {uuid.uuid4().hex[:6]}", created_by_user_id=admin.id, tier="platinum")  # ENH-022: entitled to every service
     db_session.add(school)
     await db_session.flush()
     coordinator = await _user(db_session, role="school_coordinator", full_name="Coordinator", school_id=school.id, assigned_by=admin)
