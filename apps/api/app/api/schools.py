@@ -20,6 +20,7 @@ from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,7 +59,7 @@ from app.models import (
     UserRoleAssignment,
     VisaCase,
 )
-from app.schemas import GradeHistoryResponse, StudentPromotionRequest, StudentPromotionResponse
+from app.schemas import MASTER_FIELD_KEYS, GradeHistoryResponse, StudentMasterFields, StudentPromotionRequest, StudentPromotionResponse, validation_message
 from app.services.integrations import send_notification
 from app.services.mailer import send_parent_notification_email, send_school_invite_email
 
@@ -592,7 +593,56 @@ def _student_out(s: SchoolStudent) -> dict:
         "pending_parent_email": s.pending_parent_email,
         "academic_year_id": s.academic_year_id,
         "grade_level": s.grade_level,
+        # ENH-025: additive; the photo itself is only ever served by GET .../photo, never as a key or URL.
+        **{name: getattr(s, name) for name in MASTER_FIELD_KEYS},
+        "has_photo": s.photo_key is not None,
     }
+
+
+# --- ENH-025: Student Master fields (DEC-SCOPE-027) -------------------------------------------------
+
+ROLL_CONSTRAINT = "uq_school_students_roll"
+ROLL_TAKEN = "roll_number '{roll}' is already used in this grade and section for this academic year"
+
+
+def _master_fields_or_422(model: type[BaseModel], data: dict) -> BaseModel:
+    try:
+        return model.model_validate(data)
+    except ValidationError as exc:
+        raise HTTPException(422, validation_message(exc)) from None
+
+
+def _master_subset(payload: dict) -> dict:
+    """Only the ENH-025 keys; every other key keeps its existing hand-written handling (or is ignored, as today)."""
+    return {key: payload[key] for key in MASTER_FIELD_KEYS if key in payload}
+
+
+def _apply_master_fields(student: SchoolStudent, fields: BaseModel) -> list[str]:
+    """Set every field the client sent; return the names that actually changed (for audit -- never values)."""
+    changed = []
+    for name in sorted(fields.model_fields_set):
+        value = getattr(fields, name)
+        if getattr(student, name) != value:
+            setattr(student, name, value)
+            changed.append(name)
+    return changed
+
+
+def _is_roll_conflict(exc: IntegrityError) -> bool:
+    return ROLL_CONSTRAINT in str(exc.orig)
+
+
+async def _flush_or_409(db: AsyncSession, roll_number: str | None) -> None:
+    """Flush inside a savepoint so a roll-number clash is a clean 409 decided by the unique index (no
+    read-then-check race). Any other integrity error is re-raised unchanged."""
+    try:
+        async with db.begin_nested():
+            await db.flush()
+    except IntegrityError as exc:
+        if _is_roll_conflict(exc):
+            logger.info("student_roll_conflict", extra={"extra_fields": {"outcome": "rejected"}})
+            raise HTTPException(409, ROLL_TAKEN.format(roll=roll_number)) from None
+        raise
 
 
 # --- SCH-007: Parent Portal notifications ---------------------------------------------------
@@ -1160,6 +1210,7 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
     full_name = str(payload.get("full_name", "")).strip()
     if not full_name:
         raise HTTPException(422, "full_name is required")
+    master = _master_fields_or_422(StudentMasterFields, _master_subset(payload))
     # assigned_teacher_user_id (picker) takes precedence over assigned_teacher_email
     # (kept for SCH-002's bulk-upload CSV path, which only ever has an email column).
     assigned_teacher_user_id = None
@@ -1187,8 +1238,9 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
         created_by_user_id=user.id,
         assigned_teacher_user_id=assigned_teacher_user_id,
     )
+    changed_fields = _apply_master_fields(student, master)
     db.add(student)
-    await db.flush()
+    await _flush_or_409(db, student.roll_number)
     parent_status = None
     dev_token = None
     parent_email = payload.get("parent_email")
@@ -1197,7 +1249,7 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
         parent_status, error, dev_token = await _link_or_invite_parent(db, school=school, student=student, parent_email=str(parent_email), parent_name=payload.get("parent_name"), coordinator=user)
         if error:
             raise HTTPException(422, error)
-    db.add(AuditLog(user_id=user.id, action="school.student_create", entity_type="school_student", entity_id=str(student.id), metadata_json={"school_id": str(school_id), "parent_status": parent_status}))
+    db.add(AuditLog(user_id=user.id, action="school.student_create", entity_type="school_student", entity_id=str(student.id), metadata_json={"school_id": str(school_id), "parent_status": parent_status, "changed_fields": changed_fields}))
     await db.commit()
     out = {**_student_out(student), "parent_status": parent_status}
     if dev_token:
@@ -1215,6 +1267,7 @@ async def update_student(student_id: UUID, payload: dict, user: User = Depends(g
         raise HTTPException(404, "Student not found")
     if student.school_id != school_id:
         raise HTTPException(403, "This student is at a different institution")
+    master = _master_fields_or_422(StudentMasterFields, _master_subset(payload))
     if "full_name" in payload and payload["full_name"]:
         student.full_name = payload["full_name"]
     if "grade_or_class" in payload:
@@ -1241,6 +1294,8 @@ async def update_student(student_id: UUID, payload: dict, user: User = Depends(g
             student.assigned_teacher_user_id = teacher.id
         else:
             student.assigned_teacher_user_id = None
+    changed_fields = _apply_master_fields(student, master)
+    await _flush_or_409(db, student.roll_number)
     parent_status = None
     dev_token = None
     if "parent_email" in payload and payload["parent_email"]:
@@ -1248,7 +1303,7 @@ async def update_student(student_id: UUID, payload: dict, user: User = Depends(g
         parent_status, error, dev_token = await _link_or_invite_parent(db, school=school, student=student, parent_email=str(payload["parent_email"]), parent_name=payload.get("parent_name"), coordinator=user)
         if error:
             raise HTTPException(422, error)
-    db.add(AuditLog(user_id=user.id, action="school.student_update", entity_type="school_student", entity_id=str(student.id), metadata_json={"parent_status": parent_status}))
+    db.add(AuditLog(user_id=user.id, action="school.student_update", entity_type="school_student", entity_id=str(student.id), metadata_json={"parent_status": parent_status, "changed_fields": changed_fields}))
     await db.commit()
     out = {**_student_out(student), "parent_status": parent_status}
     if dev_token:
