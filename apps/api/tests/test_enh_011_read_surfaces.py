@@ -106,8 +106,6 @@ async def test_frozen_enrolment_still_visible_at_the_new_school(client, db_sessi
 @pytest.mark.parametrize("tier,expected", [("bronze", {"soft_skills": 2}), ("silver", {"soft_skills": 2, "web_designing": 1})])
 async def test_entitlements_count_non_withdrawn_enrolments(client, db_session, tier, expected):
     w = await skills_world(db_session)
-    await db_session.execute(update(School).where(School.id == w["a"]["school"].id).values(tier=tier))
-    await db_session.commit()
     kid0, kid1 = w["a"]["students"]
     await login(client, w["counselor"].email)
     soft = await create_batch(client, w["a"]["school"].id)
@@ -115,6 +113,10 @@ async def test_entitlements_count_non_withdrawn_enrolments(client, db_session, t
     await enrol(client, soft["id"], kid0, kid1)
     rows = await enrol(client, digital["id"], kid0, kid1)
     await client.patch(f"{ENROLMENTS}/{rows[0]['id']}", json={"status": "withdrawn"})
+    # ENH-022: a Bronze school can no longer create Digital Skills work, so the batches are made while the school is still
+    # Platinum and the tier is set only now (a downgrade after use) -- the report below is what this test is about.
+    await db_session.execute(update(School).where(School.id == w["a"]["school"].id).values(tier=tier))
+    await db_session.commit()
     await login(client, w["a"]["coordinator"].email)
     services = {s["key"]: s["used"] for s in (await client.get("/api/v1/school/entitlements")).json()["services"]}
     assert {k: services[k] for k in expected} == expected
