@@ -1,5 +1,6 @@
 """ENH-023 (DEC-SCOPE-029) -- tier changes and grandfathered work against a real database."""
 
+import logging
 from datetime import date, timedelta
 from uuid import UUID
 
@@ -193,3 +194,71 @@ async def test_preview_errors(client, db_session):
     assert missing.status_code == 404
     bad = await client.get(f"{SCHOOLS}/{w['school'].id}/tier-change-preview", params={"tier": "diamond"})
     assert (bad.status_code, bad.json()["detail"]) == (422, "tier must be one of bronze, silver, gold, platinum")
+
+
+from app.api import schools  # noqa: E402
+from app.models import Notification, NotificationDelivery  # noqa: E402
+
+
+async def notices_for(db, user_id) -> list[Notification]:
+    return list((await db.scalars(select(Notification).where(Notification.user_id == user_id))).all())
+
+
+# --- Notifications (AC-1..AC-3, AC-11) ---------------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_upgrade_notifies_coordinator_principal_and_admin_only(client, db_session):
+    w = await world(db_session, "gold")
+    await change_tier(client, w, tier="platinum")
+    [coord] = await notices_for(db_session, w["coordinator"].id)
+    [principal] = await notices_for(db_session, w["principal"].id)
+    [admin] = await notices_for(db_session, w["admin"].id)
+    assert coord.title == principal.title == "Your partnership is now Platinum"
+    assert "Visa support" in coord.body
+    assert (coord.action_url, principal.action_url) == ("/school/coordinator/entitlements", "/school/principal/entitlements")
+    assert admin.title.startswith("Tier change recorded: ") and admin.action_url is None
+    assert await notices_for(db_session, w["teacher"].id) == [] and await notices_for(db_session, w["parent"].id) == []
+    delivered = await db_session.scalar(select(func.count()).select_from(NotificationDelivery).where(NotificationDelivery.notification_id == coord.id, NotificationDelivery.channel == "email"))
+    assert delivered == 1
+
+
+@pytest.mark.asyncio
+async def test_downgrade_notice_lists_lost_services(client, db_session):
+    w = await world(db_session, "platinum")
+    await change_tier(client, w, tier=None)
+    [coord] = await notices_for(db_session, w["coordinator"].id)
+    assert coord.title == "Your partnership changed from Platinum to no partnership tier"
+    assert "Work already started for them can still be completed." in coord.body
+
+
+@pytest.mark.asyncio
+async def test_unchanged_tier_notifies_nobody(client, db_session):
+    w = await world(db_session, "gold")
+    await change_tier(client, w, tier="gold")
+    await change_tier(client, w, tier_valid_until="2027-03-31")
+    assert await notices_for(db_session, w["coordinator"].id) == []
+    assert await notices_for(db_session, w["admin"].id) == []
+
+
+@pytest.mark.asyncio
+async def test_failing_email_never_fails_or_undoes_the_tier_change(client, db_session, monkeypatch, caplog):
+    async def boom(**kwargs):
+        raise RuntimeError(f"recipient refused: <{kwargs['to_email']}>")  # what real SMTP errors look like
+
+    monkeypatch.setattr(schools, "send_parent_notification_email", boom)
+    w = await world(db_session, "gold")
+    with caplog.at_level(logging.WARNING, logger="app.admin"):
+        body = await change_tier(client, w, tier="platinum")
+    assert body["tier"] == "platinum"
+    await db_session.refresh(w["school"])
+    assert w["school"].tier == "platinum"
+    assert len(await tier_rows(db_session, w["school"].id)) == 1
+    # S1 / AC-18: ids and the error type only -- never the address the exception carried, never a traceback.
+    failures = [r for r in caplog.records if r.getMessage() == "tier_change_notification_failed"]
+    assert len(failures) == 3  # coordinator, principal, acting admin
+    for record in failures:
+        assert set(record.extra_fields) == {"school_id", "recipient_id", "error_type"}
+        assert record.extra_fields["error_type"] == "RuntimeError"
+        assert record.exc_info is None
+        assert "@" not in str(record.extra_fields)

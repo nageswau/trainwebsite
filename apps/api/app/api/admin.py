@@ -1137,6 +1137,52 @@ async def list_schools(user: User = Depends(get_current_user), db: AsyncSession 
     return await _school_outs_batch(db, rows)
 
 
+NOTIFICATION_TITLE_MAX = 180  # Notification.title is String(180); a school name alone may be 200 (ENH-023 §9)
+SCHOOL_ENTITLEMENTS_URL = {"school_coordinator": "/school/coordinator/entitlements", "school_principal": "/school/principal/entitlements"}
+
+
+def _tier_notices(school_name: str, change: dict) -> tuple[tuple[str, str], tuple[str, str]]:
+    """((school title, body), (admin title, body)) for a change that moved the tier (ENH-023 spec §4.4)."""
+    from app.api.schools import _tier_name  # noqa: PLC0415
+
+    before, after = _tier_name(change["from_tier"]), _tier_name(change["to_tier"])
+    if change["direction"] == "upgrade":
+        labels = ", ".join(s["label"] for s in change["gained"])
+        school = (f"Your partnership is now {after}", f"{school_name} has moved from {before} to {after}. Newly available: {labels}.")
+        admin_body = f"Newly available: {labels}."
+    else:
+        labels = ", ".join(s["label"] for s in change["lost"])
+        school = (f"Your partnership changed from {before} to {after}", f"These services are no longer available for new work: {labels}. Work already started for them can still be completed.")
+        admin_body = f"No longer available for new work: {labels}. Work already started for them can still be completed."
+    admin_title = f"Tier change recorded: {school_name}, {before} → {after}"
+    return (school[0][:NOTIFICATION_TITLE_MAX], school[1]), (admin_title[:NOTIFICATION_TITLE_MAX], admin_body)
+
+
+async def _notify_tier_change(db: AsyncSession, school_id: UUID, school_name: str, actor_id: UUID, change: dict) -> None:
+    """ENH-023 (D5/D9), for a tier change that has ALREADY committed: the school's active Coordinators and Principals, then the
+    acting admin, each get an in-app notice plus the email channel. Each recipient is tried and committed alone; a failure is
+    logged and swallowed, never undoing or failing the tier change (SCH-007-AC04 pattern, school_skills._notify_after_commit)."""
+    from app.api.schools import _notify_parent  # noqa: PLC0415 -- takes any User: in-app row, email attempt, NotificationDelivery
+
+    (school_title, school_body), (admin_title, admin_body) = _tier_notices(school_name, change)
+    staff = (
+        await db.execute(
+            select(User.id, User.role).where(User.role.in_(list(SCHOOL_ENTITLEMENTS_URL)), User.active.is_(True), User.profile["school_id"].as_string() == str(school_id))
+        )
+    ).all()
+    notices = [(user_id, school_title, school_body, SCHOOL_ENTITLEMENTS_URL[role]) for user_id, role in staff]
+    notices.append((actor_id, admin_title, admin_body, None))
+    for user_id, title, body, action_url in notices:
+        try:
+            recipient = await db.get(User, user_id, populate_existing=True)
+            await _notify_parent(db, recipient, school_name=school_name, title=title, body=body, action_url=action_url)
+            await db.commit()
+        except Exception as exc:  # noqa: BLE001 -- the tier change has committed; see docstring
+            await db.rollback()
+            # No exc_info (security review S1): SMTP errors can carry the recipient's address. NotificationDelivery keeps the detail.
+            logger.warning("tier_change_notification_failed", extra={"extra_fields": {"school_id": str(school_id), "recipient_id": str(user_id), "error_type": type(exc).__name__}})
+
+
 @agents_router.patch("/schools/{school_id}", response_model=SchoolUpdateOut)
 async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-025) -- Overseas Admin updates a School's partnership
@@ -1189,7 +1235,8 @@ async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Dep
         db.add(AuditLog(user_id=user.id, action="school.profile_update", entity_type="school", entity_id=str(school.id), metadata_json={"changed_fields": sorted(profile_fields)}))
     await db.commit()
     out = await _school_out(db, school)
-    # Task 4 inserts the post-commit notification call here.
+    if tier_change and tier_change["direction"] != "unchanged":
+        await _notify_tier_change(db, school.id, school.name, user.id, tier_change)
     return {**out.model_dump(mode="json"), "tier_change": tier_change}
 
 
