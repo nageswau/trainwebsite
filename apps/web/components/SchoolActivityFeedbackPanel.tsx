@@ -5,9 +5,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import ActivityFeedbackDetails from "@/components/ActivityFeedbackDetails";
 import ActivityFeedbackForm from "@/components/ActivityFeedbackForm";
+import LocalDateTime from "@/components/LocalDateTime";
 import { type ActivityFeedback, activityTypeLabel, FEEDBACK_FILTERS, type FeedbackActivity, type FeedbackFilter, participationText } from "@/lib/activityFeedback";
 import { isPage, type Page } from "@/lib/apiErrors";
-import { formatDate } from "@/lib/formatDate";
 
 // ENH-018 (spec §7.1): a school's completed Edusphere activities and their feedback. The first page is server-rendered; the
 // filter and "Load more" fetch on the client (the ENH-005 admin-queue pattern). The coordinator opens the form inline under a
@@ -125,7 +125,9 @@ export default function SchoolActivityFeedbackPanel({ initial, canSubmit }: { in
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px", justifyContent: "space-between", alignItems: "center" }}>
                     <div className="who">
                       <strong>{row.title}</strong>
-                      <span>{`${activityTypeLabel(row.activity_type)} · ${formatDate(row.scheduled_at, true)} · ${participationText(row.participation)}`}</span>
+                      <span>
+                        {activityTypeLabel(row.activity_type)} · <LocalDateTime value={row.scheduled_at} withTime /> · {participationText(row.participation)}
+                      </span>
                     </div>
                     <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                       <span className="badge">{row.feedback ? "Submitted" : "Awaiting feedback"}</span>

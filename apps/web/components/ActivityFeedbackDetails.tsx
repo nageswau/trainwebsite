@@ -1,5 +1,5 @@
+import LocalDateTime from "@/components/LocalDateTime";
 import { type ActivityFeedback, scoreText } from "@/lib/activityFeedback";
-import { formatDate } from "@/lib/formatDate";
 
 // ENH-018: one submitted feedback, read-only. Shared by the school list and the admin list. Free text renders as React text
 // (escaped) and wraps inside its column, so a long unbroken word cannot widen the page.
@@ -17,7 +17,7 @@ export default function ActivityFeedbackDetails({ feedback }: { feedback: Activi
       <dt>Suggestions</dt>
       <dd>{feedback.suggestions ?? "None"}</dd>
       <dt>Submitted by</dt>
-      <dd>{`${feedback.submitted_by_name}, ${formatDate(feedback.submitted_at, true)}`}</dd>
+      <dd>{feedback.submitted_by_name}, <LocalDateTime value={feedback.submitted_at} withTime /></dd>
     </dl>
   );
 }

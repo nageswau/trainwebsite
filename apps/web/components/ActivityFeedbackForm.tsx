@@ -2,9 +2,9 @@
 
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 
+import LocalDateTime from "@/components/LocalDateTime";
 import { type ActivityFeedback, type FeedbackActivity, participationText, SCORE_LABELS } from "@/lib/activityFeedback";
 import { detailMessage, isRequestBody, NOT_COMPLETED } from "@/lib/apiErrors";
-import { formatDate } from "@/lib/formatDate";
 
 type Props = { activity: FeedbackActivity; onSubmitted: (feedback: ActivityFeedback) => void; onDuplicate: () => void; onCancel: () => void };
 
@@ -67,7 +67,9 @@ export default function ActivityFeedbackForm({ activity, onSubmitted, onDuplicat
       <form className="form" onSubmit={submit} aria-labelledby={`${id}-heading`}>
         <div>
           <h3 id={`${id}-heading`} ref={headingRef} tabIndex={-1}>{`Feedback: ${activity.title}`}</h3>
-          <p className="muted" style={{ margin: 0 }}>{`${formatDate(activity.scheduled_at, true)} · ${participationText(activity.participation)}`}</p>
+          <p className="muted" style={{ margin: 0 }}>
+            <LocalDateTime value={activity.scheduled_at} withTime /> · {participationText(activity.participation)}
+          </p>
         </div>
         <ScoreField name="rating" legend="Overall rating" />
         <ScoreField name="satisfaction" legend="School satisfaction" />

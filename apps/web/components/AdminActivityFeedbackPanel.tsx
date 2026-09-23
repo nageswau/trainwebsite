@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import ActivityFeedbackDetails from "@/components/ActivityFeedbackDetails";
+import LocalDateTime from "@/components/LocalDateTime";
 import { type AdminActivityFeedback, activityTypeLabel, participationText } from "@/lib/activityFeedback";
 import { isPage } from "@/lib/apiErrors";
-import { formatDate } from "@/lib/formatDate";
 
 // ENH-018 (spec §7.3): every school's activity feedback for Edusphere management, newest first. Loaded after first paint like
 // the ENH-005 queue. Each feedback is a card (a <dl>) rather than a wide table, so long free text reflows on a phone. The school
@@ -96,7 +96,9 @@ export default function AdminActivityFeedbackPanel() {
               <li key={f.id} className="feedback-row">
                 <div className="who">
                   <strong>{f.activity_title}</strong>
-                  <span>{`${f.school_name} · ${activityTypeLabel(f.activity_type)} · ${formatDate(f.scheduled_at, true)} · ${participationText(f.participation)}`}</span>
+                  <span>
+                    {f.school_name} · {activityTypeLabel(f.activity_type)} · <LocalDateTime value={f.scheduled_at} withTime /> · {participationText(f.participation)}
+                  </span>
                 </div>
                 <ActivityFeedbackDetails feedback={f} />
               </li>
