@@ -54,8 +54,8 @@ describe("Student360Directory", () => {
     expect(screen.getByRole("link", { name: /asha/i })).toHaveAttribute("href", "/school/psychometric-team/students/a/360");
   });
 
-  it("has an empty state", () => {
-    render(<Student360Directory role="psychometric_team" students={[]} />);
-    expect(screen.getByRole("status")).toHaveTextContent(/no students in your portfolio yet/i);
+  it("renders nothing for an empty portfolio -- the dashboard's own panel already says so (sch-004 regression)", () => {
+    const { container } = render(<Student360Directory role="psychometric_team" students={[]} />);
+    expect(container).toBeEmptyDOMElement();
   });
 });
