@@ -845,6 +845,36 @@ TIER_TIMEZONE = ZoneInfo("Asia/Kolkata")  # D10: a partnership expires on the In
 TIER_DENIED = "school.tier_access_denied"
 NO_ACTIVE_TIER = "This school has no active partnership tier."
 SERVICE_LABELS = {key: label for services in TIER_SERVICES.values() for key, label in services}
+
+TIER_UPDATE = "school.tier_update"
+
+
+def _tier_name(tier: str | None) -> str:
+    return tier.capitalize() if tier in TIER_ORDER else "no partnership tier"
+
+
+def _tier_transition(old: str | None, new: str | None) -> tuple[str, list[str], list[str]]:
+    """ENH-023 / DEC-SCOPE-029: (direction, gained keys, lost keys). Built only from `_cumulative_services`, so tier ordering
+    lives in one place; an unknown or None tier has no services. Tiers are cumulative, so a change never both gains and loses."""
+    before = [key for key, _ in _cumulative_services(old)]
+    after = [key for key, _ in _cumulative_services(new)]
+    gained = [key for key in after if key not in before]
+    lost = [key for key in before if key not in after]
+    return ("upgrade" if gained else "downgrade" if lost else "unchanged"), gained, lost
+
+
+def tier_change_payload(old: str | None, new: str | None) -> dict:
+    """The `tier_change` object returned by the tier PATCH and its preview (ENH-023 spec §4.2)."""
+    direction, gained, lost = _tier_transition(old, new)
+    return {
+        "direction": direction,
+        "from_tier": old,
+        "to_tier": new,
+        "gained": [{"key": key, "label": SERVICE_LABELS[key]} for key in gained],
+        "lost": [{"key": key, "label": SERVICE_LABELS[key]} for key in lost],
+    }
+
+
 # Request values -> the service they consume; also the allowlists those request fields are validated against.
 ACTIVITY_SERVICE_KEYS = {"career_seminar": "career_seminar", "career_awareness_session": "career_awareness_session", "parent_orientation": "parent_orientation", "campus_visit": "monthly_campus_visits"}
 TEST_PREP_SERVICE_KEYS = {"ielts": "ielts_coaching", "sat": "sat_coaching"}
