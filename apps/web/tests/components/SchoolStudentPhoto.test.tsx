@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import SchoolStudentPhoto from "@/components/SchoolStudentPhoto";
 
@@ -14,6 +15,14 @@ describe("SchoolStudentPhoto", () => {
   it("shows the initials placeholder when there is no photo", () => {
     render(<SchoolStudentPhoto studentId="s1" name="Asha Rao" hasPhoto={false} canEdit={false} />);
     expect(screen.getByRole("img", { name: "No photo for Asha Rao" }).textContent).toBe("AR");
+  });
+
+  // QA2-01: an <img> in the server HTML can fail before React hydrates, and then onError never runs (the user saw a
+  // broken-image icon). The server HTML carries the placeholder; the image is only created once the component is live.
+  it("server-renders the initials placeholder, never an <img>, even when a photo exists", () => {
+    const html = renderToString(<SchoolStudentPhoto studentId="s1" name="Asha Rao" hasPhoto canEdit={false} />);
+    expect(html).not.toContain("<img");
+    expect(html).toContain("No photo for Asha Rao");
   });
 
   it("renders the image and falls back to the placeholder if it fails to load", () => {
@@ -36,9 +45,10 @@ describe("SchoolStudentPhoto", () => {
     render(<SchoolStudentPhoto studentId="s1" name="Asha Rao" hasPhoto={false} canEdit />);
     const input = screen.getByLabelText(/upload a photo/i);
     fireEvent.change(input, { target: { files: [file("image/gif", 10)] } });
-    expect((await screen.findByRole("alert")).textContent).toContain("JPEG or PNG");
+    // QA2-05: same wording as the server's own check for the same problem.
+    expect((await screen.findByRole("alert")).textContent).toBe("Photo must be a JPEG or PNG image");
     fireEvent.change(input, { target: { files: [file("image/png", 2 * 1024 * 1024 + 1)] } });
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("2 MB"));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Photo must be at most 2 MB"));
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -70,6 +80,7 @@ describe("SchoolStudentPhoto", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ detail: "photo must be a JPEG or PNG image" }), { status: 415 })));
     render(<SchoolStudentPhoto studentId="s1" name="Asha Rao" hasPhoto={false} canEdit />);
     fireEvent.change(screen.getByLabelText(/upload a photo/i), { target: { files: [file("image/png", 10)] } });
-    expect((await screen.findByRole("alert")).textContent).toBe("photo must be a JPEG or PNG image");
+    // QA2-05: the server's wording, in the user's words.
+    expect((await screen.findByRole("alert")).textContent).toBe("Photo must be a JPEG or PNG image");
   });
 });

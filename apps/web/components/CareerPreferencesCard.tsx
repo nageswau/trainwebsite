@@ -1,7 +1,9 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { detailMessage, interestValue, listText, splitList } from "@/lib/schoolStudents";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { detailMessage, fieldFromMessage, interestValue, listText, splitList } from "@/lib/schoolStudents";
+
+const ERROR_ID = "prefs-form-error";
 
 type Prefs = { student_id: string; career_interests: string[] | null; global_education_interest: boolean | null; preferred_countries: string[] | null; preferred_courses: string[] | null };
 type Student = { id: string; full_name: string; school_name: string };
@@ -18,7 +20,17 @@ export default function CareerPreferencesCard({ students }: { students: Student[
   const [studentId, setStudentId] = useState("");
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "error" | "saving">("idle");
-  const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  // `field`: the API field a failure is about (QA2-06) -- that input is marked, described by the error, and focused.
+  const [message, setMessage] = useState<{ text: string; failed: boolean; field?: string | null } | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (message?.failed && message.field) formRef.current?.querySelector<HTMLElement>(`[name="${message.field}"]`)?.focus();
+  }, [message]);
+  const a11y = (name: string, describedBy?: string) => {
+    const on = !!message?.failed && message.field === name;
+    const ids = [describedBy, on ? ERROR_ID : undefined].filter(Boolean).join(" ");
+    return { "aria-invalid": on ? (true as const) : undefined, "aria-describedby": ids || undefined };
+  };
 
   async function load(id: string) {
     setState("loading");
@@ -52,7 +64,7 @@ export default function CareerPreferencesCard({ students }: { students: Student[
     const data = response ? await response.json().catch(() => ({})) : {};
     setState("idle");
     if (!response?.ok) {
-      setMessage({ text: detailMessage(data.detail, "Could not save; please try again."), failed: true });
+      setMessage({ text: detailMessage(data.detail, "Could not save; please try again."), failed: true, field: typeof data.detail === "string" ? fieldFromMessage(data.detail) : null });
       return;
     }
     setPrefs(data);
@@ -90,18 +102,18 @@ export default function CareerPreferencesCard({ students }: { students: Student[
           )}
           {prefs && (
             // key: switching student remounts the form so every defaultValue is that student's.
-            <form className="form" key={prefs.student_id} aria-busy={state === "saving"} onSubmit={save}>
+            <form className="form" ref={formRef} key={prefs.student_id} aria-busy={state === "saving"} onSubmit={save}>
               <fieldset className="form-busy-wrap" disabled={state === "saving"}>
                 <p id="prefs-help" className="muted field-help">Separate multiple values with commas.</p>
                 {LISTS.map(([name, label]) => (
                   <div className="field" key={name}>
                     <label htmlFor={`prefs-${name}`}>{label}</label>
-                    <input id={`prefs-${name}`} name={name} defaultValue={listText(prefs[name])} aria-describedby="prefs-help" />
+                    <input id={`prefs-${name}`} name={name} defaultValue={listText(prefs[name])} {...a11y(name, "prefs-help")} />
                   </div>
                 ))}
                 <div className="field">
                   <label htmlFor="prefs-global">Interested in studying abroad</label>
-                  <select id="prefs-global" name="global_education_interest" defaultValue={prefs.global_education_interest == null ? "" : prefs.global_education_interest ? "yes" : "no"}>
+                  <select id="prefs-global" name="global_education_interest" defaultValue={prefs.global_education_interest == null ? "" : prefs.global_education_interest ? "yes" : "no"} {...a11y("global_education_interest")}>
                     <option value="">Not recorded</option>
                     <option value="yes">Yes</option>
                     <option value="no">No</option>
@@ -111,7 +123,7 @@ export default function CareerPreferencesCard({ students }: { students: Student[
               </fieldset>
             </form>
           )}
-          {message && (message.failed ? <div className="form-error" role="alert">{message.text}</div> : <div className="form-message" role="status" aria-live="polite">{message.text}</div>)}
+          {message && (message.failed ? <div className="form-error" role="alert" id={ERROR_ID}>{message.text}</div> : <div className="form-message" role="status" aria-live="polite">{message.text}</div>)}
         </>
       )}
     </div>

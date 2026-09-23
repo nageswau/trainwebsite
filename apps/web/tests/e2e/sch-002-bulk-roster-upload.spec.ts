@@ -72,7 +72,8 @@ test("the template carries the Student Master columns after the original seven, 
   await page.setInputFiles("#roster-file", { name: "roster.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
   await page.click('button:has-text("Upload roster")');
   await expect(page.getByText(/1 of 2 rows accepted, 1 rejected/)).toBeVisible();
-  await expect(page.getByRole("cell", { name: /roll_number '5' is already used/ })).toBeVisible();
+  // QA2-05: the report shows the reason in the coordinator's words.
+  await expect(page.getByRole("cell", { name: /Roll number 5 is already used/ })).toBeVisible();
 
   await page.goto("/school/coordinator/students");
   const row = page.locator("tr", { hasText: "Master Row" });

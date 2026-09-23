@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { detailMessage } from "@/lib/schoolStudents";
 
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -16,6 +16,10 @@ function initials(name: string) {
 export default function SchoolStudentPhoto({ studentId, name, hasPhoto, canEdit }: { studentId: string; name: string; hasPhoto: boolean; canEdit: boolean }) {
   const [present, setPresent] = useState(hasPhoto);
   const [broken, setBroken] = useState(false);
+  // QA2-01: an <img> in the server HTML can fail before hydration, and then onError never runs (the user saw a
+  // broken-image icon). So the server HTML carries the placeholder and the image is only created once this is live.
+  const [live, setLive] = useState(false);
+  useEffect(() => setLive(true), []);
   const [version, setVersion] = useState(0);
   const [busy, setBusy] = useState<"upload" | "remove" | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -26,12 +30,13 @@ export default function SchoolStudentPhoto({ studentId, name, hasPhoto, canEdit 
     const input = event.currentTarget;
     const file = input.files?.[0];
     if (!file) return;
+    // QA2-05: the same wording the server uses for the same problem.
     if (!TYPES.includes(file.type)) {
-      setMessage({ text: "Choose a JPEG or PNG image.", failed: true });
+      setMessage({ text: "Photo must be a JPEG or PNG image", failed: true });
       return;
     }
     if (file.size > MAX_BYTES) {
-      setMessage({ text: "The photo must be 2 MB or smaller.", failed: true });
+      setMessage({ text: "Photo must be at most 2 MB", failed: true });
       return;
     }
     setBusy("upload");
@@ -68,7 +73,7 @@ export default function SchoolStudentPhoto({ studentId, name, hasPhoto, canEdit 
 
   return (
     <div className="student-photo-block">
-      {present && !broken ? (
+      {live && present && !broken ? (
         // eslint-disable-next-line @next/next/no-img-element -- an authenticated, uncacheable API image; next/image would proxy and cache it
         <img className="student-photo" src={`${url}?v=${version}`} alt={`Photo of ${name}`} width={96} height={96} onError={() => setBroken(true)} />
       ) : (

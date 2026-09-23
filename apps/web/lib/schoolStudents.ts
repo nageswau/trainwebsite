@@ -70,8 +70,56 @@ export function toMasterPayload(form: FormData, mode: "create" | "edit"): Record
   return out;
 }
 
+// QA2-05/06: the API names fields ("roll_number '12' is already used…"); users see the labels they typed into, and the
+// form uses the field to mark and focus the input the message is about.
+const FIELD_LABELS: Record<string, string> = {
+  full_name: "Full name",
+  date_of_birth: "Date of birth",
+  grade_or_class: "Grade/Class",
+  grade_level: "Grade level",
+  section: "Section",
+  roll_number: "Roll number",
+  gender: "Gender",
+  student_mobile: "Student mobile",
+  city: "City",
+  subjects: "Subjects",
+  career_interests: "Career interests",
+  global_education_interest: "Interested in studying abroad",
+  preferred_countries: "Preferred countries",
+  preferred_courses: "Preferred courses",
+  parent_email: "Parent's email",
+  parent_name: "Parent's name",
+  assigned_teacher_user_id: "Assigned teacher",
+  assigned_teacher_email: "Assigned teacher",
+  photo: "Photo",
+};
+const LIST_ITEM_LABELS: Record<string, string> = {
+  subjects: "Each subject",
+  career_interests: "Each career interest",
+  preferred_countries: "Each preferred country",
+  preferred_courses: "Each preferred course",
+};
+// Longest first, so "preferred_countries" never matches a shorter key that happens to prefix it.
+const FIELD_KEYS = Object.keys(FIELD_LABELS).sort((a, b) => b.length - a.length);
+
+/** The API field a validation message is about, or null. */
+export function fieldFromMessage(message: string): string | null {
+  return FIELD_KEYS.find((key) => message.startsWith(`${key} `)) ?? null;
+}
+
+/** A server validation message in the words the user sees on the form. Unrecognised messages pass through unchanged. */
+export function friendlyMessage(message: string): string {
+  const roll = /^roll_number '(.*)' is already used/.exec(message);
+  if (roll) return message.replace(`roll_number '${roll[1]}'`, `Roll number ${roll[1]}`);
+  const key = fieldFromMessage(message);
+  if (!key) return message;
+  const rest = message.slice(key.length + 1);
+  if (LIST_ITEM_LABELS[key] && rest.startsWith("items ")) return `${LIST_ITEM_LABELS[key]} ${rest.slice("items ".length)}`;
+  return `${FIELD_LABELS[key]} ${rest}`;
+}
+
 export function detailMessage(detail: unknown, fallback = "Something went wrong."): string {
-  if (typeof detail === "string") return detail;
+  if (typeof detail === "string") return friendlyMessage(detail);
   if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
   return fallback;
 }

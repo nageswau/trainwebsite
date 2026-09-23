@@ -100,6 +100,43 @@ describe("SchoolStudentsPanel (ENH-025)", () => {
     expect((screen.getByLabelText("Assigned Teacher", { selector: "#edit-teacher" }) as HTMLSelectElement).value).toBe("t1");
   });
 
+  // QA2-03: the profile/photo page is named for what it holds, not only "Timeline".
+  it("links each row to the student's profile and timeline", () => {
+    render(<SchoolStudentsPanel students={[student]} />);
+    const link = screen.getByRole("link", { name: "Profile & timeline" });
+    expect(link.getAttribute("href")).toBe("/school/coordinator/students/s1");
+  });
+
+  // QA2-05/06: the server's message is shown in the user's words, and the field it is about is marked and focused.
+  it("marks, describes and focuses the field a server error is about", async () => {
+    stubFetch(() => new Response(JSON.stringify({ detail: "roll_number '7' is already used in this grade and section for this academic year" }), { status: 409 }));
+    render(<SchoolStudentsPanel students={[student]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("Roll number 7 is already used in this grade and section for this academic year");
+    const roll = screen.getByLabelText("Roll number", { selector: "#edit-roll" });
+    await waitFor(() => expect(document.activeElement).toBe(roll));
+    expect(roll.getAttribute("aria-invalid")).toBe("true");
+    expect(roll.getAttribute("aria-describedby")).toContain(alert.id);
+    expect(screen.getByLabelText("City", { selector: "#edit-city" }).getAttribute("aria-invalid")).toBeNull();
+  });
+
+  it("clears the invalid mark once the save succeeds", async () => {
+    let fail = true;
+    stubFetch(() => (fail ? new Response(JSON.stringify({ detail: "city must be at most 120 characters" }), { status: 422 }) : new Response(JSON.stringify(student))));
+    render(<SchoolStudentsPanel students={[student]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByRole("alert");
+    expect(screen.getByLabelText("City", { selector: "#edit-city" }).getAttribute("aria-invalid")).toBe("true");
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Student updated.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByLabelText("City", { selector: "#edit-city" }).getAttribute("aria-invalid")).toBeNull();
+  });
+
   it("empty roster points to add and bulk upload", () => {
     render(<SchoolStudentsPanel students={[]} />);
     expect(screen.getByText(/No students yet/)).toBeTruthy();

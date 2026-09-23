@@ -141,4 +141,15 @@ describe("SchoolStudentDetailPanel profile (ENH-025)", () => {
     expect(screen.getByRole("img", { name: "No photo for Aarav Mehta" })).toBeTruthy();
     expect(screen.getAllByText("Not recorded").length).toBe(10);
   });
+
+  // QA2-08: one empty-value style across the profile (Grade/Class and Date of birth used to show "-").
+  it("labels an empty grade/class and date of birth 'Not recorded' like every other field", async () => {
+    api();
+    render(await SchoolStudentDetailPanel({ student: { ...student, ...master, grade_or_class: null, date_of_birth: null }, backHref: "/back", backLabel: "Back" }));
+    const value = (term: string) => [...document.querySelectorAll("dt")].find((d) => d.textContent === term)!.nextElementSibling!;
+    expect(value("Grade/Class").textContent).toBe("Not recorded");
+    expect(value("Date of birth").textContent).toBe("Not recorded");
+    expect(value("Grade/Class").className).toBe("muted");
+    expect(screen.queryAllByText("-").filter((e) => e.tagName === "DD")).toHaveLength(0);
+  });
 });

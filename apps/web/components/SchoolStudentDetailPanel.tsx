@@ -28,7 +28,10 @@ import { GENDER_LABEL, listText, type SchoolStudent } from "@/lib/schoolStudents
 // every missing value reads "Not recorded". `canEditPhoto` (default off) is the coordinator's photo controls.
 type Student = Pick<SchoolStudent, "id" | "student_code" | "full_name" | "date_of_birth" | "grade_or_class"> & Partial<SchoolStudent>;
 
+// QA2-08: Grade/Class and Date of birth are rows like the rest, so an empty value reads "Not recorded" everywhere.
 const PROFILE_ROWS: [string, (s: Student) => string][] = [
+  ["Grade/Class", (s) => s.grade_or_class ?? ""],
+  ["Date of birth", (s) => (s.date_of_birth ? formatDate(s.date_of_birth) : "")],
   ["Gender", (s) => (s.gender ? GENDER_LABEL[s.gender] ?? s.gender : "")],
   ["Section", (s) => s.section ?? ""],
   ["Roll number", (s) => s.roll_number ?? ""],
@@ -60,10 +63,6 @@ export default async function SchoolStudentDetailPanel({ student, backHref, back
         <div className="student-profile">
           <SchoolStudentPhoto studentId={student.id} name={student.full_name} hasPhoto={Boolean(student.has_photo)} canEdit={canEditPhoto} />
           <dl>
-            <dt>Grade/Class</dt>
-            <dd>{student.grade_or_class || "-"}</dd>
-            <dt>Date of birth</dt>
-            <dd>{formatDate(student.date_of_birth)}</dd>
             {PROFILE_ROWS.map(([label, value]) => {
               const shown = value(student);
               return [

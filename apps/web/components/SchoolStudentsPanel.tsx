@@ -4,12 +4,20 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SchoolStudentFields from "@/components/SchoolStudentFields";
-import { detailMessage, toMasterPayload, type SchoolStudent } from "@/lib/schoolStudents";
+import { detailMessage, fieldFromMessage, toMasterPayload, type SchoolStudent } from "@/lib/schoolStudents";
 
 type TeacherOption = { id: string; name: string; active: boolean };
 // "roster": a success that closes its card (edit, link parent) is reported on the roster the user returns to.
 type FormName = "edit" | "create" | "link" | "roster";
-type Message = { text: string; failed: boolean; form: FormName };
+// `field`: the API field a failure is about (QA2-06) -- that input is marked invalid, described by and focused on the error.
+type Message = { text: string; failed: boolean; form: FormName; field?: string | null };
+const FORM_ID: Partial<Record<FormName, string>> = { edit: "edit-student-form", create: "new-student-form" };
+const ERROR_ID = (form: FormName) => `${form}-form-error`;
+
+function failure(data: { detail?: unknown }, form: FormName): Message {
+  const raw = typeof data.detail === "string" ? data.detail : "";
+  return { text: detailMessage(data.detail), failed: true, form, field: fieldFromMessage(raw) };
+}
 
 function parentStatusNote(status: string | undefined, email: string) {
   if (status === "linked") return " Parent linked immediately (they already had an account).";
@@ -18,9 +26,9 @@ function parentStatusNote(status: string | undefined, email: string) {
   return "";
 }
 
-function FormMessage({ message }: { message: { text: string; failed: boolean } }) {
+function FormMessage({ message }: { message: Message }) {
   return message.failed ? (
-    <div className="form-error" role="alert">{message.text}</div>
+    <div className="form-error" role="alert" id={ERROR_ID(message.form)}>{message.text}</div>
   ) : (
     <div className="form-message" role="status" aria-live="polite">{message.text}</div>
   );
@@ -66,6 +74,16 @@ export default function SchoolStudentsPanel({ students }: { students: SchoolStud
     editHeading.current?.scrollIntoView?.({ block: "start" });
   }, [editingId]);
 
+  // QA2-06: move focus to the input a server error is about, so the user lands on what to fix.
+  useEffect(() => {
+    if (!message?.failed || !message.field) return;
+    const name = message.field === "assigned_teacher_email" ? "assigned_teacher_user_id" : message.field;
+    const formId = FORM_ID[message.form];
+    document.getElementById(formId ?? "")?.querySelector<HTMLElement>(`[name="${name}"]`)?.focus();
+  }, [message]);
+
+  const invalidFor = (form: FormName) => (message?.failed && message.form === form ? message.field : null);
+
   function closeEdit() {
     setEditingId(null);
     lastEditButton.current?.focus();
@@ -94,7 +112,7 @@ export default function SchoolStudentsPanel({ students }: { students: SchoolStud
     const data = response ? await response.json().catch(() => ({})) : {};
     setBusy(false);
     if (!response?.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true, form: "create" });
+      setMessage(failure(data, "create"));
       return;
     }
     const parentEmail = String(form.get("parent_email") || "");
@@ -125,7 +143,7 @@ export default function SchoolStudentsPanel({ students }: { students: SchoolStud
     const data = response ? await response.json().catch(() => ({})) : {};
     setBusy(false);
     if (!response?.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true, form: "edit" });
+      setMessage(failure(data, "edit"));
       return;
     }
     const parentEmail = String(form.get("parent_email") || "");
@@ -147,7 +165,7 @@ export default function SchoolStudentsPanel({ students }: { students: SchoolStud
     const data = response ? await response.json().catch(() => ({})) : {};
     setBusy(false);
     if (!response?.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true, form: "link" });
+      setMessage(failure(data, "link"));
       return;
     }
     setMessage({ text: "Parent linked to this student.", failed: false, form: "roster" });
@@ -184,7 +202,8 @@ export default function SchoolStudentsPanel({ students }: { students: SchoolStud
                     <td style={{ display: "flex", gap: 8 }}>
                       <button className="btn ghost small" onClick={(e) => { lastEditButton.current = e.currentTarget; setEditingId(s.id); setLinkingId(null); }}>Edit</button>
                       <button className="btn ghost small" onClick={() => { setLinkingId(s.id); setEditingId(null); }}>Link parent</button>
-                      <a className="btn ghost small" href={`/school/coordinator/students/${s.id}`}>Timeline</a>
+                      {/* QA2-03: this page holds the profile, photo and journey timeline -- name it for what it holds. */}
+                      <a className="btn ghost small" href={`/school/coordinator/students/${s.id}`}>Profile &amp; timeline</a>
                     </td>
                   </tr>
                 ))}
@@ -199,9 +218,9 @@ export default function SchoolStudentsPanel({ students }: { students: SchoolStud
         <div className="action-card">
           <h3 id="edit-heading" ref={editHeading} tabIndex={-1}>Edit {editing.full_name} <span className="muted" style={{ fontSize: 13 }}>({editing.student_code})</span></h3>
           {/* key: a different student remounts the form so every defaultValue is that student's. */}
-          <form className="form" key={editing.id} aria-busy={busy} onSubmit={(e) => saveEdit(e, editing.id)}>
+          <form className="form" id={FORM_ID.edit} key={editing.id} aria-busy={busy} onSubmit={(e) => saveEdit(e, editing.id)}>
             <fieldset className="form-busy-wrap" disabled={busy}>
-              <SchoolStudentFields idPrefix="edit" student={editing} teachers={teachers} includeInactiveTeachers />
+              <SchoolStudentFields idPrefix="edit" student={editing} teachers={teachers} includeInactiveTeachers invalidField={invalidFor("edit")} errorId={ERROR_ID("edit")} />
               <div className="field" style={{ flexDirection: "row", gap: 12 }}>
                 <button className="btn">{busy ? "Saving…" : "Save changes"}</button>
                 <button type="button" className="btn secondary" onClick={closeEdit}>Cancel</button>
@@ -234,9 +253,9 @@ export default function SchoolStudentsPanel({ students }: { students: SchoolStud
 
       <div className="action-card">
         <h3>Add one student</h3>
-        <form className="form" aria-busy={busy} onSubmit={createStudent}>
+        <form className="form" id={FORM_ID.create} aria-busy={busy} onSubmit={createStudent}>
           <fieldset className="form-busy-wrap" disabled={busy}>
-            <SchoolStudentFields idPrefix="new" teachers={teachers} includeInactiveTeachers={false} />
+            <SchoolStudentFields idPrefix="new" teachers={teachers} includeInactiveTeachers={false} invalidField={invalidFor("create")} errorId={ERROR_ID("create")} />
             <button className="btn">{busy ? "Saving…" : "Add student"}</button>
           </fieldset>
         </form>

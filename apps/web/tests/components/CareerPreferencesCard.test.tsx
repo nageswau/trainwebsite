@@ -57,7 +57,14 @@ describe("CareerPreferencesCard", () => {
     render(<CareerPreferencesCard students={students} />);
     fireEvent.change(screen.getByLabelText("Student"), { target: { value: "s1" } });
     fireEvent.click(await screen.findByRole("button", { name: "Save preferences" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("preferred_countries items must be at most 80 characters");
+    // QA2-05/06: the user's words, and the field it is about is marked, described and focused.
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("Each preferred country must be at most 80 characters");
+    const countries = screen.getByLabelText("Preferred countries");
+    await waitFor(() => expect(document.activeElement).toBe(countries));
+    expect(countries.getAttribute("aria-invalid")).toBe("true");
+    expect(countries.getAttribute("aria-describedby")).toContain(alert.id);
+    expect(screen.getByLabelText("Career interests").getAttribute("aria-invalid")).toBeNull();
   });
 
   it("empty portfolio explains itself without repeating the records card's sentence (same page)", () => {

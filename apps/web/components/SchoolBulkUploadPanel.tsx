@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ROSTER_COLUMNS } from "@/lib/schoolStudents";
+import { ROSTER_COLUMNS, friendlyMessage } from "@/lib/schoolStudents";
 
 type RowReport = { row_number: number; status: string; error_message: string | null; created_student_id: string | null };
 type BatchReport = { id: string; status: string; total_rows: number; accepted_count: number; rejected_count: number; rows: RowReport[] };
@@ -113,7 +113,8 @@ export default function SchoolBulkUploadPanel() {
                   <tr key={r.row_number}>
                     <td>{r.row_number}</td>
                     <td>{r.status === "accepted" ? "Added" : "Rejected"}</td>
-                    <td>{r.error_message || "-"}</td>
+                    {/* QA2-05: the reason in the coordinator's words, like the single-student form. */}
+                    <td>{r.error_message ? friendlyMessage(r.error_message) : "-"}</td>
                   </tr>
                 ))}
               </tbody>

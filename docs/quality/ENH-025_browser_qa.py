@@ -168,7 +168,11 @@ def main():
             page.fill("#new-roll", "7")
             page.click('button:has-text("Add student")')
             alert = page.locator(".action-card", has_text="Add one student").get_by_role("alert")
-            expect(alert).to_have_text("roll_number '7' is already used in this grade and section for this academic year")
+            # QA2-05: shown in the user's words.
+            expect(alert).to_have_text("Roll number 7 is already used in this grade and section for this academic year")
+            # QA2-06: the Roll number input is marked invalid, described by the error and focused.
+            expect(page.locator("#new-roll")).to_have_attribute("aria-invalid", "true")
+            expect(page.locator("#new-roll")).to_be_focused()
             return "409 shown as an alert inside the Add card (section 'a' treated as 'A')"
 
         attempt("Roll-number clash is reported in the form", "AC5", "04-roll-clash", page, roll_clash)
@@ -179,7 +183,7 @@ def main():
             page.fill("#new-mobile", "12ab")
             page.click('button:has-text("Add student")')
             alert = page.locator(".action-card", has_text="Add one student").get_by_role("alert")
-            expect(alert).to_contain_text("student_mobile")
+            expect(alert).to_contain_text("Student mobile")
             assert "12ab" not in alert.inner_text()
             return f"422 shown: {alert.inner_text()!r} (value not echoed)"
 
@@ -216,7 +220,7 @@ def main():
         def client_side_reject():
             page.set_input_files(f"#photo-{sid}", files=[{"name": "x.gif", "mimeType": "image/gif", "buffer": b"GIF89a"}])
             # Scoped: Next.js renders its own role="alert" route announcer on every page.
-            expect(page.locator(".student-photo-block").get_by_role("alert")).to_contain_text("JPEG or PNG")
+            expect(page.locator(".student-photo-block").get_by_role("alert")).to_have_text("Photo must be a JPEG or PNG image")
             return "GIF rejected in the browser before any upload"
 
         attempt("Wrong photo type rejected before upload", "AC12", "08-photo-reject", page, client_side_reject)
