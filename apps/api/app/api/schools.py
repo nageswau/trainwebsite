@@ -1609,6 +1609,16 @@ async def _readable_students(db: AsyncSession, user: User) -> set:
     return set((await db.scalars(stmt.with_only_columns(SchoolStudent.id))).all())
 
 
+async def _load_student_for_reader(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
+    """Read-scope loader for every role that may read one student's record (ENH-012 portfolio, ENH-013 360-view): the 3
+    portfolio-scoped service roles go through `_student_in_portfolio`, everyone else through `_load_readable_student` (which
+    403s any non-School role). Moved here unchanged from portfolio.py so both features share one loader (ENH-013 spec §4);
+    neither helper it calls is modified."""
+    if user.role in SERVICE_DELIVERY_ROLES:
+        return await _student_in_portfolio(db, user, student_id)
+    return await _load_readable_student(db, user, student_id)
+
+
 @router.get("/portfolio-students")
 async def list_portfolio_students(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Shared across the three specialized roles -- their own school portfolio's students,
