@@ -55,6 +55,8 @@ precedent).
 | D9 | Unreachable notifications | Add a Principal notifications page. The acting admin gets the in-app row plus email (no admin page in this item). |
 | D10 | Grandfather mechanism | **Approach A**: the downgrade time is read from the `school.tier_update` audit rows (§5). |
 | D11 | No-op and valid-until-only changes | Still audited (as today), with `direction="unchanged"`; **no notification**. |
+| D12 | Stale preview → unconfirmed downgrade (API review, 2026-09-23) | The PATCH accepts an optional **`expected_tier`** precondition; a mismatch with the tier read under the row lock is **`409 Conflict`**. The panel always sends it with a tier change; clients that omit it behave as today. |
+| D13 | Empty-string tier (API review) | `""` is **normalised to `null`** (removal) on the PATCH, on `expected_tier`, and on the preview. |
 
 ## 4. The tier change
 
@@ -81,7 +83,11 @@ are cumulative, so a change is never both. Key order follows `TIER_SERVICES`.
 
 1. The role check is unchanged. The school is loaded with `select(School).where(School.id == school_id).with_for_update()`
    instead of `db.get`, so concurrent tier changes queue (§8). An unknown school still gets `404`.
-2. Tier validation is unchanged (same `422` message).
+2. `""` for `tier` or `expected_tier` is normalised to `null` (D13). Tier validation is otherwise unchanged (same `422`
+   message), and the same allowlist and message apply to `expected_tier`.
+2a. **Precondition (D12):** if `expected_tier` is in the body and differs from the locked row's current tier →
+   `409 "This school's tier changed to {Current} since you looked it up. Look it up again before changing the tier."`
+   (`{Current}` from `_tier_name`). Nothing is written. `expected_tier` is never treated as a profile field.
 3. When `tier` or `tier_valid_until` is in the body, exactly one `school.tier_update` row is written (as today), with
    `created_at=func.clock_timestamp()` and metadata:
 
@@ -105,10 +111,15 @@ are cumulative, so a change is never both. Key order follows `TIER_SERVICES`.
 
    `tier_change` is `null` when the body carried neither `tier` nor `tier_valid_until`. Labels come from
    `SERVICE_LABELS`.
+7. **Typed contract (API review):** `schemas.py` gains `TierChangeService {key, label}`, `TierChangeOut`
+   (`direction: Literal["upgrade", "downgrade", "unchanged"]`, `from_tier`, `to_tier`, `gained`, `lost`) and
+   `SchoolUpdateOut(SchoolOut)` with `tier_change: TierChangeOut | None`. `SchoolUpdate` gains
+   `expected_tier: str | None = None`. The PATCH declares `response_model=SchoolUpdateOut` and the preview
+   `response_model=TierChangeOut`, following the portfolio/skills routes. The JSON output is unchanged.
 
 ### 4.3 `GET /overseas-admin/schools/{school_id}/tier-change-preview?tier=<tier>` (new, read-only)
 
-- Same role check as the PATCH (`403`). Unknown school → `404`. `tier` is optional and empty/absent means removal.
+- Same role check as the PATCH (`403`). Unknown school → `404`. `tier` is optional and empty/absent means removal (D13).
   Any other value outside `TIER_ORDER` → `422` with the PATCH's message.
 - Returns the §4.2 `tier_change` object computed from the school's current tier. It writes nothing and takes no lock.
 
@@ -207,6 +218,8 @@ are unchanged.
        new work: {labels}. Work already started can still be completed. The school will be notified."* The block has
        **Confirm downgrade** (sends the same single PATCH, profile edits included) and **Cancel** (hides the block,
        keeps all input).
+  2a. Every save that changes the tier also sends `expected_tier` = the tier the lookup loaded (D12). A `409` is shown
+     as an error alert, the confirmation block is cleared and the input is kept.
   3. The success message is built from the PATCH response's `tier_change`, never from the preview. The existing
      `School profile updated.` text is kept (the `sch-003` E2E asserts it) and, when the tier changed, followed by
      ` Partnership is now {To}; newly available: {labels}.` for an upgrade or ` Partnership is now {To}.` for a
@@ -257,6 +270,9 @@ are unchanged.
 | Preview: wrong role / unknown school / unknown tier | `403` / `404` / `422`; writes nothing |
 | Same tier re-sent; only `tier_valid_until` sent | Audit row with `direction="unchanged"`; `tier_change` returned; no notification |
 | Profile-only PATCH | `tier_change: null`; no tier audit row |
+| `expected_tier` differs from the current tier | `409`; nothing written, no notification |
+| `expected_tier` omitted | Behaves exactly as before D12 (backward compatible) |
+| `tier: ""` | Stored as `null`; recorded as a removal (D13) |
 | School with no coordinator/principal account | Only the admin copy is sent; the change still succeeds |
 | School name near its 200-character limit | Notification titles are cut to `Notification.title`'s 180 characters, so the insert never fails |
 | Notification send fails | Change stays committed; warning logged; `NotificationDelivery` records the failure |
@@ -289,6 +305,11 @@ are unchanged.
 - **AC-13** `test_enh_022_tier_enforcement.py` passes without edits.
 - **AC-14** The Principal notifications page lists the principal's notifications, shows the empty text, and refuses
   other roles.
+- **AC-15** A PATCH whose `expected_tier` differs from the current tier returns `409` with the §4.2 message and writes
+  nothing; the panel shows it as an alert and keeps the input.
+- **AC-16** `tier: ""` on the PATCH is stored as `null` and recorded with `to_tier: null`; the preview treats `""` as
+  removal.
+- **AC-17** OpenAPI documents `SchoolUpdateOut` for the PATCH and `TierChangeOut` for the preview.
 
 ## 11. Regression risks
 
@@ -320,14 +341,16 @@ are unchanged.
 
 ## 13. Documentation deliverables and follow-ups
 
-- `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-029` (D1–D11).
+- `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-029` (D1–D13).
 - `API_CONTRACT.md` §12A: the PATCH's `tier_change` and new audit metadata, the preview endpoint, and the
   `ENH-022` helper's grandfather rule.
 - `RBAC_MATRIX.md`: the grandfather rule on the §6 actions.
 - `RTM.md`, `ENHANCEMENT_BACKLOG.md` (ENH-023 status), `SCREEN_CATALOG.md`/`screen_catalog.json`,
   `ROLE_NAVIGATION.md` (principal notifications).
 - Follow-ups: (a) an Overseas Admin notifications page; (b) closing the §8 residual race with a share lock;
-  (c) notifying schools ahead of `tier_valid_until` expiry.
+  (c) notifying schools ahead of `tier_valid_until` expiry; (d) a composite `audit_logs (action, entity_id)` index if
+  tier-change volume ever makes `_lost_since` slow (needs a migration); (e) `create_school` still stores `tier: ""`
+  as `""` (out of scope here; D13 covers only the tier-change PATCH and preview).
 
 ## 14. Security review
 

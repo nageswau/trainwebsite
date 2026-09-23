@@ -19,6 +19,10 @@
 - An `expired` denial is never grandfathered (D6).
 - Audit action string: `school.tier_update` (constant `TIER_UPDATE`). Metadata keys exactly: `tier`, `from_tier`, `to_tier`, `direction`, `gained`, `lost`, `tier_valid_until`, `previous_tier_valid_until`.
 - `direction` values exactly: `upgrade`, `downgrade`, `unchanged`.
+- Errors stay FastAPI `{"detail": "<string>"}`; no `error_code` shape and no `Idempotency-Key`/ETag (neither is contracted).
+- `expected_tier` (D12) is optional; when present and different from the locked row's tier → `409` with exactly `This school's tier changed to {Current} since you looked it up. Look it up again before changing the tier.` When absent → today's behaviour.
+- `""` for `tier`/`expected_tier`/preview `tier` is normalised to `null` (D13).
+- The PATCH declares `response_model=SchoolUpdateOut`, the preview `response_model=TierChangeOut` (both in `schemas.py`).
 - Notifications only when `direction != "unchanged"`, only after the tier change commits, each recipient isolated so a failure never fails the PATCH.
 - Notification titles are cut to 180 characters (`Notification.title` is `String(180)`).
 - The edit panel keeps the exact text `School profile updated.` (the `sch-003` E2E asserts it).
@@ -42,7 +46,8 @@
 | File | Responsibility | Tasks |
 |---|---|---|
 | `apps/api/app/api/schools.py` | `TIER_UPDATE`, `_tier_name`, `_tier_transition`, `tier_change_payload`, `_grandfathers`, `_lost_since`, `_is_grandfathered`, `require_school_entitlement(…, grandfathered_since=)`; anchors on 4 routes | 1, 5 |
-| `apps/api/app/api/admin.py` | `update_school` (lock, metadata, response, notify), preview route, `_tier_notices`, `_notify_tier_change` | 2, 3, 4 |
+| `apps/api/app/api/admin.py` | `update_school` (lock, `expected_tier` 409, `""` normalisation, metadata, response, notify), preview route, `_tier_notices`, `_notify_tier_change` | 2, 3, 4 |
+| `apps/api/app/schemas.py` | `SchoolUpdate.expected_tier`; `TierChangeService`, `TierChangeOut`, `SchoolUpdateOut` | 2 |
 | `apps/api/app/api/school_skills.py` | `_require_module_entitlement(…, grandfathered_since=)`; anchors on 6 routes | 6 |
 | `apps/api/app/api/portfolio.py` | anchors on 3 routes (entry lookup moves before the tier check) | 7 |
 | `apps/api/app/api/workflows.py` | `_require_bridged_visa_entitlement(…, grandfathered_since=)`; anchor on `update_visa` | 7 |
@@ -183,13 +188,20 @@ git commit -m "feat(enh-023): tier transition helpers"
 ### Task 2: Record the transition on the tier PATCH
 
 **Files:**
+- Modify: `apps/api/app/schemas.py` — `SchoolUpdate` (add `expected_tier`); new classes after `SchoolOut` (line ~1259)
 - Modify: `apps/api/app/api/admin.py` — `update_school` (around lines 1139-1167)
 - Modify: `apps/api/tests/test_sch_003_school_onboarding.py:427-463` (two metadata assertions)
 - Test: `apps/api/tests/test_enh_023_tier_change.py` (create)
 
 **Interfaces:**
-- Consumes: `TIER_UPDATE`, `tier_change_payload` (Task 1)
-- Produces: PATCH response = `SchoolOut` fields + `"tier_change": dict | None`; audit metadata per Global Constraints; audit `created_at = clock_timestamp()`. Task 4 inserts the notification call where marked.
+- Consumes: `TIER_UPDATE`, `tier_change_payload`, `_tier_name` (Task 1)
+- Produces:
+  - `schemas.TierChangeService(key: str, label: str)`
+  - `schemas.TierChangeOut(direction: Literal["upgrade","downgrade","unchanged"], from_tier: str | None, to_tier: str | None, gained: list[TierChangeService], lost: list[TierChangeService])`
+  - `schemas.SchoolUpdateOut(SchoolOut)` + `tier_change: TierChangeOut | None`
+  - `SchoolUpdate.expected_tier: str | None = None`
+  - PATCH response typed as `SchoolUpdateOut`; audit metadata per Global Constraints; audit `created_at = clock_timestamp()`.
+  - Task 3 uses `TierChangeOut`; Task 9 sends `expected_tier`; Task 4 inserts the notification call where marked.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -301,24 +313,112 @@ async def test_invalid_tier_is_still_422_and_records_nothing(client, db_session)
     r = await client.patch(f"{SCHOOLS}/{w['school'].id}", json={"tier": "diamond"})
     assert (r.status_code, r.json()["detail"]) == (422, "tier must be one of bronze, silver, gold, platinum")
     assert await tier_rows(db_session, w["school"].id) == []
+
+
+# --- Precondition, empty string, typed contract (D12, D13, AC-15..AC-17) ----------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_stale_expected_tier_is_409_and_writes_nothing(client, db_session):
+    w = await world(db_session, "platinum")
+    await login(client, w["admin"].email)
+    r = await client.patch(f"{SCHOOLS}/{w['school'].id}", json={"tier": "gold", "expected_tier": "bronze"})
+    assert r.status_code == 409
+    assert r.json()["detail"] == "This school's tier changed to Platinum since you looked it up. Look it up again before changing the tier."
+    await db_session.refresh(w["school"])
+    assert w["school"].tier == "platinum"
+    assert await tier_rows(db_session, w["school"].id) == []
+
+
+@pytest.mark.asyncio
+async def test_matching_expected_tier_saves_and_is_not_a_profile_field(client, db_session):
+    w = await world(db_session, "platinum")
+    body = await change_tier(client, w, tier="gold", expected_tier="platinum")
+    assert body["tier_change"]["direction"] == "downgrade"
+    profile_rows = await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action == "school.profile_update", AuditLog.entity_id == str(w["school"].id)))
+    assert profile_rows == 0
+
+
+@pytest.mark.asyncio
+async def test_expected_tier_empty_string_means_tierless(client, db_session):
+    w = await world(db_session, None)
+    body = await change_tier(client, w, tier="bronze", expected_tier="")
+    assert body["tier_change"]["direction"] == "upgrade"
+    await login(client, w["admin"].email)
+    bad = await client.patch(f"{SCHOOLS}/{w['school'].id}", json={"tier": "gold", "expected_tier": "diamond"})
+    assert (bad.status_code, bad.json()["detail"]) == (422, "tier must be one of bronze, silver, gold, platinum")
+
+
+@pytest.mark.asyncio
+async def test_empty_string_tier_is_stored_as_a_removal(client, db_session):
+    w = await world(db_session, "gold")
+    body = await change_tier(client, w, tier="")
+    assert body["tier"] is None
+    assert body["tier_change"]["to_tier"] is None
+    [row] = await tier_rows(db_session, w["school"].id)
+    assert (row.metadata_json["to_tier"], row.metadata_json["tier"], row.metadata_json["direction"]) == (None, None, "downgrade")
+
+
+@pytest.mark.asyncio
+async def test_openapi_documents_the_typed_tier_change(client):
+    spec = (await client.get("/openapi.json")).json()
+    patch = spec["paths"]["/api/v1/overseas-admin/schools/{school_id}"]["patch"]
+    assert patch["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/SchoolUpdateOut")
+    direction = spec["components"]["schemas"]["TierChangeOut"]["properties"]["direction"]
+    assert set(direction["enum"]) == {"upgrade", "downgrade", "unchanged"}
 ```
 
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `cd apps/api && pytest tests/test_enh_023_tier_change.py -v`
-Expected: FAIL — `KeyError: 'tier_change'` and metadata mismatches.
+Expected: FAIL — `KeyError: 'tier_change'`, metadata mismatches, `422` for the unknown `expected_tier` field (`extra="forbid"`), and a missing `SchoolUpdateOut` in OpenAPI (the app serves FastAPI's default `/openapi.json`).
 
-- [ ] **Step 3: Implement**
+- [ ] **Step 3: Add the schemas**
 
-Replace the body of `update_school` in `apps/api/app/api/admin.py` (keep the decorator and signature) with:
+In `apps/api/app/schemas.py`, add one field to `SchoolUpdate` directly after `tier_valid_until: date | None = None`:
+
+```python
+    # ENH-023 D12: optional precondition -- the tier the caller last saw. A mismatch under the row lock is a 409, so a
+    # stale preview can never turn into an unconfirmed downgrade. Omitted = no precondition (backward compatible).
+    expected_tier: str | None = None
+```
+
+and add after the `SchoolOut` class:
+
+```python
+class TierChangeService(BaseModel):
+    key: str
+    label: str
+
+
+class TierChangeOut(BaseModel):
+    """ENH-023 -- a tier change's effect, from the tier PATCH (`tier_change`) and its preview."""
+
+    direction: Literal["upgrade", "downgrade", "unchanged"]
+    from_tier: str | None
+    to_tier: str | None
+    gained: list[TierChangeService]
+    lost: list[TierChangeService]
+
+
+class SchoolUpdateOut(SchoolOut):
+    """`SchoolOut` plus the additive `tier_change` (null when the body carried no tier field)."""
+
+    tier_change: TierChangeOut | None = None
+```
+
+- [ ] **Step 4: Implement `update_school`**
+
+Add `SchoolUpdateOut` to the `from app.schemas import …` line in `admin.py`, change the decorator to
+`@agents_router.patch("/schools/{school_id}", response_model=SchoolUpdateOut)`, and replace the function body (keep the signature) with:
 
 ```python
     """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-025) -- Overseas Admin updates a School's partnership
     tier and/or profile fields. `name`/`city`/`state`/`coordinator_*` stay out of scope for this
     endpoint -- they were never editable before and no acceptance criterion asks for that.
     ENH-023 (DEC-SCOPE-029): a tier change is recorded as a transition (old -> new, gained/lost), returned as
-    `tier_change`, and told to the school after the commit."""
-    from app.api.schools import TIER_UPDATE, tier_change_payload  # noqa: PLC0415 -- lazy, like the bridge import below
+    `tier_change`, guarded by the optional `expected_tier` precondition (D12), and told to the school after the commit."""
+    from app.api.schools import TIER_UPDATE, _tier_name, tier_change_payload  # noqa: PLC0415 -- lazy, like the bridge import below
 
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
@@ -327,12 +427,17 @@ Replace the body of `update_school` in `apps/api/app/api/admin.py` (keep the dec
     if not school:
         raise HTTPException(404, "School not found")
     fields = payload.model_dump(exclude_unset=True)
+    for key in ("tier", "expected_tier"):  # D13: "" is no tier, stored and compared as null
+        if key in fields:
+            fields[key] = fields[key] or None
+            if fields[key] is not None and fields[key] not in {"bronze", "silver", "gold", "platinum"}:
+                raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
+    if "expected_tier" in fields and fields.pop("expected_tier") != school.tier:
+        # D12, checked under the lock: the tier moved since the caller looked, so what they confirmed is not what would happen.
+        raise HTTPException(409, f"This school's tier changed to {_tier_name(school.tier)} since you looked it up. Look it up again before changing the tier.")
     old_tier, old_valid_until = school.tier, school.tier_valid_until
     if "tier" in fields:
-        tier = fields["tier"]
-        if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
-            raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
-        school.tier = tier
+        school.tier = fields["tier"]
     if "tier_valid_until" in fields:
         school.tier_valid_until = fields["tier_valid_until"]
     tier_change = None
@@ -388,16 +493,16 @@ In `test_patch_school_with_tier_and_profile_fields_logs_both_audit_rows`, replac
     }
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [ ] **Step 5: Run to verify they pass**
 
-Run: `cd apps/api && pytest tests/test_enh_023_tier_change.py tests/test_sch_003_school_onboarding.py tests/test_sch_011_entitlements.py -v`
+Run: `cd apps/api && pytest tests/test_enh_023_tier_change.py tests/test_sch_003_school_onboarding.py tests/test_sch_011_entitlements.py tests/test_enh_009_school_profile_schemas.py -v`
 Expected: all PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add apps/api/app/api/admin.py apps/api/tests/test_enh_023_tier_change.py apps/api/tests/test_sch_003_school_onboarding.py
-git commit -m "feat(enh-023): record tier transitions and return tier_change"
+git add apps/api/app/schemas.py apps/api/app/api/admin.py apps/api/tests/test_enh_023_tier_change.py apps/api/tests/test_sch_003_school_onboarding.py
+git commit -m "feat(enh-023): record tier transitions, typed tier_change, expected_tier precondition"
 ```
 
 ---
@@ -409,8 +514,8 @@ git commit -m "feat(enh-023): record tier transitions and return tier_change"
 - Test: `apps/api/tests/test_enh_023_tier_change.py` (append)
 
 **Interfaces:**
-- Consumes: `TIER_ORDER`, `tier_change_payload` (Task 1)
-- Produces: `GET /api/v1/overseas-admin/schools/{school_id}/tier-change-preview?tier=<tier>` → the `tier_change` dict; empty or absent `tier` = removal. Task 9 calls it.
+- Consumes: `TIER_ORDER`, `tier_change_payload` (Task 1); `TierChangeOut` (Task 2)
+- Produces: `GET /api/v1/overseas-admin/schools/{school_id}/tier-change-preview?tier=<tier>` → `TierChangeOut`; empty or absent `tier` = removal. Task 9 calls it.
 
 - [ ] **Step 1: Write the failing tests** (append)
 
@@ -457,10 +562,10 @@ async def test_preview_errors(client, db_session):
 Run: `cd apps/api && pytest tests/test_enh_023_tier_change.py -v -k preview`
 Expected: FAIL with 404/405 (route missing).
 
-- [ ] **Step 3: Implement** (add directly after `update_school` in `admin.py`)
+- [ ] **Step 3: Implement** (add `TierChangeOut` to the `from app.schemas import …` line, then add the route directly after `update_school` in `admin.py`)
 
 ```python
-@agents_router.get("/schools/{school_id}/tier-change-preview")
+@agents_router.get("/schools/{school_id}/tier-change-preview", response_model=TierChangeOut)
 async def preview_school_tier_change(school_id: UUID, tier: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """ENH-023 -- what a tier change would gain or lose, so the admin UI can confirm a downgrade before it happens. Read-only:
     no lock, no write. An empty or absent `tier` means removing the tier."""
@@ -1279,7 +1384,7 @@ git commit -m "test(enh-023): concurrent tier changes queue on the school row lo
 - Test: `apps/web/tests/components/AdminSchoolEditPanel.test.tsx` (extend)
 
 **Interfaces:**
-- Consumes: `GET …/tier-change-preview?tier=` (Task 3); PATCH response `tier_change` (Task 2)
+- Consumes: `GET …/tier-change-preview?tier=` (Task 3); PATCH response `tier_change` and the `expected_tier` precondition / `409` (Task 2)
 - Produces: new field IDs `#edit-tier` (name `tier`) and `#edit-tier-valid-until` (name `tier_valid_until`); buttons "Confirm downgrade" and "Cancel", used by Task 11.
 
 - [ ] **Step 1: Write the failing tests** (append inside the existing `describe`)
@@ -1304,7 +1409,7 @@ git commit -m "test(enh-023): concurrent tier changes queue on the school row lo
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await screen.findByText("School profile updated. Partnership is now Platinum; newly available: Visa support.");
     expect(mock.mock.calls[1][0]).toBe(`/api/v1/overseas-admin/schools/${ID}/tier-change-preview?tier=platinum`);
-    expect(JSON.parse(mock.mock.calls[2][1].body)).toEqual({ tier: "platinum" });
+    expect(JSON.parse(mock.mock.calls[2][1].body)).toEqual({ tier: "platinum", expected_tier: "gold" });
   });
 
   it("asks before a downgrade and saves only on confirm", async () => {
@@ -1316,8 +1421,21 @@ git commit -m "test(enh-023): concurrent tier changes queue on the school row lo
     expect(mock).toHaveBeenCalledTimes(2);
     fireEvent.click(screen.getByRole("button", { name: "Confirm downgrade" }));
     await screen.findByText("School profile updated. Partnership is now Gold.");
-    expect(JSON.parse(mock.mock.calls[2][1].body)).toEqual({ tier: "gold" });
+    expect(JSON.parse(mock.mock.calls[2][1].body)).toEqual({ tier: "gold", expected_tier: "platinum" });
     expect(screen.queryByRole("button", { name: "Confirm downgrade" })).toBeNull();
+  });
+
+  it("a tier changed by someone else since lookup is a 409 alert and keeps the input", async () => {
+    const stale = "This school's tier changed to Silver since you looked it up. Look it up again before changing the tier.";
+    stubFetch([json(base, 200), json(downgrade, 200), json({ detail: stale }, 409)]);
+    await lookUp();
+    fireEvent.change(screen.getByLabelText("Partnership tier"), { target: { value: "gold" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm downgrade" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(stale);
+    expect(screen.queryByRole("button", { name: "Confirm downgrade" })).toBeNull();
+    expect((screen.getByLabelText("Partnership tier") as HTMLSelectElement).value).toBe("gold");
+    expect(screen.getByRole("button", { name: "Save changes" })).not.toBeDisabled();
   });
 
   it("cancel keeps the input and saves nothing", async () => {
@@ -1351,7 +1469,7 @@ git commit -m "test(enh-023): concurrent tier changes queue on the school row lo
     expect(mock.mock.calls[1][0]).toBe(`/api/v1/overseas-admin/schools/${ID}/tier-change-preview?tier=`);
     fireEvent.click(screen.getByRole("button", { name: "Confirm downgrade" }));
     await screen.findByText("School profile updated. Partnership is now no partnership tier.");
-    expect(JSON.parse(mock.mock.calls[2][1].body)).toEqual({ tier: null });
+    expect(JSON.parse(mock.mock.calls[2][1].body)).toEqual({ tier: null, expected_tier: "platinum" });
   });
 
   it("a failed preview is an alert, saves nothing and frees the button", async () => {
@@ -1389,7 +1507,7 @@ git commit -m "test(enh-023): concurrent tier changes queue on the school row lo
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `cd apps/web && npx vitest run tests/components/AdminSchoolEditPanel.test.tsx`
-Expected: the 8 new tests FAIL (no "Partnership tier" field); the 3 existing tests PASS.
+Expected: the 9 new tests FAIL (no "Partnership tier" field); the 3 existing tests PASS.
 
 - [ ] **Step 3: Implement** — replace `apps/web/components/AdminSchoolEditPanel.tsx` with:
 
@@ -1529,6 +1647,9 @@ export default function AdminSchoolEditPanel() {
     setMessage(null);
     setPending(null);
     if ("tier" in body) {
+      // D12: the tier this admin looked at. If it moved since, the server answers 409 instead of applying a change the
+      // admin never confirmed.
+      body.expected_tier = school.tier ?? null;
       const change = await preview(school, body.tier);
       if (!change) return;
       if (change.direction === "downgrade") {
@@ -1620,7 +1741,7 @@ export default function AdminSchoolEditPanel() {
 - [ ] **Step 4: Run to verify they pass**
 
 Run: `cd apps/web && npx vitest run tests/components/AdminSchoolEditPanel.test.tsx && npx tsc --noEmit`
-Expected: 11 tests PASS; no type errors.
+Expected: 12 tests PASS; no type errors.
 
 - [ ] **Step 5: Commit**
 
@@ -1863,10 +1984,10 @@ git commit -m "test(enh-023): e2e downgrade confirmation and notifications"
 **Files:**
 - Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md`, `docs/architecture/API_CONTRACT.md` (§12A), `docs/architecture/RBAC_MATRIX.md`, `docs/quality/RTM.md`, `docs/delivery/ENHANCEMENT_BACKLOG.md`, `docs/ux/SCREEN_CATALOG.md`, `docs/ux/screen_catalog.json`, `docs/ux/ROLE_NAVIGATION.md`
 
-- [ ] **Step 1: Decision register** — append `### DEC-SCOPE-029 — Partnership tier change: grandfathered downgrades, transition audit, notifications (ENH-023)`. Status `CONFIRMED_CURRENT — resolved 2026-09-23, in-session`. Resolution = the spec's §3 table D1–D11 verbatim. Note the number is provisional and renumbered on merge if taken.
+- [ ] **Step 1: Decision register** — append `### DEC-SCOPE-029 — Partnership tier change: grandfathered downgrades, transition audit, notifications (ENH-023)`. Status `CONFIRMED_CURRENT — resolved 2026-09-23, in-session`. Resolution = the spec's §3 table D1–D13 verbatim. Note the number is provisional and renumbered on merge if taken.
 
 - [ ] **Step 2: API contract** — in §12A, add an `ENH-023` addendum:
-  - (a) `PATCH /overseas-admin/schools/{school_id}` now takes a row lock and returns the additive `tier_change` object (shape from spec §4.2), `null` for profile-only bodies. The `school.tier_update` metadata changes from `{tier}` to the eight keys in Global Constraints, and the row's `created_at` is `clock_timestamp()`. Post-commit notifications go to the school's Coordinator(s)/Principal(s) and the acting admin, only when the tier moved.
+  - (a) `PATCH /overseas-admin/schools/{school_id}` now takes a row lock and returns the additive `tier_change` object (typed `SchoolUpdateOut`/`TierChangeOut`, spec §4.2), `null` for profile-only bodies. It accepts the optional `expected_tier` precondition (`409` with the exact Global Constraints message on mismatch; omitted = unchanged behaviour) and normalises `""` to `null` for `tier`/`expected_tier`. The `school.tier_update` metadata changes from `{tier}` to the eight keys in Global Constraints, and the row's `created_at` is `clock_timestamp()`. Post-commit notifications go to the school's Coordinator(s)/Principal(s) and the acting admin, only when the tier moved.
   - (b) New `GET /overseas-admin/schools/{school_id}/tier-change-preview?tier=` (Overseas Admin/Super Admin; `403`/`404`/`422`; read-only).
   - (c) The ENH-022 helper's grandfather rule and the 15 routes from spec §6.
   - (d) `PATCH`/`DELETE …/portfolio/entries/{id}` now return `404` for an unknown entry before any tier `403`.
