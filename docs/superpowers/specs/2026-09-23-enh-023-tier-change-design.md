@@ -57,6 +57,8 @@ precedent).
 | D11 | No-op and valid-until-only changes | Still audited (as today), with `direction="unchanged"`; **no notification**. |
 | D12 | Stale preview → unconfirmed downgrade (API review, 2026-09-23) | The PATCH accepts an optional **`expected_tier`** precondition; a mismatch with the tier read under the row lock is **`409 Conflict`**. The panel always sends it with a tier change; clients that omit it behave as today. |
 | D13 | Empty-string tier (API review) | `""` is **normalised to `null`** (removal) on the PATCH, on `expected_tier`, and on the preview. |
+| D14 | Audit of grandfathered writes (security review S2) | Each write allowed **only** by grandfathering adds one `school.tier_grandfathered` `AuditLog` row, `metadata {service_key, reason, tier, grandfathered_since}`, in the route's own transaction: committed with the write, discarded if the route fails. Mirrors `ENH-022` D12 for billing reconciliation and non-repudiation. |
+| D15 | Notification rate limiting (security review S3) | **No throttle.** A tier change is an admin-only, audited, rare action with no public surface. Recorded as an accepted risk (§14). |
 
 ## 4. The tier change
 
@@ -132,7 +134,8 @@ are cumulative, so a change is never both. Key order follows `TIER_SERVICES`.
   takes any `User`; a short comment at the call site notes this.
 - **After commit, failure-isolated:** every recipient is tried in its own `try` / `commit` / `rollback`, following
   `school_skills._notify_after_commit`. A failure logs `logger.warning("tier_change_notification_failed", …)` with
-  IDs only and never fails or undoes the tier change.
+  `{school_id, recipient_id, error_type}` only and **no `exc_info`**: SMTP exception text can contain the recipient's
+  email address (security review S1). The failure is never raised and never undoes the tier change.
 - **Content** (labels from `SERVICE_LABELS`; tier names capitalised; removal shown as "no partnership tier"):
 
 | Case | Title | Body | `action_url` |
@@ -164,8 +167,10 @@ all of these hold:
 
 The lookup runs only on the would-be-denial path. It filters on the indexed `action` column and on `entity_id` in SQL,
 then inspects the metadata in Python, so no JSON operators and no migration are needed. On a grandfathered allow it
-logs `logger.info("tier_grandfathered", extra={"extra_fields": {actor_id, role, school_id, service_key}})`, returns,
-and writes **no** denial row. On a real denial the `ENH-022` path (denial audit, commit, `logger.warning`, `403`) is
+adds (does not commit) one `school.tier_grandfathered` audit row (D14), logs
+`logger.info("tier_grandfathered", extra={"extra_fields": {actor_id, role, school_id, service_key}})`, returns, and
+writes **no** denial row. The row rides on the route's own commit, so a route that fails after the check (e.g. a
+later `422`) leaves no trace of a write that never happened. On a real denial the `ENH-022` path (denial audit, commit, `logger.warning`, `403`) is
 unchanged. A database error in the lookup propagates, so the check fails closed.
 
 **Consequence (deliberate):** a tier change made directly in the database (seed data, tests) leaves no transition row
@@ -293,7 +298,8 @@ are unchanged.
   `tier_change: null` and writes no tier audit row.
 - **AC-5** The preview returns the correct `tier_change`, enforces `403`/`404`/`422`, and writes nothing.
 - **AC-6** Every §6 grandfathered route succeeds on a record created before a PATCH downgrade that lost its service,
-  and writes no `school.tier_access_denied` row.
+  writes no `school.tier_access_denied` row, and writes exactly one `school.tier_grandfathered` row (D14). A route that
+  fails after the tier check writes none.
 - **AC-7** A record created after the downgrade, and any record under a direct-database tier change, still gets
   `ENH-022`'s `403`. At least one create route per module is still refused after a downgrade.
 - **AC-8** An expired school is refused even on a grandfathered record.
@@ -310,6 +316,8 @@ are unchanged.
 - **AC-16** `tier: ""` on the PATCH is stored as `null` and recorded with `to_tier: null`; the preview treats `""` as
   removal.
 - **AC-17** OpenAPI documents `SchoolUpdateOut` for the PATCH and `TierChangeOut` for the preview.
+- **AC-18** A failed notification logs only `{school_id, recipient_id, error_type}` with no traceback; no email address
+  appears in the log record (S1).
 
 ## 11. Regression risks
 
@@ -341,7 +349,7 @@ are unchanged.
 
 ## 13. Documentation deliverables and follow-ups
 
-- `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-029` (D1–D13).
+- `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-029` (D1–D15).
 - `API_CONTRACT.md` §12A: the PATCH's `tier_change` and new audit metadata, the preview endpoint, and the
   `ENH-022` helper's grandfather rule.
 - `RBAC_MATRIX.md`: the grandfather rule on the §6 actions.
@@ -352,14 +360,34 @@ are unchanged.
   tier-change volume ever makes `_lost_since` slow (needs a migration); (e) `create_school` still stores `tier: ""`
   as `""` (out of scope here; D13 covers only the tier-change PATCH and preview).
 
-## 14. Security review
+## 14. Security review (`security-and-hardening`, 2026-09-23)
 
-| Area | Finding | Consequence |
+**Trust boundaries.**
+- The tier PATCH body (`tier`, `tier_valid_until`, `expected_tier`).
+- The preview's `?tier=` query.
+- Admin-controlled school names flowing into notification titles, bodies and email headers.
+- The grandfather anchor that decides whether a gated write proceeds.
+
+**Assets:** paid entitlements (revenue), schools' in-flight work, and staff inboxes.
+
+| Area | Finding (verified in code) | Consequence |
 |---|---|---|
-| Authorization | PATCH and preview keep the Overseas Admin/Super Admin check; the preview reveals only one school's tier to the same roles that can already read and edit it. | No new exposure. |
-| Grandfather bypass | The anchor is always a server-loaded, scope-checked row's `created_at`, never request input; create routes never pass it. | A client cannot claim to be finishing existing work. |
-| Tier oracle | Scope checks still precede the tier check (`ENH-022` §6); grandfathering runs inside the same position. | Unchanged. |
-| Fail-closed | Lookup errors propagate; expired is never grandfathered; unknown metadata never matches. | No path allows on error. |
-| Notification content | Titles and bodies are built from server constants and the school name; `_notify_parent`'s email escapes them (`mailer.py`). React renders the in-app text. | No XSS. |
-| Sensitive logs | Log fields are IDs, role, service key and direction only. | No PII. |
-| Audit integrity | Transition rows become business inputs; they are append-only via the ORM and never updated. | Retention constraint noted (§5). |
+| Authentication | Every new route uses `Depends(get_current_user)`: httpOnly, `samesite="lax"` session cookie with `secure` from settings (`auth.py:88`). | No auth change. |
+| Authorization | PATCH and preview keep the Overseas/Super Admin check. The Principal page checks the role server-side before any feed request; the feed is keyed on the signed-in user. | No new exposure. |
+| IDOR | `school_id` is reachable only by admins, who can already list and edit every school. The grandfather anchor is always a server-loaded, scope-checked row's `created_at`, never request input. | A client cannot claim to be finishing existing work. |
+| Role escalation | `tier` is admin-only. `school_id` is a server-owned profile key (`auth.py:179`), so no one can re-point themselves at a school to receive its notices. `expected_tier` is a precondition only and is popped before any field is written; `extra="forbid"` blocks mass assignment. | None. |
+| Tier oracle | Scope checks still precede the tier check (`ENH-022` §6); grandfathering runs in the same position. The `409` names the current tier only to admins, who can already read it. | Unchanged. |
+| Input validation | `tier`, `expected_tier` and the preview `tier` are allowlisted, with `""` normalised to null (D13). Dates are validated by Pydantic. An unknown stored tier fails closed. | Covered by AC-15/AC-16. |
+| XSS / open redirect | React renders in-app text. `mailer.py` HTML-escapes title, body, school name and link. `action_url` values are server constants. | None. |
+| CSRF | The preview is a read-only GET. The PATCH uses the existing `samesite=lax` cookie with a JSON body; no new state-changing GET. | Unchanged (out of scope). |
+| SQL injection | ORM with bound parameters throughout (`User.profile["school_id"].as_string() == …`, `_lost_since`); no raw SQL. | None. |
+| Token/session | Untouched; `409`/`403` are not `401`, so the frontend does not log the user out. | None. |
+| Secrets | None introduced; SMTP credentials stay in settings. | None. |
+| Sensitive logs (S1) | SMTP exception text can contain the recipient's address, and the `school_skills` precedent logs `exc_info=True`. | Tier-notification failures log `{school_id, recipient_id, error_type}` only, with no traceback (AC-18). The `NotificationDelivery.error` column keeps the diagnosis, as today. |
+| Audit (S2) | ENH-022 persists every denial; a grandfathered allow would otherwise be invisible to billing. | `school.tier_grandfathered` row per grandfathered write, atomic with it (D14, AC-6). Transition rows are append-only business inputs and must not be pruned (§5). |
+| Rate limiting (S3) | Each tier change emails the school's Coordinators and Principals; there is no limiter, and an admin (or a compromised admin session) could flap tiers. | **Accepted risk (D15)**: admin-only, audited, rare. The ENH-005 audit-count throttle pattern is the remedy if abuse ever appears. |
+| Fail-closed | Lookup errors propagate (`500`); expiry is never grandfathered; legacy rows never match; unknown tiers are no tier. | No path allows on error. |
+
+**Follow-ups (existing SCH-007 mailer behaviour, deliberately not changed here):**
+- (f) A school name containing CR/LF makes `EmailMessage` reject the Subject header, so that school's tier notices are lost (logged; the tier change stands). Validate school names at creation, or sanitise in the mailer.
+- (g) The email `From` display name is the admin-controlled school name.

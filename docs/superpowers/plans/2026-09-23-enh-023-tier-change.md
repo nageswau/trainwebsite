@@ -29,7 +29,9 @@
 - Frontend uses only existing classes (`form-error`, `form-message`, `form-warning`, `btn`, `btn secondary`, `field`, `form`, `form-grid`, `action-card`, `actions`, `question` fieldset, `muted`, `skeleton-line`, `portal-content`, `card`); no CSS changes.
 - Inline confirmation follows the ENH-004/ENH-005 pattern: focus into Confirm; Escape/Cancel return focus to the opener (`refocus` from `@/lib/focus`); outcomes take focus (`tabIndex={-1}`); no dialog library.
 - WCAG 2.1 AA: every control labelled, helper text via `aria-describedby`, errors `role="alert"`, state never by colour alone, works at 320px.
-- Logs and audit metadata hold IDs, role, tier names and service keys only; no names, emails or request bodies.
+- Logs and audit metadata hold IDs, role, tier names and service keys only; no names, emails or request bodies. Notification-failure logs carry `{school_id, recipient_id, error_type}` and **no `exc_info`** (S1: SMTP errors can contain addresses).
+- A write allowed only by grandfathering adds one `school.tier_grandfathered` audit row (`TIER_GRANDFATHERED`), metadata exactly `{service_key, reason, tier, grandfathered_since}`, **added but not committed** by the helper, so it commits with the route's write or disappears with it (D14).
+- No rate limiter is added (D15, accepted risk).
 - The Docker stack is started by the user. Backend tests need the database up; ask the user to start it rather than starting it yourself.
 - Backend tests: `cd apps/api && pytest <file> -v`. Frontend: `cd apps/web && npx vitest run <file>`. E2E: `cd apps/web && npx playwright test <file>`.
 
@@ -686,18 +688,29 @@ async def test_unchanged_tier_notifies_nobody(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_failing_email_never_fails_or_undoes_the_tier_change(client, db_session, monkeypatch):
-    async def boom(**_):
-        raise RuntimeError("smtp down")
+async def test_failing_email_never_fails_or_undoes_the_tier_change(client, db_session, monkeypatch, caplog):
+    async def boom(**kwargs):
+        raise RuntimeError(f"recipient refused: <{kwargs['to_email']}>")  # what real SMTP errors look like
 
     monkeypatch.setattr(schools, "send_parent_notification_email", boom)
     w = await world(db_session, "gold")
-    body = await change_tier(client, w, tier="platinum")
+    with caplog.at_level(logging.WARNING, logger="app.admin"):
+        body = await change_tier(client, w, tier="platinum")
     assert body["tier"] == "platinum"
     await db_session.refresh(w["school"])
     assert w["school"].tier == "platinum"
     assert len(await tier_rows(db_session, w["school"].id)) == 1
+    # S1 / AC-18: ids and the error type only -- never the address the exception carried, never a traceback.
+    failures = [r for r in caplog.records if r.getMessage() == "tier_change_notification_failed"]
+    assert len(failures) == 3  # coordinator, principal, acting admin
+    for record in failures:
+        assert set(record.extra_fields) == {"school_id", "recipient_id", "error_type"}
+        assert record.extra_fields["error_type"] == "RuntimeError"
+        assert record.exc_info is None
+        assert "@" not in str(record.extra_fields)
 ```
+
+Add `import logging` to the top of `test_enh_023_tier_change.py`.
 
 - [ ] **Step 3: Run to verify they fail**
 
@@ -749,9 +762,10 @@ async def _notify_tier_change(db: AsyncSession, school_id: UUID, school_name: st
             recipient = await db.get(User, user_id, populate_existing=True)
             await _notify_parent(db, recipient, school_name=school_name, title=title, body=body, action_url=action_url)
             await db.commit()
-        except Exception:  # noqa: BLE001 -- the tier change has committed; see docstring
+        except Exception as exc:  # noqa: BLE001 -- the tier change has committed; see docstring
             await db.rollback()
-            logger.warning("tier_change_notification_failed", extra={"extra_fields": {"school_id": str(school_id), "recipient_id": str(user_id)}}, exc_info=True)
+            # No exc_info (security review S1): SMTP errors can carry the recipient's address. NotificationDelivery keeps the detail.
+            logger.warning("tier_change_notification_failed", extra={"extra_fields": {"school_id": str(school_id), "recipient_id": str(user_id), "error_type": type(exc).__name__}})
 ```
 
 In `update_school`, replace the line `# Task 4 inserts the post-commit notification call here.` with:
@@ -786,6 +800,7 @@ git commit -m "feat(enh-023): notify the school and acting admin of tier changes
 **Interfaces:**
 - Consumes: `TIER_UPDATE` (Task 1); transition rows written by Task 2
 - Produces:
+  - `TIER_GRANDFATHERED: str = "school.tier_grandfathered"`
   - `_grandfathers(metadata: dict, service_key: str | None) -> bool`
   - `async _lost_since(db, school_id: UUID, service_key: str | None, since: datetime) -> bool`
   - `async _is_grandfathered(db, school, reason: str, service_key: str | None, since: datetime) -> bool`
@@ -823,7 +838,7 @@ def test_free_text_work_is_grandfathered_only_by_a_removal():
 
 
 @pytest.mark.asyncio
-async def test_grandfathered_write_is_allowed_with_no_denial_row(monkeypatch):
+async def test_grandfathered_write_is_allowed_and_audited_uncommitted(monkeypatch):
     monkeypatch.setattr(schools, "_today_ist", lambda: TODAY)
     calls = []
 
@@ -832,10 +847,15 @@ async def test_grandfathered_write_is_allowed_with_no_denial_row(monkeypatch):
         return True
 
     monkeypatch.setattr(schools, "_lost_since", lost)
-    db = FakeDB(SimpleNamespace(id=uuid4(), tier="gold", tier_valid_until=None))
-    await require_school_entitlement(db, USER, uuid4(), "visa_support", grandfathered_since=SINCE)
-    assert db.added == [] and db.commits == 0
+    school_id = uuid4()
+    db = FakeDB(SimpleNamespace(id=school_id, tier="gold", tier_valid_until=None))
+    await require_school_entitlement(db, USER, school_id, "visa_support", grandfathered_since=SINCE)
     assert calls == [("visa_support", SINCE)]
+    # D14: one grandfather row, left for the route's own commit; never a denial row, never a commit here.
+    assert db.commits == 0 and len(db.added) == 1
+    row = db.added[0]
+    assert (row.action, row.entity_type, row.entity_id) == ("school.tier_grandfathered", "school", str(school_id))
+    assert row.metadata_json == {"service_key": "visa_support", "reason": "not_included", "tier": "gold", "grandfathered_since": SINCE.isoformat()}
 
 
 @pytest.mark.asyncio
@@ -900,6 +920,10 @@ def attendance(w) -> dict:
     return {"records": [{"student_id": str(w["students"][0].id), "present": True}]}
 
 
+async def grandfathered(db, school_id) -> int:
+    return await db.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action == "school.tier_grandfathered", AuditLog.entity_id == str(school_id)))
+
+
 # --- Grandfathered work: activities and records (AC-6..AC-8) ----------------------------------------------------------
 
 
@@ -912,8 +936,21 @@ async def test_campus_visit_scheduled_before_a_downgrade_can_still_take_attendan
     await login(client, w["coordinator"].email)
     r = await client.post(f"/api/v1/school/activities/{visit['id']}/attendance", json=attendance(w))
     assert r.status_code == 200, r.text
+    assert await grandfathered(db_session, w["school"].id) == 1  # D14: committed with the attendance
     assert (await client.post("/api/v1/school/activities", json=activity("campus_visit"))).status_code == 403  # new work
     assert await denials(db_session, w["school"].id) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_grandfathered_write_that_then_fails_leaves_no_grandfather_row(client, db_session):
+    w = await world(db_session, "platinum")
+    await login(client, w["coordinator"].email)
+    visit = (await client.post("/api/v1/school/activities", json=activity("campus_visit"))).json()
+    await change_tier(client, w, tier="gold")
+    await login(client, w["coordinator"].email)
+    r = await client.post(f"/api/v1/school/activities/{visit['id']}/attendance", json={"records": []})  # 422 after the tier check
+    assert r.status_code == 422
+    assert await grandfathered(db_session, w["school"].id) == 0
 
 
 @pytest.mark.asyncio
@@ -991,6 +1028,9 @@ Expected: FAIL — `ImportError: cannot import name '_grandfathers'`; the route 
 - [ ] **Step 4: Implement the helpers** (`schools.py`, directly above `require_school_entitlement`)
 
 ```python
+TIER_GRANDFATHERED = "school.tier_grandfathered"
+
+
 def _grandfathers(metadata: dict, service_key: str | None) -> bool:
     """ENH-023 §5: does this `school.tier_update` row take `service_key` away? Rows written before ENH-023 carry no
     `direction` and never match; `service_key=None` (a free-text activity, ENH-022 D7) is taken away only by a removal."""
@@ -1036,6 +1076,8 @@ async def require_school_entitlement(db: AsyncSession, user: User, school_id: UU
         return
     reason, message = denial
     if grandfathered_since is not None and await _is_grandfathered(db, school, reason, service_key, grandfathered_since):
+        # D14: added, NOT committed -- it rides on the route's own commit, so a route that fails later leaves no trace.
+        db.add(AuditLog(user_id=user.id, action=TIER_GRANDFATHERED, entity_type="school", entity_id=str(school_id), metadata_json={"service_key": service_key, "reason": reason, "tier": tier, "grandfathered_since": grandfathered_since.isoformat()}))
         logger.info("tier_grandfathered", extra={"extra_fields": {"actor_id": str(user.id), "role": user.role, "school_id": str(school_id), "service_key": service_key}})
         return
     # … the rest of the function (fields / AuditLog / commit / warning / raise) is unchanged
@@ -1122,6 +1164,8 @@ async def test_digital_skills_batch_can_be_finished_after_a_downgrade_but_not_gr
     assert (await client.patch(f"{ENROLMENTS}/{enrolment['id']}", json={"status": "completed"})).status_code == 200
 
     # Growing the commitment is new work: refused (D8).
+    assert await grandfathered(db_session, w["school"].id) == 6  # batch edit, session, attendance, assessment, scores, status
+
     grown = await client.post(f"{BATCHES}/{batch['id']}/enrollments", json={"school_student_ids": [sid]})
     assert grown.status_code == 403
     new_batch = await client.post(BATCHES, json={"school_id": str(w["school"].id), "module_type": "digital_skills", "title": "New", "start_date": today})
@@ -2189,7 +2233,7 @@ git commit -m "test(enh-023): e2e downgrade confirmation and notifications"
 **Files:**
 - Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md`, `docs/architecture/API_CONTRACT.md` (§12A), `docs/architecture/RBAC_MATRIX.md`, `docs/quality/RTM.md`, `docs/delivery/ENHANCEMENT_BACKLOG.md`, `docs/ux/SCREEN_CATALOG.md`, `docs/ux/screen_catalog.json`, `docs/ux/ROLE_NAVIGATION.md`
 
-- [ ] **Step 1: Decision register** — append `### DEC-SCOPE-029 — Partnership tier change: grandfathered downgrades, transition audit, notifications (ENH-023)`. Status `CONFIRMED_CURRENT — resolved 2026-09-23, in-session`. Resolution = the spec's §3 table D1–D13 verbatim. Note the number is provisional and renumbered on merge if taken.
+- [ ] **Step 1: Decision register** — append `### DEC-SCOPE-029 — Partnership tier change: grandfathered downgrades, transition audit, notifications (ENH-023)`. Status `CONFIRMED_CURRENT — resolved 2026-09-23, in-session`. Resolution = the spec's §3 table D1–D15 verbatim. Note the number is provisional and renumbered on merge if taken.
 
 - [ ] **Step 2: API contract** — in §12A, add an `ENH-023` addendum:
   - (a) `PATCH /overseas-admin/schools/{school_id}` now takes a row lock and returns the additive `tier_change` object (typed `SchoolUpdateOut`/`TierChangeOut`, spec §4.2), `null` for profile-only bodies. It accepts the optional `expected_tier` precondition (`409` with the exact Global Constraints message on mismatch; omitted = unchanged behaviour) and normalises `""` to `null` for `tier`/`expected_tier`. The `school.tier_update` metadata changes from `{tier}` to the eight keys in Global Constraints, and the row's `created_at` is `clock_timestamp()`. Post-commit notifications go to the school's Coordinator(s)/Principal(s) and the acting admin, only when the tier moved.
@@ -2199,9 +2243,24 @@ git commit -m "test(enh-023): e2e downgrade confirmation and notifications"
 
 - [ ] **Step 3: RBAC matrix** — under the ENH-022 tier dimension, add: "ENH-023: on the 15 completion actions (spec §6), a school that lost the service through a recorded downgrade after the record's creation keeps write access to that record; creates stay gated; expiry is never grandfathered." Add the principal's read of their own notifications.
 
+- [ ] **Step 3b: Security controls** — in `docs/architecture/SECURITY_CONTROLS.md`, add an ENH-023 entry summarising spec §14:
+  - the `school.tier_grandfathered` audit (D14);
+  - transition rows as non-prunable business inputs;
+  - notification-failure logs without `exc_info` (S1);
+  - the `expected_tier` precondition (D12);
+  - no rate limiter on tier notifications as an accepted risk (D15);
+  - follow-ups (f) school-name CR/LF in email headers and (g) the admin-controlled `From` display name.
+
 - [ ] **Step 4: RTM, backlog, screens, nav**
   - RTM: add an `ENH-023` row following the `ENH-022`/`ENH-013` addendum format, citing the spec, this plan, the two new test files, the panel/page tests, the E2E spec and the regression results from Step 6.
-  - Backlog §ENH-023: add a status line, `Implemented on feature/enh-023-tier-change-workflow (DEC-SCOPE-029)`, plus follow-ups (a) Overseas Admin notifications page, (b) share lock closing the §8 residual race, (c) pre-expiry notices.
+  - Backlog §ENH-023: add a status line, `Implemented on feature/enh-023-tier-change-workflow (DEC-SCOPE-029)`, plus follow-ups:
+    - (a) Overseas Admin notifications page;
+    - (b) share lock closing the §8 residual race;
+    - (c) pre-expiry notices;
+    - (d) composite audit index;
+    - (e) `create_school` `""` tier;
+    - (f) school-name CR/LF in email headers;
+    - (g) admin-controlled `From` display name.
   - `SCREEN_CATALOG.md` and `screen_catalog.json`: add `SCR-SCH-036 — /school/principal/notifications — Principal's own notifications (ENH-023, added 2026-09-23)`, following the `SCR-SCH-035` entry's format, and note the edit panel's new tier fields on its existing entry.
   - `ROLE_NAVIGATION.md`, Principal section: add `SCR-SCH-036 — /school/principal/notifications — Own notifications, e.g. partnership tier changes (ENH-023, added 2026-09-23).`
 
