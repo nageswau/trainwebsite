@@ -134,7 +134,7 @@ messages can occur.
   activity `activity_type`, application `school_student_id`) — never from the body.
 - **Backward compatibility:** the only change is a new `403` on existing write routes. Request bodies,
   success responses and existing error strings are unchanged. Documented as an `API_CONTRACT.md` addendum.
-- **Idempotency:** a tier `403` is deterministic and writes nothing — retry-safe. No `Idempotency-Key`
+- **Idempotency:** a tier `403` is deterministic and writes only its denial audit row (D12) — retry-safe. No `Idempotency-Key`
   (§0.2, not financial).
 
 ## 7. Gated endpoints
