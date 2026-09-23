@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import uuid
+from datetime import date
 
 import pytest
 from pydantic import ValidationError
@@ -88,6 +89,34 @@ async def test_only_an_in_scope_career_counselor_may_write(client, db_session): 
     client.cookies.clear()
     assert (await client.patch(GOAL.format(sid=kid.id), json={"career_goal": "X"})).status_code == 401
     assert await _goal_of(kid.id) is None
+
+
+@pytest.mark.asyncio
+async def test_the_goal_needs_the_individual_counselling_tier(client, db_session):  # DEC-SCOPE-028 D13 (ENH-022 gate)
+    cases = [
+        ("bronze", None, "This school's Bronze partnership does not include Individual counselling (requires Silver or higher).", "not_included"),
+        ("silver", date(2020, 1, 31), "This school's partnership expired on 31 Jan 2020.", "expired"),
+        (None, None, "This school has no active partnership tier.", "no_tier"),
+    ]
+    for tier, valid_until, message, reason in cases:
+        ctx = await mk_school(db_session, label=f"E13-GoalTier-{tier}", tier=tier, tier_valid_until=valid_until)
+        kid = ctx["students"][0]
+        cc = await mk_staff(db_session, ctx["school"], ctx["admin"], role="career_counselor")
+        await login(client, cc.email)
+        r = await client.patch(GOAL.format(sid=kid.id), json={"career_goal": "Medicine"})
+        assert (r.status_code, r.json()["detail"]) == (403, message), tier
+        assert await _goal_of(kid.id) is None
+        async with SessionLocal() as s:
+            denial = await s.scalar(select(AuditLog).where(AuditLog.action == "school.tier_access_denied", AuditLog.entity_id == str(ctx["school"].id)))
+            assert (denial.outcome, denial.metadata_json["service_key"], denial.metadata_json["reason"]) == ("denied", "individual_counselling", reason)
+            assert await s.scalar(select(AuditLog).where(AuditLog.action == "school.career_goal_update", AuditLog.entity_id == str(kid.id))) is None
+
+    ctx = await mk_school(db_session, label="E13-GoalTier-silver-ok", tier="silver")  # Silver is the minimum that includes it
+    kid = ctx["students"][0]
+    cc = await mk_staff(db_session, ctx["school"], ctx["admin"], role="career_counselor")
+    await login(client, cc.email)
+    assert (await client.patch(GOAL.format(sid=kid.id), json={"career_goal": "Medicine"})).status_code == 200
+    assert await _goal_of(kid.id) == "Medicine"
 
 
 @pytest.mark.asyncio

@@ -313,7 +313,7 @@ even via direct ID, same as every other use of that mechanism. Covered by `test_
 |---|---|---|
 | Open a student's 360° view (`GET .../360-view`) | The same 7 readers as the portfolio above, same scoping (shared loader `_load_student_for_reader`) | any other role `403`; outside own scope `403` |
 | Read a tab's data | Per role, **no new exposure** — only what that role already reads elsewhere. School roles: every tab. `academic_team`: all but Academic Records and Attendance. `career_counselor`/`psychometric_team`: additionally not English Testing or Teacher Remarks; results, languages and psychometric rows in `/portfolio`'s summary shape only. Service roles see name + school only in the header. Full matrix: design spec §6.3 | a non-readable tab is returned `restricted` with no data (never shown as "empty") |
-| Set/clear the career goal (`PATCH .../career-goal`) | `career_counselor`, own school portfolio (re-checked under the student row lock) | every other role `403`, including the other six readers |
+| Set/clear the career goal (`PATCH .../career-goal`) | `career_counselor`, own school portfolio (re-checked under the student row lock), **and** the student's school tier includes `individual_counselling` (Silver+, ENH-022 gate, `DEC-SCOPE-028` D13) | every other role `403`, including the other six readers; a school with no valid tier, an expired one, or Bronze `403` (ENH-022 messages, denial audited) |
 
 Covered by `test_enh_013_360_view.py` (scope matrix, per-role projection, mutation-checked) and `test_enh_013_career_goal.py`.
 

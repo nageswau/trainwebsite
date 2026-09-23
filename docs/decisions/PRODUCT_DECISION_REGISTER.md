@@ -2411,6 +2411,7 @@ criteria blockers (field-by-field scope, Branch design).
 10. **D10 UI:** a new `/360` route per role, linked from the existing pages; existing pages otherwise unchanged.
 11. **D11 No new exposure:** each tab is built per role from only what that role can already read through an existing endpoint; unreadable tabs are `restricted`.
 12. **D12 Read trail:** one structured log line per read (ids and role only); no database write on a GET.
+13. **D13 Career goal is tier-gated (user, in-session, 2026-09-23, `EXPLICIT_APPROVAL`, after merging ENH-022 / `DEC-SCOPE-027`):** saving a career goal requires the `individual_counselling` service (Silver or higher), the same gate ENH-022 D5 puts on career records. It uses ENH-022's `require_school_entitlement` (same `403` messages, same `school.tier_access_denied` audit row), checked after the scope re-check under the row lock so the student's current school is the one checked. Reading the goal in the 360° view stays ungated (ENH-022 D3: reads stay open).
 
 **Fix scope after browser QA (user, in-session, 2026-09-23, `EXPLICIT_APPROVAL`):** fix only the issues ENH-013 introduced (QA-01/02/03/04/06); the seeded demo report link (QA-05) and the pre-existing QA-07..10 are logged in `RAID.md` (I-34..I-37), not changed.
 

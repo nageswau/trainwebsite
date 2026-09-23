@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.api.portfolio import portfolio_payload
-from app.api.schools import SCHOOL_ROLES, _grade_history_rows, _load_student_for_reader, _overview_payload, _portfolio_school_ids, _student_in_portfolio
+from app.api.schools import SCHOOL_ROLES, _grade_history_rows, _load_student_for_reader, _overview_payload, _portfolio_school_ids, _student_in_portfolio, require_school_entitlement
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import AuditLog, SchoolStudent, User
@@ -154,6 +154,9 @@ async def update_career_goal(student_id: UUID, payload: CareerGoalUpdate, user: 
         raise HTTPException(404, "Student not found")
     if student.school_id not in await _portfolio_school_ids(db, user):  # the re-check the transfer-race test guards
         raise HTTPException(403, OUTSIDE_PORTFOLIO)
+    # DEC-SCOPE-028 D13: gated like the career records (ENH-022 D5). Checked under the lock, so it is the student's current
+    # school's tier; a denial commits only its audit row, which ends the transaction with nothing else written.
+    await require_school_entitlement(db, user, student.school_id, "individual_counselling")
     old = student.career_goal
     student.career_goal = payload.career_goal
     db.add(AuditLog(user_id=user.id, action="school.career_goal_update", entity_type="school_student", entity_id=str(student.id), metadata_json={"old": old, "new": payload.career_goal}))
