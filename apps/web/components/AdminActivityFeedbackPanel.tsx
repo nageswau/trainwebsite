@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import ActivityFeedbackDetails from "@/components/ActivityFeedbackDetails";
+import LoadFailureAlert from "@/components/LoadFailureAlert";
 import LocalDateTime from "@/components/LocalDateTime";
-import { type AdminActivityFeedback, activityTypeLabel, type LoadFailure, participationText, SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
+import { type AdminActivityFeedback, activityTypeLabel, type LoadFailure, participationText } from "@/lib/activityFeedback";
 import { isPage } from "@/lib/apiErrors";
 
 // ENH-018 (spec §7.3): every school's activity feedback for Edusphere management, newest first. Loaded after first paint like
@@ -23,15 +23,14 @@ export default function AdminActivityFeedbackPanel() {
   const [schoolId, setSchoolId] = useState("");
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
-  const matching = needle ? schools.filter((s) => s.name.toLowerCase().includes(needle)) : schools;
-  const shownSchools = needle ? schools.filter((s) => s.id === schoolId || matching.includes(s)) : schools;
+  const matches = (s: SchoolOption) => s.name.toLowerCase().includes(needle); // an empty search matches every school
+  const shownSchools = schools.filter((s) => s.id === schoolId || matches(s));
   const [items, setItems] = useState<AdminActivityFeedback[] | null>(null);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState<"first" | "more" | null>("first");
   const [failure, setFailure] = useState<LoadFailure>(null);
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
   const controller = useRef<AbortController | null>(null);
-  const alertRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
   const load = useCallback(async (school: string, offset: number, mode: "first" | "more") => {
@@ -65,9 +64,6 @@ export default function AdminActivityFeedbackPanel() {
     return () => controller.current?.abort();
   }, [load]);
   useEffect(() => {
-    if (failure) alertRef.current?.focus();
-  }, [failure]);
-  useEffect(() => {
     if (focusIndex === null) return;
     (listRef.current?.children[focusIndex] as HTMLElement | undefined)?.focus();
     setFocusIndex(null);
@@ -96,7 +92,7 @@ export default function AdminActivityFeedbackPanel() {
             aria-describedby="feedback-school-search-hint"
             onChange={(e) => setQuery(e.target.value)}
           />
-          <p id="feedback-school-search-hint" className="field-hint" aria-live="polite">{needle ? `${matching.length} of ${schools.length} schools match` : ""}</p>
+          <p id="feedback-school-search-hint" className="field-hint" aria-live="polite">{needle ? `${schools.filter(matches).length} of ${schools.length} schools match` : ""}</p>
         </div>
         <div>
           <label htmlFor="feedback-school">School</label>
@@ -106,18 +102,7 @@ export default function AdminActivityFeedbackPanel() {
           </select>
         </div>
       </div>
-      {failure && (
-        <div ref={alertRef} tabIndex={-1} className="form-error" role="alert">
-          {failure === "expired" ? (
-            <p style={{ margin: 0 }}>{SESSION_EXPIRED} <Link href={SIGN_IN_PATH}>Sign in again</Link></p>
-          ) : (
-            <>
-              <p style={{ margin: 0 }}>Could not load activity feedback.</p>
-              <button type="button" className="btn small secondary" style={{ marginTop: 8 }} onClick={() => void load(schoolId, 0, "first")}>Try again</button>
-            </>
-          )}
-        </div>
-      )}
+      {failure && <LoadFailureAlert failure={failure} onRetry={() => void load(schoolId, 0, "first")} />}
       {items === null && !failure ? (
         <div aria-busy="true">
           <p className="muted" style={{ margin: "0 0 8px" }}>Loading activity feedback…</p>

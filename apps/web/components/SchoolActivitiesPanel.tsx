@@ -8,6 +8,8 @@ import LocalDateTime from "@/components/LocalDateTime";
 import { isFeedbackEligible } from "@/lib/activityFeedback";
 
 type Activity = { id: string; title: string; scheduled_at: string; activity_type?: string | null; feedback_submitted?: boolean };
+
+const feedbackAction = (a: Activity) => (a.feedback_submitted ? "View feedback" : "Give feedback");
 type Student = { id: string; full_name: string };
 
 function detailMessage(detail: unknown) {
@@ -96,10 +98,10 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
                         <button className="btn ghost small" onClick={() => startMarking(a.id)}>Mark attendance</button>
                         {/* ENH-018: completed Edusphere (typed) activities link to their own feedback (QA-018-09); once feedback
                             is recorded the link says so (QA-018-10). */}
-                        {a.feedback_submitted ? (
-                          <Link className="btn secondary small" href={`/school/coordinator/feedback?activity=${a.id}`} aria-label={`View feedback for ${a.title}`}>View feedback</Link>
-                        ) : (
-                          isFeedbackEligible(a) && <Link className="btn secondary small" href={`/school/coordinator/feedback?activity=${a.id}`} aria-label={`Give feedback for ${a.title}`}>Give feedback</Link>
+                        {(a.feedback_submitted || isFeedbackEligible(a)) && (
+                          <Link className="btn secondary small" href={`/school/coordinator/feedback?activity=${a.id}`} aria-label={`${feedbackAction(a)} for ${a.title}`}>
+                            {feedbackAction(a)}
+                          </Link>
                         )}
                       </div>
                     </td>

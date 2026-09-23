@@ -101,7 +101,8 @@ export default function ActivityFeedbackForm({ activity, onSubmitted, onDuplicat
       if (response.status === 409) return onDuplicate({ trainer_name: text("trainer_name"), feedback: String(form.get("feedback") ?? ""), suggestions: text("suggestions") });
       if (response.status === 401) return setError({ text: `${SESSION_EXPIRED} Your entry is kept; sign in again in a new tab, then submit.`, expired: true });
       const detail = (data as { detail?: unknown } | null)?.detail;
-      if (response.status === 422 && fieldError(detail)) return setError(fieldError(detail));
+      const invalidFields = response.status === 422 ? fieldError(detail) : null;
+      if (invalidFields) return setError(invalidFields);
       if (!response.ok || !isRequestBody(data)) return setError({ text: detailMessage(detail, "Could not save the feedback.") });
       onSubmitted(data as ActivityFeedback);
     } catch {

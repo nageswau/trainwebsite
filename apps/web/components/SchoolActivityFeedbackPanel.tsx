@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import ActivityFeedbackDetails from "@/components/ActivityFeedbackDetails";
 import ActivityFeedbackForm from "@/components/ActivityFeedbackForm";
+import LoadFailureAlert from "@/components/LoadFailureAlert";
 import LocalDateTime from "@/components/LocalDateTime";
 import UnsentFeedbackNote from "@/components/UnsentFeedbackNote";
 import {
@@ -15,8 +16,6 @@ import {
   type FeedbackFilter,
   type LoadFailure,
   participationText,
-  SESSION_EXPIRED,
-  SIGN_IN_PATH,
   type UnsentText,
 } from "@/lib/activityFeedback";
 import { isPage, type Page } from "@/lib/apiErrors";
@@ -51,7 +50,6 @@ export default function SchoolActivityFeedbackPanel({ initial, canSubmit, focusA
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
   const controller = useRef<AbortController | null>(null);
   const messageRef = useRef<HTMLDivElement>(null);
-  const alertRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const triggers = useRef(new Map<string, HTMLButtonElement>());
 
@@ -77,9 +75,6 @@ export default function SchoolActivityFeedbackPanel({ initial, canSubmit, focusA
   }, []);
 
   useEffect(() => () => controller.current?.abort(), []);
-  useEffect(() => {
-    if (failure) alertRef.current?.focus();
-  }, [failure]);
   useEffect(() => {
     if (focusIndex === null) return;
     (listRef.current?.children[focusIndex] as HTMLElement | undefined)?.focus();
@@ -155,18 +150,7 @@ export default function SchoolActivityFeedbackPanel({ initial, canSubmit, focusA
           )}
         </div>
         <div ref={messageRef} tabIndex={-1} role="status" aria-live="polite">{message && <div className="form-message">{message}</div>}</div>
-        {failure && (
-          <div ref={alertRef} tabIndex={-1} className="form-error" role="alert">
-            {failure === "expired" ? (
-              <p style={{ margin: 0 }}>{SESSION_EXPIRED} <Link href={SIGN_IN_PATH}>Sign in again</Link></p>
-            ) : (
-              <>
-                <p style={{ margin: 0 }}>Could not load activity feedback.</p>
-                <button type="button" className="btn small secondary" style={{ marginTop: 8 }} onClick={() => void load(filter, 0, "first")}>Try again</button>
-              </>
-            )}
-          </div>
-        )}
+        {failure && <LoadFailureAlert failure={failure} onRetry={() => void load(filter, 0, "first")} />}
         {loading === "first" ? (
           <div aria-busy="true">
             <p className="muted">Loading activity feedback…</p>
