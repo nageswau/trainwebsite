@@ -196,7 +196,8 @@ nothing, so the form keeps the user's input.
 - **AC-7** Visa writes on a non-bridged application and all non-§7 routes behave exactly as before.
 - **AC-8** `GET /school/entitlements` responses are byte-for-byte unchanged, including for an expired
   school.
-- **AC-9** Each affected panel shows the `403` `detail` string in its existing error area.
+- **AC-9** Each affected panel shows the `403` `detail` string as a `role="alert"` beside the form that
+  failed, keeps the user's input, and never leaves its submit button stuck after a network failure (§9).
 - **AC-10** An unknown service key passed to the helper raises `ValueError`.
 
 ## 12. Regression risks and test plan (written before code)
@@ -224,7 +225,8 @@ AC-10. (3) `digital_skills` ≠ `web_designing` — reuse `USAGE_KEYS`, never `m
    `sch-008`, `sch-009`, `sch-010`, `enh-002`, `enh-011`, `enh-012`) select **Platinum**; new
    `enh-022-tier-enforcement.spec.ts`: Bronze coordinator's campus-visit activity shows the `403` message,
    a career seminar succeeds.
-6. *Runs:* new + affected suites per task; full backend and E2E suites once at the end (justified: the
+6. *Frontend component tests:* per §9, one file per changed panel.
+7. *Runs:* new + affected suites per task; full backend and E2E suites once at the end (justified: the
    change spans every School service).
 
 ## 13. Documentation deliverables
