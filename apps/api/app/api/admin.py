@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code, uuid_reference
 from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, SchoolStaffAssignment, SchoolStudent, University, User, UserRoleAssignment
-from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate
+from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.storage import storage
 
@@ -1137,33 +1137,60 @@ async def list_schools(user: User = Depends(get_current_user), db: AsyncSession 
     return await _school_outs_batch(db, rows)
 
 
-@agents_router.patch("/schools/{school_id}")
+@agents_router.patch("/schools/{school_id}", response_model=SchoolUpdateOut)
 async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-025) -- Overseas Admin updates a School's partnership
     tier and/or profile fields. `name`/`city`/`state`/`coordinator_*` stay out of scope for this
-    endpoint -- they were never editable before and no acceptance criterion asks for that."""
+    endpoint -- they were never editable before and no acceptance criterion asks for that.
+    ENH-023 (DEC-SCOPE-029): a tier change is recorded as a transition (old -> new, gained/lost), returned as
+    `tier_change`, guarded by the optional `expected_tier` precondition (D12), and told to the school after the commit."""
+    from app.api.schools import TIER_UPDATE, _tier_name, tier_change_payload  # noqa: PLC0415 -- lazy, like the bridge import below
+
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
-    school = await db.get(School, school_id)
+    # ENH-023 §8: the row lock queues concurrent tier changes, so each one's `from_tier` is the tier committed before it.
+    school = await db.scalar(select(School).where(School.id == school_id).with_for_update())
     if not school:
         raise HTTPException(404, "School not found")
     fields = payload.model_dump(exclude_unset=True)
+    for key in ("tier", "expected_tier"):  # D13: "" is no tier, stored and compared as null
+        if key in fields:
+            fields[key] = fields[key] or None
+            if fields[key] is not None and fields[key] not in {"bronze", "silver", "gold", "platinum"}:
+                raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
+    if "expected_tier" in fields and fields.pop("expected_tier") != school.tier:
+        # D12, checked under the lock: the tier moved since the caller looked, so what they confirmed is not what would happen.
+        raise HTTPException(409, f"This school's tier changed to {_tier_name(school.tier)} since you looked it up. Look it up again before changing the tier.")
+    old_tier, old_valid_until = school.tier, school.tier_valid_until
     if "tier" in fields:
-        tier = fields["tier"]
-        if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
-            raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
-        school.tier = tier
+        school.tier = fields["tier"]
     if "tier_valid_until" in fields:
         school.tier_valid_until = fields["tier_valid_until"]
+    tier_change = None
     if "tier" in fields or "tier_valid_until" in fields:
-        db.add(AuditLog(user_id=user.id, action="school.tier_update", entity_type="school", entity_id=str(school.id), metadata_json={"tier": school.tier}))
+        tier_change = tier_change_payload(old_tier, school.tier)
+        metadata = {
+            "tier": school.tier,
+            "from_tier": old_tier,
+            "to_tier": school.tier,
+            "direction": tier_change["direction"],
+            "gained": [s["key"] for s in tier_change["gained"]],
+            "lost": [s["key"] for s in tier_change["lost"]],
+            "tier_valid_until": school.tier_valid_until.isoformat() if school.tier_valid_until else None,
+            "previous_tier_valid_until": old_valid_until.isoformat() if old_valid_until else None,
+        }
+        # clock_timestamp(), not the transaction-start now(): a record created by a transaction that still saw the old tier
+        # sorts before this row, so grandfathering (schools._lost_since) treats it as existing work (ENH-023 §8).
+        db.add(AuditLog(user_id=user.id, action=TIER_UPDATE, entity_type="school", entity_id=str(school.id), metadata_json=metadata, created_at=func.clock_timestamp()))
     profile_fields = [k for k in fields if k not in {"tier", "tier_valid_until"}]
     for key in profile_fields:
         setattr(school, key, fields[key])
     if profile_fields:
         db.add(AuditLog(user_id=user.id, action="school.profile_update", entity_type="school", entity_id=str(school.id), metadata_json={"changed_fields": sorted(profile_fields)}))
     await db.commit()
-    return await _school_out(db, school)
+    out = await _school_out(db, school)
+    # Task 4 inserts the post-commit notification call here.
+    return {**out.model_dump(mode="json"), "tier_change": tier_change}
 
 
 ACADEMIC_YEAR_STATUSES = ["draft", "active", "closed"]
