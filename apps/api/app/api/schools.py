@@ -1194,8 +1194,8 @@ async def student_grade_history(student_id: UUID, user: User = Depends(get_curre
         "history": [
             {
                 "id": h.id, "action": h.action, "created_at": h.created_at,
-                "from": {"academic_year_id": h.from_academic_year_id, "academic_year_label": from_y.label if from_y else None, "grade_level": h.from_grade_level, "grade_or_class": h.from_grade_or_class},
-                "to": {"academic_year_id": h.to_academic_year_id, "academic_year_label": to_y.label, "grade_level": h.to_grade_level, "grade_or_class": h.to_grade_or_class},
+                "from": {"academic_year_id": h.from_academic_year_id, "academic_year_label": from_y.label if from_y else None, "grade_level": h.from_grade_level, "grade_or_class": h.from_grade_or_class, "section": h.from_section, "roll_number": h.from_roll_number},
+                "to": {"academic_year_id": h.to_academic_year_id, "academic_year_label": to_y.label, "grade_level": h.to_grade_level, "grade_or_class": h.to_grade_or_class, "section": h.to_section, "roll_number": None},
             }
             for h, from_y, to_y in rows
         ],
@@ -1405,12 +1405,17 @@ async def promote_students(payload: StudentPromotionRequest, user: User = Depend
                     school_student_id=student.id, action=decision.status,
                     from_academic_year_id=student.academic_year_id, from_grade_level=student.grade_level, from_grade_or_class=student.grade_or_class,
                     to_academic_year_id=active_year.id, to_grade_level=decision.grade_level, to_grade_or_class=decision.grade_or_class,
+                    # ENH-025 (DEC-SCOPE-027 item 6): previous class details survive the roll-number reset below.
+                    from_section=student.section, from_roll_number=student.roll_number, to_section=student.section,
                     performed_by_user_id=user.id,
                 )
             )
             student.academic_year_id = active_year.id
             student.grade_level = decision.grade_level
             student.grade_or_class = decision.grade_or_class
+            # Roll numbers are reassigned each year; NULL can never violate uq_school_students_roll, so this
+            # cannot fail the promotion's single transaction.
+            student.roll_number = None
         counts[decision.status] += 1
         results.append({"student_id": student.id, "status": decision.status, "reason": decision.reason, "message": decision.message, "grade_level": decision.grade_level, "grade_or_class": decision.grade_or_class})
 

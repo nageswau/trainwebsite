@@ -582,6 +582,9 @@ class GradeHistoryState(BaseModel):
     academic_year_label: str | None = None
     grade_level: int | None = None
     grade_or_class: str | None = None
+    # ENH-025: additive. `roll_number` is only ever set on `from` (a year move clears it).
+    section: str | None = None
+    roll_number: str | None = None
 
 
 class GradeHistoryEntry(BaseModel):
