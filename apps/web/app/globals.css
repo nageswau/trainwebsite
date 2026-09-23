@@ -24,3 +24,8 @@
 .pf-entry-actions { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
 .pf-add-btn { margin-top: 0.5rem; }
 .pf-statement { white-space: pre-wrap; }
+
+/* QA-022-05: grid items default to min-width:auto, so a <select> was as wide as its longest option ("Student - School")
+   and pushed forms -- and the whole page -- wider than a phone. Let form rows shrink; controls never exceed their row. */
+.action-card > *, .form > *, .field > * { min-width: 0; }
+.field input, .field select, .field textarea { max-width: 100%; }
