@@ -1,3 +1,4 @@
+import SchoolStudentPhoto from "@/components/SchoolStudentPhoto";
 import { serverApi } from "@/lib/api";
 import { formatDate } from "@/lib/formatDate";
 import { attendanceText, ENROLMENT_LABEL, MODULE_LABEL, type SkillModule } from "@/lib/skills";
@@ -23,7 +24,8 @@ type SkillEnrolment = {
 type SkillModuleProgress = { status: string; enrollments: SkillEnrolment[] };
 
 export type ChildOverview = {
-  student: { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null; school_name: string | null; assigned_teacher_name: string | null };
+  // ENH-025: section/roll_number/has_photo are additive on the overview's `student` (it reuses _student_out).
+  student: { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null; school_name: string | null; assigned_teacher_name: string | null; section?: string | null; roll_number?: string | null; has_photo?: boolean };
   career_guidance: { status: string; sessions: CareerRecord[] };
   counselling: { status: string; notes: CareerRecord[] };
   recommended_careers: CareerRecord[];
@@ -112,8 +114,10 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
     <>
       <div className="card">
         <h2>{s.full_name} <span className="muted" style={{ fontSize: 14 }}>({s.student_code})</span></h2>
+        <SchoolStudentPhoto studentId={s.id} name={s.full_name} hasPhoto={Boolean(s.has_photo)} canEdit={false} />
         <p><strong>School:</strong> {s.school_name || "-"}</p>
         <p><strong>Grade/Class:</strong> {s.grade_or_class || "-"}</p>
+        <p><strong>Section / Roll number:</strong> {s.section || "-"} / {s.roll_number || "-"}</p>
         <p><strong>Date of birth:</strong> {formatDate(s.date_of_birth)}</p>
         <p><strong>Class teacher:</strong> {s.assigned_teacher_name || "Not assigned yet"}</p>
       </div>

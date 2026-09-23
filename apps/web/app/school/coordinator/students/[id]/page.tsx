@@ -4,8 +4,9 @@ import SchoolStudentDetailPanel from "@/components/SchoolStudentDetailPanel";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
+import type { SchoolStudent } from "@/lib/schoolStudents";
 
-type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
+type Student = SchoolStudent;
 
 // SCH-008 (DEC-SCOPE-016): School Coordinator's read-only view of one student's Journey
 // Timeline, own institution only (SCH-001-AC02) -- reachable from the roster's "Timeline"
@@ -30,7 +31,7 @@ export default async function SchoolCoordinatorStudentDetailPage({ params }: { p
   }
   return (
     <PortalShell nav={SCHOOL_NAV.coordinator} roleLabel="School Coordinator" userName={user.full_name}>
-      <SchoolStudentDetailPanel student={student} backHref="/school/coordinator/students" backLabel="Back to students" showGradeHistory showTransfer />
+      <SchoolStudentDetailPanel student={student} backHref="/school/coordinator/students" backLabel="Back to students" showGradeHistory showTransfer canEditPhoto />
     </PortalShell>
   );
 }

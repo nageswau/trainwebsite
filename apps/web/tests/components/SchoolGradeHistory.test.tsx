@@ -57,3 +57,16 @@ describe("loadGradeHistory", () => {
     expect(serverApi).toHaveBeenCalledWith("/api/v1/school/students/s1/grade-history");
   });
 });
+
+describe("SchoolGradeHistory previous class details (ENH-025)", () => {
+  it("shows the previous section and roll number when recorded", () => {
+    const entry: GradeHistoryEntry = { ...promoted, from: { ...promoted.from, section: "A", roll_number: "7" }, to: { ...promoted.to, section: "A", roll_number: null } };
+    render(<SchoolGradeHistory history={[entry]} />);
+    expect(screen.getByText("Previous section A, roll number 7")).toBeTruthy();
+  });
+
+  it("says nothing about section for history recorded before ENH-025", () => {
+    render(<SchoolGradeHistory history={[promoted]} />);
+    expect(screen.queryByText(/Previous section/)).toBeNull();
+  });
+});
