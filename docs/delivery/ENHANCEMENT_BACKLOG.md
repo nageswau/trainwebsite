@@ -1467,6 +1467,16 @@ small additive entities.
 
 **Complexity:** Large. **Risk:** Medium.
 
+**Build note, 2026-09-23 (`DEC-SCOPE-028`).** Split on the owner's decision: **ENH-013a** (built on
+`feature/enh-013-student-360-view`) is the 16-tab view plus `career_goal`, over existing data only; **ENH-013b** (not
+started) is the Documents registry, Teacher Remarks log and Parent Communication log. Recorded rather than silently
+resolved: the source says "15 tabs" but lists 16 names (all 16 kept); the acceptance criterion's "outside their assigned
+grade/section" is implemented as the existing per-student teacher assignment (no section field exists; grade/section
+assignment is a future decision); `school_student` has no login (`DEC-ROLE-004`), so the view's readers are the ENH-012
+portfolio's 7 roles, each seeing only what it already reads elsewhere. Of the six "missing" entities above, Skills,
+Activities, Certificates and Achievements are now served by ENH-011/ENH-012 data; Parent Communication stays "not tracked
+yet" (no student-keyed log exists). Spec: `docs/superpowers/specs/2026-09-23-enh-013a-student-360-view-design.md`.
+
 ---
 
 ## ENH-014 — Multi-Channel Communication Centre (WhatsApp / SMS / Email / Push)

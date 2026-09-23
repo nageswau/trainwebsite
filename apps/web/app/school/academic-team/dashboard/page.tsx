@@ -2,6 +2,7 @@ import PortalShell from "@/components/PortalShell";
 import SchoolAcademicProgressPanel, { type ProgressRow } from "@/components/SchoolAcademicProgressPanel";
 import SchoolAcademicResultsPanel from "@/components/SchoolAcademicResultsPanel";
 import SchoolTestPrepLanguagePanel from "@/components/SchoolTestPrepLanguagePanel";
+import Student360Directory from "@/components/Student360Directory";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
@@ -44,6 +45,7 @@ export default async function SchoolAcademicTeamDashboardPage() {
       <SchoolAcademicProgressPanel progress={progress} />
       <SchoolAcademicResultsPanel results={results} students={students} currentUserId={user.id} />
       <SchoolTestPrepLanguagePanel testPrepRecords={testPrepRecords} languageRecords={languageRecords} students={students} />
+      <Student360Directory role="academic_team" students={students} />
     </PortalShell>
   );
 }

@@ -2391,3 +2391,29 @@ criteria blockers (field-by-field scope, Branch design).
 
 **Consequences:** new `require_school_entitlement()` in `schools.py`, called on 24 write routes across `schools.py`, `school_skills.py`, `portfolio.py`, `admin.py` and `workflows.py` (spec §7); new `403` strings (spec §5.1, `API_CONTRACT.md` ENH-022 addendum); no migration. `GET /school/entitlements` is unchanged — it still lists services for an expired school (follow-up item in `ENHANCEMENT_BACKLOG.md`). A school with no tier or an expired one loses write access to every gated service on deploy; the pre-deploy check query is in the backlog entry.
 
+### DEC-SCOPE-028 — Student 360° view / Career Passport, first slice (`ENH-013a`)
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-013 asks for one aggregated student view (`School CRM.md` §8 Career Passport, §35 Student 360° View, Part B §8 Student Profile Central Record). The sources are `EVID-014` (`DERIVED_BLUEPRINT`); the backlog item predates ENH-011/ENH-012 and names six "missing" entities, several of which ENH-012's portfolio now holds.
+
+**Evidence:** Graphify-oriented code audit, 2026-09-23: most tabs are already backed by SCH-004/005/006/007/009/010, ENH-004, ENH-011 and ENH-012; no aggregated view and no career-goal field exist; a parent notification has no student FK (only an `action_url` string); service roles can read only a subset of what `/overview` exposes to School roles. Source inconsistencies: Part B §8 says "15 tabs" but lists 16 names; the acceptance criterion says "grade/section" but teachers are assigned per student (`assigned_teacher_user_id`), and there is no section field.
+
+**Resolution:** User confirmed in-session, 2026-09-23 (`EXPLICIT_APPROVAL`), D1–D12 in `docs/superpowers/specs/2026-09-23-enh-013a-student-360-view-design.md` §3:
+
+1. **D1 Scope split:** ENH-013a = the view + `career_goal`; ENH-013b (later) = Documents / Teacher Remarks log / Parent Communication log entities.
+2. **D2 Tabs:** all 16 listed names kept; the 15-vs-16 inconsistency is recorded, no tab silently dropped.
+3. **D3 Teacher scope:** the existing per-student assignment rule; "grade/section" assignment is a future decision, not built.
+4. **D4 Roles:** the same 7 readers as ENH-012's portfolio, through one shared loader (`schools._load_student_for_reader`, moved from `portfolio.py`).
+5. **D5 Career goal:** `career_counselor` (own portfolio) sets free text ≤120 characters; audited.
+6. **D6 Edusphere Programs:** a roll-up of the programmes the student is in (skills, test prep, languages, overseas).
+7. **D7 Sources that do not exist yet:** real partial data plus a fixed "not tracked yet" note naming the future item (ENH-030, ENH-025, ENH-013b, ENH-014).
+8. **D8 Parent Communication:** "not tracked yet" only — no URL string-matching, no parents' inbox/read-state or names exposed to staff.
+9. **D9 Results:** published only, for every role (SCH-006-AC02 unchanged).
+10. **D10 UI:** a new `/360` route per role, linked from the existing pages; existing pages otherwise unchanged.
+11. **D11 No new exposure:** each tab is built per role from only what that role can already read through an existing endpoint; unreadable tabs are `restricted`.
+12. **D12 Read trail:** one structured log line per read (ids and role only); no database write on a GET.
+13. **D13 Career goal is tier-gated (user, in-session, 2026-09-23, `EXPLICIT_APPROVAL`, after merging ENH-022 / `DEC-SCOPE-027`):** saving a career goal requires the `individual_counselling` service (Silver or higher), the same gate ENH-022 D5 puts on career records. It uses ENH-022's `require_school_entitlement` (same `403` messages, same `school.tier_access_denied` audit row), checked after the scope re-check under the row lock so the student's current school is the one checked. Reading the goal in the 360° view stays ungated (ENH-022 D3: reads stay open).
+
+**Fix scope after browser QA (user, in-session, 2026-09-23, `EXPLICIT_APPROVAL`):** fix only the issues ENH-013 introduced (QA-01/02/03/04/06); the seeded demo report link (QA-05) and the pre-existing QA-07..10 are logged in `RAID.md` (I-34..I-37), not changed.
+
+**Consequences:** migration `0039_student_career_goal` (one nullable column); router `app/api/student_360.py` (`GET /school/students/{id}/360-view`, `PATCH /school/students/{id}/career-goal`); behavior-preserving extractions `_overview_payload`, `_grade_history_rows`, `portfolio_payload`; seven `/360` routes (`SCR-SCH-035`); `PORTFOLIO_SCOPED_ROLES` removed as a duplicate of `SERVICE_DELIVERY_ROLES`.
+

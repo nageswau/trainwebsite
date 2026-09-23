@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.schools import _load_readable_student, _student_in_portfolio, require_school_entitlement
+from app.api.schools import _load_student_for_reader, require_school_entitlement
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import (
@@ -42,21 +42,13 @@ from app.schemas import (
 router = APIRouter(prefix="/school", tags=["school-portfolio"])
 logger = get_logger("app.portfolio")
 
-PORTFOLIO_SCOPED_ROLES = {"academic_team", "career_counselor", "psychometric_team"}
 WRITE_ROLES = {"school_coordinator", "school_teacher", "academic_team"}
-
-
-async def _load_portfolio_student(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
-    """Read-scope loader: the 4 institution/assigned/own-child roles reuse `_load_readable_student()`
-    unchanged; the 3 portfolio-scoped service-delivery roles reuse `_student_in_portfolio()` unchanged.
-    Neither existing helper is modified -- only called (spec §6, §8)."""
-    if user.role in PORTFOLIO_SCOPED_ROLES:
-        return await _student_in_portfolio(db, user, student_id)
-    return await _load_readable_student(db, user, student_id)
+# Read scope: `schools._load_student_for_reader` -- this module's original loader, moved there unchanged by ENH-013 so the
+# Student 360° view shares it (the 4 School roles via `_load_readable_student`, the 3 service roles via `_student_in_portfolio`).
 
 
 def _can_edit_portfolio(user: User, student: SchoolStudent) -> bool:
-    """Called only after `_load_portfolio_student` has already confirmed the caller can READ this
+    """Called only after `_load_student_for_reader` has already confirmed the caller can READ this
     student -- this narrows that to the 3 write-capable roles. `school_teacher` gets the extra
     assigned-only check `_load_readable_student` already enforced for read, repeated here because a
     boolean helper must not assume its caller re-derives it."""
@@ -92,7 +84,13 @@ def _entry_out(entry: PortfolioEntry) -> dict:
 async def get_portfolio(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """No `response_model` -- matches `student_timeline()`'s own convention for a computed aggregate
     endpoint (schools.py:1040), the closest existing precedent this feature is modeled on."""
-    student = await _load_portfolio_student(db, user, student_id)
+    student = await _load_student_for_reader(db, user, student_id)
+    return await portfolio_payload(db, user, student)
+
+
+async def portfolio_payload(db: AsyncSession, user: User, student: SchoolStudent) -> dict:
+    """The portfolio body for an already scope-checked student -- extracted unchanged from `get_portfolio` so ENH-013's
+    Student 360° view can reuse it. `user` only decides `can_edit`; it widens nothing."""
     can_edit = _can_edit_portfolio(user, student)
     profile_complete = _profile_complete(student)
 
@@ -137,7 +135,7 @@ async def get_portfolio(student_id: UUID, user: User = Depends(get_current_user)
 
 @router.post("/students/{student_id}/portfolio/entries", status_code=201, response_model=PortfolioEntryOut)
 async def create_portfolio_entry(student_id: UUID, payload: PortfolioEntryCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    student = await _load_portfolio_student(db, user, student_id)
+    student = await _load_student_for_reader(db, user, student_id)
     _require_portfolio_write(user, student)
     await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation")
     entry = PortfolioEntry(
@@ -164,7 +162,7 @@ async def _load_portfolio_entry(db: AsyncSession, student_id: UUID, entry_id: UU
 
 @router.patch("/students/{student_id}/portfolio/entries/{entry_id}", response_model=PortfolioEntryOut)
 async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: PortfolioEntryUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    student = await _load_portfolio_student(db, user, student_id)
+    student = await _load_student_for_reader(db, user, student_id)
     _require_portfolio_write(user, student)  # role/scope checked before the entry lookup below (spec §6)
     await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation")
     entry = await _load_portfolio_entry(db, student.id, entry_id)
@@ -195,7 +193,7 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
 
 @router.delete("/students/{student_id}/portfolio/entries/{entry_id}", status_code=204)
 async def delete_portfolio_entry(student_id: UUID, entry_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    student = await _load_portfolio_student(db, user, student_id)
+    student = await _load_student_for_reader(db, user, student_id)
     _require_portfolio_write(user, student)
     await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation")
     entry = await _load_portfolio_entry(db, student.id, entry_id)
@@ -211,7 +209,7 @@ async def update_personal_statement(student_id: UUID, payload: PersonalStatement
     """Upsert via the same begin_nested()/IntegrityError idiom as school_transfers.py:277-284, but
     resolved as an update-on-conflict rather than a 409: a second concurrent "set the statement" is not
     a duplicate-intent conflict like a transfer filing (spec §6)."""
-    student = await _load_portfolio_student(db, user, student_id)
+    student = await _load_student_for_reader(db, user, student_id)
     _require_portfolio_write(user, student)
     await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation")
     statement = payload.personal_statement.strip() if payload.personal_statement else None

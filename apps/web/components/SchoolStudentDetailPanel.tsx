@@ -8,6 +8,7 @@ import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import type { SchoolRef, TransferRequest } from "@/lib/transfers";
 import { loadPortfolio } from "@/lib/portfolio";
+import { student360Href } from "@/lib/student360Links";
 
 // Shared read-only student header + Journey Timeline, reused across every School role that
 // can open one student's page within their own SCH-001 scope: Teacher (assigned), School
@@ -24,7 +25,10 @@ import { loadPortfolio } from "@/lib/portfolio";
 
 type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
 
-export default async function SchoolStudentDetailPanel({ student, backHref, backLabel, showGradeHistory = false, showTransfer = false }: { student: Student; backHref: string; backLabel: string; showGradeHistory?: boolean; showTransfer?: boolean }) {
+// ENH-013: `role` (the viewer's) picks which role's Student 360° route the "Open 360° view" link goes to -- the API does the scoping.
+// Optional so a caller that passes none renders exactly as before (no link).
+export default async function SchoolStudentDetailPanel({ student, role, backHref, backLabel, showGradeHistory = false, showTransfer = false }: { student: Student; role?: string; backHref: string; backLabel: string; showGradeHistory?: boolean; showTransfer?: boolean }) {
+  const view360 = role ? student360Href(role, student.id) : null;
   const [timeline, gradeHistory, transferHistory, destinations, pendingPage, portfolio] = await Promise.all([
     loadStudentTimeline(student.id).catch(() => null),
     showGradeHistory ? loadGradeHistory(student.id).catch(() => null) : Promise.resolve(null),
@@ -43,7 +47,10 @@ export default async function SchoolStudentDetailPanel({ student, backHref, back
         <p><strong>Grade/Class:</strong> {student.grade_or_class || "-"}</p>
         <p><strong>Date of birth:</strong> {formatDate(student.date_of_birth)}</p>
         {pending && <p><span className="status pending">Transfer requested</span> to {pending.to_school.name}</p>}
-        <a className="btn secondary" href={backHref}>{backLabel}</a>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {view360 && <a className="btn" href={view360}>Open 360° view</a>}
+          <a className="btn secondary" href={backHref}>{backLabel}</a>
+        </div>
       </div>
       {showTransfer && (
         <details className="card">
