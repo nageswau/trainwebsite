@@ -122,9 +122,13 @@ async def build_360(db: AsyncSession, user: User, student: SchoolStudent) -> dic
     return {"student": header, "career_goal": student.career_goal, "can_edit_career_goal": counselor, "tabs": {key: tabs[key] for key in TAB_360_KEYS}}
 
 
-@router.get("/students/{student_id}/360-view", response_model=Student360Out)
+@router.get("/students/{student_id}/360-view", response_model=None, responses={200: {"model": Student360Out}})
 async def student_360_view(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The envelope is validated against `Student360Out` (a broken shape fails loudly), but the dict itself is returned so its
+    timestamps serialize exactly as /overview's and /portfolio's do for the same rows -- a `response_model` would re-encode the
+    nested tab data (`...Z` instead of `...+00:00`), giving one record two formats depending on the endpoint."""
     student = await _load_student_for_reader(db, user, student_id)
     body = await build_360(db, user, student)
+    Student360Out.model_validate(body)
     logger.info("student_360_view", extra={"extra_fields": {"actor_id": str(user.id), "role": user.role, "student_id": str(student.id)}})
     return body

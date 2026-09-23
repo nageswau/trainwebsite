@@ -143,6 +143,68 @@ async def test_query_count_does_not_grow_with_rows(client, db_session):  # AC-09
     assert await statements(one, kid1) == await statements(many, kid20)
 
 
+RESTRICTED_FOR = {
+    "academic_team": {"academic_records", "attendance"},
+    "career_counselor": {"academic_records", "attendance", "english_testing", "teacher_remarks"},
+    "psychometric_team": {"academic_records", "attendance", "english_testing", "teacher_remarks"},
+}
+PORTFOLIO_RESULT_FIELDS = {"id", "term", "subject", "grade", "published_at"}
+PORTFOLIO_LANGUAGE_FIELDS = {"id", "language", "level", "certification_status", "created_at"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("role", sorted(RESTRICTED_FOR))
+async def test_service_roles_get_no_new_exposure(client, db_session, role):  # AC-05, spec §6.3
+    ctx = await mk_school(db_session, label=f"E13-{role}")
+    kid = await _fill(db_session, ctx)
+    member = await mk_staff(db_session, ctx["school"], ctx["admin"], role=role)
+    await login(client, member.email)
+    body = (await client.get(URL.format(sid=kid.id))).json()
+    tabs = body["tabs"]
+
+    for key, tab in tabs.items():
+        if key in RESTRICTED_FOR[role]:
+            assert tab == {"status": "restricted", "count": None, "not_tracked": [], "data": {}}, key
+        else:
+            assert tab["status"] != "restricted", key
+    s = body["student"]
+    assert (s["student_code"], s["grade_or_class"], s["date_of_birth"], s["assigned_teacher_name"]) == (None, None, None, None)
+    assert s["full_name"] == kid.full_name and s["school_name"] == ctx["school"].name
+    assert tabs["activities"]["data"]["attended"] is None and tabs["activities"]["data"]["upcoming"] is None
+    programmes = {p["key"] for p in tabs["edusphere_programs"]["data"]["programmes"]}
+    assert "global_education" not in programmes
+
+    results = tabs["examination_results"]["data"]["results"]
+    languages = tabs["foreign_languages"]["data"]["records"]
+    psych = tabs["psychometric_assessment"]["data"]["assessments"][0]
+    if role == "academic_team":  # reads /academic-team/results and language records in full already
+        assert results[0]["teacher_remarks"] == "Remark 0"
+        assert "classes_attended" in languages[0]
+        assert tabs["skills"]["data"]["batches"] is None
+        assert programmes == {"test_prep", "foreign_language"}
+    else:  # only /portfolio's summary shapes
+        assert set(results[0]) == PORTFOLIO_RESULT_FIELDS
+        assert set(languages[0]) == PORTFOLIO_LANGUAGE_FIELDS
+        assert (tabs["skills"]["data"]["batches"] is None) == (role == "psychometric_team")
+        assert programmes == ({"soft_skills", "digital_skills", "foreign_language"} if role == "career_counselor" else {"foreign_language"})
+    assert ("status" in psych) == (role == "psychometric_team")
+    assert body["can_edit_career_goal"] is (role == "career_counselor")
+
+
+@pytest.mark.asyncio
+async def test_school_roles_see_exactly_what_the_overview_already_gives_them(client, db_session):
+    ctx = await mk_school(db_session, label="E13-SchoolEq")
+    kid = await _fill(db_session, ctx)
+    await login(client, ctx["parent"].email)
+    overview = (await client.get(f"/api/v1/school/students/{kid.id}/overview")).json()
+    view = (await client.get(URL.format(sid=kid.id))).json()
+    assert view["tabs"]["examination_results"]["data"]["results"] == overview["results"]
+    assert view["tabs"]["english_testing"]["data"]["records"] == overview["test_prep"]["records"]
+    assert view["tabs"]["foreign_languages"]["data"]["records"] == overview["foreign_language"]["records"]
+    assert view["tabs"]["activities"]["data"]["attended"] == overview["activities"]["attended"]
+    assert view["tabs"]["skills"]["data"]["batches"] == overview["skills"]
+
+
 @pytest.mark.asyncio
 async def test_each_read_logs_ids_only(client, db_session, caplog):
     ctx = await mk_school(db_session, label="E13-Log")
