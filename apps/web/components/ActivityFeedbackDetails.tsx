@@ -16,7 +16,7 @@ export default function ActivityFeedbackDetails({ feedback }: { feedback: Activi
       <dd>{feedback.feedback}</dd>
       <dt>Suggestions</dt>
       <dd>{feedback.suggestions ?? "None"}</dd>
-      <dt>Submitted</dt>
+      <dt>Submitted by</dt>
       <dd>{`${feedback.submitted_by_name}, ${formatDate(feedback.submitted_at, true)}`}</dd>
     </dl>
   );
