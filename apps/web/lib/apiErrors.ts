@@ -30,3 +30,19 @@ export function isPage<T = unknown>(data: unknown): data is Page<T> {
   const d = data as Partial<Page<T>> | null;
   return !!d && typeof d === "object" && Array.isArray(d.items) && typeof d.total === "number" && typeof d.limit === "number" && typeof d.offset === "number";
 }
+
+export type SendOutcome = { ok: true; data: Record<string, unknown> } | { ok: false; message: string };
+
+// ENH-022: one JSON write for the older School panels. Never throws: a dropped network is NOT_COMPLETED (the entry is kept), and
+// any error response carries the server's `detail` -- e.g. a partnership-tier 403 -- worded by detailMessage.
+export async function sendJson(url: string, method: "POST" | "PATCH", body: unknown): Promise<SendOutcome> {
+  let response: Response;
+  try {
+    response = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  } catch {
+    return { ok: false, message: NOT_COMPLETED };
+  }
+  const data = await response.json().catch(() => null);
+  if (!response.ok) return { ok: false, message: detailMessage(data?.detail) };
+  return { ok: true, data: data && typeof data === "object" ? data : {} };
+}
