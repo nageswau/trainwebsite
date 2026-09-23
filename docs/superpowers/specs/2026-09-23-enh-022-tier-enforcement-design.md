@@ -202,6 +202,14 @@ submit-failure path the new `403` travels; no layout, visual, loading-state or e
 5. On failure the form is **not** reset — the user's input is kept (a `403` writes nothing). Focus stays
    on the submit control; the alert is announced without moving focus.
 
+**As built (2026-09-23), one deviation from "no new component":** the role/`aria-live` rendering would
+otherwise have been copied into eight render sites, so it lives in one presentational component,
+`apps/web/components/FormMessage.tsx` (existing `.form-error`/`.form-message` classes; optional `style` for
+spacing outside a grid card). The write path is one helper, `sendJson()` in `apps/web/lib/apiErrors.ts`
+(never throws; `NOT_COMPLETED` on a network failure; the server's `detail` otherwise). In
+`SchoolTestPrepLanguagePanel` a message renders in the card holding the control used (table cards for
+record-score / mark-certified, form cards for the two creates).
+
 Component tests (Vitest + Testing Library, `apps/web/tests/components/`), one file per panel: a mocked
 `403` renders the exact `detail` in `role="alert"` beside the failing form and keeps the typed input; a
 rejected `fetch` shows `NOT_COMPLETED` and re-enables the submit button; a success still renders

@@ -2071,6 +2071,27 @@ its own test, not as one giant sweeping change.
 **Complexity:** Medium. **Risk:** Medium (correctness-critical, but narrow and well-scoped once the
 strictness Decision ID lands).
 
+**Status (2026-09-23): IMPLEMENTED on `feature/enh-022-tier-gated-access-enforcement` — pending browser
+validation and independent review; not merged.** Strictness resolved as `DEC-SCOPE-027` (hard `403`,
+expired = no tier on the India date, all writes, every actor; D1–D12). Design:
+`docs/superpowers/specs/2026-09-23-enh-022-tier-enforcement-design.md`; plan:
+`docs/superpowers/plans/2026-09-23-enh-022-tier-enforcement.md`. Two corrections to this entry's own text:
+a route-level `Depends(require_tier())` could not work (most gated routes learn the school only after
+loading a student/record/batch, and several take the service key from the body), so the check is a helper
+called inside each handler; and staff assignment is **not** gated here (D6, below).
+
+**Before deploying:** every school with no tier or an expired one loses write access to every gated
+service. List them first (read-only) and confirm with the business:
+`SELECT id, name, tier, tier_valid_until FROM schools WHERE tier IS NULL OR tier_valid_until < (now() AT TIME ZONE 'Asia/Kolkata')::date;`
+
+**Follow-ups raised by ENH-022 (not built here):**
+- **Dedicated counselor (D6).** Platinum schools may have a dedicated counselor, other schools shared ones,
+  but no data model says which assignment is "dedicated" — a `SchoolStaffAssignment` row is the same for
+  both. Needs its own item: how "dedicated" is recorded, and what exclusivity it implies.
+- **`/school/entitlements` and expiry.** The report is unchanged by ENH-022's acceptance criteria, so after
+  `tier_valid_until` passes it still lists the services while every write returns `403`. Decide whether the
+  report should show the partnership as expired.
+
 ---
 
 ## ENH-023 — Partnership Tier Change (Upgrade/Downgrade) Workflow
@@ -2875,7 +2896,7 @@ item, only for the progress-view question).
 | ENH-014 | `DEC-INTEGRATION-0xx` — WhatsApp/SMS provider selection, plus a DPDP/privacy-consent review | None exists |
 | ENH-016 | Indirectly blocked on Appendix A item 3 (entitlement quota vs. `DEC-SCOPE-017`) before its Service Utilization view is meaningful | See Appendix A |
 | ENH-020 | Audit-first: confirm whether this duplicates an existing Overseas-domain capability before any Decision ID is even drafted | None exists |
-| ENH-022 | `DEC-SCOPE-0xx` — enforcement strictness (hard `403` vs. soft warning) for out-of-tier or expired-partnership access | None exists |
+| ENH-022 | `DEC-SCOPE-027` — enforcement strictness (hard `403` vs. soft warning) for out-of-tier or expired-partnership access | **Resolved 2026-09-23:** hard `403`, expired = no tier (D1–D12, `PRODUCT_DECISION_REGISTER.md`) |
 | ENH-023 | `DEC-SCOPE-0xx` — downgrade policy for in-flight Platinum-tier commitments (grandfather / wind-down / immediate) | None exists |
 | ENH-010 | `DEC-SCOPE-025` — "School Master" (`School CRM.md` Part B §2) = `school_coordinator`; activate/deactivate scope mapping proposed, drafted 2026-09-22 | Drafted, `UNCONFIRMED` |
 | ENH-011, ENH-012, ENH-013, ENH-015, ENH-017, ENH-018, ENH-019, ENH-021, ENH-024, ENH-026, ENH-027, ENH-028, ENH-029, ENH-030 | None structurally required — each operates within already-confirmed School-domain scope (`DEC-SCOPE-011/012/013/017`) as a completion/extension, not a new scope question. ENH-026/ENH-027 additionally need a *design* choice (shared shape for "Recommended..."/"Career recommendations" fields); ENH-028's batch-size limit and ENH-030's session-vs-period granularity are also design, not scope, questions | N/A |
