@@ -2417,3 +2417,31 @@ criteria blockers (field-by-field scope, Branch design).
 
 **Consequences:** migration `0039_student_career_goal` (one nullable column); router `app/api/student_360.py` (`GET /school/students/{id}/360-view`, `PATCH /school/students/{id}/career-goal`); behavior-preserving extractions `_overview_payload`, `_grade_history_rows`, `portfolio_payload`; seven `/360` routes (`SCR-SCH-035`); `PORTFOLIO_SCOPED_ROLES` removed as a duplicate of `SERVICE_DELIVERY_ROLES`.
 
+### DEC-SCOPE-029 — Partnership tier change: grandfathered downgrades, transition audit, notifications (`ENH-023`)
+
+**Number is provisional:** if another branch lands `DEC-SCOPE-029` first, this entry is renumbered on merge (the `DEC-SCOPE-024`/`025`/`027` precedent above).
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-023 (`DERIVED_BLUEPRINT`), on the user's instruction "hidden requirements as well like change of gold to platinum etc.": once `ENH-022` (`DEC-SCOPE-027`) enforces tier on use, what happens to work already under way when a school's tier is downgraded, and how is a tier change recorded and communicated?
+
+**Evidence:** Graphify-oriented investigation, 2026-09-23 (graph refreshed after `ENH-022`/`ENH-013` merged at `5d20295`): the only tier write, `update_school` (`PATCH /overseas-admin/schools/{school_id}`), sets `tier`/`tier_valid_until` and writes one `school.tier_update` `AuditLog` row with metadata `{"tier": <new>}` only — no old tier, no direction, no notification. There is no tier-change UI beyond raw API access. `ENH-022` gates every write on the school's *current* tier, so a downgrade could silently strand in-flight work. Principals and Overseas Admins have no notifications page (only Coordinators and Parents do). `TimestampMixin.created_at`/`AuditLog.created_at` use `server_default=func.now()` (transaction-start time), relevant to ordering the grandfather anchor correctly.
+
+**Resolution:** User confirmed in-session, 2026-09-23 (`EXPLICIT_APPROVAL`), D1–D15 in `docs/superpowers/specs/2026-09-23-enh-023-tier-change-design.md` §3:
+
+1. **D1 Relation to ENH-022:** built after `ENH-022` merged, against its real helper.
+2. **D2 Downgrade policy:** **Grandfather** — work under way for a lost service can be finished; new work for it is refused.
+3. **D3 What counts as existing:** a record whose `created_at` is before the downgrade that removed the service. No end date.
+4. **D4 Transition history:** extend the `school.tier_update` `AuditLog` metadata. No new table, no migration.
+5. **D5 Notification:** the school's Coordinator(s) and Principal(s) get in-app plus email; the acting admin also gets a copy.
+6. **D6 Removal / expiry:** `tier → null` is a downgrade (grandfathered and notified). Expiry is not; it stays `ENH-022` D2 (no tier, no notification).
+7. **D7 UI:** tier and valid-until fields in `AdminSchoolEditPanel`; a downgrade shows an inline confirmation step listing lost services.
+8. **D8 Child writes under old work:** **Completion only.** Updates, attendance, scores, sessions and assessments on existing work are allowed; new enrolments, visa cases, bridged applications and portfolio entries are refused.
+9. **D9 Unreachable notifications:** add a Principal notifications page. The acting admin gets the in-app row plus email (no admin page in this item).
+10. **D10 Grandfather mechanism:** **Approach A** — the downgrade time is read from the `school.tier_update` audit rows.
+11. **D11 No-op and valid-until-only changes:** still audited (as today), with `direction="unchanged"`; **no notification**.
+12. **D12 Stale preview → unconfirmed downgrade** (API review, 2026-09-23): the PATCH accepts an optional **`expected_tier`** precondition; a mismatch with the tier read under the row lock is **`409 Conflict`**. The panel always sends it with a tier change; clients that omit it behave as today.
+13. **D13 Empty-string tier** (API review): `""` is **normalised to `null`** (removal) on the PATCH, on `expected_tier`, and on the preview.
+14. **D14 Audit of grandfathered writes** (security review S2): each write allowed **only** by grandfathering adds one `school.tier_grandfathered` `AuditLog` row, metadata `{service_key, reason, tier, grandfathered_since}`, in the route's own transaction: committed with the write, discarded if the route fails. Mirrors `ENH-022` D12 for billing reconciliation and non-repudiation.
+15. **D15 Notification rate limiting** (security review S3): **No throttle.** A tier change is an admin-only, audited, rare action with no public surface. Recorded as an accepted risk.
+
+**Consequences:** `_tier_transition()` (new, pure, `schools.py`), computing `direction`/`gained`/`lost` from `_cumulative_services` only. `require_school_entitlement`, `_require_module_entitlement` (`school_skills.py`) and `_require_bridged_visa_entitlement` (`workflows.py`) each gain an optional keyword-only `grandfathered_since`; omitted, behaviour is byte-for-byte `ENH-022`'s (`test_enh_022_tier_enforcement.py`/`test_enh_022_tier_rules.py` pass unedited, AC-13). Exactly **14** routes pass `grandfathered_since` (the spec §6 table's "15" is a count error, corrected here): 4 in `schools.py` (activity attendance; psychometric/test-prep/language record updates), 6 in `school_skills.py` (skill-batch update, session create, assessment create, session attendance, assessment scores, enrolment status), 3 in `portfolio.py` (entry update, entry delete, personal statement), 1 in `workflows.py` (visa update). New `GET /overseas-admin/schools/{school_id}/tier-change-preview?tier=` (read-only, same role check as the PATCH). Typed contract: `schemas.py` gains `TierChangeService`, `TierChangeOut`, `SchoolUpdateOut`; the PATCH declares `response_model=SchoolUpdateOut`, the preview `response_model=TierChangeOut`. New page `/school/principal/notifications`. No migration, no new table, no new dependency (D4). **Residual, accepted (§8):** a create whose transaction starts in the microseconds between the transition audit row's insert and the downgrade's commit can still get a `created_at` later than the downgrade row, so later updates to that one record are refused; closing this needs a share lock across all 24 `ENH-022`-gated routes, out of scope here and listed as a follow-up (b) in `ENHANCEMENT_BACKLOG.md`.
+

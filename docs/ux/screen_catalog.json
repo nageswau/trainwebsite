@@ -2392,7 +2392,7 @@
     ],
     "entry": "Overseas Admin dashboard.",
     "data": "All School partner records (division-wide), each with its seed Coordinator's status.",
-    "actions": "Create a new school (name/city/state + seed Coordinator name/email in one form); view the list.",
+    "actions": "Create a new school (name/city/state + seed Coordinator name/email in one form); view the list; edit an existing school's profile and partnership tier (ENH-023).",
     "empty": "No partner schools yet. Add your first one.",
     "loading": "Skeleton/placeholder layout while data loads; no layout shift on resolve.",
     "error": "Saving with a missing required field is rejected inline, field-by-field -- never a silent drop.",
@@ -2401,7 +2401,7 @@
     "a11y": "Keyboard-navigable, visible focus states, form fields with associated labels, sufficient colour contrast (no confirmed WCAG level — see PRD NFR-A11Y-001, PROPOSED).",
     "dtm": "Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.",
     "visual": "None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
-    "evidence": "Only Overseas Admin/Super Admin reaches this screen -- no other role, including School Coordinator, can list or create schools (SCH-003-AC03). No activation gate -- the new School and its Coordinator account are usable immediately on save, not held Pending (SCH-003-AC04). SCR-SCH-011 (originally a separate /new route) was merged into this screen during SCH-003's build, 2026-09-14 -- see SCREEN_CATALOG.md."
+    "evidence": "Only Overseas Admin/Super Admin reaches this screen -- no other role, including School Coordinator, can list or create schools (SCH-003-AC03). No activation gate -- the new School and its Coordinator account are usable immediately on save, not held Pending (SCH-003-AC04). SCR-SCH-011 (originally a separate /new route) was merged into this screen during SCH-003's build, 2026-09-14 -- see SCREEN_CATALOG.md. Addendum, 2026-09-23 (ENH-023 / DEC-SCOPE-029): the edit panel gains Partnership tier (select) and Valid until (date) fields; a downgrade/removal previews and shows an inline confirmation (lost services, Confirm/Cancel) before saving; the panel sends expected_tier with every tier change, showing a 409 as an alert; success text stays 'School profile updated.' plus a tier-change sentence. No new route, no CSS change."
   },
   {
     "id": "SCR-SCH-012",
@@ -2911,5 +2911,28 @@
     "dtm": "Desktop: vertical tab list beside the panel. Tablet/mobile: tab strip above the panel, horizontally scrollable; single column. Verified at 1440, 1366x620, 1024, 768 and 390.",
     "visual": "None \u2014 not inspected. Do not claim parity.",
     "evidence": "Student360Tabs/Panels/Page, CareerGoalForm, SchoolStudentDetailPanel and lib/student360 vitest files; test_enh_013_*.py; tests/e2e/enh-013-student-360.spec.ts; docs/quality/ENH-013_BROWSER_QA_2026-09-23.md."
+  },
+  {
+    "id": "SCR-SCH-036",
+    "roles": [
+      "Principal"
+    ],
+    "route": "/school/principal/notifications",
+    "purpose": "The Principal's own in-app notices, most notably a partnership tier change, mirroring the Coordinator's existing notifications page.",
+    "features": [
+      "ENH-023"
+    ],
+    "entry": "Principal navigation (\"Notifications\").",
+    "data": "GET /api/v1/workflows/notifications, keyed on the signed-in user (the same feed the Coordinator page already reads).",
+    "actions": "Read the list; no write actions on this page.",
+    "empty": "No notifications yet. You will be told here when your school's partnership changes.",
+    "loading": "Skeleton on navigation (no loading.tsx, matching the existing notifications pages).",
+    "error": "A feed failure shows the shared Access Unavailable card; a non-Principal role gets accessDenied before any feed request.",
+    "perms": "school_principal only, server-checked before any request; the feed is scoped to the signed-in user, same as the Coordinator's page.",
+    "responsive": "Single column at 320px and up; no horizontal scroll; existing classes only.",
+    "a11y": "Same list component as the Coordinator page (SchoolNotificationList); a \"new\" badge is rendered as text, never colour alone.",
+    "dtm": "Desktop: full layout. Tablet/mobile: single column, same as the Coordinator equivalent.",
+    "visual": "None — not inspected. Do not claim parity.",
+    "evidence": "SchoolPrincipalNotificationsPage.test.tsx (passing); tests/e2e/enh-023-tier-change.spec.ts (principal sees the tier-change notification); browser QA is deliberately deferred to a later pass (not part of this task)."
   }
 ]

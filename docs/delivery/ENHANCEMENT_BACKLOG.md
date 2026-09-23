@@ -2207,6 +2207,37 @@ school, which is an upgrade-from-nothing, not a downgrade).
 **Complexity:** Medium. **Risk:** High (the downgrade policy gap is a genuine business-continuity risk,
 not just a coding risk, until a Decision ID resolves it).
 
+**Status.** `Implemented on feature/enh-023-tier-change-workflow (DEC-SCOPE-029)` — pending browser QA
+and independent review, 2026-09-23. D1–D15 in `docs/superpowers/specs/2026-09-23-enh-023-tier-change-design.md`
+§3 resolve the downgrade policy this item flagged as `NEEDS_CONFIRMATION` above: **grandfather** (D2) —
+work already under way for a lost service can be finished; new work for it is refused (completion only,
+D8). Full traceability: `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-029`; `API_CONTRACT.md` §12A ENH-023
+addendum; `RBAC_MATRIX.md` ENH-023 row; `SECURITY_CONTROLS.md` §6A ENH-023 row; `SCREEN_CATALOG.md`/
+`screen_catalog.json` `SCR-SCH-036` and the `SCR-SCH-010` tier-fields note; `ROLE_NAVIGATION.md`
+Principal section; `RTM.md` ENH-023 addendum (regression evidence). Not yet complete: browser QA
+(`docs/quality/ENH-023_BROWSER_QA_*.md`, Step 7, deliberately deferred to a later pass) and an
+independent Codex review.
+
+**Follow-ups (not built here, recorded for a later item):**
+- (a) An Overseas Admin notifications page — this item added only the Principal's (D9); the acting
+  admin still gets the in-app row plus email, with no dedicated inbox view of their own.
+- (b) Closing the §8 residual concurrency window with a share lock across all 24 `ENH-022`-gated
+  routes — out of scope here; a create whose transaction starts in the microseconds between the
+  transition audit row's insert and the downgrade's commit can still get a `created_at` later than the
+  downgrade row, so later updates to that one record are refused.
+- (c) Notifying schools ahead of `tier_valid_until` expiry (pre-expiry notices) — expiry itself stays
+  un-notified per `ENH-022` D2/D6, unchanged by this item.
+- (d) A composite `audit_logs (action, entity_id)` index if tier-change volume ever makes the
+  grandfather lookup slow — needs a migration, deliberately not added pre-emptively (D4: no migration
+  in this item).
+- (e) `create_school` still stores an empty-string `tier` as `""`, not `null` — D13's normalisation
+  covers only the tier-change PATCH and the preview endpoint, not school creation.
+- (f) A school name containing CR/LF makes `EmailMessage` reject the Subject header, so that school's
+  tier notices are lost (logged; the tier change itself still stands) — existing `SCH-007` mailer
+  behaviour, deliberately not changed here.
+- (g) The email `From` display name is the admin-controlled school name — same existing mailer
+  behaviour, deliberately not changed here.
+
 ---
 
 ## ENH-024 — Skill India Certification Tracking
