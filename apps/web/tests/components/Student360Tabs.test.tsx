@@ -80,11 +80,16 @@ describe("Student360Tabs", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it("keeps the selection in ?tab= without scrolling, and shows that panel", () => {
+  it("keeps the selection in ?tab= through the History API, never a server navigation (browser QA-02)", () => {
+    const replaceState = vi.spyOn(window.history, "replaceState");
     setup();
     fireEvent.click(screen.getByRole("tab", { name: /skills/i }));
-    expect(replace).toHaveBeenCalledWith("/school/coordinator/students/s1/360?tab=skills", { scroll: false });
+    // router.replace re-rendered the whole server page (and re-ran the 360 aggregation) on every click, and only updated the
+    // URL after that round trip. Every tab's data is already on the page, so the URL is updated locally and synchronously.
+    expect(replaceState).toHaveBeenCalledWith(null, "", "/school/coordinator/students/s1/360?tab=skills");
+    expect(replace).not.toHaveBeenCalled();
     expect(screen.getByRole("tabpanel")).toHaveTextContent("Skills panel");
+    replaceState.mockRestore();
   });
 
   it("starts on the initial tab", () => {

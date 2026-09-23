@@ -27,8 +27,12 @@
 /* ENH-013 Student 360° view (docs/superpowers/specs/2026-09-23-enh-013a-student-360-view-design.md §8) */
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .s360-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 16px; }
-.s360-tablist { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 16px; }
-.s360-tab { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid transparent; border-radius: 10px; background: transparent; font: inherit; font-weight: 700; font-size: 14px; color: var(--ink); text-align: left; cursor: pointer; }
+/* Sticks below the 68px sticky .portal-topbar (browser QA-03: at top:16px the first tabs slid under it) and scrolls on its own
+   when 16 tabs are taller than the space left, so every tab stays reachable. */
+.s360-tablist { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 84px; max-height: calc(100vh - 100px); overflow-y: auto; }
+/* position:relative contains each tab's absolutely positioned .visually-hidden state text; without it the mobile tab strip's
+   overflow did not clip those spans and they stretched the page to ~2,200px (browser QA-01). */
+.s360-tab { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid transparent; border-radius: 10px; background: transparent; font: inherit; font-weight: 700; font-size: 14px; color: var(--ink); text-align: left; cursor: pointer; }
 .s360-tab:hover { background: var(--soft); }
 .s360-tab:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .s360-tab[aria-selected="true"] { background: var(--soft); border-color: var(--line); color: var(--blue); }
@@ -43,5 +47,5 @@
 .s360-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .s360-list li { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; overflow-wrap: anywhere; }
 .s360-list li p { margin: 6px 0 0; }
-@media (max-width: 980px) { .s360-layout { grid-template-columns: 1fr; } .s360-tablist { flex-direction: row; overflow-x: auto; scroll-snap-type: x proximity; position: static; padding-bottom: 4px; } .s360-tab { flex: 0 0 auto; scroll-snap-align: start; white-space: nowrap; } }
+@media (max-width: 980px) { .s360-layout { grid-template-columns: 1fr; } .s360-tablist { flex-direction: row; overflow-x: auto; overflow-y: hidden; max-height: none; scroll-snap-type: x proximity; position: static; padding-bottom: 4px; } .s360-tab { flex: 0 0 auto; scroll-snap-align: start; white-space: nowrap; } }
 @media (prefers-reduced-motion: reduce) { .s360-tablist { scroll-behavior: auto; } }

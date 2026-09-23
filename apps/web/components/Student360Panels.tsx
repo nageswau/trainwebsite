@@ -55,11 +55,13 @@ function Entries({ entries }: { entries: Entry[] }) {
   );
 }
 
-function Table({ caption, head, rows }: { caption: string; head: string[]; rows: ReactNode[][] }) {
+// A table is named either by a visually hidden `caption` or, when a visible heading already says the same thing, by that heading
+// (`labelledBy`) -- never both, or screen readers announce the name twice (browser QA-06).
+function Table({ caption, labelledBy, head, rows }: { caption?: string; labelledBy?: string; head: string[]; rows: ReactNode[][] }) {
   return (
     <div className="table-wrap">
-      <table className="table">
-        <caption className="visually-hidden">{caption}</caption>
+      <table className="table" aria-labelledby={labelledBy}>
+        {caption ? <caption className="visually-hidden">{caption}</caption> : null}
         <thead><tr>{head.map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
         <tbody>{rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{c ?? "-"}</td>)}</tr>)}</tbody>
       </table>
@@ -119,10 +121,14 @@ function body(key: TabKey, d: Row, view: Student360): ReactNode {
       return <Card><Table caption="English test preparation" head={["Test", "Target", "Result", "Status"]} rows={d.records.map((r: Row) => [String(r.test_type).toUpperCase(), r.target_score, r.actual_score, <StatusChip key="s" status={r.status} />])} /></Card>;
     case "activities": {
       const attended = (d.attended ?? []).filter((a: Row) => a.present);
+      const upcoming: Row[] = d.upcoming ?? [];  // School roles only (null for service roles); school-wide, not the student's record
+      const sections = Object.entries(d.portfolio_entries as Record<string, Entry[]>).filter(([, v]) => v.length);
       return (
         <>
-          {attended.length ? <Card><h3>School activities attended</h3><Table caption="School activities attended" head={["Activity", "Date"]} rows={attended.map((a: Row) => [a.title, formatDate(a.scheduled_at)])} /></Card> : null}
-          {Object.entries(d.portfolio_entries as Record<string, Entry[]>).filter(([, v]) => v.length).map(([section, v]) => <Card key={section}><h3>{ACTIVITY_SECTION[section] ?? section}</h3><Entries entries={v} /></Card>)}
+          {!attended.length && !sections.length ? <Card><Empty text={EMPTY_TEXT.activities} /></Card> : null}
+          {attended.length ? <Card><h3 id="s360-attended">School activities attended</h3><Table labelledBy="s360-attended" head={["Activity", "Date"]} rows={attended.map((a: Row) => [a.title, formatDate(a.scheduled_at)])} /></Card> : null}
+          {sections.map(([section, v]) => <Card key={section}><h3>{ACTIVITY_SECTION[section] ?? section}</h3><Entries entries={v} /></Card>)}
+          {upcoming.length ? <Card><h3 id="s360-upcoming">Upcoming school activities</h3><Table labelledBy="s360-upcoming" head={["Activity", "Date"]} rows={upcoming.map((a) => [a.title, formatDate(a.scheduled_at)])} /></Card> : null}
         </>
       );
     }
@@ -161,8 +167,9 @@ function body(key: TabKey, d: Row, view: Student360): ReactNode {
   }
 }
 
-// Tabs whose body is meaningful even with no records: the overview (career goal), identity, and the current grade.
-const ALWAYS_SHOW_BODY: ReadonlySet<TabKey> = new Set(["overview", "personal_details", "academic_records"]);
+// Tabs whose body is meaningful even with no records: the overview (career goal), identity, the current grade, and activities
+// (upcoming school activities are shown before the student has any record of their own; the body renders its own empty state).
+const ALWAYS_SHOW_BODY: ReadonlySet<TabKey> = new Set(["overview", "personal_details", "academic_records", "activities"]);
 
 export function renderPanel(key: TabKey, tab: Tab360, view: Student360): ReactNode {
   let content: ReactNode;

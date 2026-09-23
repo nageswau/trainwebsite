@@ -76,6 +76,17 @@ describe("CareerGoalForm", () => {
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Must be 120 characters or fewer"));
   });
 
+  it("on a server error says what failed, keeps the entry, and puts focus back in the input (browser QA-04)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("Internal Server Error", { status: 500, headers: { "Content-Type": "text/plain" } }));
+    render(<CareerGoalForm studentId="s1" goal={null} />);
+    openAndType("Law");
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("The career goal could not be saved. Please try again."));
+    const input = screen.getByLabelText(/^career goal$/i);
+    expect(input).toHaveValue("Law");
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
   it("keeps the entry and says so when the network drops", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
     render(<CareerGoalForm studentId="s1" goal={null} />);
@@ -104,6 +115,14 @@ describe("CareerGoalForm", () => {
     fireEvent.click(save);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: /saving/i })).toBeDisabled();
+    // Read-only, not disabled, while saving: refocus() runs on the next animation frame, and a disabled input silently refuses
+    // focus -- so whether focus came back after an error depended on whether React had re-enabled it by then (browser QA-04).
+    const input = screen.getByLabelText(/^career goal$/i);
+    expect(input).not.toBeDisabled();
+    expect(input).toHaveAttribute("readonly");
+    // ...and Escape still cannot close the editor mid-save (the disabled input used to swallow it; Cancel is disabled too).
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.getByLabelText(/^career goal$/i)).toBeInTheDocument();
     resolve(json({ school_student_id: "s1", career_goal: "Arts", updated_at: "x" }));
     await waitFor(() => expect(refresh).toHaveBeenCalled());
   });

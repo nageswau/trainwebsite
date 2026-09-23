@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Children, type KeyboardEvent, type ReactNode, useRef, useState } from "react";
 
 import type { TabKey } from "@/lib/student360Links";
@@ -8,8 +8,9 @@ import type { TabKey } from "@/lib/student360Links";
 // ENH-013 -- WAI-ARIA tabs for the Student 360° view (docs/superpowers/specs/2026-09-23-enh-013a-student-360-view-design.md §8).
 // Only the selection lives here: the panels arrive already rendered by the server (Student360View), so this client component
 // never needs a server-only import (tests/lib/clientBoundary.test.ts). Roving tabindex; arrows in both axes (the list is vertical
-// on desktop and a scrolling row on mobile), Home/End; the choice is mirrored into ?tab= with replace + scroll:false so a deep link
-// or reload lands on the same tab without a scroll jump.
+// on desktop and a scrolling row on mobile), Home/End; the choice is mirrored into ?tab= with history.replaceState -- which Next.js
+// keeps in sync with its router without a server round trip -- so a deep link or reload lands on the same tab. (router.replace
+// re-rendered the whole server page and re-ran the 360 aggregation on every click, browser QA-02.)
 
 export type TabSummary = { key: TabKey; label: string; status: "has_data" | "empty" | "restricted"; count: number | null };
 
@@ -30,7 +31,6 @@ function stateText(t: TabSummary): string {
 }
 
 export default function Student360Tabs({ tabs, initialTab, children }: { tabs: TabSummary[]; initialTab: TabKey; children: ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const panels = Children.toArray(children);
   const [selected, setSelected] = useState(Math.max(0, tabs.findIndex((t) => t.key === initialTab)));
@@ -38,7 +38,7 @@ export default function Student360Tabs({ tabs, initialTab, children }: { tabs: T
 
   function select(index: number, moveFocus: boolean) {
     setSelected(index);
-    router.replace(`${pathname}?tab=${tabs[index].key}`, { scroll: false });
+    window.history.replaceState(null, "", `${pathname}?tab=${tabs[index].key}`);
     if (moveFocus) {
       const el = refs.current[index];
       el?.focus();

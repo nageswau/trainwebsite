@@ -89,6 +89,29 @@ describe("Student360Panels", () => {
     expect(screen.getByText("Application linked")).toBeInTheDocument();
   });
 
+  it("shows upcoming school activities, and names the attended table once (browser QA-06)", () => {
+    const tab: Tab360 = { status: "has_data", count: 1, not_tracked: [], data: {
+      attended: [{ activity_id: "a1", title: "Career Awareness Session", scheduled_at: "2026-09-08T10:00:00Z", present: true }],
+      upcoming: [{ id: "u1", title: "Annual Sports Day", scheduled_at: "2026-10-03T10:00:00Z" }],
+      portfolio_entries: { project: [], internship: [], sport: [], leadership: [], volunteering: [], extracurricular: [] },
+    } };
+    render(<>{renderPanel("activities", tab, view())}</>);
+    expect(screen.getByRole("heading", { level: 3, name: "Upcoming school activities" })).toBeInTheDocument();
+    expect(screen.getByText("Annual Sports Day")).toBeInTheDocument();
+    expect(screen.getAllByText("School activities attended")).toHaveLength(1);  // heading only -- no duplicate hidden caption
+    expect(screen.getByRole("table", { name: "School activities attended" })).toBeInTheDocument();  // still named, via the heading
+  });
+
+  it("shows upcoming activities even when nothing has been attended yet", () => {
+    const tab: Tab360 = { status: "empty", count: 0, not_tracked: [], data: {
+      attended: [], upcoming: [{ id: "u1", title: "Annual Sports Day", scheduled_at: "2026-10-03T10:00:00Z" }],
+      portfolio_entries: { project: [], internship: [], sport: [], leadership: [], volunteering: [], extracurricular: [] },
+    } };
+    render(<>{renderPanel("activities", tab, view())}</>);
+    expect(screen.getByText("Annual Sports Day")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/no activities recorded yet/i);
+  });
+
   it.each(TAB_KEYS.map((k) => [k]))("renders %s for a brand-new student without throwing", (key) => {
     render(<>{renderPanel(key, empty(key), view())}</>);
     expect(screen.getByRole("heading", { level: 2 })).toBeInTheDocument();

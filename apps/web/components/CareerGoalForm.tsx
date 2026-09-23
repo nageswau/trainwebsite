@@ -12,6 +12,8 @@ import { refocus } from "@/lib/focus";
 // the authority on who may write; this form is only rendered when the 360 payload says `can_edit_career_goal`.
 
 const MAX = 120;
+// Shown when the server gives no usable `detail` (a 5xx, a proxy page): say what failed instead of "Something went wrong."
+const NOT_SAVED = "The career goal could not be saved. Please try again.";
 
 // A 200 only counts as saved if it is the record we asked about -- a proxy login page or an empty body must not read as success.
 function isSaved(body: unknown): boolean {
@@ -64,7 +66,7 @@ export default function CareerGoalForm({ studentId, goal }: { studentId: string;
       }
       const body = await response.json().catch(() => null);
       if (!response.ok || !isSaved(body)) {
-        fail(detailMessage(body?.detail));
+        fail(detailMessage(body?.detail, NOT_SAVED));
         return;
       }
       setSaved(true);
@@ -93,11 +95,14 @@ export default function CareerGoalForm({ studentId, goal }: { studentId: string;
         id="career-goal-input"
         value={value}
         maxLength={MAX}
-        disabled={busy}
+        // readOnly, not disabled: refocus() runs on the next animation frame, and a disabled input refuses focus, so after an
+        // error focus returned to it only when React had already re-enabled it (browser QA-04). Read-only stays focusable.
+        readOnly={busy}
+        aria-busy={busy}
         aria-describedby="career-goal-count"
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Escape") {
+          if (e.key === "Escape" && !busy) {  // like the (disabled) Cancel button, not mid-save
             e.preventDefault();
             close();
           }
