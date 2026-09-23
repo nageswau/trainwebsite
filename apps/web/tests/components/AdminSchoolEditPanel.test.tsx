@@ -197,8 +197,11 @@ describe("AdminSchoolEditPanel", () => {
     const checking = await screen.findByRole("button", { name: "Checking tier change…" });
     expect(checking).toBeDisabled();
     expect(checking.closest("form")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByLabelText("Partnership tier")).toBeDisabled();
+    expect(screen.getByLabelText("Branch")).toBeDisabled();
     release(json(downgrade, 200));
     await screen.findByRole("button", { name: "Confirm downgrade" });
+    expect(screen.getByLabelText("Partnership tier")).not.toBeDisabled();
   });
 
   it("an untouched tier is never sent and needs no preview", async () => {

@@ -182,18 +182,18 @@ export default function AdminSchoolEditPanel() {
       {school && (
         <form className="form" onSubmit={save} onChange={() => setPending(null)} aria-busy={isBusy} style={{ marginTop: 16 }}>
           <p className="muted">{school.name} ({school.school_code})</p>
-          <div className="field"><label htmlFor="edit-branch">Branch</label><input id="edit-branch" name="branch" defaultValue={school.branch ?? ""} /></div>
-          <div className="field"><label htmlFor="edit-address">Address</label><input id="edit-address" name="address" defaultValue={school.address ?? ""} /></div>
+          <div className="field"><label htmlFor="edit-branch">Branch</label><input id="edit-branch" name="branch" defaultValue={school.branch ?? ""} disabled={isBusy} /></div>
+          <div className="field"><label htmlFor="edit-address">Address</label><input id="edit-address" name="address" defaultValue={school.address ?? ""} disabled={isBusy} /></div>
           <div className="form-grid">
-            <div className="field"><label htmlFor="edit-contact-number">Contact number</label><input id="edit-contact-number" name="contact_number" defaultValue={school.contact_number ?? ""} /></div>
-            <div className="field"><label htmlFor="edit-email">Email</label><input id="edit-email" name="email" type="email" defaultValue={school.email ?? ""} /></div>
+            <div className="field"><label htmlFor="edit-contact-number">Contact number</label><input id="edit-contact-number" name="contact_number" defaultValue={school.contact_number ?? ""} disabled={isBusy} /></div>
+            <div className="field"><label htmlFor="edit-email">Email</label><input id="edit-email" name="email" type="email" defaultValue={school.email ?? ""} disabled={isBusy} /></div>
           </div>
-          <div className="field"><label htmlFor="edit-website">Website</label><input id="edit-website" name="website" defaultValue={school.website ?? ""} /></div>
+          <div className="field"><label htmlFor="edit-website">Website</label><input id="edit-website" name="website" defaultValue={school.website ?? ""} disabled={isBusy} /></div>
           <div className="form-grid">
-            <div className="field"><label htmlFor="edit-grades">Grades available</label><input id="edit-grades" name="grades_available" defaultValue={school.grades_available ?? ""} /></div>
+            <div className="field"><label htmlFor="edit-grades">Grades available</label><input id="edit-grades" name="grades_available" defaultValue={school.grades_available ?? ""} disabled={isBusy} /></div>
             <div className="field">
               <label htmlFor="edit-board">Board</label>
-              <select id="edit-board" name="board" defaultValue={school.board ?? ""}>
+              <select id="edit-board" name="board" defaultValue={school.board ?? ""} disabled={isBusy}>
                 <option value="">Not set</option>
                 <option value="CBSE">CBSE</option>
                 <option value="ICSE">ICSE</option>
@@ -203,19 +203,19 @@ export default function AdminSchoolEditPanel() {
               </select>
             </div>
           </div>
-          <div className="field"><label htmlFor="edit-partnership-date">Partnership date</label><input id="edit-partnership-date" name="partnership_date" type="date" defaultValue={school.partnership_date ?? ""} /></div>
-          <div className="field"><label htmlFor="edit-mou">Agreement / MoU reference</label><input id="edit-mou" name="mou_reference" defaultValue={school.mou_reference ?? ""} /></div>
+          <div className="field"><label htmlFor="edit-partnership-date">Partnership date</label><input id="edit-partnership-date" name="partnership_date" type="date" defaultValue={school.partnership_date ?? ""} disabled={isBusy} /></div>
+          <div className="field"><label htmlFor="edit-mou">Agreement / MoU reference</label><input id="edit-mou" name="mou_reference" defaultValue={school.mou_reference ?? ""} disabled={isBusy} /></div>
           <div className="form-grid">
-            <div className="field"><label htmlFor="edit-bdm">Edusphere BDM</label><input id="edit-bdm" name="edusphere_bdm" defaultValue={school.edusphere_bdm ?? ""} /></div>
-            <div className="field"><label htmlFor="edit-vp">Vice Principal</label><input id="edit-vp" name="vice_principal_name" defaultValue={school.vice_principal_name ?? ""} /></div>
+            <div className="field"><label htmlFor="edit-bdm">Edusphere BDM</label><input id="edit-bdm" name="edusphere_bdm" defaultValue={school.edusphere_bdm ?? ""} disabled={isBusy} /></div>
+            <div className="field"><label htmlFor="edit-vp">Vice Principal</label><input id="edit-vp" name="vice_principal_name" defaultValue={school.vice_principal_name ?? ""} disabled={isBusy} /></div>
           </div>
-          <div className="field"><label htmlFor="edit-visits">Monthly visit schedule</label><input id="edit-visits" name="monthly_visit_schedule" defaultValue={school.monthly_visit_schedule ?? ""} /></div>
+          <div className="field"><label htmlFor="edit-visits">Monthly visit schedule</label><input id="edit-visits" name="monthly_visit_schedule" defaultValue={school.monthly_visit_schedule ?? ""} disabled={isBusy} /></div>
           <fieldset className="question">
             <legend>Partnership</legend>
             <div className="form-grid">
               <div className="field">
                 <label htmlFor="edit-tier">Partnership tier</label>
-                <select id="edit-tier" name="tier" defaultValue={school.tier ?? ""} aria-describedby="edit-tier-help">
+                <select id="edit-tier" name="tier" defaultValue={school.tier ?? ""} aria-describedby="edit-tier-help" disabled={isBusy}>
                   <option value="">Not set</option>
                   <option value="bronze">Bronze</option>
                   <option value="silver">Silver</option>
@@ -225,7 +225,7 @@ export default function AdminSchoolEditPanel() {
               </div>
               <div className="field">
                 <label htmlFor="edit-tier-valid-until">Valid until</label>
-                <input id="edit-tier-valid-until" name="tier_valid_until" type="date" defaultValue={school.tier_valid_until ?? ""} aria-describedby="edit-tier-valid-help" />
+                <input id="edit-tier-valid-until" name="tier_valid_until" type="date" defaultValue={school.tier_valid_until ?? ""} aria-describedby="edit-tier-valid-help" disabled={isBusy} />
                 <span id="edit-tier-valid-help" className="muted">Leave empty for no end date.</span>
               </div>
             </div>
