@@ -207,9 +207,10 @@ are unchanged.
        new work: {labels}. Work already started can still be completed. The school will be notified."* The block has
        **Confirm downgrade** (sends the same single PATCH, profile edits included) and **Cancel** (hides the block,
        keeps all input).
-  3. The success message is built from the PATCH response's `tier_change`, never from the preview. It reads
-     `School updated. Now {To}; newly available: …` for an upgrade and `School updated. Now {To}.` for a downgrade.
-     A concurrent change by another admin is therefore reported truthfully.
+  3. The success message is built from the PATCH response's `tier_change`, never from the preview. The existing
+     `School profile updated.` text is kept (the `sch-003` E2E asserts it) and, when the tier changed, followed by
+     ` Partnership is now {To}; newly available: {labels}.` for an upgrade or ` Partnership is now {To}.` for a
+     downgrade. A concurrent change by another admin is therefore reported truthfully.
 - **Error states:**
   - A preview failure (network or `4xx`) shows the error and saves nothing; input is kept.
   - Save failures keep the existing messages.
@@ -257,6 +258,7 @@ are unchanged.
 | Same tier re-sent; only `tier_valid_until` sent | Audit row with `direction="unchanged"`; `tier_change` returned; no notification |
 | Profile-only PATCH | `tier_change: null`; no tier audit row |
 | School with no coordinator/principal account | Only the admin copy is sent; the change still succeeds |
+| School name near its 200-character limit | Notification titles are cut to `Notification.title`'s 180 characters, so the insert never fails |
 | Notification send fails | Change stays committed; warning logged; `NotificationDelivery` records the failure |
 | Downgrade then re-upgrade | Two audit rows, both kept (history is never collapsed) |
 | Lost, regained, lost again | A record created before the latest loss is grandfathered |
