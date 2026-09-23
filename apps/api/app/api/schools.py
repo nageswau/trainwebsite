@@ -59,7 +59,7 @@ from app.models import (
     UserRoleAssignment,
     VisaCase,
 )
-from app.schemas import MASTER_FIELD_KEYS, GradeHistoryResponse, StudentMasterFields, StudentPromotionRequest, StudentPromotionResponse, validation_message
+from app.schemas import LIST_FIELD_KEYS, MASTER_FIELD_KEYS, GradeHistoryResponse, StudentMasterFields, StudentPromotionRequest, StudentPromotionResponse, validation_message
 from app.services.integrations import send_notification
 from app.services.mailer import send_parent_notification_email, send_school_invite_email
 
@@ -957,7 +957,7 @@ async def roster_template(user: User = Depends(get_current_user)):
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(ROSTER_TEMPLATE_HEADERS)
-    writer.writerow(["Jane Doe", "2015-04-12", "Grade 5", "", "Jane's Parent", "", "5"])
+    writer.writerow(ROSTER_TEMPLATE_EXAMPLE)
     return Response(content=buffer.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=school-roster-template.csv"})
 
 
@@ -1502,7 +1502,36 @@ async def mark_attendance(activity_id: UUID, payload: dict, user: User = Depends
 # not fixed by DATA_MODEL.md §6.13 -- resolved here as technical contract design, mapped
 # directly from SCH-001's own already-built SchoolStudent creation fields (POST /school/
 # students), not an invented field list.
-ROSTER_TEMPLATE_HEADERS = ["full_name", "date_of_birth", "grade_or_class", "assigned_teacher_email", "parent_name", "parent_email", "grade_level"]
+# ENH-025: the ten Student Master columns are appended after the original seven, so existing positions never move.
+ROSTER_TEMPLATE_HEADERS = [
+    "full_name", "date_of_birth", "grade_or_class", "assigned_teacher_email", "parent_name", "parent_email", "grade_level",
+    *MASTER_FIELD_KEYS,
+]
+ROSTER_TEMPLATE_EXAMPLE = ["Jane Doe", "2015-04-12", "Grade 5-A", "", "Jane's Parent", "", "5", "A", "12", "female", "+91 98765 43210", "Pune", "Maths;Science", "Engineering", "yes", "Germany;Canada", "Mechanical Engineering"]
+_CSV_BOOLEANS = {"yes": True, "true": True, "1": True, "no": False, "false": False, "0": False}
+
+
+def _master_fields_from_csv(row: dict) -> tuple[dict, str | None]:
+    """A CSV row -> the StudentMasterFields input shape. A missing column or a short row means "not set";
+    list cells split on ';'. Returns (data, error_message)."""
+    data: dict = {}
+    for key in MASTER_FIELD_KEYS:
+        raw = row.get(key)
+        if raw is None:
+            continue
+        raw = raw.strip()
+        if key in LIST_FIELD_KEYS:
+            data[key] = raw.split(";") if raw else None
+        elif key == "global_education_interest":
+            if not raw:
+                data[key] = None
+            elif raw.lower() in _CSV_BOOLEANS:
+                data[key] = _CSV_BOOLEANS[raw.lower()]
+            else:
+                return {}, "global_education_interest must be yes or no"
+        else:
+            data[key] = raw or None
+    return data, None
 
 
 async def _batch_report(db: AsyncSession, batch: SchoolRosterUploadBatch) -> dict:
@@ -1592,6 +1621,14 @@ async def bulk_upload_students(
                     grade_level = _validate_grade_level(int(raw_grade_level))
                 except (ValueError, HTTPException):
                     error = f"grade_level '{raw_grade_level}' must be an integer between 1 and 12"
+        master = None
+        if not error:
+            master_data, error = _master_fields_from_csv(row)
+            if not error:
+                try:
+                    master = StudentMasterFields.model_validate(master_data)
+                except ValidationError as exc:
+                    error = validation_message(exc)
         # SCH-002-AC04: a row that fails validation is recorded and skipped -- it never
         # blocks or discards the rows around it.
         if error:
@@ -1604,8 +1641,19 @@ async def bulk_upload_students(
             created_by_user_id=user.id, assigned_teacher_user_id=assigned_teacher_user_id,
             grade_level=grade_level, academic_year_id=current_year_id,
         )
-        db.add(student)
-        await db.flush()
+        _apply_master_fields(student, master)
+        # ENH-025: the insert runs in its own savepoint so a roll-number clash rejects this row only
+        # (SCH-002-AC04). The parent link/invite runs after, so a rolled-back row never sends an invite.
+        try:
+            async with db.begin_nested():
+                db.add(student)
+                await db.flush()
+        except IntegrityError as exc:
+            if not _is_roll_conflict(exc):
+                raise
+            db.add(SchoolRosterUploadRow(batch_id=batch.id, row_number=i, status="rejected", error_message=ROLL_TAKEN.format(roll=student.roll_number)))
+            rejected += 1
+            continue
         if parent_email:
             # Already validated above (no conflicting account) -- this call only ever
             # links or invites here, it does not reject.
@@ -1618,6 +1666,7 @@ async def bulk_upload_students(
     batch.status = "completed"
     db.add(AuditLog(user_id=user.id, action="school.roster_bulk_upload", entity_type="school_roster_upload_batch", entity_id=str(batch.id), metadata_json={"total": len(rows), "accepted": accepted, "rejected": rejected}))
     await db.commit()
+    logger.info("roster_bulk_upload_completed", extra={"extra_fields": {"batch_id": str(batch.id), "school_id": str(school_id), "total": len(rows), "accepted": accepted, "rejected": rejected}})
     return await _batch_report(db, batch)
 
 
