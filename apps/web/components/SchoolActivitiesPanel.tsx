@@ -1,9 +1,12 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-type Activity = { id: string; title: string; scheduled_at: string };
+import { isFeedbackEligible } from "@/lib/activityFeedback";
+
+type Activity = { id: string; title: string; scheduled_at: string; activity_type?: string | null };
 type Student = { id: string; full_name: string };
 
 function detailMessage(detail: unknown) {
@@ -87,7 +90,13 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
                   <tr key={a.id}>
                     <td>{a.title}</td>
                     <td>{new Date(a.scheduled_at).toLocaleString()}</td>
-                    <td><button className="btn ghost small" onClick={() => startMarking(a.id)}>Mark attendance</button></td>
+                    <td>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button className="btn ghost small" onClick={() => startMarking(a.id)}>Mark attendance</button>
+                        {/* ENH-018: completed Edusphere (typed) activities link to the Feedback page. */}
+                        {isFeedbackEligible(a) && <Link className="btn secondary small" href="/school/coordinator/feedback" aria-label={`Give feedback for ${a.title}`}>Give feedback</Link>}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
