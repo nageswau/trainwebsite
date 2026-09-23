@@ -23,6 +23,7 @@ test("adding a parent email to the roster invites them automatically, and accept
   await page.fill("#school-name", `E2E Roster School ${unique}`);
   await page.fill("#school-coordinator-name", "E2E Roster Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
@@ -92,6 +93,7 @@ test("a parent email that already has an account at this school is linked immedi
   await page.fill("#school-name", `E2E Roster School B ${unique}`);
   await page.fill("#school-coordinator-name", "E2E Roster Coordinator B");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
@@ -154,6 +156,7 @@ test("an existing parent at a DIFFERENT school is linked immediately, and the pa
   await page.fill("#school-name", schoolAName);
   await page.fill("#school-coordinator-name", "E2E Coordinator A");
   await page.fill("#school-coordinator-email", coordAEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
@@ -189,6 +192,7 @@ test("an existing parent at a DIFFERENT school is linked immediately, and the pa
   await page.fill("#school-name", schoolBName);
   await page.fill("#school-coordinator-name", "E2E Coordinator B");
   await page.fill("#school-coordinator-email", coordBEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 

@@ -27,6 +27,7 @@ async function provisionSchool(page: Page, schoolName: string, coordinatorEmail:
   await page.fill("#school-name", schoolName);
   await page.fill("#school-coordinator-name", "ENH-002 Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
