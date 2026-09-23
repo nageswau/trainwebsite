@@ -52,6 +52,12 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
     router.refresh();
   }
 
+  // QA-022-01: an attach message belongs to the card that produced it -- opening (for any record) or cancelling starts clean.
+  function openAttach(recordId: string | null) {
+    setMessage((current) => (current?.form === "attach" ? null : current));
+    setUploadingId(recordId);
+  }
+
   function studentName(id: string) {
     return students.find((s) => s.id === id)?.full_name || "Unknown student";
   }
@@ -76,7 +82,7 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
                     <td>{r.status}</td>
                     <td>
                       {r.status === "assigned" ? (
-                        <button className="btn ghost small" onClick={() => setUploadingId(r.id)}>Attach report</button>
+                        <button className="btn ghost small" onClick={() => openAttach(r.id)}>Attach report</button>
                       ) : (
                         <span className="muted" style={{ fontSize: 13 }}>Report attached</span>
                       )}
@@ -99,7 +105,7 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
             </div>
             <div className="field" style={{ flexDirection: "row", gap: 12 }}>
               <button className="btn" disabled={busy}>{busy ? "Saving…" : "Attach"}</button>
-              <button type="button" className="btn secondary" onClick={() => setUploadingId(null)}>Cancel</button>
+              <button type="button" className="btn secondary" onClick={() => openAttach(null)}>Cancel</button>
             </div>
           </form>
           {message?.form === "attach" && <FormMessage message={message} />}

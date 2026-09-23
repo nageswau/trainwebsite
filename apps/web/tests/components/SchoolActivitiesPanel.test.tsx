@@ -56,6 +56,20 @@ describe("SchoolActivitiesPanel save failures", () => {
     expect(within(card("Schedule an activity")).queryByRole("alert")).toBeNull();
   });
 
+  it("does not show an old attendance error again after Cancel and re-open (QA-022-01)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 403, json: async () => ({ detail: TIER_403 }) }));
+    render(<SchoolActivitiesPanel activities={[...ACTIVITIES, { id: "a2", title: "Seminar", scheduled_at: "2026-10-02T10:00:00Z" }]} students={STUDENTS} />);
+    fireEvent.click(screen.getAllByRole("button", { name: "Mark attendance" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Save attendance" }));
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Mark attendance" })[0]);
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Mark attendance" })[1]);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("announces success politely", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => ({ id: "a2", title: "Campus visit" }) }));
     render(<SchoolActivitiesPanel activities={[]} students={[]} />);

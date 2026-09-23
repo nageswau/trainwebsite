@@ -40,9 +40,20 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
     router.refresh();
   }
 
+  // QA-022-01: an attendance message belongs to the card that produced it -- opening or cancelling the card starts clean.
+  function clearAttendanceMessage() {
+    setMessage((current) => (current?.form === "attendance" ? null : current));
+  }
+
   function startMarking(activityId: string) {
+    clearAttendanceMessage();
     setMarkingId(activityId);
     setPresent(Object.fromEntries(students.map((s) => [s.id, true])));
+  }
+
+  function stopMarking() {
+    clearAttendanceMessage();
+    setMarkingId(null);
   }
 
   async function submitAttendance(event: FormEvent<HTMLFormElement>) {
@@ -108,7 +119,7 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
               ))}
               <div className="field" style={{ flexDirection: "row", gap: 12 }}>
                 <button className="btn" disabled={busy}>{busy ? "Saving…" : "Save attendance"}</button>
-                <button type="button" className="btn secondary" onClick={() => setMarkingId(null)}>Cancel</button>
+                <button type="button" className="btn secondary" onClick={stopMarking}>Cancel</button>
               </div>
             </form>
           )}
