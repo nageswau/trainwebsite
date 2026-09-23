@@ -1153,6 +1153,30 @@ class SchoolActivityAttendance(Base, TimestampMixin):
     marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+class SchoolActivityFeedback(Base, TimestampMixin):
+    """ENH-018 -- a School Coordinator's feedback on one completed Edusphere activity (`School CRM.md §31`,
+    docs/superpowers/specs/2026-09-23-enh-018-school-activity-feedback-design.md §4). One row per activity (D5) and immutable;
+    `school_id` is copied from the activity so reads stay scoped without a join. Student participation is NOT stored: it is
+    computed from `school_activity_attendance` at read time (D4). `created_at` is the submission time."""
+
+    __tablename__ = "school_activity_feedback"
+    __table_args__ = (
+        UniqueConstraint("activity_id", name="uq_activity_feedback_activity"),
+        CheckConstraint("rating BETWEEN 1 AND 5", name="ck_activity_feedback_rating"),
+        CheckConstraint("satisfaction BETWEEN 1 AND 5", name="ck_activity_feedback_satisfaction"),
+        Index("ix_school_activity_feedback_created_at", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    activity_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_activities.id"))
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
+    submitted_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    trainer_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    rating: Mapped[int] = mapped_column(Integer)
+    satisfaction: Mapped[int] = mapped_column(Integer)
+    feedback: Mapped[str] = mapped_column(Text)
+    suggestions: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class SchoolRosterUploadBatch(Base, TimestampMixin):
     """SCH-002 bulk roster upload audit trail (DATA_MODEL.md §6.13). Net-new."""
 
