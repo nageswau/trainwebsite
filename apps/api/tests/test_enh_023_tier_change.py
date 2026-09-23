@@ -415,3 +415,64 @@ async def test_digital_skills_batch_can_be_finished_after_a_downgrade_but_not_gr
     assert await denials(db_session, w["school"].id) == 2
     stored = await db_session.get(SchoolSkillBatch, UUID(batch["id"]), populate_existing=True)
     assert stored.title == "Renamed"
+
+
+from test_sch_010_overseas_bridge import _make_university  # noqa: E402
+
+from app.models import PortfolioEntry  # noqa: E402
+
+PORTFOLIO = "/api/v1/school/students/{sid}/portfolio"
+
+
+@pytest.mark.asyncio
+async def test_portfolio_work_can_be_edited_after_a_downgrade_but_not_added(client, db_session):
+    w = await world(db_session, "gold")
+    url = PORTFOLIO.format(sid=w["students"][0].id)
+    await login(client, w["coordinator"].email)
+    entry = (await client.post(f"{url}/entries", json={"section": "project", "title": "Robot"})).json()
+    assert (await client.patch(f"{url}/personal-statement", json={"personal_statement": "Hi"})).status_code == 200
+    await change_tier(client, w, tier="silver")
+    await login(client, w["coordinator"].email)
+    assert (await client.patch(f"{url}/entries/{entry['id']}", json={"title": "Robot v2"})).status_code == 200
+    assert (await client.patch(f"{url}/personal-statement", json={"personal_statement": "Hello"})).status_code == 200
+    assert (await client.post(f"{url}/entries", json={"section": "project", "title": "New"})).status_code == 403
+    assert (await client.delete(f"{url}/entries/{entry['id']}")).status_code == 204
+    assert await db_session.get(PortfolioEntry, UUID(entry["id"]), populate_existing=True) is None
+
+
+@pytest.mark.asyncio
+async def test_personal_statement_never_started_is_new_work(client, db_session):
+    w = await world(db_session, "gold")
+    url = PORTFOLIO.format(sid=w["students"][0].id)
+    await change_tier(client, w, tier="silver")
+    await login(client, w["coordinator"].email)
+    assert (await client.patch(f"{url}/personal-statement", json={"personal_statement": "Hi"})).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_unknown_portfolio_entry_is_404_before_the_tier_check(client, db_session):
+    w = await world(db_session, "silver")
+    url = PORTFOLIO.format(sid=w["students"][0].id)
+    await login(client, w["coordinator"].email)
+    r = await client.patch(f"{url}/entries/00000000-0000-0000-0000-000000000000", json={"title": "X"})
+    assert r.status_code == 404
+    assert await denials(db_session, w["school"].id) == 0
+
+
+@pytest.mark.asyncio
+async def test_visa_case_can_be_updated_after_a_downgrade_but_not_opened(client, db_session):
+    w = await world(db_session, "platinum", students=2)
+    university = await _make_university(db_session)
+    await login(client, w["admin"].email)
+    apps = [
+        await client.post(f"/api/v1/overseas-admin/school-students/{s.id}/applications", json={"university_id": str(university.id), "intake": "Fall 2027"})
+        for s in w["students"]
+    ]
+    assert [a.status_code for a in apps] == [201, 201]
+    visa = await client.post("/api/v1/workflows/overseas/visa", json={"application_id": apps[0].json()["id"], "status": "checklist"})
+    assert visa.status_code == 201, visa.text
+    await change_tier(client, w, tier="gold")  # visa_support lost; application_support kept
+    assert (await client.patch(f"/api/v1/workflows/overseas/visa/{visa.json()['id']}", json={"tracking_reference": "X1"})).status_code == 200
+    second = await client.post("/api/v1/workflows/overseas/visa", json={"application_id": apps[1].json()["id"], "status": "checklist"})
+    assert second.status_code == 403
+    assert "Visa support" in second.json()["detail"]

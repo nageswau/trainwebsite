@@ -164,8 +164,9 @@ async def _load_portfolio_entry(db: AsyncSession, student_id: UUID, entry_id: UU
 async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: PortfolioEntryUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     student = await _load_student_for_reader(db, user, student_id)
     _require_portfolio_write(user, student)  # role/scope checked before the entry lookup below (spec §6)
-    await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation")
     entry = await _load_portfolio_entry(db, student.id, entry_id)
+    # ENH-023 D8: editing an entry that existed before a downgrade finishes existing work.
+    await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation", grandfathered_since=entry.created_at)
     # `model_fields_set` distinguishes "field explicitly present in the request payload" (apply it, even
     # when the value is None -- that's the clear-the-field case) from "field omitted" (leave the entry's
     # existing value untouched). A plain `if value is not None` check (the previous logic) could never
@@ -194,9 +195,10 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
 @router.delete("/students/{student_id}/portfolio/entries/{entry_id}", status_code=204)
 async def delete_portfolio_entry(student_id: UUID, entry_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     student = await _load_student_for_reader(db, user, student_id)
-    _require_portfolio_write(user, student)
-    await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation")
+    _require_portfolio_write(user, student)  # role/scope checked before the entry lookup below (spec §6)
     entry = await _load_portfolio_entry(db, student.id, entry_id)
+    # ENH-023 D8: removing an entry that existed before a downgrade finishes existing work.
+    await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation", grandfathered_since=entry.created_at)
     section, entry_id_str = entry.section, str(entry.id)
     await db.delete(entry)
     db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_delete", entity_type="portfolio_entry", entity_id=entry_id_str, metadata_json={"section": section, "school_student_id": str(student.id)}))
@@ -211,7 +213,9 @@ async def update_personal_statement(student_id: UUID, payload: PersonalStatement
     a duplicate-intent conflict like a transfer filing (spec §6)."""
     student = await _load_student_for_reader(db, user, student_id)
     _require_portfolio_write(user, student)
-    await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation")
+    # ENH-023 D8: a statement already started is existing work; the first one ever is new work.
+    started = await db.scalar(select(PortfolioProfile.created_at).where(PortfolioProfile.school_student_id == student.id))
+    await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation", grandfathered_since=started)
     statement = payload.personal_statement.strip() if payload.personal_statement else None
     row = None
     try:
