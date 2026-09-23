@@ -34,7 +34,7 @@ export const GENDER_OPTIONS = [
 export const GENDER_LABEL: Record<string, string> = Object.fromEntries(GENDER_OPTIONS.map((o) => [o.value, o.label]));
 
 const TEXT_FIELDS = ["section", "roll_number", "gender", "student_mobile", "city"] as const;
-export const MASTER_LIST_FIELDS = ["subjects", "career_interests", "preferred_countries", "preferred_courses"] as const;
+const MASTER_LIST_FIELDS = ["subjects", "career_interests", "preferred_countries", "preferred_courses"] as const;
 
 export function listText(value: string[] | null | undefined): string {
   return value ? value.join(", ") : "";
@@ -99,12 +99,18 @@ const LIST_ITEM_LABELS: Record<string, string> = {
   preferred_countries: "Each preferred country",
   preferred_courses: "Each preferred course",
 };
-// Longest first, so "preferred_countries" never matches a shorter key that happens to prefix it.
-const FIELD_KEYS = Object.keys(FIELD_LABELS).sort((a, b) => b.length - a.length);
+/** The API field a validation message (a response `detail`) is about, or null. Keys contain no spaces, so matching
+ * "<key> " can never confuse one field with another. */
+export function fieldFromMessage(detail: unknown): string | null {
+  if (typeof detail !== "string") return null;
+  return Object.keys(FIELD_LABELS).find((key) => detail.startsWith(`${key} `)) ?? null;
+}
 
-/** The API field a validation message is about, or null. */
-export function fieldFromMessage(message: string): string | null {
-  return FIELD_KEYS.find((key) => message.startsWith(`${key} `)) ?? null;
+/** ARIA for an input the last server error may be about: marked invalid and described by the error (`errorId`). */
+export function invalidInputProps(name: string, invalidField: string | null | undefined, errorId: string, describedBy?: string) {
+  const invalid = !!invalidField && name === invalidField;
+  const ids = [describedBy, invalid ? errorId : undefined].filter(Boolean).join(" ");
+  return { "aria-invalid": invalid ? (true as const) : undefined, "aria-describedby": ids || undefined };
 }
 
 /** A server validation message in the words the user sees on the form. Unrecognised messages pass through unchanged. */

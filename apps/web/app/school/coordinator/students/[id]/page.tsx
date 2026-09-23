@@ -7,8 +7,6 @@ import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 import type { SchoolStudent } from "@/lib/schoolStudents";
 
-type Student = SchoolStudent;
-
 // SCH-008 (DEC-SCOPE-016): School Coordinator's read-only view of one student's Journey
 // Timeline, own institution only (SCH-001-AC02) -- reachable from the roster's "Timeline"
 // link. Write actions (add/edit/link parent) stay on /school/coordinator/students, not
@@ -19,11 +17,11 @@ type Student = SchoolStudent;
 export default async function SchoolCoordinatorStudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let user: User;
-  let student: Student;
+  let student: SchoolStudent;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
     if (user.role !== "school_coordinator") return accessDenied(user, "School Coordinator role required");
-    student = await serverApi<Student>(`/api/v1/school/students/${id}`);
+    student = await serverApi<SchoolStudent>(`/api/v1/school/students/${id}`);
   } catch (e) {
     return (
       <div className="section">

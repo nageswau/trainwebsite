@@ -1,4 +1,4 @@
-import { GENDER_OPTIONS, listText, type SchoolStudent } from "@/lib/schoolStudents";
+import { GENDER_OPTIONS, invalidInputProps, listText, type SchoolStudent } from "@/lib/schoolStudents";
 
 type TeacherOption = { id: string; name: string; active: boolean };
 
@@ -13,13 +13,9 @@ const LIST_INPUTS = [
 // In edit mode every input is pre-filled from `student`, so saving without touching a field keeps its value.
 // QA2-06: `invalidField` (an API field name == the input's `name`) marks that input invalid and links it to the form's
 // error message (`errorId`), so assistive tech announces which field the error is about.
-export default function SchoolStudentFields({ idPrefix, student, teachers, includeInactiveTeachers, invalidField, errorId }: { idPrefix: string; student?: SchoolStudent; teachers: TeacherOption[]; includeInactiveTeachers: boolean; invalidField?: string | null; errorId?: string }) {
+export default function SchoolStudentFields({ idPrefix, student, teachers, includeInactiveTeachers, invalidField, errorId }: { idPrefix: string; student?: SchoolStudent; teachers: TeacherOption[]; includeInactiveTeachers: boolean; invalidField?: string | null; errorId: string }) {
   const id = (name: string) => `${idPrefix}-${name}`;
-  const a11y = (name: string, describedBy?: string) => {
-    const on = !!invalidField && (name === invalidField || (name === "assigned_teacher_user_id" && invalidField === "assigned_teacher_email"));
-    const ids = [describedBy, on ? errorId : undefined].filter(Boolean).join(" ");
-    return { "aria-invalid": on ? (true as const) : undefined, "aria-describedby": ids || undefined };
-  };
+  const a11y = (name: string, describedBy?: string) => invalidInputProps(name, invalidField, errorId, describedBy);
   const interest = student?.global_education_interest == null ? "" : student.global_education_interest ? "yes" : "no";
   const teacherOptions = includeInactiveTeachers ? teachers : teachers.filter((t) => t.active);
   return (

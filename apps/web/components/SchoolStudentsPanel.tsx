@@ -9,14 +9,15 @@ import { detailMessage, fieldFromMessage, toMasterPayload, type SchoolStudent } 
 type TeacherOption = { id: string; name: string; active: boolean };
 // "roster": a success that closes its card (edit, link parent) is reported on the roster the user returns to.
 type FormName = "edit" | "create" | "link" | "roster";
-// `field`: the API field a failure is about (QA2-06) -- that input is marked invalid, described by and focused on the error.
+// `field`: the input (by `name`) a failure is about (QA2-06) -- marked invalid, described by and focused on the error.
 type Message = { text: string; failed: boolean; form: FormName; field?: string | null };
 const FORM_ID: Partial<Record<FormName, string>> = { edit: "edit-student-form", create: "new-student-form" };
 const ERROR_ID = (form: FormName) => `${form}-form-error`;
 
 function failure(data: { detail?: unknown }, form: FormName): Message {
-  const raw = typeof data.detail === "string" ? data.detail : "";
-  return { text: detailMessage(data.detail), failed: true, form, field: fieldFromMessage(raw) };
+  const field = fieldFromMessage(data.detail);
+  // The API may name the teacher by email (the CSV path); on this form it is the assigned-teacher select.
+  return { text: detailMessage(data.detail), failed: true, form, field: field === "assigned_teacher_email" ? "assigned_teacher_user_id" : field };
 }
 
 function parentStatusNote(status: string | undefined, email: string) {
@@ -76,10 +77,9 @@ export default function SchoolStudentsPanel({ students }: { students: SchoolStud
 
   // QA2-06: move focus to the input a server error is about, so the user lands on what to fix.
   useEffect(() => {
-    if (!message?.failed || !message.field) return;
-    const name = message.field === "assigned_teacher_email" ? "assigned_teacher_user_id" : message.field;
-    const formId = FORM_ID[message.form];
-    document.getElementById(formId ?? "")?.querySelector<HTMLElement>(`[name="${name}"]`)?.focus();
+    const formId = message?.form && FORM_ID[message.form];
+    if (!message?.failed || !message.field || !formId) return;
+    document.getElementById(formId)?.querySelector<HTMLElement>(`[name="${message.field}"]`)?.focus();
   }, [message]);
 
   const invalidFor = (form: FormName) => (message?.failed && message.form === form ? message.field : null);

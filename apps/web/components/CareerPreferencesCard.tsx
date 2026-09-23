@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { detailMessage, fieldFromMessage, interestValue, listText, splitList } from "@/lib/schoolStudents";
+import { detailMessage, fieldFromMessage, interestValue, invalidInputProps, listText, splitList } from "@/lib/schoolStudents";
 
 const ERROR_ID = "prefs-form-error";
 
@@ -26,11 +26,7 @@ export default function CareerPreferencesCard({ students }: { students: Student[
   useEffect(() => {
     if (message?.failed && message.field) formRef.current?.querySelector<HTMLElement>(`[name="${message.field}"]`)?.focus();
   }, [message]);
-  const a11y = (name: string, describedBy?: string) => {
-    const on = !!message?.failed && message.field === name;
-    const ids = [describedBy, on ? ERROR_ID : undefined].filter(Boolean).join(" ");
-    return { "aria-invalid": on ? (true as const) : undefined, "aria-describedby": ids || undefined };
-  };
+  const a11y = (name: string, describedBy?: string) => invalidInputProps(name, message?.failed ? message.field : null, ERROR_ID, describedBy);
 
   async function load(id: string) {
     setState("loading");
@@ -64,7 +60,7 @@ export default function CareerPreferencesCard({ students }: { students: Student[
     const data = response ? await response.json().catch(() => ({})) : {};
     setState("idle");
     if (!response?.ok) {
-      setMessage({ text: detailMessage(data.detail, "Could not save; please try again."), failed: true, field: typeof data.detail === "string" ? fieldFromMessage(data.detail) : null });
+      setMessage({ text: detailMessage(data.detail, "Could not save; please try again."), failed: true, field: fieldFromMessage(data.detail) });
       return;
     }
     setPrefs(data);
