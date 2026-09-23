@@ -26,9 +26,13 @@
 .pf-statement { white-space: pre-wrap; }
 
 /* ENH-025 -- grouped Student Master forms, student photo and profile list (same tokens as fieldset.question). */
-fieldset.form-section { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 0 0 14px; display: grid; gap: 12px; min-width: 0; }
+fieldset.form-section { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 0; display: grid; gap: 12px; min-width: 0; }
 fieldset.form-section legend { font-weight: 800; padding: 0 6px; }
-fieldset.form-busy-wrap { border: 0; padding: 0; margin: 0; min-width: 0; }
+/* A help text under one field must not stretch its neighbour's input in the same grid row. */
+fieldset.form-section .form-grid { align-items: start; }
+/* Wraps a form's fields so they can be disabled while saving; keeps .form's own 16px spacing. */
+fieldset.form-busy-wrap { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 16px; }
+fieldset.form-busy-wrap > .btn { justify-self: start; }
 .field-help { font-size: 12px; margin: 0; }
 .student-photo { width: 96px; height: 96px; border-radius: 12px; object-fit: cover; background: var(--soft); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: var(--muted); flex-shrink: 0; }
 .student-profile { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; margin-bottom: 16px; }
