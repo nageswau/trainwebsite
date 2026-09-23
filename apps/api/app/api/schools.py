@@ -1697,6 +1697,7 @@ async def create_career_record(payload: dict, user: User = Depends(get_current_u
     if not student_id:
         raise HTTPException(422, "school_student_id is required")
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    await require_school_entitlement(db, user, student.school_id, "individual_counselling")  # D5: every record type
     record_type = payload.get("record_type")
     if record_type not in {"guidance_session", "counselling_note", "recommendation"}:
         raise HTTPException(422, "record_type must be one of guidance_session, counselling_note, recommendation")
@@ -1749,6 +1750,7 @@ async def create_psychometric_record(payload: dict, user: User = Depends(get_cur
     if not student_id:
         raise HTTPException(422, "school_student_id is required")
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    await require_school_entitlement(db, user, student.school_id, "psychometric_test")
     assessment_type = str(payload.get("assessment_type", "")).strip()
     if not assessment_type:
         raise HTTPException(422, "assessment_type is required")
@@ -1775,7 +1777,8 @@ async def update_psychometric_record(record_id: UUID, payload: dict, user: User 
     record = await db.get(SchoolPsychometricRecord, record_id)
     if not record:
         raise HTTPException(404, "Record not found")
-    await _student_in_portfolio(db, user, record.school_student_id)
+    student = await _student_in_portfolio(db, user, record.school_student_id)
+    await require_school_entitlement(db, user, student.school_id, "psychometric_test")
     became_completed = False
     if "report_url" in payload:
         record.report_url = payload["report_url"]
