@@ -5,8 +5,10 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, EmailStr, Field, StrictBool, ValidationError, field_validator, model_validator
 from pydantic_core import PydanticCustomError
+
+from app.models import GENDERS
 
 
 class LoginRequest(BaseModel):
@@ -599,6 +601,134 @@ class GradeHistoryStudent(BaseModel):
 class GradeHistoryResponse(BaseModel):
     student: GradeHistoryStudent
     history: list[GradeHistoryEntry]
+
+
+# --- ENH-025: Student Master fields (docs/superpowers/specs/2026-09-23-enh-025-student-master-fields-design.md §2.1) ---
+
+_BIDI_OVERRIDES = {chr(c) for c in (*range(0x202A, 0x202F), *range(0x2066, 0x206A))}
+_MOBILE = re.compile(r"^[0-9+\-() ]{7,20}$")
+LIST_MAX_ITEMS = 20
+LIST_ITEM_MAX_LENGTH = 80
+
+
+def _clean_text(value, max_length: int) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("must be text")
+    value = value.strip()
+    if not value:
+        return None
+    if len(value) > max_length:
+        raise ValueError(f"must be at most {max_length} characters")
+    # Cc (NUL, newlines, ...) and explicit bidi overrides only -- not all of Cf, because zero-width joiners are
+    # legitimate inside Indic names.
+    if any(unicodedata.category(ch) == "Cc" or ch in _BIDI_OVERRIDES for ch in value):
+        raise ValueError("must not contain control or bidirectional-override characters")
+    return value
+
+
+def _clean_list(value) -> list[str] | None:
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise ValueError("must be a list of text values")
+    if len(value) > LIST_MAX_ITEMS:
+        raise ValueError(f"must have at most {LIST_MAX_ITEMS} items")
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        try:
+            item_text = _clean_text(item, LIST_ITEM_MAX_LENGTH)
+        except ValueError as exc:
+            raise ValueError(f"items {exc}") from None
+        if item_text is None or item_text.casefold() in seen:
+            continue
+        seen.add(item_text.casefold())
+        cleaned.append(item_text)
+    return cleaned or None
+
+
+class CareerPreferencesUpdate(BaseModel):
+    """The four career fields a Career Counsellor may write (DEC-SCOPE-027 item 2). extra="forbid": any other
+    key is a 422, so the counsellor route cannot reach roll number, mobile, photo, school or year."""
+
+    model_config = {"extra": "forbid"}
+    career_interests: list[str] | None = None
+    global_education_interest: StrictBool | None = None
+    preferred_countries: list[str] | None = None
+    preferred_courses: list[str] | None = None
+
+    @field_validator("career_interests", "preferred_countries", "preferred_courses", mode="before")
+    @classmethod
+    def _lists(cls, value):
+        return _clean_list(value)
+
+
+class StudentMasterFields(CareerPreferencesUpdate):
+    """All ten ENH-025 value fields, validated at the API boundary. Only keys the client sent are in
+    model_fields_set, which gives PATCH its absent = unchanged / null = clear semantics."""
+
+    section: str | None = None
+    roll_number: str | None = None
+    gender: str | None = None
+    student_mobile: str | None = None
+    city: str | None = None
+    subjects: list[str] | None = None
+
+    @field_validator("section", "roll_number", mode="before")
+    @classmethod
+    def _short_text(cls, value):
+        return _clean_text(value, 20)
+
+    @field_validator("city", mode="before")
+    @classmethod
+    def _city(cls, value):
+        return _clean_text(value, 120)
+
+    @field_validator("subjects", mode="before")
+    @classmethod
+    def _subjects(cls, value):
+        return _clean_list(value)
+
+    @field_validator("gender", mode="before")
+    @classmethod
+    def _gender(cls, value):
+        value = _clean_text(value, 20)
+        if value is None:
+            return None
+        if value.lower() not in GENDERS:
+            raise ValueError(f"must be one of: {', '.join(GENDERS)}")
+        return value.lower()
+
+    @field_validator("student_mobile", mode="before")
+    @classmethod
+    def _mobile(cls, value):
+        value = _clean_text(value, 20)
+        if value is None:
+            return None
+        if not _MOBILE.match(value) or sum(ch.isdigit() for ch in value) < 7:
+            raise ValueError("must be 7-20 characters of digits, spaces, +, -, ( or ) with at least 7 digits")
+        return value
+
+
+MASTER_FIELD_KEYS: tuple[str, ...] = (
+    "section", "roll_number", "gender", "student_mobile", "city", "subjects",
+    "career_interests", "global_education_interest", "preferred_countries", "preferred_courses",
+)
+CAREER_PREFERENCE_KEYS: tuple[str, ...] = tuple(CareerPreferencesUpdate.model_fields)
+LIST_FIELD_KEYS: tuple[str, ...] = ("subjects", "career_interests", "preferred_countries", "preferred_courses")
+
+
+def validation_message(exc: ValidationError) -> str:
+    """First error as one '<field> <reason>' string, matching the existing handlers' HTTPException(422, str)
+    shape. Never includes the submitted value (spec §5, sensitive logs)."""
+    error = exc.errors()[0]
+    field = ".".join(str(part) for part in error["loc"] if not isinstance(part, int)) or "request"
+    if error["type"] == "extra_forbidden":
+        return f"{field} is not an accepted field"
+    reason = error["msg"].removeprefix("Value error, ")
+    return f"{field} {reason[:1].lower()}{reason[1:]}"
 
 
 # --- ENH-005: student school transfer (docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md) ---
