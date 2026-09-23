@@ -52,6 +52,7 @@ the `DEC-SCOPE-024`/`025` precedent in `PRODUCT_DECISION_REGISTER.md`.
 | D9 | Bridged overseas scope | Gate **creating a bridged application** (`application_support`) and **creating/updating a VisaCase on a bridged application** (`visa_support`). Other overseas-workflow writes stay ungated. |
 | D10 | Expiry calendar | **India date** (`Asia/Kolkata`). |
 | D11 | Frontend scope | **Error path only** in the six older panels (§9); no redesign. |
+| D12 | Audit of denials | **Denied `AuditLog` + `logger.warning`**, per the existing denial-audit precedent (§5, §15). |
 
 ## 4. Approach
 
@@ -82,9 +83,17 @@ def _minimum_tier(service_key: str) -> str: ...   # first TIER_ORDER entry whose
 def _entitlement_denial(tier: str | None, valid_until: date | None, service_key: str | None, today: date) -> str | None:
     """Pure: the 403 message, or None if allowed. service_key=None means 'any valid tier'."""
 
-async def require_school_entitlement(db: AsyncSession, school_id: UUID, service_key: str | None) -> None:
-    """ENH-022 / DEC-SCOPE-027: raise HTTPException(403, message) unless allowed."""
+async def require_school_entitlement(db: AsyncSession, user: User, school_id: UUID, service_key: str | None) -> None:
+    """ENH-022 / DEC-SCOPE-027: raise HTTPException(403, message) unless allowed; a denial is
+    audit-logged first (D12, §15)."""
 ```
+
+On denial, following the existing denial-audit precedent (`auth.py:191`, `schools.py:1328`,
+`school_transfers.py:132`): add `AuditLog(user_id=user.id, action="school.tier_access_denied",
+entity_type="school", entity_id=str(school_id), outcome="denied", metadata_json={"service_key": …,
+"reason": "no_tier" | "expired" | "not_included", "tier": school.tier})`, `await db.commit()`, emit
+`logger.warning("tier_access_denied", extra={"extra_fields": {actor_id, role, school_id, service_key,
+reason}})`, then raise the `403`. Metadata holds no names, emails or student IDs.
 
 **Evaluation order inside `_entitlement_denial`.**
 1. `service_key` not `None` and not in any tier → `ValueError` (programming error: a mis-wired key must
@@ -148,8 +157,13 @@ results (not a `TIER_SERVICES` key), staff assignment (D6), every `GET`, and `GE
 
 ## 8. Transactions, concurrency, data
 
-- **Transactions:** the check is a read in the request's existing session, placed before any
-  `db.add`/`flush`. A `403` leaves nothing written, no audit row, no notification. No new commit points.
+- **Transactions:** the check runs in the request's existing session, placed before any business
+  `db.add`, attribute mutation or `flush`. On denial the helper commits exactly one row — the
+  `school.tier_access_denied` audit (D12) — then raises; because nothing else is pending in the session,
+  no business row, field change or notification can ride along with that commit. Placement "before any
+  mutation" is therefore a correctness requirement, verified per route by AC-4. In skills routes the commit
+  also releases `_batch_in_portfolio`'s row lock early, which is harmless because the request then ends.
+  On success no commit point is added.
 - **Race with a concurrent tier change:** the school row is read without a lock; a gated action racing
   an `update_school_tier` commit observes one committed value or the other. Accepted for v1 per the
   backlog; `ENH-023` may add `FOR SHARE` if downgrade handling needs strict ordering.
@@ -214,7 +228,9 @@ rejected `fetch` shows `NOT_COMPLETED` and re-enables the submit button; a succe
 - **AC-2** Every §7 route returns the *no tier* `403` for a tier-less school.
 - **AC-3** Every §7 route returns the *expired* `403` when `tier_valid_until` is before the IST date; the
   valid-until date itself is allowed; `NULL` never expires.
-- **AC-4** On any tier `403`, no row, audit log or notification is written.
+- **AC-4** On any tier `403`, no business row, field change or notification is written, and exactly one
+  `AuditLog` row (`action="school.tier_access_denied"`, `outcome="denied"`, metadata
+  `{service_key, reason, tier}` only) is persisted.
 - **AC-5** Out-of-scope callers receive exactly the pre-ENH-022 status and `detail`.
 - **AC-6** PATCH/PUT/DELETE routes derive the key from the stored record.
 - **AC-7** Visa writes on a non-bridged application and all non-§7 routes behave exactly as before.
@@ -238,8 +254,9 @@ AC-10. (3) `digital_skills` ≠ `web_designing` — reuse `USAGE_KEYS`, never `m
    exact message strings; `_minimum_tier`; unknown key → `ValueError`; IST boundary via patched
    `_today_ist`.
 2. *Integration* (same file): per §7 route — minimum tier succeeds; one tier below `403` + exact
-   `detail`; tier-less `403`; expired `403`; row and `AuditLog` counts unchanged on `403`; out-of-scope
-   caller unchanged. Plus: PATCH key from stored record; free-text activity on any valid tier vs.
+   `detail`; tier-less `403`; expired `403`; on `403` business-row counts and PATCHed fields unchanged and
+   exactly one `school.tier_access_denied` audit with the §15 metadata; out-of-scope caller unchanged and
+   writes no tier audit (no tier oracle). Plus: PATCH key from stored record; free-text activity on any valid tier vs.
    tier-less; visa on non-bridged application unchanged.
 3. *Regression pin:* `/school/entitlements` for an expired Gold school returns the same body as before.
 4. *Existing-test setup:* fixtures of suites that hit §7 routes (`test_sch_004`, `005`, `007`, `008`,
@@ -255,7 +272,7 @@ AC-10. (3) `digital_skills` ≠ `web_designing` — reuse `USAGE_KEYS`, never `m
 
 ## 13. Documentation deliverables
 
-- `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-027` (D1–D10).
+- `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-027` (D1–D12).
 - `API_CONTRACT.md`: ENH-022 addendum (routes, `403` strings, check order).
 - `RBAC_MATRIX.md`: tier as an additional authorization dimension on the §7 actions.
 - `RTM.md` and `ENHANCEMENT_BACKLOG.md`: ENH-022 status; two new follow-up items —
@@ -264,3 +281,29 @@ AC-10. (3) `digital_skills` ≠ `web_designing` — reuse `USAGE_KEYS`, never `m
 ## 14. Open items
 
 None blocking. Follow-ups are listed in §13.
+
+## 15. Security review (`security-and-hardening`, 2026-09-23)
+
+**Trust boundaries.** HTTP bodies/path IDs of the §7 routes (untrusted); `user.profile.school_id` (server-
+owned); `School.tier`/`tier_valid_until` (written only by Overseas/Super Admin). **Asset:** paid
+entitlements (revenue) and the integrity of service records.
+
+| Area | Finding (verified in code) | Design consequence |
+|---|---|---|
+| Authentication | Unchanged: every §7 route already uses `Depends(get_current_user)` (httpOnly cookie, `samesite="lax"`, `auth.py:88`). | None. The tier check never runs for an unauthenticated caller. |
+| Authorization / order | Every §7 PATCH already scope-checks after loading the record (`_student_in_portfolio`, `_batch_in_portfolio`, `_assigned_application`, `_load_portfolio_student`). | Tier check **after** role + scope, so the tier `403`/audit is never reachable for another school's record. |
+| IDOR / tier oracle | Placing the tier check first would let a caller probe any record ID and read another school's tier from the message. | Forbidden by §6 order; tested: out-of-scope caller gets the old response and **no** tier audit row. |
+| Role / tier escalation | `school_id` is in `SERVER_OWNED_PROFILE_KEYS` (`auth.py:179`) — a user cannot re-point their own school. `tier` is writable only via `create_school`/`update_school` (Overseas/Super Admin, value allowlist, audited `school.tier_update`). | Key sources are trustworthy; no ENH-022 change. An unexpected stored tier string fails **closed** (treated as no tier). |
+| Bypass routes | All constructors of gated models were enumerated: every one is a §7 route (plus `seed.py`). `workflows.py`'s ordinary application create has no `school_student_id`, so it cannot create a bridged application. | §7 coverage is complete. |
+| Body-controlled key | `activity_type`/`test_type`/`module_type` are validated against allowlists **before** mapping; PATCH/PUT/DELETE use the stored record. | A client cannot pick a cheaper key. `ValueError` only arises for a server-side mis-wiring and fails closed (`500`), never open. |
+| Fail-closed | Missing school → no-tier `403`; unknown tier → no-tier `403`; `ZoneInfo` failure → `500`. | No path allows on error. |
+| Input validation | No new inputs. | None. |
+| XSS | `403` strings are built from server constants (tier names, `TIER_SERVICES` labels) and a server date — no user input. The six panels render text through React (no `dangerouslySetInnerHTML`). | None. |
+| CSRF | Unchanged: `samesite="lax"` session cookie on JSON `POST/PATCH/PUT/DELETE`. ENH-022 adds no route and no new state-changing method. | None (out of scope). |
+| SQL injection | `db.get(School, id)` by primary key via the ORM; no raw SQL. | None. |
+| Token/session | Untouched; a `403` is not a `401`, so the frontend does not log the user out. | None. |
+| Secrets | None introduced. | None. |
+| Sensitive logs | Audit metadata and the warning log carry IDs, role, `service_key`, `reason`, `tier` only — no names, emails, student IDs or request bodies. | §5 D12 field list is exhaustive. |
+| Audit | Denials are persisted and exported by the existing admin audit viewer (`admin.py:890-919`) — supports repudiation/billing reconciliation. | D12. |
+| Rate limiting | No limiter exists for these authenticated routes; each denial writes one small audit row. Flooding requires a valid staff session and is attributable. | No new limiter (would be a speculative, unrelated change); noted as accepted risk. |
+| Race (TOCTOU) | Tier read without a lock (§8). | Accepted for v1; revisit in ENH-023. |
