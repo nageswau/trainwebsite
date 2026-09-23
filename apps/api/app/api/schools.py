@@ -1838,6 +1838,7 @@ async def create_test_prep_record(payload: dict, user: User = Depends(get_curren
     test_type = payload.get("test_type")
     if test_type not in TEST_PREP_SERVICE_KEYS:
         raise HTTPException(422, "test_type must be one of ielts, sat")
+    await require_school_entitlement(db, user, student.school_id, TEST_PREP_SERVICE_KEYS[test_type])
     record = SchoolTestPrepRecord(school_student_id=student.id, academic_team_user_id=user.id, test_type=test_type, target_score=payload.get("target_score"))
     db.add(record)
     await db.flush()
@@ -1854,7 +1855,8 @@ async def update_test_prep_record(record_id: UUID, payload: dict, user: User = D
     record = await db.get(SchoolTestPrepRecord, record_id)
     if not record:
         raise HTTPException(404, "Record not found")
-    await _student_in_portfolio(db, user, record.school_student_id)
+    student = await _student_in_portfolio(db, user, record.school_student_id)
+    await require_school_entitlement(db, user, student.school_id, TEST_PREP_SERVICE_KEYS[record.test_type])  # the stored test, never the body's
     became_completed = False
     if "mock_scores" in payload:
         record.mock_scores = payload["mock_scores"] or []
@@ -1910,6 +1912,7 @@ async def create_language_record(payload: dict, user: User = Depends(get_current
     if not student_id:
         raise HTTPException(422, "school_student_id is required")
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    await require_school_entitlement(db, user, student.school_id, "foreign_language_classes")
     language = str(payload.get("language", "")).strip()
     if not language:
         raise HTTPException(422, "language is required")
@@ -1929,7 +1932,8 @@ async def update_language_record(record_id: UUID, payload: dict, user: User = De
     record = await db.get(SchoolLanguageRecord, record_id)
     if not record:
         raise HTTPException(404, "Record not found")
-    await _student_in_portfolio(db, user, record.school_student_id)
+    student = await _student_in_portfolio(db, user, record.school_student_id)
+    await require_school_entitlement(db, user, student.school_id, "foreign_language_classes")
     became_certified = False
     if "classes_attended" in payload:
         record.classes_attended = int(payload["classes_attended"])
