@@ -8,6 +8,7 @@ export const TAB_KEYS = [
   "documents", "teacher_remarks", "parent_communication", "edusphere_programs",
 ] as const;
 export type TabKey = (typeof TAB_KEYS)[number];
+export type TabStatus = "has_data" | "empty" | "restricted";
 
 export const TAB_LABELS: Record<TabKey, string> = {
   overview: "Overview", personal_details: "Personal Details", academic_records: "Academic Records", attendance: "Attendance",

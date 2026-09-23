@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Children, type KeyboardEvent, type ReactNode, useRef, useState } from "react";
 
-import type { TabKey } from "@/lib/student360Links";
+import type { TabKey, TabStatus } from "@/lib/student360Links";
 
 // ENH-013 -- WAI-ARIA tabs for the Student 360° view (docs/superpowers/specs/2026-09-23-enh-013a-student-360-view-design.md §8).
 // Only the selection lives here: the panels arrive already rendered by the server (Student360View), so this client component
@@ -12,7 +12,7 @@ import type { TabKey } from "@/lib/student360Links";
 // keeps in sync with its router without a server round trip -- so a deep link or reload lands on the same tab. (router.replace
 // re-rendered the whole server page and re-ran the 360 aggregation on every click, browser QA-02.)
 
-export type TabSummary = { key: TabKey; label: string; status: "has_data" | "empty" | "restricted"; count: number | null };
+export type TabSummary = { key: TabKey; label: string; status: TabStatus; count: number | null };
 
 const MOVES: Record<string, (i: number, last: number) => number> = {
   ArrowRight: (i, last) => (i === last ? 0 : i + 1),
