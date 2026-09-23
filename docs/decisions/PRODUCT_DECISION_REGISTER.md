@@ -2382,6 +2382,12 @@ criteria blockers (field-by-field scope, Branch design).
 8. All new fields optional.
 9. Photo metadata (EXIF etc.) stripped in pure Python before storage.
 
-**`NEEDS_CONFIRMATION`:** consent / legal basis for storing photos of minors (client).
+10. **Photo consent (resolved 2026-09-23, user, in-session, `EXPLICIT_APPROVAL`):** the school, as data
+    controller, obtains consent for student photos through its own enrolment process; EduSphere provides the
+    optional, coordinator-entered Photo field with no consent gate of its own. Closes the earlier
+    `NEEDS_CONFIRMATION` on consent / legal basis for storing photos of minors.
+11. **Migration order (2026-09-23, user, in-session):** ENH-025 merges to `main` before ENH-013 and keeps
+    `0039_student_master_fields`; ENH-013 renumbers its own `0039_student_career_goal` to `0040` and re-chains
+    onto `0039_student_master_fields` when it merges.
 **New Feature ID:** none — additive scope on `ENH-025`.
 

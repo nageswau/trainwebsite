@@ -9,8 +9,8 @@ from `grade_or_class` where the label unambiguously ends in a section letter. `g
 never written. Unparseable labels leave `section` NULL (never guessed) and their student codes are printed,
 same as 0030. `downgrade()` drops everything this adds.
 
-If ENH-013's `0039_student_career_goal` (also on 0038) merges first, rename this file and re-chain
-`down_revision` -- the later-merging branch moves (precedent: 0038_portfolio's own re-chain note).
+Merge order (DEC-SCOPE-027 item 11): ENH-025 merges first and keeps 0039; ENH-013's `0039_student_career_goal`
+(also on 0038) is renumbered to 0040 and re-chained onto this revision when it merges.
 """
 
 import re

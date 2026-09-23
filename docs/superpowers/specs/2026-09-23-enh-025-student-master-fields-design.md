@@ -116,9 +116,10 @@ promotion in the same insert it already performs. Pre-existing history rows keep
 3. Create `uq_school_students_roll` (no roll numbers exist yet, so no conflict is possible).
 4. `downgrade()` drops the index, the constraint and the columns. `grade_or_class` is never written.
 
-**Numbering risk:** unmerged `ENH-013` plans `0039_student_career_goal`, also revising `0038`.
-Whichever branch merges second renames its file and re-chains `down_revision` (precedent: commit
-`6c66f9a`, ENH-012). A test asserts a single Alembic head.
+**Numbering:** unmerged `ENH-013` plans `0039_student_career_goal`, also revising `0038`. Decided
+2026-09-23 (`DEC-SCOPE-027` item 11): ENH-025 merges first and keeps `0039`; ENH-013 renames its file to
+`0040` and re-chains onto `0039_student_master_fields` (precedent: commit `6c66f9a`, ENH-012). A test
+asserts a single Alembic head.
 
 ## 3. Backend / API
 
@@ -295,7 +296,7 @@ interests) — treated as the *sensitive* class.
 | Rate limiting | no global limiter; ENH-005 uses an audit-count throttle | None added (new infrastructure = speculative). Photo writes are coordinator-only, ≤2 MB, replace-semantics (one stored object per student) |
 | Audit | `AuditLog` | `changed_fields` on create/update; `school.student_photo_set` / `_remove`; `school.student_career_preferences_update`; promotion roll clearing captured in grade history; transfer already audited |
 | Privacy — photo metadata | none | **EXIF/metadata stripped before storage** (user decision): pure-Python function drops JPEG APP1–APP15 and COM segments and PNG `tEXt`/`iTXt`/`zTXt`/`eXIf`/`tIME` chunks; pixels are not decoded (no decompression-bomb surface); no new dependency. A malformed file that cannot be walked is rejected with 422 |
-| Privacy — consent | STU-009 consent exists for other domains | **`NEEDS_CONFIRMATION`** (user decision): legal basis/consent for storing photos of minors is recorded for client confirmation; Photo ships optional and school-entered, no consent gate now |
+| Privacy — consent | STU-009 consent exists for other domains | **Resolved 2026-09-23 (user, `DEC-SCOPE-027` item 10):** the school, as data controller, obtains consent through its own enrolment process; Photo ships optional and school-entered with no EduSphere consent gate |
 
 **Residual risk (local storage mode only):** photo objects live in the shared uploads volume that
 `/local-files` also serves (`main.py:35`); reaching one requires guessing a 128-bit random key that is
@@ -386,7 +387,7 @@ bulk row carrying a mobile number fails without echoing it.
 7. Transfer approval clears section and roll number.
 8. All new fields optional (no field is made mandatory).
 9. Photo metadata (EXIF etc.) stripped in pure Python before storage; no image library added.
-10. Consent / legal basis for photos of minors: `NEEDS_CONFIRMATION` with the client; Photo ships
+10. Consent / legal basis for photos of minors: the school is responsible (resolved by the user 2026-09-23); Photo ships
     without a consent gate.
 
 ## 10. Carried forward (not blockers)
@@ -398,7 +399,9 @@ bulk row carrying a mobile number fails without echoing it.
 - `ENH-013`'s counselor `career_goal` and `ENH-026`'s career-record restructure should read, not
   duplicate, the §2 career fields.
 - Controlled vocabularies for subjects/countries/courses (no source defines them).
-- `NEEDS_CONFIRMATION`: consent / legal basis for storing photos of minors (client).
+- ~~`NEEDS_CONFIRMATION`: consent / legal basis for storing photos of minors~~ — resolved 2026-09-23: the school is
+  responsible (`DEC-SCOPE-027` item 10).
+- Migration order: ENH-025 merges first; ENH-013 renumbers its migration to 0040 (`DEC-SCOPE-027` item 11).
 - Pre-existing: bulk upload has no file-size or row-count cap (DoS surface); ENH-025's per-row
   savepoints add round-trips but do not change the bound.
 - Pre-existing: the Next API proxy buffers whole request bodies before forwarding.
