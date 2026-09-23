@@ -7,16 +7,26 @@ principal reads it; Edusphere admins read every school's. Two routers, like `sch
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_user
 from app.api.schools import _own_school_id, _require_coordinator_user
 from app.core.database import get_db
 from app.core.logging import get_logger, request_id_ctx
-from app.models import AuditLog, SchoolActivity, SchoolActivityAttendance, SchoolActivityFeedback, User
-from app.schemas import ActivityFeedbackCreate, ActivityFeedbackOut, ActivityParticipation
+from app.models import AuditLog, School, SchoolActivity, SchoolActivityAttendance, SchoolActivityFeedback, User
+from app.schemas import (
+    ActivityFeedbackCreate,
+    ActivityFeedbackOut,
+    ActivityParticipation,
+    AdminActivityFeedbackOut,
+    AdminFeedbackPage,
+    FeedbackStatusFilter,
+    SchoolFeedbackActivity,
+    SchoolFeedbackPage,
+)
 
 coordinator_router = APIRouter(prefix="/school", tags=["school-feedback"])
 admin_router = APIRouter(prefix="/overseas-admin", tags=["school-feedback"])
@@ -90,3 +100,89 @@ async def submit_activity_feedback(activity_id: UUID, payload: ActivityFeedbackC
     await db.refresh(feedback, ["created_at"])
     logger.info("activity_feedback_submitted", extra={"extra_fields": {**context, "feedback_id": str(feedback.id), "rating": feedback.rating, "satisfaction": feedback.satisfaction}})
     return _feedback_out(feedback, user.full_name)
+
+
+async def _require_school_reader(user: User = Depends(get_current_user)) -> User:
+    """Coordinator and principal of a school (D8). Resolved as a dependency, so a wrong role is 403 before any 422."""
+    if user.role not in {"school_coordinator", "school_principal"}:
+        raise HTTPException(403, "School Coordinator or Principal role required")
+    _own_school_id(user)  # 403 for an account not linked to a school
+    return user
+
+
+@coordinator_router.get("/activity-feedback", response_model=SchoolFeedbackPage)
+async def list_school_activity_feedback(
+    status: FeedbackStatusFilter = "all",
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(_require_school_reader),
+    db: AsyncSession = Depends(get_db),
+):
+    """The caller's school's feedback-eligible activities (typed, already held -- D1/D7), newest first, each with its computed
+    participation and its feedback or null, so "awaiting" is visible."""
+    conditions = [SchoolActivity.school_id == _own_school_id(user), SchoolActivity.activity_type.is_not(None), SchoolActivity.scheduled_at <= datetime.now(UTC)]
+    if status == "awaiting":
+        conditions.append(SchoolActivityFeedback.id.is_(None))
+    elif status == "submitted":
+        conditions.append(SchoolActivityFeedback.id.is_not(None))
+    joined = select(SchoolActivity).outerjoin(SchoolActivityFeedback, SchoolActivityFeedback.activity_id == SchoolActivity.id).where(*conditions)
+    total = await db.scalar(select(func.count()).select_from(joined.subquery()))
+    rows = (
+        await db.execute(
+            joined.add_columns(SchoolActivityFeedback, User.full_name)
+            .outerjoin(User, User.id == SchoolActivityFeedback.submitted_by_user_id)
+            .order_by(SchoolActivity.scheduled_at.desc(), SchoolActivity.id)
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+    counts = await _participation(db, [activity.id for activity, _, _ in rows])
+    items = [
+        SchoolFeedbackActivity(
+            activity_id=activity.id, title=activity.title, activity_type=activity.activity_type, scheduled_at=activity.scheduled_at,
+            participation=counts.get(activity.id, NO_ATTENDANCE), feedback=_feedback_out(feedback, name) if feedback else None,
+        )
+        for activity, feedback, name in rows
+    ]
+    return SchoolFeedbackPage(items=items, total=total or 0, limit=limit, offset=offset)
+
+
+async def _require_feedback_admin(user: User = Depends(get_current_user)) -> User:
+    """Edusphere management for this feature is the existing cross-school pair (D2); no new role or grant."""
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    return user
+
+
+@admin_router.get("/school-activity-feedback", response_model=AdminFeedbackPage)
+async def admin_list_activity_feedback(
+    school_id: UUID | None = None,
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    admin: User = Depends(_require_feedback_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Every school's submitted feedback, newest submission first, optionally for one school. An unknown school is an empty page."""
+    conditions = [] if school_id is None else [SchoolActivityFeedback.school_id == school_id]
+    total = await db.scalar(select(func.count()).select_from(SchoolActivityFeedback).where(*conditions))
+    rows = (
+        await db.execute(
+            select(SchoolActivityFeedback, SchoolActivity, School.name, User.full_name)
+            .join(SchoolActivity, SchoolActivity.id == SchoolActivityFeedback.activity_id)
+            .join(School, School.id == SchoolActivityFeedback.school_id)
+            .join(User, User.id == SchoolActivityFeedback.submitted_by_user_id)
+            .where(*conditions)
+            .order_by(SchoolActivityFeedback.created_at.desc(), SchoolActivityFeedback.id)
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+    counts = await _participation(db, [activity.id for _, activity, _, _ in rows])
+    items = [
+        AdminActivityFeedbackOut(
+            **_feedback_out(feedback, submitter).model_dump(), school_id=feedback.school_id, school_name=school_name, activity_title=activity.title,
+            activity_type=activity.activity_type, scheduled_at=activity.scheduled_at, participation=counts.get(activity.id, NO_ATTENDANCE),
+        )
+        for feedback, activity, school_name, submitter in rows
+    ]
+    return AdminFeedbackPage(items=items, total=total or 0, limit=limit, offset=offset)
