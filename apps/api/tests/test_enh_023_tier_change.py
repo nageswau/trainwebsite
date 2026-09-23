@@ -521,3 +521,27 @@ async def test_concurrent_tier_changes_queue_and_record_true_transitions(db_sess
     assert rows[0].metadata_json["from_tier"] == "platinum"
     # The assertion that proves update_school's own row lock (fails without .with_for_update(): the second change reads a stale tier).
     assert rows[1].metadata_json["from_tier"] == rows[0].metadata_json["to_tier"]
+
+
+# --- Legacy "" tier rows (whole-branch review finding #1): stored before ENH-023, must not be a forever-409 -----------
+
+
+@pytest.mark.asyncio
+async def test_legacy_empty_string_tier_row_is_not_a_forever_409(client, db_session):
+    w = await world(db_session, "gold")
+    w["school"].tier = ""
+    await db_session.commit()
+    await login(client, w["admin"].email)
+    r = await client.patch(f"{SCHOOLS}/{w['school'].id}", json={"tier": "bronze", "expected_tier": None})
+    assert r.status_code == 200, r.text
+    assert r.json()["tier"] == "bronze"
+
+
+@pytest.mark.asyncio
+async def test_legacy_empty_string_tier_row_accepts_profile_edit_with_null_expected_tier(client, db_session):
+    w = await world(db_session, "gold")
+    w["school"].tier = ""
+    await db_session.commit()
+    await login(client, w["admin"].email)
+    r = await client.patch(f"{SCHOOLS}/{w['school'].id}", json={"expected_tier": None, "branch": "X"})
+    assert r.status_code == 200, r.text

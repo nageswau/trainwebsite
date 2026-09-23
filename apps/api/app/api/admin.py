@@ -1204,7 +1204,7 @@ async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Dep
             fields[key] = fields[key] or None
             if fields[key] is not None and fields[key] not in {"bronze", "silver", "gold", "platinum"}:
                 raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
-    if "expected_tier" in fields and fields.pop("expected_tier") != school.tier:
+    if "expected_tier" in fields and fields.pop("expected_tier") != (school.tier or None):
         # D12, checked under the lock: the tier moved since the caller looked, so what they confirmed is not what would happen.
         raise HTTPException(409, f"This school's tier changed to {_tier_name(school.tier)} since you looked it up. Look it up again before changing the tier.")
     old_tier, old_valid_until = school.tier, school.tier_valid_until

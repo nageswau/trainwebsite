@@ -149,15 +149,15 @@ export default function AdminSchoolEditPanel() {
     for (const field of FIELDS) {
       const raw = String(form.get(field) ?? "").trim();
       const next = raw === "" ? null : raw;
-      const current = school[field] ?? null;
+      const current = field === "tier" ? school.tier || null : (school[field] ?? null);
       if (next !== current) body[field] = next;
     }
     setMessage(null);
     setPending(null);
     if ("tier" in body) {
       // D12: the tier this admin looked at. If it moved since, the server answers 409 instead of applying a change the
-      // admin never confirmed.
-      body.expected_tier = school.tier ?? null;
+      // admin never confirmed. A stored "" (legacy row, D13) counts as no tier, same as the diff baseline above.
+      body.expected_tier = school.tier || null;
       const change = await preview(school, body.tier);
       if (!change) return;
       if (change.direction === "downgrade") {

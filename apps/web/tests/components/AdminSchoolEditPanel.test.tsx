@@ -213,4 +213,14 @@ describe("AdminSchoolEditPanel", () => {
     expect(mock).toHaveBeenCalledTimes(2);
     expect(JSON.parse(mock.mock.calls[1][1].body)).toEqual({ branch: "North" });
   });
+
+  it("a legacy school stored with tier \"\" sends no tier and needs no preview on an untouched edit", async () => {
+    const mock = stubFetch([json({ ...base, tier: "" }, 200), json({ ...base, tier: "", branch: "North", tier_change: null }, 200)]);
+    await lookUp();
+    fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "North" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("School profile updated.");
+    expect(mock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(mock.mock.calls[1][1].body)).toEqual({ branch: "North" });
+  });
 });
