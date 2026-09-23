@@ -1822,8 +1822,8 @@ Duplicate feedback submission for the same activity — decide reject-vs-update
 target is SCH-001's `SchoolActivity` (SCH-004 has no activity/session entity); the viewer is Overseas Admin + Super
 Admin, because `edusphere_school_manager` has no RBAC grants (`RBAC_MATRIX.md:239`); feedback applies to typed
 (Edusphere) activities only, after they have taken place; the principal reads their own school's feedback; a duplicate
-is **rejected** (`409`), resolving the `NEEDS_CONFIRMATION` above. Status: implemented, pending browser validation and
-independent review (`docs/quality/RTM.md`, ENH-018 row).
+is **rejected** (`409`), resolving the `NEEDS_CONFIRMATION` above. Status: implemented and browser-QA'd (group-A findings fixed;
+lower-severity findings deferred as listed in `docs/quality/RTM.md`, ENH-018 row); pending independent review.
 
 **Regression risks.** None.
 
