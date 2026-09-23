@@ -2088,9 +2088,24 @@ service. List them first (read-only) and confirm with the business:
 - **Dedicated counselor (D6).** Platinum schools may have a dedicated counselor, other schools shared ones,
   but no data model says which assignment is "dedicated" — a `SchoolStaffAssignment` row is the same for
   both. Needs its own item: how "dedicated" is recorded, and what exclusivity it implies.
-- **`/school/entitlements` and expiry.** The report is unchanged by ENH-022's acceptance criteria, so after
-  `tier_valid_until` passes it still lists the services while every write returns `403`. Decide whether the
-  report should show the partnership as expired.
+- **`/school/entitlements` and expiry (QA-022-02).** The report is unchanged by ENH-022's acceptance criteria,
+  so after `tier_valid_until` passes it still shows e.g. "Platinum Partner — valid until 20 Sept 2026" with every
+  service ticked while every write returns `403`. Decide whether the report should show the partnership as expired.
+- **No admin UI for tier or expiry after creation (QA-022-07).** The create form has a tier but no valid-until
+  date; the edit form has neither, so expiry — now enforced — can only be set through the API. Belongs with ENH-023.
+- **No UI path to a visa case on a bridged application (QA-022-08).** The counselor Visa page excludes bridged
+  applications (SCH-010's rule) and `/overseas/admin/visa` renders no form; ENH-022's bridged-visa gate was verified
+  through the API only.
+- **"Record score" with an empty score does nothing (QA-022-09).** No request and no feedback (academic team,
+  test-preparation table). Pre-existing.
+- **E2E failures found while verifying ENH-022, none caused by it** (each reproduced on an untouched `origin/main`
+  stack or shown to pass on a fresh database): `sch-007-parent-portal` fails on `main` too — ENH-012's
+  `PortfolioPanel` added a second "Career guidance" heading (`<h4>`) beside `SchoolChildOverview`'s `<h3>`, so the
+  spec's `getByRole('heading')` is ambiguous; `ovs-006:15`, `pub-004:7` and the `@external` Razorpay case in
+  `pay-001` fail on `main` too; `sch-team-management:80` passes on a fresh database but fails on a large one —
+  `SchoolStudentsPanel`'s `#edit-teacher` uses an uncontrolled `defaultValue` that can apply before the async
+  teacher list arrives, so an assigned (inactive) teacher shows as "Unassigned" (a real, timing-dependent bug);
+  `ovs-007:8` is flaky on first load (search typed before hydration).
 
 ---
 

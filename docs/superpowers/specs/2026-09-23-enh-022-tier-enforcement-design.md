@@ -286,6 +286,16 @@ AC-10. (3) `digital_skills` ≠ `web_designing` — reuse `USAGE_KEYS`, never `m
 - `RTM.md` and `ENHANCEMENT_BACKLOG.md`: ENH-022 status; two new follow-up items —
   (a) dedicated-counselor model and enforcement (D6), (b) `/entitlements` reflecting expiry.
 
+## 13A. Browser QA fixes (2026-09-23, owner-approved scope)
+
+| ID | Found | Fix (as built, test-first) |
+|---|---|---|
+| QA-022-01 | After a refused attendance save / report attach, Cancel then re-open showed the old error | Opening or cancelling the attendance / attach card clears that card's message (`SchoolActivitiesPanel`, `SchoolPsychometricRecordsPanel`) |
+| QA-022-03 | Refusal said "Web designing" while the user picked "Digital Skills" | D13: `TIER_SERVICES` label `web_designing` → "Digital skills" (key unchanged) |
+| QA-022-04 | On a 390px phone the refusal rendered below the fold | `FormMessage` scrolls a failure into view (`block: "nearest"`), focus not moved; successes don't scroll |
+| QA-022-05 | Long "Student — School" `<select>` options made counselor/academic dashboards 926/456px wide on a 390px phone | `globals.css`: form rows may shrink (`min-width: 0`), controls `max-width: 100%` |
+| QA-022-06 | React hydration error #418 on every Activities load (server UTC vs browser IST `toLocaleString`) | Activities table uses `formatDate(value, true, SCHOOL_TIME_ZONE)`; `formatDate` gained an optional zone (other callers unchanged) |
+
 ## 14. Open items
 
 None blocking. Follow-ups are listed in §13.

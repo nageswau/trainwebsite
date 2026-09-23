@@ -2385,6 +2385,9 @@ criteria blockers (field-by-field scope, Branch design).
 10. **D10 Calendar:** the India date (`Asia/Kolkata`).
 11. **D11 Frontend scope:** only the save-failure path of the six older panels (alert beside the failing form, no stuck button, input kept); no redesign.
 12. **D12 Audit:** a denial writes `AuditLog(action="school.tier_access_denied", outcome="denied", metadata={service_key, reason, tier})` and a `logger.warning`, following the existing denial-audit precedent.
+13. **D13 Service name (after browser QA, QA-022-03):** the `web_designing` service's label is **"Digital skills"** (was "Web designing"), matching the skills tracker's "Digital Skills" module the user picks. Key unchanged, so stored usage is unaffected; `GET /school/entitlements` shows the new label — the owner chose this over a refusal-only wording change.
+
+**Also in scope by owner decision after browser QA (2026-09-23):** two defects that predate ENH-022 but sit on its screens — form rows forced wider than a phone by long `<select>` options (QA-022-05) and React hydration error #418 on the Activities table (QA-022-06).
 
 **Consequences:** new `require_school_entitlement()` in `schools.py`, called on 23 write routes across `schools.py`, `school_skills.py`, `portfolio.py`, `admin.py` and `workflows.py` (spec §7); new `403` strings (spec §5.1, `API_CONTRACT.md` ENH-022 addendum); no migration. `GET /school/entitlements` is unchanged — it still lists services for an expired school (follow-up item in `ENHANCEMENT_BACKLOG.md`). A school with no tier or an expired one loses write access to every gated service on deploy; the pre-deploy check query is in the backlog entry.
 
