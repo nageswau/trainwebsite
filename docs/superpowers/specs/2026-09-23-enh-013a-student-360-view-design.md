@@ -94,7 +94,8 @@ Response (Pydantic `Student360Out`):
   "can_edit_career_goal": bool,
   "tabs": { <16 keys, always present, in display order> : Tab }
 }
-Tab = {"status": "has_data" | "empty" | "restricted", "not_tracked": [str], "data": {...}}
+Tab = {"status": "has_data" | "empty" | "restricted", "count": int | null, "not_tracked": [str], "data": {...}}
+# count = number of records shown (drives the tab-label badge); null for restricted and for personal_details
 ```
 
 Tab keys, in order: `overview, personal_details, academic_records, attendance, examination_results,
@@ -218,13 +219,14 @@ injection: ORM only. Logs carry IDs only. No rate limiter is added (none exists 
 ## 10. Acceptance criteria
 
 - AC-01 Given a student with data in every source, when their Coordinator opens the 360° view, then all 16
-  tabs appear in order and each is `has_data`, except `parent_communication`.
+  tabs appear in order and each is `has_data`, except `parent_communication` (not tracked) and
+  `academic_records` (which has data only after a promotion).
 - AC-02 Given a teacher at the same school, when they request the 360° view of a student not assigned to
   them, then the response is 403 "This student is not assigned to you" and the page shows Access Unavailable.
 - AC-03 An unlinked parent, a principal or coordinator at another school, a service role outside its
   portfolio, and any other role → 403; a missing student → 404; no session → 401.
 - AC-04 A new student with no records → 200 for every allowed role, and every visible tab is `empty` and
-  renders an empty state.
+  renders an empty state, except Personal Details, which always shows the student's identity (`has_data`).
 - AC-05 For each service role, restricted tabs carry no source data and limited tabs carry only the allowed
   fields (§6.3).
 - AC-06 Draft/verified results never appear in any tab, for any role.
