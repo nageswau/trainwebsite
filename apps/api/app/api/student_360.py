@@ -17,7 +17,7 @@ from app.api.portfolio import portfolio_payload
 from app.api.schools import SCHOOL_ROLES, _grade_history_rows, _load_student_for_reader, _overview_payload, _portfolio_school_ids, _student_in_portfolio
 from app.core.database import get_db
 from app.core.logging import get_logger
-from app.models import AuditLog, School, SchoolStudent, User
+from app.models import AuditLog, SchoolStudent, User
 from app.schemas import TAB_360_KEYS, CareerGoalOut, CareerGoalUpdate, Student360Out
 
 router = APIRouter(prefix="/school", tags=["school-360"])
@@ -59,13 +59,12 @@ async def build_360(db: AsyncSession, user: User, student: SchoolStudent) -> dic
     overview = await _overview_payload(db, student)
     portfolio = await portfolio_payload(db, user, student)
     history = await _grade_history_rows(db, student) if school_role else []
-    school = await db.get(School, student.school_id)  # already in the identity map from _overview_payload: no extra query
     entries = portfolio["entries"]
 
-    header = {"id": student.id, "full_name": student.full_name, "school_name": school.name if school else None,
+    o = overview["student"]
+    header = {"id": student.id, "full_name": student.full_name, "school_name": o["school_name"],
               "student_code": None, "grade_or_class": None, "date_of_birth": None, "assigned_teacher_name": None}
     if school_role:  # service roles only ever see name + school today (/school/portfolio-students)
-        o = overview["student"]
         header.update(student_code=o["student_code"], grade_or_class=o["grade_or_class"], date_of_birth=o["date_of_birth"], assigned_teacher_name=o["assigned_teacher_name"])
 
     results_full = overview["results"]  # published only, same rule as /overview (SCH-006-AC02)
