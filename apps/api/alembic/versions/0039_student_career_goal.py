@@ -18,6 +18,11 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Idempotent, like 0035: `0001_initial` builds tables from the *current* models (`Base.metadata.create_all`), and dev
+    # startup can too, so on a from-scratch replay the column already exists here (caught by test_enh_001's isolated
+    # full-history replay). Skipped when Alembic only renders SQL (`--sql`), where there is no connection to inspect.
+    if not op.get_context().as_sql and "career_goal" in {c["name"] for c in sa.inspect(op.get_bind()).get_columns("school_students")}:
+        return
     op.add_column("school_students", sa.Column("career_goal", sa.String(length=120), nullable=True))
 
 
