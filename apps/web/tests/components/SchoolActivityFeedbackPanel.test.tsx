@@ -45,6 +45,12 @@ describe("SchoolActivityFeedbackPanel", () => {
     expect(within(item("Seminar a1")).getByText("3 – Good")).toBeTruthy();
   });
 
+  it("status badges differ in style as well as text, so the list scans at a glance (QA-018-15)", () => {
+    render(<SchoolActivityFeedbackPanel initial={page([row("a1", SAVED), row("a2")])} canSubmit />);
+    expect(within(item("Seminar a1")).getByText("Submitted")).toHaveClass("badge", "badge-done");
+    expect(within(item("Seminar a2")).getByText("Awaiting feedback")).toHaveClass("badge", "badge-pending");
+  });
+
   it("principal view is read-only", () => {
     render(<SchoolActivityFeedbackPanel initial={page([row("a2")])} canSubmit={false} />);
     expect(screen.queryByRole("button", { name: /Give feedback/ })).toBeNull();

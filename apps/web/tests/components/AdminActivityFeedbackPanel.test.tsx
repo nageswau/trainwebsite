@@ -63,6 +63,16 @@ describe("AdminActivityFeedbackPanel", () => {
     expect(await screen.findByRole("heading", { name: "No feedback submitted yet." })).toBeTruthy();
   });
 
+  it("a failed school filter does not keep showing the previous total in the heading (QA-018-13)", async () => {
+    let calls = 0;
+    stub((url) => (url.endsWith("/schools") ? json(SCHOOLS) : ++calls === 1 ? json(page([fb("1")], 44)) : json({}, 500)));
+    render(<AdminActivityFeedbackPanel />);
+    await screen.findByRole("heading", { name: "School activity feedback (44)" });
+    fireEvent.change(screen.getByLabelText("School"), { target: { value: "s2" } });
+    await screen.findByRole("alert");
+    expect(screen.getByRole("heading", { name: "School activity feedback" })).toBeTruthy();
+  });
+
   it("an expired session says so and links to sign-in (QA-018-14)", async () => {
     stub((url) => (url.endsWith("/schools") ? json(SCHOOLS) : json({ detail: "Not authenticated" }, 401)));
     render(<AdminActivityFeedbackPanel />);

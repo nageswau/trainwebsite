@@ -179,7 +179,7 @@ export default function SchoolActivityFeedbackPanel({ initial, canSubmit, focusA
                       </span>
                     </div>
                     <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                      <span className="badge">{row.feedback ? "Submitted" : "Awaiting feedback"}</span>
+                      <span className={`badge ${row.feedback ? "badge-done" : "badge-pending"}`}>{row.feedback ? "Submitted" : "Awaiting feedback"}</span>
                       {canSubmit && !row.feedback && openId !== row.activity_id && (
                         <button
                           type="button"

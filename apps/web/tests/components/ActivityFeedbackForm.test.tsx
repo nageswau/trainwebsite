@@ -79,6 +79,37 @@ describe("ActivityFeedbackForm", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("blank feedback is caught before sending, named, and the field marked invalid (QA-018-01)", async () => {
+    const { fetchMock } = setup(() => Promise.resolve(json(SAVED, 201)));
+    fill();
+    fireEvent.change(screen.getByLabelText("Feedback"), { target: { value: "    " } });
+    submit();
+    expect((await screen.findByRole("alert")).textContent).toBe("Feedback: Must not be blank");
+    expect(screen.getByLabelText("Feedback")).toHaveAttribute("aria-invalid", "true");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("a server 422 names the field it is about and marks it invalid (QA-018-01)", async () => {
+    setup(() => Promise.resolve(json({ detail: [{ loc: ["body", "suggestions"], msg: "Value error, must not contain control or bidirectional-override characters" }] }, 422)));
+    fill();
+    submit();
+    expect((await screen.findByRole("alert")).textContent).toBe("Suggestions: Must not contain control or bidirectional-override characters");
+    expect(screen.getByLabelText("Suggestions (optional)")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Feedback")).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("shows how much of the limit is used, and says when it is reached (QA-018-02)", () => {
+    setup(() => Promise.resolve(json(SAVED, 201)));
+    const feedback = screen.getByLabelText("Feedback");
+    expect(feedback).toHaveAccessibleDescription(/0 \/ 5000 characters/);
+    fireEvent.change(feedback, { target: { value: "Great" } });
+    expect(feedback).toHaveAccessibleDescription(/5 \/ 5000 characters/);
+    fireEvent.change(feedback, { target: { value: "x".repeat(5000) } });
+    expect(feedback).toHaveAccessibleDescription(/5000 \/ 5000 characters — limit reached/);
+    expect(screen.getByLabelText("Suggestions (optional)")).toHaveAccessibleDescription(/0 \/ 5000 characters/);
+    expect(screen.getByLabelText("Trainer / Counsellor (optional)")).toHaveAccessibleDescription("Up to 200 characters.");
+  });
+
   it("an expired session says so, links to sign-in and keeps the entry (QA-018-14)", async () => {
     setup(() => Promise.resolve(json({ detail: "Not authenticated" }, 401)));
     fill();

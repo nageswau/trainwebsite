@@ -58,4 +58,10 @@ main:focus{outline:none}
 .feedback-details dt{font-weight:800;font-size:13px}
 .feedback-details dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .link-list li.feedback-row{flex-direction:column;align-items:stretch}
+/* ENH-018 browser QA: hints/counters under fields (QA-018-02); a comfortable "View feedback" target (QA-018-11, was 23 px);
+   status badges that differ in colour as well as text, both well above 4.5:1 contrast (QA-018-15). */
+.field-hint{margin:0;font-size:13px;color:var(--muted)}
+.feedback-row summary{display:flex;align-items:center;min-height:44px;cursor:pointer;width:fit-content}
+.badge.badge-done{background:#e7f6ec;color:#166534}
+.badge.badge-pending{background:#fff4e0;color:#7a4a00}
 @media(max-width:640px){.feedback-details{grid-template-columns:minmax(0,1fr)}.feedback-details dd{margin-bottom:6px}}
