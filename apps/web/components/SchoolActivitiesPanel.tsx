@@ -1,13 +1,17 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
+import { isFeedbackEligible } from "@/lib/activityFeedback";
 import { sendJson } from "@/lib/apiErrors";
 import { formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
-type Activity = { id: string; title: string; scheduled_at: string };
+type Activity = { id: string; title: string; scheduled_at: string; activity_type?: string | null; feedback_submitted?: boolean };
+
+const feedbackAction = (a: Activity) => (a.feedback_submitted ? "View feedback" : "Give feedback");
 type Student = { id: string; full_name: string };
 
 // SCH-001: schedule an activity, mark who attended -- for the Coordinator's own
@@ -92,7 +96,18 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
                   <tr key={a.id}>
                     <td>{a.title}</td>
                     <td>{formatDate(a.scheduled_at, true, SCHOOL_TIME_ZONE)}</td>
-                    <td><button className="btn ghost small" onClick={() => startMarking(a.id)}>Mark attendance</button></td>
+                    <td>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button className="btn ghost small" onClick={() => startMarking(a.id)}>Mark attendance</button>
+                        {/* ENH-018: completed Edusphere (typed) activities link to their own feedback (QA-018-09); once feedback
+                            is recorded the link says so (QA-018-10). */}
+                        {(a.feedback_submitted || isFeedbackEligible(a)) && (
+                          <Link className="btn secondary small" href={`/school/coordinator/feedback?activity=${a.id}`} aria-label={`${feedbackAction(a)} for ${a.title}`}>
+                            {feedbackAction(a)}
+                          </Link>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

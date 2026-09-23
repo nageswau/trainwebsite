@@ -34,8 +34,8 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
 // colliding with an unrelated role of the same URL-segment name in another division
 // (RBAC_MATRIX.md §2.12's role-name collision guard, SCH-001-AC05).
 export const SCHOOL_NAV: Record<string, NavItem[]> = {
-  coordinator: ["dashboard", "students", "promotion", "transfers", "activities", "team", "reports", "entitlements", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/coordinator/${x}` })),
-  principal: ["dashboard", "reports", "entitlements"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/principal/${x}` })),
+  coordinator: ["dashboard", "students", "promotion", "transfers", "activities", "feedback", "team", "reports", "entitlements", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/coordinator/${x}` })),
+  principal: ["dashboard", "reports", "feedback", "entitlements"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/principal/${x}` })),
   teacher: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/teacher/${x}` })),
   parent: ["dashboard", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/parent/${x}` })),
   // SCH-004/005/006 -- single-item nav, same shape as principal/teacher/parent above.
@@ -71,7 +71,7 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   "overseas/student": ["dashboard","profile","applications","documents","offer-letters","visa-status","scholarships","university-communication","payments","appointments","counselor-chat","downloads"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/student/${x}`})),
   "overseas/counselor": ["dashboard","students","leads","documents","applications","school-applications","visa","appointments","counselor-chat","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/counselor/${x}`})),
   "overseas/university": ["dashboard","applications","offer-letters","admission-updates","student-communication","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/university/${x}`})),
-  "overseas/admin": ["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","school-applications","school-transfers","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),
+  "overseas/admin": ["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","school-applications","school-transfers","activity-feedback","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),
   "overseas/agent": ["dashboard","students","applications","documents","commissions","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/agent/${x}`})),
 };
 export const SUPER_ADMIN_NAV:NavItem[] = ["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`}));
