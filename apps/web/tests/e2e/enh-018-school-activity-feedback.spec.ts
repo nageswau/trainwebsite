@@ -101,7 +101,8 @@ test("coordinator gives feedback by keyboard; principal and admin read it; a dup
   await signIn(page, ADMIN_EMAIL, ADMIN_PASSWORD, "**/overseas/admin/dashboard");
   await page.goto("/overseas/admin/activity-feedback");
   await expect(page.getByRole("option", { name: schoolName })).toBeAttached();
-  await page.getByLabel("School").selectOption({ label: schoolName });
+  await page.getByLabel("Search schools").fill(schoolName); // QA-018-16: narrow the long list first, as an admin would
+  await page.getByLabel("School", { exact: true }).selectOption({ label: schoolName });
   const card = page.getByRole("listitem").filter({ hasText: title });
   await expect(card.getByText("Ms. Rao")).toBeVisible();
   await expect(card.getByText("5 – Excellent")).toBeVisible();
