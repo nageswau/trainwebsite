@@ -70,6 +70,17 @@ describe("SchoolActivitiesPanel save failures", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("shows an activity's time in the school's zone, identically on server and browser (QA-022-06)", () => {
+    const saved = process.env.TZ;
+    process.env.TZ = "UTC"; // the server's zone
+    try {
+      render(<SchoolActivitiesPanel activities={[{ id: "a9", title: "Seminar", scheduled_at: "2027-01-15T04:30:00Z" }]} students={[]} />);
+      expect(screen.getByRole("cell", { name: "15 Jan 2027, 10:00" })).toBeInTheDocument();
+    } finally {
+      process.env.TZ = saved;
+    }
+  });
+
   it("announces success politely", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => ({ id: "a2", title: "Campus visit" }) }));
     render(<SchoolActivitiesPanel activities={[]} students={[]} />);

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
 import { sendJson } from "@/lib/apiErrors";
+import { formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
 type Activity = { id: string; title: string; scheduled_at: string };
 type Student = { id: string; full_name: string };
@@ -90,7 +91,7 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
                 {activities.map((a) => (
                   <tr key={a.id}>
                     <td>{a.title}</td>
-                    <td>{new Date(a.scheduled_at).toLocaleString()}</td>
+                    <td>{formatDate(a.scheduled_at, true, SCHOOL_TIME_ZONE)}</td>
                     <td><button className="btn ghost small" onClick={() => startMarking(a.id)}>Mark attendance</button></td>
                   </tr>
                 ))}
