@@ -62,7 +62,9 @@ export default function SchoolStudentFields({ idPrefix, student, teachers, inclu
             <label htmlFor={id("teacher")}>Assigned Teacher</label>
             {/* Edit includes inactive teachers so an already-assigned, since-deactivated Teacher still shows as the
                 selected option -- otherwise the select would fall back to "Unassigned" and an unrelated save would clear it. */}
-            <select id={id("teacher")} name="assigned_teacher_user_id" defaultValue={student?.assigned_teacher_user_id ?? ""}>
+            {/* key: the teacher list loads after the form can open; an uncontrolled select never re-applies its
+                defaultValue when options arrive later, so it remounts once they do (else a save would unassign). */}
+            <select key={teacherOptions.map((t) => t.id).join(",")} id={id("teacher")} name="assigned_teacher_user_id" defaultValue={student?.assigned_teacher_user_id ?? ""}>
               <option value="">Unassigned</option>
               {teacherOptions.map((t) => <option key={t.id} value={t.id}>{t.name}{t.active ? "" : " (inactive)"}</option>)}
             </select>

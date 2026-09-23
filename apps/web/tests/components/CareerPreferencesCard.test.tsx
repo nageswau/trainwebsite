@@ -60,8 +60,9 @@ describe("CareerPreferencesCard", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("preferred_countries items must be at most 80 characters");
   });
 
-  it("empty portfolio shows the existing message", () => {
+  it("empty portfolio explains itself without repeating the records card's sentence (same page)", () => {
     render(<CareerPreferencesCard students={[]} />);
-    expect(screen.getByText(/No students in your portfolio yet/)).toBeTruthy();
+    expect(screen.getByText("Career preferences can be recorded once a student is in your portfolio.")).toBeTruthy();
+    expect(screen.queryByText(/No students in your portfolio yet/)).toBeNull();
   });
 });

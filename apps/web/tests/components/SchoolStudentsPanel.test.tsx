@@ -84,6 +84,22 @@ describe("SchoolStudentsPanel (ENH-025)", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("already used");
   });
 
+  it("keeps the assigned teacher selected when the teacher list arrives after Edit was opened", async () => {
+    let releaseTeam!: () => void;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url === "/api/v1/school/team") {
+        await new Promise<void>((r) => { releaseTeam = r; });
+        return new Response(JSON.stringify({ accounts: [{ id: "t1", name: "E2E Teacher", role: "school_teacher", active: false }] }));
+      }
+      return new Response(JSON.stringify(student));
+    }));
+    render(<SchoolStudentsPanel students={[{ ...student, assigned_teacher_user_id: "t1" }]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    releaseTeam();
+    await screen.findByRole("option", { name: "E2E Teacher (inactive)" });
+    expect((screen.getByLabelText("Assigned Teacher", { selector: "#edit-teacher" }) as HTMLSelectElement).value).toBe("t1");
+  });
+
   it("empty roster points to add and bulk upload", () => {
     render(<SchoolStudentsPanel students={[]} />);
     expect(screen.getByText(/No students yet/)).toBeTruthy();

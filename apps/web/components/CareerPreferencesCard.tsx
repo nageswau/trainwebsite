@@ -63,7 +63,8 @@ export default function CareerPreferencesCard({ students }: { students: Student[
     <div className="action-card">
       <h3>Career preferences</h3>
       {students.length === 0 ? (
-        <p className="muted">No students in your portfolio yet. Contact your Overseas Admin.</p>
+        // Distinct wording: the records card on the same page already says "No students in your portfolio yet".
+        <p className="muted">Career preferences can be recorded once a student is in your portfolio.</p>
       ) : (
         <>
           <div className="field">
