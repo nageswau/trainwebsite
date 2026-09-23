@@ -25,6 +25,13 @@ export type FeedbackFilter = (typeof FEEDBACK_FILTERS)[number][0];
 
 export const SCORE_LABELS = ["Poor", "Fair", "Good", "Very good", "Excellent"] as const;
 
+// QA-018-14: a 401 is not a retryable failure. Same wording as ENH-005's transfer screens; each alert adds a "Sign in again" link.
+export const SESSION_EXPIRED = "Your session has expired.";
+export const SIGN_IN_PATH = "/overseas/login";
+
+/** Why a list could not be shown: the session ended (sign in again) or the load failed (try again). */
+export type LoadFailure = "expired" | "failed" | null;
+
 // Same wording as the Activities scheduling form's category options (SchoolActivitiesPanel).
 const ACTIVITY_TYPES: Record<string, string> = {
   career_seminar: "Career seminar",

@@ -63,6 +63,35 @@ describe("AdminActivityFeedbackPanel", () => {
     expect(await screen.findByRole("heading", { name: "No feedback submitted yet." })).toBeTruthy();
   });
 
+  it("an expired session says so and links to sign-in (QA-018-14)", async () => {
+    stub((url) => (url.endsWith("/schools") ? json(SCHOOLS) : json({ detail: "Not authenticated" }, 401)));
+    render(<AdminActivityFeedbackPanel />);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toMatch(/Your session has expired/);
+    expect(within(alert).getByRole("link", { name: "Sign in again" })).toHaveAttribute("href", "/overseas/login");
+    expect(within(alert).queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  it("the school filter stays enabled while loading (QA-018-05), and the heading drops a stale total", async () => {
+    let calls = 0;
+    stub((url) => (url.endsWith("/schools") ? json(SCHOOLS) : ++calls === 1 ? json(page([fb("1")], 44)) : (new Promise(() => {}) as unknown as Response)));
+    render(<AdminActivityFeedbackPanel />);
+    await screen.findByText("Seminar 1");
+    const select = screen.getByLabelText("School");
+    fireEvent.change(select, { target: { value: "s2" } });
+    expect(select).not.toBeDisabled();
+    expect(screen.getByRole("heading", { name: "School activity feedback" })).toBeTruthy();
+  });
+
+  it("after Load more, focus moves to the first newly loaded item (QA-018-04)", async () => {
+    stub((url) => (url.endsWith("/schools") ? json(SCHOOLS) : url.includes("offset=1") ? json(page([fb("2")], 2, 1)) : json(page([fb("1")], 2))));
+    render(<AdminActivityFeedbackPanel />);
+    await screen.findByText("Seminar 1");
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await screen.findByText("Seminar 2");
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByText("Seminar 2").closest("li")));
+  });
+
   it("still lists feedback when the school list cannot load (filter just shows All schools)", async () => {
     stub((url) => (url.endsWith("/schools") ? json({}, 500) : json(page([fb("1")]))));
     render(<AdminActivityFeedbackPanel />);

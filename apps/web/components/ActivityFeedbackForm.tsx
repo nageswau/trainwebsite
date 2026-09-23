@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 
 import LocalDateTime from "@/components/LocalDateTime";
-import { type ActivityFeedback, type FeedbackActivity, participationText, SCORE_LABELS } from "@/lib/activityFeedback";
+import { type ActivityFeedback, type FeedbackActivity, participationText, SCORE_LABELS, SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
 import { detailMessage, isRequestBody, NOT_COMPLETED } from "@/lib/apiErrors";
 
 type Props = { activity: FeedbackActivity; onSubmitted: (feedback: ActivityFeedback) => void; onDuplicate: () => void; onCancel: () => void };
@@ -32,7 +33,7 @@ export default function ActivityFeedbackForm({ activity, onSubmitted, onDuplicat
   const headingRef = useRef<HTMLHeadingElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ text: string; expired?: boolean } | null>(null);
 
   useEffect(() => headingRef.current?.focus(), []);
   useEffect(() => {
@@ -53,10 +54,11 @@ export default function ActivityFeedbackForm({ activity, onSubmitted, onDuplicat
       });
       const data = await response.json().catch(() => null);
       if (response.status === 409) return onDuplicate();
-      if (!response.ok || !isRequestBody(data)) return setError(detailMessage((data as { detail?: unknown } | null)?.detail, "Could not save the feedback."));
+      if (response.status === 401) return setError({ text: `${SESSION_EXPIRED} Your entry is kept; sign in again in a new tab, then submit.`, expired: true });
+      if (!response.ok || !isRequestBody(data)) return setError({ text: detailMessage((data as { detail?: unknown } | null)?.detail, "Could not save the feedback.") });
       onSubmitted(data as ActivityFeedback);
     } catch {
-      setError(NOT_COMPLETED);
+      setError({ text: NOT_COMPLETED });
     } finally {
       setBusy(false);
     }
@@ -86,7 +88,12 @@ export default function ActivityFeedbackForm({ activity, onSubmitted, onDuplicat
           <label htmlFor={`${id}-suggestions`}>Suggestions (optional)</label>
           <textarea id={`${id}-suggestions`} name="suggestions" maxLength={5000} />
         </div>
-        {error && <div ref={errorRef} tabIndex={-1} className="form-error" role="alert">{error}</div>}
+        {error && (
+          <div ref={errorRef} tabIndex={-1} className="form-error" role="alert">
+            {error.text}
+            {error.expired && <> <Link href={SIGN_IN_PATH} target="_blank" rel="noopener">Sign in again</Link></>}
+          </div>
+        )}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <button className="btn" disabled={busy}>{busy ? "Saving…" : "Submit feedback"}</button>
           <button type="button" className="btn secondary" onClick={onCancel} disabled={busy}>Cancel</button>

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import ActivityFeedbackForm from "@/components/ActivityFeedbackForm";
@@ -77,6 +77,17 @@ describe("ActivityFeedbackForm", () => {
     submit();
     await waitFor(() => expect(onDuplicate).toHaveBeenCalled());
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("an expired session says so, links to sign-in and keeps the entry (QA-018-14)", async () => {
+    setup(() => Promise.resolve(json({ detail: "Not authenticated" }, 401)));
+    fill();
+    submit();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toMatch(/Your session has expired/);
+    expect(alert.textContent).toMatch(/entry is kept/);
+    expect(within(alert).getByRole("link", { name: "Sign in again" })).toHaveAttribute("href", "/overseas/login");
+    expect(screen.getByLabelText("Feedback")).toHaveValue("Great");
   });
 
   it("says the entry is kept when the network drops, and Cancel calls back", async () => {

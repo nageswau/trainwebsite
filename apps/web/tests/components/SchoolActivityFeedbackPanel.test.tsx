@@ -90,6 +90,61 @@ describe("SchoolActivityFeedbackPanel", () => {
     expect(await screen.findByRole("heading", { name: "Nothing awaiting feedback." })).toBeTruthy();
   });
 
+  it("a failed filter load never leaves the previous filter's rows under the new label (QA-018-06)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json({}, 500))));
+    render(<SchoolActivityFeedbackPanel initial={page([row("a1", SAVED), row("a2")])} canSubmit />);
+    fireEvent.change(screen.getByLabelText("Show"), { target: { value: "submitted" } });
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByRole("list", { name: "Completed Edusphere activities" })).toBeNull();
+    expect(screen.queryByText(/Showing/)).toBeNull();
+  });
+
+  it("an expired session says so and links to sign-in instead of offering a retry that cannot work (QA-018-14)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json({ detail: "Not authenticated" }, 401))));
+    render(<SchoolActivityFeedbackPanel initial={page([row("a1", SAVED)])} canSubmit />);
+    fireEvent.change(screen.getByLabelText("Show"), { target: { value: "awaiting" } });
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toMatch(/Your session has expired/);
+    expect(within(alert).getByRole("link", { name: "Sign in again" })).toHaveAttribute("href", "/overseas/login");
+    expect(within(alert).queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  it("the filter stays enabled while loading, so keyboard focus is not thrown away (QA-018-05)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+    render(<SchoolActivityFeedbackPanel initial={page([row("a1", SAVED)])} canSubmit />);
+    const select = screen.getByLabelText("Show");
+    select.focus();
+    fireEvent.change(select, { target: { value: "awaiting" } });
+    expect(select).not.toBeDisabled();
+    expect(document.activeElement).toBe(select);
+  });
+
+  it("after Load more, focus moves to the first newly loaded item (QA-018-04)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json({ items: [row("a2")], total: 2, limit: 25, offset: 1 }))));
+    render(<SchoolActivityFeedbackPanel initial={page([row("a1", SAVED)], 2)} canSubmit />);
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await screen.findByText("Showing 2 of 2");
+    await waitFor(() => expect(document.activeElement).toBe(item("Seminar a2")));
+  });
+
+  it("?activity focus: opens that awaiting activity's form and offers a way back to all activities (QA-018-09)", async () => {
+    render(<SchoolActivityFeedbackPanel initial={page([row("a2")])} canSubmit focusActivityId="a2" />);
+    expect(screen.getByRole("heading", { name: "Feedback: Seminar a2" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Show all activities" })).toHaveAttribute("href", "/school/coordinator/feedback");
+  });
+
+  it("?activity focus on an activity that already has feedback shows it expanded", () => {
+    render(<SchoolActivityFeedbackPanel initial={page([row("a1", SAVED)])} canSubmit focusActivityId="a1" />);
+    expect(screen.queryByRole("button", { name: "Submit feedback" })).toBeNull();
+    expect(within(item("Seminar a1")).getByText("3 – Good")).toBeVisible();
+  });
+
+  it("?activity focus on an activity that is not eligible explains it instead of the generic empty state", () => {
+    render(<SchoolActivityFeedbackPanel initial={page([])} canSubmit focusActivityId="zz" />);
+    expect(screen.getByRole("heading", { name: "This activity is not open for feedback." })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Show all activities" })).toBeTruthy();
+  });
+
   it("loads more and says how many are shown", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json({ items: [row("a2")], total: 2, limit: 25, offset: 1 }))));
     render(<SchoolActivityFeedbackPanel initial={page([row("a1", SAVED)], 2)} canSubmit />);

@@ -1,13 +1,14 @@
 import PortalShell from "@/components/PortalShell";
 import SchoolActivityFeedbackPanel from "@/components/SchoolActivityFeedbackPanel";
-import { accessUnavailable } from "@/components/AccessUnavailable";
+import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 import type { FeedbackActivity } from "@/lib/activityFeedback";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-// ENH-018 (D8): the principal reads their school's activity feedback; read-only.
+// ENH-018 (D8): the principal reads their school's activity feedback; read-only. Principal-only (QA-018-12): a coordinator has their
+// own Feedback page and was otherwise shown this one under a "Principal" label.
 export default async function SchoolPrincipalFeedbackPage() {
   let user: User;
   let initial: Page<FeedbackActivity>;
@@ -16,6 +17,7 @@ export default async function SchoolPrincipalFeedbackPage() {
   } catch (e) {
     return accessUnavailable(e);
   }
+  if (user.role !== "school_principal") return accessDenied(user, "Principal role required");
   return (
     <PortalShell nav={SCHOOL_NAV.principal} roleLabel="Principal" userName={user.full_name}>
       <SchoolActivityFeedbackPanel initial={initial} canSubmit={false} />

@@ -5,7 +5,7 @@ import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 import { accessUnavailable } from "@/components/AccessUnavailable";
 
-type Activity = { id: string; title: string; scheduled_at: string; activity_type?: string | null };
+type Activity = { id: string; title: string; scheduled_at: string; activity_type?: string | null; feedback_submitted?: boolean };
 type Student = { id: string; full_name: string };
 
 // SCH-001: schedule an activity, mark attendance -- for the Coordinator's own institution.
