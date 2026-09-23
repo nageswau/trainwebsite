@@ -26,7 +26,9 @@
 - Notifications only when `direction != "unchanged"`, only after the tier change commits, each recipient isolated so a failure never fails the PATCH.
 - Notification titles are cut to 180 characters (`Notification.title` is `String(180)`).
 - The edit panel keeps the exact text `School profile updated.` (the `sch-003` E2E asserts it).
-- Frontend uses only existing classes (`form-error`, `form-message`, `form-warning`, `btn`, `btn secondary`, `field`, `form`, `form-grid`, `action-card`); no CSS changes.
+- Frontend uses only existing classes (`form-error`, `form-message`, `form-warning`, `btn`, `btn secondary`, `field`, `form`, `form-grid`, `action-card`, `actions`, `question` fieldset, `muted`, `skeleton-line`, `portal-content`, `card`); no CSS changes.
+- Inline confirmation follows the ENH-004/ENH-005 pattern: focus into Confirm; Escape/Cancel return focus to the opener (`refocus` from `@/lib/focus`); outcomes take focus (`tabIndex={-1}`); no dialog library.
+- WCAG 2.1 AA: every control labelled, helper text via `aria-describedby`, errors `role="alert"`, state never by colour alone, works at 320px.
 - Logs and audit metadata hold IDs, role, tier names and service keys only; no names, emails or request bodies.
 - The Docker stack is started by the user. Backend tests need the database up; ask the user to start it rather than starting it yourself.
 - Backend tests: `cd apps/api && pytest <file> -v`. Frontend: `cd apps/web && npx vitest run <file>`. E2E: `cd apps/web && npx playwright test <file>`.
@@ -54,9 +56,10 @@
 | `apps/api/tests/test_enh_023_tier_rules.py` (new) | Pure unit tests, no database | 1, 4, 5 |
 | `apps/api/tests/test_enh_023_tier_change.py` (new) | Database integration tests | 2–8 |
 | `apps/api/tests/test_sch_003_school_onboarding.py` | Two metadata assertions updated to the D4 shape | 2 |
-| `apps/web/components/AdminSchoolEditPanel.tsx` | Tier fields, preview/confirm flow, alert role | 9 |
-| `apps/web/tests/components/AdminSchoolEditPanel.test.tsx` | Extended | 9 |
-| `apps/web/app/school/principal/notifications/page.tsx` (new) | Principal notifications page | 10 |
+| `apps/web/components/AdminSchoolEditPanel.tsx` | Partnership fieldset, preview/confirm flow, focus of outcomes, `aria-busy`, alert role | 9 |
+| `apps/web/components/TierDowngradeConfirm.tsx` (new) | Inline downgrade confirmation (list of lost services, focus into Confirm, Escape/Cancel) | 9 |
+| `apps/web/tests/components/AdminSchoolEditPanel.test.tsx`, `TierDowngradeConfirm.test.tsx` (new) | Panel and block tests | 9 |
+| `apps/web/app/school/principal/notifications/page.tsx`, `loading.tsx` (new) | Principal notifications page and its loading skeleton | 10 |
 | `apps/web/tests/components/SchoolPrincipalNotificationsPage.test.tsx` (new) | Page access tests | 10 |
 | `apps/web/lib/navigation.ts` | Principal nav gains `notifications` | 10 |
 | `apps/web/app/school/coordinator/notifications/page.tsx` | Empty text mentions partnership changes | 10 |
@@ -1380,14 +1383,87 @@ git commit -m "test(enh-023): concurrent tier changes queue on the school row lo
 ### Task 9: Tier fields and downgrade confirmation in the edit panel
 
 **Files:**
+- Create: `apps/web/components/TierDowngradeConfirm.tsx` (the inline confirmation, split out so the panel stays under ~200 lines and the block is testable alone)
 - Modify: `apps/web/components/AdminSchoolEditPanel.tsx`
-- Test: `apps/web/tests/components/AdminSchoolEditPanel.test.tsx` (extend)
+- Test: `apps/web/tests/components/TierDowngradeConfirm.test.tsx` (create), `apps/web/tests/components/AdminSchoolEditPanel.test.tsx` (extend)
 
 **Interfaces:**
-- Consumes: `GET …/tier-change-preview?tier=` (Task 3); PATCH response `tier_change` and the `expected_tier` precondition / `409` (Task 2)
-- Produces: new field IDs `#edit-tier` (name `tier`) and `#edit-tier-valid-until` (name `tier_valid_until`); buttons "Confirm downgrade" and "Cancel", used by Task 11.
+- Consumes: `GET …/tier-change-preview?tier=` (Task 3); PATCH response `tier_change` and the `expected_tier` precondition / `409` (Task 2); `refocus(id)` from `@/lib/focus` (existing)
+- Produces:
+  - `TierDowngradeConfirm({ schoolName, fromTier, toTier, lost, busy, onConfirm, onCancel })`, where `fromTier`/`toTier` are display names and `lost` is `{key,label}[]`
+  - Field IDs `#edit-tier` (name `tier`), `#edit-tier-valid-until` (name `tier_valid_until`); Save button `#edit-save-btn`; buttons "Confirm downgrade" and "Cancel". Task 11 uses these.
 
-- [ ] **Step 1: Write the failing tests** (append inside the existing `describe`)
+**UI decisions (frontend-ui-engineering review, existing patterns only):**
+- **Hierarchy.** The two tier fields sit in their own `<fieldset className="question">` with legend **Partnership**, directly above Save (the existing `.action-card fieldset.question` style). Helper text says what is current and what a change does. The profile fields stay in their ENH-009 order.
+- **Consequences are a list,** not a comma string: up to 7 services are scannable on a phone.
+- **Keyboard and focus follow the ENH-004/ENH-005 inline-confirm pattern** (`SchoolPromotionPanel`, `AdminTransferRow`):
+  - Confirm takes focus when the block appears and is `aria-describedby` the consequences.
+  - Escape or Cancel closes the block and returns focus to Save (`refocus`, since a disabled control drops focus).
+  - After a save or a failure, focus moves to the outcome message (`tabIndex={-1}`), as `SchoolPromotionPanel` does.
+- **Loading.** The Save label reads `Checking tier change…` / `Saving…`, and Confirm reads `Saving…`. The form carries `aria-busy` while busy; every control is disabled while busy, so a double click cannot send twice.
+- **Mobile.**
+  - Confirm/Cancel use the existing `.actions` row (wraps, 12px gap).
+  - `.form-grid` already stacks at ≤640px.
+  - The block renders directly under Save, so it is on screen where the admin tapped.
+  - Touch targets are the existing `.btn` size (~44px).
+- **Contrast.** `.form-warning` is `#b45309` on `#fff7ed` (~4.8:1, AA). State is never conveyed by colour alone; every state has text.
+- **Perceived performance.** The preview round-trip happens only when the tier changed; profile-only saves are unchanged. Prefetching the preview on every select change was considered and rejected: extra requests and state for a rare action.
+
+- [ ] **Step 1: Write the failing confirmation-block tests**
+
+Create `apps/web/tests/components/TierDowngradeConfirm.test.tsx`:
+
+```tsx
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import TierDowngradeConfirm from "@/components/TierDowngradeConfirm";
+
+afterEach(cleanup);
+
+const lost = [{ key: "visa_support", label: "Visa support" }, { key: "internships", label: "Internships" }];
+
+function renderBlock(overrides: Partial<Parameters<typeof TierDowngradeConfirm>[0]> = {}) {
+  const props = { schoolName: "Oak School", fromTier: "Platinum", toTier: "Gold", lost, busy: false, onConfirm: vi.fn(), onCancel: vi.fn(), ...overrides };
+  render(<TierDowngradeConfirm {...props} />);
+  return props;
+}
+
+describe("TierDowngradeConfirm", () => {
+  it("states the downgrade and lists every lost service", () => {
+    renderBlock();
+    const group = screen.getByRole("group", { name: "Downgrading Oak School from Platinum to Gold." });
+    expect(within(group).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["Visa support", "Internships"]);
+    expect(within(group).getByText("Work already started can still be completed. The school will be notified.")).toBeTruthy();
+  });
+
+  it("puts focus on Confirm, which is described by the consequences", () => {
+    renderBlock();
+    const confirm = screen.getByRole("button", { name: "Confirm downgrade" });
+    expect(confirm).toHaveFocus();
+    expect(confirm).toHaveAccessibleDescription(/These services will no longer be available for new work:/);
+  });
+
+  it("Escape and Cancel both cancel; Confirm confirms", () => {
+    const props = renderBlock();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Confirm downgrade" }), { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(props.onCancel).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm downgrade" }));
+    expect(props.onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("while busy both buttons are disabled, Confirm says Saving and Escape does nothing", () => {
+    const props = renderBlock({ busy: true });
+    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+    fireEvent.keyDown(screen.getByRole("group"), { key: "Escape" });
+    expect(props.onCancel).not.toHaveBeenCalled();
+  });
+});
+```
+
+- [ ] **Step 2: Write the failing panel tests** (append inside the existing `describe` in `AdminSchoolEditPanel.test.tsx`; add `waitFor` and `within` to its `@testing-library/react` import)
 
 ```tsx
   const ID = "11111111-1111-1111-1111-111111111111";
@@ -1402,12 +1478,27 @@ git commit -m "test(enh-023): concurrent tier changes queue on the school row lo
     await screen.findByLabelText("Partnership tier");
   }
 
-  it("saves an upgrade straight away and names what became available", async () => {
+  async function askToDowngrade(to = "gold") {
+    fireEvent.change(screen.getByLabelText("Partnership tier"), { target: { value: to } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    return screen.findByRole("button", { name: "Confirm downgrade" });
+  }
+
+  it("groups the tier under Partnership and explains the current tier", async () => {
+    stubFetch([json(base, 200)]);
+    await lookUp();
+    const group = screen.getByRole("group", { name: "Partnership" });
+    expect(within(group).getByLabelText("Partnership tier")).toHaveAccessibleDescription("Currently Platinum. Changing it notifies the school; a downgrade asks you to confirm first.");
+    expect(within(group).getByLabelText("Valid until")).toHaveAccessibleDescription("Leave empty for no end date.");
+  });
+
+  it("saves an upgrade straight away, names what became available and focuses the outcome", async () => {
     const mock = stubFetch([json({ ...base, tier: "gold" }, 200), json(upgrade, 200), json({ ...base, tier_change: upgrade }, 200)]);
     await lookUp();
     fireEvent.change(screen.getByLabelText("Partnership tier"), { target: { value: "platinum" } });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    await screen.findByText("School profile updated. Partnership is now Platinum; newly available: Visa support.");
+    const outcome = await screen.findByText("School profile updated. Partnership is now Platinum; newly available: Visa support.");
+    await waitFor(() => expect(outcome).toHaveFocus());
     expect(mock.mock.calls[1][0]).toBe(`/api/v1/overseas-admin/schools/${ID}/tier-change-preview?tier=platinum`);
     expect(JSON.parse(mock.mock.calls[2][1].body)).toEqual({ tier: "platinum", expected_tier: "gold" });
   });
@@ -1415,46 +1506,40 @@ git commit -m "test(enh-023): concurrent tier changes queue on the school row lo
   it("asks before a downgrade and saves only on confirm", async () => {
     const mock = stubFetch([json(base, 200), json(downgrade, 200), json({ ...base, tier: "gold", tier_change: downgrade }, 200)]);
     await lookUp();
-    fireEvent.change(screen.getByLabelText("Partnership tier"), { target: { value: "gold" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    await screen.findByText(/These services will no longer be available for new work: Visa support\./);
+    const confirm = await askToDowngrade();
+    expect(confirm).toHaveFocus();
+    expect(within(screen.getByRole("group", { name: "Downgrading Test School from Platinum to Gold." })).getByRole("listitem")).toHaveTextContent("Visa support");
     expect(mock).toHaveBeenCalledTimes(2);
-    fireEvent.click(screen.getByRole("button", { name: "Confirm downgrade" }));
-    await screen.findByText("School profile updated. Partnership is now Gold.");
+    fireEvent.click(confirm);
+    const outcome = await screen.findByText("School profile updated. Partnership is now Gold.");
+    await waitFor(() => expect(outcome).toHaveFocus());
     expect(JSON.parse(mock.mock.calls[2][1].body)).toEqual({ tier: "gold", expected_tier: "platinum" });
     expect(screen.queryByRole("button", { name: "Confirm downgrade" })).toBeNull();
   });
 
-  it("a tier changed by someone else since lookup is a 409 alert and keeps the input", async () => {
-    const stale = "This school's tier changed to Silver since you looked it up. Look it up again before changing the tier.";
-    stubFetch([json(base, 200), json(downgrade, 200), json({ detail: stale }, 409)]);
-    await lookUp();
-    fireEvent.change(screen.getByLabelText("Partnership tier"), { target: { value: "gold" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm downgrade" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(stale);
-    expect(screen.queryByRole("button", { name: "Confirm downgrade" })).toBeNull();
-    expect((screen.getByLabelText("Partnership tier") as HTMLSelectElement).value).toBe("gold");
-    expect(screen.getByRole("button", { name: "Save changes" })).not.toBeDisabled();
-  });
-
-  it("cancel keeps the input and saves nothing", async () => {
+  it("Escape cancels, keeps the input, saves nothing and returns focus to Save", async () => {
     const mock = stubFetch([json(base, 200), json(downgrade, 200)]);
     await lookUp();
-    fireEvent.change(screen.getByLabelText("Partnership tier"), { target: { value: "gold" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+    fireEvent.keyDown(await askToDowngrade(), { key: "Escape" });
     expect(screen.queryByRole("button", { name: "Confirm downgrade" })).toBeNull();
     expect((screen.getByLabelText("Partnership tier") as HTMLSelectElement).value).toBe("gold");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save changes" })).toHaveFocus());
     expect(mock).toHaveBeenCalledTimes(2);
+  });
+
+  it("Cancel does the same as Escape", async () => {
+    stubFetch([json(base, 200), json(downgrade, 200)]);
+    await lookUp();
+    await askToDowngrade();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("button", { name: "Confirm downgrade" })).toBeNull();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save changes" })).toHaveFocus());
   });
 
   it("editing the form after the confirmation clears it", async () => {
     stubFetch([json(base, 200), json(downgrade, 200)]);
     await lookUp();
-    fireEvent.change(screen.getByLabelText("Partnership tier"), { target: { value: "gold" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    await screen.findByRole("button", { name: "Confirm downgrade" });
+    await askToDowngrade();
     fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "North" } });
     expect(screen.queryByRole("button", { name: "Confirm downgrade" })).toBeNull();
   });
@@ -1463,13 +1548,23 @@ git commit -m "test(enh-023): concurrent tier changes queue on the school row lo
     const removal = { ...downgrade, to_tier: null };
     const mock = stubFetch([json(base, 200), json(removal, 200), json({ ...base, tier: null, tier_change: removal }, 200)]);
     await lookUp();
-    fireEvent.change(screen.getByLabelText("Partnership tier"), { target: { value: "" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    await screen.findByText(/Downgrading Test School from Platinum to no partnership tier\./);
+    fireEvent.click(await askToDowngrade(""));
     expect(mock.mock.calls[1][0]).toBe(`/api/v1/overseas-admin/schools/${ID}/tier-change-preview?tier=`);
-    fireEvent.click(screen.getByRole("button", { name: "Confirm downgrade" }));
     await screen.findByText("School profile updated. Partnership is now no partnership tier.");
     expect(JSON.parse(mock.mock.calls[2][1].body)).toEqual({ tier: null, expected_tier: "platinum" });
+  });
+
+  it("a tier changed by someone else since lookup is a focused 409 alert and keeps the input", async () => {
+    const stale = "This school's tier changed to Silver since you looked it up. Look it up again before changing the tier.";
+    stubFetch([json(base, 200), json(downgrade, 200), json({ detail: stale }, 409)]);
+    await lookUp();
+    fireEvent.click(await askToDowngrade());
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(stale);
+    await waitFor(() => expect(alert).toHaveFocus());
+    expect(screen.queryByRole("button", { name: "Confirm downgrade" })).toBeNull();
+    expect((screen.getByLabelText("Partnership tier") as HTMLSelectElement).value).toBe("gold");
+    expect(screen.getByRole("button", { name: "Save changes" })).not.toBeDisabled();
   });
 
   it("a failed preview is an alert, saves nothing and frees the button", async () => {
@@ -1477,8 +1572,7 @@ git commit -m "test(enh-023): concurrent tier changes queue on the school row lo
     await lookUp();
     fireEvent.change(screen.getByLabelText("Partnership tier"), { target: { value: "gold" } });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Overseas Admin role required");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Overseas Admin role required");
     expect(mock).toHaveBeenCalledTimes(2);
     expect(screen.getByRole("button", { name: "Save changes" })).not.toBeDisabled();
   });
@@ -1493,6 +1587,20 @@ git commit -m "test(enh-023): concurrent tier changes queue on the school row lo
     expect(screen.getByRole("button", { name: "Save changes" })).not.toBeDisabled();
   });
 
+  it("shows the checking state and marks the form busy while the preview runs", async () => {
+    let release!: (r: Response) => void;
+    const mock = vi.fn().mockResolvedValueOnce(json(base, 200)).mockReturnValueOnce(new Promise<Response>((r) => { release = r; }));
+    vi.stubGlobal("fetch", mock);
+    await lookUp();
+    fireEvent.change(screen.getByLabelText("Partnership tier"), { target: { value: "gold" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    const checking = await screen.findByRole("button", { name: "Checking tier change…" });
+    expect(checking).toBeDisabled();
+    expect(checking.closest("form")).toHaveAttribute("aria-busy", "true");
+    release(json(downgrade, 200));
+    await screen.findByRole("button", { name: "Confirm downgrade" });
+  });
+
   it("an untouched tier is never sent and needs no preview", async () => {
     const mock = stubFetch([json({ ...base, tier_valid_until: "2027-01-01" }, 200), json({ ...base, branch: "North", tier_change: null }, 200)]);
     await lookUp();
@@ -1504,19 +1612,59 @@ git commit -m "test(enh-023): concurrent tier changes queue on the school row lo
   });
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [ ] **Step 3: Run to verify they fail**
 
-Run: `cd apps/web && npx vitest run tests/components/AdminSchoolEditPanel.test.tsx`
-Expected: the 9 new tests FAIL (no "Partnership tier" field); the 3 existing tests PASS.
+Run: `cd apps/web && npx vitest run tests/components/TierDowngradeConfirm.test.tsx tests/components/AdminSchoolEditPanel.test.tsx`
+Expected: the new tests FAIL (component/fields missing); the 3 existing panel tests PASS.
 
-- [ ] **Step 3: Implement** — replace `apps/web/components/AdminSchoolEditPanel.tsx` with:
+- [ ] **Step 4: Implement `TierDowngradeConfirm`**
+
+Create `apps/web/components/TierDowngradeConfirm.tsx`:
 
 ```tsx
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useEffect, useRef } from "react";
 
+export type TierService = { key: string; label: string };
+
+// ENH-023 (DEC-SCOPE-029 D7): the inline downgrade confirmation, in the ENH-004/ENH-005 pattern (SchoolPromotionPanel,
+// AdminTransferRow) -- no dialog library. The consequences are a list, Confirm takes focus when the block appears and is
+// described by them, and Escape or Cancel hands control back to the panel, which returns focus to Save.
+export default function TierDowngradeConfirm({ schoolName, fromTier, toTier, lost, busy, onConfirm, onCancel }: {
+  schoolName: string; fromTier: string; toTier: string; lost: TierService[]; busy: boolean; onConfirm: () => void; onCancel: () => void;
+}) {
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    confirmRef.current?.focus();
+  }, []);
+  return (
+    <div className="form-warning" role="group" aria-labelledby="tier-downgrade-title" onKeyDown={(e) => { if (e.key === "Escape" && !busy) onCancel(); }}>
+      <p id="tier-downgrade-title"><strong>Downgrading {schoolName} from {fromTier} to {toTier}.</strong></p>
+      <div id="tier-downgrade-consequences">
+        <p>These services will no longer be available for new work:</p>
+        <ul>{lost.map((s) => <li key={s.key}>{s.label}</li>)}</ul>
+        <p>Work already started can still be completed. The school will be notified.</p>
+      </div>
+      <div className="actions">
+        <button ref={confirmRef} type="button" className="btn" disabled={busy} aria-describedby="tier-downgrade-consequences" onClick={onConfirm}>{busy ? "Saving…" : "Confirm downgrade"}</button>
+        <button type="button" className="btn secondary" disabled={busy} onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 5: Implement the panel** — replace `apps/web/components/AdminSchoolEditPanel.tsx` with:
+
+```tsx
+"use client";
+
+import { FormEvent, useEffect, useRef, useState } from "react";
+
+import TierDowngradeConfirm, { type TierService } from "@/components/TierDowngradeConfirm";
 import { detailMessage, isRequestBody } from "@/lib/apiErrors";
+import { refocus } from "@/lib/focus";
 import { type Feedback, toneClass } from "@/lib/welcomeLink";
 
 type School = {
@@ -1528,18 +1676,17 @@ type School = {
   tier?: string | null; tier_valid_until?: string | null;
 };
 
-type Service = { key: string; label: string };
-type TierChange = { direction: "upgrade" | "downgrade" | "unchanged"; from_tier: string | null; to_tier: string | null; gained: Service[]; lost: Service[] };
+type TierChange = { direction: "upgrade" | "downgrade" | "unchanged"; from_tier: string | null; to_tier: string | null; gained: TierService[]; lost: TierService[] };
 type Body = Record<string, string | null>;
 
 const FIELDS = ["branch", "address", "contact_number", "email", "website", "grades_available", "board", "partnership_date", "mou_reference", "edusphere_bdm", "monthly_visit_schedule", "vice_principal_name", "tier", "tier_valid_until"] as const;
+const SAVE_ID = "edit-save-btn";
 
-const tierName = (tier: string | null) => (tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : "no partnership tier");
-const labels = (services: Service[]) => services.map((s) => s.label).join(", ");
+const tierName = (tier: string | null | undefined) => (tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : "no partnership tier");
 
 function savedText(change: TierChange | null | undefined): string {
   if (!change || change.direction === "unchanged") return "School profile updated.";
-  const gained = change.direction === "upgrade" && change.gained.length ? `; newly available: ${labels(change.gained)}` : "";
+  const gained = change.direction === "upgrade" && change.gained.length ? `; newly available: ${change.gained.map((s) => s.label).join(", ")}` : "";
   return `School profile updated. Partnership is now ${tierName(change.to_tier)}${gained}.`;
 }
 
@@ -1548,12 +1695,32 @@ function savedText(change: TierChange | null | undefined): string {
 // clickable-table-row-to-edit pattern anywhere, and the established convention is "read via the
 // generic portal section, write via a dedicated panel" (same split as AdminSchoolCreatePanel.tsx).
 // ENH-023 / DEC-SCOPE-029: the tier is edited here too. A changed tier is previewed first; a downgrade or removal is only
-// saved after the admin confirms the list of services the school loses (D7) -- never silently.
+// saved after the admin confirms the services the school loses (D7), and every tier save carries `expected_tier` (D12).
 export default function AdminSchoolEditPanel() {
   const [busy, setBusy] = useState<null | "lookup" | "checking" | "saving">(null);
   const [message, setMessage] = useState<Feedback | null>(null);
   const [school, setSchool] = useState<School | null>(null);
   const [pending, setPending] = useState<{ body: Body; change: TierChange } | null>(null);
+  const messageRef = useRef<HTMLDivElement>(null);
+  const focusMessage = useRef(false);
+
+  // An outcome after a save attempt takes focus (ENH-004's pattern): the control that started it may be disabled or gone.
+  useEffect(() => {
+    if (message && focusMessage.current) {
+      focusMessage.current = false;
+      messageRef.current?.focus();
+    }
+  }, [message]);
+
+  function report(next: Feedback) {
+    focusMessage.current = true;
+    setMessage(next);
+  }
+
+  function cancelDowngrade() {
+    setPending(null);
+    refocus(SAVE_ID);
+  }
 
   async function lookup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1586,13 +1753,13 @@ export default function AdminSchoolEditPanel() {
       response = await fetch(`/api/v1/overseas-admin/schools/${current.id}/tier-change-preview?tier=${encodeURIComponent(tier ?? "")}`);
     } catch {
       setBusy(null);
-      setMessage({ text: "Network error -- nothing was saved. Check your connection and try again.", tone: "error" });
+      report({ text: "Network error -- nothing was saved. Check your connection and try again.", tone: "error" });
       return null;
     }
     const data = await response.json().catch(() => ({}));
     setBusy(null);
     if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail, "Unable to check the tier change. Nothing was saved."), tone: "error" });
+      report({ text: detailMessage(data.detail, "Unable to check the tier change. Nothing was saved."), tone: "error" });
       return null;
     }
     return data as TierChange;
@@ -1610,22 +1777,23 @@ export default function AdminSchoolEditPanel() {
       });
     } catch {
       setBusy(null);
-      setMessage({ text: "Network error -- it is not known whether the changes saved. Look the school up again before retrying.", tone: "error" });
+      setPending(null);
+      report({ text: "Network error -- it is not known whether the changes saved. Look the school up again before retrying.", tone: "error" });
       return;
     }
     const data = await response.json().catch(() => ({}));
     setBusy(null);
     setPending(null);
     if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), tone: "error" });
+      report({ text: detailMessage(data.detail), tone: "error" });
       return;
     }
     if (!isRequestBody(data)) {
-      setMessage({ text: "The save could not be confirmed. Look the school up again before changing anything else.", tone: "error" });
+      report({ text: "The save could not be confirmed. Look the school up again before changing anything else.", tone: "error" });
       return;
     }
     setSchool(data as School);
-    setMessage({ text: savedText((data as { tier_change?: TierChange | null }).tier_change), tone: "success" });
+    report({ text: savedText((data as { tier_change?: TierChange | null }).tier_change), tone: "success" });
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -1672,7 +1840,7 @@ export default function AdminSchoolEditPanel() {
         <button className="btn" disabled={isBusy}>{busy === "lookup" ? "Looking up…" : "Look up"}</button>
       </form>
       {school && (
-        <form className="form" onSubmit={save} onChange={() => setPending(null)} style={{ marginTop: 16 }}>
+        <form className="form" onSubmit={save} onChange={() => setPending(null)} aria-busy={isBusy} style={{ marginTop: 16 }}>
           <p className="muted">{school.name} ({school.school_code})</p>
           <div className="field"><label htmlFor="edit-branch">Branch</label><input id="edit-branch" name="branch" defaultValue={school.branch ?? ""} /></div>
           <div className="field"><label htmlFor="edit-address">Address</label><input id="edit-address" name="address" defaultValue={school.address ?? ""} /></div>
@@ -1702,34 +1870,43 @@ export default function AdminSchoolEditPanel() {
             <div className="field"><label htmlFor="edit-vp">Vice Principal</label><input id="edit-vp" name="vice_principal_name" defaultValue={school.vice_principal_name ?? ""} /></div>
           </div>
           <div className="field"><label htmlFor="edit-visits">Monthly visit schedule</label><input id="edit-visits" name="monthly_visit_schedule" defaultValue={school.monthly_visit_schedule ?? ""} /></div>
-          <div className="form-grid">
-            <div className="field">
-              <label htmlFor="edit-tier">Partnership tier</label>
-              <select id="edit-tier" name="tier" defaultValue={school.tier ?? ""}>
-                <option value="">Not set</option>
-                <option value="bronze">Bronze</option>
-                <option value="silver">Silver</option>
-                <option value="gold">Gold</option>
-                <option value="platinum">Platinum</option>
-              </select>
+          <fieldset className="question">
+            <legend>Partnership</legend>
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="edit-tier">Partnership tier</label>
+                <select id="edit-tier" name="tier" defaultValue={school.tier ?? ""} aria-describedby="edit-tier-help">
+                  <option value="">Not set</option>
+                  <option value="bronze">Bronze</option>
+                  <option value="silver">Silver</option>
+                  <option value="gold">Gold</option>
+                  <option value="platinum">Platinum</option>
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="edit-tier-valid-until">Valid until</label>
+                <input id="edit-tier-valid-until" name="tier_valid_until" type="date" defaultValue={school.tier_valid_until ?? ""} aria-describedby="edit-tier-valid-help" />
+                <span id="edit-tier-valid-help" className="muted">Leave empty for no end date.</span>
+              </div>
             </div>
-            <div className="field"><label htmlFor="edit-tier-valid-until">Valid until</label><input id="edit-tier-valid-until" name="tier_valid_until" type="date" defaultValue={school.tier_valid_until ?? ""} /></div>
-          </div>
-          <button className="btn" disabled={isBusy}>{busy === "checking" ? "Checking tier change…" : busy === "saving" ? "Saving…" : "Save changes"}</button>
+            <p id="edit-tier-help" className="muted">Currently {tierName(school.tier)}. Changing it notifies the school; a downgrade asks you to confirm first.</p>
+          </fieldset>
+          <button id={SAVE_ID} className="btn" disabled={isBusy}>{busy === "checking" ? "Checking tier change…" : busy === "saving" && !pending ? "Saving…" : "Save changes"}</button>
           {pending && (
-            <div className="form-warning" style={{ marginTop: 8 }}>
-              <p>
-                Downgrading {school.name} from {tierName(pending.change.from_tier)} to {tierName(pending.change.to_tier)}. These services will no
-                longer be available for new work: {labels(pending.change.lost)}. Work already started can still be completed. The school will be notified.
-              </p>
-              <button type="button" className="btn" disabled={isBusy} onClick={() => patch(school, pending.body)}>Confirm downgrade</button>{" "}
-              <button type="button" className="btn secondary" disabled={isBusy} onClick={() => setPending(null)}>Cancel</button>
-            </div>
+            <TierDowngradeConfirm
+              schoolName={school.name}
+              fromTier={tierName(pending.change.from_tier)}
+              toTier={tierName(pending.change.to_tier)}
+              lost={pending.change.lost}
+              busy={isBusy}
+              onConfirm={() => void patch(school, pending.body)}
+              onCancel={cancelDowngrade}
+            />
           )}
         </form>
       )}
       {message && (
-        <div className={toneClass[message.tone]} role={message.tone === "error" ? "alert" : "status"} aria-live={message.tone === "error" ? "assertive" : "polite"} style={{ marginTop: 8 }}>
+        <div ref={messageRef} tabIndex={-1} className={toneClass[message.tone]} role={message.tone === "error" ? "alert" : "status"} aria-live={message.tone === "error" ? "assertive" : "polite"} style={{ marginTop: 8 }}>
           {message.text}
         </div>
       )}
@@ -1738,16 +1915,16 @@ export default function AdminSchoolEditPanel() {
 }
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [ ] **Step 6: Run to verify they pass**
 
-Run: `cd apps/web && npx vitest run tests/components/AdminSchoolEditPanel.test.tsx && npx tsc --noEmit`
-Expected: 12 tests PASS; no type errors.
+Run: `cd apps/web && npx vitest run tests/components/TierDowngradeConfirm.test.tsx tests/components/AdminSchoolEditPanel.test.tsx && npx tsc --noEmit && npx eslint components/AdminSchoolEditPanel.tsx components/TierDowngradeConfirm.tsx`
+Expected: 4 + 15 tests PASS; no type or lint errors. If the `.form-warning` block inherits an unexpected `ul` margin inside `.action-card`, leave it; spacing is checked in Task 12's browser QA before touching any CSS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add apps/web/components/AdminSchoolEditPanel.tsx apps/web/tests/components/AdminSchoolEditPanel.test.tsx
-git commit -m "feat(enh-023): tier fields and downgrade confirmation in the school edit panel"
+git add apps/web/components/AdminSchoolEditPanel.tsx apps/web/components/TierDowngradeConfirm.tsx apps/web/tests/components/AdminSchoolEditPanel.test.tsx apps/web/tests/components/TierDowngradeConfirm.test.tsx
+git commit -m "feat(enh-023): tier fields and accessible downgrade confirmation in the school edit panel"
 ```
 
 ---
@@ -1756,6 +1933,7 @@ git commit -m "feat(enh-023): tier fields and downgrade confirmation in the scho
 
 **Files:**
 - Create: `apps/web/app/school/principal/notifications/page.tsx`
+- Create: `apps/web/app/school/principal/notifications/loading.tsx` (the ENH-011 skeleton pattern, so navigating to the page never shows a blank screen)
 - Modify: `apps/web/lib/navigation.ts:38` (principal nav)
 - Modify: `apps/web/app/school/coordinator/notifications/page.tsx` (empty text)
 - Test: `apps/web/tests/components/SchoolPrincipalNotificationsPage.test.tsx` (create)
@@ -1826,7 +2004,17 @@ describe("SchoolPrincipalNotificationsPage", () => {
     expect(SCHOOL_NAV.principal.map((item) => item.href)).toContain("/school/principal/notifications");
   });
 });
+
+describe("SchoolPrincipalNotificationsPage loading state", () => {
+  it("shows a labelled, busy skeleton instead of a blank screen", () => {
+    render(<Loading />);
+    const region = screen.getByLabelText("Loading notifications");
+    expect(region).toHaveAttribute("aria-busy", "true");
+  });
+});
 ```
+
+Add `import Loading from "@/app/school/principal/notifications/loading";` to the test file's imports.
 
 - [ ] **Step 2: Run to verify it fails**
 
@@ -1870,6 +2058,21 @@ export default async function SchoolPrincipalNotificationsPage() {
 }
 ```
 
+Create `apps/web/app/school/principal/notifications/loading.tsx` (same markup as `app/school/career-counselor/skills/loading.tsx`):
+
+```tsx
+// ENH-023: shown while the server reads the notifications, so navigation is never a blank screen (ENH-011 D12 pattern).
+export default function Loading() {
+  return (
+    <div className="portal-content" aria-busy="true" aria-label="Loading notifications">
+      <div className="card">
+        {[0, 1, 2].map((i) => <div key={i} className="skeleton-line" style={{ width: "100%", marginBottom: 12 }} aria-hidden="true" />)}
+      </div>
+    </div>
+  );
+}
+```
+
 In `apps/web/lib/navigation.ts`, change the principal array from `["dashboard", "reports", "entitlements"]` to `["dashboard", "reports", "entitlements", "notifications"]`.
 
 In `apps/web/app/school/coordinator/notifications/page.tsx`, change the `emptyText` to:
@@ -1883,7 +2086,7 @@ Expected: all PASS. If `PortalShell.test.tsx` pins the principal nav length, upd
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/web/app/school/principal/notifications/page.tsx apps/web/lib/navigation.ts apps/web/app/school/coordinator/notifications/page.tsx apps/web/tests/components/SchoolPrincipalNotificationsPage.test.tsx
+git add apps/web/app/school/principal/notifications/page.tsx apps/web/app/school/principal/notifications/loading.tsx apps/web/lib/navigation.ts apps/web/app/school/coordinator/notifications/page.tsx apps/web/tests/components/SchoolPrincipalNotificationsPage.test.tsx
 git commit -m "feat(enh-023): principal notifications page"
 ```
 
@@ -1951,8 +2154,10 @@ test("downgrade asks for confirmation and notifies the coordinator and principal
   await page.click('button:has-text("Look up")');
   await page.selectOption("#edit-tier", "gold");
   await page.click('button:has-text("Save changes")');
-  await expect(page.getByText(/These services will no longer be available for new work: .*Visa support/)).toBeVisible();
-  await page.click('button:has-text("Confirm downgrade")');
+  const confirmBlock = page.getByRole("group", { name: /Downgrading .* from Platinum to Gold\./ });
+  await expect(confirmBlock.getByRole("listitem").filter({ hasText: "Visa support" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirm downgrade" })).toBeFocused();
+  await page.keyboard.press("Enter"); // keyboard-only confirm, the path a screen-reader or keyboard user takes
   await expect(page.getByText("School profile updated. Partnership is now Gold.")).toBeVisible();
 
   await signIn(page, coordinatorEmail, E2E_PASSWORD, "/school/coordinator/dashboard");
@@ -2013,7 +2218,16 @@ Run: `cd apps/api && pytest -q`
 Run: `cd apps/web && npx vitest run && npx tsc --noEmit && npx playwright test`
 Expected: all PASS. Record the pass/fail counts in the RTM row. Investigate any failure (superpowers:systematic-debugging) before changing anything; never change product behaviour to make a draft test pass.
 
-- [ ] **Step 7: Browser QA** — at phone width (375px) and desktop, on the admin schools page: confirm the confirmation box sits directly under Save and is readable, Cancel/Confirm are reachable by keyboard, and an error is announced (`role="alert"`). On the principal notifications page, check the empty and filled states. Record the results in `docs/quality/ENH-023_BROWSER_QA_2026-09-23.md`, following the ENH-011 QA file's format, and commit it.
+- [ ] **Step 7: Browser QA** (`webapp-testing`/Playwright screenshots, not judgement alone) at **320, 768, 1024 and 1440px**:
+  - **Admin schools page, edit panel:**
+    - the Partnership fieldset stacks to one column at ≤640px with no horizontal scroll;
+    - the confirmation block sits directly under Save, its list is readable and Confirm/Cancel wrap cleanly;
+    - keyboard-only walk: Tab to the tier select → change → Enter on Save → focus lands on Confirm → Escape returns to Save → Save again → Enter confirms → focus lands on the outcome message;
+    - a forced `409` (change the tier in a second tab first) is announced as an alert;
+    - no console errors;
+    - `page.accessibility.snapshot()` (Playwright, no new dependency; axe is not installed and none is added) shows the Partnership group, the labelled tier select with its description, and the confirmation group with its list and two named buttons.
+  - **Principal notifications page:** the loading skeleton on navigation, the empty state, the filled state, and the "new" badge as text.
+  - **Spacing:** if the `ul` inside `.form-warning` needs spacing, adjust it only with existing spacing values, as a separate reviewed change. Record the results in `docs/quality/ENH-023_BROWSER_QA_2026-09-23.md`, following the ENH-011 QA file's format, and commit it.
 
 - [ ] **Step 8: Commit the evidence**
 
