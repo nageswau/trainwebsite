@@ -513,10 +513,11 @@ async def test_concurrent_tier_changes_queue_and_record_true_transitions(db_sess
             await asyncio.sleep(0.3)
             second = asyncio.create_task(admin.patch(f"{SCHOOLS}/{w['school'].id}", json={"tier": "silver"}))
             await asyncio.sleep(0.7)
-            assert not first.done() and not second.done(), "a tier change did not wait for the school row lock"
+            assert not first.done() and not second.done(), "both tier changes must still be in flight while the school row is held"
         results = await asyncio.wait_for(asyncio.gather(first, second), timeout=20)
     assert [r.status_code for r in results] == [200, 200]
     rows = await tier_rows(db_session, w["school"].id)
     assert len(rows) == 2
     assert rows[0].metadata_json["from_tier"] == "platinum"
+    # The assertion that proves update_school's own row lock (fails without .with_for_update(): the second change reads a stale tier).
     assert rows[1].metadata_json["from_tier"] == rows[0].metadata_json["to_tier"]
