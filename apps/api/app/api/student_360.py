@@ -8,16 +8,17 @@ query below is keyed on the loaded `student`, never on the raw path id.
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.api.portfolio import portfolio_payload
-from app.api.schools import SCHOOL_ROLES, _grade_history_rows, _load_student_for_reader, _overview_payload
+from app.api.schools import SCHOOL_ROLES, _grade_history_rows, _load_student_for_reader, _overview_payload, _portfolio_school_ids, _student_in_portfolio
 from app.core.database import get_db
 from app.core.logging import get_logger
-from app.models import School, SchoolStudent, User
-from app.schemas import TAB_360_KEYS, Student360Out
+from app.models import AuditLog, School, SchoolStudent, User
+from app.schemas import TAB_360_KEYS, CareerGoalOut, CareerGoalUpdate, Student360Out
 
 router = APIRouter(prefix="/school", tags=["school-360"])
 logger = get_logger("app.student_360")
@@ -132,3 +133,32 @@ async def student_360_view(student_id: UUID, user: User = Depends(get_current_us
     Student360Out.model_validate(body)
     logger.info("student_360_view", extra={"extra_fields": {"actor_id": str(user.id), "role": user.role, "student_id": str(student.id)}})
     return body
+
+
+OUTSIDE_PORTFOLIO = "This student is at a school outside your own portfolio"  # _student_in_portfolio's own wording
+
+
+@router.patch("/students/{student_id}/career-goal", response_model=CareerGoalOut)
+async def update_career_goal(student_id: UUID, payload: CareerGoalUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Spec §6.2. One transaction: scope check, lock the student row (the lock transfer approval takes, school_transfers.py),
+    re-check scope under it, write + audit, commit. Anything that fails before the commit leaves nothing written: the request's
+    session closes without committing. Setting a value is naturally retry-safe; concurrent counsellors are last-write-wins, with
+    every write kept in the audit log."""
+    if user.role != "career_counselor":
+        raise HTTPException(403, "Career Counselor role required")
+    await _student_in_portfolio(db, user, student_id)
+    # Re-read under the lock so a transfer that committed while this request waited is seen, not the unlocked copy the check
+    # above left in the identity map. (An ORM FOR UPDATE select already refreshes it -- mutation-checked; populate_existing
+    # states that intent explicitly rather than relying on it.)
+    student = await db.scalar(select(SchoolStudent).where(SchoolStudent.id == student_id).with_for_update().execution_options(populate_existing=True))
+    if student is None:
+        raise HTTPException(404, "Student not found")
+    if student.school_id not in await _portfolio_school_ids(db, user):  # the re-check the transfer-race test guards
+        raise HTTPException(403, OUTSIDE_PORTFOLIO)
+    old = student.career_goal
+    student.career_goal = payload.career_goal
+    db.add(AuditLog(user_id=user.id, action="school.career_goal_update", entity_type="school_student", entity_id=str(student.id), metadata_json={"old": old, "new": payload.career_goal}))
+    await db.commit()
+    await db.refresh(student)
+    logger.info("career_goal_update", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "cleared": payload.career_goal is None}})
+    return {"school_student_id": student.id, "career_goal": student.career_goal, "updated_at": student.updated_at}

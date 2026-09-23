@@ -205,6 +205,13 @@ async def test_school_roles_see_exactly_what_the_overview_already_gives_them(cli
     assert view["tabs"]["skills"]["data"]["batches"] == overview["skills"]
 
 
+def test_openapi_documents_the_360_response_model():
+    from app.main import app
+
+    op = app.openapi()["paths"]["/api/v1/school/students/{student_id}/360-view"]["get"]
+    assert op["responses"]["200"]["content"]["application/json"]["schema"] == {"$ref": "#/components/schemas/Student360Out"}
+
+
 @pytest.mark.asyncio
 async def test_each_read_logs_ids_only(client, db_session, caplog):
     ctx = await mk_school(db_session, label="E13-Log")
