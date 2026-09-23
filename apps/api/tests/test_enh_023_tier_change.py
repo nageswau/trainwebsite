@@ -476,3 +476,47 @@ async def test_visa_case_can_be_updated_after_a_downgrade_but_not_opened(client,
     second = await client.post("/api/v1/workflows/overseas/visa", json={"application_id": apps[1].json()["id"], "status": "checklist"})
     assert second.status_code == 403
     assert "Visa support" in second.json()["detail"]
+
+
+# --- Concurrent tier changes queue on the school row lock (Task 2's with_for_update) -----------------------------------
+
+
+import asyncio  # noqa: E402
+from contextlib import asynccontextmanager  # noqa: E402
+
+import httpx  # noqa: E402
+from httpx import ASGITransport  # noqa: E402
+
+from app.core.database import SessionLocal  # noqa: E402
+from app.main import app  # noqa: E402
+from app.models import School  # noqa: E402
+
+
+@asynccontextmanager
+async def _school_locked(school_id):
+    session = SessionLocal()
+    try:
+        await session.execute(select(School).where(School.id == school_id).with_for_update())
+        yield
+    finally:
+        await session.rollback()
+        await session.close()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_tier_changes_queue_and_record_true_transitions(db_session):
+    w = await world(db_session, "platinum")
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as admin:
+        await login(admin, w["admin"].email)
+        async with _school_locked(w["school"].id):
+            first = asyncio.create_task(admin.patch(f"{SCHOOLS}/{w['school'].id}", json={"tier": "gold"}))
+            await asyncio.sleep(0.3)
+            second = asyncio.create_task(admin.patch(f"{SCHOOLS}/{w['school'].id}", json={"tier": "silver"}))
+            await asyncio.sleep(0.7)
+            assert not first.done() and not second.done(), "a tier change did not wait for the school row lock"
+        results = await asyncio.wait_for(asyncio.gather(first, second), timeout=20)
+    assert [r.status_code for r in results] == [200, 200]
+    rows = await tier_rows(db_session, w["school"].id)
+    assert len(rows) == 2
+    assert rows[0].metadata_json["from_tier"] == "platinum"
+    assert rows[1].metadata_json["from_tier"] == rows[0].metadata_json["to_tier"]
