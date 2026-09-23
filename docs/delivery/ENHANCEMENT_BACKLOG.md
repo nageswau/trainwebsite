@@ -938,7 +938,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 28 | Student Progress Scorecard | ❌ Gap | Rolled into **ENH-016** |
 | 29 | School Performance Dashboard | ❌ Gap | Rolled into **ENH-016** |
 | 30 | Reports & Downloads | ❌ Gap | See **ENH-015** |
-| 31 | School Feedback | 🟡 Implemented (pending browser validation + review) | See **ENH-018** |
+| 31 | School Feedback | ✅ Built | See **ENH-018** |
 | 32 | Communication Centre (WhatsApp/SMS/Email/push) | ❌ Gap | See **ENH-014** |
 | 33 | School Admin Login (role matrix) | ✅ Built | `DEC-SCOPE-011`, `rbac.py` |
 | 34 | Edusphere Admin Side (cross-school dashboard) | ❌ Gap | Rolled into **ENH-016** |
@@ -1832,8 +1832,9 @@ Duplicate feedback submission for the same activity — decide reject-vs-update
 target is SCH-001's `SchoolActivity` (SCH-004 has no activity/session entity); the viewer is Overseas Admin + Super
 Admin, because `edusphere_school_manager` has no RBAC grants (`RBAC_MATRIX.md:239`); feedback applies to typed
 (Edusphere) activities only, after they have taken place; the principal reads their own school's feedback; a duplicate
-is **rejected** (`409`), resolving the `NEEDS_CONFIRMATION` above. Status: implemented and browser-QA'd (group-A findings fixed;
-lower-severity findings deferred as listed in `docs/quality/RTM.md`, ENH-018 row); pending independent review.
+is **rejected** (`409`), resolving the `NEEDS_CONFIRMATION` above. Status: **complete** (2026-09-23): implemented, browser-QA'd
+with every QA finding fixed, merged with `main` and re-verified; the Codex review was waived by the owner. Evidence and
+recorded exclusions: `docs/quality/RTM.md`, ENH-018 row. Feedback submission is not tier-gated (spec D10).
 
 **Regression risks.** None.
 
