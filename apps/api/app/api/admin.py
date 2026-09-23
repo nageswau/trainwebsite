@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code, uuid_reference
 from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, SchoolStaffAssignment, SchoolStudent, University, User, UserRoleAssignment
-from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut
+from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.storage import storage
 
@@ -1191,6 +1191,23 @@ async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Dep
     out = await _school_out(db, school)
     # Task 4 inserts the post-commit notification call here.
     return {**out.model_dump(mode="json"), "tier_change": tier_change}
+
+
+@agents_router.get("/schools/{school_id}/tier-change-preview", response_model=TierChangeOut)
+async def preview_school_tier_change(school_id: UUID, tier: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-023 -- what a tier change would gain or lose, so the admin UI can confirm a downgrade before it happens. Read-only:
+    no lock, no write. An empty or absent `tier` means removing the tier."""
+    from app.api.schools import TIER_ORDER, tier_change_payload  # noqa: PLC0415 -- lazy, like update_school
+
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    school = await db.get(School, school_id)
+    if not school:
+        raise HTTPException(404, "School not found")
+    new_tier = tier or None
+    if new_tier is not None and new_tier not in TIER_ORDER:
+        raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
+    return tier_change_payload(school.tier, new_tier)
 
 
 ACADEMIC_YEAR_STATUSES = ["draft", "active", "closed"]

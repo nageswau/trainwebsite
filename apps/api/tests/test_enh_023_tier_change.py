@@ -156,3 +156,40 @@ async def test_openapi_documents_the_typed_tier_change(client):
     assert patch["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/SchoolUpdateOut")
     direction = spec["components"]["schemas"]["TierChangeOut"]["properties"]["direction"]
     assert set(direction["enum"]) == {"upgrade", "downgrade", "unchanged"}
+
+
+# --- Preview (AC-5) ----------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_preview_reports_a_downgrade_and_writes_nothing(client, db_session):
+    w = await world(db_session, "platinum")
+    await login(client, w["admin"].email)
+    r = await client.get(f"{SCHOOLS}/{w['school'].id}/tier-change-preview", params={"tier": "gold"})
+    assert r.status_code == 200
+    assert r.json()["direction"] == "downgrade"
+    assert [s["key"] for s in r.json()["lost"]] == PLATINUM
+    assert await tier_rows(db_session, w["school"].id) == []
+    await db_session.refresh(w["school"])
+    assert w["school"].tier == "platinum"
+
+
+@pytest.mark.asyncio
+async def test_preview_empty_tier_means_removal(client, db_session):
+    w = await world(db_session, "silver")
+    await login(client, w["admin"].email)
+    r = await client.get(f"{SCHOOLS}/{w['school'].id}/tier-change-preview", params={"tier": ""})
+    assert (r.json()["direction"], r.json()["to_tier"]) == ("downgrade", None)
+    assert len(r.json()["lost"]) == 7
+
+
+@pytest.mark.asyncio
+async def test_preview_errors(client, db_session):
+    w = await world(db_session, "gold")
+    await login(client, w["coordinator"].email)
+    assert (await client.get(f"{SCHOOLS}/{w['school'].id}/tier-change-preview", params={"tier": "gold"})).status_code == 403
+    await login(client, w["admin"].email)
+    missing = await client.get(f"{SCHOOLS}/00000000-0000-0000-0000-000000000000/tier-change-preview", params={"tier": "gold"})
+    assert missing.status_code == 404
+    bad = await client.get(f"{SCHOOLS}/{w['school'].id}/tier-change-preview", params={"tier": "diamond"})
+    assert (bad.status_code, bad.json()["detail"]) == (422, "tier must be one of bronze, silver, gold, platinum")
