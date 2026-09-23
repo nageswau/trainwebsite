@@ -44,6 +44,15 @@ def test_minimum_tier_allows_and_one_below_denies_with_exact_message():
     )
 
 
+def test_digital_skills_is_named_as_the_ui_names_it():
+    """QA-022-03 / D13: the counselor picks "Digital Skills"; the refusal (and the entitlements report) must say the same."""
+    assert _entitlement_denial("bronze", None, "web_designing", TODAY) == (
+        "not_included",
+        "This school's Bronze partnership does not include Digital skills (requires Silver or higher).",
+    )
+    assert dict(schools.TIER_SERVICES["silver"])["web_designing"] == "Digital skills"
+
+
 def test_tiers_are_cumulative():
     assert _entitlement_denial("platinum", None, "career_seminar", TODAY) is None
     assert _entitlement_denial("silver", None, "soft_skills", TODAY) is None

@@ -244,7 +244,7 @@ async def test_digital_skills_batch_needs_silver_soft_skills_bronze(client, db_s
     base = {"school_id": str(w["school"].id), "title": "T", "start_date": "2026-10-01"}
     r = await client.post(BATCHES, json=base | {"module_type": "digital_skills"})
     assert r.status_code == 403
-    assert r.json()["detail"] == "This school's Bronze partnership does not include Web designing (requires Silver or higher)."
+    assert r.json()["detail"] == "This school's Bronze partnership does not include Digital skills (requires Silver or higher)."
     written = select(func.count()).select_from(SchoolSkillBatch).where(SchoolSkillBatch.school_id == w["school"].id)
     assert await db_session.scalar(written) == 0
     assert (await client.post(BATCHES, json=base | {"module_type": "soft_skills"})).status_code == 201

@@ -809,7 +809,7 @@ TIER_SERVICES: dict[str, list[tuple[str, str]]] = {
     ],
     "silver": [
         ("individual_counselling", "Individual counselling"),
-        ("web_designing", "Web designing"),
+        ("web_designing", "Digital skills"),  # ENH-022 D13: named as the skills tracker names the module (key unchanged)
     ],
     "gold": [
         ("application_support", "Application support"),
