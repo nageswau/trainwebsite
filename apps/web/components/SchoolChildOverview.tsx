@@ -77,7 +77,8 @@ export function ChildStatusRow({ overview }: { overview: ChildOverview }) {
 // The counselor screens' own labels, so the Parent Portal cannot word a module differently.
 const SKILL_MODULES = Object.entries(MODULE_LABEL) as [SkillModule, string][];
 
-function SkillsCard({ skills }: { skills: NonNullable<ChildOverview["skills"]> }) {
+// Exported for ENH-013's Student 360° Skills tab, so both screens render a batch the same way.
+export function SkillsCard({ skills }: { skills: NonNullable<ChildOverview["skills"]> }) {
   return (
     <div className="card">
       <h3>Skills</h3>

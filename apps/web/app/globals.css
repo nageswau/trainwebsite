@@ -37,7 +37,7 @@
 .s360-lock { font-size: 11px; font-weight: 700; color: var(--muted); }
 .s360-panel { min-width: 0; }
 .s360-panel:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; border-radius: var(--radius); }
-.s360-panel > div > .card + .card { margin-top: 16px; }
+.s360-section > * + * { margin-top: 16px; }
 .s360-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin: 0; }
 .s360-facts dd { margin: 4px 0 0; font-weight: 700; }
 .s360-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
