@@ -989,6 +989,10 @@ class SchoolAccountInvite(Base, TimestampMixin):
     accepted_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+# ENH-025 (DEC-SCOPE-027 item 4): the fixed Gender list, shared by the CHECK below and schemas.StudentMasterFields.
+GENDERS = ("female", "male", "other", "prefer_not_to_say")
+
+
 class SchoolStudent(Base, TimestampMixin):
     """School-affiliated student (SCH-001, DATA_MODEL.md §6.11).
 
@@ -1005,6 +1009,17 @@ class SchoolStudent(Base, TimestampMixin):
     """
 
     __tablename__ = "school_students"
+    __table_args__ = (
+        # ENH-025 (DEC-SCOPE-027): a roll number is unique within school + academic year + grade + section.
+        # NULLS NOT DISTINCT makes a blank section/grade/year its own group; students with no roll number are
+        # never constrained. lower(section) so "A" and "a" are the same section.
+        Index(
+            "uq_school_students_roll",
+            "school_id", "academic_year_id", "grade_level", func.lower(text("section")), "roll_number",
+            unique=True, postgresql_where=text("roll_number IS NOT NULL"), postgresql_nulls_not_distinct=True,
+        ),
+        CheckConstraint(f"gender IS NULL OR gender IN ({', '.join(repr(g) for g in GENDERS)})", name="ck_school_students_gender"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
     # Business-facing unique Student ID (PRD_OPEN_ITEMS.md item 66 / CLIENT_QUESTIONS.md
@@ -1029,6 +1044,21 @@ class SchoolStudent(Base, TimestampMixin):
     # this from a client payload (spec's security review, role-escalation finding).
     academic_year_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"), nullable=True, index=True)
     grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # ENH-025 (DEC-SCOPE-027): School CRM.md §3 Student Master fields. All optional; validated at the API
+    # boundary by schemas.StudentMasterFields. grade_or_class stays the free-text display label.
+    section: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    roll_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    student_mobile: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    subjects: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    career_interests: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    global_education_interest: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    preferred_countries: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    preferred_courses: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # Internal only -- never serialized or logged (spec §5: in local storage mode the random key is the barrier).
+    photo_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    photo_content_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
 
 class SchoolParentLink(Base, TimestampMixin):
@@ -1062,6 +1092,10 @@ class SchoolStudentGradeHistory(Base, TimestampMixin):
     to_academic_year_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"))
     to_grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     to_grade_or_class: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # ENH-025: previous class details survive roll-number clearing on a year move (DEC-SCOPE-027 item 6).
+    from_section: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    from_roll_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_section: Mapped[str | None] = mapped_column(String(20), nullable=True)
     performed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
