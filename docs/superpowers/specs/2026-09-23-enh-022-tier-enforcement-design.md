@@ -51,6 +51,7 @@ the `DEC-SCOPE-024`/`025` precedent in `PRODUCT_DECISION_REGISTER.md`.
 | D8 | Frontend | **Server `403` + existing error display only.** No proactive hiding. |
 | D9 | Bridged overseas scope | Gate **creating a bridged application** (`application_support`) and **creating/updating a VisaCase on a bridged application** (`visa_support`). Other overseas-workflow writes stay ungated. |
 | D10 | Expiry calendar | **India date** (`Asia/Kolkata`). |
+| D11 | Frontend scope | **Error path only** in the six older panels (§9); no redesign. |
 
 ## 4. Approach
 
@@ -159,15 +160,38 @@ results (not a `TIER_SERVICES` key), staff assignment (D6), every `GET`, and `GE
 
 ## 9. Frontend
 
-No new screens, calls or tier logic (D8). Each affected panel's existing error area must render the
-server's string `detail`: `SchoolActivitiesPanel`, `SchoolCareerRecordsPanel`,
-`SchoolPsychometricRecordsPanel`, `SchoolTestPrepLanguagePanel`, the skills components
-(`SchoolSkillBatchForm`, `SchoolSkillEnrolments`, `SchoolSkillAttendance`, `SchoolSkillScores`,
-`SchoolSkillBatchHeader`), `PortfolioPanel`/`PortfolioEntryForm`, `AdminSchoolApplicationsPanel`, and the
-visa-case callers of `/workflows/overseas/visa` (`CounselorVisaPanel`, `VisaChecklistPanel`,
-`WorkflowPanel`). A panel that replaces a `403` string with a generic message is fixed minimally using
-`detailMessage()` from `apps/web/lib/apiErrors.ts`; loading/empty states are untouched. A `403` writes
-nothing, so the form keeps the user's input.
+No new screens, calls, components, CSS or tier logic (D8). Audit (2026-09-23, `frontend-ui-engineering`)
+of every screen that calls a §7 route:
+
+| Screen | Shows `403` detail | Failure announced | Network failure | Message placement |
+|---|---|---|---|---|
+| `PortfolioPanel`, `PortfolioEntryForm` (ENH-012) | yes (shared `detailMessage`) | `role="alert"` | `NOT_COMPLETED`, busy reset | beside the form |
+| Skills components via `lib/skills.ts` `send()` (ENH-011) | yes | yes | yes | beside the form |
+| `WorkflowPanel` visa create/update specs | yes | `role="alert"`, assertive | try/catch | beside the form |
+| `SchoolActivitiesPanel`, `SchoolCareerRecordsPanel`, `SchoolPsychometricRecordsPanel`, `SchoolTestPrepLanguagePanel`, `AdminSchoolApplicationsPanel`, `CounselorVisaPanel` | yes (local copy of `detailMessage`) | **no** — polite `role="status"`, same as success | **stuck** — no try/catch around `fetch`, `busy` never resets | panel-level; in `SchoolActivitiesPanel`/`SchoolTestPrepLanguagePanel` one shared message area sits below several forms (off-screen on mobile) |
+
+`VisaChecklistPanel` only reads (`GET …/interview-prep`) and is out of scope.
+
+**Decision D11 (user, 2026-09-23): error path only, in the six older panels.** Changes are limited to the
+submit-failure path the new `403` travels; no layout, visual, loading-state or empty-state redesign.
+
+1. Replace each panel's local `detailMessage` copy with `detailMessage` from `apps/web/lib/apiErrors.ts`
+   (identical for string/list details; adds the generic fallback so a non-JSON `5xx` never renders an
+   empty red box).
+2. Wrap each submit's `fetch` in `try/catch`; on a network failure show `NOT_COMPLETED`, and reset `busy`
+   in every path.
+3. Render failures as `role="alert"` (assertive); success keeps `role="status"`/`aria-live="polite"`.
+   Existing `.form-error`/`.form-message` classes only.
+4. Where one panel hosts several forms sharing one message area, record which form the message belongs
+   to and render it inside that form's card, directly under its submit button, so the error is visible
+   where the user acted (mobile included). `CounselorVisaPanel` already keys messages per application.
+5. On failure the form is **not** reset — the user's input is kept (a `403` writes nothing). Focus stays
+   on the submit control; the alert is announced without moving focus.
+
+Component tests (Vitest + Testing Library, `apps/web/tests/components/`), one file per panel: a mocked
+`403` renders the exact `detail` in `role="alert"` beside the failing form and keeps the typed input; a
+rejected `fetch` shows `NOT_COMPLETED` and re-enables the submit button; a success still renders
+`role="status"`.
 
 ## 10. Error states and edge cases
 
