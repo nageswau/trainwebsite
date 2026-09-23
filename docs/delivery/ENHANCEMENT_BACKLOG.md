@@ -2105,7 +2105,10 @@ service. List them first (read-only) and confirm with the business:
   `pay-001` fail on `main` too; `sch-team-management:80` passes on a fresh database but fails on a large one —
   `SchoolStudentsPanel`'s `#edit-teacher` uses an uncontrolled `defaultValue` that can apply before the async
   teacher list arrives, so an assigned (inactive) teacher shows as "Unassigned" (a real, timing-dependent bug);
-  `ovs-007:8` is flaky on first load (search typed before hydration).
+  `ovs-007:8` is flaky on first load (search typed before hydration); `sch-004-005-006:190` and `:243` pass on a
+  database where the spec has not run before but fail on every re-run — the spec searches for the fixed text
+  "Search Alpha" / "Search Beta" while each run creates "E2E Search Alpha School <timestamp>", so earlier runs'
+  schools also match (fresh DB: 1 match, pass; next run: 2 matches, fail). Make the search term unique per run.
 
 ---
 
