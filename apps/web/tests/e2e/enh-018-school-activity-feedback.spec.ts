@@ -42,15 +42,12 @@ test("coordinator gives feedback by keyboard; principal and admin read it; a dup
   expect(invited.status()).toBe(201);
   const { development_invite_token: principalToken } = await invited.json();
 
-  // From the Activities list to the Feedback page.
+  // From the Activities list straight to this activity's feedback form (QA-018-09), keyboard only, at phone width.
+  await page.setViewportSize({ width: 320, height: 800 });
   await page.goto("/school/coordinator/activities");
   await page.getByRole("link", { name: `Give feedback for ${title}` }).click();
-  await page.waitForURL("**/school/coordinator/feedback");
-
-  // Keyboard only, at phone width.
-  await page.setViewportSize({ width: 320, height: 800 });
-  await page.getByRole("button", { name: `Give feedback for ${title}` }).focus();
-  await page.keyboard.press("Enter");
+  await page.waitForURL(`**/school/coordinator/feedback?activity=${activity.id}`);
+  await expect(page.getByRole("link", { name: "Show all activities" })).toBeVisible();
   await expect(page.getByRole("heading", { name: `Feedback: ${title}` })).toBeFocused();
   await page.keyboard.press("Tab"); // Overall rating group
   for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowRight"); // 4 – Very good
@@ -66,7 +63,7 @@ test("coordinator gives feedback by keyboard; principal and admin read it; a dup
   await page.keyboard.press("Tab");
   await page.keyboard.press("Enter");
   await expect(page.getByText(`Feedback saved for ${title}.`)).toBeVisible();
-  await page.getByText("View feedback").first().click();
+  // The focused activity's saved feedback is shown expanded straight away.
   await expect(page.getByText("4 – Very good")).toBeVisible();
   await expect(page.getByText("5 – Excellent")).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), { message: "long feedback text overflows at 320px" }).toBe(true);
@@ -75,6 +72,11 @@ test("coordinator gives feedback by keyboard; principal and admin read it; a dup
   // A direct (server-rendered) load of the Feedback page hydrates cleanly and shows the stored feedback.
   await page.goto("/school/coordinator/feedback");
   await expect(page.getByRole("list", { name: "Completed Edusphere activities" }).getByText("Submitted", { exact: true })).toBeVisible();
+
+  // The Activities list now offers View feedback for it (QA-018-10).
+  await page.goto("/school/coordinator/activities");
+  await expect(page.getByRole("link", { name: `View feedback for ${title}` })).toBeVisible();
+  await expect(page.getByRole("link", { name: `Give feedback for ${title}` })).toHaveCount(0);
 
   // A second submission (a retry, or another tab) is refused and the stored feedback is unchanged.
   const duplicate = await page.request.post(`/api/v1/school/activities/${activity.id}/feedback`, { data: { rating: 1, satisfaction: 1, feedback: "again" } });
@@ -91,6 +93,9 @@ test("coordinator gives feedback by keyboard; principal and admin read it; a dup
   await expect(page.getByText(title)).toBeVisible();
   await expect(page.getByRole("list", { name: "Completed Edusphere activities" }).getByText("Submitted", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /Give feedback/ })).toHaveCount(0);
+  // ...and is refused on the coordinator's page rather than shown a form it cannot submit (QA-018-12).
+  await page.goto("/school/coordinator/feedback");
+  await expect(page.getByText("School Coordinator role required")).toBeVisible();
 
   // Edusphere management reads it across schools, filtered to this one.
   await signIn(page, ADMIN_EMAIL, ADMIN_PASSWORD, "**/overseas/admin/dashboard");
