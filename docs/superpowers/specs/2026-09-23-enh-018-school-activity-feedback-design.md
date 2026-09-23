@@ -131,8 +131,9 @@ Reuse: `PortalShell`, `serverApi`, `accessUnavailable`/`accessDenied`, `loading.
 `role=status`/`role=alert` focus pattern and "Showing X of Y" paging.
 
 1. **`/school/coordinator/feedback`, `/school/principal/feedback`** — new `SCHOOL_NAV` entries; both render
-   `SchoolActivityFeedbackPanel` (`canSubmit` true for coordinator only). Status filter select; table: Activity, Date,
-   Participation ("N of M present" / "Not marked"), Status (text badge "Awaiting"/"Submitted"), Action. Submitted
+   `SchoolActivityFeedbackPanel` (`canSubmit` true for coordinator only). Status filter select; a `.link-list` (the
+   ENH-005 list, which reflows on a phone, rather than a table) whose rows show Activity, type, Date, Participation
+   ("N of M present" / "Not marked"), Status (text badge "Awaiting feedback"/"Submitted") and the action. Submitted
    feedback expands via native `<details><summary>`.
 2. **`ActivityFeedbackForm`** — inline `.action-card` below the table (the attendance pattern). Rating and satisfaction:
    `<fieldset><legend>` with five native radios labelled "1 – Poor … 5 – Excellent". Trainer/Counsellor input
