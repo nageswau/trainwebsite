@@ -2363,3 +2363,25 @@ criteria blockers (field-by-field scope, Branch design).
 
 **Consequences:** migration `0037_school_skills` (six create-only tables); router `app/api/school_skills.py` (ten endpoints under `/school/career-counselor`); additive `skills` key on `GET /school/students/{id}/overview`; timeline categories `soft_skills`/`digital_skills`; `GET /school/entitlements` reports `used` for `soft_skills`/`web_designing`. `SCH-008-AC04`'s "Skills… never appear" no longer holds for Skills (Portfolio still absent).
 
+### DEC-SCOPE-027 — Student Master field coverage (`ENH-025`)
+
+**Status:** `EXPLICIT_APPROVAL` — user, in-session, 2026-09-23 (brainstorming answers, recorded in
+`docs/superpowers/specs/2026-09-23-enh-025-student-master-fields-design.md` §9).
+**Evidence:** `EVID-014` (`docs/sources/School CRM.md:118-177`); `ENHANCEMENT_BACKLOG.md` `ENH-025`.
+**Decisions:**
+1. `grade_or_class` kept unchanged; new `section` column; ENH-001's `grade_level` is the Grade column.
+2. Career interests, Global education interest, Preferred countries, Preferred courses on `SchoolStudent`;
+   written by the School Coordinator (all paths) and the Career Counsellor (own portfolio, dedicated route).
+3. Photo via authorized upload/stream endpoints; excluded from bulk upload.
+4. Gender fixed list (`female`, `male`, `other`, `prefer_not_to_say`); multi-value fields as JSON string
+   lists; Global education interest nullable boolean.
+5. Roll number unique per school + academic year + grade + section (blank values form a group).
+6. Any academic-year move (promote or hold back) clears roll number; grade history records previous
+   section/roll number and new section.
+7. Transfer approval clears section and roll number.
+8. All new fields optional.
+9. Photo metadata (EXIF etc.) stripped in pure Python before storage.
+
+**`NEEDS_CONFIRMATION`:** consent / legal basis for storing photos of minors (client).
+**New Feature ID:** none — additive scope on `ENH-025`.
+
