@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import CareerPreferencesCard from "@/components/CareerPreferencesCard";
 
 type Student = { id: string; full_name: string; school_name: string };
 type Record_ = { id: string; school_student_id: string; record_type: string; notes: string; created_at: string };
@@ -101,6 +102,8 @@ export default function SchoolCareerRecordsPanel({ records, students }: { record
           </form>
         )}
       </div>
+
+      <CareerPreferencesCard students={students} />
 
       {message && (
         <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite">
