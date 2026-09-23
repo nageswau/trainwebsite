@@ -3,21 +3,19 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import FormMessage, { type FormMessageState } from "@/components/FormMessage";
+import { sendJson } from "@/lib/apiErrors";
+
 type Activity = { id: string; title: string; scheduled_at: string };
 type Student = { id: string; full_name: string };
-
-function detailMessage(detail: unknown) {
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
-  return "Something went wrong.";
-}
 
 // SCH-001: schedule an activity, mark who attended -- for the Coordinator's own
 // institution only.
 export default function SchoolActivitiesPanel({ activities, students }: { activities: Activity[]; students: Student[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  // ENH-022: which form the message belongs to, so it renders beside that form.
+  const [message, setMessage] = useState<(FormMessageState & { form: "schedule" | "attendance" }) | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [present, setPresent] = useState<Record<string, boolean>>({});
 
@@ -27,18 +25,17 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
     setBusy(true);
     setMessage(null);
     const form = new FormData(formElement);
-    const response = await fetch("/api/v1/school/activities", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: form.get("title"), scheduled_at: new Date(String(form.get("scheduled_at"))).toISOString(), activity_type: form.get("activity_type") || undefined }),
+    const result = await sendJson("/api/v1/school/activities", "POST", {
+      title: form.get("title"),
+      scheduled_at: new Date(String(form.get("scheduled_at"))).toISOString(),
+      activity_type: form.get("activity_type") || undefined,
     });
-    const data = await response.json().catch(() => ({}));
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!result.ok) {
+      setMessage({ text: result.message, failed: true, form: "schedule" });
       return;
     }
-    setMessage({ text: `${data.title} scheduled.`, failed: false });
+    setMessage({ text: `${result.data.title} scheduled.`, failed: false, form: "schedule" });
     formElement.reset();
     router.refresh();
   }
@@ -54,18 +51,14 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
     setBusy(true);
     setMessage(null);
     const records = students.map((s) => ({ student_id: s.id, present: !!present[s.id] }));
-    const response = await fetch(`/api/v1/school/activities/${markingId}/attendance`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ records }),
-    });
-    const data = await response.json().catch(() => ({}));
+    const result = await sendJson(`/api/v1/school/activities/${markingId}/attendance`, "POST", { records });
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!result.ok) {
+      setMessage({ text: result.message, failed: true, form: "attendance" });
       return;
     }
-    setMessage({ text: `Attendance recorded for ${data.marked} student(s).`, failed: false });
+    // The attendance card closes on success, so this confirmation shows under the schedule form instead.
+    setMessage({ text: `Attendance recorded for ${result.data.marked} student(s).`, failed: false, form: "schedule" });
     setMarkingId(null);
     router.refresh();
   }
@@ -119,6 +112,7 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
               </div>
             </form>
           )}
+          {message?.form === "attendance" && <FormMessage message={message} />}
         </div>
       )}
 
@@ -145,13 +139,8 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
           </div>
           <button className="btn" disabled={busy}>{busy ? "Scheduling…" : "Schedule activity"}</button>
         </form>
+        {message?.form === "schedule" && <FormMessage message={message} />}
       </div>
-
-      {message && (
-        <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite">
-          {message.text}
-        </div>
-      )}
     </div>
   );
 }
