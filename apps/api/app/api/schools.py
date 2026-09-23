@@ -18,10 +18,11 @@ import secrets
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from sqlalchemy import select, text
-from sqlalchemy.exc import DBAPIError, IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -839,6 +840,64 @@ def _cumulative_services(tier: str | None) -> list[tuple[str, str]]:
     return services
 
 
+# ENH-022 / DEC-SCOPE-027: the tier is enforced on every write to a TIER_SERVICES service, not only reported above.
+TIER_TIMEZONE = ZoneInfo("Asia/Kolkata")  # D10: a partnership expires on the India calendar
+TIER_DENIED = "school.tier_access_denied"
+NO_ACTIVE_TIER = "This school has no active partnership tier."
+SERVICE_LABELS = {key: label for services in TIER_SERVICES.values() for key, label in services}
+# Request values -> the service they consume; also the allowlists those request fields are validated against.
+ACTIVITY_SERVICE_KEYS = {"career_seminar": "career_seminar", "career_awareness_session": "career_awareness_session", "parent_orientation": "parent_orientation", "campus_visit": "monthly_campus_visits"}
+TEST_PREP_SERVICE_KEYS = {"ielts": "ielts_coaching", "sat": "sat_coaching"}
+
+
+def _today_ist() -> date:
+    return datetime.now(TIER_TIMEZONE).date()
+
+
+def _minimum_tier(service_key: str) -> str:
+    for tier in TIER_ORDER:
+        if any(key == service_key for key, _ in TIER_SERVICES[tier]):
+            return tier
+    raise ValueError(f"Unknown tier service key: {service_key!r}")
+
+
+def _entitlement_denial(tier: str | None, valid_until: date | None, service_key: str | None, today: date) -> tuple[str, str] | None:
+    """(reason, 403 message) when the school may not use `service_key`, else None. `service_key=None` asks only for a
+    valid tier (D7). An unknown key raises: a mis-wired call site must fail loudly, never deny forever in silence."""
+    minimum = _minimum_tier(service_key) if service_key is not None else None
+    if tier not in TIER_ORDER:
+        return "no_tier", NO_ACTIVE_TIER
+    if valid_until is not None and valid_until < today:
+        return "expired", f"This school's partnership expired on {valid_until.strftime('%d %b %Y')}."
+    if minimum is not None and service_key not in {key for key, _ in _cumulative_services(tier)}:
+        return "not_included", (
+            f"This school's {tier.capitalize()} partnership does not include {SERVICE_LABELS[service_key]} "
+            f"(requires {minimum.capitalize()} or higher)."
+        )
+    return None
+
+
+async def require_school_entitlement(db: AsyncSession, user: User, school_id: UUID, service_key: str | None) -> None:
+    """403 unless the school's valid cumulative tier includes `service_key`. Call it after the route's own role and scope
+    checks and before any write: a denial commits its audit row (D12), so nothing else may be pending in the session."""
+    school = await db.get(School, school_id)
+    tier = school.tier if school else None
+    denial = _entitlement_denial(tier, school.tier_valid_until if school else None, service_key, _today_ist())
+    if denial is None:
+        return
+    reason, message = denial
+    fields = {"actor_id": str(user.id), "role": user.role, "school_id": str(school_id), "service_key": service_key, "reason": reason}
+    db.add(AuditLog(user_id=user.id, action=TIER_DENIED, entity_type="school", entity_id=str(school_id), outcome="denied", metadata_json={"service_key": service_key, "reason": reason, "tier": tier}))
+    try:
+        await db.commit()
+    except SQLAlchemyError:
+        # The denial stands even when its audit row cannot be written.
+        await db.rollback()
+        logger.exception("tier_access_denied_audit_failed", extra={"extra_fields": fields})
+    logger.warning("tier_access_denied", extra={"extra_fields": fields})
+    raise HTTPException(403, message)
+
+
 @router.get("/entitlements")
 async def school_entitlements(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """DEC-SCOPE-017 -- what this school's partnership tier includes, with a REAL usage
@@ -1396,7 +1455,7 @@ async def create_activity(payload: dict, user: User = Depends(get_current_user),
     # DEC-SCOPE-017: optional entitlement-tracking category -- lets an Entitlements-tracked
     # activity (career seminar, parent orientation, campus visit, ...) actually feed
     # `GET /school/entitlements`'s usage counts; free-text activities keep working unset.
-    if activity_type and activity_type not in {"career_seminar", "career_awareness_session", "parent_orientation", "campus_visit"}:
+    if activity_type and activity_type not in ACTIVITY_SERVICE_KEYS:
         raise HTTPException(422, "activity_type must be one of career_seminar, career_awareness_session, parent_orientation, campus_visit")
     activity = SchoolActivity(school_id=school_id, title=title, scheduled_at=datetime.fromisoformat(scheduled_at), created_by_user_id=user.id, activity_type=activity_type)
     db.add(activity)
@@ -1771,7 +1830,7 @@ async def create_test_prep_record(payload: dict, user: User = Depends(get_curren
         raise HTTPException(422, "school_student_id is required")
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
     test_type = payload.get("test_type")
-    if test_type not in {"ielts", "sat"}:
+    if test_type not in TEST_PREP_SERVICE_KEYS:
         raise HTTPException(422, "test_type must be one of ielts, sat")
     record = SchoolTestPrepRecord(school_student_id=student.id, academic_team_user_id=user.id, test_type=test_type, target_score=payload.get("target_score"))
     db.add(record)
