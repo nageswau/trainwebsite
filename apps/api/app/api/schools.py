@@ -1457,6 +1457,8 @@ async def create_activity(payload: dict, user: User = Depends(get_current_user),
     # `GET /school/entitlements`'s usage counts; free-text activities keep working unset.
     if activity_type and activity_type not in ACTIVITY_SERVICE_KEYS:
         raise HTTPException(422, "activity_type must be one of career_seminar, career_awareness_session, parent_orientation, campus_visit")
+    # ENH-022: a typed activity consumes its tier service; a free-text one still needs a valid partnership (D7).
+    await require_school_entitlement(db, user, school_id, ACTIVITY_SERVICE_KEYS[activity_type] if activity_type else None)
     activity = SchoolActivity(school_id=school_id, title=title, scheduled_at=datetime.fromisoformat(scheduled_at), created_by_user_id=user.id, activity_type=activity_type)
     db.add(activity)
     await db.flush()
@@ -1478,6 +1480,7 @@ async def mark_attendance(activity_id: UUID, payload: dict, user: User = Depends
     activity = await db.get(SchoolActivity, activity_id)
     if not activity or activity.school_id != school_id:
         raise HTTPException(404, "Activity not found")
+    await require_school_entitlement(db, user, school_id, ACTIVITY_SERVICE_KEYS[activity.activity_type] if activity.activity_type else None)
     records = payload.get("records", [])
     if not isinstance(records, list) or not records:
         raise HTTPException(422, "records must be a non-empty list of {student_id, present}")
