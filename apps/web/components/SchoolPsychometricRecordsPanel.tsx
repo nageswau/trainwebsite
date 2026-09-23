@@ -3,21 +3,19 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import FormMessage, { type FormMessageState } from "@/components/FormMessage";
+import { sendJson } from "@/lib/apiErrors";
+
 type Student = { id: string; full_name: string; school_name: string };
 type Record_ = { id: string; school_student_id: string; assessment_type: string; report_url: string | null; status: string; created_at: string };
-
-function detailMessage(detail: unknown) {
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
-  return "Something went wrong.";
-}
 
 // SCH-005: Psychometric Team assigns an assessment, then uploads a report against it --
 // visible to readers immediately, no Draft/Published gate for this content.
 export default function SchoolPsychometricRecordsPanel({ records, students }: { records: Record_[]; students: Student[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  // ENH-022: which form the message belongs to, so it renders beside that form.
+  const [message, setMessage] = useState<(FormMessageState & { form: "assign" | "attach" }) | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -26,18 +24,13 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
     setBusy(true);
     setMessage(null);
     const form = new FormData(formElement);
-    const response = await fetch("/api/v1/school/psychometric-team/records", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ school_student_id: form.get("school_student_id"), assessment_type: form.get("assessment_type") }),
-    });
-    const data = await response.json().catch(() => ({}));
+    const result = await sendJson("/api/v1/school/psychometric-team/records", "POST", { school_student_id: form.get("school_student_id"), assessment_type: form.get("assessment_type") });
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!result.ok) {
+      setMessage({ text: result.message, failed: true, form: "assign" });
       return;
     }
-    setMessage({ text: "Assessment assigned.", failed: false });
+    setMessage({ text: "Assessment assigned.", failed: false, form: "assign" });
     formElement.reset();
     router.refresh();
   }
@@ -47,18 +40,14 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
     setBusy(true);
     setMessage(null);
     const form = new FormData(event.currentTarget);
-    const response = await fetch(`/api/v1/school/psychometric-team/records/${recordId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ report_url: form.get("report_url") }),
-    });
-    const data = await response.json().catch(() => ({}));
+    const result = await sendJson(`/api/v1/school/psychometric-team/records/${recordId}`, "PATCH", { report_url: form.get("report_url") });
     setBusy(false);
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail), failed: true });
+    if (!result.ok) {
+      setMessage({ text: result.message, failed: true, form: "attach" });
       return;
     }
-    setMessage({ text: "Report attached.", failed: false });
+    // The attach card closes on success, so this confirmation shows under the assign form instead.
+    setMessage({ text: "Report attached.", failed: false, form: "assign" });
     setUploadingId(null);
     router.refresh();
   }
@@ -113,6 +102,7 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
               <button type="button" className="btn secondary" onClick={() => setUploadingId(null)}>Cancel</button>
             </div>
           </form>
+          {message?.form === "attach" && <FormMessage message={message} />}
         </div>
       )}
 
@@ -138,13 +128,8 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
             <button className="btn" disabled={busy}>{busy ? "Saving…" : "Assign assessment"}</button>
           </form>
         )}
+        {message?.form === "assign" && <FormMessage message={message} />}
       </div>
-
-      {message && (
-        <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite">
-          {message.text}
-        </div>
-      )}
     </div>
   );
 }
