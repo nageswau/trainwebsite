@@ -1,5 +1,6 @@
 import PortalShell from "@/components/PortalShell";
 import SchoolCareerRecordsPanel from "@/components/SchoolCareerRecordsPanel";
+import Student360Directory from "@/components/Student360Directory";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
@@ -26,6 +27,7 @@ export default async function SchoolCareerCounselorDashboardPage() {
   return (
     <PortalShell nav={SCHOOL_NAV["career-counselor"]} roleLabel="Career Counselor" userName={user.full_name}>
       <SchoolCareerRecordsPanel records={records} students={students} />
+      <Student360Directory role="career_counselor" students={students} />
     </PortalShell>
   );
 }

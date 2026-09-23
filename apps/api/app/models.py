@@ -1044,6 +1044,9 @@ class SchoolStudent(Base, TimestampMixin):
     # this from a client payload (spec's security review, role-escalation finding).
     academic_year_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"), nullable=True, index=True)
     grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # ENH-013: the Career Counselor's one-line Career Passport goal (School CRM.md §8 "Career Interest"). Nullable, no
+    # default, no backfill (migration 0039); written only by PATCH /school/students/{id}/career-goal.
+    career_goal: Mapped[str | None] = mapped_column(String(120), nullable=True)
     # ENH-025 (DEC-SCOPE-029): School CRM.md §3 Student Master fields. All optional; validated at the API
     # boundary by schemas.StudentMasterFields. grade_or_class stays the free-text display label.
     section: Mapped[str | None] = mapped_column(String(20), nullable=True)

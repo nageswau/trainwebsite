@@ -52,10 +52,12 @@ async def mk_student(db, school, coordinator, name: str = "Child", teacher=None)
     return student
 
 
-async def mk_school(db, *, admin=None, label: str = "School", students: int = 1, with_teacher: bool = True) -> dict:
-    """A school with a coordinator, teacher, principal, `students` students (the first assigned to the teacher) and a parent linked to the first student."""
+async def mk_school(db, *, admin=None, label: str = "School", students: int = 1, with_teacher: bool = True, tier: str | None = "platinum", tier_valid_until=None) -> dict:
+    """A school with a coordinator, teacher, principal, `students` students (the first assigned to the teacher) and a parent linked to the first student.
+
+    Platinum by default so every tier-gated service (ENH-022) is available unless a test asks otherwise."""
     admin = admin or await mk_user(db, role="overseas_admin", name="Overseas Admin")
-    school = School(name=f"ENH-005 {label} {uuid.uuid4().hex[:6]}", created_by_user_id=admin.id)
+    school = School(name=f"ENH-005 {label} {uuid.uuid4().hex[:6]}", created_by_user_id=admin.id, tier=tier, tier_valid_until=tier_valid_until)
     db.add(school)
     await db.flush()
     coordinator = await mk_user(db, role="school_coordinator", name=f"{label} Coordinator", school_id=school.id, assigned_by=admin)

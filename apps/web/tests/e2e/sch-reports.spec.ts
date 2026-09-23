@@ -23,6 +23,7 @@ test("coordinator and principal see real report figures; teacher is denied (Scho
   await page.fill("#school-name", `E2E Reports School ${unique}`);
   await page.fill("#school-coordinator-name", "E2E Reports Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 

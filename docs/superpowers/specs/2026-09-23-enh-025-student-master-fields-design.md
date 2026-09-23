@@ -104,7 +104,7 @@ promotion in the same insert it already performs. Pre-existing history rows keep
   same statement that already clears `assigned_teacher_user_id`/`pending_parent_email`. Every other
   new field carries over.
 
-### 2.5 Migration `0039_student_master_fields` (revises `0038_portfolio`)
+### 2.5 Migration `0040_student_master_fields` (revises `0039_student_career_goal`)
 
 1. Add columns (guarded "add if missing", same style as `0030`), including the grade-history columns
    and the gender CHECK constraint.
@@ -116,10 +116,9 @@ promotion in the same insert it already performs. Pre-existing history rows keep
 3. Create `uq_school_students_roll` (no roll numbers exist yet, so no conflict is possible).
 4. `downgrade()` drops the index, the constraint and the columns. `grade_or_class` is never written.
 
-**Numbering:** unmerged `ENH-013` plans `0039_student_career_goal`, also revising `0038`. Decided
-2026-09-23 (`DEC-SCOPE-029` item 11): ENH-025 merges first and keeps `0039`; ENH-013 renames its file to
-`0040` and re-chains onto `0039_student_master_fields` (precedent: commit `6c66f9a`, ENH-012). A test
-asserts a single Alembic head.
+**Numbering:** `ENH-013` also added a `0039` (`0039_student_career_goal`, revising `0038`) and merged to
+`main` first, so this migration is `0040_student_master_fields`, revising `0039_student_career_goal`
+(`DEC-SCOPE-029` item 11; precedent: commit `6c66f9a`, ENH-012). A test asserts a single Alembic head.
 
 ## 3. Backend / API
 
@@ -401,7 +400,7 @@ bulk row carrying a mobile number fails without echoing it.
 - Controlled vocabularies for subjects/countries/courses (no source defines them).
 - ~~`NEEDS_CONFIRMATION`: consent / legal basis for storing photos of minors~~ — resolved 2026-09-23: the school is
   responsible (`DEC-SCOPE-029` item 10).
-- Migration order: ENH-025 merges first; ENH-013 renumbers its migration to 0040 (`DEC-SCOPE-029` item 11).
+- Migration order: ENH-013 merged first; this migration is 0040, chained after `0039_student_career_goal` (`DEC-SCOPE-029` item 11).
 - Pre-existing: bulk upload has no file-size or row-count cap (DoS surface); ENH-025's per-row
   savepoints add round-trips but do not change the bound.
 - Pre-existing: the Next API proxy buffers whole request bodies before forwarding.

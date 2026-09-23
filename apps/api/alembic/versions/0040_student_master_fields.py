@@ -1,7 +1,7 @@
 """ENH-025 -- Student Master fields on school_students, class details on the grade-history ledger.
 
-Revision ID: 0039_student_master_fields
-Revises: 0038_portfolio
+Revision ID: 0040_student_master_fields
+Revises: 0039_student_career_goal
 
 docs/superpowers/specs/2026-09-23-enh-025-student-master-fields-design.md §2 (DEC-SCOPE-029). Additive only:
 nullable columns, a CHECK on gender, a partial unique index on roll numbers, and a backfill of `section`
@@ -9,8 +9,10 @@ from `grade_or_class` where the label unambiguously ends in a section letter. `g
 never written. Unparseable labels leave `section` NULL (never guessed) and their student codes are printed,
 same as 0030. `downgrade()` drops everything this adds.
 
-Merge order (DEC-SCOPE-029 item 11): ENH-025 merges first and keeps 0039; ENH-013's `0039_student_career_goal`
-(also on 0038) is renumbered to 0040 and re-chained onto this revision when it merges.
+Re-chained on merge with `main`, 2026-09-23 (DEC-SCOPE-029 item 11): cut as `0039_student_master_fields` on
+`0038_portfolio`, but ENH-013 merged first with `0039_student_career_goal` on the same parent, so this became
+`0040` on top of it (the later-merging branch moves; precedent: 0038_portfolio's own re-chain note). The two
+migrations touch different columns (ENH-013 adds only `career_goal`).
 """
 
 import re
@@ -20,8 +22,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0039_student_master_fields"
-down_revision = "0038_portfolio"
+revision = "0040_student_master_fields"
+down_revision = "0039_student_career_goal"
 branch_labels = None
 depends_on = None
 
@@ -79,7 +81,7 @@ def upgrade() -> None:
                 continue
             bind.execute(sa.text("UPDATE school_students SET section = :section WHERE id = :id"), {"section": section, "id": row_id})
         if unparsed:
-            print(f"[0039_student_master_fields] {len(unparsed)} school_students row(s) had no parseable section in grade_or_class -- section left NULL: {', '.join(unparsed)}")
+            print(f"[0040_student_master_fields] {len(unparsed)} school_students row(s) had no parseable section in grade_or_class -- section left NULL: {', '.join(unparsed)}")
 
     op.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_school_students_roll ON school_students "

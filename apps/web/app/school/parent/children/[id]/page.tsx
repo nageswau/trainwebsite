@@ -39,7 +39,10 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
   return (
     <PortalShell nav={SCHOOL_NAV.parent} roleLabel="Parent" userName={user.full_name}>
       <div className="portal-content">
-        <a className="btn secondary" href="/school/parent/dashboard">Back to my children</a>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a className="btn" href={`/school/parent/children/${id}/360`}>Open 360° view</a>
+          <a className="btn secondary" href="/school/parent/dashboard">Back to my children</a>
+        </div>
         <SchoolChildOverview overview={overview} />
         <div className="card">
           <h3>Grade history</h3>
