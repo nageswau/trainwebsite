@@ -85,6 +85,12 @@ async def get_portfolio(student_id: UUID, user: User = Depends(get_current_user)
     """No `response_model` -- matches `student_timeline()`'s own convention for a computed aggregate
     endpoint (schools.py:1040), the closest existing precedent this feature is modeled on."""
     student = await _load_student_for_reader(db, user, student_id)
+    return await portfolio_payload(db, user, student)
+
+
+async def portfolio_payload(db: AsyncSession, user: User, student: SchoolStudent) -> dict:
+    """The portfolio body for an already scope-checked student -- extracted unchanged from `get_portfolio` so ENH-013's
+    Student 360° view can reuse it. `user` only decides `can_edit`; it widens nothing."""
     can_edit = _can_edit_portfolio(user, student)
     profile_complete = _profile_complete(student)
 
