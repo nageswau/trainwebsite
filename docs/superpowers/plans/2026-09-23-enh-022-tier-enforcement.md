@@ -962,6 +962,6 @@ For each other panel write the same three cases against its primary write (Caree
 
 ## Self-review
 
-- **Spec coverage:** §5 helper/strings → T1; §6 order/compat → Global Constraints + each task; §7 routes → T2 (activities ×2), T3 (career, psychometric ×2), T4 (test-prep ×2, language ×2), T5 (skills ×8), T6 (portfolio ×4), T7 (bridge, visa ×2) = 23 routes; §8 transactions/audit → T1 tests + per-route "row unchanged + denial count"; §9 frontend → T9–T10; AC-1…AC-10 → T1–T10; AC-8 → T8; §12 E2E → T11; §13 docs → T12; §15 security (order, no oracle, fail-closed, audit fields) → T1 + out-of-scope tests in T2/T3/T5.
+- **Spec coverage:** §5 helper/strings → T1; §6 order/compat → Global Constraints + each task; §7 routes → T2 (activities ×2), T3 (career, psychometric ×2), T4 (test-prep ×2, language ×2), T5 (skills ×8), T6 (portfolio ×4), T7 (bridge, visa ×2) = 24 routes; §8 transactions/audit → T1 tests + per-route "row unchanged + denial count"; §9 frontend → T9–T10; AC-1…AC-10 → T1–T10; AC-8 → T8; §12 E2E → T11; §13 docs → T12; §15 security (order, no oracle, fail-closed, audit fields) → T1 + out-of-scope tests in T2/T3/T5.
 - **Placeholders:** none; the five non-exemplar panel tests are specified by exact labels and stubs.
 - **Type consistency:** `require_school_entitlement(db, user, school_id, service_key)` used identically in T2–T7; `TEST_PREP_SERVICE_KEYS`/`ACTIVITY_SERVICE_KEYS` defined in T1; `sendJson`/`SendOutcome` defined in T9, used in T10.
