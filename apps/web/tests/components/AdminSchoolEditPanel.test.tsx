@@ -224,3 +224,40 @@ describe("AdminSchoolEditPanel", () => {
     expect(JSON.parse(mock.mock.calls[1][1].body)).toEqual({ branch: "North" });
   });
 });
+
+// QA-023-04 / QA-023-05 (browser QA 2026-09-25): save outcomes say exactly what happened.
+describe("AdminSchoolEditPanel save outcomes", () => {
+  const loaded = { id: "22222222-2222-2222-2222-222222222222", school_code: "QA000001", name: "QA School", branch: null, tier: "gold", tier_valid_until: null };
+
+  async function open() {
+    render(<AdminSchoolEditPanel />);
+    fireEvent.change(screen.getByLabelText("School ID"), { target: { value: "QA000001" } });
+    fireEvent.click(screen.getByRole("button", { name: "Look up" }));
+    await screen.findByLabelText("Partnership tier");
+  }
+
+  it("saving with nothing changed says so and sends no request", async () => {
+    const mock = stubFetch([json(loaded, 200)]);
+    await open();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    const status = await screen.findByText("No changes to save.");
+    expect(status).toHaveAttribute("role", "status");
+    expect(mock).toHaveBeenCalledTimes(1);
+  });
+
+  it("a rejected save says it was not saved", async () => {
+    stubFetch([json(loaded, 200), json({ detail: "Enter a valid email address" }, 422)]);
+    await open();
+    fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "North" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Not saved: Enter a valid email address");
+  });
+
+  it("a server error on save says the save could not be confirmed", async () => {
+    stubFetch([json(loaded, 200), new Response("Internal Server Error", { status: 500 })]);
+    await open();
+    fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "North" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The save could not be confirmed. Look the school up again to check before retrying.");
+  });
+});

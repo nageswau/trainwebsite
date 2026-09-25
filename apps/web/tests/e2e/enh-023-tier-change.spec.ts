@@ -45,6 +45,11 @@ test("downgrade asks for confirmation and notifies the coordinator and principal
   await page.goto("/overseas/admin/schools");
   await page.fill("#school-lookup-code", schoolCode);
   await page.click('button:has-text("Look up")');
+  // QA-023-02: the tier select and the valid-until date sit side by side and must line up (they drifted 16px apart).
+  const tierBox = await page.locator("#edit-tier").boundingBox();
+  const dateBox = await page.locator("#edit-tier-valid-until").boundingBox();
+  expect(Math.abs(tierBox!.y - dateBox!.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(tierBox!.height - dateBox!.height)).toBeLessThanOrEqual(4);
   await page.selectOption("#edit-tier", "gold");
   await page.click('button:has-text("Save changes")');
   const confirmBlock = page.getByRole("group", { name: /Downgrading .* from Platinum to Gold\./ });

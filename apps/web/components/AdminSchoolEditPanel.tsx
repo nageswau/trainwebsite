@@ -125,7 +125,9 @@ export default function AdminSchoolEditPanel() {
     setBusy(null);
     setPending(null);
     if (!response.ok) {
-      report({ text: detailMessage(data.detail), tone: "error" });
+      // QA-023-04: a 4xx is refused before any commit, so nothing was saved; a 5xx can fail after the commit, so the
+      // outcome is unknown and the admin is told to check rather than retry blindly.
+      report({ text: response.status >= 500 ? "The save could not be confirmed. Look the school up again to check before retrying." : `Not saved: ${detailMessage(data.detail)}`, tone: "error" });
       return;
     }
     if (!isRequestBody(data)) {
@@ -154,6 +156,10 @@ export default function AdminSchoolEditPanel() {
     }
     setMessage(null);
     setPending(null);
+    if (Object.keys(body).length === 0) {
+      report({ text: "No changes to save.", tone: "success" }); // QA-023-05: no empty PATCH, no misleading "updated"
+      return;
+    }
     if ("tier" in body) {
       // D12: the tier this admin looked at. If it moved since, the server answers 409 instead of applying a change the
       // admin never confirmed. A stored "" (legacy row, D13) counts as no tier, same as the diff baseline above.
@@ -212,7 +218,8 @@ export default function AdminSchoolEditPanel() {
           <div className="field"><label htmlFor="edit-visits">Monthly visit schedule</label><input id="edit-visits" name="monthly_visit_schedule" defaultValue={school.monthly_visit_schedule ?? ""} disabled={isBusy} /></div>
           <fieldset className="question">
             <legend>Partnership</legend>
-            <div className="form-grid">
+            {/* QA-023-02: top-align the pair; stretching to the help line's height made the select grow and drop 16px. */}
+            <div className="form-grid" style={{ alignItems: "start" }}>
               <div className="field">
                 <label htmlFor="edit-tier">Partnership tier</label>
                 <select id="edit-tier" name="tier" defaultValue={school.tier ?? ""} aria-describedby="edit-tier-help" disabled={isBusy}>
