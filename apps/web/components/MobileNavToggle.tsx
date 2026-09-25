@@ -57,13 +57,13 @@ export default function MobileNavToggle({
       <nav id={panelId} className={panelClassName} aria-label="Primary" hidden={!open}>
         {nav.map((item) => (
           <div key={item.href} className="mobile-nav-group">
-            <Link href={item.href} onClick={() => setOpen(false)}>
+            <Link href={item.href} onClick={() => setOpen(false)} aria-current={pathname === item.href ? "page" : undefined}>
               {item.label}
             </Link>
             {item.children?.length ? (
               <div className="mobile-nav-subgroup">
                 {item.children.map((child) => (
-                  <Link key={child.href} href={child.href} onClick={() => setOpen(false)}>
+                  <Link key={child.href} href={child.href} onClick={() => setOpen(false)} aria-current={pathname === child.href ? "page" : undefined}>
                     {child.label}
                   </Link>
                 ))}

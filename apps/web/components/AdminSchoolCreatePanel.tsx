@@ -110,7 +110,7 @@ export default function AdminSchoolCreatePanel() {
             <div className="field">
               <label htmlFor="school-tier">Partnership tier</label>
               <select id="school-tier" name="tier" defaultValue="">
-                <option value="">Not set yet</option>
+                <option value="">Not set</option>
                 <option value="bronze">Bronze</option>
                 <option value="silver">Silver</option>
                 <option value="gold">Gold</option>
