@@ -2207,16 +2207,17 @@ school, which is an upgrade-from-nothing, not a downgrade).
 **Complexity:** Medium. **Risk:** High (the downgrade policy gap is a genuine business-continuity risk,
 not just a coding risk, until a Decision ID resolves it).
 
-**Status.** `Implemented on feature/enh-023-tier-change-workflow (DEC-SCOPE-029)` — pending browser QA
-and independent review, 2026-09-23. D1–D15 in `docs/superpowers/specs/2026-09-23-enh-023-tier-change-design.md`
+**Status.** `COMPLETE on feature/enh-023-tier-change-workflow (DEC-SCOPE-029)`, 2026-09-26 (code at
+`8541bbe`), on fresh verification evidence (`RTM.md` ENH-023 row; browser QA in
+`docs/quality/ENH-023_BROWSER_QA_2026-09-26.md`); not merged. The independent Codex review was waived by the
+owner ("ignore codex review", 2026-09-26). D1–D15 in `docs/superpowers/specs/2026-09-23-enh-023-tier-change-design.md`
 §3 resolve the downgrade policy this item flagged as `NEEDS_CONFIRMATION` above: **grandfather** (D2) —
 work already under way for a lost service can be finished; new work for it is refused (completion only,
 D8). Full traceability: `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-029`; `API_CONTRACT.md` §12A ENH-023
 addendum; `RBAC_MATRIX.md` ENH-023 row; `SECURITY_CONTROLS.md` §6A ENH-023 row; `SCREEN_CATALOG.md`/
 `screen_catalog.json` `SCR-SCH-036` and the `SCR-SCH-010` tier-fields note; `ROLE_NAVIGATION.md`
-Principal section; `RTM.md` ENH-023 addendum (regression evidence). Not yet complete: browser QA
-(`docs/quality/ENH-023_BROWSER_QA_*.md`, Step 7, deliberately deferred to a later pass) and an
-independent Codex review.
+Principal section; `RTM.md` ENH-023 addendum (regression evidence); `ENH-023_BROWSER_QA_2026-09-26.md`
+(QA-023-01..07, AC-1..AC-18 retested in the browser).
 
 **Follow-ups (not built here, recorded for a later item):**
 - (a) An Overseas Admin notifications page — this item added only the Principal's (D9); the acting
@@ -2237,6 +2238,15 @@ independent Codex review.
   behaviour, deliberately not changed here.
 - (g) The email `From` display name is the admin-controlled school name — same existing mailer
   behaviour, deliberately not changed here.
+- (h) **Needs a product decision (browser QA-023-01):** saving a past "valid until" date expires the
+  partnership at once, with no warning to the admin and no notice to the school. The spec allows it (D6/D11:
+  expiry is not a tier change), so it was not changed; whether the panel should warn, or the school be told,
+  is the owner's call.
+- (i) Copy, from the final browser pass: removal reads "Partnership is now no partnership tier.", and a
+  preview failure shows the server's raw `detail` ("Internal Server Error") where the save path has friendlier
+  wording.
+- (j) The coordinator/principal Entitlements page did not reflect an expired partnership in the first browser
+  pass (an `ENH-022` display gap; not rechecked in the final pass).
 
 ---
 
