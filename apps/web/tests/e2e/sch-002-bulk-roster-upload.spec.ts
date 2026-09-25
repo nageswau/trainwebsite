@@ -55,3 +55,29 @@ test("coordinator downloads the template, uploads a filled roster, and sees a ro
   await page.goto("/school/coordinator/students");
   await expect(page.getByRole("cell", { name: "Jane Doe" })).toBeVisible();
 });
+
+test("the template carries the Student Master columns after the original seven, and a filled row loads them (ENH-025)", async ({ page }) => {
+  const unique = Date.now();
+  await onboardCoordinator(page, unique);
+
+  await page.goto("/school/coordinator/students/bulk-upload");
+  const [download] = await Promise.all([page.waitForEvent("download"), page.click('button:has-text("Download template (.csv)")')]);
+  const header = (await (await download.createReadStream()).toArray()).join("").split(/\r?\n/)[0];
+  expect(header.startsWith("full_name,date_of_birth,grade_or_class,assigned_teacher_email,parent_name,parent_email,grade_level,")).toBe(true);
+  expect(header).toContain("section,roll_number,gender,student_mobile,city");
+
+  await page.getByText("Column reference").click();
+  await expect(page.getByRole("cell", { name: "roll_number" })).toBeVisible();
+
+  const csv = "full_name,grade_level,section,roll_number,gender,city,subjects\nMaster Row,5,A,5,Female,Pune,Maths;Science\nClash Row,5,a,5,male,,\n";
+  await page.setInputFiles("#roster-file", { name: "roster.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  await page.click('button:has-text("Upload roster")');
+  await expect(page.getByText(/1 of 2 rows accepted, 1 rejected/)).toBeVisible();
+  // QA2-05: the report shows the reason in the coordinator's words.
+  await expect(page.getByRole("cell", { name: /Roll number 5 is already used/ })).toBeVisible();
+
+  await page.goto("/school/coordinator/students");
+  const row = page.locator("tr", { hasText: "Master Row" });
+  await expect(row.getByRole("cell", { name: "A", exact: true })).toBeVisible();
+  await expect(row.getByRole("cell", { name: "5", exact: true })).toBeVisible();
+});

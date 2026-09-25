@@ -989,6 +989,10 @@ class SchoolAccountInvite(Base, TimestampMixin):
     accepted_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+# ENH-025 (DEC-SCOPE-029 item 4): the fixed Gender list, shared by the CHECK below and schemas.StudentMasterFields.
+GENDERS = ("female", "male", "other", "prefer_not_to_say")
+
+
 class SchoolStudent(Base, TimestampMixin):
     """School-affiliated student (SCH-001, DATA_MODEL.md §6.11).
 
@@ -1005,6 +1009,17 @@ class SchoolStudent(Base, TimestampMixin):
     """
 
     __tablename__ = "school_students"
+    __table_args__ = (
+        # ENH-025 (DEC-SCOPE-029): a roll number is unique within school + academic year + grade + section.
+        # NULLS NOT DISTINCT makes a blank section/grade/year its own group; students with no roll number are
+        # never constrained. lower(section) so "A" and "a" are the same section.
+        Index(
+            "uq_school_students_roll",
+            "school_id", "academic_year_id", "grade_level", func.lower(text("section")), "roll_number",
+            unique=True, postgresql_where=text("roll_number IS NOT NULL"), postgresql_nulls_not_distinct=True,
+        ),
+        CheckConstraint(f"gender IS NULL OR gender IN ({', '.join(repr(g) for g in GENDERS)})", name="ck_school_students_gender"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
     # Business-facing unique Student ID (PRD_OPEN_ITEMS.md item 66 / CLIENT_QUESTIONS.md
@@ -1032,6 +1047,21 @@ class SchoolStudent(Base, TimestampMixin):
     # ENH-013: the Career Counselor's one-line Career Passport goal (School CRM.md §8 "Career Interest"). Nullable, no
     # default, no backfill (migration 0039); written only by PATCH /school/students/{id}/career-goal.
     career_goal: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # ENH-025 (DEC-SCOPE-029): School CRM.md §3 Student Master fields. All optional; validated at the API
+    # boundary by schemas.StudentMasterFields. grade_or_class stays the free-text display label.
+    section: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    roll_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    student_mobile: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    subjects: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    career_interests: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    global_education_interest: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    preferred_countries: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    preferred_courses: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # Internal only -- never serialized or logged (spec §5: in local storage mode the random key is the barrier).
+    photo_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    photo_content_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
 
 class SchoolParentLink(Base, TimestampMixin):
@@ -1065,6 +1095,10 @@ class SchoolStudentGradeHistory(Base, TimestampMixin):
     to_academic_year_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"))
     to_grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     to_grade_or_class: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # ENH-025: previous class details survive roll-number clearing on a year move (DEC-SCOPE-029 item 6).
+    from_section: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    from_roll_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_section: Mapped[str | None] = mapped_column(String(20), nullable=True)
     performed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
@@ -1154,6 +1188,30 @@ class SchoolActivityAttendance(Base, TimestampMixin):
     school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
     present: Mapped[bool] = mapped_column(Boolean, default=True)
     marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolActivityFeedback(Base, TimestampMixin):
+    """ENH-018 -- a School Coordinator's feedback on one completed Edusphere activity (`School CRM.md §31`,
+    docs/superpowers/specs/2026-09-23-enh-018-school-activity-feedback-design.md §4). One row per activity (D5) and immutable;
+    `school_id` is copied from the activity so reads stay scoped without a join. Student participation is NOT stored: it is
+    computed from `school_activity_attendance` at read time (D4). `created_at` is the submission time."""
+
+    __tablename__ = "school_activity_feedback"
+    __table_args__ = (
+        UniqueConstraint("activity_id", name="uq_activity_feedback_activity"),
+        CheckConstraint("rating BETWEEN 1 AND 5", name="ck_activity_feedback_rating"),
+        CheckConstraint("satisfaction BETWEEN 1 AND 5", name="ck_activity_feedback_satisfaction"),
+        Index("ix_school_activity_feedback_created_at", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    activity_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_activities.id"))
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
+    submitted_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    trainer_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    rating: Mapped[int] = mapped_column(Integer)
+    satisfaction: Mapped[int] = mapped_column(Integer)
+    feedback: Mapped[str] = mapped_column(Text)
+    suggestions: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class SchoolRosterUploadBatch(Base, TimestampMixin):

@@ -938,7 +938,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 28 | Student Progress Scorecard | ❌ Gap | Rolled into **ENH-016** |
 | 29 | School Performance Dashboard | ❌ Gap | Rolled into **ENH-016** |
 | 30 | Reports & Downloads | ❌ Gap | See **ENH-015** |
-| 31 | School Feedback | ❌ Gap | See **ENH-018** |
+| 31 | School Feedback | ✅ Built | See **ENH-018** |
 | 32 | Communication Centre (WhatsApp/SMS/Email/push) | ❌ Gap | See **ENH-014** |
 | 33 | School Admin Login (role matrix) | ✅ Built | `DEC-SCOPE-011`, `rbac.py` |
 | 34 | Edusphere Admin Side (cross-school dashboard) | ❌ Gap | Rolled into **ENH-016** |
@@ -1827,6 +1827,15 @@ Coordinator attempts to submit feedback for another school's activity — reject
 Duplicate feedback submission for the same activity — decide reject-vs-update
 (`NEEDS_CONFIRMATION`, minor).
 
+**Implementation note, 2026-09-23 (original text above kept as written).** Resolved in-session; see
+`docs/superpowers/specs/2026-09-23-enh-018-school-activity-feedback-design.md` §3. Corrections to this entry: the FK
+target is SCH-001's `SchoolActivity` (SCH-004 has no activity/session entity); the viewer is Overseas Admin + Super
+Admin, because `edusphere_school_manager` has no RBAC grants (`RBAC_MATRIX.md:239`); feedback applies to typed
+(Edusphere) activities only, after they have taken place; the principal reads their own school's feedback; a duplicate
+is **rejected** (`409`), resolving the `NEEDS_CONFIRMATION` above. Status: **complete** (2026-09-23): implemented, browser-QA'd
+with every QA finding fixed, merged with `main` and re-verified; the Codex review was waived by the owner. Evidence and
+recorded exclusions: `docs/quality/RTM.md`, ENH-018 row. Feedback submission is not tier-gated (spec D10).
+
 **Regression risks.** None.
 
 **Complexity:** Small. **Risk:** Low.
@@ -2207,13 +2216,13 @@ school, which is an upgrade-from-nothing, not a downgrade).
 **Complexity:** Medium. **Risk:** High (the downgrade policy gap is a genuine business-continuity risk,
 not just a coding risk, until a Decision ID resolves it).
 
-**Status.** `COMPLETE on feature/enh-023-tier-change-workflow (DEC-SCOPE-029)`, 2026-09-26 (code at
+**Status.** `COMPLETE on feature/enh-023-tier-change-workflow (DEC-SCOPE-030)`, 2026-09-26 (code at
 `8541bbe`), on fresh verification evidence (`RTM.md` ENH-023 row; browser QA in
 `docs/quality/ENH-023_BROWSER_QA_2026-09-26.md`); not merged. The independent Codex review was waived by the
 owner ("ignore codex review", 2026-09-26). D1–D15 in `docs/superpowers/specs/2026-09-23-enh-023-tier-change-design.md`
 §3 resolve the downgrade policy this item flagged as `NEEDS_CONFIRMATION` above: **grandfather** (D2) —
 work already under way for a lost service can be finished; new work for it is refused (completion only,
-D8). Full traceability: `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-029`; `API_CONTRACT.md` §12A ENH-023
+D8). Full traceability: `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-030`; `API_CONTRACT.md` §12A ENH-023
 addendum; `RBAC_MATRIX.md` ENH-023 row; `SECURITY_CONTROLS.md` §6A ENH-023 row; `SCREEN_CATALOG.md`/
 `screen_catalog.json` `SCR-SCH-036` and the `SCR-SCH-010` tier-fields note; `ROLE_NAVIGATION.md`
 Principal section; `RTM.md` ENH-023 addendum (regression evidence); `ENH-023_BROWSER_QA_2026-09-26.md`
@@ -2318,7 +2327,9 @@ lists 26 Student Master fields. Same mandatory-scope directive as ENH-009 applie
 
 **Existing behavior.** `SchoolStudent` (`apps/api/app/models.py:967-1002`) stores exactly: `id`,
 `school_id`, `student_code`, `full_name`, `date_of_birth`, `grade_or_class`, `created_by_user_id`,
-`assigned_teacher_user_id`, `pending_parent_email`. Checked field-by-field against §3:
+`assigned_teacher_user_id`, `pending_parent_email`. **Correction (2026-09-23, ENH-025 design):** ENH-001
+has since added `academic_year_id` and `grade_level` (`models.py:1030-1031`); the Grade/Section split therefore
+reduces to adding `section`. See `DEC-SCOPE-029`. Checked field-by-field against §3:
 
 | Field | Status | Note |
 |---|---|---|

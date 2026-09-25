@@ -441,6 +441,8 @@ async def _approve(db: AsyncSession, request_id: UUID, admin_id: UUID):
 
     teacher_cleared, pending_email_cleared = student.assigned_teacher_user_id is not None, student.pending_parent_email is not None
     student.school_id, student.assigned_teacher_user_id, student.pending_parent_email = request.to_school_id, None, None
+    # ENH-025 (DEC-SCOPE-029 item 7): section and roll number belong to the losing school, like the teacher.
+    student.section, student.roll_number = None, None
     request.status, request.decided_by_user_id, request.decided_at = "approved", admin_id, datetime.now(UTC)
     request.outcome = {"parents_moved": moved, "parents_kept": kept, "results_withdrawn": len(in_flight), "teacher_cleared": teacher_cleared, "pending_parent_email_cleared": pending_email_cleared}
     _audit(db, admin_id, ACTION_TRANSFER, request.id, from_school_id=from_id, to_school_id=to_id, parents_moved_ids=moved_parent_ids, parents_kept_ids=kept_parent_ids, **request.outcome)

@@ -1,4 +1,4 @@
-"""ENH-023 (DEC-SCOPE-029) -- tier-change rules and grandfathering, without a database."""
+"""ENH-023 (DEC-SCOPE-030) -- tier-change rules and grandfathering, without a database."""
 
 import pytest
 

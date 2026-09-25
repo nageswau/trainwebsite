@@ -7,7 +7,8 @@ import { formatSchoolDateTime } from "@/lib/formatDate";
 // Journey Timeline's `.jtl-*` rail: a short, dated list that stacks on mobile without horizontal scroll.
 // Outcome is stated in text (badge + sentence), never by colour alone.
 
-type State = { academic_year_id: string | null; academic_year_label: string | null; grade_level: number | null; grade_or_class: string | null };
+// ENH-025: `section`/`roll_number` are additive and absent on history recorded before them.
+type State = { academic_year_id: string | null; academic_year_label: string | null; grade_level: number | null; grade_or_class: string | null; section?: string | null; roll_number?: string | null };
 export type GradeHistoryEntry = { id: string; action: "promoted" | "held_back"; from: State; to: State; created_at: string };
 export type StudentGradeHistory = { student: { id: string; full_name: string }; history: GradeHistoryEntry[] };
 
@@ -46,6 +47,9 @@ export default function SchoolGradeHistory({ history }: { history: GradeHistoryE
               <span className="jtl-badge" style={{ "--jtl-color": meta.color } as React.CSSProperties}>{meta.label}</span>
               <h4 className="jtl-title">{summarize(h)}</h4>
               <p className="jtl-detail">Academic year: {h.from.academic_year_label ? `${h.from.academic_year_label} to ` : ""}{h.to.academic_year_label}</p>
+              {(h.from.section || h.from.roll_number) && (
+                <p className="jtl-detail">Previous section {h.from.section || "-"}, roll number {h.from.roll_number || "-"}</p>
+              )}
             </div>
           </div>
         );

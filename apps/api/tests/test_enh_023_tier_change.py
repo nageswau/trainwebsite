@@ -1,4 +1,4 @@
-"""ENH-023 (DEC-SCOPE-029) -- tier changes and grandfathered work against a real database."""
+"""ENH-023 (DEC-SCOPE-030) -- tier changes and grandfathered work against a real database."""
 
 import logging
 from datetime import date, timedelta

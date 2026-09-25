@@ -1,6 +1,6 @@
 # ENH-023 — Browser QA, fixes and final verification (2026-09-26)
 
-**Scope:** `ENH-023` (`DEC-SCOPE-029`, partnership tier change: upgrade/downgrade workflow). An exploratory QA pass,
+**Scope:** `ENH-023` (`DEC-SCOPE-030`, partnership tier change: upgrade/downgrade workflow). An exploratory QA pass,
 test-first fixes for its findings (plus the app-wide date-zone sweep the owner asked for after QA-023-07), then a final
 verification pass that retested every acceptance criterion (spec §10, AC-1..AC-18) through the browser. No code was
 changed during either QA pass.

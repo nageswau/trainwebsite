@@ -1189,7 +1189,7 @@ async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Dep
     """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-025) -- Overseas Admin updates a School's partnership
     tier and/or profile fields. `name`/`city`/`state`/`coordinator_*` stay out of scope for this
     endpoint -- they were never editable before and no acceptance criterion asks for that.
-    ENH-023 (DEC-SCOPE-029): a tier change is recorded as a transition (old -> new, gained/lost), returned as
+    ENH-023 (DEC-SCOPE-030): a tier change is recorded as a transition (old -> new, gained/lost), returned as
     `tier_change`, guarded by the optional `expected_tier` precondition (D12), and told to the school after the commit."""
     from app.api.schools import TIER_ORDER, TIER_UPDATE, _tier_name, tier_change_payload  # noqa: PLC0415 -- lazy, like the bridge import below
 

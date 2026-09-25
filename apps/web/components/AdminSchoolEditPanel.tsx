@@ -34,7 +34,7 @@ function savedText(change: TierChange | null | undefined): string {
 // GET .../school-students/lookup?code= convention (admin.py:1240) -- the codebase has no
 // clickable-table-row-to-edit pattern anywhere, and the established convention is "read via the
 // generic portal section, write via a dedicated panel" (same split as AdminSchoolCreatePanel.tsx).
-// ENH-023 / DEC-SCOPE-029: the tier is edited here too. A changed tier is previewed first; a downgrade or removal is only
+// ENH-023 / DEC-SCOPE-030: the tier is edited here too. A changed tier is previewed first; a downgrade or removal is only
 // saved after the admin confirms the services the school loses (D7), and every tier save carries `expected_tier` (D12).
 export default function AdminSchoolEditPanel() {
   const [busy, setBusy] = useState<null | "lookup" | "checking" | "saving">(null);

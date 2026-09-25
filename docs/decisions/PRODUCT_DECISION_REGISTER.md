@@ -2417,9 +2417,49 @@ criteria blockers (field-by-field scope, Branch design).
 
 **Consequences:** migration `0039_student_career_goal` (one nullable column); router `app/api/student_360.py` (`GET /school/students/{id}/360-view`, `PATCH /school/students/{id}/career-goal`); behavior-preserving extractions `_overview_payload`, `_grade_history_rows`, `portfolio_payload`; seven `/360` routes (`SCR-SCH-035`); `PORTFOLIO_SCOPED_ROLES` removed as a duplicate of `SERVICE_DELIVERY_ROLES`.
 
-### DEC-SCOPE-029 — Partnership tier change: grandfathered downgrades, transition audit, notifications (`ENH-023`)
+### DEC-SCOPE-029 — Student Master field coverage (`ENH-025`)
 
-**Number is provisional:** if another branch lands `DEC-SCOPE-029` first, this entry is renumbered on merge (the `DEC-SCOPE-024`/`025`/`027` precedent above).
+**ID note:** recorded in-session as `DEC-SCOPE-027`, before `ENH-022` merged to `main` holding `DEC-SCOPE-027`
+(PR #14) and while the unmerged `ENH-013` branch uses `DEC-SCOPE-028`. Renumbered to `DEC-SCOPE-029` on this branch
+before merge (flagged by the ENH-013 session) — the same later-branch-moves precedent as `DEC-SCOPE-024`/`025`. Earlier
+ENH-025 commit messages that say `DEC-SCOPE-027` mean this decision.
+
+**Status:** `EXPLICIT_APPROVAL` — user, in-session, 2026-09-23 (brainstorming answers, recorded in
+`docs/superpowers/specs/2026-09-23-enh-025-student-master-fields-design.md` §9).
+**Evidence:** `EVID-014` (`docs/sources/School CRM.md:118-177`); `ENHANCEMENT_BACKLOG.md` `ENH-025`.
+**Decisions:**
+1. `grade_or_class` kept unchanged; new `section` column; ENH-001's `grade_level` is the Grade column.
+2. Career interests, Global education interest, Preferred countries, Preferred courses on `SchoolStudent`;
+   written by the School Coordinator (all paths) and the Career Counsellor (own portfolio, dedicated route).
+3. Photo via authorized upload/stream endpoints; excluded from bulk upload.
+4. Gender fixed list (`female`, `male`, `other`, `prefer_not_to_say`); multi-value fields as JSON string
+   lists; Global education interest nullable boolean.
+5. Roll number unique per school + academic year + grade + section (blank values form a group).
+6. Any academic-year move (promote or hold back) clears roll number; grade history records previous
+   section/roll number and new section.
+7. Transfer approval clears section and roll number.
+8. All new fields optional.
+9. Photo metadata (EXIF etc.) stripped in pure Python before storage.
+
+10. **Photo consent (resolved 2026-09-23, user, in-session, `EXPLICIT_APPROVAL`):** the school, as data
+    controller, obtains consent for student photos through its own enrolment process; EduSphere provides the
+    optional, coordinator-entered Photo field with no consent gate of its own. Closes the earlier
+    `NEEDS_CONFIRMATION` on consent / legal basis for storing photos of minors.
+11. **Migration order (2026-09-23, user, in-session):** first decided as "ENH-025 merges first", but ENH-013
+    (PR #15) reached `main` before that could happen. When merging `main` in, the user chose to resolve on
+    ENH-025's side instead: ENH-025's migration was renumbered to `0040` and re-chained onto
+    `0039_student_career_goal`. ENH-018 (PR #16) then merged its own `0040_school_activity_feedback` on the same
+    parent, so on the next merge of `main` ENH-025's migration moved again to `0041_student_master_fields`, revising
+    `0040_school_activity_feedback`. Neither of the other migrations touches ENH-025's columns, so the order does not
+    change the schema.
+**New Feature ID:** none — additive scope on `ENH-025`.
+
+### DEC-SCOPE-030 — Partnership tier change: grandfathered downgrades, transition audit, notifications (`ENH-023`)
+
+**ID note:** recorded in-session as `DEC-SCOPE-029`. `ENH-025` reached `main` first holding `DEC-SCOPE-029` (PR #17), so
+this entry was renumbered to `DEC-SCOPE-030` when `main` was merged into the `ENH-023` branch (2026-09-26), as its own
+provisional-number note provided — the same later-branch-moves precedent as `DEC-SCOPE-024`/`025`/`027`/`029`. Earlier
+`ENH-023` commit messages and the pre-merge graph that say `DEC-SCOPE-029` mean this decision.
 
 **Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-023 (`DERIVED_BLUEPRINT`), on the user's instruction "hidden requirements as well like change of gold to platinum etc.": once `ENH-022` (`DEC-SCOPE-027`) enforces tier on use, what happens to work already under way when a school's tier is downgraded, and how is a tier change recorded and communicated?
 

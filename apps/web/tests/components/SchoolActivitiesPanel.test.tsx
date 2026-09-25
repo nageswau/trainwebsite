@@ -89,3 +89,34 @@ describe("SchoolActivitiesPanel save failures", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });
+
+const past = "2026-01-10T09:00:00Z";
+const future = "2099-01-10T09:00:00Z";
+
+// ENH-018 spec §7.4: the Activities list links each completed Edusphere activity to its own feedback (QA-018-09/10).
+describe("SchoolActivitiesPanel (ENH-018 link)", () => {
+  it("offers Give feedback only on typed activities that have taken place, and keeps Mark attendance on every row", () => {
+    render(
+      <SchoolActivitiesPanel
+        students={[]}
+        activities={[
+          { id: "1", title: "Career Seminar", scheduled_at: past, activity_type: "career_seminar" },
+          { id: "2", title: "Sports Day", scheduled_at: past, activity_type: null },
+          { id: "3", title: "Campus Visit", scheduled_at: future, activity_type: "campus_visit" },
+        ]}
+      />,
+    );
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[0]).getByRole("link", { name: "Give feedback for Career Seminar" })).toHaveAttribute("href", "/school/coordinator/feedback?activity=1");
+    expect(within(rows[1]).queryByRole("link")).toBeNull();
+    expect(within(rows[2]).queryByRole("link")).toBeNull();
+    for (const row of rows) expect(within(row).getByRole("button", { name: "Mark attendance" })).toBeTruthy();
+  });
+
+  it("an activity that already has feedback offers View feedback, not Give feedback (QA-018-10); both link to that activity (QA-018-09)", () => {
+    render(<SchoolActivitiesPanel students={[]} activities={[{ id: "7", title: "Parent Orientation", scheduled_at: past, activity_type: "parent_orientation", feedback_submitted: true }]} />);
+    const row = screen.getAllByRole("row")[1];
+    expect(within(row).queryByRole("link", { name: /Give feedback/ })).toBeNull();
+    expect(within(row).getByRole("link", { name: "View feedback for Parent Orientation" })).toHaveAttribute("href", "/school/coordinator/feedback?activity=7");
+  });
+});

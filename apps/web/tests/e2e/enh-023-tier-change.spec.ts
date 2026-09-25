@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
-// ENH-023 (DEC-SCOPE-029) -- an Overseas Admin downgrades a Platinum school to Gold through the confirmation step; the
+// ENH-023 (DEC-SCOPE-030) -- an Overseas Admin downgrades a Platinum school to Gold through the confirmation step; the
 // school's Coordinator and Principal are each told exactly what was lost.
 
 async function signIn(page: Page, email: string, password: string, landing: string) {

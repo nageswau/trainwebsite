@@ -88,7 +88,7 @@
 Create `apps/api/tests/test_enh_023_tier_rules.py`:
 
 ```python
-"""ENH-023 (DEC-SCOPE-029) -- tier-change rules and grandfathering, without a database."""
+"""ENH-023 (DEC-SCOPE-030) -- tier-change rules and grandfathering, without a database."""
 
 import pytest
 
@@ -155,7 +155,7 @@ def _tier_name(tier: str | None) -> str:
 
 
 def _tier_transition(old: str | None, new: str | None) -> tuple[str, list[str], list[str]]:
-    """ENH-023 / DEC-SCOPE-029: (direction, gained keys, lost keys). Built only from `_cumulative_services`, so tier ordering
+    """ENH-023 / DEC-SCOPE-030: (direction, gained keys, lost keys). Built only from `_cumulative_services`, so tier ordering
     lives in one place; an unknown or None tier has no services. Tiers are cumulative, so a change never both gains and loses."""
     before = [key for key, _ in _cumulative_services(old)]
     after = [key for key, _ in _cumulative_services(new)]
@@ -213,7 +213,7 @@ git commit -m "feat(enh-023): tier transition helpers"
 Create `apps/api/tests/test_enh_023_tier_change.py`:
 
 ```python
-"""ENH-023 (DEC-SCOPE-029) -- tier changes and grandfathered work against a real database."""
+"""ENH-023 (DEC-SCOPE-030) -- tier changes and grandfathered work against a real database."""
 
 from datetime import date, timedelta
 from uuid import UUID
@@ -421,7 +421,7 @@ Add `SchoolUpdateOut` to the `from app.schemas import …` line in `admin.py`, c
     """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-025) -- Overseas Admin updates a School's partnership
     tier and/or profile fields. `name`/`city`/`state`/`coordinator_*` stay out of scope for this
     endpoint -- they were never editable before and no acceptance criterion asks for that.
-    ENH-023 (DEC-SCOPE-029): a tier change is recorded as a transition (old -> new, gained/lost), returned as
+    ENH-023 (DEC-SCOPE-030): a tier change is recorded as a transition (old -> new, gained/lost), returned as
     `tier_change`, guarded by the optional `expected_tier` precondition (D12), and told to the school after the commit."""
     from app.api.schools import TIER_UPDATE, _tier_name, tier_change_payload  # noqa: PLC0415 -- lazy, like the bridge import below
 
@@ -477,7 +477,7 @@ Then update the two pinned assertions in `apps/api/tests/test_sch_003_school_onb
 In `test_patch_school_tier_only_still_works_unchanged`, replace `assert tier_log.metadata_json == {"tier": "gold"}` with:
 
 ```python
-    # ENH-023 (DEC-SCOPE-029 D4): the row now records the whole transition, not just the new tier.
+    # ENH-023 (DEC-SCOPE-030 D4): the row now records the whole transition, not just the new tier.
     assert tier_log.metadata_json == {
         "tier": "gold", "from_tier": None, "to_tier": "gold", "direction": "upgrade",
         "gained": ["career_seminar", "career_awareness_session", "parent_orientation", "psychometric_test", "soft_skills",
@@ -1067,7 +1067,7 @@ Change its signature and docstring, and insert the grandfather branch between `r
 async def require_school_entitlement(db: AsyncSession, user: User, school_id: UUID, service_key: str | None, *, grandfathered_since: datetime | None = None) -> None:
     """403 unless the school's valid cumulative tier includes `service_key`. Call it after the route's own role and scope
     checks and before any write: a denial commits its audit row (D12), so nothing else may be pending in the session.
-    ENH-023 (DEC-SCOPE-029 D2/D8): a route finishing existing work passes that work's `created_at` as `grandfathered_since`;
+    ENH-023 (DEC-SCOPE-030 D2/D8): a route finishing existing work passes that work's `created_at` as `grandfathered_since`;
     the denial is then lifted when a tier change after that time took the service away (never for an expired partnership)."""
     school = await db.get(School, school_id)
     tier = school.tier if school else None
@@ -1672,7 +1672,7 @@ import { useEffect, useRef } from "react";
 
 export type TierService = { key: string; label: string };
 
-// ENH-023 (DEC-SCOPE-029 D7): the inline downgrade confirmation, in the ENH-004/ENH-005 pattern (SchoolPromotionPanel,
+// ENH-023 (DEC-SCOPE-030 D7): the inline downgrade confirmation, in the ENH-004/ENH-005 pattern (SchoolPromotionPanel,
 // AdminTransferRow) -- no dialog library. The consequences are a list, Confirm takes focus when the block appears and is
 // described by them, and Escape or Cancel hands control back to the panel, which returns focus to Save.
 export default function TierDowngradeConfirm({ schoolName, fromTier, toTier, lost, busy, onConfirm, onCancel }: {
@@ -1738,7 +1738,7 @@ function savedText(change: TierChange | null | undefined): string {
 // GET .../school-students/lookup?code= convention (admin.py:1240) -- the codebase has no
 // clickable-table-row-to-edit pattern anywhere, and the established convention is "read via the
 // generic portal section, write via a dedicated panel" (same split as AdminSchoolCreatePanel.tsx).
-// ENH-023 / DEC-SCOPE-029: the tier is edited here too. A changed tier is previewed first; a downgrade or removal is only
+// ENH-023 / DEC-SCOPE-030: the tier is edited here too. A changed tier is previewed first; a downgrade or removal is only
 // saved after the admin confirms the services the school loses (D7), and every tier save carries `expected_tier` (D12).
 export default function AdminSchoolEditPanel() {
   const [busy, setBusy] = useState<null | "lookup" | "checking" | "saving">(null);
@@ -2077,7 +2077,7 @@ import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 
-// ENH-023 (DEC-SCOPE-029 D9): the School Principal's own notifications -- their school's partnership tier changing. Same
+// ENH-023 (DEC-SCOPE-030 D9): the School Principal's own notifications -- their school's partnership tier changing. Same
 // feed as the Coordinator page, keyed on the signed-in user, never a client-supplied id. Principal-only.
 export default async function SchoolPrincipalNotificationsPage() {
   let user: User;
@@ -2152,7 +2152,7 @@ git commit -m "feat(enh-023): principal notifications page"
 import { test, expect } from "@playwright/test";
 import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
-// ENH-023 (DEC-SCOPE-029) -- an Overseas Admin downgrades a Platinum school to Gold through the confirmation step; the
+// ENH-023 (DEC-SCOPE-030) -- an Overseas Admin downgrades a Platinum school to Gold through the confirmation step; the
 // school's Coordinator and Principal are each told exactly what was lost.
 
 async function signIn(page, email: string, password: string, landing: string) {
@@ -2233,7 +2233,7 @@ git commit -m "test(enh-023): e2e downgrade confirmation and notifications"
 **Files:**
 - Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md`, `docs/architecture/API_CONTRACT.md` (§12A), `docs/architecture/RBAC_MATRIX.md`, `docs/quality/RTM.md`, `docs/delivery/ENHANCEMENT_BACKLOG.md`, `docs/ux/SCREEN_CATALOG.md`, `docs/ux/screen_catalog.json`, `docs/ux/ROLE_NAVIGATION.md`
 
-- [ ] **Step 1: Decision register** — append `### DEC-SCOPE-029 — Partnership tier change: grandfathered downgrades, transition audit, notifications (ENH-023)`. Status `CONFIRMED_CURRENT — resolved 2026-09-23, in-session`. Resolution = the spec's §3 table D1–D15 verbatim. Note the number is provisional and renumbered on merge if taken.
+- [ ] **Step 1: Decision register** — append `### DEC-SCOPE-030 — Partnership tier change: grandfathered downgrades, transition audit, notifications (ENH-023)`. Status `CONFIRMED_CURRENT — resolved 2026-09-23, in-session`. Resolution = the spec's §3 table D1–D15 verbatim. Note the number is provisional and renumbered on merge if taken.
 
 - [ ] **Step 2: API contract** — in §12A, add an `ENH-023` addendum:
   - (a) `PATCH /overseas-admin/schools/{school_id}` now takes a row lock and returns the additive `tier_change` object (typed `SchoolUpdateOut`/`TierChangeOut`, spec §4.2), `null` for profile-only bodies. It accepts the optional `expected_tier` precondition (`409` with the exact Global Constraints message on mismatch; omitted = unchanged behaviour) and normalises `""` to `null` for `tier`/`expected_tier`. The `school.tier_update` metadata changes from `{tier}` to the eight keys in Global Constraints, and the row's `created_at` is `clock_timestamp()`. Post-commit notifications go to the school's Coordinator(s)/Principal(s) and the acting admin, only when the tier moved.
@@ -2253,7 +2253,7 @@ git commit -m "test(enh-023): e2e downgrade confirmation and notifications"
 
 - [ ] **Step 4: RTM, backlog, screens, nav**
   - RTM: add an `ENH-023` row following the `ENH-022`/`ENH-013` addendum format, citing the spec, this plan, the two new test files, the panel/page tests, the E2E spec and the regression results from Step 6.
-  - Backlog §ENH-023: add a status line, `Implemented on feature/enh-023-tier-change-workflow (DEC-SCOPE-029)`, plus follow-ups:
+  - Backlog §ENH-023: add a status line, `Implemented on feature/enh-023-tier-change-workflow (DEC-SCOPE-030)`, plus follow-ups:
     - (a) Overseas Admin notifications page;
     - (b) share lock closing the §8 residual race;
     - (c) pre-expiry notices;

@@ -5,7 +5,7 @@ import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 
-// ENH-023 (DEC-SCOPE-029 D9): the School Principal's own notifications -- their school's partnership tier changing. Same
+// ENH-023 (DEC-SCOPE-030 D9): the School Principal's own notifications -- their school's partnership tier changing. Same
 // feed as the Coordinator page, keyed on the signed-in user, never a client-supplied id. Principal-only.
 export default async function SchoolPrincipalNotificationsPage() {
   let user: User;

@@ -2,7 +2,7 @@
 
 export type TierService = { key: string; label: string };
 
-// ENH-023 (DEC-SCOPE-029 D7): the inline downgrade confirmation, in the ENH-004/ENH-005 pattern (SchoolPromotionPanel,
+// ENH-023 (DEC-SCOPE-030 D7): the inline downgrade confirmation, in the ENH-004/ENH-005 pattern (SchoolPromotionPanel,
 // AdminTransferRow) -- no dialog library. The consequences are a list, Confirm takes focus when the block appears and is
 // described by them, and Escape or Cancel hands control back to the panel, which returns focus to Save.
 export default function TierDowngradeConfirm({ schoolName, fromTier, toTier, lost, busy, onConfirm, onCancel }: {

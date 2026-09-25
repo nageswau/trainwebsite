@@ -37,7 +37,7 @@ lost service is refused.
 - Share-locking the school row in the 24 gated routes (§8).
 - Gating or un-gating any route not listed in §6.
 
-## 3. Decisions confirmed in-session (2026-09-23) — `DEC-SCOPE-029` (provisional number)
+## 3. Decisions confirmed in-session (2026-09-23) — `DEC-SCOPE-030` (provisional number)
 
 The number is provisional and will be renumbered on merge if another branch lands it first (`DEC-SCOPE-024`/`025`
 precedent).
@@ -349,7 +349,7 @@ are unchanged.
 
 ## 13. Documentation deliverables and follow-ups
 
-- `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-029` (D1–D15).
+- `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-030` (D1–D15).
 - `API_CONTRACT.md` §12A: the PATCH's `tier_change` and new audit metadata, the preview endpoint, and the
   `ENH-022` helper's grandfather rule.
 - `RBAC_MATRIX.md`: the grandfather rule on the §6 actions.

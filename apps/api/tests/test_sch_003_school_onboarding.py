@@ -439,7 +439,7 @@ async def test_patch_school_tier_only_still_works_unchanged(client, db_session):
         select(AuditLog).where(AuditLog.action == "school.tier_update", AuditLog.entity_id == result["id"])
     )
     assert tier_log is not None
-    # ENH-023 (DEC-SCOPE-029 D4): the row now records the whole transition, not just the new tier.
+    # ENH-023 (DEC-SCOPE-030 D4): the row now records the whole transition, not just the new tier.
     assert tier_log.metadata_json == {
         "tier": "gold", "from_tier": None, "to_tier": "gold", "direction": "upgrade",
         "gained": ["career_seminar", "career_awareness_session", "parent_orientation", "psychometric_test", "soft_skills",
