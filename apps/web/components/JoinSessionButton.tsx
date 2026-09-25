@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDate, zoneLabel } from "@/lib/formatDate";
+import { formatDateTimeIn } from "@/lib/formatDate";
 
 // User-requested join-experience fix (2026-09-09, `docs/decisions/PENDING_ZOHO_LIVE_CLASSES.md`
 // §1b items a/b/c): the raw join URL previously rendered as inert text in the generic
@@ -56,10 +56,9 @@ export default function JoinSessionButton({
     // the early/late window only applies to a joining participant, never the host.
     const state = isHost ? "joinable" : sessionState(startsAt, endsAt, Date.now());
     if (state === "too_early") {
-      // window.alert() takes a plain string, not JSX, so <LocalTime> (a React element) cannot render here. This calls the same two
-      // helpers LocalTime itself uses -- the viewer's own resolved zone, the time, and its label -- to keep the same policy outcome.
+      // window.alert() takes a plain string, so <LocalTime> cannot render here; the same helper gives the viewer's zone and its label.
       const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      window.alert(`Too early to join -- this session starts at ${formatDate(startsAt, true, zone)} ${zoneLabel(startsAt, zone)}.`);
+      window.alert(`Too early to join -- this session starts at ${formatDateTimeIn(startsAt, zone, true)}.`);
       return;
     }
     if (state === "ended") {

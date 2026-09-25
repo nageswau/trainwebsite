@@ -1137,6 +1137,7 @@ async def list_schools(user: User = Depends(get_current_user), db: AsyncSession 
     return await _school_outs_batch(db, rows)
 
 
+INVALID_TIER = "tier must be one of bronze, silver, gold, platinum"
 NOTIFICATION_TITLE_MAX = 180  # Notification.title is String(180); a school name alone may be 200 (ENH-023 §9)
 SCHOOL_ENTITLEMENTS_URL = {"school_coordinator": "/school/coordinator/entitlements", "school_principal": "/school/principal/entitlements"}
 
@@ -1190,7 +1191,7 @@ async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Dep
     endpoint -- they were never editable before and no acceptance criterion asks for that.
     ENH-023 (DEC-SCOPE-029): a tier change is recorded as a transition (old -> new, gained/lost), returned as
     `tier_change`, guarded by the optional `expected_tier` precondition (D12), and told to the school after the commit."""
-    from app.api.schools import TIER_UPDATE, _tier_name, tier_change_payload  # noqa: PLC0415 -- lazy, like the bridge import below
+    from app.api.schools import TIER_ORDER, TIER_UPDATE, _tier_name, tier_change_payload  # noqa: PLC0415 -- lazy, like the bridge import below
 
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
@@ -1202,8 +1203,8 @@ async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Dep
     for key in ("tier", "expected_tier"):  # D13: "" is no tier, stored and compared as null
         if key in fields:
             fields[key] = fields[key] or None
-            if fields[key] is not None and fields[key] not in {"bronze", "silver", "gold", "platinum"}:
-                raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
+            if fields[key] is not None and fields[key] not in TIER_ORDER:
+                raise HTTPException(422, INVALID_TIER)
     if "expected_tier" in fields and fields.pop("expected_tier") != (school.tier or None):
         # D12, checked under the lock: the tier moved since the caller looked, so what they confirmed is not what would happen.
         raise HTTPException(409, f"This school's tier changed to {_tier_name(school.tier)} since you looked it up. Look it up again before changing the tier.")
@@ -1253,7 +1254,7 @@ async def preview_school_tier_change(school_id: UUID, tier: str | None = None, u
         raise HTTPException(404, "School not found")
     new_tier = tier or None
     if new_tier is not None and new_tier not in TIER_ORDER:
-        raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
+        raise HTTPException(422, INVALID_TIER)
     return tier_change_payload(school.tier, new_tier)
 
 

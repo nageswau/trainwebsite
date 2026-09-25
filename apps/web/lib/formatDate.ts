@@ -12,11 +12,16 @@ export function formatDate(value: string | null | undefined, withTime = false, t
   return d.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}), ...(timeZone ? { timeZone } : {}) });
 }
 
-// A school portal timestamp in India time (D10), with the time of day. `label` adds "IST" for a time people act on (an activity or
-// session start); record timestamps (created, decided) stay unlabelled.
+// A timestamp with its time of day in `timeZone`. `label` appends the zone's name for a time people act on (a session start, an
+// event); a missing or unparseable value is never labelled.
+export function formatDateTimeIn(value: string | null | undefined, timeZone: string, label = false): string {
+  const text = formatDate(value, true, timeZone);
+  return label && value && text !== value ? `${text} ${zoneLabel(value, timeZone)}` : text;
+}
+
+// A school portal timestamp in India time (D10); `label` adds "IST". Record timestamps (created, decided) stay unlabelled.
 export function formatSchoolDateTime(value: string | null | undefined, label = false): string {
-  const text = formatDate(value, true, SCHOOL_TIME_ZONE);
-  return label && value && text !== value ? `${text} IST` : text;
+  return formatDateTimeIn(value, SCHOOL_TIME_ZONE, label);
 }
 
 // A calendar date (YYYY-MM-DD: birth dates, due dates, deadlines, session days) has no time of day. It parses as UTC midnight, so it is
@@ -26,10 +31,9 @@ export function formatCalendarDate(value: string | null | undefined): string {
 }
 
 // Short zone label for a scheduled time. India reads "IST" (the en-US name would be "GMT+5:30"); other zones use the en-US short name,
-// which tracks daylight saving ("EDT"/"EST"). `timeZone` omitted means the zone this code runs in.
-export function zoneLabel(value: string, timeZone?: string): string {
-  const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-  if (zone === "Asia/Kolkata" || zone === "Asia/Calcutta") return "IST";
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName: "short" }).formatToParts(new Date(value));
-  return parts.find((p) => p.type === "timeZoneName")?.value ?? zone;
+// which tracks daylight saving ("EDT"/"EST").
+export function zoneLabel(value: string, timeZone: string): string {
+  if (timeZone === "Asia/Kolkata" || timeZone === "Asia/Calcutta") return "IST";
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "short" }).formatToParts(new Date(value));
+  return parts.find((p) => p.type === "timeZoneName")?.value ?? timeZone;
 }

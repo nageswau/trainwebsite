@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { formatDate, SCHOOL_TIME_ZONE, zoneLabel } from "@/lib/formatDate";
+import { formatDate, formatDateTimeIn, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
 // A timestamp shown in the viewer's own zone (outside the school portals). The server cannot know that zone, so the server render and the
 // browser's first, hydrating render both use India time -- identical text, so React never reports hydration error #418 -- and the browser
@@ -12,6 +12,5 @@ export default function LocalTime({ value, time = false, label = false }: { valu
   const [zone, setZone] = useState(SCHOOL_TIME_ZONE);
   useEffect(() => setZone(Intl.DateTimeFormat().resolvedOptions().timeZone), []);
   if (!value) return <>-</>;
-  const text = formatDate(value, time, zone);
-  return <time dateTime={value}>{time && label && text !== value ? `${text} ${zoneLabel(value, zone)}` : text}</time>;
+  return <time dateTime={value}>{time ? formatDateTimeIn(value, zone, label) : formatDate(value, false, zone)}</time>;
 }
