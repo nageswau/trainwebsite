@@ -48,3 +48,11 @@ describe("loadTransferHistory", () => {
     await expect(loadTransferHistory("s1")).resolves.toBeNull();
   });
 });
+
+// QA-023-07 (consistency): server-rendered only, so no #418 -- but without a zone it showed the server's UTC time to school users.
+describe("SchoolTransferHistory dates", () => {
+  it("shows the decision time in the school zone whatever the machine zone is", () => {
+    render(<SchoolTransferHistory history={[{ ...entry, decided_at: "2026-09-21T20:00:00Z" }]} />);
+    expect(screen.getByText(/22 Sep\w* 2026, 01:30/)).toBeTruthy();
+  });
+});

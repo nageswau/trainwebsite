@@ -1,5 +1,5 @@
 import { serverApi } from "@/lib/api";
-import { formatDate } from "@/lib/formatDate";
+import { formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import type { SchoolRef } from "@/lib/transfers";
 
 // ENH-005 -- a student's approved school transfers, read from GET /school/students/{id}/transfer-history. That endpoint uses
@@ -39,7 +39,7 @@ export default function SchoolTransferHistory({ history }: { history: TransferHi
                 <span className="jtl-node" style={{ "--jtl-color": COLOR } as React.CSSProperties} />
               </div>
               <div className="jtl-body">
-                <span className="jtl-date">{formatDate(h.decided_at, true)}</span>
+                <span className="jtl-date">{formatDate(h.decided_at, true, SCHOOL_TIME_ZONE)}</span>
                 <span className="jtl-badge" style={{ "--jtl-color": COLOR } as React.CSSProperties}>Transferred</span>
                 <h4 className="jtl-title">Moved from {h.from_school.name} to {h.to_school.name}</h4>
               </div>

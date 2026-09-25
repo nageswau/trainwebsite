@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
 
-import { formatDate } from "@/lib/formatDate";
+import { formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import { detailMessage, isRequestBody, NOT_COMPLETED } from "@/lib/apiErrors";
 import type { SchoolRef } from "@/lib/transfers";
 
@@ -36,7 +36,7 @@ export default function SchoolTransferRequestForm({ studentId, destinations, pen
   // What replaces the form once a request is pending or has just been filed. It is shown in a live region that is rendered together with the form,
   // so it already exists when the text arrives (a region inserted along with its text is not reliably announced; AC-24, found by the final browser
   // verification).
-  const message = sent ?? (pending ? `Transfer to ${pending.to_school_name} requested ${formatDate(pending.created_at)}. Waiting for admin review.` : null);
+  const message = sent ?? (pending ? `Transfer to ${pending.to_school_name} requested ${formatDate(pending.created_at, false, SCHOOL_TIME_ZONE)}. Waiting for admin review.` : null);
   if (!message && destinations === null) return <p className="muted">Transfers are unavailable right now.</p>;
   if (!message && destinations !== null && destinations.length === 0) return <p className="muted">No other partner schools are available.</p>;
 
