@@ -75,7 +75,7 @@ describe("SchoolActivitiesPanel save failures", () => {
     process.env.TZ = "UTC"; // the server's zone
     try {
       render(<SchoolActivitiesPanel activities={[{ id: "a9", title: "Seminar", scheduled_at: "2027-01-15T04:30:00Z" }]} students={[]} />);
-      expect(screen.getByRole("cell", { name: "15 Jan 2027, 10:00" })).toBeInTheDocument();
+      expect(screen.getByRole("cell", { name: "15 Jan 2027, 10:00 IST" })).toBeInTheDocument();
     } finally {
       process.env.TZ = saved;
     }

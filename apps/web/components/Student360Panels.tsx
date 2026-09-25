@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import CareerGoalForm from "@/components/CareerGoalForm";
 import { type ChildOverview, SkillsCard, StatusChip } from "@/components/SchoolChildOverview";
 import SchoolGradeHistory, { type GradeHistoryEntry } from "@/components/SchoolGradeHistory";
-import { formatDate } from "@/lib/formatDate";
+import { formatCalendarDate, formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import type { Student360, Tab360 } from "@/lib/student360";
 import { safeHref, TAB_LABELS, type TabKey } from "@/lib/student360Links";
 
@@ -47,7 +47,7 @@ function Entries({ entries }: { entries: Entry[] }) {
       {entries.map((e) => (
         <li key={e.id}>
           <strong>{e.title}</strong>{e.organization ? <span className="muted"> — {e.organization}</span> : null}
-          {e.date_from ? <span className="muted"> ({formatDate(e.date_from)}{e.date_to ? ` – ${formatDate(e.date_to)}` : ""})</span> : null}
+          {e.date_from ? <span className="muted"> ({formatCalendarDate(e.date_from)}{e.date_to ? ` – ${formatCalendarDate(e.date_to)}` : ""})</span> : null}
           {e.description ? <p>{e.description}</p> : null}
         </li>
       ))}
@@ -90,7 +90,7 @@ function body(key: TabKey, d: Row, view: Student360): ReactNode {
         </>
       );
     case "personal_details": {
-      const facts: [string, ReactNode][] = [["Name", d.full_name], ["Student ID", d.student_code], ["Grade/Class", d.grade_or_class], ["Date of birth", d.date_of_birth ? formatDate(d.date_of_birth) : null], ["School", d.school_name], ["Assigned teacher", d.assigned_teacher_name]];
+      const facts: [string, ReactNode][] = [["Name", d.full_name], ["Student ID", d.student_code], ["Grade/Class", d.grade_or_class], ["Date of birth", d.date_of_birth ? formatCalendarDate(d.date_of_birth) : null], ["School", d.school_name], ["Assigned teacher", d.assigned_teacher_name]];
       return <Card><Facts facts={facts.filter(([, v]) => v !== null && v !== undefined)} /></Card>;
     }
     case "academic_records":
@@ -98,16 +98,16 @@ function body(key: TabKey, d: Row, view: Student360): ReactNode {
     case "attendance":
       return (
         <Card>
-          {d.activities.length ? <Table caption="School activity attendance" head={["Activity", "Date", "Attendance"]} rows={d.activities.map((a: Row) => [a.title, formatDate(a.scheduled_at), a.present ? "Present" : "Absent"])} /> : null}
+          {d.activities.length ? <Table caption="School activity attendance" head={["Activity", "Date", "Attendance"]} rows={d.activities.map((a: Row) => [a.title, formatDate(a.scheduled_at, false, SCHOOL_TIME_ZONE), a.present ? "Present" : "Absent"])} /> : null}
           {d.skill_sessions.length ? <Table caption="Skills session attendance" head={["Skills batch", "Sessions attended"]} rows={d.skill_sessions.map((s: Row) => [s.batch_title, `${s.present} of ${s.marked}`])} /> : null}
         </Card>
       );
     case "examination_results":
       return <Card><Table caption="Published results" head={["Year", "Term", "Subject", "Marks", "Grade"]} rows={d.results.map((r: Row) => [r.academic_year, r.term, r.subject, r.max_marks !== undefined ? `${r.marks_obtained} / ${r.max_marks}` : null, r.grade])} /></Card>;
     case "career_guidance":
-      return <Card><ul className="s360-list">{d.records.map((r: Row) => <li key={r.id}><strong>{RECORD_TYPE[r.record_type] ?? r.record_type}</strong> <span className="muted">{formatDate(r.created_at)}</span><p>{r.notes}</p></li>)}</ul></Card>;
+      return <Card><ul className="s360-list">{d.records.map((r: Row) => <li key={r.id}><strong>{RECORD_TYPE[r.record_type] ?? r.record_type}</strong> <span className="muted">{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</span><p>{r.notes}</p></li>)}</ul></Card>;
     case "psychometric_assessment":
-      return <Card><Table caption="Psychometric assessments" head={["Assessment", "Status", "Date"]} rows={d.assessments.map((a: Row) => [a.assessment_type, a.status ? <StatusChip status={a.status} /> : null, formatDate(a.created_at)])} /></Card>;
+      return <Card><Table caption="Psychometric assessments" head={["Assessment", "Status", "Date"]} rows={d.assessments.map((a: Row) => [a.assessment_type, a.status ? <StatusChip status={a.status} /> : null, formatDate(a.created_at, false, SCHOOL_TIME_ZONE)])} /></Card>;
     case "skills":
       return (
         <>
@@ -126,9 +126,9 @@ function body(key: TabKey, d: Row, view: Student360): ReactNode {
       return (
         <>
           {!attended.length && !sections.length ? <Card><Empty text={EMPTY_TEXT.activities} /></Card> : null}
-          {attended.length ? <Card><h3 id="s360-attended">School activities attended</h3><Table labelledBy="s360-attended" head={["Activity", "Date"]} rows={attended.map((a: Row) => [a.title, formatDate(a.scheduled_at)])} /></Card> : null}
+          {attended.length ? <Card><h3 id="s360-attended">School activities attended</h3><Table labelledBy="s360-attended" head={["Activity", "Date"]} rows={attended.map((a: Row) => [a.title, formatDate(a.scheduled_at, false, SCHOOL_TIME_ZONE)])} /></Card> : null}
           {sections.map(([section, v]) => <Card key={section}><h3>{ACTIVITY_SECTION[section] ?? section}</h3><Entries entries={v} /></Card>)}
-          {upcoming.length ? <Card><h3 id="s360-upcoming">Upcoming school activities</h3><Table labelledBy="s360-upcoming" head={["Activity", "Date"]} rows={upcoming.map((a) => [a.title, formatDate(a.scheduled_at)])} /></Card> : null}
+          {upcoming.length ? <Card><h3 id="s360-upcoming">Upcoming school activities</h3><Table labelledBy="s360-upcoming" head={["Activity", "Date"]} rows={upcoming.map((a) => [a.title, formatDate(a.scheduled_at, false, SCHOOL_TIME_ZONE)])} /></Card> : null}
         </>
       );
     }
@@ -143,7 +143,7 @@ function body(key: TabKey, d: Row, view: Student360): ReactNode {
               return (
                 <li key={i}>
                   {href ? <a href={href} target="_blank" rel="noopener noreferrer">{r.assessment_type} report</a> : <>{r.assessment_type} report: <span className="muted">{r.report_url}</span></>}
-                  {" "}<span className="muted">{formatDate(r.created_at)}</span>
+                  {" "}<span className="muted">{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</span>
                 </li>
               );
             })}

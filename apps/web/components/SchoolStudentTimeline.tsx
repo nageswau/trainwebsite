@@ -1,5 +1,5 @@
 import { serverApi } from "@/lib/api";
-import { formatDate } from "@/components/SchoolChildOverview";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 
 // SCH-008 -- narrow Student Journey Timeline: a chronological rail of events already
 // recorded for one student, read from GET /school/students/{id}/timeline. That endpoint
@@ -58,7 +58,7 @@ export default function SchoolStudentTimeline({ events }: { events: TimelineEven
               <span className="jtl-node" style={{ "--jtl-color": meta.color } as React.CSSProperties} />
             </div>
             <div className="jtl-body">
-              <span className="jtl-date">{formatDate(e.date, true)}</span>
+              <span className="jtl-date">{formatSchoolDateTime(e.date)}</span>
               <span className="jtl-badge" style={{ "--jtl-color": meta.color } as React.CSSProperties}>{meta.label}</span>
               <h4 className="jtl-title">{e.title}</h4>
               {e.detail && <p className="jtl-detail">{e.detail}</p>}

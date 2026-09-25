@@ -1,6 +1,6 @@
 import PortalShell from "@/components/PortalShell";
-import { formatDate } from "@/components/SchoolChildOverview";
 import { serverApi } from "@/lib/api";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 import { accessUnavailable } from "@/components/AccessUnavailable";
@@ -33,7 +33,7 @@ export default async function SchoolParentNotificationsPage() {
                 <tbody>
                   {notifications.map((n) => (
                     <tr key={n.id}>
-                      <td>{formatDate(n.created_at, true)}</td>
+                      <td>{formatSchoolDateTime(n.created_at)}</td>
                       <td><strong>{n.title}</strong>{!n.read && <> <span className="badge">new</span></>}<br />{n.body}</td>
                       <td>{n.action_url && <a className="btn secondary small" href={n.action_url}>Open</a>}</td>
                     </tr>

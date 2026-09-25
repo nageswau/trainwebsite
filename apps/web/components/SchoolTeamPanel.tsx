@@ -3,6 +3,8 @@
 import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
+
 type Account = { id: string; name: string; email: string; role: string; active: boolean };
 type Invite = { id: string; role: string; email: string; full_name: string; expires_at: string };
 
@@ -134,7 +136,7 @@ export default function SchoolTeamPanel({ accounts, pendingInvites }: { accounts
               </thead>
               <tbody>
                 {pendingInvites.map((i) => (
-                  <tr key={i.id}><td>{i.full_name}</td><td>{i.email}</td><td>{ROLE_LABEL[i.role] || i.role}</td><td>{new Date(i.expires_at).toLocaleDateString()}</td></tr>
+                  <tr key={i.id}><td>{i.full_name}</td><td>{i.email}</td><td>{ROLE_LABEL[i.role] || i.role}</td><td>{formatDate(i.expires_at, false, SCHOOL_TIME_ZONE)}</td></tr>
                 ))}
               </tbody>
             </table>

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { University } from "@/lib/types";
+import LocalTime from "@/components/LocalTime";
 
 type Course = { id: string; title: string; level: string; category: string; duration: string; tuition_fee: string; intake: string };
 type ApplicationRow = { id: string; university: string; reference: string | null; intake: string; status: string; next_action: string | null };
@@ -174,7 +175,7 @@ export default function OverseasApplyPanel() {
                   ) : (
                     histories[a.id].map((entry, index) => (
                       <li key={index}>
-                        <strong>{entry.to_status.replaceAll("_", " ")}</strong> — <span className="muted">{new Date(entry.changed_at).toLocaleDateString()}</span>
+                        <strong>{entry.to_status.replaceAll("_", " ")}</strong> — <span className="muted"><LocalTime value={entry.changed_at} /></span>
                       </li>
                     ))
                   )}

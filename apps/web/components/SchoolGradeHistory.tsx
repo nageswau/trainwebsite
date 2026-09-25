@@ -1,5 +1,5 @@
-import { formatDate } from "@/components/SchoolChildOverview";
 import { serverApi } from "@/lib/api";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 
 // ENH-004 -- a student's grade/academic-year transitions, read from GET /school/students/{id}/grade-history.
 // That endpoint reuses the same own-scope loader as the overview and timeline, so this renders correctly
@@ -42,7 +42,7 @@ export default function SchoolGradeHistory({ history }: { history: GradeHistoryE
               <span className="jtl-node" style={{ "--jtl-color": meta.color } as React.CSSProperties} />
             </div>
             <div className="jtl-body">
-              <span className="jtl-date">{formatDate(h.created_at, true)}</span>
+              <span className="jtl-date">{formatSchoolDateTime(h.created_at)}</span>
               <span className="jtl-badge" style={{ "--jtl-color": meta.color } as React.CSSProperties}>{meta.label}</span>
               <h4 className="jtl-title">{summarize(h)}</h4>
               <p className="jtl-detail">Academic year: {h.from.academic_year_label ? `${h.from.academic_year_label} to ` : ""}{h.to.academic_year_label}</p>

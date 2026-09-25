@@ -2,8 +2,8 @@
 
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
 
-import { formatDate } from "@/lib/formatDate";
 import { detailMessage, isRequestBody } from "@/lib/apiErrors";
+import LocalTime from "@/components/LocalTime";
 import { type AdminTransferRequest, STATUS_CLASS, STATUS_LABEL } from "@/lib/transfers";
 
 // ENH-005 -- one request in the admin's queue (spec §7.1). Approve and reject are irreversible from here, so each is two-step and
@@ -96,7 +96,7 @@ export default function AdminTransferRow({ request, onDecided, onFailure }: { re
         <strong>{r.student_name}</strong>
         <span>{r.student_code}</span>
         <span>From {r.from_school.name} → To {r.to_school.name}</span>
-        <span>Requested by {r.requester.name} ({r.direction === "outgoing" ? "the losing" : "the gaining"} school) · {formatDate(r.created_at)}</span>
+        <span>Requested by {r.requester.name} ({r.direction === "outgoing" ? "the losing" : "the gaining"} school) · <LocalTime value={r.created_at} /></span>
         {r.reason && <span>Reason: {r.reason}</span>}
         {r.decision_note && <span>Note: {r.decision_note}</span>}
         {r.status === "pending" && preview && (

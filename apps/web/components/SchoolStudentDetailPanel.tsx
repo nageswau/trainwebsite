@@ -3,8 +3,8 @@ import SchoolStudentTimeline, { loadStudentTimeline } from "@/components/SchoolS
 import SchoolTransferHistory, { loadTransferHistory } from "@/components/SchoolTransferHistory";
 import SchoolTransferRequestForm from "@/components/SchoolTransferRequestForm";
 import PortfolioPanel from "@/components/PortfolioPanel";
-import { formatDate } from "@/components/SchoolChildOverview";
 import { serverApi } from "@/lib/api";
+import { formatCalendarDate } from "@/lib/formatDate";
 import type { Page } from "@/lib/apiErrors";
 import type { SchoolRef, TransferRequest } from "@/lib/transfers";
 import { loadPortfolio } from "@/lib/portfolio";
@@ -45,7 +45,7 @@ export default async function SchoolStudentDetailPanel({ student, role, backHref
       <div className="card">
         <h2>{student.full_name} <span className="muted" style={{ fontSize: 14 }}>({student.student_code})</span></h2>
         <p><strong>Grade/Class:</strong> {student.grade_or_class || "-"}</p>
-        <p><strong>Date of birth:</strong> {formatDate(student.date_of_birth)}</p>
+        <p><strong>Date of birth:</strong> {formatCalendarDate(student.date_of_birth)}</p>
         {pending && <p><span className="status pending">Transfer requested</span> to {pending.to_school.name}</p>}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {view360 && <a className="btn" href={view360}>Open 360° view</a>}

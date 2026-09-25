@@ -1,5 +1,5 @@
 import { serverApi } from "@/lib/api";
-import { formatDate } from "@/lib/formatDate";
+import { formatCalendarDate, formatDate, formatSchoolDateTime, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import { attendanceText, ENROLMENT_LABEL, MODULE_LABEL, type SkillModule } from "@/lib/skills";
 
 // SCH-007: one child's complete picture for the Parent Portal, read from
@@ -43,8 +43,6 @@ export async function loadChildOverview(studentId: string): Promise<ChildOvervie
 export function childrenSpanSchools(overviews: (ChildOverview | null)[]): boolean {
   return new Set(overviews.map((o) => o?.student.school_name).filter(Boolean)).size > 1;
 }
-
-export { formatDate };
 
 const STATUS_LABEL: Record<string, string> = {
   // ENH-011: the enrolment statuses (including "Completed") come from the skills module itself; the rest are this page's own.
@@ -115,7 +113,7 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         <h2>{s.full_name} <span className="muted" style={{ fontSize: 14 }}>({s.student_code})</span></h2>
         <p><strong>School:</strong> {s.school_name || "-"}</p>
         <p><strong>Grade/Class:</strong> {s.grade_or_class || "-"}</p>
-        <p><strong>Date of birth:</strong> {formatDate(s.date_of_birth)}</p>
+        <p><strong>Date of birth:</strong> {formatCalendarDate(s.date_of_birth)}</p>
         <p><strong>Class teacher:</strong> {s.assigned_teacher_name || "Not assigned yet"}</p>
       </div>
 
@@ -126,7 +124,7 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         {overview.career_guidance.sessions.length === 0 ? (
           <p className="muted">No career guidance session recorded yet.</p>
         ) : (
-          <ul>{overview.career_guidance.sessions.map((r) => <li key={r.id}><strong>{formatDate(r.created_at)}</strong> — {r.notes}</li>)}</ul>
+          <ul>{overview.career_guidance.sessions.map((r) => <li key={r.id}><strong>{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</strong> — {r.notes}</li>)}</ul>
         )}
       </div>
 
@@ -135,7 +133,7 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         {overview.counselling.notes.length === 0 ? (
           <p className="muted">No counselling notes yet.</p>
         ) : (
-          <ul>{overview.counselling.notes.map((r) => <li key={r.id}><strong>{formatDate(r.created_at)}</strong> — {r.notes}</li>)}</ul>
+          <ul>{overview.counselling.notes.map((r) => <li key={r.id}><strong>{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</strong> — {r.notes}</li>)}</ul>
         )}
       </div>
 
@@ -144,7 +142,7 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         {overview.recommended_careers.length === 0 ? (
           <p className="muted">No career recommendation yet — this appears once the Career Counselor records one.</p>
         ) : (
-          <ul>{overview.recommended_careers.map((r) => <li key={r.id}><span className="badge">{r.notes}</span> <span className="muted">{formatDate(r.created_at)}</span></li>)}</ul>
+          <ul>{overview.recommended_careers.map((r) => <li key={r.id}><span className="badge">{r.notes}</span> <span className="muted">{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</span></li>)}</ul>
         )}
       </div>
 
@@ -158,7 +156,7 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
               <thead><tr><th>Assessment</th><th>Status</th><th>Assigned on</th></tr></thead>
               <tbody>
                 {overview.psychometric.assessments.map((a) => (
-                  <tr key={a.id}><td>{a.assessment_type}</td><td><StatusChip status={a.status} /></td><td>{formatDate(a.created_at)}</td></tr>
+                  <tr key={a.id}><td>{a.assessment_type}</td><td><StatusChip status={a.status} /></td><td>{formatDate(a.created_at, false, SCHOOL_TIME_ZONE)}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -194,7 +192,7 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
               <thead><tr><th>Activity</th><th>Date</th><th>Attendance</th></tr></thead>
               <tbody>
                 {overview.activities.attended.map((a) => (
-                  <tr key={a.activity_id}><td>{a.title}</td><td>{formatDate(a.scheduled_at, true)}</td><td><span className={`status${a.present ? "" : " error"}`}>{a.present ? "Present" : "Absent"}</span></td></tr>
+                  <tr key={a.activity_id}><td>{a.title}</td><td>{formatSchoolDateTime(a.scheduled_at, true)}</td><td><span className={`status${a.present ? "" : " error"}`}>{a.present ? "Present" : "Absent"}</span></td></tr>
                 ))}
               </tbody>
             </table>
@@ -209,7 +207,7 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         {overview.activities.upcoming.length === 0 ? (
           <p className="muted">Nothing scheduled yet.</p>
         ) : (
-          <ul>{overview.activities.upcoming.map((a) => <li key={a.id}><strong>{formatDate(a.scheduled_at, true)}</strong> — {a.title}</li>)}</ul>
+          <ul>{overview.activities.upcoming.map((a) => <li key={a.id}><strong>{formatSchoolDateTime(a.scheduled_at, true)}</strong> — {a.title}</li>)}</ul>
         )}
       </div>
     </>

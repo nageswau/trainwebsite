@@ -1,3 +1,5 @@
+import { formatCalendarDate } from "@/lib/formatDate";
+
 export type EntitlementsData = {
   tier: string | null;
   tier_valid_until: string | null;
@@ -25,7 +27,7 @@ export default function SchoolEntitlementsPanel({ data }: { data: EntitlementsDa
           <p className="muted">No partnership tier has been set for your school yet. Contact your EduSphere Overseas Admin.</p>
         ) : (
           <>
-            <p><strong>Plan:</strong> {tierLabel} Partner{data.tier_valid_until ? ` — valid until ${new Date(data.tier_valid_until).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}` : ""}</p>
+            <p><strong>Plan:</strong> {tierLabel} Partner{data.tier_valid_until ? ` — valid until ${formatCalendarDate(data.tier_valid_until)}` : ""}</p>
             <div className="table-wrap" style={{ marginTop: 12 }}>
               <table className="table">
                 <thead>
