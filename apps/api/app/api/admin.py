@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code, uuid_reference
 from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, SchoolStaffAssignment, SchoolStudent, University, User, UserRoleAssignment
-from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate
+from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.storage import storage
 
@@ -1137,33 +1137,125 @@ async def list_schools(user: User = Depends(get_current_user), db: AsyncSession 
     return await _school_outs_batch(db, rows)
 
 
-@agents_router.patch("/schools/{school_id}")
+INVALID_TIER = "tier must be one of bronze, silver, gold, platinum"
+NOTIFICATION_TITLE_MAX = 180  # Notification.title is String(180); a school name alone may be 200 (ENH-023 §9)
+SCHOOL_ENTITLEMENTS_URL = {"school_coordinator": "/school/coordinator/entitlements", "school_principal": "/school/principal/entitlements"}
+
+
+def _tier_notices(school_name: str, change: dict) -> tuple[tuple[str, str], tuple[str, str]]:
+    """((school title, body), (admin title, body)) for a change that moved the tier (ENH-023 spec §4.4)."""
+    from app.api.schools import _tier_name  # noqa: PLC0415
+
+    before, after = _tier_name(change["from_tier"]), _tier_name(change["to_tier"])
+    if change["direction"] == "upgrade":
+        labels = ", ".join(s["label"] for s in change["gained"])
+        school = (f"Your partnership is now {after}", f"{school_name} has moved from {before} to {after}. Newly available: {labels}.")
+        admin_body = f"Newly available: {labels}."
+    else:
+        labels = ", ".join(s["label"] for s in change["lost"])
+        school = (f"Your partnership changed from {before} to {after}", f"These services are no longer available for new work: {labels}. Work already started for them can still be completed.")
+        admin_body = f"No longer available for new work: {labels}. Work already started for them can still be completed."
+    admin_title = f"Tier change recorded: {school_name}, {before} → {after}"
+    return (school[0][:NOTIFICATION_TITLE_MAX], school[1]), (admin_title[:NOTIFICATION_TITLE_MAX], admin_body)
+
+
+async def _notify_tier_change(db: AsyncSession, school_id: UUID, school_name: str, actor_id: UUID, change: dict) -> None:
+    """ENH-023 (D5/D9), for a tier change that has ALREADY committed: the school's active Coordinators and Principals, then the
+    acting admin, each get an in-app notice plus the email channel. Each recipient is tried and committed alone; a failure is
+    logged and swallowed, never undoing or failing the tier change (SCH-007-AC04 pattern, school_skills._notify_after_commit)."""
+    from app.api.schools import _notify_parent  # noqa: PLC0415 -- takes any User: in-app row, email attempt, NotificationDelivery
+
+    (school_title, school_body), (admin_title, admin_body) = _tier_notices(school_name, change)
+    staff = (
+        await db.execute(
+            select(User.id, User.role).where(User.role.in_(list(SCHOOL_ENTITLEMENTS_URL)), User.active.is_(True), User.profile["school_id"].as_string() == str(school_id))
+        )
+    ).all()
+    notices = [(user_id, school_title, school_body, SCHOOL_ENTITLEMENTS_URL[role]) for user_id, role in staff]
+    notices.append((actor_id, admin_title, admin_body, None))
+    for user_id, title, body, action_url in notices:
+        try:
+            recipient = await db.get(User, user_id, populate_existing=True)
+            await _notify_parent(db, recipient, school_name=school_name, title=title, body=body, action_url=action_url)
+            await db.commit()
+        except Exception as exc:  # noqa: BLE001 -- the tier change has committed; see docstring
+            await db.rollback()
+            # No exc_info (security review S1): SMTP errors can carry the recipient's address. NotificationDelivery keeps the detail.
+            logger.warning("tier_change_notification_failed", extra={"extra_fields": {"school_id": str(school_id), "recipient_id": str(user_id), "error_type": type(exc).__name__}})
+
+
+@agents_router.patch("/schools/{school_id}", response_model=SchoolUpdateOut)
 async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-025) -- Overseas Admin updates a School's partnership
     tier and/or profile fields. `name`/`city`/`state`/`coordinator_*` stay out of scope for this
-    endpoint -- they were never editable before and no acceptance criterion asks for that."""
+    endpoint -- they were never editable before and no acceptance criterion asks for that.
+    ENH-023 (DEC-SCOPE-030): a tier change is recorded as a transition (old -> new, gained/lost), returned as
+    `tier_change`, guarded by the optional `expected_tier` precondition (D12), and told to the school after the commit."""
+    from app.api.schools import TIER_ORDER, TIER_UPDATE, _tier_name, tier_change_payload  # noqa: PLC0415 -- lazy, like the bridge import below
+
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
-    school = await db.get(School, school_id)
+    # ENH-023 §8: the row lock queues concurrent tier changes, so each one's `from_tier` is the tier committed before it.
+    school = await db.scalar(select(School).where(School.id == school_id).with_for_update())
     if not school:
         raise HTTPException(404, "School not found")
     fields = payload.model_dump(exclude_unset=True)
+    for key in ("tier", "expected_tier"):  # D13: "" is no tier, stored and compared as null
+        if key in fields:
+            fields[key] = fields[key] or None
+            if fields[key] is not None and fields[key] not in TIER_ORDER:
+                raise HTTPException(422, INVALID_TIER)
+    if "expected_tier" in fields and fields.pop("expected_tier") != (school.tier or None):
+        # D12, checked under the lock: the tier moved since the caller looked, so what they confirmed is not what would happen.
+        raise HTTPException(409, f"This school's tier changed to {_tier_name(school.tier)} since you looked it up. Look it up again before changing the tier.")
+    old_tier, old_valid_until = school.tier, school.tier_valid_until
     if "tier" in fields:
-        tier = fields["tier"]
-        if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
-            raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
-        school.tier = tier
+        school.tier = fields["tier"]
     if "tier_valid_until" in fields:
         school.tier_valid_until = fields["tier_valid_until"]
+    tier_change = None
     if "tier" in fields or "tier_valid_until" in fields:
-        db.add(AuditLog(user_id=user.id, action="school.tier_update", entity_type="school", entity_id=str(school.id), metadata_json={"tier": school.tier}))
+        tier_change = tier_change_payload(old_tier, school.tier)
+        metadata = {
+            "tier": school.tier,
+            "from_tier": old_tier,
+            "to_tier": school.tier,
+            "direction": tier_change["direction"],
+            "gained": [s["key"] for s in tier_change["gained"]],
+            "lost": [s["key"] for s in tier_change["lost"]],
+            "tier_valid_until": school.tier_valid_until.isoformat() if school.tier_valid_until else None,
+            "previous_tier_valid_until": old_valid_until.isoformat() if old_valid_until else None,
+        }
+        # clock_timestamp(), not the transaction-start now(): a record created by a transaction that still saw the old tier
+        # sorts before this row, so grandfathering (schools._lost_since) treats it as existing work (ENH-023 §8).
+        db.add(AuditLog(user_id=user.id, action=TIER_UPDATE, entity_type="school", entity_id=str(school.id), metadata_json=metadata, created_at=func.clock_timestamp()))
     profile_fields = [k for k in fields if k not in {"tier", "tier_valid_until"}]
     for key in profile_fields:
         setattr(school, key, fields[key])
     if profile_fields:
         db.add(AuditLog(user_id=user.id, action="school.profile_update", entity_type="school", entity_id=str(school.id), metadata_json={"changed_fields": sorted(profile_fields)}))
     await db.commit()
-    return await _school_out(db, school)
+    out = await _school_out(db, school)
+    if tier_change and tier_change["direction"] != "unchanged":
+        await _notify_tier_change(db, school.id, school.name, user.id, tier_change)
+    return {**out.model_dump(mode="json"), "tier_change": tier_change}
+
+
+@agents_router.get("/schools/{school_id}/tier-change-preview", response_model=TierChangeOut)
+async def preview_school_tier_change(school_id: UUID, tier: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-023 -- what a tier change would gain or lose, so the admin UI can confirm a downgrade before it happens. Read-only:
+    no lock, no write. An empty or absent `tier` means removing the tier."""
+    from app.api.schools import TIER_ORDER, tier_change_payload  # noqa: PLC0415 -- lazy, like update_school
+
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    school = await db.get(School, school_id)
+    if not school:
+        raise HTTPException(404, "School not found")
+    new_tier = tier or None
+    if new_tier is not None and new_tier not in TIER_ORDER:
+        raise HTTPException(422, INVALID_TIER)
+    return tier_change_payload(school.tier, new_tier)
 
 
 ACADEMIC_YEAR_STATUSES = ["draft", "active", "closed"]

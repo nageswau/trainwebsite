@@ -4,7 +4,7 @@ import { type FormEvent, useEffect, useState } from "react";
 
 import SchoolSkillAlert from "@/components/SchoolSkillAlert";
 import { SkillStatus, useSkillAction, type SkillAction } from "@/components/useSkillAction";
-import { formatDate } from "@/lib/formatDate";
+import { formatCalendarDate } from "@/lib/formatDate";
 import { canMark, type SkillBatchDetail, type SkillSession } from "@/lib/skills";
 
 // ENH-011 spec §7: sessions (one per day, D10) and a labelled checkbox roster per session. Only students who can still be marked are
@@ -12,7 +12,7 @@ import { canMark, type SkillBatchDetail, type SkillSession } from "@/lib/skills"
 // keeps them. On a closed batch the section is read-only.
 const BASE = "/api/v1/school/career-counselor";
 const LEAVE_WITH_UNSAVED = "You have unsaved attendance. Leave this page without saving it?";
-const sessionLabel = (s: SkillSession) => `${formatDate(s.session_date)}${s.topic ? ` — ${s.topic}` : ""}`;
+const sessionLabel = (s: SkillSession) => `${formatCalendarDate(s.session_date)}${s.topic ? ` — ${s.topic}` : ""}`;
 
 export default function SchoolSkillAttendance({ batch }: { batch: SkillBatchDetail }) {
   const action = useSkillAction();
@@ -24,7 +24,7 @@ export default function SchoolSkillAttendance({ batch }: { batch: SkillBatchDeta
 
   async function addSession(e: FormEvent) {
     e.preventDefault();
-    const created = await action.run<SkillSession>(`${BASE}/skill-batches/${batch.id}/sessions`, "POST", { session_date: date, topic: topic.trim() || null }, (s) => `Session on ${formatDate(s.session_date)} added.`);
+    const created = await action.run<SkillSession>(`${BASE}/skill-batches/${batch.id}/sessions`, "POST", { session_date: date, topic: topic.trim() || null }, (s) => `Session on ${formatCalendarDate(s.session_date)} added.`);
     if (created) {
       setDate("");
       setTopic("");
@@ -112,7 +112,7 @@ function AttendanceRoster({ batch, session, action }: { batch: SkillBatchDetail;
   function save(e: FormEvent) {
     e.preventDefault();
     const records = markable.map((m) => ({ enrollment_id: m.id, present: present[m.id] }));
-    void action.run(`${BASE}/skill-sessions/${session.id}/attendance`, "PUT", { records }, () => `Attendance saved for ${formatDate(session.session_date)}.`);
+    void action.run(`${BASE}/skill-sessions/${session.id}/attendance`, "PUT", { records }, () => `Attendance saved for ${formatCalendarDate(session.session_date)}.`);
   }
 
   if (markable.length === 0) return <p className="muted">No student in this batch can be marked: they are certified, withdrawn or have moved school.</p>;

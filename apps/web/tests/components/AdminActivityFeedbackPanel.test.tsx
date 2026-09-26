@@ -41,6 +41,22 @@ describe("AdminActivityFeedbackPanel", () => {
     expect(document.querySelector("[aria-busy=true]")).toBeNull();
   });
 
+  it("shows times in the viewer's zone: the scheduled time labelled, the submission time not (date policy)", async () => {
+    const savedTz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+    try {
+      stub((url) => (url.endsWith("/schools") ? json(SCHOOLS) : json(page([fb("1")]))));
+      render(<AdminActivityFeedbackPanel />);
+      const card = (await screen.findByText("Seminar 1")).closest("li")!;
+      await waitFor(() => expect(card.textContent).toContain("20 Sept 2026, 05:00 EDT"));
+      const submitted = Array.from(card.querySelectorAll("dd")).find((dd) => dd.textContent?.startsWith("Fatima"));
+      expect(submitted?.textContent).toBe("Fatima, 21 Sept 2026, 05:00");
+    } finally {
+      if (savedTz === undefined) delete process.env.TZ;
+      else process.env.TZ = savedTz;
+    }
+  });
+
   it("filters by school and pages with Load more", async () => {
     const fetchMock = stub((url) => (url.endsWith("/schools") ? json(SCHOOLS) : url.includes("offset=1") ? json(page([fb("2")], 2, 1)) : json(page([fb("1")], 2))));
     render(<AdminActivityFeedbackPanel />);

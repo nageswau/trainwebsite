@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import LocalTime from "@/components/LocalTime";
+
 type JobOption = { id: string; title: string };
 type CandidateOption = { student_id: string; name: string };
 type ShortlistRow = { id: string; candidate: string; job_title: string; status: string };
@@ -145,7 +147,7 @@ export default function EmployerInterviewsPanel() {
             <div className="card" key={row.id}>
               <span className="badge">{row.result || "Awaiting outcome"}</span>
               <h4 style={{ marginTop: 10 }}>{row.candidate}</h4>
-              <p className="muted" style={{ fontSize: 13 }}>{row.job_title} · {row.mode} · {new Date(row.scheduled_at).toLocaleString()}</p>
+              <p className="muted" style={{ fontSize: 13 }}>{row.job_title} · {row.mode} · <LocalTime value={row.scheduled_at} time label /></p>
             </div>
           ))}
         </div>

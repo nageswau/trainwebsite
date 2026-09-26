@@ -148,3 +148,12 @@ describe("SchoolTransfersPanel", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });
+
+// QA-023-07: server-rendered (UTC) then hydrated in the browser, so the date must use the school zone or React reports #418 between
+// 18:30 and 00:00 UTC. 20:00Z on the 21st is already the 22nd in IST.
+describe("SchoolTransfersPanel dates", () => {
+  it("shows a request's date in the school zone whatever the machine zone is", () => {
+    render(<SchoolTransfersPanel initial={page([outgoing("1", { created_at: "2026-09-21T20:00:00Z" })])} />);
+    expect(screen.getByText(/22 Sep\w* 2026/)).toBeTruthy();
+  });
+});

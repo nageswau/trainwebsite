@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
 import { isFeedbackEligible } from "@/lib/activityFeedback";
 import { sendJson } from "@/lib/apiErrors";
-import { formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 
 type Activity = { id: string; title: string; scheduled_at: string; activity_type?: string | null; feedback_submitted?: boolean };
 
@@ -95,7 +95,7 @@ export default function SchoolActivitiesPanel({ activities, students }: { activi
                 {activities.map((a) => (
                   <tr key={a.id}>
                     <td>{a.title}</td>
-                    <td>{formatDate(a.scheduled_at, true, SCHOOL_TIME_ZONE)}</td>
+                    <td>{formatSchoolDateTime(a.scheduled_at, true)}</td>
                     <td>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <button className="btn ghost small" onClick={() => startMarking(a.id)}>Mark attendance</button>

@@ -22,7 +22,7 @@ export default async function SchoolCoordinatorNotificationsPage() {
       <div className="portal-content">
         <h1>Notifications</h1>
         <div className="card">
-          <SchoolNotificationList notifications={notifications} emptyText="No notifications yet. You will be told here when a transfer request is decided, or a student joins your school." />
+          <SchoolNotificationList notifications={notifications} emptyText="No notifications yet. You will be told here when a transfer request is decided, a student joins your school, or your school's partnership changes." />
         </div>
       </div>
     </PortalShell>

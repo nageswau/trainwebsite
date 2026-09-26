@@ -1,6 +1,7 @@
 import PortalShell from "@/components/PortalShell";
-import { ChildStatusRow, childrenSpanSchools, formatDate, loadChildOverview, type ChildOverview } from "@/components/SchoolChildOverview";
+import { ChildStatusRow, childrenSpanSchools, loadChildOverview, type ChildOverview } from "@/components/SchoolChildOverview";
 import { serverApi } from "@/lib/api";
+import { formatCalendarDate, formatSchoolDateTime } from "@/lib/formatDate";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 import { accessUnavailable } from "@/components/AccessUnavailable";
@@ -38,7 +39,7 @@ export default async function SchoolParentDashboardPage() {
       <div className="card" key={c.id} data-testid={`child-card-${c.id}`}>
         <h2>{c.full_name} <span className="muted" style={{ fontSize: 14 }}>({c.student_code})</span></h2>
         <p><strong>Grade/Class:</strong> {c.grade_or_class || "-"}</p>
-        <p><strong>Date of birth:</strong> {formatDate(c.date_of_birth)}</p>
+        <p><strong>Date of birth:</strong> {formatCalendarDate(c.date_of_birth)}</p>
         {o ? (
           <>
             <p><strong>Class teacher:</strong> {o.student.assigned_teacher_name || "Not assigned yet"}</p>
@@ -86,7 +87,7 @@ export default async function SchoolParentDashboardPage() {
           {upcomingList.length === 0 ? (
             <p className="muted">Nothing scheduled yet.</p>
           ) : (
-            <ul>{upcomingList.map((a) => <li key={a.id}><strong>{formatDate(a.scheduled_at, true)}</strong> — {a.title}</li>)}</ul>
+            <ul>{upcomingList.map((a) => <li key={a.id}><strong>{formatSchoolDateTime(a.scheduled_at, true)}</strong> — {a.title}</li>)}</ul>
           )}
         </div>
 
@@ -98,7 +99,7 @@ export default async function SchoolParentDashboardPage() {
             <ul>
               {latest.map((n) => (
                 <li key={n.id} style={{ marginBottom: 8 }}>
-                  <strong>{n.title}</strong> <span className="muted">{formatDate(n.created_at, true)}</span>
+                  <strong>{n.title}</strong> <span className="muted">{formatSchoolDateTime(n.created_at)}</span>
                   <br />
                   {n.body} {n.action_url && <a href={n.action_url}>Open</a>}
                 </li>

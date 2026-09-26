@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import LocalTime from "@/components/LocalTime";
+
 type CourseRow = { batch_id: string; program: string; batch: string };
 type Reply = { id: string; author_id: string; body: string; created_at: string };
 type ThreadRow = { id: string; batch_id: string; subject: string; body: string; replies: Reply[] };
@@ -10,14 +12,6 @@ function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
   return "Unable to submit your question.";
-}
-
-function formatWhen(iso: string) {
-  try {
-    return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-  } catch {
-    return iso;
-  }
 }
 
 // TRN-009: "Trainer answers a question; Student sees the reply." No Q&A model or
@@ -96,7 +90,7 @@ export default function QuestionAskPanel() {
                 <ul>
                   {thread.replies.map((reply) => (
                     <li key={reply.id} style={{ fontSize: 13 }}>
-                      <span className="muted">{formatWhen(reply.created_at)}:</span> {reply.body}
+                      <span className="muted"><LocalTime value={reply.created_at} time />:</span> {reply.body}
                     </li>
                   ))}
                 </ul>

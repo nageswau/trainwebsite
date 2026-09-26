@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 
-import LocalDateTime from "@/components/LocalDateTime";
 import { type ActivityFeedback, type FeedbackActivity, participationText, SCORE_LABELS, SESSION_EXPIRED, SIGN_IN_PATH, type UnsentText } from "@/lib/activityFeedback";
 import { detailMessage, isRequestBody, NOT_COMPLETED } from "@/lib/apiErrors";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 
 type Props = { activity: FeedbackActivity; onSubmitted: (feedback: ActivityFeedback) => void; onDuplicate: (unsent: UnsentText) => void; onCancel: () => void };
 const DISCARD_PROMPT = "Discard your unsent feedback?";
@@ -118,7 +118,7 @@ export default function ActivityFeedbackForm({ activity, onSubmitted, onDuplicat
         <div>
           <h3 id={`${id}-heading`} ref={headingRef} tabIndex={-1}>{`Feedback: ${activity.title}`}</h3>
           <p className="muted" style={{ margin: 0 }}>
-            <LocalDateTime value={activity.scheduled_at} withTime /> · {participationText(activity.participation)}
+            {formatSchoolDateTime(activity.scheduled_at, true)} ·{participationText(activity.participation)}
           </p>
         </div>
         <ScoreField name="rating" legend="Overall rating" />

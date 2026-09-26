@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Script from "next/script";
 
+import { formatCalendarDate } from "@/lib/formatDate";
+
 type RazorpaySuccessResponse = {
   razorpay_payment_id: string;
   razorpay_order_id: string;
@@ -199,7 +201,7 @@ export default function FeePaymentPanel() {
             <div className="card" key={row.id}>
               <span className="badge">{row.status}</span>
               <h4 style={{ marginTop: 10 }}>{row.reference_type}{row.installment_no ? ` — Installment ${row.installment_no}` : ""}</h4>
-              <p className="muted" style={{ fontSize: 13 }}>{row.currency} {row.amount.toLocaleString()}{row.due_date ? ` · due ${new Date(row.due_date).toLocaleDateString("en-GB")}` : ""}</p>
+              <p className="muted" style={{ fontSize: 13 }}>{row.currency} {row.amount.toLocaleString()}{row.due_date ? ` · due ${formatCalendarDate(row.due_date)}` : ""}</p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                 {["pending", "overdue"].includes(row.status) && (
                   <button className="btn small" disabled={busyId === row.id} onClick={() => payNow(row)}>
@@ -236,7 +238,7 @@ export default function FeePaymentPanel() {
                 {schedule.installments.map((i) => (
                   <li key={i.id}>
                     Installment {i.installment_no}: {schedule.currency} {i.amount.toLocaleString()}
-                    {i.due_date ? ` · due ${new Date(i.due_date).toLocaleDateString("en-GB")}` : ""} — <span className="badge">{i.status}</span>
+                    {i.due_date ? ` · due ${formatCalendarDate(i.due_date)}` : ""} — <span className="badge">{i.status}</span>
                   </li>
                 ))}
               </ul>

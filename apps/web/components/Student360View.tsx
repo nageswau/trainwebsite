@@ -1,6 +1,6 @@
 import { renderPanel } from "@/components/Student360Panels";
 import Student360Tabs, { type TabSummary } from "@/components/Student360Tabs";
-import { formatDate } from "@/lib/formatDate";
+import { formatCalendarDate } from "@/lib/formatDate";
 import type { Student360 } from "@/lib/student360";
 import { isTabKey, TAB_KEYS, TAB_LABELS } from "@/lib/student360Links";
 
@@ -9,7 +9,7 @@ import { isTabKey, TAB_KEYS, TAB_LABELS } from "@/lib/student360Links";
 export default function Student360View({ data, initialTab, backHref, backLabel }: { data: Student360; initialTab?: string; backHref: string; backLabel: string }) {
   const s = data.student;
   const summaries: TabSummary[] = TAB_KEYS.map((key) => ({ key, label: TAB_LABELS[key], status: data.tabs[key].status, count: data.tabs[key].count }));
-  const facts = [s.school_name, s.grade_or_class, s.date_of_birth ? `Born ${formatDate(s.date_of_birth)}` : null].filter(Boolean).join(" · ");
+  const facts = [s.school_name, s.grade_or_class, s.date_of_birth ? `Born ${formatCalendarDate(s.date_of_birth)}` : null].filter(Boolean).join(" · ");
   return (
     <div className="portal-content">
       <div className="card">

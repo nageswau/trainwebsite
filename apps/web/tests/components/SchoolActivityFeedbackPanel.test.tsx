@@ -30,6 +30,19 @@ describe("SchoolActivityFeedbackPanel", () => {
     expect(SCHOOL_NAV.principal.map((n) => n.href)).toContain("/school/principal/feedback");
   });
 
+  it("shows times in India time whatever the viewer's zone: the scheduled time labelled, the submission time not (date policy)", () => {
+    const savedTz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+    try {
+      render(<SchoolActivityFeedbackPanel initial={page([row("a1", SAVED)])} canSubmit />);
+      expect(item("Seminar a1").textContent).toContain("20 Sept 2026, 14:30 IST");
+      expect(screen.getByText(/Coordinator, 21 Sept 2026, 14:30$/)).toBeTruthy();
+    } finally {
+      if (savedTz === undefined) delete process.env.TZ;
+      else process.env.TZ = savedTz;
+    }
+  });
+
   it("shows the empty state with a way to the Activities page", () => {
     render(<SchoolActivityFeedbackPanel initial={page([])} canSubmit />);
     expect(screen.getByRole("heading", { name: "No completed Edusphere activities yet." })).toBeTruthy();

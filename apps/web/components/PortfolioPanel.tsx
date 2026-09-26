@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import PortfolioEntryForm from "@/components/PortfolioEntryForm";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { refocus } from "@/lib/focus";
-import { formatDate } from "@/lib/formatDate";
+import { formatCalendarDate } from "@/lib/formatDate";
 import type { PortfolioData, PortfolioEntry } from "@/lib/portfolio";
 
 // ENH-012 -- Digital Portfolio: docs/superpowers/specs/2026-09-22-enh-012-digital-portfolio-design.md.
@@ -73,7 +73,7 @@ function EntryList({ section, entries, studentId, canEdit, activeForm, confirmin
                   <>
                     <strong>{e.title}</strong>
                     {e.organization && <span className="pf-entry-org"> — {e.organization}</span>}
-                    {e.date_from && <span className="pf-entry-date"> ({formatDate(e.date_from)}{e.date_to ? ` – ${formatDate(e.date_to)}` : ""})</span>}
+                    {e.date_from && <span className="pf-entry-date"> ({formatCalendarDate(e.date_from)}{e.date_to ? ` – ${formatCalendarDate(e.date_to)}` : ""})</span>}
                     {e.description && <p className="pf-entry-desc">{e.description}</p>}
                     {canEdit && (
                       <div className="pf-entry-actions">

@@ -1348,6 +1348,9 @@ class SchoolUpdate(BaseModel):
     model_config = {"extra": "forbid"}
     tier: str | None = None
     tier_valid_until: date | None = None
+    # ENH-023 D12: optional precondition -- the tier the caller last saw. A mismatch under the row lock is a 409, so a
+    # stale preview can never turn into an unconfirmed downgrade. Omitted = no precondition (backward compatible).
+    expected_tier: str | None = None
     branch: str | None = Field(default=None, max_length=200)
     address: str | None = Field(default=None, max_length=500)
     contact_number: str | None = Field(default=None, max_length=30)
@@ -1390,6 +1393,27 @@ class SchoolOut(BaseModel):
     school_coordinator_name: str | None
     career_counsellor_names: list[str]
     created_at: datetime
+
+
+class TierChangeService(BaseModel):
+    key: str
+    label: str
+
+
+class TierChangeOut(BaseModel):
+    """ENH-023 -- a tier change's effect, from the tier PATCH (`tier_change`) and its preview."""
+
+    direction: Literal["upgrade", "downgrade", "unchanged"]
+    from_tier: str | None
+    to_tier: str | None
+    gained: list[TierChangeService]
+    lost: list[TierChangeService]
+
+
+class SchoolUpdateOut(SchoolOut):
+    """`SchoolOut` plus the additive `tier_change` (null when the body carried no tier field)."""
+
+    tier_change: TierChangeOut | None = None
 
 
 # --- ENH-018: school activity feedback (docs/superpowers/specs/2026-09-23-enh-018-school-activity-feedback-design.md §5) ---

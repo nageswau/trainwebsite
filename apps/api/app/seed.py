@@ -615,6 +615,8 @@ async def main():
             school = School(
                 name="Sunrise Public School", city="Hyderabad", state="Telangana", created_by_user_id=us["overseas_admin"].id,
                 tier="platinum", tier_valid_until=date.today() + timedelta(days=365),
+                # QA-023-03: like create_school -- without a School ID the admin edit panel (the only tier-change UI) cannot find it.
+                school_code=await unique_student_code(db, School.school_code),
             )
             db.add(school)
             await db.flush()
@@ -757,6 +759,8 @@ async def main():
         if school.tier is None:
             school.tier = "platinum"
             school.tier_valid_until = date.today() + timedelta(days=365)
+        if not school.school_code:  # QA-023-03: backfill a database seeded before the School ID existed
+            school.school_code = await unique_student_code(db, School.school_code)
 
         student_rows = {s.full_name: s for s in (await db.scalars(select(SchoolStudent).where(SchoolStudent.school_id == school.id))).all()}
         student_b = student_rows.get("Isha Mehta")

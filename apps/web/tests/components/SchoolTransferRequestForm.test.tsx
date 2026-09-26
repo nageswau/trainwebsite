@@ -183,3 +183,11 @@ describe("SchoolTransferRequestForm", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
+
+// QA-023-07: the pending request's date is server-rendered then hydrated, so it must use the school zone (20:00Z is the next day in IST).
+describe("SchoolTransferRequestForm dates", () => {
+  it("states the pending request's date in the school zone whatever the machine zone is", () => {
+    render(<SchoolTransferRequestForm studentId="s1" destinations={SCHOOLS} pending={{ to_school_name: "Lakeview School", created_at: "2026-09-21T20:00:00Z" }} />);
+    expect(screen.getByRole("status").textContent).toMatch(/requested 22 Sep\w* 2026/);
+  });
+});

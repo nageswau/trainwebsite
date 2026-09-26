@@ -2,7 +2,7 @@
 // status is shown. Status is always a text label plus a class, never colour alone. Safe for client components (no server imports).
 
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
-import { formatDate } from "@/lib/formatDate";
+import { formatCalendarDate } from "@/lib/formatDate";
 import type { SchoolRef } from "@/lib/transfers";
 
 export type SkillModule = "soft_skills" | "digital_skills";
@@ -78,7 +78,7 @@ const END_BEFORE_START = "The end date must be on or after the start date";
 
 /** A batch's dates: the range when it has an end, otherwise just the start. Callers add their own "from"/"From". */
 export function dateRange(start: string, end: string | null): string {
-  return end ? `${formatDate(start)} – ${formatDate(end)}` : formatDate(start);
+  return end ? `${formatCalendarDate(start)} – ${formatCalendarDate(end)}` : formatCalendarDate(start);
 }
 
 /** Field errors for a batch's title and dates, keyed like the API's fields. Empty when the draft may be sent. */

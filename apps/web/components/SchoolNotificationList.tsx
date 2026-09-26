@@ -1,4 +1,6 @@
-import { formatDate } from "@/lib/formatDate";
+"use client";
+
+import { formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
 // The signed-in user's own in-app notifications, as the Parent page already shows them (same table, same "new" badge in text, same Open
 // link). ENH-005 uses it for the School Coordinator: they are told when a transfer they filed is decided and when a student joins their
@@ -16,9 +18,24 @@ export default function SchoolNotificationList({ notifications, emptyText }: { n
           <div className="who">
             <strong>{n.title}{!n.read && <> <span className="badge">new</span></>}</strong>
             <span>{n.body}</span>
-            <span className="muted">{formatDate(n.created_at, true)}</span>
+            <span className="muted">{formatDate(n.created_at, true, SCHOOL_TIME_ZONE)}</span>
           </div>
-          {n.action_url && <div className="meta"><a className="btn secondary small" href={n.action_url}>Open</a></div>}
+          {n.action_url && (
+            <div className="meta">
+              {/* QA-023-06: named after the notice so links are distinguishable, and opening an unread notice marks it read.
+                  keepalive lets the request finish while the browser follows the link; a failure never blocks navigation. */}
+              <a
+                className="btn secondary small"
+                href={n.action_url}
+                aria-label={`Open: ${n.title}`}
+                onClick={() => {
+                  if (!n.read) void fetch(`/api/v1/workflows/notifications/${n.id}/read`, { method: "PATCH", keepalive: true }).catch(() => undefined);
+                }}
+              >
+                Open
+              </a>
+            </div>
+          )}
         </li>
       ))}
     </ul>

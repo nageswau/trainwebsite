@@ -2,6 +2,7 @@ import Link from "next/link";
 import PortalShell from "@/components/PortalShell";
 import SchoolServiceDeliverySummary from "@/components/SchoolServiceDeliverySummary";
 import { serverApi } from "@/lib/api";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 import { accessUnavailable } from "@/components/AccessUnavailable";
@@ -49,7 +50,7 @@ export default async function SchoolCoordinatorDashboardPage() {
               </thead>
               <tbody>
                 {data.upcoming_activities.map((a) => (
-                  <tr key={a.id}><td>{a.title}</td><td>{new Date(a.scheduled_at).toLocaleString()}</td></tr>
+                  <tr key={a.id}><td>{a.title}</td><td>{formatSchoolDateTime(a.scheduled_at, true)}</td></tr>
                 ))}
               </tbody>
             </table>

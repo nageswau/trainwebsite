@@ -439,7 +439,14 @@ async def test_patch_school_tier_only_still_works_unchanged(client, db_session):
         select(AuditLog).where(AuditLog.action == "school.tier_update", AuditLog.entity_id == result["id"])
     )
     assert tier_log is not None
-    assert tier_log.metadata_json == {"tier": "gold"}
+    # ENH-023 (DEC-SCOPE-030 D4): the row now records the whole transition, not just the new tier.
+    assert tier_log.metadata_json == {
+        "tier": "gold", "from_tier": None, "to_tier": "gold", "direction": "upgrade",
+        "gained": ["career_seminar", "career_awareness_session", "parent_orientation", "psychometric_test", "soft_skills",
+                   "individual_counselling", "web_designing",
+                   "application_support", "scholarship_assistance", "ielts_coaching", "sat_coaching", "foreign_language_classes", "digital_portfolio_creation"],
+        "lost": [], "tier_valid_until": "2027-01-01", "previous_tier_valid_until": None,
+    }
 
 
 @pytest.mark.asyncio
@@ -460,7 +467,12 @@ async def test_patch_school_with_tier_and_profile_fields_logs_both_audit_rows(cl
         select(AuditLog).where(AuditLog.action == "school.tier_update", AuditLog.entity_id == str(school.id))
     )).all()
     assert len(tier_logs) == 1
-    assert tier_logs[0].metadata_json == {"tier": "silver"}
+    assert tier_logs[0].metadata_json == {
+        "tier": "silver", "from_tier": None, "to_tier": "silver", "direction": "upgrade",
+        "gained": ["career_seminar", "career_awareness_session", "parent_orientation", "psychometric_test", "soft_skills",
+                   "individual_counselling", "web_designing"],
+        "lost": [], "tier_valid_until": None, "previous_tier_valid_until": None,
+    }
 
     profile_logs = (await db_session.scalars(
         select(AuditLog).where(AuditLog.action == "school.profile_update", AuditLog.entity_id == str(school.id))

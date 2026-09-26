@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ActivityFeedbackDetails from "@/components/ActivityFeedbackDetails";
 import ActivityFeedbackForm from "@/components/ActivityFeedbackForm";
 import LoadFailureAlert from "@/components/LoadFailureAlert";
-import LocalDateTime from "@/components/LocalDateTime";
 import UnsentFeedbackNote from "@/components/UnsentFeedbackNote";
 import {
   type ActivityFeedback,
@@ -19,6 +18,7 @@ import {
   type UnsentText,
 } from "@/lib/activityFeedback";
 import { isPage, type Page } from "@/lib/apiErrors";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 
 // ENH-018 (spec §7.1): a school's completed Edusphere activities and their feedback. The first page is server-rendered; the
 // filter and "Load more" fetch on the client (the ENH-005 admin-queue pattern). The coordinator opens the form inline under a
@@ -179,7 +179,7 @@ export default function SchoolActivityFeedbackPanel({ initial, canSubmit, focusA
                     <div className="who">
                       <strong>{row.title}</strong>
                       <span>
-                        {activityTypeLabel(row.activity_type)} · <LocalDateTime value={row.scheduled_at} withTime /> · {participationText(row.participation)}
+                        {activityTypeLabel(row.activity_type)} · {formatSchoolDateTime(row.scheduled_at, true)} ·{participationText(row.participation)}
                       </span>
                     </div>
                     <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -203,7 +203,7 @@ export default function SchoolActivityFeedbackPanel({ initial, canSubmit, focusA
                   {row.feedback && (
                     <details open={focused && row.activity_id === focusActivityId}>
                       <summary>View feedback</summary>
-                      <ActivityFeedbackDetails feedback={row.feedback} />
+                      <ActivityFeedbackDetails feedback={row.feedback} zone="school" />
                     </details>
                   )}
                   {openId === row.activity_id && (

@@ -162,16 +162,17 @@ async def _assigned_application(db: AsyncSession, user: User, application_id: UU
     return item
 
 
-async def _require_bridged_visa_entitlement(db: AsyncSession, user: User, application: OverseasApplication) -> None:
+async def _require_bridged_visa_entitlement(db: AsyncSession, user: User, application: OverseasApplication, *, grandfathered_since: datetime | None = None) -> None:
     """ENH-022 (D9): a visa case on a School-bridged application consumes the school's Platinum `visa_support`. An ordinary
-    Overseas application (no `school_student_id`) is untouched. Call after `_assigned_application`, before any write."""
+    Overseas application (no `school_student_id`) is untouched. Call after `_assigned_application`, before any write.
+    ENH-023 D8: updating an existing visa case passes its `created_at`; opening a new case never does."""
     if application.school_student_id is None:
         return
     from app.api.schools import require_school_entitlement  # noqa: PLC0415 -- lazy, like admin.py's bridge import
     from app.models import SchoolStudent  # noqa: PLC0415
 
     student = await db.get(SchoolStudent, application.school_student_id)  # FK: always present for a bridged application
-    await require_school_entitlement(db, user, student.school_id, "visa_support")
+    await require_school_entitlement(db, user, student.school_id, "visa_support", grandfathered_since=grandfathered_since)
 
 
 # ------------------------------- IT LEARNING -------------------------------
@@ -2163,7 +2164,7 @@ async def update_visa(visa_id: UUID, payload: dict, user: User = Depends(get_cur
     if not item:
         raise HTTPException(404, "Visa case not found")
     application = await _assigned_application(db, user, item.application_id)
-    await _require_bridged_visa_entitlement(db, user, application)
+    await _require_bridged_visa_entitlement(db, user, application, grandfathered_since=item.created_at)
     if "status" in payload:
         if payload["status"] not in VISA_CASE_STAGES:
             raise HTTPException(422, f"'{payload['status']}' is not a supported visa case stage -- must be one of {VISA_CASE_STAGES}.")

@@ -4,8 +4,8 @@ import SchoolTransferHistory, { loadTransferHistory } from "@/components/SchoolT
 import SchoolTransferRequestForm from "@/components/SchoolTransferRequestForm";
 import SchoolStudentPhoto from "@/components/SchoolStudentPhoto";
 import PortfolioPanel from "@/components/PortfolioPanel";
-import { formatDate } from "@/components/SchoolChildOverview";
 import { serverApi } from "@/lib/api";
+import { formatCalendarDate } from "@/lib/formatDate";
 import type { Page } from "@/lib/apiErrors";
 import type { SchoolRef, TransferRequest } from "@/lib/transfers";
 import { loadPortfolio } from "@/lib/portfolio";
@@ -32,7 +32,7 @@ type Student = Pick<SchoolStudent, "id" | "student_code" | "full_name" | "date_o
 // QA2-08: Grade/Class and Date of birth are rows like the rest, so an empty value reads "Not recorded" everywhere.
 const PROFILE_ROWS: [string, (s: Student) => string][] = [
   ["Grade/Class", (s) => s.grade_or_class ?? ""],
-  ["Date of birth", (s) => (s.date_of_birth ? formatDate(s.date_of_birth) : "")],
+  ["Date of birth", (s) => (s.date_of_birth ? formatCalendarDate(s.date_of_birth) : "")],
   ["Gender", (s) => (s.gender ? GENDER_LABEL[s.gender] ?? s.gender : "")],
   ["Section", (s) => s.section ?? ""],
   ["Roll number", (s) => s.roll_number ?? ""],

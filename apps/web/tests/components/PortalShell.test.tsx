@@ -23,6 +23,19 @@ function renderShell() {
 
 afterEach(cleanup);
 
+describe("PortalShell current page (QA-023-06)", () => {
+  it("marks the current page's link with aria-current=page in the sidebar and the mobile menu, and no other link", () => {
+    const { container } = renderShell();
+    const desktop = container.querySelector(".portal-nav") as HTMLElement;
+    expect(within(desktop).getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+    expect(within(desktop).getByRole("link", { name: "My courses" })).not.toHaveAttribute("aria-current");
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const mobile = container.querySelector("#portal-mobile-nav-panel") as HTMLElement;
+    expect(within(mobile).getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+    expect(within(mobile).getByRole("link", { name: "My courses" })).not.toHaveAttribute("aria-current");
+  });
+});
+
 describe("PortalShell change-password entry point (ENH-006)", () => {
   it("offers Change password in the desktop sidebar footer beside Sign out", () => {
     const { container } = renderShell();

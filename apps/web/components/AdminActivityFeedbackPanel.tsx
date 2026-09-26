@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import ActivityFeedbackDetails from "@/components/ActivityFeedbackDetails";
 import LoadFailureAlert from "@/components/LoadFailureAlert";
-import LocalDateTime from "@/components/LocalDateTime";
+import LocalTime from "@/components/LocalTime";
 import { type AdminActivityFeedback, activityTypeLabel, type LoadFailure, participationText } from "@/lib/activityFeedback";
 import { isPage } from "@/lib/apiErrors";
 
@@ -119,10 +119,10 @@ export default function AdminActivityFeedbackPanel() {
                 <div className="who">
                   <strong>{f.activity_title}</strong>
                   <span>
-                    {f.school_name} · {activityTypeLabel(f.activity_type)} · <LocalDateTime value={f.scheduled_at} withTime /> · {participationText(f.participation)}
+                    {f.school_name} · {activityTypeLabel(f.activity_type)} · <LocalTime value={f.scheduled_at} time label /> · {participationText(f.participation)}
                   </span>
                 </div>
-                <ActivityFeedbackDetails feedback={f} />
+                <ActivityFeedbackDetails feedback={f} zone="viewer" />
               </li>
             ))}
           </ul>

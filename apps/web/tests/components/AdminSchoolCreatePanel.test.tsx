@@ -25,6 +25,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("AdminSchoolCreatePanel tier options (QA-023-06)", () => {
+  it("names the empty tier option \"Not set\", matching the edit panel", () => {
+    render(<AdminSchoolCreatePanel />);
+    const tier = screen.getByLabelText("Partnership tier") as HTMLSelectElement;
+    expect(tier.options[0].value).toBe("");
+    expect(tier.options[0].text).toBe("Not set");
+  });
+});
+
 describe("AdminSchoolCreatePanel (ENH-003: no password is shown, chosen or sent)", () => {
   it("never sends a password field", async () => {
     const mock = stubFetch(json({ coordinator_email: "coord@example.local", email_status: "sent" }, 201));

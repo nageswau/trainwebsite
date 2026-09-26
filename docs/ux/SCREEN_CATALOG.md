@@ -2099,6 +2099,7 @@ extended same day with `SCH-003` onboarding per `DEC-SCOPE-012`, then again with
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.  
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Only Overseas Admin/Super Admin reaches this screen — no other role, including School Coordinator, can list or create schools (`SCH-003-AC03`). No activation gate — the new School and its Coordinator account are usable immediately on save, not held Pending (`SCH-003-AC04`).  
+- **Addendum, 2026-09-23 (`ENH-023` / `DEC-SCOPE-030`):** the per-school edit panel (`AdminSchoolEditPanel.tsx`) gains two fields — **Partnership tier** (select: Not set / Bronze / Silver / Gold / Platinum) and **Valid until** (date) — prefilled from the looked-up school. A tier change previews first; an upgrade saves immediately, a downgrade/removal shows an inline confirmation block directly under Save (lost services, "work already started can still be completed", Confirm/Cancel) before sending. Every save that changes the tier also sends the `expected_tier` precondition; a `409` (tier changed since lookup) renders as an alert and keeps the input. Success text stays `School profile updated.` (unchanged, `sch-003` E2E) followed by a tier-change sentence built from the PATCH response. No new route, no CSS change — existing classes only.  
 
 ### `SCR-SCH-011` — **corrected 2026-09-14, during `SCH-003`'s build**
 **Merged into `SCR-SCH-010` above, not a separate route.** This catalogue originally specified
@@ -2549,6 +2550,24 @@ correction, not deleted, per this project's traceability convention.
 - **Desktop/tablet/mobile behavior:** As above; verified by browser QA at 1440, 1366×620, 1024, 768 and 390.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** `Student360Tabs`, `Student360Panels`, `Student360Page`, `CareerGoalForm`, `SchoolStudentDetailPanel` and `lib/student360` vitest files; `test_enh_013_*.py`; `tests/e2e/enh-013-student-360.spec.ts`; `docs/quality/ENH-013_BROWSER_QA_2026-09-23.md`.
+
+### `SCR-SCH-036` *(added 2026-09-23, `ENH-023` / `DEC-SCOPE-030`)*
+- **Route:** `/school/principal/notifications`
+- **Role(s):** Principal
+- **Purpose:** The Principal's own in-app notices — most notably a partnership tier change — mirroring the Coordinator's existing notifications page.
+- **Linked Feature ID(s):** `ENH-023`
+- **Entry points:** Principal navigation ("Notifications").
+- **Required data:** `GET /api/v1/workflows/notifications`, keyed on the signed-in user (the same feed the Coordinator page already reads).
+- **Key actions:** Read the list; no write actions on this page.
+- **Empty state:** "No notifications yet. You will be told here when your school's partnership changes."
+- **Loading state:** Skeleton on navigation (no `loading.tsx`, matching the existing notifications pages — the skeleton renders inline while the list loads).
+- **Error state:** A feed failure shows the shared Access Unavailable card; a non-Principal role gets `accessDenied` before any feed request.
+- **Permissions/resource scope:** `school_principal` only, server-checked before any request; the feed itself is scoped to the signed-in user, same as the Coordinator's page.
+- **Responsive behavior:** Single column at 320px and up; no horizontal scroll; existing classes only (`SchoolNotificationList`, `card`, `muted`, `skeleton-line`).
+- **Accessibility requirements:** Same list component as the Coordinator page (`SchoolNotificationList`); a "new" badge is rendered as text, never colour alone.
+- **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet/mobile: single column, same as the Coordinator equivalent.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `SchoolPrincipalNotificationsPage.test.tsx` (passing); `tests/e2e/enh-023-tier-change.spec.ts` (principal sees the tier-change notification); browser QA is deliberately deferred to a later pass (not part of this task).
 
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  

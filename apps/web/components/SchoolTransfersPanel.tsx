@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { formatDate } from "@/lib/formatDate";
+import { formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import SchoolIncomingTransferForm from "@/components/SchoolIncomingTransferForm";
 import { detailMessage, isPage, isRequestBody, type Page } from "@/lib/apiErrors";
 import { STATUS_CLASS, STATUS_LABEL, TRANSFER_FILTERS, type TransferFilter, type TransferRequest } from "@/lib/transfers";
@@ -143,7 +143,7 @@ export default function SchoolTransfersPanel({ initial }: { initial: Page<Transf
                   </div>
                   <div className="meta">
                     <span className={STATUS_CLASS[r.status]}>{STATUS_LABEL[r.status]}</span>
-                    <span className="muted">{formatDate(r.created_at)}</span>
+                    <span className="muted">{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</span>
                     {r.status === "pending" && (
                       <button type="button" className="btn small secondary" disabled={busyId === r.id} aria-label={`Cancel request for ${rowTitle(r)}`} onClick={() => void cancel(r)}>
                         {busyId === r.id ? "Cancelling…" : "Cancel"}
