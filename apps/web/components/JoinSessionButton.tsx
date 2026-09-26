@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDateTimeIn } from "@/lib/formatDate";
+import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 
 // User-requested join-experience fix (2026-09-09, `docs/decisions/PENDING_ZOHO_LIVE_CLASSES.md`
 // §1b items a/b/c): the raw join URL previously rendered as inert text in the generic
@@ -57,8 +57,7 @@ export default function JoinSessionButton({
     const state = isHost ? "joinable" : sessionState(startsAt, endsAt, Date.now());
     if (state === "too_early") {
       // window.alert() takes a plain string, so <LocalTime> cannot render here; the same helper gives the viewer's zone and its label.
-      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      window.alert(`Too early to join -- this session starts at ${formatDateTimeIn(startsAt, zone, true)}.`);
+      window.alert(`Too early to join -- this session starts at ${formatDateTimeIn(startsAt, viewerTimeZone(), true)}.`);
       return;
     }
     if (state === "ended") {

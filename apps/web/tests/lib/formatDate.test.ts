@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { formatCalendarDate, formatDate, formatSchoolDateTime, SCHOOL_TIME_ZONE, zoneLabel } from "@/lib/formatDate";
+import { formatCalendarDate, formatDate, formatSchoolDateTime, SCHOOL_TIME_ZONE, viewerTimeZone, zoneLabel } from "@/lib/formatDate";
 
 // QA-022-06: the server renders in UTC and the browser in the user's zone; a date shown on both must not depend on either,
 // or React throws hydration error #418. Simulate the server by running this file in UTC.
@@ -62,5 +62,17 @@ describe("zoneLabel", () => {
     expect(zoneLabel("2026-09-21T20:00:00Z", "UTC")).toBe("UTC");
     expect(zoneLabel("2026-07-01T12:00:00Z", "America/New_York")).toBe("EDT");
     expect(zoneLabel("2026-12-01T12:00:00Z", "America/New_York")).toBe("EST");
+  });
+});
+
+describe("viewerTimeZone", () => {
+  it("is the zone this runtime reports", () => {
+    process.env.TZ = "America/New_York";
+    expect(viewerTimeZone()).toBe("America/New_York");
+  });
+
+  it("falls back to India time when the runtime reports a zone Intl cannot use (e.g. Etc/Unknown)", () => {
+    process.env.TZ = "Not/AZone";
+    expect(viewerTimeZone()).toBe(SCHOOL_TIME_ZONE);
   });
 });

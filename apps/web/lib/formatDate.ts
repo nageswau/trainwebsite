@@ -5,6 +5,18 @@
 // browser -- without a zone each side formats in its own and React reports hydration error #418 (QA-022-06).
 export const SCHOOL_TIME_ZONE = "Asia/Kolkata";
 
+// The zone this runtime (the viewer's browser) reports. Some report one Intl cannot format in (e.g. "Etc/Unknown" when the system
+// zone is undetectable); formatting in it throws a RangeError, so fall back to India time rather than crash the page.
+export function viewerTimeZone(): string {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone: zone });
+    return zone;
+  } catch {
+    return SCHOOL_TIME_ZONE;
+  }
+}
+
 export function formatDate(value: string | null | undefined, withTime = false, timeZone?: string): string {
   if (!value) return "-";
   const d = new Date(value);

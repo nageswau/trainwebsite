@@ -37,6 +37,13 @@ describe("LocalTime", () => {
     expect(await screen.findByText("21 Sept 2026")).toBeTruthy();
   });
 
+  it("keeps India time instead of crashing when the browser reports a zone Intl cannot use", async () => {
+    process.env.TZ = "Not/AZone";
+    render(<LocalTime value={AT} time label />);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByText("22 Sept 2026, 01:30 IST")).toBeTruthy();
+  });
+
   it("renders a dash for a missing value", () => {
     render(<LocalTime value={null} time label />);
     expect(screen.getByText("-")).toBeTruthy();
