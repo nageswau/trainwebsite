@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, BaseModel, EmailStr, Field, StrictBool, ValidationError, field_validator, model_validator
+from pydantic import AfterValidator, AwareDatetime, BaseModel, EmailStr, Field, StrictBool, ValidationError, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.models import GENDERS
@@ -732,6 +732,94 @@ def validation_message(exc: ValidationError) -> str:
         return f"{field} is not an accepted field"
     reason = error["msg"].removeprefix("Value error, ")
     return f"{field} {reason[:1].lower()}{reason[1:]}"
+
+
+# --- ENH-026: Career Counselling record (docs/superpowers/specs/2026-09-27-enh-021-026-internship-and-counselling-record-design.md §3.1) ---
+
+CAREER_STATUSES: tuple[str, ...] = ("not_started", "scheduled", "completed", "follow_up_required")
+CareerStatus = Literal["not_started", "scheduled", "completed", "follow_up_required"]
+CAREER_STATUS_LABEL: dict[str | None, str] = {
+    "not_started": "Not Started", "scheduled": "Scheduled", "completed": "Completed", "follow_up_required": "Follow-up Required", None: "No status",
+}
+CAREER_RECORD_TYPES: tuple[str, ...] = ("guidance_session", "counselling_note", "recommendation")
+STRUCTURED_RECORD_TYPES: frozenset[str] = frozenset({"guidance_session", "counselling_note"})  # C1
+CAREER_STATUS_INITIAL: frozenset[str] = frozenset({"not_started", "scheduled", "completed"})  # C2: allowed on create
+CAREER_STATUS_NEXT: dict[str | None, frozenset[str]] = {  # C2 / C4 (None = a legacy row, recorded before tracking)
+    "not_started": frozenset({"scheduled"}),
+    "scheduled": frozenset({"completed"}),
+    "completed": frozenset({"follow_up_required"}),
+    "follow_up_required": frozenset({"scheduled", "completed"}),
+    None: frozenset({"completed", "follow_up_required"}),
+}
+COUNTED_CAREER_STATUSES: tuple[str, ...] = ("completed", "follow_up_required")  # C5, plus NULL
+CAREER_LIST_KEYS: tuple[str, ...] = (
+    "career_interests", "academic_strengths", "weak_areas",
+    "recommended_careers", "recommended_courses", "recommended_stream", "recommended_skills",
+)
+CAREER_STRUCTURED_KEYS: tuple[str, ...] = (*CAREER_LIST_KEYS, "global_education_interest", "parent_participated", "parent_participation_note")
+CAREER_DATE_KEYS: tuple[str, ...] = ("scheduled_for", "completed_on", "next_follow_up_date")
+
+
+def career_transition_allowed(current: str | None, requested: str) -> bool:
+    return requested == current or requested in CAREER_STATUS_NEXT[current]
+
+
+def counts_as_completed(status: str | None) -> bool:
+    """C5: one rule for KPIs, overview status and entitlement usage. A legacy NULL row was a held session."""
+    return status is None or status in COUNTED_CAREER_STATUSES
+
+
+def _career_notes(value) -> str:
+    """SCH-004's own rule, unchanged (any value, str() then strip, no length cap) -- plus NUL refused, which PostgreSQL
+    text cannot store (it surfaced as a 500 before). NOT NULL column: absent/None is the empty string."""
+    text_value = "" if value is None else str(value).strip()
+    if "\x00" in text_value:
+        raise ValueError("must not contain NUL characters")
+    return text_value
+
+
+class CareerRecordFields(BaseModel):
+    """ENH-026 body fields shared by create and update. extra="forbid" (A10): ids, owners and record_type are never
+    writable here."""
+
+    model_config = {"extra": "forbid"}
+    notes: str = ""
+    status: CareerStatus | None = None
+    scheduled_for: AwareDatetime | None = None
+    completed_on: date | None = None
+    next_follow_up_date: date | None = None
+    career_interests: list[str] | None = None
+    academic_strengths: list[str] | None = None
+    weak_areas: list[str] | None = None
+    recommended_careers: list[str] | None = None
+    recommended_courses: list[str] | None = None
+    recommended_stream: list[str] | None = None
+    recommended_skills: list[str] | None = None
+    global_education_interest: StrictBool | None = None
+    parent_participated: StrictBool | None = None
+    parent_participation_note: str | None = None
+
+    @field_validator("notes", mode="before")
+    @classmethod
+    def _notes(cls, value):
+        return _career_notes(value)
+
+    @field_validator(*CAREER_LIST_KEYS, mode="before")
+    @classmethod
+    def _lists(cls, value):
+        return _clean_list(value)
+
+    @field_validator("parent_participation_note", mode="before")
+    @classmethod
+    def _note(cls, value):
+        return _clean_text(value, 500)
+
+
+class CareerRecordUpdate(CareerRecordFields):
+    """PATCH body. `expected_status` is an optional precondition (spec §5.1 step 5): present ⇒ must equal the locked
+    record's status (None matches a legacy row), else 409."""
+
+    expected_status: CareerStatus | None = None
 
 
 # --- ENH-005: student school transfer (docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md) ---
