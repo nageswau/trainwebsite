@@ -1138,7 +1138,16 @@ class PortfolioEntry(Base, TimestampMixin):
     rejected in the spec's Approach section as unnecessary duplication of one shared shape. Net-new."""
 
     __tablename__ = "portfolio_entries"
-    __table_args__ = (Index("ix_portfolio_entries_student_section", "school_student_id", "section"),)
+    __table_args__ = (
+        Index("ix_portfolio_entries_student_section", "school_student_id", "section"),
+        CheckConstraint("attendance_percent IS NULL OR attendance_percent BETWEEN 0 AND 100", name="ck_portfolio_attendance_percent"),
+        CheckConstraint("completion_status IS NULL OR completion_status IN ('not_started', 'in_progress', 'completed', 'discontinued')", name="ck_portfolio_completion_status"),
+        CheckConstraint(
+            "section = 'internship' OR (mentor_name IS NULL AND mentor_designation IS NULL AND attendance_percent IS NULL AND completion_status IS NULL "
+            "AND feedback IS NULL AND skills_acquired IS NULL AND certificate_key IS NULL AND certificate_content_type IS NULL)",
+            name="ck_portfolio_internship_fields",
+        ),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
     section: Mapped[str] = mapped_column(String(40))
@@ -1149,6 +1158,19 @@ class PortfolioEntry(Base, TimestampMixin):
     date_to: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    # ENH-021 (DEC-SCOPE-032): internship tracking, section='internship' only (CHECK above). All nullable.
+    mentor_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    mentor_designation: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    attendance_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completion_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    skills_acquired: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    certificate_key: Mapped[str | None] = mapped_column(String(300), nullable=True)  # never serialized (spec S9)
+    certificate_content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    @property
+    def has_certificate(self) -> bool:
+        return self.certificate_key is not None
 
 
 class PortfolioProfile(Base, TimestampMixin):
