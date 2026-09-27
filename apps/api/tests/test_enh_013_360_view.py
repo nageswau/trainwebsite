@@ -173,6 +173,9 @@ async def test_service_roles_get_no_new_exposure(client, db_session, role):  # A
     assert tabs["activities"]["data"]["attended"] is None and tabs["activities"]["data"]["upcoming"] is None
     programmes = {p["key"] for p in tabs["edusphere_programs"]["data"]["programmes"]}
     assert "global_education" not in programmes
+    # ENH-021 (DEC-SCOPE-032 I8): the "internship" programme status is derived only from the portfolio internship entries this
+    # role already receives in the activities tab -- the precondition that keeps it "no new exposure" is asserted here.
+    assert "internship" in tabs["activities"]["data"]["portfolio_entries"]
 
     results = tabs["examination_results"]["data"]["results"]
     languages = tabs["foreign_languages"]["data"]["records"]
@@ -181,12 +184,12 @@ async def test_service_roles_get_no_new_exposure(client, db_session, role):  # A
         assert results[0]["teacher_remarks"] == "Remark 0"
         assert "classes_attended" in languages[0]
         assert tabs["skills"]["data"]["batches"] is None
-        assert programmes == {"test_prep", "foreign_language"}
+        assert programmes == {"test_prep", "foreign_language", "internship"}  # ENH-021 I8
     else:  # only /portfolio's summary shapes
         assert set(results[0]) == PORTFOLIO_RESULT_FIELDS
         assert set(languages[0]) == PORTFOLIO_LANGUAGE_FIELDS
         assert (tabs["skills"]["data"]["batches"] is None) == (role == "psychometric_team")
-        assert programmes == ({"soft_skills", "digital_skills", "foreign_language"} if role == "career_counselor" else {"foreign_language"})
+        assert programmes == ({"soft_skills", "digital_skills", "foreign_language", "internship"} if role == "career_counselor" else {"foreign_language", "internship"})  # ENH-021 I8
     assert ("status" in psych) == (role == "psychometric_team")
     assert body["can_edit_career_goal"] is (role == "career_counselor")
 

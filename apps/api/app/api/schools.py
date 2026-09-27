@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import or_, select, text
+from sqlalchemy import distinct, func, or_, select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -39,6 +39,7 @@ from app.models import (
     Notification,
     NotificationDelivery,
     OverseasApplication,
+    PortfolioEntry,
     School,
     SchoolAcademicResult,
     SchoolAccountInvite,
@@ -104,13 +105,20 @@ OVERSEAS_APPLICATION_STAGES = ["enquiry", "eligibility_evaluation", "university_
 OFFER_ONWARD_STATUSES = {"offer", "offer_received", "accepted", "visa_documentation", "status_tracking", "enrolled"}
 UNTRACKED_SCHOOL_DASHBOARD_KPIS = {
     "digital_portfolios_created": "No confirmed School digital-portfolio model exists yet.",
-    "internships": "No confirmed School internship model exists yet.",
 }
 UNTRACKED_SCHOOL_DASHBOARD_CHARTS = [
     {"key": "skills_training", "label": "Skills training", "note": "No confirmed School soft-skills training model exists yet."},
-    {"key": "internships", "label": "Internships", "note": "No confirmed School internship model exists yet."},
     {"key": "student_participation_by_program", "label": "Student participation by program", "note": "No confirmed School program-participation model exists yet."},
 ]
+INTERNSHIP_STATUS_ORDER = ("not_started", "in_progress", "completed", "discontinued")  # ENH-021 I7 chart order, then "no_status"
+
+
+def internship_progress(statuses) -> str:
+    """ENH-021 I8 (School CRM §35): best progress wins. Not started, discontinued and legacy (None) entries read as not started."""
+    seen = set(statuses)
+    if "completed" in seen:
+        return "completed"
+    return "in_progress" if "in_progress" in seen else "not_started"
 
 
 def _require_coordinator(user: User) -> UUID:
@@ -400,6 +408,7 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     pending_invite_count = len((await db.scalars(select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school_id, SchoolAccountInvite.status == "pending"))).all())
 
     career_rows: list[SchoolCareerRecord] = []
+    internship_rows: list = []  # ENH-021: (school_student_id, completion_status) of every internship entry
     psych_rows: list[SchoolPsychometricRecord] = []
     published_students: set = set()
     test_prep_rows: list[SchoolTestPrepRecord] = []
@@ -414,6 +423,10 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
         )
         test_prep_rows = (await db.scalars(select(SchoolTestPrepRecord).where(SchoolTestPrepRecord.school_student_id.in_(student_ids)))).all()
         language_rows = (await db.scalars(select(SchoolLanguageRecord).where(SchoolLanguageRecord.school_student_id.in_(student_ids)))).all()
+        internship_rows = (await db.execute(
+            select(PortfolioEntry.school_student_id, PortfolioEntry.completion_status)
+            .where(PortfolioEntry.school_student_id.in_(student_ids), PortfolioEntry.section == "internship")
+        )).all()
         applications = (await db.scalars(select(OverseasApplication).where(OverseasApplication.school_student_id.in_(student_ids)))).all()
         application_ids = [application.id for application in applications]
         if application_ids:
@@ -428,6 +441,10 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     ielts_students = {r.school_student_id for r in test_prep_rows if r.test_type == "ielts"}
     sat_students = {r.school_student_id for r in test_prep_rows if r.test_type == "sat"}
     language_students = {r.school_student_id for r in language_rows}
+    # ENH-021 I7: the KPI counts students with any internship entry; the chart counts entries per completion status.
+    internship_students = {student_id for student_id, _status in internship_rows}
+    internship_status = [{"status": s, "count": sum(1 for _sid, status in internship_rows if status == s)} for s in INTERNSHIP_STATUS_ORDER]
+    internship_status.append({"status": "no_status", "count": sum(1 for _sid, status in internship_rows if status is None)})
     global_students = {a.school_student_id for a in applications if a.school_student_id}
     shortlisted_students = {a.school_student_id for a in applications if a.school_student_id and _stage_at_or_after(a.status, "university_selection")}
     admitted_students = {a.school_student_id for a in applications if a.school_student_id and a.status == "enrolled"}
@@ -504,7 +521,7 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
             _school_dashboard_kpi("offers_received", "Offers Received", len(offers)),
             _school_dashboard_kpi("visa_applications", "Visa Applications", len(visa_student_ids)),
             _school_dashboard_kpi("students_admitted", "Students Admitted", len(admitted_students)),
-            _school_dashboard_kpi("internships", "Internships", None, tracked=False, note=UNTRACKED_SCHOOL_DASHBOARD_KPIS["internships"]),
+            _school_dashboard_kpi("internships", "Internships", len(internship_students)),
         ],
         "completion": [
             {"key": "career_guidance", "label": "Career guidance completion", "value": len(guidance_students), "total": total_students, "tracked": True},
@@ -524,6 +541,7 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
         },
         "application_pipeline": application_pipeline,
         "visa_status": visa_status,
+        "internship_status": internship_status,
         "untracked_charts": UNTRACKED_SCHOOL_DASHBOARD_CHARTS,
     }
 
@@ -1125,8 +1143,11 @@ async def school_entitlements(user: User = Depends(get_current_user), db: AsyncS
         application_ids = (await db.scalars(select(OverseasApplication.id).where(OverseasApplication.school_student_id.in_(student_ids)))).all()
         usage["application_support"] = len(application_ids)
         usage["visa_support"] = len((await db.scalars(select(VisaCase.id).where(VisaCase.application_id.in_(application_ids)))).all()) if application_ids else 0
+        usage["internships"] = await db.scalar(  # ENH-021 I7: distinct students, same definition as the dashboard KPI
+            select(func.count(distinct(PortfolioEntry.school_student_id))).where(PortfolioEntry.school_student_id.in_(student_ids), PortfolioEntry.section == "internship")
+        )
     else:
-        usage.update({"psychometric_test": 0, "individual_counselling": 0, "ielts_coaching": 0, "sat_coaching": 0, "foreign_language_classes": 0, "application_support": 0, "visa_support": 0})
+        usage.update({"psychometric_test": 0, "individual_counselling": 0, "ielts_coaching": 0, "sat_coaching": 0, "foreign_language_classes": 0, "application_support": 0, "visa_support": 0, "internships": 0})
     usage["career_seminar"] = await _activity_count("career_seminar")
     usage["career_awareness_session"] = await _activity_count("career_awareness_session")
     usage["parent_orientation"] = await _activity_count("parent_orientation")

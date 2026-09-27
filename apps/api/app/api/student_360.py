@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.api.portfolio import portfolio_payload
-from app.api.schools import SCHOOL_ROLES, _grade_history_rows, _load_student_for_reader, _overview_payload, _portfolio_school_ids, _student_in_portfolio, require_school_entitlement
+from app.api.schools import SCHOOL_ROLES, _grade_history_rows, _load_student_for_reader, _overview_payload, _portfolio_school_ids, _student_in_portfolio, internship_progress, require_school_entitlement
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import AuditLog, SchoolStudent, User
@@ -113,6 +113,8 @@ async def build_360(db: AsyncSession, user: User, student: SchoolStudent) -> dic
     if school_role or academic:
         programmes.append({"key": "test_prep", "status": overview["test_prep"]["status"]})
     programmes.append({"key": "foreign_language", "status": _language_status(languages)})
+    # ENH-021 I8 (§35): portfolio entries are already readable by every viewer here, so this widens nothing.
+    programmes.append({"key": "internship", "status": internship_progress(e["completion_status"] for e in entries["internship"])})
     if school_role:
         programmes.append({"key": "global_education", "status": overview["global_education"]["status"], "applications": overview["global_education"]["applications"]})
     tabs["edusphere_programs"] = _tab("edusphere_programs", {"programmes": programmes}, sum(1 for p in programmes if p["status"] != "not_started"))
