@@ -56,7 +56,7 @@ export function childrenSpanSchools(overviews: (ChildOverview | null)[]): boolea
 const STATUS_LABEL: Record<string, string> = {
   // ENH-011: the enrolment statuses (including "Completed") come from the skills module itself; the rest are this page's own.
   ...ENROLMENT_LABEL,
-  assigned: "Assigned", not_started: "Not started", in_progress: "In progress",
+  assigned: "Assigned", not_started: "Not started", in_progress: "In progress", discontinued: "Discontinued",
 };
 
 export function StatusChip({ status }: { status: string }) {

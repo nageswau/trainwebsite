@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import InternshipDetails from "@/components/InternshipDetails";
 import PortfolioEntryForm from "@/components/PortfolioEntryForm";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { refocus } from "@/lib/focus";
@@ -68,13 +69,14 @@ function EntryList({ section, entries, studentId, canEdit, activeForm, confirmin
             return (
               <li className="pf-entry" key={e.id}>
                 {isEditingThisEntry ? (
-                  <PortfolioEntryForm studentId={studentId} section={e.section} entryId={e.id} initial={{ title: e.title, description: e.description, organization: e.organization, date_from: e.date_from, date_to: e.date_to }} onDone={onFormDone} onCancel={onCancel} />
+                  <PortfolioEntryForm studentId={studentId} section={e.section} entryId={e.id} initial={e} onDone={onFormDone} onCancel={onCancel} />
                 ) : (
                   <>
                     <strong>{e.title}</strong>
                     {e.organization && <span className="pf-entry-org"> — {e.organization}</span>}
                     {e.date_from && <span className="pf-entry-date"> ({formatCalendarDate(e.date_from)}{e.date_to ? ` – ${formatCalendarDate(e.date_to)}` : ""})</span>}
                     {e.description && <p className="pf-entry-desc">{e.description}</p>}
+                    {e.section === "internship" && <InternshipDetails entry={e} studentId={studentId} canEdit={canEdit} />}
                     {canEdit && (
                       <div className="pf-entry-actions">
                         <button type="button" className="btn secondary" disabled={deleteBusy || anyFormOpen} onClick={() => onEdit(e)}>Edit {e.title}</button>
