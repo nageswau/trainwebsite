@@ -61,7 +61,26 @@ from app.models import (
     UserRoleAssignment,
     VisaCase,
 )
-from app.schemas import LIST_FIELD_KEYS, MASTER_FIELD_KEYS, GradeHistoryResponse, StudentMasterFields, StudentPromotionRequest, StudentPromotionResponse, validation_message
+from app.schemas import (
+    CAREER_DATE_KEYS,
+    CAREER_RECORD_TYPES,
+    CAREER_STATUS_INITIAL,
+    CAREER_STATUS_LABEL,
+    CAREER_STRUCTURED_KEYS,
+    COUNTED_CAREER_STATUSES,
+    LIST_FIELD_KEYS,
+    MASTER_FIELD_KEYS,
+    STRUCTURED_RECORD_TYPES,
+    CareerRecordFields,
+    CareerRecordUpdate,
+    GradeHistoryResponse,
+    StudentMasterFields,
+    StudentPromotionRequest,
+    StudentPromotionResponse,
+    career_transition_allowed,
+    counts_as_completed,
+    validation_message,
+)
 from app.services.integrations import send_notification
 from app.services.mailer import send_parent_notification_email, send_school_invite_email
 
@@ -679,6 +698,58 @@ async def _notify_student_parents(db: AsyncSession, student: SchoolStudent, *, t
     for parent in parents:
         await _notify_parent(db, parent, school_name=school.name if school else "your school", title=title, body=body, action_url=action_url)
     return len(parents)
+
+
+# --- ENH-026: one serializer and one rule set for career records (spec §5.1, A3) -------------------------------
+
+async def _user_names(db: AsyncSession, ids) -> dict:
+    wanted = {i for i in ids if i}
+    if not wanted:
+        return {}
+    return dict((await db.execute(select(User.id, User.full_name).where(User.id.in_(wanted)))).all())
+
+
+def _career_record_out(r: SchoolCareerRecord, names: dict) -> dict:
+    return {
+        "id": r.id, "school_student_id": r.school_student_id, "record_type": r.record_type, "notes": r.notes,
+        "created_at": r.created_at, "updated_at": r.updated_at, "status": r.status,
+        **{key: getattr(r, key) for key in CAREER_DATE_KEYS}, **{key: getattr(r, key) for key in CAREER_STRUCTURED_KEYS},
+        "counselor_name": names.get(r.career_counselor_user_id), "updated_by_name": names.get(r.updated_by_user_id),
+    }
+
+
+async def _career_records_out(db: AsyncSession, rows) -> list[dict]:
+    names = await _user_names(db, [i for r in rows for i in (r.career_counselor_user_id, r.updated_by_user_id)])
+    return [_career_record_out(r, names) for r in rows]
+
+
+def _enter_career_status(record: SchoolCareerRecord, new: str | None, old: str | None, sent: set) -> str | None:
+    """Apply a status change's own rules (C6/C7). Returns a 422 message, or None."""
+    record.status = new
+    if new == old:
+        return None
+    if new == "scheduled" and "scheduled_for" not in sent:
+        return "scheduled_for is required when status is Scheduled"
+    if new == "completed" and "completed_on" not in sent:
+        record.completed_on = _today_ist()
+    if new == "follow_up_required" and "next_follow_up_date" not in sent:
+        return "next_follow_up_date is required when status is Follow-up Required"
+    if old == "follow_up_required":
+        record.next_follow_up_date = None
+    return None
+
+
+def _career_rule_error(record: SchoolCareerRecord) -> str | None:
+    """Post-merge rules (C6-C8) on the record as it would be saved."""
+    if record.status == "scheduled" and record.scheduled_for is None:
+        return "scheduled_for is required when status is Scheduled"
+    if record.status in COUNTED_CAREER_STATUSES and not record.notes:
+        return "notes is required"
+    if record.status == "follow_up_required" and record.next_follow_up_date is not None and record.next_follow_up_date < _today_ist():
+        return "next_follow_up_date must be today or later"
+    if record.status != "follow_up_required" and record.next_follow_up_date is not None:
+        return "next_follow_up_date is only set when status is Follow-up Required"
+    return None
 
 
 async def _notify_school_parents(db: AsyncSession, school_id: UUID, *, title: str, body: str, action_url: str | None) -> int:
@@ -1899,20 +1970,39 @@ async def create_career_record(payload: dict, user: User = Depends(get_current_u
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
     await require_school_entitlement(db, user, student.school_id, "individual_counselling")  # D5: every record type
     record_type = payload.get("record_type")
-    if record_type not in {"guidance_session", "counselling_note", "recommendation"}:
+    if record_type not in CAREER_RECORD_TYPES:
         raise HTTPException(422, "record_type must be one of guidance_session, counselling_note, recommendation")
-    notes = str(payload.get("notes", "")).strip()
-    if not notes:
-        raise HTTPException(422, "notes is required")
-    record = SchoolCareerRecord(school_student_id=student.id, career_counselor_user_id=user.id, record_type=record_type, notes=notes)
+    # ENH-026: the §7 fields, validated at the boundary with the house's string 422 (extra="forbid": no owner/id fields).
+    fields = _master_fields_or_422(CareerRecordFields, {k: v for k, v in payload.items() if k not in ("school_student_id", "record_type")})
+    sent = fields.model_fields_set - {"notes"}
+    if record_type not in STRUCTURED_RECORD_TYPES:
+        if sent:
+            raise HTTPException(422, "recommendation records take notes only")
+        if not fields.notes:
+            raise HTTPException(422, "notes is required")
+        status = None
+    else:
+        status = fields.status if fields.status is not None else "completed"  # C3: legacy callers get today's behaviour
+        if status not in CAREER_STATUS_INITIAL:
+            raise HTTPException(422, "status must be one of not_started, scheduled, completed when creating a record")
+    record = SchoolCareerRecord(school_student_id=student.id, career_counselor_user_id=user.id, record_type=record_type, notes=fields.notes)
+    for key in (*CAREER_DATE_KEYS, *CAREER_STRUCTURED_KEYS):
+        if key in sent:
+            setattr(record, key, getattr(fields, key))
+    if status is not None:
+        error = _enter_career_status(record, status, None, sent) or _career_rule_error(record)
+        if error:
+            raise HTTPException(422, error)
     db.add(record)
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.career_record_create", entity_type="school_career_record", entity_id=str(record.id), metadata_json={"record_type": record_type}))
+    db.add(AuditLog(user_id=user.id, action="school.career_record_create", entity_type="school_career_record", entity_id=str(record.id), metadata_json={"record_type": record_type, "status": status, "fields": sorted(sent)}))
     # SCH-007 "Counselling" trigger (guidance session / counselling note / recommendation).
     label = {"guidance_session": "Career guidance session recorded", "counselling_note": "Counselling note added", "recommendation": "Career recommendation added"}[record_type]
     await _notify_student_parents(db, student, title=f"{label} for {student.full_name}", body=f"A Career Counselor has added a new {record_type.replace('_', ' ')} to {student.full_name}'s career profile.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
-    return {"id": record.id, "school_student_id": record.school_student_id, "record_type": record.record_type, "notes": record.notes, "created_at": record.created_at}
+    await db.refresh(record)
+    logger.info("career_record_create", extra={"extra_fields": {"actor_id": str(user.id), "record_id": str(record.id), "record_type": record_type, "status": status}})
+    return (await _career_records_out(db, [record]))[0]
 
 
 @router.get("/career-counselor/records")
@@ -1924,7 +2014,7 @@ async def list_career_counselor_records(user: User = Depends(get_current_user), 
         return []
     student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
     rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id.in_(student_ids)).order_by(SchoolCareerRecord.created_at.desc()))).all()
-    return [{"id": r.id, "school_student_id": r.school_student_id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
+    return await _career_records_out(db, rows)
 
 
 @router.get("/career-records")
@@ -1937,7 +2027,7 @@ async def list_readable_career_records(user: User = Depends(get_current_user), d
     if not readable:
         return []
     rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id.in_(readable)).order_by(SchoolCareerRecord.created_at.desc()))).all()
-    return [{"id": r.id, "school_student_id": r.school_student_id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
+    return await _career_records_out(db, rows)
 
 
 # --- SCH-005: Psychometric Assessment ----------------------------------------------------
