@@ -126,7 +126,7 @@ async def portfolio_payload(db: AsyncSession, user: User, student: SchoolStudent
         "profile_complete": profile_complete,
         "academic_achievements": [{"id": r.id, "term": r.term, "subject": r.subject, "grade": r.grade, "published_at": r.published_at} for r in academic],
         "psychometric_report": [{"id": r.id, "assessment_type": r.assessment_type, "report_url": r.report_url, "created_at": r.created_at} for r in psychometric],
-        "career_guidance": [{"id": r.id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in career],
+        "career_guidance": [{"id": r.id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at, "status": r.status} for r in career],
         "languages": [{"id": r.id, "language": r.language, "level": r.level, "certification_status": r.certification_status, "created_at": r.created_at} for r in languages],
         "entries": entries_by_section,
         "personal_statement": personal_statement,

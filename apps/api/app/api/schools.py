@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import select, text
+from sqlalchemy import or_, select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -420,8 +420,9 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
             visas = (await db.scalars(select(VisaCase).where(VisaCase.application_id.in_(application_ids)))).all()
 
     career_students = {r.school_student_id for r in career_rows}
-    guidance_students = {r.school_student_id for r in career_rows if r.record_type == "guidance_session"}
-    counselling_students = {r.school_student_id for r in career_rows if r.record_type == "counselling_note"}
+    # ENH-026 C5: a session counts once delivered (completed / follow-up required), or when it predates status tracking.
+    guidance_students = {r.school_student_id for r in career_rows if r.record_type == "guidance_session" and counts_as_completed(r.status)}
+    counselling_students = {r.school_student_id for r in career_rows if r.record_type == "counselling_note" and counts_as_completed(r.status)}
     psych_completed_students = {r.school_student_id for r in psych_rows if r.status == "completed"}
     psych_assigned_students = {r.school_student_id for r in psych_rows} - psych_completed_students
     ielts_students = {r.school_student_id for r in test_prep_rows if r.test_type == "ielts"}
@@ -1113,7 +1114,10 @@ async def school_entitlements(user: User = Depends(get_current_user), db: AsyncS
     if student_ids:
         usage["psychometric_test"] = len((await db.scalars(select(SchoolPsychometricRecord.id).where(SchoolPsychometricRecord.school_student_id.in_(student_ids)))).all())
         usage["individual_counselling"] = len(
-            (await db.scalars(select(SchoolCareerRecord.id).where(SchoolCareerRecord.school_student_id.in_(student_ids), SchoolCareerRecord.record_type == "counselling_note"))).all()
+            (await db.scalars(select(SchoolCareerRecord.id).where(
+                SchoolCareerRecord.school_student_id.in_(student_ids), SchoolCareerRecord.record_type == "counselling_note",
+                or_(SchoolCareerRecord.status.is_(None), SchoolCareerRecord.status.in_(COUNTED_CAREER_STATUSES)),  # ENH-026 C5
+            ))).all()
         )
         usage["ielts_coaching"] = len((await db.scalars(select(SchoolTestPrepRecord.id).where(SchoolTestPrepRecord.school_student_id.in_(student_ids), SchoolTestPrepRecord.test_type == "ielts"))).all())
         usage["sat_coaching"] = len((await db.scalars(select(SchoolTestPrepRecord.id).where(SchoolTestPrepRecord.school_student_id.in_(student_ids), SchoolTestPrepRecord.test_type == "sat"))).all())
@@ -1259,12 +1263,25 @@ async def _overview_payload(db: AsyncSession, student: SchoolStudent) -> dict:
         visa_rows = (await db.scalars(select(VisaCase).where(VisaCase.application_id.in_(application_ids)))).all()
         visa_by_application = {v.application_id: v for v in visa_rows}
 
+    career_out = {row["id"]: row for row in await _career_records_out(db, career_rows)}  # ENH-026: one serializer (A3)
+
     def _career(rows: list) -> list[dict]:
-        return [{"id": r.id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
+        return [career_out[r.id] for r in rows]
+
+    def _module_status(rows: list) -> str:  # ENH-026 C14
+        if any(counts_as_completed(r.status) for r in rows):
+            return "completed"
+        return "in_progress" if rows else "not_started"
 
     guidance = [r for r in career_rows if r.record_type == "guidance_session"]
     counselling = [r for r in career_rows if r.record_type == "counselling_note"]
     recommendations = [r for r in career_rows if r.record_type == "recommendation"]
+    recommendation_keys = ("recommended_careers", "recommended_courses", "recommended_stream", "recommended_skills")
+    structured_recommendations = [
+        {"record_id": r.id, "record_type": r.record_type, "created_at": r.created_at, **{key: getattr(r, key) for key in recommendation_keys}}
+        for r in guidance + counselling
+        if any(getattr(r, key) for key in recommendation_keys)
+    ]
     psych_statuses = {r.status for r in psych_rows}
     psychometric_status = "completed" if "completed" in psych_statuses else ("assigned" if psych_rows else "not_started")
     test_prep_statuses = {r.status for r in test_prep_rows}
@@ -1273,9 +1290,10 @@ async def _overview_payload(db: AsyncSession, student: SchoolStudent) -> dict:
     language_status = "certified" if "certified" in language_statuses else ("in_progress" if language_rows else "not_started")
     return {
         "student": {**_student_out(student), "school_name": school.name if school else None, "assigned_teacher_name": teacher.full_name if teacher else None},
-        "career_guidance": {"status": "completed" if guidance else "not_started", "sessions": _career(guidance)},
-        "counselling": {"status": "completed" if counselling else "not_started", "notes": _career(counselling)},
+        "career_guidance": {"status": _module_status(guidance), "sessions": _career(guidance)},
+        "counselling": {"status": _module_status(counselling), "notes": _career(counselling)},
         "recommended_careers": _career(recommendations),
+        "structured_recommendations": structured_recommendations,
         "psychometric": {"status": psychometric_status, "assessments": [{"id": r.id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at} for r in psych_rows]},
         "test_prep": {"status": test_prep_status, "records": [_test_prep_out(r) for r in test_prep_rows]},
         "foreign_language": {"status": language_status, "records": [_language_out(r) for r in language_rows]},
