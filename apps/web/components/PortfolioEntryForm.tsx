@@ -5,7 +5,7 @@ import { FormEvent, useRef, useState } from "react";
 import InternshipFields from "@/components/InternshipFields";
 import { detailMessage, isRequestBody, NOT_COMPLETED } from "@/lib/apiErrors";
 import { refocus } from "@/lib/focus";
-import { filledInternship, internshipChanges, type InternshipValues, pickInternship } from "@/lib/portfolio";
+import { filledInternship, internshipChanges, type InternshipValues, pickInternship } from "@/lib/internship";
 
 // ENH-012 -- one form for all 10 self-entry sections (same shape: title/organization/dates/description),
 // mirroring SchoolTransferRequestForm.tsx exactly: per-field useState, busy/inFlight guard, raw fetch(),

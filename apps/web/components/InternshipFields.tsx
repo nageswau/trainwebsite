@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { COMPLETION_LABEL, type InternshipValues } from "@/lib/portfolio";
+import { COMPLETION_LABEL, type InternshipValues } from "@/lib/internship";
 import { listText, splitList } from "@/lib/schoolStudents";
 
 // ENH-021 (§22): the tracking fields of an internship entry, grouped per spec §11.2 F1. Controlled by PortfolioEntryForm; the skills

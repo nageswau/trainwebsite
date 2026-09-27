@@ -5,7 +5,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 import PortfolioEntryForm from "@/components/PortfolioEntryForm";
 import PortfolioPanel, { type PortfolioData } from "@/components/PortfolioPanel";
-import { internshipChanges } from "@/lib/portfolio";
+import { internshipChanges } from "@/lib/internship";
 
 afterEach(() => {
   cleanup();

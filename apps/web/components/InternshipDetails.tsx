@@ -1,5 +1,8 @@
+"use client";
+
 import InternshipCertificate from "@/components/InternshipCertificate";
-import { COMPLETION_LABEL, type PortfolioEntry } from "@/lib/portfolio";
+import { COMPLETION_LABEL } from "@/lib/internship";
+import type { PortfolioEntry } from "@/lib/portfolio";
 
 // ENH-021: an internship entry's tracking fields, read-only; empty fields omitted, status always in words (spec §11.2 F6/F10).
 export default function InternshipDetails({ entry, studentId, canEdit }: { entry: PortfolioEntry; studentId: string; canEdit: boolean }) {
