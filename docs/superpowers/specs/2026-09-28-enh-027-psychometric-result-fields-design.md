@@ -2,7 +2,8 @@
 
 **Status:** Design approved in-session, 2026-09-28, section by section (data/API/backend, frontend,
 acceptance criteria and tests). Superpowers architectural path: brainstorming → this design doc →
-`writing-plans` next. Written spec awaiting user review.
+`writing-plans` next. Revised the same day after API / frontend / security engineering reviews (§11).
+Written spec awaiting user review.
 
 **Source requirement:** `School CRM.md §6` "Psychometric Test Module", "Individual Student" subsection
 (`docs/sources/School CRM.md:254-300`, byte-identical to `functionalities/edusphere_markdown/School CRM.md`;
@@ -98,7 +99,8 @@ New `PsychometricResultFields(BaseModel)` in `apps/api/app/schemas.py`, next to 
 - `counsellor_remarks` (`max_length=4000`), `parent_discussion_notes` (`max_length=2000`) → existing
   `_clean_multiline_text` (line breaks allowed; control/bidi rejected; blank → `None`).
 - `test_date`, `parent_discussion_on`, `follow_up_on` → `datetime.date | None`, via a
-  `field_validator(mode="before")` that accepts only `None` or a string of exactly `YYYY-MM-DD`
+  `field_validator(mode="before")` that accepts only `None`, a blank string (→ `None`, same as the text
+  fields' blank → `None`; an emptied `<input type="date">` submits `""`), or a string of exactly `YYYY-MM-DD`
   (`date.fromisoformat` on a 10-character string). A datetime string, a number (pydantic's lax mode would
   read it as a Unix timestamp) or an impossible date (`2026-02-30`) is a 422. Pydantic `strict` mode is not
   used: it rejects ISO strings when validating a Python dict, which is what the routes pass.
@@ -138,6 +140,18 @@ names only, never values (student data stays out of the audit log).
 - Changing only result fields never changes `status` and never notifies parents.
 - Entitlement check with `grandfathered_since=record.created_at` unchanged.
 - Audit `metadata_json` = `{"fields": [sorted keys changed, incl. "report_url" if sent]}` (was `{}`).
+- **No mass assignment.** Only `report_url` and the 10 result keys are ever written. `school_student_id`,
+  `psychometric_team_user_id`, `status`, `assessment_type`, `id`, `created_at` in a PATCH body stay ignored,
+  as today — a record can never be moved to another student or re-attributed to another member (abuse
+  test in §8).
+- JSON list columns are always **reassigned** (a new list object), never mutated in place, so SQLAlchemy
+  marks them dirty and the UPDATE touches only changed columns (the basis of §4.3).
+
+**HTTP semantics.** POST stays `201` + the created record; PATCH stays `200` + the updated record; the
+error mapping stays the house one — `403` role/portfolio/tier, `404` unknown record, `422` validation, all
+with a string `detail`. PATCH is naturally idempotent (it sets values), so a client retry is safe; POST
+create stays non-idempotent (pre-existing, unchanged — no `Idempotency-Key` is introduced, none is
+contracted for this route).
 
 ### 4.3 Concurrency
 
@@ -159,6 +173,13 @@ lists or `null`). It is spread into the existing dicts:
 | `_overview_payload` `psychometric.assessments` (`schools.py:1208`) | overview readers (parent child page) | + 10 fields |
 | `portfolio_payload` `psychometric_report` (`portfolio.py:128`) | portfolio + 360° readers | + 10 fields → reaches the 360° Psychometric tab with **no change to `student_360.py`** |
 
+Response size: validation caps bound one record's result payload at roughly 14 KB worst case
+(5 × 20 × 80 chars + 4000 + 2000). The two list endpoints are unpaginated today; paginating them would be
+a contract change outside ENH-027 and is not done (noted as a follow-up if portfolios grow large).
+
+The output contract (field names, `null` = not recorded, ISO dates, lists never empty — `null` instead)
+is recorded in `API_CONTRACT.md` and mirrored by one exported TypeScript type (§5.5).
+
 Visibility (§9 Q1): every role that can read the record today sees the result fields. Scope loaders
 (`_student_in_portfolio`, `_readable_students`, `_load_student_for_reader`) are unchanged.
 
@@ -175,78 +196,128 @@ exercising the empty state.
 
 ## 5. Frontend
 
-### 5.1 `components/PsychometricResultDetails.tsx` (new, shared)
+### 5.1 `components/PsychometricResultDetails.tsx` (new, shared, presentational)
 
-Presentational, server-safe. Props: one assessment object with the optional result fields.
-- Facts list: Test date, Parent discussion (date + notes), Follow-up (dates via `formatCalendarDate`),
-  Counsellor remarks (`white-space: pre-wrap`).
-- The 5 list fields as labelled bullet lists; a list that is `null`/empty is omitted.
-- No result field set (legacy / not yet recorded) → one muted line: "No results recorded yet."
-- Two consumers (§5.2, §5.4) justify the extraction.
+Server-safe, no hooks. Props: one assessment object typed `PsychometricResult` (§5.5). Mirrors the
+ENH-018 precedent (`ActivityFeedbackDetails` inside `<details>`, `SchoolActivityFeedbackPanel.tsx:204`).
+- One `<dl className="s360-facts">` (existing style; `auto-fill minmax(180px, 1fr)` → one column on a
+  phone): Test date, Parent discussion (date; notes below it), Follow-up (dates via
+  `formatCalendarDate`, same helper the 360° tabs use). A fact whose value is `null` is omitted.
+- The 5 list fields each as `<dt>` + `<dd><ul>…</ul></dd>` — plain text items, React-escaped.
+- Counsellor remarks and parent-discussion notes render with `white-space: pre-wrap` and
+  `overflow-wrap: anywhere` (long unbroken text never forces horizontal scroll at 320 px).
+- Exports `hasResults(a): boolean` (any of the 10 fields non-null) for the two consumers.
+- No new colours, radii or shadows: existing tokens/classes only; at most one small CSS rule block in
+  `globals.css` (`.psy-result`) for the pre-wrap text and the `<details>` spacing.
 
 ### 5.2 360° Psychometric tab (`Student360Panels.tsx:109-110`)
 
 Existing table (Assessment / Status / Date, caption "Psychometric assessments") kept verbatim. Below it,
-per assessment, a `<details>` with `<summary>{assessment_type} — results</summary>` rendering
-`PsychometricResultDetails`. Restricted/empty/loading states unchanged (`_tab`, `EMPTY_TEXT`,
-`loading.tsx`).
+one line per assessment:
+- `hasResults` → `<details className="psy-result"><summary>{assessment_type} — results</summary>
+  <PsychometricResultDetails …/></details>` (collapsed by default, so a long history stays scannable;
+  `<summary>` is natively keyboard-operable and announced as expandable — no ARIA re-implementation).
+- otherwise → `<p className="muted">{assessment_type}: no results recorded yet.</p>` — no empty
+  disclosure to open. This is the legacy/empty state (AC06).
+Restricted/empty/loading states of the tab itself are unchanged (`_tab`, `EMPTY_TEXT`, `loading.tsx`).
 
-### 5.3 Psychometric Team dashboard (`SchoolPsychometricRecordsPanel.tsx`)
+### 5.3 Psychometric Team dashboard
 
-- Actions column gains **"Record results"** (label **"Edit results"** when any result field is set)
-  beside the existing "Attach report" (assigned only) / "Report attached". The results button shows for
-  every status — results may be recorded before or after the report (§9 Q6).
-- Opens a results action card, same interaction model as the attach card: one card open at a time
-  (opening one closes the other), message rendered beside the form that produced it, Cancel clears it.
-- Fields (each with a real `<label>`):
-  - Test date — `<input type="date">`
-  - Strengths / Interest areas / Personality indicators / Career recommendations / Recommended
-    streams — `<textarea>`, one item per line (hint text says so)
-  - Counsellor remarks — `<textarea>`
-  - Parent discussion date — `<input type="date">`; Parent discussion notes — `<textarea>`
-  - Follow-up date — `<input type="date">`
-- Prefilled from the record. On submit, builds the payload from **changed fields only** (compared with the
-  prefill; list fields compared after splitting lines + trimming + dropping blanks). An emptied field is
-  sent as `null`.
-- No changed field → no request; card shows "No changes to save."
-- Saving: submit and Cancel disabled, submit label "Saving…".
-- Failure (422/403/network, via `sendJson`): server message shown in the card; card stays open; typed
-  input preserved.
-- Success: card closes, "Results saved." shown under the assign form (same place the attach success
-  message goes today), `router.refresh()`.
-- Assign form and attach flow unchanged (`#psych-student`, `#psych-type`, `#report-url` keep their ids).
+**Split for focus.** `SchoolPsychometricRecordsPanel.tsx` is 150 lines; the editor goes in a new client
+component `components/PsychometricResultsForm.tsx` so neither file passes ~200 lines. The panel keeps
+the table, the attach card, the assign card and the "which card is open" state.
+
+**Panel changes (`SchoolPsychometricRecordsPanel.tsx`)**
+- Actions cell wraps its buttons in the existing `.actions` flex-wrap container (two buttons wrap on a
+  phone instead of widening the table; the table already sits in `.table-wrap`).
+- New button **"Record results"** / **"Edit results"** (when `hasResults`) for every status, beside the
+  existing "Attach report" (assigned only) / "Report attached". Its `aria-label` names the student and
+  assessment ("Record results for Aarav — Aptitude Test"), because several rows show the same visible text.
+- One card open at a time: opening the results card closes the attach card and vice-versa (the existing
+  `uploadingId` state becomes `open: {kind: "attach" | "results", id} | null`; attach behaviour, ids and
+  messages unchanged).
+
+**Editor (`PsychometricResultsForm.tsx`)** — props: the record, the student name, `onDone(saved: boolean)`.
+Patterns reused from `ActivityFeedbackForm.tsx` (ENH-018), not reinvented:
+- **Heading + focus:** `<h3 tabIndex={-1}>Results — {student} · {assessment}</h3>`, focused on open
+  (keyboard and screen-reader users land in the card). On Cancel or success, focus returns to the button
+  that opened it (the panel keeps a ref per row).
+- **Layout (visual hierarchy):** three groups, each a `<fieldset>` with a `<legend>`:
+  1. *Assessment* — Test date.
+  2. *Findings* — Strengths, Interest areas, Personality indicators, Career recommendations,
+     Recommended streams (textareas, one item per line; hint "One per line, up to 20 items of 80
+     characters").
+  3. *Counselling & follow-up* — Counsellor remarks, Parent discussion date + notes, Follow-up date.
+  Dates sit in the existing `.form-grid` (two columns, one column ≤640 px); textareas span full width
+  (`.field.full`). Every control has a real `<label htmlFor>`; hints are linked with `aria-describedby`.
+- **Client-side checks (usability, not security — the server stays the authority):** textareas carry
+  `maxLength` (4000 / 2000); list fields are checked on submit for >20 lines or a line >80 characters —
+  a failing field gets `aria-invalid="true"` and an inline message linked by `aria-describedby`, and focus
+  moves to the first invalid field. Character counters for the two long text fields ("n / 4000"), as in
+  `ActivityFeedbackForm`.
+- **Payload:** prefilled from the record; on submit only **changed** fields are sent (lists compared after
+  split-lines → trim → drop blanks; dates/text compared after trim). An emptied field is sent as `null`.
+  No changed field → no request, polite status "No changes to save."
+- **Saving:** submit and Cancel disabled, submit label "Saving…", `aria-busy` on the form.
+- **Failure** (422/403/network via `sendJson`): `FormMessage` alert inside the card (announced, scrolled
+  into view on a phone — its existing behaviour); card stays open; everything typed is kept.
+- **Unsaved changes:** `beforeunload` warning while dirty (ActivityFeedbackForm precedent) — remarks can
+  be long.
+- **Success:** `onDone(true)` → panel closes the card, shows "Results saved." under the assign form (where
+  the attach success already goes), `router.refresh()`.
+- **Perceived performance:** no optimistic update — the server normalises lists (dedupe, trim, blank
+  drop), so an optimistic render could show values that were not stored. The card is client-only; the page
+  stays server-rendered; the refresh re-fetches one list.
+- Assign form and attach flow unchanged (`#psych-student`, `#psych-type`, `#report-url` keep their ids);
+  new controls get new `psy-result-*` ids.
 
 ### 5.4 Parent child overview (`SchoolChildOverview.tsx:154-163`)
 
-Existing table unchanged. Below it, the same per-assessment `<details>` + `PsychometricResultDetails`.
-`Assessment` type gains the optional fields.
+Existing table unchanged. Below it, the same per-assessment `<details>` / "no results recorded yet" line
+as §5.2. `Assessment` type gains the optional fields.
 
 ### 5.5 Types
 
-Optional result fields added to: `Record_` in the panel and in
-`app/school/psychometric-team/dashboard/page.tsx`, `lib/portfolio.ts` `psychometric_report`,
-`SchoolChildOverview` `Assessment`. One shared `PsychometricResult` type exported from the new
-component file.
+`PsychometricResult` (the 10 optional fields, `string | null` for dates/text, `string[] | null` for
+lists) is exported from `PsychometricResultDetails.tsx` and intersected into: `Record_` in the panel and
+in `app/school/psychometric-team/dashboard/page.tsx`, `lib/portfolio.ts` `psychometric_report`, and
+`SchoolChildOverview`'s `Assessment`.
 
-### 5.6 States, accessibility, responsiveness
+### 5.6 States, accessibility, responsiveness — summary
 
-- Loading: existing route `loading.tsx` (360°) and server rendering (dashboard, parent page).
-- Empty: existing tab/table empty text; per-assessment "No results recorded yet."
-- Error: existing page-level error handling for reads; form errors per §5.3.
-- `<details>/<summary>` is keyboard-operable natively; no ARIA re-implementation.
-- Existing `.form`/`.field`/`.action-card` classes; the card stacks at phone width. No new dependency.
+| Concern | Handling |
+|---|---|
+| Loading | Existing route `loading.tsx` (360°); server-rendered dashboard/parent page; form "Saving…" + `aria-busy` |
+| Empty | Existing tab/table empty text; per-assessment "no results recorded yet" line (no empty disclosure) |
+| Error | Existing page-level read errors; form `FormMessage` alert + field-level `aria-invalid` |
+| Keyboard | Native `<button>`, `<details>/<summary>`, form controls; focus to card heading on open, back to trigger on close, to first invalid field on a client check |
+| Screen reader | Labelled controls, fieldset legends, row-specific button labels, alert vs status live regions (existing `FormMessage`) |
+| Mobile (320 px) | `.form-grid` → one column; `.s360-facts` auto-fill; `.actions` wraps; `overflow-wrap: anywhere` on free text; table stays in `.table-wrap` |
+| Design language | Existing classes and tokens only; no new dependency |
 
-## 6. Security and authorization
+## 6. Security and authorization (security-and-hardening review)
 
-- No new endpoint, no new role, no RBAC change. Only `psychometric_team` writes (SCH-005-AC04 holds).
-- Portfolio/readable-scope loaders run before any query; new fields travel only inside rows those
-  loaders already admit.
-- Input hardening reuses the house rules (`_clean_list`, `_clean_multiline_text`): control/bidi
-  characters rejected, lengths capped, list sizes capped. React escapes all rendered text; no
-  `dangerouslySetInnerHTML`.
-- Audit log records field names, not values.
-- `report_url` exposure per endpoint unchanged (Client Question #20 open; the pre-existing difference
-  between `/psychometric-records` and `portfolio_payload` is noted, not changed).
+**Trust boundaries:** the two write routes (JSON body from a `psychometric_team` session) and the four
+read paths (data written by staff, rendered to Coordinator/Principal/Teacher/Parent). **Assets:**
+psychometric findings and counsellor remarks about minors — *sensitive* personal data.
+
+| Check | Finding / design | Change in ENH-027 |
+|---|---|---|
+| Authentication | `get_current_user` on every route; httpOnly `SameSite=Lax` JWT cookies (`auth.py:88`) | None |
+| Authorization | Role gate + `_student_in_portfolio` before any write; readers via `_readable_students` / `_load_student_for_reader` | None — new fields ride inside rows those loaders already admit |
+| IDOR | PATCH resolves the record, then re-checks the *record's* student against the caller's portfolio; reads are keyed on the loaded student, never a raw id | None; abuse tests: out-of-portfolio record id, reader PATCH |
+| Role escalation / mass assignment | Only `report_url` + 10 allow-listed keys are written; ownership/status/student keys in a body are ignored | Abuse test: PATCH with `school_student_id`/`psychometric_team_user_id`/`status` changes nothing |
+| Input validation | Pydantic model at the route boundary; house rules for lists/text (caps, control + bidi rejection); `YYYY-MM-DD`-only dates | New model (§4.1) |
+| XSS | React escaping; no `dangerouslySetInnerHTML`; list items and remarks rendered as text | Abuse test: `<script>`/`<img onerror>` payload stored and rendered as literal text (web unit test) |
+| CSRF | `SameSite=Lax` cookies + CORS limited to `settings.frontend_url` with JSON bodies (`main.py:52`) | None (existing model covers the two routes) |
+| SQL injection | SQLAlchemy ORM, bound parameters only | None |
+| Token / session handling | Unchanged; client uses same-origin `sendJson` | None |
+| Secret exposure | No secrets, config or env involved | None |
+| Sensitive logs | Routes log no payloads; audit metadata holds **field names only**, never values | Test: audit metadata has no result values |
+| Rate limiting | None on staff write routes (`SECURITY_CONTROLS.md`: open item, auth endpoints). Authenticated, role- and portfolio-scoped, ~14 KB max per record | Not added — "ask first" category and outside ENH-027; noted as existing open item |
+| Audit | Create/update already audited in the same transaction; update now lists the changed field names | Additive metadata |
+| Privacy / retention | New fields live **on the existing row**, so they follow that row's existing access, retention and any export/deletion path automatically (no new store, no copy) — one reason for Approach A | None |
+| Report link | `report_url` stays unvalidated at write (RAID I-33, pre-existing) and rendered only via `safeHref` | None |
 
 ## 7. Acceptance criteria
 
@@ -265,11 +336,16 @@ component file.
 - **ENH-027-AC05:** Coordinator, Principal, Teacher and Parent see the result fields via
   `/psychometric-records`, the child overview, the portfolio and the 360° Psychometric tab, within their
   existing scope. Which endpoints return `report_url` is unchanged.
-- **ENH-027-AC06:** A legacy record (all new fields null) serializes with nulls and renders "No results
-  recorded yet." — never an error.
+- **ENH-027-AC06:** A legacy record (all new fields null) serializes with nulls and renders
+  "{assessment}: no results recorded yet." (no empty disclosure) — never an error.
 - **ENH-027-AC07:** UI — a Psychometric Team member records and edits results from the dashboard (only
-  changed fields sent; no-change submits nothing; failure keeps input; saving state disables actions); the
-  360° tab and the parent child page show the structured data.
+  changed fields sent; no-change submits nothing; failure keeps input; saving state disables actions;
+  focus moves to the card heading on open and back to the trigger on close; client checks mark the
+  invalid field); the 360° tab and the parent child page show the structured data; the editor and the
+  details are usable at 320 px width and by keyboard alone.
+- **ENH-027-AC10 (security):** A PATCH body carrying `school_student_id`, `psychometric_team_user_id` or
+  `status` changes none of them; HTML/script text in any result field is stored as text and rendered as
+  literal text; audit metadata never contains result values.
 - **ENH-027-AC08:** No regression — report counts, entitlement usage count, timeline events, portfolio
   completion %, and the existing SCH-005/007/008/011, ENH-012/013/022/023 suites pass unchanged.
 - **ENH-027-AC09:** Migration `0042` upgrade → downgrade → upgrade on a database with existing
@@ -289,22 +365,30 @@ component file.
 - AC05: each reader role sees result fields on `/psychometric-records`, overview, portfolio, 360°;
   `/psychometric-records` still has no `report_url` key.
 - AC06: legacy row → nulls in every read path.
-- Audit metadata holds field names only.
+- AC10: mass-assignment PATCH (student/owner/status keys) → nothing but allowed keys changes; audit
+  metadata holds field names only; blank date string → `null`; `<script>` text round-trips unchanged as
+  data (the API stores text; escaping is the renderer's job).
 
 **Migration (AC09):** round-trip script against the Docker Postgres (user starts the stack) with seeded
 psychometric rows; compare row values before/after.
 
 **Web unit (Vitest):**
-- `tests/components/PsychometricResultDetails.test.tsx` (new): full data; partial data; legacy → "No
-  results recorded yet."
-- `SchoolPsychometricRecordsPanel.test.tsx` (extend): editor prefill; only changed fields in payload;
-  emptied field → `null`; no-change → no request + message; 422 → card open, input kept; busy state;
-  one-card-at-a-time with attach.
-- `Student360Panels.test.tsx`, `SchoolChildOverview` test (extend): details render; legacy empty line;
-  existing table unchanged.
+- `tests/components/PsychometricResultDetails.test.tsx` (new): full data; partial data (null facts
+  omitted); `hasResults` true/false; `<script>`/`<img onerror>` text rendered literally (AC10).
+- `tests/components/PsychometricResultsForm.test.tsx` (new): prefill; only changed fields in payload;
+  emptied field → `null`; no-change → no request + status; client check (>20 lines / >80 chars) →
+  `aria-invalid` + message + focus on the field, no request; 422 → alert, card open, input kept; busy
+  state disables submit/Cancel; heading focused on open; `beforeunload` registered only while dirty.
+- `SchoolPsychometricRecordsPanel.test.tsx` (extend): "Record/Edit results" label by `hasResults`;
+  row-specific accessible name; one card at a time with attach; focus returns to the trigger on Cancel;
+  existing attach/assign tests unchanged.
+- `Student360Panels.test.tsx`, `SchoolChildOverview` test (extend): `<details>` when results exist;
+  "no results recorded yet" line otherwise; existing table unchanged.
 
 **Playwright (AC07):** extend `tests/e2e/sch-004-005-006-service-delivery.spec.ts` — after attaching the
-report, record results; verify on the psychometric team's 360° tab and on the parent's child page.
+report, record results (keyboard-only for the editor: Tab to the button, Enter, fill, submit); verify on
+the psychometric team's 360° tab and on the parent's child page; one run at a 320 px viewport checks the
+editor has no horizontal page scroll.
 
 **Regression (AC08):** per task, the psychometric-related API tests + web unit tests. Full backend and
 E2E suites once at the end (user's every-3-4-features cadence; this is one feature).
@@ -331,3 +415,24 @@ E2E suites once at the end (user's every-3-4-features cadence; this is one featu
 | e2e selectors | Existing ids kept; new controls get new ids |
 | Migration/decision-ID collision with parallel branches | Renumber on merge per precedent (header note) |
 | Audit metadata shape change on PATCH (`{}` → `{"fields": [...]}`) | Additive; no reader of that metadata depends on `{}` — verified by grep in the plan's first task |
+| Panel refactor (`uploadingId` → one open-card state) touches the attach flow | Attach ids/messages/behaviour kept; existing panel tests and the SCH-004/005/006 e2e run unchanged first (red→green only on new cases) |
+
+## 11. Engineering reviews applied (2026-09-28)
+
+Reviewed against `api-and-interface-design`, `frontend-ui-engineering` and `security-and-hardening`,
+checked against the actual code. Changes this review made to the design:
+
+- **API:** blank date string → `null`; explicit mass-assignment allow-list + abuse test; JSON columns
+  reassigned (dirty tracking); HTTP status/idempotency semantics stated; response-size bound stated;
+  output contract documented in `API_CONTRACT.md` with one TS type. Not adopted, with reason: a
+  `response_model` on the existing routes (Hyrum's-law risk to serialization of existing keys for no
+  requirement gain), pagination of the two list endpoints (contract change outside ENH-027), a structured
+  `{code, message, details}` error body (the house convention is a string `detail`; changing it for two
+  routes would make them inconsistent with the rest).
+- **Frontend:** editor split into `PsychometricResultsForm.tsx` (panel stays <200 lines); fieldset
+  grouping for hierarchy; focus management, `beforeunload`, character counters and field-level
+  `aria-invalid` reused from `ActivityFeedbackForm`; row-specific button names; empty results shown as a
+  plain line, not an empty disclosure; `overflow-wrap` for 320 px; no optimistic update (server
+  normalises lists).
+- **Security:** §6 threat table. No new controls needed beyond validation and abuse tests; rate limiting
+  and `report_url` validation remain pre-existing open items, deliberately not touched here.
