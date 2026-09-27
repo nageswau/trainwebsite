@@ -125,15 +125,25 @@ One transaction:
 2. `SELECT … FOR UPDATE` the record (404 "Career record not found");
 3. re-check the record's student is in the caller's portfolio **under the lock** (403, `_student_in_portfolio` wording);
 4. `require_school_entitlement(..., "individual_counselling", grandfathered_since=record.created_at)`;
-5. if `status` sent and ≠ locked status: validate transition (C2/C4) else 422
+5. optional precondition `expected_status` (a status value or `null` for legacy rows): if sent and ≠ the locked status
+   ⇒ **409** `"This record was changed by someone else (now <Current>). Reload to see the latest."` (ENH-023 D12
+   `expected_tier` precedent; the web client always sends it, other clients that omit it behave as without it);
+6. if `status` sent and ≠ locked status: validate transition (C2/C4) else **422**
    `"Cannot change status from <Current> to <Requested>"`;
-6. merge fields; validate post-merge rules (C6–C8, list limits); set `updated_by_user_id`;
-7. `AuditLog` `school.career_record_update`, metadata `{changed_fields, status: {old,new}, scheduled_for/completed_on/
-   next_follow_up_date: {old,new} when changed}`;
-8. if status changed: `_notify_student_parents` (title "<Status label> — career record for <name>");
-9. commit.
-Concurrency: concurrent PATCHes serialize on the row lock; the second validates against the committed status (422 if
-now invalid). Field edits are last-write-wins, every write audited (same stance as `update_career_goal`).
+7. merge fields; validate post-merge rules (C6–C8, list limits); if nothing actually changed, return 200 with the
+   record and write nothing (no audit, no notification — repeat PATCHes are safe to retry);
+8. set `updated_by_user_id`; `AuditLog` `school.career_record_update`, metadata `{changed_fields (names only),
+   status: {old,new}, scheduled_for/completed_on/next_follow_up_date: {old,new} when changed}` — never field contents;
+9. **commit** (releases the row lock);
+10. if status changed: `_notify_student_parents` (title "<Status label> — career record for <name>") then commit again.
+    Notification is deliberately **after** the record commit: `_notify_parent` sends email inline
+    (`schools.py:662`), so doing it before would hold the row lock across SMTP latency and could email parents about a
+    change whose commit then failed. A notification failure is logged (`career_record_notify_failed`, ids only) and does
+    not undo the record change. `POST` keeps its existing notify-then-commit order (no lock is held there; unchanged
+    behaviour).
+Concurrency: concurrent PATCHes serialize on the row lock; the second validates against the committed status
+(409 when `expected_status` is stale, 422 when the transition is simply not allowed). Field edits are last-write-wins,
+every write audited (same stance as `update_career_goal`).
 
 **List endpoints** (`GET /career-counselor/records`, `GET /career-records`) — existing keys + new fields.
 
@@ -162,7 +172,9 @@ DELETE of an entry with a certificate deletes the object after commit (failures 
   `strip_metadata` for JPEG/PNG; else 415 → `storage.write_bytes("portfolio-certificates/<uuid4hex>")` → set columns,
   audit `school.internship_certificate_set` → commit (on failure discard new object) → discard old object.
 - `GET …/certificate`: `_load_student_for_reader` (every portfolio reader, I2/I5) → 404 if none or object missing
-  (warning log, key digest only) → bytes with `Content-Disposition: attachment; filename="internship-certificate.<pdf|jpg|png>"`,
+  (warning log, key digest only) → add `AuditLog` `school.internship_certificate_download` (entry id, student id, reader
+  role; S13) and commit **before** returning the bytes, so no document leaves without its audit row (a failed audit
+  commit ⇒ 500, nothing served) → bytes with `Content-Disposition: attachment; filename="internship-certificate.<pdf|jpg|png>"`,
   `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; sandbox`, `Cache-Control: private, no-store`.
 - `DELETE …/certificate`: write role/scope → lock → gate as PUT → clear, audit `school.internship_certificate_remove`
   → commit → discard object. 204 also when none attached.
@@ -226,7 +238,15 @@ other sections (API 422 and DB CHECK). **AC21-3** certificate type/size/state ru
 entry-delete remove the old object after commit. **AC21-4** Platinum required for create/tracking/certificate; a Gold
 school can still edit basic fields of and delete its existing internship entries. **AC21-5** KPI, chart, usage and 360°
 status match I7/I8. **AC21-6** teacher not assigned to the student ⇒ 403. **AC21-7** legacy internship entries read
-unchanged with "No status".
+unchanged with "No status". **AC21-8** every successful certificate download writes one
+`school.internship_certificate_download` audit row; a denied or 404 download writes none.
+
+Review-derived (§11): **AC-R1** career PATCH with a stale `expected_status` ⇒ 409 and nothing written. **AC-R2** a
+parent-notification failure after a status change leaves the record change committed. **AC-R3** attempts to set
+owner ids, `record_type`, `section` or `certificate_key` through JSON ⇒ 422. **AC-R4** no API response or log line
+contains `certificate_key`, notes, strengths, weak areas, feedback or mentor names (log assertions in tests).
+**AC-R5** keyboard-only completion of the counselling and internship forms, with focus returned to the Edit button
+after save/cancel (component test + E2E).
 
 ## 9. Tests (written before code, per task)
 
@@ -251,3 +271,60 @@ unchanged with "No status".
 | Migration head collision with parallel branches | `alembic heads` check before each migration task |
 | Service roles seeing student master data | AC26-9 |
 | ENH-005 transfer / ENH-004 promotion | untouched; `test_enh_005_approve.py` must pass unmodified |
+| Parent emailed about a change that did not commit / lock held across SMTP | notify after commit (§5.1 step 10); test that a failing mailer leaves the record change committed |
+
+## 11. Engineering reviews (2026-09-27)
+
+Applied on the user's instruction: `api-and-interface-design` (backend), `frontend-ui-engineering` (web),
+`security-and-hardening` (both features). Only ENH-021/ENH-026 surfaces are affected; nothing speculative.
+
+### 11.1 API and interface design
+
+| # | Finding | Resolution (compatible with existing architecture) |
+|---|---|---|
+| A1 | Error shape differs by endpoint family (Hyrum's law) | Career-record endpoints keep **string** `detail` (via `_master_fields_or_422`). Portfolio endpoints keep their current shapes: schema errors as FastAPI's list shape, post-merge rule errors as `HTTPException(422, "<text>")` exactly as `update_portfolio_entry` does today. No endpoint changes shape. |
+| A2 | Stale view vs invalid request were both 422 | Optional `expected_status` precondition ⇒ 409 (§5.1 step 5); invalid transitions stay 422 (C2). |
+| A3 | Several hand-built dicts for the same record | One serializer per resource: `_career_record_out(r)` used by POST, PATCH, both lists and `_overview_payload._career`; career routes keep returning the dict (no `response_model`, so timestamps serialize exactly as today) and validate against a documented `CareerRecordOut` like `student_360_view` does. Portfolio: `_entry_out` and `PortfolioEntryOut` stay aligned; `has_certificate` is a read-only ORM `@property` on `PortfolioEntry`; a test asserts both serializers expose the same keys and never `certificate_key`. |
+| A4 | Two representations of "empty list" | `[]`, `null` and lists of blank strings are all stored as NULL and returned as `null`; items trimmed, blanks dropped, order kept. |
+| A5 | Ambiguous datetime input | `scheduled_for` must be timezone-aware ISO 8601; a naive value ⇒ 422. Dates compared in Asia/Kolkata (`_today_ist`). |
+| A6 | Retry safety | PATCH is idempotent (no-op writes nothing). Certificate PUT replaces; certificate DELETE returns 204 when absent. POST create stays non-idempotent (existing contract); the web client's `inFlight` guard prevents double submit. |
+| A7 | HTTP semantics of new routes | PATCH 200 full record; certificate PUT 200 `{"has_certificate": true, "content_type": …}` (mirrors photo PUT); GET 200 bytes / 404; DELETE 204; 413/415/422 for upload faults; 409 only for `expected_status`. |
+| A8 | List pagination | The two career-record lists are unpaginated today; changing that is a contract change outside this requirement — left as is, noted. |
+| A9 | Database usage | KPI/chart/usage internship queries select only `school_student_id`/`completion_status` for `section='internship'` over the school's student ids; usage uses `COUNT(DISTINCT …)` in SQL; 360° reuses entries `portfolio_payload` already loaded (no extra query, no N+1). |
+| A10 | Mass assignment | `extra="forbid"` on every new/extended body; `record_type`, `school_student_id`, `career_counselor_user_id`, `updated_by_user_id`, `section`, `certificate_*` are never writable through JSON. |
+
+### 11.2 Frontend UI engineering (existing design language only)
+
+| # | Area | Resolution |
+|---|---|---|
+| F1 | Forms / hierarchy | Reuse `fieldset.form-section` + `legend` to group the §7 form: *Session* (type, status, dates, next follow-up), *Assessment* (interests, global-education interest, strengths, weak areas), *Recommendations* (four lists), *Parent participation*, *Counsellor notes*. Internship fields grouped the same way (*Placement*, *Progress*, *Outcome*). `form-grid` gives two columns that collapse to one at 640 px; `form-busy-wrap` disables every field while saving; `aria-invalid` + `field-help` for field-level hints; `inFlight` ref guard as in `PortfolioEntryForm`. |
+| F2 | Edit flow / keyboard | Inline edit in the existing action card (the `PortfolioPanel` `startEdit` pattern, no modal). Opening moves focus to the form heading; Cancel/Escape or a successful save return focus to the row's Edit button. Only native `button`/`input`/`select`/`textarea`; tab order follows visual order. |
+| F3 | Status control | Select lists the current status plus allowed next states only (from `lib/careerRecords.ts`), with `field-help` describing the lifecycle; status always shown as text in the existing `.status` chip (never colour alone). |
+| F4 | Responsive / mobile | Records table stays in `.table-wrap` (horizontal scroll, existing `min-width:650px`); detail views reuse `.student-profile dl`, which already collapses to one column at 640 px; the certificate control stacks under the entry. Checked at 320/768/1024/1440 px in E2E screenshots. |
+| F5 | Loading | New `career-counselor/dashboard/loading.tsx` using the existing `skeleton-line` + `aria-busy` pattern (`career-counselor/skills/loading.tsx`); portfolio and 360° routes already have loading states. Upload shows "Uploading…" with `aria-live="polite"` (photo pattern). |
+| F6 | Empty | Existing empty messages kept; structured sections render only when they have content; legacy records/entries show "No status (recorded before tracking)" / "No status". |
+| F7 | Errors | `FormMessage` (`role="alert"`) shows the API text for 422/403/404; 409 shows the stale message plus a **Reload** button (`router.refresh()`); network failure uses the existing `NOT_COMPLETED` text and keeps the user's input. Certificate removal uses the existing two-step "Remove → Confirm remove" pattern. |
+| F8 | Perceived performance | Server components + `router.refresh()` as today; no optimistic status updates (transitions are server-validated and can be refused). Client-side 5 MB and type pre-check avoids a wasted upload. |
+| F9 | Component size | Keep each file under ~200 lines: `CareerRecordForm`, `InternshipFields`, `InternshipCertificate`; `lib/careerRecords.ts` holds labels and the transition map (one source for form and display). |
+| F10 | Copy / accessibility | Every input labelled; Edit buttons named "Edit record for <student>"; certificate link "Download certificate (PDF)" / "(image)"; list inputs explain "Separate items with commas". |
+
+### 11.3 Security and hardening
+
+Threat model: trust boundaries are JSON bodies, the multipart upload, and path ids; assets are counselling data about
+minors (sensitive), internship certificates and mentor names (personal data of students and third parties).
+
+| # | Check | Resolution |
+|---|---|---|
+| S1 | Authentication | All routes use the existing cookie session via `get_current_user`; no new auth flow, no token changes. |
+| S2 | Authorization / IDOR | Career PATCH: record → its student → caller's portfolio, re-checked under the row lock. Portfolio/certificate routes: `_load_student_for_reader` then `_load_portfolio_entry`, which requires the entry to belong to the path's student (blocks cross-student ids). Tests: other school's counsellor, other school's record id, entry id under another student, unassigned teacher, parent of another child, service role on a school outside its portfolio. |
+| S3 | Role escalation | No new grants; `extra="forbid"` (A10); tests that attempt to set owner ids, `record_type`, `section`, `certificate_key`. |
+| S4 | Input validation | Enums, lengths, list limits, control/bidi characters rejected, dates range-checked, attendance 0–100 (API + DB CHECK), tracking fields only on internship (API + DB CHECK). |
+| S5 | File upload | Type decided by content (`%PDF-` / JPEG / PNG), never by name or client `Content-Type`; SVG/HTML impossible; ≤ 5 MB read cap; image metadata stripped; server-generated key; storage root guard already in `storage._local_path`; `_discard` additionally refuses keys not under `portfolio-certificates/`. PDFs are stored unmodified (may contain active content) and are therefore only ever served as attachments. |
+| S6 | XSS | React escaping only; no `dangerouslySetInnerHTML` exists in the web app and none is added; downloads served `attachment` + `nosniff` + `default-src 'none'; sandbox`; download filename generated. |
+| S7 | CSRF | Session cookie is `httponly` + `SameSite=Lax` (`auth.py:88`) and CORS allows only `settings.frontend_url` with credentials (`main.py:52`); every state change is POST/PUT/PATCH/DELETE; no GET mutates state. No new mechanism needed. |
+| S8 | SQL injection | SQLAlchemy ORM expressions only; no raw SQL; JSON lists bound as parameters. |
+| S9 | Secrets / exposure | No new secrets or config. `certificate_key` never serialized or logged (key digest only, as ENH-025). |
+| S10 | Sensitive logs & audit | Logs carry ids, counts and status names only — never notes, strengths, weak areas, feedback, mentor names or file names. Audit rows: create/update/delete of records and entries, certificate set/remove, tier denials (existing helper); metadata holds field **names** and status/date old→new only. |
+| S11 | Rate limiting | The API has no general limiter today. Upload abuse is bounded (authenticated write roles only, 5 MB, one object per entry, old object deleted on replace). **Accepted risk — user confirmed 2026-09-27**, consistent with DEC-SCOPE-030 D15; request-body limits belong at the reverse proxy (infrastructure, out of scope). |
+| S12 | Privacy | Counselling fields about minors are visible only through existing read scopes (the same readers who see `notes` today); no scope widened; grade withheld from service roles (C10). Retention follows the student record; a certificate is deleted with its entry or on replacement. Mentor contact data deliberately not collected (I3). |
+| S13 | Certificate download audit | **User confirmed 2026-09-27: audit downloads.** Each successful download writes `school.internship_certificate_download` (metadata: entry id, student id, reader role — no file content or key). This is new relative to the student-photo GET, deliberately, because the certificate is a document about a minor readable by several roles. |
