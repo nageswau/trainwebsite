@@ -75,3 +75,10 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
    and pushed forms -- and the whole page -- wider than a phone. Let form rows shrink; controls never exceed their row. */
 .action-card > *, .form > *, .field > * { min-width: 0; }
 .field input, .field select, .field textarea { max-width: 100%; }
+/* ENH-021/ENH-026: read-only term/value lists under a record (counselling record, internship). Same look as .student-profile dl;
+   one column on phones. Rows use display:contents so each <div> keeps dt+dd valid while the <dl> grid lays them out. */
+.record-details { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 8px 0 0; }
+.record-details-row { display: contents; }
+.record-details dt { font-weight: 700; }
+.record-details dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .record-details { grid-template-columns: 1fr; } .record-details dd { margin-bottom: 6px; } }

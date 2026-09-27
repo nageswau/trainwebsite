@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import CareerGoalForm from "@/components/CareerGoalForm";
+import CareerRecordDetails from "@/components/CareerRecordDetails";
+import type { CareerRecord } from "@/lib/careerRecords";
 import { type ChildOverview, SkillsCard, StatusChip } from "@/components/SchoolChildOverview";
 import SchoolGradeHistory, { type GradeHistoryEntry } from "@/components/SchoolGradeHistory";
 import { formatCalendarDate, formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
@@ -105,7 +107,7 @@ function body(key: TabKey, d: Row, view: Student360): ReactNode {
     case "examination_results":
       return <Card><Table caption="Published results" head={["Year", "Term", "Subject", "Marks", "Grade"]} rows={d.results.map((r: Row) => [r.academic_year, r.term, r.subject, r.max_marks !== undefined ? `${r.marks_obtained} / ${r.max_marks}` : null, r.grade])} /></Card>;
     case "career_guidance":
-      return <Card><ul className="s360-list">{d.records.map((r: Row) => <li key={r.id}><strong>{RECORD_TYPE[r.record_type] ?? r.record_type}</strong> <span className="muted">{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</span><p>{r.notes}</p></li>)}</ul></Card>;
+      return <Card><ul className="s360-list">{d.records.map((r: Row) => <li key={r.id}><strong>{RECORD_TYPE[r.record_type] ?? r.record_type}</strong> <span className="muted">{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</span><p>{r.notes}</p>{r.record_type !== "recommendation" && <CareerRecordDetails record={r as CareerRecord} />}</li>)}</ul></Card>;
     case "psychometric_assessment":
       return <Card><Table caption="Psychometric assessments" head={["Assessment", "Status", "Date"]} rows={d.assessments.map((a: Row) => [a.assessment_type, a.status ? <StatusChip status={a.status} /> : null, formatDate(a.created_at, false, SCHOOL_TIME_ZONE)])} /></Card>;
     case "skills":
