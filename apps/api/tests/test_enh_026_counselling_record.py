@@ -1,10 +1,20 @@
 """ENH-026 -- counselling record API (spec §5.1, AC26-1..AC26-9, AC-R1..AC-R4)."""
+import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import httpx
 import pytest
 import pytest_asyncio
 from enh005_helpers import login, mk_school, mk_staff
+from httpx import ASGITransport
+from sqlalchemy import func, select
+
+from app.api import schools as schools_api
+from app.core.database import SessionLocal
+from app.main import app
+from app.models import AuditLog, Notification, SchoolCareerRecord
 
 RECORDS = "/api/v1/school/career-counselor/records"
 IST = ZoneInfo("Asia/Kolkata")
@@ -122,3 +132,231 @@ async def test_counsellor_payloads_never_carry_student_master_data(client, world
     listed = (await client.get(RECORDS)).json()[0]
     for body in (created, listed):
         assert not {"grade_or_class", "grade_level", "date_of_birth", "section", "roll_number", "student_code"} & set(body)
+
+
+# --- PATCH (Task 4) ---------------------------------------------------------------------------------------------
+
+def _patch_url(rid):
+    return f"{RECORDS}/{rid}"
+
+
+async def _new(client, world, **body):
+    r = await _create(client, world, **body)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def _audits(action, entity_id):
+    return select(func.count()).select_from(AuditLog).where(AuditLog.action == action, AuditLog.entity_id == str(entity_id))
+
+
+@pytest.mark.asyncio
+async def test_full_lifecycle_with_follow_up_loop(client, world):
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world, status="not_started", notes="")
+    url = _patch_url(rec["id"])
+    r = await client.patch(url, json={"status": "scheduled", "scheduled_for": "2026-12-01T10:00:00+05:30", "expected_status": "not_started"})
+    assert r.status_code == 200 and r.json()["status"] == "scheduled"
+    r = await client.patch(url, json={"status": "completed", "notes": "Discussed design."})
+    assert r.json()["status"] == "completed" and r.json()["completed_on"] == TODAY.isoformat()
+    follow = (TODAY + timedelta(days=7)).isoformat()
+    r = await client.patch(url, json={"status": "follow_up_required", "next_follow_up_date": follow})
+    assert r.json()["next_follow_up_date"] == follow
+    r = await client.patch(url, json={"status": "scheduled", "scheduled_for": "2027-01-05T09:00:00+05:30"})
+    assert r.status_code == 200 and r.json()["next_follow_up_date"] is None  # C7: cleared on leaving
+    assert r.json()["updated_by_name"] == world["counselor"].full_name
+
+
+@pytest.mark.parametrize("start,target", [("not_started", "completed"), ("scheduled", "not_started"), ("completed", "scheduled")])
+@pytest.mark.asyncio
+async def test_skips_and_backward_moves_are_422(client, world, start, target):
+    await login(client, world["counselor"].email)
+    extra = {"scheduled_for": "2026-12-01T10:00:00+05:30"} if start == "scheduled" else {}
+    rec = await _new(client, world, status=start, **extra)
+    r = await client.patch(_patch_url(rec["id"]), json={"status": target, "scheduled_for": "2026-12-02T10:00:00+05:30", "notes": "n"})
+    assert r.status_code == 422
+    assert r.json()["detail"].startswith("Cannot change status from ")
+
+
+@pytest.mark.asyncio
+async def test_rescheduling_requires_a_new_scheduled_for(client, world):
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world)  # completed
+    await client.patch(_patch_url(rec["id"]), json={"status": "follow_up_required", "next_follow_up_date": (TODAY + timedelta(days=1)).isoformat()})
+    r = await client.patch(_patch_url(rec["id"]), json={"status": "scheduled"})
+    assert (r.status_code, r.json()["detail"]) == (422, "scheduled_for is required when status is Scheduled")
+
+
+@pytest.mark.asyncio
+async def test_follow_up_date_must_not_be_in_the_past(client, world):
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world)
+    r = await client.patch(_patch_url(rec["id"]), json={"status": "follow_up_required", "next_follow_up_date": (TODAY - timedelta(days=1)).isoformat()})
+    assert (r.status_code, r.json()["detail"]) == (422, "next_follow_up_date must be today or later")
+
+
+@pytest.mark.asyncio
+async def test_legacy_row_moves_only_to_completed_or_follow_up(client, world, db_session):
+    legacy = SchoolCareerRecord(school_student_id=world["students"][0].id, career_counselor_user_id=world["counselor"].id, record_type="counselling_note", notes="old note")
+    db_session.add(legacy)
+    await db_session.commit()
+    await login(client, world["counselor"].email)
+    assert (await client.patch(_patch_url(legacy.id), json={"status": "not_started"})).status_code == 422
+    assert (await client.patch(_patch_url(legacy.id), json={"status": "scheduled", "scheduled_for": "2026-12-01T10:00:00+05:30"})).status_code == 422
+    r = await client.patch(_patch_url(legacy.id), json={"status": "completed", "expected_status": None})
+    assert r.status_code == 200 and r.json()["status"] == "completed" and r.json()["notes"] == "old note"
+
+
+@pytest.mark.asyncio
+async def test_legacy_field_edit_keeps_status_null(client, world, db_session):
+    legacy = SchoolCareerRecord(school_student_id=world["students"][0].id, career_counselor_user_id=world["counselor"].id, record_type="guidance_session", notes="old")
+    db_session.add(legacy)
+    await db_session.commit()
+    await login(client, world["counselor"].email)
+    r = await client.patch(_patch_url(legacy.id), json={"weak_areas": ["Essays"]})
+    assert r.status_code == 200 and r.json()["status"] is None and r.json()["weak_areas"] == ["Essays"]
+
+
+@pytest.mark.asyncio
+async def test_stale_expected_status_is_409_and_writes_nothing(client, world, db_session):
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world)  # completed
+    r = await client.patch(_patch_url(rec["id"]), json={"expected_status": "scheduled", "notes": "changed"})
+    assert r.status_code == 409
+    assert r.json()["detail"] == "This record was changed by someone else (now Completed). Reload to see the latest."
+    assert await db_session.scalar(_audits("school.career_record_update", rec["id"])) == 0
+    saved = await db_session.get(SchoolCareerRecord, rec["id"], populate_existing=True)
+    assert saved.notes == "Met."
+
+
+@pytest.mark.asyncio
+async def test_patch_resending_current_values_is_a_noop(client, world, db_session):
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world, weak_areas=["Essays"])
+    r = await client.patch(_patch_url(rec["id"]), json={"status": "completed", "notes": "Met.", "weak_areas": ["Essays"], "expected_status": "completed"})
+    assert r.status_code == 200
+    assert await db_session.scalar(_audits("school.career_record_update", rec["id"])) == 0
+
+
+@pytest.mark.asyncio
+async def test_update_is_audited_with_names_and_status_only(client, world, db_session):
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world)
+    await client.patch(_patch_url(rec["id"]), json={"status": "follow_up_required", "next_follow_up_date": (TODAY + timedelta(days=2)).isoformat(), "weak_areas": ["Secret detail"]})
+    row = await db_session.scalar(select(AuditLog).where(AuditLog.action == "school.career_record_update", AuditLog.entity_id == rec["id"]))
+    assert row.metadata_json["status"] == {"old": "completed", "new": "follow_up_required"}
+    assert "weak_areas" in row.metadata_json["changed_fields"]
+    assert "Secret detail" not in str(row.metadata_json)
+
+
+@pytest.mark.asyncio
+async def test_parents_are_notified_only_on_status_change(client, world, db_session):
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world)
+    parent_rows = select(func.count()).select_from(Notification).where(Notification.user_id == world["parent"].id)
+    after_create = await db_session.scalar(parent_rows)
+    await client.patch(_patch_url(rec["id"]), json={"weak_areas": ["Essays"]})
+    assert await db_session.scalar(parent_rows) == after_create
+    await client.patch(_patch_url(rec["id"]), json={"status": "follow_up_required", "next_follow_up_date": (TODAY + timedelta(days=2)).isoformat()})
+    assert await db_session.scalar(parent_rows) == after_create + 1
+
+
+@pytest.mark.asyncio
+async def test_notification_failure_keeps_the_status_change(client, world, db_session, monkeypatch):
+    async def boom(*args, **kwargs):
+        raise RuntimeError("smtp down")
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world)  # created while the mailer is healthy
+    monkeypatch.setattr(schools_api, "send_parent_notification_email", boom)
+    r = await client.patch(_patch_url(rec["id"]), json={"status": "follow_up_required", "next_follow_up_date": (TODAY + timedelta(days=2)).isoformat()})
+    assert r.status_code == 200
+    saved = await db_session.get(SchoolCareerRecord, rec["id"], populate_existing=True)
+    assert saved.status == "follow_up_required"
+
+
+@pytest.mark.asyncio
+async def test_authorization(client, world, db_session):
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world)
+    other = await mk_school(db_session, label="E26-Other", students=0)
+    outsider = await mk_staff(db_session, other["school"], other["admin"], role="career_counselor")
+    await login(client, outsider.email)
+    assert (await client.patch(_patch_url(rec["id"]), json={"notes": "x"})).status_code == 403
+    await login(client, world["coordinator"].email)
+    assert (await client.patch(_patch_url(rec["id"]), json={"notes": "x"})).status_code == 403
+    await login(client, world["counselor"].email)
+    assert (await client.patch(_patch_url("00000000-0000-0000-0000-000000000000"), json={"notes": "x"})).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_a_second_portfolio_counsellor_may_edit(client, world, db_session):
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world)
+    second = await mk_staff(db_session, world["school"], world["admin"], role="career_counselor")
+    await login(client, second.email)
+    r = await client.patch(_patch_url(rec["id"]), json={"weak_areas": ["Essays"]})
+    assert r.status_code == 200
+    assert r.json()["counselor_name"] == world["counselor"].full_name and r.json()["updated_by_name"] == second.full_name
+
+
+@pytest.mark.asyncio
+async def test_below_silver_is_a_tier_denial(client, db_session):
+    ctx = await mk_school(db_session, label="E26-Bronze", tier="bronze")
+    counselor = await mk_staff(db_session, ctx["school"], ctx["admin"], role="career_counselor")
+    rec = SchoolCareerRecord(school_student_id=ctx["students"][0].id, career_counselor_user_id=counselor.id, record_type="counselling_note", notes="n", status="not_started")
+    db_session.add(rec)
+    await db_session.commit()
+    await login(client, counselor.email)
+    r = await client.patch(_patch_url(rec.id), json={"status": "scheduled", "scheduled_for": "2026-12-01T10:00:00+05:30"})
+    assert r.status_code == 403
+
+
+@asynccontextmanager
+async def _client_for(email):
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        await login(c, email)
+        yield c
+
+
+@asynccontextmanager
+async def _held(pk):
+    """Another transaction holding the record's row lock until the block ends, so both PATCHes queue behind it."""
+    session = SessionLocal()
+    try:
+        await session.execute(select(SchoolCareerRecord).where(SchoolCareerRecord.id == pk).with_for_update())
+        yield
+    finally:
+        await session.rollback()
+        await session.close()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_transitions_serialize_on_the_row_lock(client, world, db_session):
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world, status="scheduled", scheduled_for="2026-12-01T10:00:00+05:30")
+    second = await mk_staff(db_session, world["school"], world["admin"], role="career_counselor")
+    async with _client_for(world["counselor"].email) as a, _client_for(second.email) as b:
+        async with _held(rec["id"]):
+            first = asyncio.create_task(a.patch(_patch_url(rec["id"]), json={"status": "completed", "notes": "A", "expected_status": "scheduled"}))
+            other = asyncio.create_task(b.patch(_patch_url(rec["id"]), json={"status": "completed", "notes": "B", "expected_status": "scheduled"}))
+            await asyncio.sleep(0.3)
+        results = sorted([(await first).status_code, (await other).status_code])
+    assert results == [200, 409]
+
+
+@pytest.mark.asyncio
+async def test_record_type_and_owner_cannot_be_patched(client, world):
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world)
+    for key in ("record_type", "school_student_id", "career_counselor_user_id"):
+        r = await client.patch(_patch_url(rec["id"]), json={key: "x"})
+        assert (r.status_code, r.json()["detail"]) == (422, f"{key} is not an accepted field")
+
+
+@pytest.mark.asyncio
+async def test_recommendation_patch_accepts_notes_only(client, world):
+    await login(client, world["counselor"].email)
+    rec = (await client.post(RECORDS, json={"school_student_id": world["sid"], "record_type": "recommendation", "notes": "A"})).json()
+    assert (await client.patch(_patch_url(rec["id"]), json={"notes": "B"})).json()["notes"] == "B"
+    r = await client.patch(_patch_url(rec["id"]), json={"status": "completed"})
+    assert (r.status_code, r.json()["detail"]) == (422, "recommendation records take notes only")

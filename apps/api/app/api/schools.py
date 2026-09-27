@@ -2005,6 +2005,81 @@ async def create_career_record(payload: dict, user: User = Depends(get_current_u
     return (await _career_records_out(db, [record]))[0]
 
 
+OUTSIDE_COUNSELOR_PORTFOLIO = "This student is at a school outside your own portfolio"  # _student_in_portfolio's own wording
+
+
+def _audit_value(value):
+    return value.isoformat() if hasattr(value, "isoformat") else value
+
+
+@router.patch("/career-counselor/records/{record_id}")
+async def update_career_record(record_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-026 spec §5.1. One transaction up to the record commit: lock the record, lock its student (the lock transfer
+    approval takes) and re-check the portfolio under it, tier gate, precondition, transition, merge, rules, audit. Parents
+    are notified only after that commit (step 10), so no row lock is held across email delivery."""
+    if user.role != "career_counselor":
+        raise HTTPException(403, "Career Counselor role required")
+    record = await db.scalar(select(SchoolCareerRecord).where(SchoolCareerRecord.id == record_id).with_for_update().execution_options(populate_existing=True))
+    if record is None:
+        raise HTTPException(404, "Career record not found")
+    student = await db.scalar(select(SchoolStudent).where(SchoolStudent.id == record.school_student_id).with_for_update().execution_options(populate_existing=True))
+    if student is None or student.school_id not in await _portfolio_school_ids(db, user):
+        raise HTTPException(403, OUTSIDE_COUNSELOR_PORTFOLIO)
+    await require_school_entitlement(db, user, student.school_id, "individual_counselling", grandfathered_since=record.created_at)
+    fields = _master_fields_or_422(CareerRecordUpdate, payload)
+    sent = set(fields.model_fields_set)
+    if "expected_status" in sent and fields.expected_status != record.status:
+        raise HTTPException(409, f"This record was changed by someone else (now {CAREER_STATUS_LABEL[record.status]}). Reload to see the latest.")
+    sent.discard("expected_status")
+    if record.record_type not in STRUCTURED_RECORD_TYPES and sent - {"notes"}:
+        raise HTTPException(422, "recommendation records take notes only")
+
+    tracked = ("notes", "status", *CAREER_DATE_KEYS, *CAREER_STRUCTURED_KEYS)
+    before = {key: getattr(record, key) for key in tracked}
+    old_status = record.status
+    if "status" in sent and fields.status != old_status:
+        if fields.status is None or not career_transition_allowed(old_status, fields.status):
+            raise HTTPException(422, f"Cannot change status from {CAREER_STATUS_LABEL[old_status]} to {CAREER_STATUS_LABEL[fields.status]}")
+    for key in sent - {"status"}:
+        setattr(record, key, getattr(fields, key))
+    if "status" in sent:
+        error = _enter_career_status(record, fields.status, old_status, sent)
+        if error:
+            raise HTTPException(422, error)
+    error = _career_rule_error(record)
+    if error:
+        raise HTTPException(422, error)
+
+    changed = [key for key in tracked if getattr(record, key) != before[key]]
+    if not changed:
+        return (await _career_records_out(db, [record]))[0]  # A6: a repeat PATCH writes nothing
+    record.updated_by_user_id = user.id
+    metadata: dict = {"changed_fields": changed}  # field names only, never contents (S10)
+    for key in ("status", *CAREER_DATE_KEYS):
+        if key in changed:
+            metadata[key] = {"old": _audit_value(before[key]), "new": _audit_value(getattr(record, key))}
+    db.add(AuditLog(user_id=user.id, action="school.career_record_update", entity_type="school_career_record", entity_id=str(record.id), metadata_json=metadata))
+    await db.commit()
+    await db.refresh(record)
+    # Everything the response and logs need is read now: a notification failure below rolls back and expires these objects.
+    out = (await _career_records_out(db, [record]))[0]
+    ids = {"actor_id": str(user.id), "record_id": str(record.id), "student_id": str(student.id)}
+    new_status = record.status
+    if new_status != old_status:
+        try:
+            await _notify_student_parents(
+                db, student, title=f"{CAREER_STATUS_LABEL[new_status]} — career record for {student.full_name}",
+                body=f"A Career Counselor updated {student.full_name}'s career record to {CAREER_STATUS_LABEL[new_status]}.",
+                action_url=f"/school/parent/children/{student.id}",
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            logger.warning("career_record_notify_failed", extra={"extra_fields": ids})
+    logger.info("career_record_update", extra={"extra_fields": {**ids, "status": new_status, "changed": len(changed)}})
+    return out
+
+
 @router.get("/career-counselor/records")
 async def list_career_counselor_records(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if user.role != "career_counselor":
