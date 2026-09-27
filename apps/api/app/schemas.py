@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, EmailStr, Field, StrictBool, ValidationError, field_validator, model_validator
+from pydantic import AfterValidator, AwareDatetime, BaseModel, EmailStr, Field, StrictBool, StrictInt, ValidationError, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.models import GENDERS
@@ -1037,7 +1037,49 @@ def date_range_is_invalid(date_from: date | None, date_to: date | None) -> bool:
     return date_from is not None and date_to is not None and date_to < date_from
 
 
-class PortfolioEntryCreate(BaseModel):
+# --- ENH-021: internship tracking on the portfolio `internship` section (spec §3.2 I1-I4) ---
+INTERNSHIP_FIELD_KEYS: tuple[str, ...] = ("mentor_name", "mentor_designation", "attendance_percent", "completion_status", "feedback", "skills_acquired")
+COMPLETION_STATUSES: tuple[str, ...] = ("not_started", "in_progress", "completed", "discontinued")
+CompletionStatus = Literal["not_started", "in_progress", "completed", "discontinued"]
+INTERNSHIP_ONLY_ERROR = "internship fields are only accepted for the internship section"
+INTERNSHIP_COMPANY_ERROR = "Company is required for an internship"
+INTERNSHIP_END_DATE_ERROR = "An internship marked completed needs an end date"
+
+
+def internship_rule_error(organization: str | None, completion_status: str | None, date_to: date | None) -> str | None:
+    """The internship rules shared by create (schema layer) and update (post-merge, in the route)."""
+    if not organization:
+        return INTERNSHIP_COMPANY_ERROR
+    if completion_status == "completed" and date_to is None:
+        return INTERNSHIP_END_DATE_ERROR
+    return None
+
+
+class _InternshipFields(BaseModel):
+    mentor_name: str | None = Field(default=None, max_length=200)
+    mentor_designation: str | None = Field(default=None, max_length=200)
+    attendance_percent: StrictInt | None = Field(default=None, ge=0, le=100)
+    completion_status: CompletionStatus | None = None
+    feedback: str | None = Field(default=None, max_length=2000)
+    skills_acquired: list[str] | None = None
+
+    @field_validator("mentor_name", "mentor_designation")
+    @classmethod
+    def _single_line(cls, value: str | None) -> str | None:
+        return _no_control_characters(value)
+
+    @field_validator("feedback")
+    @classmethod
+    def _feedback(cls, value: str | None) -> str | None:
+        return _clean_multiline_text(value)
+
+    @field_validator("skills_acquired", mode="before")
+    @classmethod
+    def _skills(cls, value):
+        return _clean_list(value)
+
+
+class PortfolioEntryCreate(_InternshipFields):
     model_config = {"str_strip_whitespace": True, "extra": "forbid"}
     section: str
     title: str = Field(min_length=1, max_length=200)
@@ -1072,8 +1114,20 @@ class PortfolioEntryCreate(BaseModel):
             raise ValueError(DATE_RANGE_ERROR)
         return self
 
+    @model_validator(mode="after")
+    def _internship_rules(self):
+        # ENH-021 I1/I4: tracking fields belong to the internship section only; an internship names its company.
+        if self.section != "internship":
+            if self.model_fields_set & set(INTERNSHIP_FIELD_KEYS):
+                raise ValueError(INTERNSHIP_ONLY_ERROR)
+            return self
+        error = internship_rule_error(self.organization, self.completion_status, self.date_to)
+        if error:
+            raise ValueError(error)
+        return self
 
-class PortfolioEntryUpdate(BaseModel):
+
+class PortfolioEntryUpdate(_InternshipFields):
     model_config = {"str_strip_whitespace": True, "extra": "forbid"}
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
@@ -1126,6 +1180,15 @@ class PortfolioEntryOut(BaseModel):
     updated_by_user_id: UUID
     created_at: datetime
     updated_at: datetime
+    # ENH-021: additive; null/false for every non-internship entry. The storage key itself is never serialized (S9).
+    mentor_name: str | None = None
+    mentor_designation: str | None = None
+    attendance_percent: int | None = None
+    completion_status: str | None = None
+    feedback: str | None = None
+    skills_acquired: list[str] | None = None
+    has_certificate: bool = False
+    certificate_content_type: str | None = None
 
 
 class PersonalStatementUpdate(BaseModel):
