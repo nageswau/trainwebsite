@@ -1256,14 +1256,35 @@ class SchoolStaffAssignment(Base, TimestampMixin):
 
 class SchoolCareerRecord(Base, TimestampMixin):
     """SCH-004 -- Career Guidance & Counselling. Net-new, `DATA_MODEL.md` §6.17. No
-    Draft/Published gate -- visible to readers as soon as it's created."""
+    Draft/Published gate -- visible to readers as soon as it's created.
+    ENH-026 (DEC-SCOPE-031): the §7 structured fields and status lifecycle, all nullable. `status` NULL means the
+    record predates tracking (or is a `recommendation`, which never has one)."""
 
     __tablename__ = "school_career_records"
+    __table_args__ = (
+        CheckConstraint("status IS NULL OR status IN ('not_started', 'scheduled', 'completed', 'follow_up_required')", name="ck_career_record_status"),
+        Index("ix_school_career_records_student_type_status", "school_student_id", "record_type", "status"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
     career_counselor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     record_type: Mapped[str] = mapped_column(String(30))
     notes: Mapped[str] = mapped_column(Text)
+    status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    next_follow_up_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    career_interests: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    global_education_interest: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    academic_strengths: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    weak_areas: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    recommended_careers: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    recommended_courses: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    recommended_stream: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    recommended_skills: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    parent_participated: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    parent_participation_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class SchoolPsychometricRecord(Base, TimestampMixin):

@@ -43,7 +43,11 @@ def test_migration_follows_enh018_and_is_the_single_head():
         parent = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("down_revision =")), None)
         if rev:
             parents[rev] = parent
-    assert set(parents) - set(parents.values()) == {"0041_student_master_fields"}
+    # ENH-021/ENH-026 chained 0042 (and 0043) after this migration, so the intent is kept without pinning the head -- the same
+    # relaxation ENH-013's head test received on the ENH-018 merge: one head, and 0041 is a parent in the chain.
+    heads = set(parents) - set(parents.values())
+    assert len(heads) == 1
+    assert "0041_student_master_fields" in set(parents.values())
 
 
 @pytest.mark.asyncio
