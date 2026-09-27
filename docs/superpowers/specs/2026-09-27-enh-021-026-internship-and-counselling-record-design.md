@@ -65,7 +65,7 @@ timestamps); rendering the KPI board in the web UI (it is API-only today — `Sc
 
 ## 4. Data model
 
-### 4.1 Migration `0042_career_record_structured_fields` (down_revision `0041_student_master_fields`)
+### 4.1 Migration `0042_career_record_fields` (down_revision `0041_student_master_fields`; id shortened from the draft name because `alembic_version.version_num` is varchar(32))
 
 `school_career_records` — add, all nullable, no backfill:
 
@@ -83,7 +83,7 @@ Index `ix_school_career_records_student_type_status (school_student_id, record_t
 Downgrade drops exactly these. Rejected: Postgres ENUM (harder to evolve; house precedent is String + CHECK);
 1:1 side table (extra join on 6+ read paths); status backfill (user rejected, C4).
 
-### 4.2 Migration `0043_portfolio_internship_tracking` (down_revision `0042_…`)
+### 4.2 Migration `0043_portfolio_internship` (down_revision `0042_career_record_fields`)
 
 `portfolio_entries` — add, all nullable:
 
@@ -148,7 +148,7 @@ every write audited (same stance as `update_career_goal`).
 **List endpoints** (`GET /career-counselor/records`, `GET /career-records`) — existing keys + new fields.
 
 **Validation constants** (`schemas.py`): `CAREER_STATUSES`, `CAREER_STATUS_NEXT` (C2 map, with `None` key for create
-and a separate legacy set C4), lists ≤ 20 items × ≤ 100 chars, trimmed, `_no_control_characters`;
+and a separate legacy set C4), lists reuse ENH-025's `_clean_list` (≤ 20 items × ≤ 80 chars, trimmed, case-insensitive de-dup, empty ⇒ NULL; implementation ruling, 2026-09-28);
 `parent_participation_note` ≤ 500 single-line. Dates checked against `today` in Asia/Kolkata (the existing `_today_ist`).
 
 ### 5.2 ENH-021

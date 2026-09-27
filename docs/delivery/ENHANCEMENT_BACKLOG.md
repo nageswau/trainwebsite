@@ -1989,6 +1989,8 @@ student's profile. **Negative scenarios.** A teacher outside the student's assig
 edit the record — rejected. **Edge cases.** An internship spanning an academic-year boundary
 (interacts with ENH-001) — must not be silently reset by a promotion event (`ENH-004`).
 
+**Status (2026-09-28) — implemented, NOT complete.** Designed with `ENH-026` in `docs/superpowers/specs/2026-09-27-enh-021-026-internship-and-counselling-record-design.md` (`DEC-SCOPE-032`); implemented on branch `feature/enh-021-026-internship-counselling-record`. **Correction to this entry:** internships already existed as ENH-012's portfolio `internship` section, so there is no `StudentInternship` table — the section was extended (migration `0043_portfolio_internship`); writers are the existing portfolio write roles; creating an internship or setting its tracking fields needs Platinum `internships`, while basic edits/deletes of existing entries keep Gold; the certificate is a PDF/JPEG/PNG ≤ 5 MB with audited downloads. The academic-year edge case needs nothing: promotion and transfer never touch portfolio entries. Evidence and open items in the `RTM.md` ENH-021 row: pending browser validation, the independent Codex review, and a completed full E2E run.
+
 **Regression risks.** None.
 
 **Complexity:** Medium. **Risk:** Low.
@@ -2502,6 +2504,8 @@ to "Completed"; a parent viewing their child's profile sees the structured recom
 of prose. **Negative scenarios.** An invalid status transition (`NEEDS_CONFIRMATION`'d policy) is
 rejected. **Edge cases.** A record created under the old flat-notes shape, then edited under the new
 structured shape — must not lose the original free-text content.
+
+**Status (2026-09-28) — implemented, NOT complete.** Designed with `ENH-021` in `docs/superpowers/specs/2026-09-27-enh-021-026-internship-and-counselling-record-design.md` (`DEC-SCOPE-031`); implemented on branch `feature/enh-021-026-internship-counselling-record` (migration `0042_career_record_fields`, new `PATCH /school/career-counselor/records/{id}`). The skipped-state question is decided: strict order with a follow-up loop, create at Not Started/Scheduled/Completed, legacy rows (status NULL) only to Completed/Follow-up Required, and Completed, Follow-up Required and NULL count as completed. Corrections to this entry: the model is at `models.py` `SchoolCareerRecord` (the line numbers above were stale); recommendations are four JSON lists shared in shape with `ENH-027`. Evidence and open items in the `RTM.md` ENH-026 row: pending browser validation, the independent Codex review, and a completed full E2E run.
 
 **Regression risks.** `SCH-004`'s existing counselling-record read paths (including the
 `/schools/entitlements` usage-count query at `schools.py:704`, which filters on `record_type ==
