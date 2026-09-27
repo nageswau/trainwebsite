@@ -3,7 +3,7 @@
 import { FormEvent, KeyboardEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
-import { sendJson } from "@/lib/apiErrors";
+import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { CAREER_LIST_FIELDS, type CareerRecord, type CareerStatus, RECORD_TYPE_LABEL, STRUCTURED_TYPES, statusLabel, statusOptions } from "@/lib/careerRecords";
 import { listText, splitList } from "@/lib/schoolStudents";
 
@@ -71,12 +71,19 @@ export default function CareerRecordForm({ students, record, onDone, onCancel }:
     setMessage(null);
     setStale(false);
     const url = editing ? `/api/v1/school/career-counselor/records/${record!.id}` : "/api/v1/school/career-counselor/records";
-    const result = await sendJson(url, editing ? "PATCH" : "POST", payload(new FormData(formElement)));
+    // Raw fetch (the PortfolioEntryForm pattern) rather than sendJson: a 409 needs the status code to offer Reload (spec F7).
+    let response: Response | null;
+    try {
+      response = await fetch(url, { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload(new FormData(formElement))) });
+    } catch {
+      response = null;
+    }
+    const data = response ? await response.json().catch(() => null) : null;
     inFlight.current = false;
     setBusy(false);
-    if (!result.ok) {
-      setStale(result.status === 409);
-      setMessage({ text: result.message, failed: true });
+    if (!response?.ok) {
+      setStale(response?.status === 409);
+      setMessage({ text: response ? detailMessage(data?.detail) : NOT_COMPLETED, failed: true });
       return;
     }
     setMessage({ text: "Record saved.", failed: false });
