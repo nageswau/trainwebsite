@@ -51,3 +51,21 @@ describe("SchoolCareerRecordsPanel save failures", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Record saved.");
   });
 });
+
+// ENH-026: status column and inline edit (spec §11.2 F2/F3/F6).
+describe("SchoolCareerRecordsPanel records table (ENH-026)", () => {
+  const record = { id: "r1", school_student_id: "s1", record_type: "counselling_note", notes: "Met.", created_at: "2026-09-01T00:00:00Z", status: null, next_follow_up_date: null };
+
+  it("labels a record made before tracking", () => {
+    render(<SchoolCareerRecordsPanel records={[record]} students={STUDENTS} />);
+    expect(screen.getByText("No status (recorded before tracking)")).toBeInTheDocument();
+  });
+
+  it("opens the edit form and returns focus to the Edit button on cancel", async () => {
+    render(<SchoolCareerRecordsPanel records={[record]} students={STUDENTS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit record for Asha" }));
+    expect(screen.getByRole("heading", { name: "Edit record for Asha" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Edit record for Asha" })));
+  });
+});
