@@ -358,7 +358,7 @@ psychometric findings and counsellor remarks about minors — *sensitive* person
   literal text; audit metadata never contains result values.
 - **ENH-027-AC08:** No regression — report counts, entitlement usage count, timeline events, portfolio
   completion %, and the existing SCH-005/007/008/011, ENH-012/013/022/023 suites pass unchanged.
-- **ENH-027-AC09:** Migration `0044` upgrade → downgrade → upgrade on a database with existing
+- **ENH-027-AC09:** Migration `0045` upgrade → downgrade → upgrade on a database with existing
   psychometric rows preserves those rows' existing values.
 
 ## 8. Testing (written before implementation)
