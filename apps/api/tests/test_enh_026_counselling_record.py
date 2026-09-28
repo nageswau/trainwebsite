@@ -2,6 +2,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
+from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -9,12 +10,12 @@ import pytest
 import pytest_asyncio
 from enh005_helpers import login, mk_school, mk_staff
 from httpx import ASGITransport
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from app.api import schools as schools_api
 from app.core.database import SessionLocal
 from app.main import app
-from app.models import AuditLog, Notification, SchoolCareerRecord
+from app.models import AuditLog, Notification, SchoolCareerRecord, SchoolStudent
 
 RECORDS = "/api/v1/school/career-counselor/records"
 IST = ZoneInfo("Asia/Kolkata")
@@ -353,6 +354,31 @@ async def test_concurrent_transitions_serialize_on_the_row_lock(client, world, d
             await asyncio.sleep(0.3)
         results = sorted([(await first).status_code, (await other).status_code])
     assert results == [200, 409]
+
+
+@pytest.mark.asyncio
+async def test_a_patch_racing_a_transfer_out_of_the_portfolio_is_refused(client, world, db_session):  # AC26-7 (spec §5.1)
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world, status="scheduled", scheduled_for="2026-12-01T10:00:00+05:30")
+    other = await mk_school(db_session, label="E26-RaceB", admin=world["admin"])
+    mover = SessionLocal()
+    try:
+        # Stand-in for transfer approval: hold the student's row lock (as school_transfers.py does), then move the student.
+        await mover.execute(select(SchoolStudent).where(SchoolStudent.id == world["students"][0].id).with_for_update())
+        pending = asyncio.create_task(client.patch(_patch_url(rec["id"]), json={"status": "completed", "notes": "Race", "expected_status": "scheduled"}))
+        await asyncio.sleep(0.5)  # the PATCH holds the record lock and is queued on the student's row lock
+        assert not pending.done()
+        await mover.execute(update(SchoolStudent).where(SchoolStudent.id == world["students"][0].id).values(school_id=other["school"].id))
+        await mover.commit()
+    finally:
+        await mover.close()
+    r = await pending
+    assert (r.status_code, r.json()["detail"]) == (403, "This student is at a school outside your own portfolio")
+    async with SessionLocal() as check:
+        saved = await check.get(SchoolCareerRecord, UUID(rec["id"]))
+        assert (saved.status, saved.notes) == ("scheduled", rec["notes"])  # nothing written
+        audited = await check.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.entity_id == rec["id"], AuditLog.action == "school.career_record_update"))
+        assert audited == 0
 
 
 @pytest.mark.asyncio
