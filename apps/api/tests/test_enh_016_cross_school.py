@@ -76,6 +76,14 @@ async def test_rows_count_students_participation_and_services(client, db_session
 
 
 @pytest.mark.asyncio
+async def test_rows_offset_is_bounded(client, db_session):  # final review, Minor 5 (re-graded Important)
+    ctx = await make_school(db_session)
+    await db_session.commit()
+    await login(client, ctx["overseas_admin"])
+    assert (await client.get("/api/v1/overseas-admin/analytics/schools", params={"offset": 10**20})).status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_summary_and_rows_hold_no_student_level_fields(client, db_session):  # AC16
     ctx = await make_school(db_session)
     s = await make_student(db_session, ctx, name="Secret Name", grade_level=8)

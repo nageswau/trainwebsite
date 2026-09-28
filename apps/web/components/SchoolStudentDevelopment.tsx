@@ -43,7 +43,7 @@ function Performers({ label, rows, total, empty }: { label: string; rows: Perfor
   );
 }
 
-export default function SchoolStudentDevelopment({ data, basePath }: { data: StudentDevelopment; basePath: string }) {
+export default function SchoolStudentDevelopment({ data, basePath, thresholdError = false }: { data: StudentDevelopment; basePath: string; thresholdError?: boolean }) {
   const hasResults = data.by_subject.length > 0;
   return (
     <div className="card">
@@ -76,6 +76,7 @@ export default function SchoolStudentDevelopment({ data, basePath }: { data: Stu
           <Averages title="By term" rows={data.by_term} />
         </>
       )}
+      {thresholdError && <p className="form-error" role="alert">At-risk must be below the top-performer threshold. Showing the defaults.</p>}
       <form method="get" action={`${basePath}#development`} className="analytics-form">
         <div className="field">
           <label htmlFor="at_risk_below">At risk below (%)</label>

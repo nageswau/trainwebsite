@@ -66,6 +66,12 @@ describe("ENH-016 report sections", () => {
     expect(screen.getByText("No published results yet.")).toBeInTheDocument();
   });
 
+  it("student development: explains a rejected threshold pair next to the form, keeping the form usable", () => {
+    render(<SchoolStudentDevelopment data={development} basePath="/r" thresholdError />);
+    expect(screen.getByRole("alert")).toHaveTextContent("At-risk must be below the top-performer threshold. Showing the defaults.");
+    expect(screen.getByLabelText("At risk below (%)")).toBeInTheDocument();
+  });
+
   it("state badge always pairs an icon with words", () => {
     render(<ScorecardStateBadge state="in_progress" />);
     expect(screen.getByText("In progress")).toBeInTheDocument();

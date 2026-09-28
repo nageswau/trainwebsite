@@ -343,6 +343,7 @@ async def student_development(
 # --- §28 Student Progress Scorecard -----------------------------------------------------------------------------------------
 
 STUDENT_NOT_FOUND = "Student not found"
+MAX_OFFSET = 10_000  # bounds a URL-supplied offset: past PostgreSQL's bigint it was a 500, not a 422
 _NONE: frozenset[UUID] = frozenset()
 # (key, label, plan service keys or None when no module exists, completed rule, in-progress rule). Rules take (indicators,
 # ids whose ENH-012 portfolio is 100% complete). Spec §6.3 / D3 / D12.
@@ -410,20 +411,20 @@ async def scorecard_grid(
     user: User = Depends(_require_school_reader),
     grade: int | None = Query(None, ge=8, le=12),  # an int range, not Literal: query strings never coerce into Literal[int]
     limit: int = Query(25, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=MAX_OFFSET),
     db: AsyncSession = Depends(get_db),
 ):
-    """§28 school-wide grid (D10), own school only, ordered by name then id so pages are stable. `grade` filters on
-    `grade_level`; a student with only a free-text grade label appears under "All grades"."""
+    """§28 school-wide grid (D10), own school only, ordered by name then id so pages are stable. `grade` uses the same
+    `grade_key` as §29 and the KPI board (the ENH-001 label fallback included), so a grade means the same students on every
+    figure; the filter therefore runs over the school's light roster columns in Python, still one query."""
     school_id = _own_school_id(user)
-    conditions = [SchoolStudent.school_id == school_id]
+    roster = (await db.execute(select(*SCORECARD_COLUMNS).where(SchoolStudent.school_id == school_id).order_by(SchoolStudent.full_name, SchoolStudent.id))).all()
     if grade is not None:
-        conditions.append(SchoolStudent.grade_level == grade)
-    total = await db.scalar(select(func.count()).select_from(SchoolStudent).where(*conditions)) or 0
-    students = (await db.execute(select(*SCORECARD_COLUMNS).where(*conditions).order_by(SchoolStudent.full_name, SchoolStudent.id).limit(limit).offset(offset))).all()
+        roster = [s for s in roster if grade_key(s.grade_level, s.grade_or_class) == str(grade)]
+    students = roster[offset : offset + limit]
     tier = await db.scalar(select(School.tier).where(School.id == school_id))
     _log_view(user, "scorecard_grid", school_id=school_id, count=len(students))
-    return ScorecardPage(items=await build_scorecards(db, tier, students), total=total, limit=limit, offset=offset)
+    return ScorecardPage(items=await build_scorecards(db, tier, students), total=len(roster), limit=limit, offset=offset)
 
 
 @school_router.get("/students/{student_id}/scorecard", response_model=ScorecardOut)
@@ -517,7 +518,7 @@ async def cross_school_summary(user: User = Depends(_require_school_admin), db: 
 async def cross_school_rows(
     user: User = Depends(_require_school_admin),
     limit: int = Query(25, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=MAX_OFFSET),
     db: AsyncSession = Depends(get_db),
 ):
     """§27 "school-wise": one row per partner school, ordered by name then id. Every figure is a count."""

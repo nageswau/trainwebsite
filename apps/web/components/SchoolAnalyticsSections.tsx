@@ -11,7 +11,11 @@ export default function SchoolAnalyticsSections({ data, role }: { data: SchoolAn
     <div className="portal-content">
       {data.grades ? <SchoolGradePerformance data={data.grades} /> : <SectionUnavailable title="Grade-wise comparison" />}
       <div id="development">
-        {data.development ? <SchoolStudentDevelopment data={data.development} basePath={basePath} /> : <SectionUnavailable title="Student development" />}
+        {data.development ? (
+          <SchoolStudentDevelopment data={data.development} basePath={basePath} thresholdError={data.thresholdError} />
+        ) : (
+          <SectionUnavailable title="Student development" />
+        )}
       </div>
       {data.scorecards ? (
         <SchoolScorecardGrid page={data.scorecards} grade={data.grade} basePath={basePath} studentHref={(id) => `/school/${role}/students/${id}`} />

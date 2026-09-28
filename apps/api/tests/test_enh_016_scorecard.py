@@ -98,3 +98,28 @@ async def test_grid_filters_by_grade_and_pages_stably(client, db_session):  # D1
     assert everyone["total"] == 4
     assert (await client.get("/api/v1/school/analytics/scorecards", params={"grade": 7})).status_code == 422
     assert (await client.get("/api/v1/school/analytics/scorecards", params={"limit": 101})).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_grid_grade_filter_uses_the_same_grade_as_every_other_figure(client, db_session):  # final review, Important 1
+    ctx = await make_school(db_session)
+    await make_student(db_session, ctx, name="Label Only", grade_level=None, grade_or_class="Class 10")  # ENH-001 fallback
+    await make_student(db_session, ctx, name="Level Ten", grade_level=10, grade_or_class="Grade 10")
+    await make_student(db_session, ctx, name="Level Nine", grade_level=9, grade_or_class="Grade 9")
+    await db_session.commit()
+    await login(client, ctx["school_coordinator"])
+
+    grid = (await client.get("/api/v1/school/analytics/scorecards", params={"grade": 10})).json()
+    grades = (await client.get("/api/v1/school/analytics/grade-performance")).json()
+
+    assert [c["full_name"] for c in grid["items"]] == ["Label Only", "Level Ten"]
+    assert grid["total"] == grades["students"]["10"] == 2
+
+
+@pytest.mark.asyncio
+async def test_offset_is_bounded_so_a_huge_value_is_422_not_500(client, db_session):  # final review, Minor 5 (re-graded Important)
+    ctx = await make_school(db_session)
+    await db_session.commit()
+    await login(client, ctx["school_principal"])
+    assert (await client.get("/api/v1/school/analytics/scorecards", params={"offset": 10**20})).status_code == 422
+    assert (await client.get("/api/v1/school/analytics/scorecards", params={"offset": 10_000})).status_code == 200
