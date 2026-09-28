@@ -2321,8 +2321,9 @@ it). **Edge cases.** None beyond the standard certificate-record shape.
 existing `certification` section (four nullable columns + CHECKs on `portfolio_entries`, migration `0042`), not a new
 table; the "Integration impact" `NEEDS_CONFIRMATION` resolved as **none** (internal record, D9); the owning-role
 `NEEDS_CONFIRMATION` resolved as the existing portfolio writers (D10). Evidence in `docs/quality/RTM.md` (ENH-024 row).
-**Open before completion:** browser validation (responsive 320/768/1024/1440, keyboard, accessibility) and the
-independent Codex review.
+**Update (2026-09-28):** browser validation done; its findings QA24-01…08 fixed test-first and re-verified in the browser
+(details in the RTM row); the independent Codex review was set aside by the owner. The Academic Team now has its own
+student page with the editable Digital Portfolio. **Open:** merge.
 
 ---
 
