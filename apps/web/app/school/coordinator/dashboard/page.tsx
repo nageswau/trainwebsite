@@ -1,15 +1,17 @@
 import Link from "next/link";
 import PortalShell from "@/components/PortalShell";
+import SchoolKpiBoard from "@/components/SchoolKpiBoard";
 import SchoolServiceDeliverySummary from "@/components/SchoolServiceDeliverySummary";
 import { serverApi } from "@/lib/api";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import { SCHOOL_NAV } from "@/lib/navigation";
-import type { User } from "@/lib/types";
+import type { SchoolKpi, User } from "@/lib/types";
 import { accessUnavailable } from "@/components/AccessUnavailable";
 
 type DashboardPayload = {
   student_count: number;
   upcoming_activities: { id: string; title: string; scheduled_at: string }[];
+  school_crm_kpis: SchoolKpi[];
 };
 
 // SCH-001: Coordinator's landing view -- roster size and upcoming activities, with quick
@@ -25,6 +27,8 @@ export default async function SchoolCoordinatorDashboardPage() {
   return (
     <PortalShell nav={SCHOOL_NAV.coordinator} roleLabel="School Coordinator" userName={user.full_name}>
       <div className="portal-content">
+        {/* ENH-016 (School CRM.md §1): the KPI board is the first thing a school sees. */}
+        <SchoolKpiBoard kpis={data.school_crm_kpis} />
         <div className="card">
           <h2>Your school</h2>
           {data.student_count === 0 ? (

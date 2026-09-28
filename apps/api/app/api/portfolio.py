@@ -6,6 +6,7 @@ deliberately: schools.py already has an unrelated existing meaning for "portfoli
 assigned-schools caseload). This module only imports and calls those, never modifies them.
 """
 
+from collections.abc import Collection
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -125,6 +126,13 @@ async def get_portfolio(student_id: UUID, user: User = Depends(get_current_user)
     return await portfolio_payload(db, user, student)
 
 
+def portfolio_completion(*, profile_complete: bool, has_academic: bool, has_psychometric: bool, has_career: bool, has_language: bool, sections: Collection[str], has_statement: bool) -> int:
+    """ENH-012's completion percentage, extracted unchanged from `portfolio_payload` so ENH-016's scorecard computes the same
+    number in bulk (spec §6.3). One equal-weight component each; a section counts once it has any entry, unknown sections never."""
+    components = [profile_complete, has_academic, has_psychometric, has_career, has_language, *(s in sections for s in PORTFOLIO_SECTIONS), has_statement]
+    return round(sum(components) / len(components) * 100)
+
+
 async def portfolio_payload(db: AsyncSession, user: User, student: SchoolStudent) -> dict:
     """The portfolio body for an already scope-checked student -- extracted unchanged from `get_portfolio` so ENH-013's
     Student 360° view can reuse it. `user` only decides `can_edit`; it widens nothing."""
@@ -152,13 +160,11 @@ async def portfolio_payload(db: AsyncSession, user: User, student: SchoolStudent
     profile_row = await db.scalar(select(PortfolioProfile).where(PortfolioProfile.school_student_id == student.id))
     personal_statement = profile_row.personal_statement if profile_row else None
 
-    completion_components = [
-        profile_complete,
-        len(academic) > 0, len(psychometric) > 0, len(career) > 0, len(languages) > 0,
-        *(len(entries_by_section[s]) > 0 for s in PORTFOLIO_SECTIONS),
-        bool(personal_statement and personal_statement.strip()),
-    ]
-    completion_percentage = round(sum(completion_components) / len(completion_components) * 100)
+    completion_percentage = portfolio_completion(
+        profile_complete=profile_complete, has_academic=bool(academic), has_psychometric=bool(psychometric), has_career=bool(career),
+        has_language=bool(languages), sections={s for s, rows in entries_by_section.items() if rows},
+        has_statement=bool(personal_statement and personal_statement.strip()),
+    )
 
     return {
         "student": {"id": student.id, "full_name": student.full_name},
