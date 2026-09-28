@@ -2899,7 +2899,7 @@
     "features": [
       "ENH-013"
     ],
-    "entry": "\"Open 360\u00b0 view\" on the Coordinator/Principal/Teacher student page and the Parent's child page; a \"Student 360\u00b0 view\" list on the Academic Team, Career Counselor and Psychometric Team dashboards.",
+    "entry": "\"Open 360\u00b0 view\" on the Coordinator/Principal/Teacher student page and the Parent's child page; a \"Student 360\u00b0 view\" list on the Career Counselor and Psychometric Team dashboards. Updated 2026-09-28 (ENH-024, QA24-01): the Academic Team reaches it through its own student page (SCR-SCH-037, from the dashboard's \"Students\" list), and its \"Back to student\" link returns there.",
     "data": "GET /auth/me, GET /school/students/{id}/360-view (server-rendered); PATCH /school/students/{id}/career-goal (Career Counselor). Tab switches make no request.",
     "actions": "Switch tabs (click, arrow keys, Home/End; ?tab= deep links); Career Counselor sets/edits/clears the career goal; open a psychometric report (same-origin or https only).",
     "empty": "Each tab without records shows a role=status message naming who records the data; unreadable tabs show \"This section is not available for your role.\"; not-yet-built sources carry a \"not tracked yet\" note.",
@@ -2934,5 +2934,29 @@
     "dtm": "Desktop: full layout. Tablet/mobile: single column, same as the Coordinator equivalent.",
     "visual": "None — not inspected. Do not claim parity.",
     "evidence": "SchoolPrincipalNotificationsPage.test.tsx (passing); tests/e2e/enh-023-tier-change.spec.ts (principal sees the tier-change notification); browser QA is deliberately deferred to a later pass (not part of this task)."
+  },
+  {
+    "id": "SCR-SCH-037",
+    "roles": [
+      "Academic Team"
+    ],
+    "route": "/school/academic-team/students/[id]",
+    "purpose": "The Academic Team's student page: the student's editable Digital Portfolio, so the team (a portfolio writer, DEC-SCOPE-033 D10) can record entries, including a Skill India certification, from its own screen.",
+    "features": [
+      "ENH-024",
+      "ENH-012"
+    ],
+    "entry": "The \"Students\" list on the Academic Team dashboard (formerly \"Student 360° view\"; rows open this page); \"Back to student\" on the team's 360° view (SCR-SCH-035).",
+    "data": "GET /auth/me, GET /school/students/{id}/portfolio (server-rendered); POST/PATCH/DELETE /school/students/{id}/portfolio/entries, PATCH .../portfolio/personal-statement. The API decides can_edit and scope.",
+    "actions": "Add/edit/delete portfolio entries in every section (Skill India: tick the checkbox, choose status, certificate number, issue date, issuing body); edit the personal statement; Open 360° view; Back to dashboard.",
+    "empty": "Each empty section says \"No entries yet.\"; confirmations in one polite live line (\"Certification added./updated./deleted.\", \"Personal statement saved.\").",
+    "loading": "Server-rendered (no loading.tsx); the entry form shows \"Saving…\" with every field disabled.",
+    "error": "A student outside the team's portfolio or any 401/403/404 renders the Access Unavailable card with the server's reason; form errors are named at the field with focus on the first; server refusals in the form's alert; a dropped connection keeps the entry.",
+    "perms": "academic_team, own school portfolio only; writes gated by the school's digital_portfolio_creation tier with ENH-023 grandfathering. No RBAC change.",
+    "responsive": "Single column; ENH-024 content fits 320px (verified 2026-09-28). Known, pre-existing (ENH-012): a title with a long unbroken word can push that entry's Edit/Delete row past the viewport at 320px.",
+    "a11y": "One h1 (the student); focus to the first field on open, back to the triggering Add/Edit button on Save/Cancel, to the section's Add button after a delete; Skill India checkbox row is a 44px target; status as text, not colour alone.",
+    "dtm": "Same as the Coordinator's portfolio card; verified at 1366, 768, 375 and 320.",
+    "visual": "None — not inspected. Do not claim parity.",
+    "evidence": "AcademicTeamStudentPage.test.tsx, PortfolioPanel.test.tsx, PortfolioEntryForm.test.tsx (passing); test_enh_024_skill_india.py (academic_team writer cases); browser verification 2026-09-28."
   }
 ]

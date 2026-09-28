@@ -746,6 +746,26 @@ An enrolment whose student has since transferred (`school_students.school_id` �
 school, ENH-005) is **frozen**: computed at read/write time, never stored; it stays visible in the
 student's overview/timeline and rejects further writes. Enrolments are capped at 200 per batch.
 
+### 6.22 Skill India certification on `portfolio_entries` (`ENH-024`) — added 2026-09-28, propagating `DEC-SCOPE-033`; migration `0044_skill_india_certification`
+
+`portfolio_entries` is ENH-012's one-table Digital Portfolio (`section` discriminator over ten list
+sections, design `docs/superpowers/specs/2026-09-22-enh-012-digital-portfolio-design.md` §5). ENH-024
+adds four nullable columns — no new table, no backfill; every existing row is all-NULL in them:
+
+| Column | Type | Meaning |
+|---|---|---|
+| `certification_type` | varchar(30) | `'skill_india'`, else NULL |
+| `certification_status` | varchar(20) | `enrolled` / `in_progress` / `certified` |
+| `certificate_number` | varchar(100) | not unique (spec D7) |
+| `issued_on` | date | issue date |
+
+CHECK constraints (declared on the model and in the migration): `ck_portfolio_cert_type` (the tag is
+NULL, or `skill_india` on a `section = 'certification'` row); `ck_portfolio_cert_status` (the status
+list); `ck_portfolio_cert_fields` (an untagged row has all four NULL; a tagged row has a status);
+`ck_portfolio_cert_certified` (`certified` ⇒ number and issue date). The issuing body reuses the
+existing `organization` column. No index (nothing filters by tag). `downgrade()` drops the four
+CHECKs and columns only; entries survive as plain certifications. **Feature ID:** `ENH-024`.
+
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)
 
 ### 7.1 `NotificationLog`
