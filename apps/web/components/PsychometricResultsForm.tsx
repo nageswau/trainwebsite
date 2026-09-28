@@ -6,7 +6,7 @@ import FormMessage, { type FormMessageState } from "@/components/FormMessage";
 import { sendJson } from "@/lib/apiErrors";
 import {
   changedFields, listError, LIST_ITEM_MAX, LIST_MAX_ITEMS, NOTES_MAX, REMARKS_MAX, RESULT_LIST_FIELDS, toDraft,
-  type PsychometricResult, type ResultDraft, type ResultKey, type ResultListKey,
+  type PsychometricResult, type ResultDraft, type ResultKey,
 } from "@/lib/psychometric";
 
 // ENH-027 -- record/edit one assessment's structured result (spec §5.3). Patterns reused from ActivityFeedbackForm (ENH-018):
@@ -18,15 +18,18 @@ type Props = { record: PsychometricResult & { id: string; assessment_type: strin
 
 const id = (key: ResultKey) => `psy-result-${key.replaceAll("_", "-")}`;
 const LIST_HINT_ID = "psy-result-lists-hint";
+const DATE_KEYS: ResultKey[] = ["test_date", "parent_discussion_on", "follow_up_on"];
+// Visual order, so focus lands on the first rejected field the user would meet.
+const FORM_ORDER: ResultKey[] = ["test_date", ...RESULT_LIST_FIELDS.map((f) => f.key), "parent_discussion_on", "follow_up_on"];
 
 export default function PsychometricResultsForm({ record, studentName, onDone }: Props) {
   const [initial] = useState<ResultDraft>(() => toDraft(record));
   const [draft, setDraft] = useState<ResultDraft>(initial);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
-  const [errors, setErrors] = useState<Partial<Record<ResultListKey, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<ResultKey, string>>>({});
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const listRefs = useRef<Partial<Record<ResultListKey, HTMLInputElement | null>>>({});
+  const fieldRefs = useRef<Partial<Record<ResultKey, HTMLInputElement | null>>>({});
   const dirty = Object.keys(changedFields(initial, draft)).length > 0;
 
   useEffect(() => headingRef.current?.focus(), []);
@@ -48,17 +51,29 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
     onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft((d) => ({ ...d, [key]: e.target.value })),
   });
 
+  // aria-invalid + the error id for a field the last submit rejected; `describedBy` is the field's usual description.
+  const invalid = (key: ResultKey, describedBy?: string) => ({
+    ref: (el: HTMLInputElement | null) => { fieldRefs.current[key] = el; },
+    "aria-invalid": errors[key] ? true : undefined,
+    "aria-describedby": [describedBy, errors[key] ? `${id(key)}-error` : undefined].filter(Boolean).join(" ") || undefined,
+  });
+  const errorText = (key: ResultKey) => (errors[key] ? <p id={`${id(key)}-error`} className="form-error">{errors[key]}</p> : null);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const found: Partial<Record<ResultListKey, string>> = {};
+    const found: Partial<Record<ResultKey, string>> = {};
     for (const { key } of RESULT_LIST_FIELDS) {
       const error = listError(draft[key]);
       if (error) found[key] = error;
     }
+    // A partly typed date input reports "" -- sending that would silently clear a stored date (final review).
+    for (const key of DATE_KEYS) {
+      if (fieldRefs.current[key]?.validity?.badInput) found[key] = "Enter a complete date, or clear the field.";
+    }
     setErrors(found);
-    const first = RESULT_LIST_FIELDS.find(({ key }) => found[key]);
+    const first = FORM_ORDER.find((key) => found[key]);
     if (first) {
-      listRefs.current[first.key]?.focus();
+      fieldRefs.current[first]?.focus();
       return;
     }
     const payload = changedFields(initial, draft);
@@ -85,28 +100,21 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
           <legend>Assessment</legend>
           <div className="field">
             <label htmlFor={id("test_date")}>Test date</label>
-            <input type="date" {...bind("test_date")} />
+            <input type="date" {...bind("test_date")} {...invalid("test_date")} />
+            {errorText("test_date")}
           </div>
         </fieldset>
 
         <fieldset className="question">
           <legend>Findings</legend>
           <p id={LIST_HINT_ID} className="muted">Separate items with commas — up to {LIST_MAX_ITEMS} items of {LIST_ITEM_MAX} characters each.</p>
-          {RESULT_LIST_FIELDS.map(({ key, label }) => {
-            const errorId = `${id(key)}-error`;
-            return (
-              <div className="field" key={key}>
-                <label htmlFor={id(key)}>{label}</label>
-                <input
-                  {...bind(key)}
-                  ref={(el) => { listRefs.current[key] = el; }}
-                  aria-invalid={errors[key] ? true : undefined}
-                  aria-describedby={errors[key] ? `${LIST_HINT_ID} ${errorId}` : LIST_HINT_ID}
-                />
-                {errors[key] ? <p id={errorId} className="form-error">{errors[key]}</p> : null}
-              </div>
-            );
-          })}
+          {RESULT_LIST_FIELDS.map(({ key, label }) => (
+            <div className="field" key={key}>
+              <label htmlFor={id(key)}>{label}</label>
+              <input {...bind(key)} {...invalid(key, LIST_HINT_ID)} />
+              {errorText(key)}
+            </div>
+          ))}
         </fieldset>
 
         <fieldset className="question">
@@ -119,11 +127,13 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
           <div className="form-grid">
             <div className="field">
               <label htmlFor={id("parent_discussion_on")}>Parent discussion date</label>
-              <input type="date" {...bind("parent_discussion_on")} />
+              <input type="date" {...bind("parent_discussion_on")} {...invalid("parent_discussion_on")} />
+              {errorText("parent_discussion_on")}
             </div>
             <div className="field">
               <label htmlFor={id("follow_up_on")}>Follow-up date</label>
-              <input type="date" {...bind("follow_up_on")} />
+              <input type="date" {...bind("follow_up_on")} {...invalid("follow_up_on")} />
+              {errorText("follow_up_on")}
             </div>
           </div>
           <div className="field">

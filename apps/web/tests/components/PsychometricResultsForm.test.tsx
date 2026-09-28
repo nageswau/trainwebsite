@@ -63,6 +63,21 @@ describe("PsychometricResultsForm", () => {
     expect(field).toHaveFocus();
   });
 
+  it("refuses a half-typed date instead of silently clearing it (final review)", () => {
+    const fetchMock = ok();
+    vi.stubGlobal("fetch", fetchMock);
+    renderForm();
+    const field = screen.getByLabelText("Test date");
+    // A partly typed <input type="date"> reports value "" with validity.badInput set; jsdom cannot type one, so stub it.
+    Object.defineProperty(field, "validity", { value: { badInput: true } });
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field).toHaveAccessibleDescription(/complete date/i);
+    expect(field).toHaveFocus();
+  });
+
   it("keeps the card open with the input on a failed save", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 403, json: async () => ({ detail: "This school's partnership expired on 22 Sep 2026." }) }));
     const onDone = renderForm();
