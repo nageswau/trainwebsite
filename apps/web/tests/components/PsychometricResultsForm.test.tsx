@@ -100,6 +100,27 @@ describe("PsychometricResultsForm", () => {
     expect(screen.getByRole("button", { name: "Save results" })).toBeEnabled();
   });
 
+  it("tells the user their entry is kept when the server fails (QA27-03)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => { throw new Error("not json"); } }));
+    renderForm();
+    fireEvent.change(screen.getByLabelText("Interest areas"), { target: { value: "Music" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong on our side. Your entry is kept — try again in a moment.");
+    expect(screen.getByLabelText("Interest areas")).toHaveValue("Music");
+  });
+
+  it("offers a sign-in link in a new tab when the session has ended, keeping the entry (QA27-04)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({ detail: "Not authenticated" }) }));
+    renderForm();
+    fireEvent.change(screen.getByLabelText("Interest areas"), { target: { value: "Music" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Your session has ended. Sign in again in a new tab, then press Save here — your entry is kept.");
+    const link = screen.getByRole("link", { name: "Sign in again (opens a new tab)" });
+    expect(link).toHaveAttribute("href", "/overseas/login");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(screen.getByLabelText("Interest areas")).toHaveValue("Music");
+  });
+
   it("disables both buttons while saving", async () => {
     let resolve: (v: unknown) => void = () => {};
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise((r) => { resolve = r; })));

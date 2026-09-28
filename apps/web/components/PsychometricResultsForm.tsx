@@ -19,6 +19,15 @@ type Props = { record: PsychometricResult & { id: string; assessment_type: strin
 const id = (key: ResultKey) => `psy-result-${key.replaceAll("_", "-")}`;
 const LIST_HINT_ID = "psy-result-lists-hint";
 const LEAVE_PROMPT = "Leave without saving your results?";
+
+// QA27-03/-04: this editor's own wording for a server failure and an ended session. Everything typed stays in the form,
+// so say so; for 401, signing in again in a new tab restores the cookie for this tab too, and Save then works here.
+// Every other status keeps the server's own message (e.g. the partnership-tier 403).
+function failureText(status: number | undefined, serverMessage: string): string {
+  if (status === 401) return "Your session has ended. Sign in again in a new tab, then press Save here — your entry is kept.";
+  if (status !== undefined && status >= 500) return "Something went wrong on our side. Your entry is kept — try again in a moment.";
+  return serverMessage;
+}
 const DATE_KEYS: ResultKey[] = ["test_date", "parent_discussion_on", "follow_up_on"];
 // Visual order, so focus lands on the first rejected field the user would meet.
 const FORM_ORDER: ResultKey[] = ["test_date", ...RESULT_LIST_FIELDS.map((f) => f.key), "parent_discussion_on", "follow_up_on"];
@@ -28,6 +37,7 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
   const [draft, setDraft] = useState<ResultDraft>(initial);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
+  const [sessionEnded, setSessionEnded] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<ResultKey, string>>>({});
   const headingRef = useRef<HTMLHeadingElement>(null);
   const fieldRefs = useRef<Partial<Record<ResultKey, HTMLInputElement | null>>>({});
@@ -104,7 +114,8 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
     const result = await sendJson(`/api/v1/school/psychometric-team/records/${record.id}`, "PATCH", payload);
     setBusy(false);
     if (!result.ok) {
-      setMessage({ text: result.message, failed: true });
+      setSessionEnded(result.status === 401);
+      setMessage({ text: failureText(result.status, result.message), failed: true });
       return;
     }
     onDone(true);
@@ -167,6 +178,9 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
         </div>
       </form>
       {message && <FormMessage message={message} />}
+      {message?.failed && sessionEnded ? (
+        <a href="/overseas/login" target="_blank" rel="noopener noreferrer">Sign in again (opens a new tab)</a>
+      ) : null}
     </div>
   );
 }
