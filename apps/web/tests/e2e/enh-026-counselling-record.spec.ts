@@ -61,7 +61,7 @@ test.describe.serial("ENH-026 counselling record", () => {
     const row = page.getByRole("row", { name: new RegExp(ctx.studentName) });
     await expect(row.getByText("Scheduled", { exact: true })).toBeVisible();
 
-    const edit = row.getByRole("button", { name: `Edit record for ${ctx.studentName}` });
+    const edit = row.getByRole("button", { name: new RegExp(`^Edit counselling note of .+ for ${ctx.studentName}$`) });
     await edit.focus();
     await page.keyboard.press("Enter");
     const heading = page.getByRole("heading", { name: `Edit record for ${ctx.studentName}` });
@@ -71,7 +71,7 @@ test.describe.serial("ENH-026 counselling record", () => {
     await card.getByLabel("Notes").fill("Discussed essay practice.");
     await card.getByRole("button", { name: "Save changes" }).click();
     await expect(page.getByRole("row", { name: new RegExp(ctx.studentName) }).getByText("Completed", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: `Edit record for ${ctx.studentName}` })).toBeFocused();
+    await expect(page.getByRole("button", { name: new RegExp(`^Edit counselling note of .+ for ${ctx.studentName}$`) })).toBeFocused();
   });
 
   test("parent sees the completed counselling status and structured fields", async ({ page }) => {

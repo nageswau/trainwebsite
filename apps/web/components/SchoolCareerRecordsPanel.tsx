@@ -5,7 +5,7 @@ import CareerPreferencesCard from "@/components/CareerPreferencesCard";
 import CareerRecordForm from "@/components/CareerRecordForm";
 import { type CareerRecord, RECORD_TYPE_LABEL, statusLabel } from "@/lib/careerRecords";
 import { refocus } from "@/lib/focus";
-import { formatCalendarDate } from "@/lib/formatDate";
+import { formatCalendarDate, formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
 type Student = { id: string; full_name: string; school_name: string };
 
@@ -51,8 +51,9 @@ export default function SchoolCareerRecordsPanel({ records, students }: { record
                     <td>{r.next_follow_up_date ? formatCalendarDate(r.next_follow_up_date) : "—"}</td>
                     <td>{r.notes}</td>
                     <td>
+                      {/* QA-15: type and date make each button's accessible name unique when a student has several records */}
                       <button id={`career-edit-${r.id}`} type="button" className="btn secondary small" onClick={() => open(r)}>
-                        Edit<span className="visually-hidden"> record for {studentName(r.school_student_id)}</span>
+                        Edit<span className="visually-hidden"> {(RECORD_TYPE_LABEL[r.record_type] || r.record_type).toLowerCase()} of {formatDate(r.created_at, false, SCHOOL_TIME_ZONE)} for {studentName(r.school_student_id)}</span>
                       </button>
                     </td>
                   </tr>

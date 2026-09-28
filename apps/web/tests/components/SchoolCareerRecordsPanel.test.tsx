@@ -67,11 +67,20 @@ describe("SchoolCareerRecordsPanel records table (ENH-026)", () => {
     expect(screen.getByText("No status (recorded before tracking)")).toBeInTheDocument();
   });
 
+  // QA-15 (browser QA 2026-09-28): two records of one student produced two identical "Edit record for Asha" buttons, so a screen
+  // reader user could not tell them apart. The name now carries the record's type and date.
+  it("gives each Edit button a distinct accessible name", () => {
+    const guidance = { ...record, id: "r2", record_type: "guidance_session", created_at: "2026-09-10T00:00:00Z" };
+    render(<SchoolCareerRecordsPanel records={[record, guidance]} students={STUDENTS} />);
+    expect(screen.getByRole("button", { name: "Edit counselling note of 01 Sept 2026 for Asha" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit guidance session of 10 Sept 2026 for Asha" })).toBeInTheDocument();
+  });
+
   it("opens the edit form and returns focus to the Edit button on cancel", async () => {
     render(<SchoolCareerRecordsPanel records={[record]} students={STUDENTS} />);
-    fireEvent.click(screen.getByRole("button", { name: "Edit record for Asha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit counselling note of 01 Sept 2026 for Asha" }));
     expect(screen.getByRole("heading", { name: "Edit record for Asha" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Edit record for Asha" })));
+    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Edit counselling note of 01 Sept 2026 for Asha" })));
   });
 });
