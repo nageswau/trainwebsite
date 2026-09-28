@@ -38,6 +38,23 @@ describe("CareerRecordForm", () => {
     expect(min).toBe(local);
   });
 
+  // QA-05 (browser QA 2026-09-28): Type and Status survived a successful create while the other fields reset, and "Record saved."
+  // stayed on screen indefinitely.
+  it("resets the whole form after a create and clears the success message on the next change", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => ({ id: "r9" }) }));
+    render(<CareerRecordForm students={STUDENTS} onDone={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Student"), { target: { value: "s1" } });
+    fireEvent.change(screen.getByLabelText("Type"), { target: { value: "counselling_note" } });
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "not_started" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save record" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Record saved.");
+    expect(screen.getByLabelText("Type")).toHaveValue("");
+    expect(screen.queryByLabelText("Status")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Type"), { target: { value: "guidance_session" } });
+    expect(screen.getByLabelText("Status")).toHaveValue("completed");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
   it("hides status and structured fields for a recommendation", () => {
     render(<CareerRecordForm students={STUDENTS} onDone={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("Type"), { target: { value: "recommendation" } });

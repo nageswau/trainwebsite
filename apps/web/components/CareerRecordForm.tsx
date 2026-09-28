@@ -93,13 +93,18 @@ export default function CareerRecordForm({ students, record, onDone, onCancel }:
       return;
     }
     setMessage({ text: "Record saved.", failed: false });
-    if (!editing) formElement.reset();
+    if (!editing) {
+      // QA-05: reset() only clears uncontrolled fields; Type and Status are React state and must reset with them.
+      formElement.reset();
+      setRecordType("");
+      setStatus("completed");
+    }
     router.refresh();
     onDone();
   }
 
   return (
-    <form className="form" onSubmit={submit} onKeyDown={onKey}>
+    <form className="form" onSubmit={submit} onKeyDown={onKey} onChange={() => { if (message && !message.failed) setMessage(null); }}>
       <fieldset className="form-busy-wrap" disabled={busy}>
         {!editing && (
           <>
