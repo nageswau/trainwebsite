@@ -80,7 +80,8 @@ describe("CareerRecordForm", () => {
     render(<CareerRecordForm students={STUDENTS} record={RECORD} onDone={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("changed by someone else");
-    expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
+    // QA-09 (browser QA 2026-09-28): the action throws away what was typed, so it says so.
+    expect(screen.getByRole("button", { name: "Discard my changes and reload" })).toBeInTheDocument();
   });
 
   it("cancels with Escape", () => {

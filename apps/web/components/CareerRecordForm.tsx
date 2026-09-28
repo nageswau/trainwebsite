@@ -209,7 +209,8 @@ export default function CareerRecordForm({ students, record, onDone, onCancel }:
         </div>
       </fieldset>
       {message && <FormMessage message={message} />}
-      {stale && <button type="button" className="btn secondary small" onClick={() => { router.refresh(); onCancel(); }}>Reload</button>}
+      {/* QA-09: reloading replaces what was typed with the saved record, so the button says so */}
+      {stale && <button type="button" className="btn secondary small" onClick={() => { router.refresh(); onCancel(); }}>Discard my changes and reload</button>}
     </form>
   );
 }
