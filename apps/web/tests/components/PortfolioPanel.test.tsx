@@ -160,5 +160,12 @@ describe("PortfolioPanel", () => {
     expect(screen.getByText("Certificate no. SI-1")).toBeInTheDocument();
   });
 
-  it.todo("pre-fills the Skill India fields when editing a tagged certification (ENH-024, Task 6)");
+  it("pre-fills the Skill India fields when editing a tagged certification (ENH-024)", () => {
+    render(<PortfolioPanel data={{ ...BASE, can_edit: true, entries: { ...BASE.entries, certification: [SKILL_INDIA_ENTRY] } }} />);
+    fireEvent.click(screen.getByRole("button", { name: /edit retail sales associate/i }));
+    expect(screen.getByLabelText(/status/i)).toHaveValue("certified");
+    expect(screen.getByLabelText(/certificate number/i)).toHaveValue("SI-1");
+    expect(screen.getByLabelText(/issue date/i)).toHaveValue("2026-05-01");
+    expect(screen.getByLabelText(/issuing body/i)).toHaveValue("RASCI");
+  });
 });

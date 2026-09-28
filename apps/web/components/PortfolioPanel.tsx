@@ -69,7 +69,7 @@ function EntryList({ section, entries, studentId, canEdit, activeForm, confirmin
             return (
               <li className="pf-entry" key={e.id}>
                 {isEditingThisEntry ? (
-                  <PortfolioEntryForm studentId={studentId} section={e.section} entryId={e.id} initial={{ title: e.title, description: e.description, organization: e.organization, date_from: e.date_from, date_to: e.date_to }} onDone={onFormDone} onCancel={onCancel} />
+                  <PortfolioEntryForm studentId={studentId} section={e.section} entryId={e.id} initial={{ title: e.title, description: e.description, organization: e.organization, date_from: e.date_from, date_to: e.date_to, certification_type: e.certification_type, certification_status: e.certification_status, certificate_number: e.certificate_number, issued_on: e.issued_on }} onDone={onFormDone} onCancel={onCancel} />
                 ) : (
                   <>
                     <strong>{e.title}</strong>
