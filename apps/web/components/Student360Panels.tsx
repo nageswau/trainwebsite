@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 
 import CareerGoalForm from "@/components/CareerGoalForm";
-import CertificationDetails, { type CertificationFields } from "@/components/CertificationDetails";
+import CertificationDetails from "@/components/CertificationDetails";
 import { type ChildOverview, SkillsCard, StatusChip } from "@/components/SchoolChildOverview";
 import SchoolGradeHistory, { type GradeHistoryEntry } from "@/components/SchoolGradeHistory";
 import { formatCalendarDate, formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
+import type { CertificationFields } from "@/lib/portfolio";
 import type { Student360, Tab360 } from "@/lib/student360";
 import { safeHref, TAB_LABELS, type TabKey } from "@/lib/student360Links";
 

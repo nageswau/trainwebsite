@@ -1,4 +1,3 @@
-import type { CertificationFields } from "@/components/CertificationDetails";
 import { serverApi } from "@/lib/api";
 
 // ENH-012 -- Digital Portfolio: server-side loader + shared types, kept OUT of PortfolioPanel.tsx.
@@ -10,6 +9,7 @@ import { serverApi } from "@/lib/api";
 // pages built in Task 10 import loadPortfolio from here directly.
 
 // ENH-024: the API always sends the four Skill India fields (null on every other entry); optional here so older-shaped values stay valid.
+export type CertificationFields = { certification_type?: string | null; certification_status?: string | null; certificate_number?: string | null; issued_on?: string | null };
 export type PortfolioEntry = { id: string; section: string; title: string; description: string | null; organization: string | null; date_from: string | null; date_to: string | null; created_at: string; updated_at: string } & CertificationFields;
 export type PortfolioData = {
   student: { id: string; full_name: string };

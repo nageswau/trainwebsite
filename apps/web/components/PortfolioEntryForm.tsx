@@ -2,9 +2,10 @@
 
 import { FormEvent, useRef, useState } from "react";
 
-import { CERT_STATUS_LABEL, type CertificationFields } from "@/components/CertificationDetails";
+import { CERT_STATUS_LABEL } from "@/components/CertificationDetails";
 import { detailMessage, isRequestBody, NOT_COMPLETED } from "@/lib/apiErrors";
 import { refocus } from "@/lib/focus";
+import type { CertificationFields } from "@/lib/portfolio";
 
 type CertErrors = { status?: string; number?: string; issued?: string };
 
