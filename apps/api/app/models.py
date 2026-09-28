@@ -1138,7 +1138,18 @@ class PortfolioEntry(Base, TimestampMixin):
     rejected in the spec's Approach section as unnecessary duplication of one shared shape. Net-new."""
 
     __tablename__ = "portfolio_entries"
-    __table_args__ = (Index("ix_portfolio_entries_student_section", "school_student_id", "section"),)
+    __table_args__ = (
+        Index("ix_portfolio_entries_student_section", "school_student_id", "section"),
+        # ENH-024 (spec §4): mirrored verbatim in migration 0042 -- the API rejects each of these first; the CHECKs are the last line.
+        CheckConstraint("certification_type IS NULL OR (certification_type = 'skill_india' AND section = 'certification')", name="ck_portfolio_cert_type"),
+        CheckConstraint("certification_status IS NULL OR certification_status IN ('enrolled', 'in_progress', 'certified')", name="ck_portfolio_cert_status"),
+        CheckConstraint(
+            "(certification_type IS NULL AND certification_status IS NULL AND certificate_number IS NULL AND issued_on IS NULL) "
+            "OR (certification_type IS NOT NULL AND certification_status IS NOT NULL)",
+            name="ck_portfolio_cert_fields",
+        ),
+        CheckConstraint("certification_status IS DISTINCT FROM 'certified' OR (certificate_number IS NOT NULL AND issued_on IS NOT NULL)", name="ck_portfolio_cert_certified"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
     section: Mapped[str] = mapped_column(String(40))
@@ -1149,6 +1160,11 @@ class PortfolioEntry(Base, TimestampMixin):
     date_to: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    # ENH-024 -- Skill India certification details; all NULL on every other entry (spec §4, DEC-SCOPE-031).
+    certification_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    certification_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    certificate_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    issued_on: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
 class PortfolioProfile(Base, TimestampMixin):
