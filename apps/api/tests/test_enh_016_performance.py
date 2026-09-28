@@ -12,6 +12,13 @@ from app.core.database import engine
 from app.models import SchoolPsychometricRecord
 
 
+@pytest.fixture(autouse=True)
+def _app_loggers_enabled():
+    """Same order-proofing as test_enh_003: an in-process Alembic run disables existing `app.*` loggers."""
+    logging.getLogger("app.school.analytics").disabled = False
+    yield
+
+
 @contextmanager
 def count_queries():
     counter = {"n": 0}
