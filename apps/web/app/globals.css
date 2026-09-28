@@ -24,6 +24,9 @@
 .pf-entry-actions { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
 .pf-add-btn { margin-top: 0.5rem; }
 .pf-statement { white-space: pre-wrap; }
+/* QA24-05: a comfortable target for the Skill India checkbox (the same 44px row as ENH-018's .score-options labels). */
+.pf-check { display: flex; align-items: center; gap: 8px; min-height: 44px; width: fit-content; cursor: pointer; }
+.pf-check input { width: 20px; height: 20px; margin: 0; }
 .pf-cert { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.25rem; overflow-wrap: anywhere; }
 
 /* ENH-025 -- grouped Student Master forms, student photo and profile list (same tokens as fieldset.question). */

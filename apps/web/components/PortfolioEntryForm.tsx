@@ -119,7 +119,7 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
       </div>
       {offerSkillIndia && (
         <div className="field">
-          <label htmlFor="pf-skill-india">
+          <label htmlFor="pf-skill-india" className="pf-check">
             <input id="pf-skill-india" type="checkbox" checked={skillIndia} disabled={busy} onChange={(e) => setSkillIndia(e.target.checked)} /> Skill India certification
           </label>
         </div>

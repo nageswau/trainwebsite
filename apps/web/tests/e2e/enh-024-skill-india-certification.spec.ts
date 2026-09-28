@@ -65,6 +65,10 @@ test("coordinator records and certifies a Skill India certification; it shows on
 
   await page.getByRole("button", { name: "Add certification" }).click();
   await page.getByLabel("Title").fill("Retail Sales Associate");
+  // QA24-05: the checkbox's clickable area (its label row) meets the 24x24 px minimum target size (WCAG 2.2, 2.5.8).
+  const skillIndiaTarget = await page.locator("label[for=pf-skill-india]").boundingBox();
+  expect(skillIndiaTarget!.height).toBeGreaterThanOrEqual(24);
+  expect(skillIndiaTarget!.width).toBeGreaterThanOrEqual(24);
   await page.getByRole("checkbox", { name: "Skill India certification" }).check();
   await page.getByLabel("Issuing body (optional)").fill("Retailers Association's Skill Council of India");
   await page.getByRole("button", { name: "Save" }).click();

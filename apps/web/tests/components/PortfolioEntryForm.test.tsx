@@ -103,6 +103,13 @@ describe("PortfolioEntryForm — Skill India", () => {
     expect(follows(group, screen.getByLabelText(/start date/i))).toBe(true);
   });
 
+  // QA24-05: the checkbox's label carries the comfortable-target rule (.pf-check: 44px row); the size itself is asserted
+  // in the ENH-024 Playwright spec, since jsdom does no layout.
+  it("gives the Skill India checkbox a comfortable target", () => {
+    render(<PortfolioEntryForm studentId="s1" section="certification" onDone={() => {}} onCancel={() => {}} />);
+    expect(screen.getByRole("checkbox", { name: /skill india certification/i }).closest("label")).toHaveClass("pf-check");
+  });
+
   // QA24-06: a Skill India field's error goes away as soon as that field is edited, not only on the next Save.
   it("clears each Skill India error when its own field is edited", async () => {
     global.fetch = ok() as unknown as typeof fetch;
