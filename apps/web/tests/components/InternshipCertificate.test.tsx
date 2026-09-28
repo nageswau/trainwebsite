@@ -104,4 +104,11 @@ describe("InternshipCertificate (ENH-021)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/v1/school/students/s/portfolio/entries/e/certificate", { method: "DELETE" }));
   });
+  it("keeps keyboard focus through the two-step remove (FV-02)", async () => {
+    render(<InternshipCertificate studentId="s" entryId="e" hasCertificate contentType="application/pdf" canEdit completed />);
+    fireEvent.click(screen.getByRole("button", { name: "Remove certificate" }));
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Confirm remove" })).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Remove certificate" })).toHaveFocus());
+  });
 });

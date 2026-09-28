@@ -74,11 +74,12 @@ export default function InternshipCertificate({ studentId, entryId, hasCertifica
           <label htmlFor={inputId}>{present ? "Replace certificate" : "Upload certificate"} (PDF, JPEG or PNG, up to 5 MB)</label>
           <input id={inputId} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={upload} disabled={busy !== null} />
           {busy === "upload" && <span className="muted" aria-live="polite">Uploading…</span>}
-          {present && !confirming && <div className="actions"><button type="button" className="btn ghost small" onClick={() => setConfirming(true)} disabled={busy !== null}>Remove certificate</button></div>}
+          {/* FV-02: each step unmounts the button just pressed, so focus moves to its counterpart */}
+          {present && !confirming && <div className="actions"><button id={`${inputId}-remove`} type="button" className="btn ghost small" onClick={() => { setConfirming(true); refocus(`${inputId}-confirm`); }} disabled={busy !== null}>Remove certificate</button></div>}
           {confirming && (
             <div className="actions">
-              <button type="button" className="btn small" onClick={remove} disabled={busy !== null}>{busy === "remove" ? "Removing…" : "Confirm remove"}</button>
-              <button type="button" className="btn secondary small" onClick={() => setConfirming(false)}>Cancel</button>
+              <button id={`${inputId}-confirm`} type="button" className="btn small" onClick={remove} disabled={busy !== null}>{busy === "remove" ? "Removing…" : "Confirm remove"}</button>
+              <button type="button" className="btn secondary small" onClick={() => { setConfirming(false); refocus(`${inputId}-remove`); }}>Cancel</button>
             </div>
           )}
         </>
