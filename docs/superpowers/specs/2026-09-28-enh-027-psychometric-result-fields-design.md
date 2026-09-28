@@ -3,16 +3,17 @@
 **Status:** Design approved in-session, 2026-09-28, section by section (data/API/backend, frontend,
 acceptance criteria and tests). Superpowers architectural path: brainstorming → this design doc →
 `writing-plans` next. Revised the same day after API / frontend / security engineering reviews (§11).
-Written spec awaiting user review.
+Rebased on `main` after ENH-021/026 (2026-09-28): migration `0044`, `DEC-SCOPE-033`, ENH-026 field names,
+comma list input, `.record-details` display (§9 Q8/Q9). Written spec awaiting user review.
 
 **Source requirement:** `School CRM.md §6` "Psychometric Test Module", "Individual Student" subsection
 (`docs/sources/School CRM.md:254-300`, byte-identical to `functionalities/edusphere_markdown/School CRM.md`;
 `EVID-014`, `DERIVED_BLUEPRINT`) — a 12-field record to "Store".
 **Backlog item:** `docs/delivery/ENHANCEMENT_BACKLOG.md:2514-2584` (`ENH-027`).
-**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → `DEC-SCOPE-031` (added by the
+**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → `DEC-SCOPE-033` (added by the
 implementation plan's first task; records the in-session answers in §9 as `EXPLICIT_APPROVAL`, user,
-2026-09-27/28 — same precedent as `DEC-SCOPE-029` for ENH-025). If another branch claims `DEC-SCOPE-031`
-or migration `0042` first, renumber on merge (precedent: `DEC-SCOPE-024`/`025`, `0041`'s re-chain note).
+2026-09-27/28 — same precedent as `DEC-SCOPE-029` for ENH-025). If another branch claims `DEC-SCOPE-033`
+or migration `0044` first, renumber on merge (precedent: `DEC-SCOPE-024`/`025`, `0041`'s re-chain note).
 **Branch:** `feature/enh-027-psychometric-full-record` (from `main` @ `03d4408`).
 
 ## 1. Scope
@@ -30,8 +31,8 @@ proxy — `created_at` is the *assignment* day, not the test date.
 | 5 | Strengths | — | `strengths` (JSON list[str]) |
 | 6 | Interest areas | — | `interest_areas` (JSON list[str]) |
 | 7 | Personality indicators | — | `personality_indicators` (JSON list[str]) |
-| 8 | Career recommendations | — | `career_recommendations` (JSON list[str]) |
-| 9 | Recommended streams | — | `recommended_streams` (JSON list[str]) |
+| 8 | Career recommendations | — | `recommended_careers` (JSON list[str]) |
+| 9 | Recommended streams | — | `recommended_stream` (JSON list[str]) |
 | 10 | Counsellor remarks | — | `counsellor_remarks` (Text, ≤4000) |
 | 11 | Parent discussion | — | `parent_discussion_on` (Date) + `parent_discussion_notes` (Text, ≤2000) |
 | 12 | Follow-up | — | `follow_up_on` (Date) |
@@ -70,15 +71,15 @@ test_date               Date
 strengths               JSON    list[str]
 interest_areas          JSON    list[str]
 personality_indicators  JSON    list[str]
-career_recommendations  JSON    list[str]
-recommended_streams     JSON    list[str]
+recommended_careers  JSON    list[str]
+recommended_stream     JSON    list[str]
 counsellor_remarks      Text
 parent_discussion_on    Date
 parent_discussion_notes Text
 follow_up_on            Date
 ```
 
-**Migration `0042_psychometric_result_fields`** (down_revision `0041_student_master_fields`):
+**Migration `0044_psychometric_result_fields`** (down_revision `0043_portfolio_internship`):
 - Adds the 10 columns, each guarded by an "already exists" check (fresh DBs get them from
   `0001_initial`'s `create_all()`, same reason `0030`/`0041` guard).
 - No backfill, no data rewrite, no constraint on existing rows. Existing rows keep every value.
@@ -203,17 +204,17 @@ exercising the empty state.
 
 Server-safe, no hooks. Props: one assessment object typed `PsychometricResult` (§5.5). Mirrors the
 ENH-018 precedent (`ActivityFeedbackDetails` inside `<details>`, `SchoolActivityFeedbackPanel.tsx:204`).
-- One `<dl className="s360-facts">` (existing style; `auto-fill minmax(180px, 1fr)` → one column on a
-  phone): Test date, Parent discussion (date; notes below it), Follow-up (dates via
-  `formatCalendarDate`, same helper the 360° tabs use). A fact whose value is `null` is omitted.
-- The 5 list fields each as `<dt>` + `<dd><ul>…</ul></dd>` — plain text items, React-escaped.
-- Counsellor remarks and parent-discussion notes render with `white-space: pre-wrap` and
-  `overflow-wrap: anywhere` (long unbroken text never forces horizontal scroll at 320 px).
+- One `<dl className="record-details">` — ENH-026's `CareerRecordDetails` list (label/value rows, one
+  column ≤640 px, `overflow-wrap: anywhere`), so both records read alike in the 360° view and on the parent
+  page: Test date, the 5 list fields (items joined with ", ", like ENH-026), Counsellor remarks, Parent
+  discussion (date — notes), Follow-up (dates via `formatCalendarDate`). A field whose value is `null` is
+  omitted. Everything is plain text, React-escaped.
+- Counsellor remarks and parent-discussion notes keep their line breaks (`white-space: pre-wrap`).
 - Also exports `PsychometricResultsList({ assessments })` — the per-assessment `<details>` / "no results
   recorded yet" block of §5.2 — so both consumers render one component instead of repeating the loop.
   `hasResults` comes from `lib/psychometric.ts` (§5.5).
-- No new colours, radii or shadows: existing tokens/classes only; at most one small CSS rule block in
-  `globals.css` (`.psy-result`) for the pre-wrap text and the `<details>` spacing.
+- No new colours, radii or shadows: existing tokens/classes only; one small CSS block in `globals.css`
+  (`.psy-results`, `.psy-result`, `.psy-result-text`) for the disclosure and the pre-wrap text.
 
 ### 5.2 360° Psychometric tab (`Student360Panels.tsx:109-110`)
 
@@ -250,13 +251,14 @@ Patterns reused from `ActivityFeedbackForm.tsx` (ENH-018), not reinvented:
 - **Layout (visual hierarchy):** three groups, each a `<fieldset>` with a `<legend>`:
   1. *Assessment* — Test date.
   2. *Findings* — Strengths, Interest areas, Personality indicators, Career recommendations,
-     Recommended streams (textareas, one item per line; hint "One per line, up to 20 items of 80
-     characters").
+     Recommended streams — single-line inputs, **comma-separated** like the ENH-025/026 forms (reusing
+     `splitList`/`listText`); hint "Separate items with commas — up to 20 items of 80 characters each"
+     (§9 Q9).
   3. *Counselling & follow-up* — Counsellor remarks, Parent discussion date + notes, Follow-up date.
   Dates sit in the existing `.form-grid` (two columns, one column ≤640 px); textareas span full width
   (`.field.full`). Every control has a real `<label htmlFor>`; hints are linked with `aria-describedby`.
 - **Client-side checks (usability, not security — the server stays the authority):** textareas carry
-  `maxLength` (4000 / 2000); list fields are checked on submit for >20 lines or a line >80 characters —
+  `maxLength` (4000 / 2000); list fields are checked on submit for >20 items or an item >80 characters —
   a failing field gets `aria-invalid="true"` and an inline message linked by `aria-describedby`, and focus
   moves to the first invalid field. Character counters for the two long text fields ("n / 4000"), as in
   `ActivityFeedbackForm`.
@@ -299,7 +301,7 @@ in `app/school/psychometric-team/dashboard/page.tsx`, `lib/portfolio.ts` `psycho
 | Error | Existing page-level read errors; form `FormMessage` alert + field-level `aria-invalid` |
 | Keyboard | Native `<button>`, `<details>/<summary>`, form controls; focus to card heading on open, back to trigger on close, to first invalid field on a client check |
 | Screen reader | Labelled controls, fieldset legends, row-specific button labels, alert vs status live regions (existing `FormMessage`) |
-| Mobile (320 px) | `.form-grid` → one column; `.s360-facts` auto-fill; `.actions` wraps; `overflow-wrap: anywhere` on free text; table stays in `.table-wrap` |
+| Mobile (320 px) | `.form-grid` → one column; `.record-details` one column; `.actions` wraps; `overflow-wrap: anywhere` on free text; table stays in `.table-wrap` |
 | Design language | Existing classes and tokens only; no new dependency |
 
 ## 6. Security and authorization (security-and-hardening review)
@@ -356,7 +358,7 @@ psychometric findings and counsellor remarks about minors — *sensitive* person
   literal text; audit metadata never contains result values.
 - **ENH-027-AC08:** No regression — report counts, entitlement usage count, timeline events, portfolio
   completion %, and the existing SCH-005/007/008/011, ENH-012/013/022/023 suites pass unchanged.
-- **ENH-027-AC09:** Migration `0042` upgrade → downgrade → upgrade on a database with existing
+- **ENH-027-AC09:** Migration `0044` upgrade → downgrade → upgrade on a database with existing
   psychometric rows preserves those rows' existing values.
 
 ## 8. Testing (written before implementation)
@@ -384,7 +386,7 @@ psychometric rows; compare row values before/after.
 - `tests/components/PsychometricResultDetails.test.tsx` (new): full data; partial data (null facts
   omitted); `hasResults` true/false; `<script>`/`<img onerror>` text rendered literally (AC10).
 - `tests/components/PsychometricResultsForm.test.tsx` (new): prefill; only changed fields in payload;
-  emptied field → `null`; no-change → no request + status; client check (>20 lines / >80 chars) →
+  emptied field → `null`; no-change → no request + status; client check (>20 items / an item >80 chars) →
   `aria-invalid` + message + focus on the field, no request; 422 → alert, card open, input kept; busy
   state disables submit/Cancel; heading focused on open; `beforeunload` registered only while dirty.
 - `SchoolPsychometricRecordsPanel.test.tsx` (extend): "Record/Edit results" label by `hasResults`;
@@ -401,17 +403,19 @@ editor has no horizontal page scroll.
 **Regression (AC08):** per task, the psychometric-related API tests + web unit tests. Full backend and
 E2E suites once at the end (user's every-3-4-features cadence; this is one feature).
 
-## 9. Decisions confirmed in-session (→ `DEC-SCOPE-031`)
+## 9. Decisions confirmed in-session (→ `DEC-SCOPE-033`; `031`/`032` went to ENH-026/021)
 
 | # | Question | Answer |
 |---|---|---|
 | Q1 | Which readers see the new fields? | All existing readers (Coordinator/Principal/Teacher/Parent), same scope as today |
 | Q2 | Who writes Counsellor remarks / Parent discussion? | Psychometric Team only (SCH-005-AC04 unchanged) |
-| Q3 | Career recommendations shape, given ENH-026 is unbuilt? | Defined here (`list[str]`); ENH-026 reuses it |
+| Q3 | Career recommendations shape, given ENH-026 is unbuilt? | `list[str]`. ENH-026 then landed first with the same shape (`DEC-SCOPE-031`), so ENH-027 follows it (Q8) |
 | Q4 | Parent discussion / Follow-up shape? | Parent discussion = date + notes; Follow-up = date |
 | Q5 | Test date storage? | New nullable `test_date`; `created_at` stays "assigned on" |
 | Q6 | Required fields / completion rule? | All optional; completion still flips only on `report_url` |
 | Q7 | §6 "Counselling Completed" count? | Not in ENH-027 → ENH-026 |
+| Q8 | (2026-09-28, after ENH-021/026 merged) Field names? | Match ENH-026: `recommended_careers`, `recommended_stream` (UI labels stay "Career recommendations" / "Recommended streams") |
+| Q9 | (same) How are list fields typed? | Comma-separated, like ENH-025/026 (`splitList`/`listText`) |
 
 ## 10. Regression risks and mitigations
 

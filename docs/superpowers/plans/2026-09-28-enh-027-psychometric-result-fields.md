@@ -4,7 +4,7 @@
 
 **Goal:** Let the Psychometric Team record all 12 `School CRM.md §6` fields on a psychometric record, and show them as structured data in the 360° Psychometric tab and the parent's child page, without changing any existing behaviour.
 
-**Architecture:** 10 nullable columns on `school_psychometric_records` via one additive migration (`0042`). One Pydantic boundary model (`PsychometricResultFields`) validates only the new keys inside the existing `payload: dict` routes, parsed and applied with ENH-025's existing generic helpers. One output helper spreads the fields into the six existing read shapes. Frontend: a shared `lib/psychometric.ts` (type, labels, limits, pure form helpers), a server-safe `PsychometricResultDetails.tsx` (display + per-assessment list) used by the 360° tab and the parent overview, and a client `PsychometricResultsForm.tsx` opened from the existing dashboard panel.
+**Architecture:** 10 nullable columns on `school_psychometric_records` via one additive migration (`0044`). One Pydantic boundary model (`PsychometricResultFields`) validates only the new keys inside the existing `payload: dict` routes, parsed and applied with ENH-025's existing generic helpers. One output helper spreads the fields into the six existing read shapes. Frontend: a shared `lib/psychometric.ts` (type, labels, limits, pure form helpers), a server-safe `PsychometricResultDetails.tsx` (display + per-assessment list) used by the 360° tab and the parent overview, and a client `PsychometricResultsForm.tsx` opened from the existing dashboard panel.
 
 **Tech Stack:** FastAPI + SQLAlchemy 2.0 async + Alembic + PostgreSQL 16; Pydantic v2; pytest + pytest-asyncio + httpx; Next.js (App Router) + React + vitest + Testing Library; Playwright.
 
@@ -14,25 +14,27 @@
 
 - No new dependencies (backend or frontend).
 - Additive only: every existing request key, response key, error message, status code, route, element id and notification unchanged. Routes keep `payload: dict`; unknown keys stay ignored.
-- New columns, exactly: `test_date` Date; `strengths`, `interest_areas`, `personality_indicators`, `career_recommendations`, `recommended_streams` JSON list[str]; `counsellor_remarks` Text; `parent_discussion_on` Date; `parent_discussion_notes` Text; `follow_up_on` Date. All nullable; empty string / empty list stored as NULL.
+- New columns, exactly: `test_date` Date; `strengths`, `interest_areas`, `personality_indicators`, `recommended_careers`, `recommended_stream` JSON list[str]; `counsellor_remarks` Text; `parent_discussion_on` Date; `parent_discussion_notes` Text; `follow_up_on` Date. All nullable; empty string / empty list stored as NULL.
 - Limits: list ≤20 items × ≤80 chars (ENH-025 `_clean_list`); `counsellor_remarks` ≤4000; `parent_discussion_notes` ≤2000; dates `YYYY-MM-DD` only (blank string → null).
 - Status rule unchanged: `completed` only when `report_url` is set; result fields never change `status` and never notify parents.
 - Only `psychometric_team` writes; readers unchanged; `/school/psychometric-records` still never returns `report_url`.
 - Errors: `{"detail": "<field> <reason>"}` via `validation_message`, never echoing the value. 403 checks run before result validation.
 - Audit metadata and logs carry field **names** only, never values.
-- Revision `0042_psychometric_result_fields`, `down_revision = "0041_student_master_fields"`; Decision ID `DEC-SCOPE-031` (renumber either on merge if taken).
+- Revision `0044_psychometric_result_fields`, `down_revision = "0043_portfolio_internship"`; Decision ID `DEC-SCOPE-033` (renumber either on merge if taken).
 - Tests run against the local Postgres the user starts (`docker compose` is the user's — never start/stop it). Apply migrations with `cd apps/api && alembic upgrade head` before backend tests.
 - pytest `asyncio_mode = "strict"`: every `async def test_…` has `@pytest.mark.asyncio`; async fixtures use `@pytest_asyncio.fixture`. Test helpers import as `from enh005_helpers import …`.
 - Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Full backend + E2E regression once, at the end (Task 12), per the user's cadence; per task run only the listed suites.
+- Line numbers in this plan were taken before ENH-021/026 merged; locate code by the function/component name given, not the number.
+- List fields use the product's comma convention: the editor reuses ENH-025's `splitList`/`listText` (`lib/schoolStudents.ts`); the display reuses ENH-026's `.record-details` rows.
 
 ## Review Focus
 
 1. A team member opens "Edit results", changes one strength and saves → every other field must survive (form sends changed keys only). Test: Task 7 `sends only the changed fields, emptied ones as null`.
-2. A counsellor pastes a remark with Windows line endings and blank lines → it is saved, not rejected, and unchanged fields are not re-sent. Test: Task 5 `lib` test `changedFields ignores CRLF and blank-line differences`.
+2. A team member re-saves a list typed with extra spaces or a trailing comma (" Logic ,, Verbal , ") → treated as unchanged, not re-sent. Test: Task 5 `changedFields ignores spacing and stray commas`.
 3. The partnership expires while the editor is open → save shows the 403 alert, card stays open, nothing typed is lost. Test: Task 7 `keeps the card open with the input on a failed save`.
-4. A legacy record (created before 0042) is opened in the 360° tab and the parent page → "no results recorded yet", no crash. Tests: Task 4 `legacy record serializes nulls`, Task 6 `renders the empty line`.
-5. A value typed as a single line with commas ("Logic, Maths") → stored as one item, shown as typed (one item per line is the only split rule). Test: Task 5 `splitLines keeps commas inside an item`.
+4. A legacy record (created before 0044) is opened in the 360° tab and the parent page → "no results recorded yet", no crash. Tests: Task 4 `legacy record serializes nulls`, Task 6 `renders the empty line`.
+5. Markup typed into any field (`<script>`, `<img onerror>`) → stored as text, shown as literal text on every page. Tests: Task 4 `test_blank_date_clears_and_markup_is_stored_as_plain_text`, Task 6 `renders markup as literal text`.
 
 ---
 
@@ -40,10 +42,9 @@
 
 | File | Responsibility |
 |---|---|
-| `docs/decisions/PRODUCT_DECISION_REGISTER.md` (modify) | `DEC-SCOPE-031` — the 7 in-session answers |
+| `docs/decisions/PRODUCT_DECISION_REGISTER.md` (modify) | `DEC-SCOPE-033` — the 7 in-session answers |
 | `apps/api/app/models.py` (modify, `SchoolPsychometricRecord` ~1269) | 10 new columns |
-| `apps/api/alembic/versions/0042_psychometric_result_fields.py` (create) | additive, guarded migration |
-| `apps/api/tests/test_enh_025_migration.py` (modify, 1 test) | drop its "single head" assertion (moves to ENH-027's test) |
+| `apps/api/alembic/versions/0044_psychometric_result_fields.py` (create) | additive, guarded migration |
 | `apps/api/tests/test_enh_027_migration.py` (create) | revision chain, single head, columns nullable |
 | `apps/api/app/schemas.py` (modify, after `validation_message` ~735) | `PSYCHOMETRIC_*_KEYS`, `PsychometricResultFields` |
 | `apps/api/tests/test_enh_027_schemas.py` (create) | model unit tests |
@@ -51,7 +52,7 @@
 | `apps/api/app/api/portfolio.py` (modify, line 128) | spread result fields into `psychometric_report` |
 | `apps/api/tests/test_enh_027_psychometric_results.py` (create) | API tests AC01–AC06, AC10 |
 | `apps/api/app/seed.py` (modify ~741) | demo values on Aarav's completed record |
-| `apps/web/lib/psychometric.ts` (create) | type, labels, limits, `hasResults`, `toDraft`, `splitLines`, `changedFields`, `listError` |
+| `apps/web/lib/psychometric.ts` (create) | type, labels, limits, `hasResults`, `toDraft`, `changedFields`, `listError` (lists via ENH-025's `splitList`/`listText`) |
 | `apps/web/components/PsychometricResultDetails.tsx` (create) | display one result; `PsychometricResultsList` |
 | `apps/web/app/globals.css` (modify, after `.s360-list` rules ~70) | `.psy-result*` rules |
 | `apps/web/components/Student360Panels.tsx` (modify line 109-110) | render the list under the table |
@@ -71,12 +72,12 @@
 **Files:**
 - Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append after the `DEC-SCOPE-030` entry, same format)
 
-**Interfaces:** Produces decision ID `DEC-SCOPE-031`, cited by every later doc change.
+**Interfaces:** Produces decision ID `DEC-SCOPE-033`, cited by every later doc change.
 
 - [ ] **Step 1: Confirm the ID is free and read the entry format**
 
 Run: `grep -n "DEC-SCOPE-03[0-9]" docs/decisions/PRODUCT_DECISION_REGISTER.md`
-Expected: only `DEC-SCOPE-030` lines. If `031` exists, use the next free number everywhere in this plan.
+Expected: entries up to `DEC-SCOPE-032` (ENH-026 = 031, ENH-021 = 032). If `033` exists, use the next free number everywhere in this plan.
 Run: `sed -n '/^DEC-SCOPE-029 — Student Master field coverage/,/^DEC-SCOPE-030/p' docs/decisions/PRODUCT_DECISION_REGISTER.md | head -60` and copy its heading/field layout.
 
 - [ ] **Step 2: Confirm no code reads the psychometric update audit metadata**
@@ -84,38 +85,37 @@ Run: `sed -n '/^DEC-SCOPE-029 — Student Master field coverage/,/^DEC-SCOPE-030
 Run: `grep -rn "psychometric_record_update" apps/ --include=*.py --include=*.ts --include=*.tsx`
 Expected: only the writer in `apps/api/app/api/schools.py`. If any reader exists, stop and report it (spec §10 assumes none).
 
-- [ ] **Step 3: Append `DEC-SCOPE-031`**
+- [ ] **Step 3: Append `DEC-SCOPE-033`**
 
-Write the entry in the copied layout with: title "Psychometric record: structured result fields (`ENH-027`)"; status `CONFIRMED_CURRENT`; classification `EXPLICIT_APPROVAL` (user, in-session, 2026-09-27/28); evidence `EVID-014` `School CRM.md §6` lines 254-300; the decisions table from spec §9 (Q1–Q7) verbatim; consequences: 10 columns listed in Global Constraints, `ENH-026` must reuse the `list[str]` career-recommendations shape, `ENH-019` may later read `follow_up_on`; Client Question #20 stays open and unchanged; spec + plan paths.
+Write the entry in the copied layout with: title "Psychometric record: structured result fields (`ENH-027`)"; status `CONFIRMED_CURRENT`; classification `EXPLICIT_APPROVAL` (user, in-session, 2026-09-27/28); evidence `EVID-014` `School CRM.md §6` lines 254-300; the decisions table from spec §9 (Q1–Q9) verbatim; consequences: 10 columns listed in Global Constraints, list field names and the comma input convention aligned with `ENH-026` (`DEC-SCOPE-031`), `ENH-019` may later read `follow_up_on`; Client Question #20 stays open and unchanged; spec + plan paths.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add docs/decisions/PRODUCT_DECISION_REGISTER.md
-git commit -m "docs(enh-027): record DEC-SCOPE-031 psychometric result fields decisions
+git commit -m "docs(enh-027): record DEC-SCOPE-033 psychometric result fields decisions
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 2: Model columns and migration 0042
+### Task 2: Model columns and migration 0044
 
 **Files:**
 - Modify: `apps/api/app/models.py` — `SchoolPsychometricRecord` (after `status`)
-- Create: `apps/api/alembic/versions/0042_psychometric_result_fields.py`
-- Modify: `apps/api/tests/test_enh_025_migration.py` — `test_migration_follows_enh018_and_is_the_single_head`
+- Create: `apps/api/alembic/versions/0044_psychometric_result_fields.py`
 - Test: `apps/api/tests/test_enh_027_migration.py`
 
 **Interfaces:**
-- Produces: `SchoolPsychometricRecord.test_date|parent_discussion_on|follow_up_on: date | None`, `.strengths|interest_areas|personality_indicators|career_recommendations|recommended_streams: list | None`, `.counsellor_remarks|parent_discussion_notes: str | None`; migration constant `COLUMNS: tuple[tuple[str, sa.types.TypeEngine], ...]`.
+- Produces: `SchoolPsychometricRecord.test_date|parent_discussion_on|follow_up_on: date | None`, `.strengths|interest_areas|personality_indicators|recommended_careers|recommended_stream: list | None`, `.counsellor_remarks|parent_discussion_notes: str | None`; migration constant `COLUMNS: tuple[tuple[str, sa.types.TypeEngine], ...]`.
 
 - [ ] **Step 1: Write the failing tests**
 
 `apps/api/tests/test_enh_027_migration.py`:
 
 ```python
-"""ENH-027 -- migration 0042 and the new SchoolPsychometricRecord columns (spec §3, AC09)."""
+"""ENH-027 -- migration 0044 and the new SchoolPsychometricRecord columns (spec §3, AC09)."""
 
 import importlib.util
 from pathlib import Path
@@ -124,19 +124,19 @@ import pytest
 from sqlalchemy import inspect
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_enh_027_migration_0042", VERSIONS / "0042_psychometric_result_fields.py")
+_spec = importlib.util.spec_from_file_location("_enh_027_migration_0044", VERSIONS / "0044_psychometric_result_fields.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
 NEW_COLUMNS = (
-    "test_date", "strengths", "interest_areas", "personality_indicators", "career_recommendations",
-    "recommended_streams", "counsellor_remarks", "parent_discussion_on", "parent_discussion_notes", "follow_up_on",
+    "test_date", "strengths", "interest_areas", "personality_indicators", "recommended_careers",
+    "recommended_stream", "counsellor_remarks", "parent_discussion_on", "parent_discussion_notes", "follow_up_on",
 )
 
 
-def test_migration_follows_enh025_and_is_the_single_head():
-    assert _migration.revision == "0042_psychometric_result_fields"
-    assert _migration.down_revision == "0041_student_master_fields"
+def test_migration_follows_enh021_and_is_the_single_head():
+    assert _migration.revision == "0044_psychometric_result_fields"
+    assert _migration.down_revision == "0043_portfolio_internship"
     parents = {}
     for file in VERSIONS.glob("*.py"):
         lines = file.read_text(encoding="utf-8").splitlines()
@@ -144,7 +144,7 @@ def test_migration_follows_enh025_and_is_the_single_head():
         parent = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("down_revision =")), None)
         if rev:
             parents[rev] = parent
-    assert set(parents) - set(parents.values()) == {"0042_psychometric_result_fields"}
+    assert set(parents) - set(parents.values()) == {"0044_psychometric_result_fields"}  # one head (ENH-025's test checks the same, count-only)
 
 
 def test_migration_adds_exactly_the_ten_columns():
@@ -162,35 +162,27 @@ async def test_new_columns_exist_and_are_nullable(db_session):
         assert name in cols and cols[name]["nullable"], name
 ```
 
-In `apps/api/tests/test_enh_025_migration.py`, the single-head assertion belongs to whichever migration is newest; keep ENH-025's own chain check and move the head check to ENH-027. Replace the test with:
-
-```python
-def test_migration_follows_enh018():
-    # Re-chained on merge: ENH-013 (0039_student_career_goal) and then ENH-018 (0040_school_activity_feedback) merged to
-    # main first (DEC-SCOPE-029 item 11). The "single head" check lives with the newest migration's test
-    # (test_enh_027_migration.py since 0042).
-    assert _migration.revision == "0041_student_master_fields"
-    assert _migration.down_revision == "0040_school_activity_feedback"
-```
+(`test_enh_025_migration.py` on `main` already asserts only that there is exactly one head, so it needs no change.)
 
 - [ ] **Step 2: Run to verify failure**
 
 Run: `cd apps/api && pytest tests/test_enh_027_migration.py -v`
-Expected: collection error — `FileNotFoundError` for `0042_psychometric_result_fields.py`.
+Expected: collection error — `FileNotFoundError` for `0044_psychometric_result_fields.py`.
 
 - [ ] **Step 3: Add the model columns**
 
 In `apps/api/app/models.py`, `SchoolPsychometricRecord`, after `status`:
 
 ```python
-    # ENH-027 (DEC-SCOPE-031): School CRM.md §6's structured result. All optional; `status` still flips only on
-    # `report_url`. Lists are JSON arrays of short strings (ENH-025's `_clean_list` rule); empty is stored as NULL.
+    # ENH-027 (DEC-SCOPE-033): School CRM.md §6's structured result. All optional; `status` still flips only on
+    # `report_url`. Lists are JSON arrays of short strings (ENH-025's `_clean_list` rule); empty is stored as SQL NULL
+    # (`none_as_null=True`, same as ENH-026's career-record lists).
     test_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    strengths: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    interest_areas: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    personality_indicators: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    career_recommendations: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    recommended_streams: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    strengths: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    interest_areas: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    personality_indicators: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    recommended_careers: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    recommended_stream: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     counsellor_remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     parent_discussion_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     parent_discussion_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -201,17 +193,17 @@ In `apps/api/app/models.py`, `SchoolPsychometricRecord`, after `status`:
 
 - [ ] **Step 4: Write the migration**
 
-`apps/api/alembic/versions/0042_psychometric_result_fields.py`:
+`apps/api/alembic/versions/0044_psychometric_result_fields.py`:
 
 ```python
 """ENH-027 -- structured result fields on school_psychometric_records.
 
-Revision ID: 0042_psychometric_result_fields
-Revises: 0041_student_master_fields
+Revision ID: 0044_psychometric_result_fields
+Revises: 0043_portfolio_internship
 
-docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md §3 (DEC-SCOPE-031). Additive only:
+docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md §3 (DEC-SCOPE-033). Additive only:
 ten nullable columns, no backfill, no constraint, no rewrite of existing rows -- every existing value is kept.
-`downgrade()` drops exactly these ten columns. If another branch reaches `main` first with its own 0042, the
+`downgrade()` drops exactly these ten columns. If another branch reaches `main` first with its own 0044, the
 later-merging branch re-chains (precedent: 0041's note).
 """
 
@@ -220,8 +212,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0042_psychometric_result_fields"
-down_revision = "0041_student_master_fields"
+revision = "0044_psychometric_result_fields"
+down_revision = "0043_portfolio_internship"
 branch_labels = None
 depends_on = None
 
@@ -231,8 +223,8 @@ COLUMNS = (
     ("strengths", postgresql.JSON()),
     ("interest_areas", postgresql.JSON()),
     ("personality_indicators", postgresql.JSON()),
-    ("career_recommendations", postgresql.JSON()),
-    ("recommended_streams", postgresql.JSON()),
+    ("recommended_careers", postgresql.JSON()),
+    ("recommended_stream", postgresql.JSON()),
     ("counsellor_remarks", sa.Text()),
     ("parent_discussion_on", sa.Date()),
     ("parent_discussion_notes", sa.Text()),
@@ -257,14 +249,14 @@ def downgrade() -> None:
 
 - [ ] **Step 5: Apply and run the tests**
 
-Run: `cd apps/api && alembic upgrade head && pytest tests/test_enh_027_migration.py tests/test_enh_025_migration.py -v`
+Run: `cd apps/api && alembic upgrade head && pytest tests/test_enh_027_migration.py tests/test_enh_025_migration.py tests/test_enh_021_migration.py tests/test_enh_026_migration.py -v`
 Expected: all PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/api/app/models.py apps/api/alembic/versions/0042_psychometric_result_fields.py apps/api/tests/test_enh_027_migration.py apps/api/tests/test_enh_025_migration.py
-git commit -m "feat(enh-027): add psychometric result columns (migration 0042)
+git add apps/api/app/models.py apps/api/alembic/versions/0044_psychometric_result_fields.py apps/api/tests/test_enh_027_migration.py
+git commit -m "feat(enh-027): add psychometric result columns (migration 0044)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -302,8 +294,8 @@ def _error(data: dict) -> str:
 
 def test_keys_are_the_ten_columns_in_order():
     assert PSYCHOMETRIC_RESULT_KEYS == (
-        "test_date", "strengths", "interest_areas", "personality_indicators", "career_recommendations",
-        "recommended_streams", "counsellor_remarks", "parent_discussion_on", "parent_discussion_notes", "follow_up_on",
+        "test_date", "strengths", "interest_areas", "personality_indicators", "recommended_careers",
+        "recommended_stream", "counsellor_remarks", "parent_discussion_on", "parent_discussion_notes", "follow_up_on",
     )
 
 
@@ -331,7 +323,7 @@ def test_empty_list_and_blank_text_become_none():
         ({"strengths": [f"s{i}" for i in range(21)]}, "strengths"),
         ({"interest_areas": ["x" * 81]}, "interest_areas"),
         ({"personality_indicators": ["ok", "bad\x00"]}, "personality_indicators"),
-        ({"recommended_streams": ["a‮b"]}, "recommended_streams"),
+        ({"recommended_stream": ["a‮b"]}, "recommended_stream"),
         ({"counsellor_remarks": "x" * 4001}, "counsellor_remarks"),
         ({"parent_discussion_notes": "x" * 2001}, "parent_discussion_notes"),
         ({"counsellor_remarks": "a‮b"}, "counsellor_remarks"),
@@ -367,7 +359,7 @@ In `apps/api/app/schemas.py`, after `validation_message`:
 ```python
 # --- ENH-027: psychometric record result fields (docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md §4.1) ---
 
-PSYCHOMETRIC_LIST_KEYS: tuple[str, ...] = ("strengths", "interest_areas", "personality_indicators", "career_recommendations", "recommended_streams")
+PSYCHOMETRIC_LIST_KEYS: tuple[str, ...] = ("strengths", "interest_areas", "personality_indicators", "recommended_careers", "recommended_stream")
 PSYCHOMETRIC_DATE_KEYS: tuple[str, ...] = ("test_date", "parent_discussion_on", "follow_up_on")
 PSYCHOMETRIC_RESULT_KEYS: tuple[str, ...] = (
     "test_date", *PSYCHOMETRIC_LIST_KEYS, "counsellor_remarks", "parent_discussion_on", "parent_discussion_notes", "follow_up_on",
@@ -398,8 +390,8 @@ class PsychometricResultFields(BaseModel):
     strengths: list[str] | None = None
     interest_areas: list[str] | None = None
     personality_indicators: list[str] | None = None
-    career_recommendations: list[str] | None = None  # ENH-026 reuses this shape (DEC-SCOPE-031 Q3)
-    recommended_streams: list[str] | None = None
+    recommended_careers: list[str] | None = None  # ENH-026 reuses this shape (DEC-SCOPE-033 Q3)
+    recommended_stream: list[str] | None = None
     counsellor_remarks: str | None = Field(default=None, max_length=COUNSELLOR_REMARKS_MAX)
     parent_discussion_on: date | None = None
     parent_discussion_notes: str | None = Field(default=None, max_length=PARENT_DISCUSSION_NOTES_MAX)
@@ -474,8 +466,8 @@ FULL = {
     "strengths": ["Logical reasoning", "Verbal ability"],
     "interest_areas": ["Engineering", "Design"],
     "personality_indicators": ["Analytical", "Reflective"],
-    "career_recommendations": ["Software engineer", "Product designer"],
-    "recommended_streams": ["Science (PCM)"],
+    "recommended_careers": ["Software engineer", "Product designer"],
+    "recommended_stream": ["Science (PCM)"],
     "counsellor_remarks": "Strong analytical profile.\nDiscuss design electives.",
     "parent_discussion_on": "2026-09-15",
     "parent_discussion_notes": "Parents agreed to explore design camps.",
@@ -825,7 +817,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Test: `apps/web/tests/lib/psychometric.test.ts`
 
 **Interfaces:**
-- Produces (TS): `type ResultKey`, `type ResultListKey`, `type PsychometricResult`, `type ResultDraft = Record<ResultKey, string>`, `RESULT_LIST_FIELDS: readonly {key: ResultListKey; label: string}[]`, `RESULT_KEYS: readonly ResultKey[]`, `LIST_MAX_ITEMS = 20`, `LIST_ITEM_MAX = 80`, `REMARKS_MAX = 4000`, `NOTES_MAX = 2000`, `hasResults(r: PsychometricResult): boolean`, `toDraft(r: PsychometricResult): ResultDraft`, `splitLines(text: string): string[]`, `changedFields(initial: ResultDraft, draft: ResultDraft): Partial<Record<ResultKey, string | string[] | null>>`, `listError(text: string): string | null`.
+- Consumes: `listText`, `splitList` from `apps/web/lib/schoolStudents.ts` (ENH-025; client-safe).
+- Produces (TS): `type ResultKey`, `type ResultListKey`, `type PsychometricResult`, `type ResultDraft = Record<ResultKey, string>`, `RESULT_LIST_FIELDS: readonly {key: ResultListKey; label: string}[]`, `RESULT_KEYS: readonly ResultKey[]`, `LIST_MAX_ITEMS = 20`, `LIST_ITEM_MAX = 80`, `REMARKS_MAX = 4000`, `NOTES_MAX = 2000`, `hasResults(r: PsychometricResult): boolean`, `toDraft(r: PsychometricResult): ResultDraft` (lists joined with `listText`), `changedFields(initial: ResultDraft, draft: ResultDraft): Partial<Record<ResultKey, string | string[] | null>>`, `listError(text: string): string | null`.
 
 - [ ] **Step 1: Seed**
 
@@ -834,8 +827,8 @@ In `seed.py`, the `student_a` record gains (keep every existing argument):
 ```python
 test_date=(journey_base - timedelta(days=9)).date(),
 strengths=["Logical reasoning", "Numerical ability"], interest_areas=["Engineering", "Design"],
-personality_indicators=["Analytical", "Reflective"], career_recommendations=["Software engineer", "Product designer"],
-recommended_streams=["Science (PCM)"], counsellor_remarks="Strong analytical profile; explore design electives alongside PCM.",
+personality_indicators=["Analytical", "Reflective"], recommended_careers=["Software engineer", "Product designer"],
+recommended_stream=["Science (PCM)"], counsellor_remarks="Strong analytical profile; explore design electives alongside PCM.",
 parent_discussion_on=(journey_base - timedelta(days=5)).date(), parent_discussion_notes="Parents keen on engineering; agreed to a design summer camp.",
 follow_up_on=(journey_base + timedelta(days=30)).date(),
 ```
@@ -850,17 +843,17 @@ Run: `cd apps/api && python -c "import app.seed"` — Expected: no error. (Do no
 ```ts
 import { describe, expect, it } from "vitest";
 
-import { changedFields, hasResults, listError, RESULT_KEYS, splitLines, toDraft, type PsychometricResult } from "@/lib/psychometric";
+import { changedFields, hasResults, listError, RESULT_KEYS, toDraft, type PsychometricResult } from "@/lib/psychometric";
 
 const full: PsychometricResult = {
   test_date: "2026-09-10", strengths: ["Logic", "Verbal"], interest_areas: null, personality_indicators: null,
-  career_recommendations: ["Engineer"], recommended_streams: null, counsellor_remarks: "Line 1\nLine 2",
+  recommended_careers: ["Engineer"], recommended_stream: null, counsellor_remarks: "Line 1\nLine 2",
   parent_discussion_on: null, parent_discussion_notes: null, follow_up_on: "2026-10-15",
 };
 
 describe("lib/psychometric", () => {
   it("lists the ten result keys in API order", () => {
-    expect(RESULT_KEYS).toEqual(["test_date", "strengths", "interest_areas", "personality_indicators", "career_recommendations", "recommended_streams", "counsellor_remarks", "parent_discussion_on", "parent_discussion_notes", "follow_up_on"]);
+    expect(RESULT_KEYS).toEqual(["test_date", "strengths", "interest_areas", "personality_indicators", "recommended_careers", "recommended_stream", "counsellor_remarks", "parent_discussion_on", "parent_discussion_notes", "follow_up_on"]);
   });
 
   it("hasResults is false for a legacy record and true once any field is set", () => {
@@ -870,33 +863,29 @@ describe("lib/psychometric", () => {
     expect(hasResults({ follow_up_on: "2026-10-15" })).toBe(true);
   });
 
-  it("toDraft joins lists one per line and turns nulls into empty strings", () => {
+  it("toDraft joins lists with commas (ENH-025/026 convention) and turns nulls into empty strings", () => {
     const draft = toDraft(full);
-    expect(draft.strengths).toBe("Logic\nVerbal");
+    expect(draft.strengths).toBe("Logic, Verbal");
     expect(draft.interest_areas).toBe("");
     expect(draft.counsellor_remarks).toBe("Line 1\nLine 2");
-  });
-
-  it("splitLines trims, drops blanks and keeps commas inside an item", () => {
-    expect(splitLines("  Logic, Maths \r\n\r\n Verbal \n")).toEqual(["Logic, Maths", "Verbal"]);
   });
 
   it("changedFields sends only what changed; emptied fields become null", () => {
     const initial = toDraft(full);
     expect(changedFields(initial, initial)).toEqual({});
-    expect(changedFields(initial, { ...initial, strengths: "Logic\nVerbal\nSpatial", follow_up_on: "" })).toEqual({ strengths: ["Logic", "Verbal", "Spatial"], follow_up_on: null });
+    expect(changedFields(initial, { ...initial, strengths: "Logic, Verbal, Spatial", follow_up_on: "" })).toEqual({ strengths: ["Logic", "Verbal", "Spatial"], follow_up_on: null });
     expect(changedFields(initial, { ...initial, interest_areas: "Design" })).toEqual({ interest_areas: ["Design"] });
   });
 
-  it("changedFields ignores CRLF and blank-line differences", () => {
+  it("changedFields ignores spacing and stray commas", () => {
     const initial = toDraft(full);
-    expect(changedFields(initial, { ...initial, strengths: "Logic\r\n\r\nVerbal  " })).toEqual({});
+    expect(changedFields(initial, { ...initial, strengths: " Logic ,, Verbal , " })).toEqual({});
     expect(changedFields(initial, { ...initial, counsellor_remarks: "  Line 1\nLine 2 " })).toEqual({});
   });
 
   it("listError enforces 20 items of 80 characters", () => {
-    expect(listError("a\nb")).toBeNull();
-    expect(listError(Array.from({ length: 21 }, (_, i) => `s${i}`).join("\n"))).toBe("Up to 20 items.");
+    expect(listError("a, b")).toBeNull();
+    expect(listError(Array.from({ length: 21 }, (_, i) => `s${i}`).join(", "))).toBe("Up to 20 items.");
     expect(listError("x".repeat(81))).toBe("Each item must be 80 characters or fewer.");
   });
 });
@@ -911,15 +900,17 @@ Expected: FAIL — `Failed to resolve import "@/lib/psychometric"`.
 
 ```ts
 // ENH-027 -- the ten structured psychometric result fields (docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md §5).
-// Shared by the server-rendered details and the client editor so neither imports the other. Limits mirror the API
-// (app/schemas.py PsychometricResultFields); the API stays the authority.
+// Shared by the server-rendered details and the client editor so neither imports the other; no server imports here (clientBoundary test).
+// Lists use the product's comma convention (ENH-025/026: `splitList`/`listText`). Limits mirror the API (app/schemas.py
+// PsychometricResultFields); the API stays the authority.
+import { listText, splitList } from "@/lib/schoolStudents";
 
 export const RESULT_LIST_FIELDS = [
   { key: "strengths", label: "Strengths" },
   { key: "interest_areas", label: "Interest areas" },
   { key: "personality_indicators", label: "Personality indicators" },
-  { key: "career_recommendations", label: "Career recommendations" },
-  { key: "recommended_streams", label: "Recommended streams" },
+  { key: "recommended_careers", label: "Career recommendations" },
+  { key: "recommended_stream", label: "Recommended streams" },
 ] as const;
 
 export type ResultListKey = (typeof RESULT_LIST_FIELDS)[number]["key"];
@@ -929,7 +920,7 @@ export type PsychometricResult = Partial<Record<ResultListKey, string[] | null> 
 export type ResultDraft = Record<ResultKey, string>;
 
 export const RESULT_KEYS: readonly ResultKey[] = [
-  "test_date", "strengths", "interest_areas", "personality_indicators", "career_recommendations", "recommended_streams",
+  "test_date", "strengths", "interest_areas", "personality_indicators", "recommended_careers", "recommended_stream",
   "counsellor_remarks", "parent_discussion_on", "parent_discussion_notes", "follow_up_on",
 ];
 const LIST_KEYS: ReadonlySet<ResultKey> = new Set(RESULT_LIST_FIELDS.map((f) => f.key));
@@ -946,14 +937,10 @@ export function hasResults(r: PsychometricResult): boolean {
   });
 }
 
-export function splitLines(text: string): string[] {
-  return text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-}
-
 export function toDraft(r: PsychometricResult): ResultDraft {
   return Object.fromEntries(RESULT_KEYS.map((k) => {
     const v = r[k];
-    return [k, Array.isArray(v) ? v.join("\n") : (v ?? "")];
+    return [k, Array.isArray(v) ? listText(v) : (v ?? "")];
   })) as ResultDraft;
 }
 
@@ -962,8 +949,8 @@ export function changedFields(initial: ResultDraft, draft: ResultDraft): Partial
   const out: Partial<Record<ResultKey, string | string[] | null>> = {};
   for (const k of RESULT_KEYS) {
     if (LIST_KEYS.has(k)) {
-      const before = splitLines(initial[k]);
-      const after = splitLines(draft[k]);
+      const before = splitList(initial[k]);
+      const after = splitList(draft[k]);
       if (JSON.stringify(before) !== JSON.stringify(after)) out[k] = after.length ? after : null;
     } else {
       const before = initial[k].trim();
@@ -975,7 +962,7 @@ export function changedFields(initial: ResultDraft, draft: ResultDraft): Partial
 }
 
 export function listError(text: string): string | null {
-  const items = splitLines(text);
+  const items = splitList(text);
   if (items.length > LIST_MAX_ITEMS) return `Up to ${LIST_MAX_ITEMS} items.`;
   if (items.some((i) => i.length > LIST_ITEM_MAX)) return `Each item must be ${LIST_ITEM_MAX} characters or fewer.`;
   return null;
@@ -1002,7 +989,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `apps/web/components/PsychometricResultDetails.tsx`
-- Modify: `apps/web/app/globals.css` (append after the `.s360-list li p` rule, ~line 70)
+- Modify: `apps/web/app/globals.css` (append after ENH-026's `.record-details` rules, ~line 90)
 - Modify: `apps/web/components/Student360Panels.tsx:109-110`
 - Modify: `apps/web/components/SchoolChildOverview.tsx:15` (type) and `:154-167` (render)
 - Modify: `apps/web/lib/portfolio.ts:18` (type)
@@ -1026,20 +1013,21 @@ afterEach(cleanup);
 
 const FULL = {
   test_date: "2026-09-10", strengths: ["Logical reasoning", "Verbal ability"], interest_areas: ["Design"], personality_indicators: null,
-  career_recommendations: ["Software engineer"], recommended_streams: ["Science (PCM)"], counsellor_remarks: "Line one\nLine two",
+  recommended_careers: ["Software engineer"], recommended_stream: ["Science (PCM)"], counsellor_remarks: "Line one\nLine two",
   parent_discussion_on: "2026-09-15", parent_discussion_notes: "Agreed on a design camp.", follow_up_on: "2026-10-15",
 };
+const row = (name: string) => screen.getByText(name, { selector: "dt" }).closest(".record-details-row") as HTMLElement;
 
 describe("PsychometricResultDetails", () => {
   it("shows every recorded field with its label and omits empty ones", () => {
     render(<PsychometricResultDetails result={FULL} />);
-    const term = (name: string) => screen.getByText(name, { selector: "dt" }).closest("div") as HTMLElement;
-    expect(within(term("Strengths")).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["Logical reasoning", "Verbal ability"]);
-    expect(within(term("Recommended streams")).getByText("Science (PCM)")).toBeTruthy();
-    expect(term("Counsellor remarks").textContent).toContain("Line one\nLine two");
-    expect(within(term("Parent discussion")).getByText("Agreed on a design camp.")).toBeTruthy();
-    expect(screen.getByText("Test date", { selector: "dt" })).toBeTruthy();
-    expect(screen.getByText("Follow-up", { selector: "dt" })).toBeTruthy();
+    expect(within(row("Strengths")).getByText("Logical reasoning, Verbal ability")).toBeTruthy();
+    expect(within(row("Career recommendations")).getByText("Software engineer")).toBeTruthy();
+    expect(within(row("Recommended streams")).getByText("Science (PCM)")).toBeTruthy();
+    expect(row("Counsellor remarks").textContent).toContain("Line one\nLine two");
+    expect(row("Parent discussion").textContent).toContain("Agreed on a design camp.");
+    expect(row("Test date")).toBeTruthy();
+    expect(row("Follow-up")).toBeTruthy();
     expect(screen.queryByText("Personality indicators")).toBeNull();
   });
 
@@ -1096,7 +1084,7 @@ const base: ChildOverview = {
   counselling: { status: "not_started", notes: [] },
   recommended_careers: [],
   psychometric: { status: "completed", assessments: [
-    { id: "a", assessment_type: "Aptitude Test", status: "completed", created_at: "2026-09-01T00:00:00Z", recommended_streams: ["Science (PCM)"] },
+    { id: "a", assessment_type: "Aptitude Test", status: "completed", created_at: "2026-09-01T00:00:00Z", recommended_stream: ["Science (PCM)"] },
     { id: "b", assessment_type: "Interest Inventory", status: "assigned", created_at: "2026-09-02T00:00:00Z" },
   ] },
   results: [],
@@ -1129,30 +1117,33 @@ import type { ReactNode } from "react";
 import { formatCalendarDate } from "@/lib/formatDate";
 import { hasResults, RESULT_LIST_FIELDS, type PsychometricResult } from "@/lib/psychometric";
 
-// ENH-027 -- one psychometric result as structured data (spec §5.1). Presentational and server-safe; everything renders as
-// text (React escaping), never HTML. Shared by the 360° Psychometric tab and the Parent child overview.
-
-function Fact({ label, wide, children }: { label: string; wide?: boolean; children: ReactNode }) {
-  return <div className={wide ? "psy-result-wide" : undefined}><dt className="muted">{label}</dt><dd>{children}</dd></div>;
-}
+// ENH-027 -- one psychometric result as structured data (spec §5.1). Presentational and server-safe; everything renders as text
+// (React escaping), never HTML. Same `.record-details` list as ENH-026's CareerRecordDetails, so both records read alike in the
+// 360° view and on the parent page. Empty fields are omitted.
 
 export default function PsychometricResultDetails({ result }: { result: PsychometricResult }) {
-  const discussed = result.parent_discussion_on || result.parent_discussion_notes;
+  const rows: [string, ReactNode][] = [];
+  if (result.test_date) rows.push(["Test date", formatCalendarDate(result.test_date)]);
+  for (const { key, label } of RESULT_LIST_FIELDS) {
+    const items = result[key];
+    if (items?.length) rows.push([label, items.join(", ")]);
+  }
+  if (result.counsellor_remarks) rows.push(["Counsellor remarks", <span className="psy-result-text">{result.counsellor_remarks}</span>]);
+  if (result.parent_discussion_on || result.parent_discussion_notes) {
+    rows.push(["Parent discussion", (
+      <>
+        {result.parent_discussion_on ? formatCalendarDate(result.parent_discussion_on) : null}
+        {result.parent_discussion_on && result.parent_discussion_notes ? " — " : null}
+        {result.parent_discussion_notes ? <span className="psy-result-text">{result.parent_discussion_notes}</span> : null}
+      </>
+    )]);
+  }
+  if (result.follow_up_on) rows.push(["Follow-up", formatCalendarDate(result.follow_up_on)]);
   return (
-    <dl className="s360-facts psy-result-facts">
-      {result.test_date ? <Fact label="Test date">{formatCalendarDate(result.test_date)}</Fact> : null}
-      {discussed ? (
-        <Fact label="Parent discussion">
-          {result.parent_discussion_on ? formatCalendarDate(result.parent_discussion_on) : null}
-          {result.parent_discussion_notes ? <p className="psy-result-text">{result.parent_discussion_notes}</p> : null}
-        </Fact>
-      ) : null}
-      {result.follow_up_on ? <Fact label="Follow-up">{formatCalendarDate(result.follow_up_on)}</Fact> : null}
-      {RESULT_LIST_FIELDS.map(({ key, label }) => {
-        const items = result[key];
-        return items?.length ? <Fact key={key} label={label}><ul>{items.map((item) => <li key={item}>{item}</li>)}</ul></Fact> : null;
-      })}
-      {result.counsellor_remarks ? <Fact label="Counsellor remarks" wide><p className="psy-result-text">{result.counsellor_remarks}</p></Fact> : null}
+    <dl className="record-details">
+      {rows.map(([term, value]) => (
+        <div key={term} className="record-details-row"><dt>{term}</dt><dd>{value}</dd></div>
+      ))}
     </dl>
   );
 }
@@ -1174,21 +1165,17 @@ export function PsychometricResultsList({ assessments }: { assessments: (Psychom
 }
 ```
 
-(List items are unique per record — the API de-duplicates case-insensitively — so `key={item}` is stable.)
 
 - [ ] **Step 4: CSS**
 
-Append to `apps/web/app/globals.css` after the `.s360-list li p` rule:
+Append to `apps/web/app/globals.css` after ENH-026's `.record-details` `@media` rule:
 
 ```css
-/* ENH-027 -- psychometric results: existing tokens only; the facts grid already collapses to one column on a phone. */
+/* ENH-027 -- psychometric results: the rows reuse ENH-026's .record-details (one column on a phone); only the disclosure is new. */
 .psy-results { display: grid; gap: 8px; margin-top: 12px; }
 .psy-result { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
 .psy-result summary { cursor: pointer; font-weight: 800; }
-.psy-result .s360-facts { margin-top: 12px; }
-.psy-result-facts dd ul { margin: 0; padding-left: 18px; font-weight: 400; }
-.psy-result-wide { grid-column: 1 / -1; }
-.psy-result-text { white-space: pre-wrap; overflow-wrap: anywhere; font-weight: 400; margin: 4px 0 0; }
+.psy-result-text { white-space: pre-wrap; }
 ```
 
 - [ ] **Step 5: Use it in the two views**
@@ -1260,7 +1247,7 @@ describe("PsychometricResultsForm", () => {
   it("focuses its heading and prefills every field", () => {
     renderForm();
     expect(screen.getByRole("heading", { name: "Results — Asha · Aptitude Test" })).toHaveFocus();
-    expect(screen.getByLabelText("Strengths")).toHaveValue("Logic\nVerbal");
+    expect(screen.getByLabelText("Strengths")).toHaveValue("Logic, Verbal");
     expect(screen.getByLabelText("Test date")).toHaveValue("2026-09-10");
     expect(screen.getByLabelText("Counsellor remarks")).toHaveValue("Keep going");
     expect(screen.getByLabelText("Interest areas")).toHaveValue("");
@@ -1270,7 +1257,7 @@ describe("PsychometricResultsForm", () => {
     const fetchMock = ok();
     vi.stubGlobal("fetch", fetchMock);
     const onDone = renderForm();
-    fireEvent.change(screen.getByLabelText("Strengths"), { target: { value: "Logic\nVerbal\nSpatial" } });
+    fireEvent.change(screen.getByLabelText("Strengths"), { target: { value: "Logic, Verbal, Spatial" } });
     fireEvent.change(screen.getByLabelText("Counsellor remarks"), { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: "Save results" }));
     await vi.waitFor(() => expect(onDone).toHaveBeenCalledWith(true));
@@ -1380,7 +1367,7 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
   const [message, setMessage] = useState<FormMessageState | null>(null);
   const [errors, setErrors] = useState<Partial<Record<ResultListKey, string>>>({});
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const listRefs = useRef<Partial<Record<ResultListKey, HTMLTextAreaElement | null>>>({});
+  const listRefs = useRef<Partial<Record<ResultListKey, HTMLInputElement | null>>>({});
   const dirty = Object.keys(changedFields(initial, draft)).length > 0;
 
   useEffect(() => headingRef.current?.focus(), []);
@@ -1445,16 +1432,15 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
 
         <fieldset className="question">
           <legend>Findings</legend>
-          <p id={LIST_HINT_ID} className="muted">One per line — up to {LIST_MAX_ITEMS} items of {LIST_ITEM_MAX} characters each.</p>
+          <p id={LIST_HINT_ID} className="muted">Separate items with commas — up to {LIST_MAX_ITEMS} items of {LIST_ITEM_MAX} characters each.</p>
           {RESULT_LIST_FIELDS.map(({ key, label }) => {
             const errorId = `${id(key)}-error`;
             return (
               <div className="field" key={key}>
                 <label htmlFor={id(key)}>{label}</label>
-                <textarea
+                <input
                   {...bind(key)}
                   ref={(el) => { listRefs.current[key] = el; }}
-                  rows={3}
                   aria-invalid={errors[key] ? true : undefined}
                   aria-describedby={errors[key] ? `${LIST_HINT_ID} ${errorId}` : LIST_HINT_ID}
                 />
@@ -1739,7 +1725,7 @@ test.describe.serial("ENH-027 psychometric results", () => {
     await page.keyboard.press("Tab");
     await expect(page.locator("#psy-result-test-date")).toBeFocused();
     await page.locator("#psy-result-test-date").fill("2026-09-10");
-    await page.locator("#psy-result-strengths").fill("Logical reasoning\nVerbal ability");
+    await page.locator("#psy-result-strengths").fill("Logical reasoning, Verbal ability");
     await page.locator("#psy-result-recommended-streams").fill("Science (PCM)");
     await page.locator("#psy-result-counsellor-remarks").fill("Strong analytical profile.");
     await page.locator("#psy-result-follow-up-on").fill("2026-10-15");
@@ -1754,7 +1740,7 @@ test.describe.serial("ENH-027 psychometric results", () => {
     await page.goto(`/school/psychometric-team/students/${ctx.studentId}/360?tab=psychometric_assessment`);
     const panel = page.getByRole("tabpanel");
     await panel.getByText("Aptitude Test — results").click();
-    await expect(panel).toContainText("Logical reasoning");
+    await expect(panel).toContainText("Logical reasoning, Verbal ability");
     await expect(panel).toContainText("Science (PCM)");
     await expect(panel).toContainText("Strong analytical profile.");
   });
@@ -1808,7 +1794,7 @@ Run from the repo root:
 - [ ] **Step 2: Round trip**
 
 Run: `cd apps/api && alembic downgrade -1 && alembic upgrade head`
-Expected: no error; `alembic current` shows `0042_psychometric_result_fields (head)`.
+Expected: no error; `alembic current` shows `0044_psychometric_result_fields (head)`.
 
 - [ ] **Step 3: Compare**
 
@@ -1824,11 +1810,11 @@ Expected: no output (identical). Note: the downgrade drops the 10 new columns, s
 - Modify: `docs/architecture/API_CONTRACT.md` (psychometric rows — addendum row in the ENH-025 style, line ~266)
 - Modify: `docs/architecture/SECURITY_CONTROLS.md` (new ENH-027 row after the ENH-023 row, ~line 102)
 - Modify: `docs/features/FEATURE_ACCEPTANCE_CRITERIA.md` (under `SCH-005`, an `ENH-027` addendum listing AC01–AC10 by reference to the spec §7)
-- Modify: `docs/quality/RTM.md` (ENH-027 row: DEC-SCOPE-031 → spec → tests → code; results filled in by Task 12)
+- Modify: `docs/quality/RTM.md` (ENH-027 row: DEC-SCOPE-033 → spec → tests → code; results filled in by Task 12)
 - Modify: `docs/delivery/ENHANCEMENT_BACKLOG.md` (ENH-027 section: status line "Built on `feature/enh-027-psychometric-full-record`, pending browser validation and independent review"; correct "4 that exist today" to "3 plus `created_at` as an assignment-date proxy")
 
 - [ ] **Step 1: Write each addendum** with these exact facts:
-  - DATA_MODEL: the 10 columns and types from Global Constraints; nullable, no backfill; migration `0042`; `DEC-SCOPE-031`.
+  - DATA_MODEL: the 10 columns and types from Global Constraints; nullable, no backfill; migration `0044`; `DEC-SCOPE-033`.
   - API_CONTRACT: the four psychometric endpoints + `/students/{id}/overview`, `/portfolio`, `/360-view` gain the 10 keys (`null` = not recorded; dates `YYYY-MM-DD`; lists never empty). Request: optional on POST and PATCH; PATCH absent = unchanged, `null`/`""`/`[]` = clear; limits; 422 `"<field> <reason>"`; 403 precedence; `report_url` exposure unchanged (Client Question #20); audit metadata `fields` (names only).
   - SECURITY_CONTROLS: one row summarising spec §6 (mass-assignment allow-list, validation, text rendering, names-only audit/logs, no new endpoint/role, rate limiting unchanged open item).
 - [ ] **Step 2: Commit**
