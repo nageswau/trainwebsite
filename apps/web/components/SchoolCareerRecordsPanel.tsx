@@ -66,7 +66,8 @@ export default function SchoolCareerRecordsPanel({ records, students }: { record
 
       {editing && (
         <div className="action-card">
-          <h3 id="career-edit-heading" tabIndex={-1}>Edit record for {studentName(editing.school_student_id)}</h3>
+          {/* FV-01: opening puts focus here, outside the form's own Escape handler, so the heading handles Escape too */}
+          <h3 id="career-edit-heading" tabIndex={-1} onKeyDown={(e) => { if (e.key === "Escape") close(); }}>Edit record for {studentName(editing.school_student_id)}</h3>
           <CareerRecordForm key={editing.id} students={students} record={editing} onDone={close} onCancel={close} />
         </div>
       )}

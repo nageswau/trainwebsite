@@ -83,4 +83,12 @@ describe("SchoolCareerRecordsPanel records table (ENH-026)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Edit counselling note of 01 Sept 2026 for Asha" })));
   });
+
+  it("closes with Escape while focus is still on the edit heading (FV-01)", async () => {
+    render(<SchoolCareerRecordsPanel records={[record]} students={STUDENTS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit counselling note of 01 Sept 2026 for Asha" }));
+    fireEvent.keyDown(screen.getByRole("heading", { name: "Edit record for Asha" }), { key: "Escape" });
+    expect(screen.queryByRole("heading", { name: "Edit record for Asha" })).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Edit counselling note of 01 Sept 2026 for Asha" })));
+  });
 });
