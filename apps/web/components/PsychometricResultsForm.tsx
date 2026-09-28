@@ -1,0 +1,144 @@
+"use client";
+
+import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
+
+import FormMessage, { type FormMessageState } from "@/components/FormMessage";
+import { sendJson } from "@/lib/apiErrors";
+import {
+  changedFields, listError, LIST_ITEM_MAX, LIST_MAX_ITEMS, NOTES_MAX, REMARKS_MAX, RESULT_LIST_FIELDS, toDraft,
+  type PsychometricResult, type ResultDraft, type ResultKey, type ResultListKey,
+} from "@/lib/psychometric";
+
+// ENH-027 -- record/edit one assessment's structured result (spec §5.3). Patterns reused from ActivityFeedbackForm (ENH-018):
+// heading focus on open, beforeunload while dirty, counters, field-level aria-invalid. Lists are comma-separated like the
+// ENH-025/026 forms. Only changed fields are sent, so two team members editing different fields never overwrite each other
+// (spec §4.3). The API is the authority; the client checks are for usability only.
+
+type Props = { record: PsychometricResult & { id: string; assessment_type: string }; studentName: string; onDone: (saved: boolean) => void };
+
+const id = (key: ResultKey) => `psy-result-${key.replaceAll("_", "-")}`;
+const LIST_HINT_ID = "psy-result-lists-hint";
+
+export default function PsychometricResultsForm({ record, studentName, onDone }: Props) {
+  const [initial] = useState<ResultDraft>(() => toDraft(record));
+  const [draft, setDraft] = useState<ResultDraft>(initial);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<FormMessageState | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<ResultListKey, string>>>({});
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const listRefs = useRef<Partial<Record<ResultListKey, HTMLInputElement | null>>>({});
+  const dirty = Object.keys(changedFields(initial, draft)).length > 0;
+
+  useEffect(() => headingRef.current?.focus(), []);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  const bind = (key: ResultKey) => ({
+    id: id(key),
+    name: key,
+    value: draft[key],
+    disabled: busy,
+    onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft((d) => ({ ...d, [key]: e.target.value })),
+  });
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const found: Partial<Record<ResultListKey, string>> = {};
+    for (const { key } of RESULT_LIST_FIELDS) {
+      const error = listError(draft[key]);
+      if (error) found[key] = error;
+    }
+    setErrors(found);
+    const first = RESULT_LIST_FIELDS.find(({ key }) => found[key]);
+    if (first) {
+      listRefs.current[first.key]?.focus();
+      return;
+    }
+    const payload = changedFields(initial, draft);
+    if (Object.keys(payload).length === 0) {
+      setMessage({ text: "No changes to save.", failed: false });
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    const result = await sendJson(`/api/v1/school/psychometric-team/records/${record.id}`, "PATCH", payload);
+    setBusy(false);
+    if (!result.ok) {
+      setMessage({ text: result.message, failed: true });
+      return;
+    }
+    onDone(true);
+  }
+
+  return (
+    <div className="action-card">
+      <h3 ref={headingRef} tabIndex={-1}>Results — {studentName} · {record.assessment_type}</h3>
+      <form className="form" onSubmit={submit} aria-busy={busy} noValidate>
+        <fieldset className="question">
+          <legend>Assessment</legend>
+          <div className="field">
+            <label htmlFor={id("test_date")}>Test date</label>
+            <input type="date" {...bind("test_date")} />
+          </div>
+        </fieldset>
+
+        <fieldset className="question">
+          <legend>Findings</legend>
+          <p id={LIST_HINT_ID} className="muted">Separate items with commas — up to {LIST_MAX_ITEMS} items of {LIST_ITEM_MAX} characters each.</p>
+          {RESULT_LIST_FIELDS.map(({ key, label }) => {
+            const errorId = `${id(key)}-error`;
+            return (
+              <div className="field" key={key}>
+                <label htmlFor={id(key)}>{label}</label>
+                <input
+                  {...bind(key)}
+                  ref={(el) => { listRefs.current[key] = el; }}
+                  aria-invalid={errors[key] ? true : undefined}
+                  aria-describedby={errors[key] ? `${LIST_HINT_ID} ${errorId}` : LIST_HINT_ID}
+                />
+                {errors[key] ? <p id={errorId} className="form-error">{errors[key]}</p> : null}
+              </div>
+            );
+          })}
+        </fieldset>
+
+        <fieldset className="question">
+          <legend>Counselling &amp; follow-up</legend>
+          <div className="field">
+            <label htmlFor={id("counsellor_remarks")}>Counsellor remarks</label>
+            <textarea {...bind("counsellor_remarks")} maxLength={REMARKS_MAX} aria-describedby={`${id("counsellor_remarks")}-count`} />
+            <small id={`${id("counsellor_remarks")}-count`} className="muted">{draft.counsellor_remarks.length} / {REMARKS_MAX}</small>
+          </div>
+          <div className="form-grid">
+            <div className="field">
+              <label htmlFor={id("parent_discussion_on")}>Parent discussion date</label>
+              <input type="date" {...bind("parent_discussion_on")} />
+            </div>
+            <div className="field">
+              <label htmlFor={id("follow_up_on")}>Follow-up date</label>
+              <input type="date" {...bind("follow_up_on")} />
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor={id("parent_discussion_notes")}>Parent discussion notes</label>
+            <textarea {...bind("parent_discussion_notes")} maxLength={NOTES_MAX} aria-describedby={`${id("parent_discussion_notes")}-count`} />
+            <small id={`${id("parent_discussion_notes")}-count`} className="muted">{draft.parent_discussion_notes.length} / {NOTES_MAX}</small>
+          </div>
+        </fieldset>
+
+        <div className="actions">
+          <button className="btn" disabled={busy}>{busy ? "Saving…" : "Save results"}</button>
+          <button type="button" className="btn secondary" disabled={busy} onClick={() => onDone(false)}>Cancel</button>
+        </div>
+      </form>
+      {message && <FormMessage message={message} />}
+    </div>
+  );
+}

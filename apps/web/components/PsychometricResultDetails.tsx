@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import { formatCalendarDate } from "@/lib/formatDate";
 import { hasResults, RESULT_LIST_FIELDS, type PsychometricResult } from "@/lib/psychometric";
@@ -14,14 +14,14 @@ export default function PsychometricResultDetails({ result }: { result: Psychome
     const items = result[key];
     if (items?.length) rows.push([label, items.join(", ")]);
   }
-  if (result.counsellor_remarks) rows.push(["Counsellor remarks", <span className="psy-result-text">{result.counsellor_remarks}</span>]);
+  if (result.counsellor_remarks) rows.push(["Counsellor remarks", <span key="remarks" className="psy-result-text">{result.counsellor_remarks}</span>]);
   if (result.parent_discussion_on || result.parent_discussion_notes) {
     rows.push(["Parent discussion", (
-      <>
+      <Fragment key="parent">
         {result.parent_discussion_on ? formatCalendarDate(result.parent_discussion_on) : null}
         {result.parent_discussion_on && result.parent_discussion_notes ? " — " : null}
         {result.parent_discussion_notes ? <span className="psy-result-text">{result.parent_discussion_notes}</span> : null}
-      </>
+      </Fragment>
     )]);
   }
   if (result.follow_up_on) rows.push(["Follow-up", formatCalendarDate(result.follow_up_on)]);
