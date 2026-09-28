@@ -2211,7 +2211,7 @@ async def update_psychometric_record(record_id: UUID, payload: dict, user: User 
         if payload["report_url"] and record.status != "completed":
             record.status = "completed"
             became_completed = True
-    audited = sorted({*fields, *(["report_url"] if "report_url" in payload else [])})
+    audited = sorted([*fields, "report_url"]) if "report_url" in payload else fields
     db.add(AuditLog(user_id=user.id, action="school.psychometric_record_update", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={"fields": audited}))
     if became_completed:
         student = await db.get(SchoolStudent, record.school_student_id)
