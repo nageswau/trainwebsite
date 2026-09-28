@@ -13,9 +13,34 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code, uuid_reference
-from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, SchoolStaffAssignment, SchoolStudent, University, User, UserRoleAssignment
+from app.models import (
+    AcademicYear,
+    AgentCommission,
+    AuditLog,
+    Batch,
+    Company,
+    Country,
+    DataSubjectRequest,
+    Enquiry,
+    Enrollment,
+    Job,
+    JobApplication,
+    Notification,
+    NotificationDelivery,
+    OverseasApplication,
+    Payment,
+    Program,
+    School,
+    SchoolStaffAssignment,
+    SchoolStudent,
+    University,
+    User,
+    UserRoleAssignment,
+)
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
+from app.services.agent_orgs import ensure_agent_org
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
+from app.services.provisioning import flush_unique_email as _flush_unique_email
 from app.services.storage import storage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -137,15 +162,6 @@ async def _school_outs_batch(db: AsyncSession, schools: list["School"]) -> list[
         ))
     return results
 
-
-async def _flush_unique_email(db: AsyncSession) -> None:
-    """Flush a new account; two simultaneous creates for one email are settled by the unique
-    constraint (409 for the loser, never a 500). Rolling back also drops anything created with it."""
-    try:
-        await db.flush()
-    except IntegrityError:
-        await db.rollback()
-        raise HTTPException(409, "Email already exists") from None
 
 
 @router.get("/dashboard")
@@ -409,6 +425,9 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
     )
     db.add(item)
     await _flush_unique_email(db)
+    if role == "agent":
+        # AGN-001 (D11): an admin-created agent gets its own pending organisation as Master M001.
+        await ensure_agent_org(db, item, agency_name=(item.profile or {}).get("agency_name"), status="pending")
     issued = await issue_welcome_token(db, user=item, issued_by=user)
     db.add(AuditLog(user_id=user.id, action="user.create", entity_type="user", entity_id=str(item.id), metadata_json={"role": role, "division": division}))
     await db.commit()

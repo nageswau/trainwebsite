@@ -9,6 +9,7 @@ from app.core.database import SessionLocal, engine
 from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
 from app.models import *
+from app.services.agent_orgs import ensure_agent_org
 
 PASSWORD = "Demo@123"
 USERS = [
@@ -93,6 +94,10 @@ async def main():
             demo_agent_assignment.approval_status = "approved"
         else:
             db.add(UserRoleAssignment(user_id=us["agent"].id, division="overseas", role="agent", approval_status="approved"))
+        # AGN-001 (E7): the demo agent's organisation, active like its assignment above.
+        await db.flush()
+        demo_member = await ensure_agent_org(db, us["agent"], agency_name=us["agent"].profile.get("agency_name"), status="active")
+        (await db.get(AgentOrg, demo_member.org_id)).status = "active"
         pmap = {}
         for slug, cat, title, summary, duration, fees, curr in programs:
             p = await db.scalar(select(Program).where(Program.slug == slug))

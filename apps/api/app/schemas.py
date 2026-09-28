@@ -52,6 +52,13 @@ class RegistrationRequest(BaseModel):
     phone: str | None = Field(default=None, max_length=40)
     division: str = Field(pattern="^(it|overseas)$")
     account_type: str = Field(default="student", pattern="^(student|agent)$")
+    # AGN-001 (E2): optional; blank -> None, and the organisation is then named after the agent's full name.
+    agency_name: str | None = Field(default=None, max_length=160)
+
+    @field_validator("agency_name")
+    @classmethod
+    def blank_agency_name_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
 
     @field_validator("account_type")
     @classmethod

@@ -44,6 +44,19 @@ async def org_of(db, user_id) -> AgentOrg | None:
     return None if member is None else await db.get(AgentOrg, member.org_id, populate_existing=True)
 
 
+async def mk_active_org(db, *, name: str = "AGN Agency") -> dict:
+    """An approved agent who is M001 of an active organisation."""
+    from app.models import UserRoleAssignment
+    from app.services.agent_orgs import ensure_agent_org
+
+    master = await mk_user(db, role="agent", full_name=f"{name} Master")
+    db.add(UserRoleAssignment(user_id=master.id, division="overseas", role="agent", approval_status="approved"))
+    await db.flush()
+    member = await ensure_agent_org(db, master, agency_name=name, status="active")
+    await db.commit()
+    return {"master": master, "member": member, "org": await db.get(AgentOrg, member.org_id)}
+
+
 @asynccontextmanager
 async def client_for(email: str):
     """A separate ASGI client with its own cookie jar, so two users can be in flight at once."""
