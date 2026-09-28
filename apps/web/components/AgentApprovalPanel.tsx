@@ -1,101 +1,140 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type AgentRow = { id: string; name: string; email: string; approval_status: string };
+type Master = { id: string; code: string; full_name: string; email: string; status: string };
+type Org = { id: string; name: string; prefix: string; status: string; created_at: string; masters: Master[] };
+type Action = "approve" | "reject" | "suspend" | "reinstate";
+
+// AGN-001 (DEC-SCOPE-034 D6/D7): Overseas Admin acts on the agent ORGANISATION. Active organisations are labelled
+// "Approved" -- the admin-facing word, and what agt-001-registration-approval.spec.ts looks for after approving.
+const GROUPS: { status: string; label: string; empty: string; actions: Action[] }[] = [
+  { status: "pending", label: "Pending", empty: "No organisations awaiting approval.", actions: ["approve", "reject"] },
+  { status: "active", label: "Approved", empty: "No approved organisations.", actions: ["suspend"] },
+  { status: "suspended", label: "Suspended", empty: "No suspended organisations.", actions: ["reinstate"] },
+  { status: "rejected", label: "Rejected", empty: "No rejected organisations.", actions: ["approve"] },
+];
+const LABEL: Record<Action, string> = { approve: "Approve", reject: "Reject", suspend: "Suspend", reinstate: "Reinstate" };
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
   return "Unable to complete this action.";
 }
 
-// AGT-001: a Pending Agent could reach every agent-scoped endpoint immediately after
-// self-registering, unapproved -- the approval gate existed in the data model but
-// nothing enforced or actioned it. This is the real approve/reject action; the generic
-// "Agent Registrations" table above only ever showed status as plain text.
 export default function AgentApprovalPanel() {
   const router = useRouter();
-  const [agents, setAgents] = useState<AgentRow[] | null>(null);
+  const [orgs, setOrgs] = useState<Org[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ id: string; text: string } | null>(null);
+  const inFlight = useRef<Set<string>>(new Set());
 
-  function load() {
-    fetch("/api/v1/overseas-admin/agents")
-      .then((res) => (res.ok ? res.json() : []))
-      .then(setAgents)
-      .catch(() => setAgents([]));
-  }
+  const load = useCallback(() => {
+    setLoadFailed(false);
+    fetch("/api/v1/overseas-admin/agent-orgs")
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((rows: Org[]) => setOrgs(rows))
+      .catch(() => setLoadFailed(true));
+  }, []);
 
-  useEffect(load, []);
+  useEffect(load, [load]);
 
-  async function decide(agentId: string, action: "approve" | "reject") {
-    setBusyId(agentId);
+  async function act(org: Org, action: Action) {
+    if (inFlight.current.has(org.id)) return;
+    inFlight.current.add(org.id);
+    setBusyId(org.id);
     setMessage(null);
-    const response = await fetch(`/api/v1/overseas-admin/agents/${agentId}/${action}`, { method: "POST" });
-    const data = await response.json().catch(() => ({}));
-    setBusyId(null);
-    if (!response.ok) {
-      setMessage({ id: agentId, text: detailMessage(data.detail), failed: true });
-      return;
+    try {
+      const response = await fetch(`/api/v1/overseas-admin/agent-orgs/${org.id}/${action}`, { method: "POST" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage({ id: org.id, text: detailMessage(data.detail) });
+        return;
+      }
+      setConfirming(null);
+      router.refresh();
+      load();
+    } finally {
+      inFlight.current.delete(org.id);
+      setBusyId(null);
     }
-    router.refresh();
-    load();
   }
 
-  if (agents === null) {
+  if (loadFailed) {
     return (
       <div className="action-card">
         <h3>Agent Approvals</h3>
-        <p className="muted">Loading agent registrations…</p>
+        <p className="form-error" role="alert">Unable to load agent organisations.</p>
+        <button className="btn secondary small" onClick={load}>Retry</button>
+      </div>
+    );
+  }
+  if (orgs === null) {
+    return (
+      <div className="action-card">
+        <h3>Agent Approvals</h3>
+        <p className="muted">Loading agent organisations…</p>
       </div>
     );
   }
 
-  const pending = agents.filter((a) => a.approval_status === "pending");
-  const decided = agents.filter((a) => a.approval_status !== "pending");
-
   return (
     <div className="action-card">
       <h3>Agent Approvals</h3>
-      {pending.length === 0 ? (
-        <p className="muted">No agent registrations awaiting approval.</p>
-      ) : (
-        <div className="grid two">
-          {pending.map((agent) => (
-            <div className="card" key={agent.id}>
-              <span className="badge">Pending</span>
-              <h4 style={{ marginTop: 10 }}>{agent.name}</h4>
-              <p className="muted" style={{ fontSize: 13 }}>{agent.email}</p>
-              <button className="btn small" disabled={busyId === agent.id} onClick={() => decide(agent.id, "approve")} style={{ marginRight: 8 }}>
-                {busyId === agent.id ? "Working…" : "Approve"}
-              </button>
-              <button className="btn secondary small" disabled={busyId === agent.id} onClick={() => decide(agent.id, "reject")}>
-                Reject
-              </button>
-              {message?.id === agent.id && (
-                <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 8, fontSize: 13 }}>
-                  {message.text}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      {decided.length > 0 && (
-        <>
-          <h4 style={{ marginTop: 24 }}>Decided</h4>
-          <div className="grid two">
-            {decided.map((agent) => (
-              <div className="card" key={agent.id}>
-                <span className="badge">{agent.approval_status}</span>
-                <h4 style={{ marginTop: 10 }}>{agent.name}</h4>
-                <p className="muted" style={{ fontSize: 13 }}>{agent.email}</p>
+      {GROUPS.map((group) => {
+        const rows = orgs.filter((o) => o.status === group.status);
+        const headingId = `agent-orgs-${group.status}`;
+        return (
+          <section key={group.status} aria-labelledby={headingId} style={{ marginTop: 16 }}>
+            <h4 id={headingId}>{group.label}</h4>
+            {rows.length === 0 ? (
+              <p className="muted">{group.empty}</p>
+            ) : (
+              <div className="grid two">
+                {rows.map((org) => (
+                  <div className="card" key={org.id}>
+                    <span className="badge">{group.label}</span>
+                    <h4 style={{ marginTop: 10, overflowWrap: "anywhere" }}>{org.name} <span className="muted">({org.prefix})</span></h4>
+                    <ul style={{ fontSize: 13, paddingLeft: 18, overflowWrap: "anywhere" }}>
+                      {org.masters.map((m) => (
+                        <li key={m.id}>
+                          <span>{m.code} · {m.full_name}</span> <span className="muted">{m.email}{m.status !== "active" ? " (deactivated)" : ""}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {confirming === org.id ? (
+                      <div role="group" aria-label="Confirm suspension">
+                        <p style={{ fontSize: 13 }}>Suspend {org.name}? Every Master loses access on their next request.</p>
+                        <button className="btn small" disabled={busyId === org.id} onClick={() => act(org, "suspend")} style={{ marginRight: 8 }}>
+                          {busyId === org.id ? "Working…" : "Confirm suspend"}
+                        </button>
+                        <button className="btn secondary small" disabled={busyId === org.id} onClick={() => setConfirming(null)}>Cancel</button>
+                      </div>
+                    ) : (
+                      group.actions.map((action, i) => (
+                        <button
+                          key={action}
+                          className={i === 0 ? "btn small" : "btn secondary small"}
+                          disabled={busyId === org.id}
+                          onClick={() => (action === "suspend" ? setConfirming(org.id) : act(org, action))}
+                          style={{ marginRight: 8 }}
+                        >
+                          {busyId === org.id ? "Working…" : LABEL[action]}
+                        </button>
+                      ))
+                    )}
+                    {message?.id === org.id && (
+                      <div className="form-error" role="status" aria-live="polite" style={{ marginTop: 8, fontSize: 13 }}>{message.text}</div>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </>
-      )}
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }
