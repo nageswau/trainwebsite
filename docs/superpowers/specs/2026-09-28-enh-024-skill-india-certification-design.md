@@ -91,7 +91,9 @@ CHECK constraints (last line of defence; the API rejects all of these first):
 Existing rows get NULL in all four columns and satisfy every CHECK: no backfill, no data rewritten. Every
 upgrade step is guarded (column / constraint already present → skip), as `0041` does. `downgrade()` drops
 the four CHECKs and four columns only; entries survive as plain certifications (only Skill India details are
-lost). No new index (nothing filters by tag).
+lost). No new index (nothing filters by tag). `ADD CONSTRAINT` validates existing rows under a brief table lock;
+`portfolio_entries` is small and every existing row is all-NULL in the new columns, so no `NOT VALID` /
+`VALIDATE` two-step is warranted.
 
 ## 5. Backend / API
 
@@ -104,7 +106,7 @@ No new endpoint, no URL change. All changes are additive.
   None. A `model_validator(mode="after")` enforces, in plain language (422 list):
   - tag on a non-`certification` section → "Only a certification can be marked as Skill India";
   - tag without status → "Choose a status for the Skill India certification";
-  - status / number / issue date without the tag → "Status, certificate number and issue date apply only to Skill India certifications";
+  - a **non-null** status / number / issue date without the tag → "Status, certificate number and issue date apply only to Skill India certifications" (explicit `null`s on an untagged entry are accepted as no-ops, so a client that always sends the full shape keeps working);
   - `certified` without number or issue date → "A certified Skill India certification needs a certificate number and issue date".
 - `PortfolioEntryUpdate` gains `certification_status`, `certificate_number`, `issued_on` (same field rules). It
   does **not** gain `certification_type`; `extra="forbid"` already makes sending it a 422 (D8).
@@ -117,9 +119,13 @@ No new endpoint, no URL change. All changes are additive.
   `portfolio_payload` unchanged (`test_enh_013_refactor` keeps holding; `build_360` is not edited).
 - **Create:** persists the new fields. Order unchanged: reader scope → write role → tier gate → insert + audit →
   commit.
-- **Update:** the entry is loaded **with `SELECT … FOR UPDATE`** (`populate_existing`) instead of `db.get`,
-  then tier gate (grandfathered on `entry.created_at`), then the `model_fields_set` merge extended to the three
-  fields, then post-merge validation (date range as today, plus: detail field set on an untagged entry → 422;
+- **Update:** the entry is loaded **with `SELECT … FOR UPDATE`** (`populate_existing`) instead of `db.get`.
+  This is the existing `_load_portfolio_entry(db, student_id, entry_id)` gaining a keyword-only `lock=False`
+  flag — not a second loader — so the `entry.school_student_id == student_id` IDOR check stays in exactly one
+  place; only the update route passes `lock=True` (delete keeps today's `db.get`; its `DELETE` waits on a held
+  update lock anyway). Then tier gate (grandfathered on `entry.created_at`), then the `model_fields_set` merge
+  extended to the three fields, then post-merge validation (date range as today, plus: a non-null detail field
+  on an untagged entry → 422;
   explicit `certification_status: null` on a tagged entry → 422; `certified` without number/date → 422) with
   `HTTPException(422, <constant>)`, then audit + commit. The lock serialises concurrent PATCHes so each
   validates against the other's committed result; without it two individually valid PATCHes could combine
@@ -132,7 +138,11 @@ No new endpoint, no URL change. All changes are additive.
 
 **HTTP semantics (unchanged helpers):** 401 unauthenticated; 403 wrong role / unassigned teacher / tier denied;
 404 student outside scope or entry belonging to another student (`_load_portfolio_entry`'s
-`school_student_id` check — the IDOR guard); 422 validation; 201 / 200 / 204 on success.
+`school_student_id` check — the IDOR guard); 422 validation; 201 / 200 / 204 on success. As on every existing
+endpoint, FastAPI validates the body before the handler runs, so a malformed body is a 422 even for a caller
+who would get 403; tests of authorization therefore use valid bodies. A 422 list echoes the offending `input`
+back to the same caller only; no handler or middleware logs request bodies or validation errors (verified:
+`main.py`, `core/middleware.py`, `core/logging.py`).
 
 **Transaction failure:** every write is one transaction (row + audit → commit). Any exception before commit
 leaves nothing written (the request session closes without committing). The CHECKs make an invalid state
