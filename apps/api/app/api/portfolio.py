@@ -37,6 +37,7 @@ from app.schemas import (
     PortfolioEntryOut,
     PortfolioEntryUpdate,
     date_range_is_invalid,
+    skill_india_error,
 )
 
 router = APIRouter(prefix="/school", tags=["school-portfolio"])
@@ -166,8 +167,13 @@ async def create_portfolio_entry(student_id: UUID, payload: PortfolioEntryCreate
     return entry
 
 
-async def _load_portfolio_entry(db: AsyncSession, student_id: UUID, entry_id: UUID) -> PortfolioEntry:
-    entry = await db.get(PortfolioEntry, entry_id)
+async def _load_portfolio_entry(db: AsyncSession, student_id: UUID, entry_id: UUID, *, lock: bool = False) -> PortfolioEntry:
+    if lock:
+        # ENH-024 spec §5: a PATCH validates its merge against the stored row, so two concurrent PATCHes must not both read the
+        # same version -- each would pass alone and together break a CHECK (500). One row; transfers never lock entries.
+        entry = await db.scalar(select(PortfolioEntry).where(PortfolioEntry.id == entry_id).with_for_update().execution_options(populate_existing=True))
+    else:
+        entry = await db.get(PortfolioEntry, entry_id)
     if not entry or entry.school_student_id != student_id:
         raise HTTPException(404, "Portfolio entry not found")
     return entry
@@ -177,9 +183,10 @@ async def _load_portfolio_entry(db: AsyncSession, student_id: UUID, entry_id: UU
 async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: PortfolioEntryUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     student = await _load_student_for_reader(db, user, student_id)
     _require_portfolio_write(user, student)  # role/scope checked before the entry lookup below (spec §6)
-    entry = await _load_portfolio_entry(db, student.id, entry_id)
+    entry = await _load_portfolio_entry(db, student.id, entry_id, lock=True)
     # ENH-023 D8: editing an entry that existed before a downgrade finishes existing work.
     await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation", grandfathered_since=entry.created_at)
+    old_status = entry.certification_status
     # `model_fields_set` distinguishes "field explicitly present in the request payload" (apply it, even
     # when the value is None -- that's the clear-the-field case) from "field omitted" (leave the entry's
     # existing value untouched). A plain `if value is not None` check (the previous logic) could never
@@ -188,7 +195,7 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
     # constraint is guarded at the schema layer -- PortfolioEntryUpdate rejects an explicit null there,
     # before this handler ever runs -- so nothing special-cases it in this merge loop.)
     fields_set = payload.model_fields_set
-    for field in ("title", "description", "organization", "date_from", "date_to"):
+    for field in ("title", "description", "organization", "date_from", "date_to", "certification_status", "certificate_number", "issued_on"):
         if field in fields_set:
             setattr(entry, field, getattr(payload, field))
     # Date-range merge-validation: after merging payload fields onto entry, validate the merged result --
@@ -196,12 +203,19 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
     # same rule (schemas.py's date_range_is_invalid/DATE_RANGE_ERROR) against the post-merge state.
     if date_range_is_invalid(entry.date_from, entry.date_to):
         raise HTTPException(422, DATE_RANGE_ERROR)
+    # ENH-024: the same Skill India rule as a create, on the merged state (the tag itself is never in the payload -- D8).
+    cert_error = skill_india_error(entry.certification_type, entry.certification_status, entry.certificate_number, entry.issued_on)
+    if cert_error:
+        raise HTTPException(422, cert_error)
     entry.updated_by_user_id = user.id
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_update", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json={"section": entry.section, "school_student_id": str(student.id)}))
+    audit = {"section": entry.section, "school_student_id": str(student.id), **_cert_audit(entry)}
+    if entry.certification_status != old_status:
+        audit.update(old_status=old_status, new_status=entry.certification_status)
+    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_update", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json=audit))
     await db.commit()
     await db.refresh(entry)
-    logger.info("portfolio_entry_update", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id)}})
+    logger.info("portfolio_entry_update", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id), **_cert_audit(entry)}})
     return entry
 
 
@@ -212,11 +226,11 @@ async def delete_portfolio_entry(student_id: UUID, entry_id: UUID, user: User = 
     entry = await _load_portfolio_entry(db, student.id, entry_id)
     # ENH-023 D8: removing an entry that existed before a downgrade finishes existing work.
     await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation", grandfathered_since=entry.created_at)
-    section, entry_id_str = entry.section, str(entry.id)
+    section, entry_id_str, cert = entry.section, str(entry.id), _cert_audit(entry)
     await db.delete(entry)
-    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_delete", entity_type="portfolio_entry", entity_id=entry_id_str, metadata_json={"section": section, "school_student_id": str(student.id)}))
+    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_delete", entity_type="portfolio_entry", entity_id=entry_id_str, metadata_json={"section": section, "school_student_id": str(student.id), **cert}))
     await db.commit()
-    logger.info("portfolio_entry_delete", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": entry_id_str}})
+    logger.info("portfolio_entry_delete", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": entry_id_str, **cert}})
 
 
 @router.patch("/students/{student_id}/portfolio/personal-statement", response_model=PersonalStatementOut)

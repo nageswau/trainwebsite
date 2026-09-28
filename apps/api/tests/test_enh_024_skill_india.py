@@ -2,18 +2,23 @@
 docs/superpowers/specs/2026-09-28-enh-024-skill-india-certification-design.md
 """
 
+import asyncio
 import json
 import logging
+import uuid
 from datetime import date
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from pydantic import ValidationError
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.exc import IntegrityError
 
+from app.api import portfolio as portfolio_api
+from app.core.database import SessionLocal
 from app.models import AuditLog, PortfolioEntry
 from app.schemas import (
     CERT_CERTIFIED_ERROR,
@@ -300,3 +305,155 @@ async def test_plain_entry_audit_metadata_is_exactly_as_before(client, db_sessio
     created = (await client.post(ENTRIES.format(sid=ctx["students"][0].id), json={"section": "project", "title": "Robot"})).json()
     row = await db_session.scalar(select(AuditLog).where(AuditLog.action == "school.portfolio_entry_create", AuditLog.entity_id == created["id"]))
     assert set(row.metadata_json) == {"section", "school_student_id"}
+
+
+# --- Update (merge + rules + row lock), delete, transaction failure ------------------------------------------------
+
+
+async def _entry(entry_id) -> PortfolioEntry:
+    async with SessionLocal() as s:
+        return await s.get(PortfolioEntry, UUID(entry_id))
+
+
+def _stored(row: PortfolioEntry) -> tuple:
+    return (row.certification_type, row.certification_status, row.certificate_number, row.issued_on.isoformat() if row.issued_on else None)
+
+
+async def _setup(client, db_session, label, **fields):
+    ctx = await mk_school(db_session, label=label)
+    sid = ctx["students"][0].id
+    await login(client, ctx["coordinator"].email)
+    created = await _create(client, sid, **fields)
+    assert created.status_code == 201, created.text
+    return ctx, sid, created.json()
+
+
+@pytest.mark.asyncio
+async def test_patch_moves_to_certified_and_audits_the_transition(client, db_session):  # AC-03, AC-11
+    ctx, sid, e = await _setup(client, db_session, "E24-Patch")
+    r = await client.patch(ENTRY.format(sid=sid, eid=e["id"]), json={"certification_status": "certified", "issued_on": "2026-06-30"})
+    assert r.status_code == 200, r.text
+    assert _cert_fields(r.json()) == ("skill_india", "certified", "SI-2026-0001", "2026-06-30")
+    row = await db_session.scalar(select(AuditLog).where(AuditLog.action == "school.portfolio_entry_update", AuditLog.entity_id == e["id"]))
+    assert (row.metadata_json["old_status"], row.metadata_json["new_status"]) == ("enrolled", "certified")
+    assert row.metadata_json["certification_type"] == "skill_india"
+    assert "SI-2026-0001" not in json.dumps(row.metadata_json)
+
+
+@pytest.mark.asyncio
+async def test_status_can_move_back_and_title_only_edits_keep_details(client, db_session):  # D5, AC-03
+    ctx, sid, e = await _setup(client, db_session, "E24-Back", certification_status="certified", issued_on="2026-05-01")
+    url = ENTRY.format(sid=sid, eid=e["id"])
+    assert (await client.patch(url, json={"certification_status": "in_progress"})).status_code == 200
+    r = await client.patch(url, json={"title": "Retail Sales Associate (Level 4)"})
+    assert r.status_code == 200
+    assert _cert_fields(r.json()) == ("skill_india", "in_progress", "SI-2026-0001", "2026-05-01")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("start", "patch", "message"),
+    [
+        ({}, {"certification_status": None}, CERT_STATUS_REQUIRED_ERROR),
+        ({"certification_status": "certified", "issued_on": "2026-05-01"}, {"certificate_number": None}, CERT_CERTIFIED_ERROR),
+        ({"certification_status": "certified", "issued_on": "2026-05-01"}, {"issued_on": None}, CERT_CERTIFIED_ERROR),
+        ({"certificate_number": None}, {"certification_status": "certified", "issued_on": "2026-05-01"}, CERT_CERTIFIED_ERROR),
+    ],
+)
+async def test_patch_rules_apply_to_the_merged_entry(client, db_session, start, patch, message):  # AC-03, AC-04
+    ctx, sid, e = await _setup(client, db_session, "E24-Merge", **start)
+    r = await client.patch(ENTRY.format(sid=sid, eid=e["id"]), json=patch)
+    assert (r.status_code, r.json()["detail"]) == (422, message)
+    assert _stored(await _entry(e["id"])) == _cert_fields(e)  # nothing written
+
+
+@pytest.mark.asyncio
+async def test_untagged_entry_refuses_details_but_accepts_nulls(client, db_session):  # D3, Review Focus 2
+    ctx = await mk_school(db_session, label="E24-Untagged")
+    sid = ctx["students"][0].id
+    await login(client, ctx["coordinator"].email)
+    e = (await client.post(ENTRIES.format(sid=sid), json={"section": "certification", "title": "First aid"})).json()
+    url = ENTRY.format(sid=sid, eid=e["id"])
+    r = await client.patch(url, json={"certification_status": "enrolled"})
+    assert (r.status_code, r.json()["detail"]) == (422, CERT_FIELDS_UNTAGGED_ERROR)
+    ok = await client.patch(url, json={"title": "First aid (renewed)", "certification_status": None, "certificate_number": None, "issued_on": None})
+    assert ok.status_code == 200
+    assert _cert_fields(ok.json()) == (None, None, None, None)
+
+
+@pytest.mark.asyncio
+async def test_the_tag_cannot_be_changed_by_patch(client, db_session):  # AC-05
+    ctx, sid, e = await _setup(client, db_session, "E24-Tag")
+    r = await client.patch(ENTRY.format(sid=sid, eid=e["id"]), json={"certification_type": None})
+    assert r.status_code == 422
+    assert (await _entry(e["id"])).certification_type == "skill_india"
+
+
+@pytest.mark.asyncio
+async def test_another_students_entry_is_404(client, db_session):  # AC-06 (IDOR)
+    ctx = await mk_school(db_session, label="E24-IDOR", students=2)
+    mine, other = ctx["students"]
+    await login(client, ctx["coordinator"].email)
+    e = (await _create(client, other.id)).json()
+    r = await client.patch(ENTRY.format(sid=mine.id, eid=e["id"]), json={"certification_status": "in_progress"})
+    assert r.status_code == 404
+    assert (await _entry(e["id"])).certification_status == "enrolled"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("role", ["principal", "parent"])
+async def test_non_writers_cannot_patch_or_delete(client, db_session, role):  # AC-06
+    ctx, sid, e = await _setup(client, db_session, "E24-NoPatch")
+    await login(client, ctx[role].email)
+    assert (await client.patch(ENTRY.format(sid=sid, eid=e["id"]), json={"certification_status": "in_progress"})).status_code == 403
+    assert (await client.delete(ENTRY.format(sid=sid, eid=e["id"]))).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_after_a_downgrade_existing_certificates_stay_editable_but_new_ones_are_refused(client, db_session):  # AC-07, Review Focus 3
+    ctx, sid, e = await _setup(client, db_session, "E24-Downgrade")
+    await login(client, ctx["admin"].email)
+    assert (await client.patch(f"/api/v1/overseas-admin/schools/{ctx['school'].id}", json={"tier": "silver"})).status_code == 200
+    await login(client, ctx["coordinator"].email)
+    assert (await client.patch(ENTRY.format(sid=sid, eid=e["id"]), json={"certification_status": "in_progress"})).status_code == 200
+    assert (await _create(client, sid)).status_code == 403
+    assert (await client.delete(ENTRY.format(sid=sid, eid=e["id"]))).status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_a_concurrent_edit_is_validated_against_its_committed_result(client, db_session):  # AC-08, Review Focus 1
+    ctx, sid, e = await _setup(client, db_session, "E24-Race", issued_on="2026-05-01")
+    other = SessionLocal()
+    try:
+        # Stand-in for a second editor's PATCH: hold the entry's row lock, clear the number, commit.
+        await other.execute(select(PortfolioEntry).where(PortfolioEntry.id == UUID(e["id"])).with_for_update())
+        pending = asyncio.create_task(client.patch(ENTRY.format(sid=sid, eid=e["id"]), json={"certification_status": "certified"}))
+        await asyncio.sleep(0.5)
+        assert not pending.done()  # queued on the row lock
+        await other.execute(update(PortfolioEntry).where(PortfolioEntry.id == UUID(e["id"])).values(certificate_number=None))
+        await other.commit()
+    finally:
+        await other.close()
+    r = await pending
+    assert (r.status_code, r.json()["detail"]) == (422, CERT_CERTIFIED_ERROR)
+    row = await _entry(e["id"])
+    assert (row.certification_status, row.certificate_number) == ("enrolled", None)
+
+
+@pytest.mark.asyncio
+async def test_a_failed_commit_writes_nothing(client, db_session, monkeypatch):  # transaction failure
+    ctx, sid, e = await _setup(client, db_session, "E24-TxFail")
+    real = portfolio_api.AuditLog
+    monkeypatch.setattr(portfolio_api, "AuditLog", lambda **kw: real(**{**kw, "user_id": uuid.uuid4()}))  # FK violation at commit
+    with pytest.raises(IntegrityError):
+        await client.patch(ENTRY.format(sid=sid, eid=e["id"]), json={"certification_status": "in_progress"})
+    assert (await _entry(e["id"])).certification_status == "enrolled"
+
+
+@pytest.mark.asyncio
+async def test_delete_audit_records_the_tag(client, db_session):  # AC-11
+    ctx, sid, e = await _setup(client, db_session, "E24-Delete")
+    assert (await client.delete(ENTRY.format(sid=sid, eid=e["id"]))).status_code == 204
+    row = await db_session.scalar(select(AuditLog).where(AuditLog.action == "school.portfolio_entry_delete", AuditLog.entity_id == e["id"]))
+    assert row.metadata_json["certification_type"] == "skill_india"
+    assert "SI-2026-0001" not in json.dumps(row.metadata_json)
