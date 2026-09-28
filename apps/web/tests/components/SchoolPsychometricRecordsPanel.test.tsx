@@ -79,3 +79,42 @@ describe("SchoolPsychometricRecordsPanel save failures", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Assessment assigned.");
   });
 });
+
+// ENH-027: the results editor opens from each row, one card at a time with the attach card.
+describe("SchoolPsychometricRecordsPanel results editor (ENH-027)", () => {
+  it("labels the button by whether results exist, naming the student and assessment", () => {
+    render(<SchoolPsychometricRecordsPanel records={[RECORDS[0], { ...RECORDS[0], id: "r2", assessment_type: "Interest", strengths: ["Logic"] }]} students={STUDENTS} />);
+    expect(screen.getByRole("button", { name: "Record results for Asha — Aptitude" })).toHaveTextContent("Record results");
+    expect(screen.getByRole("button", { name: "Edit results for Asha — Interest" })).toHaveTextContent("Edit results");
+  });
+
+  it("opens one card at a time with the attach card", () => {
+    render(<SchoolPsychometricRecordsPanel records={RECORDS} students={STUDENTS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Attach report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Record results for Asha — Aptitude" }));
+    expect(screen.queryByRole("heading", { name: "Attach report" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Results — Asha · Aptitude" })).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Attach report" }));
+    expect(screen.queryByRole("heading", { name: "Results — Asha · Aptitude" })).toBeNull();
+  });
+
+  it("returns focus to the row button on Cancel", () => {
+    render(<SchoolPsychometricRecordsPanel records={RECORDS} students={STUDENTS} />);
+    const trigger = screen.getByRole("button", { name: "Record results for Asha — Aptitude" });
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(trigger).toHaveFocus();
+  });
+
+  it("closes the card and announces success under the assign form after a save", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: "r1" }) }));
+    render(<SchoolPsychometricRecordsPanel records={RECORDS} students={STUDENTS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Record results for Asha — Aptitude" }));
+    fireEvent.change(screen.getByLabelText("Strengths"), { target: { value: "Logic" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("Results saved.");
+    expect(card("Assign an assessment")).toContainElement(status);
+    expect(screen.queryByRole("heading", { name: "Results — Asha · Aptitude" })).toBeNull();
+  });
+});
