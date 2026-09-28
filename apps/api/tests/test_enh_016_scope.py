@@ -38,6 +38,15 @@ async def test_school_account_without_a_school_is_refused(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_wrong_role_with_bad_thresholds_gets_403_not_422(client, db_session):  # AC07
+    ctx = await make_school(db_session)
+    await db_session.commit()
+    await login(client, ctx["school_teacher"])
+    response = await client.get("/api/v1/school/analytics/student-development", params={"at_risk_below": 999})
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_one_school_never_sees_another_schools_students(client, db_session):  # AC02
     mine = await make_school(db_session)
     theirs = await make_school(db_session)

@@ -7,16 +7,17 @@ Nothing here writes: no add, flush or commit."""
 
 from collections import defaultdict
 from collections.abc import Collection
+from statistics import mean
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import Select, func, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.api.school_feedback import _require_school_reader
 from app.api.school_skills import _rollup
-from app.api.schools import OFFER_ONWARD_STATUSES, _grade_level_from_label, _own_school_id, _stage_at_or_after
+from app.api.schools import OFFER_ONWARD_STATUSES, _grade_level_from_label, _own_school_id, _percentage, _school_account_counts, _stage_at_or_after
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import (
@@ -36,7 +37,17 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.schemas import GradeMetricRow, GradePerformanceOut, MetricCell
+from app.schemas import (
+    ActivityProgressRow,
+    AverageRow,
+    GradeMetricRow,
+    GradePerformanceOut,
+    Headcounts,
+    MetricCell,
+    PerformerList,
+    PerformerRow,
+    StudentDevelopmentOut,
+)
 
 school_router = APIRouter(prefix="/school", tags=["school-analytics"])
 admin_router = APIRouter(prefix="/overseas-admin", tags=["school-analytics"])
@@ -220,3 +231,85 @@ async def grade_performance(user: User = Depends(_require_school_reader), db: As
         metrics.append(GradeMetricRow(key=key, label=label, is_proxy=definition is not None, definition=definition, cells=cells))
     _log_view(user, "grade_performance", school_id=school_id)
     return GradePerformanceOut(grades=grades, students={g: len(by_grade[g]) for g in grades}, metrics=metrics)
+
+
+# --- Part B §14 student development -----------------------------------------------------------------------------------------
+
+THRESHOLD_ORDER = "at_risk_below must be less than top_from"
+PERFORMER_CAP = 50  # named lists are about minors; the full count is still returned (spec §12)
+DEVELOPMENT_ROWS = [  # D2: pending = total students - completed
+    ("career_guidance", "Career Guidance", lambda i: i["guidance"]),
+    ("psychometric_test", "Psychometric Test", lambda i: i["psych_completed"]),
+    ("foreign_language", "Foreign Language", lambda i: i["language_certified"]),
+    ("english_testing", "English Testing", lambda i: i["ielts"] & i["test_prep_completed"]),
+    ("university_guidance", "University Guidance", lambda i: i["shortlisted"]),
+]
+
+
+def _averages(groups: dict[str, list[float]], order: list[str]) -> list[AverageRow]:
+    return [AverageRow(key=k, label=k, average_pct=round(mean(groups[k]), 1) if groups[k] else None, count=len(groups[k])) for k in order]
+
+
+@school_router.get("/analytics/student-development", response_model=StudentDevelopmentOut)
+async def student_development(
+    user: User = Depends(_require_school_reader),
+    at_risk_below: int = Query(40, ge=0, le=100),
+    top_from: int = Query(85, ge=0, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """Part B §14: headcounts, Completed/Pending per activity, and academic performance from PUBLISHED results only
+    (SCH-006-AC02). At-risk / top-performer thresholds are D4's configurable defaults."""
+    if at_risk_below >= top_from:
+        raise HTTPException(422, THRESHOLD_ORDER)
+    school_id = _own_school_id(user)
+    students = {
+        row.id: row
+        for row in (await db.execute(select(SchoolStudent.id, SchoolStudent.full_name, SchoolStudent.grade_level, SchoolStudent.grade_or_class).where(SchoolStudent.school_id == school_id))).all()
+    }
+    total = len(students)
+    indicators = await student_indicators(db, students_in([school_id]))
+    accounts = await _school_account_counts(db, school_id)
+    results = (
+        await db.execute(
+            select(SchoolAcademicResult.school_student_id, SchoolAcademicResult.academic_year, SchoolAcademicResult.term, SchoolAcademicResult.subject, SchoolAcademicResult.max_marks, SchoolAcademicResult.marks_obtained)
+            .join(SchoolStudent, SchoolStudent.id == SchoolAcademicResult.school_student_id)
+            .where(SchoolStudent.school_id == school_id, SchoolAcademicResult.status == "published")
+        )
+    ).all()
+
+    per_student: dict[UUID, list[float]] = defaultdict(list)
+    per_subject: dict[str, list[float]] = defaultdict(list)
+    per_term: dict[str, list[float]] = defaultdict(list)
+    for sid, year, term, subject, max_marks, obtained in results:
+        pct = _percentage(float(max_marks), float(obtained))
+        if pct is None:
+            continue
+        per_student[sid].append(pct)
+        per_subject[subject].append(pct)
+        per_term[f"{year} · {term}"].append(pct)
+    averages = {sid: round(mean(values), 1) for sid, values in per_student.items()}
+    per_grade: dict[str, list[float]] = defaultdict(list)
+    for sid, average in averages.items():
+        per_grade[grade_key(students[sid].grade_level, students[sid].grade_or_class)].append(average)
+
+    def _performers(chosen: list[UUID]) -> PerformerList:
+        rows = [
+            PerformerRow(school_student_id=sid, full_name=students[sid].full_name, grade=grade_key(students[sid].grade_level, students[sid].grade_or_class), average_pct=averages[sid], result_count=len(per_student[sid]))
+            for sid in chosen
+        ]
+        return PerformerList(items=rows[:PERFORMER_CAP], total=len(rows))
+
+    at_risk = sorted((sid for sid, a in averages.items() if a < at_risk_below), key=lambda sid: (averages[sid], students[sid].full_name, str(sid)))
+    top = sorted((sid for sid, a in averages.items() if a >= top_from), key=lambda sid: (-averages[sid], students[sid].full_name, str(sid)))
+    _log_view(user, "student_development", school_id=school_id)
+    return StudentDevelopmentOut(
+        headcounts=Headcounts(students=total, teachers=accounts["teachers"], parents=accounts["parents"]),
+        activities=[ActivityProgressRow(key=k, label=label, completed=len(rule(indicators)), pending=total - len(rule(indicators))) for k, label, rule in DEVELOPMENT_ROWS],
+        by_grade=_averages(per_grade, _ordered_grades(per_grade)),
+        by_subject=_averages(per_subject, sorted(per_subject)),
+        by_term=_averages(per_term, sorted(per_term)),
+        at_risk=_performers(at_risk),
+        top_performers=_performers(top),
+        at_risk_below=at_risk_below,
+        top_from=top_from,
+    )

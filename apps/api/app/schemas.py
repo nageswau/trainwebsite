@@ -1503,3 +1503,48 @@ class GradePerformanceOut(BaseModel):
     grades: list[str]
     students: dict[str, int]
     metrics: list[GradeMetricRow]
+
+
+class Headcounts(BaseModel):
+    students: int
+    teachers: int
+    parents: int
+
+
+class ActivityProgressRow(BaseModel):
+    key: str
+    label: str
+    completed: int
+    pending: int  # D2: total students - completed
+
+
+class AverageRow(BaseModel):
+    key: str
+    label: str
+    average_pct: float | None
+    count: int
+
+
+class PerformerRow(BaseModel):
+    school_student_id: UUID
+    full_name: str
+    grade: str
+    average_pct: float
+    result_count: int
+
+
+class PerformerList(BaseModel):
+    items: list[PerformerRow]  # capped; `total` is the full count
+    total: int
+
+
+class StudentDevelopmentOut(BaseModel):
+    headcounts: Headcounts
+    activities: list[ActivityProgressRow]
+    by_grade: list[AverageRow]
+    by_subject: list[AverageRow]
+    by_term: list[AverageRow]
+    at_risk: PerformerList
+    top_performers: PerformerList
+    at_risk_below: int
+    top_from: int

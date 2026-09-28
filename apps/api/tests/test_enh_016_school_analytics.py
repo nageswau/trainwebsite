@@ -3,7 +3,11 @@
 import pytest
 from enh016_helpers import login, make_school, make_student, make_university
 
-from app.models import OverseasApplication, SchoolCareerRecord, SchoolPsychometricRecord
+from app.models import OverseasApplication, SchoolAcademicResult, SchoolCareerRecord, SchoolLanguageRecord, SchoolPsychometricRecord, SchoolTestPrepRecord
+
+
+def _result(student, uploader, *, subject, marks, status="published", term="Term 1", year="2026-27"):
+    return SchoolAcademicResult(school_student_id=student.id, academic_year=year, term=term, subject=subject, max_marks=100, marks_obtained=marks, status=status, uploaded_by_user_id=uploader)
 
 
 @pytest.mark.asyncio
@@ -52,3 +56,55 @@ async def test_grade_performance_for_an_empty_school_is_empty_not_an_error(clien
     assert response.status_code == 200
     assert response.json()["grades"] == [] and response.json()["students"] == {}
     assert all(row["cells"] == {} for row in response.json()["metrics"])
+
+
+@pytest.mark.asyncio
+async def test_student_development_pending_is_total_minus_completed_and_published_only(client, db_session):  # AC06, AC08
+    ctx = await make_school(db_session)
+    acad = ctx["academic_team"].id
+    weak = await make_student(db_session, ctx, name="Asha Weak", grade_level=9)
+    strong = await make_student(db_session, ctx, name="Ben Strong", grade_level=9)
+    middle = await make_student(db_session, ctx, name="Cara Middle", grade_level=10)
+    db_session.add_all([
+        _result(weak, acad, subject="Maths", marks=30), _result(weak, acad, subject="Science", marks=35),
+        _result(strong, acad, subject="Maths", marks=95), _result(strong, acad, subject="Maths", marks=20, status="draft"),  # draft never counts
+        _result(middle, acad, subject="Maths", marks=60, term="Term 2"),
+        _result(middle, acad, subject="Maths", marks=10, status="withdrawn"),  # withdrawn never counts
+        SchoolLanguageRecord(school_student_id=middle.id, academic_team_user_id=acad, language="German", certification_status="certified"),
+        SchoolTestPrepRecord(school_student_id=strong.id, academic_team_user_id=acad, test_type="ielts", status="completed"),
+    ])
+    await db_session.commit()
+    await login(client, ctx["school_coordinator"])
+
+    response = await client.get("/api/v1/school/analytics/student-development")
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["headcounts"] == {"students": 3, "teachers": 1, "parents": 1}
+    rows = {r["key"]: r for r in body["activities"]}
+    assert list(rows) == ["career_guidance", "psychometric_test", "foreign_language", "english_testing", "university_guidance"]
+    assert rows["foreign_language"] == {"key": "foreign_language", "label": "Foreign Language", "completed": 1, "pending": 2}
+    assert rows["english_testing"]["completed"] == 1 and rows["english_testing"]["pending"] == 2
+    assert all(r["completed"] + r["pending"] == 3 for r in body["activities"])
+    assert [p["full_name"] for p in body["at_risk"]["items"]] == ["Asha Weak"]
+    assert body["at_risk"]["items"][0]["average_pct"] == 32.5 and body["at_risk"]["items"][0]["grade"] == "9"
+    assert [p["full_name"] for p in body["top_performers"]["items"]] == ["Ben Strong"]
+    assert body["top_performers"]["items"][0]["average_pct"] == 95.0 and body["top_performers"]["items"][0]["result_count"] == 1
+    subjects = {r["key"]: r for r in body["by_subject"]}
+    assert subjects["Maths"]["count"] == 3 and subjects["Maths"]["average_pct"] == round((30 + 95 + 60) / 3, 1)
+    assert [r["key"] for r in body["by_term"]] == ["2026-27 · Term 1", "2026-27 · Term 2"]
+    assert {r["key"]: r["average_pct"] for r in body["by_grade"]} == {"9": 63.8, "10": 60.0}
+
+
+@pytest.mark.asyncio
+async def test_thresholds_are_configurable_and_validated(client, db_session):  # AC07, Review Focus 1
+    ctx = await make_school(db_session)
+    await db_session.commit()
+    await login(client, ctx["school_principal"])
+    ok = await client.get("/api/v1/school/analytics/student-development", params={"at_risk_below": 50, "top_from": 90})
+    assert ok.status_code == 200 and ok.json()["at_risk_below"] == 50 and ok.json()["top_from"] == 90
+    assert ok.json()["at_risk"] == {"items": [], "total": 0} and ok.json()["headcounts"]["students"] == 0
+    assert (await client.get("/api/v1/school/analytics/student-development", params={"at_risk_below": 101})).status_code == 422
+    assert (await client.get("/api/v1/school/analytics/student-development", params={"top_from": "abc"})).status_code == 422
+    same = await client.get("/api/v1/school/analytics/student-development", params={"at_risk_below": 60, "top_from": 60})
+    assert same.status_code == 422 and same.json()["detail"] == "at_risk_below must be less than top_from"
