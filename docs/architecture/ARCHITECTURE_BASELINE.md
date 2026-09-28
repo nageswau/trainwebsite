@@ -1,14 +1,14 @@
-# EduSphere — As-Built Architecture Baseline (2026-09-28)
+# EduSphere — As-Built Architecture Baseline (2026-09-28, updated for ENH-016/ENH-024)
 
-Status: **DESCRIPTIVE, not a decision.** Snapshot of the code as it stands at `main@2a117b6`, for enhancement sessions to
+Status: **DESCRIPTIVE, not a decision.** Snapshot of the code as it stands at `main@bedbcce` (ENH-016 analytics and ENH-024 Skill India merged), for enhancement sessions to
 reference before they change anything. The intended architecture is in `ARCHITECTURE.md`, and the decisions are in
 `docs/decisions/`. Where this file and those differ, this file records what the code does and makes no ruling on which is right.
 
-Method: the existing graphify graph was queried first (`graphify-out/graph.json`, 8,580 nodes / 22,850 edges, built after
-the last commit). The findings were then checked against the source files cited below. God nodes: `User`, `hash_password`,
+Method: the existing graphify graph was queried first (`graphify-out/graph.json`, 12,488 nodes / 29,935 edges, refreshed with
+`graphify update` on `main@bedbcce`). The findings were then checked against the source files cited below. God nodes: `User`, `hash_password`,
 `AuditLog`, `login`, `SchoolStudent`, `serverApi`, `UserRoleAssignment`, `Batch`, `School`, `Base`. The graph found no
 import cycles. Re-verified on 2026-09-28 by script against the source (route, model and schema counts, config defaults,
-cookie flags, middleware matcher, Celery tasks, test counts); four stale counts were corrected.
+cookie flags, middleware matcher, Celery tasks, test counts), first at `2a117b6` and again at `bedbcce`.
 
 ---
 
@@ -25,13 +25,13 @@ Browser ──► Next.js 15 (apps/web, standalone)  ──server fetch──►
 - **Modular monolith in intent, flat monolith in practice.** The domain packages `app/{identity,admissions,courses,…}`
   exist but are empty placeholders. `app/agents` and `app/overseas` are frozen by decision (DEC-001 and DEC-002; see their
   `__init__.py`). All the real code lives in `app/api`, `app/services`, `app/core`, `app/models.py` and `app/schemas.py`.
-- Backend size: about 18k LOC. The largest files are `api/schools.py` (2.6k), `api/workflows.py` (2.5k),
-  `schemas.py` (1.6k), `api/admin.py` (1.5k), `services/portal.py` (1.5k) and `models.py` (1.5k, 93 classes).
+- Backend size: about 19k LOC. The largest files are `api/schools.py` (2.6k), `api/workflows.py` (2.5k),
+  `schemas.py` (1.8k), `api/admin.py` (1.5k), `services/portal.py` (1.5k) and `models.py` (1.5k, 93 classes).
 
 ## 2. FastAPI structure — `apps/api/app`
 | Path | Role |
 |---|---|
-| `main.py` | App factory, lifespan, `RequestIdMiddleware`, CORS (single `frontend_url`, credentials on). Mounts 23 routers under `/api/v1` and `/local-files` static files, plus `/health` and `/health/ready` (checks DB and Redis). |
+| `main.py` | App factory, lifespan, `RequestIdMiddleware`, CORS (single `frontend_url`, credentials on). Mounts 25 routers under `/api/v1` and `/local-files` static files, plus `/health` and `/health/ready` (checks DB and Redis). |
 | `core/config.py` | `pydantic-settings` `Settings` (from `.env`). Every integration is optional; if it is unset, callers report "not_configured". |
 | `core/database.py` | Async engine and `SessionLocal`. `get_db()` yields one session per request. It does **not** auto-commit: each handler commits itself. |
 | `core/security.py` | bcrypt hashing and HS256 JWT (`sub`, `role`, `division`, `type`). |
@@ -44,12 +44,14 @@ Browser ──► Next.js 15 (apps/web, standalone)  ──server fetch──►
 | `seed.py`, `bootstrap_admin.py` | Demo seed data and first-admin bootstrap. |
 
 ## 3. Routers and API boundaries
-- 305 route decorators across 20 modules. Prefix groups: `/auth`, public (`public.py`, no auth), `/portal/{division}/{role}/{section}`
+- 311 route decorators across 21 modules. Prefix groups: `/auth`, public (`public.py`, no auth), `/portal/{division}/{role}/{section}`
   (a generic read payload built by `services/portal.py`), `/admin` (+ `agents_router`), `/files`, `workflows` (IT and Overseas
   write actions), `/payments`, `/cms`, `/communications`, `/inbound` (webhooks), `/account`, `/employer`, `/school`
   (+ `school_transfers` coordinator/admin, `school_feedback` coordinator/admin, `school_skills`, `school_student_profile`,
-  `student_360`), and `portfolio` (+ `portfolio_certificates`).
-- Some modules export two routers so that coordinator and admin surfaces are separated (`school_transfers`, `school_feedback`).
+  `student_360`), `portfolio` (+ `portfolio_certificates`), and `school_analytics` (ENH-016: `school_router` under `/school/analytics/*`
+  and `/school/students/{id}/scorecard`, plus `admin_router` under `/overseas-admin/analytics/*`).
+- Some modules export two routers so that coordinator and admin surfaces are separated (`school_transfers`, `school_feedback`,
+  `school_analytics`).
 - The contract of record is `docs/architecture/API_CONTRACT.md`.
 
 ## 4. Business logic placement
@@ -62,6 +64,11 @@ Browser ──► Next.js 15 (apps/web, standalone)  ──server fetch──►
   (reportlab PDFs) and `image_metadata.py`.
 - Cross-module imports between routers exist. `require_school_entitlement`, `TIER_SERVICES` and the scope helpers are
   defined in `api/schools.py` and imported by the other school routers.
+- **First reusable computation layer:** `api/school_analytics.py` (ENH-016) holds batched, fixed-query-count functions
+  (`students_in`, `student_indicators`, `portfolio_started_ids`, `skill_statuses`, `build_scorecards`, `utilization`,
+  `cross_school_rows`) that take already scope-checked ids. It still lives in `api/`, not `services/`.
+- ⚠ **Import cycle:** `school_analytics` imports `schools`, and `schools` imports `school_analytics` back through
+  function-local imports (`schools.py:454`, `:1131`, marked `noqa: PLC0415`). Keep new shared helpers out of this loop.
 
 ## 5. Data access
 - **There are no repository classes.** Handlers issue SQLAlchemy 2.0 `select()` directly against `AsyncSession`.
@@ -79,19 +86,21 @@ Browser ──► Next.js 15 (apps/web, standalone)  ──server fetch──►
   - overseas and agent: `Country`, `University`, `OverseasApplication`, `VisaCase`, `Scholarship`, `AgentStudent`, `AgentCommission`
   - finance: `Payment`, `Invoice`, `Receipt`, `EMISchedule`, `PaymentWebhookEvent`
   - CMS and comms: `Enquiry`, `ContentPage`, `BlogPost`, `Notification`, `NotificationDelivery`, `Message`, `SupportTicket`
-  - School (about 28 classes): `School` (tier, `tier_valid_until`), `AcademicYear`, `SchoolStudent`, `SchoolParentLink`,
+  - School (about 28 classes; `PortfolioEntry` gained the ENH-024 Skill India columns and four `ck_portfolio_cert_*` CHECKs): `School` (tier, `tier_valid_until`), `AcademicYear`, `SchoolStudent`, `SchoolParentLink`,
     grade history, transfers, `SchoolStaffAssignment` (portfolio), and career, psychometric, test-prep, language, skills,
     academic results and activity/feedback records, plus roster upload batches.
 - `User` has **legacy single-value** `role` and `division` columns and a `profile` JSON column (which carries `school_id`),
   in addition to the multi-row `UserRoleAssignment` table.
 - Both `DATA_MODEL.md` and `models.py` exist. Check both before adding columns.
 
-## 7. Pydantic schemas — `app/schemas.py` (single file, 130 classes)
+## 7. Pydantic schemas — `app/schemas.py` (single file, 149 classes)
 - These are Pydantic v2 models with `field_validator`s, e.g. student master fields and `StudentPromotionRequest`.
 - **Usage is mixed.** About 64 handlers take typed models, and about 73 still take `payload: dict` and validate by hand
-  (e.g. `_master_fields_or_422`). Most responses are hand-built dicts via `_x_out()` helpers. `response_model` is used mainly in `auth.py`.
-- Pagination: there is a list envelope `{items,total,limit,offset}` (frontend `Page<T>`), but only about 11 endpoints take
-  `limit`/`offset`. Most list endpoints return plain arrays.
+  (e.g. `_master_fields_or_422`). Most older responses are hand-built dicts via `_x_out()` helpers. `response_model` (52 uses) is the norm in the newer
+  routers (`school_transfers`, `school_skills`, `public`, `school_analytics`, `auth`, `school_feedback`); follow that in new code.
+- Pagination: there is a list envelope `{items,total,limit,offset}` (frontend `Page<T>`), but only 7 endpoints take
+  `limit`/`offset` (`school_transfers` ×2, `school_feedback` ×2, `school_skills`, `school_analytics` ×2), all as
+  `Query(25, ge=1, le=100)`; copy that signature. Most list endpoints return plain arrays.
 
 ## 8. PostgreSQL
 - PostgreSQL 16 through asyncpg. JSON columns are serialized with a custom UUID/date-aware serializer. Named unique
@@ -100,7 +109,7 @@ Browser ──► Next.js 15 (apps/web, standalone)  ──server fetch──►
   (`TIER_TIMEZONE`).
 
 ## 9. Migrations — `apps/api/alembic`
-- 43 sequential, numbered revisions (`0001_initial` … `0043_portfolio_internship`). `env.py` is async and uses
+- 44 sequential, numbered revisions (`0001_initial` … `0044_skill_india_certification`). `env.py` is async and uses
   `target_metadata=Base.metadata` with `compare_type=True`.
 - They run `alembic upgrade head` at container start (compose `api.command` / `entrypoint.sh` with `RUN_MIGRATIONS`).
 - ⚠ `Settings.auto_create_schema` defaults to **True** (the lifespan runs `create_all`). Tests switch it off. A new model
@@ -137,7 +146,7 @@ Browser ──► Next.js 15 (apps/web, standalone)  ──server fetch──►
 - Portals: `/it/{student,trainer,placement,hr,admin}/…` and `/overseas/{student,counselor,university,agent,admin}/…`
   (generic `PortalPage` driven by `PORTAL_NAV`), `/admin/…`, `/account`, and
   `/school/{coordinator,principal,teacher,parent,academic-team,career-counselor,psychometric-team,invite}/…`.
-  There are 112 `page.tsx` files.
+  There are 114 `page.tsx` files, plus `/overseas/admin/school-analytics` (ENH-016, with a `loading.tsx`).
 - `middleware.ts` only checks that the cookie **exists**, only on `/it`, `/overseas` and `/admin`, and redirects to the
   division login. **`/school/*` and `/account` are not covered.** Those pages rely on `serverApi` throwing `ApiError(401/403)`
   → `accessUnavailable(e)`. In every case the real authorization is on the backend.
@@ -147,13 +156,15 @@ Browser ──► Next.js 15 (apps/web, standalone)  ──server fetch──►
 ## 13. Server and client components
 - **Pages are async server components.** They `Promise.all` their `serverApi()` calls (always `/auth/me` first), catch into
   `accessUnavailable()`, and render `PortalShell` with a nav from `lib/navigation.ts` and a panel.
-- **Panels are client components** (`"use client"`, 107 of 135 `.tsx` components). They receive initial data as props and
+- **Panels are client components** (`"use client"`, 108 of 145 `.tsx` components). They receive initial data as props and
   mutate through `fetch('/api/v1/…')` via the proxy, then `router.refresh()` or update local state.
 
 ## 14. Shared frontend components (reuse these)
 - Shells and layout: `PortalShell`, `PublicShell`, `PortalSection`, `PageHero`, `SiteHeader`/`DesktopNav`/`MobileNavToggle`, `Footer`.
 - State and feedback: `AccessUnavailable`/`accessUnavailable()`, `LoadFailureAlert`, `FormMessage`, `UnsentFeedbackNote`, `LocalTime`.
 - Data: `DataTable`, `CollectionExplorer`, `ReportPreview`, `SchoolReportCharts`.
+- Analytics (ENH-016): `SchoolKpiBoard`, `SchoolGradePerformance`, `SchoolStudentDevelopment`, `SchoolScorecardGrid`,
+  `StudentScorecard`, `CrossSchoolAnalytics`, `SchoolAnalyticsSections`, `SectionUnavailable` (a per-section failure notice), `ScrollToHash`.
 - Generic workflows: `WorkflowPanel` (the `ActionSpec`-driven action forms for the IT and Overseas portals).
 - School building blocks: `SchoolStudentFields`, `Student360*`, `TierDowngradeConfirm`, `useSkillAction`.
 
@@ -164,7 +175,8 @@ Browser ──► Next.js 15 (apps/web, standalone)  ──server fetch──►
   `{ok,…}`), `isPage()`/`Page<T>`, `isRequestBody()`, `NOT_COMPLETED`. Older panels still carry copy-pasted versions of
   `detailMessage`.
 - Domain helpers: `schoolStudents.ts`, `transfers.ts`, `skills.ts`, `student360*.ts`, `careerRecords.ts`, `portfolio.ts`,
-  `internship.ts`, `activityFeedback.ts`, `formatDate.ts`, `focus.ts`, `i18n.ts`, `site.ts` (untracked), `types.ts`.
+  `internship.ts`, `activityFeedback.ts`, `schoolAnalytics.ts`, `student360Links.ts`, `plural.ts`, `formatDate.ts`, `focus.ts`,
+  `i18n.ts`, `site.ts` (untracked), `types.ts`.
 
 ## 16. Forms and validation
 - The forms are plain controlled React forms, with **no form or schema library** (no zod or react-hook-form). Client
@@ -218,10 +230,10 @@ Browser ──► Next.js 15 (apps/web, standalone)  ──server fetch──►
   the same transaction, metadata carries IDs and reason tokens only (no PII), and it includes `request_id`.
 
 ## 23. Tests
-- **API:** 147 `tests/test_*.py` files (named by feature ID, e.g. `test_enh_023_tier_change.py`) with `enhNNN_helpers.py`
-  builders. They use pytest and pytest-asyncio (strict), `httpx.ASGITransport` against the real app, and a **real
+- **API:** 156 `tests/test_*.py` files (named by feature ID, e.g. `test_enh_023_tier_change.py`) with `enhNNN_helpers.py`
+  builders. ENH-016 adds fixed query-count assertions and a check that analytics logs carry ids only. They use pytest and pytest-asyncio (strict), `httpx.ASGITransport` against the real app, and a **real
   PostgreSQL** (dev DB; see RAID I-06/I-07/I-41 on test debris). The engine is disposed before each test.
-- **Web:** 86 Vitest and Testing Library unit tests (`tests/components`, `tests/lib`) and 98 Playwright E2E specs (`tests/e2e`).
+- **Web:** 94 Vitest and Testing Library unit tests (`tests/components`, `tests/lib`) and 100 Playwright E2E specs (`tests/e2e`).
 - **CI:** `.github/workflows/ci.yml` runs `scripts/ci-local.ps1` (the local-equivalent gate: ruff, mypy, pytest, tsc, eslint,
   vitest, Playwright, via `docker-compose.ci.yml`) and uploads compact reports.
 - Traceability goes from test to Feature ID to AC through `docs/quality` (RTM).
@@ -252,7 +264,8 @@ Browser ──► Next.js 15 (apps/web, standalone)  ──server fetch──►
 - The GDPR export and deletion paths (`DataSubjectRequest`) and the audit export.
 
 ## 27. Performance-sensitive areas
-- `schools._school_dashboard_payload` and `school_reports` (multi-aggregate), `services/portal.py` (role dashboards),
+- `schools._school_dashboard_payload` and `school_reports` (multi-aggregate; the dashboard now also calls into `school_analytics`),
+  the `school_analytics` endpoints (tested for a fixed query count; keep new metrics batched), `services/portal.py` (role dashboards),
   `student_360.py` and the timeline assembly, and `admin.py` directory and audit listings.
 - Most list endpoints are **unpaginated** and return full arrays.
 - Bulk roster CSV upload (row-by-row validation), promotion (locks N students), and transfer approval (locks student,
@@ -286,7 +299,9 @@ Browser ──► Next.js 15 (apps/web, standalone)  ──server fetch──►
 |---|---|
 | current user / role gate | `deps.get_current_user`, `require_role/division/permission`; school: `_own_school_id`, `_require_coordinator(_user)` |
 | student scoping | `schools._scoped_students_query`, `_load_readable_student`, `_student_in_portfolio`, `_portfolio_school_ids` |
-| tier gate | `schools.require_school_entitlement` (+ `TIER_SERVICES`, `_cumulative_services`) |
+| tier gate | `schools.require_school_entitlement` (+ `TIER_SERVICES`, `_cumulative_services`, `_entitlement_denial` for a non-raising check) |
+| school read gate | `school_feedback._require_school_reader` (coordinator or principal, own school) |
+| student metrics | `school_analytics.students_in`, `student_indicators`, `build_scorecards`, `service_usage` (batched, scope-checked ids in) |
 | audit | the `AuditLog` pattern from `school_transfers._audit` (IDs only, `request_id`, same transaction) |
 | conflict mapping | `schools._flush_or_409`, `_is_roll_conflict` |
 | notifications | `schools._notify_parent/_notify_student_parents/_notify_school_parents`, `services.mailer`, `services.integrations.send_notification` |
@@ -308,3 +323,4 @@ These are observations only. Each needs `NEEDS_CONFIRMATION` or a Decision ID; d
 6. The Celery `beat` service has no schedule, and side effects run inline.
 7. `middleware.ts` does not cover `/school` or `/account`.
 8. No global error envelope, and no generated API types.
+9. `schools` ↔ `school_analytics` import cycle, held together by function-local imports.
