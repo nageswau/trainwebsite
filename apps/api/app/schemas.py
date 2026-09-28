@@ -977,6 +977,9 @@ def _clean_certificate_number(value: str | None) -> str | None:
     return _no_control_characters(value) if value else None
 
 
+CertificateNumber = Annotated[str | None, Field(max_length=100), AfterValidator(_clean_certificate_number)]  # create and update: one rule
+
+
 class PortfolioEntryCreate(BaseModel):
     model_config = {"str_strip_whitespace": True, "extra": "forbid"}
     section: str
@@ -987,7 +990,7 @@ class PortfolioEntryCreate(BaseModel):
     date_to: date | None = None
     certification_type: CertificationType | None = None
     certification_status: CertificationStatus | None = None
-    certificate_number: str | None = Field(default=None, max_length=100)
+    certificate_number: CertificateNumber = None
     issued_on: date | None = None
 
     @field_validator("section")
@@ -1016,11 +1019,6 @@ class PortfolioEntryCreate(BaseModel):
             raise ValueError(DATE_RANGE_ERROR)
         return self
 
-    @field_validator("certificate_number")
-    @classmethod
-    def _clean_certificate_number(cls, value: str | None) -> str | None:
-        return _clean_certificate_number(value)
-
     @model_validator(mode="after")
     def _skill_india_rules(self):
         # ENH-024: the tag lives only on a certification entry; the rest of the rule is shared with the PATCH merge check.
@@ -1042,18 +1040,13 @@ class PortfolioEntryUpdate(BaseModel):
     # ENH-024: no `certification_type` -- the tag is set at creation only (D8), so sending it is an `extra="forbid"` 422.
     # Cross-field rules need the stored entry, so portfolio.py checks them after the merge.
     certification_status: CertificationStatus | None = None
-    certificate_number: str | None = Field(default=None, max_length=100)
+    certificate_number: CertificateNumber = None
     issued_on: date | None = None
 
     @field_validator("title", "organization")
     @classmethod
     def _clean_text(cls, value: str | None) -> str | None:
         return _no_control_characters(value)
-
-    @field_validator("certificate_number")
-    @classmethod
-    def _clean_certificate_number(cls, value: str | None) -> str | None:
-        return _clean_certificate_number(value)
 
     @field_validator("description")
     @classmethod
