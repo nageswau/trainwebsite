@@ -66,6 +66,8 @@ async def invite(payload: AgentMasterInvite, user: User = Depends(get_current_us
     out = _member_out(member, invited, {invited.id}, user)
     await db.commit()
     delivery = await deliver_welcome_link(user=invited, issued=issued, issued_by=user)
+    # Only an admin may see the dev/test raw link token; a Master must never be able to set the invitee's password.
+    delivery.pop("development_welcome_token", None)
     return {"member": out, **delivery}
 
 

@@ -430,7 +430,9 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
     await _flush_unique_email(db)
     if role == "agent":
         # AGN-001 (D11): an admin-created agent gets its own pending organisation as Master M001.
-        await ensure_agent_org(db, item, agency_name=(item.profile or {}).get("agency_name"), status="pending")
+        # `payload` is an untyped dict: only a string agency name is used; anything else falls back to the full name.
+        agency_name = item.profile.get("agency_name") if isinstance(item.profile, dict) else None
+        await ensure_agent_org(db, item, agency_name=agency_name if isinstance(agency_name, str) else None, status="pending")
     issued = await issue_welcome_token(db, user=item, issued_by=user)
     db.add(AuditLog(user_id=user.id, action="user.create", entity_type="user", entity_id=str(item.id), metadata_json={"role": role, "division": division}))
     await db.commit()
@@ -1015,12 +1017,14 @@ async def _pending_agent_assignment(agent_id: UUID, user: User, db: AsyncSession
 @agents_router.post("/agents/{agent_id}/approve")
 async def approve_agent(agent_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     agent, assignment = await _pending_agent_assignment(agent_id, user, db)
+    # AGN-001 (E4): same any-state behaviour and audit row as before; the agent's organisation follows. The org row is
+    # locked BEFORE the assignment is touched -- the same order as `transition_org` -- so the two paths cannot deadlock.
+    member = await ensure_agent_org(db, agent)
+    org = await lock_org(db, member.org_id)
     assignment.approval_status = "approved"
     assignment.approved_by_user_id = user.id
     assignment.approved_at = datetime.now(UTC)
-    # AGN-001 (E4): same any-state behaviour and audit row as before; the agent's organisation follows.
-    member = await ensure_agent_org(db, agent)
-    await set_org_status(db, await lock_org(db, member.org_id), "active", user, write_through=True)
+    await set_org_status(db, org, "active", user, write_through=True)
     # SEC-001: every Agent-approval action writes an audit record -- fail closed, not
     # open, if this write itself somehow failed (it shares the same transaction as the
     # approval below, so a rollback here rolls back the approval too, never the reverse).
@@ -1032,11 +1036,12 @@ async def approve_agent(agent_id: UUID, user: User = Depends(get_current_user), 
 @agents_router.post("/agents/{agent_id}/reject")
 async def reject_agent(agent_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     agent, assignment = await _pending_agent_assignment(agent_id, user, db)
+    member = await ensure_agent_org(db, agent)  # AGN-001 (E4); org locked before the assignment, as in approve_agent
+    org = await lock_org(db, member.org_id)
     assignment.approval_status = "rejected"
     assignment.approved_by_user_id = user.id
     assignment.approved_at = datetime.now(UTC)
-    member = await ensure_agent_org(db, agent)  # AGN-001 (E4)
-    await set_org_status(db, await lock_org(db, member.org_id), "rejected", user, write_through=True)
+    await set_org_status(db, org, "rejected", user, write_through=True)
     db.add(AuditLog(user_id=user.id, action="agent.reject", entity_type="user_role_assignment", entity_id=str(assignment.id), outcome="rejected"))
     await db.commit()
     return {"id": assignment.id, "approval_status": assignment.approval_status}

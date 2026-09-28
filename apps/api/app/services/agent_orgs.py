@@ -83,10 +83,14 @@ async def ensure_agent_org(db: AsyncSession, user: User, *, agency_name: str | N
                 await db.flush()
             return member
         except IntegrityError as exc:
-            if "uq_agent_org_members_user" in str(exc.orig):
+            detail = str(exc.orig)
+            if "uq_agent_org_members_user" in detail:
                 winner = await db.scalar(select(AgentOrgMember).where(AgentOrgMember.user_id == user.id))
                 if winner:
                     return winner
+                raise
+            if "uq_agent_orgs_prefix" not in detail:
+                raise  # anything but a prefix clash is a real error, never a silent retry (final review #3)
     raise HTTPException(409, "Please try again")
 
 

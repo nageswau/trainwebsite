@@ -1,9 +1,13 @@
+import asyncio
 import uuid
 
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
-from app.models import AuditLog, UserRoleAssignment
+from app.core.database import SessionLocal
+from app.models import AgentOrg, AuditLog, User, UserRoleAssignment
+from app.services.agent_orgs import ensure_agent_org
 from tests.agn001_helpers import login, mk_active_org, mk_user, org_of, register_agent
 
 ORG_ACTION = "/api/v1/overseas-admin/agent-orgs/{oid}/{action}"
@@ -123,6 +127,49 @@ async def test_old_routes_keep_their_audit_and_set_the_org(client, db_session, a
     assert response.status_code == 200 and response.json()["approval_status"] == ("approved" if action == "approve" else "rejected")
     assert (await org_of(db_session, body["user"]["id"])).status == end
     assert await db_session.scalar(select(AuditLog).where(AuditLog.action == audit, AuditLog.entity_type == "user_role_assignment").order_by(AuditLog.created_at.desc())) is not None
+
+
+@pytest.mark.asyncio
+async def test_the_old_approve_route_takes_the_org_lock_before_the_assignment_lock(client, db_session):  # final review #2
+    # The new routes lock the organisation, then update the Masters' assignments. The old route must take the locks in
+    # the same order, or the two deadlock (a 500). Hold the org lock elsewhere; while the old route waits for it, its
+    # assignment row must still be free.
+    body = await register_agent(client, agency_name="Lock Order")
+    org = await org_of(db_session, body["user"]["id"])
+    await _admin(client, db_session)
+    holder = SessionLocal()
+    try:
+        await holder.execute(select(AgentOrg).where(AgentOrg.id == org.id).with_for_update())
+        request = asyncio.create_task(client.post(f"/api/v1/overseas-admin/agents/{body['user']['id']}/approve"))
+        await asyncio.sleep(0.5)  # let the request reach the org lock and block there
+        async with SessionLocal() as probe:
+            row = await probe.scalar(
+                select(UserRoleAssignment).where(UserRoleAssignment.user_id == uuid.UUID(body["user"]["id"])).with_for_update(nowait=True)
+            )
+            assert row is not None  # NOWAIT succeeded: the waiting request does not hold the assignment lock
+            await probe.rollback()
+    finally:
+        await holder.rollback()
+        await holder.close()
+    assert (await request).status_code == 200
+    assert (await org_of(db_session, body["user"]["id"])).status == "active"
+
+
+@pytest.mark.asyncio
+async def test_admin_create_tolerates_a_malformed_profile(client, db_session):  # final review #4
+    await _admin(client, db_session)
+    for profile in ({"agency_name": 123}, {"agency_name": None}, "not-a-dict"):
+        response = await client.post("/api/v1/admin/users", json={"role": "agent", "division": "overseas", "email": f"agn-bad-profile-{uuid.uuid4().hex[:8]}@example.local", "full_name": "Profile Person", "profile": profile})
+        assert response.status_code == 201, (profile, response.text)
+        assert (await org_of(db_session, response.json()["id"])).name == "Profile Person"
+
+
+@pytest.mark.asyncio
+async def test_ensure_agent_org_surfaces_unrelated_integrity_errors(db_session):  # final review #3
+    ghost = User(id=uuid.uuid4(), email="ghost@example.local", password_hash="x", full_name="Ghost Agent", role="agent", division="overseas")
+    with pytest.raises(IntegrityError):  # FK: the user row does not exist -- not a prefix clash, so no silent retry/409
+        await ensure_agent_org(db_session, ghost, status="pending")
+    await db_session.rollback()
 
 
 @pytest.mark.asyncio

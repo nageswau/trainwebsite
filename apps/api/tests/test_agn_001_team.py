@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app.core.security import hash_password
 from app.models import AuditLog, PasswordResetToken, User
+from app.services import provisioning
 from tests.agn001_helpers import PASSWORD, client_for, login, membership, mk_active_org, mk_user, org_of, uniq
 
 TEAM = "/api/v1/workflows/overseas/agent/team"
@@ -37,12 +38,22 @@ async def test_invite_creates_m002_with_a_welcome_link_and_an_audit_row(client, 
 
 
 @pytest.mark.asyncio
-async def test_the_invited_master_sets_a_password_and_sees_the_org(client, db_session):  # AC08 end to end
+async def test_the_invited_master_sets_a_password_and_sees_the_org(client, db_session, monkeypatch):  # AC08 end to end
+    sent = []
+
+    async def capture(channel, payload):
+        sent.append(payload)
+        return "sent", None
+
+    monkeypatch.setattr(provisioning, "send_notification", capture)
     ctx = await mk_active_org(db_session, name="Invite Flow")
     await login(client, ctx["master"].email)
     body = (await _invite(client)).json()
+    # Final review #5: the inviting Master never receives the raw link token, even in dev/test.
+    assert "development_welcome_token" not in body
+    token = next(p["reset_token"] for p in sent if p.get("to") == body["member"]["email"])
     await client.post("/api/v1/auth/logout")
-    assert (await client.post("/api/v1/auth/reset-password", json={"token": body["development_welcome_token"], "new_password": "An0ther-Secret-Pass!"})).status_code == 200
+    assert (await client.post("/api/v1/auth/reset-password", json={"token": token, "new_password": "An0ther-Secret-Pass!"})).status_code == 200
     login_response = await client.post("/api/v1/auth/login", json={"email": body["member"]["email"], "password": "An0ther-Secret-Pass!", "division": "overseas"})
     assert login_response.status_code == 200
     assert (await client.get(TEAM)).json()["org"]["id"] == str(ctx["org"].id)
