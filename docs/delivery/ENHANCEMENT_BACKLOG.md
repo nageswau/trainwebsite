@@ -908,7 +908,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 
 | § | Section | Status | Evidence / disposition |
 |---|---|---|---|
-| 1 | School Dashboard (KPIs, charts) | ⚠️ Partial | Rolled into **ENH-016** (analytics dashboards) |
+| 1 | School Dashboard (KPIs, charts) | ✅ Built — pending validation | **ENH-016** (`DEC-SCOPE-031`): KPI board on Coordinator + Principal dashboards; portfolios/skills tracked; internships still untracked (ENH-021) |
 | 2 | School Master / School Profile (incl. **School ID**, **Branch**) | ❌ Gap | `models.py:923-943` has only `id`/`name`/`city`/`state`/`tier` — see **ENH-009** |
 | 3 | Student Master | ✅ Built | `SchoolStudent`, `SCH-002`; `student_code` per `DEC-DATA-003` |
 | 4 | Grade & Class Management (Grade→Section→Year) | ❌ Gap | See **ENH-001** (corrected sourcing above) |
@@ -934,14 +934,14 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 24 | School Event Calendar | ❌ Gap | See **ENH-019** |
 | 25 | Edusphere School Counsellor tracking | ⚠️ Partial | `career_counselor` role exists; dedicated conversion/admission tracking not confirmed — rolled into **ENH-016** |
 | 26 | School Partnership Package Tracking (quota table) | ⚠️ **Conflict** | Source shows Entitled/Used/Balance quotas; `DEC-SCOPE-017` (confirmed) made entitlements **unlimited, not quota-capped**. See Appendix A item 3 — this is a decision conflict, not an implementation gap |
-| 27 | School Service Utilization | ❌ Gap | Rolled into **ENH-016** |
-| 28 | Student Progress Scorecard | ❌ Gap | Rolled into **ENH-016** |
-| 29 | School Performance Dashboard | ❌ Gap | Rolled into **ENH-016** |
+| 27 | School Service Utilization | ✅ Built — pending validation | **ENH-016**: school-wise rows on `/overseas/admin/school-analytics` (delivered/pending/not tracked/utilization, participation, upcoming activities) |
+| 28 | Student Progress Scorecard | ✅ Built — pending validation | **ENH-016**: per-student card + school-wide grid (Coordinator/Principal, D9/D10); scholarship/internship rows untracked until ENH-017/ENH-021 |
+| 29 | School Performance Dashboard | ✅ Built — pending validation | **ENH-016**: Grade 8→12 comparison on the Reports page; four metrics are labelled estimates (D5, `NEEDS_CONFIRMATION`) |
 | 30 | Reports & Downloads | ❌ Gap | See **ENH-015** |
 | 31 | School Feedback | ✅ Built | See **ENH-018** |
 | 32 | Communication Centre (WhatsApp/SMS/Email/push) | ❌ Gap | See **ENH-014** |
 | 33 | School Admin Login (role matrix) | ✅ Built | `DEC-SCOPE-011`, `rbac.py` |
-| 34 | Edusphere Admin Side (cross-school dashboard) | ❌ Gap | Rolled into **ENH-016** |
+| 34 | Edusphere Admin Side (cross-school dashboard) | ✅ Built — pending validation | **ENH-016**: Overseas + Super Admin only (D1); schools/students/services/outcomes; scholarships/internships untracked |
 | 35 | Student 360° View | ❌ Gap | See **ENH-013** |
 | 36 | Complete School CRM Flow (pipeline diagram) | — No action | Conceptual/architectural map, not itself a buildable feature |
 | B1 | School CRM Login Hierarchy (diagram) | — No action | Conceptual; matches confirmed role structure |
@@ -957,7 +957,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | B11 | Notifications (multi-channel, on publish) | ❌ Gap | See **ENH-014** |
 | B12 | Permission Matrix (table) | ✅ Built | Matches `RBAC_MATRIX.md §2.12`; used as reference, not a gap itself |
 | B13 | Edusphere Staff Permissions (5 roles) | ✅ Built | `DEC-ROLE-006`; `edusphere_school_manager`/`school_partnership_manager` exact duty split still `OPEN` per that same decision — not re-litigated here |
-| B14 | School CRM Dashboard (activity + academic performance) | ❌ Gap | Rolled into **ENH-016** |
+| B14 | School CRM Dashboard (activity + academic performance) | ✅ Built — pending validation | **ENH-016**: Completed/Pending table, grade/subject/term averages, at-risk and top performers (published results only, D4 thresholds) |
 | B15 | Student Journey Timeline | ✅ Built | `SCH-008` |
 
 **Net result (revised again after two more corrections — §6 and §7 were both wrongly marked in earlier
@@ -1698,6 +1698,13 @@ and ENH-017/ENH-020/ENH-021 for the remaining untracked services) add more track
 
 **Acceptance criteria.** Each dashboard renders correctly scoped aggregate data for its intended role;
 cross-school dashboard is inaccessible to school-side roles.
+
+**Status (2026-09-28): IMPLEMENTED — NOT YET COMPLETE.** Built on `feature/enh-016-dashboards-analytics` per
+`docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md` and `DEC-SCOPE-031` (provisional). Browser
+validation and the independent Codex review are still to come. §25 (Edusphere School Counsellor tracking) was not in the
+approved spec and is **not** covered by this build. Follow-ups: confirm D4 thresholds and D5 estimates with the client; a
+terminal visa status for the scorecard's Visa row; `edusphere_school_manager` scoping (item 75); remove the unreachable code
+after `return` in `school_reports` (`schools.py`).
 
 **Positive scenarios.** A principal views their school's KPI dashboard and sees accurate counts.
 **Negative scenarios.** A school coordinator attempts to access the cross-school Edusphere dashboard —
