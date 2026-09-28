@@ -50,6 +50,23 @@ describe("internship entry form (ENH-021)", () => {
     expect(body).not.toHaveProperty("attendance_percent");
   });
 
+  // QA-04 (browser QA 2026-09-28): the server's generic "Input should be less than or equal to 100" named no field and appeared
+  // below the whole form; the check now happens at the field.
+  it.each(["150", "-1", "92.5"])("rejects attendance %s at the field, before any request", async (value) => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<PortfolioEntryForm studentId="s1" section="internship" onDone={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Role"), { target: { value: "Design intern" } });
+    fireEvent.change(screen.getByLabelText("Company"), { target: { value: "Acme" } });
+    fireEvent.change(screen.getByLabelText("Attendance % (optional)"), { target: { value } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    const field = screen.getByLabelText("Attendance % (optional)");
+    expect(await screen.findByText("Attendance must be a whole number from 0 to 100.")).toBeInTheDocument();
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field.getAttribute("aria-describedby")).toContain("pf-attendance-error");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("computes changed internship fields", () => {
     expect(internshipChanges({ mentor_name: "A", skills_acquired: ["x"] }, { mentor_name: "A", skills_acquired: ["x", "y"] })).toEqual({ skills_acquired: ["x", "y"] });
   });

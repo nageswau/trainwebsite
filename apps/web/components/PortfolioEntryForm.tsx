@@ -22,6 +22,7 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
   const internship = section === "internship";
   const [tracking, setTracking] = useState<InternshipValues>(() => pickInternship(initial));
   const [companyError, setCompanyError] = useState<string | null>(null);
+  const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [organization, setOrganization] = useState(initial?.organization ?? "");
@@ -46,6 +47,13 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
       return;
     }
     setCompanyError(null);
+    // QA-04: checked at the field (the server re-validates; its generic 422 text named no field).
+    const attendance = tracking.attendance_percent;
+    if (internship && attendance != null && !(Number.isInteger(attendance) && attendance >= 0 && attendance <= 100)) {
+      setAttendanceError("Attendance must be a whole number from 0 to 100.");
+      return;
+    }
+    setAttendanceError(null);
     inFlight.current = true;
     setBusy(true);
     const body = {
@@ -105,7 +113,7 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
         <label htmlFor="pf-date-to">End date (optional)</label>
         <input id="pf-date-to" type="date" className="search" value={dateTo} disabled={busy} onChange={(e) => setDateTo(e.target.value)} />
       </div>
-      {internship && <InternshipFields values={tracking} onChange={setTracking} disabled={busy} />}
+      {internship && <InternshipFields values={tracking} onChange={setTracking} disabled={busy} attendanceError={attendanceError} />}
       <div className="field">
         <label htmlFor="pf-description">Description (optional)</label>
         <textarea id="pf-description" className="search" rows={3} maxLength={2000} value={description} disabled={busy} onChange={(e) => setDescription(e.target.value)} />

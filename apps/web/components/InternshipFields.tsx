@@ -6,7 +6,9 @@ import { listText, splitList } from "@/lib/schoolStudents";
 
 // ENH-021 (§22): the tracking fields of an internship entry, grouped per spec §11.2 F1. Controlled by PortfolioEntryForm; the skills
 // text is kept raw while typing (so a trailing comma is not swallowed) and split on every change.
-export default function InternshipFields({ values, onChange, disabled }: { values: InternshipValues; onChange: (next: InternshipValues) => void; disabled: boolean }) {
+export default function InternshipFields({ values, onChange, disabled, attendanceError }: {
+  values: InternshipValues; onChange: (next: InternshipValues) => void; disabled: boolean; attendanceError?: string | null;
+}) {
   const [skillsText, setSkillsText] = useState(listText(values.skills_acquired));
   const set = (patch: InternshipValues) => onChange({ ...values, ...patch });
   return (
@@ -37,7 +39,10 @@ export default function InternshipFields({ values, onChange, disabled }: { value
           </div>
           <div className="field">
             <label htmlFor="pf-attendance">Attendance % (optional)</label>
-            <input id="pf-attendance" className="search" type="number" inputMode="numeric" min={0} max={100} disabled={disabled} value={values.attendance_percent ?? ""} onChange={(e) => set({ attendance_percent: e.target.value === "" ? null : Number(e.target.value) })} />
+            <input id="pf-attendance" className="search" type="number" inputMode="numeric" min={0} max={100} step={1} disabled={disabled} value={values.attendance_percent ?? ""}
+              aria-invalid={attendanceError ? true : undefined} aria-describedby={attendanceError ? "pf-attendance-error" : undefined}
+              onChange={(e) => set({ attendance_percent: e.target.value === "" ? null : Number(e.target.value) })} />
+            {attendanceError && <span id="pf-attendance-error" className="form-error">{attendanceError}</span>}
           </div>
         </div>
       </fieldset>
