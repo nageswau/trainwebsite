@@ -117,3 +117,10 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .state-badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .analytics-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 12px 0; }
 .pager { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }
+/* QA-023-02 follow-up: a native <select> renders shorter than a text or date input (5px in headless Linux Chromium), so
+   paired fields such as Partnership tier / Valid until never quite lined up. One floor height for single-line controls;
+   taller ones (multi-selects, textareas) are unaffected. */
+.field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]), .field select { min-height: 50px; }
+/* QA-022-05 follow-up: scrollIntoView({block:"nearest"}) (FormMessage) pinned a failure flush to the screen edge, where
+   sub-pixel rounding clipped it; keep a gap around it instead. */
+.form-error { scroll-margin: 16px; }
