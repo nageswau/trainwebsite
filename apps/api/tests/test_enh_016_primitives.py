@@ -32,6 +32,25 @@ async def test_portfolio_started_counts_entries_and_non_blank_statements_only(db
 
 
 @pytest.mark.asyncio
+async def test_internship_only_entries_do_not_start_a_portfolio(db_session):  # QA-016-03: ENH-021 counts them as internships
+    ctx = await make_school(db_session)
+    coord = ctx["school_coordinator"].id
+    intern_only = await make_student(db_session, ctx)
+    intern_and_project = await make_student(db_session, ctx)
+    db_session.add_all([
+        PortfolioEntry(school_student_id=intern_only.id, section="internship", title="Intern", completion_status="completed", created_by_user_id=coord, updated_by_user_id=coord),
+        PortfolioEntry(school_student_id=intern_and_project.id, section="internship", title="Intern", created_by_user_id=coord, updated_by_user_id=coord),
+        PortfolioEntry(school_student_id=intern_and_project.id, section="project", title="Robot", created_by_user_id=coord, updated_by_user_id=coord),
+    ])
+    await db_session.flush()
+
+    started = await portfolio_started_ids(db_session, students_in([ctx["school"].id]))
+
+    assert started == {intern_and_project.id}
+    await db_session.rollback()
+
+
+@pytest.mark.asyncio
 async def test_skill_statuses_group_non_withdrawn_enrolments_by_module(db_session):
     ctx = await make_school(db_session)
     a = await make_student(db_session, ctx)

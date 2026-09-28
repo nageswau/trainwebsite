@@ -1,5 +1,6 @@
 """ENH-016 §34 cross-school dashboard and §27 school-wise utilization (AC09, AC10, AC16, Review Focus 5)."""
 
+import uuid
 from datetime import timedelta
 
 import pytest
@@ -73,6 +74,25 @@ async def test_rows_count_students_participation_and_services(client, db_session
     assert row["students"] == 2 and row["student_participation"] == 1
     assert row["services_included"] == 5 and row["delivered"] == 1 and row["pending"] == 4 and row["utilization_pct"] == 20.0
     assert row["pending_activities"] == 0
+
+
+@pytest.mark.asyncio
+async def test_rows_can_be_searched_by_school_name(client, db_session):  # QA-016-09
+    tag = uuid.uuid4().hex[:8]
+    ctx = await make_school(db_session, name=f"Zeta Search {tag} Academy")
+    await make_school(db_session, name=f"Zeta Search {tag} College")
+    await make_school(db_session, name=f"Other {tag}")
+    await db_session.commit()
+    await login(client, ctx["overseas_admin"])
+
+    found = (await client.get("/api/v1/overseas-admin/analytics/schools", params={"q": f"zeta search {tag}"})).json()
+    literal = (await client.get("/api/v1/overseas-admin/analytics/schools", params={"q": f"{tag}%"})).json()
+
+    assert [r["name"] for r in found["items"]] == [f"Zeta Search {tag} Academy", f"Zeta Search {tag} College"]
+    assert found["total"] == 2
+    assert literal["total"] == 0  # % is a character, not a wildcard
+    too_long = await client.get("/api/v1/overseas-admin/analytics/schools", params={"q": "x" * 201})
+    assert too_long.status_code == 422
 
 
 @pytest.mark.asyncio

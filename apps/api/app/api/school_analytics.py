@@ -109,8 +109,9 @@ async def statement_ids(db: AsyncSession, scope: Scope) -> set[UUID]:
 
 
 async def portfolio_started_ids(db: AsyncSession, scope: Scope) -> set[UUID]:
-    """D11: at least one portfolio entry, or a non-blank personal statement. Profile fields alone never count. One query."""
-    entries = select(PortfolioEntry.school_student_id).where(PortfolioEntry.school_student_id.in_(scope))
+    """D11: at least one portfolio entry, or a non-blank personal statement. Profile fields alone never count. Internship entries
+    do not count either: ENH-021 attributes them to the Internships service (QA-016-03, user decision). One query."""
+    entries = select(PortfolioEntry.school_student_id).where(PortfolioEntry.school_student_id.in_(scope), PortfolioEntry.section != "internship")
     return set((await db.scalars(union(entries, _has_statement(scope)))).all())
 
 
@@ -547,12 +548,18 @@ async def cross_school_rows(
     user: User = Depends(_require_school_admin),
     limit: int = Query(25, ge=1, le=100),
     offset: int = Query(0, ge=0, le=MAX_OFFSET),
+    q: str | None = Query(None, max_length=200),
     db: AsyncSession = Depends(get_db),
 ):
-    """§27 "school-wise": one row per partner school, ordered by name then id. Every figure is a count."""
+    """§27 "school-wise": one row per partner school, ordered by name then id. Every figure is a count. `q` narrows the rows
+    to school names containing it (case-insensitive; % and _ are plain characters) -- QA-016-09."""
     today = _today_ist()
-    total = await db.scalar(select(func.count()).select_from(School)) or 0
-    schools = (await db.scalars(select(School).order_by(School.name, School.id).limit(limit).offset(offset))).all()
+    conditions = []
+    if q and q.strip():
+        pattern = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        conditions.append(School.name.ilike(f"%{pattern}%", escape="\\"))
+    total = await db.scalar(select(func.count()).select_from(School).where(*conditions)) or 0
+    schools = (await db.scalars(select(School).where(*conditions).order_by(School.name, School.id).limit(limit).offset(offset))).all()
     ids = [s.id for s in schools]
     students_by_school: dict[UUID, set[UUID]] = defaultdict(set)
     for sid, school_id, _level, _label in await _roster(db, ids):
