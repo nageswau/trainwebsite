@@ -31,7 +31,7 @@ export default function SchoolCareerRecordsPanel({ records, students }: { record
   }
 
   return (
-    <div className="portal-content">
+    <div className="portal-content card-stack">
       <div className="card">
         <h2>Records</h2>
         {records.length === 0 ? (

@@ -77,6 +77,8 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .field input, .field select, .field textarea { max-width: 100%; }
 /* ENH-021/ENH-026: read-only term/value lists under a record (counselling record, internship). Same look as .student-profile dl;
    one column on phones. Rows use display:contents so each <div> keeps dt+dd valid while the <dl> grid lays them out. */
+/* QA-12: a vertical stack of cards with the same 18px rhythm as .action-grid, so adjacent cards never touch. */
+.card-stack { display: grid; gap: 18px; align-content: start; }
 .record-details { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 8px 0 0; }
 .record-details-row { display: contents; }
 .record-details dt { font-weight: 700; }

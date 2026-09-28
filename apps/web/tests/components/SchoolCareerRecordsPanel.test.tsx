@@ -56,6 +56,12 @@ describe("SchoolCareerRecordsPanel save failures", () => {
 describe("SchoolCareerRecordsPanel records table (ENH-026)", () => {
   const record = { id: "r1", school_student_id: "s1", record_type: "counselling_note", notes: "Met.", created_at: "2026-09-01T00:00:00Z", status: null, next_follow_up_date: null };
 
+  // QA-12 (browser QA 2026-09-28): the Records card and the Add card touched; the panel now spaces its cards with a gap.
+  it("lays its cards out with the spaced stack", () => {
+    const { container } = render(<SchoolCareerRecordsPanel records={[record]} students={STUDENTS} />);
+    expect(container.firstElementChild).toHaveClass("portal-content", "card-stack");
+  });
+
   it("labels a record made before tracking", () => {
     render(<SchoolCareerRecordsPanel records={[record]} students={STUDENTS} />);
     expect(screen.getByText("No status (recorded before tracking)")).toBeInTheDocument();
