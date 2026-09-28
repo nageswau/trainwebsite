@@ -46,6 +46,16 @@ describe("InternshipCertificate (ENH-021)", () => {
     await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(2));
   });
 
+  // QA-06 (browser QA 2026-09-28): the Confirm button disappears on success, which dropped keyboard focus to <body>.
+  it("moves focus to the upload field after a removal", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 204, json: async () => ({}) }));
+    render(<InternshipCertificate studentId="s" entryId="e" hasCertificate contentType="application/pdf" canEdit completed />);
+    fireEvent.click(screen.getByRole("button", { name: "Remove certificate" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
+    await screen.findByRole("status");
+    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/Upload certificate/)));
+  });
+
   it("does not refresh when the upload fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 415, json: async () => ({ detail: "nope" }) }));
     render(<InternshipCertificate studentId="s" entryId="e" hasCertificate={false} contentType={null} canEdit completed />);

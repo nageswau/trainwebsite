@@ -56,6 +56,7 @@ export default function InternshipCertificate({ studentId, entryId, hasCertifica
     if (!response?.ok) return setMessage({ text: "Could not remove the certificate; please try again.", failed: true });
     setPresent(false);
     setMessage({ text: "Certificate removed.", failed: false });
+    refocus(inputId);  // QA-06: the Confirm button just unmounted; keep keyboard users in place
     router.refresh();
   }
 
