@@ -1,19 +1,24 @@
 """ENH-024 -- Skill India certification details on portfolio_entries.
 
-Revision ID: 0042_skill_india_certification
-Revises: 0041_student_master_fields
+Revision ID: 0044_skill_india_certification
+Revises: 0043_portfolio_internship
 
-docs/superpowers/specs/2026-09-28-enh-024-skill-india-certification-design.md §4 (DEC-SCOPE-031). Additive only: four nullable
+docs/superpowers/specs/2026-09-28-enh-024-skill-india-certification-design.md §4 (DEC-SCOPE-033). Additive only: four nullable
 columns and four CHECKs. Every existing row is all-NULL in the new columns, which satisfies every CHECK, so nothing is backfilled
 or rewritten. `downgrade()` drops only what this adds (entries survive as plain certifications).
+
+Re-chained on merge with `main`, 2026-09-28: cut as `0042_skill_india_certification` on `0041_student_master_fields`, but
+ENH-026/ENH-021 merged first with `0042_career_record_fields` and `0043_portfolio_internship` (which also adds columns and CHECKs
+to `portfolio_entries`), so this became `0044` on top of them (the later-merging branch moves; precedent: 0041's own note).
+Neither touches these four columns or constraint names.
 """
 
 import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0042_skill_india_certification"
-down_revision = "0041_student_master_fields"
+revision = "0044_skill_india_certification"
+down_revision = "0043_portfolio_internship"
 branch_labels = None
 depends_on = None
 

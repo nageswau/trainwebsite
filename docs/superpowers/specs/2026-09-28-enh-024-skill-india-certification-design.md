@@ -6,9 +6,10 @@ brainstorming → this design doc → `writing-plans` next. Written spec awaitin
 
 **Source requirement:** the brochure, page 2, "Skill India Certification" (standalone callout; no section in
 `School CRM.md`). **Backlog item:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-024 (`DERIVED_BLUEPRINT`).
-**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → `DEC-SCOPE-031` (added by the implementation plan's first task; records §3 below as
-`EXPLICIT_APPROVAL`, user, 2026-09-28). If another branch claims `DEC-SCOPE-031` first, renumber on merge
-(precedent: `DEC-SCOPE-024`/`025`/`027`/`029`/`030`).
+**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → `DEC-SCOPE-033` (added by the implementation plan's first task; records §3 below as
+`EXPLICIT_APPROVAL`, user, 2026-09-28). Recorded in-session as `DEC-SCOPE-031` with migration `0042`; renumbered to
+`DEC-SCOPE-033` / `0044_skill_india_certification` when `main` (ENH-026/ENH-021, holding `031`/`032` and `0042`/`0043`) was
+merged in, 2026-09-28 (precedent: `DEC-SCOPE-024`/`025`/`027`/`029`/`030`).
 **Branch:** `feature/enh-024-skill-india-certification`.
 
 ## 1. Scope
@@ -69,7 +70,7 @@ touched; ENH-021 (internship certificate) and every other ENH item.
 - **D16 Log/audit minimisation:** the certificate number (an identifier belonging to a minor) is never written
   to application logs or `AuditLog` metadata.
 
-## 4. Data model — migration `0042_skill_india_certification`
+## 4. Data model — migration `0044_skill_india_certification`
 
 New nullable columns on `portfolio_entries` (model `PortfolioEntry` gains the same, plus the CHECKs in
 `__table_args__`, so a fresh database built by `0001_initial`'s `create_all()` matches):

@@ -58,7 +58,7 @@ def _row(ctx, **overrides) -> PortfolioEntry:
     return PortfolioEntry(school_student_id=ctx["students"][0].id, **fields)
 
 
-# --- Schema (migration 0042) --------------------------------------------------------------------------------------
+# --- Schema (migration 0044) --------------------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -81,13 +81,13 @@ async def test_new_columns_are_nullable_and_sized(db_session):  # AC-10
 
 
 @pytest.mark.asyncio
-async def test_alembic_is_at_head_and_includes_0042(db_session):  # AC-10
+async def test_alembic_is_at_head_and_includes_0044(db_session):  # AC-10
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).resolve().parent.parent / "alembic"))
     script = ScriptDirectory.from_config(config)
     version = await db_session.scalar(text("SELECT version_num FROM alembic_version"))
     assert version == script.get_current_head()
-    assert "0042_skill_india_certification" in {rev.revision for rev in script.iterate_revisions(version, "base")}
+    assert "0044_skill_india_certification" in {rev.revision for rev in script.iterate_revisions(version, "base")}
 
 
 @pytest.mark.asyncio

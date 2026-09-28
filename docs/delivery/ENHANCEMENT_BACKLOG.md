@@ -1989,6 +1989,8 @@ student's profile. **Negative scenarios.** A teacher outside the student's assig
 edit the record — rejected. **Edge cases.** An internship spanning an academic-year boundary
 (interacts with ENH-001) — must not be silently reset by a promotion event (`ENH-004`).
 
+**Status (2026-09-28) — COMPLETE (verified; evidence in the `RTM.md` ENH-021 row, *Final verification*).** Designed with `ENH-026` in `docs/superpowers/specs/2026-09-27-enh-021-026-internship-and-counselling-record-design.md` (`DEC-SCOPE-032`); implemented on branch `feature/enh-021-026-internship-counselling-record`. **Correction to this entry:** internships already existed as ENH-012's portfolio `internship` section, so there is no `StudentInternship` table — the section was extended (migration `0043_portfolio_internship`); writers are the existing portfolio write roles; creating an internship or setting its tracking fields needs Platinum `internships`, while basic edits/deletes of existing entries keep Gold; the certificate is a PDF/JPEG/PNG ≤ 5 MB with audited downloads. The academic-year edge case needs nothing: promotion and transfer never touch portfolio entries. Browser validation done; the Codex review was waived by the owner; the full E2E regression runs on the regular cadence. FV-04 (owner decision) gave the shared ENH-012 portfolio entry form keyboard focus handling in every section. **Owner decisions from browser QA (2026-09-28):** QA-08 — a school without Platinum `internships` is told up front ("Internship tracking is part of the Platinum partnership"; no Add internship, tracking fields or certificate upload; basic edits/deletes of existing entries stay), via the portfolio payload's `can_track_internships`; known limitation: a school *downgraded* from Platinum may still finish tracking pre-downgrade entries server-side (ENH-023 grandfathering) but the page no longer offers those fields. QA-14 — the Internships KPI and status chart stay API-only here; rendering them is **follow-up for `ENH-016`** (School & Edusphere Analytics Dashboards).
+
 **Regression risks.** None.
 
 **Complexity:** Medium. **Risk:** Low.
@@ -2315,10 +2317,10 @@ it). **Edge cases.** None beyond the standard certificate-record shape.
 **Complexity:** Small. **Risk:** Low.
 
 **Status (2026-09-28) — implemented, NOT complete.** Designed and decided in
-`docs/superpowers/specs/2026-09-28-enh-024-skill-india-certification-design.md` (`DEC-SCOPE-031`, D1–D16), plan
+`docs/superpowers/specs/2026-09-28-enh-024-skill-india-certification-design.md` (`DEC-SCOPE-033`, D1–D16), plan
 `docs/superpowers/plans/2026-09-28-enh-024-skill-india-certification.md`, built test-first on branch
 `feature/enh-024-skill-india-certification`. The backlog's "Database impact" question resolved as a tag on ENH-012's
-existing `certification` section (four nullable columns + CHECKs on `portfolio_entries`, migration `0042`), not a new
+existing `certification` section (four nullable columns + CHECKs on `portfolio_entries`, migration `0044`), not a new
 table; the "Integration impact" `NEEDS_CONFIRMATION` resolved as **none** (internal record, D9); the owning-role
 `NEEDS_CONFIRMATION` resolved as the existing portfolio writers (D10). Evidence in `docs/quality/RTM.md` (ENH-024 row).
 **Update (2026-09-28):** browser validation done; its findings QA24-01…08 fixed test-first and re-verified in the browser
@@ -2513,6 +2515,8 @@ to "Completed"; a parent viewing their child's profile sees the structured recom
 of prose. **Negative scenarios.** An invalid status transition (`NEEDS_CONFIRMATION`'d policy) is
 rejected. **Edge cases.** A record created under the old flat-notes shape, then edited under the new
 structured shape — must not lose the original free-text content.
+
+**Status (2026-09-28) — COMPLETE (verified; evidence in the `RTM.md` ENH-026 row, *Final verification*).** Designed with `ENH-021` in `docs/superpowers/specs/2026-09-27-enh-021-026-internship-and-counselling-record-design.md` (`DEC-SCOPE-031`); implemented on branch `feature/enh-021-026-internship-counselling-record` (migration `0042_career_record_fields`, new `PATCH /school/career-counselor/records/{id}`). The skipped-state question is decided: strict order with a follow-up loop, create at Not Started/Scheduled/Completed, legacy rows (status NULL) only to Completed/Follow-up Required, and Completed, Follow-up Required and NULL count as completed. Corrections to this entry: the model is at `models.py` `SchoolCareerRecord` (the line numbers above were stale); recommendations are four JSON lists shared in shape with `ENH-027`. Browser validation done (FV-01..FV-04 fixed); the Codex review was waived by the owner; the transfer race is covered by a mutation-checked test; the full E2E regression runs on the regular cadence. **Owner decision from browser QA (2026-09-28), QA-13:** a session may be marked Completed before its scheduled date (sessions are brought forward); both dates are kept as the record of what was planned and what happened, with no block or warning.
 
 **Regression risks.** `SCH-004`'s existing counselling-record read paths (including the
 `/schools/entitlements` usage-count query at `schools.py:704`, which filters on `record_type ==

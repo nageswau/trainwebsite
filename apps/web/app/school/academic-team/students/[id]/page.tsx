@@ -6,7 +6,7 @@ import { SCHOOL_NAV } from "@/lib/navigation";
 import { loadPortfolio, type PortfolioData } from "@/lib/portfolio";
 import type { User } from "@/lib/types";
 
-// QA24-01 (ENH-024 browser QA): the Academic Team is one of the three Digital Portfolio writers (DEC-SCOPE-031 D10, ENH-012's
+// QA24-01 (ENH-024 browser QA): the Academic Team is one of the three Digital Portfolio writers (DEC-SCOPE-033 D10, ENH-012's
 // WRITE_ROLES) but had no screen to write from -- only the read-only 360° view. This is its student page, reached the way the
 // coordinator reaches hers: dashboard directory -> student page -> "Open 360° view" (whose back link returns here). The API
 // enforces the team's school-portfolio scope and decides `can_edit`; this page adds no rule of its own.

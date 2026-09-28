@@ -290,3 +290,47 @@ describe("PortfolioPanel", () => {
     expect(screen.getByLabelText(/issuing body/i)).toHaveValue("RASCI");
   });
 });
+
+// FV-04 (AC-R5): keyboard users keep their place -- opening a form moves focus into it, and Save, Cancel or Escape return
+// focus to the button that opened it. Shared by every portfolio section, internships included.
+describe("PortfolioPanel keyboard focus (FV-04)", () => {
+  const INTERN = { id: "i1", section: "internship", title: "Lab intern", description: null, organization: "Acme", date_from: null, date_to: null, created_at: "2026-01-01", updated_at: "2026-01-01" };
+  const withIntern: PortfolioData = { ...BASE, can_edit: true, can_track_internships: true, entries: { ...BASE.entries, internship: [INTERN] } };
+
+  it("opening Edit moves focus to the form's first field", async () => {
+    render(<PortfolioPanel data={withIntern} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Lab intern" }));
+    await waitFor(() => expect(screen.getByLabelText("Role")).toHaveFocus());
+  });
+
+  it("Cancel returns focus to the entry's Edit button", async () => {
+    render(<PortfolioPanel data={withIntern} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Lab intern" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Lab intern" })).toHaveFocus());
+  });
+
+  it("Escape inside the form cancels it and returns focus to the Edit button", async () => {
+    render(<PortfolioPanel data={withIntern} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Lab intern" }));
+    fireEvent.keyDown(screen.getByLabelText("Role"), { key: "Escape" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Lab intern" })).toHaveFocus());
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+  });
+
+  it("a successful save returns focus to the Edit button", async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ...INTERN }) }) as unknown as typeof fetch;
+    render(<PortfolioPanel data={withIntern} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Lab intern" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Lab intern" })).toHaveFocus());
+  });
+
+  it("Add moves focus into the new form and Cancel returns it to the Add button", async () => {
+    render(<PortfolioPanel data={withIntern} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add internship" }));
+    await waitFor(() => expect(screen.getByLabelText("Role")).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add internship" })).toHaveFocus());
+  });
+});

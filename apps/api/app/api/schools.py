@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import select, text
+from sqlalchemy import distinct, func, or_, select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -39,6 +39,7 @@ from app.models import (
     Notification,
     NotificationDelivery,
     OverseasApplication,
+    PortfolioEntry,
     School,
     SchoolAcademicResult,
     SchoolAccountInvite,
@@ -61,7 +62,26 @@ from app.models import (
     UserRoleAssignment,
     VisaCase,
 )
-from app.schemas import LIST_FIELD_KEYS, MASTER_FIELD_KEYS, GradeHistoryResponse, StudentMasterFields, StudentPromotionRequest, StudentPromotionResponse, validation_message
+from app.schemas import (
+    CAREER_DATE_KEYS,
+    CAREER_RECORD_TYPES,
+    CAREER_STATUS_INITIAL,
+    CAREER_STATUS_LABEL,
+    CAREER_STRUCTURED_KEYS,
+    COUNTED_CAREER_STATUSES,
+    LIST_FIELD_KEYS,
+    MASTER_FIELD_KEYS,
+    STRUCTURED_RECORD_TYPES,
+    CareerRecordFields,
+    CareerRecordUpdate,
+    GradeHistoryResponse,
+    StudentMasterFields,
+    StudentPromotionRequest,
+    StudentPromotionResponse,
+    career_transition_allowed,
+    counts_as_completed,
+    validation_message,
+)
 from app.services.integrations import send_notification
 from app.services.mailer import send_parent_notification_email, send_school_invite_email
 
@@ -85,13 +105,20 @@ OVERSEAS_APPLICATION_STAGES = ["enquiry", "eligibility_evaluation", "university_
 OFFER_ONWARD_STATUSES = {"offer", "offer_received", "accepted", "visa_documentation", "status_tracking", "enrolled"}
 UNTRACKED_SCHOOL_DASHBOARD_KPIS = {
     "digital_portfolios_created": "No confirmed School digital-portfolio model exists yet.",
-    "internships": "No confirmed School internship model exists yet.",
 }
 UNTRACKED_SCHOOL_DASHBOARD_CHARTS = [
     {"key": "skills_training", "label": "Skills training", "note": "No confirmed School soft-skills training model exists yet."},
-    {"key": "internships", "label": "Internships", "note": "No confirmed School internship model exists yet."},
     {"key": "student_participation_by_program", "label": "Student participation by program", "note": "No confirmed School program-participation model exists yet."},
 ]
+INTERNSHIP_STATUS_ORDER = ("not_started", "in_progress", "completed", "discontinued")  # ENH-021 I7 chart order, then "no_status"
+
+
+def internship_progress(statuses) -> str:
+    """ENH-021 I8 (School CRM §35): best progress wins. Not started, discontinued and legacy (None) entries read as not started."""
+    seen = set(statuses)
+    if "completed" in seen:
+        return "completed"
+    return "in_progress" if "in_progress" in seen else "not_started"
 
 
 def _require_coordinator(user: User) -> UUID:
@@ -381,6 +408,7 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     pending_invite_count = len((await db.scalars(select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school_id, SchoolAccountInvite.status == "pending"))).all())
 
     career_rows: list[SchoolCareerRecord] = []
+    internship_rows: list = []  # ENH-021: (school_student_id, completion_status) of every internship entry
     psych_rows: list[SchoolPsychometricRecord] = []
     published_students: set = set()
     test_prep_rows: list[SchoolTestPrepRecord] = []
@@ -395,19 +423,28 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
         )
         test_prep_rows = (await db.scalars(select(SchoolTestPrepRecord).where(SchoolTestPrepRecord.school_student_id.in_(student_ids)))).all()
         language_rows = (await db.scalars(select(SchoolLanguageRecord).where(SchoolLanguageRecord.school_student_id.in_(student_ids)))).all()
+        internship_rows = (await db.execute(
+            select(PortfolioEntry.school_student_id, PortfolioEntry.completion_status)
+            .where(PortfolioEntry.school_student_id.in_(student_ids), PortfolioEntry.section == "internship")
+        )).all()
         applications = (await db.scalars(select(OverseasApplication).where(OverseasApplication.school_student_id.in_(student_ids)))).all()
         application_ids = [application.id for application in applications]
         if application_ids:
             visas = (await db.scalars(select(VisaCase).where(VisaCase.application_id.in_(application_ids)))).all()
 
     career_students = {r.school_student_id for r in career_rows}
-    guidance_students = {r.school_student_id for r in career_rows if r.record_type == "guidance_session"}
-    counselling_students = {r.school_student_id for r in career_rows if r.record_type == "counselling_note"}
+    # ENH-026 C5: a session counts once delivered (completed / follow-up required), or when it predates status tracking.
+    guidance_students = {r.school_student_id for r in career_rows if r.record_type == "guidance_session" and counts_as_completed(r.status)}
+    counselling_students = {r.school_student_id for r in career_rows if r.record_type == "counselling_note" and counts_as_completed(r.status)}
     psych_completed_students = {r.school_student_id for r in psych_rows if r.status == "completed"}
     psych_assigned_students = {r.school_student_id for r in psych_rows} - psych_completed_students
     ielts_students = {r.school_student_id for r in test_prep_rows if r.test_type == "ielts"}
     sat_students = {r.school_student_id for r in test_prep_rows if r.test_type == "sat"}
     language_students = {r.school_student_id for r in language_rows}
+    # ENH-021 I7: the KPI counts students with any internship entry; the chart counts entries per completion status.
+    internship_students = {student_id for student_id, _status in internship_rows}
+    internship_status = [{"status": s, "count": sum(1 for _sid, status in internship_rows if status == s)} for s in INTERNSHIP_STATUS_ORDER]
+    internship_status.append({"status": "no_status", "count": sum(1 for _sid, status in internship_rows if status is None)})
     global_students = {a.school_student_id for a in applications if a.school_student_id}
     shortlisted_students = {a.school_student_id for a in applications if a.school_student_id and _stage_at_or_after(a.status, "university_selection")}
     admitted_students = {a.school_student_id for a in applications if a.school_student_id and a.status == "enrolled"}
@@ -484,7 +521,7 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
             _school_dashboard_kpi("offers_received", "Offers Received", len(offers)),
             _school_dashboard_kpi("visa_applications", "Visa Applications", len(visa_student_ids)),
             _school_dashboard_kpi("students_admitted", "Students Admitted", len(admitted_students)),
-            _school_dashboard_kpi("internships", "Internships", None, tracked=False, note=UNTRACKED_SCHOOL_DASHBOARD_KPIS["internships"]),
+            _school_dashboard_kpi("internships", "Internships", len(internship_students)),
         ],
         "completion": [
             {"key": "career_guidance", "label": "Career guidance completion", "value": len(guidance_students), "total": total_students, "tracked": True},
@@ -504,6 +541,7 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
         },
         "application_pipeline": application_pipeline,
         "visa_status": visa_status,
+        "internship_status": internship_status,
         "untracked_charts": UNTRACKED_SCHOOL_DASHBOARD_CHARTS,
     }
 
@@ -679,6 +717,58 @@ async def _notify_student_parents(db: AsyncSession, student: SchoolStudent, *, t
     for parent in parents:
         await _notify_parent(db, parent, school_name=school.name if school else "your school", title=title, body=body, action_url=action_url)
     return len(parents)
+
+
+# --- ENH-026: one serializer and one rule set for career records (spec §5.1, A3) -------------------------------
+
+async def _user_names(db: AsyncSession, ids) -> dict:
+    wanted = {i for i in ids if i}
+    if not wanted:
+        return {}
+    return dict((await db.execute(select(User.id, User.full_name).where(User.id.in_(wanted)))).all())
+
+
+def _career_record_out(r: SchoolCareerRecord, names: dict) -> dict:
+    return {
+        "id": r.id, "school_student_id": r.school_student_id, "record_type": r.record_type, "notes": r.notes,
+        "created_at": r.created_at, "updated_at": r.updated_at, "status": r.status,
+        **{key: getattr(r, key) for key in CAREER_DATE_KEYS}, **{key: getattr(r, key) for key in CAREER_STRUCTURED_KEYS},
+        "counselor_name": names.get(r.career_counselor_user_id), "updated_by_name": names.get(r.updated_by_user_id),
+    }
+
+
+async def _career_records_out(db: AsyncSession, rows) -> list[dict]:
+    names = await _user_names(db, [i for r in rows for i in (r.career_counselor_user_id, r.updated_by_user_id)])
+    return [_career_record_out(r, names) for r in rows]
+
+
+def _enter_career_status(record: SchoolCareerRecord, new: str | None, old: str | None, sent: set) -> str | None:
+    """Apply a status change's own rules (C6/C7). Returns a 422 message, or None."""
+    record.status = new
+    if new == old:
+        return None
+    if new == "scheduled" and "scheduled_for" not in sent:
+        return "A scheduled session needs a date and time."
+    if new == "completed" and "completed_on" not in sent:
+        record.completed_on = _today_ist()
+    if new == "follow_up_required" and "next_follow_up_date" not in sent:
+        return "Choose the next follow-up date."
+    if old == "follow_up_required":
+        record.next_follow_up_date = None
+    return None
+
+
+def _career_rule_error(record: SchoolCareerRecord) -> str | None:
+    """Post-merge rules (C6-C8) on the record as it would be saved."""
+    if record.status == "scheduled" and record.scheduled_for is None:
+        return "A scheduled session needs a date and time."
+    if record.status in COUNTED_CAREER_STATUSES and not record.notes:
+        return "notes is required"
+    if record.status == "follow_up_required" and record.next_follow_up_date is not None and record.next_follow_up_date < _today_ist():
+        return "The next follow-up date must be today or later."
+    if record.status != "follow_up_required" and record.next_follow_up_date is not None:
+        return "A next follow-up date can only be set when the status is Follow-up Required."
+    return None
 
 
 async def _notify_school_parents(db: AsyncSession, school_id: UUID, *, title: str, body: str, action_url: str | None) -> int:
@@ -1042,7 +1132,10 @@ async def school_entitlements(user: User = Depends(get_current_user), db: AsyncS
     if student_ids:
         usage["psychometric_test"] = len((await db.scalars(select(SchoolPsychometricRecord.id).where(SchoolPsychometricRecord.school_student_id.in_(student_ids)))).all())
         usage["individual_counselling"] = len(
-            (await db.scalars(select(SchoolCareerRecord.id).where(SchoolCareerRecord.school_student_id.in_(student_ids), SchoolCareerRecord.record_type == "counselling_note"))).all()
+            (await db.scalars(select(SchoolCareerRecord.id).where(
+                SchoolCareerRecord.school_student_id.in_(student_ids), SchoolCareerRecord.record_type == "counselling_note",
+                or_(SchoolCareerRecord.status.is_(None), SchoolCareerRecord.status.in_(COUNTED_CAREER_STATUSES)),  # ENH-026 C5
+            ))).all()
         )
         usage["ielts_coaching"] = len((await db.scalars(select(SchoolTestPrepRecord.id).where(SchoolTestPrepRecord.school_student_id.in_(student_ids), SchoolTestPrepRecord.test_type == "ielts"))).all())
         usage["sat_coaching"] = len((await db.scalars(select(SchoolTestPrepRecord.id).where(SchoolTestPrepRecord.school_student_id.in_(student_ids), SchoolTestPrepRecord.test_type == "sat"))).all())
@@ -1050,8 +1143,11 @@ async def school_entitlements(user: User = Depends(get_current_user), db: AsyncS
         application_ids = (await db.scalars(select(OverseasApplication.id).where(OverseasApplication.school_student_id.in_(student_ids)))).all()
         usage["application_support"] = len(application_ids)
         usage["visa_support"] = len((await db.scalars(select(VisaCase.id).where(VisaCase.application_id.in_(application_ids)))).all()) if application_ids else 0
+        usage["internships"] = await db.scalar(  # ENH-021 I7: distinct students, same definition as the dashboard KPI
+            select(func.count(distinct(PortfolioEntry.school_student_id))).where(PortfolioEntry.school_student_id.in_(student_ids), PortfolioEntry.section == "internship")
+        )
     else:
-        usage.update({"psychometric_test": 0, "individual_counselling": 0, "ielts_coaching": 0, "sat_coaching": 0, "foreign_language_classes": 0, "application_support": 0, "visa_support": 0})
+        usage.update({"psychometric_test": 0, "individual_counselling": 0, "ielts_coaching": 0, "sat_coaching": 0, "foreign_language_classes": 0, "application_support": 0, "visa_support": 0, "internships": 0})
     usage["career_seminar"] = await _activity_count("career_seminar")
     usage["career_awareness_session"] = await _activity_count("career_awareness_session")
     usage["parent_orientation"] = await _activity_count("parent_orientation")
@@ -1188,12 +1284,25 @@ async def _overview_payload(db: AsyncSession, student: SchoolStudent) -> dict:
         visa_rows = (await db.scalars(select(VisaCase).where(VisaCase.application_id.in_(application_ids)))).all()
         visa_by_application = {v.application_id: v for v in visa_rows}
 
+    career_out = {row["id"]: row for row in await _career_records_out(db, career_rows)}  # ENH-026: one serializer (A3)
+
     def _career(rows: list) -> list[dict]:
-        return [{"id": r.id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
+        return [career_out[r.id] for r in rows]
+
+    def _module_status(rows: list) -> str:  # ENH-026 C14
+        if any(counts_as_completed(r.status) for r in rows):
+            return "completed"
+        return "in_progress" if rows else "not_started"
 
     guidance = [r for r in career_rows if r.record_type == "guidance_session"]
     counselling = [r for r in career_rows if r.record_type == "counselling_note"]
     recommendations = [r for r in career_rows if r.record_type == "recommendation"]
+    recommendation_keys = ("recommended_careers", "recommended_courses", "recommended_stream", "recommended_skills")
+    structured_recommendations = [
+        {"record_id": r.id, "record_type": r.record_type, "created_at": r.created_at, **{key: getattr(r, key) for key in recommendation_keys}}
+        for r in guidance + counselling
+        if any(getattr(r, key) for key in recommendation_keys)
+    ]
     psych_statuses = {r.status for r in psych_rows}
     psychometric_status = "completed" if "completed" in psych_statuses else ("assigned" if psych_rows else "not_started")
     test_prep_statuses = {r.status for r in test_prep_rows}
@@ -1202,9 +1311,10 @@ async def _overview_payload(db: AsyncSession, student: SchoolStudent) -> dict:
     language_status = "certified" if "certified" in language_statuses else ("in_progress" if language_rows else "not_started")
     return {
         "student": {**_student_out(student), "school_name": school.name if school else None, "assigned_teacher_name": teacher.full_name if teacher else None},
-        "career_guidance": {"status": "completed" if guidance else "not_started", "sessions": _career(guidance)},
-        "counselling": {"status": "completed" if counselling else "not_started", "notes": _career(counselling)},
+        "career_guidance": {"status": _module_status(guidance), "sessions": _career(guidance)},
+        "counselling": {"status": _module_status(counselling), "notes": _career(counselling)},
         "recommended_careers": _career(recommendations),
+        "structured_recommendations": structured_recommendations,
         "psychometric": {"status": psychometric_status, "assessments": [{"id": r.id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at} for r in psych_rows]},
         "test_prep": {"status": test_prep_status, "records": [_test_prep_out(r) for r in test_prep_rows]},
         "foreign_language": {"status": language_status, "records": [_language_out(r) for r in language_rows]},
@@ -1841,13 +1951,16 @@ async def _portfolio_school_ids(db: AsyncSession, user: User) -> set:
     return set(rows)
 
 
+OUTSIDE_PORTFOLIO = "This student is at a school outside your own portfolio"
+
+
 async def _student_in_portfolio(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
     student = await db.get(SchoolStudent, student_id)
     if not student:
         raise HTTPException(404, "Student not found")
     portfolio = await _portfolio_school_ids(db, user)
     if student.school_id not in portfolio:
-        raise HTTPException(403, "This student is at a school outside your own portfolio")
+        raise HTTPException(403, OUTSIDE_PORTFOLIO)
     return student
 
 
@@ -1899,20 +2012,111 @@ async def create_career_record(payload: dict, user: User = Depends(get_current_u
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
     await require_school_entitlement(db, user, student.school_id, "individual_counselling")  # D5: every record type
     record_type = payload.get("record_type")
-    if record_type not in {"guidance_session", "counselling_note", "recommendation"}:
+    if record_type not in CAREER_RECORD_TYPES:
         raise HTTPException(422, "record_type must be one of guidance_session, counselling_note, recommendation")
-    notes = str(payload.get("notes", "")).strip()
-    if not notes:
-        raise HTTPException(422, "notes is required")
-    record = SchoolCareerRecord(school_student_id=student.id, career_counselor_user_id=user.id, record_type=record_type, notes=notes)
+    # ENH-026: the §7 fields, validated at the boundary with the house's string 422 (extra="forbid": no owner/id fields).
+    fields = _master_fields_or_422(CareerRecordFields, {k: v for k, v in payload.items() if k not in ("school_student_id", "record_type")})
+    sent = fields.model_fields_set - {"notes"}
+    if record_type not in STRUCTURED_RECORD_TYPES:
+        if sent:
+            raise HTTPException(422, "recommendation records take notes only")
+        if not fields.notes:
+            raise HTTPException(422, "notes is required")
+        status = None
+    else:
+        status = fields.status if fields.status is not None else "completed"  # C3: legacy callers get today's behaviour
+        if status not in CAREER_STATUS_INITIAL:
+            raise HTTPException(422, "status must be one of not_started, scheduled, completed when creating a record")
+    record = SchoolCareerRecord(school_student_id=student.id, career_counselor_user_id=user.id, record_type=record_type, notes=fields.notes)
+    for key in (*CAREER_DATE_KEYS, *CAREER_STRUCTURED_KEYS):
+        if key in sent:
+            setattr(record, key, getattr(fields, key))
+    if status is not None:
+        error = _enter_career_status(record, status, None, sent) or _career_rule_error(record)
+        if error:
+            raise HTTPException(422, error)
     db.add(record)
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.career_record_create", entity_type="school_career_record", entity_id=str(record.id), metadata_json={"record_type": record_type}))
+    db.add(AuditLog(user_id=user.id, action="school.career_record_create", entity_type="school_career_record", entity_id=str(record.id), metadata_json={"record_type": record_type, "status": status, "fields": sorted(sent)}))
     # SCH-007 "Counselling" trigger (guidance session / counselling note / recommendation).
     label = {"guidance_session": "Career guidance session recorded", "counselling_note": "Counselling note added", "recommendation": "Career recommendation added"}[record_type]
     await _notify_student_parents(db, student, title=f"{label} for {student.full_name}", body=f"A Career Counselor has added a new {record_type.replace('_', ' ')} to {student.full_name}'s career profile.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
-    return {"id": record.id, "school_student_id": record.school_student_id, "record_type": record.record_type, "notes": record.notes, "created_at": record.created_at}
+    await db.refresh(record)
+    logger.info("career_record_create", extra={"extra_fields": {"actor_id": str(user.id), "record_id": str(record.id), "record_type": record_type, "status": status}})
+    return (await _career_records_out(db, [record]))[0]
+
+
+def _audit_value(value):
+    return value.isoformat() if hasattr(value, "isoformat") else value
+
+
+@router.patch("/career-counselor/records/{record_id}")
+async def update_career_record(record_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-026 spec §5.1. One transaction up to the record commit: lock the record, lock its student (the lock transfer
+    approval takes) and re-check the portfolio under it, tier gate, precondition, transition, merge, rules, audit. Parents
+    are notified only after that commit (step 10), so no row lock is held across email delivery."""
+    if user.role != "career_counselor":
+        raise HTTPException(403, "Career Counselor role required")
+    record = await db.scalar(select(SchoolCareerRecord).where(SchoolCareerRecord.id == record_id).with_for_update().execution_options(populate_existing=True))
+    if record is None:
+        raise HTTPException(404, "Career record not found")
+    student = await db.scalar(select(SchoolStudent).where(SchoolStudent.id == record.school_student_id).with_for_update().execution_options(populate_existing=True))
+    if student is None or student.school_id not in await _portfolio_school_ids(db, user):
+        raise HTTPException(403, OUTSIDE_PORTFOLIO)
+    await require_school_entitlement(db, user, student.school_id, "individual_counselling", grandfathered_since=record.created_at)
+    fields = _master_fields_or_422(CareerRecordUpdate, payload)
+    sent = set(fields.model_fields_set)
+    if "expected_status" in sent and fields.expected_status != record.status:
+        raise HTTPException(409, f"This record was changed by someone else (now {CAREER_STATUS_LABEL[record.status]}). Reload to see the latest.")
+    sent.discard("expected_status")
+    if record.record_type not in STRUCTURED_RECORD_TYPES and sent - {"notes"}:
+        raise HTTPException(422, "recommendation records take notes only")
+
+    tracked = ("notes", "status", *CAREER_DATE_KEYS, *CAREER_STRUCTURED_KEYS)
+    before = {key: getattr(record, key) for key in tracked}
+    old_status = record.status
+    if "status" in sent and fields.status != old_status:
+        if fields.status is None or not career_transition_allowed(old_status, fields.status):
+            raise HTTPException(422, f"Cannot change status from {CAREER_STATUS_LABEL[old_status]} to {CAREER_STATUS_LABEL[fields.status]}")
+    for key in sent - {"status"}:
+        setattr(record, key, getattr(fields, key))
+    if "status" in sent:
+        error = _enter_career_status(record, fields.status, old_status, sent)
+        if error:
+            raise HTTPException(422, error)
+    error = _career_rule_error(record)
+    if error:
+        raise HTTPException(422, error)
+
+    changed = [key for key in tracked if getattr(record, key) != before[key]]
+    if not changed:
+        return (await _career_records_out(db, [record]))[0]  # A6: a repeat PATCH writes nothing
+    record.updated_by_user_id = user.id
+    metadata: dict = {"changed_fields": changed}  # field names only, never contents (S10)
+    for key in ("status", *CAREER_DATE_KEYS):
+        if key in changed:
+            metadata[key] = {"old": _audit_value(before[key]), "new": _audit_value(getattr(record, key))}
+    db.add(AuditLog(user_id=user.id, action="school.career_record_update", entity_type="school_career_record", entity_id=str(record.id), metadata_json=metadata))
+    await db.commit()
+    await db.refresh(record)
+    # Everything the response and logs need is read now: a notification failure below rolls back and expires these objects.
+    out = (await _career_records_out(db, [record]))[0]
+    ids = {"actor_id": str(user.id), "record_id": str(record.id), "student_id": str(student.id)}
+    new_status = record.status
+    if new_status != old_status:
+        try:
+            await _notify_student_parents(
+                db, student, title=f"{CAREER_STATUS_LABEL[new_status]} — career record for {student.full_name}",
+                body=f"A Career Counselor updated {student.full_name}'s career record to {CAREER_STATUS_LABEL[new_status]}.",
+                action_url=f"/school/parent/children/{student.id}",
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            logger.warning("career_record_notify_failed", extra={"extra_fields": ids})
+    logger.info("career_record_update", extra={"extra_fields": {**ids, "status": new_status, "changed": len(changed)}})
+    return out
 
 
 @router.get("/career-counselor/records")
@@ -1924,7 +2128,7 @@ async def list_career_counselor_records(user: User = Depends(get_current_user), 
         return []
     student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
     rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id.in_(student_ids)).order_by(SchoolCareerRecord.created_at.desc()))).all()
-    return [{"id": r.id, "school_student_id": r.school_student_id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
+    return await _career_records_out(db, rows)
 
 
 @router.get("/career-records")
@@ -1937,7 +2141,7 @@ async def list_readable_career_records(user: User = Depends(get_current_user), d
     if not readable:
         return []
     rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id.in_(readable)).order_by(SchoolCareerRecord.created_at.desc()))).all()
-    return [{"id": r.id, "school_student_id": r.school_student_id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
+    return await _career_records_out(db, rows)
 
 
 # --- SCH-005: Psychometric Assessment ----------------------------------------------------

@@ -3,8 +3,10 @@
 import { FormEvent, useRef, useState } from "react";
 
 import { CERT_STATUS_LABEL } from "@/components/CertificationDetails";
+import InternshipFields from "@/components/InternshipFields";
 import { detailMessage, isRequestBody, NOT_COMPLETED } from "@/lib/apiErrors";
 import { refocus } from "@/lib/focus";
+import { filledInternship, internshipChanges, type InternshipValues, pickInternship } from "@/lib/internship";
 import type { CertificationFields } from "@/lib/portfolio";
 
 type CertErrors = { status?: string; number?: string; issued?: string };
@@ -19,11 +21,19 @@ const CONTROL_CHARACTERS = /[\u0000-\u001F\u007F-\u009F]/g;
 // pattern -- spec §3.8). Used both for create (no entryId) and edit (entryId + initial values) by
 // PortfolioPanel.tsx (Task 9).
 
-export default function PortfolioEntryForm({ studentId, section, entryId, initial, onDone, onCancel }: {
+export default function PortfolioEntryForm({ studentId, section, entryId, initial, tracking: trackingAllowed = true, onDone, onCancel }: {
   studentId: string; section: string; entryId?: string;
-  initial?: { title: string; description: string | null; organization: string | null; date_from: string | null; date_to: string | null } & CertificationFields;
+  initial?: { title: string; description: string | null; organization: string | null; date_from: string | null; date_to: string | null } & InternshipValues & CertificationFields;
+  /** ENH-021 QA-08: false when the school's tier lacks Platinum `internships` -- only the basic fields are offered and sent. */
+  tracking?: boolean;
   onDone: () => void; onCancel: () => void;
 }) {
+  // ENH-021: an internship's title is its Role and its organization its Company (required); its tracking fields ride along.
+  const internship = section === "internship";
+  const showTracking = internship && trackingAllowed;
+  const [tracking, setTracking] = useState<InternshipValues>(() => pickInternship(initial));
+  const [companyError, setCompanyError] = useState<string | null>(null);
+  const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [organization, setOrganization] = useState(initial?.organization ?? "");
@@ -60,7 +70,7 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
     event.preventDefault();
     if (busy || inFlight.current) return;
     setAlert(null);
-    const titleError = title.trim() ? null : "Enter a title.";
+    const titleError = title.trim() ? null : internship ? "Enter the role." : "Enter a title.";
     const errors = checkCertification();
     setFieldError(titleError);
     setCertErrors(errors);
@@ -69,6 +79,18 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
       refocus(firstInvalid);
       return;
     }
+    if (internship && !organization.trim()) {
+      setCompanyError("Enter the company.");
+      return;
+    }
+    setCompanyError(null);
+    // QA-04: checked at the field (the server re-validates; its generic 422 text named no field).
+    const attendance = tracking.attendance_percent;
+    if (internship && attendance != null && !(Number.isInteger(attendance) && attendance >= 0 && attendance <= 100)) {
+      setAttendanceError("Attendance must be a whole number from 0 to 100.");
+      return;
+    }
+    setAttendanceError(null);
     inFlight.current = true;
     setBusy(true);
     const certification = skillIndia
@@ -82,6 +104,8 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
       date_from: dateFrom || null,
       date_to: dateTo || null,
       ...certification,
+      // ENH-021 I6: only changed tracking fields on edit, so a basic edit never needs the Platinum-only gate.
+      ...(showTracking ? (entryId ? internshipChanges(pickInternship(initial), tracking) : filledInternship(tracking)) : {}),
     };
     const url = entryId ? `/api/v1/school/students/${studentId}/portfolio/entries/${entryId}` : `/api/v1/school/students/${studentId}/portfolio/entries`;
     let response: Response;
@@ -111,9 +135,9 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
   }
 
   return (
-    <form className="form" onSubmit={submit} noValidate>
+    <form className="form" onSubmit={submit} noValidate onKeyDown={(e) => { if (e.key === "Escape" && !busy) onCancel(); }}>
       <div className="field">
-        <label htmlFor="pf-title">Title</label>
+        <label htmlFor="pf-title">{internship ? "Role" : "Title"}</label>
         <input id="pf-title" className="search" value={title} disabled={busy} aria-invalid={fieldError ? true : undefined} aria-describedby={fieldError ? "pf-title-error" : undefined} onChange={(e) => setTitle(e.target.value)} />
         {fieldError && <span id="pf-title-error" className="form-error">{fieldError}</span>}
       </div>
@@ -151,8 +175,9 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
         </fieldset>
       )}
       <div className="field">
-        <label htmlFor="pf-organization">{skillIndia ? "Issuing body (optional)" : "Organization (optional)"}</label>
-        <input id="pf-organization" className="search" value={organization} disabled={busy} onChange={(e) => setOrganization(e.target.value)} />
+        <label htmlFor="pf-organization">{internship ? "Company" : skillIndia ? "Issuing body (optional)" : "Organization (optional)"}</label>
+        <input id="pf-organization" className="search" value={organization} disabled={busy} aria-invalid={companyError ? true : undefined} aria-describedby={companyError ? "pf-organization-error" : undefined} onChange={(e) => setOrganization(e.target.value)} />
+        {companyError && <span id="pf-organization-error" className="form-error">{companyError}</span>}
       </div>
       <div className="field">
         <label htmlFor="pf-date-from">Start date (optional)</label>
@@ -162,6 +187,7 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
         <label htmlFor="pf-date-to">End date (optional)</label>
         <input id="pf-date-to" type="date" className="search" value={dateTo} disabled={busy} onChange={(e) => setDateTo(e.target.value)} />
       </div>
+      {showTracking && <InternshipFields values={tracking} onChange={setTracking} disabled={busy} attendanceError={attendanceError} />}
       <div className="field">
         <label htmlFor="pf-description">Description (optional)</label>
         <textarea id="pf-description" className="search" rows={3} maxLength={2000} value={description} disabled={busy} onChange={(e) => setDescription(e.target.value)} />

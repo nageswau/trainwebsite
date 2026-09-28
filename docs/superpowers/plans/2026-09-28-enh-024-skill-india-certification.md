@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Numbering note (2026-09-28, merge with `main`):** this plan was written and executed as `DEC-SCOPE-031` with migration `0042_skill_india_certification`. ENH-026/ENH-021 reached `main` first with those numbers, so they are now **`DEC-SCOPE-033`** and **`0044_skill_india_certification`** (on `0043_portfolio_internship`). The task text below keeps the original numbers as a record of what was run.
+
 **Goal:** Record a Skill India certification (status, certificate number, issuing body, issue date) on a school student's Digital Portfolio and show it on the Portfolio and the Student 360° Certificates tab.
 
 **Architecture:** Four nullable columns + four CHECKs on the existing `portfolio_entries` table (migration `0042`); the existing ENH-012 portfolio endpoints gain the fields additively; the update route locks the entry row. Frontend reuses `PortfolioEntryForm` / `PortfolioPanel` / 360° `Entries`, with one new hook-free `CertificationDetails` component.

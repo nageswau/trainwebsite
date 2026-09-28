@@ -89,6 +89,25 @@ describe("Student360Panels", () => {
     expect(screen.getByText("Application linked")).toBeInTheDocument();
   });
 
+  it("shows the counselling status and structured fields in the career tab (ENH-026)", () => {
+    const career: Tab360 = { status: "has_data", count: 1, not_tracked: [], data: { records: [{ id: "c2", record_type: "counselling_note", notes: "Met.", created_at: "2026-09-01T00:00:00Z", status: "scheduled", scheduled_for: "2026-10-01T04:30:00Z", weak_areas: ["Essays"] }] } };
+    render(<>{renderPanel("career_guidance", career, view())}</>);
+    expect(screen.getByText("Scheduled")).toBeInTheDocument();
+    expect(screen.getByText("Essays")).toBeInTheDocument();
+  });
+
+  it("names the internship programme and shows each internship's status (ENH-021)", () => {
+    const programmes: Tab360 = { status: "has_data", count: 1, not_tracked: [], data: { programmes: [{ key: "internship", status: "in_progress" }] } };
+    render(<>{renderPanel("edusphere_programs", programmes, view())}</>);
+    expect(screen.getByText("Internship")).toBeInTheDocument();
+    expect(screen.getByText("In progress")).toBeInTheDocument();
+    cleanup();
+    const internship = { id: "i1", section: "internship", title: "Design intern", organization: "Acme", description: null, date_from: null, date_to: null, completion_status: "discontinued" };
+    const activities: Tab360 = { status: "has_data", count: 1, not_tracked: [], data: { attended: null, upcoming: null, portfolio_entries: { ...(EMPTY_DATA.activities.portfolio_entries as object), internship: [internship] } } };
+    render(<>{renderPanel("activities", activities, view())}</>);
+    expect(screen.getByText("Discontinued")).toBeInTheDocument();
+  });
+
   it("shows upcoming school activities, and names the attended table once (browser QA-06)", () => {
     const tab: Tab360 = { status: "has_data", count: 1, not_tracked: [], data: {
       attended: [{ activity_id: "a1", title: "Career Awareness Session", scheduled_at: "2026-09-08T10:00:00Z", present: true }],

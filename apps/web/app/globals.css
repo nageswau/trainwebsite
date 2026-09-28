@@ -81,3 +81,16 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
    and pushed forms -- and the whole page -- wider than a phone. Let form rows shrink; controls never exceed their row. */
 .action-card > *, .form > *, .field > * { min-width: 0; }
 .field input, .field select, .field textarea { max-width: 100%; }
+/* ENH-021/ENH-026: read-only term/value lists under a record (counselling record, internship). Same look as .student-profile dl;
+   one column on phones. Rows use display:contents so each <div> keeps dt+dd valid while the <dl> grid lays them out. */
+/* QA-12: a vertical stack of cards with the same 18px rhythm as .action-grid, so adjacent cards never touch. */
+/* FV-03: minmax(0, 1fr) keeps a wide table from stretching its card past the viewport (an auto column sizes to content);
+   the table-wrap then scrolls instead. position:relative makes that scroll box clip the absolutely positioned
+   .visually-hidden text inside tables (the Edit buttons' names), which otherwise widened the page to ~700px on phones. */
+.card-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start; }
+.table-wrap { position: relative; }
+.record-details { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 8px 0 0; }
+.record-details-row { display: contents; }
+.record-details dt { font-weight: 700; }
+.record-details dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .record-details { grid-template-columns: 1fr; } .record-details dd { margin-bottom: 6px; } }

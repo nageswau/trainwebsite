@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// QA24-01 (ENH-024 browser QA): academic_team is one of the three portfolio writers (DEC-SCOPE-031 D10) but had no screen to write
+// QA24-01 (ENH-024 browser QA): academic_team is one of the three portfolio writers (DEC-SCOPE-033 D10) but had no screen to write
 // from. It now gets a student page with the editable Digital Portfolio, reached the way the coordinator reaches hers: directory ->
 // student page -> "Open 360° view", and the 360° view's back link returns to the student page.
 // Same serverApi stand-in as Student360Page.test.tsx (a plain function, not vi.fn -- see that file's note).
