@@ -126,6 +126,21 @@ describe("PsychometricResultsForm", () => {
     expect(screen.getByLabelText("Recommended streams")).toHaveAccessibleDescription(/use \/ or ; inside an item/i);
   });
 
+  it("asks before an in-app link discards unsaved results, and stays on 'no' (QA27-02)", () => {
+    const link = document.body.appendChild(Object.assign(document.createElement("a"), { href: "/account/profile", textContent: "My profile" }));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderForm();
+    const click = () => { const e = new MouseEvent("click", { bubbles: true, cancelable: true }); link.dispatchEvent(e); return e; };
+    expect(click().defaultPrevented).toBe(false); // nothing typed yet: no prompt
+    expect(confirm).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Strengths"), { target: { value: "Logic" } });
+    expect(click().defaultPrevented).toBe(true); // "no" keeps the user here
+    expect(confirm).toHaveBeenCalledWith("Leave without saving your results?");
+    confirm.mockReturnValue(true);
+    expect(click().defaultPrevented).toBe(false); // "yes" lets the navigation happen
+    link.remove();
+  });
+
   it("shows a character count for the remarks", () => {
     renderForm();
     expect(screen.getByText("10 / 4000")).toBeTruthy();

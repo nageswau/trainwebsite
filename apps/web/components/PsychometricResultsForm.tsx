@@ -18,6 +18,7 @@ type Props = { record: PsychometricResult & { id: string; assessment_type: strin
 
 const id = (key: ResultKey) => `psy-result-${key.replaceAll("_", "-")}`;
 const LIST_HINT_ID = "psy-result-lists-hint";
+const LEAVE_PROMPT = "Leave without saving your results?";
 const DATE_KEYS: ResultKey[] = ["test_date", "parent_discussion_on", "follow_up_on"];
 // Visual order, so focus lands on the first rejected field the user would meet.
 const FORM_ORDER: ResultKey[] = ["test_date", ...RESULT_LIST_FIELDS.map((f) => f.key), "parent_discussion_on", "follow_up_on"];
@@ -39,8 +40,23 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
       event.preventDefault();
       event.returnValue = "";
     };
+    // QA27-02: beforeunload only covers reload/close. An in-app link (sidebar, 360° links) navigates client-side, so ask
+    // first; capture phase runs before Next's Link handler, and "no" stops the click before it reaches the router.
+    const guardLinks = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = (event.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!link || link.target === "_blank" || link.hasAttribute("download") || link.origin !== window.location.origin) return;
+      if (!window.confirm(LEAVE_PROMPT)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
     window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
+    document.addEventListener("click", guardLinks, true);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      document.removeEventListener("click", guardLinks, true);
+    };
   }, [dirty]);
 
   const bind = (key: ResultKey) => ({
