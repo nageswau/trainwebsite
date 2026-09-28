@@ -3,7 +3,7 @@
 Revision ID: 0045_psychometric_result_fields
 Revises: 0044_skill_india_certification
 
-docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md §3 (DEC-SCOPE-034). Additive only:
+docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md §3 (DEC-SCOPE-035). Additive only:
 ten nullable columns, no backfill, no constraint, no rewrite of existing rows -- every existing value is kept.
 `downgrade()` drops exactly these ten columns.
 

@@ -108,3 +108,26 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
   .table.psy-records td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
   .table.psy-records td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
 }
+
+/* ENH-016 analytics dashboards: KPI tiles 1 -> 2 -> 4 columns; wide tables scroll inside their card, never the page. */
+.kpi-group { margin-top: 16px; }
+.kpi-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 8px 0 0; }
+@media (min-width: 768px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.kpi-tile { border: 1px solid #e7edf6; border-radius: 10px; padding: 12px; min-width: 0; }
+.kpi-tile dt { color: #61728a; font-size: 13px; }
+.kpi-tile dd { margin: 4px 0 0; }
+.kpi-value { font-size: 24px; font-weight: 800; color: #0b1f3a; }
+.kpi-note { display: block; font-size: 12px; margin-top: 4px; }
+/* position:relative makes the scroll box the containing block of the .sr-only captions inside it, so they are clipped
+   instead of widening the page on phones (same fix as .table-wrap, FV-03). */
+.table-scroll { overflow-x: auto; max-width: 100%; position: relative; }
+.table-scroll table th:first-child, .table-scroll table td:first-child { position: sticky; left: 0; background: #fff; }
+/* QA-016-02: the report forms land on these sections; keep their heading clear of the sticky portal header. */
+#development, #scorecards { scroll-margin-top: 88px; }
+/* QA-016-04: a row header is a label (a student, a metric), not a column heading -- normal case at body size. */
+.table-scroll tbody th[scope="row"] { text-transform: none; letter-spacing: normal; font-size: 14px; color: #0b1f3a; font-weight: 600; }
+.table-scroll tbody th[scope="row"] .kpi-note { font-weight: 400; }
+.state-badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.analytics-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 12px 0; }
+.pager { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }

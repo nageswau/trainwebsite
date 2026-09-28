@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-> **Numbering note (2026-09-28, merge with `main`):** this plan was written and executed as `DEC-SCOPE-033` with migration `0044_psychometric_result_fields` on `0043_portfolio_internship`. ENH-024 reached `main` first with those numbers, so they are now **`DEC-SCOPE-034`** and **`0045_psychometric_result_fields`** (on `0044_skill_india_certification`). The task text below keeps the original numbers as a record of what was run.
+> **Numbering note (2026-09-28, merge with `main`):** this plan was written and executed as `DEC-SCOPE-033` with migration `0044_psychometric_result_fields` on `0043_portfolio_internship`. ENH-024 reached `main` first with those numbers, so they are now **`DEC-SCOPE-034`** and **`0045_psychometric_result_fields`** (on `0044_skill_india_certification`). A later merge (ENH-016, PR #22, which took `DEC-SCOPE-034`) moved the decision again, to **`DEC-SCOPE-035`**; the migration stayed `0045`. The task text below keeps the original numbers as a record of what was run.
 
 **Goal:** Let the Psychometric Team record all 12 `School CRM.md §6` fields on a psychometric record, and show them as structured data in the 360° Psychometric tab and the parent's child page, without changing any existing behaviour.
 

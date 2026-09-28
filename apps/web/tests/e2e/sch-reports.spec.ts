@@ -74,7 +74,8 @@ test("coordinator and principal see real report figures; teacher is denied (Scho
   await expect(page.getByText("Grade 6")).toBeVisible();
   await expect(page.getByText("1 of 2 students have an assigned Teacher.")).toBeVisible();
   await expect(page.getByText("Service delivery completion")).toBeVisible();
-  await expect(page.getByText("Career guidance")).toBeVisible();
+  // exact: ENH-016's sections below the report also mention "Career Guidance" (Part B §14 row, a §29 estimate definition).
+  await expect(page.getByText("Career guidance", { exact: true })).toBeVisible();
   await expect(page.getByText("Activities & attendance")).toBeVisible();
 
   // Teacher is denied the report entirely, even via a direct URL. They set their own

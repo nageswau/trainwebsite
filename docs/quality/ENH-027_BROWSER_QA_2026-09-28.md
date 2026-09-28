@@ -29,7 +29,7 @@ Chrome, screen readers.
 | QA27-06 | Low | The 360° table's "Date" column (assignment day) read as the new Test date | Renamed "Assigned on", matching the parent page | `479cfac` | 360° panel unit test |
 
 **Observations, not defects (by design):** status stays "Assigned" when results exist but no report is attached
-(`DEC-SCOPE-034` Q6); a test date earlier than the assignment date is accepted (no cross-field rule specified); long
+(`DEC-SCOPE-035` Q6); a test date earlier than the assignment date is accepted (no cross-field rule specified); long
 comma lists are truncated inside single-line inputs on phones (Q9 convention); signed-out pages show "Access
 unavailable / Return to login" rather than redirecting (existing app pattern).
 

@@ -2485,7 +2485,6 @@ provisional-number note provided — the same later-branch-moves precedent as `D
 
 **Consequences:** `_tier_transition()` (new, pure, `schools.py`), computing `direction`/`gained`/`lost` from `_cumulative_services` only. `require_school_entitlement`, `_require_module_entitlement` (`school_skills.py`) and `_require_bridged_visa_entitlement` (`workflows.py`) each gain an optional keyword-only `grandfathered_since`; omitted, behaviour is byte-for-byte `ENH-022`'s (`test_enh_022_tier_enforcement.py`/`test_enh_022_tier_rules.py` pass unedited, AC-13). Exactly **14** routes pass `grandfathered_since` (the spec §6 table's "15" is a count error, corrected here): 4 in `schools.py` (activity attendance; psychometric/test-prep/language record updates), 6 in `school_skills.py` (skill-batch update, session create, assessment create, session attendance, assessment scores, enrolment status), 3 in `portfolio.py` (entry update, entry delete, personal statement), 1 in `workflows.py` (visa update). New `GET /overseas-admin/schools/{school_id}/tier-change-preview?tier=` (read-only, same role check as the PATCH). Typed contract: `schemas.py` gains `TierChangeService`, `TierChangeOut`, `SchoolUpdateOut`; the PATCH declares `response_model=SchoolUpdateOut`, the preview `response_model=TierChangeOut`. New page `/school/principal/notifications`. No migration, no new table, no new dependency (D4). **Residual, accepted (§8):** a create whose transaction starts in the microseconds between the transition audit row's insert and the downgrade's commit can still get a `created_at` later than the downgrade row, so later updates to that one record are refused; closing this needs a share lock across all 24 `ENH-022`-gated routes, out of scope here and listed as a follow-up (b) in `ENHANCEMENT_BACKLOG.md`.
 
-
 ### DEC-SCOPE-031 — Career Counselling record: structured §7 fields and status lifecycle (`ENH-026`)
 
 **ID note:** provisional number. If a parallel branch reaches `main` first holding `DEC-SCOPE-031`, this entry moves to the next free number on merge (same precedent as `DEC-SCOPE-024`/`025`/`027`/`029`/`030`).
@@ -2523,9 +2522,57 @@ provisional-number note provided — the same later-branch-moves precedent as `D
 
 **Consequences:** migration `0044_skill_india_certification` (four nullable columns, four CHECKs, no backfill); `PortfolioEntryCreate`/`Update`/`Out` gain fields additively; the entry PATCH locks its row; new `CertificationDetails.tsx`; no new endpoint, table or dependency.
 
-### DEC-SCOPE-034 — Psychometric record: structured result fields (`ENH-027`)
+### DEC-SCOPE-034 — School & Edusphere analytics dashboards (`ENH-016`)
 
-**ID note:** recorded as `DEC-SCOPE-033`. `ENH-024` reached `main` first holding `DEC-SCOPE-033` and migration `0044` (PR #20), so this entry was renumbered to `DEC-SCOPE-034` when `main` was merged into the `ENH-027` branch (2026-09-28), and its migration re-chained from `0044_psychometric_result_fields` (on `0043`) to `0045_psychometric_result_fields` on `0044_skill_india_certification` — the same later-branch-moves precedent as `DEC-SCOPE-024`/`025`/`027`/`029`/`030`/`033`. Earlier `ENH-027` commit messages that say `DEC-SCOPE-033` or `0044` mean this decision and that migration.
+**ID note:** recorded in-session as `DEC-SCOPE-031`. `ENH-026`, `ENH-021` and `ENH-024` reached `main` first holding
+`DEC-SCOPE-031`/`032`/`033`, so this entry was renumbered to `DEC-SCOPE-034` when `main` was merged into the `ENH-016` branch
+(2026-09-28), as its provisional-number note provided. Earlier `ENH-016` commit messages that say `DEC-SCOPE-031` mean this decision.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-016 (`DERIVED_BLUEPRINT`) consolidates `School CRM.md` §1, §27, §28,
+§29, §34 and Part B §14 (`ORIGINAL_REQUIREMENT`) into read-model dashboards. Who sees what, and how is each undefined metric
+computed from data that already exists?
+
+**Evidence:** Graphify-oriented investigation, 2026-09-28 (`origin/main` at `03d4408`): `GET /school/dashboard` already
+returned 18 of 20 §1 KPIs but no page rendered them; `digital_portfolios_created` and the `skills_training` chart were still
+flagged untracked although ENH-012/ENH-011 had shipped; `GET /school/entitlements` counted usage inline for one school only;
+§28/§29/§34/Part B §14 did not exist; `edusphere_school_manager` is not modelled (`RBAC_MATRIX.md:239`, open item 75);
+`schools` has no status/active column.
+
+**Resolution:** User confirmed in-session, 2026-09-28 (`EXPLICIT_APPROVAL`), D1–D16 in
+`docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md` §3:
+
+1. **D1 Cross-school audience:** `overseas_admin` + `super_admin` only; `it_admin` and every school-side role → 403.
+2. **D2 Pending:** total students − students who completed the activity.
+3. **D3 Scorecard states:** completed / in progress / not started (service in the tier) / not in plan / not tracked (no module).
+4. **D4 At-risk / top performer:** configurable thresholds on published-result average %; defaults `< 40` and `≥ 85` (`NEEDS_CONFIRMATION`).
+5. **D5 §29 undefined metrics:** labelled estimates from existing data (career readiness, skills development, global education interest, application readiness).
+6. **D6 §34 windows:** new = `partnership_date` (else `created_at`) within 90 days; renewal due = `tier_valid_until` ≤ today + 60 days, expired included; India time. **Revised in-session 2026-09-28** (no status column exists): active = a valid partnership tier, ENH-022's own `_entitlement_denial(tier, valid_until, None, today) is None`.
+7. **D7 "School Master" (Part B §14):** Principal + Coordinator; the Principal dashboard gains the §1 KPI board.
+8. **D8 Cleanup in scope:** digital portfolios and skills training become tracked; the unreachable code in `/school/reports` stays out.
+9. **D9 Scorecard audience:** Coordinator + Principal, own school only.
+10. **D10 Scorecard placement:** per-student card + paginated school-wide grid.
+11. **D11 Digital Portfolios Created:** ≥ 1 portfolio entry or a non-blank personal statement. **Revised 2026-09-28** (user, browser QA QA-016-03): `internship` entries do not count — ENH-021 attributes them to the Internships service; the ENH-012 completion % is unchanged.
+12. **D12 Scorecard Digital Portfolio row:** completed at ENH-012 completion 100 %; in progress when D11 holds below 100 %.
+13. **D13 Entitlement usage:** `/school/entitlements` reports `digital_portfolio_creation.used` = the D11 count.
+14. **D14 Approach A:** one feature module, grouped SQL over a student scope, fixed query count; no summary tables.
+15. **D15 Read audit:** a structured log line per request (ids and counts only); no `AuditLog` row for reads.
+16. **D16 Rate limiting:** no new limiter (none exists platform-wide); accepted risk.
+
+**Consequences:** New `app/api/school_analytics.py` (routers `/school/analytics/{grade-performance,student-development,scorecards}`,
+`/school/students/{id}/scorecard`, `/overseas-admin/analytics/{summary,schools}`); `schools.service_usage()` (batched,
+extracted from `school_entitlements`), `schools._school_account_counts()`, `school_skills.skill_usage_many()`,
+`portfolio.portfolio_completion()` (each extracted unchanged or delegating). Existing responses change only by D8/D13
+(values from `null` to counts; `skills_training` added; nothing renamed or removed); `test_sch_reports.py` and
+`test_sch_011_entitlements.py` assertions that pinned the superseded untracked state were updated accordingly. No migration,
+no new dependency, no write. **Open (`NEEDS_CONFIRMATION`):** D4 default thresholds; D5 estimate definitions; the Visa
+scorecard row's "completed" (taken as admitted, because `visa_cases.status` is free text); `edusphere_school_manager`
+scoping once item 75 resolves; scholarship tracking (ENH-017). **Merge with `main` (2026-09-28):** internships are tracked
+(`ENH-021`, `DEC-SCOPE-032`: scorecard Internship row via `internship_progress`, §34 outcome, §27 participation) and
+guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031`), matching `main`'s dashboard and entitlements.
+
+### DEC-SCOPE-035 — Psychometric record: structured result fields (`ENH-027`)
+
+**ID note:** recorded as `DEC-SCOPE-033`, then `DEC-SCOPE-034` after `ENH-024` reached `main` first (PR #20). `ENH-016` then reached `main` first holding `DEC-SCOPE-034` (PR #22), so this entry was renumbered again to `DEC-SCOPE-035` when `main` was merged into the `ENH-027` branch (2026-09-28). The migration did not move this time: `ENH-016` adds none, so ENH-027 stays `0045_psychometric_result_fields` on `0044_skill_india_certification`. Earlier `ENH-027` commit messages and docs that say `DEC-SCOPE-033`/`034` mean this decision.
 
 **Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-027 (`DERIVED_BLUEPRINT`): how does `SchoolPsychometricRecord` store the 12-field "Individual Student" record of `School CRM.md §6` (`EVID-014`, `docs/sources/School CRM.md:254-300`) when it holds only assessment type, status and a report link today, without changing existing behaviour?
 

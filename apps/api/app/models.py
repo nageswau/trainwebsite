@@ -1333,7 +1333,7 @@ class SchoolPsychometricRecord(Base, TimestampMixin):
     assessment_type: Mapped[str] = mapped_column(String(120))
     report_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="assigned")
-    # ENH-027 (DEC-SCOPE-034): School CRM.md §6's structured result. All optional; `status` still flips only on
+    # ENH-027 (DEC-SCOPE-035): School CRM.md §6's structured result. All optional; `status` still flips only on
     # `report_url`. Lists are JSON arrays of short strings (ENH-025's `_clean_list` rule); empty is stored as SQL NULL
     # (`none_as_null=True`, same as ENH-026's career-record lists). Names match ENH-026's where the concept is shared.
     test_date: Mapped[date | None] = mapped_column(Date, nullable=True)

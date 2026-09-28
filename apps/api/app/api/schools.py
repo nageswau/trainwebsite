@@ -15,6 +15,8 @@ import hashlib
 import io
 import re
 import secrets
+from collections import Counter
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
@@ -105,11 +107,10 @@ INVITABLE_ROLES = {"school_principal", "school_teacher", "school_parent"}
 INVITE_EXPIRY_DAYS = 7
 OVERSEAS_APPLICATION_STAGES = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"]
 OFFER_ONWARD_STATUSES = {"offer", "offer_received", "accepted", "visa_documentation", "status_tracking", "enrolled"}
-UNTRACKED_SCHOOL_DASHBOARD_KPIS = {
-    "digital_portfolios_created": "No confirmed School digital-portfolio model exists yet.",
-}
+# ENH-016 D8 (DEC-SCOPE-034): digital portfolios (ENH-012) and skills training (ENH-011) are tracked now; ENH-021 I7 tracks
+# internships. Nothing in the §1 KPI list is untracked any more.
+UNTRACKED_SCHOOL_DASHBOARD_KPIS: dict[str, str] = {}
 UNTRACKED_SCHOOL_DASHBOARD_CHARTS = [
-    {"key": "skills_training", "label": "Skills training", "note": "No confirmed School soft-skills training model exists yet."},
     {"key": "student_participation_by_program", "label": "Student participation by program", "note": "No confirmed School program-participation model exists yet."},
 ]
 INTERNSHIP_STATUS_ORDER = ("not_started", "in_progress", "completed", "discontinued")  # ENH-021 I7 chart order, then "no_status"
@@ -379,6 +380,19 @@ def _grade_level_from_label(label: str | None) -> str | None:
     return match.group(1) or match.group(2)
 
 
+async def _school_account_counts(db: AsyncSession, school_id: UUID) -> dict[str, int]:
+    """Teacher/parent/principal accounts of one school -- extracted unchanged from `_school_dashboard_payload` so ENH-016's
+    Part B §14 headcounts use exactly the same rule (ENH-008: parent membership via links)."""
+    accounts = (await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent"))))).all()
+    parent_ids_at_school = await _parent_ids_at_school(db, school_id)
+    accounts = [a for a in accounts if _account_belongs_to_school(a, school_id=school_id, parent_ids_at_school=parent_ids_at_school)]
+    return {
+        "teachers": sum(1 for a in accounts if a.role == "school_teacher"),
+        "parents": sum(1 for a in accounts if a.role == "school_parent"),
+        "principals": sum(1 for a in accounts if a.role == "school_principal"),
+    }
+
+
 async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     """Complete School CRM dashboard aggregation for Coordinator/Principal views.
 
@@ -401,12 +415,8 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     grade_breakdown = [{"grade": g, "count": c} for g, c in sorted(grade_counts.items())]
     students_with_teacher = sum(1 for s in students if s.assigned_teacher_user_id)
 
-    school_accounts = (await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent"))))).all()
-    parent_ids_at_school = await _parent_ids_at_school(db, school_id)
-    school_accounts = [a for a in school_accounts if _account_belongs_to_school(a, school_id=school_id, parent_ids_at_school=parent_ids_at_school)]
-    teacher_count = sum(1 for a in school_accounts if a.role == "school_teacher")
-    parent_count = sum(1 for a in school_accounts if a.role == "school_parent")
-    principal_count = sum(1 for a in school_accounts if a.role == "school_principal")
+    account_counts = await _school_account_counts(db, school_id)
+    teacher_count, parent_count, principal_count = account_counts["teachers"], account_counts["parents"], account_counts["principals"]
     pending_invite_count = len((await db.scalars(select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school_id, SchoolAccountInvite.status == "pending"))).all())
 
     career_rows: list[SchoolCareerRecord] = []
@@ -443,6 +453,11 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     ielts_students = {r.school_student_id for r in test_prep_rows if r.test_type == "ielts"}
     sat_students = {r.school_student_id for r in test_prep_rows if r.test_type == "sat"}
     language_students = {r.school_student_id for r in language_rows}
+    from app.api.school_analytics import portfolio_started_ids, skill_statuses, students_in  # noqa: PLC0415 -- school_analytics imports this module
+
+    school_scope = students_in([school_id])
+    portfolio_students = await portfolio_started_ids(db, school_scope)  # ENH-016 D11
+    skill_students = await skill_statuses(db, school_scope)  # ENH-016 D8: ENH-011 enrolments, withdrawn excluded
     # ENH-021 I7: the KPI counts students with any internship entry; the chart counts entries per completion status.
     internship_students = {student_id for student_id, _status in internship_rows}
     internship_status = [{"status": s, "count": sum(1 for _sid, status in internship_rows if status == s)} for s in INTERNSHIP_STATUS_ORDER]
@@ -517,7 +532,7 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
             _school_dashboard_kpi("ielts_training", "IELTS Training", len(ielts_students)),
             _school_dashboard_kpi("sat_preparation", "SAT Preparation", len(sat_students)),
             _school_dashboard_kpi("foreign_language_students", "Foreign Language Students", len(language_students)),
-            _school_dashboard_kpi("digital_portfolios_created", "Digital Portfolios Created", None, tracked=False, note=UNTRACKED_SCHOOL_DASHBOARD_KPIS["digital_portfolios_created"]),
+            _school_dashboard_kpi("digital_portfolios_created", "Digital Portfolios Created", len(portfolio_students)),
             _school_dashboard_kpi("university_shortlisting", "University Shortlisting", len(shortlisted_students)),
             _school_dashboard_kpi("applications_in_progress", "Applications in Progress", len(applications_in_progress)),
             _school_dashboard_kpi("offers_received", "Offers Received", len(offers)),
@@ -543,6 +558,7 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
         },
         "application_pipeline": application_pipeline,
         "visa_status": visa_status,
+        "skills_training": {"soft_skills": len(skill_students["soft_skills"]), "digital_skills": len(skill_students["digital_skills"]), "total_students": total_students},
         "internship_status": internship_status,
         "untracked_charts": UNTRACKED_SCHOOL_DASHBOARD_CHARTS,
     }
@@ -1120,6 +1136,74 @@ async def require_school_entitlement(db: AsyncSession, user: User, school_id: UU
     raise HTTPException(403, message)
 
 
+async def service_usage(db: AsyncSession, school_ids: Collection[UUID]) -> dict[UUID, dict[str, int | bool | None]]:
+    """DEC-SCOPE-017 usage per school and service, extracted from `school_entitlements` for ENH-016's cross-school rollup (spec
+    §5.2). One grouped query per source, so the query count does not depend on how many schools are asked for. A key that is
+    absent here is "not yet tracked" (`used: None`). ENH-016 D13 adds `digital_portfolio_creation` (students with a started
+    portfolio, D11). No writes."""
+    from app.api.school_analytics import portfolio_started_ids, students_in  # noqa: PLC0415 -- school_analytics imports this module
+
+    ids = list(school_ids)
+    if not ids:
+        return {}
+    usage: dict[UUID, dict[str, int | bool | None]] = {school_id: {} for school_id in ids}
+    in_schools = SchoolStudent.school_id.in_(ids)
+
+    async def _per_school(key: str, stmt) -> None:
+        counts = dict((await db.execute(stmt)).tuples().all())
+        for school_id in ids:
+            usage[school_id][key] = counts.get(school_id, 0)
+
+    def _student_rows(model, *conditions):
+        return select(SchoolStudent.school_id, func.count(model.id)).join(SchoolStudent, SchoolStudent.id == model.school_student_id).where(in_schools, *conditions).group_by(SchoolStudent.school_id)
+
+    await _per_school("psychometric_test", _student_rows(SchoolPsychometricRecord))
+    await _per_school(
+        "individual_counselling",
+        _student_rows(
+            SchoolCareerRecord, SchoolCareerRecord.record_type == "counselling_note",
+            or_(SchoolCareerRecord.status.is_(None), SchoolCareerRecord.status.in_(COUNTED_CAREER_STATUSES)),  # ENH-026 C5
+        ),
+    )
+    await _per_school("ielts_coaching", _student_rows(SchoolTestPrepRecord, SchoolTestPrepRecord.test_type == "ielts"))
+    await _per_school("sat_coaching", _student_rows(SchoolTestPrepRecord, SchoolTestPrepRecord.test_type == "sat"))
+    await _per_school("foreign_language_classes", _student_rows(SchoolLanguageRecord))
+    await _per_school("application_support", _student_rows(OverseasApplication))
+    await _per_school(  # ENH-021 I7: distinct students with an internship entry, same definition as the dashboard KPI
+        "internships",
+        select(SchoolStudent.school_id, func.count(distinct(PortfolioEntry.school_student_id)))
+        .join(SchoolStudent, SchoolStudent.id == PortfolioEntry.school_student_id)
+        .where(in_schools, PortfolioEntry.section == "internship")
+        .group_by(SchoolStudent.school_id),
+    )
+    await _per_school(
+        "visa_support",
+        select(SchoolStudent.school_id, func.count(VisaCase.id))
+        .join(OverseasApplication, OverseasApplication.id == VisaCase.application_id)
+        .join(SchoolStudent, SchoolStudent.id == OverseasApplication.school_student_id)
+        .where(in_schools)
+        .group_by(SchoolStudent.school_id),
+    )
+    activity_counts = await db.execute(
+        select(SchoolActivity.school_id, SchoolActivity.activity_type, func.count())
+        .where(SchoolActivity.school_id.in_(ids), SchoolActivity.activity_type.in_(list(ACTIVITY_SERVICE_KEYS)))
+        .group_by(SchoolActivity.school_id, SchoolActivity.activity_type)
+    )
+    for school_id in ids:
+        usage[school_id].update({service: 0 for service in ACTIVITY_SERVICE_KEYS.values()})
+    for school_id, activity_type, count in activity_counts.tuples():
+        usage[school_id][ACTIVITY_SERVICE_KEYS[activity_type]] = count
+    staffed = set((await db.scalars(select(SchoolStaffAssignment.school_id).where(SchoolStaffAssignment.school_id.in_(ids)).distinct())).all())
+    skills = await _skills().skill_usage_many(db, ids)  # ENH-011: soft_skills / web_designing
+    started = await portfolio_started_ids(db, students_in(ids))
+    portfolios = Counter((await db.scalars(select(SchoolStudent.school_id).where(SchoolStudent.id.in_(started)))).all()) if started else Counter()
+    for school_id in ids:
+        usage[school_id]["dedicated_counselor"] = school_id in staffed
+        usage[school_id].update(skills[school_id])
+        usage[school_id]["digital_portfolio_creation"] = portfolios[school_id]
+    return usage
+
+
 @router.get("/entitlements")
 async def school_entitlements(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """DEC-SCOPE-017 -- what this school's partnership tier includes, with a REAL usage
@@ -1136,38 +1220,7 @@ async def school_entitlements(user: User = Depends(get_current_user), db: AsyncS
     if not services:
         return {"tier": school.tier if school else None, "tier_valid_until": school.tier_valid_until if school else None, "services": []}
 
-    student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id == school_id))).all()
-
-    async def _activity_count(activity_type: str) -> int:
-        return len((await db.scalars(select(SchoolActivity.id).where(SchoolActivity.school_id == school_id, SchoolActivity.activity_type == activity_type))).all())
-
-    usage: dict[str, int | bool | None] = {}
-    if student_ids:
-        usage["psychometric_test"] = len((await db.scalars(select(SchoolPsychometricRecord.id).where(SchoolPsychometricRecord.school_student_id.in_(student_ids)))).all())
-        usage["individual_counselling"] = len(
-            (await db.scalars(select(SchoolCareerRecord.id).where(
-                SchoolCareerRecord.school_student_id.in_(student_ids), SchoolCareerRecord.record_type == "counselling_note",
-                or_(SchoolCareerRecord.status.is_(None), SchoolCareerRecord.status.in_(COUNTED_CAREER_STATUSES)),  # ENH-026 C5
-            ))).all()
-        )
-        usage["ielts_coaching"] = len((await db.scalars(select(SchoolTestPrepRecord.id).where(SchoolTestPrepRecord.school_student_id.in_(student_ids), SchoolTestPrepRecord.test_type == "ielts"))).all())
-        usage["sat_coaching"] = len((await db.scalars(select(SchoolTestPrepRecord.id).where(SchoolTestPrepRecord.school_student_id.in_(student_ids), SchoolTestPrepRecord.test_type == "sat"))).all())
-        usage["foreign_language_classes"] = len((await db.scalars(select(SchoolLanguageRecord.id).where(SchoolLanguageRecord.school_student_id.in_(student_ids)))).all())
-        application_ids = (await db.scalars(select(OverseasApplication.id).where(OverseasApplication.school_student_id.in_(student_ids)))).all()
-        usage["application_support"] = len(application_ids)
-        usage["visa_support"] = len((await db.scalars(select(VisaCase.id).where(VisaCase.application_id.in_(application_ids)))).all()) if application_ids else 0
-        usage["internships"] = await db.scalar(  # ENH-021 I7: distinct students, same definition as the dashboard KPI
-            select(func.count(distinct(PortfolioEntry.school_student_id))).where(PortfolioEntry.school_student_id.in_(student_ids), PortfolioEntry.section == "internship")
-        )
-    else:
-        usage.update({"psychometric_test": 0, "individual_counselling": 0, "ielts_coaching": 0, "sat_coaching": 0, "foreign_language_classes": 0, "application_support": 0, "visa_support": 0, "internships": 0})
-    usage["career_seminar"] = await _activity_count("career_seminar")
-    usage["career_awareness_session"] = await _activity_count("career_awareness_session")
-    usage["parent_orientation"] = await _activity_count("parent_orientation")
-    usage["monthly_campus_visits"] = await _activity_count("campus_visit")
-    usage["dedicated_counselor"] = bool(await db.scalar(select(SchoolStaffAssignment.id).where(SchoolStaffAssignment.school_id == school_id)))
-    usage.update(await _skills().skill_usage(db, school_id))  # ENH-011: soft_skills / web_designing are tracked now
-
+    usage = (await service_usage(db, [school_id]))[school_id]
     return {
         "tier": school.tier if school else None,
         "tier_valid_until": school.tier_valid_until if school else None,

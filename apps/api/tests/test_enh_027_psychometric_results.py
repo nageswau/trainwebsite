@@ -220,7 +220,7 @@ async def test_readers_see_result_fields_in_every_read_path(client, db_session):
 
 @pytest.mark.asyncio
 async def test_portfolio_service_roles_see_result_fields_in_the_portfolio_and_360(client, db_session):
-    # DEC-SCOPE-034 Q10 (owner, 2026-09-28, final review): Academic Team and Career Counsellor read the ten fields too,
+    # DEC-SCOPE-035 Q10 (owner, 2026-09-28, final review): Academic Team and Career Counsellor read the ten fields too,
     # through the portfolio and the 360° Psychometric tab, for students in their own portfolio.
     w = await _world(db_session)
     await login(client, w["psych"].email)

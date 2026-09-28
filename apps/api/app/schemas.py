@@ -849,7 +849,7 @@ def _iso_date_or_none(value) -> date | None:
 class PsychometricResultFields(BaseModel):
     """The ten ENH-027 fields, validated at the API boundary. Fed only the keys the client sent (so PATCH gets
     absent = unchanged / null = clear through `model_fields_set`); every other request key keeps its existing handling.
-    List names match ENH-026's `CareerRecordFields` where the concept is shared (DEC-SCOPE-034 Q8)."""
+    List names match ENH-026's `CareerRecordFields` where the concept is shared (DEC-SCOPE-035 Q8)."""
 
     test_date: date | None = None
     strengths: list[str] | None = None
@@ -1739,6 +1739,160 @@ class AdminActivityFeedbackOut(ActivityFeedbackOut):
 
 class AdminFeedbackPage(BaseModel):
     items: list[AdminActivityFeedbackOut]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- ENH-016: analytics dashboards (docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md §7) ---
+# Read-only response models. Grade keys are "8".."12", "other" (a grade outside 8-12) and "unspecified" (no grade).
+
+
+class MetricCell(BaseModel):
+    count: int
+    pct: float | None  # null when the grade has no students
+
+
+class GradeMetricRow(BaseModel):
+    key: str
+    label: str
+    is_proxy: bool  # D5: an estimate from existing data; `definition` says how it is computed
+    definition: str | None
+    cells: dict[str, MetricCell]
+
+
+class GradePerformanceOut(BaseModel):
+    grades: list[str]
+    students: dict[str, int]
+    metrics: list[GradeMetricRow]
+
+
+class Headcounts(BaseModel):
+    students: int
+    teachers: int
+    parents: int
+
+
+class ActivityProgressRow(BaseModel):
+    key: str
+    label: str
+    completed: int
+    pending: int  # D2: total students - completed
+
+
+class AverageRow(BaseModel):
+    key: str
+    label: str
+    average_pct: float | None
+    count: int
+
+
+class PerformerRow(BaseModel):
+    school_student_id: UUID
+    full_name: str
+    grade: str
+    average_pct: float
+    result_count: int
+
+
+class PerformerList(BaseModel):
+    items: list[PerformerRow]  # capped; `total` is the full count
+    total: int
+
+
+class StudentDevelopmentOut(BaseModel):
+    headcounts: Headcounts
+    activities: list[ActivityProgressRow]
+    by_grade: list[AverageRow]
+    by_subject: list[AverageRow]
+    by_term: list[AverageRow]
+    at_risk: PerformerList
+    top_performers: PerformerList
+    at_risk_below: int
+    top_from: int
+
+
+# D3: completed / in progress / not started (service in the tier) / not in plan / no module yet.
+ScorecardState = Literal["completed", "in_progress", "not_started", "not_in_plan", "not_tracked"]
+
+
+class ScorecardArea(BaseModel):
+    key: str
+    label: str
+    state: ScorecardState
+
+
+class ScorecardOut(BaseModel):
+    school_student_id: UUID
+    full_name: str
+    grade: str
+    portfolio_completion_pct: int
+    areas: list[ScorecardArea]
+
+
+class ScorecardPage(BaseModel):
+    items: list[ScorecardOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class TrackedValue(BaseModel):
+    value: int | None
+    tracked: bool
+    note: str | None = None
+
+
+class SchoolCounts(BaseModel):
+    total: int
+    active: int
+    new: int
+    renewal_due: int
+
+
+class StudentCounts(BaseModel):
+    total: int
+    by_grade: dict[str, int]
+    career_guidance: int
+    psychometric: int
+    counselling: int
+    global_education: int
+
+
+class ServiceTotals(BaseModel):
+    """§27 over the services a tier includes: delivered (used), pending (included, unused), not tracked (no module yet)."""
+
+    services_included: int
+    delivered: int
+    pending: int
+    not_tracked: int
+    utilization_pct: float | None
+
+
+class CrossSchoolSummaryOut(BaseModel):
+    """§34 -- aggregates only: no student-level field (spec §12)."""
+
+    schools: SchoolCounts
+    students: StudentCounts
+    services: ServiceTotals
+    outcomes: dict[str, TrackedValue]
+
+
+class SchoolUtilizationRow(ServiceTotals):
+    school_id: UUID
+    name: str
+    tier: str | None
+    tier_valid_until: date | None
+    is_active: bool  # a tier that is set and not past its end date (ENH-022's rule)
+    is_new: bool
+    renewal_due: bool
+    students: int
+    student_participation: int
+    pending_activities: int
+
+
+class SchoolUtilizationPage(BaseModel):
+    items: list[SchoolUtilizationRow]
     total: int
     limit: int
     offset: int

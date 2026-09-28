@@ -687,7 +687,7 @@ per `record_type`, no structured sub-fields invented beyond what `DEC-ROLE-006` 
 - **Open:** exact assessment-type taxonomy and report field structure not itemized by `DEC-ROLE-006`
   — `EVID-014`'s detailed proposal is `DERIVED_BLUEPRINT` only, not confirmed.
 - **Feature IDs:** `SCH-005`.
-- **Addendum, 2026-09-28 (`ENH-027` / `DEC-SCOPE-034` — structured result, `School CRM.md §6`):** gains
+- **Addendum, 2026-09-28 (`ENH-027` / `DEC-SCOPE-035` — structured result, `School CRM.md §6`):** gains
   **nullable** columns `test_date` (date — the day the test was taken; `created_at` stays the assignment
   day), `strengths`, `interest_areas`, `personality_indicators`, `recommended_careers`, `recommended_stream`
   (JSON string lists, SQL `NULL` when empty; the last two share ENH-026's names and shape), `counsellor_remarks`

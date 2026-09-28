@@ -18,7 +18,7 @@ NEW_COLUMNS = (
 
 
 def test_migration_follows_enh024_and_is_the_single_head():
-    # Re-chained on merge: ENH-024 (0044_skill_india_certification) reached main first on the same parent (DEC-SCOPE-034 ID note).
+    # Re-chained on merge: ENH-024 (0044_skill_india_certification) reached main first on the same parent (DEC-SCOPE-035 ID note).
     assert _migration.revision == "0045_psychometric_result_fields"
     assert _migration.down_revision == "0044_skill_india_certification"
     parents = {}
