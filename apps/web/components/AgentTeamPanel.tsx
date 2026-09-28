@@ -63,6 +63,7 @@ export default function AgentTeamPanel() {
           ? { text: "Invite sent.", failed: false }
           : { text: "Invite created, but the email was not delivered. Ask Overseas Admin to re-send the link.", failed: true },
       );
+      router.refresh(); // the page's server-rendered Team table
       load();
     } finally {
       inviteInFlight.current = false;

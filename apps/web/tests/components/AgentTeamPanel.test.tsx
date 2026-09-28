@@ -55,6 +55,8 @@ describe("AgentTeamPanel (AGN-001)", () => {
     expect(await screen.findByText("Invite created, but the email was not delivered. Ask Overseas Admin to re-send the link.")).toBeInTheDocument();
     expect(await screen.findByText("Invite pending")).toBeInTheDocument();
     expect(JSON.parse(mock.mock.calls[1][1].body)).toEqual({ full_name: "Ravi Iyer", email: "ravi@example.local", phone: null });
+    // The page's server-rendered Team table must pick up the new Master too (browser check, 2026-09-28).
+    expect(refresh).toHaveBeenCalled();
   });
 
   it("shows the server's 422 on invite", async () => {
