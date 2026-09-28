@@ -184,7 +184,7 @@ a contract change outside ENH-027 and is not done (noted as a follow-up if portf
 The output contract (field names, `null` = not recorded, ISO dates, lists never empty — `null` instead)
 is recorded in `API_CONTRACT.md` and mirrored by one exported TypeScript type (§5.5).
 
-Visibility (§9 Q1): every role that can read the record today sees the result fields. Scope loaders
+Visibility (§9 Q1, Q10): every role that can read the record today sees the result fields — including, through the portfolio and the 360° tab, the portfolio-scoped Academic Team and Career Counsellor (Q10). Scope loaders
 (`_student_in_portfolio`, `_readable_students`, `_load_student_for_reader`) are unchanged.
 
 **Explicitly unchanged:** `rbac.py`, `admin.py`, `services/portal.py`, `student_360.py`,
@@ -416,6 +416,7 @@ E2E suites once at the end (user's every-3-4-features cadence; this is one featu
 | Q7 | §6 "Counselling Completed" count? | Not in ENH-027 → ENH-026 |
 | Q8 | (2026-09-28, after ENH-021/026 merged) Field names? | Match ENH-026: `recommended_careers`, `recommended_stream` (UI labels stay "Career recommendations" / "Recommended streams") |
 | Q9 | (same) How are list fields typed? | Comma-separated, like ENH-025/026 (`splitList`/`listText`) |
+| Q10 | (2026-09-28, final review) What do the portfolio-scoped service roles see? | Academic Team and Career Counsellor see all ten fields in the portfolio and the 360° tab (owner approval; pinned by `test_portfolio_service_roles_see_result_fields_in_the_portfolio_and_360`) |
 
 ## 10. Regression risks and mitigations
 

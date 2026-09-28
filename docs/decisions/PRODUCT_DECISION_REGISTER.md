@@ -2544,5 +2544,8 @@ provisional-number note provided — the same later-branch-moves precedent as `D
 | Q7 | §6 "Counselling Completed" count? | Not in ENH-027 → ENH-026 |
 | Q8 | Field names? | Match ENH-026: `recommended_careers`, `recommended_stream` (UI labels "Career recommendations" / "Recommended streams") |
 | Q9 | How are list fields typed? | Comma-separated, like ENH-025/026 (`splitList`/`listText`) |
+| Q10 | (2026-09-28, final review) The portfolio and 360° Psychometric tab also reach the portfolio-scoped service roles — what do they see? | **Academic Team and Career Counsellor see all ten fields** too (incl. counsellor remarks and parent discussion), for students in their own portfolio — the owner's explicit approval, closing the gap the whole-branch review found against Q1 |
+
+**Known limitation (accepted with Q9):** a comma always separates items, so "Science (Physics, Chemistry, Maths)" becomes three items; the form hint says to use `/` or `;` inside an item.
 
 **Consequences:** migration `0045` (ten additive nullable columns: `test_date`, `strengths`, `interest_areas`, `personality_indicators`, `recommended_careers`, `recommended_stream`, `counsellor_remarks`, `parent_discussion_on`, `parent_discussion_notes`, `follow_up_on`; no backfill); additive request/response keys on the existing psychometric endpoints and read shapes; update audit metadata gains `fields` (names only). Unchanged: roles and scoping, the completion/notification rule, which endpoints return `report_url` (Client Question #20 stays open), reports/KPIs, timeline. `ENH-019` may later read `follow_up_on`; `ENH-028` bulk entry reuses this shape.
