@@ -2570,3 +2570,29 @@ scoping once item 75 resolves; scholarship tracking (ENH-017). **Merge with `mai
 (`ENH-021`, `DEC-SCOPE-032`: scorecard Internship row via `internship_progress`, §34 outcome, §27 participation) and
 guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031`), matching `main`'s dashboard and entitlements.
 
+### DEC-SCOPE-035 — Psychometric record: structured result fields (`ENH-027`)
+
+**ID note:** recorded as `DEC-SCOPE-033`, then `DEC-SCOPE-034` after `ENH-024` reached `main` first (PR #20). `ENH-016` then reached `main` first holding `DEC-SCOPE-034` (PR #22), so this entry was renumbered again to `DEC-SCOPE-035` when `main` was merged into the `ENH-027` branch (2026-09-28). The migration did not move this time: `ENH-016` adds none, so ENH-027 stays `0045_psychometric_result_fields` on `0044_skill_india_certification`. Earlier `ENH-027` commit messages and docs that say `DEC-SCOPE-033`/`034` mean this decision.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-027 (`DERIVED_BLUEPRINT`): how does `SchoolPsychometricRecord` store the 12-field "Individual Student" record of `School CRM.md §6` (`EVID-014`, `docs/sources/School CRM.md:254-300`) when it holds only assessment type, status and a report link today, without changing existing behaviour?
+
+**Evidence:** Graphify-oriented impact analysis, 2026-09-27: `SchoolPsychometricRecord` (`models.py`) has `assessment_type`, `report_url`, `status` and `created_at` (the assignment day, not the test date) — 9 of the 12 source fields are missing; the create/update routes take a raw `payload: dict`; the record is read through six shapes (team list, readable list, overview, portfolio, the 360° Psychometric tab via the portfolio rows, create/update responses); the §1.5 coverage row had marked §6 "Built" without a field-by-field check.
+
+**Resolution:** User confirmed in-session, 2026-09-27/28 (`EXPLICIT_APPROVAL`), Q1–Q9 in `docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md` §9:
+
+| # | Question | Answer |
+|---|---|---|
+| Q1 | Which readers see the new fields? | All existing readers (Coordinator/Principal/Teacher/Parent), same scope as today |
+| Q2 | Who writes Counsellor remarks / Parent discussion? | Psychometric Team only (SCH-005-AC04 unchanged) |
+| Q3 | Career recommendations shape? | `list[str]` — the same shape ENH-026 shipped (`DEC-SCOPE-031`) |
+| Q4 | Parent discussion / Follow-up shape? | Parent discussion = date + notes; Follow-up = date |
+| Q5 | Test date storage? | New nullable `test_date`; `created_at` stays "assigned on" |
+| Q6 | Required fields / completion rule? | All optional; completion still flips only on `report_url` |
+| Q7 | §6 "Counselling Completed" count? | Not in ENH-027 → ENH-026 |
+| Q8 | Field names? | Match ENH-026: `recommended_careers`, `recommended_stream` (UI labels "Career recommendations" / "Recommended streams") |
+| Q9 | How are list fields typed? | Comma-separated, like ENH-025/026 (`splitList`/`listText`) |
+| Q10 | (2026-09-28, final review) The portfolio and 360° Psychometric tab also reach the portfolio-scoped service roles — what do they see? | **Academic Team and Career Counsellor see all ten fields** too (incl. counsellor remarks and parent discussion), for students in their own portfolio — the owner's explicit approval, closing the gap the whole-branch review found against Q1 |
+
+**Known limitation (accepted with Q9):** a comma always separates items, so "Science (Physics, Chemistry, Maths)" becomes three items; the form hint says to use `/` or `;` inside an item.
+
+**Consequences:** migration `0045` (ten additive nullable columns: `test_date`, `strengths`, `interest_areas`, `personality_indicators`, `recommended_careers`, `recommended_stream`, `counsellor_remarks`, `parent_discussion_on`, `parent_discussion_notes`, `follow_up_on`; no backfill); additive request/response keys on the existing psychometric endpoints and read shapes; update audit metadata gains `fields` (names only). Unchanged: roles and scoping, the completion/notification rule, which endpoints return `report_url` (Client Question #20 stays open), reports/KPIs, timeline. `ENH-019` may later read `follow_up_on`; `ENH-028` bulk entry reuses this shape.

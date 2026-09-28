@@ -1,8 +1,10 @@
 import CareerRecordDetails from "@/components/CareerRecordDetails";
+import { PsychometricResultsList } from "@/components/PsychometricResultDetails";
 import SchoolStudentPhoto from "@/components/SchoolStudentPhoto";
 import { serverApi } from "@/lib/api";
 import type { CareerRecord } from "@/lib/careerRecords";
 import { formatCalendarDate, formatDate, formatSchoolDateTime, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
+import type { PsychometricResult } from "@/lib/psychometric";
 import { attendanceText, ENROLMENT_LABEL, MODULE_LABEL, type SkillModule } from "@/lib/skills";
 
 // SCH-007: one child's complete picture for the Parent Portal, read from
@@ -17,7 +19,7 @@ type StructuredRecommendation = {
   record_id: string; record_type: string; created_at: string;
   recommended_careers: string[] | null; recommended_courses: string[] | null; recommended_stream: string[] | null; recommended_skills: string[] | null;
 };
-type Assessment = { id: string; assessment_type: string; status: string; created_at: string };
+type Assessment = { id: string; assessment_type: string; status: string; created_at: string } & PsychometricResult;
 type Result = { id: string; academic_year: string; term: string; subject: string; max_marks: number; marks_obtained: number; percentage: number | null; grade: string | null; teacher_remarks: string | null };
 type Attended = { activity_id: string; title: string; scheduled_at: string; present: boolean };
 type Upcoming = { id: string; title: string; scheduled_at: string };
@@ -174,16 +176,19 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         {overview.psychometric.assessments.length === 0 ? (
           <p className="muted">No psychometric assessment assigned yet.</p>
         ) : (
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Assessment</th><th>Status</th><th>Assigned on</th></tr></thead>
-              <tbody>
-                {overview.psychometric.assessments.map((a) => (
-                  <tr key={a.id}><td>{a.assessment_type}</td><td><StatusChip status={a.status} /></td><td>{formatDate(a.created_at, false, SCHOOL_TIME_ZONE)}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="table-wrap">
+              <table className="table">
+                <thead><tr><th>Assessment</th><th>Status</th><th>Assigned on</th></tr></thead>
+                <tbody>
+                  {overview.psychometric.assessments.map((a) => (
+                    <tr key={a.id}><td>{a.assessment_type}</td><td><StatusChip status={a.status} /></td><td>{formatDate(a.created_at, false, SCHOOL_TIME_ZONE)}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <PsychometricResultsList assessments={overview.psychometric.assessments} />
+          </>
         )}
       </div>
 

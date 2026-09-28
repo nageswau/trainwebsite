@@ -2540,6 +2540,15 @@ structured shape — must not lose the original free-text content.
 
 ## ENH-027 — Psychometric Record: Structured Result Fields
 
+**Status (2026-09-28):** built on `feature/enh-027-psychometric-full-record` per
+`docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md` (`DEC-SCOPE-035`, migration `0045`);
+**COMPLETE (verified 2026-09-28 on the branch merged with `main` at `bedbcce`)** — every acceptance criterion has fresh
+test and browser evidence (`docs/quality/RTM.md` ENH-027 row); the independent Codex review was set aside by the owner.
+Not yet merged to `main`. **Correction to the
+count below:** today's record holds 3 of the 12 fields (Assessment type, Test status, Report); `created_at` is the
+*assignment* day, only a proxy for Test date, so a real `test_date` column is added (9 fields, 10 columns). The shared
+recommendation shape with `ENH-026` is settled: same names (`recommended_careers`, `recommended_stream`) and `list[str]`.
+
 **Title.** Add the structured psychometric-result fields `School CRM.md §6` specifies but
 `SchoolPsychometricRecord` doesn't store.
 

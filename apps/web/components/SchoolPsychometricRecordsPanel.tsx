@@ -1,13 +1,15 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
+import PsychometricResultsForm from "@/components/PsychometricResultsForm";
 import { sendJson } from "@/lib/apiErrors";
+import { hasResults, type PsychometricResult } from "@/lib/psychometric";
 
 type Student = { id: string; full_name: string; school_name: string };
-type Record_ = { id: string; school_student_id: string; assessment_type: string; report_url: string | null; status: string; created_at: string };
+type Record_ = { id: string; school_student_id: string; assessment_type: string; report_url: string | null; status: string; created_at: string } & PsychometricResult;
 
 // SCH-005: Psychometric Team assigns an assessment, then uploads a report against it --
 // visible to readers immediately, no Draft/Published gate for this content.
@@ -16,7 +18,18 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
   const [busy, setBusy] = useState(false);
   // ENH-022: which form the message belongs to, so it renders beside that form.
   const [message, setMessage] = useState<(FormMessageState & { form: "assign" | "attach" }) | null>(null);
-  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  // ENH-027: one action card at a time -- the attach card or the results editor.
+  const [open, setOpen] = useState<{ kind: "attach" | "results"; id: string } | null>(null);
+  const uploadingId = open?.kind === "attach" ? open.id : null;
+  const resultsRecord = open?.kind === "results" ? records.find((r) => r.id === open.id) ?? null : null;
+  const triggers = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [returnFocusTo, setReturnFocusTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!returnFocusTo) return;
+    triggers.current[returnFocusTo]?.focus();
+    setReturnFocusTo(null);
+  }, [returnFocusTo]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,7 +61,7 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
     }
     // The attach card closes on success, so this confirmation shows under the assign form instead.
     setMessage({ text: "Report attached.", failed: false, form: "assign" });
-    setUploadingId(null);
+    setOpen(null);
     router.refresh();
   }
 
@@ -57,14 +70,36 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
     setMessage((current) => (current?.form === "attach" ? null : current));
   }
 
+  // QA27-01: opening a card starts a new action, so an earlier success confirmation ("Results saved.", "Report attached.")
+  // no longer describes what is on screen. A failed assign message stays: it still belongs to the assign form.
+  function clearForNewAction() {
+    setMessage((current) => (current && (current.form === "attach" || !current.failed) ? null : current));
+  }
+
   function startAttach(recordId: string) {
-    clearAttachMessage();
-    setUploadingId(recordId);
+    clearForNewAction();
+    setOpen({ kind: "attach", id: recordId });
   }
 
   function stopAttach() {
     clearAttachMessage();
-    setUploadingId(null);
+    setOpen(null);
+  }
+
+  function startResults(recordId: string) {
+    clearForNewAction();
+    setOpen({ kind: "results", id: recordId });
+  }
+
+  // ENH-027: closing the editor (saved or cancelled) returns focus to the row button that opened it.
+  function finishResults(saved: boolean) {
+    const recordId = open?.id ?? null;
+    setOpen(null);
+    if (saved) {
+      setMessage({ text: "Results saved.", failed: false, form: "assign" });
+      router.refresh();
+    }
+    setReturnFocusTo(recordId);
   }
 
   function studentName(id: string) {
@@ -79,22 +114,32 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
           <p className="muted">No assessments assigned yet.</p>
         ) : (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table psy-records">
               <thead>
                 <tr><th>Student</th><th>Assessment</th><th>Status</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {records.map((r) => (
                   <tr key={r.id}>
-                    <td>{studentName(r.school_student_id)}</td>
-                    <td>{r.assessment_type}</td>
-                    <td>{r.status}</td>
-                    <td>
-                      {r.status === "assigned" ? (
-                        <button className="btn ghost small" onClick={() => startAttach(r.id)}>Attach report</button>
-                      ) : (
-                        <span className="muted" style={{ fontSize: 13 }}>Report attached</span>
-                      )}
+                    <td data-label="Student">{studentName(r.school_student_id)}</td>
+                    <td data-label="Assessment">{r.assessment_type}</td>
+                    <td data-label="Status">{r.status}</td>
+                    <td data-label="Actions">
+                      <div className="actions">
+                        {r.status === "assigned" ? (
+                          <button className="btn ghost small" onClick={() => startAttach(r.id)}>Attach report</button>
+                        ) : (
+                          <span className="muted" style={{ fontSize: 13 }}>Report attached</span>
+                        )}
+                        <button
+                          ref={(el) => { triggers.current[r.id] = el; }}
+                          className="btn ghost small"
+                          aria-label={`${hasResults(r) ? "Edit" : "Record"} results for ${studentName(r.school_student_id)} — ${r.assessment_type}`}
+                          onClick={() => startResults(r.id)}
+                        >
+                          {hasResults(r) ? "Edit results" : "Record results"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -119,6 +164,10 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
           </form>
           {message?.form === "attach" && <FormMessage message={message} />}
         </div>
+      )}
+
+      {resultsRecord && (
+        <PsychometricResultsForm key={resultsRecord.id} record={resultsRecord} studentName={studentName(resultsRecord.school_student_id)} onDone={finishResults} />
       )}
 
       <div className="action-card">
