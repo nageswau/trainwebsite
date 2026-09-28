@@ -79,14 +79,14 @@ test("the career counselor dashboard fits a phone with long school names (QA-022
   await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/career-counselor/dashboard");
-  await expect(page.locator("#career-student option", { hasText: schoolName })).toHaveCount(1);
+  await expect(page.locator("#career-new-student option", { hasText: schoolName })).toHaveCount(1);
   const widths = await page.evaluate(() => ({ page: document.documentElement.scrollWidth, screen: window.innerWidth }));
   expect(widths.page).toBeLessThanOrEqual(widths.screen);
 
   // The (Bronze) refusal is readable where the counselor acted.
-  await page.selectOption("#career-student", { index: 1 });
-  await page.selectOption("#career-type", "guidance_session");
-  await page.fill("#career-notes", "E2E note");
+  await page.selectOption("#career-new-student", { index: 1 });
+  await page.selectOption("#career-new-type", "guidance_session");
+  await page.fill("#career-new-notes", "E2E note");
   await page.click('button:has-text("Save record")');
   const alert = page.locator(".action-card", { has: page.getByRole("heading", { name: "Add a record" }) }).getByRole("alert");
   await expect(alert).toContainText("requires Silver or higher");

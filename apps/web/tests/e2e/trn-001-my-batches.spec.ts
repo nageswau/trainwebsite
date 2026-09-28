@@ -12,7 +12,8 @@ test("trainer sees their own assigned batch, scoped to them (TRN-001-AC01)", asy
 
   await expect(page.getByRole("heading", { name: "Trainer Dashboard" })).toBeVisible();
   await expect(page.getByText("Assigned batches", { exact: true })).toBeVisible();
-  await expect(page.locator("table")).toContainText("PY-FS-AUG-2026");
+  // The batch table, not the per-batch roster table that also renders once the batch has enrolments.
+  await expect(page.getByRole("table").filter({ has: page.getByRole("columnheader", { name: /Schedule/ }) })).toContainText("PY-FS-AUG-2026");
 });
 
 test("the trainer batch list requires authentication", async ({ page }) => {

@@ -119,12 +119,12 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/career-counselor/dashboard");
 
-  await page.selectOption("#career-student", { label: `E2E Service Student — ${schoolName}` });
-  await page.selectOption("#career-type", "guidance_session");
-  await page.fill("#career-notes", "Discussed engineering vs. commerce streams.");
+  await page.selectOption("#career-new-student", { label: `E2E Service Student — ${schoolName}` });
+  await page.selectOption("#career-new-type", "guidance_session");
+  await page.fill("#career-new-notes", "Discussed engineering vs. commerce streams.");
   await page.click('button:has-text("Save record")');
   await expect(page.getByText(/Record saved\./)).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Guidance session" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Guidance session", exact: true })).toBeVisible(); // not the row's "Edit guidance session of …" cell
 
   // 7. Psychometric Team assigns an assessment and attaches a report.
   await page.request.post("/api/v1/auth/logout");

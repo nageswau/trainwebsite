@@ -44,6 +44,8 @@ test.describe.serial("ENH-013 Student 360° view", () => {
     test.setTimeout(120_000);
     const admin = await apiAs("overseasadmin@edusphere.local", "Demo@123");
     const school = await createAndActivate(admin, "/api/v1/overseas-admin/schools", { name: `E2E 360 School ${unique}`, coordinator_full_name: "E2E 360 Coordinator", coordinator_email: email("coord") });
+    const tier = await admin.patch(`/api/v1/overseas-admin/schools/${school.id}`, { data: { tier: "platinum" } }); // ENH-022: entitled to every service
+    expect(tier.ok()).toBeTruthy();
     for (const [role, who] of [["career_counselor", "counselor"], ["psychometric_team", "psych"]]) {
       await createAndActivate(admin, "/api/v1/overseas-admin/school-staff", { role, full_name: `E2E 360 ${who}`, email: email(who), school_ids: [school.id] });
     }

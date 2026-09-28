@@ -83,7 +83,7 @@ test("parent sees child overview, upcoming session, and notification; unlinked c
   await page.click('a:has-text("View full profile & progress")');
   await page.waitForURL(`**/school/parent/children/${linked.id}`);
   for (const heading of ["Career guidance", "Counselling", "Recommended careers", "Psychometric assessment", "Academic results", "Activities", "Upcoming sessions"]) {
-    await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+    await expect(page.getByRole("heading", { name: heading, level: 3, exact: true })).toBeVisible(); // the embedded portfolio repeats some as h4
   }
   await expect(page.getByText("No published results yet")).toBeVisible();
 
