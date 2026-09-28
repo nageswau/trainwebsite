@@ -1,6 +1,8 @@
 """ENH-016 authorization and isolation (AC02-AC05, AC07, AC16). The school always comes from the caller's server-held profile;
 the cross-school view is the existing Overseas/Super Admin pair only (D1)."""
 
+import uuid
+
 import pytest
 from enh016_helpers import login, make_school, make_student
 
@@ -44,6 +46,19 @@ async def test_wrong_role_with_bad_thresholds_gets_403_not_422(client, db_sessio
     await login(client, ctx["school_teacher"])
     response = await client.get("/api/v1/school/analytics/student-development", params={"at_risk_below": 999})
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_scorecard_of_another_schools_student_is_the_same_404_as_a_missing_one(client, db_session):  # AC05
+    mine = await make_school(db_session)
+    theirs = await make_school(db_session)
+    foreign = await make_student(db_session, theirs)
+    await db_session.commit()
+    await login(client, mine["school_coordinator"])
+    other = await client.get(f"/api/v1/school/students/{foreign.id}/scorecard")
+    missing = await client.get(f"/api/v1/school/students/{uuid.uuid4()}/scorecard")
+    assert other.status_code == missing.status_code == 404
+    assert other.json() == missing.json() == {"detail": "Student not found"}
 
 
 @pytest.mark.asyncio

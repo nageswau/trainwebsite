@@ -15,15 +15,17 @@ from sqlalchemy import Select, func, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.api.portfolio import portfolio_completion
 from app.api.school_feedback import _require_school_reader
 from app.api.school_skills import _rollup
-from app.api.schools import OFFER_ONWARD_STATUSES, _grade_level_from_label, _own_school_id, _percentage, _school_account_counts, _stage_at_or_after
+from app.api.schools import OFFER_ONWARD_STATUSES, _cumulative_services, _grade_level_from_label, _own_school_id, _percentage, _school_account_counts, _stage_at_or_after
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import (
     OverseasApplication,
     PortfolioEntry,
     PortfolioProfile,
+    School,
     SchoolAcademicResult,
     SchoolActivity,
     SchoolActivityAttendance,
@@ -46,6 +48,9 @@ from app.schemas import (
     MetricCell,
     PerformerList,
     PerformerRow,
+    ScorecardArea,
+    ScorecardOut,
+    ScorecardPage,
     StudentDevelopmentOut,
 )
 
@@ -313,3 +318,102 @@ async def student_development(
         at_risk_below=at_risk_below,
         top_from=top_from,
     )
+
+
+# --- §28 Student Progress Scorecard -----------------------------------------------------------------------------------------
+
+STUDENT_NOT_FOUND = "Student not found"
+_NONE: frozenset[UUID] = frozenset()
+# (key, label, plan service keys or None when no module exists, completed rule, in-progress rule). Rules take (indicators,
+# ids whose ENH-012 portfolio is 100% complete). Spec §6.3 / D3 / D12.
+SCORECARD_AREAS = [
+    ("career_awareness", "Career Awareness", ("career_awareness_session",), lambda i, p: i["awareness_attended"] | i["guidance"], lambda i, p: _NONE),
+    ("psychometric", "Psychometric", ("psychometric_test",), lambda i, p: i["psych_completed"], lambda i, p: i["psych_started"]),
+    ("career_counselling", "Career Counselling", ("individual_counselling",), lambda i, p: i["counselling"], lambda i, p: _NONE),
+    ("soft_skills", "Soft Skills", ("soft_skills",), lambda i, p: i["soft_skills_completed"], lambda i, p: i["soft_skills_in_progress"]),
+    ("foreign_language", "Foreign Language", ("foreign_language_classes",), lambda i, p: i["language_certified"], lambda i, p: i["language_started"]),
+    ("digital_portfolio", "Digital Portfolio", ("digital_portfolio_creation",), lambda i, p: p, lambda i, p: i["portfolio_started"]),
+    ("ielts_sat", "IELTS/SAT", ("ielts_coaching", "sat_coaching"), lambda i, p: i["test_prep_completed"], lambda i, p: i["test_prep_started"]),
+    ("university_shortlisting", "University Shortlisting", ("application_support",), lambda i, p: i["shortlisted"], lambda i, p: i["global"]),
+    ("scholarship", "Scholarship", None, None, None),  # no school-student scholarship link yet (ENH-017)
+    ("application", "Application", ("application_support",), lambda i, p: i["offer"], lambda i, p: i["applied_active"]),
+    # NEEDS_CONFIRMATION: visa_cases.status is free text with no terminal value, so "completed" is taken as admitted.
+    ("visa", "Visa", ("visa_support",), lambda i, p: i["admitted"], lambda i, p: i["visa_started"]),
+    ("internship", "Internship", None, None, None),  # no internship model yet (ENH-020)
+]
+SCORECARD_COLUMNS = (SchoolStudent.id, SchoolStudent.full_name, SchoolStudent.grade_level, SchoolStudent.grade_or_class, SchoolStudent.date_of_birth)
+
+
+def _area_state(sid: UUID, plan: set[str], keys: tuple[str, ...], done: Collection[UUID], started: Collection[UUID]) -> str:
+    if sid in done:
+        return "completed"
+    if sid in started:
+        return "in_progress"
+    return "not_started" if plan.intersection(keys) else "not_in_plan"
+
+
+async def build_scorecards(db: AsyncSession, school_tier: str | None, students: list) -> list[ScorecardOut]:
+    """Scorecards for already scope-checked rows of SCORECARD_COLUMNS, in a fixed number of queries. "In plan" uses the same
+    inclusion rule as /school/entitlements (the tier's cumulative services; expiry is not applied there either)."""
+    ids = [s.id for s in students]
+    if not ids:
+        return []
+    indicators = await student_indicators(db, ids)
+    sections = await portfolio_sections(db, ids)
+    statements = await statement_ids(db, ids)
+    plan = {key for key, _ in _cumulative_services(school_tier)}
+    completion = {
+        s.id: portfolio_completion(
+            profile_complete=s.date_of_birth is not None and s.grade_or_class is not None,
+            has_academic=s.id in indicators["published_results"],
+            has_psychometric=s.id in indicators["psych_started"],
+            has_career=s.id in indicators["career_any"],
+            has_language=s.id in indicators["language_started"],
+            sections=sections.get(s.id, set()),
+            has_statement=s.id in statements,
+        )
+        for s in students
+    }
+    complete = {sid for sid, pct in completion.items() if pct == 100}
+    cards = []
+    for s in students:
+        areas = [
+            ScorecardArea(key=key, label=label, state="not_tracked" if keys is None else _area_state(s.id, plan, keys, done(indicators, complete), started(indicators, complete)))
+            for key, label, keys, done, started in SCORECARD_AREAS
+        ]
+        cards.append(ScorecardOut(school_student_id=s.id, full_name=s.full_name, grade=grade_key(s.grade_level, s.grade_or_class), portfolio_completion_pct=completion[s.id], areas=areas))
+    return cards
+
+
+@school_router.get("/analytics/scorecards", response_model=ScorecardPage)
+async def scorecard_grid(
+    user: User = Depends(_require_school_reader),
+    grade: int | None = Query(None, ge=8, le=12),  # an int range, not Literal: query strings never coerce into Literal[int]
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """§28 school-wide grid (D10), own school only, ordered by name then id so pages are stable. `grade` filters on
+    `grade_level`; a student with only a free-text grade label appears under "All grades"."""
+    school_id = _own_school_id(user)
+    conditions = [SchoolStudent.school_id == school_id]
+    if grade is not None:
+        conditions.append(SchoolStudent.grade_level == grade)
+    total = await db.scalar(select(func.count()).select_from(SchoolStudent).where(*conditions)) or 0
+    students = (await db.execute(select(*SCORECARD_COLUMNS).where(*conditions).order_by(SchoolStudent.full_name, SchoolStudent.id).limit(limit).offset(offset))).all()
+    tier = await db.scalar(select(School.tier).where(School.id == school_id))
+    _log_view(user, "scorecard_grid", school_id=school_id, count=len(students))
+    return ScorecardPage(items=await build_scorecards(db, tier, students), total=total, limit=limit, offset=offset)
+
+
+@school_router.get("/students/{student_id}/scorecard", response_model=ScorecardOut)
+async def student_scorecard(student_id: UUID, user: User = Depends(_require_school_reader), db: AsyncSession = Depends(get_db)):
+    """§28 card for one student (D9). The school is part of the lookup, so another school's student is the same 404 as a
+    missing one -- no existence oracle."""
+    school_id = _own_school_id(user)
+    student = (await db.execute(select(*SCORECARD_COLUMNS).where(SchoolStudent.id == student_id, SchoolStudent.school_id == school_id))).first()
+    if student is None:
+        raise HTTPException(404, STUDENT_NOT_FOUND)
+    tier = await db.scalar(select(School.tier).where(School.id == school_id))
+    _log_view(user, "student_scorecard", school_id=school_id, student_id=student_id)
+    return (await build_scorecards(db, tier, [student]))[0]

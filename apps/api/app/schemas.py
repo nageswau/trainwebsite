@@ -1548,3 +1548,28 @@ class StudentDevelopmentOut(BaseModel):
     top_performers: PerformerList
     at_risk_below: int
     top_from: int
+
+
+# D3: completed / in progress / not started (service in the tier) / not in plan / no module yet.
+ScorecardState = Literal["completed", "in_progress", "not_started", "not_in_plan", "not_tracked"]
+
+
+class ScorecardArea(BaseModel):
+    key: str
+    label: str
+    state: ScorecardState
+
+
+class ScorecardOut(BaseModel):
+    school_student_id: UUID
+    full_name: str
+    grade: str
+    portfolio_completion_pct: int
+    areas: list[ScorecardArea]
+
+
+class ScorecardPage(BaseModel):
+    items: list[ScorecardOut]
+    total: int
+    limit: int
+    offset: int
