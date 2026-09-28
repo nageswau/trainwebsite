@@ -908,7 +908,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 
 | § | Section | Status | Evidence / disposition |
 |---|---|---|---|
-| 1 | School Dashboard (KPIs, charts) | ✅ Built — pending validation | **ENH-016** (`DEC-SCOPE-031`): KPI board on Coordinator + Principal dashboards; portfolios/skills tracked; internships still untracked (ENH-021) |
+| 1 | School Dashboard (KPIs, charts) | ✅ Built — pending validation | **ENH-016** (`DEC-SCOPE-034`): KPI board on Coordinator + Principal dashboards; portfolios/skills (ENH-016) and internships (ENH-021) tracked |
 | 2 | School Master / School Profile (incl. **School ID**, **Branch**) | ❌ Gap | `models.py:923-943` has only `id`/`name`/`city`/`state`/`tier` — see **ENH-009** |
 | 3 | Student Master | ✅ Built | `SchoolStudent`, `SCH-002`; `student_code` per `DEC-DATA-003` |
 | 4 | Grade & Class Management (Grade→Section→Year) | ❌ Gap | See **ENH-001** (corrected sourcing above) |
@@ -935,13 +935,13 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 25 | Edusphere School Counsellor tracking | ⚠️ Partial | `career_counselor` role exists; dedicated conversion/admission tracking not confirmed — rolled into **ENH-016** |
 | 26 | School Partnership Package Tracking (quota table) | ⚠️ **Conflict** | Source shows Entitled/Used/Balance quotas; `DEC-SCOPE-017` (confirmed) made entitlements **unlimited, not quota-capped**. See Appendix A item 3 — this is a decision conflict, not an implementation gap |
 | 27 | School Service Utilization | ✅ Built — pending validation | **ENH-016**: school-wise rows on `/overseas/admin/school-analytics` (delivered/pending/not tracked/utilization, participation, upcoming activities) |
-| 28 | Student Progress Scorecard | ✅ Built — pending validation | **ENH-016**: per-student card + school-wide grid (Coordinator/Principal, D9/D10); scholarship/internship rows untracked until ENH-017/ENH-021 |
+| 28 | Student Progress Scorecard | ✅ Built — pending validation | **ENH-016**: per-student card + school-wide grid (Coordinator/Principal, D9/D10); Internship row follows ENH-021's progress rule; Scholarship row untracked until ENH-017 |
 | 29 | School Performance Dashboard | ✅ Built — pending validation | **ENH-016**: Grade 8→12 comparison on the Reports page; four metrics are labelled estimates (D5, `NEEDS_CONFIRMATION`) |
 | 30 | Reports & Downloads | ❌ Gap | See **ENH-015** |
 | 31 | School Feedback | ✅ Built | See **ENH-018** |
 | 32 | Communication Centre (WhatsApp/SMS/Email/push) | ❌ Gap | See **ENH-014** |
 | 33 | School Admin Login (role matrix) | ✅ Built | `DEC-SCOPE-011`, `rbac.py` |
-| 34 | Edusphere Admin Side (cross-school dashboard) | ✅ Built — pending validation | **ENH-016**: Overseas + Super Admin only (D1); schools/students/services/outcomes; scholarships/internships untracked |
+| 34 | Edusphere Admin Side (cross-school dashboard) | ✅ Built — pending validation | **ENH-016**: Overseas + Super Admin only (D1); schools/students/services/outcomes; internships tracked (ENH-021); scholarships untracked |
 | 35 | Student 360° View | ❌ Gap | See **ENH-013** |
 | 36 | Complete School CRM Flow (pipeline diagram) | — No action | Conceptual/architectural map, not itself a buildable feature |
 | B1 | School CRM Login Hierarchy (diagram) | — No action | Conceptual; matches confirmed role structure |
@@ -1700,7 +1700,9 @@ and ENH-017/ENH-020/ENH-021 for the remaining untracked services) add more track
 cross-school dashboard is inaccessible to school-side roles.
 
 **Status (2026-09-28): IMPLEMENTED — NOT YET COMPLETE.** Built on `feature/enh-016-dashboards-analytics` per
-`docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md` and `DEC-SCOPE-031` (provisional). Browser
+`docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md` and `DEC-SCOPE-034` (recorded in-session as 031,
+renumbered on the merge with `main`, which already held 031–033). After that merge, internships (ENH-021) are tracked in the
+scorecard and the cross-school outcomes, and guidance/counselling count only delivered sessions (ENH-026 C5). Browser
 validation and the independent Codex review are still to come. §25 (Edusphere School Counsellor tracking) was not in the
 approved spec and is **not** covered by this build. Follow-ups: confirm D4 thresholds and D5 estimates with the client; a
 terminal visa status for the scorecard's Visa row; `edusphere_school_manager` scoping (item 75); remove the unreachable code
@@ -1995,6 +1997,8 @@ certificate attached; contributes correctly to dashboard counts.
 student's profile. **Negative scenarios.** A teacher outside the student's assigned section attempts to
 edit the record — rejected. **Edge cases.** An internship spanning an academic-year boundary
 (interacts with ENH-001) — must not be silently reset by a promotion event (`ENH-004`).
+
+**Status (2026-09-28) — COMPLETE (verified; evidence in the `RTM.md` ENH-021 row, *Final verification*).** Designed with `ENH-026` in `docs/superpowers/specs/2026-09-27-enh-021-026-internship-and-counselling-record-design.md` (`DEC-SCOPE-032`); implemented on branch `feature/enh-021-026-internship-counselling-record`. **Correction to this entry:** internships already existed as ENH-012's portfolio `internship` section, so there is no `StudentInternship` table — the section was extended (migration `0043_portfolio_internship`); writers are the existing portfolio write roles; creating an internship or setting its tracking fields needs Platinum `internships`, while basic edits/deletes of existing entries keep Gold; the certificate is a PDF/JPEG/PNG ≤ 5 MB with audited downloads. The academic-year edge case needs nothing: promotion and transfer never touch portfolio entries. Browser validation done; the Codex review was waived by the owner; the full E2E regression runs on the regular cadence. FV-04 (owner decision) gave the shared ENH-012 portfolio entry form keyboard focus handling in every section. **Owner decisions from browser QA (2026-09-28):** QA-08 — a school without Platinum `internships` is told up front ("Internship tracking is part of the Platinum partnership"; no Add internship, tracking fields or certificate upload; basic edits/deletes of existing entries stay), via the portfolio payload's `can_track_internships`; known limitation: a school *downgraded* from Platinum may still finish tracking pre-downgrade entries server-side (ENH-023 grandfathering) but the page no longer offers those fields. QA-14 — the Internships KPI and status chart stay API-only here; rendering them is **follow-up for `ENH-016`** (School & Edusphere Analytics Dashboards).
 
 **Regression risks.** None.
 
@@ -2321,6 +2325,20 @@ it). **Edge cases.** None beyond the standard certificate-record shape.
 
 **Complexity:** Small. **Risk:** Low.
 
+**Status (2026-09-28) — implemented, NOT complete.** Designed and decided in
+`docs/superpowers/specs/2026-09-28-enh-024-skill-india-certification-design.md` (`DEC-SCOPE-033`, D1–D16), plan
+`docs/superpowers/plans/2026-09-28-enh-024-skill-india-certification.md`, built test-first on branch
+`feature/enh-024-skill-india-certification`. The backlog's "Database impact" question resolved as a tag on ENH-012's
+existing `certification` section (four nullable columns + CHECKs on `portfolio_entries`, migration `0044`), not a new
+table; the "Integration impact" `NEEDS_CONFIRMATION` resolved as **none** (internal record, D9); the owning-role
+`NEEDS_CONFIRMATION` resolved as the existing portfolio writers (D10). Evidence in `docs/quality/RTM.md` (ENH-024 row).
+**Update (2026-09-28):** browser validation done; its findings QA24-01…08 fixed test-first and re-verified in the browser
+(details in the RTM row); the independent Codex review was set aside by the owner. The Academic Team now has its own
+student page with the editable Digital Portfolio. **Complete for ENH-024's scope (2026-09-28)** on fresh
+verification evidence (RTM ENH-024 row). **Open:** merge to `main`. Found during verification, outside ENH-024: two E2E
+specs broken on `main` by ENH-026 (`enh-022:43`, `sch-004:13` target the removed `#career-student`), and an ENH-012 layout
+edge case (a long unbroken word in a portfolio title pushes that entry's Edit/Delete row past 320px).
+
 ---
 
 ## ENH-025 — Student Master: Missing Identity & Demographic Fields
@@ -2509,6 +2527,8 @@ to "Completed"; a parent viewing their child's profile sees the structured recom
 of prose. **Negative scenarios.** An invalid status transition (`NEEDS_CONFIRMATION`'d policy) is
 rejected. **Edge cases.** A record created under the old flat-notes shape, then edited under the new
 structured shape — must not lose the original free-text content.
+
+**Status (2026-09-28) — COMPLETE (verified; evidence in the `RTM.md` ENH-026 row, *Final verification*).** Designed with `ENH-021` in `docs/superpowers/specs/2026-09-27-enh-021-026-internship-and-counselling-record-design.md` (`DEC-SCOPE-031`); implemented on branch `feature/enh-021-026-internship-counselling-record` (migration `0042_career_record_fields`, new `PATCH /school/career-counselor/records/{id}`). The skipped-state question is decided: strict order with a follow-up loop, create at Not Started/Scheduled/Completed, legacy rows (status NULL) only to Completed/Follow-up Required, and Completed, Follow-up Required and NULL count as completed. Corrections to this entry: the model is at `models.py` `SchoolCareerRecord` (the line numbers above were stale); recommendations are four JSON lists shared in shape with `ENH-027`. Browser validation done (FV-01..FV-04 fixed); the Codex review was waived by the owner; the transfer race is covered by a mutation-checked test; the full E2E regression runs on the regular cadence. **Owner decision from browser QA (2026-09-28), QA-13:** a session may be marked Completed before its scheduled date (sessions are brought forward); both dates are kept as the record of what was planned and what happened, with no block or warning.
 
 **Regression risks.** `SCH-004`'s existing counselling-record read paths (including the
 `/schools/entitlements` usage-count query at `schools.py:704`, which filters on `record_type ==

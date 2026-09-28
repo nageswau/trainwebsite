@@ -297,9 +297,10 @@ async def test_dashboard_exposes_the_full_school_crm_point_one_kpi_board(client,
     assert kpis["offers_received"]["value"] == 2
     assert kpis["visa_applications"]["value"] == 1
     assert kpis["students_admitted"]["value"] == 1
-    assert kpis["digital_portfolios_created"]["tracked"] is True  # ENH-016 D8/D11 (DEC-SCOPE-031): ENH-012 portfolios are tracked now
+    assert kpis["digital_portfolios_created"]["tracked"] is True  # ENH-016 D8/D11 (DEC-SCOPE-034): ENH-012 portfolios are tracked now
     assert kpis["digital_portfolios_created"]["value"] == 0
-    assert kpis["internships"]["tracked"] is False
+    assert kpis["internships"]["tracked"] is True and kpis["internships"]["value"] == 0  # ENH-021 (DEC-SCOPE-032): internships are tracked by requirement
     assert {stage["key"]: stage["count"] for stage in data["application_pipeline"]}["offer"] == 1
     assert data["visa_status"] == [{"status": "checklist", "count": 1}]
-    assert {chart["key"] for chart in data["untracked_charts"]} == {"internships", "student_participation_by_program"}  # ENH-016 D8: skills tracked
+    # ENH-016 D8 tracks skills, ENH-021 tracks internships: only program participation is still untracked.
+    assert {chart["key"] for chart in data["untracked_charts"]} == {"student_participation_by_program"}

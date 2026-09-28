@@ -30,6 +30,18 @@ export function student360Href(role: string, studentId: string): string | null {
   return base ? `${base}/${studentId}/360` : null;
 }
 
+// QA24-01: a service role with its own student page (the Academic Team's editable Digital Portfolio) enters a student there, as
+// the School roles do; the other service roles go straight to the 360° view.
+const HAS_STUDENT_PAGE = new Set(["academic_team"]);
+
+export function hasStudentPage(role: string): boolean {
+  return HAS_STUDENT_PAGE.has(role);
+}
+
+export function studentEntryHref(role: string, studentId: string): string | null {
+  return hasStudentPage(role) ? `${ROLE_BASE[role]}/${studentId}` : student360Href(role, studentId);
+}
+
 export function isTabKey(value: string | null | undefined): value is TabKey {
   return !!value && (TAB_KEYS as readonly string[]).includes(value);
 }

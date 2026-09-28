@@ -149,4 +149,188 @@ describe("PortfolioPanel", () => {
     expect(screen.getByRole("button", { name: /add statement/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /edit regional award/i })).toBeDisabled();
   });
+
+  // QA24-07 -- keyboard focus returns to the button that started the action, instead of dropping to the page top.
+  describe("focus after an action", () => {
+    const ENTRY = { id: "e9", section: "award", title: "Regional Award", description: null, organization: null, date_from: null, date_to: null, created_at: "2026-01-01", updated_at: "2026-01-01" };
+    const WITH_ENTRY: PortfolioData = { ...BASE, can_edit: true, entries: { ...BASE.entries, award: [ENTRY] } };
+    const respond = (status: number, body: unknown = { id: "e1" }) => { global.fetch = vi.fn().mockResolvedValue({ ok: status < 400, status, json: async () => body }) as unknown as typeof fetch; };
+
+    it("returns to the section's Add button after cancelling an add", async () => {
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      fireEvent.click(screen.getByRole("button", { name: "Add award" }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Add award" })).toHaveFocus());
+    });
+
+    it("returns to the section's Add button after saving an add", async () => {
+      respond(201);
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      fireEvent.click(screen.getByRole("button", { name: "Add award" }));
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "New award" } });
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Add award" })).toHaveFocus());
+    });
+
+    it("returns to the entry's Edit button after cancelling or saving an edit", async () => {
+      respond(200);
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      fireEvent.click(screen.getByRole("button", { name: "Edit Regional Award" }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit Regional Award" })).toHaveFocus());
+      fireEvent.click(screen.getByRole("button", { name: "Edit Regional Award" }));
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit Regional Award" })).toHaveFocus());
+    });
+
+    it("moves to the section's Add button after a delete", async () => {
+      respond(204, null);
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      fireEvent.click(screen.getByRole("button", { name: "Delete Regional Award" }));
+      fireEvent.click(screen.getByRole("button", { name: "Confirm delete Regional Award" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Add award" })).toHaveFocus());
+    });
+
+    // QA24-07 browser retest: the focus call raced React -- a next-frame focus could run before the Add/Edit button was rendered
+    // back (the save's state updates happen after an await), leaving focus on <body>. Forcing that frame to run immediately
+    // reproduces the race deterministically: focus must be applied after React commits, not on a timer.
+    it("keeps the focus return even when the next frame runs before React re-renders", async () => {
+      vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => { cb(0); return 0; });
+      respond(201);
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      fireEvent.click(screen.getByRole("button", { name: "Add award" }));
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "New award" } });
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Add award" })).toHaveFocus());
+      fireEvent.click(screen.getByRole("button", { name: "Edit Regional Award" }));
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit Regional Award" })).toHaveFocus());
+      vi.unstubAllGlobals();
+    });
+
+    it("returns to the statement button after cancelling or saving the personal statement", async () => {
+      respond(200, { personal_statement: "Hi", updated_at: "2026-01-01" });
+      render(<PortfolioPanel data={{ ...BASE, can_edit: true, personal_statement: "Hi" }} />);
+      fireEvent.click(screen.getByRole("button", { name: "Edit statement" }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit statement" })).toHaveFocus());
+      fireEvent.click(screen.getByRole("button", { name: "Edit statement" }));
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit statement" })).toHaveFocus());
+    });
+  });
+
+  // QA24-08 -- one polite status line at the top of the card confirms each completed action.
+  describe("success confirmation", () => {
+    const ENTRY = { id: "e9", section: "certification", title: "First Aid", description: null, organization: null, date_from: null, date_to: null, created_at: "2026-01-01", updated_at: "2026-01-01" };
+    const WITH_ENTRY: PortfolioData = { ...BASE, can_edit: true, entries: { ...BASE.entries, certification: [ENTRY] } };
+    const respond = (status: number, body: unknown = { id: "e1" }) => { global.fetch = vi.fn().mockResolvedValue({ ok: status < 400, status, json: async () => body }) as unknown as typeof fetch; };
+    // A polite live region, not role="status": host pages already have their own status (SchoolStudentDetailPanel's transfer).
+    const statusLine = () => document.querySelector(".pf-panel .pf-status") as HTMLElement;
+
+    it("has an empty polite live region before anything happens", () => {
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      expect(statusLine()).toHaveAttribute("aria-live", "polite");
+      expect(statusLine()).toBeEmptyDOMElement();
+    });
+
+    it("confirms an add, then an update, then a delete", async () => {
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      respond(201);
+      fireEvent.click(screen.getByRole("button", { name: "Add certification" }));
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "CPR" } });
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(statusLine()).toHaveTextContent("Certification added."));
+      respond(200);
+      fireEvent.click(screen.getByRole("button", { name: "Edit First Aid" }));
+      expect(statusLine()).toBeEmptyDOMElement(); // opening a form clears the previous confirmation
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(statusLine()).toHaveTextContent("Certification updated."));
+      respond(204, null);
+      fireEvent.click(screen.getByRole("button", { name: "Delete First Aid" }));
+      fireEvent.click(screen.getByRole("button", { name: "Confirm delete First Aid" }));
+      await waitFor(() => expect(statusLine()).toHaveTextContent("Certification deleted."));
+    });
+
+    it("confirms a saved personal statement", async () => {
+      respond(200, { personal_statement: "Hi", updated_at: "2026-01-01" });
+      render(<PortfolioPanel data={{ ...BASE, can_edit: true, personal_statement: "Hi" }} />);
+      fireEvent.click(screen.getByRole("button", { name: "Edit statement" }));
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(statusLine()).toHaveTextContent("Personal statement saved."));
+    });
+
+    it("says nothing when a save fails", async () => {
+      respond(422, { detail: "Choose a status for the Skill India certification" });
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      fireEvent.click(screen.getByRole("button", { name: "Add certification" }));
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "CPR" } });
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+      expect(statusLine()).toBeEmptyDOMElement();
+    });
+  });
+
+  // ENH-024 -- a Skill India certification shows its badge, status, number and issue date under the title.
+  const SKILL_INDIA_ENTRY = { id: "c1", section: "certification", title: "Retail Sales Associate", description: null, organization: "RASCI", date_from: null, date_to: null, certification_type: "skill_india", certification_status: "certified", certificate_number: "SI-1", issued_on: "2026-05-01", created_at: "2026-01-01", updated_at: "2026-01-01" };
+
+  it("shows Skill India details under a tagged certification (ENH-024)", () => {
+    render(<PortfolioPanel data={{ ...BASE, entries: { ...BASE.entries, certification: [SKILL_INDIA_ENTRY] } }} />);
+    expect(screen.getByText("Skill India")).toHaveClass("badge");
+    expect(screen.getByText("Certified")).toHaveClass("status");
+    expect(screen.getByText("Certificate no. SI-1")).toBeInTheDocument();
+  });
+
+  it("pre-fills the Skill India fields when editing a tagged certification (ENH-024)", () => {
+    render(<PortfolioPanel data={{ ...BASE, can_edit: true, entries: { ...BASE.entries, certification: [SKILL_INDIA_ENTRY] } }} />);
+    fireEvent.click(screen.getByRole("button", { name: /edit retail sales associate/i }));
+    expect(screen.getByLabelText(/status/i)).toHaveValue("certified");
+    expect(screen.getByLabelText(/certificate number/i)).toHaveValue("SI-1");
+    expect(screen.getByLabelText(/issue date/i)).toHaveValue("2026-05-01");
+    expect(screen.getByLabelText(/issuing body/i)).toHaveValue("RASCI");
+  });
+});
+
+// FV-04 (AC-R5): keyboard users keep their place -- opening a form moves focus into it, and Save, Cancel or Escape return
+// focus to the button that opened it. Shared by every portfolio section, internships included.
+describe("PortfolioPanel keyboard focus (FV-04)", () => {
+  const INTERN = { id: "i1", section: "internship", title: "Lab intern", description: null, organization: "Acme", date_from: null, date_to: null, created_at: "2026-01-01", updated_at: "2026-01-01" };
+  const withIntern: PortfolioData = { ...BASE, can_edit: true, can_track_internships: true, entries: { ...BASE.entries, internship: [INTERN] } };
+
+  it("opening Edit moves focus to the form's first field", async () => {
+    render(<PortfolioPanel data={withIntern} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Lab intern" }));
+    await waitFor(() => expect(screen.getByLabelText("Role")).toHaveFocus());
+  });
+
+  it("Cancel returns focus to the entry's Edit button", async () => {
+    render(<PortfolioPanel data={withIntern} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Lab intern" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Lab intern" })).toHaveFocus());
+  });
+
+  it("Escape inside the form cancels it and returns focus to the Edit button", async () => {
+    render(<PortfolioPanel data={withIntern} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Lab intern" }));
+    fireEvent.keyDown(screen.getByLabelText("Role"), { key: "Escape" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Lab intern" })).toHaveFocus());
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+  });
+
+  it("a successful save returns focus to the Edit button", async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ...INTERN }) }) as unknown as typeof fetch;
+    render(<PortfolioPanel data={withIntern} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Lab intern" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Lab intern" })).toHaveFocus());
+  });
+
+  it("Add moves focus into the new form and Cancel returns it to the Add button", async () => {
+    render(<PortfolioPanel data={withIntern} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add internship" }));
+    await waitFor(() => expect(screen.getByLabelText("Role")).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add internship" })).toHaveFocus());
+  });
 });

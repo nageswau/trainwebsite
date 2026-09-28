@@ -10,7 +10,7 @@ import { accessUnavailable } from "@/components/AccessUnavailable";
 type Student = { id: string; full_name: string; grade_or_class: string | null };
 
 // SCH-001: school-wide, read-only progress overview -- the one landing view a Principal
-// needs. ENH-016 (DEC-SCOPE-031 D7): the School CRM.md §1 KPI board now leads it, read from
+// needs. ENH-016 (DEC-SCOPE-034 D7): the School CRM.md §1 KPI board now leads it, read from
 // the same /school/dashboard the Coordinator uses. Fetched on its own so a failure there
 // leaves the roster below usable.
 export default async function SchoolPrincipalDashboardPage() {

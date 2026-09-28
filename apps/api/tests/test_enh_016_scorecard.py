@@ -53,7 +53,7 @@ async def test_each_area_reports_its_state_and_the_plan_limits_not_started(clien
         "career_awareness": "not_started", "psychometric": "in_progress", "career_counselling": "completed", "soft_skills": "in_progress",
         "foreign_language": "completed",  # done counts even outside a silver plan
         "digital_portfolio": "in_progress", "ielts_sat": "not_in_plan", "university_shortlisting": "in_progress", "scholarship": "not_tracked",
-        "application": "in_progress", "visa": "in_progress", "internship": "not_tracked",
+        "application": "in_progress", "visa": "in_progress", "internship": "not_in_plan",  # ENH-021: tracked; Platinum-only service, silver school
     }
     assert [a["key"] for a in card["areas"]][:2] == ["career_awareness", "psychometric"]
     assert card["grade"] == "11" and card["full_name"] == "Dev"
@@ -123,3 +123,36 @@ async def test_offset_is_bounded_so_a_huge_value_is_422_not_500(client, db_sessi
     await login(client, ctx["school_principal"])
     assert (await client.get("/api/v1/school/analytics/scorecards", params={"offset": 10**20})).status_code == 422
     assert (await client.get("/api/v1/school/analytics/scorecards", params={"offset": 10_000})).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_internship_row_follows_enh_021_and_guidance_counts_delivered_sessions_only(client, db_session):  # merge with main
+    ctx = await make_school(db_session, tier="platinum")
+    coord, cc = ctx["school_coordinator"].id, ctx["career_counselor"].id
+    done = await make_student(db_session, ctx, name="Intern Done", grade_level=11)
+    going = await make_student(db_session, ctx, name="Intern Going", grade_level=11)
+    planned = await make_student(db_session, ctx, name="Intern Planned", grade_level=11)
+
+    def internship(student, status):
+        return PortfolioEntry(school_student_id=student.id, section="internship", title="Intern", completion_status=status, created_by_user_id=coord, updated_by_user_id=coord)
+
+    db_session.add_all([
+        internship(done, "in_progress"), internship(done, "completed"),  # ENH-021 I8: best progress wins
+        internship(going, "in_progress"),
+        internship(planned, "not_started"),
+        # ENH-026 C5: a scheduled session is not delivered yet; a completed one is.
+        SchoolCareerRecord(school_student_id=planned.id, career_counselor_user_id=cc, record_type="guidance_session", notes="n", status="scheduled"),
+        SchoolCareerRecord(school_student_id=going.id, career_counselor_user_id=cc, record_type="guidance_session", notes="n", status="completed"),
+    ])
+    await db_session.commit()
+    await login(client, ctx["school_coordinator"])
+
+    cards = {c["full_name"]: _areas(c) for c in (await client.get("/api/v1/school/analytics/scorecards")).json()["items"]}
+    development = {r["key"]: r for r in (await client.get("/api/v1/school/analytics/student-development")).json()["activities"]}
+
+    assert cards["Intern Done"]["internship"] == "completed"
+    assert cards["Intern Going"]["internship"] == "in_progress"
+    assert cards["Intern Planned"]["internship"] == "not_started"
+    assert cards["Intern Planned"]["career_awareness"] == "not_started"  # scheduled guidance is not a completion
+    assert cards["Intern Going"]["career_awareness"] == "completed"
+    assert development["career_guidance"]["completed"] == 1

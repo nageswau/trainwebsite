@@ -1,5 +1,7 @@
+import CareerRecordDetails from "@/components/CareerRecordDetails";
 import SchoolStudentPhoto from "@/components/SchoolStudentPhoto";
 import { serverApi } from "@/lib/api";
+import type { CareerRecord } from "@/lib/careerRecords";
 import { formatCalendarDate, formatDate, formatSchoolDateTime, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import { attendanceText, ENROLMENT_LABEL, MODULE_LABEL, type SkillModule } from "@/lib/skills";
 
@@ -11,7 +13,10 @@ import { attendanceText, ENROLMENT_LABEL, MODULE_LABEL, type SkillModule } from 
 // section for them would imply a record set that does not exist. Skills is shown since
 // ENH-011 (`DEC-SCOPE-026`): the Career Counselor's Soft Skills / Digital Skills batches.
 
-type CareerRecord = { id: string; record_type: string; notes: string; created_at: string };
+type StructuredRecommendation = {
+  record_id: string; record_type: string; created_at: string;
+  recommended_careers: string[] | null; recommended_courses: string[] | null; recommended_stream: string[] | null; recommended_skills: string[] | null;
+};
 type Assessment = { id: string; assessment_type: string; status: string; created_at: string };
 type Result = { id: string; academic_year: string; term: string; subject: string; max_marks: number; marks_obtained: number; percentage: number | null; grade: string | null; teacher_remarks: string | null };
 type Attended = { activity_id: string; title: string; scheduled_at: string; present: boolean };
@@ -29,6 +34,8 @@ export type ChildOverview = {
   career_guidance: { status: string; sessions: CareerRecord[] };
   counselling: { status: string; notes: CareerRecord[] };
   recommended_careers: CareerRecord[];
+  // ENH-026: optional so an older API renders exactly as before.
+  structured_recommendations?: StructuredRecommendation[];
   psychometric: { status: string; assessments: Assessment[] };
   results: Result[];
   activities: { attended: Attended[]; upcoming: Upcoming[] };
@@ -49,7 +56,7 @@ export function childrenSpanSchools(overviews: (ChildOverview | null)[]): boolea
 const STATUS_LABEL: Record<string, string> = {
   // ENH-011: the enrolment statuses (including "Completed") come from the skills module itself; the rest are this page's own.
   ...ENROLMENT_LABEL,
-  assigned: "Assigned", not_started: "Not started", in_progress: "In progress",
+  assigned: "Assigned", not_started: "Not started", in_progress: "In progress", discontinued: "Discontinued",
 };
 
 export function StatusChip({ status }: { status: string }) {
@@ -109,6 +116,7 @@ export function SkillsCard({ skills }: { skills: NonNullable<ChildOverview["skil
 
 export default function SchoolChildOverview({ overview }: { overview: ChildOverview }) {
   const s = overview.student;
+  const structured = overview.structured_recommendations ?? [];
   return (
     <>
       <div className="card">
@@ -128,7 +136,7 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         {overview.career_guidance.sessions.length === 0 ? (
           <p className="muted">No career guidance session recorded yet.</p>
         ) : (
-          <ul>{overview.career_guidance.sessions.map((r) => <li key={r.id}><strong>{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</strong> — {r.notes}</li>)}</ul>
+          <ul>{overview.career_guidance.sessions.map((r) => <li key={r.id}><strong>{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</strong> — {r.notes}<CareerRecordDetails record={r} /></li>)}</ul>
         )}
       </div>
 
@@ -137,16 +145,27 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         {overview.counselling.notes.length === 0 ? (
           <p className="muted">No counselling notes yet.</p>
         ) : (
-          <ul>{overview.counselling.notes.map((r) => <li key={r.id}><strong>{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</strong> — {r.notes}</li>)}</ul>
+          <ul>{overview.counselling.notes.map((r) => <li key={r.id}><strong>{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</strong> — {r.notes}<CareerRecordDetails record={r} /></li>)}</ul>
         )}
       </div>
 
       <div className="card">
         <h3>Recommended careers</h3>
-        {overview.recommended_careers.length === 0 ? (
+        {overview.recommended_careers.length === 0 && !structured.length ? (
           <p className="muted">No career recommendation yet — this appears once the Career Counselor records one.</p>
         ) : (
           <ul>{overview.recommended_careers.map((r) => <li key={r.id}><span className="badge">{r.notes}</span> <span className="muted">{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</span></li>)}</ul>
+        )}
+        {structured.length > 0 && (
+          <>
+            <h4>From counselling sessions</h4>
+            <ul>{structured.map((r) => (
+              <li key={r.record_id}>
+                {[...(r.recommended_careers ?? []), ...(r.recommended_courses ?? []), ...(r.recommended_stream ?? []), ...(r.recommended_skills ?? [])].map((item) => <span className="badge" key={item}>{item}</span>)}
+                {" "}<span className="muted">{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</span>
+              </li>
+            ))}</ul>
+          </>
         )}
       </div>
 

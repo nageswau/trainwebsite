@@ -96,6 +96,6 @@ async def test_summary_and_rows_hold_no_student_level_fields(client, db_session)
         assert "Secret Name" not in response.text and "school_student_id" not in response.text and "full_name" not in response.text
     summary = (await client.get("/api/v1/overseas-admin/analytics/summary")).json()
     assert summary["outcomes"]["scholarships"] == {"value": None, "tracked": False, "note": "No school-student scholarship link exists yet (ENH-017)."}
-    assert summary["outcomes"]["internships"]["tracked"] is False
+    assert summary["outcomes"]["internships"]["tracked"] is True  # ENH-021, merged from main
     assert summary["students"]["psychometric"] >= 1 and summary["students"]["by_grade"]["8"] >= 1
     assert set(summary["outcomes"]) == {"applications", "offers", "visas", "admissions", "scholarships", "internships"}

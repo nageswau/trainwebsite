@@ -30,6 +30,7 @@ from app.api.schools import (
     _school_account_counts,
     _stage_at_or_after,
     _today_ist,
+    internship_progress,
     service_usage,
 )
 from app.core.database import get_db
@@ -72,6 +73,7 @@ from app.schemas import (
     StudentCounts,
     StudentDevelopmentOut,
     TrackedValue,
+    counts_as_completed,
 )
 
 school_router = APIRouter(prefix="/school", tags=["school-analytics"])
@@ -161,13 +163,26 @@ async def student_indicators(db: AsyncSession, scope: Scope) -> dict[str, set[UU
     """Every spec §6.1 indicator as a set of student ids, in a fixed number of queries (one per source table). Statuses follow
     `_overview_payload` (SCH-007) and `school_skills._rollup` (ENH-011), so a student reads the same here as on their own page."""
     ind: dict[str, set[UUID]] = defaultdict(set)
-    career = select(SchoolCareerRecord.school_student_id, SchoolCareerRecord.record_type).where(SchoolCareerRecord.school_student_id.in_(scope)).distinct()
-    for sid, record_type in (await db.execute(career)).tuples():
-        ind["career_any"].add(sid)
+    career = select(SchoolCareerRecord.school_student_id, SchoolCareerRecord.record_type, SchoolCareerRecord.status).where(SchoolCareerRecord.school_student_id.in_(scope)).distinct()
+    for sid, record_type, status in (await db.execute(career)).tuples():
+        ind["career_any"].add(sid)  # ENH-012's completion input counts any career record
+        if not counts_as_completed(status):  # ENH-026 C5: a scheduled/not-started session is not delivered yet
+            continue
         if record_type == "guidance_session":
             ind["guidance"].add(sid)
         elif record_type == "counselling_note":
             ind["counselling"].add(sid)
+    internships = select(PortfolioEntry.school_student_id, PortfolioEntry.completion_status).where(PortfolioEntry.school_student_id.in_(scope), PortfolioEntry.section == "internship")
+    internship_statuses: dict[UUID, list[str | None]] = defaultdict(list)
+    for sid, status in (await db.execute(internships)).tuples():
+        internship_statuses[sid].append(status)
+    for sid, statuses in internship_statuses.items():
+        ind["internship_any"].add(sid)  # ENH-021 I7: the dashboard KPI's definition
+        progress = internship_progress(statuses)  # ENH-021 I8: best progress wins
+        if progress == "completed":
+            ind["internship_completed"].add(sid)
+        elif progress == "in_progress":
+            ind["internship_in_progress"].add(sid)
     psych = select(SchoolPsychometricRecord.school_student_id, SchoolPsychometricRecord.status).where(SchoolPsychometricRecord.school_student_id.in_(scope)).distinct()
     for sid, status in (await db.execute(psych)).tuples():
         ind["psych_started"].add(sid)
@@ -360,7 +375,8 @@ SCORECARD_AREAS = [
     ("application", "Application", ("application_support",), lambda i, p: i["offer"], lambda i, p: i["applied_active"]),
     # NEEDS_CONFIRMATION: visa_cases.status is free text with no terminal value, so "completed" is taken as admitted.
     ("visa", "Visa", ("visa_support",), lambda i, p: i["admitted"], lambda i, p: i["visa_started"]),
-    ("internship", "Internship", None, None, None),  # no internship model yet (ENH-020)
+    # ENH-021 (merged after the spec): internships are portfolio entries; progress follows its own I8 rule.
+    ("internship", "Internship", ("internships",), lambda i, p: i["internship_completed"], lambda i, p: i["internship_in_progress"]),
 ]
 SCORECARD_COLUMNS = (SchoolStudent.id, SchoolStudent.full_name, SchoolStudent.grade_level, SchoolStudent.grade_or_class, SchoolStudent.date_of_birth)
 
@@ -444,10 +460,9 @@ async def student_scorecard(student_id: UUID, user: User = Depends(_require_scho
 
 NEW_SCHOOL_DAYS = 90  # D6
 RENEWAL_DUE_DAYS = 60  # D6
-PARTICIPATION_KEYS = ("career_any", "psych_started", "test_prep_started", "language_started", "skills_enrolled", "portfolio_started", "global", "awareness_attended")
+PARTICIPATION_KEYS = ("career_any", "psych_started", "test_prep_started", "language_started", "skills_enrolled", "portfolio_started", "global", "awareness_attended", "internship_any")
 UNTRACKED_OUTCOMES = {
     "scholarships": "No school-student scholarship link exists yet (ENH-017).",
-    "internships": "No confirmed School internship model exists yet (ENH-020).",
 }
 
 
@@ -509,6 +524,7 @@ async def cross_school_summary(user: User = Depends(_require_school_admin), db: 
             "offers": TrackedValue(value=offers, tracked=True),
             "visas": TrackedValue(value=len(indicators["visa_started"]), tracked=True),
             "admissions": TrackedValue(value=len(indicators["admitted"]), tracked=True),
+            "internships": TrackedValue(value=len(indicators["internship_any"]), tracked=True),  # ENH-021 I7
             **{key: TrackedValue(value=None, tracked=False, note=note) for key, note in UNTRACKED_OUTCOMES.items()},
         },
     )

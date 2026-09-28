@@ -44,7 +44,16 @@ leaking one school's data to another school.
 - Removing the unreachable code after `return` in `school_reports` (`schools.py:781`) — separate change (D8).
 - Changes to `/admin/dashboard`, `services/portal.py`, `TIER_SERVICES`, `_cumulative_services`, ENH-022/023 enforcement.
 
-## 3. Decisions confirmed in-session (2026-09-28) — `DEC-SCOPE-031` (provisional number)
+## 3. Decisions confirmed in-session (2026-09-28) — `DEC-SCOPE-034` (provisional number)
+
+> **Merge note (2026-09-28, `main` merged into this branch):** recorded in-session as `DEC-SCOPE-031`; `ENH-026`/`ENH-021`/
+> `ENH-024` reached `main` first holding 031–033, so this is now **`DEC-SCOPE-034`**. The merge also brought two modules this
+> spec treated as absent or simpler, and ENH-016 follows them rather than contradicting them: **internships** (`ENH-021`,
+> `DEC-SCOPE-032`) are tracked — the scorecard's Internship row uses ENH-021's `internship_progress` (best progress wins; plan
+> service `internships`), the §34 outcome counts students with any internship entry (the dashboard KPI's definition), and it
+> joins the §27 participation set; **guidance/counselling** (`ENH-026` C5, `DEC-SCOPE-031`) count only delivered sessions
+> (`counts_as_completed`), in the indicators and in `service_usage`'s `individual_counselling`, exactly as `main`'s dashboard
+> and entitlements now do. Statements below that call internships untracked describe the pre-merge state.
 
 Renumbered on merge if another branch lands `031` first (`DEC-SCOPE-024`/`025`/`030` precedent).
 
@@ -362,7 +371,7 @@ horizontal scroll); forms are plain GET forms, keyboard-operable in default focu
 
 ## 15. Documentation deliverables and follow-ups
 
-- `DEC-SCOPE-031` entry (D1–D16) in `docs/decisions/PRODUCT_DECISION_REGISTER.md`; RTM row; backlog §ENH-016 status and
+- `DEC-SCOPE-034` entry (D1–D16) in `docs/decisions/PRODUCT_DECISION_REGISTER.md`; RTM row; backlog §ENH-016 status and
   the §1/§27/§28/§29/§34/B14 coverage rows.
 - Follow-ups (not in ENH-016): delete dead code in `school_reports`; confirm D4 defaults and D5 proxies with the client;
   Visa `completed` rule once `visa_cases.status` has defined terminal values; `edusphere_school_manager` scoping when

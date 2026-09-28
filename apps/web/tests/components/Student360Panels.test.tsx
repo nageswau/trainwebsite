@@ -89,6 +89,25 @@ describe("Student360Panels", () => {
     expect(screen.getByText("Application linked")).toBeInTheDocument();
   });
 
+  it("shows the counselling status and structured fields in the career tab (ENH-026)", () => {
+    const career: Tab360 = { status: "has_data", count: 1, not_tracked: [], data: { records: [{ id: "c2", record_type: "counselling_note", notes: "Met.", created_at: "2026-09-01T00:00:00Z", status: "scheduled", scheduled_for: "2026-10-01T04:30:00Z", weak_areas: ["Essays"] }] } };
+    render(<>{renderPanel("career_guidance", career, view())}</>);
+    expect(screen.getByText("Scheduled")).toBeInTheDocument();
+    expect(screen.getByText("Essays")).toBeInTheDocument();
+  });
+
+  it("names the internship programme and shows each internship's status (ENH-021)", () => {
+    const programmes: Tab360 = { status: "has_data", count: 1, not_tracked: [], data: { programmes: [{ key: "internship", status: "in_progress" }] } };
+    render(<>{renderPanel("edusphere_programs", programmes, view())}</>);
+    expect(screen.getByText("Internship")).toBeInTheDocument();
+    expect(screen.getByText("In progress")).toBeInTheDocument();
+    cleanup();
+    const internship = { id: "i1", section: "internship", title: "Design intern", organization: "Acme", description: null, date_from: null, date_to: null, completion_status: "discontinued" };
+    const activities: Tab360 = { status: "has_data", count: 1, not_tracked: [], data: { attended: null, upcoming: null, portfolio_entries: { ...(EMPTY_DATA.activities.portfolio_entries as object), internship: [internship] } } };
+    render(<>{renderPanel("activities", activities, view())}</>);
+    expect(screen.getByText("Discontinued")).toBeInTheDocument();
+  });
+
   it("shows upcoming school activities, and names the attended table once (browser QA-06)", () => {
     const tab: Tab360 = { status: "has_data", count: 1, not_tracked: [], data: {
       attended: [{ activity_id: "a1", title: "Career Awareness Session", scheduled_at: "2026-09-08T10:00:00Z", present: true }],
@@ -133,5 +152,22 @@ describe("Student360View", () => {
     render(<Student360View data={view()} initialTab="certificates" backHref="/b" backLabel="Back" />);
     expect(screen.getByRole("tab", { name: /^certificates/i })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tabpanel")).toHaveTextContent(/no certificates recorded yet/i);
+  });
+
+  it("shows Skill India details on the Certificates tab (ENH-024)", () => {
+    const entry = { id: "c1", title: "Retail Sales Associate", organization: "RASCI", date_from: null, date_to: null, description: null, certification_type: "skill_india", certification_status: "enrolled", certificate_number: "SI-1", issued_on: null };
+    const tab: Tab360 = { status: "has_data", count: 1, not_tracked: [], data: { entries: [entry] } };
+    render(<>{renderPanel("certificates", tab, view())}</>);
+    expect(screen.getByText("Skill India")).toBeInTheDocument();
+    expect(screen.getByText("Enrolled")).toHaveClass("status", "pending");
+    expect(screen.getByText("Certificate no. SI-1")).toBeInTheDocument();
+  });
+
+  it("adds nothing to a plain certification on the Certificates tab (ENH-024)", () => {
+    const entry = { id: "c2", title: "First aid", organization: null, date_from: null, date_to: null, description: null, certification_type: null, certification_status: null, certificate_number: null, issued_on: null };
+    const tab: Tab360 = { status: "has_data", count: 1, not_tracked: [], data: { entries: [entry] } };
+    render(<>{renderPanel("certificates", tab, view())}</>);
+    expect(screen.getByText("First aid")).toBeInTheDocument();
+    expect(screen.queryByText("Skill India")).not.toBeInTheDocument();
   });
 });

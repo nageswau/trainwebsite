@@ -24,6 +24,7 @@ export default function StudentScorecard({ card }: { card: Scorecard }) {
     <div className="card">
       <h2>Progress scorecard</h2>
       <p className="muted">Portfolio {card.portfolio_completion_pct}% complete</p>
+      <div className="table-scroll">
       <table className="table">
         <caption className="sr-only">Progress by area for {card.full_name}</caption>
         <thead>
@@ -38,6 +39,7 @@ export default function StudentScorecard({ card }: { card: Scorecard }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

@@ -69,7 +69,8 @@ async def test_entitlements_usage_is_unchanged_except_digital_portfolio(client, 
         "individual_counselling": 1, "web_designing": 0,
         "application_support": 1, "scholarship_assistance": None, "ielts_coaching": 1, "sat_coaching": 2, "foreign_language_classes": 1,
         "digital_portfolio_creation": 1,  # D13 -- was None before ENH-016
-        "dedicated_counselor": True, "monthly_campus_visits": 1, "internships": None, "visa_support": 1, "loan_assistance": None,
+        "dedicated_counselor": True, "monthly_campus_visits": 1, "internships": 0, "visa_support": 1,  # ENH-021: tracked since the merge with main
+        "loan_assistance": None,
         "alumni_network": None, "parent_help_desk": None,
     }
     assert [s["key"] for s in response.json()["services"]][:3] == ["career_seminar", "career_awareness_session", "parent_orientation"]
@@ -111,9 +112,9 @@ async def test_dashboard_tracks_portfolios_and_skills_and_keeps_every_key(client
     data = response.json()
     kpis = {k["key"]: k for k in data["school_crm_kpis"]}
     assert kpis["digital_portfolios_created"] == {"key": "digital_portfolios_created", "label": "Digital Portfolios Created", "value": 1, "tracked": True, "note": None}
-    assert kpis["internships"]["tracked"] is False
+    assert kpis["internships"]["tracked"] is True  # ENH-021
     assert data["skills_training"] == {"soft_skills": 1, "digital_skills": 0, "total_students": 3}
-    assert {c["key"] for c in data["untracked_charts"]} == {"internships", "student_participation_by_program"}
+    assert {c["key"] for c in data["untracked_charts"]} == {"student_participation_by_program"}
     for key in ("student_count", "students_with_teacher", "teacher_count", "parent_count", "principal_count", "pending_invite_count", "grade_breakdown",
                 "career_guidance", "psychometric", "results_published", "activities", "attendance", "upcoming_activities", "completion",
                 "global_education", "application_pipeline", "visa_status"):

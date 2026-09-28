@@ -5,7 +5,7 @@ import { serverApi } from "@/lib/api";
 import { PORTAL_NAV } from "@/lib/navigation";
 import type { CrossSchoolSummary, SchoolUtilizationPage, User } from "@/lib/types";
 
-// ENH-016 (School CRM.md §34 + §27, DEC-SCOPE-031 D1): Edusphere's view across every partner school. Admin-only, like the API
+// ENH-016 (School CRM.md §34 + §27, DEC-SCOPE-034 D1): Edusphere's view across every partner school. Admin-only, like the API
 // (/overseas-admin/analytics/* answers 403 to any other role): the role is checked here first so nobody else is shown a
 // screen that can only fail. A static route wins over `[section]`, like school-transfers. Each half is read on its own.
 const ADMIN_ROLES = ["overseas_admin", "super_admin"];

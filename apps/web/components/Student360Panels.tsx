@@ -1,9 +1,13 @@
 import type { ReactNode } from "react";
 
 import CareerGoalForm from "@/components/CareerGoalForm";
+import CertificationDetails from "@/components/CertificationDetails";
+import CareerRecordDetails from "@/components/CareerRecordDetails";
+import type { CareerRecord } from "@/lib/careerRecords";
 import { type ChildOverview, SkillsCard, StatusChip } from "@/components/SchoolChildOverview";
 import SchoolGradeHistory, { type GradeHistoryEntry } from "@/components/SchoolGradeHistory";
 import { formatCalendarDate, formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
+import type { CertificationFields } from "@/lib/portfolio";
 import type { Student360, Tab360 } from "@/lib/student360";
 import { safeHref, TAB_LABELS, type TabKey } from "@/lib/student360Links";
 
@@ -13,7 +17,7 @@ import { safeHref, TAB_LABELS, type TabKey } from "@/lib/student360Links";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- tab `data` is a per-tab shape documented in spec §6.3; typed at the edges. */
 type Row = Record<string, any>;
-type Entry = { id: string; title: string; organization: string | null; date_from: string | null; date_to: string | null; description: string | null };
+type Entry = { id: string; title: string; organization: string | null; date_from: string | null; date_to: string | null; description: string | null; completion_status?: string | null } & CertificationFields;
 
 const EMPTY_TEXT: Record<TabKey, string> = {
   overview: "No achievements recorded yet.",
@@ -34,7 +38,7 @@ const EMPTY_TEXT: Record<TabKey, string> = {
   edusphere_programs: "Not enrolled in any EduSphere programme yet.",
 };
 const RECORD_TYPE: Record<string, string> = { guidance_session: "Guidance session", counselling_note: "Counselling note", recommendation: "Career recommendation" };
-const PROGRAMME: Record<string, string> = { soft_skills: "Soft Skills", digital_skills: "Digital Skills", test_prep: "Test preparation", foreign_language: "Foreign languages", global_education: "Global education" };
+const PROGRAMME: Record<string, string> = { soft_skills: "Soft Skills", digital_skills: "Digital Skills", test_prep: "Test preparation", foreign_language: "Foreign languages", global_education: "Global education", internship: "Internship" };
 const PROGRAMME_STATUS: Record<string, string> = { linked: "Application linked" };
 const ACTIVITY_SECTION: Record<string, string> = { project: "Projects", internship: "Internships", sport: "Sports", leadership: "Leadership", volunteering: "Volunteering", extracurricular: "Extracurriculars" };
 
@@ -48,6 +52,8 @@ function Entries({ entries }: { entries: Entry[] }) {
         <li key={e.id}>
           <strong>{e.title}</strong>{e.organization ? <span className="muted"> — {e.organization}</span> : null}
           {e.date_from ? <span className="muted"> ({formatCalendarDate(e.date_from)}{e.date_to ? ` – ${formatCalendarDate(e.date_to)}` : ""})</span> : null}
+          {e.completion_status ? <> <StatusChip status={e.completion_status} /></> : null}
+          <CertificationDetails entry={e} />
           {e.description ? <p>{e.description}</p> : null}
         </li>
       ))}
@@ -105,7 +111,7 @@ function body(key: TabKey, d: Row, view: Student360): ReactNode {
     case "examination_results":
       return <Card><Table caption="Published results" head={["Year", "Term", "Subject", "Marks", "Grade"]} rows={d.results.map((r: Row) => [r.academic_year, r.term, r.subject, r.max_marks !== undefined ? `${r.marks_obtained} / ${r.max_marks}` : null, r.grade])} /></Card>;
     case "career_guidance":
-      return <Card><ul className="s360-list">{d.records.map((r: Row) => <li key={r.id}><strong>{RECORD_TYPE[r.record_type] ?? r.record_type}</strong> <span className="muted">{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</span><p>{r.notes}</p></li>)}</ul></Card>;
+      return <Card><ul className="s360-list">{d.records.map((r: Row) => <li key={r.id}><strong>{RECORD_TYPE[r.record_type] ?? r.record_type}</strong> <span className="muted">{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</span><p>{r.notes}</p>{r.record_type !== "recommendation" && <CareerRecordDetails record={r as CareerRecord} />}</li>)}</ul></Card>;
     case "psychometric_assessment":
       return <Card><Table caption="Psychometric assessments" head={["Assessment", "Status", "Date"]} rows={d.assessments.map((a: Row) => [a.assessment_type, a.status ? <StatusChip status={a.status} /> : null, formatDate(a.created_at, false, SCHOOL_TIME_ZONE)])} /></Card>;
     case "skills":

@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, BaseModel, EmailStr, Field, StrictBool, ValidationError, field_validator, model_validator
+from pydantic import AfterValidator, AwareDatetime, BaseModel, EmailStr, Field, StrictBool, StrictInt, ValidationError, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.models import GENDERS
@@ -734,6 +734,93 @@ def validation_message(exc: ValidationError) -> str:
     return f"{field} {reason[:1].lower()}{reason[1:]}"
 
 
+# --- ENH-026: Career Counselling record (docs/superpowers/specs/2026-09-27-enh-021-026-internship-and-counselling-record-design.md §3.1) ---
+
+CareerStatus = Literal["not_started", "scheduled", "completed", "follow_up_required"]
+CAREER_STATUS_LABEL: dict[str | None, str] = {
+    "not_started": "Not Started", "scheduled": "Scheduled", "completed": "Completed", "follow_up_required": "Follow-up Required", None: "No status",
+}
+CAREER_RECORD_TYPES: tuple[str, ...] = ("guidance_session", "counselling_note", "recommendation")
+STRUCTURED_RECORD_TYPES: frozenset[str] = frozenset({"guidance_session", "counselling_note"})  # C1
+CAREER_STATUS_INITIAL: frozenset[str] = frozenset({"not_started", "scheduled", "completed"})  # C2: allowed on create
+CAREER_STATUS_NEXT: dict[str | None, frozenset[str]] = {  # C2 / C4 (None = a legacy row, recorded before tracking)
+    "not_started": frozenset({"scheduled"}),
+    "scheduled": frozenset({"completed"}),
+    "completed": frozenset({"follow_up_required"}),
+    "follow_up_required": frozenset({"scheduled", "completed"}),
+    None: frozenset({"completed", "follow_up_required"}),
+}
+COUNTED_CAREER_STATUSES: tuple[str, ...] = ("completed", "follow_up_required")  # C5, plus NULL
+CAREER_LIST_KEYS: tuple[str, ...] = (
+    "career_interests", "academic_strengths", "weak_areas",
+    "recommended_careers", "recommended_courses", "recommended_stream", "recommended_skills",
+)
+CAREER_STRUCTURED_KEYS: tuple[str, ...] = (*CAREER_LIST_KEYS, "global_education_interest", "parent_participated", "parent_participation_note")
+CAREER_DATE_KEYS: tuple[str, ...] = ("scheduled_for", "completed_on", "next_follow_up_date")
+
+
+def career_transition_allowed(current: str | None, requested: str) -> bool:
+    return requested == current or requested in CAREER_STATUS_NEXT[current]
+
+
+def counts_as_completed(status: str | None) -> bool:
+    """C5: one rule for KPIs, overview status and entitlement usage. A legacy NULL row was a held session."""
+    return status is None or status in COUNTED_CAREER_STATUSES
+
+
+def _career_notes(value) -> str:
+    """SCH-004's own rule, unchanged (any value, str() then strip, no length cap) -- plus NUL refused, which PostgreSQL
+    text cannot store (it surfaced as a 500 before). NOT NULL column: absent/None is the empty string."""
+    text_value = "" if value is None else str(value).strip()
+    if "\x00" in text_value:
+        raise ValueError("must not contain NUL characters")
+    return text_value
+
+
+class CareerRecordFields(BaseModel):
+    """ENH-026 body fields shared by create and update. extra="forbid" (A10): ids, owners and record_type are never
+    writable here."""
+
+    model_config = {"extra": "forbid"}
+    notes: str = ""
+    status: CareerStatus | None = None
+    scheduled_for: AwareDatetime | None = None
+    completed_on: date | None = None
+    next_follow_up_date: date | None = None
+    career_interests: list[str] | None = None
+    academic_strengths: list[str] | None = None
+    weak_areas: list[str] | None = None
+    recommended_careers: list[str] | None = None
+    recommended_courses: list[str] | None = None
+    recommended_stream: list[str] | None = None
+    recommended_skills: list[str] | None = None
+    global_education_interest: StrictBool | None = None
+    parent_participated: StrictBool | None = None
+    parent_participation_note: str | None = None
+
+    @field_validator("notes", mode="before")
+    @classmethod
+    def _notes(cls, value):
+        return _career_notes(value)
+
+    @field_validator(*CAREER_LIST_KEYS, mode="before")
+    @classmethod
+    def _lists(cls, value):
+        return _clean_list(value)
+
+    @field_validator("parent_participation_note", mode="before")
+    @classmethod
+    def _note(cls, value):
+        return _clean_text(value, 500)
+
+
+class CareerRecordUpdate(CareerRecordFields):
+    """PATCH body. `expected_status` is an optional precondition (spec §5.1 step 5): present ⇒ must equal the locked
+    record's status (None matches a legacy row), else 409."""
+
+    expected_status: CareerStatus | None = None
+
+
 # --- ENH-005: student school transfer (docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md) ---
 
 FREE_TEXT_MAX = 500
@@ -949,7 +1036,79 @@ def date_range_is_invalid(date_from: date | None, date_to: date | None) -> bool:
     return date_from is not None and date_to is not None and date_to < date_from
 
 
-class PortfolioEntryCreate(BaseModel):
+# --- ENH-021: internship tracking on the portfolio `internship` section (spec §3.2 I1-I4) ---
+INTERNSHIP_FIELD_KEYS: tuple[str, ...] = ("mentor_name", "mentor_designation", "attendance_percent", "completion_status", "feedback", "skills_acquired")
+CompletionStatus = Literal["not_started", "in_progress", "completed", "discontinued"]
+INTERNSHIP_ONLY_ERROR = "internship fields are only accepted for the internship section"
+INTERNSHIP_COMPANY_ERROR = "Company is required for an internship"
+INTERNSHIP_END_DATE_ERROR = "An internship marked completed needs an end date"
+
+
+def internship_rule_error(organization: str | None, completion_status: str | None, date_to: date | None) -> str | None:
+    """The internship rules shared by create (schema layer) and update (post-merge, in the route)."""
+    if not organization:
+        return INTERNSHIP_COMPANY_ERROR
+    if completion_status == "completed" and date_to is None:
+        return INTERNSHIP_END_DATE_ERROR
+    return None
+
+
+class _InternshipFields(BaseModel):
+    mentor_name: str | None = Field(default=None, max_length=200)
+    mentor_designation: str | None = Field(default=None, max_length=200)
+    attendance_percent: StrictInt | None = Field(default=None, ge=0, le=100)
+    completion_status: CompletionStatus | None = None
+    feedback: str | None = Field(default=None, max_length=2000)
+    skills_acquired: list[str] | None = None
+
+    @field_validator("mentor_name", "mentor_designation")
+    @classmethod
+    def _single_line(cls, value: str | None) -> str | None:
+        return _no_control_characters(value)
+
+    @field_validator("feedback")
+    @classmethod
+    def _feedback(cls, value: str | None) -> str | None:
+        return _clean_multiline_text(value)
+
+    @field_validator("skills_acquired", mode="before")
+    @classmethod
+    def _skills(cls, value):
+        return _clean_list(value)
+
+
+# --- ENH-024: Skill India certification (docs/superpowers/specs/2026-09-28-enh-024-skill-india-certification-design.md §5) ---
+# Declared once and shared by PortfolioEntryCreate and portfolio.py's post-merge PATCH check (the DATE_RANGE_ERROR precedent).
+CertificationType = Literal["skill_india"]
+CertificationStatus = Literal["enrolled", "in_progress", "certified"]
+CERT_TYPE_SECTION_ERROR = "Only a certification can be marked as Skill India"
+CERT_STATUS_REQUIRED_ERROR = "Choose a status for the Skill India certification"
+CERT_FIELDS_UNTAGGED_ERROR = "Status, certificate number and issue date apply only to Skill India certifications"
+CERT_CERTIFIED_ERROR = "A certified Skill India certification needs a certificate number and issue date"
+
+
+def skill_india_error(certification_type: str | None, certification_status: str | None, certificate_number: str | None, issued_on: date | None) -> str | None:
+    """Spec D3/D6 on a complete state (a create payload, or a PATCH merged onto the stored entry); None when valid. Explicit
+    nulls on an untagged entry are valid -- only a non-null detail is refused."""
+    if certification_type is None:
+        has_detail = certification_status is not None or certificate_number is not None or issued_on is not None
+        return CERT_FIELDS_UNTAGGED_ERROR if has_detail else None
+    if certification_status is None:
+        return CERT_STATUS_REQUIRED_ERROR
+    if certification_status == "certified" and (certificate_number is None or issued_on is None):
+        return CERT_CERTIFIED_ERROR
+    return None
+
+
+def _clean_certificate_number(value: str | None) -> str | None:
+    # `str_strip_whitespace` has already trimmed it; blank means "not given". Single-line, like title/organization.
+    return _no_control_characters(value) if value else None
+
+
+CertificateNumber = Annotated[str | None, Field(max_length=100), AfterValidator(_clean_certificate_number)]  # create and update: one rule
+
+
+class PortfolioEntryCreate(_InternshipFields):
     model_config = {"str_strip_whitespace": True, "extra": "forbid"}
     section: str
     title: str = Field(min_length=1, max_length=200)
@@ -957,6 +1116,10 @@ class PortfolioEntryCreate(BaseModel):
     organization: str | None = Field(default=None, max_length=200)
     date_from: date | None = None
     date_to: date | None = None
+    certification_type: CertificationType | None = None
+    certification_status: CertificationStatus | None = None
+    certificate_number: CertificateNumber = None
+    issued_on: date | None = None
 
     @field_validator("section")
     @classmethod
@@ -984,14 +1147,41 @@ class PortfolioEntryCreate(BaseModel):
             raise ValueError(DATE_RANGE_ERROR)
         return self
 
+    @model_validator(mode="after")
+    def _skill_india_rules(self):
+        # ENH-024: the tag lives only on a certification entry; the rest of the rule is shared with the PATCH merge check.
+        if self.certification_type is not None and self.section != "certification":
+            raise ValueError(CERT_TYPE_SECTION_ERROR)
+        error = skill_india_error(self.certification_type, self.certification_status, self.certificate_number, self.issued_on)
+        if error:
+            raise ValueError(error)
+        return self
 
-class PortfolioEntryUpdate(BaseModel):
+    @model_validator(mode="after")
+    def _internship_rules(self):
+        # ENH-021 I1/I4: tracking fields belong to the internship section only; an internship names its company.
+        if self.section != "internship":
+            if self.model_fields_set & set(INTERNSHIP_FIELD_KEYS):
+                raise ValueError(INTERNSHIP_ONLY_ERROR)
+            return self
+        error = internship_rule_error(self.organization, self.completion_status, self.date_to)
+        if error:
+            raise ValueError(error)
+        return self
+
+
+class PortfolioEntryUpdate(_InternshipFields):
     model_config = {"str_strip_whitespace": True, "extra": "forbid"}
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
     organization: str | None = Field(default=None, max_length=200)
     date_from: date | None = None
     date_to: date | None = None
+    # ENH-024: no `certification_type` -- the tag is set at creation only (D8), so sending it is an `extra="forbid"` 422.
+    # Cross-field rules need the stored entry, so portfolio.py checks them after the merge.
+    certification_status: CertificationStatus | None = None
+    certificate_number: CertificateNumber = None
+    issued_on: date | None = None
 
     @field_validator("title", "organization")
     @classmethod
@@ -1034,10 +1224,23 @@ class PortfolioEntryOut(BaseModel):
     organization: str | None
     date_from: date | None
     date_to: date | None
+    certification_type: str | None = None
+    certification_status: str | None = None
+    certificate_number: str | None = None
+    issued_on: date | None = None
     created_by_user_id: UUID
     updated_by_user_id: UUID
     created_at: datetime
     updated_at: datetime
+    # ENH-021: additive; null/false for every non-internship entry. The storage key itself is never serialized (S9).
+    mentor_name: str | None = None
+    mentor_designation: str | None = None
+    attendance_percent: int | None = None
+    completion_status: str | None = None
+    feedback: str | None = None
+    skills_acquired: list[str] | None = None
+    has_certificate: bool = False
+    certificate_content_type: str | None = None
 
 
 class PersonalStatementUpdate(BaseModel):

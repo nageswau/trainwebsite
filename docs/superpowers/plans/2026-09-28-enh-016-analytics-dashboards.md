@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Numbering note (2026-09-28, merge with `main`):** this plan was written and executed as `DEC-SCOPE-031`. ENH-026/ENH-021/ENH-024 reached `main` first with 031–033, so the decision is now **`DEC-SCOPE-034`**; the merge also made internships tracked and guidance/counselling count delivered sessions only (see the spec's §3 merge note). The task text below keeps the original numbers as a record of what was run.
+
 **Goal:** Role-scoped, read-only dashboards for `School CRM.md` §1, §27, §28, §29, §34 and Part B §14, computed live from existing School-domain rows.
 
 **Architecture:** One new module `apps/api/app/api/school_analytics.py` (a `/school` router + an `/overseas-admin` router, the ENH-018 shape) with grouped SQL aggregation over a *student scope* (`select` of ids or a list), so every endpoint runs a fixed number of queries. `schools.py` gains a batched `service_usage()` (extracted from `/school/entitlements`) and the D8/D11 dashboard fixes; `portfolio.py` exposes ENH-012's completion formula as a pure helper; `school_skills.py` gains `skill_usage_many()`. Frontend adds five server-rendered presentational components on existing pages plus one admin page. No migration, no dependency, no writes.

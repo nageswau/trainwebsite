@@ -47,7 +47,7 @@ test("school dashboards, report sections, scorecard and cross-school analytics a
   await expect(page.getByRole("heading", { name: "School at a glance" })).toBeVisible();
   const students = page.getByRole("region", { name: "Students" });
   await expect(students.getByText("Total Students")).toBeVisible();
-  await expect(page.getByText("Not tracked yet").first()).toBeVisible(); // internships stay honest
+  await expect(page.getByRole("region", { name: "Global pathway" }).getByText("Internships")).toBeVisible(); // ENH-021: tracked since the merge
 
   // Reports: the three ENH-016 sections render with real data.
   await page.goto("/school/coordinator/reports");
