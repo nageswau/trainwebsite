@@ -2326,7 +2326,7 @@ table; the "Integration impact" `NEEDS_CONFIRMATION` resolved as **none** (inter
 **Update (2026-09-28):** browser validation done; its findings QA24-01…08 fixed test-first and re-verified in the browser
 (details in the RTM row); the independent Codex review was set aside by the owner. The Academic Team now has its own
 student page with the editable Digital Portfolio. **Complete for ENH-024's scope (2026-09-28)** on fresh
-verification evidence (RTM ENH-024 row). **Open:** merge to `main`. Found during verification, outside ENH-024: two E2E
+verification evidence (RTM ENH-024 row). **Merged to `main` via PR #20 (`1ea4678`), 2026-09-28.** Found during verification, outside ENH-024: two E2E
 specs broken on `main` by ENH-026 (`enh-022:43`, `sch-004:13` target the removed `#career-student`), and an ENH-012 layout
 edge case (a long unbroken word in a portfolio title pushes that entry's Edit/Delete row past 320px).
 
