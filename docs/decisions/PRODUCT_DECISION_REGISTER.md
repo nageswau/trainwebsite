@@ -2511,3 +2511,27 @@ provisional-number note provided — the same later-branch-moves precedent as `D
 **Consequences:** migration `0043` (additive nullable columns + CHECKs); new certificate endpoints (`portfolio_certificates.py`); `test_sch_reports.py:302-305` and `test_sch_011_entitlements.py:137` change because internships become tracked (requirement change). Engineering-review addenda (spec §11, user-confirmed 2026-09-27): certificate downloads are audited (`school.internship_certificate_download`); no rate limiter added — accepted risk consistent with `DEC-SCOPE-030` D15.
 
 **Owner decision, 2026-09-28 (`EXPLICIT_APPROVAL`, final verification):** no certificate download link in the Student 360° view. Career Counselors (who reach students through the 360° view, not the portfolio panel) see internship status only; the link stays in the portfolio panel as spec §7 states. The certificate API still serves every portfolio reader, audited per S13.
+
+### DEC-SCOPE-033 — Psychometric record: structured result fields (`ENH-027`)
+
+**ID note:** provisional number, same rule as `DEC-SCOPE-031`. Cut after `DEC-SCOPE-031`/`032` reached `main` (ENH-026/021, PR #19).
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-027 (`DERIVED_BLUEPRINT`): how does `SchoolPsychometricRecord` store the 12-field "Individual Student" record of `School CRM.md §6` (`EVID-014`, `docs/sources/School CRM.md:254-300`) when it holds only assessment type, status and a report link today, without changing existing behaviour?
+
+**Evidence:** Graphify-oriented impact analysis, 2026-09-27: `SchoolPsychometricRecord` (`models.py`) has `assessment_type`, `report_url`, `status` and `created_at` (the assignment day, not the test date) — 9 of the 12 source fields are missing; the create/update routes take a raw `payload: dict`; the record is read through six shapes (team list, readable list, overview, portfolio, the 360° Psychometric tab via the portfolio rows, create/update responses); the §1.5 coverage row had marked §6 "Built" without a field-by-field check.
+
+**Resolution:** User confirmed in-session, 2026-09-27/28 (`EXPLICIT_APPROVAL`), Q1–Q9 in `docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md` §9:
+
+| # | Question | Answer |
+|---|---|---|
+| Q1 | Which readers see the new fields? | All existing readers (Coordinator/Principal/Teacher/Parent), same scope as today |
+| Q2 | Who writes Counsellor remarks / Parent discussion? | Psychometric Team only (SCH-005-AC04 unchanged) |
+| Q3 | Career recommendations shape? | `list[str]` — the same shape ENH-026 shipped (`DEC-SCOPE-031`) |
+| Q4 | Parent discussion / Follow-up shape? | Parent discussion = date + notes; Follow-up = date |
+| Q5 | Test date storage? | New nullable `test_date`; `created_at` stays "assigned on" |
+| Q6 | Required fields / completion rule? | All optional; completion still flips only on `report_url` |
+| Q7 | §6 "Counselling Completed" count? | Not in ENH-027 → ENH-026 |
+| Q8 | Field names? | Match ENH-026: `recommended_careers`, `recommended_stream` (UI labels "Career recommendations" / "Recommended streams") |
+| Q9 | How are list fields typed? | Comma-separated, like ENH-025/026 (`splitList`/`listText`) |
+
+**Consequences:** migration `0044` (ten additive nullable columns: `test_date`, `strengths`, `interest_areas`, `personality_indicators`, `recommended_careers`, `recommended_stream`, `counsellor_remarks`, `parent_discussion_on`, `parent_discussion_notes`, `follow_up_on`; no backfill); additive request/response keys on the existing psychometric endpoints and read shapes; update audit metadata gains `fields` (names only). Unchanged: roles and scoping, the completion/notification rule, which endpoints return `report_url` (Client Question #20 stays open), reports/KPIs, timeline. `ENH-019` may later read `follow_up_on`; `ENH-028` bulk entry reuses this shape.
