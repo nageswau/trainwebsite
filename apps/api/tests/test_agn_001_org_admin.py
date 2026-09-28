@@ -82,12 +82,36 @@ async def test_approve_and_reject_write_through_to_master_assignments(client, db
 async def test_list_groups_masters_and_filters_by_status(client, db_session):
     ctx = await mk_active_org(db_session, name="Listed Agency")
     await _admin(client, db_session)
-    rows = (await client.get("/api/v1/overseas-admin/agent-orgs?status=active")).json()
-    row = next(r for r in rows if r["id"] == str(ctx["org"].id))
+    page = (await client.get("/api/v1/overseas-admin/agent-orgs?status=active")).json()
+    assert set(page) == {"items", "total", "limit", "offset"} and page["limit"] == 25 and page["offset"] == 0
+    row = page["items"][0]  # newest first: the org just created
+    assert row["id"] == str(ctx["org"].id)
     assert row["name"] == "Listed Agency" and row["prefix"] == ctx["org"].prefix and row["status"] == "active"
     assert row["masters"] == [{"id": str(ctx["member"].id), "code": ctx["member"].code, "full_name": ctx["master"].full_name, "email": ctx["master"].email, "status": "active"}]
-    assert all(r["status"] == "active" for r in rows)
+    assert all(r["status"] == "active" for r in page["items"])
     assert (await client.get("/api/v1/overseas-admin/agent-orgs?status=approved")).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_the_list_is_paginated_newest_first(client, db_session):  # review: unbounded list
+    made = [await mk_active_org(db_session, name=f"Page Agency {i}") for i in range(3)]
+    for ctx in made:
+        ctx["org"].status = "suspended"
+    await db_session.commit()
+    await _admin(client, db_session)
+    first = (await client.get("/api/v1/overseas-admin/agent-orgs?status=suspended&limit=2&offset=0")).json()
+    second = (await client.get("/api/v1/overseas-admin/agent-orgs?status=suspended&limit=2&offset=2")).json()
+    assert first["total"] == second["total"] >= 3 and len(first["items"]) == 2 and first["limit"] == 2 and second["offset"] == 2
+    assert [r["id"] for r in first["items"]] == [str(made[2]["org"].id), str(made[1]["org"].id)]
+    assert str(made[0]["org"].id) == second["items"][0]["id"]
+    assert not {r["id"] for r in first["items"]} & {r["id"] for r in second["items"]}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("query", ["limit=0", "limit=101", "offset=-1"])
+async def test_out_of_range_paging_is_422(client, db_session, query):
+    await _admin(client, db_session)
+    assert (await client.get(f"/api/v1/overseas-admin/agent-orgs?{query}")).status_code == 422
 
 
 @pytest.mark.asyncio

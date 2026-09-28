@@ -4,8 +4,9 @@ Functions only -- no class layer (same shape as `services/provisioning.py`). Spe
 docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md.
 """
 
+import math
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy import Select, func, select, update
@@ -148,11 +149,36 @@ async def count_active_masters(db: AsyncSession, org_id) -> int:
     return await db.scalar(select(func.count()).select_from(AgentOrgMember).where(AgentOrgMember.org_id == org_id, AgentOrgMember.status == "active"))
 
 
+INVITE_LIMIT = 10
+INVITE_WINDOW = timedelta(hours=24)
+
+
+async def _invite_wait_seconds(db: AsyncSession, org_id) -> int:
+    """Seconds before this agency may send another invite; 0 means allowed. Counted from the `agent_org.master_invite`
+    audit rows (the change-password throttle's no-new-table pattern), so invite -> deactivate -> invite loops cannot turn
+    the platform's mail into a relay (security review, 2026-09-29). Runs under the organisation lock, so it is race-free."""
+    now = datetime.now(UTC)
+    recent = (
+        await db.scalars(
+            select(AuditLog.created_at)
+            .where(AuditLog.entity_type == "agent_org", AuditLog.entity_id == str(org_id), AuditLog.action == "agent_org.master_invite", AuditLog.created_at > now - INVITE_WINDOW)
+            .order_by(AuditLog.created_at.desc())
+            .limit(INVITE_LIMIT)
+        )
+    ).all()
+    if len(recent) < INVITE_LIMIT:
+        return 0
+    return max(1, math.ceil((recent[-1] + INVITE_WINDOW - now).total_seconds()))
+
+
 async def invite_master(db: AsyncSession, org: AgentOrg, actor: User, *, full_name: str, email: str, phone: str | None):
     """No commit; `org` must be locked. D4/D9/E5/E6: a real agent account with an unusable password + a DEC-SCOPE-019
-    welcome token; the next code is master_seq + 1."""
+    welcome token; the next code is master_seq + 1. At most INVITE_LIMIT invites per agency per INVITE_WINDOW."""
     if await count_active_masters(db, org.id) >= MASTER_LIMIT:
         raise HTTPException(422, "This agency already has 3 active Masters")
+    wait = await _invite_wait_seconds(db, org.id)
+    if wait:
+        raise HTTPException(429, f"This agency has sent {INVITE_LIMIT} invites in the last 24 hours. Try again later.", headers={"Retry-After": str(wait)})
     email = email.lower().strip()
     if await db.scalar(select(User.id).where(User.email == email)):
         raise HTTPException(409, "Email already exists")

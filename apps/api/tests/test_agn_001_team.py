@@ -1,5 +1,6 @@
 import asyncio
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -173,6 +174,44 @@ async def test_two_agencies_inviting_one_email_at_once_is_201_and_409_not_500(db
     assert sorted(r.status_code for r in results) == [201, 409]
     seqs = sorted([(await org_of(db_session, a["master"].id)).master_seq, (await org_of(db_session, b["master"].id)).master_seq])
     assert seqs == [1, 2]  # the loser's master_seq was not advanced
+
+
+async def _past_invites(db, org_id, actor_id, count, hours_ago):
+    when = datetime.now(UTC) - timedelta(hours=hours_ago)
+    for _ in range(count):
+        db.add(AuditLog(user_id=actor_id, action="agent_org.master_invite", entity_type="agent_org", entity_id=str(org_id), outcome="invited", metadata_json={}, created_at=when))
+    await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_invites_are_throttled_to_10_per_agency_per_24_hours(client, db_session):  # security review: invite flood
+    ctx = await mk_active_org(db_session, name="Throttle Agency")
+    await _past_invites(db_session, ctx["org"].id, ctx["master"].id, 10, hours_ago=2)
+    await login(client, ctx["master"].email)
+    response = await _invite(client)
+    assert response.status_code == 429
+    assert response.json()["detail"] == "This agency has sent 10 invites in the last 24 hours. Try again later."
+    retry_after = int(response.headers["Retry-After"])
+    assert 21 * 3600 < retry_after <= 22 * 3600  # the oldest of the 10 leaves the window in ~22 hours
+    assert (await org_of(db_session, ctx["master"].id)).master_seq == 1  # nothing created
+
+
+@pytest.mark.asyncio
+async def test_invites_older_than_24_hours_do_not_count(client, db_session):
+    ctx = await mk_active_org(db_session, name="Old Invites")
+    await _past_invites(db_session, ctx["org"].id, ctx["master"].id, 10, hours_ago=25)
+    await _past_invites(db_session, ctx["org"].id, ctx["master"].id, 9, hours_ago=1)
+    await login(client, ctx["master"].email)
+    assert (await _invite(client)).status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_another_agencys_invites_do_not_count(client, db_session):
+    busy = await mk_active_org(db_session, name="Busy Agency")
+    quiet = await mk_active_org(db_session, name="Quiet Agency")
+    await _past_invites(db_session, busy["org"].id, busy["master"].id, 10, hours_ago=1)
+    await login(client, quiet["master"].email)
+    assert (await _invite(client)).status_code == 201
 
 
 @pytest.mark.asyncio

@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 from typing import Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +41,7 @@ from app.models import (
     UserRoleAssignment,
 )
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
-from app.services.agent_orgs import ORG_STATUSES, ensure_agent_org, lock_org, set_org_status, transition_org
+from app.services.agent_orgs import ensure_agent_org, lock_org, set_org_status, transition_org
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.provisioning import flush_unique_email as _flush_unique_email
 from app.services.storage import storage
@@ -1060,20 +1060,25 @@ def _require_overseas_admin(user: User) -> None:
 
 
 @agents_router.get("/agent-orgs")
-async def list_agent_orgs(status: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_agent_orgs(
+    status: Literal["pending", "active", "rejected", "suspended"] | None = None,
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Newest first. `{items, total, limit, offset}` like the school skill-batch list (the only built paginated list)."""
     _require_overseas_admin(user)
-    if status is not None and status not in ORG_STATUSES:
-        raise HTTPException(422, "Unknown organisation status")
-    stmt = select(AgentOrg).order_by(AgentOrg.created_at.desc())
-    if status:
-        stmt = stmt.where(AgentOrg.status == status)
-    orgs = (await db.scalars(stmt)).all()
+    filters = [AgentOrg.status == status] if status else []
+    total = await db.scalar(select(func.count()).select_from(AgentOrg).where(*filters))
+    orgs = (await db.scalars(select(AgentOrg).where(*filters).order_by(AgentOrg.created_at.desc(), AgentOrg.id.desc()).limit(limit).offset(offset))).all()
     masters: dict = {}
     if orgs:
         rows = (await db.execute(select(AgentOrgMember, User).join(User, User.id == AgentOrgMember.user_id).where(AgentOrgMember.org_id.in_([o.id for o in orgs])).order_by(AgentOrgMember.seq))).all()
         for member, member_user in rows:
             masters.setdefault(member.org_id, []).append({"id": member.id, "code": member.code, "full_name": member_user.full_name, "email": member_user.email, "status": member.status})
-    return [{"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, [])} for o in orgs]
+    items = [{"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, [])} for o in orgs]
+    return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
 
 
 @agents_router.post("/agent-orgs/{org_id}/{action}")
