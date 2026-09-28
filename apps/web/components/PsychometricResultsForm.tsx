@@ -20,6 +20,10 @@ const id = (key: ResultKey) => `psy-result-${key.replaceAll("_", "-")}`;
 const LIST_HINT_ID = "psy-result-lists-hint";
 const LEAVE_PROMPT = "Leave without saving your results?";
 
+const DATE_KEYS: ResultKey[] = ["test_date", "parent_discussion_on", "follow_up_on"];
+// Visual order, so focus lands on the first rejected field the user would meet.
+const FORM_ORDER: ResultKey[] = ["test_date", ...RESULT_LIST_FIELDS.map((f) => f.key), "parent_discussion_on", "follow_up_on"];
+
 // QA27-03/-04: this editor's own wording for a server failure and an ended session. Everything typed stays in the form,
 // so say so; for 401, signing in again in a new tab restores the cookie for this tab too, and Save then works here.
 // Every other status keeps the server's own message (e.g. the partnership-tier 403).
@@ -28,9 +32,6 @@ function failureText(status: number | undefined, serverMessage: string): string 
   if (status !== undefined && status >= 500) return "Something went wrong on our side. Your entry is kept — try again in a moment.";
   return serverMessage;
 }
-const DATE_KEYS: ResultKey[] = ["test_date", "parent_discussion_on", "follow_up_on"];
-// Visual order, so focus lands on the first rejected field the user would meet.
-const FORM_ORDER: ResultKey[] = ["test_date", ...RESULT_LIST_FIELDS.map((f) => f.key), "parent_discussion_on", "follow_up_on"];
 
 export default function PsychometricResultsForm({ record, studentName, onDone }: Props) {
   const [initial] = useState<ResultDraft>(() => toDraft(record));
@@ -94,13 +95,12 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
     }
     // A partly typed date input reports "" -- sending that would silently clear a stored date (final review).
     for (const key of DATE_KEYS) {
-      if (fieldRefs.current[key]?.validity?.badInput) found[key] = "Enter a complete date, or clear the field.";
+      if (fieldRefs.current[key]?.validity.badInput) found[key] = "Enter a complete date, or clear the field.";
     }
     setErrors(found);
     const first = FORM_ORDER.find((key) => found[key]);
     if (first) {
       setMessage(null); // QA27-01: an earlier "No changes to save." must not sit beside the new field error
-
       fieldRefs.current[first]?.focus();
       return;
     }
