@@ -19,6 +19,12 @@ function toLocalInput(iso: string | null | undefined): string {
 
 const yesNo = (value: boolean | null | undefined) => (value === true ? "yes" : value === false ? "no" : "");
 
+/** Today as a date input value, so the picker never offers a past follow-up date (QA-03; the server still decides). */
+function todayInput(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 // ENH-026: create and edit one counselling record. Groups follow spec §11.2 F1; the status select only ever offers states the
 // API will accept (F3), so a refused save usually means someone else changed the record -- shown with a Reload action (F7).
 export default function CareerRecordForm({ students, record, onDone, onCancel }: { students: Student[]; record?: CareerRecord; onDone: () => void; onCancel: () => void }) {
@@ -140,7 +146,7 @@ export default function CareerRecordForm({ students, record, onDone, onCancel }:
               {status === "follow_up_required" && (
                 <div className="field">
                   <label htmlFor={`${prefix}-follow`}>Next follow-up</label>
-                  <input id={`${prefix}-follow`} name="next_follow_up_date" type="date" required defaultValue={record?.next_follow_up_date ?? ""} />
+                  <input id={`${prefix}-follow`} name="next_follow_up_date" type="date" required min={todayInput()} defaultValue={record?.next_follow_up_date ?? ""} />
                 </div>
               )}
             </div>

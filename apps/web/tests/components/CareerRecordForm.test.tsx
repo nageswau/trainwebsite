@@ -28,6 +28,16 @@ describe("CareerRecordForm", () => {
     expect(screen.queryByLabelText("Next follow-up")).not.toBeInTheDocument();
   });
 
+  it("does not offer past dates for the next follow-up (QA-03)", () => {
+    render(<CareerRecordForm students={STUDENTS} record={RECORD} onDone={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "follow_up_required" } });
+    const min = (screen.getByLabelText("Next follow-up") as HTMLInputElement).min;
+    expect(min).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const now = new Date();
+    const local = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    expect(min).toBe(local);
+  });
+
   it("hides status and structured fields for a recommendation", () => {
     render(<CareerRecordForm students={STUDENTS} onDone={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("Type"), { target: { value: "recommendation" } });

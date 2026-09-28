@@ -85,7 +85,7 @@ async def test_create_cannot_start_at_follow_up(client, world):
 async def test_scheduled_needs_a_date_and_completed_needs_notes(client, world):
     await login(client, world["counselor"].email)
     r = await _create(client, world, status="scheduled", notes="")
-    assert (r.status_code, r.json()["detail"]) == (422, "scheduled_for is required when status is Scheduled")
+    assert (r.status_code, r.json()["detail"]) == (422, "A scheduled session needs a date and time.")
     r = await _create(client, world, status="completed", notes="  ")
     assert (r.status_code, r.json()["detail"]) == (422, "notes is required")
 
@@ -184,7 +184,7 @@ async def test_rescheduling_requires_a_new_scheduled_for(client, world):
     rec = await _new(client, world)  # completed
     await client.patch(_patch_url(rec["id"]), json={"status": "follow_up_required", "next_follow_up_date": (TODAY + timedelta(days=1)).isoformat()})
     r = await client.patch(_patch_url(rec["id"]), json={"status": "scheduled"})
-    assert (r.status_code, r.json()["detail"]) == (422, "scheduled_for is required when status is Scheduled")
+    assert (r.status_code, r.json()["detail"]) == (422, "A scheduled session needs a date and time.")
 
 
 @pytest.mark.asyncio
@@ -192,7 +192,18 @@ async def test_follow_up_date_must_not_be_in_the_past(client, world):
     await login(client, world["counselor"].email)
     rec = await _new(client, world)
     r = await client.patch(_patch_url(rec["id"]), json={"status": "follow_up_required", "next_follow_up_date": (TODAY - timedelta(days=1)).isoformat()})
-    assert (r.status_code, r.json()["detail"]) == (422, "next_follow_up_date must be today or later")
+    assert (r.status_code, r.json()["detail"]) == (422, "The next follow-up date must be today or later.")
+
+
+@pytest.mark.asyncio
+async def test_follow_up_date_messages_are_worded_for_people(client, world):
+    """QA-03 (browser QA 2026-09-28): the 422 text is shown to the counsellor as-is, so it names no API field."""
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world)  # completed
+    r = await client.patch(_patch_url(rec["id"]), json={"status": "follow_up_required"})
+    assert (r.status_code, r.json()["detail"]) == (422, "Choose the next follow-up date.")
+    r = await client.patch(_patch_url(rec["id"]), json={"next_follow_up_date": (TODAY + timedelta(days=3)).isoformat()})
+    assert (r.status_code, r.json()["detail"]) == (422, "A next follow-up date can only be set when the status is Follow-up Required.")
 
 
 @pytest.mark.asyncio

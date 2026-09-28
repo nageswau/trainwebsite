@@ -748,11 +748,11 @@ def _enter_career_status(record: SchoolCareerRecord, new: str | None, old: str |
     if new == old:
         return None
     if new == "scheduled" and "scheduled_for" not in sent:
-        return "scheduled_for is required when status is Scheduled"
+        return "A scheduled session needs a date and time."
     if new == "completed" and "completed_on" not in sent:
         record.completed_on = _today_ist()
     if new == "follow_up_required" and "next_follow_up_date" not in sent:
-        return "next_follow_up_date is required when status is Follow-up Required"
+        return "Choose the next follow-up date."
     if old == "follow_up_required":
         record.next_follow_up_date = None
     return None
@@ -761,13 +761,13 @@ def _enter_career_status(record: SchoolCareerRecord, new: str | None, old: str |
 def _career_rule_error(record: SchoolCareerRecord) -> str | None:
     """Post-merge rules (C6-C8) on the record as it would be saved."""
     if record.status == "scheduled" and record.scheduled_for is None:
-        return "scheduled_for is required when status is Scheduled"
+        return "A scheduled session needs a date and time."
     if record.status in COUNTED_CAREER_STATUSES and not record.notes:
         return "notes is required"
     if record.status == "follow_up_required" and record.next_follow_up_date is not None and record.next_follow_up_date < _today_ist():
-        return "next_follow_up_date must be today or later"
+        return "The next follow-up date must be today or later."
     if record.status != "follow_up_required" and record.next_follow_up_date is not None:
-        return "next_follow_up_date is only set when status is Follow-up Required"
+        return "A next follow-up date can only be set when the status is Follow-up Required."
     return None
 
 
