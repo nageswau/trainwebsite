@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import CertificationDetails from "@/components/CertificationDetails";
 import InternshipDetails from "@/components/InternshipDetails";
 import PortfolioEntryForm from "@/components/PortfolioEntryForm";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
@@ -34,6 +35,12 @@ const SECTION_LABELS: Record<string, string> = {
 
 function singular(section: string): string {
   return (SECTION_LABELS[section] ?? section).toLowerCase().replace(/s$/, "");
+}
+
+// QA24-08: "Certification added." -- the confirmation line's wording for an entry action.
+function confirmation(section: string, action: "added" | "updated" | "deleted"): string {
+  const noun = singular(section);
+  return `${noun.charAt(0).toUpperCase()}${noun.slice(1)} ${action}.`;
 }
 
 // Code-review simplification pass: openSection/editing used to be two separately-set optionals that were
@@ -80,6 +87,7 @@ function EntryList({ section, entries, studentId, canEdit, canTrack, activeForm,
                     <strong>{e.title}</strong>
                     {e.organization && <span className="pf-entry-org"> — {e.organization}</span>}
                     {e.date_from && <span className="pf-entry-date"> ({formatCalendarDate(e.date_from)}{e.date_to ? ` – ${formatCalendarDate(e.date_to)}` : ""})</span>}
+                    <CertificationDetails entry={e} />
                     {e.description && <p className="pf-entry-desc">{e.description}</p>}
                     {e.section === "internship" && <InternshipDetails entry={e} studentId={studentId} canEdit={canEdit && !internshipLocked} />}
                     {canEdit && (
@@ -108,9 +116,9 @@ function EntryList({ section, entries, studentId, canEdit, canTrack, activeForm,
 // changes. Same interaction shape as PortfolioEntryForm.tsx (busy/inFlight guard, raw fetch(), no
 // optimistic UI, refocus on error) but small enough (one textarea, one PATCH) that a full second form
 // component would be overkill -- inlined here instead (Task 1).
-function PersonalStatementSection({ studentId, statement, canEdit, disabled, onEditingChange, onDone }: {
+function PersonalStatementSection({ studentId, statement, canEdit, disabled, onEditingChange, onDone, requestFocus }: {
   studentId: string; statement: string | null; canEdit: boolean; disabled: boolean;
-  onEditingChange: (open: boolean) => void; onDone: () => void;
+  onEditingChange: (open: boolean) => void; onDone: () => void; requestFocus: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(statement ?? "");
@@ -129,6 +137,7 @@ function PersonalStatementSection({ studentId, statement, canEdit, disabled, onE
     setAlert(null);
     setEditing(false);
     onEditingChange(false);
+    requestFocus("pf-statement-edit-btn"); // QA24-07
   }
 
   async function save() {
@@ -160,6 +169,7 @@ function PersonalStatementSection({ studentId, statement, canEdit, disabled, onE
     setEditing(false);
     onEditingChange(false);
     onDone();
+    requestFocus("pf-statement-edit-btn"); // QA24-07
   }
 
   return (
@@ -178,7 +188,7 @@ function PersonalStatementSection({ studentId, statement, canEdit, disabled, onE
       ) : (
         <>
           {statement ? <p className="pf-statement">{statement}</p> : <p className="muted">No entries yet.</p>}
-          {canEdit && <button type="button" className="btn secondary" disabled={disabled} onClick={startEdit}>{statement ? "Edit statement" : "Add statement"}</button>}
+          {canEdit && <button id="pf-statement-edit-btn" type="button" className="btn secondary" disabled={disabled} onClick={startEdit}>{statement ? "Edit statement" : "Add statement"}</button>}
         </>
       )}
     </div>
@@ -192,7 +202,18 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [statementEditing, setStatementEditing] = useState(false);
+  // QA24-08: one polite confirmation line for the whole card; replaced by the next success, cleared when anything new starts.
+  const [status, setStatus] = useState<string | null>(null);
+  // QA24-07: the control to focus once the action's re-render has committed. A next-frame focus (refocus) raced React here --
+  // the save's state updates land after an await, so the frame could fire before the Add/Edit button was back in the DOM.
+  const [focusTarget, setFocusTarget] = useState<string | null>(null);
   const deleteInFlight = useRef(false);
+
+  useEffect(() => {
+    if (!focusTarget) return;
+    document.getElementById(focusTarget)?.focus();
+    setFocusTarget(null);
+  }, [focusTarget]);
 
   // Code review findings: (1) confirmingId used to survive any other panel action, so arming Delete on
   // one entry then doing something else and coming back to Delete it again fired immediately with no
@@ -202,28 +223,26 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   // nothing gets silently discarded.
   const anyFormOpen = activeForm !== null || statementEditing;
 
-  // FV-04 (AC-R5): opening a form moves focus to its first field; Save, Cancel and Escape hand it back to the button that
-  // opened it. Applied after the commit, not in a requestAnimationFrame: a save closes the form from an async callback,
-  // whose render can land after the next frame, when the Edit button did not exist yet.
-  const pendingFocus = useRef<string | null>(null);
-  useEffect(() => {
-    if (!pendingFocus.current) return;
-    document.getElementById(pendingFocus.current)?.focus();
-    pendingFocus.current = null;
-  }, [activeForm]);
-
+  // QA24-07 + FV-04 (AC-R5), one mechanism: opening a form moves focus to its first field; Save, Cancel and Escape hand it
+  // back to the button that opened it (the section's Add button or the entry's Edit button). The focus is applied by the
+  // focusTarget effect above, after the commit, never in a requestAnimationFrame -- a save closes the form from an async
+  // callback whose render can land after the next frame, when that button did not exist yet.
   function closeForm() {
-    pendingFocus.current = activeForm?.kind === "edit" ? `pf-edit-btn-${activeForm.entry.id}` : activeForm ? `pf-add-btn-${activeForm.section}` : null;
+    if (activeForm) setFocusTarget(activeForm.kind === "add" ? `pf-add-btn-${activeForm.section}` : `pf-edit-btn-${activeForm.entry.id}`);
     setActiveForm(null);
     setConfirmingId(null);
   }
 
   function handleStatementEditingChange(open: boolean) {
     setStatementEditing(open);
-    if (open) setConfirmingId(null);
+    if (open) {
+      setConfirmingId(null);
+      setStatus(null);
+    }
   }
 
   function onFormDone() {
+    if (activeForm) setStatus(activeForm.kind === "add" ? confirmation(activeForm.section, "added") : confirmation(activeForm.entry.section, "updated"));
     closeForm();
     router.refresh();
   }
@@ -231,6 +250,7 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   async function deleteEntry(entry: PortfolioEntry) {
     if (confirmingId !== entry.id) {
       setConfirmingId(entry.id);
+      setStatus(null);
       return;
     }
     // Guard a fast double-click on "Confirm delete": without this, the second click's DELETE races the
@@ -260,20 +280,29 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
       refocus(`pf-delete-btn-${entry.id}`);
       return;
     }
+    setStatus(confirmation(entry.section, "deleted"));
     router.refresh();
+    setFocusTarget(`pf-add-btn-${entry.section}`); // QA24-07: the entry is gone; its section's Add button is the nearest control
   }
 
   // FV-04: the opening button unmounts (Add) or is disabled (Edit), so focus moves to the form's first field.
   function openAdd(section: string) {
-    pendingFocus.current = "pf-title";
+    setFocusTarget("pf-title");
     setActiveForm({ kind: "add", section });
     setConfirmingId(null);
+    setStatus(null);
   }
 
   function startEdit(entry: PortfolioEntry) {
-    pendingFocus.current = "pf-title";
+    setFocusTarget("pf-title");
     setActiveForm({ kind: "edit", entry });
     setConfirmingId(null);
+    setStatus(null);
+  }
+
+  function onStatementSaved() {
+    setStatus("Personal statement saved.");
+    router.refresh();
   }
 
   return (
@@ -283,6 +312,9 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
         <div className="pf-meter-fill" style={{ width: `${data.completion_percentage}%` }} />
       </div>
       <p className="pf-meter-label">{data.completion_percentage}% complete</p>
+      {/* QA24-08: always rendered (empty when idle) so screen readers announce the text when it changes. A polite live
+          region rather than role="status": pages that host this card already carry their own status (e.g. a pending transfer). */}
+      <p aria-live="polite" aria-atomic="true" className="pf-status">{status}</p>
       {deleteError && <div role="alert" className="form-error">{deleteError}</div>}
 
       <div className="pf-section">
@@ -326,7 +358,7 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
       <PersonalStatementSection
         studentId={data.student.id} statement={data.personal_statement} canEdit={data.can_edit}
         disabled={activeForm !== null} onEditingChange={handleStatementEditingChange}
-        onDone={() => router.refresh()}
+        onDone={onStatementSaved} requestFocus={setFocusTarget}
       />
     </div>
   );

@@ -24,6 +24,12 @@
 .pf-entry-actions { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
 .pf-add-btn { margin-top: 0.5rem; }
 .pf-statement { white-space: pre-wrap; }
+/* QA24-08: the card's confirmation line; takes no space while empty (it stays in the DOM as a live region). */
+.pf-status { margin: 0; font-weight: 700; color: var(--green); }
+/* QA24-05: a comfortable target for the Skill India checkbox (the same 44px row as ENH-018's .score-options labels). */
+.pf-check { display: flex; align-items: center; gap: 8px; min-height: 44px; width: fit-content; cursor: pointer; }
+.pf-check input { width: 20px; height: 20px; margin: 0; }
+.pf-cert { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.25rem; overflow-wrap: anywhere; }
 
 /* ENH-025 -- grouped Student Master forms, student photo and profile list (same tokens as fieldset.question). */
 fieldset.form-section { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 0; display: grid; gap: 12px; min-width: 0; }
@@ -88,3 +94,26 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .record-details dt { font-weight: 700; }
 .record-details dd { margin: 0; overflow-wrap: anywhere; }
 @media (max-width: 640px) { .record-details { grid-template-columns: 1fr; } .record-details dd { margin-bottom: 6px; } }
+
+/* ENH-016 analytics dashboards: KPI tiles 1 -> 2 -> 4 columns; wide tables scroll inside their card, never the page. */
+.kpi-group { margin-top: 16px; }
+.kpi-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 8px 0 0; }
+@media (min-width: 768px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.kpi-tile { border: 1px solid #e7edf6; border-radius: 10px; padding: 12px; min-width: 0; }
+.kpi-tile dt { color: #61728a; font-size: 13px; }
+.kpi-tile dd { margin: 4px 0 0; }
+.kpi-value { font-size: 24px; font-weight: 800; color: #0b1f3a; }
+.kpi-note { display: block; font-size: 12px; margin-top: 4px; }
+/* position:relative makes the scroll box the containing block of the .sr-only captions inside it, so they are clipped
+   instead of widening the page on phones (same fix as .table-wrap, FV-03). */
+.table-scroll { overflow-x: auto; max-width: 100%; position: relative; }
+.table-scroll table th:first-child, .table-scroll table td:first-child { position: sticky; left: 0; background: #fff; }
+/* QA-016-02: the report forms land on these sections; keep their heading clear of the sticky portal header. */
+#development, #scorecards { scroll-margin-top: 88px; }
+/* QA-016-04: a row header is a label (a student, a metric), not a column heading -- normal case at body size. */
+.table-scroll tbody th[scope="row"] { text-transform: none; letter-spacing: normal; font-size: 14px; color: #0b1f3a; font-weight: 600; }
+.table-scroll tbody th[scope="row"] .kpi-note { font-weight: 400; }
+.state-badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.analytics-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 12px 0; }
+.pager { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }

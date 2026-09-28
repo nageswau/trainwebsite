@@ -1147,6 +1147,15 @@ class PortfolioEntry(Base, TimestampMixin):
             "AND feedback IS NULL AND skills_acquired IS NULL AND certificate_key IS NULL AND certificate_content_type IS NULL)",
             name="ck_portfolio_internship_fields",
         ),
+        # ENH-024 (spec §4): mirrored verbatim in migration 0044 -- the API rejects each of these first; the CHECKs are the last line.
+        CheckConstraint("certification_type IS NULL OR (certification_type = 'skill_india' AND section = 'certification')", name="ck_portfolio_cert_type"),
+        CheckConstraint("certification_status IS NULL OR certification_status IN ('enrolled', 'in_progress', 'certified')", name="ck_portfolio_cert_status"),
+        CheckConstraint(
+            "(certification_type IS NULL AND certification_status IS NULL AND certificate_number IS NULL AND issued_on IS NULL) "
+            "OR (certification_type IS NOT NULL AND certification_status IS NOT NULL)",
+            name="ck_portfolio_cert_fields",
+        ),
+        CheckConstraint("certification_status IS DISTINCT FROM 'certified' OR (certificate_number IS NOT NULL AND issued_on IS NOT NULL)", name="ck_portfolio_cert_certified"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
@@ -1171,6 +1180,11 @@ class PortfolioEntry(Base, TimestampMixin):
     @property
     def has_certificate(self) -> bool:
         return self.certificate_key is not None
+    # ENH-024 -- Skill India certification details; all NULL on every other entry (spec §4, DEC-SCOPE-033).
+    certification_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    certification_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    certificate_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    issued_on: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
 class PortfolioProfile(Base, TimestampMixin):

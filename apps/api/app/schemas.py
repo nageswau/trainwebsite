@@ -1077,6 +1077,37 @@ class _InternshipFields(BaseModel):
         return _clean_list(value)
 
 
+# --- ENH-024: Skill India certification (docs/superpowers/specs/2026-09-28-enh-024-skill-india-certification-design.md §5) ---
+# Declared once and shared by PortfolioEntryCreate and portfolio.py's post-merge PATCH check (the DATE_RANGE_ERROR precedent).
+CertificationType = Literal["skill_india"]
+CertificationStatus = Literal["enrolled", "in_progress", "certified"]
+CERT_TYPE_SECTION_ERROR = "Only a certification can be marked as Skill India"
+CERT_STATUS_REQUIRED_ERROR = "Choose a status for the Skill India certification"
+CERT_FIELDS_UNTAGGED_ERROR = "Status, certificate number and issue date apply only to Skill India certifications"
+CERT_CERTIFIED_ERROR = "A certified Skill India certification needs a certificate number and issue date"
+
+
+def skill_india_error(certification_type: str | None, certification_status: str | None, certificate_number: str | None, issued_on: date | None) -> str | None:
+    """Spec D3/D6 on a complete state (a create payload, or a PATCH merged onto the stored entry); None when valid. Explicit
+    nulls on an untagged entry are valid -- only a non-null detail is refused."""
+    if certification_type is None:
+        has_detail = certification_status is not None or certificate_number is not None or issued_on is not None
+        return CERT_FIELDS_UNTAGGED_ERROR if has_detail else None
+    if certification_status is None:
+        return CERT_STATUS_REQUIRED_ERROR
+    if certification_status == "certified" and (certificate_number is None or issued_on is None):
+        return CERT_CERTIFIED_ERROR
+    return None
+
+
+def _clean_certificate_number(value: str | None) -> str | None:
+    # `str_strip_whitespace` has already trimmed it; blank means "not given". Single-line, like title/organization.
+    return _no_control_characters(value) if value else None
+
+
+CertificateNumber = Annotated[str | None, Field(max_length=100), AfterValidator(_clean_certificate_number)]  # create and update: one rule
+
+
 class PortfolioEntryCreate(_InternshipFields):
     model_config = {"str_strip_whitespace": True, "extra": "forbid"}
     section: str
@@ -1085,6 +1116,10 @@ class PortfolioEntryCreate(_InternshipFields):
     organization: str | None = Field(default=None, max_length=200)
     date_from: date | None = None
     date_to: date | None = None
+    certification_type: CertificationType | None = None
+    certification_status: CertificationStatus | None = None
+    certificate_number: CertificateNumber = None
+    issued_on: date | None = None
 
     @field_validator("section")
     @classmethod
@@ -1113,6 +1148,16 @@ class PortfolioEntryCreate(_InternshipFields):
         return self
 
     @model_validator(mode="after")
+    def _skill_india_rules(self):
+        # ENH-024: the tag lives only on a certification entry; the rest of the rule is shared with the PATCH merge check.
+        if self.certification_type is not None and self.section != "certification":
+            raise ValueError(CERT_TYPE_SECTION_ERROR)
+        error = skill_india_error(self.certification_type, self.certification_status, self.certificate_number, self.issued_on)
+        if error:
+            raise ValueError(error)
+        return self
+
+    @model_validator(mode="after")
     def _internship_rules(self):
         # ENH-021 I1/I4: tracking fields belong to the internship section only; an internship names its company.
         if self.section != "internship":
@@ -1132,6 +1177,11 @@ class PortfolioEntryUpdate(_InternshipFields):
     organization: str | None = Field(default=None, max_length=200)
     date_from: date | None = None
     date_to: date | None = None
+    # ENH-024: no `certification_type` -- the tag is set at creation only (D8), so sending it is an `extra="forbid"` 422.
+    # Cross-field rules need the stored entry, so portfolio.py checks them after the merge.
+    certification_status: CertificationStatus | None = None
+    certificate_number: CertificateNumber = None
+    issued_on: date | None = None
 
     @field_validator("title", "organization")
     @classmethod
@@ -1174,6 +1224,10 @@ class PortfolioEntryOut(BaseModel):
     organization: str | None
     date_from: date | None
     date_to: date | None
+    certification_type: str | None = None
+    certification_status: str | None = None
+    certificate_number: str | None = None
+    issued_on: date | None = None
     created_by_user_id: UUID
     updated_by_user_id: UUID
     created_at: datetime
@@ -1626,6 +1680,160 @@ class AdminActivityFeedbackOut(ActivityFeedbackOut):
 
 class AdminFeedbackPage(BaseModel):
     items: list[AdminActivityFeedbackOut]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- ENH-016: analytics dashboards (docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md §7) ---
+# Read-only response models. Grade keys are "8".."12", "other" (a grade outside 8-12) and "unspecified" (no grade).
+
+
+class MetricCell(BaseModel):
+    count: int
+    pct: float | None  # null when the grade has no students
+
+
+class GradeMetricRow(BaseModel):
+    key: str
+    label: str
+    is_proxy: bool  # D5: an estimate from existing data; `definition` says how it is computed
+    definition: str | None
+    cells: dict[str, MetricCell]
+
+
+class GradePerformanceOut(BaseModel):
+    grades: list[str]
+    students: dict[str, int]
+    metrics: list[GradeMetricRow]
+
+
+class Headcounts(BaseModel):
+    students: int
+    teachers: int
+    parents: int
+
+
+class ActivityProgressRow(BaseModel):
+    key: str
+    label: str
+    completed: int
+    pending: int  # D2: total students - completed
+
+
+class AverageRow(BaseModel):
+    key: str
+    label: str
+    average_pct: float | None
+    count: int
+
+
+class PerformerRow(BaseModel):
+    school_student_id: UUID
+    full_name: str
+    grade: str
+    average_pct: float
+    result_count: int
+
+
+class PerformerList(BaseModel):
+    items: list[PerformerRow]  # capped; `total` is the full count
+    total: int
+
+
+class StudentDevelopmentOut(BaseModel):
+    headcounts: Headcounts
+    activities: list[ActivityProgressRow]
+    by_grade: list[AverageRow]
+    by_subject: list[AverageRow]
+    by_term: list[AverageRow]
+    at_risk: PerformerList
+    top_performers: PerformerList
+    at_risk_below: int
+    top_from: int
+
+
+# D3: completed / in progress / not started (service in the tier) / not in plan / no module yet.
+ScorecardState = Literal["completed", "in_progress", "not_started", "not_in_plan", "not_tracked"]
+
+
+class ScorecardArea(BaseModel):
+    key: str
+    label: str
+    state: ScorecardState
+
+
+class ScorecardOut(BaseModel):
+    school_student_id: UUID
+    full_name: str
+    grade: str
+    portfolio_completion_pct: int
+    areas: list[ScorecardArea]
+
+
+class ScorecardPage(BaseModel):
+    items: list[ScorecardOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class TrackedValue(BaseModel):
+    value: int | None
+    tracked: bool
+    note: str | None = None
+
+
+class SchoolCounts(BaseModel):
+    total: int
+    active: int
+    new: int
+    renewal_due: int
+
+
+class StudentCounts(BaseModel):
+    total: int
+    by_grade: dict[str, int]
+    career_guidance: int
+    psychometric: int
+    counselling: int
+    global_education: int
+
+
+class ServiceTotals(BaseModel):
+    """§27 over the services a tier includes: delivered (used), pending (included, unused), not tracked (no module yet)."""
+
+    services_included: int
+    delivered: int
+    pending: int
+    not_tracked: int
+    utilization_pct: float | None
+
+
+class CrossSchoolSummaryOut(BaseModel):
+    """§34 -- aggregates only: no student-level field (spec §12)."""
+
+    schools: SchoolCounts
+    students: StudentCounts
+    services: ServiceTotals
+    outcomes: dict[str, TrackedValue]
+
+
+class SchoolUtilizationRow(ServiceTotals):
+    school_id: UUID
+    name: str
+    tier: str | None
+    tier_valid_until: date | None
+    is_active: bool  # a tier that is set and not past its end date (ENH-022's rule)
+    is_new: bool
+    renewal_due: bool
+    students: int
+    student_participation: int
+    pending_activities: int
+
+
+class SchoolUtilizationPage(BaseModel):
+    items: list[SchoolUtilizationRow]
     total: int
     limit: int
     offset: int
