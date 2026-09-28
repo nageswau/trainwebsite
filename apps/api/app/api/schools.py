@@ -15,6 +15,7 @@ import hashlib
 import io
 import re
 import secrets
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
@@ -22,7 +23,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -1017,6 +1018,61 @@ async def require_school_entitlement(db: AsyncSession, user: User, school_id: UU
     raise HTTPException(403, message)
 
 
+async def service_usage(db: AsyncSession, school_ids: Collection[UUID]) -> dict[UUID, dict[str, int | bool | None]]:
+    """DEC-SCOPE-017 usage per school and service, extracted from `school_entitlements` for ENH-016's cross-school rollup (spec
+    §5.2). One grouped query per source, so the query count does not depend on how many schools are asked for. A key that is
+    absent here is "not yet tracked" (`used: None`). ENH-016 D13 adds `digital_portfolio_creation` (students with a started
+    portfolio, D11). No writes."""
+    from app.api.school_analytics import portfolio_started_ids, students_in  # noqa: PLC0415 -- school_analytics imports this module
+
+    ids = list(school_ids)
+    if not ids:
+        return {}
+    usage: dict[UUID, dict[str, int | bool | None]] = {school_id: {} for school_id in ids}
+    in_schools = SchoolStudent.school_id.in_(ids)
+
+    async def _per_school(key: str, stmt) -> None:
+        counts = dict((await db.execute(stmt)).tuples().all())
+        for school_id in ids:
+            usage[school_id][key] = counts.get(school_id, 0)
+
+    def _student_rows(model, *conditions):
+        return select(SchoolStudent.school_id, func.count(model.id)).join(SchoolStudent, SchoolStudent.id == model.school_student_id).where(in_schools, *conditions).group_by(SchoolStudent.school_id)
+
+    await _per_school("psychometric_test", _student_rows(SchoolPsychometricRecord))
+    await _per_school("individual_counselling", _student_rows(SchoolCareerRecord, SchoolCareerRecord.record_type == "counselling_note"))
+    await _per_school("ielts_coaching", _student_rows(SchoolTestPrepRecord, SchoolTestPrepRecord.test_type == "ielts"))
+    await _per_school("sat_coaching", _student_rows(SchoolTestPrepRecord, SchoolTestPrepRecord.test_type == "sat"))
+    await _per_school("foreign_language_classes", _student_rows(SchoolLanguageRecord))
+    await _per_school("application_support", _student_rows(OverseasApplication))
+    await _per_school(
+        "visa_support",
+        select(SchoolStudent.school_id, func.count(VisaCase.id))
+        .join(OverseasApplication, OverseasApplication.id == VisaCase.application_id)
+        .join(SchoolStudent, SchoolStudent.id == OverseasApplication.school_student_id)
+        .where(in_schools)
+        .group_by(SchoolStudent.school_id),
+    )
+    activity_counts = await db.execute(
+        select(SchoolActivity.school_id, SchoolActivity.activity_type, func.count())
+        .where(SchoolActivity.school_id.in_(ids), SchoolActivity.activity_type.in_(list(ACTIVITY_SERVICE_KEYS)))
+        .group_by(SchoolActivity.school_id, SchoolActivity.activity_type)
+    )
+    for school_id in ids:
+        usage[school_id].update({service: 0 for service in ACTIVITY_SERVICE_KEYS.values()})
+    for school_id, activity_type, count in activity_counts.tuples():
+        usage[school_id][ACTIVITY_SERVICE_KEYS[activity_type]] = count
+    staffed = set((await db.scalars(select(SchoolStaffAssignment.school_id).where(SchoolStaffAssignment.school_id.in_(ids)).distinct())).all())
+    skills = await _skills().skill_usage_many(db, ids)  # ENH-011: soft_skills / web_designing
+    started = await portfolio_started_ids(db, students_in(ids))
+    owners = (await db.scalars(select(SchoolStudent.school_id).where(SchoolStudent.id.in_(started)))).all() if started else []
+    for school_id in ids:
+        usage[school_id]["dedicated_counselor"] = school_id in staffed
+        usage[school_id].update(skills[school_id])
+        usage[school_id]["digital_portfolio_creation"] = sum(1 for owner in owners if owner == school_id)
+    return usage
+
+
 @router.get("/entitlements")
 async def school_entitlements(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """DEC-SCOPE-017 -- what this school's partnership tier includes, with a REAL usage
@@ -1033,32 +1089,7 @@ async def school_entitlements(user: User = Depends(get_current_user), db: AsyncS
     if not services:
         return {"tier": school.tier if school else None, "tier_valid_until": school.tier_valid_until if school else None, "services": []}
 
-    student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id == school_id))).all()
-
-    async def _activity_count(activity_type: str) -> int:
-        return len((await db.scalars(select(SchoolActivity.id).where(SchoolActivity.school_id == school_id, SchoolActivity.activity_type == activity_type))).all())
-
-    usage: dict[str, int | bool | None] = {}
-    if student_ids:
-        usage["psychometric_test"] = len((await db.scalars(select(SchoolPsychometricRecord.id).where(SchoolPsychometricRecord.school_student_id.in_(student_ids)))).all())
-        usage["individual_counselling"] = len(
-            (await db.scalars(select(SchoolCareerRecord.id).where(SchoolCareerRecord.school_student_id.in_(student_ids), SchoolCareerRecord.record_type == "counselling_note"))).all()
-        )
-        usage["ielts_coaching"] = len((await db.scalars(select(SchoolTestPrepRecord.id).where(SchoolTestPrepRecord.school_student_id.in_(student_ids), SchoolTestPrepRecord.test_type == "ielts"))).all())
-        usage["sat_coaching"] = len((await db.scalars(select(SchoolTestPrepRecord.id).where(SchoolTestPrepRecord.school_student_id.in_(student_ids), SchoolTestPrepRecord.test_type == "sat"))).all())
-        usage["foreign_language_classes"] = len((await db.scalars(select(SchoolLanguageRecord.id).where(SchoolLanguageRecord.school_student_id.in_(student_ids)))).all())
-        application_ids = (await db.scalars(select(OverseasApplication.id).where(OverseasApplication.school_student_id.in_(student_ids)))).all()
-        usage["application_support"] = len(application_ids)
-        usage["visa_support"] = len((await db.scalars(select(VisaCase.id).where(VisaCase.application_id.in_(application_ids)))).all()) if application_ids else 0
-    else:
-        usage.update({"psychometric_test": 0, "individual_counselling": 0, "ielts_coaching": 0, "sat_coaching": 0, "foreign_language_classes": 0, "application_support": 0, "visa_support": 0})
-    usage["career_seminar"] = await _activity_count("career_seminar")
-    usage["career_awareness_session"] = await _activity_count("career_awareness_session")
-    usage["parent_orientation"] = await _activity_count("parent_orientation")
-    usage["monthly_campus_visits"] = await _activity_count("campus_visit")
-    usage["dedicated_counselor"] = bool(await db.scalar(select(SchoolStaffAssignment.id).where(SchoolStaffAssignment.school_id == school_id)))
-    usage.update(await _skills().skill_usage(db, school_id))  # ENH-011: soft_skills / web_designing are tracked now
-
+    usage = (await service_usage(db, [school_id]))[school_id]
     return {
         "tier": school.tier if school else None,
         "tier_valid_until": school.tier_valid_until if school else None,
