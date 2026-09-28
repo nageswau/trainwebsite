@@ -142,7 +142,7 @@ included. Pinned by a snapshot test written before the extraction (§11).
 
 ### 6.2 §29 grade comparison (D5)
 
-Columns: grades 8–12 plus `unspecified` (only if non-zero). Each metric is `{count, pct}` with `pct = null` when the grade
+Columns: grades 8–12, plus `other` (a `grade_level` outside 8–12) and `unspecified` (no grade), each only if non-zero. Each metric is `{count, pct}` with `pct = null` when the grade
 has 0 students.
 
 | Metric (label shown) | Rule |

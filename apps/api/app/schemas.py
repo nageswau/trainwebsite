@@ -1480,3 +1480,26 @@ class AdminFeedbackPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- ENH-016: analytics dashboards (docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md §7) ---
+# Read-only response models. Grade keys are "8".."12", "other" (a grade outside 8-12) and "unspecified" (no grade).
+
+
+class MetricCell(BaseModel):
+    count: int
+    pct: float | None  # null when the grade has no students
+
+
+class GradeMetricRow(BaseModel):
+    key: str
+    label: str
+    is_proxy: bool  # D5: an estimate from existing data; `definition` says how it is computed
+    definition: str | None
+    cells: dict[str, MetricCell]
+
+
+class GradePerformanceOut(BaseModel):
+    grades: list[str]
+    students: dict[str, int]
+    metrics: list[GradeMetricRow]
