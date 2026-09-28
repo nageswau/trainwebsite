@@ -97,7 +97,7 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
   }
 
   return (
-    <form className="form" onSubmit={submit} noValidate>
+    <form className="form" onSubmit={submit} noValidate onKeyDown={(e) => { if (e.key === "Escape" && !busy) onCancel(); }}>
       <div className="field">
         <label htmlFor="pf-title">{internship ? "Role" : "Title"}</label>
         <input id="pf-title" className="search" value={title} disabled={busy} aria-invalid={fieldError ? true : undefined} aria-describedby={fieldError ? "pf-title-error" : undefined} onChange={(e) => setTitle(e.target.value)} />

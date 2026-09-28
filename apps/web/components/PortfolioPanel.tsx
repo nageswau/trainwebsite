@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import InternshipDetails from "@/components/InternshipDetails";
 import PortfolioEntryForm from "@/components/PortfolioEntryForm";
@@ -84,7 +84,7 @@ function EntryList({ section, entries, studentId, canEdit, canTrack, activeForm,
                     {e.section === "internship" && <InternshipDetails entry={e} studentId={studentId} canEdit={canEdit && !internshipLocked} />}
                     {canEdit && (
                       <div className="pf-entry-actions">
-                        <button type="button" className="btn secondary" disabled={deleteBusy || anyFormOpen} onClick={() => onEdit(e)}>Edit {e.title}</button>
+                        <button id={`pf-edit-btn-${e.id}`} type="button" className="btn secondary" disabled={deleteBusy || anyFormOpen} onClick={() => onEdit(e)}>Edit {e.title}</button>
                         <button id={`pf-delete-btn-${e.id}`} type="button" className="btn secondary" disabled={deleteBusy || anyFormOpen} onClick={() => onDelete(e)}>{confirmingId === e.id ? `Confirm delete ${e.title}` : `Delete ${e.title}`}</button>
                       </div>
                     )}
@@ -96,7 +96,7 @@ function EntryList({ section, entries, studentId, canEdit, canTrack, activeForm,
         </ul>
       )}
       {canEdit && !formOpenHere && !internshipLocked && (
-        <button type="button" className="btn secondary pf-add-btn" disabled={anyFormOpen} onClick={() => onAdd(section)}>Add {singular(section)}</button>
+        <button id={`pf-add-btn-${section}`} type="button" className="btn secondary pf-add-btn" disabled={anyFormOpen} onClick={() => onAdd(section)}>Add {singular(section)}</button>
       )}
       {formOpenHere && <PortfolioEntryForm studentId={studentId} section={section} onDone={onFormDone} onCancel={onCancel} />}
     </div>
@@ -202,7 +202,18 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   // nothing gets silently discarded.
   const anyFormOpen = activeForm !== null || statementEditing;
 
+  // FV-04 (AC-R5): opening a form moves focus to its first field; Save, Cancel and Escape hand it back to the button that
+  // opened it. Applied after the commit, not in a requestAnimationFrame: a save closes the form from an async callback,
+  // whose render can land after the next frame, when the Edit button did not exist yet.
+  const pendingFocus = useRef<string | null>(null);
+  useEffect(() => {
+    if (!pendingFocus.current) return;
+    document.getElementById(pendingFocus.current)?.focus();
+    pendingFocus.current = null;
+  }, [activeForm]);
+
   function closeForm() {
+    pendingFocus.current = activeForm?.kind === "edit" ? `pf-edit-btn-${activeForm.entry.id}` : activeForm ? `pf-add-btn-${activeForm.section}` : null;
     setActiveForm(null);
     setConfirmingId(null);
   }
@@ -252,12 +263,15 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
     router.refresh();
   }
 
+  // FV-04: the opening button unmounts (Add) or is disabled (Edit), so focus moves to the form's first field.
   function openAdd(section: string) {
+    pendingFocus.current = "pf-title";
     setActiveForm({ kind: "add", section });
     setConfirmingId(null);
   }
 
   function startEdit(entry: PortfolioEntry) {
+    pendingFocus.current = "pf-title";
     setActiveForm({ kind: "edit", entry });
     setConfirmingId(null);
   }

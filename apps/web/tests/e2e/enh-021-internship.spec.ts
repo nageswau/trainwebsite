@@ -67,6 +67,25 @@ test.describe.serial("ENH-021 internship", () => {
     await expect(details.getByRole("link", { name: "Download certificate (PDF)" })).toBeVisible();
   });
 
+  test("coordinator edits the internship with the keyboard; focus returns to Edit (AC-R5, FV-04)", async ({ page }) => {
+    await signIn(page, email("coord"), E2E_PASSWORD, "/school/coordinator/dashboard");
+    await page.goto(`/school/coordinator/students/${ctx.studentId}`);
+    const edit = page.getByRole("button", { name: "Edit Design intern" });
+    await edit.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByLabel("Role")).toBeFocused();
+    await page.getByLabel("Mentor name (optional)").fill("Ms Rao");
+    await page.getByRole("button", { name: "Save", exact: true }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".internship-details").getByText("Ms Rao")).toBeVisible();
+    await expect(edit).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByLabel("Role")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+    await expect(edit).toBeFocused();
+  });
+
   test("parent downloads the certificate", async ({ page }) => {
     await signIn(page, ctx.parentEmail, INVITE_PASSWORD, "/school/parent/dashboard");
     await page.goto(`/school/parent/children/${ctx.studentId}`);
