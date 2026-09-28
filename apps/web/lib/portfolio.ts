@@ -1,5 +1,6 @@
 import { serverApi } from "@/lib/api";
 import type { InternshipValues } from "@/lib/internship";
+import type { PsychometricResult } from "@/lib/psychometric";
 
 // ENH-012 -- Digital Portfolio: server-side loader + shared types, kept OUT of PortfolioPanel.tsx.
 // PortfolioPanel.tsx is a "use client" file (see its own header comment for why); serverApi imports
@@ -21,7 +22,7 @@ export type PortfolioData = {
   can_track_internships?: boolean;
   profile_complete: boolean;
   academic_achievements: { id: string; term: string; subject: string; grade: string | null; published_at: string }[];
-  psychometric_report: { id: string; assessment_type: string; report_url: string | null; created_at: string }[];
+  psychometric_report: ({ id: string; assessment_type: string; report_url: string | null; created_at: string } & PsychometricResult)[];
   career_guidance: { id: string; record_type: string; notes: string; created_at: string }[];
   languages: { id: string; language: string; level: string | null; certification_status: string; created_at: string }[];
   entries: Record<string, PortfolioEntry[]>;

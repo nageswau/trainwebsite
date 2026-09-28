@@ -88,3 +88,8 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .record-details dt { font-weight: 700; }
 .record-details dd { margin: 0; overflow-wrap: anywhere; }
 @media (max-width: 640px) { .record-details { grid-template-columns: 1fr; } .record-details dd { margin-bottom: 6px; } }
+/* ENH-027 -- psychometric results: the rows reuse .record-details above (one column on a phone); only the disclosure is new. */
+.psy-results { display: grid; gap: 8px; margin-top: 12px; }
+.psy-result { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.psy-result summary { cursor: pointer; font-weight: 800; }
+.psy-result-text { white-space: pre-wrap; }
