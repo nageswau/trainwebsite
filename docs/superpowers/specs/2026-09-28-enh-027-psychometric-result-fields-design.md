@@ -126,8 +126,11 @@ Consequences:
   existing `db.commit()` (one transaction per request, unchanged).
 - Unknown keys are still ignored, exactly as today (no `extra="forbid"` on the routes → no new 422s for
   existing clients).
-- The 422 body follows the existing `HTTPException(422, <message>)` convention: the first error, named by
-  field (e.g. `"strengths: must have at most 20 items"`).
+- The 422 body follows the existing `HTTPException(422, <message>)` convention via ENH-025's
+  `validation_message` (`"<field> <reason>"`, never echoing the value, e.g.
+  `"strengths must have at most 20 items"`). Parsing and applying reuse ENH-025's generic
+  `_master_fields_or_422(model, data)` and `_apply_master_fields(obj, fields)` (`schools.py:610-630`);
+  no parallel helpers are written.
 
 **`create_psychometric_record` (POST `/school/psychometric-team/records`):** sets any provided result
 fields on the new record. Status rule unchanged (`completed` iff `report_url` given). Notifications
@@ -206,7 +209,9 @@ ENH-018 precedent (`ActivityFeedbackDetails` inside `<details>`, `SchoolActivity
 - The 5 list fields each as `<dt>` + `<dd><ul>…</ul></dd>` — plain text items, React-escaped.
 - Counsellor remarks and parent-discussion notes render with `white-space: pre-wrap` and
   `overflow-wrap: anywhere` (long unbroken text never forces horizontal scroll at 320 px).
-- Exports `hasResults(a): boolean` (any of the 10 fields non-null) for the two consumers.
+- Also exports `PsychometricResultsList({ assessments })` — the per-assessment `<details>` / "no results
+  recorded yet" block of §5.2 — so both consumers render one component instead of repeating the loop.
+  `hasResults` comes from `lib/psychometric.ts` (§5.5).
 - No new colours, radii or shadows: existing tokens/classes only; at most one small CSS rule block in
   `globals.css` (`.psy-result`) for the pre-wrap text and the `<details>` spacing.
 
@@ -279,7 +284,9 @@ as §5.2. `Assessment` type gains the optional fields.
 ### 5.5 Types
 
 `PsychometricResult` (the 10 optional fields, `string | null` for dates/text, `string[] | null` for
-lists) is exported from `PsychometricResultDetails.tsx` and intersected into: `Record_` in the panel and
+lists), `hasResults`, the field labels/limits and the pure form helpers (`toDraft`, `changedFields`,
+`listError`) live in `lib/psychometric.ts` (precedent: ENH-025's `lib/schoolStudents.ts`) so the server
+component and the client form share them without importing each other. The type is intersected into: `Record_` in the panel and
 in `app/school/psychometric-team/dashboard/page.tsx`, `lib/portfolio.ts` `psychometric_report`, and
 `SchoolChildOverview`'s `Assessment`.
 
@@ -331,8 +338,9 @@ psychometric findings and counsellor remarks about minors — *sensitive* person
   a 422 and leaves the record and the audit log unchanged.
 - **ENH-027-AC04:** Authorization unchanged: a non-`psychometric_team` role gets 403 on create/update; a
   student outside the member's portfolio gets 403 even with a valid (or invalid) result payload; the
-  ENH-022/023 tier rules behave as before (blocked create after expiry; update grandfathered by
-  `created_at`); readers cannot PATCH.
+  ENH-022/023 tier rules behave as before — after the partnership expires both create and update are 403
+  and a result-field PATCH changes nothing (`test_enh_022_tier_enforcement.py:148` is the existing
+  precedent for `report_url`); readers cannot PATCH.
 - **ENH-027-AC05:** Coordinator, Principal, Teacher and Parent see the result fields via
   `/psychometric-records`, the child overview, the portfolio and the 360° Psychometric tab, within their
   existing scope. Which endpoints return `report_url` is unchanged.
@@ -385,8 +393,8 @@ psychometric rows; compare row values before/after.
 - `Student360Panels.test.tsx`, `SchoolChildOverview` test (extend): `<details>` when results exist;
   "no results recorded yet" line otherwise; existing table unchanged.
 
-**Playwright (AC07):** extend `tests/e2e/sch-004-005-006-service-delivery.spec.ts` — after attaching the
-report, record results (keyboard-only for the editor: Tab to the button, Enter, fill, submit); verify on
+**Playwright (AC07):** new `tests/e2e/enh-027-psychometric-results.spec.ts` (API-only setup like
+`enh-013-student-360.spec.ts`, so the long SCH-004/005/006 flow stays untouched) — record results (keyboard-only for the editor: Tab to the button, Enter, fill, submit); verify on
 the psychometric team's 360° tab and on the parent's child page; one run at a 320 px viewport checks the
 editor has no horizontal page scroll.
 
