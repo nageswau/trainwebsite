@@ -7,6 +7,7 @@ Nothing here writes: no add, flush or commit."""
 
 from collections import defaultdict
 from collections.abc import Collection
+from datetime import UTC, date, datetime, timedelta
 from statistics import mean
 from uuid import UUID
 
@@ -18,7 +19,19 @@ from app.api.deps import get_current_user
 from app.api.portfolio import portfolio_completion
 from app.api.school_feedback import _require_school_reader
 from app.api.school_skills import _rollup
-from app.api.schools import OFFER_ONWARD_STATUSES, _cumulative_services, _grade_level_from_label, _own_school_id, _percentage, _school_account_counts, _stage_at_or_after
+from app.api.schools import (
+    OFFER_ONWARD_STATUSES,
+    TIER_TIMEZONE,
+    _cumulative_services,
+    _entitlement_denial,
+    _grade_level_from_label,
+    _own_school_id,
+    _percentage,
+    _school_account_counts,
+    _stage_at_or_after,
+    _today_ist,
+    service_usage,
+)
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import (
@@ -42,16 +55,23 @@ from app.models import (
 from app.schemas import (
     ActivityProgressRow,
     AverageRow,
+    CrossSchoolSummaryOut,
     GradeMetricRow,
     GradePerformanceOut,
     Headcounts,
     MetricCell,
     PerformerList,
     PerformerRow,
+    SchoolCounts,
+    SchoolUtilizationPage,
+    SchoolUtilizationRow,
     ScorecardArea,
     ScorecardOut,
     ScorecardPage,
+    ServiceTotals,
+    StudentCounts,
     StudentDevelopmentOut,
+    TrackedValue,
 )
 
 school_router = APIRouter(prefix="/school", tags=["school-analytics"])
@@ -417,3 +437,109 @@ async def student_scorecard(student_id: UUID, user: User = Depends(_require_scho
     tier = await db.scalar(select(School.tier).where(School.id == school_id))
     _log_view(user, "student_scorecard", school_id=school_id, student_id=student_id)
     return (await build_scorecards(db, tier, [student]))[0]
+
+
+# --- §34 Edusphere cross-school dashboard and §27 school-wise utilization ---------------------------------------------------
+
+NEW_SCHOOL_DAYS = 90  # D6
+RENEWAL_DUE_DAYS = 60  # D6
+PARTICIPATION_KEYS = ("career_any", "psych_started", "test_prep_started", "language_started", "skills_enrolled", "portfolio_started", "global", "awareness_attended")
+UNTRACKED_OUTCOMES = {
+    "scholarships": "No school-student scholarship link exists yet (ENH-017).",
+    "internships": "No confirmed School internship model exists yet (ENH-020).",
+}
+
+
+def utilization(tier: str | None, usage: dict) -> dict:
+    """§27 for one school over the services its tier includes: delivered (used > 0 or True), pending (0 or False), not tracked
+    (no usage key -- no module yet). The percentage is over the tracked services only, `None` when there are none."""
+    values = [usage.get(key) for key, _ in _cumulative_services(tier)]
+    not_tracked = sum(1 for v in values if v is None)
+    delivered = sum(1 for v in values if v is not None and v is not False and v != 0)
+    pending = len(values) - not_tracked - delivered
+    return {"services_included": len(values), "delivered": delivered, "pending": pending, "not_tracked": not_tracked, "utilization_pct": _pct(delivered, len(values) - not_tracked)}
+
+
+def _is_new(school: School, today: date) -> bool:
+    start = school.partnership_date or school.created_at.astimezone(TIER_TIMEZONE).date()
+    return (today - start).days <= NEW_SCHOOL_DAYS
+
+
+def _is_active(school: School, today: date) -> bool:
+    """D6 (revised 2026-09-28): an active partnership is ENH-022's own rule -- a tier that is set and not past its end date."""
+    return _entitlement_denial(school.tier, school.tier_valid_until, None, today) is None
+
+
+def _renewal_due(school: School, today: date) -> bool:
+    """An already expired partnership is due too (D6)."""
+    return school.tier_valid_until is not None and school.tier_valid_until <= today + timedelta(days=RENEWAL_DUE_DAYS)
+
+
+@admin_router.get("/analytics/summary", response_model=CrossSchoolSummaryOut)
+async def cross_school_summary(user: User = Depends(_require_school_admin), db: AsyncSession = Depends(get_db)):
+    """§34: every partner school at once, for Edusphere's Overseas and Super Admins (D1). Aggregates only (spec §12)."""
+    today = _today_ist()
+    schools = (await db.scalars(select(School))).all()
+    ids = [s.id for s in schools]
+    roster = await _roster(db, ids)
+    indicators = await student_indicators(db, select(SchoolStudent.id))
+    usage = await service_usage(db, ids)
+    per_school = [utilization(s.tier, usage.get(s.id, {})) for s in schools]
+    totals = {k: sum(p[k] for p in per_school) for k in ("services_included", "delivered", "pending", "not_tracked")}
+    by_grade: dict[str, int] = defaultdict(int)
+    for _sid, _school, level, label in roster:
+        by_grade[grade_key(level, label)] += 1
+    from_schools = OverseasApplication.school_student_id.is_not(None)
+    active_apps = await db.scalar(select(func.count()).select_from(OverseasApplication).where(from_schools, OverseasApplication.status.not_in(("withdrawn", "rejected")))) or 0
+    offer_condition = OverseasApplication.status.in_(list(OFFER_ONWARD_STATUSES)) | OverseasApplication.offer_letter_url.is_not(None)
+    offers = await db.scalar(select(func.count()).select_from(OverseasApplication).where(from_schools, offer_condition)) or 0
+    _log_view(user, "cross_school_summary", school_count=len(ids))
+    return CrossSchoolSummaryOut(
+        schools=SchoolCounts(
+            total=len(schools), active=sum(1 for s in schools if _is_active(s, today)), new=sum(1 for s in schools if _is_new(s, today)), renewal_due=sum(1 for s in schools if _renewal_due(s, today))
+        ),
+        students=StudentCounts(
+            total=len(roster), by_grade={g: by_grade[g] for g in _ordered_grades(by_grade)}, career_guidance=len(indicators["guidance"]),
+            psychometric=len(indicators["psych_completed"]), counselling=len(indicators["counselling"]), global_education=len(indicators["global"]),
+        ),
+        services=ServiceTotals(**totals, utilization_pct=_pct(totals["delivered"], totals["services_included"] - totals["not_tracked"])),
+        outcomes={
+            "applications": TrackedValue(value=active_apps, tracked=True),
+            "offers": TrackedValue(value=offers, tracked=True),
+            "visas": TrackedValue(value=len(indicators["visa_started"]), tracked=True),
+            "admissions": TrackedValue(value=len(indicators["admitted"]), tracked=True),
+            **{key: TrackedValue(value=None, tracked=False, note=note) for key, note in UNTRACKED_OUTCOMES.items()},
+        },
+    )
+
+
+@admin_router.get("/analytics/schools", response_model=SchoolUtilizationPage)
+async def cross_school_rows(
+    user: User = Depends(_require_school_admin),
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """§27 "school-wise": one row per partner school, ordered by name then id. Every figure is a count."""
+    today = _today_ist()
+    total = await db.scalar(select(func.count()).select_from(School)) or 0
+    schools = (await db.scalars(select(School).order_by(School.name, School.id).limit(limit).offset(offset))).all()
+    ids = [s.id for s in schools]
+    students_by_school: dict[UUID, set[UUID]] = defaultdict(set)
+    for sid, school_id, _level, _label in await _roster(db, ids):
+        students_by_school[school_id].add(sid)
+    indicators = await student_indicators(db, students_in(ids))
+    participating = set().union(*(indicators[k] for k in PARTICIPATION_KEYS))
+    usage = await service_usage(db, ids)
+    upcoming_stmt = select(SchoolActivity.school_id, func.count()).where(SchoolActivity.school_id.in_(ids), SchoolActivity.scheduled_at >= datetime.now(UTC)).group_by(SchoolActivity.school_id)
+    upcoming = dict((await db.execute(upcoming_stmt)).tuples().all())
+    items = [
+        SchoolUtilizationRow(
+            school_id=s.id, name=s.name, tier=s.tier, tier_valid_until=s.tier_valid_until, is_active=_is_active(s, today), is_new=_is_new(s, today), renewal_due=_renewal_due(s, today),
+            students=len(students_by_school[s.id]), student_participation=len(students_by_school[s.id] & participating), pending_activities=upcoming.get(s.id, 0),
+            **utilization(s.tier, usage.get(s.id, {})),
+        )
+        for s in schools
+    ]
+    _log_view(user, "cross_school_rows", school_count=len(ids))
+    return SchoolUtilizationPage(items=items, total=total, limit=limit, offset=offset)

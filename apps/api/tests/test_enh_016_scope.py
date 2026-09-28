@@ -62,6 +62,28 @@ async def test_scorecard_of_another_schools_student_is_the_same_404_as_a_missing
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("role", ["school_coordinator", "school_principal", "school_teacher", "school_parent", "academic_team", "career_counselor", "psychometric_team", "it_admin"])
+async def test_cross_school_is_admin_only(client, db_session, role):  # AC04
+    ctx = await make_school(db_session)
+    await db_session.commit()
+    await login(client, ctx[role])
+    for path in ADMIN_ENDPOINTS:
+        response = await client.get(path)
+        assert response.status_code == 403, (path, response.text)
+        assert response.json()["detail"] == "Overseas Admin role required"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("role", ["overseas_admin", "super_admin"])
+async def test_cross_school_admins_are_allowed(client, db_session, role):
+    ctx = await make_school(db_session)
+    await db_session.commit()
+    await login(client, ctx[role])
+    for path in ADMIN_ENDPOINTS:
+        assert (await client.get(path)).status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_one_school_never_sees_another_schools_students(client, db_session):  # AC02
     mine = await make_school(db_session)
     theirs = await make_school(db_session)

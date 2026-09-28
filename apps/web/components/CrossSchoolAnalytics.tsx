@@ -83,7 +83,7 @@ export default function CrossSchoolAnalytics({ summary, page, basePath }: { summ
                       <td>
                         {r.is_new && <span className="badge">New</span>}
                         {r.renewal_due && <span className="badge">Renewal due</span>}
-                        {r.status !== "active" && <span className="badge">Inactive</span>}
+                        {!r.is_active && <span className="badge">No active tier</span>}
                       </td>
                     </tr>
                   ))}

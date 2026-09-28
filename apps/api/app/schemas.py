@@ -1573,3 +1573,64 @@ class ScorecardPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class TrackedValue(BaseModel):
+    value: int | None
+    tracked: bool
+    note: str | None = None
+
+
+class SchoolCounts(BaseModel):
+    total: int
+    active: int
+    new: int
+    renewal_due: int
+
+
+class StudentCounts(BaseModel):
+    total: int
+    by_grade: dict[str, int]
+    career_guidance: int
+    psychometric: int
+    counselling: int
+    global_education: int
+
+
+class ServiceTotals(BaseModel):
+    """§27 over the services a tier includes: delivered (used), pending (included, unused), not tracked (no module yet)."""
+
+    services_included: int
+    delivered: int
+    pending: int
+    not_tracked: int
+    utilization_pct: float | None
+
+
+class CrossSchoolSummaryOut(BaseModel):
+    """§34 -- aggregates only: no student-level field (spec §12)."""
+
+    schools: SchoolCounts
+    students: StudentCounts
+    services: ServiceTotals
+    outcomes: dict[str, TrackedValue]
+
+
+class SchoolUtilizationRow(ServiceTotals):
+    school_id: UUID
+    name: str
+    tier: str | None
+    tier_valid_until: date | None
+    is_active: bool  # a tier that is set and not past its end date (ENH-022's rule)
+    is_new: bool
+    renewal_due: bool
+    students: int
+    student_participation: int
+    pending_activities: int
+
+
+class SchoolUtilizationPage(BaseModel):
+    items: list[SchoolUtilizationRow]
+    total: int
+    limit: int
+    offset: int

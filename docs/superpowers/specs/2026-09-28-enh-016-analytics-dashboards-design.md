@@ -55,7 +55,7 @@ Renumbered on merge if another branch lands `031` first (`DEC-SCOPE-024`/`025`/`
 | D3 | Scorecard states | Derived from existing records: ✅ completed · 🔄 started, not completed · ⏳ service in the school's tier, not started · — not in tier / no module. Per-area rules §6.3. |
 | D4 | At-risk / top performer | Configurable thresholds on published-result average %: at-risk `< 40`, top `≥ 85` by default (defaults `NEEDS_CONFIRMATION`). |
 | D5 | §29 undefined metrics | Labelled proxies from existing data (§6.2). |
-| D6 | §34 windows | New = `partnership_date` (else `created_at`) within the last 90 days; renewal due = `tier_valid_until` ≤ today + 60 days, expired included; active = `status == "active"`. "Today" is India time (`_today_ist`). |
+| D6 | §34 windows | New = `partnership_date` (else `created_at`) within the last 90 days; renewal due = `tier_valid_until` ≤ today + 60 days, expired included. "Today" is India time (`_today_ist`). **Revised 2026-09-28 (user):** `schools` has no status column, so active = a valid partnership tier — set and not past `tier_valid_until` — which is ENH-022's own `_entitlement_denial(tier, valid_until, None, today) is None`. |
 | D7 | "School Master" (Part B §14) | Principal + Coordinator. Principal dashboard gains the KPI board. |
 | D8 | Cleanup in scope | Mark digital portfolios and skills training tracked. Dead code in `/school/reports` stays out. |
 | D9 | Scorecard audience | Coordinator + Principal only, own school. |
@@ -210,7 +210,7 @@ equality with `GET /school/students/{id}/portfolio` for the same fixture (§11).
   `utilization_pct = delivered / (included − not_tracked)` or `null` when the denominator is 0.
 - Outcomes: `applications` (count of `applied_active` applications), `offers`, `visas` (students `visa_started`),
   `admissions`, `scholarships` and `internships` as `{"value": null, "tracked": false, "note": …}`.
-- Per-school rows (§27 "school-wise"): `school_id`, `name`, `tier`, `tier_valid_until`, `status`, `students`,
+- Per-school rows (§27 "school-wise"): `school_id`, `name`, `tier`, `tier_valid_until`, `is_active`, `is_new`, `renewal_due`, `students`,
   `services_included`, `delivered`, `pending`, `not_tracked`, `utilization_pct`, `student_participation`
   (students with ≥ 1 indicator of §6.1 other than roster), `pending_activities` (activities scheduled ≥ now). Ordered by
   `name`, then `id`. **No student-level field anywhere in the cross-school responses.**

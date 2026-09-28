@@ -51,7 +51,7 @@ export type SchoolUtilizationRow = ServiceTotals & {
   name: string;
   tier: string | null;
   tier_valid_until: string | null;
-  status: string;
+  is_active: boolean;
   is_new: boolean;
   renewal_due: boolean;
   students: number;

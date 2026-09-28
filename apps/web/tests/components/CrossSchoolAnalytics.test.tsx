@@ -14,7 +14,7 @@ const summary: CrossSchoolSummary = {
   outcomes: { applications: { value: 9, tracked: true, note: null }, scholarships: { value: null, tracked: false, note: "No link yet." } },
 };
 const row: SchoolUtilizationRow = {
-  school_id: "a", name: "Alpha School", tier: "gold", tier_valid_until: "2026-10-01", status: "active", is_new: false, renewal_due: true,
+  school_id: "a", name: "Alpha School", tier: "gold", tier_valid_until: "2026-10-01", is_active: true, is_new: false, renewal_due: true,
   students: 50, student_participation: 20, pending_activities: 2, services_included: 12, delivered: 6, pending: 3, not_tracked: 3, utilization_pct: 66.7,
 };
 
@@ -29,6 +29,11 @@ describe("CrossSchoolAnalytics", () => {
     expect(within(table).getByText("66.7%")).toBeInTheDocument();
     expect(within(table).getByText("Renewal due")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Next page" })).not.toBeInTheDocument();
+  });
+
+  it("flags a school without an active tier", () => {
+    render(<CrossSchoolAnalytics summary={summary} page={{ items: [{ ...row, is_active: false, renewal_due: false }], total: 1, limit: 25, offset: 0 }} basePath="/x" />);
+    expect(screen.getByText("No active tier")).toBeInTheDocument();
   });
 
   it("pages through schools", () => {
