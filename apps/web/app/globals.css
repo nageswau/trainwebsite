@@ -99,3 +99,12 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .psy-result { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
 .psy-result summary { cursor: pointer; font-weight: 800; }
 .psy-result-text { white-space: pre-wrap; }
+/* QA27-05: on phones each assessment row is a card (Student, Assessment, Status, then the actions) -- no sideways scroll,
+   so the results button always sits next to the student it is for. Labels come from each cell's data-label. */
+@media (max-width: 640px) {
+  .table.psy-records thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .table.psy-records, .table.psy-records tbody, .table.psy-records tr, .table.psy-records td { display: block; width: 100%; min-width: 0; }
+  .table.psy-records tr { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+  .table.psy-records td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
+  .table.psy-records td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
+}

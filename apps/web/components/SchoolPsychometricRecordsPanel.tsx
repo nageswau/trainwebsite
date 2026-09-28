@@ -114,17 +114,17 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
           <p className="muted">No assessments assigned yet.</p>
         ) : (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table psy-records">
               <thead>
                 <tr><th>Student</th><th>Assessment</th><th>Status</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {records.map((r) => (
                   <tr key={r.id}>
-                    <td>{studentName(r.school_student_id)}</td>
-                    <td>{r.assessment_type}</td>
-                    <td>{r.status}</td>
-                    <td>
+                    <td data-label="Student">{studentName(r.school_student_id)}</td>
+                    <td data-label="Assessment">{r.assessment_type}</td>
+                    <td data-label="Status">{r.status}</td>
+                    <td data-label="Actions">
                       <div className="actions">
                         {r.status === "assigned" ? (
                           <button className="btn ghost small" onClick={() => startAttach(r.id)}>Attach report</button>

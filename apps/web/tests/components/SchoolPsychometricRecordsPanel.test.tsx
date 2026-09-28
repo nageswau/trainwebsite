@@ -88,6 +88,15 @@ describe("SchoolPsychometricRecordsPanel results editor (ENH-027)", () => {
     expect(screen.getByRole("button", { name: "Edit results for Asha — Interest" })).toHaveTextContent("Edit results");
   });
 
+  it("labels every cell with its column so the phone layout can stack each row as a card (QA27-05)", () => {
+    render(<SchoolPsychometricRecordsPanel records={RECORDS} students={STUDENTS} />);
+    const table = screen.getByRole("table");
+    expect(table).toHaveClass("psy-records");
+    const headers = within(table).getAllByRole("columnheader").map((h) => h.textContent);
+    const cells = within(table).getAllByRole("cell");
+    expect(cells.map((c) => c.getAttribute("data-label"))).toEqual(headers);
+  });
+
   it("opens one card at a time with the attach card", () => {
     render(<SchoolPsychometricRecordsPanel records={RECORDS} students={STUDENTS} />);
     fireEvent.click(screen.getByRole("button", { name: "Attach report" }));

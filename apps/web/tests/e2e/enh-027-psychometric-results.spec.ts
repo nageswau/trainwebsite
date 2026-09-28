@@ -90,6 +90,20 @@ test.describe.serial("ENH-027 psychometric results", () => {
     await expect(page.getByText("Logical reasoning, Verbal ability")).toBeVisible();
   });
 
+  test("on a 375 px phone each assessment is a card: the results button is on screen next to the student's name (QA27-05)", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await signIn(page, email("psych"), E2E_PASSWORD, "/school/psychometric-team/dashboard");
+    const button = page.getByRole("button", { name: recordButton("Edit") });
+    const box = await button.boundingBox();
+    expect(box, "results button is rendered").not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(375);
+    const row = page.locator("table.psy-records tbody tr", { has: button });
+    await expect(row.getByText(ctx.studentName)).toBeInViewport();
+    const widths = await page.evaluate(() => ({ doc: document.documentElement.scrollWidth, view: window.innerWidth }));
+    expect(widths.doc).toBeLessThanOrEqual(widths.view);
+  });
+
   test("the editor fits a 320 px phone without page overflow", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 800 });
     await signIn(page, email("psych"), E2E_PASSWORD, "/school/psychometric-team/dashboard");
