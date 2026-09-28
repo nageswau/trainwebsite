@@ -70,8 +70,14 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
     setMessage((current) => (current?.form === "attach" ? null : current));
   }
 
+  // QA27-01: opening a card starts a new action, so an earlier success confirmation ("Results saved.", "Report attached.")
+  // no longer describes what is on screen. A failed assign message stays: it still belongs to the assign form.
+  function clearForNewAction() {
+    setMessage((current) => (current && (current.form === "attach" || !current.failed) ? null : current));
+  }
+
   function startAttach(recordId: string) {
-    clearAttachMessage();
+    clearForNewAction();
     setOpen({ kind: "attach", id: recordId });
   }
 
@@ -81,7 +87,7 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
   }
 
   function startResults(recordId: string) {
-    clearAttachMessage();
+    clearForNewAction();
     setOpen({ kind: "results", id: recordId });
   }
 

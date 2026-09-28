@@ -106,6 +106,20 @@ describe("SchoolPsychometricRecordsPanel results editor (ENH-027)", () => {
     expect(trigger).toHaveFocus();
   });
 
+  it("clears the previous save confirmation when an editor card is opened again (QA27-01)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: "r1" }) }));
+    render(<SchoolPsychometricRecordsPanel records={RECORDS} students={STUDENTS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Record results for Asha — Aptitude" }));
+    fireEvent.change(screen.getByLabelText("Strengths"), { target: { value: "Logic" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Results saved.");
+    fireEvent.click(screen.getByRole("button", { name: "Record results for Asha — Aptitude" }));
+    expect(screen.queryByText("Results saved.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Attach report" }));
+    expect(screen.queryByText("Results saved.")).toBeNull();
+  });
+
   it("closes the card and announces success under the assign form after a save", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: "r1" }) }));
     render(<SchoolPsychometricRecordsPanel records={RECORDS} students={STUDENTS} />);

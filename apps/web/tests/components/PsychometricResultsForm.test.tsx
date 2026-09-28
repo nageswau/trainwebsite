@@ -50,6 +50,17 @@ describe("PsychometricResultsForm", () => {
     expect(screen.getByRole("status")).toHaveTextContent("No changes to save.");
   });
 
+  it("clears an earlier status when a later save is blocked by a field error (QA27-01)", () => {
+    vi.stubGlobal("fetch", ok());
+    renderForm();
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+    expect(screen.getByRole("status")).toHaveTextContent("No changes to save.");
+    fireEvent.change(screen.getByLabelText("Strengths"), { target: { value: "y".repeat(81) } });
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByLabelText("Strengths")).toHaveAttribute("aria-invalid", "true");
+  });
+
   it("blocks an over-long list item on the client, marks the field and focuses it", () => {
     const fetchMock = ok();
     vi.stubGlobal("fetch", fetchMock);

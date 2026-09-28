@@ -73,6 +73,8 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
     setErrors(found);
     const first = FORM_ORDER.find((key) => found[key]);
     if (first) {
+      setMessage(null); // QA27-01: an earlier "No changes to save." must not sit beside the new field error
+
       fieldRefs.current[first]?.focus();
       return;
     }
