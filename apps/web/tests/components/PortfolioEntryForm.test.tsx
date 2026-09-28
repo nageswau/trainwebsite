@@ -110,6 +110,22 @@ describe("PortfolioEntryForm — Skill India", () => {
     expect(screen.queryByText("Enter the issue date.")).not.toBeInTheDocument();
   });
 
+  // QA24-02: an invisible control character pasted into the certificate number (e.g. copied from a PDF) is removed
+  // as it arrives, so the user never meets the server's unnamed "Must not contain control characters" refusal.
+  it("strips control characters from a pasted certificate number", async () => {
+    const fetchMock = ok();
+    global.fetch = fetchMock as unknown as typeof fetch;
+    render(<PortfolioEntryForm studentId="s1" section="certification" onDone={() => {}} onCancel={() => {}} />);
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "Retail" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /skill india certification/i }));
+    fireEvent.change(screen.getByLabelText(/status/i), { target: { value: "enrolled" } });
+    fireEvent.change(screen.getByLabelText(/certificate number/i), { target: { value: "SI-\u00072026\u0000/\u009F01\t" } });
+    expect(screen.getByLabelText(/certificate number/i)).toHaveValue("SI-2026/01");
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(bodyOf(fetchMock).certificate_number).toBe("SI-2026/01");
+  });
+
   it("POSTs the tag and details when ticked", async () => {
     const fetchMock = ok();
     global.fetch = fetchMock as unknown as typeof fetch;

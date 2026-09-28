@@ -9,6 +9,10 @@ import type { CertificationFields } from "@/lib/portfolio";
 
 type CertErrors = { status?: string; number?: string; issued?: string };
 
+// QA24-02: control characters (Unicode Cc -- the set the server's single-line rule refuses) are invisible, so a pasted one
+// would earn an error the user cannot see to fix. Drop them as they arrive; the server rule stays as the backstop.
+const CONTROL_CHARACTERS = /[\u0000-\u001F\u007F-\u009F]/g;
+
 // ENH-012 -- one form for all 10 self-entry sections (same shape: title/organization/dates/description),
 // mirroring SchoolTransferRequestForm.tsx exactly: per-field useState, busy/inFlight guard, raw fetch(),
 // no optimistic UI (waits for the confirmed response, matching this codebase's deliberately conservative
@@ -146,7 +150,7 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
           </div>
           <div className="field">
             <label htmlFor="pf-cert-number">Certificate number</label>
-            <input id="pf-cert-number" className="search" maxLength={100} value={certNumber} disabled={busy} aria-invalid={certErrors.number ? true : undefined} aria-describedby={certErrors.number ? "pf-cert-number-hint pf-cert-number-error" : "pf-cert-number-hint"} onChange={(e) => { setCertNumber(e.target.value); clearCertError("number"); }} />
+            <input id="pf-cert-number" className="search" maxLength={100} value={certNumber} disabled={busy} aria-invalid={certErrors.number ? true : undefined} aria-describedby={certErrors.number ? "pf-cert-number-hint pf-cert-number-error" : "pf-cert-number-hint"} onChange={(e) => { setCertNumber(e.target.value.replace(CONTROL_CHARACTERS, "")); clearCertError("number"); }} />
             <span id="pf-cert-number-hint" className="muted">Required once certified.</span>
             {certErrors.number && <span id="pf-cert-number-error" className="form-error">{certErrors.number}</span>}
           </div>
