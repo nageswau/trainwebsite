@@ -176,6 +176,22 @@ async def test_expired_partnership_blocks_a_result_patch_and_changes_nothing(cli
     assert record.strengths is None and record.test_date is None
 
 
+@pytest.mark.asyncio
+async def test_grandfathered_record_accepts_result_edits_after_the_tier_is_removed(client, db_session):
+    # Spec §8 AC04: result fields ride the existing grandfathered_since=created_at path (ENH-023), exactly like report_url.
+    w = await _world(db_session)
+    await login(client, w["psych"].email)
+    created = await _create(client, w)
+    await login(client, w["admin"].email)
+    assert (await client.patch(f"/api/v1/overseas-admin/schools/{w['school'].id}", json={"tier": None})).status_code == 200
+    await login(client, w["psych"].email)
+    r = await client.patch(f"{RECORDS}/{created['id']}", json=FULL)
+    assert r.status_code == 200, r.text
+    assert _results(r.json()) == FULL
+    fresh = await client.post(RECORDS, json={"school_student_id": str(w["student"].id), "assessment_type": "New", **FULL})
+    assert fresh.status_code == 403  # a new record is still refused without a tier
+
+
 # --- AC05 ---
 @pytest.mark.asyncio
 async def test_readers_see_result_fields_in_every_read_path(client, db_session):
@@ -200,6 +216,23 @@ async def test_readers_see_result_fields_in_every_read_path(client, db_session):
     await login(client, w["principal"].email)
     view = (await client.get(f"/api/v1/school/students/{sid}/360-view")).json()
     assert _results(view["tabs"]["psychometric_assessment"]["data"]["assessments"][0]) == FULL
+
+
+@pytest.mark.asyncio
+async def test_portfolio_service_roles_see_result_fields_in_the_portfolio_and_360(client, db_session):
+    # DEC-SCOPE-034 Q10 (owner, 2026-09-28, final review): Academic Team and Career Counsellor read the ten fields too,
+    # through the portfolio and the 360° Psychometric tab, for students in their own portfolio.
+    w = await _world(db_session)
+    await login(client, w["psych"].email)
+    await _create(client, w, **FULL)
+    sid = w["student"].id
+    for role in ("academic_team", "career_counselor"):
+        member = await mk_staff(db_session, w["school"], w["admin"], role=role)
+        await login(client, member.email)
+        portfolio = (await client.get(f"/api/v1/school/students/{sid}/portfolio")).json()
+        assert _results(portfolio["psychometric_report"][0]) == FULL, role
+        view = (await client.get(f"/api/v1/school/students/{sid}/360-view")).json()
+        assert _results(view["tabs"]["psychometric_assessment"]["data"]["assessments"][0]) == FULL, role
 
 
 # --- AC06 ---
