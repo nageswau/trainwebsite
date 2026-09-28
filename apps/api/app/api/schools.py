@@ -15,6 +15,7 @@ import hashlib
 import io
 import re
 import secrets
+from collections import Counter
 from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -1182,11 +1183,11 @@ async def service_usage(db: AsyncSession, school_ids: Collection[UUID]) -> dict[
     staffed = set((await db.scalars(select(SchoolStaffAssignment.school_id).where(SchoolStaffAssignment.school_id.in_(ids)).distinct())).all())
     skills = await _skills().skill_usage_many(db, ids)  # ENH-011: soft_skills / web_designing
     started = await portfolio_started_ids(db, students_in(ids))
-    owners = (await db.scalars(select(SchoolStudent.school_id).where(SchoolStudent.id.in_(started)))).all() if started else []
+    portfolios = Counter((await db.scalars(select(SchoolStudent.school_id).where(SchoolStudent.id.in_(started)))).all()) if started else Counter()
     for school_id in ids:
         usage[school_id]["dedicated_counselor"] = school_id in staffed
         usage[school_id].update(skills[school_id])
-        usage[school_id]["digital_portfolio_creation"] = sum(1 for owner in owners if owner == school_id)
+        usage[school_id]["digital_portfolio_creation"] = portfolios[school_id]
     return usage
 
 

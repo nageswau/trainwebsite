@@ -81,7 +81,9 @@ admin_router = APIRouter(prefix="/overseas-admin", tags=["school-analytics"])
 logger = get_logger("app.school.analytics")
 
 Scope = Select | Collection[UUID]
-BLANKS = " \t\r\n\f\v"  # what Python's str.strip() removes for ASCII -- ENH-012 treats a whitespace-only statement as empty
+# ENH-012 treats a whitespace-only statement as empty (Python str.strip()). SQL btrim here covers the common whitespace only;
+# str.strip() also drops \x1c-\x1f and Unicode spaces such as NBSP (known gap, QA deferred).
+BLANKS = " \t\r\n\f\v"
 
 
 def students_in(school_ids: Collection[UUID]) -> Select:
@@ -264,10 +266,15 @@ async def grade_performance(user: User = Depends(_require_school_reader), db: As
         by_grade[grade_key(level, label)].add(sid)
     indicators = await student_indicators(db, students_in([school_id]))
     grades = _ordered_grades(by_grade)
+
+    def _cell(grade_students: set[UUID], chosen: set[UUID]) -> MetricCell:
+        count = len(grade_students & chosen)
+        return MetricCell(count=count, pct=_pct(count, len(grade_students)))
+
     metrics = []
     for key, label, rule, definition in GRADE_METRICS:
         chosen = rule(indicators)
-        cells = {g: MetricCell(count=len(by_grade[g] & chosen), pct=_pct(len(by_grade[g] & chosen), len(by_grade[g]))) for g in grades}
+        cells = {g: _cell(by_grade[g], chosen) for g in grades}
         metrics.append(GradeMetricRow(key=key, label=label, is_proxy=definition is not None, definition=definition, cells=cells))
     _log_view(user, "grade_performance", school_id=school_id)
     return GradePerformanceOut(grades=grades, students={g: len(by_grade[g]) for g in grades}, metrics=metrics)
@@ -328,23 +335,28 @@ async def student_development(
         per_subject[subject].append(pct)
         per_term[f"{year} · {term}"].append(pct)
     averages = {sid: round(mean(values), 1) for sid, values in per_student.items()}
+    grade_of = {sid: grade_key(row.grade_level, row.grade_or_class) for sid, row in students.items()}
     per_grade: dict[str, list[float]] = defaultdict(list)
     for sid, average in averages.items():
-        per_grade[grade_key(students[sid].grade_level, students[sid].grade_or_class)].append(average)
+        per_grade[grade_of[sid]].append(average)
 
     def _performers(chosen: list[UUID]) -> PerformerList:
         rows = [
-            PerformerRow(school_student_id=sid, full_name=students[sid].full_name, grade=grade_key(students[sid].grade_level, students[sid].grade_or_class), average_pct=averages[sid], result_count=len(per_student[sid]))
+            PerformerRow(school_student_id=sid, full_name=students[sid].full_name, grade=grade_of[sid], average_pct=averages[sid], result_count=len(per_student[sid]))
             for sid in chosen
         ]
         return PerformerList(items=rows[:PERFORMER_CAP], total=len(rows))
+
+    def _progress(key: str, label: str, rule) -> ActivityProgressRow:
+        completed = len(rule(indicators))
+        return ActivityProgressRow(key=key, label=label, completed=completed, pending=total - completed)
 
     at_risk = sorted((sid for sid, a in averages.items() if a < at_risk_below), key=lambda sid: (averages[sid], students[sid].full_name, str(sid)))
     top = sorted((sid for sid, a in averages.items() if a >= top_from), key=lambda sid: (-averages[sid], students[sid].full_name, str(sid)))
     _log_view(user, "student_development", school_id=school_id)
     return StudentDevelopmentOut(
         headcounts=Headcounts(students=total, teachers=accounts["teachers"], parents=accounts["parents"]),
-        activities=[ActivityProgressRow(key=k, label=label, completed=len(rule(indicators)), pending=total - len(rule(indicators))) for k, label, rule in DEVELOPMENT_ROWS],
+        activities=[_progress(key, label, rule) for key, label, rule in DEVELOPMENT_ROWS],
         by_grade=_averages(per_grade, _ordered_grades(per_grade)),
         by_subject=_averages(per_subject, sorted(per_subject)),
         by_term=_averages(per_term, sorted(per_term)),
@@ -471,7 +483,7 @@ def utilization(tier: str | None, usage: dict) -> dict:
     (no usage key -- no module yet). The percentage is over the tracked services only, `None` when there are none."""
     values = [usage.get(key) for key, _ in _cumulative_services(tier)]
     not_tracked = sum(1 for v in values if v is None)
-    delivered = sum(1 for v in values if v is not None and v is not False and v != 0)
+    delivered = sum(1 for v in values if v)  # a positive count or True; None is not tracked, 0/False is pending
     pending = len(values) - not_tracked - delivered
     return {"services_included": len(values), "delivered": delivered, "pending": pending, "not_tracked": not_tracked, "utilization_pct": _pct(delivered, len(values) - not_tracked)}
 
