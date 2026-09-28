@@ -8,6 +8,9 @@ import { describe, expect, it } from "vitest";
 // SchoolChildOverview, which imports `serverApi`). This reads the sources and catches the same mistake without a build.
 const COMPONENTS = path.resolve(__dirname, "../../components");
 const SERVER_ONLY = ["@/lib/api", "@/components/SchoolChildOverview", "@/components/SchoolGradeHistory", "@/components/SchoolStudentTimeline", "@/components/SchoolTransferHistory", "next/headers"];
+// ENH-021: lib/portfolio.ts holds the portfolio types AND the server loader (loadPortfolio -> serverApi). Type-only imports are
+// erased at compile time and stay allowed; a value import from it is what broke ENH-021's first `next build`.
+const SERVER_ONLY_VALUES = ["@/lib/portfolio"];
 
 const clientFiles = readdirSync(COMPONENTS)
   .filter((f) => f.endsWith(".tsx"))
@@ -26,5 +29,11 @@ describe("client components stay clear of server-only imports", () => {
     const imports = [...source.matchAll(/from\s+["']([^"']+)["']/g)].map((m) => m[1]);
     const bad = imports.filter((spec) => SERVER_ONLY.includes(spec));
     expect(bad, `${file} imports a server-only module`).toEqual([]);
+  });
+
+  it.each(clientFiles.map((c) => [c.file, c.source] as const))("%s imports only types from mixed server modules", (file, source) => {
+    const valueImports = [...source.matchAll(/import\s+(?!type\b)[^;]*?from\s+["']([^"']+)["']/g)].map((m) => m[1]);
+    const bad = valueImports.filter((spec) => SERVER_ONLY_VALUES.includes(spec));
+    expect(bad, `${file} imports runtime values from a module that reaches next/headers`).toEqual([]);
   });
 });
