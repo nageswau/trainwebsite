@@ -36,6 +36,12 @@ function singular(section: string): string {
   return (SECTION_LABELS[section] ?? section).toLowerCase().replace(/s$/, "");
 }
 
+// QA24-08: "Certification added." -- the confirmation line's wording for an entry action.
+function confirmation(section: string, action: "added" | "updated" | "deleted"): string {
+  const noun = singular(section);
+  return `${noun.charAt(0).toUpperCase()}${noun.slice(1)} ${action}.`;
+}
+
 // Code-review simplification pass: openSection/editing used to be two separately-set optionals that were
 // mutually exclusive only by every setter's own discipline (every place that set one had to remember to
 // null the other) -- "only one entry form open" was a convention, not something the state shape made
@@ -189,6 +195,8 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [statementEditing, setStatementEditing] = useState(false);
+  // QA24-08: one polite confirmation line for the whole card; replaced by the next success, cleared when anything new starts.
+  const [status, setStatus] = useState<string | null>(null);
   const deleteInFlight = useRef(false);
 
   // Code review findings: (1) confirmingId used to survive any other panel action, so arming Delete on
@@ -209,10 +217,14 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
 
   function handleStatementEditingChange(open: boolean) {
     setStatementEditing(open);
-    if (open) setConfirmingId(null);
+    if (open) {
+      setConfirmingId(null);
+      setStatus(null);
+    }
   }
 
   function onFormDone() {
+    if (activeForm) setStatus(activeForm.kind === "add" ? confirmation(activeForm.section, "added") : confirmation(activeForm.entry.section, "updated"));
     closeForm();
     router.refresh();
   }
@@ -220,6 +232,7 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   async function deleteEntry(entry: PortfolioEntry) {
     if (confirmingId !== entry.id) {
       setConfirmingId(entry.id);
+      setStatus(null);
       return;
     }
     // Guard a fast double-click on "Confirm delete": without this, the second click's DELETE races the
@@ -249,6 +262,7 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
       refocus(`pf-delete-btn-${entry.id}`);
       return;
     }
+    setStatus(confirmation(entry.section, "deleted"));
     router.refresh();
     refocus(`pf-add-btn-${entry.section}`); // QA24-07: the entry is gone; its section's Add button is the nearest control
   }
@@ -256,11 +270,18 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   function openAdd(section: string) {
     setActiveForm({ kind: "add", section });
     setConfirmingId(null);
+    setStatus(null);
   }
 
   function startEdit(entry: PortfolioEntry) {
     setActiveForm({ kind: "edit", entry });
     setConfirmingId(null);
+    setStatus(null);
+  }
+
+  function onStatementSaved() {
+    setStatus("Personal statement saved.");
+    router.refresh();
   }
 
   return (
@@ -270,6 +291,9 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
         <div className="pf-meter-fill" style={{ width: `${data.completion_percentage}%` }} />
       </div>
       <p className="pf-meter-label">{data.completion_percentage}% complete</p>
+      {/* QA24-08: always rendered (empty when idle) so screen readers announce the text when it changes. A polite live
+          region rather than role="status": pages that host this card already carry their own status (e.g. a pending transfer). */}
+      <p aria-live="polite" aria-atomic="true" className="pf-status">{status}</p>
       {deleteError && <div role="alert" className="form-error">{deleteError}</div>}
 
       <div className="pf-section">
@@ -312,7 +336,7 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
       <PersonalStatementSection
         studentId={data.student.id} statement={data.personal_statement} canEdit={data.can_edit}
         disabled={activeForm !== null} onEditingChange={handleStatementEditingChange}
-        onDone={() => router.refresh()}
+        onDone={onStatementSaved}
       />
     </div>
   );

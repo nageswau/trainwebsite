@@ -203,6 +203,57 @@ describe("PortfolioPanel", () => {
     });
   });
 
+  // QA24-08 -- one polite status line at the top of the card confirms each completed action.
+  describe("success confirmation", () => {
+    const ENTRY = { id: "e9", section: "certification", title: "First Aid", description: null, organization: null, date_from: null, date_to: null, created_at: "2026-01-01", updated_at: "2026-01-01" };
+    const WITH_ENTRY: PortfolioData = { ...BASE, can_edit: true, entries: { ...BASE.entries, certification: [ENTRY] } };
+    const respond = (status: number, body: unknown = { id: "e1" }) => { global.fetch = vi.fn().mockResolvedValue({ ok: status < 400, status, json: async () => body }) as unknown as typeof fetch; };
+    // A polite live region, not role="status": host pages already have their own status (SchoolStudentDetailPanel's transfer).
+    const statusLine = () => document.querySelector(".pf-panel .pf-status") as HTMLElement;
+
+    it("has an empty polite live region before anything happens", () => {
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      expect(statusLine()).toHaveAttribute("aria-live", "polite");
+      expect(statusLine()).toBeEmptyDOMElement();
+    });
+
+    it("confirms an add, then an update, then a delete", async () => {
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      respond(201);
+      fireEvent.click(screen.getByRole("button", { name: "Add certification" }));
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "CPR" } });
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(statusLine()).toHaveTextContent("Certification added."));
+      respond(200);
+      fireEvent.click(screen.getByRole("button", { name: "Edit First Aid" }));
+      expect(statusLine()).toBeEmptyDOMElement(); // opening a form clears the previous confirmation
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(statusLine()).toHaveTextContent("Certification updated."));
+      respond(204, null);
+      fireEvent.click(screen.getByRole("button", { name: "Delete First Aid" }));
+      fireEvent.click(screen.getByRole("button", { name: "Confirm delete First Aid" }));
+      await waitFor(() => expect(statusLine()).toHaveTextContent("Certification deleted."));
+    });
+
+    it("confirms a saved personal statement", async () => {
+      respond(200, { personal_statement: "Hi", updated_at: "2026-01-01" });
+      render(<PortfolioPanel data={{ ...BASE, can_edit: true, personal_statement: "Hi" }} />);
+      fireEvent.click(screen.getByRole("button", { name: "Edit statement" }));
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(statusLine()).toHaveTextContent("Personal statement saved."));
+    });
+
+    it("says nothing when a save fails", async () => {
+      respond(422, { detail: "Choose a status for the Skill India certification" });
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      fireEvent.click(screen.getByRole("button", { name: "Add certification" }));
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "CPR" } });
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+      expect(statusLine()).toBeEmptyDOMElement();
+    });
+  });
+
   // ENH-024 -- a Skill India certification shows its badge, status, number and issue date under the title.
   const SKILL_INDIA_ENTRY = { id: "c1", section: "certification", title: "Retail Sales Associate", description: null, organization: "RASCI", date_from: null, date_to: null, certification_type: "skill_india", certification_status: "certified", certificate_number: "SI-1", issued_on: "2026-05-01", created_at: "2026-01-01", updated_at: "2026-01-01" };
 
