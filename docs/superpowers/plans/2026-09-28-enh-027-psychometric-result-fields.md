@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Numbering note (2026-09-28, merge with `main`):** this plan was written and executed as `DEC-SCOPE-033` with migration `0044_psychometric_result_fields` on `0043_portfolio_internship`. ENH-024 reached `main` first with those numbers, so they are now **`DEC-SCOPE-034`** and **`0045_psychometric_result_fields`** (on `0044_skill_india_certification`). The task text below keeps the original numbers as a record of what was run.
+
 **Goal:** Let the Psychometric Team record all 12 `School CRM.md §6` fields on a psychometric record, and show them as structured data in the 360° Psychometric tab and the parent's child page, without changing any existing behaviour.
 
 **Architecture:** 10 nullable columns on `school_psychometric_records` via one additive migration (`0044`). One Pydantic boundary model (`PsychometricResultFields`) validates only the new keys inside the existing `payload: dict` routes, parsed and applied with ENH-025's existing generic helpers. One output helper spreads the fields into the six existing read shapes. Frontend: a shared `lib/psychometric.ts` (type, labels, limits, pure form helpers), a server-safe `PsychometricResultDetails.tsx` (display + per-assessment list) used by the 360° tab and the parent overview, and a client `PsychometricResultsForm.tsx` opened from the existing dashboard panel.

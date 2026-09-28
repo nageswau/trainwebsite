@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 
 import CareerGoalForm from "@/components/CareerGoalForm";
+import CertificationDetails from "@/components/CertificationDetails";
 import CareerRecordDetails from "@/components/CareerRecordDetails";
 import { PsychometricResultsList } from "@/components/PsychometricResultDetails";
 import type { CareerRecord } from "@/lib/careerRecords";
 import { type ChildOverview, SkillsCard, StatusChip } from "@/components/SchoolChildOverview";
 import SchoolGradeHistory, { type GradeHistoryEntry } from "@/components/SchoolGradeHistory";
 import { formatCalendarDate, formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
+import type { CertificationFields } from "@/lib/portfolio";
 import type { Student360, Tab360 } from "@/lib/student360";
 import { safeHref, TAB_LABELS, type TabKey } from "@/lib/student360Links";
 
@@ -16,7 +18,7 @@ import { safeHref, TAB_LABELS, type TabKey } from "@/lib/student360Links";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- tab `data` is a per-tab shape documented in spec §6.3; typed at the edges. */
 type Row = Record<string, any>;
-type Entry = { id: string; title: string; organization: string | null; date_from: string | null; date_to: string | null; description: string | null; completion_status?: string | null };
+type Entry = { id: string; title: string; organization: string | null; date_from: string | null; date_to: string | null; description: string | null; completion_status?: string | null } & CertificationFields;
 
 const EMPTY_TEXT: Record<TabKey, string> = {
   overview: "No achievements recorded yet.",
@@ -52,6 +54,7 @@ function Entries({ entries }: { entries: Entry[] }) {
           <strong>{e.title}</strong>{e.organization ? <span className="muted"> — {e.organization}</span> : null}
           {e.date_from ? <span className="muted"> ({formatCalendarDate(e.date_from)}{e.date_to ? ` – ${formatCalendarDate(e.date_to)}` : ""})</span> : null}
           {e.completion_status ? <> <StatusChip status={e.completion_status} /></> : null}
+          <CertificationDetails entry={e} />
           {e.description ? <p>{e.description}</p> : null}
         </li>
       ))}

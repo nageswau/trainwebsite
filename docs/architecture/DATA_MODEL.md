@@ -687,14 +687,14 @@ per `record_type`, no structured sub-fields invented beyond what `DEC-ROLE-006` 
 - **Open:** exact assessment-type taxonomy and report field structure not itemized by `DEC-ROLE-006`
   — `EVID-014`'s detailed proposal is `DERIVED_BLUEPRINT` only, not confirmed.
 - **Feature IDs:** `SCH-005`.
-- **Addendum, 2026-09-28 (`ENH-027` / `DEC-SCOPE-033` — structured result, `School CRM.md §6`):** gains
+- **Addendum, 2026-09-28 (`ENH-027` / `DEC-SCOPE-034` — structured result, `School CRM.md §6`):** gains
   **nullable** columns `test_date` (date — the day the test was taken; `created_at` stays the assignment
   day), `strengths`, `interest_areas`, `personality_indicators`, `recommended_careers`, `recommended_stream`
   (JSON string lists, SQL `NULL` when empty; the last two share ENH-026's names and shape), `counsellor_remarks`
   (text ≤4000), `parent_discussion_on` (date) + `parent_discussion_notes` (text ≤2000), `follow_up_on` (date).
   No backfill; a record made before this has every new field `NULL`. `status` still moves to `completed` only
   when `report_url` is set. The report-field structure left open above is now itemized by this addendum.
-  **Migration `0044_psychometric_result_fields`** (after `0043`); `downgrade()` drops exactly these ten.
+  **Migration `0045_psychometric_result_fields`** (after `0044_skill_india_certification`); `downgrade()` drops exactly these ten.
 
 **As built, 2026-09-14 (`prompts/15`), correcting `report_url`'s field description above:** built as
 a plain string field the Psychometric Team member supplies directly (`PATCH .../records/{id}`), not
@@ -753,6 +753,26 @@ per-student `SchoolTestPrepRecord`/`SchoolLanguageRecord` (unchanged) and from t
 An enrolment whose student has since transferred (`school_students.school_id` ≠ the batch's
 school, ENH-005) is **frozen**: computed at read/write time, never stored; it stays visible in the
 student's overview/timeline and rejects further writes. Enrolments are capped at 200 per batch.
+
+### 6.22 Skill India certification on `portfolio_entries` (`ENH-024`) — added 2026-09-28, propagating `DEC-SCOPE-033`; migration `0044_skill_india_certification`
+
+`portfolio_entries` is ENH-012's one-table Digital Portfolio (`section` discriminator over ten list
+sections, design `docs/superpowers/specs/2026-09-22-enh-012-digital-portfolio-design.md` §5). ENH-024
+adds four nullable columns — no new table, no backfill; every existing row is all-NULL in them:
+
+| Column | Type | Meaning |
+|---|---|---|
+| `certification_type` | varchar(30) | `'skill_india'`, else NULL |
+| `certification_status` | varchar(20) | `enrolled` / `in_progress` / `certified` |
+| `certificate_number` | varchar(100) | not unique (spec D7) |
+| `issued_on` | date | issue date |
+
+CHECK constraints (declared on the model and in the migration): `ck_portfolio_cert_type` (the tag is
+NULL, or `skill_india` on a `section = 'certification'` row); `ck_portfolio_cert_status` (the status
+list); `ck_portfolio_cert_fields` (an untagged row has all four NULL; a tagged row has a status);
+`ck_portfolio_cert_certified` (`certified` ⇒ number and issue date). The issuing body reuses the
+existing `organization` column. No index (nothing filters by tag). `downgrade()` drops the four
+CHECKs and columns only; entries survive as plain certifications. **Feature ID:** `ENH-024`.
 
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)
 

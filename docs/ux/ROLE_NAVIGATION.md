@@ -213,7 +213,8 @@ distinct from the existing Trainer/"Teacher" role above)*
 - `SCR-SCH-014` — /school/academic-team (Dashboard: assigned students) — Result status per assigned student.
 - `SCR-SCH-015` — /school/academic-team/results/new — Enter a result (starts as Draft).
 - `SCR-SCH-016` — /school/academic-team/results/[id] — Verify / Publish a result; status history.
-- `SCR-SCH-035` — /school/academic-team/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (own school portfolio, from the dashboard's "Student 360° view" list) (`ENH-013`, added 2026-09-23).
+- `SCR-SCH-037` — /school/academic-team/students/[id] — The student's editable Digital Portfolio, incl. Skill India certifications (own school portfolio, from the dashboard's "Students" list) (`ENH-024`, added 2026-09-28, browser QA finding QA24-01).
+- `SCR-SCH-035` — /school/academic-team/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (own school portfolio, from the student page's "Open 360° view"; "Back to student" returns there) (`ENH-013`, added 2026-09-23; entry point updated 2026-09-28 by `ENH-024` — it was the dashboard's "Student 360° view" list).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Career Counselor *(net-new, added 2026-09-14, `DEC-ROLE-006`)*

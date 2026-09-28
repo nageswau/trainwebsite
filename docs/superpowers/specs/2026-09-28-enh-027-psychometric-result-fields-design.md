@@ -3,17 +3,17 @@
 **Status:** Design approved in-session, 2026-09-28, section by section (data/API/backend, frontend,
 acceptance criteria and tests). Superpowers architectural path: brainstorming → this design doc →
 `writing-plans` next. Revised the same day after API / frontend / security engineering reviews (§11).
-Rebased on `main` after ENH-021/026 (2026-09-28): migration `0044`, `DEC-SCOPE-033`, ENH-026 field names,
+Rebased on `main` after ENH-021/026 (2026-09-28), then after ENH-024 (same day, which took `DEC-SCOPE-033`/`0044`): migration `0045`, `DEC-SCOPE-034`, ENH-026 field names,
 comma list input, `.record-details` display (§9 Q8/Q9). Written spec awaiting user review.
 
 **Source requirement:** `School CRM.md §6` "Psychometric Test Module", "Individual Student" subsection
 (`docs/sources/School CRM.md:254-300`, byte-identical to `functionalities/edusphere_markdown/School CRM.md`;
 `EVID-014`, `DERIVED_BLUEPRINT`) — a 12-field record to "Store".
 **Backlog item:** `docs/delivery/ENHANCEMENT_BACKLOG.md:2514-2584` (`ENH-027`).
-**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → `DEC-SCOPE-033` (added by the
+**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → `DEC-SCOPE-034` (added by the
 implementation plan's first task; records the in-session answers in §9 as `EXPLICIT_APPROVAL`, user,
-2026-09-27/28 — same precedent as `DEC-SCOPE-029` for ENH-025). If another branch claims `DEC-SCOPE-033`
-or migration `0044` first, renumber on merge (precedent: `DEC-SCOPE-024`/`025`, `0041`'s re-chain note).
+2026-09-27/28 — same precedent as `DEC-SCOPE-029` for ENH-025). If another branch claims `DEC-SCOPE-034`
+or migration `0045` first, renumber on merge (precedent: `DEC-SCOPE-024`/`025`, `0041`'s re-chain note).
 **Branch:** `feature/enh-027-psychometric-full-record` (from `main` @ `03d4408`).
 
 ## 1. Scope
@@ -79,7 +79,7 @@ parent_discussion_notes Text
 follow_up_on            Date
 ```
 
-**Migration `0044_psychometric_result_fields`** (down_revision `0043_portfolio_internship`):
+**Migration `0045_psychometric_result_fields`** (down_revision `0044_skill_india_certification`):
 - Adds the 10 columns, each guarded by an "already exists" check (fresh DBs get them from
   `0001_initial`'s `create_all()`, same reason `0030`/`0041` guard).
 - No backfill, no data rewrite, no constraint on existing rows. Existing rows keep every value.
@@ -403,7 +403,7 @@ editor has no horizontal page scroll.
 **Regression (AC08):** per task, the psychometric-related API tests + web unit tests. Full backend and
 E2E suites once at the end (user's every-3-4-features cadence; this is one feature).
 
-## 9. Decisions confirmed in-session (→ `DEC-SCOPE-033`; `031`/`032` went to ENH-026/021)
+## 9. Decisions confirmed in-session (→ `DEC-SCOPE-034`; `031`/`032` went to ENH-026/021)
 
 | # | Question | Answer |
 |---|---|---|

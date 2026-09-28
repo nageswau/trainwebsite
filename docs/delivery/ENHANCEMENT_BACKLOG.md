@@ -2316,6 +2316,20 @@ it). **Edge cases.** None beyond the standard certificate-record shape.
 
 **Complexity:** Small. **Risk:** Low.
 
+**Status (2026-09-28) — implemented, NOT complete.** Designed and decided in
+`docs/superpowers/specs/2026-09-28-enh-024-skill-india-certification-design.md` (`DEC-SCOPE-033`, D1–D16), plan
+`docs/superpowers/plans/2026-09-28-enh-024-skill-india-certification.md`, built test-first on branch
+`feature/enh-024-skill-india-certification`. The backlog's "Database impact" question resolved as a tag on ENH-012's
+existing `certification` section (four nullable columns + CHECKs on `portfolio_entries`, migration `0044`), not a new
+table; the "Integration impact" `NEEDS_CONFIRMATION` resolved as **none** (internal record, D9); the owning-role
+`NEEDS_CONFIRMATION` resolved as the existing portfolio writers (D10). Evidence in `docs/quality/RTM.md` (ENH-024 row).
+**Update (2026-09-28):** browser validation done; its findings QA24-01…08 fixed test-first and re-verified in the browser
+(details in the RTM row); the independent Codex review was set aside by the owner. The Academic Team now has its own
+student page with the editable Digital Portfolio. **Complete for ENH-024's scope (2026-09-28)** on fresh
+verification evidence (RTM ENH-024 row). **Merged to `main` via PR #20 (`1ea4678`), 2026-09-28.** Found during verification, outside ENH-024: two E2E
+specs broken on `main` by ENH-026 (`enh-022:43`, `sch-004:13` target the removed `#career-student`), and an ENH-012 layout
+edge case (a long unbroken word in a portfolio title pushes that entry's Edit/Delete row past 320px).
+
 ---
 
 ## ENH-025 — Student Master: Missing Identity & Demographic Fields
@@ -2518,7 +2532,7 @@ structured shape — must not lose the original free-text content.
 ## ENH-027 — Psychometric Record: Structured Result Fields
 
 **Status (2026-09-28):** built on `feature/enh-027-psychometric-full-record` per
-`docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md` (`DEC-SCOPE-033`, migration `0044`);
+`docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md` (`DEC-SCOPE-034`, migration `0045`);
 **not complete** — pending the database-backed tests, browser validation and the independent review. **Correction to the
 count below:** today's record holds 3 of the 12 fields (Assessment type, Test status, Report); `created_at` is the
 *assignment* day, only a proxy for Test date, so a real `test_date` column is added (9 fields, 10 columns). The shared

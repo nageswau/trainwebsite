@@ -1,12 +1,15 @@
 """ENH-027 -- structured result fields on school_psychometric_records.
 
-Revision ID: 0044_psychometric_result_fields
-Revises: 0043_portfolio_internship
+Revision ID: 0045_psychometric_result_fields
+Revises: 0044_skill_india_certification
 
-docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md §3 (DEC-SCOPE-033). Additive only:
+docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md §3 (DEC-SCOPE-034). Additive only:
 ten nullable columns, no backfill, no constraint, no rewrite of existing rows -- every existing value is kept.
-`downgrade()` drops exactly these ten columns. If another branch reaches `main` first with its own 0044, the
-later-merging branch re-chains (precedent: 0041's note).
+`downgrade()` drops exactly these ten columns.
+
+Re-chained on merge with `main`, 2026-09-28: cut as `0044_psychometric_result_fields` on `0043_portfolio_internship`,
+but ENH-024 merged first with `0044_skill_india_certification` on the same parent, so this became `0045` on top of it
+(the later-merging branch moves; precedent: 0041's note). Neither touches the other's table.
 """
 
 import sqlalchemy as sa
@@ -14,8 +17,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0044_psychometric_result_fields"
-down_revision = "0043_portfolio_internship"
+revision = "0045_psychometric_result_fields"
+down_revision = "0044_skill_india_certification"
 branch_labels = None
 depends_on = None
 

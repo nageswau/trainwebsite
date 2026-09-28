@@ -42,6 +42,7 @@ from app.schemas import (
     PortfolioEntryUpdate,
     date_range_is_invalid,
     internship_rule_error,
+    skill_india_error,
 )
 from app.services.storage import storage
 
@@ -101,11 +102,19 @@ def _entry_out(entry: PortfolioEntry) -> dict:
         "id": entry.id, "school_student_id": entry.school_student_id, "section": entry.section,
         "title": entry.title, "description": entry.description, "organization": entry.organization,
         "date_from": entry.date_from, "date_to": entry.date_to,
+        "certification_type": entry.certification_type, "certification_status": entry.certification_status,
+        "certificate_number": entry.certificate_number, "issued_on": entry.issued_on,
         **{key: getattr(entry, key) for key in INTERNSHIP_FIELD_KEYS},  # ENH-021, same keys as PortfolioEntryOut (A3)
         "has_certificate": entry.has_certificate, "certificate_content_type": entry.certificate_content_type,
         "created_by_user_id": entry.created_by_user_id, "updated_by_user_id": entry.updated_by_user_id,
         "created_at": entry.created_at, "updated_at": entry.updated_at,
     }
+
+
+def _cert_audit(entry: PortfolioEntry) -> dict:
+    """ENH-024 D16: the tag for a Skill India entry's audit row and log line; nothing for any other entry, so their audit rows
+    stay exactly as before. Never the certificate number."""
+    return {"certification_type": entry.certification_type} if entry.certification_type else {}
 
 
 @router.get("/students/{student_id}/portfolio")
@@ -176,15 +185,20 @@ async def create_portfolio_entry(student_id: UUID, payload: PortfolioEntryCreate
         school_student_id=student.id, section=payload.section, title=payload.title,
         description=payload.description, organization=payload.organization,
         date_from=payload.date_from, date_to=payload.date_to,
+        certification_type=payload.certification_type, certification_status=payload.certification_status,
+        certificate_number=payload.certificate_number, issued_on=payload.issued_on,
         **{key: getattr(payload, key) for key in INTERNSHIP_FIELD_KEYS},
         created_by_user_id=user.id, updated_by_user_id=user.id,
     )
     db.add(entry)
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_create", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json={"section": entry.section, "school_student_id": str(student.id)}))
+    audit = {"section": entry.section, "school_student_id": str(student.id), **_cert_audit(entry)}
+    if entry.certification_type:
+        audit["certification_status"] = entry.certification_status
+    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_create", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json=audit))
     await db.commit()
     await db.refresh(entry)
-    logger.info("portfolio_entry_create", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id), "section": entry.section}})
+    logger.info("portfolio_entry_create", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id), "section": entry.section, **_cert_audit(entry)}})
     return entry
 
 
@@ -208,6 +222,7 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
         raise HTTPException(422, INTERNSHIP_ONLY_ERROR)
     # ENH-023 D8: editing an entry that existed before a downgrade finishes existing work. ENH-021 I6: tracking fields need Platinum.
     await require_school_entitlement(db, user, student.school_id, _entry_service_key(entry.section, tracking_sent), grandfathered_since=entry.created_at)
+    old_status = entry.certification_status
     # `model_fields_set` distinguishes "field explicitly present in the request payload" (apply it, even
     # when the value is None -- that's the clear-the-field case) from "field omitted" (leave the entry's
     # existing value untouched). A plain `if value is not None` check (the previous logic) could never
@@ -216,7 +231,7 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
     # constraint is guarded at the schema layer -- PortfolioEntryUpdate rejects an explicit null there,
     # before this handler ever runs -- so nothing special-cases it in this merge loop.)
     fields_set = payload.model_fields_set
-    for field in ("title", "description", "organization", "date_from", "date_to", *INTERNSHIP_FIELD_KEYS):
+    for field in ("title", "description", "organization", "date_from", "date_to", "certification_status", "certificate_number", "issued_on", *INTERNSHIP_FIELD_KEYS):
         if field in fields_set:
             setattr(entry, field, getattr(payload, field))
     # Date-range merge-validation: after merging payload fields onto entry, validate the merged result --
@@ -224,6 +239,10 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
     # same rule (schemas.py's date_range_is_invalid/DATE_RANGE_ERROR) against the post-merge state.
     if date_range_is_invalid(entry.date_from, entry.date_to):
         raise HTTPException(422, DATE_RANGE_ERROR)
+    # ENH-024: the same Skill India rule as a create, on the merged state (the tag itself is never in the payload -- D8).
+    cert_error = skill_india_error(entry.certification_type, entry.certification_status, entry.certificate_number, entry.issued_on)
+    if cert_error:
+        raise HTTPException(422, cert_error)
     if entry.section == "internship":  # ENH-021 I4, same post-merge reasoning as the date range above
         error = internship_rule_error(entry.organization, entry.completion_status, entry.date_to)
         if error:
@@ -232,10 +251,13 @@ async def update_portfolio_entry(student_id: UUID, entry_id: UUID, payload: Port
             raise HTTPException(422, "Remove the certificate first")
     entry.updated_by_user_id = user.id
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_update", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json={"section": entry.section, "school_student_id": str(student.id)}))
+    audit = {"section": entry.section, "school_student_id": str(student.id), **_cert_audit(entry)}
+    if entry.certification_status != old_status:
+        audit.update(old_status=old_status, new_status=entry.certification_status)
+    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_update", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json=audit))
     await db.commit()
     await db.refresh(entry)
-    logger.info("portfolio_entry_update", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id)}})
+    logger.info("portfolio_entry_update", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id), **_cert_audit(entry)}})
     return entry
 
 
@@ -246,13 +268,13 @@ async def delete_portfolio_entry(student_id: UUID, entry_id: UUID, user: User = 
     entry = await _load_portfolio_entry(db, student.id, entry_id, for_update=True)
     # ENH-023 D8: removing an entry that existed before a downgrade finishes existing work.
     await require_school_entitlement(db, user, student.school_id, "digital_portfolio_creation", grandfathered_since=entry.created_at)
-    section, entry_id_str, certificate_key = entry.section, str(entry.id), entry.certificate_key
+    section, entry_id_str, certificate_key, cert = entry.section, str(entry.id), entry.certificate_key, _cert_audit(entry)
     await db.delete(entry)
-    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_delete", entity_type="portfolio_entry", entity_id=entry_id_str, metadata_json={"section": section, "school_student_id": str(student.id), "had_certificate": certificate_key is not None}))
+    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_delete", entity_type="portfolio_entry", entity_id=entry_id_str, metadata_json={"section": section, "school_student_id": str(student.id), "had_certificate": certificate_key is not None, **cert}))
     await db.commit()
     if certificate_key:  # ENH-021: the object goes only after the row's deletion committed
         discard_certificate(certificate_key, entry_id_str)
-    logger.info("portfolio_entry_delete", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": entry_id_str}})
+    logger.info("portfolio_entry_delete", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": entry_id_str, **cert}})
 
 
 @router.patch("/students/{student_id}/portfolio/personal-statement", response_model=PersonalStatementOut)

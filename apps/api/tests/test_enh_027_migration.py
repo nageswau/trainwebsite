@@ -1,4 +1,4 @@
-"""ENH-027 -- migration 0044 and the new SchoolPsychometricRecord columns (spec §3, AC09)."""
+"""ENH-027 -- migration 0045 and the new SchoolPsychometricRecord columns (spec §3, AC09)."""
 
 import importlib.util
 from pathlib import Path
@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import inspect
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_enh_027_migration_0044", VERSIONS / "0044_psychometric_result_fields.py")
+_spec = importlib.util.spec_from_file_location("_enh_027_migration_0045", VERSIONS / "0045_psychometric_result_fields.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
@@ -17,9 +17,10 @@ NEW_COLUMNS = (
 )
 
 
-def test_migration_follows_enh021_and_is_the_single_head():
-    assert _migration.revision == "0044_psychometric_result_fields"
-    assert _migration.down_revision == "0043_portfolio_internship"
+def test_migration_follows_enh024_and_is_the_single_head():
+    # Re-chained on merge: ENH-024 (0044_skill_india_certification) reached main first on the same parent (DEC-SCOPE-034 ID note).
+    assert _migration.revision == "0045_psychometric_result_fields"
+    assert _migration.down_revision == "0044_skill_india_certification"
     parents = {}
     for file in VERSIONS.glob("*.py"):
         lines = file.read_text(encoding="utf-8").splitlines()
@@ -27,7 +28,7 @@ def test_migration_follows_enh021_and_is_the_single_head():
         parent = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("down_revision =")), None)
         if rev:
             parents[rev] = parent
-    assert set(parents) - set(parents.values()) == {"0044_psychometric_result_fields"}
+    assert set(parents) - set(parents.values()) == {"0045_psychometric_result_fields"}
 
 
 def test_migration_adds_exactly_the_ten_columns():
