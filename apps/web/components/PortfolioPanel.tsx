@@ -79,7 +79,7 @@ function EntryList({ section, entries, studentId, canEdit, activeForm, confirmin
                     {e.description && <p className="pf-entry-desc">{e.description}</p>}
                     {canEdit && (
                       <div className="pf-entry-actions">
-                        <button type="button" className="btn secondary" disabled={deleteBusy || anyFormOpen} onClick={() => onEdit(e)}>Edit {e.title}</button>
+                        <button id={`pf-edit-btn-${e.id}`} type="button" className="btn secondary" disabled={deleteBusy || anyFormOpen} onClick={() => onEdit(e)}>Edit {e.title}</button>
                         <button id={`pf-delete-btn-${e.id}`} type="button" className="btn secondary" disabled={deleteBusy || anyFormOpen} onClick={() => onDelete(e)}>{confirmingId === e.id ? `Confirm delete ${e.title}` : `Delete ${e.title}`}</button>
                       </div>
                     )}
@@ -91,7 +91,7 @@ function EntryList({ section, entries, studentId, canEdit, activeForm, confirmin
         </ul>
       )}
       {canEdit && !formOpenHere && (
-        <button type="button" className="btn secondary pf-add-btn" disabled={anyFormOpen} onClick={() => onAdd(section)}>Add {singular(section)}</button>
+        <button id={`pf-add-btn-${section}`} type="button" className="btn secondary pf-add-btn" disabled={anyFormOpen} onClick={() => onAdd(section)}>Add {singular(section)}</button>
       )}
       {formOpenHere && <PortfolioEntryForm studentId={studentId} section={section} onDone={onFormDone} onCancel={onCancel} />}
     </div>
@@ -124,6 +124,7 @@ function PersonalStatementSection({ studentId, statement, canEdit, disabled, onE
     setAlert(null);
     setEditing(false);
     onEditingChange(false);
+    refocus("pf-statement-edit-btn"); // QA24-07
   }
 
   async function save() {
@@ -155,6 +156,7 @@ function PersonalStatementSection({ studentId, statement, canEdit, disabled, onE
     setEditing(false);
     onEditingChange(false);
     onDone();
+    refocus("pf-statement-edit-btn"); // QA24-07
   }
 
   return (
@@ -173,7 +175,7 @@ function PersonalStatementSection({ studentId, statement, canEdit, disabled, onE
       ) : (
         <>
           {statement ? <p className="pf-statement">{statement}</p> : <p className="muted">No entries yet.</p>}
-          {canEdit && <button type="button" className="btn secondary" disabled={disabled} onClick={startEdit}>{statement ? "Edit statement" : "Add statement"}</button>}
+          {canEdit && <button id="pf-statement-edit-btn" type="button" className="btn secondary" disabled={disabled} onClick={startEdit}>{statement ? "Edit statement" : "Add statement"}</button>}
         </>
       )}
     </div>
@@ -197,7 +199,10 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   // nothing gets silently discarded.
   const anyFormOpen = activeForm !== null || statementEditing;
 
+  // QA24-07: when a form closes (Cancel or a confirmed Save), keyboard focus goes back to the button that opened it --
+  // the section's Add button, or the entry's Edit button -- instead of dropping to the page top.
   function closeForm() {
+    if (activeForm) refocus(activeForm.kind === "add" ? `pf-add-btn-${activeForm.section}` : `pf-edit-btn-${activeForm.entry.id}`);
     setActiveForm(null);
     setConfirmingId(null);
   }
@@ -245,6 +250,7 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
       return;
     }
     router.refresh();
+    refocus(`pf-add-btn-${entry.section}`); // QA24-07: the entry is gone; its section's Add button is the nearest control
   }
 
   function openAdd(section: string) {

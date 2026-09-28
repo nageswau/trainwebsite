@@ -150,6 +150,59 @@ describe("PortfolioPanel", () => {
     expect(screen.getByRole("button", { name: /edit regional award/i })).toBeDisabled();
   });
 
+  // QA24-07 -- keyboard focus returns to the button that started the action, instead of dropping to the page top.
+  describe("focus after an action", () => {
+    const ENTRY = { id: "e9", section: "award", title: "Regional Award", description: null, organization: null, date_from: null, date_to: null, created_at: "2026-01-01", updated_at: "2026-01-01" };
+    const WITH_ENTRY: PortfolioData = { ...BASE, can_edit: true, entries: { ...BASE.entries, award: [ENTRY] } };
+    const respond = (status: number, body: unknown = { id: "e1" }) => { global.fetch = vi.fn().mockResolvedValue({ ok: status < 400, status, json: async () => body }) as unknown as typeof fetch; };
+
+    it("returns to the section's Add button after cancelling an add", async () => {
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      fireEvent.click(screen.getByRole("button", { name: "Add award" }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Add award" })).toHaveFocus());
+    });
+
+    it("returns to the section's Add button after saving an add", async () => {
+      respond(201);
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      fireEvent.click(screen.getByRole("button", { name: "Add award" }));
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "New award" } });
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Add award" })).toHaveFocus());
+    });
+
+    it("returns to the entry's Edit button after cancelling or saving an edit", async () => {
+      respond(200);
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      fireEvent.click(screen.getByRole("button", { name: "Edit Regional Award" }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit Regional Award" })).toHaveFocus());
+      fireEvent.click(screen.getByRole("button", { name: "Edit Regional Award" }));
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit Regional Award" })).toHaveFocus());
+    });
+
+    it("moves to the section's Add button after a delete", async () => {
+      respond(204, null);
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      fireEvent.click(screen.getByRole("button", { name: "Delete Regional Award" }));
+      fireEvent.click(screen.getByRole("button", { name: "Confirm delete Regional Award" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Add award" })).toHaveFocus());
+    });
+
+    it("returns to the statement button after cancelling or saving the personal statement", async () => {
+      respond(200, { personal_statement: "Hi", updated_at: "2026-01-01" });
+      render(<PortfolioPanel data={{ ...BASE, can_edit: true, personal_statement: "Hi" }} />);
+      fireEvent.click(screen.getByRole("button", { name: "Edit statement" }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit statement" })).toHaveFocus());
+      fireEvent.click(screen.getByRole("button", { name: "Edit statement" }));
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit statement" })).toHaveFocus());
+    });
+  });
+
   // ENH-024 -- a Skill India certification shows its badge, status, number and issue date under the title.
   const SKILL_INDIA_ENTRY = { id: "c1", section: "certification", title: "Retail Sales Associate", description: null, organization: "RASCI", date_from: null, date_to: null, certification_type: "skill_india", certification_status: "certified", certificate_number: "SI-1", issued_on: "2026-05-01", created_at: "2026-01-01", updated_at: "2026-01-01" };
 
