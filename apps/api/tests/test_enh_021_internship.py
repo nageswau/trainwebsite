@@ -128,6 +128,21 @@ async def test_entry_id_under_another_student_is_404(client, world):
 
 
 @pytest.mark.asyncio
+async def test_portfolio_says_whether_internship_tracking_is_available(client, db_session, world):
+    """QA-08 (browser QA 2026-09-28, owner decision "explain up front"): the page must know before submit whether this viewer
+    can track internships, i.e. can edit the portfolio AND the school's tier includes Platinum `internships`."""
+    url = "/api/v1/school/students/{sid}/portfolio"
+    await login(client, world["coordinator"].email)  # Platinum
+    assert (await client.get(url.format(sid=world["students"][0].id))).json()["can_track_internships"] is True
+    await login(client, world["parent"].email)  # reader, not a writer
+    assert (await client.get(url.format(sid=world["students"][0].id))).json()["can_track_internships"] is False
+    gold = await mk_school(db_session, label="E21-GoldFlag", tier="gold")
+    await login(client, gold["coordinator"].email)
+    body = (await client.get(url.format(sid=gold["students"][0].id))).json()
+    assert body["can_edit"] is True and body["can_track_internships"] is False
+
+
+@pytest.mark.asyncio
 async def test_storage_fields_are_not_writable(client, world):
     await login(client, world["coordinator"].email)
     r = await client.post(_url(world), json={**INTERNSHIP, "certificate_key": "portfolio-certificates/evil"})

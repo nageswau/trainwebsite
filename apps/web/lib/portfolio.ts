@@ -18,6 +18,8 @@ export type PortfolioData = {
   student: { id: string; full_name: string };
   completion_percentage: number;
   can_edit: boolean;
+  // ENH-021 QA-08: false when this writer's school lacks Platinum `internships`; absent on an older API (treated as available).
+  can_track_internships?: boolean;
   profile_complete: boolean;
   academic_achievements: { id: string; term: string; subject: string; grade: string | null; published_at: string }[];
   psychometric_report: { id: string; assessment_type: string; report_url: string | null; created_at: string }[];

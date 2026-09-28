@@ -94,6 +94,27 @@ describe("internship entry in the portfolio (ENH-021)", () => {
     expect(screen.queryByLabelText(/Upload certificate|Replace certificate/)).toBeNull();
   });
 
+  // QA-08 (owner decision "explain up front"): a writer whose school lacks Platinum `internships` is told so before submitting, and
+  // is only offered what the server will accept -- basic edits and deletion of existing entries.
+  it("explains the Platinum requirement up front and offers only basic edits", () => {
+    const writer = { ...data, can_edit: true, can_track_internships: false };
+    render(<PortfolioPanel data={writer} />);
+    const section = screen.getByRole("heading", { name: "Internships" }).closest(".pf-section") as HTMLElement;
+    expect(section).toHaveTextContent("Internship tracking is part of the Platinum partnership.");
+    expect(screen.queryByRole("button", { name: "Add internship" })).not.toBeInTheDocument();
+    expect(section.querySelector("input[type=file]")).toBeNull();
+    expect(screen.getByRole("link", { name: "Download certificate (PDF)" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Design intern" }));
+    expect(screen.getByLabelText("Role")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Mentor name (optional)")).not.toBeInTheDocument();
+  });
+
+  it("keeps the full internship controls when tracking is available (or the API predates the flag)", () => {
+    render(<PortfolioPanel data={{ ...data, can_edit: true }} />);
+    expect(screen.getByRole("button", { name: "Add internship" })).toBeInTheDocument();
+    expect(screen.queryByText("Internship tracking is part of the Platinum partnership.")).not.toBeInTheDocument();
+  });
+
   it("labels an internship recorded before tracking", () => {
     const legacy = { ...data.entries.internship[0], completion_status: null, mentor_name: null, mentor_designation: null, attendance_percent: null, skills_acquired: null, has_certificate: false, certificate_content_type: null };
     render(<PortfolioPanel data={{ ...data, entries: { ...data.entries, internship: [legacy] } }} />);

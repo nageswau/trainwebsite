@@ -15,13 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.api.school_student_profile import _digest
-from app.api.schools import _career_records_out, _load_student_for_reader, require_school_entitlement
+from app.api.schools import _career_records_out, _entitlement_denial, _load_student_for_reader, _today_ist, require_school_entitlement
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import (
     AuditLog,
     PortfolioEntry,
     PortfolioProfile,
+    School,
     SchoolAcademicResult,
     SchoolCareerRecord,
     SchoolLanguageRecord,
@@ -120,6 +121,10 @@ async def portfolio_payload(db: AsyncSession, user: User, student: SchoolStudent
     Student 360° view can reuse it. `user` only decides `can_edit`; it widens nothing."""
     can_edit = _can_edit_portfolio(user, student)
     profile_complete = _profile_complete(student)
+    # ENH-021 QA-08: tell the page up front whether this viewer may create/track internships (Platinum `internships`), using the
+    # same tier rule the write routes enforce, so the UI never offers what the server will refuse.
+    school = await db.get(School, student.school_id)
+    can_track_internships = bool(can_edit and school is not None and _entitlement_denial(school.tier, school.tier_valid_until, "internships", _today_ist()) is None)
 
     entries_by_section: dict[str, list[dict]] = {section: [] for section in sorted(PORTFOLIO_SECTIONS)}
     rows = (await db.scalars(select(PortfolioEntry).where(PortfolioEntry.school_student_id == student.id).order_by(PortfolioEntry.date_from.desc().nullslast(), PortfolioEntry.created_at.desc()))).all()
@@ -150,6 +155,7 @@ async def portfolio_payload(db: AsyncSession, user: User, student: SchoolStudent
         "student": {"id": student.id, "full_name": student.full_name},
         "completion_percentage": completion_percentage,
         "can_edit": can_edit,
+        "can_track_internships": can_track_internships,
         "profile_complete": profile_complete,
         "academic_achievements": [{"id": r.id, "term": r.term, "subject": r.subject, "grade": r.grade, "published_at": r.published_at} for r in academic],
         "psychometric_report": [{"id": r.id, "assessment_type": r.assessment_type, "report_url": r.report_url, "created_at": r.created_at} for r in psychometric],

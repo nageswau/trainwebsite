@@ -13,13 +13,16 @@ import { filledInternship, internshipChanges, type InternshipValues, pickInterns
 // pattern -- spec §3.8). Used both for create (no entryId) and edit (entryId + initial values) by
 // PortfolioPanel.tsx (Task 9).
 
-export default function PortfolioEntryForm({ studentId, section, entryId, initial, onDone, onCancel }: {
+export default function PortfolioEntryForm({ studentId, section, entryId, initial, tracking: trackingAllowed = true, onDone, onCancel }: {
   studentId: string; section: string; entryId?: string;
   initial?: { title: string; description: string | null; organization: string | null; date_from: string | null; date_to: string | null } & InternshipValues;
+  /** ENH-021 QA-08: false when the school's tier lacks Platinum `internships` -- only the basic fields are offered and sent. */
+  tracking?: boolean;
   onDone: () => void; onCancel: () => void;
 }) {
   // ENH-021: an internship's title is its Role and its organization its Company (required); its tracking fields ride along.
   const internship = section === "internship";
+  const showTracking = internship && trackingAllowed;
   const [tracking, setTracking] = useState<InternshipValues>(() => pickInternship(initial));
   const [companyError, setCompanyError] = useState<string | null>(null);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
@@ -64,7 +67,7 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
       date_from: dateFrom || null,
       date_to: dateTo || null,
       // ENH-021 I6: only changed tracking fields on edit, so a basic edit never needs the Platinum-only gate.
-      ...(internship ? (entryId ? internshipChanges(pickInternship(initial), tracking) : filledInternship(tracking)) : {}),
+      ...(showTracking ? (entryId ? internshipChanges(pickInternship(initial), tracking) : filledInternship(tracking)) : {}),
     };
     const url = entryId ? `/api/v1/school/students/${studentId}/portfolio/entries/${entryId}` : `/api/v1/school/students/${studentId}/portfolio/entries`;
     let response: Response;
@@ -113,7 +116,7 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
         <label htmlFor="pf-date-to">End date (optional)</label>
         <input id="pf-date-to" type="date" className="search" value={dateTo} disabled={busy} onChange={(e) => setDateTo(e.target.value)} />
       </div>
-      {internship && <InternshipFields values={tracking} onChange={setTracking} disabled={busy} attendanceError={attendanceError} />}
+      {showTracking && <InternshipFields values={tracking} onChange={setTracking} disabled={busy} attendanceError={attendanceError} />}
       <div className="field">
         <label htmlFor="pf-description">Description (optional)</label>
         <textarea id="pf-description" className="search" rows={3} maxLength={2000} value={description} disabled={busy} onChange={(e) => setDescription(e.target.value)} />

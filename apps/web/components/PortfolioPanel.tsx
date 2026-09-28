@@ -49,17 +49,22 @@ type ActiveEntryForm = { kind: "add"; section: string } | { kind: "edit"; entry:
 // add/edit form -- on every state change anywhere in the panel (e.g. clicking Delete once on one entry
 // would wipe a draft being typed into an unrelated section's open form). Taking the shared state as props
 // instead avoids that.
-function EntryList({ section, entries, studentId, canEdit, activeForm, confirmingId, deleteBusy, anyFormOpen, onAdd, onEdit, onDelete, onFormDone, onCancel }: {
+function EntryList({ section, entries, studentId, canEdit, canTrack, activeForm, confirmingId, deleteBusy, anyFormOpen, onAdd, onEdit, onDelete, onFormDone, onCancel }: {
   section: string; entries: PortfolioEntry[]; studentId: string; canEdit: boolean;
+  canTrack: boolean;
   activeForm: ActiveEntryForm; confirmingId: string | null; deleteBusy: boolean;
   anyFormOpen: boolean;
   onAdd: (section: string) => void; onEdit: (entry: PortfolioEntry) => void; onDelete: (entry: PortfolioEntry) => void;
   onFormDone: () => void; onCancel: () => void;
 }) {
   const formOpenHere = activeForm?.kind === "add" && activeForm.section === section;
+  // ENH-021 QA-08: without Platinum `internships` a writer keeps basic edits/deletes of existing internships, but is told up front
+  // instead of being offered a create or tracking fields the server would refuse.
+  const internshipLocked = section === "internship" && canEdit && !canTrack;
   return (
     <div className="pf-section">
       <h4>{SECTION_LABELS[section] ?? section}</h4>
+      {internshipLocked && <p className="field-help muted">Internship tracking is part of the Platinum partnership. Existing entries can still be edited or removed.</p>}
       {entries.length === 0 ? (
         <p className="muted">No entries yet.</p>
       ) : (
@@ -69,14 +74,14 @@ function EntryList({ section, entries, studentId, canEdit, activeForm, confirmin
             return (
               <li className="pf-entry" key={e.id}>
                 {isEditingThisEntry ? (
-                  <PortfolioEntryForm studentId={studentId} section={e.section} entryId={e.id} initial={e} onDone={onFormDone} onCancel={onCancel} />
+                  <PortfolioEntryForm studentId={studentId} section={e.section} entryId={e.id} initial={e} tracking={!internshipLocked} onDone={onFormDone} onCancel={onCancel} />
                 ) : (
                   <>
                     <strong>{e.title}</strong>
                     {e.organization && <span className="pf-entry-org"> — {e.organization}</span>}
                     {e.date_from && <span className="pf-entry-date"> ({formatCalendarDate(e.date_from)}{e.date_to ? ` – ${formatCalendarDate(e.date_to)}` : ""})</span>}
                     {e.description && <p className="pf-entry-desc">{e.description}</p>}
-                    {e.section === "internship" && <InternshipDetails entry={e} studentId={studentId} canEdit={canEdit} />}
+                    {e.section === "internship" && <InternshipDetails entry={e} studentId={studentId} canEdit={canEdit && !internshipLocked} />}
                     {canEdit && (
                       <div className="pf-entry-actions">
                         <button type="button" className="btn secondary" disabled={deleteBusy || anyFormOpen} onClick={() => onEdit(e)}>Edit {e.title}</button>
@@ -90,7 +95,7 @@ function EntryList({ section, entries, studentId, canEdit, activeForm, confirmin
           })}
         </ul>
       )}
-      {canEdit && !formOpenHere && (
+      {canEdit && !formOpenHere && !internshipLocked && (
         <button type="button" className="btn secondary pf-add-btn" disabled={anyFormOpen} onClick={() => onAdd(section)}>Add {singular(section)}</button>
       )}
       {formOpenHere && <PortfolioEntryForm studentId={studentId} section={section} onDone={onFormDone} onCancel={onCancel} />}
@@ -298,6 +303,7 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
       {Object.keys(data.entries).sort().map((section) => (
         <EntryList
           key={section} section={section} entries={data.entries[section]} studentId={data.student.id} canEdit={data.can_edit}
+          canTrack={data.can_track_internships !== false}
           activeForm={activeForm} confirmingId={confirmingId} deleteBusy={deleteBusy} anyFormOpen={anyFormOpen}
           onAdd={openAdd} onEdit={startEdit} onDelete={deleteEntry} onFormDone={onFormDone} onCancel={closeForm}
         />
