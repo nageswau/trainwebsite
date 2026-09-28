@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import CareerGoalForm from "@/components/CareerGoalForm";
+import CertificationDetails, { type CertificationFields } from "@/components/CertificationDetails";
 import { type ChildOverview, SkillsCard, StatusChip } from "@/components/SchoolChildOverview";
 import SchoolGradeHistory, { type GradeHistoryEntry } from "@/components/SchoolGradeHistory";
 import { formatCalendarDate, formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
@@ -13,7 +14,7 @@ import { safeHref, TAB_LABELS, type TabKey } from "@/lib/student360Links";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- tab `data` is a per-tab shape documented in spec §6.3; typed at the edges. */
 type Row = Record<string, any>;
-type Entry = { id: string; title: string; organization: string | null; date_from: string | null; date_to: string | null; description: string | null };
+type Entry = { id: string; title: string; organization: string | null; date_from: string | null; date_to: string | null; description: string | null } & CertificationFields;
 
 const EMPTY_TEXT: Record<TabKey, string> = {
   overview: "No achievements recorded yet.",
@@ -48,6 +49,7 @@ function Entries({ entries }: { entries: Entry[] }) {
         <li key={e.id}>
           <strong>{e.title}</strong>{e.organization ? <span className="muted"> — {e.organization}</span> : null}
           {e.date_from ? <span className="muted"> ({formatCalendarDate(e.date_from)}{e.date_to ? ` – ${formatCalendarDate(e.date_to)}` : ""})</span> : null}
+          <CertificationDetails entry={e} />
           {e.description ? <p>{e.description}</p> : null}
         </li>
       ))}

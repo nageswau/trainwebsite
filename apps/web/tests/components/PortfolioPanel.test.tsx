@@ -149,4 +149,16 @@ describe("PortfolioPanel", () => {
     expect(screen.getByRole("button", { name: /add statement/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /edit regional award/i })).toBeDisabled();
   });
+
+  // ENH-024 -- a Skill India certification shows its badge, status, number and issue date under the title.
+  const SKILL_INDIA_ENTRY = { id: "c1", section: "certification", title: "Retail Sales Associate", description: null, organization: "RASCI", date_from: null, date_to: null, certification_type: "skill_india", certification_status: "certified", certificate_number: "SI-1", issued_on: "2026-05-01", created_at: "2026-01-01", updated_at: "2026-01-01" };
+
+  it("shows Skill India details under a tagged certification (ENH-024)", () => {
+    render(<PortfolioPanel data={{ ...BASE, entries: { ...BASE.entries, certification: [SKILL_INDIA_ENTRY] } }} />);
+    expect(screen.getByText("Skill India")).toHaveClass("badge");
+    expect(screen.getByText("Certified")).toHaveClass("status");
+    expect(screen.getByText("Certificate no. SI-1")).toBeInTheDocument();
+  });
+
+  it.todo("pre-fills the Skill India fields when editing a tagged certification (ENH-024, Task 6)");
 });

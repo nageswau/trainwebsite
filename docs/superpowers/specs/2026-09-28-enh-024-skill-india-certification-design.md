@@ -150,14 +150,17 @@ unrepresentable even if a code path is missed.
 
 ## 6. Frontend
 
-Reuse: `PortfolioEntryForm`, `PortfolioPanel`, `StatusChip` (already labels `enrolled`/`in_progress`/
-`certified`), `detailMessage`, `refocus`, `formatCalendarDate`, CSS `.badge`, `.status`, `.pf-*`, `.s360-list`.
+Reuse: `PortfolioEntryForm`, `PortfolioPanel`, the `.status` / `.status pending` classes, `detailMessage`,
+`refocus`, `formatCalendarDate`, CSS `.badge`, `.pf-*`, `.s360-list`. (Implementation note, 2026-09-28: not
+`StatusChip` — its module, `SchoolChildOverview.tsx`, imports `serverApi`, which the client `PortfolioPanel`
+must not reach even transitively; `tests/lib/clientBoundary.test.ts` only checks direct imports.)
 
 - **`lib/portfolio.ts`:** `PortfolioEntry` gains `certification_type`, `certification_status`,
-  `certificate_number`, `issued_on` (all `string | null`).
+  `certificate_number`, `issued_on` (`string | null`, optional in the type so older-shaped values stay valid;
+  the API always sends them).
 - **`components/CertificationDetails.tsx` (new, the only new component):** hook-free, so it renders inside
   both the client `PortfolioPanel` and the server `Student360Panels`. Renders nothing unless
-  `certification_type === "skill_india"`; otherwise a "Skill India" `.badge`, `StatusChip`, "Certificate no. …"
+  `certification_type === "skill_india"`; otherwise a "Skill India" `.badge`, a status label, "Certificate no. …"
   and "Issued <date>" on one wrapping line (`.pf-cert`). All text is React-escaped; nothing becomes a link.
 - **`PortfolioPanel`:** renders `CertificationDetails` under each entry title; passes the four fields into the
   edit form's `initial`.

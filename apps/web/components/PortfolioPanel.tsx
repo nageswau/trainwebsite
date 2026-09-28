@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import CertificationDetails from "@/components/CertificationDetails";
 import PortfolioEntryForm from "@/components/PortfolioEntryForm";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { refocus } from "@/lib/focus";
@@ -74,6 +75,7 @@ function EntryList({ section, entries, studentId, canEdit, activeForm, confirmin
                     <strong>{e.title}</strong>
                     {e.organization && <span className="pf-entry-org"> — {e.organization}</span>}
                     {e.date_from && <span className="pf-entry-date"> ({formatCalendarDate(e.date_from)}{e.date_to ? ` – ${formatCalendarDate(e.date_to)}` : ""})</span>}
+                    <CertificationDetails entry={e} />
                     {e.description && <p className="pf-entry-desc">{e.description}</p>}
                     {canEdit && (
                       <div className="pf-entry-actions">
