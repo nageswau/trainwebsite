@@ -10,7 +10,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.core.rbac import agent_denial_reason
-from app.services.agent_orgs import lock_org, member_user_ids, org_member_ids
+from app.services.agent_orgs import lock_org, member_user_ids, notification_recipients, org_member_ids
 from app.models import (
     AgentCommission,
     AgentStudent,
@@ -1733,7 +1733,8 @@ async def _maybe_trigger_agent_commission(db: AsyncSession, application: Oversea
     await db.flush()
     agent = await db.get(User, application.agent_id)
     if agent:
-        await _notify_user(db, agent, "Commission estimated", "A referred student has enrolled -- a commission is now estimated and awaiting an amount from Overseas Admin.", "/overseas/agent/commissions")
+        for recipient in await notification_recipients(db, agent):  # AGN-001 (D12): every active Master
+            await _notify_user(db, recipient, "Commission estimated", "A referred student has enrolled -- a commission is now estimated and awaiting an amount from Overseas Admin.", "/overseas/agent/commissions")
     await _audit(db, changed_by, "agent.commission_auto_create", "agent_commission", item.id, {"application_id": str(application.id), "trigger": "enrolled"})
 
 
@@ -2369,7 +2370,8 @@ async def create_commission(payload: CommissionCreate, user: User = Depends(get_
     item = AgentCommission(agent_id=agent.id, application_id=application.id, amount=payload.amount, currency=payload.currency, status="eligible", created_by="admin_manual")
     db.add(item)
     await db.flush()
-    await _notify_user(db, agent, "Commission eligible", f"A {payload.currency} {payload.amount:,.2f} commission is available to claim.", "/overseas/agent/commissions")
+    for recipient in await notification_recipients(db, agent):  # AGN-001 (D12): every active Master
+        await _notify_user(db, recipient, "Commission eligible", f"A {payload.currency} {payload.amount:,.2f} commission is available to claim.", "/overseas/agent/commissions")
     await _audit(db, user, "agent.commission_create", "agent_commission", item.id)
     await db.commit()
     return {"id": item.id, "status": item.status}

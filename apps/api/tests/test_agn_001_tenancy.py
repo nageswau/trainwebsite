@@ -5,7 +5,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import func, select
 
-from app.models import AgentCommission, AgentOrg, AgentOrgMember, AgentStudent, Country, OverseasApplication, StudentDocument, University, User, UserRoleAssignment
+from app.models import AgentCommission, AgentOrg, AgentOrgMember, AgentStudent, Country, Notification, OverseasApplication, StudentDocument, University, User, UserRoleAssignment
 from tests.agn001_helpers import client_for, login, mk_active_org, mk_user
 
 
@@ -139,6 +139,25 @@ async def test_two_masters_linking_one_student_at_once_link_it_once(world, db_se
         results = await asyncio.gather(c1.post("/api/v1/workflows/overseas/agent/students", json=body), c2.post("/api/v1/workflows/overseas/agent/students", json=body))
     assert sorted(r.status_code for r in results) == [201, 409]
     assert await db_session.scalar(select(func.count()).select_from(AgentStudent).where(AgentStudent.student_id == student.id)) == 1
+
+
+@pytest.mark.asyncio
+async def test_commission_notifications_reach_every_active_master_and_no_one_else(client, world, db_session):  # AC10
+    a, b = world["a"], world["b"]
+    second = await _second_master(db_session, a)
+    deactivated = await _second_master(db_session, a)
+    member = await db_session.scalar(select(AgentOrgMember).where(AgentOrgMember.user_id == deactivated.id))
+    member.status = "deactivated"
+    # A fresh enrolled application with no commission yet (an application holds at most one commission).
+    fresh = OverseasApplication(student_id=a["student"].id, university_id=(await _university(db_session)).id, agent_id=a["master"].id, intake="Jan 2028", status="enrolled")
+    db_session.add(fresh)
+    await db_session.commit()
+    admin = await mk_user(db_session, role="overseas_admin")
+    await login(client, admin.email)
+    response = await client.post("/api/v1/workflows/overseas/agent/commissions", json={"agent_id": str(a["master"].id), "application_id": str(fresh.id), "amount": 500})
+    assert response.status_code == 201
+    recipients = set((await db_session.scalars(select(Notification.user_id).where(Notification.title == "Commission eligible", Notification.user_id.in_([a["master"].id, second.id, deactivated.id, b["master"].id])))).all())
+    assert recipients == {a["master"].id, second.id}
 
 
 @pytest.mark.asyncio

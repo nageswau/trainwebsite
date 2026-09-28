@@ -141,3 +141,13 @@ def org_member_ids(user: User) -> Select:
 
 async def member_user_ids(db: AsyncSession, user: User) -> set:
     return set((await db.scalars(org_member_ids(user))).all())
+
+
+async def notification_recipients(db: AsyncSession, agent: User) -> list[User]:
+    """D12: every active Master of the agent's organisation; the agent alone when it has no membership."""
+    org_id = await db.scalar(select(AgentOrgMember.org_id).where(AgentOrgMember.user_id == agent.id))
+    if org_id is None:
+        return [agent]
+    return list(
+        (await db.scalars(select(User).join(AgentOrgMember, AgentOrgMember.user_id == User.id).where(AgentOrgMember.org_id == org_id, AgentOrgMember.status == "active").order_by(AgentOrgMember.seq))).all()
+    )
