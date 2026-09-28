@@ -14,6 +14,9 @@ async function signIn(page: Page, email: string, password: string, landing: stri
 async function adminAct(page: Page, agency: string, button: string) {
   await signIn(page, "overseasadmin@edusphere.local", "Demo@123", "/overseas/admin/dashboard");
   await page.goto("/overseas/admin/agents");
+  // The panel shows one status tab at a time (Pending first); open the tab the organisation is on.
+  const tabs: Record<string, string> = { Suspend: "Approved", Reinstate: "Suspended" };
+  if (tabs[button]) await page.getByRole("button", { name: tabs[button], exact: true }).click();
   const card = page.locator(".card", { hasText: agency });
   await card.getByRole("button", { name: button }).click();
   if (button === "Suspend") await card.getByRole("button", { name: "Confirm suspend" }).click();

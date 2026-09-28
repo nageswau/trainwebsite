@@ -69,6 +69,16 @@ describe("AgentTeamPanel (AGN-001)", () => {
     expect(await screen.findByText("This agency already has 3 active Masters")).toBeInTheDocument();
   });
 
+  it("shows the invite throttle message", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res(team([me]))).mockResolvedValueOnce(res({ detail: "This agency has sent 10 invites in the last 24 hours. Try again later." }, 429)));
+    render(<AgentTeamPanel />);
+    await screen.findByText("ABC-M001");
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "X" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "x@example.local" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send invite" }));
+    expect(await screen.findByText("This agency has sent 10 invites in the last 24 hours. Try again later.")).toBeInTheDocument();
+  });
+
   it("confirms before deactivating, ignores repeat clicks, and shows a race 422", async () => {
     let release!: (r: Response) => void;
     const mock = vi.fn().mockResolvedValueOnce(res(team([me, other]))).mockReturnValueOnce(new Promise<Response>((r) => { release = r; }));
