@@ -30,6 +30,20 @@ export default function AgentApprovalPanel() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string } | null>(null);
   const inFlight = useRef<Set<string>>(new Set());
+  // Keyboard support: Cancel returns focus to the Suspend button that opened the confirmation.
+  const returnFocusTo = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (confirming === null && returnFocusTo.current) {
+      document.getElementById(returnFocusTo.current)?.focus();
+      returnFocusTo.current = null;
+    }
+  }, [confirming]);
+
+  function cancelConfirm(orgId: string) {
+    returnFocusTo.current = `agent-org-suspend-${orgId}`;
+    setConfirming(null);
+  }
 
   const load = useCallback(() => {
     setLoadFailed(false);
@@ -96,7 +110,7 @@ export default function AgentApprovalPanel() {
                 {rows.map((org) => (
                   <div className="card" key={org.id}>
                     <span className="badge">{group.label}</span>
-                    <h4 style={{ marginTop: 10, overflowWrap: "anywhere" }}>{org.name} <span className="muted">({org.prefix})</span></h4>
+                    <h5 style={{ marginTop: 10, fontSize: "1rem", overflowWrap: "anywhere" }}>{org.name} <span className="muted">({org.prefix})</span></h5>
                     <ul style={{ fontSize: 13, paddingLeft: 18, overflowWrap: "anywhere" }}>
                       {org.masters.map((m) => (
                         <li key={m.id}>
@@ -107,15 +121,16 @@ export default function AgentApprovalPanel() {
                     {confirming === org.id ? (
                       <div role="group" aria-label="Confirm suspension">
                         <p style={{ fontSize: 13 }}>Suspend {org.name}? Every Master loses access on their next request.</p>
-                        <button className="btn small" disabled={busyId === org.id} onClick={() => act(org, "suspend")} style={{ marginRight: 8 }}>
+                        <button className="btn small" autoFocus disabled={busyId === org.id} onClick={() => act(org, "suspend")} style={{ marginRight: 8 }}>
                           {busyId === org.id ? "Working…" : "Confirm suspend"}
                         </button>
-                        <button className="btn secondary small" disabled={busyId === org.id} onClick={() => setConfirming(null)}>Cancel</button>
+                        <button className="btn secondary small" disabled={busyId === org.id} onClick={() => cancelConfirm(org.id)}>Cancel</button>
                       </div>
                     ) : (
                       group.actions.map((action, i) => (
                         <button
                           key={action}
+                          id={action === "suspend" ? `agent-org-suspend-${org.id}` : undefined}
                           className={i === 0 ? "btn small" : "btn secondary small"}
                           disabled={busyId === org.id}
                           onClick={() => (action === "suspend" ? setConfirming(org.id) : act(org, action))}

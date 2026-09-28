@@ -56,6 +56,22 @@ describe("AgentApprovalPanel (AGN-001)", () => {
     expect(await screen.findByRole("button", { name: "Reinstate" })).toBeInTheDocument();
   });
 
+  it("moves focus into the suspend confirmation and back on Cancel (keyboard support)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok([org("a", "active")])));
+    render(<AgentApprovalPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Confirm suspend" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Suspend" }));
+  });
+
+  it("titles each organisation card one level below its group heading", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok([org("p", "pending", "Kappa Overseas")])));
+    render(<AgentApprovalPanel />);
+    expect(await screen.findByRole("heading", { level: 4, name: "Pending" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 5, name: /Kappa Overseas/ })).toBeInTheDocument();
+  });
+
   it("shows a server error on the card", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(ok([org("p", "pending")])).mockResolvedValueOnce(new Response(JSON.stringify({ detail: "Cannot approve an organisation that is active" }), { status: 409 })));
     render(<AgentApprovalPanel />);

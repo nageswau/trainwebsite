@@ -82,6 +82,15 @@ describe("AgentTeamPanel (AGN-001)", () => {
     expect(await screen.findByText("An agency must keep at least one active Master")).toBeInTheDocument();
   });
 
+  it("moves focus into the deactivate confirmation and back on Cancel (keyboard support)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res(team([me, other]))));
+    render(<AgentTeamPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Deactivate Ravi Iyer" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Confirm deactivate" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Deactivate Ravi Iyer" }));
+  });
+
   it("sends a Master who deactivated themselves to the login page", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res(team([me, other]))).mockResolvedValueOnce(res({ member: { ...me, status: "deactivated" } })));
     render(<AgentTeamPanel />);

@@ -27,6 +27,20 @@ export default function AgentTeamPanel() {
   const [rowMessage, setRowMessage] = useState<{ id: string; text: string } | null>(null);
   const inFlight = useRef<Set<string>>(new Set());
   const inviteInFlight = useRef(false);
+  // Keyboard support: Cancel returns focus to the Deactivate button that opened the confirmation.
+  const returnFocusTo = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (confirming === null && returnFocusTo.current) {
+      document.getElementById(returnFocusTo.current)?.focus();
+      returnFocusTo.current = null;
+    }
+  }, [confirming]);
+
+  function cancelConfirm(memberId: string) {
+    returnFocusTo.current = `agent-team-deactivate-${memberId}`;
+    setConfirming(null);
+  }
 
   const load = useCallback(() => {
     setLoadFailed(false);
@@ -129,13 +143,13 @@ export default function AgentTeamPanel() {
               confirming === m.id ? (
                 <div role="group" aria-label={`Confirm deactivating ${m.full_name}`} style={{ marginTop: 8 }}>
                   <p style={{ fontSize: 13 }}>{m.is_you ? "Deactivate your own account? You will be signed out." : `Deactivate ${m.full_name}? They will no longer be able to sign in.`}</p>
-                  <button className="btn small" disabled={busyId === m.id} onClick={() => deactivate(m)} style={{ marginRight: 8 }}>
+                  <button className="btn small" autoFocus disabled={busyId === m.id} onClick={() => deactivate(m)} style={{ marginRight: 8 }}>
                     {busyId === m.id ? "Working…" : "Confirm deactivate"}
                   </button>
-                  <button className="btn secondary small" disabled={busyId === m.id} onClick={() => setConfirming(null)}>Cancel</button>
+                  <button className="btn secondary small" disabled={busyId === m.id} onClick={() => cancelConfirm(m.id)}>Cancel</button>
                 </div>
               ) : (
-                <button className="btn secondary small" aria-label={`Deactivate ${m.full_name}${m.is_you ? " (you)" : ""}`} onClick={() => setConfirming(m.id)} style={{ marginLeft: 8 }}>
+                <button id={`agent-team-deactivate-${m.id}`} className="btn secondary small" aria-label={`Deactivate ${m.full_name}${m.is_you ? " (you)" : ""}`} onClick={() => setConfirming(m.id)} style={{ marginLeft: 8 }}>
                   Deactivate
                 </button>
               )
