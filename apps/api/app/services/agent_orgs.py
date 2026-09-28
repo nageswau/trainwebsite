@@ -5,13 +5,14 @@ docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md.
 """
 
 import re
+from datetime import UTC, datetime
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AgentOrg, AgentOrgMember, User, UserRoleAssignment
+from app.models import AgentOrg, AgentOrgMember, AuditLog, User, UserRoleAssignment
 
 MASTER_LIMIT = 3
 ORG_STATUSES = ("pending", "active", "rejected", "suspended")
@@ -85,3 +86,45 @@ async def ensure_agent_org(db: AsyncSession, user: User, *, agency_name: str | N
                 if winner:
                     return winner
     raise HTTPException(409, "Please try again")
+
+
+TRANSITIONS: dict[str, tuple[frozenset[str], str]] = {
+    "approve": (frozenset({"pending", "rejected"}), "active"),
+    "reject": (frozenset({"pending"}), "rejected"),
+    "suspend": (frozenset({"active"}), "suspended"),
+    "reinstate": (frozenset({"suspended"}), "active"),
+}
+
+
+async def lock_org(db: AsyncSession, org_id) -> AgentOrg:
+    """Row lock on the organisation; serialises every status change and member change for it."""
+    org = await db.scalar(select(AgentOrg).where(AgentOrg.id == org_id).with_for_update().execution_options(populate_existing=True))
+    if not org:
+        raise HTTPException(404, "Agent organisation not found")
+    return org
+
+
+async def set_org_status(db: AsyncSession, org: AgentOrg, status: str, actor: User, *, write_through: bool) -> None:
+    """No commit. E11: approve/reject also set the Master assignments' approval_status; suspend/reinstate do not."""
+    now = datetime.now(UTC)
+    org.status = status
+    org.status_changed_by_user_id = actor.id
+    org.status_changed_at = now
+    if write_through:
+        await db.execute(
+            update(UserRoleAssignment)
+            .where(UserRoleAssignment.role == "agent", UserRoleAssignment.division == "overseas", UserRoleAssignment.user_id.in_(select(AgentOrgMember.user_id).where(AgentOrgMember.org_id == org.id)))
+            .values(approval_status="approved" if status == "active" else "rejected", approved_by_user_id=actor.id, approved_at=now)
+        )
+
+
+async def transition_org(db: AsyncSession, org_id, action: str, actor: User) -> AgentOrg:
+    """No commit. D6/D7: validate the move under the row lock, change status, audit in the same transaction."""
+    org = await lock_org(db, org_id)
+    allowed, target = TRANSITIONS[action]
+    if org.status not in allowed:
+        raise HTTPException(409, f"Cannot {action} an organisation that is {org.status}")
+    previous = org.status
+    await set_org_status(db, org, target, actor, write_through=action in {"approve", "reject"})
+    db.add(AuditLog(user_id=actor.id, action=f"agent_org.{action}", entity_type="agent_org", entity_id=str(org.id), outcome=target, metadata_json={"from": previous}))
+    return org

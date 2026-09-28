@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from datetime import UTC, date, datetime
+from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,6 +17,8 @@ from app.core.identifiers import unique_student_code, uuid_reference
 from app.models import (
     AcademicYear,
     AgentCommission,
+    AgentOrg,
+    AgentOrgMember,
     AuditLog,
     Batch,
     Company,
@@ -38,7 +41,7 @@ from app.models import (
     UserRoleAssignment,
 )
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
-from app.services.agent_orgs import ensure_agent_org
+from app.services.agent_orgs import ORG_STATUSES, ensure_agent_org, lock_org, set_org_status, transition_org
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.provisioning import flush_unique_email as _flush_unique_email
 from app.services.storage import storage
@@ -1011,10 +1014,13 @@ async def _pending_agent_assignment(agent_id: UUID, user: User, db: AsyncSession
 
 @agents_router.post("/agents/{agent_id}/approve")
 async def approve_agent(agent_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _, assignment = await _pending_agent_assignment(agent_id, user, db)
+    agent, assignment = await _pending_agent_assignment(agent_id, user, db)
     assignment.approval_status = "approved"
     assignment.approved_by_user_id = user.id
     assignment.approved_at = datetime.now(UTC)
+    # AGN-001 (E4): same any-state behaviour and audit row as before; the agent's organisation follows.
+    member = await ensure_agent_org(db, agent)
+    await set_org_status(db, await lock_org(db, member.org_id), "active", user, write_through=True)
     # SEC-001: every Agent-approval action writes an audit record -- fail closed, not
     # open, if this write itself somehow failed (it shares the same transaction as the
     # approval below, so a rollback here rolls back the approval too, never the reverse).
@@ -1025,10 +1031,12 @@ async def approve_agent(agent_id: UUID, user: User = Depends(get_current_user), 
 
 @agents_router.post("/agents/{agent_id}/reject")
 async def reject_agent(agent_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _, assignment = await _pending_agent_assignment(agent_id, user, db)
+    agent, assignment = await _pending_agent_assignment(agent_id, user, db)
     assignment.approval_status = "rejected"
     assignment.approved_by_user_id = user.id
     assignment.approved_at = datetime.now(UTC)
+    member = await ensure_agent_org(db, agent)  # AGN-001 (E4)
+    await set_org_status(db, await lock_org(db, member.org_id), "rejected", user, write_through=True)
     db.add(AuditLog(user_id=user.id, action="agent.reject", entity_type="user_role_assignment", entity_id=str(assignment.id), outcome="rejected"))
     await db.commit()
     return {"id": assignment.id, "approval_status": assignment.approval_status}
@@ -1043,6 +1051,38 @@ async def list_agents(status: str | None = None, user: User = Depends(get_curren
         stmt = stmt.where(UserRoleAssignment.approval_status == status)
     rows = (await db.execute(stmt.order_by(User.created_at.desc()))).all()
     return [{"id": agent.id, "name": agent.full_name, "email": agent.email, "approval_status": assignment.approval_status} for agent, assignment in rows]
+
+
+# AGN-001 (DEC-SCOPE-034 D6/D7): Overseas Admin acts on the agent ORGANISATION.
+def _require_overseas_admin(user: User) -> None:
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+
+
+@agents_router.get("/agent-orgs")
+async def list_agent_orgs(status: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_overseas_admin(user)
+    if status is not None and status not in ORG_STATUSES:
+        raise HTTPException(422, "Unknown organisation status")
+    stmt = select(AgentOrg).order_by(AgentOrg.created_at.desc())
+    if status:
+        stmt = stmt.where(AgentOrg.status == status)
+    orgs = (await db.scalars(stmt)).all()
+    masters: dict = {}
+    if orgs:
+        rows = (await db.execute(select(AgentOrgMember, User).join(User, User.id == AgentOrgMember.user_id).where(AgentOrgMember.org_id.in_([o.id for o in orgs])).order_by(AgentOrgMember.seq))).all()
+        for member, member_user in rows:
+            masters.setdefault(member.org_id, []).append({"id": member.id, "code": member.code, "full_name": member_user.full_name, "email": member_user.email, "status": member.status})
+    return [{"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, [])} for o in orgs]
+
+
+@agents_router.post("/agent-orgs/{org_id}/{action}")
+async def act_on_agent_org(org_id: UUID, action: Literal["approve", "reject", "suspend", "reinstate"], user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_overseas_admin(user)
+    org = await transition_org(db, org_id, action, user)
+    result = {"id": org.id, "status": org.status}
+    await db.commit()
+    return result
 
 
 @agents_router.post("/commissions/{commission_id}/approve-payout")
