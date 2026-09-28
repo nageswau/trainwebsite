@@ -69,7 +69,9 @@ describe("Student360Panels", () => {
       { id: "b", assessment_type: "Interest Inventory", status: "assigned", created_at: "2026-09-02T00:00:00Z" },
     ] } };
     render(<>{renderPanel("psychometric_assessment", tab, view())}</>);
-    expect(screen.getByRole("table", { name: "Psychometric assessments" })).toBeTruthy();
+    const table = screen.getByRole("table", { name: "Psychometric assessments" });
+    // QA27-06: the column is the assignment day; "Date" read as the new Test date. Same label as the parent page.
+    expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Assessment", "Status", "Assigned on"]);
     expect(screen.getByText("Aptitude Test — results", { selector: "summary" })).toBeTruthy();
     expect(screen.getByText("Logical reasoning")).toBeTruthy();
     expect(screen.getByText("Interest Inventory: no results recorded yet.")).toBeTruthy();

@@ -116,7 +116,7 @@ function body(key: TabKey, d: Row, view: Student360): ReactNode {
     case "psychometric_assessment":
       return (
         <Card>
-          <Table caption="Psychometric assessments" head={["Assessment", "Status", "Date"]} rows={d.assessments.map((a: Row) => [a.assessment_type, a.status ? <StatusChip status={a.status} /> : null, formatDate(a.created_at, false, SCHOOL_TIME_ZONE)])} />
+          <Table caption="Psychometric assessments" head={["Assessment", "Status", "Assigned on"]} rows={d.assessments.map((a: Row) => [a.assessment_type, a.status ? <StatusChip status={a.status} /> : null, formatDate(a.created_at, false, SCHOOL_TIME_ZONE)])} />
           <PsychometricResultsList assessments={d.assessments} />
         </Card>
       );
