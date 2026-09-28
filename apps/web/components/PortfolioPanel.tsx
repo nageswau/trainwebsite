@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import CertificationDetails from "@/components/CertificationDetails";
 import PortfolioEntryForm from "@/components/PortfolioEntryForm";
@@ -109,9 +109,9 @@ function EntryList({ section, entries, studentId, canEdit, activeForm, confirmin
 // changes. Same interaction shape as PortfolioEntryForm.tsx (busy/inFlight guard, raw fetch(), no
 // optimistic UI, refocus on error) but small enough (one textarea, one PATCH) that a full second form
 // component would be overkill -- inlined here instead (Task 1).
-function PersonalStatementSection({ studentId, statement, canEdit, disabled, onEditingChange, onDone }: {
+function PersonalStatementSection({ studentId, statement, canEdit, disabled, onEditingChange, onDone, requestFocus }: {
   studentId: string; statement: string | null; canEdit: boolean; disabled: boolean;
-  onEditingChange: (open: boolean) => void; onDone: () => void;
+  onEditingChange: (open: boolean) => void; onDone: () => void; requestFocus: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(statement ?? "");
@@ -130,7 +130,7 @@ function PersonalStatementSection({ studentId, statement, canEdit, disabled, onE
     setAlert(null);
     setEditing(false);
     onEditingChange(false);
-    refocus("pf-statement-edit-btn"); // QA24-07
+    requestFocus("pf-statement-edit-btn"); // QA24-07
   }
 
   async function save() {
@@ -162,7 +162,7 @@ function PersonalStatementSection({ studentId, statement, canEdit, disabled, onE
     setEditing(false);
     onEditingChange(false);
     onDone();
-    refocus("pf-statement-edit-btn"); // QA24-07
+    requestFocus("pf-statement-edit-btn"); // QA24-07
   }
 
   return (
@@ -197,7 +197,16 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   const [statementEditing, setStatementEditing] = useState(false);
   // QA24-08: one polite confirmation line for the whole card; replaced by the next success, cleared when anything new starts.
   const [status, setStatus] = useState<string | null>(null);
+  // QA24-07: the control to focus once the action's re-render has committed. A next-frame focus (refocus) raced React here --
+  // the save's state updates land after an await, so the frame could fire before the Add/Edit button was back in the DOM.
+  const [focusTarget, setFocusTarget] = useState<string | null>(null);
   const deleteInFlight = useRef(false);
+
+  useEffect(() => {
+    if (!focusTarget) return;
+    document.getElementById(focusTarget)?.focus();
+    setFocusTarget(null);
+  }, [focusTarget]);
 
   // Code review findings: (1) confirmingId used to survive any other panel action, so arming Delete on
   // one entry then doing something else and coming back to Delete it again fired immediately with no
@@ -210,7 +219,7 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
   // QA24-07: when a form closes (Cancel or a confirmed Save), keyboard focus goes back to the button that opened it --
   // the section's Add button, or the entry's Edit button -- instead of dropping to the page top.
   function closeForm() {
-    if (activeForm) refocus(activeForm.kind === "add" ? `pf-add-btn-${activeForm.section}` : `pf-edit-btn-${activeForm.entry.id}`);
+    if (activeForm) setFocusTarget(activeForm.kind === "add" ? `pf-add-btn-${activeForm.section}` : `pf-edit-btn-${activeForm.entry.id}`);
     setActiveForm(null);
     setConfirmingId(null);
   }
@@ -264,7 +273,7 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
     }
     setStatus(confirmation(entry.section, "deleted"));
     router.refresh();
-    refocus(`pf-add-btn-${entry.section}`); // QA24-07: the entry is gone; its section's Add button is the nearest control
+    setFocusTarget(`pf-add-btn-${entry.section}`); // QA24-07: the entry is gone; its section's Add button is the nearest control
   }
 
   function openAdd(section: string) {
@@ -336,7 +345,7 @@ export default function PortfolioPanel({ data }: { data: PortfolioData }) {
       <PersonalStatementSection
         studentId={data.student.id} statement={data.personal_statement} canEdit={data.can_edit}
         disabled={activeForm !== null} onEditingChange={handleStatementEditingChange}
-        onDone={onStatementSaved}
+        onDone={onStatementSaved} requestFocus={setFocusTarget}
       />
     </div>
   );

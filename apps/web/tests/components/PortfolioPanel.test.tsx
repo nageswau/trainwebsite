@@ -191,6 +191,23 @@ describe("PortfolioPanel", () => {
       await waitFor(() => expect(screen.getByRole("button", { name: "Add award" })).toHaveFocus());
     });
 
+    // QA24-07 browser retest: the focus call raced React -- a next-frame focus could run before the Add/Edit button was rendered
+    // back (the save's state updates happen after an await), leaving focus on <body>. Forcing that frame to run immediately
+    // reproduces the race deterministically: focus must be applied after React commits, not on a timer.
+    it("keeps the focus return even when the next frame runs before React re-renders", async () => {
+      vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => { cb(0); return 0; });
+      respond(201);
+      render(<PortfolioPanel data={WITH_ENTRY} />);
+      fireEvent.click(screen.getByRole("button", { name: "Add award" }));
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "New award" } });
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Add award" })).toHaveFocus());
+      fireEvent.click(screen.getByRole("button", { name: "Edit Regional Award" }));
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit Regional Award" })).toHaveFocus());
+      vi.unstubAllGlobals();
+    });
+
     it("returns to the statement button after cancelling or saving the personal statement", async () => {
       respond(200, { personal_statement: "Hi", updated_at: "2026-01-01" });
       render(<PortfolioPanel data={{ ...BASE, can_edit: true, personal_statement: "Hi" }} />);
