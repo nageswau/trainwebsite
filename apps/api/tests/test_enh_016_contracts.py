@@ -92,3 +92,30 @@ async def test_service_usage_keeps_schools_apart(db_session):
     assert usage[b["school"].id]["digital_portfolio_creation"] == 0
     assert "scholarship_assistance" not in usage[a["school"].id]
     assert await service_usage(db_session, []) == {}
+
+
+@pytest.mark.asyncio
+async def test_dashboard_tracks_portfolios_and_skills_and_keeps_every_key(client, db_session):  # AC12, AC13
+    from app.models import PortfolioProfile
+
+    ctx = await make_school(db_session)
+    await _seed_every_source(db_session, ctx)  # s2 has a portfolio entry and a soft-skills enrolment
+    only_profile = await make_student(db_session, ctx, grade_level=8, grade_or_class="Grade 8")
+    db_session.add(PortfolioProfile(school_student_id=only_profile.id, personal_statement="   "))
+    await db_session.commit()
+    await login(client, ctx["school_principal"])
+
+    response = await client.get("/api/v1/school/dashboard")
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    kpis = {k["key"]: k for k in data["school_crm_kpis"]}
+    assert kpis["digital_portfolios_created"] == {"key": "digital_portfolios_created", "label": "Digital Portfolios Created", "value": 1, "tracked": True, "note": None}
+    assert kpis["internships"]["tracked"] is False
+    assert data["skills_training"] == {"soft_skills": 1, "digital_skills": 0, "total_students": 3}
+    assert {c["key"] for c in data["untracked_charts"]} == {"internships", "student_participation_by_program"}
+    for key in ("student_count", "students_with_teacher", "teacher_count", "parent_count", "principal_count", "pending_invite_count", "grade_breakdown",
+                "career_guidance", "psychometric", "results_published", "activities", "attendance", "upcoming_activities", "completion",
+                "global_education", "application_pipeline", "visa_status"):
+        assert key in data, key
+    assert data["teacher_count"] == 1 and data["principal_count"] == 1 and data["parent_count"] == 1

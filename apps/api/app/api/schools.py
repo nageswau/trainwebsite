@@ -84,12 +84,11 @@ INVITABLE_ROLES = {"school_principal", "school_teacher", "school_parent"}
 INVITE_EXPIRY_DAYS = 7
 OVERSEAS_APPLICATION_STAGES = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"]
 OFFER_ONWARD_STATUSES = {"offer", "offer_received", "accepted", "visa_documentation", "status_tracking", "enrolled"}
+# ENH-016 D8 (DEC-SCOPE-031): digital portfolios (ENH-012) and skills training (ENH-011) are tracked now.
 UNTRACKED_SCHOOL_DASHBOARD_KPIS = {
-    "digital_portfolios_created": "No confirmed School digital-portfolio model exists yet.",
     "internships": "No confirmed School internship model exists yet.",
 }
 UNTRACKED_SCHOOL_DASHBOARD_CHARTS = [
-    {"key": "skills_training", "label": "Skills training", "note": "No confirmed School soft-skills training model exists yet."},
     {"key": "internships", "label": "Internships", "note": "No confirmed School internship model exists yet."},
     {"key": "student_participation_by_program", "label": "Student participation by program", "note": "No confirmed School program-participation model exists yet."},
 ]
@@ -351,6 +350,19 @@ def _grade_level_from_label(label: str | None) -> str | None:
     return match.group(1) or match.group(2)
 
 
+async def _school_account_counts(db: AsyncSession, school_id: UUID) -> dict[str, int]:
+    """Teacher/parent/principal accounts of one school -- extracted unchanged from `_school_dashboard_payload` so ENH-016's
+    Part B §14 headcounts use exactly the same rule (ENH-008: parent membership via links)."""
+    accounts = (await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent"))))).all()
+    parent_ids_at_school = await _parent_ids_at_school(db, school_id)
+    accounts = [a for a in accounts if _account_belongs_to_school(a, school_id=school_id, parent_ids_at_school=parent_ids_at_school)]
+    return {
+        "teachers": sum(1 for a in accounts if a.role == "school_teacher"),
+        "parents": sum(1 for a in accounts if a.role == "school_parent"),
+        "principals": sum(1 for a in accounts if a.role == "school_principal"),
+    }
+
+
 async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     """Complete School CRM dashboard aggregation for Coordinator/Principal views.
 
@@ -373,12 +385,8 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     grade_breakdown = [{"grade": g, "count": c} for g, c in sorted(grade_counts.items())]
     students_with_teacher = sum(1 for s in students if s.assigned_teacher_user_id)
 
-    school_accounts = (await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent"))))).all()
-    parent_ids_at_school = await _parent_ids_at_school(db, school_id)
-    school_accounts = [a for a in school_accounts if _account_belongs_to_school(a, school_id=school_id, parent_ids_at_school=parent_ids_at_school)]
-    teacher_count = sum(1 for a in school_accounts if a.role == "school_teacher")
-    parent_count = sum(1 for a in school_accounts if a.role == "school_parent")
-    principal_count = sum(1 for a in school_accounts if a.role == "school_principal")
+    account_counts = await _school_account_counts(db, school_id)
+    teacher_count, parent_count, principal_count = account_counts["teachers"], account_counts["parents"], account_counts["principals"]
     pending_invite_count = len((await db.scalars(select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school_id, SchoolAccountInvite.status == "pending"))).all())
 
     career_rows: list[SchoolCareerRecord] = []
@@ -409,6 +417,11 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     ielts_students = {r.school_student_id for r in test_prep_rows if r.test_type == "ielts"}
     sat_students = {r.school_student_id for r in test_prep_rows if r.test_type == "sat"}
     language_students = {r.school_student_id for r in language_rows}
+    from app.api.school_analytics import portfolio_started_ids, skill_statuses, students_in  # noqa: PLC0415 -- school_analytics imports this module
+
+    school_scope = students_in([school_id])
+    portfolio_students = await portfolio_started_ids(db, school_scope)  # ENH-016 D11
+    skill_students = await skill_statuses(db, school_scope)  # ENH-016 D8: ENH-011 enrolments, withdrawn excluded
     global_students = {a.school_student_id for a in applications if a.school_student_id}
     shortlisted_students = {a.school_student_id for a in applications if a.school_student_id and _stage_at_or_after(a.status, "university_selection")}
     admitted_students = {a.school_student_id for a in applications if a.school_student_id and a.status == "enrolled"}
@@ -479,7 +492,7 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
             _school_dashboard_kpi("ielts_training", "IELTS Training", len(ielts_students)),
             _school_dashboard_kpi("sat_preparation", "SAT Preparation", len(sat_students)),
             _school_dashboard_kpi("foreign_language_students", "Foreign Language Students", len(language_students)),
-            _school_dashboard_kpi("digital_portfolios_created", "Digital Portfolios Created", None, tracked=False, note=UNTRACKED_SCHOOL_DASHBOARD_KPIS["digital_portfolios_created"]),
+            _school_dashboard_kpi("digital_portfolios_created", "Digital Portfolios Created", len(portfolio_students)),
             _school_dashboard_kpi("university_shortlisting", "University Shortlisting", len(shortlisted_students)),
             _school_dashboard_kpi("applications_in_progress", "Applications in Progress", len(applications_in_progress)),
             _school_dashboard_kpi("offers_received", "Offers Received", len(offers)),
@@ -505,6 +518,7 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
         },
         "application_pipeline": application_pipeline,
         "visa_status": visa_status,
+        "skills_training": {"soft_skills": len(skill_students["soft_skills"]), "digital_skills": len(skill_students["digital_skills"]), "total_students": total_students},
         "untracked_charts": UNTRACKED_SCHOOL_DASHBOARD_CHARTS,
     }
 
