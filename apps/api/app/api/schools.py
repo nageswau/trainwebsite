@@ -1951,13 +1951,16 @@ async def _portfolio_school_ids(db: AsyncSession, user: User) -> set:
     return set(rows)
 
 
+OUTSIDE_PORTFOLIO = "This student is at a school outside your own portfolio"
+
+
 async def _student_in_portfolio(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
     student = await db.get(SchoolStudent, student_id)
     if not student:
         raise HTTPException(404, "Student not found")
     portfolio = await _portfolio_school_ids(db, user)
     if student.school_id not in portfolio:
-        raise HTTPException(403, "This student is at a school outside your own portfolio")
+        raise HTTPException(403, OUTSIDE_PORTFOLIO)
     return student
 
 
@@ -2044,9 +2047,6 @@ async def create_career_record(payload: dict, user: User = Depends(get_current_u
     return (await _career_records_out(db, [record]))[0]
 
 
-OUTSIDE_COUNSELOR_PORTFOLIO = "This student is at a school outside your own portfolio"  # _student_in_portfolio's own wording
-
-
 def _audit_value(value):
     return value.isoformat() if hasattr(value, "isoformat") else value
 
@@ -2063,7 +2063,7 @@ async def update_career_record(record_id: UUID, payload: dict, user: User = Depe
         raise HTTPException(404, "Career record not found")
     student = await db.scalar(select(SchoolStudent).where(SchoolStudent.id == record.school_student_id).with_for_update().execution_options(populate_existing=True))
     if student is None or student.school_id not in await _portfolio_school_ids(db, user):
-        raise HTTPException(403, OUTSIDE_COUNSELOR_PORTFOLIO)
+        raise HTTPException(403, OUTSIDE_PORTFOLIO)
     await require_school_entitlement(db, user, student.school_id, "individual_counselling", grandfathered_since=record.created_at)
     fields = _master_fields_or_422(CareerRecordUpdate, payload)
     sent = set(fields.model_fields_set)

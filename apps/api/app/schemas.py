@@ -736,7 +736,6 @@ def validation_message(exc: ValidationError) -> str:
 
 # --- ENH-026: Career Counselling record (docs/superpowers/specs/2026-09-27-enh-021-026-internship-and-counselling-record-design.md §3.1) ---
 
-CAREER_STATUSES: tuple[str, ...] = ("not_started", "scheduled", "completed", "follow_up_required")
 CareerStatus = Literal["not_started", "scheduled", "completed", "follow_up_required"]
 CAREER_STATUS_LABEL: dict[str | None, str] = {
     "not_started": "Not Started", "scheduled": "Scheduled", "completed": "Completed", "follow_up_required": "Follow-up Required", None: "No status",
@@ -1039,7 +1038,6 @@ def date_range_is_invalid(date_from: date | None, date_to: date | None) -> bool:
 
 # --- ENH-021: internship tracking on the portfolio `internship` section (spec §3.2 I1-I4) ---
 INTERNSHIP_FIELD_KEYS: tuple[str, ...] = ("mentor_name", "mentor_designation", "attendance_percent", "completion_status", "feedback", "skills_acquired")
-COMPLETION_STATUSES: tuple[str, ...] = ("not_started", "in_progress", "completed", "discontinued")
 CompletionStatus = Literal["not_started", "in_progress", "completed", "discontinued"]
 INTERNSHIP_ONLY_ERROR = "internship fields are only accepted for the internship section"
 INTERNSHIP_COMPANY_ERROR = "Company is required for an internship"

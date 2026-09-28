@@ -14,7 +14,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.api.portfolio import portfolio_payload
-from app.api.schools import SCHOOL_ROLES, _grade_history_rows, _load_student_for_reader, _overview_payload, _portfolio_school_ids, _student_in_portfolio, internship_progress, require_school_entitlement
+from app.api.schools import (
+    OUTSIDE_PORTFOLIO,
+    SCHOOL_ROLES,
+    _grade_history_rows,
+    _load_student_for_reader,
+    _overview_payload,
+    _portfolio_school_ids,
+    _student_in_portfolio,
+    internship_progress,
+    require_school_entitlement,
+)
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import AuditLog, SchoolStudent, User
@@ -134,9 +144,6 @@ async def student_360_view(student_id: UUID, user: User = Depends(get_current_us
     Student360Out.model_validate(body)
     logger.info("student_360_view", extra={"extra_fields": {"actor_id": str(user.id), "role": user.role, "student_id": str(student.id)}})
     return body
-
-
-OUTSIDE_PORTFOLIO = "This student is at a school outside your own portfolio"  # _student_in_portfolio's own wording
 
 
 @router.patch("/students/{student_id}/career-goal", response_model=CareerGoalOut)
