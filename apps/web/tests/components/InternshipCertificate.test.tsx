@@ -2,9 +2,13 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import InternshipCertificate from "@/components/InternshipCertificate";
 
+const refresh = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  refresh.mockClear();
 });
 
 function pick(file: File) {
@@ -27,6 +31,27 @@ describe("InternshipCertificate (ENH-021)", () => {
     pick(new File(["%PDF-"], "c.pdf", { type: "application/pdf" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Certificate saved.");
     expect(screen.getByRole("link", { name: "Download certificate (PDF)" })).toHaveAttribute("href", "/api/v1/school/students/s/portfolio/entries/e/certificate");
+  });
+
+  // QA-01 (browser QA 2026-09-28): without a refresh the page's portfolio data still says "no certificate", so the card showed
+  // "Upload certificate" again after Edit -> Cancel remounted it.
+  it("refreshes the page data after a successful upload and after a removal", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ has_certificate: true, content_type: "application/pdf" }) }));
+    render(<InternshipCertificate studentId="s" entryId="e" hasCertificate={false} contentType={null} canEdit completed />);
+    pick(new File(["%PDF-"], "c.pdf", { type: "application/pdf" }));
+    await screen.findByRole("status");
+    expect(refresh).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Remove certificate" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(2));
+  });
+
+  it("does not refresh when the upload fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 415, json: async () => ({ detail: "nope" }) }));
+    render(<InternshipCertificate studentId="s" entryId="e" hasCertificate={false} contentType={null} canEdit completed />);
+    pick(new File(["%PDF-"], "c.pdf", { type: "application/pdf" }));
+    await screen.findByRole("alert");
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("shows the server's message on 413", async () => {

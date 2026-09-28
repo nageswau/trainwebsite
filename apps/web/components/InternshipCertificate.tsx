@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import { detailMessage } from "@/lib/apiErrors";
 import { refocus } from "@/lib/focus";
 
@@ -12,6 +13,9 @@ const TYPES = ["application/pdf", "image/jpeg", "image/png"];
 export default function InternshipCertificate({ studentId, entryId, hasCertificate, contentType, canEdit, completed }: {
   studentId: string; entryId: string; hasCertificate: boolean; contentType: string | null; canEdit: boolean; completed: boolean;
 }) {
+  // QA-01: after a change the server data behind the page must be re-read (router.refresh, the portfolio's own pattern);
+  // otherwise a remount -- e.g. Edit then Cancel -- starts again from the stale `hasCertificate` prop.
+  const router = useRouter();
   const [present, setPresent] = useState(hasCertificate);
   const [kind, setKind] = useState(contentType);
   const [busy, setBusy] = useState<"upload" | "remove" | null>(null);
@@ -40,6 +44,7 @@ export default function InternshipCertificate({ studentId, entryId, hasCertifica
     setPresent(true);
     setKind(data.content_type ?? file.type);
     setMessage({ text: "Certificate saved.", failed: false });
+    router.refresh();
   }
 
   async function remove() {
@@ -51,6 +56,7 @@ export default function InternshipCertificate({ studentId, entryId, hasCertifica
     if (!response?.ok) return setMessage({ text: "Could not remove the certificate; please try again.", failed: true });
     setPresent(false);
     setMessage({ text: "Certificate removed.", failed: false });
+    router.refresh();
   }
 
   if (!present && !writable && !message) return null;
