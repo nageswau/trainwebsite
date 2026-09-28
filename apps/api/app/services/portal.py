@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.identifiers import uuid_reference
 from app.core.rbac import PERMISSIONS
-from app.services.agent_orgs import org_member_ids
 from app.models import (
     AgentCommission,
+    AgentOrgMember,
     AgentStudent,
     Agreement,
     Appointment,
@@ -38,7 +38,6 @@ from app.models import (
     PlacementProfile,
     Program,
     QuestionReply,
-    UserRoleAssignment,
     QuestionThread,
     Scholarship,
     ScholarshipApplication,
@@ -50,8 +49,10 @@ from app.models import (
     SupportTicket,
     University,
     User,
+    UserRoleAssignment,
     VisaCase,
 )
+from app.services.agent_orgs import org_member_ids
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")
@@ -706,7 +707,22 @@ async def _agent(db: AsyncSession, user: User, section: str):
                 {"label": "Applications", "value": len(applications)},
                 {"label": "Claimable commission", "value": f"INR {sum(float(c.amount) for c in commissions if c.status in {'eligible', 'estimated'}):,.0f}"},
                 {"label": "Claims", "value": sum(1 for c in commissions if c.status == "claimed")},
+                *(({"label": "Your code", "value": user.agent_membership.code},) if user.agent_membership else ()),
             ),
+        )
+    if section == "team":
+        # AGN-001: the agency's Master accounts, read-only here; AgentTeamPanel carries the actions.
+        membership = user.agent_membership
+        rows = (
+            (await db.execute(select(AgentOrgMember, User).join(User, User.id == AgentOrgMember.user_id).where(AgentOrgMember.org_id == membership.org_id).order_by(AgentOrgMember.seq))).all()
+            if membership
+            else []
+        )
+        return _payload(
+            "Team",
+            "Your agency's Master accounts (AGN-001). Up to 3 can be active at once.",
+            (("code", "Code"), ("name", "Name"), ("email", "Email"), ("status", "Status")),
+            ({"code": m.code, "name": u.full_name, "email": u.email, "status": m.status} for m, u in rows),
         )
     if section == "students":
         return _payload(

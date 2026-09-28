@@ -402,6 +402,22 @@ class AgentStudentCreate(BaseModel):
     student_id: UUID
 
 
+class AgentMasterInvite(BaseModel):
+    """AGN-001 (D9): a Master inviting another Master to their agency."""
+
+    full_name: str = Field(min_length=1, max_length=160)
+    email: str = Field(pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=320)
+    phone: str | None = Field(default=None, max_length=40)
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Full name is required")
+        return value
+
+
 class CommissionCreate(BaseModel):
     agent_id: UUID
     application_id: UUID

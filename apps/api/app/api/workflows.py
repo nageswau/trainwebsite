@@ -7,10 +7,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.api.files import _allowed
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.core.rbac import agent_denial_reason
-from app.services.agent_orgs import lock_org, member_user_ids, notification_recipients, org_member_ids
 from app.models import (
     AgentCommission,
     AgentStudent,
@@ -77,8 +78,8 @@ from app.schemas import (
     EnrollmentCreate,
     EnrollmentProgressUpdate,
     LearningResourceCreate,
-    OverseasApplicationCreate,
     OverseasApplicationAdvance,
+    OverseasApplicationCreate,
     OverseasApplicationUpdate,
     ProfileDocumentCreate,
     QuestionReplyCreate,
@@ -89,8 +90,7 @@ from app.schemas import (
     SupportTicketUpdate,
     VisaCaseCreate,
 )
-from app.api.files import _allowed
-from app.core.config import settings
+from app.services.agent_orgs import lock_org, member_user_ids, notification_recipients, org_member_ids
 from app.services.certificates import generate_certificate_pdf
 from app.services.integrations import send_notification
 from app.services.storage import storage

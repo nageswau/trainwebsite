@@ -8,11 +8,12 @@ import re
 from datetime import UTC, datetime
 
 from fastapi import HTTPException
-from sqlalchemy import Select, select, update
+from sqlalchemy import Select, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AgentOrg, AgentOrgMember, AuditLog, User, UserRoleAssignment
+from app.services.provisioning import flush_unique_email, issue_welcome_token, revoke_welcome_tokens, unusable_password_hash
 
 MASTER_LIMIT = 3
 ORG_STATUSES = ("pending", "active", "rejected", "suspended")
@@ -141,6 +142,51 @@ def org_member_ids(user: User) -> Select:
 
 async def member_user_ids(db: AsyncSession, user: User) -> set:
     return set((await db.scalars(org_member_ids(user))).all())
+
+
+async def count_active_masters(db: AsyncSession, org_id) -> int:
+    return await db.scalar(select(func.count()).select_from(AgentOrgMember).where(AgentOrgMember.org_id == org_id, AgentOrgMember.status == "active"))
+
+
+async def invite_master(db: AsyncSession, org: AgentOrg, actor: User, *, full_name: str, email: str, phone: str | None):
+    """No commit; `org` must be locked. D4/D9/E5/E6: a real agent account with an unusable password + a DEC-SCOPE-019
+    welcome token; the next code is master_seq + 1."""
+    if await count_active_masters(db, org.id) >= MASTER_LIMIT:
+        raise HTTPException(422, "This agency already has 3 active Masters")
+    email = email.lower().strip()
+    if await db.scalar(select(User.id).where(User.email == email)):
+        raise HTTPException(409, "Email already exists")
+    now = datetime.now(UTC)
+    user = User(email=email, password_hash=unusable_password_hash(), full_name=full_name, role="agent", division="overseas", phone=phone, active=True, email_verified=False, profile={"registration_source": "agent_master_invite"})
+    db.add(user)
+    await flush_unique_email(db)  # a collision rolls back (releasing the org lock) and ends the request with 409
+    db.add(UserRoleAssignment(user_id=user.id, division="overseas", role="agent", is_active=True, assigned_by_user_id=actor.id, approval_status="approved", approved_by_user_id=actor.id, approved_at=now))
+    org.master_seq += 1
+    member = AgentOrgMember(org_id=org.id, user_id=user.id, role="master", seq=org.master_seq, code=member_code(org.prefix, org.master_seq), status="active", invited_by_user_id=actor.id)
+    db.add(member)
+    await db.flush()
+    issued = await issue_welcome_token(db, user=user, issued_by=actor)
+    db.add(AuditLog(user_id=actor.id, action="agent_org.master_invite", entity_type="agent_org", entity_id=str(org.id), outcome="invited", metadata_json={"member_id": str(member.id), "code": member.code}))
+    return member, user, issued
+
+
+async def deactivate_master(db: AsyncSession, org: AgentOrg, member_id, actor: User) -> tuple[AgentOrgMember, User]:
+    """No commit; `org` must be locked. D8/E3: never the last active Master; login disabled; open invite revoked."""
+    member = await db.scalar(select(AgentOrgMember).where(AgentOrgMember.id == member_id, AgentOrgMember.org_id == org.id).execution_options(populate_existing=True))
+    if not member:
+        raise HTTPException(404, "Master not found")
+    if member.status != "active":
+        raise HTTPException(409, "Already deactivated")
+    if await count_active_masters(db, org.id) <= 1:
+        raise HTTPException(422, "An agency must keep at least one active Master")
+    member.status = "deactivated"
+    member.deactivated_at = datetime.now(UTC)
+    member.deactivated_by_user_id = actor.id
+    target = await db.get(User, member.user_id, populate_existing=True)
+    target.active = False
+    await revoke_welcome_tokens(db, target.id)
+    db.add(AuditLog(user_id=actor.id, action="agent_org.master_deactivate", entity_type="agent_org", entity_id=str(org.id), outcome="deactivated", metadata_json={"member_id": str(member.id), "code": member.code}))
+    return member, target
 
 
 async def notification_recipients(db: AsyncSession, agent: User) -> list[User]:
