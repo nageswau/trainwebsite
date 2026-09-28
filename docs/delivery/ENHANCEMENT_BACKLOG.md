@@ -2314,6 +2314,16 @@ it). **Edge cases.** None beyond the standard certificate-record shape.
 
 **Complexity:** Small. **Risk:** Low.
 
+**Status (2026-09-28) — implemented, NOT complete.** Designed and decided in
+`docs/superpowers/specs/2026-09-28-enh-024-skill-india-certification-design.md` (`DEC-SCOPE-031`, D1–D16), plan
+`docs/superpowers/plans/2026-09-28-enh-024-skill-india-certification.md`, built test-first on branch
+`feature/enh-024-skill-india-certification`. The backlog's "Database impact" question resolved as a tag on ENH-012's
+existing `certification` section (four nullable columns + CHECKs on `portfolio_entries`, migration `0042`), not a new
+table; the "Integration impact" `NEEDS_CONFIRMATION` resolved as **none** (internal record, D9); the owning-role
+`NEEDS_CONFIRMATION` resolved as the existing portfolio writers (D10). Evidence in `docs/quality/RTM.md` (ENH-024 row).
+**Open before completion:** browser validation (responsive 320/768/1024/1440, keyboard, accessibility) and the
+independent Codex review.
+
 ---
 
 ## ENH-025 — Student Master: Missing Identity & Demographic Fields
