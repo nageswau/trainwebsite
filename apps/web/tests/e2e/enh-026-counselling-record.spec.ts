@@ -46,6 +46,14 @@ test.describe.serial("ENH-026 counselling record", () => {
     const accepted = await accept.post(`/api/v1/school/invites/${student.development_invite_token}/accept`, { data: { password: INVITE_PASSWORD } });
     expect(accepted.ok()).toBeTruthy();
     await accept.dispose();
+    // FV-03: a long unbroken note makes the Records table wider than a phone; the table must scroll inside its card,
+    // not stretch the page.
+    const counselor = await apiAs(email("counselor"), E2E_PASSWORD);
+    const wide = await counselor.post("/api/v1/school/career-counselor/records", {
+      data: { school_student_id: ctx.studentId, record_type: "recommendation", notes: "Recommendation-with-a-deliberately-long-unbroken-reference-code-0123456789" },
+    });
+    expect(wide.status()).toBe(201);
+    await counselor.dispose();
   });
 
   test("counsellor schedules a session, then completes it with the keyboard", async ({ page }) => {
@@ -87,7 +95,8 @@ test.describe.serial("ENH-026 counselling record", () => {
     test(`counsellor screen has no page-level horizontal overflow at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await signIn(page, email("counselor"), E2E_PASSWORD, "/school/career-counselor/dashboard");
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      await expect(page.getByRole("heading", { name: "Records" })).toBeVisible();
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow).toBeLessThanOrEqual(0);
     });
   }
