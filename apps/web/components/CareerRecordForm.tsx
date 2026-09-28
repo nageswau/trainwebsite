@@ -89,7 +89,9 @@ export default function CareerRecordForm({ students, record, onDone, onCancel }:
     setBusy(false);
     if (!response?.ok) {
       setStale(response?.status === 409);
-      setMessage({ text: response ? detailMessage(data?.detail) : NOT_COMPLETED, failed: true });
+      // QA-11: a 5xx body is not written for people ("Internal Server Error").
+      const text = !response ? NOT_COMPLETED : response.status >= 500 ? "Something went wrong on our side. Please try again; your entry is kept." : detailMessage(data?.detail);
+      setMessage({ text, failed: true });
       return;
     }
     setMessage({ text: "Record saved.", failed: false });

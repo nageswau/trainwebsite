@@ -72,6 +72,14 @@ describe("InternshipCertificate (ENH-021)", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  // QA-11 (browser QA 2026-09-28): a 5xx showed the bare "Internal Server Error".
+  it("words a server failure for people", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({ detail: "Internal Server Error" }) }));
+    render(<InternshipCertificate studentId="s" entryId="e" hasCertificate={false} contentType={null} canEdit completed />);
+    pick(new File(["%PDF-"], "c.pdf", { type: "application/pdf" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong on our side. Please try again.");
+  });
+
   it("shows the server's message on 413", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 413, json: async () => ({ detail: "certificate must be at most 5 MB" }) }));
     render(<InternshipCertificate studentId="s" entryId="e" hasCertificate={false} contentType={null} canEdit completed />);

@@ -75,7 +75,7 @@ async def test_images_have_metadata_stripped(client, world):
 @pytest.mark.asyncio
 async def test_type_is_decided_by_content_not_by_name(client, world):
     r = await _put(client, world["url"], b"<html><script>alert(1)</script></html>", "c.pdf", "application/pdf")
-    assert (r.status_code, r.json()["detail"]) == (415, "certificate must be a PDF, JPEG or PNG file")
+    assert (r.status_code, r.json()["detail"]) == (415, "Certificate must be a PDF, JPEG or PNG file")
 
 
 @pytest.mark.asyncio
@@ -83,7 +83,7 @@ async def test_size_and_empty_limits(client, world):
     assert (await _put(client, world["url"], b"")).status_code == 422
     big = PDF + b"0" * (5 * 1024 * 1024)
     r = await _put(client, world["url"], big)
-    assert (r.status_code, r.json()["detail"]) == (413, "certificate must be at most 5 MB")
+    assert (r.status_code, r.json()["detail"]) == (413, "Certificate must be at most 5 MB")
 
 
 @pytest.mark.asyncio

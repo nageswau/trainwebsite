@@ -40,7 +40,11 @@ export default function InternshipCertificate({ studentId, entryId, hasCertifica
     setBusy(null);
     input.value = "";
     refocus(inputId);
-    if (!response?.ok) return setMessage({ text: detailMessage(data.detail, "Upload failed; please try again."), failed: true });
+    if (!response?.ok) {
+      // QA-11: a 5xx body is not written for people ("Internal Server Error"); say what happened instead.
+      const text = response && response.status >= 500 ? "Something went wrong on our side. Please try again." : detailMessage(data.detail, "Upload failed; please try again.");
+      return setMessage({ text, failed: true });
+    }
     setPresent(true);
     setKind(data.content_type ?? file.type);
     setMessage({ text: "Certificate saved.", failed: false });

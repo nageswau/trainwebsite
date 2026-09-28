@@ -50,17 +50,17 @@ async def put_certificate(student_id: UUID, entry_id: UUID, file: UploadFile = F
     await require_school_entitlement(db, user, student.school_id, "internships", grandfathered_since=entry.created_at)
     data = await file.read(MAX_CERTIFICATE_BYTES + 1)
     if not data:
-        raise HTTPException(422, "certificate file is empty")
+        raise HTTPException(422, "Certificate file is empty")
     if len(data) > MAX_CERTIFICATE_BYTES:
-        raise HTTPException(413, "certificate must be at most 5 MB")
+        raise HTTPException(413, "Certificate must be at most 5 MB")
     content_type = _content_type(data)
     if content_type is None:
-        raise HTTPException(415, "certificate must be a PDF, JPEG or PNG file")
+        raise HTTPException(415, "Certificate must be a PDF, JPEG or PNG file")
     if content_type != PDF:
         try:
             data = strip_metadata(data, content_type)
         except InvalidImage:
-            raise HTTPException(422, "certificate could not be read as a valid JPEG or PNG image") from None
+            raise HTTPException(422, "Certificate could not be read as a valid JPEG or PNG image") from None
 
     old_key, new_key = entry.certificate_key, f"{CERTIFICATE_PREFIX}/{uuid4().hex}"
     try:

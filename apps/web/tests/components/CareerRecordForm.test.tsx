@@ -84,6 +84,14 @@ describe("CareerRecordForm", () => {
     expect(screen.getByRole("button", { name: "Discard my changes and reload" })).toBeInTheDocument();
   });
 
+  // QA-11 (browser QA 2026-09-28): a 5xx showed the bare "Internal Server Error".
+  it("words a server failure for people and keeps the entry", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({ detail: "Internal Server Error" }) }));
+    render(<CareerRecordForm students={STUDENTS} record={RECORD} onDone={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong on our side. Please try again; your entry is kept.");
+  });
+
   it("cancels with Escape", () => {
     const onCancel = vi.fn();
     render(<CareerRecordForm students={STUDENTS} record={RECORD} onDone={vi.fn()} onCancel={onCancel} />);
