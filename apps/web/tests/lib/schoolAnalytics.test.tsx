@@ -5,7 +5,7 @@ const { serverApi } = vi.hoisted(() => ({ serverApi: vi.fn() }));
 vi.mock("@/lib/api", () => ({ serverApi }));
 
 import SchoolAnalyticsSections from "@/components/SchoolAnalyticsSections";
-import { loadSchoolAnalytics } from "@/lib/schoolAnalytics";
+import { THRESHOLD_ORDER_ERROR, THRESHOLD_RANGE_ERROR, loadSchoolAnalytics } from "@/lib/schoolAnalytics";
 
 afterEach(cleanup);
 beforeEach(() => serverApi.mockReset());
@@ -15,9 +15,27 @@ describe("loadSchoolAnalytics (ENH-016)", () => {
     serverApi.mockResolvedValue({ grades: [], students: {}, metrics: [] });
     const data = await loadSchoolAnalytics({ grade: "10&limit=1000", offset: "-5", at_risk_below: "30", top_from: "85;drop" });
     const paths = serverApi.mock.calls.map(([p]) => p as string);
-    expect(paths).toContain("/api/v1/school/analytics/student-development?at_risk_below=30");
+    // QA-016-05: a malformed threshold is no longer dropped silently -- both fall back to the defaults, with a reason.
+    expect(paths).toContain("/api/v1/school/analytics/student-development?");
     expect(paths).toContain("/api/v1/school/analytics/scorecards?offset=0");
     expect(data.grade).toBe("");
+    expect(data.thresholdError).toBe(THRESHOLD_RANGE_ERROR);
+    expect(data.thresholds).toEqual({});
+  });
+
+  it("an in-order pair outside 0-100 never reaches the API; it explains the range (QA-016-05)", async () => {
+    serverApi.mockResolvedValue(null);
+    const data = await loadSchoolAnalytics({ at_risk_below: "150", top_from: "200" });
+    expect(serverApi.mock.calls.map(([p]) => String(p))).toContain("/api/v1/school/analytics/student-development?");
+    expect(data.thresholdError).toBe(THRESHOLD_RANGE_ERROR);
+    expect((await loadSchoolAnalytics({ at_risk_below: "150", top_from: "85" })).thresholdError).toBe(THRESHOLD_RANGE_ERROR);
+  });
+
+  it("returns accepted thresholds so the grid form can carry them (QA-016-12)", async () => {
+    serverApi.mockResolvedValue(null);
+    const data = await loadSchoolAnalytics({ at_risk_below: "30", top_from: "90" });
+    expect(data.thresholds).toEqual({ at_risk_below: "30", top_from: "90" });
+    expect(data.thresholdError).toBeNull();
   });
 
   it("keeps a valid grade and offset", async () => {
@@ -32,9 +50,9 @@ describe("loadSchoolAnalytics (ENH-016)", () => {
     const oneSided = await loadSchoolAnalytics({ at_risk_below: "90" }); // against the default top_from of 85
     const paths = serverApi.mock.calls.map(([p]) => String(p)).filter((p) => p.includes("student-development"));
     expect(paths).toEqual(["/api/v1/school/analytics/student-development?", "/api/v1/school/analytics/student-development?"]);
-    expect(both.thresholdError).toBe(true);
-    expect(oneSided.thresholdError).toBe(true);
-    expect((await loadSchoolAnalytics({ at_risk_below: "30", top_from: "90" })).thresholdError).toBe(false);
+    expect(both.thresholdError).toBe(THRESHOLD_ORDER_ERROR);
+    expect(oneSided.thresholdError).toBe(THRESHOLD_ORDER_ERROR);
+    expect((await loadSchoolAnalytics({ at_risk_below: "30", top_from: "90" })).thresholdError).toBeNull();
   });
 
   it("clamps a huge offset to the API's bound", async () => {
@@ -54,7 +72,7 @@ describe("loadSchoolAnalytics (ENH-016)", () => {
 
 describe("SchoolAnalyticsSections", () => {
   it("shows the unavailable card for every missing section", () => {
-    render(<SchoolAnalyticsSections data={{ grade: "", grades: null, development: null, scorecards: null, thresholdError: false }} role="principal" />);
+    render(<SchoolAnalyticsSections data={{ grade: "", thresholds: {}, grades: null, development: null, scorecards: null, thresholdError: null }} role="principal" />);
     expect(screen.getAllByRole("status")).toHaveLength(3);
     expect(screen.getByRole("heading", { name: "Student progress scorecards" })).toBeInTheDocument();
   });

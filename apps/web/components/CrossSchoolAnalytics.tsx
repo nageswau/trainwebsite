@@ -34,10 +34,22 @@ function tracked(t: TrackedValue): ReactNode {
   );
 }
 
-export default function CrossSchoolAnalytics({ summary, page, basePath }: { summary: CrossSchoolSummary | null; page: SchoolUtilizationPage | null; basePath: string }) {
-  const prev = page && page.offset > 0 ? Math.max(0, page.offset - page.limit) : null;
+type Props = { summary: CrossSchoolSummary | null; page: SchoolUtilizationPage | null; basePath: string; q?: string };
+
+export default function CrossSchoolAnalytics({ summary, page, basePath, q = "" }: Props) {
+  const href = (offset: number) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (offset > 0) params.set("offset", String(offset));
+    const query = params.toString();
+    return query ? `${basePath}?${query}` : basePath;
+  };
+  const pastEnd = !!page && page.items.length === 0 && page.total > 0;
+  const lastOffset = page ? Math.max(0, Math.floor((page.total - 1) / page.limit) * page.limit) : 0;
+  // Past the end, Previous goes to the real last page, not to another empty one (QA-016-07).
+  const prev = page && page.offset > 0 ? (pastEnd ? lastOffset : Math.max(0, page.offset - page.limit)) : null;
   const next = page && page.offset + page.limit < page.total ? page.offset + page.limit : null;
-  const href = (offset: number) => (offset > 0 ? `${basePath}?offset=${offset}` : basePath);
+  const empty = pastEnd ? "This page is past the end of the list." : q ? `No schools match “${q}”.` : "No partner schools yet.";
   return (
     <>
       {summary ? (
@@ -57,12 +69,20 @@ export default function CrossSchoolAnalytics({ summary, page, basePath }: { summ
       {page ? (
         <div className="card">
           <h2>Service utilization by school</h2>
+          {/* QA-016-09: find one school among many; a plain GET form, so the search lives in the URL. */}
+          <form method="get" action={basePath} className="analytics-form" role="search">
+            <div className="field">
+              <label htmlFor="school-search">Search schools</label>
+              <input id="school-search" name="q" type="search" maxLength={200} defaultValue={q} />
+            </div>
+            <button className="btn secondary" type="submit">Search</button>
+          </form>
           {page.items.length === 0 ? (
-            <p className="muted">No partner schools yet.</p>
+            <p className="muted">{empty}</p>
           ) : (
             <div className="table-scroll">
               <table className="table">
-                <caption className="sr-only">Service utilization by school</caption>
+                <caption className="visually-hidden">Service utilization by school</caption>
                 <thead>
                   <tr>
                     {["School", "Tier", "Students", "Participating", "Delivered", "Pending", "Not tracked", "Utilization", "Upcoming activities", "Flags"].map((h) => <th scope="col" key={h}>{h}</th>)}
@@ -94,7 +114,7 @@ export default function CrossSchoolAnalytics({ summary, page, basePath }: { summ
           {(prev !== null || next !== null) && (
             <nav className="pager" aria-label="School pages">
               {prev !== null && <a href={href(prev)} aria-label="Previous page">← Previous</a>}
-              <span className="muted">{`${page.offset + 1}–${page.offset + page.items.length} of ${page.total}`}</span>
+              {page.items.length > 0 && <span className="muted">{`${page.offset + 1}–${page.offset + page.items.length} of ${page.total}`}</span>}
               {next !== null && <a href={href(next)} aria-label="Next page">Next →</a>}
             </nav>
           )}

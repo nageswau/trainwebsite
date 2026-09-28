@@ -69,7 +69,7 @@ Renumbered on merge if another branch lands `031` first (`DEC-SCOPE-024`/`025`/`
 | D8 | Cleanup in scope | Mark digital portfolios and skills training tracked. Dead code in `/school/reports` stays out. |
 | D9 | Scorecard audience | Coordinator + Principal only, own school. |
 | D10 | Scorecard placement | Per-student card + paginated school-wide grid. |
-| D11 | "Digital Portfolios Created" | Student has ≥ 1 `portfolio_entries` row or a non-blank `portfolio_profiles.personal_statement`. |
+| D11 | "Digital Portfolios Created" | Student has ≥ 1 `portfolio_entries` row or a non-blank `portfolio_profiles.personal_statement`. **Revised 2026-09-28 (user, browser QA QA-016-03):** entries in the `internship` section do not count — ENH-021 attributes them to the Internships service, so counting them here double-counted. The ENH-012 completion % is unchanged. |
 | D12 | Scorecard Digital Portfolio row | ✅ ENH-012 completion = 100 · 🔄 D11 true but < 100 · ⏳ `digital_portfolio_creation` in tier, D11 false · — not in tier. |
 | D13 | Entitlement usage | `/school/entitlements` reports `used` for `digital_portfolio_creation` = D11 count. |
 | D14 | Approach | **A**: one feature module, grouped SQL aggregation over a set of school ids; fixed query count. (B — loop per-school payloads — rejected: O(schools × rows). C — summary tables — rejected: migration, staleness, YAGNI.) |

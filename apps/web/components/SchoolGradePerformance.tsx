@@ -12,7 +12,7 @@ export default function SchoolGradePerformance({ data }: { data: GradePerformanc
       ) : (
         <div className="table-scroll">
           <table className="table">
-            <caption className="sr-only">Grade-wise comparison</caption>
+            <caption className="visually-hidden">Grade-wise comparison</caption>
             <thead>
               <tr>
                 <th scope="col">Metric</th>

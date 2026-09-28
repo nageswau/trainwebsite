@@ -22,11 +22,11 @@ export function ScorecardStateBadge({ state }: { state: ScorecardState }) {
 export default function StudentScorecard({ card }: { card: Scorecard }) {
   return (
     <div className="card">
-      <h2>Progress scorecard</h2>
+      <h3>Progress scorecard</h3>
       <p className="muted">Portfolio {card.portfolio_completion_pct}% complete</p>
       <div className="table-scroll">
         <table className="table">
-          <caption className="sr-only">Progress by area for {card.full_name}</caption>
+          <caption className="visually-hidden">Progress by area for {card.full_name}</caption>
           <thead>
             <tr><th scope="col">Area</th><th scope="col">Status</th></tr>
           </thead>

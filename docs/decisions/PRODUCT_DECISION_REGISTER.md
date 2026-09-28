@@ -2551,7 +2551,7 @@ flagged untracked although ENH-012/ENH-011 had shipped; `GET /school/entitlement
 8. **D8 Cleanup in scope:** digital portfolios and skills training become tracked; the unreachable code in `/school/reports` stays out.
 9. **D9 Scorecard audience:** Coordinator + Principal, own school only.
 10. **D10 Scorecard placement:** per-student card + paginated school-wide grid.
-11. **D11 Digital Portfolios Created:** ≥ 1 portfolio entry or a non-blank personal statement.
+11. **D11 Digital Portfolios Created:** ≥ 1 portfolio entry or a non-blank personal statement. **Revised 2026-09-28** (user, browser QA QA-016-03): `internship` entries do not count — ENH-021 attributes them to the Internships service; the ENH-012 completion % is unchanged.
 12. **D12 Scorecard Digital Portfolio row:** completed at ENH-012 completion 100 %; in progress when D11 holds below 100 %.
 13. **D13 Entitlement usage:** `/school/entitlements` reports `digital_portfolio_creation.used` = the D11 count.
 14. **D14 Approach A:** one feature module, grouped SQL over a student scope, fixed query count; no summary tables.

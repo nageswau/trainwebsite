@@ -1,3 +1,4 @@
+import { plural } from "@/lib/plural";
 import type { AverageRow, PerformerRow, StudentDevelopment } from "@/lib/types";
 
 // ENH-016 (School CRM.md Part B §14). Pending = total - completed (D2). Academic figures count published results only
@@ -34,7 +35,7 @@ function Performers({ label, rows, total, empty }: { label: string; rows: Perfor
       ) : (
         <ul aria-label={label}>
           {rows.map((p) => (
-            <li key={p.school_student_id}>{p.full_name} · Grade {p.grade} · {p.average_pct}% ({p.result_count} results)</li>
+            <li key={p.school_student_id}>{p.full_name} · Grade {p.grade} · {p.average_pct}% ({plural(p.result_count, "result")})</li>
           ))}
         </ul>
       )}
@@ -43,15 +44,23 @@ function Performers({ label, rows, total, empty }: { label: string; rows: Perfor
   );
 }
 
-export default function SchoolStudentDevelopment({ data, basePath, thresholdError = false }: { data: StudentDevelopment; basePath: string; thresholdError?: boolean }) {
+type Props = {
+  data: StudentDevelopment;
+  basePath: string;
+  thresholdError?: string | null; // why the URL's thresholds were dropped (QA-016-05)
+  grade?: string; // the scorecard grid's filter, kept when this form is submitted (QA-016-12)
+};
+
+export default function SchoolStudentDevelopment({ data, basePath, thresholdError = null, grade = "" }: Props) {
   const hasResults = data.by_subject.length > 0;
+  const { students, teachers, parents } = data.headcounts;
   return (
     <div className="card">
       <h2>Student development</h2>
-      <p>{data.headcounts.students} students · {data.headcounts.teachers} teachers · {data.headcounts.parents} parents</p>
+      <p>{plural(students, "student")} · {plural(teachers, "teacher")} · {plural(parents, "parent")}</p>
       <div className="table-scroll">
         <table className="table">
-          <caption className="sr-only">Student development</caption>
+          <caption className="visually-hidden">Student development</caption>
           <thead>
             <tr><th scope="col">Activity</th><th scope="col">Completed</th><th scope="col">Pending</th></tr>
           </thead>
@@ -76,8 +85,9 @@ export default function SchoolStudentDevelopment({ data, basePath, thresholdErro
           <Averages title="By term" rows={data.by_term} />
         </>
       )}
-      {thresholdError && <p className="form-error" role="alert">At-risk must be below the top-performer threshold. Showing the defaults.</p>}
+      {thresholdError && <p className="form-error" role="alert">{thresholdError}</p>}
       <form method="get" action={`${basePath}#development`} className="analytics-form">
+        {grade && <input type="hidden" name="grade" value={grade} />}
         <div className="field">
           <label htmlFor="at_risk_below">At risk below (%)</label>
           <input id="at_risk_below" name="at_risk_below" type="number" min={0} max={100} defaultValue={data.at_risk_below} />

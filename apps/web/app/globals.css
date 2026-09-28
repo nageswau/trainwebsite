@@ -109,6 +109,9 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
    instead of widening the page on phones (same fix as .table-wrap, FV-03). */
 .table-scroll { overflow-x: auto; max-width: 100%; position: relative; }
 .table-scroll table th:first-child, .table-scroll table td:first-child { position: sticky; left: 0; background: #fff; }
+/* QA-016-04: a row header is a label (a student, a metric), not a column heading -- normal case at body size. */
+.table-scroll tbody th[scope="row"] { text-transform: none; letter-spacing: normal; font-size: 14px; color: #0b1f3a; font-weight: 600; }
+.table-scroll tbody th[scope="row"] .kpi-note { font-weight: 400; }
 .state-badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .analytics-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 12px 0; }
 .pager { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }

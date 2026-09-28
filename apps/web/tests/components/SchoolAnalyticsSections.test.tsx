@@ -67,7 +67,7 @@ describe("ENH-016 report sections", () => {
   });
 
   it("student development: explains a rejected threshold pair next to the form, keeping the form usable", () => {
-    render(<SchoolStudentDevelopment data={development} basePath="/r" thresholdError />);
+    render(<SchoolStudentDevelopment data={development} basePath="/r" thresholdError="At-risk must be below the top-performer threshold. Showing the defaults." />);
     expect(screen.getByRole("alert")).toHaveTextContent("At-risk must be below the top-performer threshold. Showing the defaults.");
     expect(screen.getByLabelText("At risk below (%)")).toBeInTheDocument();
   });
@@ -95,9 +95,9 @@ describe("ENH-016 report sections", () => {
     expect(screen.getByText("1–1 of 30")).toBeInTheDocument(); // the range counts the rows actually shown, not the page size
   });
 
-  it("scorecard grid: offset past the end shows the empty message and a way back (Review Focus 4)", () => {
+  it("scorecard grid: offset past the end says so and Previous goes to the last real page (Review Focus 4, QA-016-06)", () => {
     render(<SchoolScorecardGrid page={{ items: [], total: 3, limit: 25, offset: 50 }} grade="" basePath="/r" studentHref={(id) => id} />);
-    expect(screen.getByText("No students match this grade.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Previous page" })).toHaveAttribute("href", "/r?offset=25#scorecards");
+    expect(screen.getByText("This page is past the end of the list.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Previous page" })).toHaveAttribute("href", "/r#scorecards");
   });
 });
