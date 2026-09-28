@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.api.school_student_profile import _digest
-from app.api.schools import _load_student_for_reader, require_school_entitlement
+from app.api.schools import _career_records_out, _load_student_for_reader, require_school_entitlement
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import (
@@ -153,7 +153,8 @@ async def portfolio_payload(db: AsyncSession, user: User, student: SchoolStudent
         "profile_complete": profile_complete,
         "academic_achievements": [{"id": r.id, "term": r.term, "subject": r.subject, "grade": r.grade, "published_at": r.published_at} for r in academic],
         "psychometric_report": [{"id": r.id, "assessment_type": r.assessment_type, "report_url": r.report_url, "created_at": r.created_at} for r in psychometric],
-        "career_guidance": [{"id": r.id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at, "status": r.status} for r in career],
+        # ENH-026 QA-02: the shared serializer, so the 360 Career Guidance tab gets the §7 fields the overview already shows.
+        "career_guidance": await _career_records_out(db, career),
         "languages": [{"id": r.id, "language": r.language, "level": r.level, "certification_status": r.certification_status, "created_at": r.created_at} for r in languages],
         "entries": entries_by_section,
         "personal_statement": personal_statement,
