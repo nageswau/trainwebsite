@@ -71,10 +71,12 @@ from app.schemas import (
     COUNTED_CAREER_STATUSES,
     LIST_FIELD_KEYS,
     MASTER_FIELD_KEYS,
+    PSYCHOMETRIC_RESULT_KEYS,
     STRUCTURED_RECORD_TYPES,
     CareerRecordFields,
     CareerRecordUpdate,
     GradeHistoryResponse,
+    PsychometricResultFields,
     StudentMasterFields,
     StudentPromotionRequest,
     StudentPromotionResponse,
@@ -655,6 +657,17 @@ def _master_fields_or_422(model: type[BaseModel], data: dict) -> BaseModel:
 def _master_subset(payload: dict) -> dict:
     """Only the ENH-025 keys; every other key keeps its existing hand-written handling (or is ignored, as today)."""
     return {key: payload[key] for key in MASTER_FIELD_KEYS if key in payload}
+
+
+def _psychometric_subset(payload: dict) -> dict:
+    """ENH-027: only the ten result keys; `report_url`/`assessment_type`/`school_student_id` keep their existing handling
+    and every other key stays ignored (no mass assignment, spec §4.2)."""
+    return {key: payload[key] for key in PSYCHOMETRIC_RESULT_KEYS if key in payload}
+
+
+def _psychometric_result_out(record: SchoolPsychometricRecord) -> dict:
+    """ENH-027: the ten result fields for every psychometric read shape (null = not recorded)."""
+    return {key: getattr(record, key) for key in PSYCHOMETRIC_RESULT_KEYS}
 
 
 def _apply_master_fields(student: SchoolStudent, fields: BaseModel) -> list[str]:
@@ -1315,7 +1328,7 @@ async def _overview_payload(db: AsyncSession, student: SchoolStudent) -> dict:
         "counselling": {"status": _module_status(counselling), "notes": _career(counselling)},
         "recommended_careers": _career(recommendations),
         "structured_recommendations": structured_recommendations,
-        "psychometric": {"status": psychometric_status, "assessments": [{"id": r.id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at} for r in psych_rows]},
+        "psychometric": {"status": psychometric_status, "assessments": [{"id": r.id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at, **_psychometric_result_out(r)} for r in psych_rows]},
         "test_prep": {"status": test_prep_status, "records": [_test_prep_out(r) for r in test_prep_rows]},
         "foreign_language": {"status": language_status, "records": [_language_out(r) for r in language_rows]},
         "results": [_result_out(r) for r in result_rows],
@@ -2158,20 +2171,25 @@ async def create_psychometric_record(payload: dict, user: User = Depends(get_cur
     assessment_type = str(payload.get("assessment_type", "")).strip()
     if not assessment_type:
         raise HTTPException(422, "assessment_type is required")
+    # ENH-027: the result fields are validated after the role/portfolio/tier checks (a 403 always wins) and before any write.
+    result = _master_fields_or_422(PsychometricResultFields, _psychometric_subset(payload))
     record = SchoolPsychometricRecord(
         school_student_id=student.id, psychometric_team_user_id=user.id, assessment_type=assessment_type,
         report_url=payload.get("report_url"), status="completed" if payload.get("report_url") else "assigned",
     )
+    fields = _apply_master_fields(record, result)
     db.add(record)
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.psychometric_record_create", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={"assessment_type": assessment_type}))
+    db.add(AuditLog(user_id=user.id, action="school.psychometric_record_create", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={"assessment_type": assessment_type, "fields": fields}))
     # SCH-007 "Assessment" trigger: assigned (or completed at once, when a report came with it).
     if record.status == "completed":
         await _notify_student_parents(db, student, title=f"Psychometric report ready for {student.full_name}", body=f"The {assessment_type} report for {student.full_name} is now available.", action_url=f"/school/parent/children/{student.id}")
     else:
         await _notify_student_parents(db, student, title=f"Psychometric assessment assigned to {student.full_name}", body=f"{student.full_name} has been assigned a {assessment_type}.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
-    return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status, "created_at": record.created_at}
+    if fields:
+        logger.info("psychometric_results_saved", extra={"extra_fields": {"action": "create", "record_id": str(record.id), "actor_id": str(user.id), "fields": fields}})
+    return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status, "created_at": record.created_at, **_psychometric_result_out(record)}
 
 
 @router.patch("/psychometric-team/records/{record_id}")
@@ -2183,20 +2201,27 @@ async def update_psychometric_record(record_id: UUID, payload: dict, user: User 
         raise HTTPException(404, "Record not found")
     student = await _student_in_portfolio(db, user, record.school_student_id)
     await require_school_entitlement(db, user, student.school_id, "psychometric_test", grandfathered_since=record.created_at)
+    # ENH-027: validate before touching the record, so a 422 leaves it (report_url included) unchanged. Result fields never
+    # change `status` and never notify; only `report_url` does, exactly as before.
+    result = _master_fields_or_422(PsychometricResultFields, _psychometric_subset(payload))
+    fields = _apply_master_fields(record, result)
     became_completed = False
     if "report_url" in payload:
         record.report_url = payload["report_url"]
         if payload["report_url"] and record.status != "completed":
             record.status = "completed"
             became_completed = True
-    db.add(AuditLog(user_id=user.id, action="school.psychometric_record_update", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={}))
+    audited = sorted({*fields, *(["report_url"] if "report_url" in payload else [])})
+    db.add(AuditLog(user_id=user.id, action="school.psychometric_record_update", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={"fields": audited}))
     if became_completed:
         student = await db.get(SchoolStudent, record.school_student_id)
         if student is None:
             raise HTTPException(404, "Student not found")
         await _notify_student_parents(db, student, title=f"Psychometric report ready for {student.full_name}", body=f"The {record.assessment_type} report for {student.full_name} is now available.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
-    return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status}
+    if fields:
+        logger.info("psychometric_results_saved", extra={"extra_fields": {"action": "update", "record_id": str(record.id), "actor_id": str(user.id), "fields": fields}})
+    return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status, **_psychometric_result_out(record)}
 
 
 @router.get("/psychometric-team/records")
@@ -2208,7 +2233,7 @@ async def list_psychometric_team_records(user: User = Depends(get_current_user),
         return []
     student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
     rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id.in_(student_ids)).order_by(SchoolPsychometricRecord.created_at.desc()))).all()
-    return [{"id": r.id, "school_student_id": r.school_student_id, "assessment_type": r.assessment_type, "report_url": r.report_url, "status": r.status, "created_at": r.created_at} for r in rows]
+    return [{"id": r.id, "school_student_id": r.school_student_id, "assessment_type": r.assessment_type, "report_url": r.report_url, "status": r.status, "created_at": r.created_at, **_psychometric_result_out(r)} for r in rows]
 
 
 @router.get("/psychometric-records")
@@ -2219,7 +2244,7 @@ async def list_readable_psychometric_records(user: User = Depends(get_current_us
     if not readable:
         return []
     rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id.in_(readable)).order_by(SchoolPsychometricRecord.created_at.desc()))).all()
-    return [{"id": r.id, "school_student_id": r.school_student_id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at} for r in rows]
+    return [{"id": r.id, "school_student_id": r.school_student_id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at, **_psychometric_result_out(r)} for r in rows]
 
 
 # --- SCH-009: Test Preparation (IELTS/SAT) -----------------------------------------------
