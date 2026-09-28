@@ -107,7 +107,7 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
 
         <fieldset className="question">
           <legend>Findings</legend>
-          <p id={LIST_HINT_ID} className="muted">Separate items with commas — up to {LIST_MAX_ITEMS} items of {LIST_ITEM_MAX} characters each.</p>
+          <p id={LIST_HINT_ID} className="muted">Separate items with commas (use / or ; inside an item) — up to {LIST_MAX_ITEMS} items of {LIST_ITEM_MAX} characters each.</p>
           {RESULT_LIST_FIELDS.map(({ key, label }) => (
             <div className="field" key={key}>
               <label htmlFor={id(key)}>{label}</label>

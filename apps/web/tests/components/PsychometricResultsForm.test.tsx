@@ -110,6 +110,11 @@ describe("PsychometricResultsForm", () => {
     expect(onDone).toHaveBeenCalledWith(false);
   });
 
+  it("tells the user how to keep a comma inside one item (commas separate items)", () => {
+    renderForm();
+    expect(screen.getByLabelText("Recommended streams")).toHaveAccessibleDescription(/use \/ or ; inside an item/i);
+  });
+
   it("shows a character count for the remarks", () => {
     renderForm();
     expect(screen.getByText("10 / 4000")).toBeTruthy();
