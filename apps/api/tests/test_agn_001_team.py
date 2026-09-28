@@ -113,13 +113,40 @@ async def test_the_last_active_master_cannot_be_deactivated(client, db_session):
     assert response.status_code == 422 and response.json()["detail"] == "An agency must keep at least one active Master"
 
 
+async def _accept_invite(db, email):
+    """The invitee sets their password: their welcome token is used."""
+    user = await db.scalar(select(User).where(User.email == email))
+    token = await db.scalar(select(PasswordResetToken).where(PasswordResetToken.user_id == user.id, PasswordResetToken.purpose == "welcome"))
+    token.used_at = datetime.now(UTC)
+    await db.commit()
+
+
 @pytest.mark.asyncio
-async def test_a_master_may_deactivate_themselves_when_not_last(client, db_session):
+async def test_a_master_may_deactivate_themselves_once_another_master_has_accepted(client, db_session):
     ctx = await mk_active_org(db_session, name="Self Deact")
     await login(client, ctx["master"].email)
-    await _invite(client)
+    second = (await _invite(client)).json()["member"]
+    await _accept_invite(db_session, second["email"])
     assert (await client.post(DEACTIVATE.format(mid=ctx["member"].id))).status_code == 200
     assert (await client.get(TEAM)).status_code == 401  # login disabled: next request is refused
+
+
+@pytest.mark.asyncio
+async def test_no_self_lockout_while_every_other_master_is_still_invite_pending(client, db_session):  # review #6
+    ctx = await mk_active_org(db_session, name="No Lockout")
+    await login(client, ctx["master"].email)
+    await _invite(client)  # M002 has not accepted yet
+    response = await client.post(DEACTIVATE.format(mid=ctx["member"].id))
+    assert response.status_code == 422 and response.json()["detail"] == "At least one other Master must have accepted their invite first"
+    assert (await membership(db_session, ctx["master"].id)).status == "active"
+
+
+@pytest.mark.asyncio
+async def test_a_pending_invitee_can_still_be_deactivated_by_an_accepted_master(client, db_session):  # review #6
+    ctx = await mk_active_org(db_session, name="Cancel Invite")
+    await login(client, ctx["master"].email)
+    second = (await _invite(client)).json()["member"]
+    assert (await client.post(DEACTIVATE.format(mid=second["id"]))).status_code == 200
 
 
 @pytest.mark.asyncio

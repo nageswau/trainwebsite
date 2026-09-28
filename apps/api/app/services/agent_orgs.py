@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AgentOrg, AgentOrgMember, AuditLog, User, UserRoleAssignment
-from app.services.provisioning import flush_unique_email, issue_welcome_token, revoke_welcome_tokens, unusable_password_hash
+from app.services.provisioning import flush_unique_email, issue_welcome_token, provisioning_statuses, revoke_welcome_tokens, unusable_password_hash
 
 MASTER_LIMIT = 3
 ORG_STATUSES = ("pending", "active", "rejected", "suspended")
@@ -209,6 +209,16 @@ async def deactivate_master(db: AsyncSession, org: AgentOrg, member_id, actor: U
         raise HTTPException(409, "Already deactivated")
     if await count_active_masters(db, org.id) <= 1:
         raise HTTPException(422, "An agency must keep at least one active Master")
+    # Review #6 (user decision 2026-09-29): some OTHER active Master must be able to sign in -- login enabled and
+    # invite accepted (password set) -- or an unaccepted/expired invite would lock the whole agency out.
+    others = (
+        await db.scalars(
+            select(User.id).join(AgentOrgMember, AgentOrgMember.user_id == User.id).where(AgentOrgMember.org_id == org.id, AgentOrgMember.status == "active", AgentOrgMember.id != member.id, User.active.is_(True))
+        )
+    ).all()
+    pending = await provisioning_statuses(db, others)
+    if not any(uid not in pending for uid in others):
+        raise HTTPException(422, "At least one other Master must have accepted their invite first")
     member.status = "deactivated"
     member.deactivated_at = datetime.now(UTC)
     member.deactivated_by_user_id = actor.id
