@@ -36,8 +36,8 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
   const [initial] = useState<ResultDraft>(() => toDraft(record));
   const [draft, setDraft] = useState<ResultDraft>(initial);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<FormMessageState | null>(null);
-  const [sessionEnded, setSessionEnded] = useState(false);
+  // `signIn`: the failure was an ended session, so the message gets a sign-in link (QA27-04).
+  const [message, setMessage] = useState<(FormMessageState & { signIn?: boolean }) | null>(null);
   const [errors, setErrors] = useState<Partial<Record<ResultKey, string>>>({});
   const headingRef = useRef<HTMLHeadingElement>(null);
   const fieldRefs = useRef<Partial<Record<ResultKey, HTMLInputElement | null>>>({});
@@ -114,8 +114,7 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
     const result = await sendJson(`/api/v1/school/psychometric-team/records/${record.id}`, "PATCH", payload);
     setBusy(false);
     if (!result.ok) {
-      setSessionEnded(result.status === 401);
-      setMessage({ text: failureText(result.status, result.message), failed: true });
+      setMessage({ text: failureText(result.status, result.message), failed: true, signIn: result.status === 401 });
       return;
     }
     onDone(true);
@@ -178,7 +177,7 @@ export default function PsychometricResultsForm({ record, studentName, onDone }:
         </div>
       </form>
       {message && <FormMessage message={message} />}
-      {message?.failed && sessionEnded ? (
+      {message?.signIn ? (
         <a href="/overseas/login" target="_blank" rel="noopener noreferrer">Sign in again (opens a new tab)</a>
       ) : null}
     </div>
