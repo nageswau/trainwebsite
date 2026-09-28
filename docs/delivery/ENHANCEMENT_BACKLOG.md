@@ -53,6 +53,11 @@ Student 360° view. Added **ENH-028** (generalized bulk data-entry for Results/P
 **ENH-029** (bulk school onboarding), and **ENH-030** (the new attendance entity, deliberately designed
 bulk-first so it doesn't repeat the pattern of needing bulk retrofitted later).
 
+**Revision 6 (2026-09-28):** the user brought one slice of `Agent CRM Functionalities.md` (`EVID-015`,
+Appendix B) into scope as **AGN-001** — agent organisation as tenant, with Master accounts — and gave the
+approval and answers recorded as `DEC-SCOPE-034` (D1–D13). Only that slice leaves Appendix B; Staff logins
+and the rest of `EVID-015` stay parked. AGN-001 keeps the ID the user gave it rather than an `ENH-` number.
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -131,6 +136,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-028 | Bulk data-entry — Academic Results, Psychometric, Test Prep/Language records | Medium | Medium | Yes | ENH-011 (Test Prep/Language part only) |
 | ENH-029 | Bulk school partner onboarding (multiple schools at once) | Medium | Medium | Yes | Coordinates with ENH-003, ENH-028's design |
 | ENH-030 | Daily/period attendance tracking (new entity, built bulk-first) | Medium | Low | Yes | Feeds ENH-013, ENH-016 |
+| AGN-001 | Multi-tenant Agent CRM — agent organisation as tenant, Master accounts (Rev. 6) | Large | High | Yes | AGT-001–004, SEC-001, RPT-002, ADM-001 (all change) |
 
 ---
 
@@ -2836,6 +2842,99 @@ student on the same day — second call should update, not duplicate (enforced b
 
 ---
 
+## AGN-001 — Multi-Tenant Agent CRM: Agent Organisation as Tenant, Master Accounts
+
+**Title.** Every agent company is a separate CRM tenant with Master logins that have full access.
+
+**Business requirement.** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`): §1 "Master
+Login — Agent Admin: full access to the agent's CRM account"; §3 example codes (`ABC-M001`); Best approach
+"a multi-tenant Agent CRM: every agent gets their own separate CRM environment". Brought into scope by the
+user's `AGN-001` statement and decided as `DEC-SCOPE-034` (D1–D13). The source's "one Master account"
+conflicts with the user's criteria; the user chose up to three (D4).
+
+**Existing behavior.** An agent is one `User` + `UserRoleAssignment(role='agent')`. Its `approval_status`
+gates every agent route (`core/rbac.py:75`, `workflows.py:100`, `api/portal.py:31`). Every agent read and
+write is scoped by `agent_id == user.id`. Overseas Admin approves/rejects the assignment by user id
+(`admin.py:981-1026`), audited as `user_role_assignment`. No organisation, member or account code exists.
+
+**Expected behavior.** Per `DEC-SCOPE-034`: an agent organisation (tenant) with status
+`pending`/`active`/`rejected`/`suspended`; Master members with display codes `<PREFIX>-M###`; the
+approval gate and all data scoping move to the organisation; Masters invite and deactivate Masters;
+Overseas Admin approves, rejects, suspends and reinstates organisations.
+
+**User roles affected.** `agent` (now an organisation Master), `overseas_admin`, `super_admin`; indirectly
+`counselor`/`overseas_admin` where they attach an application or commission to an agent.
+
+**Frontend impact.** `RegisterForm.tsx` (agency name), `AgentApprovalPanel.tsx` (organisation, code,
+status, suspend/reinstate), a new Master team screen under `/overseas/agent/`, `lib/navigation.ts`.
+Screens get `SCR-` IDs in the design spec.
+
+**Backend impact.** `auth.register`, `_sync_role_assignment`, `rbac.agent_is_approved`, every agent-scoped
+query in `workflows.py` and `services/portal._agent`, admin approve/reject/list, admin user-create,
+commission notifications.
+
+**Database impact.** New organisation and member tables; the scope key for `agent_students`,
+`agent_commissions` and `overseas_applications.agent_id` moves to the organisation (column shape decided
+in the design spec); backfill migration (D10).
+
+**API impact.** New `/overseas-admin/agent-orgs/{org_id}/approve|reject|suspend|reinstate`; new Master
+invite/deactivate/list endpoints; registration gains an agency name; existing
+`/overseas-admin/agents/{agent_id}/approve|reject` kept and delegated (D7).
+
+**Integration impact.** Invite email through the existing notification delivery and the `DEC-SCOPE-019`
+set-password link. No new provider.
+
+**Authentication/Authorization impact.** High. The approval gate moves to the organisation; suspension
+must bite on the next request; tenant isolation on every agent route.
+
+**Security impact.** High — cross-tenant data exposure is the main risk. **Performance impact.** One extra
+organisation lookup per agent request (loaded with the user).
+
+**Reusable existing modules.** `get_current_user` (already reloads the user each request),
+`agent_is_approved` call sites, `DEC-SCOPE-019` set-password token, `_audit`, `_notify_user`.
+
+**Dependencies.** Changes `AGT-001`–`004`, `SEC-001`, `RPT-002`, `ADM-001`. None must land first.
+
+**Acceptance criteria.**
+- **AGN-001-AC01** Registering as an agent creates exactly one `pending` organisation and one Master member
+  with code `<PREFIX>-M001`, in one transaction; prefix per D5.
+- **AGN-001-AC02** Until the organisation is `active`, its Master is denied every agent route (today's
+  `AGT-001-AC02`, preserved).
+- **AGN-001-AC03** Approve, reject, suspend and reinstate act on the organisation and each writes an audit
+  row (`entity_type='agent_org'`) in the same transaction; the old per-agent routes act on the agent's
+  organisation.
+- **AGN-001-AC04** Suspending an organisation denies every member every agent route on their next
+  request; `/auth/me`, logout and notifications still work; reinstating restores access.
+- **AGN-001-AC05** After migration, each pre-existing agent is `M001` of its own organisation —
+  approved → `active`, pending or rejected → `pending` — with unchanged data access.
+- **AGN-001-AC06** No agent route returns or changes data from another organisation; a cross-tenant test
+  exists for every agent read and write.
+- **AGN-001-AC07** A 4th active-or-invited Master → `422`; deactivating the last active Master → `422`;
+  a code is never reassigned (next = highest ever + 1); a deactivated Master cannot be reactivated.
+- **AGN-001-AC08** Only an active Master of the organisation can invite or deactivate its Masters;
+  the invite uses the `DEC-SCOPE-019` set-password link.
+- **AGN-001-AC09** An admin-created `role='agent'` user gets a `pending` organisation and code `M001`.
+- **AGN-001-AC10** Commission-estimated and commission-eligible notifications go to every active Master.
+
+**Positive scenarios.** Register → pending → approved → Master sees org data; Master invites M002, who sets
+a password and sees the same org data; suspend → denied → reinstate → allowed.
+**Negative scenarios.** Master of org A reads/writes any org B student, application, document or
+commission → `403`/`404`; pending/rejected/suspended org → `403`; non-Master or other-org Master invites
+→ `403`; 4th Master and last-Master deactivation → `422`.
+**Edge cases.** Prefix collisions and padding (D5); two registrations racing for the same prefix; invite
+to an email that already exists; deactivated Master's open session; rejected legacy agent migrated to
+`pending`.
+
+**Regression risks.** High — `AGT-001`–`004`, `SEC-001` and `RPT-002` tests and E2E specs, the approval
+routes used by `AgentApprovalPanel`, `ADM-001`'s agent role option, seed data.
+
+**Complexity:** Large. **Risk:** High.
+
+**Status (2026-09-28) — decided, not designed or built.** `DEC-SCOPE-034` recorded; branch
+`feature/agn-001-multi-tenant-agent-crm`. Next: design spec, then plan, then test-first build.
+
+---
+
 ## 2. Dependency graph
 
 **Must be sequential:**
@@ -2999,6 +3098,7 @@ item, only for the progress-view question).
 | ENH-010 | `DEC-SCOPE-025` — "School Master" (`School CRM.md` Part B §2) = `school_coordinator`; activate/deactivate scope mapping proposed, drafted 2026-09-22 | Drafted, `UNCONFIRMED` |
 | ENH-011, ENH-012, ENH-013, ENH-015, ENH-017, ENH-018, ENH-019, ENH-021, ENH-024, ENH-026, ENH-027, ENH-028, ENH-029, ENH-030 | None structurally required — each operates within already-confirmed School-domain scope (`DEC-SCOPE-011/012/013/017`) as a completion/extension, not a new scope question. ENH-026/ENH-027 additionally need a *design* choice (shared shape for "Recommended..."/"Career recommendations" fields); ENH-028's batch-size limit and ENH-030's session-vs-period granularity are also design, not scope, questions | N/A |
 | ENH-016 | None — corrected in Revision 3 to a narrower scope entirely within already-confirmed `DEC-SCOPE-017` | N/A |
+| AGN-001 | `DEC-SCOPE-034` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
@@ -3035,7 +3135,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` | none yet |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6).** Still parked: Staff logins, staff assignment/ownership, staff performance, CRM settings | `DEC-SCOPE-034` covers AGN-001 only; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

@@ -190,6 +190,17 @@ never a frontend-only gate (`FND-002`, `NFR-SEC-001`).
 | `POST /overseas-admin/commissions` | Authenticated | Overseas Admin | Manual creation path, retained (`DATA_MODEL.md` §6.7 `created_by='admin_manual'`). |
 | `POST /overseas-admin/commissions/{id}/approve-payout` | Authenticated | Overseas Admin, distinct actor from creation where system-triggered | **Net-new** — no equivalent existed in the base codebase (`REFERENCE_IMPLEMENTATION_FINDINGS.md` §5.4). 403 if the acting Admin is the same identity that created a manually-entered commission, where that separation is enforceable (`NFR-SEC-002`, `AGT-004-AC02`). |
 
+**`AGN-001` / `DEC-SCOPE-034` (2026-09-28) — DECIDED, NOT YET BUILT.** Request/response shapes are
+fixed in the `AGN-001` design spec; the decision fixes only the following:
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| Agent registration (today `POST /auth/register`, `account_type='agent'`) | Public | — | Requires an agency name. Creates one `pending` organisation + Master `M001` in one transaction (D2, D5). |
+| `POST /overseas-admin/agent-orgs/{org_id}/approve`, `/reject`, `/suspend`, `/reinstate` | Authenticated | Overseas Admin | Net-new. Each writes an `AuditLog` with `entity_type='agent_org'`, same transaction, fail closed (D7, `SEC-001`). Approve also allowed from `rejected`. |
+| `POST /overseas-admin/agents/{id}/approve`, `/reject` | Authenticated | Overseas Admin | Kept; acts on that agent's organisation (D7). |
+| Master invite / deactivate / list (paths in the design spec) | Authenticated | Active Master of the same organisation | Invite: `422` when three Masters are already active or invited (D4); email with `DEC-SCOPE-019` set-password link (D9). Deactivate: `422` for the last active Master; no reactivation (D8). |
+| Every existing agent route in this section and `/portal/overseas/agent/*` | Authenticated | Own **organisation** | Replaces "Self (Agent)" (D1). `403` while the organisation is not `active` (D6). |
+
 ---
 
 ## 9. Overseas Staff (`CNS-001`, `UNI-001`)

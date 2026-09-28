@@ -413,6 +413,23 @@ predate an application record).
   not exist yet and is required scope, not optional polish, once the on-behalf-of model is built.
   See §6.2's note above for the same open `student_user_id` schema question.
 
+### 6.8a Agent organisation and members — **planned** (`AGN-001`, `DEC-SCOPE-034`, 2026-09-28)
+**Net-new, not yet built.** Entity-level facts fixed by the decision; table and column names, keys,
+constraints and indexes are fixed in the `AGN-001` design spec, not here.
+- **Agent organisation** (the tenant): agency name, unique code prefix (D5), status
+  `pending`/`active`/`rejected`/`suspended` (D6), approval/suspension actor and time.
+- **Organisation member**: links a `User` to one organisation; role `master`; display code
+  `<PREFIX>-M###`, monotonic per organisation and never reassigned (D4); active/deactivated (a
+  deactivated member is never reactivated, D8); invite state (D9).
+- **Invariants:** at most three members active or with a pending invite (D4); at least one active
+  Master once the organisation has one (D8).
+- **Scope key change:** `AgentStudent`, `AgentCommission` and `OverseasApplication.agent_id` become
+  organisation-scoped (D1). Whether that is a new `org_id` column or a re-keyed `agent_id` is a design
+  decision.
+- **Migration (D10):** one organisation + `M001` per existing agent; approved → `active`, pending and
+  rejected → `pending`; existing rows keep their data.
+- **Feature IDs:** `AGN-001` (changes `AGT-001`–`004`).
+
 ### 6.9 `InboundUniversityEmail`
 **Carries over.** Supports `UNI-001`'s university-communication surface.
 - **Feature IDs:** `UNI-001`.
