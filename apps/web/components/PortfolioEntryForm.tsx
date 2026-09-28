@@ -125,20 +125,8 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
         </div>
       )}
       {entryId && skillIndia && <p className="muted">Skill India certification</p>}
-      <div className="field">
-        <label htmlFor="pf-organization">{skillIndia ? "Issuing body (optional)" : "Organization (optional)"}</label>
-        <input id="pf-organization" className="search" value={organization} disabled={busy} onChange={(e) => setOrganization(e.target.value)} />
-      </div>
-      <div className="field">
-        <label htmlFor="pf-date-from">Start date (optional)</label>
-        <input id="pf-date-from" type="date" className="search" value={dateFrom} disabled={busy} onChange={(e) => setDateFrom(e.target.value)} />
-      </div>
-      <div className="field">
-        <label htmlFor="pf-date-to">End date (optional)</label>
-        <input id="pf-date-to" type="date" className="search" value={dateTo} disabled={busy} onChange={(e) => setDateTo(e.target.value)} />
-      </div>
       {skillIndia && (
-        <fieldset className="field">
+        <fieldset className="form-section">
           <legend>Skill India details</legend>
           <div className="field">
             <label htmlFor="pf-cert-status">Status</label>
@@ -162,6 +150,18 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
           </div>
         </fieldset>
       )}
+      <div className="field">
+        <label htmlFor="pf-organization">{skillIndia ? "Issuing body (optional)" : "Organization (optional)"}</label>
+        <input id="pf-organization" className="search" value={organization} disabled={busy} onChange={(e) => setOrganization(e.target.value)} />
+      </div>
+      <div className="field">
+        <label htmlFor="pf-date-from">Start date (optional)</label>
+        <input id="pf-date-from" type="date" className="search" value={dateFrom} disabled={busy} onChange={(e) => setDateFrom(e.target.value)} />
+      </div>
+      <div className="field">
+        <label htmlFor="pf-date-to">End date (optional)</label>
+        <input id="pf-date-to" type="date" className="search" value={dateTo} disabled={busy} onChange={(e) => setDateTo(e.target.value)} />
+      </div>
       <div className="field">
         <label htmlFor="pf-description">Description (optional)</label>
         <textarea id="pf-description" className="search" rows={3} maxLength={2000} value={description} disabled={busy} onChange={(e) => setDescription(e.target.value)} />

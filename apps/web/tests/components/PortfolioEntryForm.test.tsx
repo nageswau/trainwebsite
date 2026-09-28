@@ -90,6 +90,19 @@ describe("PortfolioEntryForm — Skill India", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  // QA24-04: the details group uses the app's grouped-fields style (fieldset.form-section, ENH-025) and sits directly
+  // under the checkbox that reveals it, before the Issuing body and date fields.
+  it("shows the Skill India details as a styled group right under its checkbox", () => {
+    render(<PortfolioEntryForm studentId="s1" section="certification" onDone={() => {}} onCancel={() => {}} />);
+    fireEvent.click(screen.getByRole("checkbox", { name: /skill india certification/i }));
+    const group = screen.getByRole("group", { name: /skill india details/i });
+    expect(group).toHaveClass("form-section");
+    const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(screen.getByRole("checkbox", { name: /skill india certification/i }), group)).toBe(true);
+    expect(follows(group, screen.getByLabelText(/issuing body/i))).toBe(true);
+    expect(follows(group, screen.getByLabelText(/start date/i))).toBe(true);
+  });
+
   // QA24-06: a Skill India field's error goes away as soon as that field is edited, not only on the next Save.
   it("clears each Skill India error when its own field is edited", async () => {
     global.fetch = ok() as unknown as typeof fetch;
