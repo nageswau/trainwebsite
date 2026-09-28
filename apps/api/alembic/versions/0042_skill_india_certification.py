@@ -30,8 +30,7 @@ CHECKS = (
     ("ck_portfolio_cert_status", "certification_status IS NULL OR certification_status IN ('enrolled', 'in_progress', 'certified')"),
     (
         "ck_portfolio_cert_fields",
-        "(certification_type IS NULL AND certification_status IS NULL AND certificate_number IS NULL AND issued_on IS NULL) "
-        "OR (certification_type IS NOT NULL AND certification_status IS NOT NULL)",
+        "(certification_type IS NULL AND certification_status IS NULL AND certificate_number IS NULL AND issued_on IS NULL) OR (certification_type IS NOT NULL AND certification_status IS NOT NULL)",
     ),
     ("ck_portfolio_cert_certified", "certification_status IS DISTINCT FROM 'certified' OR (certificate_number IS NOT NULL AND issued_on IS NOT NULL)"),
 )

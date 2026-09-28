@@ -949,6 +949,34 @@ def date_range_is_invalid(date_from: date | None, date_to: date | None) -> bool:
     return date_from is not None and date_to is not None and date_to < date_from
 
 
+# --- ENH-024: Skill India certification (docs/superpowers/specs/2026-09-28-enh-024-skill-india-certification-design.md §5) ---
+# Declared once and shared by PortfolioEntryCreate and portfolio.py's post-merge PATCH check (the DATE_RANGE_ERROR precedent).
+CertificationType = Literal["skill_india"]
+CertificationStatus = Literal["enrolled", "in_progress", "certified"]
+CERT_TYPE_SECTION_ERROR = "Only a certification can be marked as Skill India"
+CERT_STATUS_REQUIRED_ERROR = "Choose a status for the Skill India certification"
+CERT_FIELDS_UNTAGGED_ERROR = "Status, certificate number and issue date apply only to Skill India certifications"
+CERT_CERTIFIED_ERROR = "A certified Skill India certification needs a certificate number and issue date"
+
+
+def skill_india_error(certification_type: str | None, certification_status: str | None, certificate_number: str | None, issued_on: date | None) -> str | None:
+    """Spec D3/D6 on a complete state (a create payload, or a PATCH merged onto the stored entry); None when valid. Explicit
+    nulls on an untagged entry are valid -- only a non-null detail is refused."""
+    if certification_type is None:
+        has_detail = certification_status is not None or certificate_number is not None or issued_on is not None
+        return CERT_FIELDS_UNTAGGED_ERROR if has_detail else None
+    if certification_status is None:
+        return CERT_STATUS_REQUIRED_ERROR
+    if certification_status == "certified" and (certificate_number is None or issued_on is None):
+        return CERT_CERTIFIED_ERROR
+    return None
+
+
+def _clean_certificate_number(value: str | None) -> str | None:
+    # `str_strip_whitespace` has already trimmed it; blank means "not given". Single-line, like title/organization.
+    return _no_control_characters(value) if value else None
+
+
 class PortfolioEntryCreate(BaseModel):
     model_config = {"str_strip_whitespace": True, "extra": "forbid"}
     section: str
@@ -957,6 +985,10 @@ class PortfolioEntryCreate(BaseModel):
     organization: str | None = Field(default=None, max_length=200)
     date_from: date | None = None
     date_to: date | None = None
+    certification_type: CertificationType | None = None
+    certification_status: CertificationStatus | None = None
+    certificate_number: str | None = Field(default=None, max_length=100)
+    issued_on: date | None = None
 
     @field_validator("section")
     @classmethod
@@ -984,6 +1016,21 @@ class PortfolioEntryCreate(BaseModel):
             raise ValueError(DATE_RANGE_ERROR)
         return self
 
+    @field_validator("certificate_number")
+    @classmethod
+    def _clean_certificate_number(cls, value: str | None) -> str | None:
+        return _clean_certificate_number(value)
+
+    @model_validator(mode="after")
+    def _skill_india_rules(self):
+        # ENH-024: the tag lives only on a certification entry; the rest of the rule is shared with the PATCH merge check.
+        if self.certification_type is not None and self.section != "certification":
+            raise ValueError(CERT_TYPE_SECTION_ERROR)
+        error = skill_india_error(self.certification_type, self.certification_status, self.certificate_number, self.issued_on)
+        if error:
+            raise ValueError(error)
+        return self
+
 
 class PortfolioEntryUpdate(BaseModel):
     model_config = {"str_strip_whitespace": True, "extra": "forbid"}
@@ -992,11 +1039,21 @@ class PortfolioEntryUpdate(BaseModel):
     organization: str | None = Field(default=None, max_length=200)
     date_from: date | None = None
     date_to: date | None = None
+    # ENH-024: no `certification_type` -- the tag is set at creation only (D8), so sending it is an `extra="forbid"` 422.
+    # Cross-field rules need the stored entry, so portfolio.py checks them after the merge.
+    certification_status: CertificationStatus | None = None
+    certificate_number: str | None = Field(default=None, max_length=100)
+    issued_on: date | None = None
 
     @field_validator("title", "organization")
     @classmethod
     def _clean_text(cls, value: str | None) -> str | None:
         return _no_control_characters(value)
+
+    @field_validator("certificate_number")
+    @classmethod
+    def _clean_certificate_number(cls, value: str | None) -> str | None:
+        return _clean_certificate_number(value)
 
     @field_validator("description")
     @classmethod
@@ -1034,6 +1091,10 @@ class PortfolioEntryOut(BaseModel):
     organization: str | None
     date_from: date | None
     date_to: date | None
+    certification_type: str | None = None
+    certification_status: str | None = None
+    certificate_number: str | None = None
+    issued_on: date | None = None
     created_by_user_id: UUID
     updated_by_user_id: UUID
     created_at: datetime
