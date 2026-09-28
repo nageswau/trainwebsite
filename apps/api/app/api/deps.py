@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.core.rbac import user_has_division, user_has_permission, user_has_role
 from app.core.security import decode_token
-from app.models import User
+from app.models import AgentOrgMember, User
 
 
 async def get_current_user(edusphere_access: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)) -> User:
@@ -21,8 +21,12 @@ async def get_current_user(edusphere_access: str | None = Cookie(default=None), 
             raise ValueError()
     except Exception as exc:
         raise HTTPException(401, "Invalid session") from exc
+    # AGN-001: the agent membership (+ organisation) is loaded with every request, so the organisation gate
+    # (`rbac.agent_denial_reason`) sees a suspension on the member's next request.
     user = await db.scalar(
-        select(User).where(User.id == uid, User.active.is_(True)).options(selectinload(User.role_assignments))
+        select(User).where(User.id == uid, User.active.is_(True)).options(
+            selectinload(User.role_assignments), selectinload(User.agent_membership).selectinload(AgentOrgMember.org)
+        )
     )
     if not user:
         raise HTTPException(401, "User unavailable")

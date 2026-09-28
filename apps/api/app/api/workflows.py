@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
-from app.core.rbac import agent_is_approved
+from app.core.rbac import agent_denial_reason
 from app.models import (
     AgentCommission,
     AgentStudent,
@@ -107,8 +107,9 @@ def _require(user: User, roles: set[str], division: str | None = None):
     # AGT-001-AC02: a Pending/Rejected Agent cannot refer students or view data, even
     # though `user.role == "agent"` already passed above -- this codebase's `_require`
     # checks the legacy `User.role` column, which has no approval concept of its own.
-    if not agent_is_approved(user):
-        raise HTTPException(403, "Agent registration is pending approval")
+    reason = agent_denial_reason(user)
+    if reason:
+        raise HTTPException(403, reason)
 
 
 async def _audit(db: AsyncSession, user: User, action: str, entity_type: str, entity_id: UUID | str | None, metadata: dict | None = None):

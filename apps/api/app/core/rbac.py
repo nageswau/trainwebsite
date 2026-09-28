@@ -72,20 +72,36 @@ def _assignment_is_usable(assignment: UserRoleAssignment) -> bool:
     return True
 
 
-def agent_is_approved(user) -> bool:
-    """Sync check against an already-loaded `user.role_assignments` (eager-loaded by
-    `get_current_user` for every request) -- AGT-001-AC02: a Pending/Rejected Agent must
-    be denied even though the User row itself is active and can log in. Route-level
-    checks in `workflows.py`/`portal.py` use `user.role` directly (a legacy column with
-    no approval concept) rather than this module's own async `user_has_role`/
-    `get_active_assignments`, so every one of those call sites must additionally call
-    this for role="agent" -- it is not implied by passing the simpler role check.
-    """
+PENDING_MESSAGE = "Agent registration is pending approval"
+SUSPENDED_MESSAGE = "Your agency's account is suspended"
+DEACTIVATED_MESSAGE = "Your Master account is deactivated"
+
+
+def agent_denial_reason(user) -> str | None:
+    """AGN-001 (DEC-SCOPE-034 D6, spec E10): why an agent is denied every agent route, or None.
+
+    Reads `user.agent_membership` (+ `.org`), eager-loaded by `get_current_user` on every request, so a suspension
+    applies on the member's next request. The organisation's status is the gate (AGT-001-AC02 preserved: a pending or
+    rejected organisation is denied with the same message as before). Route-level checks in `workflows.py`/`portal.py`
+    use the legacy `user.role` column, so every one of those call sites must additionally call this for role="agent".
+    Non-agents are never denied here."""
 
     if user.role != "agent":
-        return True
-    assignment = next((a for a in user.role_assignments if a.role == "agent" and a.division == user.division and a.is_active), None)
-    return bool(assignment and assignment.approval_status == "approved")
+        return None
+    membership = user.agent_membership
+    if membership is None:
+        return PENDING_MESSAGE
+    if membership.status != "active":
+        return DEACTIVATED_MESSAGE
+    if membership.org.status == "suspended":
+        return SUSPENDED_MESSAGE
+    if membership.org.status != "active":
+        return PENDING_MESSAGE
+    return None
+
+
+def agent_is_approved(user) -> bool:
+    return agent_denial_reason(user) is None
 
 
 async def get_active_assignments(db: AsyncSession, user_id: UUID) -> list[UserRoleAssignment]:
