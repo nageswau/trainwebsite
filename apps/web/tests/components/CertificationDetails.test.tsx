@@ -32,6 +32,14 @@ describe("CertificationDetails", () => {
     expect(screen.queryByText(/^Issued /)).not.toBeInTheDocument();
   });
 
+  // QA24-03: a stored issue date is shown only while the status is Certified, so an enrolled or in-progress
+  // certificate never reads as issued (the date is kept and reappears if the status goes back to Certified).
+  it.each(["enrolled", "in_progress"])("hides the issue date while the status is %s", (status) => {
+    render(<CertificationDetails entry={{ certification_type: "skill_india", certification_status: status, certificate_number: "SI-1", issued_on: "2026-05-01" }} />);
+    expect(screen.getByText("Certificate no. SI-1")).toBeInTheDocument();
+    expect(screen.queryByText(/^Issued /)).not.toBeInTheDocument();
+  });
+
   it("is safe inside client components (imports no server-only module)", () => {
     // clientBoundary.test.ts only checks a client file's direct imports; PortfolioPanel ("use client") imports this file,
     // so a server-only import here would break `next build` without that test noticing.

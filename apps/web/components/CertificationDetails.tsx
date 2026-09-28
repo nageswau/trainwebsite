@@ -16,7 +16,8 @@ export default function CertificationDetails({ entry }: { entry: CertificationFi
       <span className="badge">Skill India</span>
       {status ? <span className={status === "certified" ? "status" : "status pending"}>{CERT_STATUS_LABEL[status] ?? status}</span> : null}
       {entry.certificate_number ? <span className="muted">Certificate no. {entry.certificate_number}</span> : null}
-      {entry.issued_on ? <span className="muted">Issued {formatCalendarDate(entry.issued_on)}</span> : null}
+      {/* QA24-03: only a certified certificate reads as issued; a date kept from before a status change stays stored. */}
+      {status === "certified" && entry.issued_on ? <span className="muted">Issued {formatCalendarDate(entry.issued_on)}</span> : null}
     </div>
   );
 }
