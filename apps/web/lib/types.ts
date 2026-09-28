@@ -15,3 +15,47 @@ export type AvailableBatch = {id:string; name:string; program_id:string; program
 export type LiveSessionInfo = {id:string; batch:string; title:string; starts_at:string; ends_at:string; provider:string; meeting_url:string|null; host_url:string|null; recording_url:string|null; recording_status:string; sync_status:string; status:string};
 export type Webinar = {id:string; division:string; title:string; event_type:string; starts_at:string; location:string; description:string; is_past:boolean; registration_url?:string|null};
 export type Scholarship = {id:string; title:string; eligibility:string; amount:string; deadline:string|null};
+
+// --- ENH-016 analytics dashboards (docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md §7) ---
+export type SchoolKpi = { key: string; label: string; value: number | null; tracked: boolean; note: string | null };
+export type MetricCell = { count: number; pct: number | null };
+export type GradeMetricRow = { key: string; label: string; is_proxy: boolean; definition: string | null; cells: Record<string, MetricCell> };
+export type GradePerformance = { grades: string[]; students: Record<string, number>; metrics: GradeMetricRow[] };
+export type AverageRow = { key: string; label: string; average_pct: number | null; count: number };
+export type PerformerRow = { school_student_id: string; full_name: string; grade: string; average_pct: number; result_count: number };
+export type StudentDevelopment = {
+  headcounts: { students: number; teachers: number; parents: number };
+  activities: { key: string; label: string; completed: number; pending: number }[];
+  by_grade: AverageRow[];
+  by_subject: AverageRow[];
+  by_term: AverageRow[];
+  at_risk: { items: PerformerRow[]; total: number };
+  top_performers: { items: PerformerRow[]; total: number };
+  at_risk_below: number;
+  top_from: number;
+};
+export type ScorecardState = "completed" | "in_progress" | "not_started" | "not_in_plan" | "not_tracked";
+export type ScorecardArea = { key: string; label: string; state: ScorecardState };
+export type Scorecard = { school_student_id: string; full_name: string; grade: string; portfolio_completion_pct: number; areas: ScorecardArea[] };
+export type ScorecardPage = { items: Scorecard[]; total: number; limit: number; offset: number };
+export type TrackedValue = { value: number | null; tracked: boolean; note: string | null };
+export type ServiceTotals = { services_included: number; delivered: number; pending: number; not_tracked: number; utilization_pct: number | null };
+export type CrossSchoolSummary = {
+  schools: { total: number; active: number; new: number; renewal_due: number };
+  students: { total: number; by_grade: Record<string, number>; career_guidance: number; psychometric: number; counselling: number; global_education: number };
+  services: ServiceTotals;
+  outcomes: Record<string, TrackedValue>;
+};
+export type SchoolUtilizationRow = ServiceTotals & {
+  school_id: string;
+  name: string;
+  tier: string | null;
+  tier_valid_until: string | null;
+  status: string;
+  is_new: boolean;
+  renewal_due: boolean;
+  students: number;
+  student_participation: number;
+  pending_activities: number;
+};
+export type SchoolUtilizationPage = { items: SchoolUtilizationRow[]; total: number; limit: number; offset: number };
