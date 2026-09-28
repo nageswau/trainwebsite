@@ -1,7 +1,9 @@
 import PortalShell from "@/components/PortalShell";
+import SchoolAnalyticsSections from "@/components/SchoolAnalyticsSections";
 import SchoolReportsPanel from "@/components/SchoolReportsPanel";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
+import { loadSchoolAnalytics } from "@/lib/schoolAnalytics";
 import type { User } from "@/lib/types";
 import { accessUnavailable } from "@/components/AccessUnavailable";
 
@@ -22,8 +24,8 @@ type ReportData = {
 
 // Principal's Reports view -- same read-only report as the Coordinator's own
 // (GET /school/reports, own institution scope), reusing SchoolReportsPanel rather than
-// duplicating the chart layout.
-export default async function SchoolPrincipalReportsPage() {
+// duplicating the chart layout. ENH-016 adds the same analytics sections as the Coordinator's.
+export default async function SchoolPrincipalReportsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   let user: User;
   let report: ReportData;
   try {
@@ -31,9 +33,11 @@ export default async function SchoolPrincipalReportsPage() {
   } catch (e) {
     return accessUnavailable(e);
   }
+  const analytics = await loadSchoolAnalytics(await searchParams);
   return (
     <PortalShell nav={SCHOOL_NAV.principal} roleLabel="Principal" userName={user.full_name}>
       <SchoolReportsPanel report={report} />
+      <SchoolAnalyticsSections data={analytics} role="principal" />
     </PortalShell>
   );
 }
