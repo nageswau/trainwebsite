@@ -25,8 +25,8 @@ describe("AgentApprovalPanel (AGN-001)", () => {
     expect(await screen.findByText("ABC-M001 · Asha Rao")).toBeInTheDocument();
     expect(mock.mock.calls[0][0]).toBe(`${LIST}?status=pending&limit=20&offset=0`);
     expect(screen.getByRole("button", { name: "Pending" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Approve / })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Reject / })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 4, name: "Pending" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 5, name: /Kappa Overseas/ })).toBeInTheDocument();
   });
@@ -41,7 +41,7 @@ describe("AgentApprovalPanel (AGN-001)", () => {
     render(<AgentApprovalPanel />);
     await screen.findByText("No organisations awaiting approval.");
     fireEvent.click(screen.getByRole("button", { name: tab }));
-    expect(await screen.findByRole("button", { name: action })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: new RegExp(`^${action} `) })).toBeInTheDocument();
     expect(mock.mock.calls[1][0]).toBe(`${LIST}?status=${status}&limit=20&offset=0`);
     expect(screen.getByRole("button", { name: tab })).toHaveAttribute("aria-pressed", "true");
   });
@@ -64,7 +64,7 @@ describe("AgentApprovalPanel (AGN-001)", () => {
     vi.stubGlobal("fetch", mock);
     render(<AgentApprovalPanel />);
     fireEvent.click(await screen.findByRole("button", { name: "Retry" }));
-    expect(await screen.findByRole("button", { name: "Approve" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^Approve / })).toBeInTheDocument();
   });
 
   it("shows the empty text when nothing awaits approval", async () => {
@@ -85,13 +85,13 @@ describe("AgentApprovalPanel (AGN-001)", () => {
     render(<AgentApprovalPanel />);
     await screen.findByText("No organisations awaiting approval.");
     fireEvent.click(screen.getByRole("button", { name: "Approved" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Suspend" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Suspend / }));
     const confirm = screen.getByRole("button", { name: "Confirm suspend" });
     act(() => { fireEvent.click(confirm); fireEvent.click(confirm); });
     expect(mock).toHaveBeenCalledTimes(3);
     expect(mock.mock.calls[2][0]).toBe(`${LIST}/a/suspend`);
     release(ok({ id: "a", status: "suspended" }));
-    expect(await screen.findByRole("button", { name: "Reinstate" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^Reinstate / })).toBeInTheDocument();
     expect(mock.mock.calls[3][0]).toBe(`${LIST}?status=suspended&limit=20&offset=0`);
     expect(screen.getByRole("button", { name: "Suspended" })).toHaveAttribute("aria-pressed", "true");
   });
@@ -101,16 +101,31 @@ describe("AgentApprovalPanel (AGN-001)", () => {
     render(<AgentApprovalPanel />);
     await screen.findByText("No organisations awaiting approval.");
     fireEvent.click(screen.getByRole("button", { name: "Approved" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Suspend" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Suspend / }));
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Confirm suspend" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Suspend" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Suspend / }));
+  });
+
+  it("announces a network failure on an action (final review #1)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(page([org("p", "pending", "Kappa Overseas")])).mockRejectedValueOnce(new TypeError("Failed to fetch")));
+    render(<AgentApprovalPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Approve Kappa Overseas" }));
+    expect(await screen.findByText("Network error. Check your connection and try again.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve Kappa Overseas" })).toBeEnabled();
+  });
+
+  it("names the organisation in every action button for screen readers (final review #9)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(page([org("p", "pending", "Kappa Overseas"), org("q", "pending", "Lambda Travel")])));
+    render(<AgentApprovalPanel />);
+    expect(await screen.findByRole("button", { name: "Approve Kappa Overseas" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reject Lambda Travel" })).toBeInTheDocument();
   });
 
   it("shows a server error on the card", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(page([org("p", "pending")])).mockResolvedValueOnce(new Response(JSON.stringify({ detail: "Cannot approve an organisation that is active" }), { status: 409 })));
     render(<AgentApprovalPanel />);
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Approve / }));
     expect(await screen.findByText("Cannot approve an organisation that is active")).toBeInTheDocument();
   });
 });

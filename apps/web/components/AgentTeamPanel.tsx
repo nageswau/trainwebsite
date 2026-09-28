@@ -7,6 +7,7 @@ type Master = { id: string; code: string; full_name: string; email: string; stat
 type Team = { org: { id: string; name: string; prefix: string; status: string }; masters: Master[]; limit: number };
 
 const TEAM_URL = "/api/v1/workflows/overseas/agent/team";
+const NETWORK_ERROR = "Network error. Check your connection and try again.";
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -79,6 +80,8 @@ export default function AgentTeamPanel() {
       );
       router.refresh(); // the page's server-rendered Team table
       load();
+    } catch {
+      setInviteMessage({ text: NETWORK_ERROR, failed: true });
     } finally {
       inviteInFlight.current = false;
       setInviting(false);
@@ -104,6 +107,8 @@ export default function AgentTeamPanel() {
       }
       router.refresh();
       load();
+    } catch {
+      setRowMessage({ id: master.id, text: NETWORK_ERROR });
     } finally {
       inFlight.current.delete(master.id);
       setBusyId(null);

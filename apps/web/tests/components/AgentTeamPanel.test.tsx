@@ -69,6 +69,20 @@ describe("AgentTeamPanel (AGN-001)", () => {
     expect(await screen.findByText("This agency already has 3 active Masters")).toBeInTheDocument();
   });
 
+  it("announces a network failure on invite and on deactivate (final review #1)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res(team([me, other]))).mockRejectedValue(new TypeError("Failed to fetch")));
+    render(<AgentTeamPanel />);
+    await screen.findByText("ABC-M001");
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "X" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "x@example.local" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send invite" }));
+    expect(await screen.findByText("Network error. Check your connection and try again.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send invite" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Deactivate Ravi Iyer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
+    await vi.waitFor(() => expect(screen.getAllByText("Network error. Check your connection and try again.")).toHaveLength(2));
+  });
+
   it("shows the invite throttle message", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res(team([me]))).mockResolvedValueOnce(res({ detail: "This agency has sent 10 invites in the last 24 hours. Try again later." }, 429)));
     render(<AgentTeamPanel />);

@@ -88,6 +88,8 @@ export default function AgentApprovalPanel() {
       if (RESULT[action] === status) load();
       else showTab(RESULT[action]);
       setConfirming(null);
+    } catch {
+      setMessage({ id: org.id, text: "Network error. Check your connection and try again." });
     } finally {
       inFlight.current.delete(org.id);
       setBusyId(null);
@@ -144,6 +146,7 @@ export default function AgentApprovalPanel() {
                       <button
                         key={action}
                         id={action === "suspend" ? `agent-org-suspend-${org.id}` : undefined}
+                        aria-label={`${LABEL[action]} ${org.name}`}
                         className={i === 0 ? "btn small" : "btn secondary small"}
                         disabled={busyId === org.id}
                         onClick={() => (action === "suspend" ? setConfirming(org.id) : act(org, action))}
