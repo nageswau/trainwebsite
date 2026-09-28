@@ -2538,7 +2538,7 @@ correction, not deleted, per this project's traceability convention.
 - **Role(s):** School Coordinator, Principal, Teacher (assigned students), Parent (linked children), Academic Team, Career Counselor, Psychometric Team (own school portfolio).
 - **Purpose:** The Student 360° view / Career Passport: one student's record in 16 tabs (Overview, Personal Details, Academic Records, Attendance, Examination Results, Career Guidance, Psychometric Assessment, Skills, Foreign Languages, English Testing, Activities, Certificates, Documents, Teacher Remarks, Parent Communication, Edusphere Programs), each scoped to what the viewing role may already read.
 - **Linked Feature ID(s):** `ENH-013`
-- **Entry points:** "Open 360° view" on the Coordinator/Principal/Teacher student page (SCR-SCH-025 family) and on the Parent's child page; a "Student 360° view" list on the Academic Team, Career Counselor and Psychometric Team dashboards.
+- **Entry points:** "Open 360° view" on the Coordinator/Principal/Teacher student page (SCR-SCH-025 family) and on the Parent's child page; a "Student 360° view" list on the Career Counselor and Psychometric Team dashboards. *Updated 2026-09-28 (`ENH-024`, QA24-01):* the Academic Team reaches it through its own student page (SCR-SCH-037, from the dashboard's "Students" list), and its "Back to student" link returns there.
 - **Required data:** Server-rendered: GET /auth/me, GET /school/students/{id}/360-view. Client: PATCH /school/students/{id}/career-goal (Career Counselor only). Switching tabs makes no request (`history.replaceState`).
 - **Key actions:** Switch tabs (click, arrows, Home/End); Career Counselor sets/edits/clears the career goal on the Overview tab; follow a psychometric report link (same-origin or https only).
 - **Empty state:** Every tab without records shows a `role="status"` message naming who records the data (e.g. "No published results yet. Results appear after the Academic Team publishes them."); tabs a role cannot read show "This section is not available for your role."; sources not built yet show a "not tracked yet (ENH-030 / ENH-025 / ENH-013b / ENH-014)" note.
@@ -2568,6 +2568,24 @@ correction, not deleted, per this project's traceability convention.
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet/mobile: single column, same as the Coordinator equivalent.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** `SchoolPrincipalNotificationsPage.test.tsx` (passing); `tests/e2e/enh-023-tier-change.spec.ts` (principal sees the tier-change notification); browser QA is deliberately deferred to a later pass (not part of this task).
+
+### `SCR-SCH-037` *(added 2026-09-28, `ENH-024` / `DEC-SCOPE-033`, browser QA finding QA24-01)*
+- **Route:** `/school/academic-team/students/[id]`
+- **Role(s):** Academic Team (own school portfolio).
+- **Purpose:** The Academic Team's student page: the student's Digital Portfolio, editable, so the team — one of the three portfolio writers (`DEC-SCOPE-033` D10, ENH-012's `WRITE_ROLES`) — can record entries, including a Skill India certification, from a screen of its own.
+- **Linked Feature ID(s):** `ENH-024` (and `ENH-012`, whose portfolio it renders)
+- **Entry points:** The "Students" list on the Academic Team dashboard (formerly titled "Student 360° view"; its rows now open this page); "Back to student" on the team's 360° view (SCR-SCH-035).
+- **Required data:** Server-rendered: GET /auth/me, GET /school/students/{id}/portfolio. Client: POST/PATCH/DELETE /school/students/{id}/portfolio/entries, PATCH …/portfolio/personal-statement — the API decides `can_edit` and scope; the page adds no rule.
+- **Key actions:** Add/edit/delete portfolio entries in every section (a Skill India certification: tick "Skill India certification", choose status, certificate number, issue date, issuing body); edit the personal statement; "Open 360° view"; "Back to dashboard".
+- **Empty state:** Each empty portfolio section says "No entries yet."; confirmations appear in one polite live line ("Certification added." / "updated." / "deleted.", "Personal statement saved.") (QA24-08).
+- **Loading state:** Server-rendered (no `loading.tsx`); the entry form shows "Saving…" with every field disabled.
+- **Error state:** A student outside the team's portfolio, or any 401/403/404 → the shared Access Unavailable card with the server's reason; form errors are named at the field (`aria-invalid` + linked message, focus on the first) and server refusals appear in the form's alert; a dropped connection keeps the entry.
+- **Permissions/resource scope:** `academic_team`, own school portfolio only (`_load_student_for_reader` / `_student_in_portfolio`); writes gated by the school's `digital_portfolio_creation` tier with ENH-023 grandfathering. No RBAC change.
+- **Responsive behavior:** Single column; ENH-024 content (the Skill India details line, the form and its fieldset) fits 320px (verified 2026-09-28). Known, pre-existing (ENH-012): an entry title containing a long unbroken word can push that entry's Edit/Delete button row past the viewport at 320px (`.pf-entry-actions` does not wrap).
+- **Accessibility requirements:** One `h1` (the student); focus goes to the first field when a form opens and back to the triggering Add/Edit button on Save/Cancel, to the section's Add button after a delete (QA24-07); the Skill India checkbox row is a 44px target (QA24-05); status is text, never colour alone.
+- **Desktop/tablet/mobile behavior:** Same as the Coordinator's portfolio card; verified in the browser at 1366, 768, 375 and 320.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `AcademicTeamStudentPage.test.tsx`, `PortfolioPanel.test.tsx`, `PortfolioEntryForm.test.tsx` (passing); `test_enh_024_skill_india.py` (academic_team writer cases); browser verification 2026-09-28 (Academic Team records, certifies, edits and deletes from this page; 360° "Back to student" returns here).
 
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  
