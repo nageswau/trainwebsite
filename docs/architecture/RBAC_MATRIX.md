@@ -131,15 +131,17 @@ here.
 | `agent`, `approval_status='approved'` | view own referral roster, view own commissions, claim eligible/estimated commissions | **Own referrals/commissions only** — explicit deny on any other agent's rows (`AGT-002-AC02`) | `AGT-002`–`004` |
 | `overseas_admin` | approve/reject agent registration, create manual commissions, **approve commission payout** | Overseas division | `AGT-001`, `AGT-003`, `AGT-004` |
 
-**`AGN-001` / `DEC-SCOPE-034` (2026-09-28) — agent organisation as tenant, DECIDED, NOT YET BUILT.**
-When built, the three rows above change as follows. The approval gate is the **organisation's**
+**`AGN-001` / `DEC-SCOPE-034` (2026-09-28) — agent organisation as tenant, BUILT 2026-09-28.**
+The three rows above now read as follows. The approval gate is the **organisation's**
 status, not the assignment's: while it is `pending`, `rejected` or `suspended`, every member is denied
 every agent route (D6; suspension applies on the next request and leaves `/auth/me`, logout and
 notifications working). "Own" means **own organisation**: a Master sees and changes all of their
 organisation's referrals, applications, documents and commissions, and nothing of any other
 organisation (D1). Only an active Master of the organisation invites or deactivates its Masters (D8);
 `overseas_admin` gains approve/reject/suspend/reinstate on the organisation (D7) but does not manage
-members. Staff roles are not decided (D13).
+members. Staff roles are not decided (D13). Enforcement: `core/rbac.agent_denial_reason` (gate, called by
+`workflows._require`, `portal()` and `api/agent_team.py`) and `services/agent_orgs.org_member_ids` (scope). Proved by
+`tests/test_agn_001_tenancy.py` (cross-organisation matrix) and `test_agn_001_team.py`.
 
 **`DEC-ROLE-004` (2026-09-14) — Agent on-behalf-of a referred student, NOT YET BUILT:** the
 approved Agent row above is read-only (view roster/commissions, claim). Since an Agent-referred

@@ -1665,6 +1665,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 | `SCR-AGT-004` | `/overseas/agent/commissions` | Agent | `AGT-003` |
 | `SCR-AGT-005` | `/overseas/agent/commissions/[id]/claim` | Agent | `AGT-004` |
 | `SCR-AGT-006` | `/overseas/admin/commissions` | Overseas Admin | `AGT-004` |
+| `SCR-AGT-007` | `/overseas/agent/team` | Agent (Master) | `AGN-001` |
 
 ### `SCR-AGT-001`
 - **Route:** `/overseas/agent/register`  
@@ -1701,6 +1702,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.  
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Approval flips the Agent to Active and unlocks SCR-AGT-003/004 for them; every decision audit-logged (SEC-001).  
+- **AGN-001 update (2026-09-28/29, `DEC-SCOPE-034`, R2):** the queue now lists agent **organisations**, one status tab at a time (Pending / Approved / Suspended / Rejected toggle buttons, Pending first), 20 per page with "Showing x–y of N" and Previous/Next; each card shows agency name, prefix and every Master's code, name and email. Actions: Pending → Approve / Reject; Rejected → Approve; Approved → Suspend (inline confirmation, focus moves to Confirm and back on Cancel); Suspended → Reinstate. After an action the panel switches to the organisation's new tab. Loading text, an error state with Retry (no longer a silent empty list), per-tab empty text, per-card busy state and inline error. Component `AgentApprovalPanel.tsx`.  
 
 ### `SCR-AGT-003`
 - **Route:** `/overseas/agent (Dashboard: referred students)`  
@@ -1773,6 +1775,24 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.  
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Approval action is itself audit-logged (SEC-001); Agent cannot self-approve.  
+
+### `SCR-AGT-007`
+- **Route:** `/overseas/agent/team`  
+- **Role(s):** Agent — an active Master of an active agency  
+- **Purpose:** The agency's Master accounts: list, invite, deactivate *(net-new, added 2026-09-28, `AGN-001` / `DEC-SCOPE-034`)*.  
+- **Linked Feature ID(s):** `AGN-001`  
+- **Entry points:** Agent portal navigation, "Team".  
+- **Required data:** The caller's agency (name, prefix) and its Masters (code, name, email, status, whether the invite link is still unused).  
+- **Key actions:** Invite a Master (full name, email, optional phone; emailed DEC-SCOPE-019 set-password link); deactivate a Master (inline confirmation; deactivating yourself signs you out).  
+- **Empty state:** N/A — an agency always has at least one active Master.  
+- **Loading state:** "Loading your team…".  
+- **Error state:** "Unable to load your team." with Retry; per-row inline errors; invite errors inline (limit reached, email exists, validation); an undelivered invite email is reported ("Invite created, but the email was not delivered…").  
+- **Permissions/resource scope:** Own agency only; pending/rejected/suspended agencies are denied (403). Up to 3 active Masters; the last active Master cannot be deactivated; codes are never reused; no reactivation.  
+- **Responsive behavior:** Single-column card list and form; long names/emails wrap (no horizontal scroll at 320px).  
+- **Accessibility requirements:** Labelled fields, named Deactivate buttons ("Deactivate <name>"), confirmation as a labelled group, status messages announced (`role="status"`).  
+- **Desktop/tablet/mobile behavior:** Same single-column layout at all widths.  
+- **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
+- **Acceptance evidence needed:** AGN-001-AC07, AC08 (API tests `test_agn_001_team.py`; `AgentTeamPanel.test.tsx`; e2e `agn-001-multi-tenant.spec.ts`).  
 
 
 ## CNS

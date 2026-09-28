@@ -2058,6 +2058,29 @@
     "evidence": "Approval action is itself audit-logged (SEC-001); Agent cannot self-approve."
   },
   {
+    "id": "SCR-AGT-007",
+    "roles": [
+      "Agent (Master)"
+    ],
+    "route": "/overseas/agent/team",
+    "purpose": "The agency's Master accounts: list, invite, deactivate (AGN-001 / DEC-SCOPE-034, added 2026-09-28).",
+    "features": [
+      "AGN-001"
+    ],
+    "entry": "Agent portal navigation, \"Team\".",
+    "data": "The caller's agency (name, prefix) and its Masters (code, name, email, status, invite pending).",
+    "actions": "Invite a Master (emailed DEC-SCOPE-019 set-password link); deactivate a Master (inline confirmation; self-deactivation signs out).",
+    "empty": "N/A — an agency always has at least one active Master.",
+    "loading": "\"Loading your team…\".",
+    "error": "\"Unable to load your team.\" with Retry; per-row and invite errors inline; undelivered invite email reported.",
+    "perms": "Own agency only; pending/rejected/suspended agencies denied. Up to 3 active Masters; last active Master cannot be deactivated; codes never reused; no reactivation.",
+    "responsive": "Single-column card list and form; long names/emails wrap (no horizontal scroll at 320px).",
+    "a11y": "Labelled fields, named Deactivate buttons, confirmation as a labelled group, status messages announced.",
+    "dtm": "Same single-column layout at all widths.",
+    "visual": "None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "AGN-001-AC07, AC08: test_agn_001_team.py; AgentTeamPanel.test.tsx; agn-001-multi-tenant.spec.ts."
+  },
+  {
     "id": "SCR-CNS-001",
     "roles": [
       "Counselor"

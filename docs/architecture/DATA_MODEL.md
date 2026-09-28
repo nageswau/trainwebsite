@@ -413,21 +413,25 @@ predate an application record).
   not exist yet and is required scope, not optional polish, once the on-behalf-of model is built.
   See §6.2's note above for the same open `student_user_id` schema question.
 
-### 6.8a Agent organisation and members — **planned** (`AGN-001`, `DEC-SCOPE-034`, 2026-09-28)
-**Net-new, not yet built.** Entity-level facts fixed by the decision; table and column names, keys,
-constraints and indexes are fixed in the `AGN-001` design spec, not here.
-- **Agent organisation** (the tenant): agency name, unique code prefix (D5), status
-  `pending`/`active`/`rejected`/`suspended` (D6), approval/suspension actor and time.
-- **Organisation member**: links a `User` to one organisation; role `master`; display code
-  `<PREFIX>-M###`, monotonic per organisation and never reassigned (D4); active/deactivated (a
-  deactivated member is never reactivated, D8); invite state (D9).
-- **Invariants:** at most three members active or with a pending invite (D4); at least one active
-  Master once the organisation has one (D8).
-- **Scope key change:** `AgentStudent`, `AgentCommission` and `OverseasApplication.agent_id` become
-  organisation-scoped (D1). Whether that is a new `org_id` column or a re-keyed `agent_id` is a design
-  decision.
-- **Migration (D10):** one organisation + `M001` per existing agent; approved → `active`, pending and
-  rejected → `pending`; existing rows keep their data.
+### 6.8a `AgentOrg`, `AgentOrgMember` — built 2026-09-28 (`AGN-001`, `DEC-SCOPE-034`, migration `0045_agent_orgs`)
+Design: `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md` §4.
+- **`agent_orgs`** (the tenant): `id`, `name` String(160), `prefix` String(8) unique
+  (`uq_agent_orgs_prefix`; D5), `status` String(20) indexed, CHECK `pending`/`active`/`rejected`/`suspended`
+  (`ck_agent_orgs_status`), `master_seq` Integer ≥ 0 (highest Master number ever issued), `status_changed_by_user_id`
+  → `users.id`, `status_changed_at`, timestamps. `status` is the agent approval gate (`core/rbac.agent_denial_reason`).
+- **`agent_org_members`**: `id`, `org_id` → `agent_orgs.id` (indexed), `user_id` → `users.id` **unique** (a user
+  belongs to one organisation for good), `role` CHECK `master`, `seq` (unique with `org_id`), `code` String(16) unique
+  (`<prefix>-M###`, never reassigned), `status` CHECK `active`/`deactivated` (no reactivation), `invited_by_user_id`,
+  `deactivated_by_user_id`, `deactivated_at`, timestamps. "Active or pending invite" (D4) = `status='active'`; an
+  invited Master is a real `users` row with an unused DEC-SCOPE-019 welcome token.
+- **Invariants (enforced under a row lock on `agent_orgs`):** at most 3 active members; never 0 active once created.
+- **Scope (approach A):** `agent_students`, `agent_commissions` and `overseas_applications` are **unchanged** —
+  `agent_id` still records the acting user; agent queries filter `agent_id IN (member user ids of the caller's
+  organisation)`.
+- **Migration `0045`:** creates both tables; backfills one organisation + active `M001` per `role='agent'` user without
+  a membership (name = `profile.agency_name` or `full_name`; approved assignment → `active`, anything else → `pending`).
+  No existing row altered; idempotent; `downgrade()` drops only the two tables. Round trip verified on a throwaway
+  database (RTM `AGN-001` row).
 - **Feature IDs:** `AGN-001` (changes `AGT-001`–`004`).
 
 ### 6.9 `InboundUniversityEmail`
