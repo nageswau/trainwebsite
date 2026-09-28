@@ -63,13 +63,14 @@ export default function InternshipCertificate({ studentId, entryId, hasCertifica
   if (!present && !writable && !message) return null;
   return (
     <div className="field internship-certificate">
-      {present && <a className="btn ghost small" href={url} download>Download certificate ({kind === "application/pdf" ? "PDF" : "image"})</a>}
+      {/* QA-07: inside .actions (flex) so the .field grid does not stretch the controls to full width */}
+      {present && <div className="actions"><a className="btn ghost small" href={url} download>Download certificate ({kind === "application/pdf" ? "PDF" : "image"})</a></div>}
       {writable && (
         <>
           <label htmlFor={inputId}>{present ? "Replace certificate" : "Upload certificate"} (PDF, JPEG or PNG, up to 5 MB)</label>
           <input id={inputId} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={upload} disabled={busy !== null} />
           {busy === "upload" && <span className="muted" aria-live="polite">Uploading…</span>}
-          {present && !confirming && <button type="button" className="btn ghost small" onClick={() => setConfirming(true)} disabled={busy !== null}>Remove certificate</button>}
+          {present && !confirming && <div className="actions"><button type="button" className="btn ghost small" onClick={() => setConfirming(true)} disabled={busy !== null}>Remove certificate</button></div>}
           {confirming && (
             <div className="actions">
               <button type="button" className="btn small" onClick={remove} disabled={busy !== null}>{busy === "remove" ? "Removing…" : "Confirm remove"}</button>

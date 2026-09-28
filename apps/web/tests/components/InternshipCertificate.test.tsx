@@ -56,6 +56,14 @@ describe("InternshipCertificate (ENH-021)", () => {
     await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/Upload certificate/)));
   });
 
+  // QA-07 (browser QA 2026-09-28): as direct children of the .field grid both controls stretched to the card's full width, so the
+  // destructive Remove looked exactly like Download. The shared .actions row keeps them at their natural width.
+  it("keeps Download and Remove in an actions row, not stretched by the field grid", () => {
+    render(<InternshipCertificate studentId="s" entryId="e" hasCertificate contentType="application/pdf" canEdit completed />);
+    expect(screen.getByRole("link", { name: "Download certificate (PDF)" }).parentElement).toHaveClass("actions");
+    expect(screen.getByRole("button", { name: "Remove certificate" }).parentElement).toHaveClass("actions");
+  });
+
   it("does not refresh when the upload fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 415, json: async () => ({ detail: "nope" }) }));
     render(<InternshipCertificate studentId="s" entryId="e" hasCertificate={false} contentType={null} canEdit completed />);
