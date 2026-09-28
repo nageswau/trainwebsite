@@ -8,7 +8,7 @@ import re
 from datetime import UTC, datetime
 
 from fastapi import HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import Select, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -128,3 +128,16 @@ async def transition_org(db: AsyncSession, org_id, action: str, actor: User) -> 
     await set_org_status(db, org, target, actor, write_through=action in {"approve", "reject"})
     db.add(AuditLog(user_id=actor.id, action=f"agent_org.{action}", entity_type="agent_org", entity_id=str(org.id), outcome=target, metadata_json={"from": previous}))
     return org
+
+
+def org_member_ids(user: User) -> Select:
+    """The user ids whose agent rows the caller may see: every member of the caller's organisation (D1). A user with no
+    membership (super_admin passing `_require`) keeps today's self-scope."""
+    membership = user.agent_membership
+    if membership is None:
+        return select(User.id).where(User.id == user.id)
+    return select(AgentOrgMember.user_id).where(AgentOrgMember.org_id == membership.org_id)
+
+
+async def member_user_ids(db: AsyncSession, user: User) -> set:
+    return set((await db.scalars(org_member_ids(user))).all())

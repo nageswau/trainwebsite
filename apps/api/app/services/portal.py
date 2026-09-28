@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.identifiers import uuid_reference
 from app.core.rbac import PERMISSIONS
+from app.services.agent_orgs import org_member_ids
 from app.models import (
     AgentCommission,
     AgentStudent,
@@ -675,13 +676,14 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
 
 
 async def _agent(db: AsyncSession, user: User, section: str):
-    students = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(AgentStudent.agent_id == user.id))).all()
+    # AGN-001 (D1): everything referred by any member of the caller's organisation.
+    students = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(AgentStudent.agent_id.in_(org_member_ids(user))))).all()
     applications = (
         await db.execute(
             select(OverseasApplication, University, User)
             .join(University, University.id == OverseasApplication.university_id)
             .join(User, User.id == OverseasApplication.student_id)
-            .where(OverseasApplication.agent_id == user.id)
+            .where(OverseasApplication.agent_id.in_(org_member_ids(user)))
             .order_by(OverseasApplication.updated_at.desc())
         )
     ).all()
@@ -692,7 +694,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
     latest_application_by_student = {}
     for a, u, s in applications:
         latest_application_by_student.setdefault(s.id, (a, u))
-    commissions = (await db.scalars(select(AgentCommission).where(AgentCommission.agent_id == user.id))).all()
+    commissions = (await db.scalars(select(AgentCommission).where(AgentCommission.agent_id.in_(org_member_ids(user))))).all()
     if section == "dashboard":
         return _payload(
             "Agent Dashboard",
