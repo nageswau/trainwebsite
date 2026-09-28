@@ -75,9 +75,17 @@ def _entry_out(entry: PortfolioEntry) -> dict:
         "id": entry.id, "school_student_id": entry.school_student_id, "section": entry.section,
         "title": entry.title, "description": entry.description, "organization": entry.organization,
         "date_from": entry.date_from, "date_to": entry.date_to,
+        "certification_type": entry.certification_type, "certification_status": entry.certification_status,
+        "certificate_number": entry.certificate_number, "issued_on": entry.issued_on,
         "created_by_user_id": entry.created_by_user_id, "updated_by_user_id": entry.updated_by_user_id,
         "created_at": entry.created_at, "updated_at": entry.updated_at,
     }
+
+
+def _cert_audit(entry: PortfolioEntry) -> dict:
+    """ENH-024 D16: the tag for a Skill India entry's audit row and log line; nothing for any other entry, so their audit rows
+    stay exactly as before. Never the certificate number."""
+    return {"certification_type": entry.certification_type} if entry.certification_type else {}
 
 
 @router.get("/students/{student_id}/portfolio")
@@ -142,14 +150,19 @@ async def create_portfolio_entry(student_id: UUID, payload: PortfolioEntryCreate
         school_student_id=student.id, section=payload.section, title=payload.title,
         description=payload.description, organization=payload.organization,
         date_from=payload.date_from, date_to=payload.date_to,
+        certification_type=payload.certification_type, certification_status=payload.certification_status,
+        certificate_number=payload.certificate_number, issued_on=payload.issued_on,
         created_by_user_id=user.id, updated_by_user_id=user.id,
     )
     db.add(entry)
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_create", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json={"section": entry.section, "school_student_id": str(student.id)}))
+    audit = {"section": entry.section, "school_student_id": str(student.id), **_cert_audit(entry)}
+    if entry.certification_type:
+        audit["certification_status"] = entry.certification_status
+    db.add(AuditLog(user_id=user.id, action="school.portfolio_entry_create", entity_type="portfolio_entry", entity_id=str(entry.id), metadata_json=audit))
     await db.commit()
     await db.refresh(entry)
-    logger.info("portfolio_entry_create", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id), "section": entry.section}})
+    logger.info("portfolio_entry_create", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "entry_id": str(entry.id), "section": entry.section, **_cert_audit(entry)}})
     return entry
 
 
