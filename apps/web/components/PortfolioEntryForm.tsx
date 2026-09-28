@@ -37,6 +37,11 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
   const inFlight = useRef(false);
   const offerSkillIndia = !entryId && section === "certification";
 
+  // QA24-06: editing a Skill India field clears that field's error (the others stay until the next Save).
+  function clearCertError(field: keyof CertErrors) {
+    setCertErrors((errors) => ({ ...errors, [field]: undefined }));
+  }
+
   // ENH-024 D6, mirrored for a fast answer; the server stays authoritative.
   function checkCertification(): CertErrors {
     if (!skillIndia) return {};
@@ -133,7 +138,7 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
           <legend>Skill India details</legend>
           <div className="field">
             <label htmlFor="pf-cert-status">Status</label>
-            <select id="pf-cert-status" className="search" value={certStatus} disabled={busy} aria-invalid={certErrors.status ? true : undefined} aria-describedby={certErrors.status ? "pf-cert-status-error" : undefined} onChange={(e) => setCertStatus(e.target.value)}>
+            <select id="pf-cert-status" className="search" value={certStatus} disabled={busy} aria-invalid={certErrors.status ? true : undefined} aria-describedby={certErrors.status ? "pf-cert-status-error" : undefined} onChange={(e) => { setCertStatus(e.target.value); clearCertError("status"); }}>
               <option value="">Choose status</option>
               {Object.entries(CERT_STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
@@ -141,13 +146,13 @@ export default function PortfolioEntryForm({ studentId, section, entryId, initia
           </div>
           <div className="field">
             <label htmlFor="pf-cert-number">Certificate number</label>
-            <input id="pf-cert-number" className="search" maxLength={100} value={certNumber} disabled={busy} aria-invalid={certErrors.number ? true : undefined} aria-describedby={certErrors.number ? "pf-cert-number-hint pf-cert-number-error" : "pf-cert-number-hint"} onChange={(e) => setCertNumber(e.target.value)} />
+            <input id="pf-cert-number" className="search" maxLength={100} value={certNumber} disabled={busy} aria-invalid={certErrors.number ? true : undefined} aria-describedby={certErrors.number ? "pf-cert-number-hint pf-cert-number-error" : "pf-cert-number-hint"} onChange={(e) => { setCertNumber(e.target.value); clearCertError("number"); }} />
             <span id="pf-cert-number-hint" className="muted">Required once certified.</span>
             {certErrors.number && <span id="pf-cert-number-error" className="form-error">{certErrors.number}</span>}
           </div>
           <div className="field">
             <label htmlFor="pf-cert-issued">Issue date</label>
-            <input id="pf-cert-issued" type="date" className="search" value={issuedOn} disabled={busy} aria-invalid={certErrors.issued ? true : undefined} aria-describedby={certErrors.issued ? "pf-cert-issued-hint pf-cert-issued-error" : "pf-cert-issued-hint"} onChange={(e) => setIssuedOn(e.target.value)} />
+            <input id="pf-cert-issued" type="date" className="search" value={issuedOn} disabled={busy} aria-invalid={certErrors.issued ? true : undefined} aria-describedby={certErrors.issued ? "pf-cert-issued-hint pf-cert-issued-error" : "pf-cert-issued-hint"} onChange={(e) => { setIssuedOn(e.target.value); clearCertError("issued"); }} />
             <span id="pf-cert-issued-hint" className="muted">Required once certified.</span>
             {certErrors.issued && <span id="pf-cert-issued-error" className="form-error">{certErrors.issued}</span>}
           </div>

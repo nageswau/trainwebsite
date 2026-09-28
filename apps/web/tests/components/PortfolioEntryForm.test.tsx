@@ -90,6 +90,26 @@ describe("PortfolioEntryForm — Skill India", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  // QA24-06: a Skill India field's error goes away as soon as that field is edited, not only on the next Save.
+  it("clears each Skill India error when its own field is edited", async () => {
+    global.fetch = ok() as unknown as typeof fetch;
+    render(<PortfolioEntryForm studentId="s1" section="certification" onDone={() => {}} onCancel={() => {}} />);
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "Retail" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /skill india certification/i }));
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(await screen.findByText("Choose a status.")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/status/i), { target: { value: "certified" } });
+    expect(screen.queryByText("Choose a status.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/status/i)).not.toHaveAttribute("aria-invalid");
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(await screen.findByText("Enter the certificate number.")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/certificate number/i), { target: { value: "SI-1" } });
+    expect(screen.queryByText("Enter the certificate number.")).not.toBeInTheDocument();
+    expect(screen.getByText("Enter the issue date.")).toBeInTheDocument(); // an untouched field keeps its error
+    fireEvent.change(screen.getByLabelText(/issue date/i), { target: { value: "2026-05-01" } });
+    expect(screen.queryByText("Enter the issue date.")).not.toBeInTheDocument();
+  });
+
   it("POSTs the tag and details when ticked", async () => {
     const fetchMock = ok();
     global.fetch = fetchMock as unknown as typeof fetch;
