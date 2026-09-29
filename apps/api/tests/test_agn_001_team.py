@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core.security import hash_password
 from app.models import AuditLog, PasswordResetToken, User
@@ -228,10 +228,28 @@ async def test_invites_are_throttled_to_10_per_agency_per_24_hours(client, db_se
     await login(client, ctx["master"].email)
     response = await _invite(client)
     assert response.status_code == 429
-    assert response.json()["detail"] == "This agency has sent 10 invites in the last 24 hours. Try again later."
+    assert response.json()["detail"] == "This agency has made 10 invite attempts in the last 24 hours. Try again later."
     retry_after = int(response.headers["Retry-After"])
     assert 21 * 3600 < retry_after <= 22 * 3600  # the oldest of the 10 leaves the window in ~22 hours
     assert (await org_of(db_session, ctx["master"].id)).master_seq == 1  # nothing created
+
+
+@pytest.mark.asyncio
+async def test_a_rejected_invite_is_audited_and_counts_toward_the_throttle(client, db_session):  # browser QA-10
+    ctx = await mk_active_org(db_session, name="Probe Agency")
+    other = await mk_user(db_session, role="overseas_student")
+    await login(client, ctx["master"].email)
+    for _ in range(10):
+        response = await _invite(client, email=other.email)
+        assert response.status_code == 409 and response.json()["detail"] == "Email already exists"
+    rejected = await db_session.scalar(
+        select(func.count()).select_from(AuditLog).where(AuditLog.entity_id == str(ctx["org"].id), AuditLog.action == "agent_org.master_invite_rejected")
+    )
+    assert rejected == 10
+    probe = await _invite(client, email=f"{uniq('probe')}@example.local")  # an 11th attempt, even for a fresh address
+    assert probe.status_code == 429 and "Retry-After" in probe.headers
+    log = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == str(ctx["org"].id), AuditLog.action == "agent_org.master_invite_rejected"))
+    assert log.user_id == ctx["master"].id and log.outcome == "rejected" and other.email not in str(log.metadata_json)
 
 
 @pytest.mark.asyncio

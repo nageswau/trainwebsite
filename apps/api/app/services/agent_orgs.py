@@ -4,6 +4,7 @@ Functions only -- no class layer (same shape as `services/provisioning.py`). Spe
 docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md.
 """
 
+import logging
 import math
 import re
 from datetime import UTC, datetime, timedelta
@@ -15,6 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AgentOrg, AgentOrgMember, AuditLog, User, UserRoleAssignment
 from app.services.provisioning import flush_unique_email, issue_welcome_token, provisioning_statuses, revoke_welcome_tokens, unusable_password_hash
+
+logger = logging.getLogger("app.agent_orgs")
 
 MASTER_LIMIT = 3
 ORG_STATUSES = ("pending", "active", "rejected", "suspended")
@@ -165,7 +168,12 @@ async def _invite_wait_seconds(db: AsyncSession, org_id) -> int:
     recent = (
         await db.scalars(
             select(AuditLog.created_at)
-            .where(AuditLog.entity_type == "agent_org", AuditLog.entity_id == str(org_id), AuditLog.action == "agent_org.master_invite", AuditLog.created_at > now - INVITE_WINDOW)
+            .where(
+                AuditLog.entity_type == "agent_org",
+                AuditLog.entity_id == str(org_id),
+                AuditLog.action.in_(("agent_org.master_invite", "agent_org.master_invite_rejected")),  # QA-10: failed attempts count too
+                AuditLog.created_at > now - INVITE_WINDOW,
+            )
             .order_by(AuditLog.created_at.desc())
             .limit(INVITE_LIMIT)
         )
@@ -175,21 +183,36 @@ async def _invite_wait_seconds(db: AsyncSession, org_id) -> int:
     return max(1, math.ceil((recent[-1] + INVITE_WINDOW - now).total_seconds()))
 
 
+async def _reject_invite(db: AsyncSession, org_id, actor_id) -> None:
+    """Browser QA-10: an invite to an existing address is audited and COUNTED toward the invite throttle, so probing which
+    emails have accounts is capped at INVITE_LIMIT a day per agency. Committed before the 409 (a raised request would
+    otherwise roll the row back). The address itself is never recorded."""
+    db.add(AuditLog(user_id=actor_id, action="agent_org.master_invite_rejected", entity_type="agent_org", entity_id=str(org_id), outcome="rejected", metadata_json={"reason": "email_exists"}))
+    await db.commit()
+    logger.info("agent_org_invite_rejected", extra={"extra_fields": {"org_id": str(org_id), "actor_id": str(actor_id), "reason": "email_exists"}})
+    raise HTTPException(409, "Email already exists")
+
+
 async def invite_master(db: AsyncSession, org: AgentOrg, actor: User, *, full_name: str, email: str, phone: str | None):
     """No commit; `org` must be locked. D4/D9/E5/E6: a real agent account with an unusable password + a DEC-SCOPE-019
     welcome token; the next code is master_seq + 1. At most INVITE_LIMIT invites per agency per INVITE_WINDOW."""
-    if await count_active_masters(db, org.id) >= MASTER_LIMIT:
+    org_id, actor_id = org.id, actor.id  # plain values: a rollback below expires the ORM objects
+    if await count_active_masters(db, org_id) >= MASTER_LIMIT:
         raise HTTPException(422, "This agency already has 3 active Masters")
-    wait = await _invite_wait_seconds(db, org.id)
+    wait = await _invite_wait_seconds(db, org_id)
     if wait:
-        raise HTTPException(429, f"This agency has sent {INVITE_LIMIT} invites in the last 24 hours. Try again later.", headers={"Retry-After": str(wait)})
+        logger.warning("agent_org_invite_throttled", extra={"extra_fields": {"org_id": str(org_id), "actor_id": str(actor_id), "wait_seconds": wait}})
+        raise HTTPException(429, f"This agency has made {INVITE_LIMIT} invite attempts in the last 24 hours. Try again later.", headers={"Retry-After": str(wait)})
     email = email.lower().strip()
     if await db.scalar(select(User.id).where(User.email == email)):
-        raise HTTPException(409, "Email already exists")
+        await _reject_invite(db, org_id, actor_id)
     now = datetime.now(UTC)
     user = User(email=email, password_hash=unusable_password_hash(), full_name=full_name, role="agent", division="overseas", phone=phone, active=True, email_verified=False, profile={"registration_source": "agent_master_invite"})
     db.add(user)
-    await flush_unique_email(db)  # a collision rolls back (releasing the org lock) and ends the request with 409
+    try:
+        await flush_unique_email(db)  # a collision rolls back (releasing the org lock) and raises 409
+    except HTTPException:
+        await _reject_invite(db, org_id, actor_id)
     db.add(UserRoleAssignment(user_id=user.id, division="overseas", role="agent", is_active=True, assigned_by_user_id=actor.id, approval_status="approved", approved_by_user_id=actor.id, approved_at=now))
     org.master_seq += 1
     member = AgentOrgMember(org_id=org.id, user_id=user.id, role="master", seq=org.master_seq, code=member_code(org.prefix, org.master_seq), status="active", invited_by_user_id=actor.id)

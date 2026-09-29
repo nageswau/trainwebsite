@@ -6,7 +6,7 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1067,14 +1067,25 @@ def _require_overseas_admin(user: User) -> None:
 @agents_router.get("/agent-orgs")
 async def list_agent_orgs(
     status: Literal["pending", "active", "rejected", "suspended"] | None = None,
+    q: str | None = Query(None, max_length=100),
     limit: int = Query(25, ge=1, le=100),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Newest first. `{items, total, limit, offset}` like the school skill-batch list (the only built paginated list)."""
+    """Newest first. `{items, total, limit, offset}` like the school skill-batch list (the only built paginated list).
+    `q` (browser QA-13) matches agency name, prefix, or any Master's code or email, case-insensitively and literally."""
     _require_overseas_admin(user)
     filters = [AgentOrg.status == status] if status else []
+    term = (q or "").strip()
+    if term:
+        pattern = "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        member_match = (
+            select(AgentOrgMember.org_id)
+            .join(User, User.id == AgentOrgMember.user_id)
+            .where(or_(AgentOrgMember.code.ilike(pattern, escape="\\"), User.email.ilike(pattern, escape="\\")))
+        )
+        filters.append(or_(AgentOrg.name.ilike(pattern, escape="\\"), AgentOrg.prefix.ilike(pattern, escape="\\"), AgentOrg.id.in_(member_match)))
     total = await db.scalar(select(func.count()).select_from(AgentOrg).where(*filters))
     orgs = (await db.scalars(select(AgentOrg).where(*filters).order_by(AgentOrg.created_at.desc(), AgentOrg.id.desc()).limit(limit).offset(offset))).all()
     masters: dict = {}

@@ -112,6 +112,22 @@ async def test_the_list_is_paginated_newest_first(client, db_session):  # review
 
 
 @pytest.mark.asyncio
+async def test_the_list_can_be_searched_by_agency_prefix_code_or_master_email(client, db_session):  # browser QA-13
+    tag = uuid.uuid4().hex[:6]
+    target = await mk_active_org(db_session, name=f"Zebra Search {tag}")
+    other = await mk_active_org(db_session, name=f"Other Search {tag}")
+    await _admin(client, db_session)
+    base = "/api/v1/overseas-admin/agent-orgs?status=active&q="
+    for q in (f"zebra search {tag}", target["org"].prefix.lower(), target["member"].code, target["master"].email.upper()):
+        ids = {r["id"] for r in (await client.get(base + q)).json()["items"]}
+        assert str(target["org"].id) in ids and str(other["org"].id) not in ids, q
+    page = (await client.get(base + f"search {tag}")).json()
+    assert page["total"] == 2
+    assert (await client.get(base + "%25")).json()["items"] == [] or all("%" in r["name"] for r in (await client.get(base + "%25")).json()["items"])
+    assert (await client.get(base + "x" * 101)).status_code == 422
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("query", ["limit=0", "limit=101", "offset=-1"])
 async def test_out_of_range_paging_is_422(client, db_session, query):
     await _admin(client, db_session)
