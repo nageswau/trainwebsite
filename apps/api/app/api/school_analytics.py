@@ -6,7 +6,7 @@ list -- and groups in SQL, so an endpoint runs the same number of queries for on
 Nothing here writes: no add, flush or commit."""
 
 from collections import defaultdict
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 from datetime import UTC, date, datetime, timedelta
 from statistics import mean
 from uuid import UUID
@@ -262,10 +262,16 @@ GRADE_METRICS = [
 async def grade_performance(user: User = Depends(_require_school_reader), db: AsyncSession = Depends(get_db)):
     """§29: the same metrics side by side for Grade 8 -> 12, own school only. D5 estimates are flagged with their definition."""
     school_id = _own_school_id(user)
+    table = grade_table(await _roster(db, [school_id]), await student_indicators(db, students_in([school_id])))
+    _log_view(user, "grade_performance", school_id=school_id)
+    return table
+
+
+def grade_table(roster: Sequence, indicators: dict[str, set[UUID]]) -> GradePerformanceOut:
+    """The §29 grade-by-metric table for one roster -- shared with the ENH-015 School Summary PDF so both show the same figures."""
     by_grade: dict[str, set[UUID]] = defaultdict(set)
-    for sid, _school, level, label in await _roster(db, [school_id]):
+    for sid, _school, level, label in roster:
         by_grade[grade_key(level, label)].add(sid)
-    indicators = await student_indicators(db, students_in([school_id]))
     grades = _ordered_grades(by_grade)
 
     def _cell(grade_students: set[UUID], chosen: set[UUID]) -> MetricCell:
@@ -277,7 +283,6 @@ async def grade_performance(user: User = Depends(_require_school_reader), db: As
         chosen = rule(indicators)
         cells = {g: _cell(by_grade[g], chosen) for g in grades}
         metrics.append(GradeMetricRow(key=key, label=label, is_proxy=definition is not None, definition=definition, cells=cells))
-    _log_view(user, "grade_performance", school_id=school_id)
     return GradePerformanceOut(grades=grades, students={g: len(by_grade[g]) for g in grades}, metrics=metrics)
 
 
