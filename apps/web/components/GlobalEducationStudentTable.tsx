@@ -42,7 +42,8 @@ export default function GlobalEducationStudentTable({ page, grade, basePath }: P
       {page.items.length === 0 ? (
         <p className="muted" role="status">{empty}</p>
       ) : (
-        <div className="table-scroll">
+        // WCAG 2.1.1: on phones the table scrolls sideways and its cells hold no links, so the scroll box itself takes focus.
+        <div className="table-scroll" tabIndex={0} role="region" aria-label="Global education students">
           <table className="table">
             <caption className="visually-hidden">Global education students, {plural(page.total, "student")}</caption>
             <thead>

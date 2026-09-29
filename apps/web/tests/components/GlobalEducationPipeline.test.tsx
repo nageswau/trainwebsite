@@ -103,3 +103,15 @@ describe("GlobalEducationStudentTable #students landing (QA17-01)", () => {
     expect(scroll).not.toHaveBeenCalled();
   });
 });
+
+// Final verification (axe `scrollable-region-focusable`, WCAG 2.1.1): at phone width the table scrolls sideways and its names
+// are plain text, so the scroll box itself must take keyboard focus for the hidden columns to be reachable.
+describe("GlobalEducationStudentTable keyboard-scrollable table", () => {
+  it("wraps the table in a labelled region that takes keyboard focus", () => {
+    render(<GlobalEducationStudentTable page={data().students} grade="" basePath="/school/coordinator/global-education" />);
+    const region = screen.getByRole("region", { name: "Global education students" });
+    expect(region.tabIndex).toBe(0);
+    expect(region.classList.contains("table-scroll")).toBe(true);
+    expect(within(region).getByRole("table")).toBeTruthy();
+  });
+});
