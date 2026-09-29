@@ -1,0 +1,65 @@
+"use client";
+
+import { useState } from "react";
+import FormMessage, { type FormMessageState } from "@/components/FormMessage";
+import { detailMessage } from "@/lib/apiErrors";
+
+const EXPIRED = "Your session has expired. Sign in again.";
+const FAILED = "Something went wrong on our side. Please try again.";
+
+// ENH-015: downloads a server-generated PDF report. Fetched first rather than linked (<a download>), so a refusal or a
+// server error is shown as a message instead of being saved as a file; only a real application/pdf response is saved.
+// The button stays in place and keeps focus; the outcome is announced under it (FormMessage).
+export default function ReportDownloadButton({ url, label, filename }: { url: string; label: string; filename: string }) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<FormMessageState | null>(null);
+
+  async function download() {
+    if (busy) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch(url, { credentials: "same-origin" });
+      if (response.ok && (response.headers.get("content-type") ?? "").startsWith("application/pdf")) {
+        save(await response.blob(), filename);
+        setMessage({ text: "Report downloaded.", failed: false });
+      } else {
+        setMessage({ text: await failureText(response), failed: true });
+      }
+    } catch {
+      setMessage({ text: FAILED, failed: true });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="report-download">
+      <div className="actions">
+        <button type="button" className="btn" onClick={download} disabled={busy} aria-busy={busy}>
+          {busy ? "Preparing PDF…" : label}
+        </button>
+      </div>
+      {message && <FormMessage message={message} />}
+    </div>
+  );
+}
+
+async function failureText(response: Response): Promise<string> {
+  if (response.status === 401) return EXPIRED;
+  if (response.ok || response.status >= 500) return FAILED;
+  const body = await response.json().catch(() => ({}));
+  return detailMessage((body as { detail?: unknown }).detail, FAILED);
+}
+
+function save(blob: Blob, filename: string) {
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Revoked on the next tick: revoking synchronously can cancel the download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(href), 0);
+}
