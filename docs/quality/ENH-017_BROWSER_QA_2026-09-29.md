@@ -96,3 +96,15 @@ the smooth scroll settles) failed before the fix (`scrollY=0`) and passes after 
 
 **Other verification after the fix:** Vitest 99 files / 1033 tests pass; `tsc` clean; ESLint 0 errors (warnings all in
 files outside ENH-017); `next build` compiles both routes; Playwright `enh-017-global-education.spec.ts` 1 passed.
+
+## Final verification (verification-before-completion, HEAD `b288162`)
+
+| ID | Sev. | Finding | Resolution | Commit | Test |
+|---|---|---|---|---|---|
+| QA17-05 | Serious (a11y) | axe-core `scrollable-region-focusable` (WCAG 2.1.1) at 390 px: the student table scrolls sideways and its cells hold no links, so keyboard users could not reach the hidden columns. The ENH-016 scorecard table passes the same rule because its rows contain links | The `.table-scroll` wrapper is now a labelled region that takes focus (`tabIndex=0`, `role="region"`, `aria-label="Global education students"`) | `b288162` | Vitest (RED before the fix); browser: Tab after "Show" focuses the region (visible outline), ArrowRight scrolls it 320 px |
+
+**Fresh evidence at `b288162`:** axe-core WCAG 2.0/2.1 A+AA on five states (coordinator all grades 1440, grade 12 at
+390, principal, empty school, past end) — 0 violations; browser suite 97/97; Playwright ENH-017 + SCH-010 + ENH-016 +
+SCH-001 5/5 (quiet stack); API ENH-017 + 15 neighbour files 231 passed; ruff and mypy clean on ENH-017 files; Vitest
+99 files / 1034 tests; `tsc` clean; ESLint `--max-warnings=0` clean on ENH-017 files; `next build` compiles both routes.
+Evidence: `qa017/a11y-table-focus-390.png`, `qa017/final-run-2.log`.
