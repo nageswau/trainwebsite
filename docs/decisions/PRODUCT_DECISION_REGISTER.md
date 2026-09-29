@@ -2596,3 +2596,28 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 **Known limitation (accepted with Q9):** a comma always separates items, so "Science (Physics, Chemistry, Maths)" becomes three items; the form hint says to use `/` or `;` inside an item.
 
 **Consequences:** migration `0045` (ten additive nullable columns: `test_date`, `strengths`, `interest_areas`, `personality_indicators`, `recommended_careers`, `recommended_stream`, `counsellor_remarks`, `parent_discussion_on`, `parent_discussion_notes`, `follow_up_on`; no backfill); additive request/response keys on the existing psychometric endpoints and read shapes; update audit metadata gains `fields` (names only). Unchanged: roles and scoping, the completion/notification rule, which endpoints return `report_url` (Client Question #20 stays open), reports/KPIs, timeline. `ENH-019` may later read `follow_up_on`; `ENH-028` bulk entry reuses this shape.
+
+### DEC-SCOPE-036 — ENH-017 School-visible Global Education pipeline (provisional number)
+
+**ID note:** provisional number, recorded in-session 2026-09-29. Renumber on merge if another decision has taken `DEC-SCOPE-036` first, as `DEC-SCOPE-034`/`035` were.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-017 (`DERIVED_BLUEPRINT`) consolidates `School CRM.md` §16, §17, §19, §20 (`EVID-014`, `ORIGINAL_REQUIREMENT`): what may a school see of its students' overseas applications, and how is the §17 funnel computed from data that already exists, without exposing application detail (§19)?
+
+**Evidence:** Graphify-led audit, 2026-09-29 (`docs/superpowers/specs/2026-09-29-enh-017-global-education-pipeline-design.md` §1): the `SCH-010` bridge (`overseas_applications.school_student_id`, migration `0029`) exists and `GET /school/dashboard` already computes bridged KPI counts, but no page shows which students are at which stage and there is no §17 funnel; no data source exists for Applications started/submitted, Deposit, Scholarship (`ScholarshipApplication` links to `users` only), Top-100 (no ranking on `University`) or Alumni (no model); §19 limits the school to high-level status. `EVID-014` §16/§17/§19/§20.
+
+**Resolution:** User confirmed in-session, 2026-09-29 (`EXPLICIT_APPROVAL`), D1–D10 in `docs/superpowers/specs/2026-09-29-enh-017-global-education-pipeline-design.md` §3:
+
+| ID | Decision |
+|---|---|
+| D1 | **Scope: present-only.** Build over existing data; no migrations. Scholarship, Top 100, Alumni, Applications started/submitted and Deposit render as *not tracked* with a reason. |
+| D2 | **Granularity:** funnel counts **plus** a per-student row: name, student code, grade, furthest stage, visa stage label, application count. No university/course/country, no overseas record ids, no notes/references/offer letters/documents/counselor/agent. |
+| D3 | **Counting:** cumulative, per **student** — a student counts once in every stage they have reached on any of their applications. |
+| D4 | **Roles:** `school_coordinator` and `school_principal` only (DEC-SCOPE-011; reuses `_require_school_reader`). Every other role 403. |
+| D5 | **Existing exposure unchanged:** overview/timeline/360 `global_education` fields stay as confirmed under DEC-SCOPE-018 (they are already stage-level). |
+| D6 | **Placement:** a new "Global Education" page for coordinator and principal (`SCR-SCH-038`); no existing page changes. |
+| D7 | **Grade filter:** optional (All grades default, Grades 8–12), same `grade_key` rule as ENH-016 so a grade means the same students everywhere. |
+| D8 | **Tier:** no read gate (DEC-SCOPE-027 D3 keeps reads open). `require_school_entitlement` is not called. |
+| D9 | **Audit:** one structured log line per request (ids and counts only); no AuditLog row — the ENH-016 precedent for read-only school analytics. |
+| D10 | **Visa stage** = a `VisaCase` exists (matches the "Visa Applications" KPI tile). The funnel is therefore not forced monotonic at Visa → Admitted (§17's own example is not monotonic either). |
+
+**Consequences:** new `apps/api/app/api/school_global_education.py` (`GET /api/v1/school/global-education/pipeline`, query `grade` 8–12, `limit` 1–100, `offset`); output models `GlobalEducationPipelineOut` and its parts appended to `schemas.py`; router registered in `main.py`; pages `/school/coordinator/global-education` and `/school/principal/global-education` with `GlobalEducationPage`, `GlobalEducationFunnel`, `GlobalEducationStudentTable` and a sidebar "Global Education" entry. The endpoint uses column-level selects and allowlisted response models; the offer letter is reduced to a non-null-and-non-empty boolean in SQL, matching the dashboard's truthiness test. Existing endpoints, helpers and constants are imported read-only and unchanged. No migration, no new dependency, no write. **Known residuals:** no rate limiting; no `AuditLog` for reads (D9). **Release evidence:** Implemented — pending browser QA and independent review. **Follow-ups (not ENH-017, each `NEEDS_CONFIRMATION`):** scholarship-to-school-student link; university ranking/Top-100; alumni definition, `alumni_network` usage and a Platinum read gate; visa outcomes; started/submitted/deposit statuses; `school_partnership_manager` (PRD open item 75).

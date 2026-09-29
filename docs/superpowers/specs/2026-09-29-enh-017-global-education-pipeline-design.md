@@ -80,7 +80,7 @@ The Graphify-led audit (2026-09-29) found:
 | `pathway` | Global education pathway | exists |
 | `profile_evaluation` | Profile evaluation | status at or after `eligibility_evaluation` |
 | `shortlisted` | University shortlisted | status at or after `university_selection` |
-| `offer` | Offer received | status in `OFFER_ONWARD_STATUSES`, or has an offer letter (evaluated as `IS NOT NULL` in SQL) |
+| `offer` | Offer received | status in `OFFER_ONWARD_STATUSES`, or has an offer letter (non-null and non-empty, `IS NOT NULL AND <> ''` in SQL, matching the dashboard's truthiness test) |
 | `visa` | Visa | has a `VisaCase` (D10) |
 | `admitted` | Admitted | status `enrolled` |
 
@@ -148,7 +148,7 @@ the dependency, before any 422); 422 invalid query. No 404 (the resource is alwa
 1. Roster: `select(SchoolStudent.id, full_name, student_code, grade_level, grade_or_class).where(school_id == own)
    .order_by(full_name, id)`; grade filter in Python via `grade_key` (ENH-016 scorecard-grid precedent).
 2. Applications: `select(OverseasApplication.school_student_id, OverseasApplication.status,
-   OverseasApplication.offer_letter_url.is_not(None)).where(school_student_id.in_(students_in([school_id])))`.
+   <offer letter non-null and non-empty: IS NOT NULL AND <> '', matching the dashboard's truthiness test>).where(school_student_id.in_(students_in([school_id])))`.
 3. Visa: `select(OverseasApplication.school_student_id, VisaCase.status).join(VisaCase, …)
    .where(school_student_id.in_(students_in([school_id])))`.
 

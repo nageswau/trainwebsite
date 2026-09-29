@@ -173,6 +173,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-SCH-026` — /school/principal/students/[id] — One student's Journey Timeline (`SCH-008`, added 2026-09-15).
 - `SCR-SCH-035` — /school/principal/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (from the student page's "Open 360° view") (`ENH-013`, added 2026-09-23).
 - `SCR-SCH-036` — /school/principal/notifications — Own notifications, e.g. partnership tier changes (`ENH-023`, added 2026-09-23).
+- `SCR-SCH-038` — /school/principal/global-education — Global Education: the school's students on the global education pathway, a funnel and a per-student high-level stage list; sidebar label "Global Education", after "Reports" (`ENH-017`, added 2026-09-29).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## School Coordinator *(net-new, added 2026-09-14, `DEC-SCOPE-011`/`DEC-SCOPE-010` part 1/`DEC-SCOPE-012`)*
@@ -188,6 +189,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-SCH-006` — /school/coordinator/activities — Schedule activities, track attendance.
 - `SCR-SCH-012` — /school/coordinator/team — Invite Principal/Teacher/Parent accounts.
 - `SCR-SCH-035` — /school/coordinator/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (from the student page's "Open 360° view") (`ENH-013`, added 2026-09-23).
+- `SCR-SCH-038` — /school/coordinator/global-education — Global Education: the school's students on the global education pathway, a funnel and a per-student high-level stage list; sidebar label "Global Education", after "Reports" (`ENH-017`, added 2026-09-29).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Teacher (school-side) *(net-new, added 2026-09-14, `DEC-SCOPE-011` — role code `school_teacher`,

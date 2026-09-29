@@ -489,6 +489,29 @@ Generated per feature, ID format `<FEATURE-ID>-AC##`. Derived directly from each
 - **SCH-010-AC04:** A bridged application (`student_id IS NULL`) never appears in any Overseas-student-centric self-service listing (`GET /workflows/overseas/applications`, agent/university-rep/commission views) — those inner-join `User` on `student_id`, which a bridged row never matches; this is verified, not merely assumed.
 - **SCH-010-AC05:** `SCH-007`'s overview gains a `global_education` section (`status: "linked"|"not_started"`, linked applications with university name/status/visa status) and `SCH-008`'s timeline gains `application_linked`/`visa_status` events, for Coordinator/Principal/Parent within their existing own-scope rules.
 
+## ENH-017 — School-visible Global Education pipeline (addendum, 2026-09-29, `DEC-SCOPE-036`)
+
+Extends `SCH-010`'s bridge with a school-facing, high-level view (`School CRM.md` §16/§17/§19/§20). The local criteria below are copied from `docs/superpowers/specs/2026-09-29-enh-017-global-education-pipeline-design.md` §10; `SCH-010-AC01`–`AC05` are unchanged. Status: Implemented — pending browser QA and independent review.
+
+- **ENH-017-AC01:** Coordinator and principal get 200 with the §6 shape for their own school.
+- **ENH-017-AC02:** Teacher, parent, academic_team, career_counselor, psychometric_team, it_admin, overseas_admin, super_admin, counselor, overseas_student get 403; unauthenticated gets 401.
+- **ENH-017-AC03:** A coordinator/principal account without a linked school gets 403.
+- **ENH-017-AC04:** Only the caller's own school's students are counted/listed; another school's bridged students never appear.
+- **ENH-017-AC05:** A student with no bridged application is excluded from the list and from `bridged_students`, but counted in `students_in_scope`.
+- **ENH-017-AC06:** Funnel counts follow §5.1 cumulatively per student; a student with several applications counts once per stage.
+- **ENH-017-AC07:** `shortlisted`, `visa`, `admitted` equal the `/school/dashboard` KPI values for the same school (no grade filter).
+- **ENH-017-AC08:** `not_tracked` lists exactly the §5.2 keys, in order, each with a note; none appears in `funnel`.
+- **ENH-017-AC09:** Per-student `furthest_stage`, `visa_stage_label`, `application_count` follow §5.3.
+- **ENH-017-AC10:** Every object in the response has exactly the allowlisted keys (exact key-set assertions at every level).
+- **ENH-017-AC11:** Seeded sensitive values (application notes, next_action, application_reference, offer_letter_url, university name, course, counselor name, visa tracking_reference, document filenames) never appear in the raw response body.
+- **ENH-017-AC12:** `grade` filters both funnel and list using `grade_key` (label fallback included); invalid `grade`/`limit`/`offset` → 422; a wrong role with invalid params still gets 403.
+- **ENH-017-AC13:** Paging: stable name/id order; `total` is the bridged count; past-end offset → empty items with real total.
+- **ENH-017-AC14:** The endpoint writes nothing (no AuditLog or other row added) and emits one `school_global_education_view` log line without names.
+- **ENH-017-AC15:** Existing contracts unchanged: dashboard, overview, timeline, 360, scorecards, cross-school, entitlements tests all pass untouched.
+- **ENH-017-AC16:** UI: coordinator and principal nav show "Global Education"; page renders funnel, not-tracked group and student table.
+- **ENH-017-AC17:** UI states: loading skeleton; empty, empty-grade and past-end messages; section error keeps the shell; 401/403 → access card.
+- **ENH-017-AC18:** UI: grade form and pager work without client JS, keyboard-operable, labelled; table has caption and row headers; usable at 320/768/1024/1440 px (browser verification `NEEDS_CONFIRMATION`).
+
 ## SCH-011 — Partnership tier entitlements
 
 - **SCH-011-AC01:** Given a School with a `tier` set (`bronze`/`silver`/`gold`/`platinum`), when a Coordinator or Principal opens `GET /school/entitlements`, then they see the exact cumulative service list for that tier (each tier adds only what the brochure's own image shows over the previous one) — no other role may call this endpoint (403).
