@@ -19,6 +19,7 @@ const TABS: { status: Status; label: string; empty: string; actions: Action[] }[
   { status: "rejected", label: "Rejected", empty: "No rejected organisations.", actions: ["approve"] },
 ];
 const LABEL: Record<Action, string> = { approve: "Approve", reject: "Reject", suspend: "Suspend", reinstate: "Reinstate" };
+const DONE: Record<Action, string> = { approve: "approved", reject: "rejected", suspend: "suspended", reinstate: "reinstated" };
 // After an action the panel follows the organisation to its new tab, so the admin sees the result.
 const RESULT: Record<Action, Status> = { approve: "active", reject: "rejected", suspend: "suspended", reinstate: "active" };
 const PAGE_SIZE = 20;
@@ -38,6 +39,8 @@ export default function AgentApprovalPanel() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string } | null>(null);
+  // Browser QA-09: an announced confirmation of what the last action did (the tab switch alone is silent to screen readers).
+  const [notice, setNotice] = useState<string | null>(null);
   const inFlight = useRef<Set<string>>(new Set());
   // Keyboard support: Cancel returns focus to the Suspend button that opened the confirmation.
   const returnFocusTo = useRef<string | null>(null);
@@ -77,6 +80,7 @@ export default function AgentApprovalPanel() {
     inFlight.current.add(org.id);
     setBusyId(org.id);
     setMessage(null);
+    setNotice(null);
     try {
       const response = await fetch(`${LIST_URL}/${org.id}/${action}`, { method: "POST" });
       const body = await response.json().catch(() => ({}));
@@ -88,6 +92,7 @@ export default function AgentApprovalPanel() {
       if (RESULT[action] === status) load();
       else showTab(RESULT[action]);
       setConfirming(null);
+      setNotice(`${org.name} ${DONE[action]}.`);
     } catch {
       setMessage({ id: org.id, text: "Network error. Check your connection and try again." });
     } finally {
@@ -101,9 +106,11 @@ export default function AgentApprovalPanel() {
   return (
     <div className="action-card">
       <h3>Agent Approvals</h3>
+      {/* Always mounted so screen readers announce the text when it arrives; styled only while it has something to say. */}
+      <div className={notice ? "form-message" : undefined} role="status" aria-live="polite" style={notice ? { marginTop: 8 } : undefined}>{notice}</div>
       <div role="group" aria-label="Organisation status" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
         {TABS.map((t) => (
-          <button key={t.status} type="button" className={t.status === status ? "btn small" : "btn secondary small"} aria-pressed={t.status === status} onClick={() => showTab(t.status)}>
+          <button key={t.status} type="button" className={t.status === status ? "btn small" : "btn secondary small"} aria-pressed={t.status === status} onClick={() => { setNotice(null); showTab(t.status); }}>
             {t.label}
           </button>
         ))}

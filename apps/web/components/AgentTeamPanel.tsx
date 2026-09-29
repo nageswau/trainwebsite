@@ -26,6 +26,8 @@ export default function AgentTeamPanel() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rowMessage, setRowMessage] = useState<{ id: string; text: string } | null>(null);
+  // Browser QA-09: an announced confirmation after a deactivation (the badge change alone is silent to screen readers).
+  const [notice, setNotice] = useState<string | null>(null);
   const inFlight = useRef<Set<string>>(new Set());
   const inviteInFlight = useRef(false);
   // Keyboard support: Cancel returns focus to the Deactivate button that opened the confirmation.
@@ -59,6 +61,7 @@ export default function AgentTeamPanel() {
     inviteInFlight.current = true;
     setInviting(true);
     setInviteMessage(null);
+    setNotice(null); // browser QA-08: a new action clears the previous one's message
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     try {
@@ -93,6 +96,8 @@ export default function AgentTeamPanel() {
     inFlight.current.add(master.id);
     setBusyId(master.id);
     setRowMessage(null);
+    setInviteMessage(null); // browser QA-08
+    setNotice(null);
     try {
       const response = await fetch(`${TEAM_URL}/masters/${master.id}/deactivate`, { method: "POST" });
       const data = await response.json().catch(() => ({}));
@@ -105,6 +110,7 @@ export default function AgentTeamPanel() {
         router.push("/overseas/login");
         return;
       }
+      setNotice(`${master.code} ${master.full_name} deactivated.`);
       router.refresh();
       load();
     } catch {
@@ -139,6 +145,8 @@ export default function AgentTeamPanel() {
   return (
     <div className="action-card">
       <h3 style={{ overflowWrap: "anywhere" }}>Team — {team.org.name}</h3>
+      {/* Always mounted so screen readers announce the text when it arrives; styled only while it has something to say. */}
+      <div className={notice ? "form-message" : undefined} role="status" aria-live="polite" style={notice ? { marginBottom: 8 } : undefined}>{notice}</div>
       <ul style={{ paddingLeft: 0, listStyle: "none" }}>
         {team.masters.map((m) => (
           <li className="card" key={m.id} style={{ marginBottom: 8, overflowWrap: "anywhere" }}>

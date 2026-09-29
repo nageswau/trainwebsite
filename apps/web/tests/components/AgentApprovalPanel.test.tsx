@@ -122,6 +122,17 @@ describe("AgentApprovalPanel (AGN-001)", () => {
     expect(screen.getByRole("button", { name: "Reject Lambda Travel" })).toBeInTheDocument();
   });
 
+  it("announces what an action did (browser QA-09)", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(page([org("p", "pending", "Kappa Overseas")]))
+      .mockResolvedValueOnce(ok({ id: "p", status: "active" }))
+      .mockResolvedValue(page([org("p", "active", "Kappa Overseas")])));
+    render(<AgentApprovalPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Approve Kappa Overseas" }));
+    const note = await screen.findByText("Kappa Overseas approved.");
+    expect(note.closest("[role=status]")).not.toBeNull();
+  });
+
   it("shows a server error on the card", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(page([org("p", "pending")])).mockResolvedValueOnce(new Response(JSON.stringify({ detail: "Cannot approve an organisation that is active" }), { status: 409 })));
     render(<AgentApprovalPanel />);

@@ -80,7 +80,44 @@ describe("AgentTeamPanel (AGN-001)", () => {
     expect(screen.getByRole("button", { name: "Send invite" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Deactivate Ravi Iyer" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
-    await vi.waitFor(() => expect(screen.getAllByText("Network error. Check your connection and try again.")).toHaveLength(2));
+    // Browser QA-08: starting the deactivation clears the invite's message, so exactly one (the row's) is shown.
+    await vi.waitFor(() => expect(screen.getAllByText("Network error. Check your connection and try again.")).toHaveLength(1));
+    expect(screen.getByText("Network error. Check your connection and try again.").closest("li")).not.toBeNull();
+  });
+
+  it("announces a successful deactivation and clears the earlier invite message (browser QA-08, QA-09)", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(res(team([me, other])))
+      .mockResolvedValueOnce(res({ member: { ...other, id: "m3", code: "ABC-M003", full_name: "Tara Das" }, email_status: "not_configured" }, 201))
+      .mockResolvedValueOnce(res(team([me, other, { ...other, id: "m3", code: "ABC-M003", full_name: "Tara Das" }])))
+      .mockResolvedValueOnce(res({ member: { ...other, status: "deactivated" } }))
+      .mockResolvedValue(res(team([me, { ...other, status: "deactivated" }]))));
+    render(<AgentTeamPanel />);
+    await screen.findByText("ABC-M001");
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Tara Das" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "tara@example.local" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send invite" }));
+    await screen.findByText(/Invite created, but the email was not delivered/);
+    fireEvent.click(await screen.findByRole("button", { name: "Deactivate Ravi Iyer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
+    expect(await screen.findByText("ABC-M002 Ravi Iyer deactivated.")).toBeInTheDocument();
+    expect(screen.queryByText(/Invite created, but the email was not delivered/)).toBeNull();
+  });
+
+  it("clears an earlier deactivation message when a new invite starts (browser QA-08)", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(res(team([me, other])))
+      .mockResolvedValueOnce(res({ member: { ...other, status: "deactivated" } }))
+      .mockResolvedValueOnce(res(team([me, { ...other, status: "deactivated" }])))
+      .mockReturnValueOnce(new Promise(() => {})));
+    render(<AgentTeamPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Deactivate Ravi Iyer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
+    await screen.findByText("ABC-M002 Ravi Iyer deactivated.");
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Tara Das" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "tara@example.local" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send invite" }));
+    await vi.waitFor(() => expect(screen.queryByText("ABC-M002 Ravi Iyer deactivated.")).toBeNull());
   });
 
   it("shows the invite throttle message", async () => {
