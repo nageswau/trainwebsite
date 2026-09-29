@@ -115,7 +115,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-012 | Digital Portfolio module | Large | Medium | Yes | ENH-001 (portfolio entries reference academic year) |
 | ENH-013 | Student 360° unified profile / Career Passport view | Large | Medium | Possibly (TBD) | ENH-011, ENH-012 |
 | ENH-014 | Multi-channel Communication Centre (WhatsApp/SMS/Email/push) | Large | High | Yes | — |
-| ENH-015 | Reports & downloads (student/school/management exports) | Medium | Low | No | — |
+| ENH-015 | Reports & downloads (student/school/management exports) — **slice 1 implemented, not yet complete** (2026-09-29, `DEC-SCOPE-037` provisional; browser validation + independent review pending) | Medium | Low | No | — |
 | ENH-016 | School & Edusphere analytics dashboards *(scope corrected, Rev. 3 — see below)* | Medium | Low | Possibly (TBD) | — |
 | ENH-017 | School-visible global education pipeline dashboard *(now owns Alumni Network)* — **Complete (verified 2026-09-29)** (2026-09-29, `DEC-SCOPE-036`; Alumni Network not built, follow-up) | Medium | Medium | No | SCH-010 (bridge, already built) |
 | ENH-018 | School feedback capture | Small | Low | Yes | — |
@@ -1623,6 +1623,8 @@ a background job with a "ready for download" notification.
 **Regression risks.** None on source modules; this is a pure read/export layer.
 
 **Complexity:** Medium. **Risk:** Low.
+
+**Status (2026-09-29): SLICE 1 IMPLEMENTED — NOT YET COMPLETE.** Built on `feature/enh-015-student-school-reports` per `docs/superpowers/specs/2026-09-29-enh-015-reports-downloads-design.md` and `DEC-SCOPE-037` (provisional). Slice 1 delivers the two reports the acceptance criteria need: a **School Summary PDF** (coordinator/principal, own school: the §30 management figures and the §29 grade-wise table) and a **Student Progress Report PDF** (parent — linked children only; coordinator/principal — own institution: the SCH-007 overview). **Corrections to this entry:** PDF only via the existing `reportlab` (no tooling decision needed); generated synchronously in memory and never stored (aggregate-only school output is bounded, so no background job, no report-log table, no migration); a `school_student` role does not exist (DEC-ROLE-004), so "own report" for students is not deliverable; teachers are refused (403), not auto-scoped, until "Limited" is defined. **Still `NEEDS_CONFIRMATION`:** the other §30 report types (later slices), teacher and service-team reports, a per-academic-year Annual report, scholarship figures, non-Latin fonts, Client Question #20. Browser validation, the Playwright run and the independent review are pending; evidence in the `RTM.md` ENH-015 row.
 
 ---
 

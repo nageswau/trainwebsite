@@ -132,6 +132,15 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
   logs (`DEC-SCOPE-036`, design spec §11). **Residual, stated:** no rate limiting (no read-endpoint rate limiting exists, this endpoint included;
   the endpoint is single-school and row-capped) and no `AuditLog` row for reads (`DEC-SCOPE-036` D9, the
   `ENH-016` precedent).
+- **Threat (added 2026-09-29, `ENH-015`) — PDF report downloads:** (a) an export bypassing row-level scope (another school's figures, an
+  unlinked child's report); (b) a stored report reachable through `/files/download` (any key, any authenticated user) or the
+  unauthenticated `/local-files` mount; (c) stored text (counsellor notes, remarks) injected into reportlab's paragraph markup;
+  (d) PII in logs, filenames or shared caches.
+- **Direction:** the existing loaders decide scope (school from the session; SCH-007 `_load_readable_student`); nothing is
+  stored; one escape point for all text; fixed filenames and `private, no-store`; progress-report downloads audited before
+  bytes leave (fail closed); ids/counts/exception type only in logs (`DEC-SCOPE-037`, spec §11). **Residual, stated:** no rate
+  limiting (platform-wide gap, `ENH-016` D16 precedent); GET + `SameSite=Lax` means a cross-site link can make a user download
+  their own report (one extra audit row, no disclosure); the progress report grows with the student's record count.
 
 ### File uploads (general)
 - **Threat:** malicious file upload (resumes, assignments, documents, resources) used for stored

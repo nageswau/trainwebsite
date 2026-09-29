@@ -512,6 +512,23 @@ Extends `SCH-010`'s bridge with a school-facing, high-level view (`School CRM.md
 - **ENH-017-AC17:** UI states: loading skeleton; empty, empty-grade and past-end messages; section error keeps the shell; 401/403 → access card.
 - **ENH-017-AC18:** UI: grade form and pager work without client JS, keyboard-operable, labelled; table has caption and row headers; usable at 320/768/1024/1440 px (browser verification `NEEDS_CONFIRMATION`).
 
+## ENH-015 — Reports & Downloads, slice 1 (addendum, 2026-09-29, `DEC-SCOPE-037` provisional)
+
+`School CRM.md` §30, slice 1 only: the School Summary PDF and the Student Progress Report PDF. Copied from `docs/superpowers/specs/2026-09-29-enh-015-reports-downloads-design.md` §10.
+
+- **ENH-015-AC01:** Coordinator downloads the School Summary for their own school; its figures equal `student_indicators` over that school and the grade table equals `GET /school/analytics/grade-performance`.
+- **ENH-015-AC02:** Principal can download it; teacher, parent, academic_team, career_counselor, psychometric_team, it_admin, overseas_admin, super_admin → 403; a school account with no school → 403; no session → 401.
+- **ENH-015-AC03:** School A's summary never includes school B's students or records.
+- **ENH-015-AC04:** Parent downloads the Progress Report for a linked child; an unlinked child (same or other school) → 403; coordinator/principal own-school student → 200, other school → 403; unknown id → 404; teacher and service roles → 403 (before 422 for a malformed id).
+- **ENH-015-AC05:** The Progress Report contains the overview's fields for that student only; Draft/Verified results never appear; `report_url` never appears.
+- **ENH-015-AC06:** Each Progress Report download writes exactly one AuditLog row (`school.progress_report_download`, entity `school_student`, metadata `{role}` only) before the response; if the write fails, no PDF is returned.
+- **ENH-015-AC07:** Both responses carry `application/pdf`, the fixed attachment filename, `private, no-store`, `nosniff` and the sandbox CSP.
+- **ENH-015-AC08:** Markup-like stored text (`<b>`, `&`, `<font>`, a lone `<`) is rendered literally and never breaks generation.
+- **ENH-015-AC09:** The School Summary issues a fixed number of queries independent of the student count.
+- **ENH-015-AC10:** The download button shows busy, success and each error state; works by keyboard; usable at 320 px.
+- **ENH-015-AC11:** `/school/reports`, `/school/dashboard`, `/school/analytics/grade-performance`, `/students/{id}/overview`, `SCHOOL_NAV`, `PORTAL_NAV` unchanged; their existing tests pass unmodified.
+- **ENH-015-AC12:** Logs for both reports contain ids and counts only — no student names or record text.
+
 ## SCH-011 — Partnership tier entitlements
 
 - **SCH-011-AC01:** Given a School with a `tier` set (`bronze`/`silver`/`gold`/`platinum`), when a Coordinator or Principal opens `GET /school/entitlements`, then they see the exact cumulative service list for that tier (each tier adds only what the brochure's own image shows over the previous one) — no other role may call this endpoint (403).
