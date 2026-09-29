@@ -2953,8 +2953,8 @@ E1–E12), planned (`docs/superpowers/plans/2026-09-28-agn-001-multi-tenant-agen
 `feature/agn-001-multi-tenant-agent-crm` (migration `0046_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-036`. Browser
 QA (QA-01…13) fixed and re-verified, including after merging `main`; the independent Codex review was set aside by the owner
 (in-session, 2026-09-29), as for ENH-024/ENH-027. Evidence in `docs/quality/RTM.md` (AGN-001 row). QA-01 replaced the admin
-portal "Agent Registrations" table with "Agent Masters" (organisation + Master status). Deferred internal-review minors #7, #8,
-#11, #12 remain in the plan ledger for a fix-or-accept decision (#10, a dead branch, was removed).
+portal "Agent Registrations" table with "Agent Masters" (organisation + Master status). Internal-review minors #7, #8, #11, #12
+accepted by the owner as known limitations (2026-09-29): #7 a fast tab switch can briefly show the previous tab's rows (a server 409 prevents acting on the wrong one); #8 a page emptied by another admin shows no Previous (the tab recovers); #11 the Team panel shows a generic load error on 403 (the portal page shows the reason); #12 the migration backfill's idempotence is verified by a manual round trip only (#10, a dead branch, was removed).
 
 ---
 
