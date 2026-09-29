@@ -17,7 +17,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.core.rbac import agent_denial_reason
-from app.models import AgentStudent, Company, Job, JobApplication, OverseasApplication, OverseasCourse, SchoolStudent, University, User
+from app.models import AgentStudent, Company, Job, JobApplication, OverseasApplication, OverseasCourse, School, SchoolStudent, University, User
 from app.services.agent_orgs import org_member_ids
 
 logger = logging.getLogger("app.lookups")
@@ -166,4 +166,45 @@ async def it_job_applications(
         db, stmt, limit,
         lambda row: {"id": row[0].id, "label": row[1], "detail": _join(row[2], row[3], row[0].status)},
         "it-job-applications", user,
+    )
+
+
+@router.get("/schools")
+async def schools(
+    q: str | None = Query(None, max_length=100),
+    limit: int = Query(20, ge=1, le=50),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """The School->Overseas bridge's first step (D4): every partner school, for the bridge's roles."""
+    _allow(user, {"overseas_admin", "counselor"})
+    stmt = select(School)
+    pattern = _pattern(q)
+    if pattern:
+        stmt = stmt.where(or_(_like(School.name, pattern), _like(School.school_code, pattern)))
+    stmt = stmt.order_by(School.name, School.id)
+    return await _page(db, stmt, limit, lambda row: {"id": row[0].id, "label": row[0].name, "detail": row[0].school_code}, "schools", user)
+
+
+@router.get("/school-students")
+async def school_students(
+    school_id: UUID,
+    q: str | None = Query(None, max_length=100),
+    limit: int = Query(20, ge=1, le=50),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """The bridge's second step (D4): students of ONE chosen school only -- no cross-school name browsing."""
+    _allow(user, {"overseas_admin", "counselor"})
+    if await db.get(School, school_id) is None:
+        raise HTTPException(404, "School not found")
+    stmt = select(SchoolStudent).where(SchoolStudent.school_id == school_id)
+    pattern = _pattern(q)
+    if pattern:
+        stmt = stmt.where(or_(_like(SchoolStudent.full_name, pattern), _like(SchoolStudent.student_code, pattern)))
+    stmt = stmt.order_by(SchoolStudent.full_name, SchoolStudent.id)
+    return await _page(
+        db, stmt, limit,
+        lambda row: {"id": row[0].id, "label": row[0].full_name, "detail": _join(row[0].grade_or_class, row[0].student_code)},
+        "school-students", user,
     )
