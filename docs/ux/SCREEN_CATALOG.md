@@ -2603,7 +2603,7 @@ correction, not deleted, per this project's traceability convention.
 - **Accessibility requirements:** h1→h2→h3 order; counts are text, never colour or bar length alone (bars are `aria-hidden`); native labelled `<select>` and GET form, no client JS; table has a caption and row headers.
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet/mobile: single column, table scrolls horizontally.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
-- **Acceptance evidence needed:** `GlobalEducationPipeline.test.tsx`, `GlobalEducationPage.test.tsx`, `tests/e2e/enh-017-global-education.spec.ts`, `test_enh_017_global_education_pipeline.py` (passing as implemented); browser QA and independent review pending (Implemented — pending browser QA and independent review).
+- **Acceptance evidence needed:** `GlobalEducationPipeline.test.tsx`, `GlobalEducationPage.test.tsx`, `tests/e2e/enh-017-global-education.spec.ts`, `test_enh_017_global_education_pipeline.py` (passing as implemented); browser QA and accessibility passed (`docs/quality/ENH-017_BROWSER_QA_2026-09-29.md`) — COMPLETE (verified 2026-09-29 at `949aa2c`).
 
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  

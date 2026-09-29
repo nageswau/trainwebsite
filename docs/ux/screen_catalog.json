@@ -2981,6 +2981,6 @@
     "a11y": "h1, h2, h3 order; counts are text, never colour or bar length alone (bars aria-hidden); native labelled select and GET form, no client JS; table has a caption and row headers.",
     "dtm": "Desktop: full layout. Tablet/mobile: single column, table scrolls horizontally.",
     "visual": "None — not inspected. Do not claim parity.",
-    "evidence": "GlobalEducationPipeline.test.tsx, GlobalEducationPage.test.tsx, tests/e2e/enh-017-global-education.spec.ts, test_enh_017_global_education_pipeline.py (passing as implemented); browser QA and independent review pending (Implemented — pending browser QA and independent review)."
+    "evidence": "GlobalEducationPipeline.test.tsx, GlobalEducationPage.test.tsx, tests/e2e/enh-017-global-education.spec.ts, test_enh_017_global_education_pipeline.py (passing as implemented); browser QA and accessibility passed (docs/quality/ENH-017_BROWSER_QA_2026-09-29.md) — COMPLETE (verified 2026-09-29 at 949aa2c)."
   }
 ]

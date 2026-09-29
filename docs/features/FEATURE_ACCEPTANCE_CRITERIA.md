@@ -491,7 +491,7 @@ Generated per feature, ID format `<FEATURE-ID>-AC##`. Derived directly from each
 
 ## ENH-017 — School-visible Global Education pipeline (addendum, 2026-09-29, `DEC-SCOPE-036`)
 
-Extends `SCH-010`'s bridge with a school-facing, high-level view (`School CRM.md` §16/§17/§19/§20). The local criteria below are copied from `docs/superpowers/specs/2026-09-29-enh-017-global-education-pipeline-design.md` §10; `SCH-010-AC01`–`AC05` are unchanged. Status: Implemented — pending browser QA and independent review.
+Extends `SCH-010`'s bridge with a school-facing, high-level view (`School CRM.md` §16/§17/§19/§20). The local criteria below are copied from `docs/superpowers/specs/2026-09-29-enh-017-global-education-pipeline-design.md` §10; `SCH-010-AC01`–`AC05` are unchanged. Status: COMPLETE (verified 2026-09-29 at `949aa2c`); evidence in `docs/quality/ENH-017_BROWSER_QA_2026-09-29.md`.
 
 - **ENH-017-AC01:** Coordinator and principal get 200 with the §6 shape for their own school.
 - **ENH-017-AC02:** Teacher, parent, academic_team, career_counselor, psychometric_team, it_admin, overseas_admin, super_admin, counselor, overseas_student get 403; unauthenticated gets 401.

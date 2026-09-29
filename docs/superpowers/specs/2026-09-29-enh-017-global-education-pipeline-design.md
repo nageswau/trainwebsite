@@ -1,6 +1,6 @@
 # ENH-017 — School-Visible Global Education Pipeline — Design
 
-**Status:** Design approved in-session 2026-09-29 (sections 1–3 presented and approved by the user; decisions D1–D10 below).
+**Status:** Design approved in-session 2026-09-29 (sections 1–3 presented and approved by the user; decisions D1–D10 below). Implementation COMPLETE (verified 2026-09-29 at `949aa2c`) — see `docs/quality/ENH-017_BROWSER_QA_2026-09-29.md`.
 **Backlog:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-017 (`DERIVED_BLUEPRINT`).
 **Source:** `functionalities/edusphere_markdown/School CRM.md` (EVID-014) §16, §17, §19, §20 (and §18/§36 for the untracked stages).
 **Decision record:** `DEC-SCOPE-036` (provisional number — renumber on merge if taken).
