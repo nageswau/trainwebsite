@@ -7,15 +7,17 @@ refuse. Reads only: one structured log line per call (counts, never the search t
 import logging
 from collections.abc import Callable
 from typing import Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import Select, or_, select
+from sqlalchemy import Select, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.core.identifiers import uuid_reference
 from app.core.rbac import agent_denial_reason
-from app.models import AgentStudent, OverseasApplication, User
+from app.models import AgentStudent, Company, Job, JobApplication, OverseasApplication, OverseasCourse, SchoolStudent, University, User
 from app.services.agent_orgs import org_member_ids
 
 logger = logging.getLogger("app.lookups")
@@ -93,4 +95,75 @@ async def overseas_students(
         db, stmt, limit,
         lambda row: {"id": row[0].id, "label": row[0].full_name, "detail": mask_email(row[0].email) if masked else row[0].email},
         "overseas-students", user,
+    )
+
+
+def _join(*parts) -> str:
+    return " · ".join(part for part in parts if part)
+
+
+@router.get("/overseas-applications")
+async def overseas_applications(
+    q: str | None = Query(None, max_length=100),
+    limit: int = Query(20, ge=1, le=50),
+    student_id: UUID | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """workflows._assigned_application's rule: student own; counselor own; university_rep own university; agent own agency;
+    admin all. Bridged (School) applications have no student_id and are labelled with the school student's name."""
+    _allow(user, {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin"})
+    student_name = func.coalesce(User.full_name, SchoolStudent.full_name)
+    stmt = (
+        select(OverseasApplication, student_name, University.name, OverseasCourse.title)
+        .join(University, University.id == OverseasApplication.university_id)
+        .outerjoin(OverseasCourse, OverseasCourse.id == OverseasApplication.course_id)
+        .outerjoin(User, User.id == OverseasApplication.student_id)
+        .outerjoin(SchoolStudent, SchoolStudent.id == OverseasApplication.school_student_id)
+    )
+    if user.role == "overseas_student":
+        stmt = stmt.where(OverseasApplication.student_id == user.id)
+    elif user.role == "counselor":
+        stmt = stmt.where(OverseasApplication.counselor_id == user.id)
+    elif user.role == "agent":
+        stmt = stmt.where(OverseasApplication.agent_id.in_(org_member_ids(user)))
+    elif user.role == "university_rep":
+        university_id = uuid_reference(user.profile.get("university_id"), "university reference", required=False)
+        stmt = stmt.where(OverseasApplication.university_id == university_id if university_id else false())
+    if student_id:
+        stmt = stmt.where(OverseasApplication.student_id == student_id)
+    pattern = _pattern(q)
+    if pattern:
+        stmt = stmt.where(or_(_like(student_name, pattern), _like(University.name, pattern), _like(OverseasCourse.title, pattern), _like(OverseasApplication.application_reference, pattern)))
+    stmt = stmt.order_by(student_name, University.name, OverseasApplication.id)
+    return await _page(
+        db, stmt, limit,
+        lambda row: {"id": row[0].id, "label": row[1] or "Unnamed student", "detail": _join(row[2], row[3], row[0].status)},
+        "overseas-applications", user,
+    )
+
+
+@router.get("/it-job-applications")
+async def it_job_applications(
+    q: str | None = Query(None, max_length=100),
+    limit: int = Query(20, ge=1, le=50),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Every job application -- the scope schedule_interview / create offer accept today."""
+    _allow(user, {"placement_team", "hr_team", "it_admin"})
+    stmt = (
+        select(JobApplication, User.full_name, Job.title, Company.name)
+        .join(User, User.id == JobApplication.student_id)
+        .join(Job, Job.id == JobApplication.job_id)
+        .join(Company, Company.id == Job.company_id)
+    )
+    pattern = _pattern(q)
+    if pattern:
+        stmt = stmt.where(or_(_like(User.full_name, pattern), _like(Job.title, pattern), _like(Company.name, pattern)))
+    stmt = stmt.order_by(User.full_name, JobApplication.id)
+    return await _page(
+        db, stmt, limit,
+        lambda row: {"id": row[0].id, "label": row[1], "detail": _join(row[2], row[3], row[0].status)},
+        "it-job-applications", user,
     )
