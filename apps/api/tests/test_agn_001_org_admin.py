@@ -173,6 +173,19 @@ async def test_ensure_agent_org_surfaces_unrelated_integrity_errors(db_session):
 
 
 @pytest.mark.asyncio
+async def test_the_admin_agents_table_shows_the_organisations_status_per_master(client, db_session):  # browser QA-01
+    ctx = await mk_active_org(db_session, name="Qa Table Agency")
+    ctx["org"].status = "suspended"
+    await db_session.commit()
+    await _admin(client, db_session)
+    body = (await client.get("/api/v1/portal/overseas/admin/agents")).json()
+    assert body["title"] == "Agent Masters"
+    assert [c["key"] for c in body["columns"]] == ["agency", "code", "name", "email", "org_status", "master_status"]
+    row = next(r for r in body["rows"] if r["email"] == ctx["master"].email)
+    assert row == {"agency": "Qa Table Agency", "code": ctx["member"].code, "name": ctx["master"].full_name, "email": ctx["master"].email, "org_status": "suspended", "master_status": "active"}
+
+
+@pytest.mark.asyncio
 async def test_old_reject_still_works_on_an_active_org(client, db_session):  # E4 any-state
     ctx = await mk_active_org(db_session, name="Any State")
     await _admin(client, db_session)

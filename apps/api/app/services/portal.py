@@ -9,6 +9,7 @@ from app.core.identifiers import uuid_reference
 from app.core.rbac import PERMISSIONS
 from app.models import (
     AgentCommission,
+    AgentOrg,
     AgentOrgMember,
     AgentStudent,
     Agreement,
@@ -49,7 +50,6 @@ from app.models import (
     SupportTicket,
     University,
     User,
-    UserRoleAssignment,
     VisaCase,
 )
 from app.services.agent_orgs import org_member_ids
@@ -718,11 +718,13 @@ async def _agent(db: AsyncSession, user: User, section: str):
             if membership
             else []
         )
+        # Browser QA-05: same status wording as AgentTeamPanel -- an active Master who has not set a password is "invite pending".
+        pending = set(await provisioning_statuses(db, [u.id for _, u in rows]))
         return _payload(
             "Team",
-            "Your agency's Master accounts (AGN-001). Up to 3 can be active at once.",
+            "Your agency's Master accounts. Up to 3 can be active at once.",
             (("code", "Code"), ("name", "Name"), ("email", "Email"), ("status", "Status")),
-            ({"code": m.code, "name": u.full_name, "email": u.email, "status": m.status} for m, u in rows),
+            ({"code": m.code, "name": u.full_name, "email": u.email, "status": "invite pending" if m.status == "active" and u.id in pending else m.status} for m, u in rows),
         )
     if section == "students":
         return _payload(
@@ -1364,16 +1366,21 @@ async def _operations(db: AsyncSession, user: User, section: str):
         if section == "agents" and division == "overseas":
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic
             # role_map listing below has no `approval_status` column to show at all.
+            # AGN-001 (browser QA-01): one row per Master with the ORGANISATION's status -- the per-user assignment status
+            # read "approved" for a suspended agency. Approve/reject/suspend/reinstate stay in AgentApprovalPanel below.
             rows = (
                 await db.execute(
-                    select(User, UserRoleAssignment).join(UserRoleAssignment, UserRoleAssignment.user_id == User.id).where(User.role == "agent", UserRoleAssignment.role == "agent").order_by(User.created_at.desc())
+                    select(AgentOrgMember, AgentOrg, User)
+                    .join(AgentOrg, AgentOrg.id == AgentOrgMember.org_id)
+                    .join(User, User.id == AgentOrgMember.user_id)
+                    .order_by(AgentOrg.created_at.desc(), AgentOrgMember.seq)
                 )
             ).all()
             return _payload(
-                "Agent Registrations",
-                "Approve or reject Agent self-registrations.",
-                (("id", "reference"), ("name", "Name"), ("email", "Email"), ("status", "Approval status")),
-                ({"id": agent.id, "name": agent.full_name, "email": agent.email, "status": assignment.approval_status} for agent, assignment in rows),
+                "Agent Masters",
+                "Every Master of every agent organisation. Approve, reject, suspend or reinstate agencies below.",
+                (("agency", "Agency"), ("code", "Code"), ("name", "Name"), ("email", "Email"), ("org_status", "Agency status"), ("master_status", "Master status")),
+                ({"agency": org.name, "code": member.code, "name": member_user.full_name, "email": member_user.email, "org_status": org.status, "master_status": member.status} for member, org, member_user in rows),
             )
         if section == "schools" and division == "overseas":
             # SCH-003 / ENH-009 (DEC-SCOPE-025): Overseas Admin's own partner-school list --

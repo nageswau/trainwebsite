@@ -414,7 +414,8 @@ class AgentMasterInvite(BaseModel):
     def full_name_not_blank(cls, value: str) -> str:
         value = value.strip()
         if not value:
-            raise ValueError("Full name is required")
+            # A plain message, not pydantic's "Value error, ..." prefix (browser QA-06).
+            raise PydanticCustomError("blank_full_name", "Full name is required")
         return value
 
 

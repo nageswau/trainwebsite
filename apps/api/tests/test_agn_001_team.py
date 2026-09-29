@@ -264,6 +264,26 @@ async def test_the_team_portal_section_lists_only_own_masters(client, db_session
 
 
 @pytest.mark.asyncio
+async def test_the_team_portal_section_uses_user_facing_text_and_the_panels_status(client, db_session):  # browser QA-04, QA-05
+    ctx = await mk_active_org(db_session, name="Portal Wording")
+    await login(client, ctx["master"].email)
+    second = (await _invite(client)).json()["member"]
+    body = (await client.get("/api/v1/portal/overseas/agent/team")).json()
+    assert "AGN-001" not in body["subtitle"]
+    statuses = {row["code"]: row["status"] for row in body["rows"]}
+    assert statuses == {ctx["member"].code: "active", second["code"]: "invite pending"}
+
+
+@pytest.mark.asyncio
+async def test_a_blank_invite_name_gets_a_plain_message(client, db_session):  # browser QA-06
+    ctx = await mk_active_org(db_session, name="Plain Message")
+    await login(client, ctx["master"].email)
+    response = await client.post(INVITE, json={"full_name": "   ", "email": f"{uniq('blank')}@example.local"})
+    assert response.status_code == 422
+    assert [e["msg"] for e in response.json()["detail"]] == ["Full name is required"]
+
+
+@pytest.mark.asyncio
 async def test_the_dashboard_shows_the_callers_code(client, db_session):
     ctx = await mk_active_org(db_session, name="Dash Code")
     await login(client, ctx["master"].email)
