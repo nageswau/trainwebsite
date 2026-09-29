@@ -1,0 +1,198 @@
+"""ENH-015 -- PDF rendering for the School Summary and the Student Progress Report
+(docs/superpowers/specs/2026-09-29-enh-015-reports-downloads-design.md §5). Pure: a dict in, PDF bytes out -- no database,
+no I/O, so the caller decides scope and this module only lays out what it is given.
+
+Every piece of text reaches the page through `_p`, the single escape point: Platypus parses `<`, `>` and `&` in a
+Paragraph as markup, so unescaped stored text (a counsellor's note) could restyle or break the document (AC08).
+Built-in fonts only (no font asset): characters outside Latin-1 may not show -- a known limitation (spec §12)."""
+
+import re
+from collections.abc import Iterable, Sequence
+from datetime import date, datetime
+from io import BytesIO
+from xml.sax.saxutils import escape
+from zoneinfo import ZoneInfo
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+from app.schemas import CAREER_LIST_KEYS, PSYCHOMETRIC_RESULT_KEYS
+
+INDIA = ZoneInfo("Asia/Kolkata")
+_STYLES = getSampleStyleSheet()
+TITLE = _STYLES["Title"]
+HEADING = _STYLES["Heading2"]
+BODY = _STYLES["BodyText"]
+SMALL = ParagraphStyle("Small", parent=BODY, fontSize=8, leading=10, textColor=colors.HexColor("#4B5563"))
+CELL = ParagraphStyle("Cell", parent=BODY, fontSize=8.5, leading=10.5)
+GRID = TableStyle(
+    [
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEF2F7")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]
+)
+FIELDS = TableStyle(
+    [
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
+        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F5F7FA")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]
+)
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+NONE = "—"  # em dash, in the built-in fonts' encoding
+
+LABELS = {
+    "completed_on": "Completed on",
+    "scheduled_for": "Scheduled for",
+    "next_follow_up_date": "Next follow-up",
+    "counselor_name": "Counsellor",
+    "created_at": "Recorded on",
+    "scheduled_at": "Date",
+    "present": "Attended",
+    "university_name": "University",
+    "visa_status": "Visa",
+    "batch_title": "Programme",
+    "test_type": "Test",
+    "assessment_type": "Assessment",
+    "academic_year": "Academic year",
+    "teacher_remarks": "Teacher remarks",
+}
+CAREER_FIELDS = ("status", "scheduled_for", "completed_on", "next_follow_up_date", "counselor_name", "notes", *CAREER_LIST_KEYS)
+
+
+def _humanize(key: str) -> str:
+    return LABELS.get(key) or key.replace("_", " ").capitalize()
+
+
+def _text(value) -> str:
+    if value is None:
+        return NONE
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    if isinstance(value, datetime):
+        return (value.astimezone(INDIA) if value.tzinfo else value).strftime("%d %b %Y")
+    if isinstance(value, date):
+        return value.strftime("%d %b %Y")
+    if isinstance(value, float):
+        return f"{value:g}"
+    if isinstance(value, dict):
+        return ", ".join(f"{_humanize(str(k))}: {_text(v)}" for k, v in value.items()) or NONE
+    if isinstance(value, list | tuple):
+        return ", ".join(_text(v) for v in value) or NONE
+    return str(value)
+
+
+def _p(value, style: ParagraphStyle = BODY) -> Paragraph:
+    """The only way text reaches the page: control characters dropped, markup escaped, line breaks kept."""
+    return Paragraph(escape(_CONTROL.sub("", _text(value))).replace("\n", "<br/>"), style)
+
+
+def _status(value: str | None) -> str:
+    return _humanize(value) if value else NONE
+
+
+def _empty(value) -> bool:
+    return value is None or value == "" or value == [] or value == {}
+
+
+def _record_table(record: dict, keys: Iterable[str]) -> Table:
+    rows = [[_p(_humanize(key), CELL), _p(_status(record[key]) if key.endswith("status") else record[key], CELL)] for key in keys if not _empty(record.get(key))]
+    table = Table(rows or [[_p("Details", CELL), _p(NONE, CELL)]], colWidths=[45 * mm, 125 * mm])
+    table.setStyle(FIELDS)
+    return table
+
+
+def _section(title: str, status: str | None, records: Sequence[dict], keys: Iterable[str]) -> list[Flowable]:
+    keys = tuple(keys)
+    story: list[Flowable] = [_p(title, HEADING)]
+    if status is not None:
+        story.append(_p(f"Status: {_status(status)}"))
+    if not records:
+        story.append(_p("No records yet."))
+    for record in records:
+        story += [_record_table(record, keys), Spacer(1, 3 * mm)]
+    return story
+
+
+def _build(story: list[Flowable], title: str, footer: str) -> bytes:
+    buffer = BytesIO()
+
+    def _page(canvas, doc) -> None:
+        canvas.saveState()
+        canvas.setFont("Helvetica", 7.5)
+        canvas.setFillColor(colors.HexColor("#6B7280"))
+        canvas.drawString(15 * mm, 10 * mm, footer)
+        canvas.drawRightString(A4[0] - 15 * mm, 10 * mm, f"Page {doc.page}")
+        canvas.restoreState()
+
+    doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm, topMargin=15 * mm, bottomMargin=18 * mm, title=title, author="EduSphere")
+    doc.build(story, onFirstPage=_page, onLaterPages=_page)
+    return buffer.getvalue()
+
+
+def _cell(cell: dict) -> str:
+    pct = cell.get("pct")
+    return f"{cell['count']} ({NONE if pct is None else f'{pct:g}%'})"
+
+
+def render_school_summary(data: dict) -> bytes:
+    """Spec §5.1: title block, the §30 management figures, the §29 grade-wise table."""
+    story: list[Flowable] = [
+        _p("School Summary Report", TITLE),
+        _p(data["school_name"], HEADING),
+        _p(f"As of {_text(data['as_of'])} (India time)"),
+        _p(f"Academic year: {data['academic_year']}" if data.get("academic_year") else "No active academic year"),
+    ]
+    if not data["total_students"]:
+        story.append(_p("No students on the roster yet."))
+    story.append(_p("Management summary", HEADING))
+    if data["kpis"]:  # reportlab rejects a Table with no rows
+        kpis = Table([[_p(label, CELL), _p(value, CELL)] for label, value in data["kpis"]], colWidths=[110 * mm, 30 * mm])
+        kpis.setStyle(FIELDS)
+        story.append(kpis)
+    grades = data["grades"]
+    if grades:
+        width = (180 - 50) / len(grades) * mm
+        rows = [[_p("Metric", CELL), *[_p(g, CELL) for g in grades]], [_p("Students", CELL), *[_p(data["students"].get(g, 0), CELL) for g in grades]]]
+        rows += [[_p(m["label"] + (" *" if m["is_proxy"] else ""), CELL), *[_p(_cell(m["cells"][g]), CELL) for g in grades]] for m in data["metrics"]]
+        table = Table(rows, colWidths=[50 * mm, *[width] * len(grades)], repeatRows=1)
+        table.setStyle(GRID)
+        story += [_p("Grade-wise comparison", HEADING), table]
+        story += [_p(f"* {m['label']}: {m['definition']}", SMALL) for m in data["metrics"] if m["is_proxy"] and m["definition"]]
+    story += [Spacer(1, 4 * mm), _p("Counts are distinct students. Academic results count only when published.", SMALL)]
+    return _build(story, "School Summary Report", "EduSphere · School Summary Report")
+
+
+def render_progress_report(overview: dict, as_of: date) -> bytes:
+    """Spec §5.2: the SCH-007 overview the reader already sees, section by section. Reads nothing outside `overview`."""
+    student = overview["student"]
+    details = {
+        "Name": student.get("full_name"),
+        "Student code": student.get("student_code"),
+        "Grade / class": student.get("grade_or_class"),
+        "Section": student.get("section"),
+        "School": student.get("school_name"),
+        "Assigned teacher": student.get("assigned_teacher_name"),
+    }
+    results = [{**r, "marks": f"{_text(r['marks_obtained'])} / {_text(r['max_marks'])}"} for r in overview["results"]]
+    skills = overview.get("skills") or {}
+    story: list[Flowable] = [_p("Student Progress Report", TITLE), _p(f"As of {_text(as_of)} (India time)"), _record_table(details, details.keys())]
+    story += _section("Career guidance", overview["career_guidance"]["status"], overview["career_guidance"]["sessions"], CAREER_FIELDS)
+    story += _section("Counselling", overview["counselling"]["status"], overview["counselling"]["notes"], CAREER_FIELDS)
+    story += _section("Career recommendations", None, overview["recommended_careers"], CAREER_FIELDS)
+    story += _section("Psychometric assessment", overview["psychometric"]["status"], overview["psychometric"]["assessments"], ("assessment_type", "status", "created_at", *PSYCHOMETRIC_RESULT_KEYS))
+    story += _section("Academic results (published)", None, results, ("subject", "term", "academic_year", "marks", "percentage", "grade", "teacher_remarks"))
+    story += _section("Activities attended", None, overview["activities"]["attended"], ("title", "scheduled_at", "present"))
+    story += _section("Test preparation (IELTS/SAT)", overview["test_prep"]["status"], overview["test_prep"]["records"], ("test_type", "status", "target_score", "actual_score", "mock_scores"))
+    story += _section(
+        "Foreign language", overview["foreign_language"]["status"], overview["foreign_language"]["records"], ("language", "level", "classes_attended", "assessment_score", "certification_status")
+    )
+    story += _section("Global education", overview["global_education"]["status"], overview["global_education"]["applications"], ("university_name", "status", "visa_status"))
+    for key, title in (("soft_skills", "Soft skills"), ("digital_skills", "Digital skills")):
+        block = skills.get(key) or {}
+        story += _section(title, block.get("status"), block.get("enrollments") or [], ("batch_title", "topic", "status", "start_date", "end_date", "completed_at", "certified_at"))
+    return _build(story, "Student Progress Report", "EduSphere · Student Progress Report · Confidential: contains student information")

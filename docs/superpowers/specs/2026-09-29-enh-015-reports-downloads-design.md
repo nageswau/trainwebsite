@@ -137,7 +137,8 @@ not in the overview dict and is therefore never rendered.
 | 403 | role / scope (see above) | `{"detail": ...}` |
 | 404 | unknown student | `{"detail": "Student not found"}` |
 | 422 | malformed UUID (allowed role) | FastAPI default |
-| 500 | render failure or audit commit failure | `{"detail": "Could not generate the report; please try again"}` |
+| 500 | render failure | `{"detail": "Could not generate the report; please try again"}` |
+| 500 | audit write/commit failure | platform default 500 (the exception propagates, as every audited write in the codebase does — `test_sec_001` precedent); no PDF bytes |
 
 OpenAPI: `response_class=Response`, `responses={200: {"content": {"application/pdf": {}}, "description": ...}}`.
 Filenames never contain a student or school name (no PII in headers, no header injection).
