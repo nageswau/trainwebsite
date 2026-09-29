@@ -1,4 +1,5 @@
 import PortalShell from "@/components/PortalShell";
+import ReportDownloadButton from "@/components/ReportDownloadButton";
 import SchoolAnalyticsSections from "@/components/SchoolAnalyticsSections";
 import SchoolReportsPanel from "@/components/SchoolReportsPanel";
 import { serverApi } from "@/lib/api";
@@ -36,6 +37,14 @@ export default async function SchoolPrincipalReportsPage({ searchParams }: { sea
   const analytics = await loadSchoolAnalytics(await searchParams);
   return (
     <PortalShell nav={SCHOOL_NAV.principal} roleLabel="Principal" userName={user.full_name}>
+      {/* ENH-015: the downloadable School Summary PDF (own school), above the on-screen report it summarises. */}
+      <div className="portal-content">
+        <div className="card">
+          <h2>Download reports</h2>
+          <p className="muted">A PDF of your school&apos;s summary figures and grade-by-grade table, as of today.</p>
+          <ReportDownloadButton url="/api/v1/school/reports/school-summary" label="Download school report (PDF)" filename="school-report.pdf" />
+        </div>
+      </div>
       <SchoolReportsPanel report={report} />
       <SchoolAnalyticsSections data={analytics} role="principal" />
     </PortalShell>

@@ -4,6 +4,7 @@ import SchoolGradeHistory, { loadGradeHistory, type StudentGradeHistory } from "
 import SchoolStudentTimeline, { loadStudentTimeline, type StudentTimeline } from "@/components/SchoolStudentTimeline";
 import SchoolTransferHistory, { loadTransferHistory, type TransferHistoryEntry } from "@/components/SchoolTransferHistory";
 import PortfolioPanel from "@/components/PortfolioPanel";
+import ReportDownloadButton from "@/components/ReportDownloadButton";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
@@ -41,6 +42,8 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
       <div className="portal-content">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <a className="btn" href={`/school/parent/children/${id}/360`}>Open 360° view</a>
+          {/* ENH-015: the same overview as a PDF -- own linked child only, checked by the server. */}
+          <ReportDownloadButton url={`/api/v1/school/students/${id}/progress-report`} label="Download progress report (PDF)" filename="progress-report.pdf" />
           <a className="btn secondary" href="/school/parent/dashboard">Back to my children</a>
         </div>
         <SchoolChildOverview overview={overview} />
