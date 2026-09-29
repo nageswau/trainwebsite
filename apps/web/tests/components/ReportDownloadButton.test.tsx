@@ -50,14 +50,29 @@ describe("ReportDownloadButton (ENH-015)", () => {
     vi.stubGlobal("fetch", fetchMock);
     const button = renderButton();
     fireEvent.click(button);
+    fireEvent.click(button);
     const busy = screen.getByRole("button", { name: "Preparing PDF…" });
-    expect(busy).toBeDisabled();
+    expect(busy).toHaveAttribute("aria-disabled", "true");
     expect(busy).toHaveAttribute("aria-busy", "true");
     fireEvent.click(busy);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     finish(pdfResponse());
     expect(await screen.findByRole("status")).toHaveTextContent("Report downloaded.");
-    expect(screen.getByRole("button", { name: "Download school report (PDF)" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Download school report (PDF)" })).toHaveAttribute("aria-disabled", "false");
+  });
+
+  it("keeps keyboard focus on the button through a download (QA15-01)", async () => {
+    let finish: (value: unknown) => void = () => {};
+    vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { finish = resolve; })));
+    const button = renderButton();
+    button.focus();
+    fireEvent.click(button);
+    // `disabled` would drop focus to <body>; the busy state must not.
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveFocus();
+    finish(pdfResponse());
+    expect(await screen.findByRole("status")).toHaveTextContent("Report downloaded.");
+    expect(button).toHaveFocus();
   });
 
   it("asks the user to sign in again when the session has expired", async () => {

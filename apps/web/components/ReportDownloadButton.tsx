@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
 import { detailMessage } from "@/lib/apiErrors";
 
@@ -13,8 +13,11 @@ const FAILED = "Something went wrong on our side. Please try again.";
 export default function ReportDownloadButton({ url, label, filename }: { url: string; label: string; filename: string }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
+  const downloading = useRef(false);
 
   async function download() {
+    if (downloading.current) return;
+    downloading.current = true;
     setBusy(true);
     setMessage(null);
     try {
@@ -28,6 +31,7 @@ export default function ReportDownloadButton({ url, label, filename }: { url: st
     } catch {
       setMessage({ text: FAILED, failed: true });
     } finally {
+      downloading.current = false;
       setBusy(false);
     }
   }
@@ -35,7 +39,9 @@ export default function ReportDownloadButton({ url, label, filename }: { url: st
   return (
     <div className="report-download">
       <div className="actions">
-        <button type="button" className="btn" onClick={download} disabled={busy} aria-busy={busy}>
+        {/* aria-disabled, not `disabled`: a disabled button drops keyboard focus to <body> (QA15-01). The `downloading`
+            guard is what stops a second request; globals.css dims `.btn[aria-disabled="true"]` like `.btn:disabled`. */}
+        <button type="button" className="btn" onClick={download} aria-disabled={busy} aria-busy={busy}>
           {busy ? "Preparing PDF…" : label}
         </button>
       </div>
