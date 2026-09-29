@@ -125,8 +125,7 @@ export default function AgentApprovalPanel() {
         return;
       }
       router.refresh();
-      if (RESULT[action] === status) load();
-      else showTab(RESULT[action]);
+      showTab(RESULT[action]); // every action moves the organisation to another tab (see TABS)
       setConfirming(null);
       setNotice(`${org.name} ${DONE[action]}.`);
     } catch {

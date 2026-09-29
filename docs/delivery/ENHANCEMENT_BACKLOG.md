@@ -2954,7 +2954,7 @@ E1–E12), planned (`docs/superpowers/plans/2026-09-28-agn-001-multi-tenant-agen
 QA (QA-01…13) fixed and re-verified, including after merging `main`; the independent Codex review was set aside by the owner
 (in-session, 2026-09-29), as for ENH-024/ENH-027. Evidence in `docs/quality/RTM.md` (AGN-001 row). QA-01 replaced the admin
 portal "Agent Registrations" table with "Agent Masters" (organisation + Master status). Deferred internal-review minors #7, #8,
-#10, #11, #12 remain in the plan ledger for a fix-or-accept decision.
+#11, #12 remain in the plan ledger for a fix-or-accept decision (#10, a dead branch, was removed).
 
 ---
 
