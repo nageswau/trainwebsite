@@ -2948,11 +2948,13 @@ routes used by `AgentApprovalPanel`, `ADM-001`'s agent role option, seed data.
 
 **Complexity:** Large. **Risk:** High.
 
-**Status (2026-09-29) — implemented, NOT complete.** Designed (`docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md`,
+**Status (2026-09-29) — COMPLETE for AGN-001's scope; merge to `main` open.** Designed (`docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md`,
 E1–E12), planned (`docs/superpowers/plans/2026-09-28-agn-001-multi-tenant-agent-crm.md`) and built test-first on branch
-`feature/agn-001-multi-tenant-agent-crm` (migration `0046_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-036`. Evidence
-in `docs/quality/RTM.md` (AGN-001 row). Remaining before "complete": the owner's browser validation and the independent Codex
-review. Known follow-up outside scope: the generic admin portal "Agent Registrations" table still shows the assignment status.
+`feature/agn-001-multi-tenant-agent-crm` (migration `0046_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-036`. Browser
+QA (QA-01…13) fixed and re-verified, including after merging `main`; the independent Codex review was set aside by the owner
+(in-session, 2026-09-29), as for ENH-024/ENH-027. Evidence in `docs/quality/RTM.md` (AGN-001 row). QA-01 replaced the admin
+portal "Agent Registrations" table with "Agent Masters" (organisation + Master status). Deferred internal-review minors #7, #8,
+#10, #11, #12 remain in the plan ledger for a fix-or-accept decision.
 
 ---
 
