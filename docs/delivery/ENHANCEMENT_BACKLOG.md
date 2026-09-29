@@ -2930,8 +2930,11 @@ routes used by `AgentApprovalPanel`, `ADM-001`'s agent role option, seed data.
 
 **Complexity:** Large. **Risk:** High.
 
-**Status (2026-09-28) — decided, not designed or built.** `DEC-SCOPE-034` recorded; branch
-`feature/agn-001-multi-tenant-agent-crm`. Next: design spec, then plan, then test-first build.
+**Status (2026-09-29) — implemented, NOT complete.** Designed (`docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md`,
+E1–E12), planned (`docs/superpowers/plans/2026-09-28-agn-001-multi-tenant-agent-crm.md`) and built test-first on branch
+`feature/agn-001-multi-tenant-agent-crm` (migration `0045_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-034`. Evidence
+in `docs/quality/RTM.md` (AGN-001 row). Remaining before "complete": the owner's browser validation and the independent Codex
+review. Known follow-up outside scope: the generic admin portal "Agent Registrations" table still shows the assignment status.
 
 ---
 
