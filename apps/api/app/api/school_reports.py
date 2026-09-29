@@ -12,14 +12,15 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_user
 from app.api.portfolio_certificates import HEADERS
 from app.api.school_analytics import _roster, grade_table, student_indicators, students_in
 from app.api.school_feedback import _require_school_reader
-from app.api.schools import _own_school_id, _today_ist
+from app.api.schools import _load_readable_student, _overview_payload, _own_school_id, _today_ist
 from app.core.database import get_db
 from app.core.logging import get_logger
-from app.models import AcademicYear, School, User
-from app.reporting.pdf import render_school_summary
+from app.models import AcademicYear, AuditLog, School, User
+from app.reporting.pdf import render_progress_report, render_school_summary
 
 router = APIRouter(prefix="/school", tags=["school-reports"])
 logger = get_logger("app.school_reports")
@@ -100,3 +101,28 @@ async def school_summary_report(user: User = Depends(_require_school_reader), db
     content = _render(user, "school_summary", render_school_summary, data)
     _log_generated(user, "school_summary", started, content, school_id=school_id, student_count=data["total_students"])
     return _pdf_response(content, "school-report.pdf")
+
+
+REPORT_READERS = {"school_parent", "school_coordinator", "school_principal"}
+
+
+async def _require_report_reader(user: User = Depends(get_current_user)) -> User:
+    """D5. A dependency, so a wrong role is 403 before a malformed id is 422 -- and before any student is looked up."""
+    if user.role not in REPORT_READERS:
+        raise HTTPException(403, "Parent, School Coordinator or Principal role required")
+    return user
+
+
+@router.get("/students/{student_id}/progress-report", response_class=Response, responses=PDF_RESPONSES)
+async def student_progress_report(student_id: UUID, user: User = Depends(_require_report_reader), db: AsyncSession = Depends(get_db)):
+    """The SCH-007 overview of one student as a PDF (D6): same loader, so the same scope and errors as
+    `/students/{id}/overview` -- a Parent their linked children only, Coordinator/Principal their own institution.
+    The audit row is committed before any byte leaves; if it cannot be written, nothing is sent (D9, fail closed)."""
+    started = perf_counter()
+    student = await _load_readable_student(db, user, student_id)
+    overview = await _overview_payload(db, student)
+    content = _render(user, "progress_report", render_progress_report, overview, _today_ist())
+    db.add(AuditLog(user_id=user.id, action="school.progress_report_download", entity_type="school_student", entity_id=str(student.id), metadata_json={"role": user.role}))
+    await db.commit()
+    _log_generated(user, "progress_report", started, content, school_student_id=student.id)
+    return _pdf_response(content, "progress-report.pdf")
