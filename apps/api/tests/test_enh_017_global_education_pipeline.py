@@ -4,9 +4,8 @@ import logging
 from contextlib import contextmanager
 
 import pytest
-from sqlalchemy import event, func, select
-
 from enh016_helpers import _user, login, make_school, make_student, make_university
+from sqlalchemy import event, func, select
 
 from app.api.school_global_education import visa_stage_label
 from app.core.database import engine
@@ -131,6 +130,21 @@ async def test_funnel_counts_each_student_once_per_stage_reached(client, db_sess
     assert _funnel(body) == {"pathway": 5, "profile_evaluation": 3, "shortlisted": 2, "offer": 3, "visa": 1, "admitted": 1}
     assert "Farah NotBridged" not in _rows(body)
     assert body["students"]["total"] == 5
+
+
+@pytest.mark.asyncio
+async def test_a_pre_offer_status_with_an_offer_letter_counts_as_an_offer(client, db_session):  # AC06, spec §5.1
+    ctx = await make_school(db_session)
+    uni = await make_university(db_session)
+    student = await make_student(db_session, ctx, name="Gita Letter")
+    await bridge(db_session, student, uni, status="university_selection", offer_letter_url="https://x/offer.pdf")
+    await db_session.commit()
+    await login(client, ctx["school_coordinator"])
+
+    body = (await client.get(URL)).json()
+
+    assert _funnel(body)["offer"] == 1
+    assert _rows(body)["Gita Letter"]["furthest_stage"] == "offer"
 
 
 @pytest.mark.asyncio

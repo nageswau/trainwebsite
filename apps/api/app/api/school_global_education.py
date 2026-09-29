@@ -110,7 +110,7 @@ async def global_education_pipeline(
         for s in bridged[offset : offset + limit]  # the list is paged; the funnel below never is
     ]
     logger.info("school_global_education_view", extra={"extra_fields": {
-        "actor_id": str(user.id), "role": user.role, "school_id": str(school_id), "grade": str(grade), "bridged": len(bridged), "returned": len(rows),
+        "actor_id": str(user.id), "role": user.role, "school_id": str(school_id), "grade": grade, "bridged": len(bridged), "returned": len(rows),
     }})
     return GlobalEducationPipelineOut(
         grade=grade, students_in_scope=len(roster), bridged_students=len(bridged),

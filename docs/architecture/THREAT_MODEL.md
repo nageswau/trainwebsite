@@ -129,7 +129,7 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
 - **Direction:** column-level selects with the offer letter reduced to a boolean in SQL; allowlisted
   response models; the school taken from the session with no id parameter; role gate before validation;
   exact key-set and planted-value tests on the raw body; GET only, no state change; ids and counts only in
-  logs (`DEC-SCOPE-036`, design spec §11). **Residual, stated:** no rate limiting (none exists platform-wide;
+  logs (`DEC-SCOPE-036`, design spec §11). **Residual, stated:** no rate limiting (no read-endpoint rate limiting exists, this endpoint included;
   the endpoint is single-school and row-capped) and no `AuditLog` row for reads (`DEC-SCOPE-036` D9, the
   `ENH-016` precedent).
 

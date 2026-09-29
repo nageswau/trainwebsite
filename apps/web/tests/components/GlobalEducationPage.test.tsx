@@ -66,6 +66,16 @@ describe("Global education pages", () => {
     expect(again).toContain("/api/v1/school/global-education/pipeline");
   });
 
+  it("drops an out-of-range grade/offset and forwards the boundary values", async () => {
+    const bare = serve("school_coordinator");
+    render(await CoordinatorPage(params({ grade: "13", offset: "20000" })));
+    expect(bare.filter((p) => p.includes("pipeline"))).toEqual(["/api/v1/school/global-education/pipeline"]);
+    cleanup();
+    const edge = serve("school_coordinator");
+    render(await CoordinatorPage(params({ grade: "8", offset: "10000" })));
+    expect(edge).toContain("/api/v1/school/global-education/pipeline?grade=8&offset=10000");
+  });
+
   it("a pipeline failure keeps the shell and shows the section error", async () => {
     serve("school_coordinator", new ApiError("boom", 500));
     render(await CoordinatorPage(params()));

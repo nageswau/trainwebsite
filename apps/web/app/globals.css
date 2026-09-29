@@ -124,7 +124,7 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .table-scroll { overflow-x: auto; max-width: 100%; position: relative; }
 .table-scroll table th:first-child, .table-scroll table td:first-child { position: sticky; left: 0; background: #fff; }
 /* QA-016-02: the report forms land on these sections; keep their heading clear of the sticky portal header. */
-#development, #scorecards { scroll-margin-top: 88px; }
+#development, #scorecards, #students { scroll-margin-top: 88px; }
 /* QA-016-04: a row header is a label (a student, a metric), not a column heading -- normal case at body size. */
 .table-scroll tbody th[scope="row"] { text-transform: none; letter-spacing: normal; font-size: 14px; color: #0b1f3a; font-weight: 600; }
 .table-scroll tbody th[scope="row"] .kpi-note { font-weight: 400; }

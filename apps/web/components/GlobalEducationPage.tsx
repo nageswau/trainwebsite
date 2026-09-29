@@ -8,7 +8,7 @@ import { SCHOOL_NAV } from "@/lib/navigation";
 import type { GlobalEducationPipeline, User } from "@/lib/types";
 
 // ENH-017 (SCR-SCH-038): one renderer for the Coordinator and Principal pages -- identical data, each page refusing the other
-// role (QA-018-12 pattern). Only digit strings are forwarded from the URL, so a tampered ?grade= shows the unfiltered page
+// role (QA-018-12 pattern). Only in-range integers are forwarded from the URL, so a tampered ?grade= shows the unfiltered page
 // rather than a 422 error card. A 401/403 is an access problem; any other failure keeps the shell and nav usable.
 const ROLES = {
   coordinator: { role: "school_coordinator", label: "School Coordinator", denied: "School Coordinator role required" },
@@ -17,10 +17,13 @@ const ROLES = {
 
 const digits = (value: string | string[] | undefined) => (typeof value === "string" && /^\d+$/.test(value) ? value : "");
 
+// Forward only what the API accepts (grade 8-12, offset 0-MAX_OFFSET=10000); an out-of-range hand-edit is dropped, not a 422.
+const inRange = (value: string, min: number, max: number) => (Number(value) >= min && Number(value) <= max ? value : "");
+
 export async function renderGlobalEducationPage(key: keyof typeof ROLES, searchParams: Record<string, string | string[] | undefined>) {
   const { role, label, denied } = ROLES[key];
-  const grade = digits(searchParams.grade);
-  const offset = digits(searchParams.offset);
+  const grade = inRange(digits(searchParams.grade), 8, 12);
+  const offset = inRange(digits(searchParams.offset), 0, 10000);
   const query = new URLSearchParams();
   if (grade) query.set("grade", grade);
   if (offset) query.set("offset", offset);
