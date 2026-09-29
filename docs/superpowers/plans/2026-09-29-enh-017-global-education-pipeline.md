@@ -431,7 +431,6 @@ Replace the body of `school_global_education.py` below the `FUNNEL` constant, an
 
 ```python
 from collections import defaultdict
-from collections.abc import Iterable
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import and_, select
@@ -481,9 +480,8 @@ def furthest_stage(reached: set[str]) -> str:
     return next(key for key, _ in reversed(FUNNEL) if key in reached)
 
 
-def visa_stage_label(statuses: Iterable[str]) -> str | None:
+def visa_stage_label(statuses: list[str]) -> str | None:
     """The most advanced modelled visa stage across a student's cases; "In progress" when none is a modelled stage."""
-    statuses = list(statuses)
     if not statuses:
         return None
     known = [s for s in statuses if s in VISA_STAGE_LABELS]
@@ -1230,7 +1228,7 @@ export default async function SchoolPrincipalGlobalEducationPage({ searchParams 
 }
 ```
 
-`loading.tsx` (identical content in both folders):
+`apps/web/app/school/coordinator/global-education/loading.tsx`:
 
 ```tsx
 // ENH-017: shown while the server reads the pipeline, so navigation is never a blank screen (ENH-018 pattern).
@@ -1243,6 +1241,13 @@ export default function Loading() {
     </div>
   );
 }
+```
+
+`apps/web/app/school/principal/global-education/loading.tsx` (S1 — one skeleton, not a copy):
+
+```tsx
+// ENH-017: the Principal's page loads the same pipeline as the Coordinator's, so it shows the same skeleton.
+export { default } from "@/app/school/coordinator/global-education/loading";
 ```
 
 - [ ] **Step 5: Add the nav entries** in `apps/web/lib/navigation.ts`
