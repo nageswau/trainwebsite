@@ -1,5 +1,5 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import GlobalEducationFunnel from "@/components/GlobalEducationFunnel";
 import GlobalEducationStudentTable from "@/components/GlobalEducationStudentTable";
@@ -74,5 +74,32 @@ describe("GlobalEducationStudentTable", () => {
     rerender(<GlobalEducationStudentTable page={{ items: [], total: 30, limit: 25, offset: 100 }} grade="" basePath={base} />);
     expect(screen.getByText("This page is past the end of the list.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Previous page" }).getAttribute("href")).toBe(`${base}?offset=25#students`);
+  });
+});
+
+// QA17-01: the route's loading.tsx streams the page, so `#students` is still hidden when the browser performs the fragment
+// scroll after "Next →" / "Show" and the page stays at the top. The card scrolls itself into view once it is on screen.
+describe("GlobalEducationStudentTable #students landing (QA17-01)", () => {
+  const base = "/school/coordinator/global-education";
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+    vi.restoreAllMocks();
+  });
+
+  it("scrolls the student card into view when the URL targets #students", () => {
+    window.history.replaceState(null, "", `${base}?offset=25#students`);
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    render(<GlobalEducationStudentTable page={data().students} grade="" basePath={base} />);
+    expect(scroll).toHaveBeenCalledTimes(1);
+    expect((scroll.mock.contexts[0] as HTMLElement).id).toBe("students");
+  });
+
+  it("leaves the scroll position alone when the URL does not target #students", () => {
+    window.history.replaceState(null, "", base);
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    render(<GlobalEducationStudentTable page={data().students} grade="" basePath={base} />);
+    expect(scroll).not.toHaveBeenCalled();
   });
 });

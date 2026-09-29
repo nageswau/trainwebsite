@@ -1,8 +1,8 @@
 # ENH-017 — Browser QA record (2026-09-29)
 
 **Scope:** first exploratory QA pass of ENH-017 (School-visible Global Education pipeline, `DEC-SCOPE-036`,
-`SCR-SCH-038`) on branch `feature/enh-017-school-application-visibility` at `edaf768`. No code was changed during this
-pass; findings are open.
+`SCR-SCH-038`) on branch `feature/enh-017-school-application-visibility` at `edaf768` (no code changed during that
+pass), then one fix pass for QA17-01/QA17-02 and a browser re-test — see the end of this record.
 
 **Environment:** isolated Compose project `enh017` (web :3017 rebuilt at `edaf768`, API :8017, own Postgres). The API
 runs on a locally pinned image (`sqlalchemy[asyncio]<2.1`) because the stock image cannot start (RAID `I-42`). Headless
@@ -27,7 +27,7 @@ browsers other than Chromium, screen readers. **Not applicable:** success messag
 ENH-016, grade-submit landing, API outage on this and two existing pages). QA17-02/03 came from reviewing screenshots,
 QA17-04 from the outage probe.
 
-## Findings (open — not fixed in this pass)
+## Findings (as found in the first pass — resolution for QA17-01/02 in the re-test section below)
 
 | ID | Sev. | Role / page | Finding | Reproduction | Expected | Actual | Evidence |
 |---|---|---|---|---|---|---|---|
@@ -66,3 +66,33 @@ QA17-04 from the outage probe.
 **Observations, not defects:** refused and signed-out pages return HTTP 200 with an access card (app-wide pattern); the
 "Not tracked yet" wording repeats as region label, heading and per-tile badge; a hand-edited out-of-range URL is
 silently ignored (by design, spec §7).
+
+## Fix pass and re-test (same isolated stack, `web` rebuilt with the fixes)
+
+| ID | Root cause (confirmed) | Resolution | Test |
+|---|---|---|---|
+| QA17-01 | The route's `loading.tsx` makes Next.js stream the page: the served HTML carries the skeleton first and the real content — `#students` included — inside a hidden stream chunk (`<div hidden id="S:1">`). The browser's fragment scroll runs while the target is hidden, so nothing scrolls. The ENH-016 reports route has no `loading.tsx`, so its `#scorecards` target is visible at parse time | New client component `ScrollIntoViewOnHash` (rendered inside the Students card) scrolls the card into view once it is on screen, only when the URL hash is `#students`; `scrollIntoView` honours the existing 88 px `scroll-margin-top`. The loading skeleton (AC17) stays; paging and the grade form still work without JS | 2 Vitest cases (scrolls when the hash targets `#students` — RED before the fix; no scroll otherwise); browser re-test below |
+| QA17-02 | Global `h2` is `clamp(28px, 3.5vw, 44px)` while the page's `h1` is fixed at 28 px | `.pipeline-page .card h2 { font-size: 22px }` — page title 28 px > section headings 22 px > sub-headings 20 px, scoped to this page | Browser computed sizes below |
+
+QA17-03 (loading skeleton replaces the shell; ENH-018 pattern) and QA17-04 (shared `accessUnavailable` wording on an API
+outage) remain open by decision: both are patterns shared with other pages, to be fixed outside ENH-017.
+
+**Browser re-test** (97 scripted checks, all pass, including every first-pass scenario as a regression run):
+
+| Check | 1440 | 768 | 390 |
+|---|---|---|---|
+| Plain visit (no hash) stays at the top | `y=0` | `y=0` | `y=0` |
+| "Next →" lands on Students | card at 322 px — page at its maximum scroll (`y=maxY=538`; 6 rows) | 280 px, `y=maxY` | 109 px, `y=maxY` |
+| "← Previous" lands on Students | card at 88 px | 88 px | 88 px |
+| Grade "Show" lands on Students | 176 px, `y=maxY` (9 rows) | 88 px | 88 px |
+| Refresh on `#students` keeps the landing | ✓ | ✓ | ✓ |
+| Heading sizes h1 / h2 / h3 | 28 / 22 / 20 | 28 / 22 / 20 | 28 / 22 / 20 |
+| Console errors / failed requests | none | none | none |
+
+On short pages the card cannot reach 88 px because the document ends; it is fully visible below the 68 px top bar at
+the maximum scroll. Evidence: `qa017/retest-next-landing-1440.png`, `qa017/retest-show-landing-390.png`,
+`qa017/retest-headings-1440.png`. The first-pass PAGE-02 check (card below the top bar after "Next →", measured after
+the smooth scroll settles) failed before the fix (`scrollY=0`) and passes after it.
+
+**Other verification after the fix:** Vitest 99 files / 1033 tests pass; `tsc` clean; ESLint 0 errors (warnings all in
+files outside ENH-017); `next build` compiles both routes; Playwright `enh-017-global-education.spec.ts` 1 passed.

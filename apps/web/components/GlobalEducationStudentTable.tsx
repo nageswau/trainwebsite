@@ -1,3 +1,4 @@
+import ScrollIntoViewOnHash from "@/components/ScrollIntoViewOnHash";
 import { plural } from "@/lib/plural";
 import type { GlobalEducationPipeline } from "@/lib/types";
 
@@ -26,6 +27,7 @@ export default function GlobalEducationStudentTable({ page, grade, basePath }: P
   const shown = page.items.length === 0 ? plural(page.total, "student") : `${page.offset + 1}–${page.offset + page.items.length} of ${page.total}`;
   return (
     <div className="card" id="students">
+      <ScrollIntoViewOnHash id="students" />
       <h2>Students</h2>
       <form method="get" action={`${basePath}#students`} className="analytics-form">
         <div className="field">
