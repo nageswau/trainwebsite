@@ -28,14 +28,14 @@
 
 | # | Form (file) | Roles | Field (`name`, unchanged) | Source |
 |---|---|---|---|---|
-| F1 | Upload document (`WorkflowPanel` `DocumentUpload`) | counselor, agent, overseas_admin | `student_id` | `overseas-students` lookup |
-| F2 | Upload document | counselor, agent, overseas_admin | `application_id` (optional) | `overseas-applications` lookup, filtered to the chosen student |
+| F1 | Upload document (`WorkflowPanel` `DocumentUpload`, rendered for overseas_student and agent only) | agent | `student_id` | `overseas-students` lookup |
+| F2 | Upload document | overseas_student, agent | `application_id` (optional) | `overseas-applications` lookup, filtered to the chosen student (a student sees only their own applications) |
 | F3 | Schedule appointment (`appointmentSpec(true)`) | counselor, overseas_admin | `student_id` | `overseas-students` lookup |
 | F4 | Link student (`agentSpecs` "students") | agent | `student_id` | `overseas-students?purpose=link` (D2) |
 | F5 | Update application (`overseasOperationsSpecs`) | university_rep, overseas_admin | `application_id` | `overseas-applications` lookup |
 | F6 | Create visa case | overseas_admin | `application_id` | `overseas-applications` lookup |
 | F7 | Post admission update | university_rep | `application_id` | `overseas-applications` lookup |
-| F8 | Update overseas application (`adminSpecs` "applications") | overseas_admin, super_admin | `application_id` | `overseas-applications` lookup |
+| F8 | Update overseas application (`adminSpecs` "applications"; an Overseas Admin gets F5 in that section) | super_admin | `application_id` | `overseas-applications` lookup |
 | F9 | Schedule interview (`placementSpecs`) | placement_team, hr_team, it_admin | `application_id` | `it-job-applications` lookup |
 | F10 | Create offer (`placementSpecs`) | placement_team, hr_team, it_admin | `application_id` | `it-job-applications` lookup |
 | F11 | School→Overseas bridge (`AdminSchoolApplicationsPanel`) | overseas_admin, super_admin, counselor | student code → school student | D4: `schools` lookup, then `school-students?school_id=` lookup |
@@ -85,7 +85,7 @@ same scope rule as the write endpoint it feeds**, so it never offers a value tha
 | | counselor | students of the counselor's own applications (rule of `create_appointment` / `add_document`) | name, email |
 | | agent | students linked to the caller's agency (`AgentStudent.agent_id IN org_member_ids`) | name, email |
 | `GET /overseas-students?purpose=link` | agent only | any `overseas_student` **not** already linked to the caller's agency; `q` required, ≥ 3 chars (else 422); `limit` capped at 10; `detail` = masked email | name, email |
-| `GET /overseas-applications` | counselor, university_rep, agent, overseas_admin, super_admin | `_assigned_application` rule (counselor own; university_rep own university; agent own agency; admin all); optional `student_id=` narrows to that student | student name, university, course, application reference |
+| `GET /overseas-applications` | overseas_student, counselor, university_rep, agent, overseas_admin, super_admin | `_assigned_application` rule (overseas_student own; counselor own; university_rep own university; agent own agency; admin all); optional `student_id=` narrows to that student | student name, university, course, application reference |
 | `GET /it-job-applications` | placement_team, hr_team, it_admin, super_admin | all job applications (the rule of `schedule_interview` / create offer) | candidate name, job title, company |
 | `GET /schools` | overseas_admin, super_admin, counselor | all partner schools (bridge roles) | name, school code |
 | `GET /school-students?school_id=` | overseas_admin, super_admin, counselor | students of that one school only; `school_id` required (D4) | name, student code |
