@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Master = { id: string; code: string; full_name: string; email: string; status: string };
@@ -34,6 +34,12 @@ export default function AgentApprovalPanel() {
   const router = useRouter();
   const [status, setStatus] = useState<Status>("pending");
   const [offset, setOffset] = useState(0);
+  // Browser QA-13: a search over agency name, prefix, Master code or email; `draft` is the box, `query` what was searched.
+  const [query, setQuery] = useState("");
+  const [draft, setDraft] = useState("");
+  // Browser QA-03: tab, page and search live in the URL. Read once on mount (not during render: the server has no URL
+  // state to match), and hold the first fetch until then so it is not made twice.
+  const [ready, setReady] = useState(false);
   const [data, setData] = useState<Page | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -45,16 +51,49 @@ export default function AgentApprovalPanel() {
   // Keyboard support: Cancel returns focus to the Suspend button that opened the confirmation.
   const returnFocusTo = useRef<string | null>(null);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    if (tab && TABS.some((t) => t.status === tab)) setStatus(tab as Status);
+    const pageNumber = Number.parseInt(params.get("page") ?? "1", 10);
+    if (Number.isFinite(pageNumber) && pageNumber > 1) setOffset((pageNumber - 1) * PAGE_SIZE);
+    const searched = (params.get("q") ?? "").trim().slice(0, 100);
+    setQuery(searched);
+    setDraft(searched);
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    const params = new URLSearchParams(window.location.search);
+    ["tab", "page", "q"].forEach((key) => params.delete(key));
+    if (status !== "pending") params.set("tab", status);
+    if (offset > 0) params.set("page", String(offset / PAGE_SIZE + 1));
+    if (query) params.set("q", query);
+    const search = params.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`);
+  }, [ready, status, offset, query]);
+
   const load = useCallback(() => {
+    if (!ready) return;
     setLoadFailed(false);
     setData(null);
-    fetch(`${LIST_URL}?status=${status}&limit=${PAGE_SIZE}&offset=${offset}`)
+    fetch(`${LIST_URL}?status=${status}&limit=${PAGE_SIZE}&offset=${offset}${query ? `&q=${encodeURIComponent(query)}` : ""}`)
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((body: Page) => setData(body))
       .catch(() => setLoadFailed(true));
-  }, [status, offset]);
+  }, [ready, status, offset, query]);
 
   useEffect(load, [load]);
+
+  function search(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setConfirming(null);
+    setMessage(null);
+    setNotice(null);
+    setQuery(draft.trim().slice(0, 100));
+    setOffset(0);
+  }
 
   useEffect(() => {
     if (confirming === null && returnFocusTo.current) {
@@ -115,6 +154,13 @@ export default function AgentApprovalPanel() {
           </button>
         ))}
       </div>
+      <form role="search" onSubmit={search} style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 8, marginTop: 12 }}>
+        <div className="field" style={{ flex: "1 1 220px", margin: 0 }}>
+          <label htmlFor="agent-org-search">Search agencies</label>
+          <input id="agent-org-search" type="search" value={draft} maxLength={100} placeholder="Agency, prefix, code or Master email" onChange={(e) => setDraft(e.target.value)} />
+        </div>
+        <button type="submit" className="btn secondary small">Search</button>
+      </form>
       <section aria-labelledby="agent-orgs-heading" style={{ marginTop: 16 }}>
         <h4 id="agent-orgs-heading">{tab.label}</h4>
         {loadFailed ? (
@@ -125,7 +171,7 @@ export default function AgentApprovalPanel() {
         ) : data === null ? (
           <p className="muted">Loading agent organisations…</p>
         ) : data.items.length === 0 ? (
-          <p className="muted">{tab.empty}</p>
+          <p className="muted">{query ? `No organisations match “${query}”.` : tab.empty}</p>
         ) : (
           <>
             <div className="grid two">

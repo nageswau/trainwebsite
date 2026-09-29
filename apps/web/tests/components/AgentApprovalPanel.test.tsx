@@ -14,6 +14,7 @@ const LIST = "/api/v1/overseas-admin/agent-orgs";
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  window.history.replaceState(null, "", "/overseas/admin/agents");
 });
 
 describe("AgentApprovalPanel (AGN-001)", () => {
@@ -131,6 +132,51 @@ describe("AgentApprovalPanel (AGN-001)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Approve Kappa Overseas" }));
     const note = await screen.findByText("Kappa Overseas approved.");
     expect(note.closest("[role=status]")).not.toBeNull();
+  });
+
+  it("restores the tab, page and search from the URL on load (browser QA-03)", async () => {
+    window.history.replaceState(null, "", "/overseas/admin/agents?tab=suspended&page=3&q=kappa");
+    const mock = vi.fn().mockResolvedValue(page([org("s", "suspended")], 45, 40));
+    vi.stubGlobal("fetch", mock);
+    render(<AgentApprovalPanel />);
+    await screen.findByRole("button", { name: /^Reinstate / });
+    expect(mock.mock.calls[0][0]).toBe(`${LIST}?status=suspended&limit=20&offset=40&q=kappa`);
+    expect(screen.getByRole("button", { name: "Suspended" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("Search agencies")).toHaveValue("kappa");
+  });
+
+  it("keeps the tab and page in the URL as the admin moves (browser QA-03)", async () => {
+    const twenty = Array.from({ length: 20 }, (_, i) => org(`a${i}`, "active"));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(page([])).mockResolvedValueOnce(page(twenty, 45, 0)).mockResolvedValue(page([org("b", "active")], 45, 20)));
+    render(<AgentApprovalPanel />);
+    await screen.findByText("No organisations awaiting approval.");
+    fireEvent.click(screen.getByRole("button", { name: "Approved" }));
+    await screen.findByText("Showing 1–20 of 45");
+    expect(window.location.search).toBe("?tab=active");
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    await screen.findByText("Showing 21–21 of 45");
+    expect(window.location.search).toBe("?tab=active&page=2");
+  });
+
+  it("searches agencies and starts again from page 1 (browser QA-13)", async () => {
+    const mock = vi.fn().mockResolvedValueOnce(page([org("p", "pending")], 45, 0)).mockResolvedValue(page([org("k", "pending", "Kappa Overseas")], 1, 0));
+    vi.stubGlobal("fetch", mock);
+    render(<AgentApprovalPanel />);
+    await screen.findByRole("button", { name: /^Approve / });
+    fireEvent.change(screen.getByLabelText("Search agencies"), { target: { value: " Kappa " } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(await screen.findByRole("button", { name: "Approve Kappa Overseas" })).toBeInTheDocument();
+    expect(mock.mock.calls[1][0]).toBe(`${LIST}?status=pending&limit=20&offset=0&q=Kappa`);
+    expect(window.location.search).toBe("?q=Kappa");
+  });
+
+  it("says when a search finds nothing (browser QA-13)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(page([org("p", "pending")])).mockResolvedValue(page([])));
+    render(<AgentApprovalPanel />);
+    await screen.findByRole("button", { name: /^Approve / });
+    fireEvent.change(screen.getByLabelText("Search agencies"), { target: { value: "zzz" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(await screen.findByText("No organisations match “zzz”.")).toBeInTheDocument();
   });
 
   it("shows a server error on the card", async () => {

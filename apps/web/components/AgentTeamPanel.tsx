@@ -141,6 +141,9 @@ export default function AgentTeamPanel() {
 
   const active = team.masters.filter((m) => m.status === "active");
   const atLimit = active.length >= team.limit;
+  // Browser QA-07: the server refuses self-deactivation until another active Master has accepted their invite (R3) --
+  // say so up front instead of offering a confirmation that can only fail.
+  const anotherAccepted = active.some((m) => !m.is_you && !m.invite_pending);
 
   return (
     <div className="action-card">
@@ -152,7 +155,10 @@ export default function AgentTeamPanel() {
           <li className="card" key={m.id} style={{ marginBottom: 8, overflowWrap: "anywhere" }}>
             <strong>{m.code}</strong> {m.full_name}{m.is_you ? " (you)" : ""} <span className="muted" style={{ fontSize: 13 }}>{m.email}</span>{" "}
             {m.status !== "active" ? <span className="badge">Deactivated</span> : m.invite_pending ? <span className="badge">Invite pending</span> : null}
-            {m.status === "active" && active.length > 1 && (
+            {m.status === "active" && active.length > 1 && m.is_you && !anotherAccepted && (
+              <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>You can deactivate your own account once another Master has accepted their invite.</p>
+            )}
+            {m.status === "active" && active.length > 1 && !(m.is_you && !anotherAccepted) && (
               confirming === m.id ? (
                 <div role="group" aria-label={`Confirm deactivating ${m.full_name}`} style={{ marginTop: 8 }}>
                   <p style={{ fontSize: 13 }}>{m.is_you ? "Deactivate your own account? You will be signed out." : `Deactivate ${m.full_name}? They will no longer be able to sign in.`}</p>

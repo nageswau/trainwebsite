@@ -152,8 +152,18 @@ describe("AgentTeamPanel (AGN-001)", () => {
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Deactivate Ravi Iyer" }));
   });
 
+  it("does not offer self-deactivation while every other Master is still invite-pending (browser QA-07)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res(team([me, other]))));  // `other` has not accepted yet
+    render(<AgentTeamPanel />);
+    await screen.findByText("ABC-M001");
+    expect(screen.queryByRole("button", { name: "Deactivate Asha Rao (you)" })).toBeNull();
+    expect(screen.getByText("You can deactivate your own account once another Master has accepted their invite.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Deactivate Ravi Iyer" })).toBeInTheDocument();
+  });
+
   it("sends a Master who deactivated themselves to the login page", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res(team([me, other]))).mockResolvedValueOnce(res({ member: { ...me, status: "deactivated" } })));
+    const accepted = { ...other, invite_pending: false };  // QA-07: self-deactivation needs another accepted Master
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res(team([me, accepted]))).mockResolvedValueOnce(res({ member: { ...me, status: "deactivated" } })));
     render(<AgentTeamPanel />);
     fireEvent.click(await screen.findByRole("button", { name: "Deactivate Asha Rao (you)" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
