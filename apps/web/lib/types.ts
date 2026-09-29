@@ -59,3 +59,14 @@ export type SchoolUtilizationRow = ServiceTotals & {
   pending_activities: number;
 };
 export type SchoolUtilizationPage = { items: SchoolUtilizationRow[]; total: number; limit: number; offset: number };
+
+// ENH-017 (DEC-SCOPE-036): GET /school/global-education/pipeline -- high-level stage only (School CRM.md §19).
+export type PipelineStudentRow = { school_student_id: string; full_name: string; student_code: string; grade: string; furthest_stage: string; furthest_stage_label: string; visa_stage_label: string | null; application_count: number };
+export type GlobalEducationPipeline = {
+  grade: number | null;
+  students_in_scope: number;
+  bridged_students: number;
+  funnel: { key: string; label: string; count: number }[];
+  not_tracked: { key: string; label: string; note: string }[];
+  students: { items: PipelineStudentRow[]; total: number; limit: number; offset: number };
+};
