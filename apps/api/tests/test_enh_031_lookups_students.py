@@ -167,6 +167,9 @@ async def test_lookup_logs_counts_never_the_text_and_writes_no_audit_row(client,
     admin = await mk_user(db_session, role="overseas_admin")
     await login(client, admin.email)
     audit_before = await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.user_id == admin.id))
+    # alembic/env.py's fileConfig() disables loggers that already exist; an earlier migration test leaves this one off
+    # (the ENH-013/016/018/024 precedent).
+    logging.getLogger("app.lookups").disabled = False
     caplog.set_level(logging.INFO, logger="app.lookups")
     await client.get(URL, params={"q": tag})
     records = [r for r in caplog.records if r.name == "app.lookups"]
