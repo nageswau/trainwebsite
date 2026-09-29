@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { pickOption } from "../helpers/pickOption";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import SchoolPsychometricRecordsPanel from "@/components/SchoolPsychometricRecordsPanel";
@@ -20,7 +21,7 @@ function card(heading: string): HTMLElement {
 }
 
 function assign() {
-  fireEvent.change(screen.getByLabelText("Student"), { target: { value: "s1" } });
+  pickOption(screen, "Student", "s1");
   fireEvent.change(screen.getByLabelText("Assessment type"), { target: { value: "Aptitude Test" } });
   fireEvent.click(screen.getByRole("button", { name: "Assign assessment" }));
 }

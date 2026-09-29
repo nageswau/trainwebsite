@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import SearchableSelect from "@/components/SearchableSelect";
 import { useRouter } from "next/navigation";
 
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
@@ -137,15 +138,7 @@ export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageR
           <p className="muted">No students in your portfolio yet. Contact your Overseas Admin.</p>
         ) : (
           <form className="form" onSubmit={createTestPrep}>
-            <div className="field">
-              <label htmlFor="testprep-student">Student</label>
-              <select id="testprep-student" name="school_student_id" required defaultValue="">
-                <option value="" disabled>Select student</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>{s.full_name} — {s.school_name}</option>
-                ))}
-              </select>
-            </div>
+            <SearchableSelect id="testprep-student" label="Student" name="school_student_id" required noun="student" options={students.map((s) => ({ id: s.id, label: s.full_name, detail: s.school_name }))} />
             <div className="field">
               <label htmlFor="testprep-type">Test</label>
               <select id="testprep-type" name="test_type" required defaultValue="">
@@ -204,15 +197,7 @@ export default function SchoolTestPrepLanguagePanel({ testPrepRecords, languageR
           <p className="muted">No students in your portfolio yet. Contact your Overseas Admin.</p>
         ) : (
           <form className="form" onSubmit={createLanguageRecord}>
-            <div className="field">
-              <label htmlFor="language-student">Student</label>
-              <select id="language-student" name="school_student_id" required defaultValue="">
-                <option value="" disabled>Select student</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>{s.full_name} — {s.school_name}</option>
-                ))}
-              </select>
-            </div>
+            <SearchableSelect id="language-student" label="Student" name="school_student_id" required noun="student" options={students.map((s) => ({ id: s.id, label: s.full_name, detail: s.school_name }))} />
             <div className="field">
               <label htmlFor="language-name">Language</label>
               <input id="language-name" name="language" required />

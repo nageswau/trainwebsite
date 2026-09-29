@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import SearchableSelect from "@/components/SearchableSelect";
 
 type ApplicationRow = { id: string; student_id: string; student: string };
 type ConversationMessage = { id: string; sender_id: string; recipient_id: string; body: string; created_at: string };
@@ -88,15 +89,7 @@ export default function CounselorChatPanel({ userId }: { userId: string }) {
   return (
     <div className="action-card">
       <h3>Reply to a student</h3>
-      <div className="field">
-        <label htmlFor="counselor-chat-student">Student</label>
-        <select id="counselor-chat-student" value={selectedId} onChange={(event) => loadConversation(event.target.value)}>
-          <option value="">Select student</option>
-          {uniqueStudents.map((row) => (
-            <option key={row.student_id} value={row.student_id}>{row.student}</option>
-          ))}
-        </select>
-      </div>
+      <SearchableSelect id="counselor-chat-student" label="Student" noun="student" options={uniqueStudents.map((row) => ({ id: row.student_id, label: row.student }))} onChange={(option) => loadConversation(option?.id ?? "")} />
       {!uniqueStudents.length && <p className="muted">No students are assigned to you yet.</p>}
       {selectedId && (
         <>

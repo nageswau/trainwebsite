@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import SearchableSelect from "@/components/SearchableSelect";
 import { detailMessage, fieldFromMessage, interestValue, invalidInputProps, listText, splitList } from "@/lib/schoolStudents";
 
 const ERROR_ID = "prefs-form-error";
@@ -75,20 +76,16 @@ export default function CareerPreferencesCard({ students }: { students: Student[
         <p className="muted">Career preferences can be recorded once a student is in your portfolio.</p>
       ) : (
         <>
-          <div className="field">
-            <label htmlFor="prefs-student">Student</label>
-            <select
-              id="prefs-student"
-              value={studentId}
-              onChange={(e) => {
-                setStudentId(e.target.value);
-                if (e.target.value) load(e.target.value);
-              }}
-            >
-              <option value="" disabled>Select student</option>
-              {students.map((s) => <option key={s.id} value={s.id}>{s.full_name} — {s.school_name}</option>)}
-            </select>
-          </div>
+          <SearchableSelect
+            id="prefs-student"
+            label="Student"
+            noun="student"
+            options={students.map((s) => ({ id: s.id, label: s.full_name, detail: s.school_name }))}
+            onChange={(option) => {
+              setStudentId(option?.id ?? "");
+              if (option) load(option.id);
+            }}
+          />
           {state === "loading" && <p className="muted" aria-busy="true" aria-live="polite">Loading…</p>}
           {state === "error" && (
             <div className="form-error" role="alert">
