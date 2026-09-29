@@ -142,6 +142,11 @@ def grade_key(level: int | None, label: str | None) -> str:
     return key if key in GRADE_COLUMNS else "other"
 
 
+def grade_label(key: str) -> str:
+    """A `grade_key` as people read it -- the same wording as the web (SchoolGradePerformance.tsx `gradeLabel`)."""
+    return "Other grades" if key == "other" else "No grade" if key == "unspecified" else f"Grade {key}"
+
+
 def _ordered_grades(present: Collection[str]) -> list[str]:
     return [g for g in (*GRADE_COLUMNS, "other", "unspecified") if g in present]
 

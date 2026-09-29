@@ -15,12 +15,11 @@ export default function ReportDownloadButton({ url, label, filename }: { url: st
   const [message, setMessage] = useState<FormMessageState | null>(null);
 
   async function download() {
-    if (busy) return;
     setBusy(true);
     setMessage(null);
     try {
       const response = await fetch(url, { credentials: "same-origin" });
-      if (response.ok && (response.headers.get("content-type") ?? "").startsWith("application/pdf")) {
+      if (response.ok && response.headers.get("content-type")?.startsWith("application/pdf")) {
         save(await response.blob(), filename);
         setMessage({ text: "Report downloaded.", failed: false });
       } else {

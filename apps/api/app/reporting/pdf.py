@@ -106,8 +106,7 @@ def _record_table(record: dict, keys: Iterable[str]) -> Table:
     return table
 
 
-def _section(title: str, status: str | None, records: Sequence[dict], keys: Iterable[str]) -> list[Flowable]:
-    keys = tuple(keys)
+def _section(title: str, status: str | None, records: Sequence[dict], keys: Sequence[str]) -> list[Flowable]:
     story: list[Flowable] = [_p(title, HEADING)]
     if status is not None:
         story.append(_p(f"Status: {_status(status)}"))

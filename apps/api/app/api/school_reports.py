@@ -9,17 +9,16 @@ from time import perf_counter
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.api.portfolio_certificates import HEADERS
-from app.api.school_analytics import _roster, grade_table, student_indicators, students_in
+from app.api.school_analytics import _roster, grade_label, grade_table, student_indicators, students_in
 from app.api.school_feedback import _require_school_reader
-from app.api.schools import _load_readable_student, _overview_payload, _own_school_id, _today_ist
+from app.api.schools import _active_academic_year, _load_readable_student, _overview_payload, _own_school_id, _today_ist
 from app.core.database import get_db
 from app.core.logging import get_logger
-from app.models import AcademicYear, AuditLog, School, User
+from app.models import AuditLog, School, User
 from app.reporting.pdf import render_progress_report, render_school_summary
 
 router = APIRouter(prefix="/school", tags=["school-reports"])
@@ -37,11 +36,6 @@ MANAGEMENT_FIGURES = (
     ("Skills programs", "skills_enrolled"),
     ("Global education aspirants", "global"),
 )
-
-
-def _grade_label(key: str) -> str:
-    """The on-screen labels (SchoolGradePerformance.tsx), so a grade reads the same in the PDF."""
-    return "Other grades" if key == "other" else "No grade" if key == "unspecified" else f"Grade {key}"
 
 
 def _pdf_response(content: bytes, filename: str) -> Response:
@@ -79,16 +73,16 @@ async def school_summary_data(db: AsyncSession, school_id: UUID) -> dict:
     roster = await _roster(db, [school_id])
     indicators = await student_indicators(db, students_in([school_id]))
     table = grade_table(roster, indicators)
-    year = await db.scalar(select(AcademicYear.label).where(AcademicYear.status == "active").order_by(AcademicYear.start_date.desc()).limit(1))
+    year = await _active_academic_year(db)
     return {
         "school_name": school.name if school else "",
         "as_of": _today_ist(),
-        "academic_year": year,
+        "academic_year": year.label if year else None,
         "total_students": len(roster),
         "kpis": [("Total students", len(roster)), *[(label, len(indicators[key])) for label, key in MANAGEMENT_FIGURES]],
-        "grades": [_grade_label(g) for g in table.grades],
-        "students": {_grade_label(g): n for g, n in table.students.items()},
-        "metrics": [{"label": m.label, "is_proxy": m.is_proxy, "definition": m.definition, "cells": {_grade_label(g): c.model_dump() for g, c in m.cells.items()}} for m in table.metrics],
+        "grades": [grade_label(g) for g in table.grades],
+        "students": {grade_label(g): n for g, n in table.students.items()},
+        "metrics": [{"label": m.label, "is_proxy": m.is_proxy, "definition": m.definition, "cells": {grade_label(g): c.model_dump() for g, c in m.cells.items()}} for m in table.metrics],
     }
 
 

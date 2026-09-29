@@ -8,7 +8,9 @@ import re
 import zlib
 
 _STREAM = re.compile(rb"stream\r?\n(.*?)\r?\n?endstream", re.S)  # reportlab writes "...~>endstream" with no newline
+_TEXT_OBJECT = re.compile(rb"BT(.*?)ET", re.S)
 _SHOW = re.compile(rb"\(((?:\\.|[^\\)])*)\)\s*Tj")
+_ESCAPE = re.compile(rb"\\([0-7]{1,3}|.)", re.S)  # a PDF string escape: octal code or an escaped character
 
 
 def _decode(raw: bytes) -> bytes:
@@ -23,12 +25,13 @@ def _decode(raw: bytes) -> bytes:
         return raw
 
 
-_TEXT_OBJECT = re.compile(rb"BT(.*?)ET", re.S)
-_ESCAPE = re.compile(rb"\\([0-7]{1,3}|.)", re.S)
+def _unescaped(match: re.Match) -> bytes:
+    escaped = match.group(1)
+    return bytes([int(escaped, 8)]) if escaped[:1].isdigit() else escaped
 
 
 def _unescape(text: bytes) -> str:
-    return _ESCAPE.sub(lambda m: bytes([int(m.group(1), 8)]) if m.group(1)[:1].isdigit() else m.group(1), text).decode("cp1252", errors="replace")
+    return _ESCAPE.sub(_unescaped, text).decode("cp1252", errors="replace")
 
 
 def pdf_text(data: bytes) -> str:
