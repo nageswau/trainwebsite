@@ -1896,3 +1896,45 @@ class SchoolUtilizationPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- ENH-017 (DEC-SCOPE-036): School-visible Global Education pipeline -- an allowlist; §19 keeps application detail out --------
+
+
+class PipelineStage(BaseModel):
+    key: str
+    label: str
+    count: int
+
+
+class PipelineUntracked(BaseModel):
+    key: str
+    label: str
+    note: str
+
+
+class PipelineStudentRow(BaseModel):
+    school_student_id: UUID
+    full_name: str
+    student_code: str
+    grade: str
+    furthest_stage: str
+    furthest_stage_label: str
+    visa_stage_label: str | None
+    application_count: int
+
+
+class PipelineStudentPage(BaseModel):
+    items: list[PipelineStudentRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class GlobalEducationPipelineOut(BaseModel):
+    grade: int | None
+    students_in_scope: int
+    bridged_students: int
+    funnel: list[PipelineStage]
+    not_tracked: list[PipelineUntracked]
+    students: PipelineStudentPage

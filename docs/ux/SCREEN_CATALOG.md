@@ -2587,6 +2587,24 @@ correction, not deleted, per this project's traceability convention.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** `AcademicTeamStudentPage.test.tsx`, `PortfolioPanel.test.tsx`, `PortfolioEntryForm.test.tsx` (passing); `test_enh_024_skill_india.py` (academic_team writer cases); browser verification 2026-09-28 (Academic Team records, certifies, edits and deletes from this page; 360° "Back to student" returns here).
 
+### `SCR-SCH-038` *(added 2026-09-29, `ENH-017` / `DEC-SCOPE-036`, provisional number)*
+- **Route:** `/school/coordinator/global-education`, `/school/principal/global-education`
+- **Role(s):** School Coordinator, School Principal (own school; identical data for both).
+- **Purpose:** A read-only view of the school's bridged students on the global education pathway: a §17-shaped funnel (pathway, profile evaluation, shortlisted, offer, visa, admitted), a "Not tracked yet" group for stages with no data source, and a paged per-student list of each student's high-level stage. High-level stage only (`School CRM.md` §19).
+- **Linked Feature ID(s):** `ENH-017`
+- **Entry points:** Sidebar "Global Education" for Coordinator and Principal (after "Reports").
+- **Required data:** Server-rendered: GET /auth/me, GET /school/global-education/pipeline (`grade`, `limit`, `offset` forwarded from the URL only when digit strings).
+- **Key actions:** Choose a grade (All grades, 8–12) with the GET form and Show; page with Previous/Next. No write actions.
+- **Empty state:** "No students from this school are on the global education pathway yet. Students appear here once an EduSphere counselor links their application."; with a grade filter, "No students in this grade are on the global education pathway."; past the end, "This page is past the end of the list."
+- **Loading state:** `loading.tsx` skeleton lines with `aria-busy="true"`.
+- **Error state:** 401/403 or a failed `/auth/me` → the shared Access Unavailable card; any other pipeline failure → the shell with an `h1` and a "Global education pipeline" section-unavailable card (navigation stays usable).
+- **Permissions/resource scope:** `school_coordinator` and `school_principal`, own school only, server-checked (`_require_school_reader`); every other role is refused. No read tier gate.
+- **Responsive behavior:** Single-column funnel with fluid bars; the student table scrolls horizontally with a sticky first column. Verification at 320/768/1024/1440 px is `NEEDS_CONFIRMATION` (browser QA pending).
+- **Accessibility requirements:** h1→h2→h3 order; counts are text, never colour or bar length alone (bars are `aria-hidden`); native labelled `<select>` and GET form, no client JS; table has a caption and row headers.
+- **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet/mobile: single column, table scrolls horizontally.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `GlobalEducationPipeline.test.tsx`, `GlobalEducationPage.test.tsx`, `tests/e2e/enh-017-global-education.spec.ts`, `test_enh_017_global_education_pipeline.py` (passing as implemented); browser QA and accessibility passed (`docs/quality/ENH-017_BROWSER_QA_2026-09-29.md`) — COMPLETE (verified 2026-09-29 at `949aa2c`).
+
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  
 - **Role(s):** IT Admin, Placement Team  

@@ -117,7 +117,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-014 | Multi-channel Communication Centre (WhatsApp/SMS/Email/push) | Large | High | Yes | — |
 | ENH-015 | Reports & downloads (student/school/management exports) | Medium | Low | No | — |
 | ENH-016 | School & Edusphere analytics dashboards *(scope corrected, Rev. 3 — see below)* | Medium | Low | Possibly (TBD) | — |
-| ENH-017 | School-visible global education pipeline dashboard *(now owns Alumni Network)* | Medium | Medium | No | SCH-010 (bridge, already built) |
+| ENH-017 | School-visible global education pipeline dashboard *(now owns Alumni Network)* — **Complete (verified 2026-09-29)** (2026-09-29, `DEC-SCOPE-036`; Alumni Network not built, follow-up) | Medium | Medium | No | SCH-010 (bridge, already built) |
 | ENH-018 | School feedback capture | Small | Low | Yes | — |
 | ENH-019 | School event calendar | Small | Low | Yes | — |
 | ENH-020 | Financial support / loan assistance tracking | Medium | Medium | Yes | — |
@@ -923,11 +923,11 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 13 | SAT / Test Preparation | ✅ Built | `SCH-009` |
 | 14 | Digital Portfolio | ❌ Gap | Confirmed `OPEN` in `PRD_OPEN_ITEMS.md` item 77 — see **ENH-012** |
 | 15 | Global Education Module | ✅ Built | `SCH-010` (bridge) |
-| 16 | University Shortlisting (school-visible) | ⚠️ Partial | Bridge exists (`SCH-010`); school-facing dashboard view not confirmed — see **ENH-017** |
-| 17 | Top 100 University Tracking dashboard | ❌ Gap | See **ENH-017** |
-| 18 | Scholarship Management (school-visible) | ⚠️ Partial | See **ENH-017** |
-| 19 | Application Support (status-only, school-visible) | ⚠️ Partial | See **ENH-017**; note source text itself says school should NOT see full detail — respect that boundary |
-| 20 | Visa Tracking (school-visible) | ⚠️ Partial | See **ENH-017** |
+| 16 | University Shortlisting (school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017** (2026-09-29, `DEC-SCOPE-036`): `SCR-SCH-038` shows each bridged student's high-level stage and a "University shortlisted" funnel count |
+| 17 | Top 100 University Tracking dashboard | ⚠️ Partial — funnel complete (2026-09-29); Top 100 not tracked | **ENH-017** delivers the §17-shaped funnel; the Top 100 stage renders as *not tracked* (universities carry no ranking) — follow-up, not tracked |
+| 18 | Scholarship Management (school-visible) | ⚠️ Partial | **ENH-017** shows Scholarships as *not tracked* (`ScholarshipApplication` has no school-student link) — follow-up, not tracked |
+| 19 | Application Support (status-only, school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017**: high-level stage only, application detail never selected or returned (§19 boundary enforced at the API, key-set and planted-value tests) |
+| 20 | Visa Tracking (school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017**: Visa funnel stage (a `VisaCase` exists) and a per-student visa stage label; visa outcomes are a follow-up, not tracked |
 | 21 | Financial Support / Loan Assistance | ❌ Gap | See **ENH-020** |
 | 22 | Internship Management | ❌ Gap | See **ENH-021** |
 | 23 | Parent Portal | ✅ Built | `SCH-007`; "Skills"/"Portfolio" sub-items depend on ENH-012, ENH-011 |
@@ -1741,7 +1741,7 @@ restriction — never full application detail) for school roles, showing bridged
 through: Global Education Interest → Profile Evaluation → University Shortlisted → Application Started/
 Submitted → Offer → Scholarship → Visa → Admitted → **Alumni**, matching the `§17` funnel example and
 `§36`'s own pipeline diagram, which explicitly ends at "ALUMNI." **Explicitly in scope (Revision 3):**
-the Platinum-exclusive `alumni_network` service (`TIER_SERVICES["platinum"]`, `schools.py:664`) has no
+the Platinum-exclusive `alumni_network` service (`TIER_SERVICES["platinum"]`, `schools.py:972`) has no
 tracking module anywhere today and always reports `used: None` via `/schools/entitlements` — this item
 is its owner. An admitted, bridged student who has completed their journey should be trackable as an
 alumnus, visible to Platinum-tier schools only (enforced via **ENH-022** once it lands).
@@ -1790,6 +1790,8 @@ dashboard entirely, not shown with empty/null fields.
 **Regression risks.** None on the Overseas domain or `SCH-010`'s existing bridge behavior.
 
 **Complexity:** Medium. **Risk:** Medium (field-level authorization correctness).
+
+**Delivered scope (2026-09-29).** Built present-only under `DEC-SCOPE-036` (D1–D10, `EXPLICIT_APPROVAL` in-session; design `docs/superpowers/specs/2026-09-29-enh-017-global-education-pipeline-design.md`): read-only `GET /school/global-education/pipeline` and the Coordinator/Principal "Global Education" page (`SCR-SCH-038`) — a cumulative per-student funnel (pathway, profile evaluation, shortlisted, offer, visa, admitted), a "not tracked" group and a paged per-student high-level stage list, with the §19 boundary enforced by column-level selects and an allowlisted response. No migration. Status: **COMPLETE (verified 2026-09-29 at `949aa2c`)** — fresh test, browser and accessibility evidence in `docs/quality/ENH-017_BROWSER_QA_2026-09-29.md`; independent whole-branch review done and its findings fixed; the Codex review was set aside by the owner; API/E2E evidence ran on the locally pinned SQLAlchemy image (RAID `I-42`); QA17-03/QA17-04 (shared patterns) left open by decision. Not yet merged to `main`. Not built and not tracked (follow-ups, each `NEEDS_CONFIRMATION`): scholarship-to-school-student link; university ranking / Top 100; **alumni definition, `alumni_network` usage and the Platinum read gate (the Alumni Network ownership above is not delivered)**; visa outcomes; started/submitted/deposit statuses; `school_partnership_manager` access (PRD item 75).
 
 ---
 
