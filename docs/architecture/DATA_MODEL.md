@@ -413,7 +413,7 @@ predate an application record).
   not exist yet and is required scope, not optional polish, once the on-behalf-of model is built.
   See §6.2's note above for the same open `student_user_id` schema question.
 
-### 6.8a `AgentOrg`, `AgentOrgMember` — built 2026-09-28 (`AGN-001`, `DEC-SCOPE-034`, migration `0045_agent_orgs`)
+### 6.8a `AgentOrg`, `AgentOrgMember` — built 2026-09-28 (`AGN-001`, `DEC-SCOPE-036`, migration `0046_agent_orgs`)
 Design: `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md` §4.
 - **`agent_orgs`** (the tenant): `id`, `name` String(160), `prefix` String(8) unique
   (`uq_agent_orgs_prefix`; D5), `status` String(20) indexed, CHECK `pending`/`active`/`rejected`/`suspended`
@@ -708,6 +708,14 @@ per `record_type`, no structured sub-fields invented beyond what `DEC-ROLE-006` 
 - **Open:** exact assessment-type taxonomy and report field structure not itemized by `DEC-ROLE-006`
   — `EVID-014`'s detailed proposal is `DERIVED_BLUEPRINT` only, not confirmed.
 - **Feature IDs:** `SCH-005`.
+- **Addendum, 2026-09-28 (`ENH-027` / `DEC-SCOPE-035` — structured result, `School CRM.md §6`):** gains
+  **nullable** columns `test_date` (date — the day the test was taken; `created_at` stays the assignment
+  day), `strengths`, `interest_areas`, `personality_indicators`, `recommended_careers`, `recommended_stream`
+  (JSON string lists, SQL `NULL` when empty; the last two share ENH-026's names and shape), `counsellor_remarks`
+  (text ≤4000), `parent_discussion_on` (date) + `parent_discussion_notes` (text ≤2000), `follow_up_on` (date).
+  No backfill; a record made before this has every new field `NULL`. `status` still moves to `completed` only
+  when `report_url` is set. The report-field structure left open above is now itemized by this addendum.
+  **Migration `0045_psychometric_result_fields`** (after `0044_skill_india_certification`); `downgrade()` drops exactly these ten.
 
 **As built, 2026-09-14 (`prompts/15`), correcting `report_url`'s field description above:** built as
 a plain string field the Psychometric Team member supplies directly (`PATCH .../records/{id}`), not

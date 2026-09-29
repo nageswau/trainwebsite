@@ -8,14 +8,14 @@
 
 **Tech Stack:** FastAPI, Pydantic v2, SQLAlchemy 2 async, Alembic, PostgreSQL 16; Next.js (App Router), React, Vitest + Testing Library, Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md` (read it with this plan). Decision: `DEC-SCOPE-034` (D1–D13) + spec E1–E12.
+**Spec:** `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md` (read it with this plan). Decision: `DEC-SCOPE-036` (D1–D13) + spec E1–E12.
 
 ## Global Constraints
 
 - Scope is AGN-001 only. No Staff roles, no change to `UserOut`, JWT/cookies, non-agent scoping, ADM-001's `PATCH /admin/users`, the frozen `app/agents/` package, or Zoho/CRM webhook code.
 - No new dependency (Python or npm).
 - Existing tests and e2e specs are **never edited**. If one fails, stop and report it — it is a regression signal, not a fixture to fix.
-- No existing table is altered; migration `0045_agent_orgs` only creates and fills the two new tables; `downgrade()` drops only them.
+- No existing table is altered; migration `0046_agent_orgs` only creates and fills the two new tables; `downgrade()` drops only them.
 - Organisation statuses: `pending`, `active`, `rejected`, `suspended`. Member status: `active`, `deactivated`. Member role: `master`. Master limit: `3`.
 - Prefix (D5): Latin letters of the name, first three, uppercased, padded with `X` to three; none → `AGT`; collision → lowest free of `ABC`, `ABC2`, `ABC3`… Code: `f"{prefix}-M{seq:03d}"`.
 - Messages (verbatim):
@@ -122,7 +122,7 @@ def test_the_master_limit_is_three():
 - [ ] **Step 3: Create** `apps/api/app/services/agent_orgs.py`
 
 ```python
-"""AGN-001 / DEC-SCOPE-034 -- agent organisations (tenants) and their Master members.
+"""AGN-001 / DEC-SCOPE-036 -- agent organisations (tenants) and their Master members.
 
 Functions only -- no class layer (same shape as `services/provisioning.py`). Spec:
 docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md.
@@ -169,11 +169,11 @@ git commit -m "feat(agn-001): prefix and Master code rules (D5)"
 
 ---
 
-### Task 2: Models and migration `0045_agent_orgs` (with backfill)
+### Task 2: Models and migration `0046_agent_orgs` (with backfill)
 
 **Files:**
 - Modify: `apps/api/app/models.py` (add `AgentOrg`, `AgentOrgMember` after `AgentCommission`; add `User.agent_membership`)
-- Create: `apps/api/alembic/versions/0045_agent_orgs.py`
+- Create: `apps/api/alembic/versions/0046_agent_orgs.py`
 - Test: `apps/api/tests/test_agn_001_schema.py`
 
 **Interfaces:**
@@ -200,7 +200,7 @@ async def test_alembic_head_is_0045(db_session):
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).resolve().parent.parent / "alembic"))
     script = ScriptDirectory.from_config(config)
-    assert await db_session.scalar(text("SELECT version_num FROM alembic_version")) == script.get_current_head() == "0045_agent_orgs"
+    assert await db_session.scalar(text("SELECT version_num FROM alembic_version")) == script.get_current_head() == "0046_agent_orgs"
 
 
 @pytest.mark.asyncio
@@ -302,7 +302,7 @@ async def client_for(email: str):
 
 ```python
 class AgentOrg(Base, TimestampMixin):
-    """AGN-001 / DEC-SCOPE-034: an agent company -- a separate tenant. Its `status` is the agent approval gate
+    """AGN-001 / DEC-SCOPE-036: an agent company -- a separate tenant. Its `status` is the agent approval gate
     (`core.rbac.agent_denial_reason`); `master_seq` is the highest Master number ever issued, so codes are never reused."""
 
     __tablename__ = "agent_orgs"
@@ -355,15 +355,15 @@ and in `class User`, after `role_assignments`:
     )
 ```
 
-- [ ] **Step 5: Create the migration** `apps/api/alembic/versions/0045_agent_orgs.py`
+- [ ] **Step 5: Create the migration** `apps/api/alembic/versions/0046_agent_orgs.py`
 
 ```python
 """AGN-001 -- agent organisations (tenants) and their Master members.
 
-Revision ID: 0045_agent_orgs
+Revision ID: 0046_agent_orgs
 Revises: 0044_skill_india_certification
 
-docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md §4 (DEC-SCOPE-034 D10). Creates two tables and
+docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md §4 (DEC-SCOPE-036 D10). Creates two tables and
 backfills one organisation + Master M001 per existing agent. No existing table or row is altered. The backfill only touches
 agents that have no membership yet, so it is safe if the tables were already created by `auto_create_schema` and safe to
 re-run. `downgrade()` drops only the two new tables.
@@ -377,7 +377,7 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0045_agent_orgs"
+revision = "0046_agent_orgs"
 down_revision = "0044_skill_india_certification"
 branch_labels = None
 depends_on = None
@@ -485,7 +485,7 @@ def downgrade() -> None:
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/api/app/models.py apps/api/alembic/versions/0045_agent_orgs.py apps/api/tests/test_agn_001_schema.py apps/api/tests/agn001_helpers.py
+git add apps/api/app/models.py apps/api/alembic/versions/0046_agent_orgs.py apps/api/tests/test_agn_001_schema.py apps/api/tests/agn001_helpers.py
 git commit -m "feat(agn-001): agent_orgs and agent_org_members with legacy backfill (migration 0045)"
 ```
 
@@ -844,7 +844,7 @@ DEACTIVATED_MESSAGE = "Your Master account is deactivated"
 
 
 def agent_denial_reason(user) -> str | None:
-    """AGN-001 (DEC-SCOPE-034 D6, spec E10): why an agent is denied every agent route, or None.
+    """AGN-001 (DEC-SCOPE-036 D6, spec E10): why an agent is denied every agent route, or None.
 
     Reads `user.agent_membership` (+ `.org`), eager-loaded by `get_current_user` on every request, so a suspension
     applies on the member's next request. The organisation's status is the gate (AGT-001-AC02 preserved: a pending or
@@ -1740,7 +1740,7 @@ Note: `flush_unique_email` rolls back the session on a collision, which also rel
 - [ ] **Step 5: Create** `apps/api/app/api/agent_team.py`
 
 ```python
-"""AGN-001 -- an agency's Master team: list, invite, deactivate (DEC-SCOPE-034 D4, D8, D9; spec §5.4).
+"""AGN-001 -- an agency's Master team: list, invite, deactivate (DEC-SCOPE-036 D4, D8, D9; spec §5.4).
 
 Only an active Master of an ACTIVE organisation reaches these routes (same gate as every agent route); every change
 locks the organisation row so the 3-Master limit and the last-Master rule hold under concurrency.
@@ -2038,7 +2038,7 @@ type Master = { id: string; code: string; full_name: string; email: string; stat
 type Org = { id: string; name: string; prefix: string; status: string; created_at: string; masters: Master[] };
 type Action = "approve" | "reject" | "suspend" | "reinstate";
 
-// AGN-001 (DEC-SCOPE-034 D6/D7): Overseas Admin acts on the agent ORGANISATION. Active organisations are labelled
+// AGN-001 (DEC-SCOPE-036 D6/D7): Overseas Admin acts on the agent ORGANISATION. Active organisations are labelled
 // "Approved" -- the admin-facing word, and what agt-001-registration-approval.spec.ts looks for after approving.
 const GROUPS: { status: string; label: string; empty: string; actions: Action[] }[] = [
   { status: "pending", label: "Pending", empty: "No organisations awaiting approval.", actions: ["approve", "reject"] },
@@ -2309,7 +2309,7 @@ function detailMessage(detail: unknown) {
   return "Unable to complete this action.";
 }
 
-// AGN-001 (DEC-SCOPE-034 D4/D8/D9): an agency's Master accounts. Up to 3 active at once; invites use the
+// AGN-001 (DEC-SCOPE-036 D4/D8/D9): an agency's Master accounts. Up to 3 active at once; invites use the
 // DEC-SCOPE-019 set-password email; the last active Master cannot be deactivated (server-enforced, 422 shown on a race).
 export default function AgentTeamPanel() {
   const router = useRouter();
@@ -2560,7 +2560,7 @@ git commit -m "test(agn-001): end-to-end agency lifecycle"
 
 - [ ] **Step 3: Web gates.** In the web-test container: `npx vitest run` (all pass), `npx tsc --noEmit` (exit 0), `npx eslint .` (0 errors; no new warnings in changed files), `npm run build` (exit 0).
 
-- [ ] **Step 4: Migration gates.** `alembic heads` → exactly `0045_agent_orgs`; Task 2 Step 7's round trip recorded.
+- [ ] **Step 4: Migration gates.** `alembic heads` → exactly `0046_agent_orgs`; Task 2 Step 7's round trip recorded.
 
 - [ ] **Step 5: Full e2e suite** on the user-started stack; compare against the `main` baseline; only pre-existing failures (e.g. `enh-022:43`, `sch-004:13` recorded on `main`) may remain.
 

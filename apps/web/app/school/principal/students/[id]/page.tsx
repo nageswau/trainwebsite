@@ -1,8 +1,10 @@
 import PortalShell from "@/components/PortalShell";
 import SchoolStudentDetailPanel from "@/components/SchoolStudentDetailPanel";
+import SectionUnavailable from "@/components/SectionUnavailable";
+import StudentScorecard from "@/components/StudentScorecard";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
-import type { User } from "@/lib/types";
+import type { Scorecard, User } from "@/lib/types";
 
 type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
 
@@ -12,8 +14,14 @@ export default async function SchoolPrincipalStudentDetailPage({ params }: { par
   const { id } = await params;
   let user: User;
   let student: Student;
+  let scorecard: Scorecard | null;
   try {
-    [user, student] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<Student>(`/api/v1/school/students/${id}`)]);
+    // ENH-016 (§28, D9): the scorecard is read on its own; if it fails, the rest of the page still renders.
+    [user, student, scorecard] = await Promise.all([
+      serverApi<User>("/api/v1/auth/me"),
+      serverApi<Student>(`/api/v1/school/students/${id}`),
+      serverApi<Scorecard>(`/api/v1/school/students/${id}/scorecard`).catch(() => null),
+    ]);
   } catch (e) {
     return (
       <div className="section">
@@ -28,6 +36,7 @@ export default async function SchoolPrincipalStudentDetailPage({ params }: { par
   return (
     <PortalShell nav={SCHOOL_NAV.principal} roleLabel="Principal" userName={user.full_name}>
       <SchoolStudentDetailPanel student={student} role="school_principal" backHref="/school/principal/dashboard" backLabel="Back to dashboard" />
+      <div className="portal-content">{scorecard ? <StudentScorecard card={scorecard} /> : <SectionUnavailable title="Progress scorecard" />}</div>
     </PortalShell>
   );
 }

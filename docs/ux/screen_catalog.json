@@ -2063,7 +2063,7 @@
       "Agent (Master)"
     ],
     "route": "/overseas/agent/team",
-    "purpose": "The agency's Master accounts: list, invite, deactivate (AGN-001 / DEC-SCOPE-034, added 2026-09-28).",
+    "purpose": "The agency's Master accounts: list, invite, deactivate (AGN-001 / DEC-SCOPE-036, added 2026-09-28).",
     "features": [
       "AGN-001"
     ],

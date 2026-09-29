@@ -743,7 +743,17 @@ async def main():
             )
             db.add_all(
                 [
-                    SchoolPsychometricRecord(school_student_id=student_a.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Aptitude Test", report_url="/demo/aarav-aptitude-report.pdf", status="completed", created_at=journey_base - timedelta(days=10), updated_at=journey_base - timedelta(days=6)),
+                    # ENH-027: the completed demo assessment carries a structured result; the two `assigned` ones below stay
+                    # legacy-shaped (null result fields) so the empty state is visible in the demo too.
+                    SchoolPsychometricRecord(
+                        school_student_id=student_a.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Aptitude Test", report_url="/demo/aarav-aptitude-report.pdf", status="completed", created_at=journey_base - timedelta(days=10), updated_at=journey_base - timedelta(days=6),
+                        test_date=(journey_base - timedelta(days=9)).date(),
+                        strengths=["Logical reasoning", "Numerical ability"], interest_areas=["Engineering", "Design"],
+                        personality_indicators=["Analytical", "Reflective"], recommended_careers=["Software engineer", "Product designer"],
+                        recommended_stream=["Science (PCM)"], counsellor_remarks="Strong analytical profile; explore design electives alongside PCM.",
+                        parent_discussion_on=(journey_base - timedelta(days=5)).date(), parent_discussion_notes="Parents keen on engineering; agreed to a design summer camp.",
+                        follow_up_on=(journey_base + timedelta(days=30)).date(),
+                    ),
                     SchoolPsychometricRecord(school_student_id=student_c.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Personality Assessment", status="assigned", created_at=journey_base - timedelta(days=8)),
                     SchoolPsychometricRecord(school_student_id=student_d.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Aptitude Test", status="assigned", created_at=journey_base - timedelta(days=6)),
                 ]

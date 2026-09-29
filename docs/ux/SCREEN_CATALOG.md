@@ -1702,7 +1702,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.  
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Approval flips the Agent to Active and unlocks SCR-AGT-003/004 for them; every decision audit-logged (SEC-001).  
-- **AGN-001 update (2026-09-28/29, `DEC-SCOPE-034`, R2):** the queue now lists agent **organisations**, one status tab at a time (Pending / Approved / Suspended / Rejected toggle buttons, Pending first), 20 per page with "Showing x–y of N" and Previous/Next; each card shows agency name, prefix and every Master's code, name and email. Actions: Pending → Approve / Reject; Rejected → Approve; Approved → Suspend (inline confirmation, focus moves to Confirm and back on Cancel); Suspended → Reinstate. After an action the panel switches to the organisation's new tab. Loading text, an error state with Retry (no longer a silent empty list), per-tab empty text, per-card busy state and inline error. Component `AgentApprovalPanel.tsx`.  
+- **AGN-001 update (2026-09-28/29, `DEC-SCOPE-036`, R2):** the queue now lists agent **organisations**, one status tab at a time (Pending / Approved / Suspended / Rejected toggle buttons, Pending first), 20 per page with "Showing x–y of N" and Previous/Next; each card shows agency name, prefix and every Master's code, name and email. Actions: Pending → Approve / Reject; Rejected → Approve; Approved → Suspend (inline confirmation, focus moves to Confirm and back on Cancel); Suspended → Reinstate. After an action the panel switches to the organisation's new tab. Loading text, an error state with Retry (no longer a silent empty list), per-tab empty text, per-card busy state and inline error. Component `AgentApprovalPanel.tsx`.  
 
 ### `SCR-AGT-003`
 - **Route:** `/overseas/agent (Dashboard: referred students)`  
@@ -1779,7 +1779,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 ### `SCR-AGT-007`
 - **Route:** `/overseas/agent/team`  
 - **Role(s):** Agent — an active Master of an active agency  
-- **Purpose:** The agency's Master accounts: list, invite, deactivate *(net-new, added 2026-09-28, `AGN-001` / `DEC-SCOPE-034`)*.  
+- **Purpose:** The agency's Master accounts: list, invite, deactivate *(net-new, added 2026-09-28, `AGN-001` / `DEC-SCOPE-036`)*.  
 - **Linked Feature ID(s):** `AGN-001`  
 - **Entry points:** Agent portal navigation, "Team".  
 - **Required data:** The caller's agency (name, prefix) and its Masters (code, name, email, status, whether the invite link is still unused).  

@@ -131,7 +131,7 @@ here.
 | `agent`, `approval_status='approved'` | view own referral roster, view own commissions, claim eligible/estimated commissions | **Own referrals/commissions only** — explicit deny on any other agent's rows (`AGT-002-AC02`) | `AGT-002`–`004` |
 | `overseas_admin` | approve/reject agent registration, create manual commissions, **approve commission payout** | Overseas division | `AGT-001`, `AGT-003`, `AGT-004` |
 
-**`AGN-001` / `DEC-SCOPE-034` (2026-09-28) — agent organisation as tenant, BUILT 2026-09-28.**
+**`AGN-001` / `DEC-SCOPE-036` (2026-09-28) — agent organisation as tenant, BUILT 2026-09-28.**
 The three rows above now read as follows. The approval gate is the **organisation's**
 status, not the assignment's: while it is `pending`, `rejected` or `suspended`, every member is denied
 every agent route (D6; suspension applies on the next request and leaves `/auth/me`, logout and

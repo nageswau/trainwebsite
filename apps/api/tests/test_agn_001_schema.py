@@ -12,11 +12,11 @@ from tests.agn001_helpers import mk_user
 
 
 @pytest.mark.asyncio
-async def test_alembic_head_is_0045(db_session):
+async def test_alembic_head_is_0046(db_session):
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).resolve().parent.parent / "alembic"))
     script = ScriptDirectory.from_config(config)
-    assert await db_session.scalar(text("SELECT version_num FROM alembic_version")) == script.get_current_head() == "0045_agent_orgs"
+    assert await db_session.scalar(text("SELECT version_num FROM alembic_version")) == script.get_current_head() == "0046_agent_orgs"
 
 
 @pytest.mark.asyncio

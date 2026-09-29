@@ -9,7 +9,7 @@ type Page = { items: Org[]; total: number; limit: number; offset: number };
 type Status = "pending" | "active" | "suspended" | "rejected";
 type Action = "approve" | "reject" | "suspend" | "reinstate";
 
-// AGN-001 (DEC-SCOPE-034 D6/D7): Overseas Admin acts on the agent ORGANISATION, one status tab at a time, 20 per page
+// AGN-001 (DEC-SCOPE-036 D6/D7): Overseas Admin acts on the agent ORGANISATION, one status tab at a time, 20 per page
 // (the list is paginated server-side). Active organisations are labelled "Approved" -- the admin-facing word, and what
 // agt-001-registration-approval.spec.ts looks for after approving.
 const TABS: { status: Status; label: string; empty: string; actions: Action[] }[] = [

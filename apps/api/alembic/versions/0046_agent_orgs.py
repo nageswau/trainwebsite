@@ -1,9 +1,10 @@
 """AGN-001 -- agent organisations (tenants) and their Master members.
 
-Revision ID: 0045_agent_orgs
-Revises: 0044_skill_india_certification
+Revision ID: 0046_agent_orgs
+Revises: 0045_psychometric_result_fields
 
-docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md §4 (DEC-SCOPE-034 D10). Creates two tables and
+docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md §4 (DEC-SCOPE-036 D10; cut as 0045_agent_orgs,
+re-chained on ENH-027's 0045 when main was merged). Creates two tables and
 backfills one organisation + Master M001 per existing agent. No existing table or row is altered. The backfill only touches
 agents that have no membership yet, so it is safe if the tables were already created by `auto_create_schema` and safe to
 re-run. `downgrade()` drops only the two new tables.
@@ -17,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0045_agent_orgs"
-down_revision = "0044_skill_india_certification"
+revision = "0046_agent_orgs"
+down_revision = "0045_psychometric_result_fields"
 branch_labels = None
 depends_on = None
 

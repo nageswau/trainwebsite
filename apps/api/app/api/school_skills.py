@@ -6,6 +6,7 @@ unchanged from `schools.py`. A batch belongs to one school in the counselor's `S
 outside that portfolio is a 404 (existence is not revealed), except a student, which keeps `_student_in_portfolio`'s 403 so
 this matches SCH-004/009. Every route depends on `_require_career_counselor`, so a wrong role is a 403 before any lookup."""
 
+from collections.abc import Collection
 from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID, uuid4
@@ -635,18 +636,22 @@ async def skill_timeline_events(db: AsyncSession, student_id: UUID) -> list[dict
 USAGE_KEYS = {"soft_skills": "soft_skills", "digital_skills": "web_designing"}
 
 
+async def skill_usage_many(db: AsyncSession, school_ids: Collection[UUID]) -> dict[UUID, dict[str, int]]:
+    """`skill_usage` for many schools in ONE grouped query (ENH-016 spec §5.2): non-withdrawn enrolments per batch school
+    and module, per entitlement service key."""
+    counted: dict[UUID, dict[str, int]] = {school_id: {} for school_id in school_ids}
+    if counted:
+        rows = await db.execute(
+            select(SchoolSkillBatch.school_id, SchoolSkillBatch.module_type, func.count())
+            .join(SchoolSkillEnrollment, SchoolSkillEnrollment.batch_id == SchoolSkillBatch.id)
+            .where(SchoolSkillBatch.school_id.in_(list(counted)), SchoolSkillEnrollment.status != "withdrawn")
+            .group_by(SchoolSkillBatch.school_id, SchoolSkillBatch.module_type)
+        )
+        for school_id, module, count in rows.tuples():
+            counted[school_id][module] = count
+    return {school_id: {key: modules.get(module, 0) for module, key in USAGE_KEYS.items()} for school_id, modules in counted.items()}
+
+
 async def skill_usage(db: AsyncSession, school_id: UUID) -> dict[str, int]:
     """Non-withdrawn enrolments in this school's batches, per entitlement service key (spec §5.2)."""
-    counted = dict(
-        (
-            await db.execute(
-                select(SchoolSkillBatch.module_type, func.count())
-                .join(SchoolSkillEnrollment, SchoolSkillEnrollment.batch_id == SchoolSkillBatch.id)
-                .where(SchoolSkillBatch.school_id == school_id, SchoolSkillEnrollment.status != "withdrawn")
-                .group_by(SchoolSkillBatch.module_type)
-            )
-        )
-        .tuples()
-        .all()
-    )
-    return {key: counted.get(module, 0) for module, key in USAGE_KEYS.items()}
+    return (await skill_usage_many(db, [school_id]))[school_id]

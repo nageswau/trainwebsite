@@ -1,4 +1,4 @@
-"""AGN-001 -- an agency's Master team: list, invite, deactivate (DEC-SCOPE-034 D4, D8, D9; spec §5.4).
+"""AGN-001 -- an agency's Master team: list, invite, deactivate (DEC-SCOPE-036 D4, D8, D9; spec §5.4).
 
 Only an active Master of an ACTIVE organisation reaches these routes (same gate as every agent route); every change
 locks the organisation row so the 3-Master limit and the last-Master rule hold under concurrency.

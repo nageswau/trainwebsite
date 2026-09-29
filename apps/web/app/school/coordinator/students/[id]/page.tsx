@@ -2,9 +2,11 @@ import Link from "next/link";
 import { accessDenied } from "@/components/AccessUnavailable";
 import PortalShell from "@/components/PortalShell";
 import SchoolStudentDetailPanel from "@/components/SchoolStudentDetailPanel";
+import SectionUnavailable from "@/components/SectionUnavailable";
+import StudentScorecard from "@/components/StudentScorecard";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
-import type { User } from "@/lib/types";
+import type { Scorecard, User } from "@/lib/types";
 import type { SchoolStudent } from "@/lib/schoolStudents";
 
 // SCH-008 (DEC-SCOPE-016): School Coordinator's read-only view of one student's Journey
@@ -18,10 +20,15 @@ export default async function SchoolCoordinatorStudentDetailPage({ params }: { p
   const { id } = await params;
   let user: User;
   let student: SchoolStudent;
+  let scorecard: Scorecard | null;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
     if (user.role !== "school_coordinator") return accessDenied(user, "School Coordinator role required");
-    student = await serverApi<SchoolStudent>(`/api/v1/school/students/${id}`);
+    // ENH-016 (§28, D9): the scorecard is read on its own; if it fails, the rest of the page still renders.
+    [student, scorecard] = await Promise.all([
+      serverApi<SchoolStudent>(`/api/v1/school/students/${id}`),
+      serverApi<Scorecard>(`/api/v1/school/students/${id}/scorecard`).catch(() => null),
+    ]);
   } catch (e) {
     return (
       <div className="section">
@@ -36,6 +43,7 @@ export default async function SchoolCoordinatorStudentDetailPage({ params }: { p
   return (
     <PortalShell nav={SCHOOL_NAV.coordinator} roleLabel="School Coordinator" userName={user.full_name}>
       <SchoolStudentDetailPanel student={student} role="school_coordinator" backHref="/school/coordinator/students" backLabel="Back to students" showGradeHistory showTransfer canEditPhoto />
+      <div className="portal-content">{scorecard ? <StudentScorecard card={scorecard} /> : <SectionUnavailable title="Progress scorecard" />}</div>
     </PortalShell>
   );
 }

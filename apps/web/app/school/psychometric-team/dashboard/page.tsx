@@ -3,11 +3,12 @@ import SchoolPsychometricRecordsPanel from "@/components/SchoolPsychometricRecor
 import Student360Directory from "@/components/Student360Directory";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
+import type { PsychometricResult } from "@/lib/psychometric";
 import type { User } from "@/lib/types";
 import { accessUnavailable } from "@/components/AccessUnavailable";
 
 type Student = { id: string; full_name: string; school_name: string };
-type Record_ = { id: string; school_student_id: string; assessment_type: string; report_url: string | null; status: string; created_at: string };
+type Record_ = { id: string; school_student_id: string; assessment_type: string; report_url: string | null; status: string; created_at: string } & PsychometricResult;
 
 // SCH-005: every assigned student, one list -- who needs an assessment assigned, who has
 // a report pending upload.

@@ -55,7 +55,7 @@ bulk-first so it doesn't repeat the pattern of needing bulk retrofitted later).
 
 **Revision 6 (2026-09-28):** the user brought one slice of `Agent CRM Functionalities.md` (`EVID-015`,
 Appendix B) into scope as **AGN-001** — agent organisation as tenant, with Master accounts — and gave the
-approval and answers recorded as `DEC-SCOPE-034` (D1–D13). Only that slice leaves Appendix B; Staff logins
+approval and answers recorded as `DEC-SCOPE-036` (D1–D13). Only that slice leaves Appendix B; Staff logins
 and the rest of `EVID-015` stay parked. AGN-001 keeps the ID the user gave it rather than an `ENH-` number.
 
 ## 0. Scope and exclusions (read this before the backlog)
@@ -914,7 +914,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 
 | § | Section | Status | Evidence / disposition |
 |---|---|---|---|
-| 1 | School Dashboard (KPIs, charts) | ⚠️ Partial | Rolled into **ENH-016** (analytics dashboards) |
+| 1 | School Dashboard (KPIs, charts) | ✅ Built — pending validation | **ENH-016** (`DEC-SCOPE-034`): KPI board on Coordinator + Principal dashboards; portfolios/skills (ENH-016) and internships (ENH-021) tracked |
 | 2 | School Master / School Profile (incl. **School ID**, **Branch**) | ❌ Gap | `models.py:923-943` has only `id`/`name`/`city`/`state`/`tier` — see **ENH-009** |
 | 3 | Student Master | ✅ Built | `SchoolStudent`, `SCH-002`; `student_code` per `DEC-DATA-003` |
 | 4 | Grade & Class Management (Grade→Section→Year) | ❌ Gap | See **ENH-001** (corrected sourcing above) |
@@ -940,14 +940,14 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 24 | School Event Calendar | ❌ Gap | See **ENH-019** |
 | 25 | Edusphere School Counsellor tracking | ⚠️ Partial | `career_counselor` role exists; dedicated conversion/admission tracking not confirmed — rolled into **ENH-016** |
 | 26 | School Partnership Package Tracking (quota table) | ⚠️ **Conflict** | Source shows Entitled/Used/Balance quotas; `DEC-SCOPE-017` (confirmed) made entitlements **unlimited, not quota-capped**. See Appendix A item 3 — this is a decision conflict, not an implementation gap |
-| 27 | School Service Utilization | ❌ Gap | Rolled into **ENH-016** |
-| 28 | Student Progress Scorecard | ❌ Gap | Rolled into **ENH-016** |
-| 29 | School Performance Dashboard | ❌ Gap | Rolled into **ENH-016** |
+| 27 | School Service Utilization | ✅ Built — pending validation | **ENH-016**: school-wise rows on `/overseas/admin/school-analytics` (delivered/pending/not tracked/utilization, participation, upcoming activities) |
+| 28 | Student Progress Scorecard | ✅ Built — pending validation | **ENH-016**: per-student card + school-wide grid (Coordinator/Principal, D9/D10); Internship row follows ENH-021's progress rule; Scholarship row untracked until ENH-017 |
+| 29 | School Performance Dashboard | ✅ Built — pending validation | **ENH-016**: Grade 8→12 comparison on the Reports page; four metrics are labelled estimates (D5, `NEEDS_CONFIRMATION`) |
 | 30 | Reports & Downloads | ❌ Gap | See **ENH-015** |
 | 31 | School Feedback | ✅ Built | See **ENH-018** |
 | 32 | Communication Centre (WhatsApp/SMS/Email/push) | ❌ Gap | See **ENH-014** |
 | 33 | School Admin Login (role matrix) | ✅ Built | `DEC-SCOPE-011`, `rbac.py` |
-| 34 | Edusphere Admin Side (cross-school dashboard) | ❌ Gap | Rolled into **ENH-016** |
+| 34 | Edusphere Admin Side (cross-school dashboard) | ✅ Built — pending validation | **ENH-016**: Overseas + Super Admin only (D1); schools/students/services/outcomes; internships tracked (ENH-021); scholarships untracked |
 | 35 | Student 360° View | ❌ Gap | See **ENH-013** |
 | 36 | Complete School CRM Flow (pipeline diagram) | — No action | Conceptual/architectural map, not itself a buildable feature |
 | B1 | School CRM Login Hierarchy (diagram) | — No action | Conceptual; matches confirmed role structure |
@@ -963,7 +963,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | B11 | Notifications (multi-channel, on publish) | ❌ Gap | See **ENH-014** |
 | B12 | Permission Matrix (table) | ✅ Built | Matches `RBAC_MATRIX.md §2.12`; used as reference, not a gap itself |
 | B13 | Edusphere Staff Permissions (5 roles) | ✅ Built | `DEC-ROLE-006`; `edusphere_school_manager`/`school_partnership_manager` exact duty split still `OPEN` per that same decision — not re-litigated here |
-| B14 | School CRM Dashboard (activity + academic performance) | ❌ Gap | Rolled into **ENH-016** |
+| B14 | School CRM Dashboard (activity + academic performance) | ✅ Built — pending validation | **ENH-016**: Completed/Pending table, grade/subject/term averages, at-risk and top performers (published results only, D4 thresholds) |
 | B15 | Student Journey Timeline | ✅ Built | `SCH-008` |
 
 **Net result (revised again after two more corrections — §6 and §7 were both wrongly marked in earlier
@@ -1704,6 +1704,15 @@ and ENH-017/ENH-020/ENH-021 for the remaining untracked services) add more track
 
 **Acceptance criteria.** Each dashboard renders correctly scoped aggregate data for its intended role;
 cross-school dashboard is inaccessible to school-side roles.
+
+**Status (2026-09-28): IMPLEMENTED — NOT YET COMPLETE.** Built on `feature/enh-016-dashboards-analytics` per
+`docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md` and `DEC-SCOPE-034` (recorded in-session as 031,
+renumbered on the merge with `main`, which already held 031–033). After that merge, internships (ENH-021) are tracked in the
+scorecard and the cross-school outcomes, and guidance/counselling count only delivered sessions (ENH-026 C5). Browser
+validation and the independent Codex review are still to come. §25 (Edusphere School Counsellor tracking) was not in the
+approved spec and is **not** covered by this build. Follow-ups: confirm D4 thresholds and D5 estimates with the client; a
+terminal visa status for the scorecard's Visa row; `edusphere_school_manager` scoping (item 75); remove the unreachable code
+after `return` in `school_reports` (`schools.py`).
 
 **Positive scenarios.** A principal views their school's KPI dashboard and sees accurate counts.
 **Negative scenarios.** A school coordinator attempts to access the cross-school Edusphere dashboard —
@@ -2537,6 +2546,15 @@ structured shape — must not lose the original free-text content.
 
 ## ENH-027 — Psychometric Record: Structured Result Fields
 
+**Status (2026-09-28):** built on `feature/enh-027-psychometric-full-record` per
+`docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md` (`DEC-SCOPE-035`, migration `0045`);
+**COMPLETE (verified 2026-09-28 on the branch merged with `main` at `bedbcce`)** — every acceptance criterion has fresh
+test and browser evidence (`docs/quality/RTM.md` ENH-027 row); the independent Codex review was set aside by the owner.
+Not yet merged to `main`. **Correction to the
+count below:** today's record holds 3 of the 12 fields (Assessment type, Test status, Report); `created_at` is the
+*assignment* day, only a proxy for Test date, so a real `test_date` column is added (9 fields, 10 columns). The shared
+recommendation shape with `ENH-026` is settled: same names (`recommended_careers`, `recommended_stream`) and `list[str]`.
+
 **Title.** Add the structured psychometric-result fields `School CRM.md §6` specifies but
 `SchoolPsychometricRecord` doesn't store.
 
@@ -2849,7 +2867,7 @@ student on the same day — second call should update, not duplicate (enforced b
 **Business requirement.** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`): §1 "Master
 Login — Agent Admin: full access to the agent's CRM account"; §3 example codes (`ABC-M001`); Best approach
 "a multi-tenant Agent CRM: every agent gets their own separate CRM environment". Brought into scope by the
-user's `AGN-001` statement and decided as `DEC-SCOPE-034` (D1–D13). The source's "one Master account"
+user's `AGN-001` statement and decided as `DEC-SCOPE-036` (D1–D13). The source's "one Master account"
 conflicts with the user's criteria; the user chose up to three (D4).
 
 **Existing behavior.** An agent is one `User` + `UserRoleAssignment(role='agent')`. Its `approval_status`
@@ -2857,7 +2875,7 @@ gates every agent route (`core/rbac.py:75`, `workflows.py:100`, `api/portal.py:3
 write is scoped by `agent_id == user.id`. Overseas Admin approves/rejects the assignment by user id
 (`admin.py:981-1026`), audited as `user_role_assignment`. No organisation, member or account code exists.
 
-**Expected behavior.** Per `DEC-SCOPE-034`: an agent organisation (tenant) with status
+**Expected behavior.** Per `DEC-SCOPE-036`: an agent organisation (tenant) with status
 `pending`/`active`/`rejected`/`suspended`; Master members with display codes `<PREFIX>-M###`; the
 approval gate and all data scoping move to the organisation; Masters invite and deactivate Masters;
 Overseas Admin approves, rejects, suspends and reinstates organisations.
@@ -2932,7 +2950,7 @@ routes used by `AgentApprovalPanel`, `ADM-001`'s agent role option, seed data.
 
 **Status (2026-09-29) — implemented, NOT complete.** Designed (`docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md`,
 E1–E12), planned (`docs/superpowers/plans/2026-09-28-agn-001-multi-tenant-agent-crm.md`) and built test-first on branch
-`feature/agn-001-multi-tenant-agent-crm` (migration `0045_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-034`. Evidence
+`feature/agn-001-multi-tenant-agent-crm` (migration `0046_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-036`. Evidence
 in `docs/quality/RTM.md` (AGN-001 row). Remaining before "complete": the owner's browser validation and the independent Codex
 review. Known follow-up outside scope: the generic admin portal "Agent Registrations" table still shows the assignment status.
 
@@ -3101,7 +3119,7 @@ item, only for the progress-view question).
 | ENH-010 | `DEC-SCOPE-025` — "School Master" (`School CRM.md` Part B §2) = `school_coordinator`; activate/deactivate scope mapping proposed, drafted 2026-09-22 | Drafted, `UNCONFIRMED` |
 | ENH-011, ENH-012, ENH-013, ENH-015, ENH-017, ENH-018, ENH-019, ENH-021, ENH-024, ENH-026, ENH-027, ENH-028, ENH-029, ENH-030 | None structurally required — each operates within already-confirmed School-domain scope (`DEC-SCOPE-011/012/013/017`) as a completion/extension, not a new scope question. ENH-026/ENH-027 additionally need a *design* choice (shared shape for "Recommended..."/"Career recommendations" fields); ENH-028's batch-size limit and ENH-030's session-vs-period granularity are also design, not scope, questions | N/A |
 | ENH-016 | None — corrected in Revision 3 to a narrower scope entirely within already-confirmed `DEC-SCOPE-017` | N/A |
-| AGN-001 | `DEC-SCOPE-034` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
+| AGN-001 | `DEC-SCOPE-036` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
@@ -3138,7 +3156,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6).** Still parked: Staff logins, staff assignment/ownership, staff performance, CRM settings | `DEC-SCOPE-034` covers AGN-001 only; none yet for the rest |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6).** Still parked: Staff logins, staff assignment/ownership, staff performance, CRM settings | `DEC-SCOPE-036` covers AGN-001 only; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

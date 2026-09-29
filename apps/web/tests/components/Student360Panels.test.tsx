@@ -63,6 +63,20 @@ describe("Student360Panels", () => {
     expect(screen.getByText("javascript:alert(1)")).toBeInTheDocument();
   });
 
+  it("shows structured psychometric results under the table, and an empty line for a legacy record (ENH-027)", () => {
+    const tab: Tab360 = { status: "has_data", count: 2, not_tracked: [], data: { assessments: [
+      { id: "a", assessment_type: "Aptitude Test", status: "completed", created_at: "2026-09-01T00:00:00Z", strengths: ["Logical reasoning"] },
+      { id: "b", assessment_type: "Interest Inventory", status: "assigned", created_at: "2026-09-02T00:00:00Z" },
+    ] } };
+    render(<>{renderPanel("psychometric_assessment", tab, view())}</>);
+    const table = screen.getByRole("table", { name: "Psychometric assessments" });
+    // QA27-06: the column is the assignment day; "Date" read as the new Test date. Same label as the parent page.
+    expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Assessment", "Status", "Assigned on"]);
+    expect(screen.getByText("Aptitude Test — results", { selector: "summary" })).toBeTruthy();
+    expect(screen.getByText("Logical reasoning")).toBeTruthy();
+    expect(screen.getByText("Interest Inventory: no results recorded yet.")).toBeTruthy();
+  });
+
   it("shows the goal read-only for viewers and the editor for the counsellor", () => {
     render(<>{renderPanel("overview", empty("overview"), view({ career_goal: "Technology" }))}</>);
     expect(screen.getByText("Technology")).toBeInTheDocument();

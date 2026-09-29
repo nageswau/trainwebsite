@@ -15,7 +15,7 @@ function detailMessage(detail: unknown) {
   return "Unable to complete this action.";
 }
 
-// AGN-001 (DEC-SCOPE-034 D4/D8/D9): an agency's Master accounts. Up to 3 active at once; invites use the
+// AGN-001 (DEC-SCOPE-036 D4/D8/D9): an agency's Master accounts. Up to 3 active at once; invites use the
 // DEC-SCOPE-019 set-password email; the last active Master cannot be deactivated (server-enforced, 422 shown on a race).
 export default function AgentTeamPanel() {
   const router = useRouter();
