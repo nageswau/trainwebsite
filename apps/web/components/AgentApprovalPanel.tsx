@@ -3,6 +3,8 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { detailMessage } from "@/lib/apiErrors";
+
 type Master = { id: string; code: string; full_name: string; email: string; status: string };
 type Org = { id: string; name: string; prefix: string; status: string; created_at: string; masters: Master[] };
 type Page = { items: Org[]; total: number; limit: number; offset: number };
@@ -24,11 +26,6 @@ const DONE: Record<Action, string> = { approve: "approved", reject: "rejected", 
 const RESULT: Record<Action, Status> = { approve: "active", reject: "rejected", suspend: "suspended", reinstate: "active" };
 const PAGE_SIZE = 20;
 const LIST_URL = "/api/v1/overseas-admin/agent-orgs";
-
-function detailMessage(detail: unknown) {
-  if (typeof detail === "string") return detail;
-  return "Unable to complete this action.";
-}
 
 export default function AgentApprovalPanel() {
   const router = useRouter();
@@ -124,7 +121,7 @@ export default function AgentApprovalPanel() {
       const response = await fetch(`${LIST_URL}/${org.id}/${action}`, { method: "POST" });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setMessage({ id: org.id, text: detailMessage(body.detail) });
+        setMessage({ id: org.id, text: detailMessage(body.detail, "Unable to complete this action.") });
         return;
       }
       router.refresh();

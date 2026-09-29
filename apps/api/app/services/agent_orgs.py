@@ -20,7 +20,6 @@ from app.services.provisioning import flush_unique_email, issue_welcome_token, p
 logger = logging.getLogger("app.agent_orgs")
 
 MASTER_LIMIT = 3
-ORG_STATUSES = ("pending", "active", "rejected", "suspended")
 
 _LATIN = re.compile(r"[A-Za-z]")
 
@@ -56,7 +55,7 @@ async def next_free_prefix(db: AsyncSession, base: str) -> str:
 
 
 async def _status_from_assignment(db: AsyncSession, user: User) -> str:
-    """D10 mapping, shared by the migration backfill and runtime creation: approved -> active, else pending."""
+    """D10 mapping (the migration backfill applies the same rule): approved -> active, else pending."""
     approval = await db.scalar(
         select(UserRoleAssignment.approval_status).where(UserRoleAssignment.user_id == user.id, UserRoleAssignment.division == "overseas", UserRoleAssignment.role == "agent")
     )

@@ -61,29 +61,26 @@ async def _sync_role_assignment(db: AsyncSession, user: User, assigned_by_user_i
     an Agent's approval_status is never reset by a later login).
     """
 
-    existing = await db.scalar(
+    assignment = await db.scalar(
         select(UserRoleAssignment).where(
             UserRoleAssignment.user_id == user.id,
             UserRoleAssignment.division == user.division,
             UserRoleAssignment.role == user.role,
         )
     )
-    if existing:
-        if user.role == "agent":
-            await ensure_agent_org(db, user)  # AGN-001 (E7): every agent has an organisation
-        return existing
-    assignment = UserRoleAssignment(
-        user_id=user.id,
-        division=user.division,
-        role=user.role,
-        is_active=True,
-        assigned_by_user_id=assigned_by_user_id,
-        approval_status="pending" if user.role == "agent" else "approved",
-    )
-    db.add(assignment)
-    await db.flush()
+    if assignment is None:
+        assignment = UserRoleAssignment(
+            user_id=user.id,
+            division=user.division,
+            role=user.role,
+            is_active=True,
+            assigned_by_user_id=assigned_by_user_id,
+            approval_status="pending" if user.role == "agent" else "approved",
+        )
+        db.add(assignment)
+        await db.flush()
     if user.role == "agent":
-        await ensure_agent_org(db, user)
+        await ensure_agent_org(db, user)  # AGN-001 (E7): every agent has an organisation
     return assignment
 
 

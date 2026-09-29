@@ -3,17 +3,14 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { detailMessage } from "@/lib/apiErrors";
+
 type Master = { id: string; code: string; full_name: string; email: string; status: string; invite_pending: boolean; is_you: boolean };
 type Team = { org: { id: string; name: string; prefix: string; status: string }; masters: Master[]; limit: number };
 
 const TEAM_URL = "/api/v1/workflows/overseas/agent/team";
 const NETWORK_ERROR = "Network error. Check your connection and try again.";
-
-function detailMessage(detail: unknown) {
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
-  return "Unable to complete this action.";
-}
+const FAILED = "Unable to complete this action.";
 
 // AGN-001 (DEC-SCOPE-036 D4/D8/D9): an agency's Master accounts. Up to 3 active at once; invites use the
 // DEC-SCOPE-019 set-password email; the last active Master cannot be deactivated (server-enforced, 422 shown on a race).
@@ -72,7 +69,7 @@ export default function AgentTeamPanel() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setInviteMessage({ text: detailMessage(data.detail), failed: true });
+        setInviteMessage({ text: detailMessage(data.detail, FAILED), failed: true });
         return;
       }
       formElement.reset();
@@ -102,7 +99,7 @@ export default function AgentTeamPanel() {
       const response = await fetch(`${TEAM_URL}/masters/${master.id}/deactivate`, { method: "POST" });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setRowMessage({ id: master.id, text: detailMessage(data.detail) });
+        setRowMessage({ id: master.id, text: detailMessage(data.detail, FAILED) });
         return;
       }
       setConfirming(null);

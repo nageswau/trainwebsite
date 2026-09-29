@@ -100,10 +100,6 @@ def agent_denial_reason(user) -> str | None:
     return None
 
 
-def agent_is_approved(user) -> bool:
-    return agent_denial_reason(user) is None
-
-
 async def get_active_assignments(db: AsyncSession, user_id: UUID) -> list[UserRoleAssignment]:
     rows = await db.scalars(
         select(UserRoleAssignment).where(UserRoleAssignment.user_id == user_id, UserRoleAssignment.is_active.is_(True))

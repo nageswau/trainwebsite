@@ -81,8 +81,9 @@ async def main():
         us["counselor"].profile = {"demo": True, "specialisms": ["UK", "Germany", "Ireland"]}
         us["university_rep"].profile = {"demo": True, "university": "University Partner Demo"}
         us["agent"].profile = {"demo": True, "agency_name": "EduSphere Partner Agency", "registration_status": "approved"}
-        # AGT-001's approval gate (`core.rbac.agent_is_approved`) checks the
-        # `UserRoleAssignment` table, not `User.profile["registration_status"]` above --
+        # AGT-001's approval lives in the `UserRoleAssignment` table (AGN-001: kept in step
+        # with the organisation, whose status is now the gate -- `core.rbac.agent_denial_reason`),
+        # not in `User.profile["registration_status"]` above --
         # without an approved row here the demo agent 403s on every agent-scoped route,
         # including its own portal dashboard. `auth._sync_role_assignment` lazily creates
         # a *pending* row for any role="agent" user on their first-ever login and (by
