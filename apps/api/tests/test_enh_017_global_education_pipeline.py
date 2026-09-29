@@ -1,10 +1,38 @@
 """ENH-017 School-visible Global Education pipeline (spec 2026-09-29; DEC-SCOPE-036). High-level stage only (§19)."""
 
+import logging
+from contextlib import contextmanager
+
 import pytest
+from sqlalchemy import event, func, select
+
 from enh016_helpers import _user, login, make_school, make_student, make_university
 
 from app.api.school_global_education import visa_stage_label
-from app.models import OverseasApplication, VisaCase
+from app.core.database import engine
+from app.models import AuditLog, OverseasApplication, VisaCase
+
+
+@pytest.fixture(autouse=True)
+def _app_loggers_enabled():
+    """Order-proofing (ENH-016 precedent): an in-process Alembic run disables existing `app.*` loggers."""
+    logging.getLogger("app.school.global_education").disabled = False
+    yield
+
+
+@contextmanager
+def count_queries():
+    counter = {"n": 0}
+
+    def _count(*_args, **_kwargs):
+        counter["n"] += 1
+
+    event.listen(engine.sync_engine, "before_cursor_execute", _count)
+    try:
+        yield counter
+    finally:
+        event.remove(engine.sync_engine, "before_cursor_execute", _count)
+
 
 URL = "/api/v1/school/global-education/pipeline"
 TOP_KEYS = {"grade", "students_in_scope", "bridged_students", "funnel", "not_tracked", "students"}
@@ -212,3 +240,99 @@ async def test_response_carries_only_the_allowlisted_keys_and_no_planted_detail(
     assert all(set(r) == ROW_KEYS for r in body["students"]["items"])
     assert "PLANTED" not in response.text
     assert str(application.id) not in response.text
+
+
+@pytest.mark.asyncio
+async def test_grade_filters_funnel_and_list_including_label_only_grades(client, db_session):  # AC12, Review Focus 3
+    ctx = await make_school(db_session)
+    uni = await make_university(db_session)
+    await bridge(db_session, await make_student(db_session, ctx, name="Level Twelve", grade_level=12), uni)
+    await bridge(db_session, await make_student(db_session, ctx, name="Label Twelve", grade_or_class="Grade 12"), uni)
+    await bridge(db_session, await make_student(db_session, ctx, name="Eleven", grade_level=11), uni, status="enrolled")
+    await make_student(db_session, ctx, name="Twelve Unbridged", grade_level=12)
+    await db_session.commit()
+    await login(client, ctx["school_coordinator"])
+
+    body = (await client.get(URL, params={"grade": 12})).json()
+
+    assert body["grade"] == 12
+    assert body["students_in_scope"] == 3
+    assert set(_rows(body)) == {"Level Twelve", "Label Twelve"}
+    assert _funnel(body)["admitted"] == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("params", [{"grade": 7}, {"grade": 13}, {"grade": "abc"}, {"limit": 0}, {"limit": 101}, {"offset": -1}, {"offset": 10_001}])
+async def test_invalid_query_is_422(client, db_session, params):  # AC12
+    ctx = await make_school(db_session)
+    await db_session.commit()
+    await login(client, ctx["school_coordinator"])
+    assert (await client.get(URL, params=params)).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_wrong_role_with_invalid_query_is_still_403(client, db_session):  # AC12
+    ctx = await make_school(db_session)
+    await db_session.commit()
+    await login(client, ctx["school_teacher"])
+    assert (await client.get(URL, params={"grade": "abc", "limit": 0})).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_paging_is_stable_and_past_the_end_is_empty_with_the_real_total(client, db_session):  # AC13
+    ctx = await make_school(db_session)
+    uni = await make_university(db_session)
+    for name in ("Cara", "Abe", "Bea"):
+        await bridge(db_session, await make_student(db_session, ctx, name=name), uni)
+    await db_session.commit()
+    await login(client, ctx["school_coordinator"])
+
+    first = (await client.get(URL, params={"limit": 2})).json()["students"]
+    second = (await client.get(URL, params={"limit": 2, "offset": 2})).json()["students"]
+    past = (await client.get(URL, params={"limit": 2, "offset": 50})).json()
+
+    assert [r["full_name"] for r in first["items"]] == ["Abe", "Bea"]
+    assert [r["full_name"] for r in second["items"]] == ["Cara"]
+    assert (first["total"], first["limit"], first["offset"]) == (3, 2, 0)
+    assert past["students"]["items"] == [] and past["students"]["total"] == 3
+    assert _funnel(past)["pathway"] == 3  # the funnel is never paged
+
+
+@pytest.mark.asyncio
+async def test_a_read_writes_nothing_and_logs_ids_and_counts_only(client, db_session, caplog):  # AC14
+    ctx = await make_school(db_session)
+    uni = await make_university(db_session)
+    await bridge(db_session, await make_student(db_session, ctx, name="Secretname Student"), uni)
+    await db_session.commit()
+    await login(client, ctx["school_coordinator"])
+    audit_before = await db_session.scalar(select(func.count()).select_from(AuditLog))
+
+    with caplog.at_level(logging.INFO, logger="app.school.global_education"):
+        assert (await client.get(URL, params={"grade": 12})).status_code == 200
+
+    assert await db_session.scalar(select(func.count()).select_from(AuditLog)) == audit_before
+    records = [r for r in caplog.records if r.getMessage() == "school_global_education_view"]
+    assert len(records) == 1
+    fields = records[0].extra_fields
+    assert set(fields) == {"actor_id", "role", "school_id", "grade", "bridged", "returned"}
+    assert fields["school_id"] == str(ctx["school"].id)
+    assert "Secretname" not in repr(fields)
+
+
+@pytest.mark.asyncio
+async def test_query_count_does_not_grow_with_students(client, db_session):  # spec §6.1 (three reads + auth)
+    ctx = await make_school(db_session)
+    uni = await make_university(db_session)
+    await bridge(db_session, await make_student(db_session, ctx), uni)
+    await db_session.commit()
+    await login(client, ctx["school_coordinator"])
+    with count_queries() as few:
+        assert (await client.get(URL)).status_code == 200
+    for _ in range(15):
+        s = await make_student(db_session, ctx)
+        application = await bridge(db_session, s, uni, status="offer")
+        db_session.add(VisaCase(application_id=application.id))
+    await db_session.commit()
+    with count_queries() as many:
+        assert (await client.get(URL)).status_code == 200
+    assert many["n"] == few["n"]

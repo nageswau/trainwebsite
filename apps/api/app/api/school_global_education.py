@@ -4,11 +4,11 @@ it selects named columns, never an `OverseasApplication`/`VisaCase` row, so appl
 
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.school_analytics import grade_key, students_in
+from app.api.school_analytics import MAX_OFFSET, grade_key, students_in
 from app.api.school_feedback import _require_school_reader
 from app.api.schools import OFFER_ONWARD_STATUSES, _own_school_id, _stage_at_or_after
 from app.api.workflows import VISA_CASE_STAGES
@@ -72,9 +72,19 @@ def visa_stage_label(statuses: list[str]) -> str | None:
 
 
 @router.get("/global-education/pipeline", response_model=GlobalEducationPipelineOut)
-async def global_education_pipeline(user: User = Depends(_require_school_reader), db: AsyncSession = Depends(get_db)):
+async def global_education_pipeline(
+    user: User = Depends(_require_school_reader),  # a dependency, so a wrong role is 403 before any 422
+    grade: int | None = Query(None, ge=8, le=12),  # an int range, not Literal: query strings never coerce into Literal[int]
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0, le=MAX_OFFSET),
+    db: AsyncSession = Depends(get_db),
+):
+    """Read-only (spec §8): nothing is added to the session or committed. Own school only -- the school comes from the
+    session, never from the request, so there is no id to tamper with (AC04)."""
     school_id = _own_school_id(user)
     roster = (await db.execute(select(*ROSTER_COLUMNS).where(SchoolStudent.school_id == school_id).order_by(SchoolStudent.full_name, SchoolStudent.id))).all()
+    if grade is not None:  # D7: the ENH-016 `grade_key` rule, so a grade means the same students on every page
+        roster = [s for s in roster if grade_key(s.grade_level, s.grade_or_class) == str(grade)]
     scope = students_in([school_id])
     reached: dict = defaultdict(set)
     application_count: dict = defaultdict(int)
@@ -97,11 +107,14 @@ async def global_education_pipeline(user: User = Depends(_require_school_reader)
             furthest_stage=(stage := furthest_stage(reached[s.id])), furthest_stage_label=FUNNEL_LABELS[stage],
             visa_stage_label=visa_stage_label(visa_statuses[s.id]), application_count=application_count[s.id],
         )
-        for s in bridged
+        for s in bridged[offset : offset + limit]  # the list is paged; the funnel below never is
     ]
+    logger.info("school_global_education_view", extra={"extra_fields": {
+        "actor_id": str(user.id), "role": user.role, "school_id": str(school_id), "grade": str(grade), "bridged": len(bridged), "returned": len(rows),
+    }})
     return GlobalEducationPipelineOut(
-        grade=None, students_in_scope=len(roster), bridged_students=len(bridged),
+        grade=grade, students_in_scope=len(roster), bridged_students=len(bridged),
         funnel=[PipelineStage(key=key, label=label, count=sum(1 for s in bridged if key in reached[s.id])) for key, label in FUNNEL],
         not_tracked=[PipelineUntracked(key=key, label=label, note=note) for key, label, note in NOT_TRACKED],
-        students=PipelineStudentPage(items=rows, total=len(bridged), limit=25, offset=0),
+        students=PipelineStudentPage(items=rows, total=len(bridged), limit=limit, offset=offset),
     )
