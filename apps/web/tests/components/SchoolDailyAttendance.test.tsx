@@ -148,6 +148,90 @@ describe("SchoolDailyAttendance", () => {
     expect(screen.getByRole("status").textContent).toBe("No students assigned to you yet. Your School Coordinator assigns students to teachers.");
   });
 
+  // --- Browser QA 2026-09-30 --------------------------------------------------------------------------------------------------
+
+  it("QA30-01: refuses to save while the Date field shows a date that is not the one on screen", async () => {
+    const fetchMock = stubFetch(() => json(ROSTER));
+    render(<SchoolDailyAttendance roster={ROSTER} />);
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-09-10" } });
+    fireEvent.click(within(group("Ben Das")).getByLabelText("Late"));
+    fireEvent.click(screen.getByRole("button", { name: "Save attendance" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Press Show to open 10 Sept 2026/));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(document.querySelector(".form-warning")?.textContent).toBe("Showing 29 Sept 2026. Press Show to open 10 Sept 2026."); // shown before Save too
+  });
+
+  it("QA30-01: saving works again once the field matches the date on screen", async () => {
+    const fetchMock = stubFetch(() => json(ROSTER));
+    render(<SchoolDailyAttendance roster={ROSTER} />);
+    const date = screen.getByLabelText("Date");
+    fireEvent.change(date, { target: { value: "2026-09-10" } });
+    fireEvent.change(date, { target: { value: "2026-09-29" } });
+    expect(screen.queryByText(/Press Show to open/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save attendance" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  });
+
+  it("QA30-02: browser Back with unsaved marks asks first, and staying cancels the navigation", () => {
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
+    const go = vi.spyOn(window.history, "go").mockImplementation(() => {});
+    const router = vi.fn(); // stands in for Next's own (non-capture) popstate listener
+    window.addEventListener("popstate", router);
+    try {
+      render(<SchoolDailyAttendance roster={ROSTER} />);
+      fireEvent.click(within(group("Ben Das")).getByLabelText("Late"));
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      expect(confirm).toHaveBeenCalledWith("You have unsaved attendance. Leave without saving it?");
+      expect(router).not.toHaveBeenCalled(); // the page stays
+      expect(go).toHaveBeenCalledWith(1); // and the URL returns to this date
+      // The forward step that restores the URL is not a second question and does not reach the router either.
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(router).not.toHaveBeenCalled();
+      // Leaving on purpose: confirm -> the router handles Back.
+      confirm.mockReturnValue(true);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      expect(router).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener("popstate", router);
+      go.mockRestore();
+    }
+  });
+
+  it("QA30-02: Back without unsaved marks is not interrupted", () => {
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
+    const router = vi.fn();
+    window.addEventListener("popstate", router);
+    try {
+      render(<SchoolDailyAttendance roster={ROSTER} />);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      expect(confirm).not.toHaveBeenCalled();
+      expect(router).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener("popstate", router);
+    }
+  });
+
+  it("QA30-04: right after a save, the saved marks are current -- no stale 'Unsaved changes' or 'Not marked'", async () => {
+    const savedRoster = { ...ROSTER, students: [{ ...ROSTER.students[0] }, { ...ROSTER.students[1], status: "late" as const }] };
+    stubFetch(() => json(savedRoster));
+    render(<SchoolDailyAttendance roster={ROSTER} />); // router.refresh() is mocked: the props never change in this test
+    fireEvent.click(within(group("Ben Das")).getByLabelText("Late"));
+    fireEvent.click(screen.getByRole("button", { name: "Save attendance" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/Attendance saved/));
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
+    expect(screen.queryByText("Not marked")).toBeNull();
+  });
+
+  it("QA30-04: a student who appears after a refresh does not count as an unsaved change", () => {
+    const { rerender } = render(<SchoolDailyAttendance roster={ROSTER} />);
+    rerender(<SchoolDailyAttendance roster={{ ...ROSTER, students: [...ROSTER.students, { id: "s3", full_name: "New Kid", grade_or_class: null, status: null }] }} />);
+    expect(screen.getByRole("group", { name: /New Kid/ })).toBeTruthy();
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
+  });
+
   it("adds Attendance to the teacher's navigation only", () => {
     expect(SCHOOL_NAV.teacher.map((i) => [i.label, i.href])).toEqual([["Dashboard", "/school/teacher/dashboard"], ["Attendance", "/school/teacher/attendance"]]);
     expect(SCHOOL_NAV.parent.map((i) => i.label)).toEqual(["Dashboard", "Notifications"]);

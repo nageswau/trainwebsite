@@ -52,6 +52,18 @@ describe("Teacher attendance page", () => {
     expect(calls.some((c) => c.includes("admin"))).toBe(false);
   });
 
+  it("QA30-03: an impossible calendar date (well-formed but not a real day) falls back to today, never '[object Object]'", async () => {
+    serve(() => ROSTER);
+    for (const bad of ["2026-02-30", "2026-13-01", "2026-00-10", "2025-02-29"]) {
+      calls.length = 0;
+      await SchoolTeacherAttendancePage({ searchParams: Promise.resolve({ date: bad }) });
+      expect(calls, bad).toContain("/api/v1/school/attendance");
+    }
+    calls.length = 0;
+    await SchoolTeacherAttendancePage({ searchParams: Promise.resolve({ date: "2024-02-29" }) }); // a real leap day passes through
+    expect(calls).toContain("/api/v1/school/attendance?date=2024-02-29");
+  });
+
   it("shows the server's reason when the roster cannot be read", async () => {
     serve(() => {
       throw new ApiError("Attendance cannot be marked for a future date", 422);

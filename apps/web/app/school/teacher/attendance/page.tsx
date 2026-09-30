@@ -6,12 +6,18 @@ import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
 // ENH-030 (DEC-SCOPE-038): the teacher marks their assigned class for one day. The server scopes the roster (assigned students
-// only) and decides "today" on the school calendar; only a well-formed YYYY-MM-DD is passed on.
+// only) and decides "today" on the school calendar; only a real calendar date in YYYY-MM-DD form is passed on -- anything else
+// (malformed, or well-formed but impossible like 2026-02-30, QA30-03) falls back to the school's today.
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+function calendarDate(raw: string | string[] | undefined): string | null {
+  if (typeof raw !== "string" || !ISO_DATE.test(raw)) return null;
+  const parsed = new Date(`${raw}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === raw ? raw : null;
+}
+
 export default async function SchoolTeacherAttendancePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const raw = (await searchParams).date;
-  const day = typeof raw === "string" && ISO_DATE.test(raw) ? raw : null;
+  const day = calendarDate((await searchParams).date);
   let user: User;
   let roster: DailyRoster;
   try {

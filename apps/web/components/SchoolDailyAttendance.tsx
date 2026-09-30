@@ -20,17 +20,30 @@ const LEAVE_WITH_UNSAVED = "You have unsaved attendance. Leave without saving it
 const savedMarks = (roster: DailyRoster): Marks => Object.fromEntries(roster.students.map((s) => [s.id, s.status]));
 const plural = (n: number) => `${n} student${n === 1 ? "" : "s"}`;
 
-export default function SchoolDailyAttendance({ roster }: { roster: DailyRoster }) {
+export default function SchoolDailyAttendance({ roster: rosterProp }: { roster: DailyRoster }) {
   const router = useRouter();
+  // QA30-04: the roster on screen. A successful save replaces it with the server's answer at once (the PUT returns the day's
+  // roster), so "Unsaved changes" and "Not marked" never lag behind router.refresh(); a new prop (a refresh, another tab) wins again.
+  const [roster, setRoster] = useState(rosterProp);
+  const [lastProp, setLastProp] = useState(rosterProp);
+  if (rosterProp !== lastProp) {
+    setLastProp(rosterProp);
+    setRoster(rosterProp);
+  }
   const saved = savedMarks(roster);
-  const [marks, setMarks] = useState<Marks>(() => savedMarks(roster));
+  const [marks, setMarks] = useState<Marks>(() => savedMarks(rosterProp));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
-  const [pickedDate, setPickedDate] = useState(roster.session_date);
+  const [pickedDate, setPickedDate] = useState(rosterProp.session_date);
   const [loadingDate, startDateChange] = useTransition(); // spec §11 F1: feedback while the next day's roster loads
   const locked = busy || loadingDate;
-  const dirty = roster.students.some((s) => marks[s.id] !== saved[s.id]);
+  // `?? null`: a student who appeared after a refresh has no entry in `marks` yet, and that is not a change (QA30-04).
+  const dirty = roster.students.some((s) => (marks[s.id] ?? null) !== (saved[s.id] ?? null));
   const marked = roster.students.filter((s) => marks[s.id]).length;
+  // QA30-01: the field may hold a date the teacher has not opened yet; the list (and Save) still belong to `roster.session_date`.
+  const dateNote = pickedDate === roster.session_date ? null : !pickedDate ? "Choose a date and press Show."
+    : pickedDate > roster.today ? `${formatCalendarDate(pickedDate)} is in the future; attendance cannot be marked for it.`
+    : `Showing ${formatCalendarDate(roster.session_date)}. Press Show to open ${formatCalendarDate(pickedDate)}.`;
 
   useEffect(() => {
     if (!dirty) return;
@@ -47,10 +60,27 @@ export default function SchoolDailyAttendance({ roster }: { roster: DailyRoster 
         event.stopPropagation();
       }
     };
+    // QA30-02: browser Back/Forward is a history change the two guards above never see. This capture listener runs before the
+    // router's own popstate handler: staying stops that handler and steps forward again to restore this date's URL; the popstate
+    // that step fires is swallowed too, so the teacher is asked once and the page is left untouched.
+    let restoring = false;
+    const guardHistory = (event: PopStateEvent) => {
+      if (restoring) {
+        restoring = false;
+        event.stopImmediatePropagation();
+        return;
+      }
+      if (window.confirm(LEAVE_WITH_UNSAVED)) return;
+      event.stopImmediatePropagation();
+      restoring = true;
+      window.history.go(1);
+    };
     window.addEventListener("beforeunload", warn);
+    window.addEventListener("popstate", guardHistory, true);
     document.addEventListener("click", guardLinks, true);
     return () => {
       window.removeEventListener("beforeunload", warn);
+      window.removeEventListener("popstate", guardHistory, true);
       document.removeEventListener("click", guardLinks, true);
     };
   }, [dirty]);
@@ -66,6 +96,11 @@ export default function SchoolDailyAttendance({ roster }: { roster: DailyRoster 
 
   async function save(event: FormEvent) {
     event.preventDefault();
+    if (dateNote) {
+      // QA30-01: never write to a date other than the one the field shows.
+      setMessage({ text: `${dateNote} To save ${formatCalendarDate(roster.session_date)}, set the date back to it.`, failed: true });
+      return;
+    }
     const records = roster.students.flatMap((s) => (marks[s.id] ? [{ student_id: s.id, status: marks[s.id] }] : []));
     if (records.length === 0) {
       setMessage({ text: "Choose a status for at least one student.", failed: true });
@@ -81,6 +116,7 @@ export default function SchoolDailyAttendance({ roster }: { roster: DailyRoster 
     }
     const left = roster.students.length - records.length;
     setMessage({ text: `Attendance saved for ${plural(records.length)} on ${formatCalendarDate(roster.session_date)}.${left ? ` ${left} left unmarked.` : ""}`, failed: false });
+    if (Array.isArray(outcome.data.students)) setRoster(outcome.data as unknown as DailyRoster); // QA30-04
     router.refresh();
   }
 
@@ -97,6 +133,7 @@ export default function SchoolDailyAttendance({ roster }: { roster: DailyRoster 
           </div>
           <button type="submit" className="btn secondary small" disabled={locked}>Show</button>
         </div>
+        {dateNote && <p className="form-warning" aria-live="polite" style={{ margin: "8px 0 0" }}>{dateNote}</p>}
       </form>
       <form className="form" onSubmit={save} aria-busy={locked}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
