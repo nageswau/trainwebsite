@@ -6,7 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.identifiers import uuid_reference
-from app.core.rbac import PERMISSIONS
+from app.core.rbac import PERMISSIONS, is_agent_staff
 from app.models import (
     AgentCommission,
     AgentOrg,
@@ -695,7 +695,9 @@ async def _agent(db: AsyncSession, user: User, section: str):
     latest_application_by_student = {}
     for a, u, s in applications:
         latest_application_by_student.setdefault(s.id, (a, u))
-    commissions = (await db.scalars(select(AgentCommission).where(AgentCommission.agent_id.in_(org_member_ids(user))))).all()
+    # AGN-002 (DEC-SCOPE-040 S1): commissions are Master-only; a staff member's pages never read or show them.
+    staff = is_agent_staff(user)
+    commissions = [] if staff else (await db.scalars(select(AgentCommission).where(AgentCommission.agent_id.in_(org_member_ids(user))))).all()
     if section == "dashboard":
         return _payload(
             "Agent Dashboard",
@@ -705,16 +707,29 @@ async def _agent(db: AsyncSession, user: User, section: str):
             (
                 {"label": "Students", "value": len(students)},
                 {"label": "Applications", "value": len(applications)},
-                {"label": "Claimable commission", "value": f"INR {sum(float(c.amount) for c in commissions if c.status in {'eligible', 'estimated'}):,.0f}"},
-                {"label": "Claims", "value": sum(1 for c in commissions if c.status == "claimed")},
+                *(
+                    ()
+                    if staff
+                    else (
+                        {"label": "Claimable commission", "value": f"INR {sum(float(c.amount) for c in commissions if c.status in {'eligible', 'estimated'}):,.0f}"},
+                        {"label": "Claims", "value": sum(1 for c in commissions if c.status == "claimed")},
+                    )
+                ),
                 *(({"label": "Your code", "value": user.agent_membership.code},) if user.agent_membership else ()),
             ),
         )
     if section == "team":
-        # AGN-001: the agency's Master accounts, read-only here; AgentTeamPanel carries the actions.
+        # AGN-001: the agency's Master accounts, read-only here; AgentTeamPanel carries the actions (staff: AgentStaffPanel).
         membership = user.agent_membership
         rows = (
-            (await db.execute(select(AgentOrgMember, User).join(User, User.id == AgentOrgMember.user_id).where(AgentOrgMember.org_id == membership.org_id).order_by(AgentOrgMember.seq))).all()
+            (
+                await db.execute(
+                    select(AgentOrgMember, User)
+                    .join(User, User.id == AgentOrgMember.user_id)
+                    .where(AgentOrgMember.org_id == membership.org_id, AgentOrgMember.role == "master")
+                    .order_by(AgentOrgMember.seq)
+                )
+            ).all()
             if membership
             else []
         )
@@ -784,7 +799,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
                 {"metric": "Students", "value": len(students)},
                 {"metric": "Applications", "value": len(applications)},
                 {"metric": "Offers", "value": sum(1 for a, _, _ in applications if a.status in {"offer_received", "accepted"})},
-                {"metric": "Paid commission", "value": sum(float(c.amount) for c in commissions if c.status == "paid")},
+                *(() if staff else ({"metric": "Paid commission", "value": sum(float(c.amount) for c in commissions if c.status == "paid")},)),
             ),
         )
 

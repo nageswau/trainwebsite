@@ -100,6 +100,16 @@ def agent_denial_reason(user) -> str | None:
     return None
 
 
+def is_agent_staff(user) -> bool:
+    """AGN-002 (DEC-SCOPE-040 S1/S2): a staff member of an agent organisation. Staff share `role='agent'` with Masters, so the
+    Master-only actions (team management, commissions) call this. Reads the membership `get_current_user` eager-loads."""
+
+    if user.role != "agent":
+        return False
+    membership = user.agent_membership
+    return membership is not None and membership.role == "staff"
+
+
 async def get_active_assignments(db: AsyncSession, user_id: UUID) -> list[UserRoleAssignment]:
     rows = await db.scalars(
         select(UserRoleAssignment).where(UserRoleAssignment.user_id == user_id, UserRoleAssignment.is_active.is_(True))

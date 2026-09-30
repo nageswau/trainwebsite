@@ -20,6 +20,7 @@ from app.services.provisioning import flush_unique_email, issue_welcome_token, p
 logger = logging.getLogger("app.agent_orgs")
 
 MASTER_LIMIT = 3
+MASTER, STAFF = "master", "staff"  # AgentOrgMember.role (AGN-002 adds staff)
 
 _LATIN = re.compile(r"[A-Za-z]")
 
@@ -112,6 +113,16 @@ async def lock_org(db: AsyncSession, org_id) -> AgentOrg:
     return org
 
 
+async def lock_active_org(db: AsyncSession, org_id) -> AgentOrg:
+    """`lock_org`, then refuse an organisation suspended (or no longer active) between the request's gate check and the lock."""
+    from app.core.rbac import PENDING_MESSAGE, SUSPENDED_MESSAGE
+
+    org = await lock_org(db, org_id)
+    if org.status != "active":
+        raise HTTPException(403, SUSPENDED_MESSAGE if org.status == "suspended" else PENDING_MESSAGE)
+    return org
+
+
 async def set_org_status(db: AsyncSession, org: AgentOrg, status: str, actor: User, *, write_through: bool) -> None:
     """No commit. E11: approve/reject also set the Master assignments' approval_status; suspend/reinstate do not."""
     now = datetime.now(UTC)
@@ -152,7 +163,10 @@ async def member_user_ids(db: AsyncSession, user: User) -> set:
 
 
 async def count_active_masters(db: AsyncSession, org_id) -> int:
-    return await db.scalar(select(func.count()).select_from(AgentOrgMember).where(AgentOrgMember.org_id == org_id, AgentOrgMember.status == "active"))
+    """Active Masters only; staff never count (AGN-002 S2)."""
+    return await db.scalar(
+        select(func.count()).select_from(AgentOrgMember).where(AgentOrgMember.org_id == org_id, AgentOrgMember.role == MASTER, AgentOrgMember.status == "active")
+    )
 
 
 INVITE_LIMIT = 10
@@ -224,7 +238,9 @@ async def invite_master(db: AsyncSession, org: AgentOrg, actor: User, *, full_na
 
 async def deactivate_master(db: AsyncSession, org: AgentOrg, member_id, actor: User) -> tuple[AgentOrgMember, User]:
     """No commit; `org` must be locked. D8/E3: never the last active Master; login disabled; open invite revoked."""
-    member = await db.scalar(select(AgentOrgMember).where(AgentOrgMember.id == member_id, AgentOrgMember.org_id == org.id).execution_options(populate_existing=True))
+    member = await db.scalar(
+        select(AgentOrgMember).where(AgentOrgMember.id == member_id, AgentOrgMember.org_id == org.id, AgentOrgMember.role == MASTER).execution_options(populate_existing=True)
+    )
     if not member:
         raise HTTPException(404, "Master not found")
     if member.status != "active":
@@ -235,7 +251,9 @@ async def deactivate_master(db: AsyncSession, org: AgentOrg, member_id, actor: U
     # invite accepted (password set) -- or an unaccepted/expired invite would lock the whole agency out.
     others = (
         await db.scalars(
-            select(User.id).join(AgentOrgMember, AgentOrgMember.user_id == User.id).where(AgentOrgMember.org_id == org.id, AgentOrgMember.status == "active", AgentOrgMember.id != member.id, User.active.is_(True))
+            select(User.id)
+            .join(AgentOrgMember, AgentOrgMember.user_id == User.id)
+            .where(AgentOrgMember.org_id == org.id, AgentOrgMember.role == MASTER, AgentOrgMember.status == "active", AgentOrgMember.id != member.id, User.active.is_(True))
         )
     ).all()
     pending = await provisioning_statuses(db, others)
@@ -252,10 +270,17 @@ async def deactivate_master(db: AsyncSession, org: AgentOrg, member_id, actor: U
 
 
 async def notification_recipients(db: AsyncSession, agent: User) -> list[User]:
-    """D12: every active Master of the agent's organisation; the agent alone when it has no membership."""
+    """D12: every active Master (never staff, AGN-002) of the agent's organisation; the agent alone when it has no membership."""
     org_id = await db.scalar(select(AgentOrgMember.org_id).where(AgentOrgMember.user_id == agent.id))
     if org_id is None:
         return [agent]
     return list(
-        (await db.scalars(select(User).join(AgentOrgMember, AgentOrgMember.user_id == User.id).where(AgentOrgMember.org_id == org_id, AgentOrgMember.status == "active").order_by(AgentOrgMember.seq))).all()
+        (
+            await db.scalars(
+                select(User)
+                .join(AgentOrgMember, AgentOrgMember.user_id == User.id)
+                .where(AgentOrgMember.org_id == org_id, AgentOrgMember.role == MASTER, AgentOrgMember.status == "active")
+                .order_by(AgentOrgMember.seq)
+            )
+        ).all()
     )

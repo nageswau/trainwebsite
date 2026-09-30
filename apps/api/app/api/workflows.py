@@ -11,7 +11,7 @@ from app.api.files import _allowed
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
-from app.core.rbac import agent_denial_reason
+from app.core.rbac import agent_denial_reason, is_agent_staff
 from app.models import (
     AgentCommission,
     AgentStudent,
@@ -111,6 +111,12 @@ def _require(user: User, roles: set[str], division: str | None = None):
     reason = agent_denial_reason(user)
     if reason:
         raise HTTPException(403, reason)
+
+
+def _require_agent_master(user: User) -> None:
+    """AGN-002 (DEC-SCOPE-040 S1): commissions are Master-only; an agency's staff are refused."""
+    if is_agent_staff(user):
+        raise HTTPException(403, "Only an agency Master can view commissions")
 
 
 async def _audit(db: AsyncSession, user: User, action: str, entity_type: str, entity_id: UUID | str | None, metadata: dict | None = None):
@@ -2304,6 +2310,7 @@ async def add_agent_student(payload: AgentStudentCreate, user: User = Depends(ge
 @router.get("/overseas/agent/commissions")
 async def agent_commissions(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"agent"}, "overseas")
+    _require_agent_master(user)
     rows = (
         await db.execute(
             select(AgentCommission, OverseasApplication, University, User)
@@ -2335,6 +2342,7 @@ async def agent_commissions(user: User = Depends(get_current_user), db: AsyncSes
 @router.post("/overseas/agent/commissions/{commission_id}/claim")
 async def claim_commission(commission_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"agent"}, "overseas")
+    _require_agent_master(user)
     # AGN-001: organisation scope, and a row lock so two Masters claiming one commission claim it once.
     item = await db.scalar(
         select(AgentCommission).where(AgentCommission.id == commission_id, AgentCommission.agent_id.in_(org_member_ids(user))).with_for_update().execution_options(populate_existing=True)

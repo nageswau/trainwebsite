@@ -169,7 +169,10 @@ async def logout(response: Response):
 
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)):
-    return user
+    out = UserOut.model_validate(user)
+    # AGN-002: the portal hides Master-only pages from staff (the server refuses them regardless).
+    out.agent_member_role = user.agent_membership.role if user.agent_membership else None
+    return out
 
 
 # Profile keys that carry an authorization scope. A user may echo their own current value back (the web

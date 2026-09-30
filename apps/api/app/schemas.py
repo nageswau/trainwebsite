@@ -37,6 +37,8 @@ class UserOut(BaseModel):
     student_code: str | None = None
     profile: dict = Field(default_factory=dict)
     role_assignments: list[RoleAssignmentOut] = Field(default_factory=list)
+    # AGN-002: set by GET /auth/me only (login/refresh do not load the membership); "master" | "staff" | None.
+    agent_member_role: str | None = None
     model_config = {"from_attributes": True}
 
 

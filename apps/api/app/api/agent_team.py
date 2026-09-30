@@ -12,13 +12,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.core.rbac import PENDING_MESSAGE, SUSPENDED_MESSAGE, agent_denial_reason
+from app.core.rbac import agent_denial_reason, is_agent_staff
 from app.models import AgentOrgMember, User
 from app.schemas import AgentMasterInvite
-from app.services.agent_orgs import MASTER_LIMIT, deactivate_master, invite_master, lock_org
+from app.services.agent_orgs import MASTER, MASTER_LIMIT, deactivate_master, invite_master, lock_active_org
 from app.services.provisioning import deliver_welcome_link, provisioning_statuses
 
 router = APIRouter(prefix="/workflows/overseas/agent/team", tags=["agent-team"])
+
+MASTER_ONLY = "Only an agency Master can manage the team"
 
 
 def _require_master(user: User) -> AgentOrgMember:
@@ -27,6 +29,8 @@ def _require_master(user: User) -> AgentOrgMember:
     reason = agent_denial_reason(user)
     if reason:
         raise HTTPException(403, reason)
+    if is_agent_staff(user):  # AGN-002 (S1): staff never manage the team
+        raise HTTPException(403, MASTER_ONLY)
     return user.agent_membership
 
 
@@ -43,17 +47,18 @@ def _member_out(member: AgentOrgMember, member_user: User, pending: set, caller:
 
 
 async def _locked_active_org(db: AsyncSession, membership: AgentOrgMember):
-    org = await lock_org(db, membership.org_id)
-    if org.status != "active":  # suspended between the gate check and the lock
-        raise HTTPException(403, SUSPENDED_MESSAGE if org.status == "suspended" else PENDING_MESSAGE)
-    return org
+    return await lock_active_org(db, membership.org_id)  # suspended between the gate check and the lock -> 403
 
 
 @router.get("")
 async def team(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     membership = _require_master(user)
     org = membership.org
-    rows = (await db.execute(select(AgentOrgMember, User).join(User, User.id == AgentOrgMember.user_id).where(AgentOrgMember.org_id == org.id).order_by(AgentOrgMember.seq))).all()
+    rows = (
+        await db.execute(
+            select(AgentOrgMember, User).join(User, User.id == AgentOrgMember.user_id).where(AgentOrgMember.org_id == org.id, AgentOrgMember.role == MASTER).order_by(AgentOrgMember.seq)
+        )
+    ).all()
     pending = set(await provisioning_statuses(db, [u.id for _, u in rows]))
     return {"org": {"id": org.id, "name": org.name, "prefix": org.prefix, "status": org.status}, "masters": [_member_out(m, u, pending, user) for m, u in rows], "limit": MASTER_LIMIT}
 
