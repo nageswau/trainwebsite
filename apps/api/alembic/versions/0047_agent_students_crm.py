@@ -59,6 +59,18 @@ def _unique_constraints(table: str) -> set[str]:
     return {c["name"] for c in sa.inspect(op.get_bind()).get_unique_constraints(table)}
 
 
+def _check_constraints(table: str) -> set[str]:
+    if op.get_context().as_sql:
+        return set()
+    return {c["name"] for c in sa.inspect(op.get_bind()).get_check_constraints(table)}
+
+
+def _indexes(table: str) -> set[str]:
+    if op.get_context().as_sql:
+        return set()
+    return {i["name"] for i in sa.inspect(op.get_bind()).get_indexes(table)}
+
+
 def _refuse_if(bind, sql: str, message: str) -> None:
     if bind.execute(sa.text(sql)).first():
         raise RuntimeError(message)
@@ -66,8 +78,11 @@ def _refuse_if(bind, sql: str, message: str) -> None:
 
 def upgrade() -> None:
     # --- AGN-002 staff pieces (identical names; guarded) ---
+    # 0001/0003 run Base.metadata.create_all from the CURRENT models, so a database built from scratch already has every
+    # column, CHECK and index below by the time this runs: each one is created only when missing.
     if "staff_seq" not in _columns("agent_orgs"):
         op.add_column("agent_orgs", sa.Column("staff_seq", sa.Integer(), nullable=False, server_default="0"))
+    if "ck_agent_orgs_staff_seq" not in _check_constraints("agent_orgs"):
         op.create_check_constraint("ck_agent_orgs_staff_seq", "agent_orgs", "staff_seq >= 0")
     op.drop_constraint("ck_agent_org_members_role", "agent_org_members", type_="check")
     op.create_check_constraint("ck_agent_org_members_role", "agent_org_members", "role IN ('master', 'staff')")
@@ -86,11 +101,17 @@ def upgrade() -> None:
         if name not in existing:
             op.add_column("agent_students", sa.Column(name, postgresql.UUID(as_uuid=True), sa.ForeignKey(target), nullable=True))
     op.alter_column("agent_students", "student_id", existing_type=postgresql.UUID(as_uuid=True), nullable=True)
-    op.create_check_constraint("ck_agent_students_identity", "agent_students", "student_id IS NOT NULL OR full_name IS NOT NULL")
-    op.create_check_constraint("ck_agent_students_status", "agent_students", "status IN ('active', 'archived')")
+    checks = _check_constraints("agent_students")
+    if "ck_agent_students_identity" not in checks:
+        op.create_check_constraint("ck_agent_students_identity", "agent_students", "student_id IS NOT NULL OR full_name IS NOT NULL")
+    if "ck_agent_students_status" not in checks:
+        op.create_check_constraint("ck_agent_students_status", "agent_students", "status IN ('active', 'archived')")
+    indexes = _indexes("agent_students")
     for name, cols in INDEXES:
-        op.create_index(name, "agent_students", cols)
-    op.create_index("ix_agent_students_agent_email_lower", "agent_students", ["agent_id", sa.text("lower(email)")])
+        if name not in indexes:
+            op.create_index(name, "agent_students", cols)
+    if "ix_agent_students_agent_email_lower" not in indexes:
+        op.create_index("ix_agent_students_agent_email_lower", "agent_students", ["agent_id", sa.text("lower(email)")])
 
 
 def downgrade() -> None:
