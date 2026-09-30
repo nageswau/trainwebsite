@@ -1793,6 +1793,14 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** Same single-column layout at all widths.  
 - **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** AGN-001-AC07, AC08 (API tests `test_agn_001_team.py`; `AgentTeamPanel.test.tsx`; e2e `agn-001-multi-tenant.spec.ts`).  
+- **AGN-002 update (2026-09-30, `DEC-SCOPE-040`):** a **Staff** section below the Masters (`AgentStaffPanel`, `AgentStaffRow`,
+  `AgentStaffCreateForm`). States: loading "Loading staff…"; error "Unable to load your staff." + Retry; empty "No staff yet. Add
+  your first staff member below."; list of cards (code, name, email, phone, text badge Deactivated / Set-up pending / Link
+  expired), 20 per page with "Showing x–y of z" and Previous/Next. Actions per row: Edit (inline name/phone, email read-only,
+  Escape cancels), Reset and Deactivate (inline confirmations), Reactivate. "Add staff" form (name, email, optional phone)
+  reports the new code and whether the email was sent. Results announced (`role="status"`); focus returns to the opening
+  button. Staff themselves see no Team or Commissions link (role label "Agency Staff"); typing the URL shows the 403 card.
+  Evidence: AGN-002-AC01…AC10 (`test_agn_002_*.py`; `AgentStaff*.test.tsx`; `navigation.test.ts`; e2e `agn-002-staff.spec.ts`).  
 
 
 ## CNS

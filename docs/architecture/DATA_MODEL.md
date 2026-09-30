@@ -434,6 +434,19 @@ Design: `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design
   database (RTM `AGN-001` row).
 - **Feature IDs:** `AGN-001` (changes `AGT-001`–`004`).
 
+### 6.8b Agent staff and session version — built 2026-09-30 (`AGN-002`, `DEC-SCOPE-040`, migration `0047_agent_org_staff`)
+Design: `docs/superpowers/specs/2026-09-30-agn-002-staff-logins-design.md` §4.
+- **`agent_orgs.staff_seq`** Integer ≥ 0 (`ck_agent_orgs_staff_seq`), server default 0: the highest staff number ever issued.
+- **`agent_org_members`**: `role` CHECK now `master`/`staff` (`ck_agent_org_members_role`); the sequence is unique per role
+  (`uq_agent_org_members_org_role_seq (org_id, role, seq)`, replacing `uq_agent_org_members_org_seq`), so `M001` and `S001`
+  coexist. Staff codes `<prefix>-S###`, never reassigned. Staff move `active` ↔ `deactivated` (Masters still cannot be
+  reactivated — a service rule). A staff member is a `users` row with `role='agent'` and an approved `agent` assignment.
+- **`users.session_version`** Integer, server default 0: copied into every token as `sv`; a staff reset or deactivation
+  increments it, which ends every older session (tokens without `sv` count as 0).
+- **Migration `0047`:** additive; no row changes; columns added only when missing; `downgrade()` refuses while a staff member
+  exists.
+- **Feature IDs:** `AGN-002`.
+
 ### 6.9 `InboundUniversityEmail`
 **Carries over.** Supports `UNI-001`'s university-communication surface.
 - **Feature IDs:** `UNI-001`.
