@@ -8,7 +8,7 @@
 
 **Tech Stack:** FastAPI, Pydantic v2, async SQLAlchemy 2 (PostgreSQL `INSERT … ON CONFLICT`), Alembic, pytest; Next.js 15 (App Router, server pages + client components), React 19, Vitest + Testing Library, Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md` (decisions D1–D6, choices C1–C4, AC01–AC13). Decision: `DEC-SCOPE-038`.
+**Spec:** `docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md` (decisions D1–D6, choices C1–C4, AC01–AC13, engineering review §11). Decision: `DEC-SCOPE-038`.
 
 ## Global Constraints
 
@@ -19,7 +19,10 @@
 - Tier gate: `require_school_entitlement(db, user, school_id, None)` — after scope checks, before any write. No `TIER_SERVICES` key.
 - Future date = after `_today_ist()` (Asia/Kolkata) → 422 `"Attendance cannot be marked for a future date"`.
 - Scope failure → 403 `"One or more students are not assigned to you"`; non-teacher → 403 `"Teacher role required"`.
-- 1–200 records per call, unique `student_id`, `extra="forbid"`.
+- 1–500 records per call (IT `AttendanceBulkIn` limit), unique `student_id`, `extra="forbid"`.
+- Only index: the unique constraint (no single-column indexes, spec §11 A4).
+- Records are sorted by `student_id` before locking and inserting (spec §11 A3).
+- Log lines carry ids/dates/counts only; never names or per-student statuses (spec §11 S6).
 - Readers see only records whose `school_id` equals the student's current `school_id` (C1).
 - Read summary = 30 most recent records, newest first, with per-status counts over those same records (C3).
 - Existing keys unchanged: `/school/dashboard` + `/school/reports` `attendance`, all 16 360 tab keys, `SCHOOL_NAV.parent`.
@@ -34,6 +37,7 @@
 3. **A teacher with zero assigned students** — `GET` returns `students: []` (200, not an error); the page shows the empty state. Pinned in Task 3 (`test_roster_empty_for_teacher_without_students`) and Task 5.
 4. **Browser "today" vs school "today"** — the date picker's `max` comes from the server's `today` (IST), never `new Date()` (UTC). Pinned in Task 5 (`max` attribute test).
 5. **Saving with nothing chosen** — no request is sent; the teacher gets an inline message. Pinned in Task 5.
+6. **"Who marked my child absent?"** — answerable from the audit row's `changes` (actor, date, from→to), including a later correction. Pinned in Task 3 (`test_remark…`, `test_each_mark_writes_one_audit_row_with_a_tally`).
 
 ## File Structure
 
@@ -159,7 +163,7 @@ async def test_table_matches_the_model(db_session):
             {c["name"]: c["nullable"] for c in insp.get_columns("school_attendance_records")},
             {u["name"] for u in insp.get_unique_constraints("school_attendance_records")},
             {c["name"] for c in insp.get_check_constraints("school_attendance_records")},
-            {i["name"] for i in insp.get_indexes("school_attendance_records")},
+            {i["name"] for i in insp.get_indexes("school_attendance_records") if not i.get("duplicates_constraint")},
         )
 
     conn = await db_session.connection()
@@ -167,7 +171,7 @@ async def test_table_matches_the_model(db_session):
     assert columns == {"id": False, "school_student_id": False, "school_id": False, "session_date": False, "status": False, "marked_by_user_id": False, "created_at": False, "updated_at": False}
     assert uniques == {"uq_school_attendance_student_date"}
     assert checks == {"ck_school_attendance_status"}
-    assert {"ix_school_attendance_records_school_student_id", "ix_school_attendance_records_school_id", "ix_school_attendance_records_session_date"} <= indexes
+    assert indexes == set()  # the unique constraint's index is the only one (spec §11 A4)
 ```
 
 - [ ] **Step 3: Run both to verify they fail**
@@ -194,9 +198,10 @@ class SchoolAttendanceRecord(Base, TimestampMixin):
         CheckConstraint("status IN ('present', 'absent', 'late', 'excused')", name="ck_school_attendance_status"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
-    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
-    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
-    session_date: Mapped[date] = mapped_column(Date, index=True)
+    # No single-column indexes: the unique (school_student_id, session_date) index serves every query (spec §11 A4).
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"))
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    session_date: Mapped[date] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(20))
     marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 ```
@@ -210,7 +215,7 @@ Revision ID: 0046_school_attendance_records
 Revises: 0045_psychometric_result_fields
 
 docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md §4. Create-table only: no existing table is altered and no
-existing row is read or written. `downgrade()` drops the indexes, then the table.
+existing row is read or written. The unique constraint's index is the only one (spec §11 A4). `downgrade()` drops the table.
 """
 
 import sqlalchemy as sa
@@ -224,7 +229,6 @@ branch_labels = None
 depends_on = None
 
 TABLE = "school_attendance_records"
-INDEXED = ("school_student_id", "school_id", "session_date")
 
 
 def upgrade() -> None:
@@ -243,13 +247,9 @@ def upgrade() -> None:
         sa.UniqueConstraint("school_student_id", "session_date", name="uq_school_attendance_student_date"),
         sa.CheckConstraint("status IN ('present', 'absent', 'late', 'excused')", name="ck_school_attendance_status"),
     )
-    for column in INDEXED:
-        op.create_index(f"ix_{TABLE}_{column}", TABLE, [column])
 
 
 def downgrade() -> None:
-    for column in reversed(INDEXED):
-        op.drop_index(f"ix_{TABLE}_{column}", table_name=TABLE)
     op.drop_table(TABLE)
 ```
 
@@ -285,7 +285,7 @@ git commit -m "feat(enh-030): SchoolAttendanceRecord model and migration 0046"
 
 **Interfaces:**
 - Consumes: `_unique_ids` (`schemas.py:1402`).
-- Produces: `SchoolAttendanceMark(student_id: UUID, status: Literal["present","absent","late","excused"])`, `SchoolAttendanceIn(session_date: date, records: list[SchoolAttendanceMark])` (1–200, unique ids, `extra="forbid"`).
+- Produces: `SchoolAttendanceStatus` (the four-value `Literal`), `SchoolAttendanceMark(student_id: UUID, status: SchoolAttendanceStatus)`, `SchoolAttendanceIn(session_date: date, records: list[SchoolAttendanceMark])` (1–500, unique ids, `extra="forbid"`), and the response models `SchoolAttendanceRosterStudent(id: UUID, full_name: str, grade_or_class: str | None, status: SchoolAttendanceStatus | None)` and `SchoolAttendanceRosterOut(session_date: date, today: date, students: list[SchoolAttendanceRosterStudent])` (spec §11 A1).
 
 - [ ] **Step 1: Write the failing test** — `apps/api/tests/test_enh_030_schemas.py`
 
@@ -315,12 +315,12 @@ def test_accepts_all_four_statuses():
     [
         _body([{"student_id": str(uuid.uuid4()), "status": "sick"}]),
         _body([]),
-        _body([{"student_id": str(uuid.uuid4()), "status": "present"} for _ in range(201)]),
+        _body([{"student_id": str(uuid.uuid4()), "status": "present"} for _ in range(501)]),
         _body(extra="x"),
         _body([{"student_id": str(uuid.uuid4()), "status": "present", "note": "x"}]),
         {"records": [{"student_id": str(uuid.uuid4()), "status": "present"}]},
     ],
-    ids=["bad-status", "empty", "over-200", "extra-field", "extra-record-field", "no-date"],
+    ids=["bad-status", "empty", "over-500", "extra-field", "extra-record-field", "no-date"],
 )
 def test_rejects_invalid_bodies(body):
     with pytest.raises(ValidationError):
@@ -333,8 +333,17 @@ def test_rejects_a_repeated_student():
         SchoolAttendanceIn.model_validate(_body([{"student_id": sid, "status": "present"}, {"student_id": sid, "status": "absent"}]))
 
 
-def test_accepts_exactly_200():
-    assert len(SchoolAttendanceIn.model_validate(_body([{"student_id": str(uuid.uuid4()), "status": "present"} for _ in range(200)])).records) == 200
+def test_accepts_exactly_500():
+    assert len(SchoolAttendanceIn.model_validate(_body([{"student_id": str(uuid.uuid4()), "status": "present"} for _ in range(500)])).records) == 500
+
+
+def test_roster_out_types_status_as_the_four_values_or_none():
+    from app.schemas import SchoolAttendanceRosterOut
+
+    student = {"id": str(uuid.uuid4()), "full_name": "A", "grade_or_class": None}
+    assert SchoolAttendanceRosterOut.model_validate({"session_date": "2026-09-30", "today": "2026-09-30", "students": [{**student, "status": None}]}).students[0].status is None
+    with pytest.raises(ValidationError):
+        SchoolAttendanceRosterOut.model_validate({"session_date": "2026-09-30", "today": "2026-09-30", "students": [{**student, "status": "sick"}]})
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -363,19 +372,32 @@ def _unique_students(rows: list) -> list:
 class SchoolAttendanceIn(BaseModel):
     model_config = {"extra": "forbid"}
     session_date: date
-    records: Annotated[list[SchoolAttendanceMark], Field(min_length=1, max_length=200), AfterValidator(_unique_students)]
+    records: Annotated[list[SchoolAttendanceMark], Field(min_length=1, max_length=500), AfterValidator(_unique_students)]  # IT AttendanceBulkIn's limit
+
+
+class SchoolAttendanceRosterStudent(BaseModel):
+    id: UUID
+    full_name: str
+    grade_or_class: str | None
+    status: SchoolAttendanceStatus | None  # None = not marked (never absent)
+
+
+class SchoolAttendanceRosterOut(BaseModel):
+    session_date: date
+    today: date  # the school calendar's today, so the UI never uses the browser clock
+    students: list[SchoolAttendanceRosterStudent]
 ```
 
 - [ ] **Step 4: Run to verify it passes**
 
 Run: `python -m pytest -q tests/test_enh_030_schemas.py`
-Expected: PASS (10 tests).
+Expected: PASS (11 tests).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add apps/api/app/schemas.py apps/api/tests/test_enh_030_schemas.py
-git commit -m "feat(enh-030): SchoolAttendanceIn request schema"
+git commit -m "feat(enh-030): SchoolAttendanceIn request and roster response schemas"
 ```
 
 ---
@@ -388,7 +410,7 @@ git commit -m "feat(enh-030): SchoolAttendanceIn request schema"
 - Test: `apps/api/tests/test_enh_030_mark.py`
 
 **Interfaces:**
-- Consumes: `SchoolAttendanceRecord`, `ATTENDANCE_STATUSES` (Task 1); `SchoolAttendanceIn` (Task 2); `schools._own_school_id(user) -> UUID`, `schools._scoped_students_query(db, user, school_id) -> Select` (async), `schools._today_ist() -> date`, `schools.require_school_entitlement(db, user, school_id, service_key)`.
+- Consumes: `SchoolAttendanceRecord`, `ATTENDANCE_STATUSES` (Task 1); `SchoolAttendanceIn`, `SchoolAttendanceRosterOut` (Task 2); `schools._own_school_id(user) -> UUID`, `schools._scoped_students_query(db, user, school_id) -> Select` (async), `schools._today_ist() -> date`, `schools.require_school_entitlement(db, user, school_id, service_key)`.
 - Produces: `GET /api/v1/school/attendance?date=` and `PUT /api/v1/school/attendance`, both returning `{"session_date": "YYYY-MM-DD", "today": "YYYY-MM-DD", "students": [{"id", "full_name", "grade_or_class", "status": str|None}]}`; constants `FUTURE_DATE`, `NOT_ASSIGNED`, `TEACHER_REQUIRED`, `MARK_ACTION = "school.daily_attendance_mark"`; `RECENT_LIMIT = 30` (used by Task 4).
 
 - [ ] **Step 1: Write the failing tests** — `apps/api/tests/test_enh_030_mark.py`
@@ -463,6 +485,8 @@ async def test_remark_updates_never_duplicates_and_retry_is_harmless(client, db_
     rows = {r.school_student_id: r.status for r in await _rows(db_session, session_date=date(2026, 9, 1))}
     assert rows == {w["mine"][0].id: "absent", w["mine"][1].id: "present"}  # partial roster: the second student is untouched
     assert await _mark_audits(db_session, w["school"].id) == 3
+    audits = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.daily_attendance_mark", AuditLog.entity_id == str(w["school"].id)).order_by(AuditLog.created_at))).all()
+    assert [a.metadata_json["changes"] for a in audits[1:]] == [[{"student_id": str(w["mine"][0].id), "from": "present", "to": "absent"}], []]
 
 
 @pytest.mark.asyncio
@@ -543,7 +567,21 @@ async def test_each_mark_writes_one_audit_row_with_a_tally(client, db_session): 
     assert (await client.put(URL, json={"session_date": DAY, "records": records})).status_code == 200
     audit = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.daily_attendance_mark", AuditLog.entity_id == str(w["school"].id)))).one()
     assert audit.user_id == w["teacher"].id and audit.entity_type == "school"
-    assert audit.metadata_json == {"session_date": DAY, "count": 2, "statuses": {"present": 1, "absent": 1}}
+    changes = sorted(
+        [{"student_id": str(w["mine"][0].id), "from": None, "to": "present"}, {"student_id": str(w["mine"][1].id), "from": None, "to": "absent"}],
+        key=lambda c: c["student_id"],
+    )
+    assert audit.metadata_json == {"session_date": DAY, "count": 2, "statuses": {"present": 1, "absent": 1}, "changes": changes}
+
+
+@pytest.mark.asyncio
+async def test_non_json_body_is_refused(client, db_session):  # spec §11 S4 (CSRF): a cross-site form can only send text/plain
+    w = await _world(db_session)
+    await login(client, w["teacher"].email)
+    body = '{"session_date": "2026-09-01", "records": [{"student_id": "%s", "status": "present"}]}' % w["mine"][0].id
+    response = await client.put(URL, content=body, headers={"Content-Type": "text/plain"})
+    assert response.status_code == 422
+    assert await _rows(db_session, school_id=w["school"].id) == []
 
 
 @pytest.mark.asyncio
@@ -607,7 +645,7 @@ from app.api.schools import _own_school_id, _scoped_students_query, _today_ist, 
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import ATTENDANCE_STATUSES, AuditLog, SchoolAttendanceRecord, SchoolStudent, User
-from app.schemas import SchoolAttendanceIn
+from app.schemas import SchoolAttendanceIn, SchoolAttendanceRosterOut
 
 router = APIRouter(prefix="/school", tags=["school-attendance"])
 logger = get_logger("app.school.attendance")
@@ -651,7 +689,7 @@ async def _roster(db: AsyncSession, user: User, school_id: UUID, day: date) -> d
     }
 
 
-@router.get("/attendance")
+@router.get("/attendance", response_model=SchoolAttendanceRosterOut)
 async def attendance_roster(day: date | None = Query(None, alias="date"), user: User = Depends(_require_teacher), db: AsyncSession = Depends(get_db)):
     """Spec §5.1. Pure read: no database write."""
     school_id = _own_school_id(user)
@@ -662,15 +700,17 @@ async def attendance_roster(day: date | None = Query(None, alias="date"), user: 
     return body
 
 
-@router.put("/attendance")
+@router.put("/attendance", response_model=SchoolAttendanceRosterOut)
 async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depends(_require_teacher), db: AsyncSession = Depends(get_db)):
     """Spec §5.2. One transaction: lock the listed students FOR SHARE (a transfer approval or reassignment takes them FOR UPDATE, so
     it waits for this write, or this waits for it and sees the result), re-check scope under the lock, tier gate, upsert, audit,
-    commit. Any failure before the commit leaves nothing written. Rows are locked in id order so two saves cannot deadlock.
-    Unlisted students are untouched; a retry of the same body is harmless."""
+    commit. Any failure before the commit leaves nothing written. Records are sorted by student id, so every save locks and
+    inserts in one order and two overlapping saves cannot deadlock (spec §11 A3). Unlisted students are untouched; a retry of the
+    same body is harmless."""
     school_id = _own_school_id(user)
     _check_date(payload.session_date)
-    ids = sorted({r.student_id for r in payload.records})
+    records = sorted(payload.records, key=lambda r: r.student_id)
+    ids = [r.student_id for r in records]
     locked = (
         await db.scalars(
             select(SchoolStudent).where(SchoolStudent.id.in_(ids)).order_by(SchoolStudent.id).with_for_update(read=True).execution_options(populate_existing=True)
@@ -680,10 +720,21 @@ async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depend
         raise HTTPException(403, NOT_ASSIGNED)
     # ENH-022: after scope, before any write -- a denial commits only its own audit row.
     await require_school_entitlement(db, user, school_id, None)
+    before = dict(
+        (
+            await db.execute(
+                select(SchoolAttendanceRecord.school_student_id, SchoolAttendanceRecord.status).where(
+                    SchoolAttendanceRecord.school_student_id.in_(ids), SchoolAttendanceRecord.session_date == payload.session_date
+                )
+            )
+        ).all()
+    )
+    # Spec §11 S5: the audit names who changed, from what, to what -- only rows whose status actually changed.
+    changes = [{"student_id": str(r.student_id), "from": before.get(r.student_id), "to": r.status} for r in records if before.get(r.student_id) != r.status]
     stmt = pg_insert(SchoolAttendanceRecord).values(
         [
             {"id": uuid4(), "school_student_id": r.student_id, "school_id": school_id, "session_date": payload.session_date, "status": r.status, "marked_by_user_id": user.id}
-            for r in payload.records
+            for r in records
         ]
     )
     await db.execute(
@@ -692,11 +743,12 @@ async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depend
             set_={"status": stmt.excluded.status, "school_id": stmt.excluded.school_id, "marked_by_user_id": stmt.excluded.marked_by_user_id, "updated_at": func.now()},
         )
     )
-    tally = Counter(r.status for r in payload.records)
+    tally = Counter(r.status for r in records)
     statuses = {s: tally[s] for s in ATTENDANCE_STATUSES if tally[s]}
-    db.add(AuditLog(user_id=user.id, action=MARK_ACTION, entity_type="school", entity_id=str(school_id), metadata_json={"session_date": payload.session_date.isoformat(), "count": len(payload.records), "statuses": statuses}))
+    metadata = {"session_date": payload.session_date.isoformat(), "count": len(records), "statuses": statuses, "changes": changes}
+    db.add(AuditLog(user_id=user.id, action=MARK_ACTION, entity_type="school", entity_id=str(school_id), metadata_json=metadata))
     await db.commit()
-    logger.info("school_attendance_marked", extra={"extra_fields": {"actor_id": str(user.id), "school_id": str(school_id), "session_date": payload.session_date.isoformat(), "count": len(payload.records)}})
+    logger.info("school_attendance_marked", extra={"extra_fields": {"actor_id": str(user.id), "school_id": str(school_id), "session_date": payload.session_date.isoformat(), "count": len(records), "changed": len(changes)}})
     return await _roster(db, user, school_id, payload.session_date)
 ```
 
@@ -980,6 +1032,13 @@ describe("SchoolDailyAttendance", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  it("shows how many students are marked (spec §11 F2)", () => {
+    render(<SchoolDailyAttendance roster={ROSTER} />);
+    expect(screen.getByText("1 of 2 students marked")).toBeTruthy();
+    fireEvent.click(within(group("Ben Das")).getByLabelText("Present"));
+    expect(screen.getByText("2 of 2 students marked")).toBeTruthy();
+  });
+
   it("Mark all present fills only unmarked students", () => {
     render(<SchoolDailyAttendance roster={ROSTER} />);
     fireEvent.click(screen.getByRole("button", { name: "Mark all present" }));
@@ -1078,7 +1137,7 @@ export const ATTENDANCE_LABEL: Record<AttendanceStatus, string> = { present: "Pr
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState, useTransition } from "react";
 
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
 import { sendJson } from "@/lib/apiErrors";
@@ -1103,7 +1162,10 @@ export default function SchoolDailyAttendance({ roster }: { roster: DailyRoster 
   const [marks, setMarks] = useState<Marks>(() => savedMarks(roster));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
+  const [loadingDate, startDateChange] = useTransition(); // spec §11 F1: feedback while the next day's roster loads
+  const locked = busy || loadingDate;
   const dirty = roster.students.some((s) => marks[s.id] !== saved[s.id]);
+  const marked = roster.students.filter((s) => marks[s.id]).length;
 
   useEffect(() => {
     if (!dirty) return;
@@ -1131,7 +1193,7 @@ export default function SchoolDailyAttendance({ roster }: { roster: DailyRoster 
   function changeDate(value: string) {
     if (!value || value === roster.session_date) return;
     if (dirty && !window.confirm(LEAVE_WITH_UNSAVED)) return;
-    router.push(`${PAGE}?date=${value}`);
+    startDateChange(() => router.push(`${PAGE}?date=${value}`));
   }
 
   async function save(event: FormEvent) {
@@ -1158,10 +1220,16 @@ export default function SchoolDailyAttendance({ roster }: { roster: DailyRoster 
     return <p className="muted" role="status">No students assigned to you yet. Your School Coordinator assigns students to teachers.</p>;
   }
   return (
-    <form className="form" onSubmit={save} aria-busy={busy}>
+    <form className="form" onSubmit={save} aria-busy={locked}>
       <div className="field" style={{ maxWidth: 220 }}>
         <label htmlFor="attendance-date">Date</label>
-        <input id="attendance-date" type="date" value={roster.session_date} max={roster.today} disabled={busy} onChange={(e) => changeDate(e.target.value)} />
+        <input id="attendance-date" type="date" value={roster.session_date} max={roster.today} disabled={locked} onChange={(e) => changeDate(e.target.value)} />
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+        <p className="muted" style={{ margin: 0 }}>{loadingDate ? "Loading the selected date…" : `${marked} of ${plural(roster.students.length)} marked`}</p>
+        <button type="button" className="btn secondary small" disabled={locked} onClick={() => setMarks((m) => Object.fromEntries(roster.students.map((s) => [s.id, m[s.id] ?? "present"])))}>
+          Mark all present
+        </button>
       </div>
       <div style={{ display: "grid", gap: 12 }}>
         {roster.students.map((s) => (
@@ -1174,7 +1242,7 @@ export default function SchoolDailyAttendance({ roster }: { roster: DailyRoster 
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0 18px" }}>
               {ATTENDANCE_STATUSES.map((status) => (
                 <label key={status} style={{ display: "inline-flex", alignItems: "center", gap: 8, minHeight: 44 }}>
-                  <input type="radio" name={`attendance-${s.id}`} value={status} checked={marks[s.id] === status} disabled={busy} onChange={() => setMarks((m) => ({ ...m, [s.id]: status }))} />
+                  <input type="radio" name={`attendance-${s.id}`} value={status} checked={marks[s.id] === status} disabled={locked} onChange={() => setMarks((m) => ({ ...m, [s.id]: status }))} />
                   {ATTENDANCE_LABEL[status]}
                 </label>
               ))}
@@ -1183,10 +1251,7 @@ export default function SchoolDailyAttendance({ roster }: { roster: DailyRoster 
         ))}
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-        <button type="button" className="btn secondary small" disabled={busy} onClick={() => setMarks((m) => Object.fromEntries(roster.students.map((s) => [s.id, m[s.id] ?? "present"])))}>
-          Mark all present
-        </button>
-        <button type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : "Save attendance"}</button>
+        <button type="submit" className="btn small" disabled={locked}>{busy ? "Saving…" : "Save attendance"}</button>
         {dirty && <span className="muted">Unsaved changes</span>}
       </div>
       {message && <FormMessage message={message} />}

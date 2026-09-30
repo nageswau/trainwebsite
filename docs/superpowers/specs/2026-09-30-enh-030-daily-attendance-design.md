@@ -71,14 +71,14 @@ New table `school_attendance_records` (model `SchoolAttendanceRecord`, migration
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID PK | |
-| `school_student_id` | UUID FK `school_students.id`, not null, indexed | |
-| `school_id` | UUID FK `schools.id`, not null, indexed | stamped from the student at mark time (C1) |
-| `session_date` | `Date`, not null, indexed | |
+| `school_student_id` | UUID FK `school_students.id`, not null | |
+| `school_id` | UUID FK `schools.id`, not null | stamped from the student at mark time (C1) |
+| `session_date` | `Date`, not null | |
 | `status` | `String(20)`, not null | `CHECK status IN ('present','absent','late','excused')` (`ck_school_attendance_status`) |
 | `marked_by_user_id` | UUID FK `users.id`, not null | last writer |
 | `created_at`, `updated_at` | timestamptz, `server_default now()` | `updated_at` set on upsert |
 
-`UNIQUE (school_student_id, session_date)` named `uq_school_attendance_student_date`. No existing table is altered; no existing row is read
+`UNIQUE (school_student_id, session_date)` named `uq_school_attendance_student_date`; its index serves every query in this spec (roster: student IN (...) AND date; summary: student ORDER BY date DESC), so no other index is created (review A4). No existing table is altered; no existing row is read
 or written; `downgrade()` drops indexes then the table. The migration follows `0040_school_activity_feedback.py` (skip if the table already
 exists, for `create_all` dev databases).
 
@@ -98,20 +98,22 @@ Router `apps/api/app/api/school_attendance.py`, `APIRouter(prefix="/school", tag
 ### 5.2 `PUT /school/attendance` — mark the class in one action
 
 Body `SchoolAttendanceIn`: `{"session_date": date, "records": [{"student_id": UUID, "status": "present"|"absent"|"late"|"excused"}]}`,
-`extra="forbid"`, 1–200 records, unique `student_id`s (an `AfterValidator` calling the existing `_unique_ids`, like `_unique_enrollments`, `schemas.py:1408`).
+`extra="forbid"`, 1–500 records (the IT `AttendanceBulkIn` limit, review A2), unique `student_id`s (an `AfterValidator` calling the existing `_unique_ids`, like `_unique_enrollments`, `schemas.py:1408`).
 
 One transaction, in this order:
 1. Role `school_teacher` → else 403. `school_id = _own_school_id(user)`.
 2. `session_date > _today_ist()` → 422.
-3. **Lock and re-check scope:** `SELECT … FROM school_students WHERE id IN (:ids) ORDER BY id FOR SHARE`. If any id is missing, not in
+3. **Lock and re-check scope:** records are sorted by `student_id` first (one lock order for every save, review A3); `SELECT … FROM school_students WHERE id IN (:ids) ORDER BY id FOR SHARE`. If any id is missing, not in
    `school_id`, or not `assigned_teacher_user_id == user.id` → `403 "One or more students are not assigned to you"`; nothing written.
    (`FOR SHARE` blocks a concurrent transfer approval / reassignment — both take the row for update — until this commits; ordered by id so
    two concurrent calls cannot deadlock.)
 4. `await require_school_entitlement(db, user, school_id, None)` — after scope, before any write (its denial commits only its audit row).
-5. `pg_insert(SchoolAttendanceRecord).values([...]).on_conflict_do_update(constraint="uq_school_attendance_student_date",
+5. Read the day's existing statuses for the listed students (under the lock) to build the audit `changes` list (review A5).
+   Then `pg_insert(SchoolAttendanceRecord).values([...]).on_conflict_do_update(constraint="uq_school_attendance_student_date",
    set_={status, school_id, marked_by_user_id, updated_at=now()})`.
 6. `AuditLog(action="school.daily_attendance_mark", entity_type="school", entity_id=str(school_id),
-   metadata_json={"session_date", "count", "statuses": {status: n}})`.
+   metadata_json={"session_date", "count", "statuses": {status: n}, "changes": [{"student_id", "from", "to"}]})` — `changes` lists only
+   rows whose status actually changed (`from` is null for a first mark), so "who marked this child absent, and when" is answerable (review S5).
 7. `commit`; `logger.info("school_attendance_marked", …ids and counts only)`.
 8. Return the same body as §5.1 for `session_date`.
 
@@ -160,7 +162,7 @@ never a duplicate (unique key + upsert). Students not listed stay as they were (
 | AC02 | Re-marking the same student and day updates the row (status, marked_by, updated_at); never a second row. |
 | AC03 | A `PUT` listing any student not assigned to the teacher (unassigned, other teacher's, other school's, unknown id) returns 403 and writes nothing (no record, no mark audit row). |
 | AC04 | Non-teacher roles (coordinator, principal, parent, service roles, IT roles) get 403 on `GET` and `PUT`. |
-| AC05 | A future `session_date` → 422; an invalid status, duplicate `student_id`, empty or >200 records, or an extra field → 422. |
+| AC05 | A future `session_date` → 422; an invalid status, duplicate `student_id`, empty or >500 records, an extra field, or a non-JSON body → 422. |
 | AC06 | An expired or missing tier → the existing tier 403 and `school.tier_access_denied` audit row; no record written. |
 | AC07 | Each successful `PUT` writes one `school.daily_attendance_mark` audit row with date, count and status tally. |
 | AC08 | The linked parent's dashboard card and child overview show the student's daily attendance counts; the overview `daily_attendance` key is present for all current readers. |
@@ -204,3 +206,49 @@ never a duplicate (unique key + upsert). Students not listed stay as they were (
 
 Coordinator marking; period-level attendance; correction/appeal workflow; timeline events; dashboard/report/analytics KPIs (ENH-016
 follow-up); parent absence notifications; seed data; a school calendar/holiday model.
+
+## 11. Engineering review (2026-09-30): api-and-interface-design, frontend-ui-engineering, security-and-hardening
+
+Applied to this design before any code. Each finding either changed the design (**changed**) or is recorded as deliberately kept.
+
+### 11.1 API and interface
+
+| ID | Finding | Resolution |
+|---|---|---|
+| A1 | Both routes returned untyped dicts; the skill wants typed output schemas | **changed**: `SchoolAttendanceRosterOut` / `SchoolAttendanceRosterStudent` as `response_model` on both routes (the OpenAPI contract; `status` typed as the four-value literal or null) |
+| A2 | A 200-record cap is lower than a class the roster can return (the roster is every assigned student, unpaginated) | **changed**: cap 500, the existing IT `AttendanceBulkIn` limit; the roster stays unpaginated on purpose (a teacher's own class, the same as `/school/students` for a teacher) |
+| A3 | Two saves of overlapping students (two tabs) insert in payload order and could deadlock on the attendance rows | **changed**: records sorted by `student_id` before the lock and the insert |
+| A4 | Three single-column indexes had no query that needs them | **changed**: dropped; the unique index covers every query here. ENH-016 KPIs add their own index when they exist |
+| A5 | The audit row said how many, not which | **changed**: `changes` list (see S5) |
+| A6 | HTTP semantics | kept: `GET` is safe (no DB write, ENH-013 D12); `PUT` is an idempotent upsert of the listed marks, the ENH-011 `PUT …/attendance` precedent. The date stays in the body/query (not the path) so `GET` can default to the school's today |
+| A7 | Error shape | kept: the codebase's `{"detail": str}` (and FastAPI's list for schema errors), which `detailMessage` already renders. snake_case fields, as every School endpoint |
+| A8 | Backward compatibility | kept: only additive keys (`daily_attendance`, `data.daily`); the 360 envelope (`Student360Out`) and the 16 tab keys are unchanged; the frontend treats both new keys as optional |
+| A9 | Enumeration | kept: unknown, unassigned, other-school and moved-away ids all get the same 403 text, so the call cannot probe which student ids exist |
+
+### 11.2 Frontend
+
+| ID | Finding | Resolution |
+|---|---|---|
+| F1 | Changing the date is a server round trip with no feedback, and a second change can race the first | **changed**: `router.push` inside `useTransition`; while pending the form is disabled, `aria-busy`, and shows "Loading <date>…" |
+| F2 | On a 40-student list the teacher cannot see progress | **changed**: a tally line under the date — "12 of 40 marked" — from the current selections |
+| F3 | "Mark all present" sat beside Save at the bottom of a long list | **changed**: "Mark all present" above the list (the first thing a teacher does); Save and the unsaved flag below it |
+| F4 | Sticky save bar | not added: not in the design system; the unsaved-changes guard covers leaving the page |
+| F5 | Reuse | kept: `FormMessage`, `sendJson`, `PortalShell`, `accessUnavailable`, the `SchoolSkillAttendance` guard pattern, `.card/.form/.field/.badge/.btn`, `formatCalendarDate`; one new component, one new plain module (`lib/attendance.ts`) |
+| F6 | Keyboard and screen readers | kept: native radio groups (Tab between students, arrow keys within one), each `fieldset` named by its `legend`; status is text, never colour alone; results announced through `FormMessage` (`status`/`alert`) |
+
+### 11.3 Security (threat model: trust boundary = the two new routes' query/body; assets = a minor's attendance record and its integrity)
+
+| ID | Check | Result |
+|---|---|---|
+| S1 | Authentication | Existing `get_current_user` (httpOnly `edusphere_access` cookie, inactive users → 401) on both routes. No change to auth |
+| S2 | Authorization / IDOR / role escalation | Teacher-only dependency; school from the session profile, never input; every listed id re-checked under a row lock against own school + `assigned_teacher_user_id`; `extra="forbid"` rejects smuggled `school_id`/`marked_by`; `marked_by_user_id` comes from the session. Reads reuse the existing loaders unchanged. Tests: AC03 (four outsider kinds), AC04 (three other roles), smuggled field |
+| S3 | Input validation / SQL injection | Pydantic at the boundary (date, UUIDs, four-value literal, 1–500, unique ids); SQLAlchemy parameters only; ordering by fixed columns. The page passes `?date` on only when it matches `^\d{4}-\d{2}-\d{2}$` |
+| S4 | CSRF | Session cookies are `SameSite=Lax` (`auth.py:88`); the write is a `PUT` with a JSON body, which a cross-site page cannot send without a CORS preflight, and CORS allows only `settings.frontend_url`; FastAPI ≥0.115 refuses a non-JSON body. **Pinned by a test** (a `text/plain` body → 422, nothing written). `GET` writes nothing |
+| S5 | Audit / repudiation | One audit row per save with the changed students (`from`→`to`), actor from the session, school id; a tier denial keeps its own `school.tier_access_denied` row |
+| S6 | Sensitive logs | Log lines carry ids, date and counts only — no names, no per-student statuses. Audit metadata carries student ids, never names |
+| S7 | XSS | All values rendered through React escaping; no `dangerouslySetInnerHTML`; no URL built from stored data |
+| S8 | Rate limiting | Not added: the codebase has no general limiter (only a DB-counted limit on transfers), the routes need an authenticated teacher, and a save is capped at 500 rows. Adding a limiter is an "ask first" change outside ENH-030 |
+| S9 | Secrets / tokens / session | None introduced; no new cookie, header, or config |
+| S10 | Data minimisation | The roster returns name, grade/class and status only, for the teacher's own students; the overview adds dates and statuses only |
+
+**Still `NEEDS_CONFIRMATION` (defaults shown, not blocking):** a lower bound on how far back a teacher may mark (default: none; every write is audited); whether attendance history from a previous school should be visible to parents (default: hidden, C1).
