@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -9,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
-from app.models import AuditLog, Batch, Enrollment, LiveSession, Message, Notification, NotificationDelivery, User
+from app.models import AuditLog, Batch, Enrollment, LiveSession, Message, Notification, User
+from app.notifications.dispatch import queue_deliveries
 from app.schemas import MeetingCreate, RecordingLinkUpdate
 from app.services.integrations import send_notification
 from app.services.meetings import MeetingProviderError, create_provider_meeting
@@ -73,31 +73,23 @@ async def notify(payload: dict, user: User = Depends(get_current_user), db: Asyn
     if user.role not in {"super_admin", "it_admin", "overseas_admin", "placement_team", "counselor"}:
         raise HTTPException(403, "Notification permission required")
     recipient_id = payload.get("user_id")
+    channels = payload.get("channels", ["email"])
+    statuses: dict[str, str] = {}
     if recipient_id:
         recipient = await db.get(User, uuid_reference(recipient_id, "recipient reference"))
         if not recipient:
             raise HTTPException(404, "Recipient not found")
         if user.role != "super_admin" and recipient.division != user.division:
             raise HTTPException(403, "Cross-division notification is not allowed")
-        db.add(Notification(user_id=recipient.id, title=payload["title"], body=payload["body"], action_url=payload.get("action_url")))
-    statuses = {}
-    for channel in payload.get("channels", ["email"]):
-        status, error = await send_notification(
-            channel,
-            {
-                "user_id": recipient_id,
-                "to": recipient.email if recipient_id else None,
-                "phone": recipient.phone if recipient_id else None,
-                "title": payload["title"],
-                "body": payload["body"],
-                "metadata": payload.get("metadata", {}),
-            },
-        )
-        statuses[channel] = status
-        if recipient_id:
-            notification = await db.scalar(select(Notification).where(Notification.user_id == recipient_id).order_by(Notification.id.desc()))
-            if notification:
-                db.add(NotificationDelivery(notification_id=notification.id, channel=channel, status=status, error=error, sent_at=datetime.now(UTC) if status == "sent" else None))
+        notification = Notification(user_id=recipient.id, title=payload["title"], body=payload["body"], action_url=payload.get("action_url"))
+        db.add(notification)
+        await db.flush()
+        # ENH-014: queued per channel, sent after commit; WhatsApp/SMS only for a recipient who opted in.
+        statuses = {row.channel: row.status for row in await queue_deliveries(db, notification, recipient, channels=channels)}
+    else:
+        for channel in channels:
+            status, _error = await send_notification(channel, {"user_id": None, "to": None, "phone": None, "title": payload["title"], "body": payload["body"], "metadata": payload.get("metadata", {})})
+            statuses[channel] = status
     db.add(AuditLog(user_id=user.id, action="notification.send", entity_type="notification", entity_id=None, metadata_json={"channels": statuses, "recipient_id": recipient_id}))
     await db.commit()
     return {"queued": True, "channels": statuses}
