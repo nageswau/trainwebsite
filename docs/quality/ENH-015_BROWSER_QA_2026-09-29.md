@@ -78,3 +78,30 @@ content, and audit rows. The other findings come from reviewing screenshots and 
 - **Console / network / images / redirects:** no console errors in normal use (the only errors are the deliberately
   injected 4xx/5xx and the real 401); no failed requests other than aborted Next.js link prefetches during navigation;
   no broken images; no unexpected redirects.
+
+## Fix pass and browser re-test (2026-09-30)
+
+Fixed test-first (a failing unit/API test for each before the change): QA15-01 at `be8c217` (`aria-disabled` plus an
+in-flight ref instead of `disabled`); QA15-03, QA15-04, QA15-05, QA15-06 and QA15-08 at `dd0ed71`.
+
+| ID | Fix | Re-test (web and API rebuilt at `dd0ed71`; same isolated stack and data) |
+|---|---|---|
+| QA15-01 | Button stays focusable while busy; a ref blocks a second request | Focus stays on the button after mouse and keyboard downloads at 1440 and 768 (COORD-05 and COORD-11a now pass) |
+| QA15-03 | Parent action row `align-items: flex-start` | "Open 360° view" / "Back to my children" stay 49.25 px tall with the message shown, at 1440 and 768 |
+| QA15-04 | `.report-downloads`: 22 px heading, no second `.portal-content` bottom padding | Card 169 px tall; a single 30 px gap; the report's KPI tiles start at y = 297 (was ~360) |
+| QA15-05 | Each record in `KeepTogether`; a section heading and its status stay with the first record / "No records yet." | No record split across pages; no heading at a page foot (a unit test sweeps 0–20 results; populated and empty PDFs inspected) |
+| QA15-06 | "Overall status: …" section line with spacing below it; test type in capitals, as on screen | PDFs read "Overall status: Completed" above the record's own "Status" row; "IELTS" |
+| QA15-08 | Each Reports page refuses the other school role with the access card (`accessDenied`) before reading the report | Principal on the coordinator URL → "Access unavailable · School Coordinator role required", with a link to the principal dashboard; the reverse → "Principal role required" |
+
+**Regression:** the full first-pass script re-run → 101/101 pass (after correcting one script locator that picked Next.js's
+hidden route announcer instead of the form message). Backend ENH-015 tests: 53 pass. Web unit suite: 1058 pass.
+Typecheck and lint clean.
+
+**Still open — each needs a decision, not fixed:**
+- QA15-02: Devanagari names need a bundled font *and* text shaping. reportlab shapes Indic scripts only with the
+  optional `uharfbuzz` package, so the fix is a new dependency plus a font asset.
+- QA15-07: pre-existing Next.js history issue, shared by every portal page.
+- QA15-09: pre-existing grade display rules.
+- QA15-10: no PDF accessibility requirement has been decided.
+- "Career guidance" count mismatch: the on-screen `/school/reports` panel counts any career record, while the PDF counts
+  completed guidance sessions (the ENH-016 rule).
