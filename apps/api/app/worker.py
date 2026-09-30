@@ -57,3 +57,9 @@ def sync_enquiry_to_crm_task(self, enquiry_id: str):
                 raise RuntimeError("CRM webhook delivery failed")
 
     asyncio.run(_run())
+
+
+@celery.task
+def deliver_notification_task(delivery_id: str):
+    """ENH-014: replaced with the real body in Task 6."""
+    raise NotImplementedError

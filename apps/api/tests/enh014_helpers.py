@@ -35,3 +35,17 @@ async def set_prefs(db, user: User, *, whatsapp: bool = False, sms: bool = False
     now = datetime.now(UTC)
     db.add(NotificationPreference(user_id=user.id, whatsapp_opt_in=whatsapp, sms_opt_in=sms, whatsapp_opted_in_at=now if whatsapp else None, sms_opted_in_at=now if sms else None))
     await db.commit()
+
+
+async def drain(enqueued: list, limit: int = 50) -> None:
+    """Run every captured delivery (including re-enqueued retries, countdown ignored) until the queue is empty."""
+    from uuid import UUID
+
+    from app.notifications.delivery import deliver
+
+    for _ in range(limit):
+        if not enqueued:
+            return
+        delivery_id, _countdown = enqueued.pop(0)
+        await deliver(UUID(delivery_id))
+    raise AssertionError("delivery queue did not drain")

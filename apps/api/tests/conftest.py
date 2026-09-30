@@ -39,3 +39,14 @@ async def db_session():
 
     async with SessionLocal() as session:
         yield session
+
+
+@pytest.fixture(autouse=True)
+def enqueued(monkeypatch):
+    """ENH-014: no Redis in tests. Every delivery published after a commit is captured here as (delivery_id, countdown);
+    `tests.enh014_helpers.drain` sends them in-process."""
+    from app.notifications import dispatch
+
+    captured: list[tuple[str, int]] = []
+    monkeypatch.setattr(dispatch, "_publish", lambda delivery_id, countdown: captured.append((delivery_id, countdown)))
+    return captured
