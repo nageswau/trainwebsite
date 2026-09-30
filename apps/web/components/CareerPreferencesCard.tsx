@@ -83,7 +83,14 @@ export default function CareerPreferencesCard({ students }: { students: Student[
             options={students.map((s) => ({ id: s.id, label: s.full_name, detail: s.school_name }))}
             onChange={(option) => {
               setStudentId(option?.id ?? "");
-              if (option) load(option.id);
+              if (option) {
+                load(option.id);
+              } else {
+                // ENH-031: the pick was cleared -- the previous student's form must not stay editable.
+                setPrefs(null);
+                setState("idle");
+                setMessage(null);
+              }
             }}
           />
           {state === "loading" && <p className="muted" aria-busy="true" aria-live="polite">Loading…</p>}

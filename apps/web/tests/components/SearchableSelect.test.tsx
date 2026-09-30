@@ -57,6 +57,13 @@ describe("SearchableSelect load-once mode", () => {
     expect(screen.getByRole("listbox", { name: "Student" }).id).toBe("psych-student-list");
   });
 
+  it("links its error and status to the input even when the host id contains spaces (final review #1)", () => {
+    const { form, input } = inForm(<SearchableSelect id="Create visa case-application_id" label="Application reference" name="aid" required noun="application" options={OPTIONS} />);
+    act(() => { form.checkValidity(); });
+    expect(input).toHaveAccessibleDescription(/Choose an application from the list\./);
+    expect(document.getElementById(input.getAttribute("aria-controls") ?? "")).not.toBeNull();
+  });
+
   it("a required field without a pick is invalid and shows the field error", () => {
     const { form, input } = inForm(<SearchableSelect label="Student" name="sid" required noun="student" options={OPTIONS} />);
     let valid = true;
@@ -147,6 +154,21 @@ describe("SearchableSelect server mode", () => {
     await act(async () => { vi.advanceTimersByTime(DEBOUNCE_MS); });
     await act(async () => { resolveOld(page("Old Result")); });
     expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["New Result"]);
+  });
+
+  it("drops the previous results as soon as the search text changes, so they cannot be picked (final review)", async () => {
+    vi.useFakeTimers();
+    const search = vi.fn().mockResolvedValueOnce(page("Asha Rao")).mockResolvedValueOnce(page("Bob Das"));
+    const { input } = inForm(<SearchableSelect label="Student" noun="student" search={search} />);
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "ash" } });
+    await act(async () => { vi.advanceTimersByTime(DEBOUNCE_MS); });
+    expect(screen.getByRole("option", { name: "Asha Rao" })).toBeInTheDocument();
+    fireEvent.change(input, { target: { value: "bob" } });
+    expect(screen.queryByRole("option", { name: "Asha Rao" })).toBeNull();
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input.value).toBe("bob");
   });
 
   it("shows a failure with Retry, and Retry searches again", async () => {

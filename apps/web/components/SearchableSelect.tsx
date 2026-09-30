@@ -37,9 +37,12 @@ export function filterOptions(options: PickOption[], text: string): LookupPage {
 export default function SearchableSelect({ label, noun, id, name, required = false, disabled = false, options, search, minChars = 0, onChange }: Props) {
   const autoId = useId();
   const inputId = id ?? `combo-${autoId}`;
-  const listId = `${inputId}-list`;
-  const statusId = `${inputId}-status`;
-  const errorId = `${inputId}-error`;
+  // aria-controls/aria-describedby are space-separated id lists, so the ids they point at must not contain spaces
+  // (ActionForm ids are "<spec title>-<field>", e.g. "Create visa case-application_id").
+  const baseId = inputId.replace(/\s+/g, "-");
+  const listId = `${baseId}-list`;
+  const statusId = `${baseId}-status`;
+  const errorId = `${baseId}-error`;
   const inputRef = useRef<HTMLInputElement>(null);
   // Hosts often pass inline functions; refs keep a re-render from restarting the search or firing stale callbacks.
   const searchRef = useRef(search);
@@ -114,6 +117,8 @@ export default function SearchableSelect({ label, noun, id, name, required = fal
 
   function edit(event: ChangeEvent<HTMLInputElement>) {
     setText(event.target.value);
+    // The previous search's results no longer match the text; never let one be picked for the new text.
+    if (serverMode) setRemote(null);
     setOpen(true);
     setActive(-1);
     setError(null);

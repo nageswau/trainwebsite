@@ -25,6 +25,15 @@ describe("CareerPreferencesCard", () => {
     expect((screen.getByLabelText("Interested in studying abroad") as HTMLSelectElement).value).toBe("yes");
   });
 
+  it("hides the previous student's form once the pick is cleared (ENH-031 final review #2)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(prefs)));
+    render(<CareerPreferencesCard students={students} />);
+    pickOption(screen, "Student", "s1");
+    expect(await screen.findByLabelText("Career interests")).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox", { name: "Student" }), { target: { value: "Bo" } });
+    expect(screen.queryByLabelText("Career interests")).toBeNull();
+  });
+
   it("shows an error with Retry when loading fails", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(json({}, 500)).mockResolvedValueOnce(json(prefs));
     vi.stubGlobal("fetch", fetchMock);

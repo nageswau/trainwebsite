@@ -85,6 +85,17 @@ describe("WorkflowPanel reference fields (ENH-031)", () => {
     await waitFor(() => expect(mock.mock.calls.some(([url]) => String(url) === "/api/v1/lookups/overseas-applications?limit=20&student_id=s1")).toBe(true));
   });
 
+  it("document upload keeps the application picker disabled until a student is picked (final review)", async () => {
+    stub({ "overseas-students": { items: [{ id: "s1", label: "Asha Rao", detail: "asha@example.local" }], truncated: false }, "overseas-applications": { items: [], truncated: false } });
+    render(<WorkflowPanel user={user("agent")} section="documents" />);
+    const student = await screen.findByRole("combobox", { name: "Student reference" });
+    const application = () => screen.getByRole("combobox", { name: "Application reference (optional)" });
+    expect(application()).toBeDisabled();
+    fireEvent.focus(student);
+    fireEvent.click(await screen.findByRole("option", { name: "Asha Rao — asha@example.local" }));
+    expect(application()).toBeEnabled();
+  });
+
   it("no student or application reference is a plain text box any more", async () => {
     stub({});
     for (const [role, section, division] of [["counselor", "appointments", "overseas"], ["overseas_admin", "applications", "overseas"], ["placement_team", "offers", "it"]] as const) {
