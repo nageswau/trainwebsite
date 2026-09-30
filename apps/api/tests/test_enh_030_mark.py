@@ -1,6 +1,7 @@
 """ENH-030 -- GET/PUT /school/attendance (spec §5.1-5.2, AC01-AC07). Each test builds its own throwaway school."""
 
 import json
+import logging
 import uuid
 from datetime import date, timedelta
 
@@ -14,6 +15,15 @@ from app.models import AuditLog, SchoolAttendanceRecord, SchoolStudent
 
 URL = "/api/v1/school/attendance"
 DAY = "2026-09-01"
+
+
+@pytest.fixture(autouse=True)
+def _app_loggers_enabled():
+    """Alembic's env.py calls `logging.config.fileConfig`, which DISABLES loggers that already exist; an earlier test that migrates
+    in-process (ENH-001's downgrade/upgrade cycle) would silence `app.school.attendance` and `caplog` would see nothing -- the
+    order-dependence ENH-004/005 found. Production is unaffected (Alembic runs in its own process)."""
+    logging.getLogger("app.school.attendance").disabled = False
+    yield
 
 
 async def _world(db, *, students: int = 3, **over) -> dict:
