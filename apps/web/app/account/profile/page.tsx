@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import NotificationPreferencesForm from "@/components/NotificationPreferencesForm";
 import ProfileForm from "@/components/ProfileForm";
 import PublicShell from "@/components/PublicShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { ROLE_DASHBOARD_PATH } from "@/lib/navigation";
-import type { User } from "@/lib/types";
+import { isNotificationPreferences, type NotificationPreferences, type User } from "@/lib/types";
 
 // Belongs to no one role's portal nav (PORTAL_NAV/SCHOOL_NAV), so it is one shared route, same
 // reasoning as /account/password (ENH-006). Renders inside PublicShell (site header, footer) and
@@ -49,6 +50,13 @@ export default async function AccountProfilePage() {
       </PublicShell>
     );
   }
+  let preferences: NotificationPreferences | null = null;
+  try {
+    const loaded: unknown = await serverApi<unknown>("/api/v1/account/notification-preferences");
+    preferences = isNotificationPreferences(loaded) ? loaded : null;
+  } catch {
+    preferences = null; // this section only; the profile form still renders
+  }
   const division = user.division === "it" || user.division === "overseas" ? user.division : undefined;
   return (
     <PublicShell division={division}>
@@ -59,6 +67,20 @@ export default async function AccountProfilePage() {
           <p className="muted">Signed in as {user.full_name} ({user.email}).</p>
           <div className="action-card">
             <ProfileForm fullName={user.full_name} phone={user.phone ?? null} />
+          </div>
+          <h2 style={{ marginTop: 28 }}>Notifications</h2>
+          <p className="muted">Choose where we send updates about results, sessions and applications.</p>
+          <div className="action-card">
+            {preferences ? (
+              <NotificationPreferencesForm initial={preferences} phone={user.phone ?? null} />
+            ) : (
+              <div className="form-error" role="alert">
+                <p style={{ margin: 0 }}>We couldn&apos;t load your notification settings right now.</p>
+                <p style={{ margin: "6px 0 0" }}>
+                  <a href="/account/profile" style={{ color: "var(--blue)", fontWeight: 800 }}>Try again</a>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import NotificationPreferencesForm from "@/components/NotificationPreferencesForm";
 import ProfileForm from "@/components/ProfileForm";
 import PublicShell from "@/components/PublicShell";
 import { ApiError, serverApi } from "@/lib/api";
@@ -64,5 +65,41 @@ describe("/account/profile page (ENH-007)", () => {
 
   it("has a page title of its own", () => {
     expect(metadata.title).toBe("Your profile");
+  });
+});
+
+const prefs = { whatsapp: true, sms: false, phone_valid: true };
+function byPath(overrides: { me?: unknown; prefs?: unknown | Error } = {}) {
+  vi.mocked(serverApi).mockImplementation(async (path: string) => {
+    if (path === "/api/v1/account/notification-preferences") {
+      if (overrides.prefs instanceof Error) throw overrides.prefs;
+      return overrides.prefs ?? prefs;
+    }
+    return overrides.me ?? user();
+  });
+}
+
+describe("/account/profile notification section (ENH-014)", () => {
+  it("renders the preferences form with the saved values and the user's phone", async () => {
+    byPath();
+    const tree = await render();
+    const form = tree.find((el) => el.type === NotificationPreferencesForm)!;
+    expect(form.props.initial).toEqual(prefs);
+    expect(form.props.phone).toBe("+91 90000 00000");
+    expect(text(tree.find((el) => el.type === "h2")!)).toBe("Notifications");
+  });
+
+  it("shows a section-only error when preferences fail to load, keeping the profile form", async () => {
+    byPath({ prefs: new Error("boom") });
+    const tree = await render();
+    expect(tree.find((el) => el.type === ProfileForm)).toBeDefined();
+    expect(tree.find((el) => el.type === NotificationPreferencesForm)).toBeUndefined();
+    expect(tree.some((el) => text(el) === "We couldn't load your notification settings right now.")).toBe(true);
+  });
+
+  it("treats a malformed preferences body as a load failure", async () => {
+    byPath({ prefs: { whatsapp: "yes" } });
+    const tree = await render();
+    expect(tree.find((el) => el.type === NotificationPreferencesForm)).toBeUndefined();
   });
 });
