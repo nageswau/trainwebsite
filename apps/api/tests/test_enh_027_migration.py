@@ -28,7 +28,11 @@ def test_migration_follows_enh024_and_is_the_single_head():
         parent = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("down_revision =")), None)
         if rev:
             parents[rev] = parent
-    assert set(parents) - set(parents.values()) == {"0045_psychometric_result_fields"}
+    # ENH-030 chained 0046 after this migration, so the intent is kept without pinning the head -- the relaxation
+    # test_enh_025_migration.py received: one head, and 0045 is a parent in the chain.
+    heads = set(parents) - set(parents.values())
+    assert len(heads) == 1
+    assert "0045_psychometric_result_fields" in set(parents.values())
 
 
 def test_migration_adds_exactly_the_ten_columns():

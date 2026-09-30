@@ -1226,6 +1226,30 @@ class SchoolActivityAttendance(Base, TimestampMixin):
     marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+# ENH-030 (DEC-SCOPE-038 D4): the IT `Attendance.status` values; a missing row is "not marked", never absent.
+ATTENDANCE_STATUSES = ("present", "absent", "late", "excused")
+
+
+class SchoolAttendanceRecord(Base, TimestampMixin):
+    """ENH-030 -- one School student's daily class attendance (docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md §4).
+
+    One row per student per day (D5); re-marking updates it. `school_id` is stamped at mark time so, after a transfer, readers see only
+    the current school's rows (C1) while the old ones are kept. No single-column indexes: the unique (school_student_id, session_date)
+    index serves every query (spec §11 A4)."""
+
+    __tablename__ = "school_attendance_records"
+    __table_args__ = (
+        UniqueConstraint("school_student_id", "session_date", name="uq_school_attendance_student_date"),
+        CheckConstraint("status IN ('present', 'absent', 'late', 'excused')", name="ck_school_attendance_status"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"))
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    session_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20))
+    marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
 class SchoolActivityFeedback(Base, TimestampMixin):
     """ENH-018 -- a School Coordinator's feedback on one completed Edusphere activity (`School CRM.md §31`,
     docs/superpowers/specs/2026-09-23-enh-018-school-activity-feedback-design.md §4). One row per activity (D5) and immutable;
