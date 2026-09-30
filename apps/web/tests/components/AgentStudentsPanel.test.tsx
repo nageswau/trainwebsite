@@ -116,6 +116,15 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     await waitFor(() => expect(screen.queryByRole("region", { name: "Asha Rao" })).toBeNull());
   });
 
+  it("shows the detail above the list, so list refreshes never move it", async () => {
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.endsWith("/s1") ? res({ student: detail() }) : res(page([item()])))));
+    render(<AgentStudentsPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "View Asha Rao" }));
+    const panel = await screen.findByRole("region", { name: "Asha Rao" });
+    const list = screen.getByRole("region", { name: "Student list" });
+    expect(panel.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("says a student is no longer available when the detail is 404", async () => {
     vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.endsWith("/s1") ? res({ detail: "Student not found" }, 404) : res(page([item()])))));
     render(<AgentStudentsPanel memberRole="staff" />);

@@ -200,6 +200,34 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
         />
       )}
 
+      {/* Above the list: a list refresh (search, paging, archive) never moves the record being read or edited. */}
+      {detailState === "loading" && (
+        <p className="muted" aria-live="polite">
+          Loading student…
+        </p>
+      )}
+      {detailState === "gone" && (
+        <p className="form-error" role="alert">
+          This student is no longer available.
+        </p>
+      )}
+      {detailState === "error" && (
+        <p className="form-error" role="alert">
+          Unable to load this student.
+        </p>
+      )}
+      {detail && (
+        <AgentStudentDetailPanel
+          key={detail.id}
+          detail={detail}
+          onClose={closeDetail}
+          onSaved={(s) => {
+            setNotice(`${s.full_name} saved.`);
+            applyUpdate(s);
+          }}
+        />
+      )}
+
       <section aria-label="Student list" aria-busy={loading} style={{ marginTop: 16, opacity: loading && data ? 0.6 : 1 }}>
         {loadError ? (
           <>
@@ -309,33 +337,6 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
           </>
         )}
       </section>
-
-      {detailState === "loading" && (
-        <p className="muted" aria-live="polite">
-          Loading student…
-        </p>
-      )}
-      {detailState === "gone" && (
-        <p className="form-error" role="alert">
-          This student is no longer available.
-        </p>
-      )}
-      {detailState === "error" && (
-        <p className="form-error" role="alert">
-          Unable to load this student.
-        </p>
-      )}
-      {detail && (
-        <AgentStudentDetailPanel
-          key={detail.id}
-          detail={detail}
-          onClose={closeDetail}
-          onSaved={(s) => {
-            setNotice(`${s.full_name} saved.`);
-            applyUpdate(s);
-          }}
-        />
-      )}
     </div>
   );
 }
