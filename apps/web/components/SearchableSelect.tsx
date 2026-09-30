@@ -154,6 +154,8 @@ export default function SearchableSelect({ label, noun, id, name, required = fal
   return (
     <div className="field combo">
       <label htmlFor={inputId}>{label}</label>
+      {/* The input and its list share a positioned box, so the list opens directly under the input (.field is a grid). */}
+      <div className="combo-control">
       <input
         ref={inputRef}
         id={inputId}
@@ -197,6 +199,7 @@ export default function SearchableSelect({ label, noun, id, name, required = fal
           </li>
         ))}
       </ul>
+      </div>
       {error && <p id={errorId} className="form-error">{error}</p>}
       <p id={statusId} aria-live="polite" className="muted combo-status">{status}</p>
       {serverMode && loadState === "failed" && (

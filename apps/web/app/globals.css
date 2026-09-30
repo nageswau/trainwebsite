@@ -133,8 +133,8 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .pager { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }
 
 /* ENH-031 -- SearchableSelect: the list opens under its input, scrolls inside itself, and never widens the page. */
-.combo { position: relative; }
-.combo-list { position: absolute; left: 0; right: 0; z-index: 30; max-height: 18rem; overflow-y: auto; margin: 4px 0 0; padding: 4px; list-style: none; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 24px rgba(15, 23, 42, .12); }
+.combo-control { position: relative; }
+.combo-list { position: absolute; top: 100%; left: 0; right: 0; z-index: 30; max-height: 18rem; overflow-y: auto; margin: 4px 0 0; padding: 4px; list-style: none; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 24px rgba(15, 23, 42, .12); }
 .combo-list[hidden] { display: none; }
 .combo-list [role="option"] { padding: 8px 10px; border-radius: 8px; cursor: pointer; overflow-wrap: anywhere; }
 .combo-list [role="option"][aria-selected="true"], .combo-list [role="option"]:hover { background: #eef4fc; }

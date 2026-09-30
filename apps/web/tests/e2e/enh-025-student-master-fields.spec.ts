@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { pickByValue } from "./helpers/pick";
 import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // ENH-025 -- Student Master fields (DEC-SCOPE-029): coordinator edits the fields and the photo, a teacher reads them,
@@ -103,7 +104,7 @@ test("coordinator records the Student Master fields and photo; teacher reads the
 
   // Career counsellor: career preferences for a portfolio student.
   await signIn(page, counselorEmail, E2E_PASSWORD, "**/school/career-counselor/dashboard");
-  await page.selectOption("#prefs-student", { value: studentId });
+  await pickByValue(page.locator("#prefs-student"), studentId);
   await page.fill("#prefs-preferred_countries", "Germany, Canada");
   await page.selectOption("#prefs-global", "yes");
   await page.click('button:has-text("Save preferences")');

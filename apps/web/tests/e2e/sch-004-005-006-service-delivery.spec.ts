@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { pickFromList } from "./helpers/pick";
 import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // SCH-004/005/006 -- Career Guidance, Psychometric Assessment, Academic Results.
@@ -82,11 +83,15 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/academic-team/dashboard");
 
-  // Scoped to this specific select -- SCH-009 added its own Test Prep/Language student
-  // pickers to the same Academic Team dashboard, so an unscoped option lookup now matches
-  // this same option label across all three selects.
-  await expect(page.locator("#result-student").getByRole("option", { name: /E2E Service Student/ })).toHaveCount(1);
-  await page.selectOption("#result-student", { label: `E2E Service Student — ${schoolName}` });
+  // Scoped to this specific picker -- SCH-009 added its own Test Prep/Language student
+  // pickers to the same Academic Team dashboard, so an unscoped option lookup would match
+  // this same option label across all three. ENH-031: the options live in the picker's own
+  // listbox (`#result-student-list`) and render once it is opened and searched.
+  const resultStudent = page.locator("#result-student");
+  await resultStudent.click();
+  await resultStudent.fill("E2E Service Student");
+  await expect(page.locator("#result-student-list").getByRole("option", { name: /E2E Service Student/ })).toHaveCount(1);
+  await pickFromList(resultStudent, "E2E Service Student", `E2E Service Student — ${schoolName}`);
   await page.fill("#result-year", "2026");
   await page.fill("#result-term", "Term 1");
   await page.fill("#result-subject", "Mathematics");
@@ -134,7 +139,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/psychometric-team/dashboard");
 
-  await page.selectOption("#psych-student", { label: `E2E Service Student — ${schoolName}` });
+  await pickFromList(page.locator("#psych-student"), "E2E Service Student", `E2E Service Student — ${schoolName}`);
   await page.fill("#psych-type", "Aptitude Test");
   await page.click('button:has-text("Assign assessment")');
   await expect(page.getByText(/Assessment assigned\./)).toBeVisible();
