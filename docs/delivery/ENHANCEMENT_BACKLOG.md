@@ -3063,7 +3063,8 @@ Overseas Admin agent approval.
 **Complexity:** Medium–Large. **Risk:** High.
 
 **Status (2026-09-30):** implemented test-first on `feature/agn-002-staff-logins` (migration `0047_agent_org_staff`); evidence
-in `docs/quality/RTM.md` (AGN-002 row). **Not COMPLETE:** browser validation and the independent Codex review are pending.
+in `docs/quality/RTM.md` (AGN-002 row). Browser QA pass done 2026-09-30 (QA-01…08 fixed, re-verified). **Not COMPLETE:** the
+independent Codex review is pending.
 
 ---
 
