@@ -48,7 +48,7 @@ describe("NotificationPreferencesForm (ENH-014)", () => {
     expect(url).toBe("/api/v1/account/notification-preferences");
     expect(init?.method).toBe("PUT");
     expect(JSON.parse(init?.body as string)).toEqual({ whatsapp: true, sms: false });
-    expect(screen.getByRole("button", { name: "Save notification settings" })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save notification settings" })).toHaveFocus());
   });
 
   it("ignores a second submit while saving and marks the form busy", async () => {
