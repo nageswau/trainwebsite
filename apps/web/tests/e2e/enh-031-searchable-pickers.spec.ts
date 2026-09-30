@@ -64,6 +64,16 @@ test("the open list sits below its input and never covers it (ENH-031 AC09)", as
   await expect(input).toBeFocused();
 });
 
+test("the dropdown input fills its field like the other inputs (browser QA BV-01)", async ({ page }) => {
+  await signIn(page, "agent@edusphere.local", "/overseas/agent/dashboard");
+  await page.goto("/overseas/agent/applications");
+  const input = page.getByRole("combobox", { name: "Linked student" });
+  const university = page.locator("#agent-app-university");
+  await expect(university).toBeVisible();
+  const [inputBox, universityBox] = [await input.boundingBox(), await university.boundingBox()];
+  expect(Math.abs(inputBox!.width - universityBox!.width)).toBeLessThanOrEqual(2);
+});
+
 test("the open list never scrolls the page sideways at 320px (ENH-031 AC09)", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 720 });
   await signIn(page, "agent@edusphere.local", "/overseas/agent/dashboard");
