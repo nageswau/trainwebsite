@@ -701,7 +701,8 @@ async def _agent(db: AsyncSession, user: User, section: str):
     if section == "dashboard":
         return _payload(
             "Agent Dashboard",
-            "Your students, applications, next actions, and commissions.",
+            # AGN-002 browser QA-07: staff have no commissions page, so their pages never mention commissions.
+            "Your agency's students, applications and next actions." if staff else "Your students, applications, next actions, and commissions.",
             (("student", "Student"), ("university", "University"), ("status", "Status"), ("next_action", "Next action")),
             ({"student": s.full_name, "university": u.name, "status": a.status, "next_action": a.next_action} for a, u, s in applications),
             (
@@ -793,7 +794,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
     if section == "reports":
         return _payload(
             "Agent Reports",
-            "Application and commission summary.",
+            "Application summary." if staff else "Application and commission summary.",
             (("metric", "Metric"), ("value", "Value")),
             (
                 {"metric": "Students", "value": len(students)},

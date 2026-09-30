@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
 
-import { STAFF_URL } from "./AgentStaffCreateForm";
+import { STAFF_URL, staffFailure } from "./AgentStaffCreateForm";
 
 export type StaffMember = { id: string; code: string; full_name: string; email: string; phone: string | null; status: "active" | "deactivated"; setup: "pending_setup" | "link_expired" | null };
 type Mode = "view" | "edit" | "confirm-deactivate" | "confirm-reset";
@@ -17,7 +17,8 @@ function badge(m: StaffMember): string | null {
 
 function InlineConfirm({ label, name, text, busy, onConfirm, onCancel }: { label: string; name: string; text: string; busy: boolean; onConfirm: () => void; onCancel: () => void }) {
   return (
-    <div role="group" aria-label={`${label} ${name}`} style={{ marginTop: 8 }}>
+    // Browser QA-04: Escape cancels, as in Edit.
+    <div role="group" aria-label={`${label} ${name}`} style={{ marginTop: 8 }} onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <p style={{ fontSize: 13 }}>{text}</p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <button className="btn small" autoFocus disabled={busy} onClick={onConfirm}>{busy ? "Working…" : label}</button>
@@ -28,7 +29,7 @@ function InlineConfirm({ label, name, text, busy, onConfirm, onCancel }: { label
 }
 
 // AGN-002: one staff member with its actions. Confirmations are inline (AgentTeamPanel's pattern): focus goes to Confirm; Cancel
-// (and Escape in Edit) return it to the button that opened them, and a successful action moves it to the row's next logical
+// and Escape return it to the button that opened them, and a successful action moves it to the row's next logical
 // control (which may only appear once the parent reloads the row). Server messages (409/429) show in the row's status region.
 export default function AgentStaffRow({ member, onChanged }: { member: StaffMember; onChanged: (message: string) => void }) {
   const [mode, setMode] = useState<Mode>("view");
@@ -64,7 +65,7 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
     inFlight.current = false;
     setBusy(false);
     if (!outcome.ok) {
-      setError(outcome.message);
+      setError(staffFailure(outcome, path === ""));  // only Edit ("") has typed values to keep
       return;
     }
     returnFocusTo.current = id(focusNext);
@@ -84,7 +85,7 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
 
   return (
     <li className="card" style={{ marginBottom: 8, overflowWrap: "anywhere" }}>
-      <strong>{member.code}</strong> {member.full_name} <span className="muted" style={{ fontSize: 13 }}>{member.email}{member.phone ? ` · ${member.phone}` : ""}</span> {label && <span className="badge">{label}</span>}
+      <strong>{member.code}</strong> {member.full_name} <span className="muted" style={{ fontSize: 13 }}>{member.email}{member.phone && <> · <span style={{ whiteSpace: "nowrap" }}>{member.phone}</span></>}</span> {label && <span className="badge">{label}</span>}
       {mode === "edit" && (
         <form className="form" onSubmit={save} onKeyDown={(e) => e.key === "Escape" && close("edit")} aria-label={`Edit ${member.full_name}`} style={{ marginTop: 8 }}>
           <div className="field"><label htmlFor={id("name")}>Full name</label><input id={id("name")} name="full_name" defaultValue={member.full_name} maxLength={160} required autoFocus /></div>

@@ -10,7 +10,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import get_current_user
+from app.api.deps import SESSION_ENDED, get_current_user, unavailable_reason
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code
@@ -155,9 +155,9 @@ async def refresh(response: Response, edusphere_refresh: str | None = Cookie(def
         select(User).where(User.id == uid, User.active.is_(True)).options(selectinload(User.role_assignments))
     )
     if not user:
-        raise HTTPException(401, "User unavailable")
+        raise HTTPException(401, await unavailable_reason(db, uid))
     if p.get("sv", 0) != user.session_version:  # AGN-002: ended by a staff reset or deactivation
-        raise HTTPException(401, "Session ended")
+        raise HTTPException(401, SESSION_ENDED)
     _set_auth_cookies(response, user)
     return LoginResponse(user=UserOut.model_validate(user), expires_in_minutes=settings.access_token_minutes)
 

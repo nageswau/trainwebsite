@@ -404,11 +404,14 @@ class AgentStudentCreate(BaseModel):
     student_id: UUID
 
 
+_EMAIL_SHAPE = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
+
+
 class AgentMasterInvite(BaseModel):
     """AGN-001 (D9): a Master inviting another Master to their agency."""
 
     full_name: str = Field(min_length=1, max_length=160)
-    email: str = Field(pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=320)
+    email: str = Field(max_length=320)
     phone: str | None = Field(default=None, max_length=40)
 
     @field_validator("full_name")
@@ -418,6 +421,15 @@ class AgentMasterInvite(BaseModel):
         if not value:
             # A plain message, not pydantic's "Value error, ..." prefix (browser QA-06).
             raise PydanticCustomError("blank_full_name", "Full name is required")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def email_looks_valid(cls, value: str) -> str:
+        # AGN-002 browser QA-01: the same rule as before (something@domain.tld), worded for people -- a `pattern=` constraint
+        # showed the raw regex ("String should match pattern ...") for an address the browser itself accepts (`a@b`).
+        if not _EMAIL_SHAPE.fullmatch(value):
+            raise PydanticCustomError("invalid_email", "Enter a valid email address, like name@example.com")
         return value
 
 

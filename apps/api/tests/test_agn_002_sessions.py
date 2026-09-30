@@ -41,10 +41,10 @@ async def test_bumping_the_version_ends_access_and_refresh(client, db_session):
     await db_session.commit()
     client.cookies.set("edusphere_access", old_access)
     me = await client.get("/api/v1/auth/me")
-    assert me.status_code == 401 and me.json()["detail"] == "Session ended"
+    assert me.status_code == 401 and me.json()["detail"] == "Your session has ended. Please sign in again."
     client.cookies.set("edusphere_refresh", old_refresh)
     refreshed = await client.post("/api/v1/auth/refresh")
-    assert refreshed.status_code == 401 and refreshed.json()["detail"] == "Session ended"
+    assert refreshed.status_code == 401 and refreshed.json()["detail"] == "Your session has ended. Please sign in again."
 
 
 @pytest.mark.asyncio

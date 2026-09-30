@@ -116,6 +116,48 @@ describe("AgentStaffRow (AGN-002)", () => {
     expect(region).toBeEmptyDOMElement();
   });
 
+  // Browser QA-04: Escape closes an inline confirmation and returns focus, like Cancel.
+  it.each([["Deactivate", "Confirm deactivate"], ["Reset", "Confirm reset"]])("Escape closes the %s confirmation", (action, confirm) => {
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: `${action} Rahul Kumar` }));
+    fireEvent.keyDown(screen.getByRole("button", { name: confirm }), { key: "Escape" });
+    expect(screen.queryByRole("button", { name: confirm })).toBeNull();
+    expect(screen.getByRole("button", { name: `${action} Rahul Kumar` })).toHaveFocus();
+  });
+
+  // Browser QA-05: a dropped connection on an action (nothing typed) must not claim "your entry is kept".
+  it("words a dropped connection for an action", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Deactivate Rahul Kumar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
+    expect(await screen.findByText("Couldn't reach the server. Check your connection and try again.")).toBeInTheDocument();
+  });
+
+  it("keeps the 'entry is kept' wording for a dropped connection while editing", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Rahul Kumar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText(/your entry is kept/)).toBeInTheDocument();
+  });
+
+  // Browser QA-06: a server error without a message says what to do.
+  it("tells the Master to try again after a server error", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("Internal Server Error", { status: 500 })));
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Rahul Kumar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("The server couldn't complete this. Please try again in a moment.")).toBeInTheDocument();
+    expect((screen.getByLabelText("Full name") as HTMLInputElement).value).toBe("Rahul Kumar");
+  });
+
+  // Browser QA-08: a phone number never breaks across lines.
+  it("keeps the phone number on one line", () => {
+    renderRow({ ...active, phone: "+91 98765 43210" });
+    expect(screen.getByText("+91 98765 43210")).toHaveStyle({ whiteSpace: "nowrap" });
+  });
+
   it("offers Reset and Deactivate only while active, Reactivate only while deactivated", () => {
     renderRow({ ...active, status: "deactivated" });
     expect(screen.queryByRole("button", { name: /^Reset / })).toBeNull();

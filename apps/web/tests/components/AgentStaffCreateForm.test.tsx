@@ -52,6 +52,16 @@ describe("AgentStaffCreateForm (AGN-002)", () => {
     expect(onCreated).not.toHaveBeenCalled();
   });
 
+  // Browser QA-06: a server error without a message says what to do, and the entry is kept.
+  it("tells the Master to try again after a server error", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("Internal Server Error", { status: 502 })));
+    render(<AgentStaffCreateForm onCreated={vi.fn()} />);
+    fill();
+    fireEvent.click(screen.getByRole("button", { name: "Add staff" }));
+    expect(await screen.findByText("The server couldn't complete this. Please try again in a moment.")).toBeInTheDocument();
+    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("rahul@example.local");
+  });
+
   it("reports a dropped network and blocks a double submit", async () => {
     let reject: (e: Error) => void = () => {};
     const mock = vi.fn().mockReturnValue(new Promise((_, r) => { reject = r; }));

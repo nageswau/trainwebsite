@@ -10,6 +10,22 @@ from app.core.rbac import user_has_division, user_has_permission, user_has_role
 from app.core.security import decode_token
 from app.models import AgentOrgMember, User
 
+# AGN-002 browser QA-02/QA-03: what a refused session is told. Staff learn that their agency deactivated them (they cannot
+# fix it by signing in again); everyone else keeps the generic message, so nothing new is disclosed about other accounts.
+USER_UNAVAILABLE = "User unavailable"
+DEACTIVATED_STAFF = "Your account was deactivated by your agency. Contact your agency's Master."
+SESSION_ENDED = "Your session has ended. Please sign in again."
+
+
+async def unavailable_reason(db: AsyncSession, uid: UUID) -> str:
+    """Only runs for a token whose user is missing or inactive (one extra query on the failure path)."""
+    staff = await db.scalar(
+        select(AgentOrgMember.id)
+        .join(User, User.id == AgentOrgMember.user_id)
+        .where(AgentOrgMember.user_id == uid, AgentOrgMember.role == "staff", AgentOrgMember.status == "deactivated", User.active.is_(False))
+    )
+    return DEACTIVATED_STAFF if staff else USER_UNAVAILABLE
+
 
 async def get_current_user(edusphere_access: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)) -> User:
     if not edusphere_access:
@@ -29,11 +45,11 @@ async def get_current_user(edusphere_access: str | None = Cookie(default=None), 
         )
     )
     if not user:
-        raise HTTPException(401, "User unavailable")
+        raise HTTPException(401, await unavailable_reason(db, uid))
     # AGN-002 (spec §5): a token issued before the user's session version was incremented (staff reset / deactivation) is refused.
     # Tokens from before AGN-002 carry no `sv` and count as 0, the column's default.
     if p.get("sv", 0) != user.session_version:
-        raise HTTPException(401, "Session ended")
+        raise HTTPException(401, SESSION_ENDED)
     return user
 
 
