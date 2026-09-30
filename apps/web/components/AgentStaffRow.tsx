@@ -2,12 +2,13 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 
+import { STAFF_URL, type StaffMember, staffFailure } from "@/lib/agentStaff";
 import { sendJson } from "@/lib/apiErrors";
 
-import { STAFF_URL, staffFailure } from "./AgentStaffCreateForm";
-
-export type StaffMember = { id: string; code: string; full_name: string; email: string; phone: string | null; status: "active" | "deactivated"; setup: "pending_setup" | "link_expired" | null };
 type Mode = "view" | "edit" | "confirm-deactivate" | "confirm-reset";
+// One row action: `path` below the member's URL, the control that gets focus after success, the announced result, and whether
+// the request carried typed values (then a dropped connection says the entry is kept).
+type Action = { path?: string; method?: "POST" | "PATCH"; body?: unknown; keepsEntry?: boolean; focusNext: string; message: string | ((data: Record<string, unknown>) => string) };
 
 function badge(m: StaffMember): string | null {
   if (m.status === "deactivated") return "Deactivated";
@@ -56,7 +57,7 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
     setMode("view");
   }
 
-  async function run(path: string, method: "POST" | "PATCH", body: unknown, focusNext: string, done: (data: Record<string, unknown>) => string) {
+  async function run({ path = "", method = "POST", body = {}, keepsEntry = false, focusNext, message }: Action) {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -65,19 +66,19 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
     inFlight.current = false;
     setBusy(false);
     if (!outcome.ok) {
-      setError(staffFailure(outcome, path === ""));  // only Edit ("") has typed values to keep
+      setError(staffFailure(outcome, keepsEntry));
       return;
     }
     returnFocusTo.current = id(focusNext);
     setMode("view");
-    onChanged(done(outcome.data));
+    onChanged(typeof message === "string" ? message : message(outcome.data));
   }
 
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const phone = String(data.get("phone") ?? "").trim();
-    run("", "PATCH", { full_name: String(data.get("full_name") ?? ""), phone: phone || null }, "edit", () => `${member.code} updated.`);
+    run({ method: "PATCH", body: { full_name: String(data.get("full_name") ?? ""), phone: phone || null }, keepsEntry: true, focusNext: "edit", message: `${member.code} updated.` });
   }
 
   const label = badge(member);
@@ -101,7 +102,7 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
         <InlineConfirm
           label="Confirm deactivate" name={member.full_name} busy={busy} onCancel={() => close("deactivate")}
           text={`Deactivate ${member.full_name}? They will be signed out and can no longer sign in.`}
-          onConfirm={() => run("/deactivate", "POST", {}, "reactivate", () => `${who} deactivated. They have been signed out.`)}
+          onConfirm={() => run({ path: "/deactivate", focusNext: "reactivate", message: `${who} deactivated. They have been signed out.` })}
         />
       )}
       {mode === "confirm-reset" && (
@@ -109,9 +110,12 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
           label="Confirm reset" name={member.full_name} busy={busy} onCancel={() => close("reset")}
           text={`Reset ${member.full_name}'s login? Their password stops working, they are signed out, and a new set-password link is emailed to them.`}
           onConfirm={() =>
-            run("/reset", "POST", {}, "reset", (data) =>
-              data.email_status === "sent" ? `A new set-password link was emailed to ${member.full_name}.` : `${member.full_name}'s login was reset, but the email was not delivered. Try Reset again in a minute.`,
-            )
+            run({
+              path: "/reset",
+              focusNext: "reset",
+              message: (data) =>
+                data.email_status === "sent" ? `A new set-password link was emailed to ${member.full_name}.` : `${member.full_name}'s login was reset, but the email was not delivered. Try Reset again in a minute.`,
+            })
           }
         />
       )}
@@ -126,7 +130,7 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
           ) : (
             <button
               id={id("reactivate")} className="btn secondary small" aria-label={`Reactivate ${member.full_name}`} disabled={busy}
-              onClick={() => run("/reactivate", "POST", {}, "deactivate", () => `${who} reactivated.${member.setup ? " They have not set a password yet: use Reset to send a new link." : ""}`)}
+              onClick={() => run({ path: "/reactivate", focusNext: "deactivate", message: `${who} reactivated.${member.setup ? " They have not set a password yet: use Reset to send a new link." : ""}` })}
             >
               {busy ? "Working…" : "Reactivate"}
             </button>

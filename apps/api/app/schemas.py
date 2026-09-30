@@ -407,6 +407,14 @@ class AgentStudentCreate(BaseModel):
 _EMAIL_SHAPE = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
 
 
+def _required_full_name(value: str | None) -> str:
+    """Trimmed; blank (or null) is refused with a plain message, not pydantic's "Value error, ..." prefix (browser QA-06)."""
+    value = (value or "").strip()
+    if not value:
+        raise PydanticCustomError("blank_full_name", "Full name is required")
+    return value
+
+
 class AgentMasterInvite(BaseModel):
     """AGN-001 (D9): a Master inviting another Master to their agency."""
 
@@ -417,11 +425,7 @@ class AgentMasterInvite(BaseModel):
     @field_validator("full_name")
     @classmethod
     def full_name_not_blank(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
-            # A plain message, not pydantic's "Value error, ..." prefix (browser QA-06).
-            raise PydanticCustomError("blank_full_name", "Full name is required")
-        return value
+        return _required_full_name(value)
 
     @field_validator("email")
     @classmethod
@@ -448,10 +452,7 @@ class AgentStaffUpdate(BaseModel):
     @field_validator("full_name")
     @classmethod
     def full_name_present(cls, value: str | None) -> str:
-        value = (value or "").strip()
-        if not value:
-            raise PydanticCustomError("blank_full_name", "Full name is required")
-        return value
+        return _required_full_name(value)  # an explicit null is refused too (omitting the field leaves the name unchanged)
 
     @field_validator("phone")
     @classmethod

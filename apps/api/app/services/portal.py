@@ -52,7 +52,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services.agent_orgs import org_member_ids
+from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")
@@ -699,41 +699,26 @@ async def _agent(db: AsyncSession, user: User, section: str):
     staff = is_agent_staff(user)
     commissions = [] if staff else (await db.scalars(select(AgentCommission).where(AgentCommission.agent_id.in_(org_member_ids(user))))).all()
     if section == "dashboard":
+        metrics = [{"label": "Students", "value": len(students)}, {"label": "Applications", "value": len(applications)}]
+        if not staff:
+            metrics += [
+                {"label": "Claimable commission", "value": f"INR {sum(float(c.amount) for c in commissions if c.status in {'eligible', 'estimated'}):,.0f}"},
+                {"label": "Claims", "value": sum(1 for c in commissions if c.status == "claimed")},
+            ]
+        if user.agent_membership:
+            metrics.append({"label": "Your code", "value": user.agent_membership.code})
         return _payload(
             "Agent Dashboard",
             # AGN-002 browser QA-07: staff have no commissions page, so their pages never mention commissions.
             "Your agency's students, applications and next actions." if staff else "Your students, applications, next actions, and commissions.",
             (("student", "Student"), ("university", "University"), ("status", "Status"), ("next_action", "Next action")),
             ({"student": s.full_name, "university": u.name, "status": a.status, "next_action": a.next_action} for a, u, s in applications),
-            (
-                {"label": "Students", "value": len(students)},
-                {"label": "Applications", "value": len(applications)},
-                *(
-                    ()
-                    if staff
-                    else (
-                        {"label": "Claimable commission", "value": f"INR {sum(float(c.amount) for c in commissions if c.status in {'eligible', 'estimated'}):,.0f}"},
-                        {"label": "Claims", "value": sum(1 for c in commissions if c.status == "claimed")},
-                    )
-                ),
-                *(({"label": "Your code", "value": user.agent_membership.code},) if user.agent_membership else ()),
-            ),
+            metrics,
         )
     if section == "team":
         # AGN-001: the agency's Master accounts, read-only here; AgentTeamPanel carries the actions (staff: AgentStaffPanel).
         membership = user.agent_membership
-        rows = (
-            (
-                await db.execute(
-                    select(AgentOrgMember, User)
-                    .join(User, User.id == AgentOrgMember.user_id)
-                    .where(AgentOrgMember.org_id == membership.org_id, AgentOrgMember.role == "master")
-                    .order_by(AgentOrgMember.seq)
-                )
-            ).all()
-            if membership
-            else []
-        )
+        rows = (await db.execute(org_masters(membership.org_id))).all() if membership else []
         # Browser QA-05: same status wording as AgentTeamPanel -- an active Master who has not set a password is "invite pending".
         pending = set(await provisioning_statuses(db, [u.id for _, u in rows]))
         return _payload(
@@ -792,17 +777,14 @@ async def _agent(db: AsyncSession, user: User, section: str):
             ({"id": c.id, "application": c.application_id, "amount": f"{c.currency} {float(c.amount):,.2f}", "status": c.status, "claim": c.claim_reference} for c in commissions),
         )
     if section == "reports":
-        return _payload(
-            "Agent Reports",
-            "Application summary." if staff else "Application and commission summary.",
-            (("metric", "Metric"), ("value", "Value")),
-            (
-                {"metric": "Students", "value": len(students)},
-                {"metric": "Applications", "value": len(applications)},
-                {"metric": "Offers", "value": sum(1 for a, _, _ in applications if a.status in {"offer_received", "accepted"})},
-                *(() if staff else ({"metric": "Paid commission", "value": sum(float(c.amount) for c in commissions if c.status == "paid")},)),
-            ),
-        )
+        rows = [
+            {"metric": "Students", "value": len(students)},
+            {"metric": "Applications", "value": len(applications)},
+            {"metric": "Offers", "value": sum(1 for a, _, _ in applications if a.status in {"offer_received", "accepted"})},
+        ]
+        if not staff:
+            rows.append({"metric": "Paid commission", "value": sum(float(c.amount) for c in commissions if c.status == "paid")})
+        return _payload("Agent Reports", "Application summary." if staff else "Application and commission summary.", (("metric", "Metric"), ("value", "Value")), rows)
 
 
 async def _operations(db: AsyncSession, user: User, section: str):

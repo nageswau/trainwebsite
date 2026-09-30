@@ -1,6 +1,7 @@
 """AGN-002 test helpers: a staff member inserted directly (the API path is tested in test_agn_002_staff.py)."""
 
 from app.models import AgentOrg, AgentOrgMember, UserRoleAssignment
+from app.services.agent_orgs import staff_code
 from tests.agn001_helpers import mk_user
 
 STAFF = "/api/v1/workflows/overseas/agent/team/staff"
@@ -12,7 +13,7 @@ async def mk_staff(db, org: AgentOrg, *, full_name: str = "Staff Member", active
     db.add(UserRoleAssignment(user_id=user.id, division="overseas", role="agent", approval_status="approved"))
     org.staff_seq += 1
     member = AgentOrgMember(
-        org_id=org.id, user_id=user.id, role="staff", seq=org.staff_seq, code=f"{org.prefix}-S{org.staff_seq:03d}", status="active" if active else "deactivated"
+        org_id=org.id, user_id=user.id, role="staff", seq=org.staff_seq, code=staff_code(org.prefix, org.staff_seq), status="active" if active else "deactivated"
     )
     db.add(member)
     await db.commit()

@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import AgentStaffRow, { type StaffMember } from "@/components/AgentStaffRow";
+import AgentStaffRow from "@/components/AgentStaffRow";
+import type { StaffMember } from "@/lib/agentStaff";
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const active: StaffMember = { id: "s1", code: "ABC-S001", full_name: "Rahul Kumar", email: "rahul@example.local", phone: "+91 1", status: "active", setup: null };

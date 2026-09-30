@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { STAFF_URL, type StaffMember } from "@/lib/agentStaff";
 import { isPage, type Page } from "@/lib/apiErrors";
 
-import AgentStaffCreateForm, { STAFF_URL } from "./AgentStaffCreateForm";
-import AgentStaffRow, { type StaffMember } from "./AgentStaffRow";
+import AgentStaffCreateForm from "./AgentStaffCreateForm";
+import AgentStaffRow from "./AgentStaffRow";
 
 const PAGE_SIZE = 20;
 

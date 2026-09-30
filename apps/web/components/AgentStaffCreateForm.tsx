@@ -2,17 +2,8 @@
 
 import { FormEvent, useRef, useState } from "react";
 
+import { STAFF_URL, staffFailure } from "@/lib/agentStaff";
 import { sendJson } from "@/lib/apiErrors";
-
-export const STAFF_URL = "/api/v1/workflows/overseas/agent/team/staff";
-
-// Browser QA-05/QA-06: how the staff screens word a failed request. A server error (5xx) carries no useful detail, so it says to
-// retry; a dropped connection only promises a kept entry where something was typed (add / edit), not for a button action.
-export function staffFailure(outcome: { message: string; status?: number }, keepsEntry: boolean): string {
-  if (outcome.status === undefined) return keepsEntry ? outcome.message : "Couldn't reach the server. Check your connection and try again.";
-  if (outcome.status >= 500) return "The server couldn't complete this. Please try again in a moment.";
-  return outcome.message;
-}
 
 type Created = { member: { code: string; email: string }; email_status: string };
 
