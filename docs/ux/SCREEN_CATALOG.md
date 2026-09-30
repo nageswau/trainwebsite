@@ -2612,7 +2612,7 @@ correction, not deleted, per this project's traceability convention.
 - **Linked Feature ID(s):** `ENH-030`
 - **Entry points:** Sidebar "Attendance" for the Teacher (after "Dashboard").
 - **Required data:** Server-rendered: GET /auth/me, GET /school/attendance?date=. Client: PUT /school/attendance `{session_date, records:[{student_id, status}]}`.
-- **Key actions:** Choose a date (max = the server's school-calendar today); "Mark all present" (fills only unmarked students); one radio group per student (Present / Absent / Late / Excused); Save attendance.
+- **Key actions:** Choose a date (max = the server's school-calendar today) and press Show or Enter (typing never navigates mid-entry); "Mark all present" (fills only unmarked students); one radio group per student (Present / Absent / Late / Excused); Save attendance.
 - **Empty state:** "No students assigned to you yet. Your School Coordinator assigns students to teachers."; an unmarked student shows a "Not marked" badge and no preselected status.
 - **Loading state:** `loading.tsx` skeleton with `aria-busy`; changing the date disables the form and shows "Loading the selected date…"; saving disables the form and shows "Saving…".
 - **Error state:** a refused read (future date 422, wrong role 403, 401) → the shared Access Unavailable card with the server's reason; a refused save (scope 403, tier 403, busy 409, 422, network) → the server's message as an alert under the form, marks kept; saving with nothing chosen → "Choose a status for at least one student." (no request).

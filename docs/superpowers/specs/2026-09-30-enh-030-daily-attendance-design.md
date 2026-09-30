@@ -36,7 +36,7 @@ Facts that shape the design (each verified):
 | D2 | **Writer = `school_teacher`, assigned students only.** Coordinator/Principal read only in v1 (Coordinator keeps activity attendance). Coordinator marking is a possible follow-up. Additive to DEC-SCOPE-011 (a new teacher write, scoped like the portfolio's teacher write, `portfolio.py:78-92`). |
 | D3 | **"Student dashboard" = the Student 360° Attendance tab.** No student login or portal is built. |
 | D4 | **Status ∈ `present` \| `absent` \| `late` \| `excused`**, mirroring IT `Attendance`; enforced by a DB `CHECK` and the schema. A missing row = "not marked", never absent (the STU-006-AC02 invariant). |
-| D5 | **One record per student per day**: `UNIQUE (school_student_id, session_date)`; re-marking updates. Period-level is out of scope. |
+| D5 | **One record per student per day**: `UNIQUE (school_student_id, session_date)`; re-marking updates. Period-level is out of scope. **Amended 2026-09-30 by executor ruling after the final review (finding I1) — `NEEDS_CONFIRMATION` from the user:** one record per student per day **per school**, `UNIQUE (school_student_id, school_id, session_date)` (`uq_school_attendance_student_school_date`). Within a school re-marking still updates, never duplicates; across a transfer each school keeps its own register, so the new school can never overwrite or re-stamp the previous school's row (C1/AC10). The alternative — refusing the save when another school already marked that day — was rejected because it would block a teacher's whole class on the day a student transfers in. |
 | D6 | **Tier gate = `require_school_entitlement(..., service_key=None)`** (any valid, unexpired tier — the rule free-text activities use). No new `TIER_SERVICES` key. |
 
 Design choices made here (reviewable, not user decisions):
@@ -78,7 +78,7 @@ New table `school_attendance_records` (model `SchoolAttendanceRecord`, migration
 | `marked_by_user_id` | UUID FK `users.id`, not null | last writer |
 | `created_at`, `updated_at` | timestamptz, `server_default now()` | `updated_at` set on upsert |
 
-`UNIQUE (school_student_id, session_date)` named `uq_school_attendance_student_date`; its index serves every query in this spec (roster: student IN (...) AND date; summary: student ORDER BY date DESC), so no other index is created (review A4). No existing table is altered; no existing row is read
+`UNIQUE (school_student_id, school_id, session_date)` named `uq_school_attendance_student_school_date` (D5 as amended — per school); its index serves every query in this spec (roster: student IN (...) AND school AND date; summary: student AND school ORDER BY date DESC), so no other index is created (review A4). No existing table is altered; no existing row is read
 or written; `downgrade()` drops indexes then the table. The migration follows `0040_school_activity_feedback.py` (skip if the table already
 exists, for `create_all` dev databases).
 
@@ -103,14 +103,19 @@ Body `SchoolAttendanceIn`: `{"session_date": date, "records": [{"student_id": UU
 One transaction, in this order:
 1. Role `school_teacher` → else 403. `school_id = _own_school_id(user)`.
 2. `session_date > _today_ist()` → 422.
-3. **Lock and re-check scope:** records are sorted by `student_id` first (one lock order for every save, review A3); `SELECT … FROM school_students WHERE id IN (:ids) ORDER BY id FOR SHARE`. If any id is missing, not in
-   `school_id`, or not `assigned_teacher_user_id == user.id` → `403 "One or more students are not assigned to you"`; nothing written.
-   (`FOR SHARE` blocks a concurrent transfer approval / reassignment — both take the row for update — until this commits; ordered by id so
-   two concurrent calls cannot deadlock.)
+3. **Lock and re-check scope** *(as implemented, following the ENH-004 promotion precedent)*: records are sorted by `student_id` first (one
+   lock order for every save, review A3); `SET LOCAL lock_timeout '5s'`; `SELECT id FROM school_students WHERE id IN (:ids) AND school_id = :own
+   AND assigned_teacher_user_id = :me ORDER BY id FOR SHARE` — the scope filter is inside the locking query, so a student the teacher does not
+   teach is never locked or waited on. A lock wait past the bound → `409 "This class's attendance is being changed elsewhere. Try again."`,
+   nothing written. Fewer rows than ids → a counts-only `school.daily_attendance_denied` audit row, then `403 "One or more students are not
+   assigned to you"`, no mark written. (`FOR SHARE` blocks a concurrent transfer approval / reassignment — both take the row for update —
+   until this commits.)
 4. `await require_school_entitlement(db, user, school_id, None)` — after scope, before any write (its denial commits only its audit row).
-5. Read the day's existing statuses for the listed students (under the lock) to build the audit `changes` list (review A5).
-   Then `pg_insert(SchoolAttendanceRecord).values([...]).on_conflict_do_update(constraint="uq_school_attendance_student_date",
-   set_={status, school_id, marked_by_user_id, updated_at=now()})`.
+5. Read this school's existing statuses for the listed students that day (under the lock) to build the audit `changes` list (review A5).
+   Then `pg_insert(SchoolAttendanceRecord).values([...]).on_conflict_do_update(constraint="uq_school_attendance_student_school_date",
+   set_={status, marked_by_user_id, updated_at=now()})` — `school_id` is part of the key, never rewritten. A failed write/commit is rolled
+   back and logged as `school_attendance_mark_failed` with the error class and sqlstate only (no traceback: its SQL parameters carry
+   student ids and statuses, §11 S6).
 6. `AuditLog(action="school.daily_attendance_mark", entity_type="school", entity_id=str(school_id),
    metadata_json={"session_date", "count", "statuses": {status: n}, "changes": [{"student_id", "from", "to"}]})` — `changes` lists only
    rows whose status actually changed (`from` is null for a first mark), so "who marked this child absent, and when" is answerable (review S5).
