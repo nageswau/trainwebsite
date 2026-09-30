@@ -118,8 +118,27 @@ Typecheck and lint clean.
   With a 1.5 s pause between Back and Forward it does not occur (verified). No app code is involved; there is no app-side
   fix worth its risk. A framework upgrade is a separate decision.
 
-**Still open — each needs a decision:**
-- **QA15-02:** Devanagari names need a bundled font *and* text shaping. reportlab shapes Indic scripts only with the
-  optional `uharfbuzz` package, so the fix is a new dependency plus a font asset.
-- **QA15-10:** reportlab cannot produce tagged (screen-reader-structured) PDFs. No PDF accessibility requirement has
-  been decided; the same content is available as an accessible web page (the student overview).
+### Third fix pass (2026-09-30) — the two decisions
+
+- **QA15-02 — fixed (user chose font + `uharfbuzz`).**
+  - Devanagari is set in the bundled Noto Sans Devanagari (SIL OFL) and shaped by `uharfbuzz` 0.56.2. That is the
+    one new dependency, a manylinux wheel that installs through the project Dockerfile.
+  - Found while checking by eye: a Devanagari `<font>` run inside a Helvetica paragraph is **not** shaped (vowel
+    signs land in the wrong place). So a paragraph containing Devanagari is based on the Devanagari font, and its
+    Latin runs go back to Helvetica. A unit test pins that mechanism.
+  - Re-test:
+    - The parent downloads "आशा राव"'s report through the UI. The name and mixed notes ("छात्रा ने विज्ञान में
+      रुचि दिखाई। Likes <robotics> & क्षेत्रीय प्रतियोगिता") render correctly.
+    - Latin-only PDFs embed no extra font.
+  - Remaining limitations (spec §12): other Indian scripts; copy/paste of Devanagari out of the PDF.
+- **QA15-10 — accepted with a pointer (user decision).**
+  - Each download button shows a hint, which is also its `aria-describedby` description, naming where the same content
+    can be read accessibly:
+    - Reports pages: the dashboard and the grade-wise comparison.
+    - Coordinator/principal student pages: the 360° view.
+    - Parent child page: this page.
+  - Re-test: the description is read from the button; no overflow at 1440 or 320 px.
+
+All QA findings are now resolved, except QA15-07 (Low, a Next.js framework race, documented above). The on-screen
+grade display and the Reports panel's "Students by grade" chart (QA15-09, screen side) belong to SCH-007 and SCH reports,
+not ENH-015.

@@ -146,3 +146,5 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
    .portal-content padding between it and the report below it. */
 .report-downloads { padding-bottom: 0; }
 .report-downloads h2 { font-size: 22px; margin-bottom: 6px; }
+/* QA15-10: where the PDF's content can be read accessibly -- small and narrow, so it never widens a button row. */
+.report-hint { font-size: 13px; margin: 6px 0 0; max-width: 42ch; }

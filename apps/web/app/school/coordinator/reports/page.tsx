@@ -46,7 +46,7 @@ export default async function SchoolCoordinatorReportsPage({ searchParams }: { s
         <div className="card">
           <h2>Download reports</h2>
           <p className="muted">A PDF of your school&apos;s summary figures and grade-by-grade table, as of today.</p>
-          <ReportDownloadButton url="/api/v1/school/reports/school-summary" label="Download school report (PDF)" filename="school-report.pdf" />
+          <ReportDownloadButton url="/api/v1/school/reports/school-summary" label="Download school report (PDF)" filename="school-report.pdf" hint="PDFs are not screen-reader friendly. The same figures are on your dashboard and in the grade-wise comparison on this page." />
         </div>
       </div>
       <SchoolReportsPanel report={report} />

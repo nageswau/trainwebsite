@@ -34,6 +34,18 @@ afterEach(() => {
 });
 
 describe("ReportDownloadButton (ENH-015)", () => {
+  // QA15-10: the PDF is untagged, so the button says where the same information can be read with a screen reader.
+  it("shows its hint and ties it to the button", () => {
+    render(<ReportDownloadButton url={URL_UNDER_TEST} label="Download school report (PDF)" filename="school-report.pdf" hint="The same figures are on this page." />);
+    const button = screen.getByRole("button", { name: "Download school report (PDF)" });
+    expect(button).toHaveAccessibleDescription("The same figures are on this page.");
+    expect(screen.getByText("The same figures are on this page.")).toHaveClass("muted");
+  });
+
+  it("renders no description without a hint", () => {
+    expect(renderButton()).not.toHaveAttribute("aria-describedby");
+  });
+
   it("downloads the PDF under its filename, announces it and frees the object URL", async () => {
     const fetchMock = vi.fn().mockResolvedValue(pdfResponse());
     vi.stubGlobal("fetch", fetchMock);

@@ -4,12 +4,14 @@ no I/O, so the caller decides scope and this module only lays out what it is giv
 
 Every piece of text reaches the page through `_p`, the single escape point: Platypus parses `<`, `>` and `&` in a
 Paragraph as markup, so unescaped stored text (a counsellor's note) could restyle or break the document (AC08).
-Built-in fonts only (no font asset): characters outside Latin-1 may not show -- a known limitation (spec §12)."""
+Latin text is set in the built-in Helvetica; Devanagari runs in the bundled Noto Sans Devanagari (SIL OFL, `fonts/`), shaped
+by `uharfbuzz` so vowel signs and conjuncts are correct (QA15-02). Other non-Latin scripts are not covered yet."""
 
 import re
 from collections.abc import Iterable, Sequence
 from datetime import date, datetime
 from io import BytesIO
+from pathlib import Path
 from xml.sax.saxutils import escape
 from zoneinfo import ZoneInfo
 
@@ -17,15 +19,23 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Flowable, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from app.schemas import CAREER_LIST_KEYS, PSYCHOMETRIC_RESULT_KEYS
 
 INDIA = ZoneInfo("Asia/Kolkata")
+DEVANAGARI_FONT = "NotoSansDevanagari"
+pdfmetrics.registerFont(TTFont(DEVANAGARI_FONT, str(Path(__file__).parent / "fonts" / "NotoSansDevanagari-Regular.ttf")))
+# Devanagari (+ Extended, Vedic Extensions, ZWNJ/ZWJ); spaces between words stay inside a run, so a name is shaped as one.
+_DEVANAGARI = "ऀ-ॿ꣠-ꣿ᳐-᳿‌‍"
+_DEVANAGARI_RUN = re.compile(rf"[{_DEVANAGARI}]+(?: +[{_DEVANAGARI}]+)*")
 _STYLES = getSampleStyleSheet()
-TITLE = _STYLES["Title"]
-HEADING = _STYLES["Heading2"]
-BODY = _STYLES["BodyText"]
+# shaping=1 on every style: it only acts on shapable (TrueType) runs, so Helvetica text is unaffected.
+TITLE = ParagraphStyle("ReportTitle", parent=_STYLES["Title"], shaping=1)
+HEADING = ParagraphStyle("ReportHeading", parent=_STYLES["Heading2"], shaping=1)
+BODY = ParagraphStyle("ReportBody", parent=_STYLES["BodyText"], shaping=1)
 SMALL = ParagraphStyle("Small", parent=BODY, fontSize=8, leading=10, textColor=colors.HexColor("#4B5563"))
 CELL = ParagraphStyle("Cell", parent=BODY, fontSize=8.5, leading=10.5)
 STATUS = ParagraphStyle("Status", parent=BODY, spaceAfter=4)  # QA15-06: a gap between the status line and the table
@@ -87,9 +97,27 @@ def _text(value) -> str:
     return str(value)
 
 
+_DEVANAGARI_STYLES: dict[str, ParagraphStyle] = {}
+
+
+def _devanagari_style(style: ParagraphStyle) -> ParagraphStyle:
+    if style.name not in _DEVANAGARI_STYLES:
+        _DEVANAGARI_STYLES[style.name] = ParagraphStyle(f"{style.name}Devanagari", parent=style, fontName=DEVANAGARI_FONT)
+    return _DEVANAGARI_STYLES[style.name]
+
+
 def _p(value, style: ParagraphStyle = BODY) -> Paragraph:
-    """The only way text reaches the page: control characters dropped, markup escaped, line breaks kept."""
-    return Paragraph(escape(_CONTROL.sub("", _text(value))).replace("\n", "<br/>"), style)
+    """The only way text reaches the page: control characters dropped, markup escaped, line breaks kept.
+
+    Text with Devanagari (QA15-02) is based on the Devanagari font, because reportlab shapes a paragraph only when its own
+    font is the shapable one; the Latin runs in between go back to the style's font, since the Devanagari font has no Latin
+    letters. The split only ever cuts between characters, never inside escaped markup."""
+    markup = escape(_CONTROL.sub("", _text(value))).replace("\n", "<br/>")
+    if not _DEVANAGARI_RUN.search(markup):
+        return Paragraph(markup, style)
+    pieces = re.split(f"({_DEVANAGARI_RUN.pattern})", markup)  # even indexes: other text; odd: Devanagari runs
+    latin = f'<font name="{style.fontName}">{{}}</font>'
+    return Paragraph("".join(latin.format(piece) if i % 2 == 0 and piece else piece for i, piece in enumerate(pieces)), _devanagari_style(style))
 
 
 def _status(value: str | None) -> str:

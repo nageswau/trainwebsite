@@ -44,7 +44,7 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
           <a className="btn" href={`/school/parent/children/${id}/360`}>Open 360° view</a>
           {/* ENH-015: the same overview as a PDF -- own linked child only, checked by the server. */}
-          <ReportDownloadButton url={`/api/v1/school/students/${id}/progress-report`} label="Download progress report (PDF)" filename="progress-report.pdf" />
+          <ReportDownloadButton url={`/api/v1/school/students/${id}/progress-report`} label="Download progress report (PDF)" filename="progress-report.pdf" hint="PDFs are not screen-reader friendly. The same information is on this page." />
           <a className="btn secondary" href="/school/parent/dashboard">Back to my children</a>
         </div>
         <SchoolChildOverview overview={overview} />

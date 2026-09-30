@@ -42,7 +42,7 @@ export default async function SchoolPrincipalStudentDetailPage({ params }: { par
         <div className="card">
           <h2>Progress report</h2>
           <p className="muted">A PDF of this student&apos;s profile and progress to date.</p>
-          <ReportDownloadButton url={`/api/v1/school/students/${student.id}/progress-report`} label="Download progress report (PDF)" filename="progress-report.pdf" />
+          <ReportDownloadButton url={`/api/v1/school/students/${student.id}/progress-report`} label="Download progress report (PDF)" filename="progress-report.pdf" hint="PDFs are not screen-reader friendly. The same information is in this student's 360° view." />
         </div>
       </div>
       <div className="portal-content">{scorecard ? <StudentScorecard card={scorecard} /> : <SectionUnavailable title="Progress scorecard" />}</div>

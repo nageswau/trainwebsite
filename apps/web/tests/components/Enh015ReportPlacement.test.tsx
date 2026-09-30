@@ -103,6 +103,19 @@ describe("ENH-015 report download placement", () => {
     expect(vi.mocked(serverApi).mock.calls.map(([path]) => path)).toEqual(["/api/v1/auth/me"]);
   });
 
+  // QA15-10: each button names where the PDF's content can be read accessibly -- which differs by page.
+  it.each([
+    ["coordinator Reports", "school_coordinator", () => CoordinatorReportsPage({ searchParams: Promise.resolve({}) }), schoolButton, /same figures are on your dashboard/],
+    ["principal Reports", "school_principal", () => PrincipalReportsPage({ searchParams: Promise.resolve({}) }), schoolButton, /same figures are on your dashboard/],
+    ["coordinator student", "school_coordinator", () => CoordinatorStudentPage({ params: Promise.resolve({ id: "stu-1" }) }), studentButton, /360° view/],
+    ["principal student", "school_principal", () => PrincipalStudentPage({ params: Promise.resolve({ id: "stu-1" }) }), studentButton, /360° view/],
+    ["parent child", "school_parent", () => ParentChildPage({ params: Promise.resolve({ id: "stu-1" }) }), studentButton, /same information is on this page/],
+  ])("says where to read the PDF accessibly on the %s page", async (_label, role, page, button, hint) => {
+    serve(role);
+    render(await page());
+    expect(button()).toHaveAccessibleDescription(hint);
+  });
+
   it("adds no navigation items (spec §2 non-goal)", () => {
     expect(SCHOOL_NAV.parent.map((item) => item.label)).toEqual(["Dashboard", "Notifications"]);
     expect(SCHOOL_NAV.principal.map((item) => item.label)).toEqual(["Dashboard", "Reports", "Global Education", "Feedback", "Entitlements", "Notifications"]);

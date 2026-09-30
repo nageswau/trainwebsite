@@ -17,3 +17,5 @@ pytest-asyncio>=0.24,<1
 
 alembic>=1.14,<2
 reportlab>=4,<5
+# ENH-015 (QA15-02): lets reportlab shape Devanagari (vowel signs, conjuncts) in the report PDFs.
+uharfbuzz>=0.39,<1

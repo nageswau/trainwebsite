@@ -44,14 +44,14 @@ The Graphify-led audit (2026-09-29) found:
 - A student login / `school_student` role (does not exist, DEC-ROLE-004).
 - Parent access to the psychometric report *file* (`report_url`) — Client Question #20 stays open.
 - Tier gating; rate limiting; changes to `SCHOOL_NAV` / `PORTAL_NAV`.
-- Non-Latin (e.g. Devanagari) glyphs in the PDF — known limitation, see §12.
+- Non-Latin scripts other than Devanagari in the PDF — known limitation, see §12.
 
 ## 3. Decisions confirmed in-session (2026-09-29) — `DEC-SCOPE-037` (provisional)
 
 | ID | Decision |
 |---|---|
 | D1 | **Slice 1 = acceptance-criteria driven:** one school-wide report (School Summary) and one per-student report (Student Progress Report). |
-| D2 | **Format: PDF only**, built with the existing `reportlab` (Platypus, part of the same package). No new dependency. |
+| D2 | **Format: PDF only**, built with the existing `reportlab` (Platypus, part of the same package). No new dependency. **Revised 2026-09-30 (user, QA15-02):** one dependency added, `uharfbuzz`, plus a bundled Devanagari font, so Devanagari names and notes render correctly (§12). |
 | D3 | **Generation: synchronous, in memory**, streamed back. Nothing stored, no Celery job, no table, no migration. |
 | D4 | **School Summary audience:** `school_coordinator`, `school_principal`, own school only (reuses `_require_school_reader`). |
 | D5 | **Progress Report audience:** `school_parent` (linked children only), `school_coordinator`, `school_principal` (own institution). Every other role 403 — checked before the student is loaded. |
@@ -229,8 +229,20 @@ Filenames never contain a student or school name (no PII in headers, no header i
   after.
 - Scope helpers, `student_indicators`, `_overview_payload` are called, not edited.
 - No migration → `alembic check` unaffected. No nav change → `skills.test.ts`, `AdminSchoolAnalyticsPage.test.tsx` safe.
-- Known limitation: built-in PDF fonts (Helvetica) cannot draw non-Latin scripts; such characters render as boxes.
-  Fix = embed a TTF font asset (a later decision).
+- **Fonts (revised 2026-09-30, QA15-02, user decision):**
+  - Devanagari is set in the bundled Noto Sans Devanagari (SIL OFL 1.1, `app/reporting/fonts/`, with its licence file).
+  - It is shaped by the new dependency `uharfbuzz` (Apache-2.0), so vowel signs and conjuncts are correct.
+  - A paragraph containing Devanagari uses that font as its base font, and Latin runs go back to Helvetica. reportlab
+    shapes only a paragraph whose own font is shapable.
+  - Latin-only PDFs are unchanged and embed no extra font.
+  - **Remaining limitations:** other Indian scripts (Tamil, Telugu, Bengali, …) still render as boxes. Copy/paste and
+    search of Devanagari *inside the PDF* give garbled text, because shaped glyphs lose their Unicode mapping. The
+    displayed text is correct.
+- **PDF accessibility (QA15-10, user decision):**
+  - reportlab cannot produce tagged PDFs. This is accepted.
+  - Each download button carries a visible hint, which is also its accessible description, naming where the same
+    content is available on an accessible page: the dashboard and the grade-wise comparison for the School Summary; the
+    360° view or the child page for the Progress Report.
 
 ## 13. Test plan (written before code)
 

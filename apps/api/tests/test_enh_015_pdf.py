@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 from pdf_text import pdf_pages, pdf_text
 
-from app.reporting.pdf import render_progress_report, render_school_summary
+from app.reporting.pdf import DEVANAGARI_FONT, HEADING, _p, render_progress_report, render_school_summary
 
 AS_OF = date(2026, 9, 29)
 
@@ -114,9 +114,39 @@ def test_markup_in_the_school_name_is_rendered_literally():
     assert "A & B <School>" in pdf_text(render_school_summary(_summary(school_name="A & B <School>")))
 
 
-def test_non_latin_text_does_not_break_generation():  # known limitation: glyphs may not show, but nothing fails
+def test_non_latin_text_does_not_break_generation():
     overview = _overview(student={**_overview()["student"], "full_name": "आशा राव"})
     assert render_progress_report(overview, AS_OF).startswith(b"%PDF-")
+
+
+def test_devanagari_text_is_set_in_the_embedded_devanagari_font():  # QA15-02: was drawn as ■ in Helvetica
+    pdf = render_progress_report(_overview(student={**_overview()["student"], "full_name": "आशा राव"}), AS_OF)
+    assert b"NotoSansDevanagari" in pdf
+
+
+def test_latin_around_devanagari_stays_in_helvetica_and_readable():  # the Devanagari font has no Latin letters
+    pdf = render_progress_report(_overview(student={**_overview()["student"], "full_name": "Asha आशा & Rao"}), AS_OF)
+    assert "Asha" in pdf_text(pdf) and "& Rao" in pdf_text(pdf)
+
+
+def test_a_latin_only_report_does_not_embed_the_devanagari_font():  # no size cost for the common case
+    assert b"NotoSansDevanagari" not in render_progress_report(_overview(), AS_OF)
+
+
+def test_devanagari_paragraphs_are_based_on_the_devanagari_font_so_they_are_shaped():
+    # reportlab shapes a paragraph only when its own font is the shapable one: a Devanagari <font> run inside a Helvetica
+    # paragraph is drawn unshaped (vowel signs in the wrong place -- found when checking QA15-02's fix by eye). The rendered
+    # glyph order cannot be read back from the PDF, so this pins the mechanism.
+    assert _p("आशा राव").style.fontName == DEVANAGARI_FONT
+    assert _p("आशा राव", HEADING).style.fontName == DEVANAGARI_FONT
+    assert _p("Asha Rao").style.fontName == "Helvetica"
+
+
+def test_mixed_devanagari_text_with_markup_and_line_breaks_renders():
+    notes = "छात्रा ने <b>विज्ञान</b> में रुचि & Likes robotics\nदूसरी पंक्ति (line two)"
+    overview = _overview(career_guidance={"status": "completed", "sessions": [{"status": "completed", "notes": notes}]})
+    text = pdf_text(render_progress_report(overview, AS_OF))
+    assert "& Likes robotics" in text and "(line two)" in text
 
 
 def test_control_characters_do_not_break_generation():

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
 import { detailMessage } from "@/lib/apiErrors";
 
@@ -9,11 +9,13 @@ const FAILED = "Something went wrong on our side. Please try again.";
 
 // ENH-015: downloads a server-generated PDF report. Fetched first rather than linked (<a download>), so a refusal or a
 // server error is shown as a message instead of being saved as a file; only a real application/pdf response is saved.
-// The button stays in place and keeps focus; the outcome is announced under it (FormMessage).
-export default function ReportDownloadButton({ url, label, filename }: { url: string; label: string; filename: string }) {
+// The button stays in place and keeps focus; the outcome is announced under it (FormMessage). `hint` (QA15-10): the PDF is
+// untagged, so the page says where the same information can be read with a screen reader; it is the button's description.
+export default function ReportDownloadButton({ url, label, filename, hint }: { url: string; label: string; filename: string; hint?: string }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
   const downloading = useRef(false);
+  const hintId = useId();
 
   async function download() {
     if (downloading.current) return;
@@ -41,10 +43,11 @@ export default function ReportDownloadButton({ url, label, filename }: { url: st
       <div className="actions">
         {/* aria-disabled, not `disabled`: a disabled button drops keyboard focus to <body> (QA15-01). The `downloading`
             guard is what stops a second request; globals.css dims `.btn[aria-disabled="true"]` like `.btn:disabled`. */}
-        <button type="button" className="btn" onClick={download} aria-disabled={busy} aria-busy={busy}>
+        <button type="button" className="btn" onClick={download} aria-disabled={busy} aria-busy={busy} aria-describedby={hint ? hintId : undefined}>
           {busy ? "Preparing PDF…" : label}
         </button>
       </div>
+      {hint && <p id={hintId} className="muted report-hint">{hint}</p>}
       {message && <FormMessage message={message} />}
     </div>
   );
