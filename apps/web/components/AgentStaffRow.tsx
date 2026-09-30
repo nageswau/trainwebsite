@@ -1,0 +1,132 @@
+"use client";
+
+import { FormEvent, useEffect, useRef, useState } from "react";
+
+import { sendJson } from "@/lib/apiErrors";
+
+import { STAFF_URL } from "./AgentStaffCreateForm";
+
+export type StaffMember = { id: string; code: string; full_name: string; email: string; phone: string | null; status: "active" | "deactivated"; setup: "pending_setup" | "link_expired" | null };
+type Mode = "view" | "edit" | "confirm-deactivate" | "confirm-reset";
+
+function badge(m: StaffMember): string | null {
+  if (m.status === "deactivated") return "Deactivated";
+  if (m.setup === "link_expired") return "Link expired";
+  return m.setup === "pending_setup" ? "Set-up pending" : null;
+}
+
+function InlineConfirm({ label, name, text, busy, onConfirm, onCancel }: { label: string; name: string; text: string; busy: boolean; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div role="group" aria-label={`${label} ${name}`} style={{ marginTop: 8 }}>
+      <p style={{ fontSize: 13 }}>{text}</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <button className="btn small" autoFocus disabled={busy} onClick={onConfirm}>{busy ? "Working…" : label}</button>
+        <button className="btn secondary small" disabled={busy} onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// AGN-002: one staff member with its actions. Confirmations are inline (AgentTeamPanel's pattern): focus goes to Confirm, and
+// Cancel/Escape return it to the button that opened them. Server messages (409/429) show on the row.
+export default function AgentStaffRow({ member, onChanged }: { member: StaffMember; onChanged: (message: string) => void }) {
+  const [mode, setMode] = useState<Mode>("view");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inFlight = useRef(false);
+  const returnFocusTo = useRef<string | null>(null);
+  const id = (action: string) => `staff-${action}-${member.id}`;
+  const who = `${member.code} ${member.full_name}`;
+
+  useEffect(() => {
+    if (mode === "view" && returnFocusTo.current) {
+      document.getElementById(returnFocusTo.current)?.focus();
+      returnFocusTo.current = null;
+    }
+  }, [mode]);
+
+  function close(action: string) {
+    returnFocusTo.current = id(action);
+    setMode("view");
+  }
+
+  async function run(path: string, method: "POST" | "PATCH", body: unknown, done: (data: Record<string, unknown>) => string) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setError(null);
+    const outcome = await sendJson(`${STAFF_URL}/${member.id}${path}`, method, body);
+    inFlight.current = false;
+    setBusy(false);
+    if (!outcome.ok) {
+      setError(outcome.message);
+      return;
+    }
+    setMode("view");
+    onChanged(done(outcome.data));
+  }
+
+  function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const phone = String(data.get("phone") ?? "").trim();
+    run("", "PATCH", { full_name: String(data.get("full_name") ?? ""), phone: phone || null }, () => `${member.code} updated.`);
+  }
+
+  const label = badge(member);
+  const active = member.status === "active";
+
+  return (
+    <li className="card" style={{ marginBottom: 8, overflowWrap: "anywhere" }}>
+      <strong>{member.code}</strong> {member.full_name} <span className="muted" style={{ fontSize: 13 }}>{member.email}{member.phone ? ` · ${member.phone}` : ""}</span> {label && <span className="badge">{label}</span>}
+      {mode === "edit" && (
+        <form className="form" onSubmit={save} onKeyDown={(e) => e.key === "Escape" && close("edit")} aria-label={`Edit ${member.full_name}`} style={{ marginTop: 8 }}>
+          <div className="field"><label htmlFor={id("name")}>Full name</label><input id={id("name")} name="full_name" defaultValue={member.full_name} maxLength={160} required autoFocus /></div>
+          <div className="field"><label htmlFor={id("phone")}>Phone (optional)</label><input id={id("phone")} name="phone" type="tel" defaultValue={member.phone ?? ""} maxLength={40} /></div>
+          <p className="muted" style={{ fontSize: 13 }}>Email can&apos;t be changed.</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button className="btn small" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
+            <button type="button" className="btn secondary small" disabled={busy} onClick={() => close("edit")}>Cancel</button>
+          </div>
+        </form>
+      )}
+      {mode === "confirm-deactivate" && (
+        <InlineConfirm
+          label="Confirm deactivate" name={member.full_name} busy={busy} onCancel={() => close("deactivate")}
+          text={`Deactivate ${member.full_name}? They will be signed out and can no longer sign in.`}
+          onConfirm={() => run("/deactivate", "POST", {}, () => `${who} deactivated. They have been signed out.`)}
+        />
+      )}
+      {mode === "confirm-reset" && (
+        <InlineConfirm
+          label="Confirm reset" name={member.full_name} busy={busy} onCancel={() => close("reset")}
+          text={`Reset ${member.full_name}'s login? Their password stops working, they are signed out, and a new set-password link is emailed to them.`}
+          onConfirm={() =>
+            run("/reset", "POST", {}, (data) =>
+              data.email_status === "sent" ? `A new set-password link was emailed to ${member.full_name}.` : `${member.full_name}'s login was reset, but the email was not delivered. Try Reset again in a minute.`,
+            )
+          }
+        />
+      )}
+      {mode === "view" && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+          <button id={id("edit")} className="btn secondary small" aria-label={`Edit ${member.full_name}`} onClick={() => setMode("edit")}>Edit</button>
+          {active ? (
+            <>
+              <button id={id("reset")} className="btn secondary small" aria-label={`Reset ${member.full_name}`} onClick={() => setMode("confirm-reset")}>Reset</button>
+              <button id={id("deactivate")} className="btn secondary small" aria-label={`Deactivate ${member.full_name}`} onClick={() => setMode("confirm-deactivate")}>Deactivate</button>
+            </>
+          ) : (
+            <button
+              className="btn secondary small" aria-label={`Reactivate ${member.full_name}`} disabled={busy}
+              onClick={() => run("/reactivate", "POST", {}, () => `${who} reactivated.${member.setup ? " They have not set a password yet: use Reset to send a new link." : ""}`)}
+            >
+              {busy ? "Working…" : "Reactivate"}
+            </button>
+          )}
+        </div>
+      )}
+      {error && <div className="form-error" role="status" aria-live="polite" style={{ marginTop: 8, fontSize: 13 }}>{error}</div>}
+    </li>
+  );
+}
