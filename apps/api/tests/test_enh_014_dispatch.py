@@ -8,6 +8,8 @@ from app.notifications import dispatch
 from app.notifications.dispatch import queue_deliveries
 from tests.enh014_helpers import make_user, set_prefs
 
+_REAL_PUBLISH = dispatch._publish  # captured at import, before the autouse fixture patches it
+
 
 async def _notice(db, user) -> Notification:
     note = Notification(user_id=user.id, title="Result published", body="Term 1 Maths is available.", action_url="/school/parent/dashboard")
@@ -86,3 +88,48 @@ async def test_a_broker_failure_never_fails_the_commit(db_session, enqueued, mon
     await db_session.commit()  # must not raise
     [row] = await _rows(db_session, note)
     assert row.status == "queued"  # left for the sweeper (Task 7)
+
+
+@pytest.mark.asyncio
+async def test_savepoint_release_does_not_publish_early(db_session, enqueued):
+    user = await make_user(db_session)
+    note = await _notice(db_session, user)
+    await queue_deliveries(db_session, note, user)
+    async with db_session.begin_nested():
+        pass
+    assert enqueued == []
+    await db_session.commit()
+    assert len(enqueued) == 1
+
+
+@pytest.mark.asyncio
+async def test_savepoint_rollback_keeps_outer_pending_ids(db_session, enqueued):
+    user = await make_user(db_session)
+    note = await _notice(db_session, user)
+    await queue_deliveries(db_session, note, user)
+    sp = await db_session.begin_nested()
+    await sp.rollback()
+    await db_session.commit()
+    assert len(enqueued) == 1
+
+
+@pytest.mark.asyncio
+async def test_root_rollback_with_open_savepoint_discards_everything(db_session, enqueued):
+    user = await make_user(db_session)
+    note = await _notice(db_session, user)
+    await db_session.begin_nested()
+    await queue_deliveries(db_session, note, user)
+    await db_session.rollback()
+    await db_session.commit()
+    assert enqueued == []
+
+
+@pytest.mark.asyncio
+async def test_publish_calls_celery_with_fail_fast_options(db_session, monkeypatch):
+    from app import worker
+
+    real_publish = _REAL_PUBLISH
+    calls = []
+    monkeypatch.setattr(worker.deliver_notification_task, "apply_async", lambda *a, **kw: calls.append((a, kw)))
+    real_publish("abc", 60)
+    assert calls == [((("abc",),), {"countdown": 60, "retry": False})]

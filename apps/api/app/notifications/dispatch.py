@@ -2,8 +2,10 @@
 
 `queue_deliveries` writes one `queued` NotificationDelivery per allowed channel (email always; WhatsApp/SMS only when the
 recipient opted in -- D4) and remembers the ids on the session. The `after_commit` listener publishes them; a rollback
-discards them, so a rolled-back write never sends anything and the worker never looks for an uncommitted row. A delivery
-inside a rolled-back SAVEPOINT stays in the list; the worker's claim then finds no row and exits, which is harmless."""
+discards them, so a rolled-back write never sends anything and the worker never looks for an uncommitted row. Only the
+ROOT transaction's end counts: a SAVEPOINT release or rollback leaves the pending list untouched, so an id queued inside
+a rolled-back SAVEPOINT may still be published at the root commit; the worker's claim then finds no row and exits,
+which is harmless."""
 
 import logging
 from uuid import UUID
@@ -33,14 +35,19 @@ async def queue_deliveries(db: AsyncSession, notification: Notification, recipie
 
 
 @event.listens_for(Session, "after_commit")
-def _publish_after_commit(session: Session) -> None:
-    for delivery_id in session.info.pop(PENDING_KEY, []):
-        enqueue(delivery_id)
+def _publish_when_root_commits(session: Session) -> None:
+    """SQLAlchemy also dispatches this for a SAVEPOINT release, when the session is still inside the savepoint."""
+    if not session.in_nested_transaction():
+        for delivery_id in session.info.pop(PENDING_KEY, []):
+            enqueue(delivery_id)
 
 
 @event.listens_for(Session, "after_rollback")
-def _discard_after_rollback(session: Session) -> None:
-    session.info.pop(PENDING_KEY, None)
+def _discard_when_root_rolls_back(session: Session) -> None:
+    """Also dispatched per SAVEPOINT; a root rollback with a savepoint open dispatches once for the savepoint (still
+    nested) and once more for the root, which is the one that discards."""
+    if not session.in_nested_transaction():
+        session.info.pop(PENDING_KEY, None)
 
 
 def enqueue(delivery_id: UUID | str, countdown: int = 0) -> None:
