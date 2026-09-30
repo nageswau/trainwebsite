@@ -67,25 +67,45 @@ School path; null for the generic path and every pre-existing row.
 New queued rows set `attempt_count=0`; each claim increments it. The column default (1) is untouched for the
 inline auth paths that still construct rows directly.
 
+Index (for the sweeper, §6.5): `ix_notification_deliveries_status_updated_at` on `(status, updated_at)`.
+
+Data classification: preferences are personal data (consent state) with no free text; retention = life of the
+account, deleted on erasure (§6.2). `context.school_name` is not personal data. The phone number stays only in
+`users.phone`; nothing new stores it.
+
 ## 5. API
+
+Conventions follow the existing API, not a new style: snake_case fields, FastAPI's `{"detail": ...}` error
+body, Pydantic input/output models on the route (`schemas.py`).
 
 ### 5.1 `GET /api/v1/account/notification-preferences`
 Any signed-in user; own data only (user from session, no id in path). `401` when signed out.
+`response_model=NotificationPreferencesOut`:
 
 ```json
-{ "email": true, "in_app": true, "whatsapp": false, "sms": false, "phone": "+91 98765 43210", "phone_valid": true }
+{ "whatsapp": false, "sms": false, "phone_valid": true }
 ```
-`phone` is `User.phone` as stored; `phone_valid` is whether it normalises (§6.3).
+`phone_valid` is whether `User.phone` normalises (§6.3). The phone itself is not echoed (the page already has
+it from `/auth/me`), and "email/in-app always on" is UI copy, not API fields — nothing observable is added
+that a client could come to depend on without need.
 
 ### 5.2 `PUT /api/v1/account/notification-preferences`
-Body `{ "whatsapp": bool, "sms": bool }` (Pydantic, `extra="forbid"`, both required). Returns the §5.1 shape.
-- `422` "Add a valid mobile number to your profile first" when turning either on while `phone_valid` is false;
-  nothing is written.
-- Upsert on `user_id` (`INSERT … ON CONFLICT DO UPDATE`), so concurrent requests cannot create two rows.
+Body `NotificationPreferencesIn`: `{ "whatsapp": StrictBool, "sms": StrictBool }`, both required,
+`extra="forbid"` (so `"yes"`, `1`, or a smuggled `user_id`/`*_opted_in_at` is a 422). Returns `200` with the
+§5.1 shape. Full replacement of a two-field resource, so PUT (idempotent: repeating it is harmless).
+- `422` `{"detail": "Add a valid mobile number to your profile first"}` when turning either on while
+  `phone_valid` is false; nothing is written.
+- Upsert on `user_id` (`INSERT … ON CONFLICT DO UPDATE`, SQLAlchemy `postgresql.insert`, parameterised), so
+  concurrent requests cannot create two rows; last write wins.
 - `*_opted_in_at` set to now on a false→true change, kept on true→true, cleared on →false.
-- `AuditLog(action="notification_preference.update", metadata={"before": {...}, "after": {...}})` — booleans
-  only, never the phone number.
+- Audit only when a value changes: `AuditLog(action="notification_preference.update",
+  metadata={"before": {...}, "after": {...}, "consent_text": "enh014-v1"})` — booleans and the consent-copy
+  version only, never the phone number. Preference upsert and audit row commit in one transaction.
 - No admin override: consent must be the user's own.
+- CSRF: the session cookie is `SameSite=Lax` (`auth.py:88`) and the method is PUT with a JSON body, which a
+  cross-site HTML form cannot send; no new CSRF mechanism is needed.
+- Rate limiting: none added. Opting in sends nothing (no confirmation message), so there is no cost or spam
+  amplification to limit; audit rows are written only on change.
 
 ### 5.3 Unchanged / adjusted contracts
 - `PATCH /auth/me`: unchanged.
@@ -107,8 +127,10 @@ Body `{ "whatsapp": bool, "sms": bool }` (Pydantic, `extra="forbid"`, both requi
 - SQLAlchemy `Session` event listeners, registered once on import:
   - `after_commit`: pop the pending ids and call `enqueue(id)` for each.
   - `after_rollback` / `after_soft_rollback`: discard pending ids.
-- `enqueue(delivery_id)`: `deliver_notification_task.delay(str(id))`; any exception is logged
-  (`notification_enqueue_failed`, delivery id only) and swallowed — the row stays `queued` for the sweeper.
+- `enqueue(delivery_id, countdown=0)`: `deliver_notification_task.apply_async((str(id),), countdown=countdown,
+  retry=False)`; `retry=False` makes a broker outage fail fast instead of blocking the request in Celery's
+  publish-retry loop. Any exception is logged (`notification_enqueue_failed`, delivery id only) and swallowed —
+  the row stays `queued` for the sweeper.
 - `normalise_phone(raw: str | None) -> str | None` (§6.3).
 
 ### 6.2 Changed helpers (bodies only; signatures unchanged, so the ~35 trigger sites do not change)
@@ -138,10 +160,18 @@ Strip spaces, `-`, `(`, `)`, `.`. Then:
   (basic auth), `From=whatsapp:{from}`, `To=whatsapp:{to}`, `ContentSid`, `ContentVariables={"1": title, "2": body, "3": link}`.
 - `async send_sms(to, text)`: same endpoint, `From`, `To`, `Body` (text = `"{title} — {body} {link}"`, capped at
   320 characters).
-- Link = `settings.frontend_url` + `action_url` (omitted when `action_url` is null).
-- Returns `SendResult(status, provider_reference, error, transient)`: 2xx → `sent` + message SID;
-  timeout/connection error/5xx/429 → `failed`, transient; other 4xx → `failed`, permanent (error = Twilio
-  code + message, truncated to 500).
+- Link = `settings.frontend_url` + `action_url`, only when `action_url` starts with a single `/` (an internal
+  path). Absolute, protocol-relative (`//…`) or `javascript:` values — reachable through the admin
+  `/communications/notify` form — are dropped, so messages never carry an off-site link.
+- Template variables and SMS text are plain text: whitespace runs (including newlines, which WhatsApp template
+  variables reject) collapsed to one space, each variable capped at 500 characters.
+- The Twilio response is untrusted: only `sid` (string, `^(SM|MM)[0-9a-f]{32}$`) and the numeric error `code`
+  are read; anything else is ignored.
+- Returns `SendResult(status, provider_reference, error, transient)`: 2xx with a valid `sid` → `sent`;
+  timeout/connection error/5xx/429 → `failed`, transient; other 4xx → `failed`, permanent. Stored error is
+  `twilio:{code}` plus Twilio's message with any run of 6+ digits replaced by `…` (Twilio messages can echo
+  the recipient number), truncated to 500. The auth token is sent only in the basic-auth header and never
+  appears in errors or logs.
 
 ### 6.5 Worker — `app/worker.py`
 `deliver_notification_task(delivery_id)` — thin Celery wrapper (`asyncio.run`) around
@@ -169,20 +199,46 @@ Strip spaces, `-`, `(`, `)`, `.`. Then:
 
 ## 7. Frontend — `/account/profile`
 
-`app/account/profile/page.tsx` loads `/auth/me` and `/account/notification-preferences` with
-`Promise.allSettled`. New client component `components/NotificationPreferencesForm.tsx` renders below
-`ProfileForm`:
-- `<fieldset>` with legend "How we contact you": Email and In-app shown checked and disabled ("Always on");
-  WhatsApp and SMS checkboxes; consent line "Messages go to {phone}. You can turn these off at any time."
-- Preferences fetch failed → only this section shows "We couldn't load your notification settings." with a
-  Try again link; the profile form still works.
-- `phone_valid` false → WhatsApp/SMS disabled with hint "Add a mobile number above to turn on WhatsApp or SMS."
-- Save → button "Saving…" and disabled; success → `role="status"` "Notification settings saved.";
-  422 → server message; network error → "Couldn't save — check your connection and try again."; on any
-  failure the checkboxes revert to the last saved values.
-- `ProfileForm` calls `router.refresh()` after a successful save so `phone_valid` updates.
-- Keyboard operable, labelled inputs, works at 360 px.
-- Types added to `lib/types.ts`. No admin UI change.
+Reuse first: the page's existing `PublicShell`, `.action-card`, `.form`/`.field`, `.btn`, `.muted`,
+`FormMessage` (alert for failure, status for success) and `ProfileForm`'s patterns (double-submit ref guard,
+visually-hidden "Saving…" status, focus return to the submit button, 401 "session expired" block). The only
+new component is `components/NotificationPreferencesForm.tsx`; no new CSS tokens or libraries.
+
+Page (`app/account/profile/page.tsx`):
+- Loads `/auth/me` and `/account/notification-preferences` in parallel (`Promise.allSettled` — no added
+  latency; the page is server-rendered, so there is no client loading state to design for first paint).
+- Hierarchy: `h1` "Your profile" (unchanged) → existing profile card → `h2` "Notifications" with a one-line
+  `muted` intro ("Choose where we send updates about results, sessions and applications.") → a second
+  `.action-card` holding the form.
+- A `/auth/me` failure keeps today's behaviour. A preferences-only failure renders, in the second card only,
+  "We couldn't load your notification settings right now." with a "Try again" link (`href="/account/profile"`);
+  the profile form still works.
+
+Form (`NotificationPreferencesForm`, props `{ initial, phone, phoneValid }`):
+- `<fieldset>` with `<legend>` "Send me updates by". Four rows, each a native checkbox inside its `<label>`
+  (whole row is the click/touch target, at least 44 px tall):
+  - Email — checked, disabled, hint "Always on".
+  - In-app — checked, disabled, hint "Always on".
+  - WhatsApp — "Messages go to {phone}".
+  - SMS — "Texts go to {phone}".
+- No valid phone (empty state): WhatsApp/SMS disabled, and a hint (linked by `aria-describedby`) "Add a mobile
+  number in your profile above to turn on WhatsApp or SMS." with an in-page link to `#profile-phone`.
+- Consent copy under the channels: "By turning on WhatsApp or SMS you agree to receive these messages from
+  EduSphere. You can turn them off here at any time." (version `enh014-v1`, recorded in the audit, §5.2).
+- Explicit "Save notification settings" button — consent is a deliberate act, so toggles do not autosave.
+- Saving: button text "Saving…", `aria-disabled`, `aria-busy` on the form, visually-hidden status, second
+  submit ignored. Success: `FormMessage` "Notification settings saved." Failure: `FormMessage` alert with the
+  server's 422 `detail`, or "Couldn't save your settings. Check your connection and try again." for network
+  or 5xx; the checkboxes revert to the last saved values. 401: the same "session expired" block as
+  `ProfileForm`.
+- Keyboard: Tab order follows the visual order; Space toggles; focus returns to the Save button after a save.
+  Colour is never the only signal (disabled rows carry text hints).
+- Responsive: single column at every width; labels wrap; tested at 320, 768, 1024 and 1440 px.
+
+`ProfileForm` gets one change: `router.refresh()` after a successful save, so a newly added phone enables the
+WhatsApp/SMS toggles without a manual reload (client state in both forms is kept across the refresh).
+
+Types added to `lib/types.ts`. No admin UI change.
 
 ## 8. Transactions, races, authorization, errors
 
@@ -194,8 +250,35 @@ Strip spaces, `-`, `(`, `)`, `.`. Then:
 - Concurrent preference writes: upsert on the primary key.
 - Redis down at enqueue: request still succeeds; the sweeper re-enqueues.
 - Worker crash mid-send: `sending` → `failed` by the sweeper, not resent.
+- Unknown outcome: if a worker dies after Twilio accepted a message but before recording it, the row stays
+  `sending` and the sweeper marks it `failed` ("worker interrupted") — never resent, because Twilio's Messages
+  API has no idempotency key and a duplicate to a parent is worse than a missed copy (email and in-app still
+  exist).
 - Preferences are self-only; the worker runs without a user context; no new public endpoint.
 - PII: phone numbers go only to Twilio (D9); never logged; erasure deletes preferences.
+
+### 8.1 Security review (security-and-hardening)
+
+Trust boundaries: browser → preference endpoints; trigger code → Celery/Redis → worker; worker → Twilio/SMTP/
+webhooks; Twilio responses → worker.
+
+| Check | Finding / control |
+|---|---|
+| Authentication | Both endpoints use `get_current_user` (session cookie); 401 when absent |
+| Authorization / IDOR | No resource id in the path; user always from the session; no admin route can set anyone's consent |
+| Role escalation | `extra="forbid"` input; only two booleans writable; role/profile untouched; `PATCH /auth/me` guard unchanged |
+| Input validation | `StrictBool` body; phone normalised with an allow-list pattern before any send; `action_url` link allow-list (§6.4) |
+| XSS | React escaping on the page; email HTML path unchanged (ENH-005 escaping); WhatsApp/SMS are plain text |
+| CSRF | `SameSite=Lax` cookie + PUT/JSON (§5.2) |
+| SQL injection | ORM / `postgresql.insert` / `update()` constructs only; no raw SQL strings |
+| Token / session | No new tokens or session handling; auth/invite links stay email-only (AC11) |
+| Secret exposure | Twilio SID/token from env only, empty in CI compose, sent only as basic auth, never in errors/logs/responses |
+| Sensitive logs | Logs carry delivery id, channel, status, attempt only; stored Twilio errors have 6+-digit runs redacted |
+| Rate limiting | Not added for preferences (nothing sent on opt-in); outbound volume bounded by existing trigger RBAC; admin `/notify` stays role-gated and audited |
+| Audit | Preference changes audited with before/after and consent-copy version; admin `/notify` audit unchanged |
+| SSRF | Twilio base URL is a constant; legacy webhook URLs come from env only, as today |
+| Third-party data | Twilio response parsed for `sid` and `code` only, both shape-checked |
+| Privacy / DPDP | Opt-in with timestamp; minimal data; erasure deletes; export includes (AC13); Twilio as processor (D9) |
 
 ## 9. Acceptance criteria
 
@@ -221,6 +304,10 @@ Strip spaces, `-`, `(`, `)`, `.`. Then:
 - **ENH-014-AC13** GDPR erasure deletes the preferences row; the data export includes preferences.
 - **ENH-014-AC14** With Twilio unconfigured, WhatsApp/SMS deliveries are `not_configured`; the legacy
   `WHATSAPP_WEBHOOK_URL`/`SMS_WEBHOOK_URL` still work when set.
+- **ENH-014-AC15** The preference endpoint accepts only two strict booleans; any other field or type is 422 and
+  writes nothing.
+- **ENH-014-AC16** WhatsApp/SMS messages carry a link only for internal paths; phone numbers, message text and
+  the Twilio token never appear in logs, and stored Twilio errors have phone-like digit runs redacted.
 
 ## 10. Tests (written first)
 
@@ -228,8 +315,12 @@ Backend (`apps/api/tests/`):
 - `conftest.py`: autouse fixture replacing `dispatch.enqueue` with a capture list (no Redis in tests), plus a
   `drain_deliveries` helper that awaits `deliver()` for captured ids until empty (retries captured, not slept).
 - `test_enh_014_phone.py` — normalisation table (AC02 inputs).
-- `test_enh_014_preferences.py` — 401; defaults; 422 without valid phone; opt-in/out timestamps; audit; own-only;
-  concurrent PUTs leave one row (AC01–AC03).
+- `test_enh_014_preferences.py` — 401 on both; defaults; 422 without valid phone (nothing written); 422 on
+  `"yes"`/`1`/extra `user_id`/`whatsapp_opted_in_at` (AC15); opt-in/out timestamps; audit only on change with
+  `consent_text`; a second user's row untouched; concurrent PUTs leave one row (AC01–AC03).
+- `test_enh_014_twilio.py` — request shape (basic auth, `whatsapp:` prefixes, ContentVariables); whitespace
+  collapsing and caps; link allow-list drops absolute/`//`/`javascript:` URLs; malformed `sid` treated as
+  failure; error redaction; token absent from error text (AC16). Uses `httpx.MockTransport`, no network.
 - `test_enh_014_dispatch.py` — result publish and school activity with opted-in vs not (AC04, AC06); rollback
   queues nothing and enqueue fires only after commit (AC04, AC05); `/communications/notify` filtering;
   certificate/Q&A follow preferences; forgot-password stays inline email-only (AC11).
@@ -241,10 +332,15 @@ Backend (`apps/api/tests/`):
   `test_ovs_004_status_tracking.py:135` (monkeypatch target moves to the dispatch module).
 
 Frontend:
-- Vitest `NotificationPreferencesForm.test.tsx` — load error, disabled without phone, saving, success, 422 and
-  network error with revert.
+- Vitest `NotificationPreferencesForm.test.tsx` — always-on rows disabled with text; no-phone empty state and
+  `aria-describedby` hint; saving (`aria-busy`, double submit ignored); success status; 422 detail and network
+  error alerts with checkbox revert; 401 session-expired block; focus returns to Save.
+- Vitest `ProfileForm` — existing tests still pass with a mocked `useRouter`; `refresh()` called once after a
+  successful save only.
 - Playwright `enh-014-notification-preferences.spec.ts` — parent without phone sees toggles disabled; adds phone,
-  enables WhatsApp, reloads, still on; keyboard-only; 360 px viewport.
+  toggles enable without reload; turns on WhatsApp, reloads, still on; preferences load failure shows the
+  section error while the profile form works; keyboard-only run; 320 px and 1440 px viewports with no
+  horizontal scroll; axe check on the page.
 
 Regression: full pytest suite, full vitest, and the School/notification Playwright specs (`sch-007`, `enh-023`,
 `enh-005`, `ovs-004`, `enh-007`, `sec-002`).
