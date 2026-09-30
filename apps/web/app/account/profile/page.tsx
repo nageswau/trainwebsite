@@ -68,7 +68,7 @@ export default async function AccountProfilePage() {
           <div className="action-card">
             <ProfileForm fullName={user.full_name} phone={user.phone ?? null} />
           </div>
-          <h2 style={{ marginTop: 28 }}>Notifications</h2>
+          <h2 style={{ fontSize: 24, marginTop: 28 }}>Notifications</h2>
           <p className="muted">Choose where we send updates about results, sessions and applications.</p>
           <div className="action-card">
             {preferences ? (

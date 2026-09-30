@@ -89,6 +89,16 @@ describe("/account/profile notification section (ENH-014)", () => {
     expect(text(tree.find((el) => el.type === "h2")!)).toBe("Notifications");
   });
 
+  it("sizes the Notifications heading below the page title", async () => {
+    byPath();
+    const tree = await render();
+    const size = (tag: string) => (tree.find((el) => el.type === tag)!.props as { style: { fontSize?: number } }).style.fontSize;
+    const h1 = size("h1")!;
+    const h2 = size("h2");
+    expect(typeof h2).toBe("number");
+    expect(h2).toBeLessThan(h1);
+  });
+
   it("shows a section-only error when preferences fail to load, keeping the profile form", async () => {
     byPath({ prefs: new Error("boom") });
     const tree = await render();

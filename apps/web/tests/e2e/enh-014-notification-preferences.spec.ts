@@ -82,6 +82,11 @@ for (const width of [320, 1440]) {
     });
     expect(sectionOverflow).toBeLessThanOrEqual(0);
     await expect(page.getByRole("heading", { level: 2, name: "Notifications" })).toBeVisible();
+    const [h1Size, h2Size] = await page.evaluate(() => [
+      parseFloat(getComputedStyle(document.querySelector("h1")!).fontSize),
+      parseFloat(getComputedStyle(Array.from(document.querySelectorAll("h2")).find((h) => h.textContent === "Notifications")!).fontSize),
+    ]);
+    expect(h2Size).toBeLessThan(h1Size);
     await expect(page.getByRole("group", { name: "Send me updates by" })).toBeVisible();
     for (const name of [/^Email/, /^In-app/, /^WhatsApp/, /^SMS/]) {
       const box = page.getByRole("checkbox", { name });
