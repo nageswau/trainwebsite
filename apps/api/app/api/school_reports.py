@@ -27,14 +27,15 @@ logger = get_logger("app.school_reports")
 PDF = "application/pdf"
 PDF_RESPONSES: dict[int | str, dict] = {200: {"content": {PDF: {}}, "description": "The report as a PDF attachment"}}
 FAILED = "Could not generate the report; please try again"
-# §30 management figures, in the source's own order, as (label, indicator key) -- the ENH-016 indicator sets, so the
-# PDF agrees with the on-screen dashboards.
+# §30 management figures, in the source's own order, as (label, indicator key) -- the ENH-016 indicator sets, worded as
+# the dashboard KPI tiles that count the same students (`/school/dashboard` `school_crm_kpis`), so a figure never reads like
+# the Reports panel's broader "Career guidance" (any career record).
 MANAGEMENT_FIGURES = (
-    ("Career guidance", "guidance"),
-    ("Psychometric assessment completed", "psych_completed"),
-    ("Individual counselling", "counselling"),
-    ("Skills programs", "skills_enrolled"),
-    ("Global education aspirants", "global"),
+    ("Career Guidance Completed", "guidance"),
+    ("Psychometric Tests Completed", "psych_completed"),
+    ("Individual Counselling Completed", "counselling"),
+    ("Students in Skills Programs", "skills_enrolled"),
+    ("Students in Global Education Pathway", "global"),
 )
 
 
@@ -79,7 +80,7 @@ async def school_summary_data(db: AsyncSession, school_id: UUID) -> dict:
         "as_of": _today_ist(),
         "academic_year": year.label if year else None,
         "total_students": len(roster),
-        "kpis": [("Total students", len(roster)), *[(label, len(indicators[key])) for label, key in MANAGEMENT_FIGURES]],
+        "kpis": [("Total Students", len(roster)), *[(label, len(indicators[key])) for label, key in MANAGEMENT_FIGURES]],
         "grades": [grade_label(g) for g in table.grades],
         "students": {grade_label(g): n for g, n in table.students.items()},
         "metrics": [{"label": m.label, "is_proxy": m.is_proxy, "definition": m.definition, "cells": {grade_label(g): c.model_dump() for g, c in m.cells.items()}} for m in table.metrics],

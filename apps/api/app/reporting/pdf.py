@@ -182,7 +182,8 @@ def render_progress_report(overview: dict, as_of: date) -> bytes:
     details = {
         "Name": student.get("full_name"),
         "Student code": student.get("student_code"),
-        "Grade / class": student.get("grade_or_class"),
+        # QA15-09: the free-text class if there is one, else the structured grade (a student may have only `grade_level`).
+        "Grade / class": student.get("grade_or_class") or (f"Grade {student['grade_level']}" if student.get("grade_level") else None),
         "Section": student.get("section"),
         "School": student.get("school_name"),
         "Assigned teacher": student.get("assigned_teacher_name"),

@@ -89,9 +89,11 @@ Import direction: `school_reports` → those modules; nothing imports `school_re
 1. Title "School Summary Report", school name, "As of <DD Mon YYYY> (India time)", "Academic year: <label>" (or "No active
    academic year").
 2. **Management summary** (§30 "Annual School Career Development Report" figures) — distinct students:
-   Total students (`len(roster)`), Career guidance (`guidance`), Psychometric assessment completed (`psych_completed`),
-   Individual counselling (`counselling`), Skills programs (`skills_enrolled`), Global education aspirants (`global`, with
-   its ENH-016 definition "Students with any overseas application").
+   Total Students (`len(roster)`), Career Guidance Completed (`guidance`), Psychometric Tests Completed (`psych_completed`),
+   Individual Counselling Completed (`counselling`), Students in Skills Programs (`skills_enrolled`), Students in Global
+   Education Pathway (`global` — any overseas application). **Revised 2026-09-30 (browser QA):** labels are the dashboard
+   KPI tiles' own wording for the same counts, so they are not confused with the Reports panel's broader "Career guidance"
+   (students with any career record).
 3. **Grade-wise comparison** — `grade_table(...)`: one row per `GRADE_METRICS` metric, one column per grade in
    `_ordered_grades` order, each cell "count (pct%)" or "count (—)" when the grade has no students; a "Students" row first.
    Metrics that are ENH-016 D5 estimates are marked "*" with their definition listed under the table.

@@ -172,3 +172,13 @@ def test_test_types_read_as_on_screen():  # QA15-06: "IELTS", as Student360Panel
     overview = _overview(test_prep={"status": "in_progress", "records": [{"test_type": "ielts", "status": "in_progress"}]})
     lines = pdf_text(render_progress_report(overview, AS_OF)).split("\n")
     assert "IELTS" in lines and "ielts" not in lines
+
+
+def test_grade_falls_back_to_the_grade_level():  # QA15-09: a student stored with grade_level only still shows a grade
+    lines = pdf_text(render_progress_report(_overview(student={"full_name": "Asha Rao", "grade_or_class": None, "grade_level": 9}), AS_OF)).split("\n")
+    assert lines[lines.index("Grade / class") + 1] == "Grade 9"
+
+
+def test_a_free_text_class_wins_over_the_grade_level():
+    lines = pdf_text(render_progress_report(_overview(student={"full_name": "Asha Rao", "grade_or_class": "Grade 9 - B", "grade_level": 9}), AS_OF)).split("\n")
+    assert lines[lines.index("Grade / class") + 1] == "Grade 9 - B"

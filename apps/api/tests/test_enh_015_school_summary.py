@@ -66,15 +66,28 @@ async def test_coordinator_and_principal_download_their_schools_summary(client, 
     assert response.content.startswith(b"%PDF-")
     text = pdf_text(response.content)
     assert "Summary Test School" in text
+    # The dashboard KPI tiles' own wording (GET /school/dashboard), which count the same students -- so a figure in the PDF
+    # reads the same as the tile it matches, not like the Reports panel's broader "Career guidance" (any career record).
     for label, value in [
-        ("Total students", 3),
-        ("Career guidance", 1),
-        ("Psychometric assessment completed", 1),
-        ("Individual counselling", 1),
-        ("Skills programs", 1),
-        ("Global education aspirants", 1),
+        ("Total Students", 3),
+        ("Career Guidance Completed", 1),
+        ("Psychometric Tests Completed", 1),
+        ("Individual Counselling Completed", 1),
+        ("Students in Skills Programs", 1),
+        ("Students in Global Education Pathway", 1),
     ]:
         assert _kpi(text, label, value), (label, value)
+
+
+@pytest.mark.asyncio
+async def test_management_figures_equal_the_dashboard_kpis_of_the_same_name(client, db_session):
+    ctx = await make_school(db_session)
+    await _seed(db_session, ctx)
+    await login(client, ctx["school_coordinator"])
+    kpis = {k["label"]: k["value"] for k in (await client.get("/api/v1/school/dashboard")).json()["school_crm_kpis"]}
+    text = pdf_text((await client.get(URL)).content)
+    for label in ("Total Students", "Career Guidance Completed", "Psychometric Tests Completed", "Individual Counselling Completed", "Students in Global Education Pathway"):
+        assert _kpi(text, label, kpis[label]), (label, kpis[label])
 
 
 @pytest.mark.asyncio
@@ -104,8 +117,8 @@ async def test_another_schools_students_are_never_counted(client, db_session):  
     await login(client, mine["school_coordinator"])
     text = pdf_text((await client.get(URL)).content)
     assert "Other Summary School" not in text
-    assert _kpi(text, "Total students", 1)
-    assert _kpi(text, "Career guidance", 0)
+    assert _kpi(text, "Total Students", 1)
+    assert _kpi(text, "Career Guidance Completed", 0)
     assert "Grade 9" not in text
 
 
@@ -118,7 +131,7 @@ async def test_an_empty_school_gets_a_report_that_says_so(client, db_session):
     assert response.status_code == 200
     text = pdf_text(response.content)
     assert "No students on the roster yet." in text
-    assert _kpi(text, "Total students", 0)
+    assert _kpi(text, "Total Students", 0)
 
 
 @pytest.mark.asyncio
