@@ -1,8 +1,6 @@
 # ENH-015 — Reports & Downloads (slice 1) — Design
 
-**Status:** Design approved in-session 2026-09-29 (sections 1–6 presented; user instructed "proceed"). Implementation in
-progress on `feature/enh-015-student-school-reports`. **Not complete** until browser validation and the independent Codex
-review are done.
+**Status:** Design approved in-session 2026-09-29 (sections 1–6 presented; user instructed "proceed"). Slice 1 **complete** (verified 2026-09-30 at `d38dff6` on `feature/enh-015-student-school-reports`; browser QA, fix passes and final verification in `docs/quality/ENH-015_BROWSER_QA_2026-09-29.md`; Codex review waived by the owner). The other §30 report types remain later slices.
 **Backlog:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-015 (`DERIVED_BLUEPRINT`).
 **Source:** `functionalities/edusphere_markdown/School CRM.md` (EVID-014) §30 (lines 922–964) and the permission table
 (line 1774, "Reports | Full | Limited | Child | Own | Full/Assigned" — `DERIVED_BLUEPRINT`).

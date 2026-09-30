@@ -193,3 +193,52 @@ Browser re-test, with only the web image rebuilt:
 - **390 and 320 px:** natural wrapping, no overflow.
 - **Parent row:** still capped (294 px, 2 lines); QA15-03 neighbour heights unchanged (49.25 px).
 - **Regression:** the layout section (30/30) and the QA15-01/03/04/08/10 re-tests all pass. Web unit suite: 1066 pass.
+
+## Completion verification (2026-09-30, at `d38dff6`; every item re-run fresh)
+
+**Tests**
+
+| Check | Result |
+|---|---|
+| Backend, full suite | 1890 passed, 15 failed. All 15 are outside ENH-015: 11 Razorpay and 3 Zoho tests need real credentials, and 1 `test_enh_003` user-count check was disturbed by concurrent Playwright runs on the shared DB. That file passes 96/96 when run alone. |
+| Web unit tests | 1066/1066 |
+| `tsc --noEmit` | exit 0 |
+| `eslint` | exit 0: 0 errors; 31 pre-existing warnings, none in ENH-015 files (`--max-warnings 0` on them passes) |
+| `next build` | exit 0 |
+
+**Code quality, compared with `main`**
+
+| Check | Result |
+|---|---|
+| ruff | 37 = 37 errors |
+| ruff format | 98 = 98 files |
+| mypy | 221 = 221 errors |
+| ENH-015 modules | clean on all three |
+
+**Playwright**
+
+| Spec | Result |
+|---|---|
+| `enh-015-reports-downloads` | passes |
+| `sch-reports`, `enh-016-analytics`, `enh-017-global-education` | pass |
+| `sch-007-parent-portal` | fails, identically on a production build of `main` (`407cbd7`) on a side port: a strict-mode violation on two "Career guidance" headings (`SchoolChildOverview` `<h3>` and ENH-012 `PortfolioPanel` `<h4>`). Pre-existing; neither component is changed by ENH-015. |
+
+**Browser verification**
+- AC checks: 28/28 in the browser and 17/17 on PDF contents and API logs.
+- Regression: 101/101; fix re-tests 7/7 and 6/6.
+- QA15-11: re-test passes. Its two 768 px flags are the script's one-line threshold; the width cap is gone, and two lines at the full card width is natural wrapping.
+
+**Accessibility:** axe-core WCAG 2.0/2.1 A+AA, 20 scans (5 pages × 1440/390, plus success and error states at 1440).
+0 violations in ENH-015 elements. Existing page violations are all in untouched components:
+- `color-contrast` on SCH-008 timeline badges;
+- `scrollable-region-focusable` on ENH-016 analytics tables and overview tables.
+
+**Safety and hygiene**
+- No skipped, focused or disabled tests; no debugging code; no secret-like strings; no `.env` tracked.
+- No migration. `alembic check` reports `remove_index ix_schools_school_code`, which is identical on `main`: pre-existing drift.
+- All 33 changed files belong to ENH-015. Shared-file edits: `grade_table` extraction, the `_active_academic_year`
+  helper, router registration, the `uharfbuzz` requirement.
+
+**Verdict:** ENH-015 **slice 1 is complete**. §30's other report types, the per-year Annual report and scholarship
+figures are later slices (`NEEDS_CONFIRMATION`). Open, outside ENH-015: QA15-07 (Next.js router race), the pre-existing
+`sch-007` spec and `alembic check` drift, and the existing axe findings above.
