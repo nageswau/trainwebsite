@@ -131,6 +131,9 @@ Body `NotificationPreferencesIn`: `{ "whatsapp": StrictBool, "sms": StrictBool }
   retry=False)`; `retry=False` makes a broker outage fail fast instead of blocking the request in Celery's
   publish-retry loop. Any exception is logged (`notification_enqueue_failed`, delivery id only) and swallowed —
   the row stays `queued` for the sweeper.
+- (QA fixes, 2026-09-30) QAF-01: the publish runs on a single background thread and `enqueue` waits at most 1.5 s
+  (socket timeouts don't cover DNS resolution of the broker host); any failure or timeout skips publishing for 30 s,
+  so an outage costs one bounded wait per 30 s, and the sweeper delivers the skipped rows.
 - `normalise_phone(raw: str | None) -> str | None` (§6.3).
 
 ### 6.2 Changed helpers (bodies only; signatures unchanged, so the ~35 trigger sites do not change)

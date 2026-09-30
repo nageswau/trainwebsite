@@ -1,5 +1,6 @@
 """ENH-014 Task 4 -- queue_deliveries and the after-commit publish (spec §6.1; AC04, AC05)."""
 
+import threading
 import time
 
 import pytest
@@ -188,3 +189,58 @@ async def test_after_commit_stops_publishing_at_the_first_broker_failure(db_sess
 @pytest.mark.asyncio
 async def test_enqueue_reports_success(db_session, enqueued):
     assert dispatch.enqueue("abc", countdown=5) is True and enqueued == [("abc", 5)]
+
+
+def _counting_stub(behaviour):
+    calls = []
+
+    def stub(delivery_id, countdown):
+        calls.append(delivery_id)
+        behaviour()
+
+    return stub, calls
+
+
+def test_a_hung_publish_is_abandoned_within_the_bounded_wait(monkeypatch):
+    """QAF-01: DNS resolution of a dead broker host is not covered by the socket timeouts, so the wait itself is bounded."""
+    release = threading.Event()
+    stub, calls = _counting_stub(lambda: release.wait(5))
+    monkeypatch.setattr(dispatch, "_publish", stub)
+    try:
+        started = time.monotonic()
+        assert dispatch.enqueue("abc") is False
+        assert time.monotonic() - started < 2.5
+        # The back-off is now open: the next enqueue fails at once without touching the broker.
+        started = time.monotonic()
+        assert dispatch.enqueue("def") is False
+        assert time.monotonic() - started < 0.1
+        assert calls == ["abc"]
+    finally:
+        release.set()
+        dispatch._publisher.submit(lambda: None).result(timeout=5)  # free the single publisher thread for later tests
+
+
+def test_a_raising_publish_opens_the_back_off(monkeypatch):
+    def boom():
+        raise ConnectionError("redis down")
+
+    stub, calls = _counting_stub(boom)
+    monkeypatch.setattr(dispatch, "_publish", stub)
+    assert dispatch.enqueue("abc") is False
+    assert dispatch.enqueue("def") is False
+    assert calls == ["abc"]
+
+
+def test_publishing_resumes_once_the_back_off_expires(monkeypatch):
+    def boom():
+        raise ConnectionError("redis down")
+
+    stub, calls = _counting_stub(boom)
+    monkeypatch.setattr(dispatch, "_publish", stub)
+    assert dispatch.enqueue("abc") is False
+    now = time.monotonic()
+    monkeypatch.setattr(dispatch.time, "monotonic", lambda: now + dispatch.BROKER_BACKOFF_SECONDS + 1)
+    ok, calls = _counting_stub(lambda: None)
+    monkeypatch.setattr(dispatch, "_publish", ok)
+    assert dispatch.enqueue("def") is True
+    assert calls == ["def"]

@@ -8,6 +8,8 @@ a rolled-back SAVEPOINT may still be published at the root commit; the worker's 
 which is harmless."""
 
 import logging
+import time
+from concurrent.futures import ThreadPoolExecutor
 from uuid import UUID
 
 from sqlalchemy import event
@@ -61,12 +63,28 @@ def _discard_when_root_rolls_back(session: Session) -> None:
         session.info.pop(PENDING_KEY, None)
 
 
+# QAF-01: the socket timeouts below don't cover resolving the broker's hostname (~4-8 s when DNS for `redis` fails), and
+# this runs on the event loop, so the wait itself is bounded. A publish still running after the wait is harmless: the
+# worker's atomic claim dedupes it. After any failure, publishing is skipped for BROKER_BACKOFF_SECONDS so an outage
+# costs one bounded wait per back-off window, not one per request; the stale sweeper delivers the skipped rows.
+PUBLISH_WAIT_SECONDS = 1.5
+BROKER_BACKOFF_SECONDS = 30
+_publisher = ThreadPoolExecutor(max_workers=1, thread_name_prefix="enh014-publish")
+_broker_unavailable_until: float = 0.0  # time.monotonic() deadline; 0.0 = broker assumed available
+
+
 def enqueue(delivery_id: UUID | str, countdown: int = 0) -> bool:
     """Never raises: a broker outage must not fail the request that already committed. The row stays queued/retrying and
-    the stale sweeper (delivery.sweep_stale_deliveries) publishes it again. Returns False when the publish failed."""
+    the stale sweeper (delivery.sweep_stale_deliveries) publishes it again. Returns False when the publish failed, timed
+    out, or was skipped because the broker failed within the last BROKER_BACKOFF_SECONDS."""
+    global _broker_unavailable_until  # noqa: PLW0603 -- process-wide back-off state
+    if time.monotonic() < _broker_unavailable_until:
+        return False
     try:
-        _publish(str(delivery_id), countdown)
-    except Exception as exc:  # noqa: BLE001 -- see docstring
+        # `_publish` is looked up at call time (tests replace it). A publisher thread busy with a hung publish times out too.
+        _publisher.submit(lambda: _publish(str(delivery_id), countdown)).result(timeout=PUBLISH_WAIT_SECONDS)
+    except Exception as exc:  # noqa: BLE001 -- see docstring; includes the wait's TimeoutError
+        _broker_unavailable_until = time.monotonic() + BROKER_BACKOFF_SECONDS
         logger.warning("notification_enqueue_failed", extra={"extra_fields": {"delivery_id": str(delivery_id), "error_type": type(exc).__name__}})
         return False
     return True
