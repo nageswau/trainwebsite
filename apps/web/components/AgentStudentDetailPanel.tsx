@@ -64,6 +64,8 @@ export default function AgentStudentDetailPanel({
           onSaved={(s) => {
             setEditing(false);
             onSaved(s);
+            // The form (and its focused Save button) unmounts: put keyboard focus back on this record.
+            requestAnimationFrame(() => document.getElementById(headingId)?.focus());
           }}
         />
       ) : (

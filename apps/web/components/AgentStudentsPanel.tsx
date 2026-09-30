@@ -11,6 +11,7 @@ import { AgentStudentDetail, AgentStudentItem, RECORDS_URL } from "@/lib/agentSt
 // may archive; staff see their assigned students. The server enforces both; the controls here only follow it. Paging follows
 // AgentApprovalPanel (20 per page); archive uses the inline confirmation pattern with focus returned to the opener.
 const PAGE_SIZE = 20;
+const LIST_ID = "agent-students-list";
 type Confirm = { id: string; kind: "archive" | "unarchive" } | null;
 
 export default function AgentStudentsPanel({ memberRole }: { memberRole: "master" | "staff" | null | undefined }) {
@@ -32,6 +33,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
   const [detailState, setDetailState] = useState<"idle" | "loading" | "gone" | "error">("idle");
   const returnFocusTo = useRef<string | null>(null);
   const request = useRef<AbortController | null>(null);
+  const detailRequest = useRef(0); // only the latest View may fill the detail panel
 
   // Search is debounced; a changed search starts again at page 1.
   useEffect(() => {
@@ -65,6 +67,11 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
           setLoadError(detailMessage(body?.detail, "Unable to load students."));
           return;
         }
+        // The last card of a later page was archived (or removed elsewhere): step back instead of a false empty state.
+        if (body.items.length === 0 && body.offset > 0) {
+          setOffset(Math.max(0, body.offset - PAGE_SIZE));
+          return;
+        }
         setData(body);
       })
       .catch(() => {
@@ -94,17 +101,20 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
   }
 
   async function openDetail(id: string) {
+    const ticket = ++detailRequest.current;
+    const current = () => ticket === detailRequest.current; // a slower, earlier View must not replace a later one
     setDetail(null);
     setDetailState("loading");
     try {
       const response = await fetch(`${RECORDS_URL}/${id}`);
       const body = await response.json().catch(() => null);
+      if (!current()) return;
       if (response.status === 404) return setDetailState("gone");
       if (!response.ok || !body?.student) return setDetailState("error");
       setDetail(body.student);
       setDetailState("idle");
     } catch {
-      setDetailState("error");
+      if (current()) setDetailState("error");
     }
   }
 
@@ -132,6 +142,10 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
         setRowError({ id: s.id, text: detailMessage(body?.detail, "Unable to complete this action.") });
         return;
       }
+      // Keyboard focus survives the confirmation unmounting: onto the row's new opposite action, or onto the list when the
+      // row leaves the current view.
+      const leaves = body.student.status === "archived" && !showArchived;
+      returnFocusTo.current = leaves ? LIST_ID : `agent-student-${kind === "archive" ? "unarchive" : "archive"}-${s.id}`;
       setConfirm(null);
       setNotice(`${s.full_name} ${kind === "archive" ? "archived" : "restored"}.`);
       applyUpdate(body.student);
@@ -195,7 +209,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
           onSaved={(s) => {
             setAdding(false);
             setNotice(`${s.full_name} added.`);
-            applyUpdate(s);
+            load(); // the new student may not belong to this page or filter, and the total changes
           }}
         />
       )}
@@ -228,7 +242,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
         />
       )}
 
-      <section aria-label="Student list" aria-busy={loading} style={{ marginTop: 16, opacity: loading && data ? 0.6 : 1 }}>
+      <section id={LIST_ID} tabIndex={-1} aria-label="Student list" aria-busy={loading} style={{ marginTop: 16, opacity: loading && data ? 0.6 : 1 }}>
         {loadError ? (
           <>
             <p className="form-error" role="alert">

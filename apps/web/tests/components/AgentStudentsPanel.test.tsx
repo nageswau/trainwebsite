@@ -180,6 +180,124 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     expect(await screen.findByText("Page Two")).toBeInTheDocument();
   });
 
+  // --- final review fixes -----------------------------------------------------------------------------------------------------
+  it("steps back a page when the current page empties, instead of a false 'No students yet'", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        calls.push(url);
+        if (init?.method === "POST") return Promise.resolve(res({ student: detail({ id: "z", full_name: "Last One", status: "archived" }) }));
+        if (url.includes("offset=20")) {
+          const archived = calls.some((u) => u.endsWith("/z/archive"));
+          return Promise.resolve(res({ items: archived ? [] : [item({ id: "z", full_name: "Last One" })], total: archived ? 20 : 21, limit: 20, offset: 20 }));
+        }
+        return Promise.resolve(res({ items: [item()], total: 21, limit: 20, offset: 0 }));
+      }),
+    );
+    render(<AgentStudentsPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Next page" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Archive Last One" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm archive" }));
+    expect(await screen.findByText("Asha Rao")).toBeInTheDocument();
+    expect(screen.queryByText(/No students yet/)).toBeNull();
+  });
+
+  it("reloads the list after adding a student rather than inserting it into any page or filter", async () => {
+    const lists: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") return Promise.resolve(res({ student: detail({ id: "new", full_name: "Brand New" }) }, 201));
+        lists.push(url);
+        return Promise.resolve(res(page([item()])));
+      }),
+    );
+    render(<AgentStudentsPanel memberRole="master" />);
+    await screen.findByText("Asha Rao");
+    const before = lists.length;
+    fireEvent.click(screen.getByRole("button", { name: "Add student" }));
+    fireEvent.change(screen.getByLabelText("Full name (required)"), { target: { value: "Brand New" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save student" }));
+    expect(await screen.findByText("Brand New added.")).toBeInTheDocument();
+    await waitFor(() => expect(lists.length).toBeGreaterThan(before));
+    expect(within(screen.getByRole("list", { name: "Students" })).queryByText("Brand New")).toBeNull();
+  });
+
+  it("shows the student last asked for when an earlier detail request answers late", async () => {
+    let releaseA: () => void = () => {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.endsWith("/a")) return new Promise<Response>((r) => { releaseA = () => r(res({ student: detail({ id: "a", full_name: "Alpha" }) })); });
+        if (url.endsWith("/b")) return Promise.resolve(res({ student: detail({ id: "b", full_name: "Bravo" }) }));
+        return Promise.resolve(res(page([item({ id: "a", full_name: "Alpha" }), item({ id: "b", full_name: "Bravo" })])));
+      }),
+    );
+    render(<AgentStudentsPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "View Alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "View Bravo" }));
+    expect(await screen.findByRole("region", { name: "Bravo" })).toBeInTheDocument();
+    await act(async () => releaseA());
+    await sleep(20);
+    expect(screen.queryByRole("region", { name: "Alpha" })).toBeNull();
+    expect(screen.getByRole("region", { name: "Bravo" })).toBeInTheDocument();
+  });
+
+  it("keeps keyboard focus after an archive: on the row's new Unarchive button, or on the list when the row leaves it", async () => {
+    let archived = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          archived = true;
+          return Promise.resolve(res({ student: detail({ status: "archived", archived_by: "M" }) }));
+        }
+        return Promise.resolve(res(page([item(archived ? { status: "archived" } : {})])));
+      }),
+    );
+    render(<AgentStudentsPanel memberRole="master" />);
+    await screen.findByText("Asha Rao");
+    fireEvent.click(screen.getByLabelText("Show archived"));
+    await waitFor(() => expect(screen.getByRole("region", { name: "Student list" })).toHaveAttribute("aria-busy", "false"));
+    fireEvent.click(await screen.findByRole("button", { name: "Archive Asha Rao" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm archive" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Unarchive Asha Rao" })).toHaveFocus());
+  });
+
+  it("moves focus to the list when an archived row leaves the default view", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) =>
+        Promise.resolve(init?.method === "POST" ? res({ student: detail({ status: "archived", archived_by: "M" }) }) : res(page([item()]))),
+      ),
+    );
+    render(<AgentStudentsPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Archive Asha Rao" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm archive" }));
+    await waitFor(() => expect(screen.getByRole("region", { name: "Student list" })).toHaveFocus());
+  });
+
+  it("returns focus to the detail heading after an edit is saved", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "PATCH") return Promise.resolve(res({ student: detail({ preferred_country: "Ireland" }) }));
+        if (url.endsWith("/s1")) return Promise.resolve(res({ student: detail() }));
+        return Promise.resolve(res(page([item()])));
+      }),
+    );
+    render(<AgentStudentsPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "View Asha Rao" }));
+    const panel = await screen.findByRole("region", { name: "Asha Rao" });
+    fireEvent.click(within(panel).getByRole("button", { name: "Edit" }));
+    fireEvent.change(within(panel).getByLabelText("Preferred country"), { target: { value: "Ireland" } });
+    const save = within(panel).getByRole("button", { name: "Save changes" });
+    save.focus(); // a keyboard user is on the button; it unmounts when the form closes
+    fireEvent.click(save);
+    await waitFor(() => expect(within(panel).getByRole("heading", { name: "Asha Rao" })).toHaveFocus());
+  });
+
   it("renders markup in a name as text", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([item({ full_name: "<img src=x onerror=alert(1)>" })])))));
     const { container } = render(<AgentStudentsPanel memberRole="master" />);
