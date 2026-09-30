@@ -33,6 +33,7 @@ async def _build_export(db: AsyncSession, user: User) -> dict:
     enrollments = (await db.scalars(select(Enrollment).where(Enrollment.student_id == user.id))).all()
     certificates = (await db.scalars(select(Certificate).where(Certificate.student_id == user.id))).all()
     consents = (await db.scalars(select(ConsentRecord).where(ConsentRecord.user_id == user.id))).all()
+    pref = await db.get(NotificationPreference, user.id)
     return {
         "profile": {
             "id": str(user.id),
@@ -48,6 +49,12 @@ async def _build_export(db: AsyncSession, user: User) -> dict:
         "enrollments": [{"id": str(e.id), "batch_id": str(e.batch_id), "status": e.status} for e in enrollments],
         "certificates": [{"id": str(c.id), "certificate_no": c.certificate_no, "status": c.status} for c in certificates],
         "consents": [{"agreement_id": str(c.agreement_id), "version": c.version, "accepted_at": c.created_at.isoformat()} for c in consents],
+        "notification_preferences": {
+            "whatsapp": bool(pref and pref.whatsapp_opt_in),
+            "sms": bool(pref and pref.sms_opt_in),
+            "whatsapp_opted_in_at": pref.whatsapp_opted_in_at.isoformat() if pref and pref.whatsapp_opted_in_at else None,
+            "sms_opted_in_at": pref.sms_opted_in_at.isoformat() if pref and pref.sms_opted_in_at else None,
+        },
     }
 
 
