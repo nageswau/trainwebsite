@@ -85,8 +85,8 @@ async def _sync_role_assignment(db: AsyncSession, user: User, assigned_by_user_i
 
 
 def _set_auth_cookies(response: Response, user: User):
-    access = create_token(str(user.id), user.role, user.division, "access")
-    refresh = create_token(str(user.id), user.role, user.division, "refresh")
+    access = create_token(str(user.id), user.role, user.division, "access", user.session_version)
+    refresh = create_token(str(user.id), user.role, user.division, "refresh", user.session_version)
     common = {"httponly": True, "secure": settings.cookie_secure, "samesite": "lax", "path": "/"}
     response.set_cookie("edusphere_access", access, max_age=settings.access_token_minutes * 60, **common)
     response.set_cookie("edusphere_refresh", refresh, max_age=settings.refresh_token_days * 86400, **common)
@@ -156,6 +156,8 @@ async def refresh(response: Response, edusphere_refresh: str | None = Cookie(def
     )
     if not user:
         raise HTTPException(401, "User unavailable")
+    if p.get("sv", 0) != user.session_version:  # AGN-002: ended by a staff reset or deactivation
+        raise HTTPException(401, "Session ended")
     _set_auth_cookies(response, user)
     return LoginResponse(user=UserOut.model_validate(user), expires_in_minutes=settings.access_token_minutes)
 

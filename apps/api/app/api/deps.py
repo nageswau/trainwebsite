@@ -30,6 +30,10 @@ async def get_current_user(edusphere_access: str | None = Cookie(default=None), 
     )
     if not user:
         raise HTTPException(401, "User unavailable")
+    # AGN-002 (spec §5): a token issued before the user's session version was incremented (staff reset / deactivation) is refused.
+    # Tokens from before AGN-002 carry no `sv` and count as 0, the column's default.
+    if p.get("sv", 0) != user.session_version:
+        raise HTTPException(401, "Session ended")
     return user
 
 
