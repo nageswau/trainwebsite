@@ -25,7 +25,7 @@ async def test_one_record_per_student_per_day(db_session):
     db_session.add(_row(w))
     await db_session.commit()
     db_session.add(_row(w, status="absent"))
-    with pytest.raises(IntegrityError, match="uq_school_attendance_student_date"):
+    with pytest.raises(IntegrityError, match="uq_school_attendance_student_school_date"):
         await db_session.commit()
     await db_session.rollback()
 

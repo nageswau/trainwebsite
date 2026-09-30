@@ -33,7 +33,7 @@ def upgrade() -> None:
         sa.Column("marked_by_user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.UniqueConstraint("school_student_id", "session_date", name="uq_school_attendance_student_date"),
+        sa.UniqueConstraint("school_student_id", "school_id", "session_date", name="uq_school_attendance_student_school_date"),
         sa.CheckConstraint("status IN ('present', 'absent', 'late', 'excused')", name="ck_school_attendance_status"),
     )
 

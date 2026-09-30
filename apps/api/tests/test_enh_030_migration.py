@@ -46,6 +46,6 @@ async def test_table_matches_the_model(db_session):
     conn = await db_session.connection()
     columns, uniques, checks, indexes = await conn.run_sync(_describe)
     assert columns == {"id": False, "school_student_id": False, "school_id": False, "session_date": False, "status": False, "marked_by_user_id": False, "created_at": False, "updated_at": False}
-    assert uniques == {"uq_school_attendance_student_date"}
+    assert uniques == {"uq_school_attendance_student_school_date"}
     assert checks == {"ck_school_attendance_status"}
     assert indexes == set()  # the unique constraint's index is the only one (spec §11 A4)

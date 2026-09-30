@@ -189,7 +189,9 @@ async def test_roster_empty_for_teacher_without_students(client, db_session):  #
 
 
 @pytest.mark.asyncio
-async def test_mark_after_transfer_restamps_school(client, db_session):  # Review Focus 2
+async def test_new_school_mark_keeps_the_previous_schools_record(client, db_session):  # Review Focus 2; spec C1/AC10 (final review I1)
+    """After a transfer each school keeps its own register for a day: the new school's mark never overwrites or re-stamps the old
+    school's row, and its audit compares against its own register (so a first mark reads from None)."""
     w = await _world(db_session)
     old = await mk_school(db_session, admin=w["admin"], label="AttOld")
     student = w["mine"][0]
@@ -198,7 +200,11 @@ async def test_mark_after_transfer_restamps_school(client, db_session):  # Revie
     await login(client, w["teacher"].email)
     assert (await client.put(URL, json={"session_date": DAY, "records": _marks([student])})).status_code == 200
     rows = await _rows(db_session, school_student_id=student.id)
-    assert [(r.school_id, r.status) for r in rows] == [(w["school"].id, "present")]
+    assert sorted((str(r.school_id), r.status, r.marked_by_user_id) for r in rows) == sorted(
+        [(str(old["school"].id), "absent", old["teacher"].id), (str(w["school"].id), "present", w["teacher"].id)]
+    )
+    audit = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.daily_attendance_mark", AuditLog.entity_id == str(w["school"].id)))).one()
+    assert audit.metadata_json["changes"] == [{"student_id": str(student.id), "from": None, "to": "present"}]
 
 
 # --- Hardening (the ENH-004 promotion precedent, schools.py:1680-1705): scope inside the locking query, a bounded lock wait, and an
@@ -243,6 +249,12 @@ async def test_a_failed_commit_writes_nothing_and_is_logged(client, db_session, 
     assert await _rows(db_session, school_id=w["school"].id) == []
     failed = [r for r in caplog.records if r.getMessage() == "school_attendance_mark_failed"]
     assert len(failed) == 1 and failed[0].levelname == "ERROR"
+    # Spec §11 S6 (final review, logs): the DB error text carries the bound parameters -- student ids and their statuses -- so the
+    # log line keeps only the error class and sqlstate, never the traceback or the statement.
+    assert failed[0].exc_info is None
+    fields = failed[0].__dict__["extra_fields"]
+    assert fields["error"] == "DBAPIError" and fields["sqlstate"] == "22001"  # string_data_right_truncation (the 121-char action)
+    assert not any(str(s.id) in repr(failed[0].__dict__) for s in w["mine"])
 
 
 @pytest.mark.asyncio

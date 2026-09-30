@@ -122,7 +122,9 @@ async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depend
         (
             await db.execute(
                 select(SchoolAttendanceRecord.school_student_id, SchoolAttendanceRecord.status).where(
-                    SchoolAttendanceRecord.school_student_id.in_(ids), SchoolAttendanceRecord.session_date == payload.session_date
+                    SchoolAttendanceRecord.school_student_id.in_(ids),
+                    SchoolAttendanceRecord.school_id == school_id,  # this school's register only (C1)
+                    SchoolAttendanceRecord.session_date == payload.session_date,
                 )
             )
         ).all()
@@ -142,15 +144,18 @@ async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depend
     try:
         await db.execute(
             stmt.on_conflict_do_update(
-                constraint="uq_school_attendance_student_date",
-                set_={"status": stmt.excluded.status, "school_id": stmt.excluded.school_id, "marked_by_user_id": stmt.excluded.marked_by_user_id, "updated_at": func.now()},
+                # School is part of the key: a previous school's row for the same day is never overwritten (C1/AC10).
+                constraint="uq_school_attendance_student_school_date",
+                set_={"status": stmt.excluded.status, "marked_by_user_id": stmt.excluded.marked_by_user_id, "updated_at": func.now()},
             )
         )
         db.add(AuditLog(user_id=user.id, action=MARK_ACTION, entity_type="school", entity_id=str(school_id), metadata_json=metadata))
         await db.commit()
-    except SQLAlchemyError:
+    except SQLAlchemyError as exc:
         await db.rollback()
-        logger.exception("school_attendance_mark_failed", extra={"extra_fields": {**actor, "count": len(records)}})
+        # Spec §11 S6: no traceback -- the DB error text carries the bound parameters (student ids and their statuses).
+        failure = {"error": type(exc).__name__, "sqlstate": getattr(getattr(exc, "orig", None), "sqlstate", None)}
+        logger.error("school_attendance_mark_failed", extra={"extra_fields": {**actor, "count": len(records), **failure}})
         raise
     logger.info("school_attendance_marked", extra={"extra_fields": {**actor, "count": len(records), "changed": len(changes)}})
     return await _roster(db, user, school_id, payload.session_date)
