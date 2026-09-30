@@ -59,38 +59,36 @@ def sync_enquiry_to_crm_task(self, enquiry_id: str):
     asyncio.run(_run())
 
 
-@celery.task
-def deliver_notification_task(delivery_id: str):
-    """ENH-014 (spec §6.5): send one queued NotificationDelivery. Retries are re-enqueued by `deliver` itself with the D11
-    countdowns (not Celery autoretry), so attempts are counted on the row. Each run is a fresh event loop, so the pool is
-    disposed at the end of each run: connections are closed on the loop that opened them."""
+def _run_with_fresh_pool(make_coro):
+    """Each task run is a fresh event loop, so the engine pool is disposed at the end of each run: connections are
+    closed on the loop that opened them."""
 
     async def _run():
         from app.core.database import engine
-        from app.notifications.delivery import deliver
 
         try:
-            return await deliver(UUID(delivery_id))
+            return await make_coro()
         finally:
             await engine.dispose()
 
     return asyncio.run(_run())
+
+
+@celery.task
+def deliver_notification_task(delivery_id: str):
+    """ENH-014 (spec §6.5): send one queued NotificationDelivery. Retries are re-enqueued by `deliver` itself with the D11
+    countdowns (not Celery autoretry), so attempts are counted on the row."""
+    from app.notifications.delivery import deliver
+
+    return _run_with_fresh_pool(lambda: deliver(UUID(delivery_id)))
 
 
 @celery.task
 def sweep_stale_deliveries_task():
-    """ENH-014 (spec §6.5): every 5 minutes via beat. Same per-run pool disposal as `deliver_notification_task`."""
+    """ENH-014 (spec §6.5): every 5 minutes via beat."""
+    from app.notifications.delivery import sweep_stale_deliveries
 
-    async def _run():
-        from app.core.database import engine
-        from app.notifications.delivery import sweep_stale_deliveries
-
-        try:
-            return await sweep_stale_deliveries()
-        finally:
-            await engine.dispose()
-
-    return asyncio.run(_run())
+    return _run_with_fresh_pool(sweep_stale_deliveries)
 
 
 celery.conf.beat_schedule = {"enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0}}

@@ -41,17 +41,16 @@ def _publish_when_root_commits(session: Session) -> None:
         publish_all(session.info.pop(PENDING_KEY, []), "after_commit")
 
 
-def publish_all(delivery_ids: list, source: str) -> int:
+def publish_all(delivery_ids: list, source: str) -> None:
     """Publish in order and stop at the first broker failure: this runs synchronously (for the after-commit path, inside
     `await db.commit()` on the event loop), so trying every id against a dead broker would stall the process once per
-    delivery. The unpublished rows stay queued/retrying for the stale sweeper. Returns how many were published."""
+    delivery. The unpublished rows stay queued/retrying for the stale sweeper."""
     for index, delivery_id in enumerate(delivery_ids):
         if not enqueue(delivery_id):
             skipped = len(delivery_ids) - index - 1
             if skipped:
                 logger.warning("notification_enqueue_skipped", extra={"extra_fields": {"source": source, "skipped": skipped}})
-            return index
-    return len(delivery_ids)
+            return
 
 
 @event.listens_for(Session, "after_rollback")

@@ -83,7 +83,6 @@ async def notify(payload: dict, user: User = Depends(get_current_user), db: Asyn
             raise HTTPException(403, "Cross-division notification is not allowed")
         notification = Notification(user_id=recipient.id, title=payload["title"], body=payload["body"], action_url=payload.get("action_url"))
         db.add(notification)
-        await db.flush()
         # ENH-014: queued per channel, sent after commit; WhatsApp/SMS only for a recipient who opted in.
         statuses = {row.channel: row.status for row in await queue_deliveries(db, notification, recipient, channels=channels)}
     else:

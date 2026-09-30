@@ -53,7 +53,7 @@ async def send_whatsapp(to: str, title: str, body: str, action_url: str | None, 
 
 async def send_sms(to: str, title: str, body: str, action_url: str | None, *, client: httpx.AsyncClient | None = None) -> SendResult:
     link = portal_link(action_url)
-    text = plain(f"{plain(title)} — {plain(body)}", max(0, SMS_MAX - len(link) - 1))
+    text = plain(f"{title} — {body}", max(0, SMS_MAX - len(link) - 1))
     return await _post({"From": settings.twilio_sms_from, "To": to, "Body": f"{text} {link}"}, client)
 
 
