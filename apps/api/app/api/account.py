@@ -4,11 +4,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import AuditLog, Certificate, ConsentRecord, DataSubjectRequest, Enrollment, Payment, User, UserRoleAssignment
+from app.models import AuditLog, Certificate, ConsentRecord, DataSubjectRequest, Enrollment, NotificationPreference, Payment, User, UserRoleAssignment
+from app.notifications.phone import normalise_phone
+from app.schemas import NotificationPreferencesIn, NotificationPreferencesOut
 from app.services.storage import storage
 
 router = APIRouter(prefix="/account", tags=["account"])
@@ -58,6 +61,49 @@ def _retention_hold_reason(consents: list, payments: list) -> str | None:
     if consents:
         return "A signed enrolment agreement exists for this account and must be retained as legal evidence (DATA_MODEL.md #3.4)."
     return None
+
+
+# --- ENH-014: notification channel preferences (spec §5.1-5.2) ------------------------------------------------------
+# Self-only: the user always comes from the session and there is no id in the path, so no admin or other user can set
+# anyone's consent (D4). PUT + JSON under the SameSite=Lax session cookie is not sendable by a cross-site form.
+CONSENT_TEXT_VERSION = "enh014-v1"
+
+
+def _preferences_out(pref: NotificationPreference | None, user: User) -> NotificationPreferencesOut:
+    return NotificationPreferencesOut(whatsapp=bool(pref and pref.whatsapp_opt_in), sms=bool(pref and pref.sms_opt_in), phone_valid=normalise_phone(user.phone) is not None)
+
+
+@router.get("/notification-preferences", response_model=NotificationPreferencesOut)
+async def get_notification_preferences(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return _preferences_out(await db.get(NotificationPreference, user.id), user)
+
+
+@router.put("/notification-preferences", response_model=NotificationPreferencesOut)
+async def put_notification_preferences(payload: NotificationPreferencesIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    current = await db.get(NotificationPreference, user.id)
+    before = {"whatsapp": bool(current and current.whatsapp_opt_in), "sms": bool(current and current.sms_opt_in)}
+    after = {"whatsapp": payload.whatsapp, "sms": payload.sms}
+    # Only a false->true change needs a number: a user whose phone was cleared can still turn channels off.
+    if any(after[c] and not before[c] for c in after) and normalise_phone(user.phone) is None:
+        raise HTTPException(422, "Add a valid mobile number to your profile first")
+    now = datetime.now(UTC)
+
+    def since(channel: str, previous: datetime | None) -> datetime | None:
+        if not after[channel]:
+            return None
+        return previous if before[channel] and previous else now
+
+    values = {
+        "whatsapp_opt_in": after["whatsapp"],
+        "sms_opt_in": after["sms"],
+        "whatsapp_opted_in_at": since("whatsapp", current.whatsapp_opted_in_at if current else None),
+        "sms_opted_in_at": since("sms", current.sms_opted_in_at if current else None),
+    }
+    await db.execute(insert(NotificationPreference).values(user_id=user.id, **values).on_conflict_do_update(index_elements=[NotificationPreference.user_id], set_={**values, "updated_at": now}))
+    if after != before:
+        db.add(AuditLog(user_id=user.id, action="notification_preference.update", entity_type="user", entity_id=str(user.id), metadata_json={"before": before, "after": after, "consent_text": CONSENT_TEXT_VERSION}))
+    await db.commit()
+    return _preferences_out(await db.get(NotificationPreference, user.id, populate_existing=True), user)
 
 
 @router.post("/data-requests", status_code=201)
