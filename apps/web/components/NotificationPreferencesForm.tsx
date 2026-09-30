@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
@@ -9,8 +9,9 @@ import { isNotificationPreferences, type NotificationPreferences } from "@/lib/t
 // ENH-014 (spec §7): WhatsApp/SMS opt-in. Consent is deliberate, so toggles never autosave -- the user presses Save.
 // Same patterns as ProfileForm: a ref guards double submits, "Saving…" is announced but visually hidden, focus returns
 // to the button after a save. Server-side validation is the source of truth (a 422 message is shown as-is).
-const VISUALLY_HIDDEN: CSSProperties = { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" };
-const NEXT = encodeURIComponent("/account/profile");
+// The PUT body must carry exactly these two fields (the server rejects extras).
+const channelsOf = (p: { whatsapp: boolean; sms: boolean }) => ({ whatsapp: p.whatsapp, sms: p.sms });
+const NEXT =encodeURIComponent("/account/profile");
 const HINT_ID = "notification-phone-hint";
 const SAVE_FAILED = "Couldn't save your settings. Check your connection and try again.";
 
@@ -19,7 +20,7 @@ type Choice = Record<Channel, boolean>;
 
 export default function NotificationPreferencesForm({ initial, phone }: { initial: NotificationPreferences; phone: string | null }) {
   const [saved, setSaved] = useState(initial);
-  const [draft, setDraft] = useState<Choice>({ whatsapp: initial.whatsapp, sms: initial.sms });
+  const [draft, setDraft] = useState<Choice>(channelsOf(initial));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
   const [signedOut, setSignedOut] = useState(false);
@@ -30,7 +31,7 @@ export default function NotificationPreferencesForm({ initial, phone }: { initia
   // A phone saved in ProfileForm triggers router.refresh(); the server sends new props (phone_valid may change).
   useEffect(() => {
     setSaved(initial);
-    setDraft({ whatsapp: initial.whatsapp, sms: initial.sms });
+    setDraft(channelsOf(initial));
   }, [initial.whatsapp, initial.sms, initial.phone_valid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -44,9 +45,9 @@ export default function NotificationPreferencesForm({ initial, phone }: { initia
     setFocusTick((t) => t + 1);
   }
 
-  function revert(text: string) {
-    setDraft({ whatsapp: saved.whatsapp, sms: saved.sms });
-    finish({ text, failed: true });
+  function revert(text: string | null) {
+    setDraft(channelsOf(saved));
+    finish(text === null ? null : { text, failed: true });
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -66,14 +67,13 @@ export default function NotificationPreferencesForm({ initial, phone }: { initia
     const body: unknown = await response.json().catch(() => null);
     if (response.ok && isNotificationPreferences(body)) {
       setSaved(body);
-      setDraft({ whatsapp: body.whatsapp, sms: body.sms });
+      setDraft(channelsOf(body));
       finish({ text: "Notification settings saved.", failed: false });
       return;
     }
     if (response.status === 401) {
       setSignedOut(true);
-      setDraft({ whatsapp: saved.whatsapp, sms: saved.sms });
-      finish(null);
+      revert(null);
       return;
     }
     const detail = (body as { detail?: unknown } | null)?.detail;
@@ -147,7 +147,7 @@ export default function NotificationPreferencesForm({ initial, phone }: { initia
         </div>
       )}
       {busy && (
-        <div role="status" aria-live="polite" style={VISUALLY_HIDDEN}>
+        <div role="status" aria-live="polite" className="visually-hidden">
           Saving your notification settings…
         </div>
       )}
