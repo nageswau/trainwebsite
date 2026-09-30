@@ -151,9 +151,19 @@ def test_a_dead_broker_fails_the_real_publish_within_a_bounded_time(monkeypatch,
     monkeypatch.setattr(worker.celery, "connection_for_write", lambda **kw: real_connection_for_write(broker_url, **kw))
     monkeypatch.setattr(worker.celery._local, "backend", RedisBackend(app=worker.celery, url=broker_url), raising=False)
     monkeypatch.setattr(dispatch, "_publish", _REAL_PUBLISH)
+    # `apply_async` acquires a producer from `amqp.producer_pool`, which is built lazily from `connection_for_write()`
+    # (patched above) and then cached on the shared app for good. Start from empty caches so the dead-broker pools are
+    # built here, and let monkeypatch restore the originals so no later test publishes through them.
+    monkeypatch.setattr(worker.celery.amqp, "_producer_pool", None)
+    monkeypatch.setattr(worker.celery, "_pool", None)
     started = time.monotonic()
-    assert dispatch.enqueue("abc") is False
-    assert time.monotonic() - started < 3
+    try:
+        assert dispatch.enqueue("abc") is False
+        assert time.monotonic() - started < 3
+    finally:
+        for pool in (worker.celery.amqp._producer_pool, worker.celery._pool):
+            if pool is not None:
+                pool.force_close_all()
 
 
 @pytest.mark.asyncio
