@@ -13,10 +13,10 @@ from enh014_helpers import drain
 from httpx import ASGITransport
 from sqlalchemy import func, select, update
 
-from app.notifications import delivery as delivery_module
 from app.core.database import SessionLocal
 from app.main import app
 from app.models import AuditLog, Notification, NotificationDelivery, SchoolCareerRecord, SchoolStudent
+from app.notifications import delivery as delivery_module
 
 RECORDS = "/api/v1/school/career-counselor/records"
 IST = ZoneInfo("Asia/Kolkata")
@@ -290,7 +290,6 @@ async def test_notification_failure_keeps_the_status_change(client, world, db_se
     failed = (await db_session.scalars(select(NotificationDelivery).join(Notification, Notification.id == NotificationDelivery.notification_id)
                                        .where(Notification.user_id == world["parent"].id, NotificationDelivery.status == "failed"))).all()
     assert failed and all(d.error == "unexpected RuntimeError" for d in failed)
-
 
 
 @pytest.mark.asyncio
