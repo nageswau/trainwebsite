@@ -1856,14 +1856,15 @@ single-Counselor-role model with five specialized internal roles. `SCH-001`'s de
 - **Main workflow:** System sends WhatsApp message via Twilio on defined trigger.  
 - **Alternate workflow:** -  
 - **Error/edge behavior:** Opt-out respected once defined.  
-- **Dependencies/blockers:** BLOCKED (2026-09-02) — credentials, not a design gap. See below.  
+- **Dependencies/blockers:** ~~BLOCKED (2026-09-02) — credentials~~ **No longer credential-blocked for sandbox (2026-09-30, `DEC-NOT-001` extension D8, `ENH-014` slice 1):** development uses the Twilio sandbox; production account and WhatsApp template approval are still needed before release.  
 - **UX required:** N · **API required:** Y · **DB impact:** Y · **RBAC/resource-scope:** System  
 - **Integration/job/file/audit impact:** Twilio WhatsApp Business API  
 - **Security/privacy:** -  
 - **Accessibility/responsive:** - · **Performance:** -  
 - **Required test types:** API, Integration  
 - **Complexity:** S  
-- **Implementation status:** BLOCKED · **Test status:** BLOCKED  
+- **Implementation status:** IMPLEMENTED (slice 1, 2026-09-30, `ENH-014`; Twilio sandbox run not yet done) · **Test status:** PASSING against a mocked adapter; sandbox proof pending  
+  - **Update 2026-09-30 (`ENH-014` slice 1, spec `docs/superpowers/specs/2026-09-30-enh-014-notification-channels-design.md` §4–§6, `DEC-NOT-001` extension D1–D14):** WhatsApp is delivered through Twilio's Messages REST API (one generic approved utility template: title, body, link — D13), opt-in only with a recorded timestamp (D4), queued via Celery after commit (D10), retried 60 s / 5 min / 25 min on transient errors (D11). Acceptance criteria: `ENH-014-AC01…AC16` in `FEATURE_ACCEPTANCE_CRITERIA.md`. Not delivered (follow-ups, `ENHANCEMENT_BACKLOG.md` §ENH-014): Twilio delivery-receipt callbacks, Student/Teacher recipients, push, help desk. The 2026-09-02 note below records why the feature was blocked before the sandbox decision and is kept for history.
   - Unlike `NOT-001`'s unnamed email provider, `DEC-NOT-001` confirms Twilio specifically as the WhatsApp provider, and `INTEGRATION_CONTRACTS.md` §4 requires real Twilio Account SID/Auth Token for the outbound API plus real status-callback signature verification for inbound delivery-status updates — the same "do not fake it" shape that blocks `STU-010`/`PAY-001`. No Twilio credentials exist anywhere in this repo (checked `.env.example` — no entry). Not implemented against invented/placeholder credentials; needs real credentials supplied before this can proceed.  
 - **Acceptance Criteria:** see `FEATURE_ACCEPTANCE_CRITERIA.md#not-002`  
 
@@ -1877,14 +1878,15 @@ single-Counselor-role model with five specialized internal roles. `SCH-001`'s de
 - **Main workflow:** System sends SMS on defined trigger.  
 - **Alternate workflow:** -  
 - **Error/edge behavior:** Same failure-handling expectation as Email/WhatsApp -- never silently dropped.  
-- **Dependencies/blockers:** —  
+- **Dependencies/blockers:** — (SMS provider identity resolved 2026-09-30: Twilio, `DEC-NOT-001` extension D2)  
 - **UX required:** N · **API required:** Y · **DB impact:** Y · **RBAC/resource-scope:** System  
-- **Integration/job/file/audit impact:** SMS provider (unnamed)  
+- **Integration/job/file/audit impact:** Twilio SMS (same account as WhatsApp, `ENH-014` slice 1); legacy `SMS_WEBHOOK_URL` still honoured when Twilio is unconfigured  
 - **Security/privacy:** -  
 - **Accessibility/responsive:** - · **Performance:** -  
 - **Required test types:** API, Integration  
 - **Complexity:** S  
-- **Implementation status:** NOT_STARTED · **Test status:** NOT_STARTED  
+- **Implementation status:** IMPLEMENTED (slice 1, 2026-09-30, `ENH-014`; Twilio sandbox run not yet done) · **Test status:** PASSING against a mocked adapter; sandbox proof pending  
+  - **Update 2026-09-30 (`ENH-014` slice 1, spec §5–§6, `DEC-NOT-001` extension D2/D4/D10/D11/D14):** SMS is sent via Twilio, opt-in only, queued after commit, same retry policy as WhatsApp; the text is the WhatsApp message content (title — body link, capped at 320 characters). Phone numbers are format-checked and normalised to E.164 (default country India, +91); no OTP verification (D14). Acceptance criteria: `ENH-014-AC01…AC16`.  
 - **Acceptance Criteria:** see `FEATURE_ACCEPTANCE_CRITERIA.md#not-003`  
 
 

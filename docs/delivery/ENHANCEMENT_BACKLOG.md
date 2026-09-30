@@ -114,7 +114,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-011 | School-domain skills tracker generalization (Soft Skills, Digital/Web Skills) | Medium | Low | Yes | Reuses SCH-009 pattern |
 | ENH-012 | Digital Portfolio module | Large | Medium | Yes | ENH-001 (portfolio entries reference academic year) |
 | ENH-013 | Student 360° unified profile / Career Passport view | Large | Medium | Possibly (TBD) | ENH-011, ENH-012 |
-| ENH-014 | Multi-channel Communication Centre (WhatsApp/SMS/Email/push) | Large | High | Yes | — |
+| ENH-014 | Multi-channel Communication Centre (WhatsApp/SMS/Email/push) — **slice 1 built (2026-09-30): Twilio WhatsApp + SMS, opt-in, queued delivery; Twilio sandbox run, help desk, Student/Teacher recipients, push and delivery callbacks are follow-ups** (`DEC-NOT-001` 2026-09-30 extension) | Large | High | Yes (resolved for slice 1) | — |
 | ENH-015 | Reports & downloads (student/school/management exports) — **slice 1 complete (verified 2026-09-30)**; other §30 report types are later slices (`DEC-SCOPE-037` provisional) | Medium | Low | No | — |
 | ENH-016 | School & Edusphere analytics dashboards *(scope corrected, Rev. 3 — see below)* | Medium | Low | Possibly (TBD) | — |
 | ENH-017 | School-visible global education pipeline dashboard *(now owns Alumni Network)* — **Complete (verified 2026-09-29)** (2026-09-29, `DEC-SCOPE-036`; Alumni Network not built, follow-up) | Medium | Medium | No | SCH-010 (bridge, already built) |
@@ -1555,6 +1555,15 @@ established for `SCH-002-AC04`'s bulk upload).
 
 **Complexity:** Large. **Risk:** High (provider selection, cost, and privacy/consent — not primarily a
 coding risk).
+
+**Status (2026-09-30): SLICE 1 BUILT on `feature/enh-014-notification-channels`; not yet merged; Twilio sandbox run NOT done (no credentials were available).** Design: `docs/superpowers/specs/2026-09-30-enh-014-notification-channels-design.md` (incl. §12 plan-time refinements); decision: `DEC-NOT-001`, extension of 2026-09-30 (D1–D14). **What slice 1 delivers:** `notification_preferences` table and `notification_deliveries.context` plus a sweeper index (migration `0046`, spec §4); `GET/PUT /api/v1/account/notification-preferences` (spec §5); Twilio WhatsApp and SMS via Messages REST over `httpx`, opt-in only with a recorded timestamp, email and in-app always on (D4); every trigger that sent email now queues one row per channel and publishes to Celery only after the root commit (D10, spec §6); retries 60 s / 300 s / 1500 s, at most 4 attempts (D11); a 5-minute Celery beat sweeper (stale `queued`/`retrying` re-published, stale `sending` → `failed` "worker interrupted"); GDPR erasure deletes preferences and the export includes them; a Notifications section on `/account/profile` (spec §7). Acceptance criteria `ENH-014-AC01…AC16` (`FEATURE_ACCEPTANCE_CRITERIA.md`). **Smoke check (2026-09-30):** against the real worker with Twilio unconfigured, school activity creation queued an email delivery that moved `queued` → `not_configured` with `attempt_count` 1, and a second task in the same worker process also completed. **Corrections to this entry:** Email is no longer "always inline" (it is queued too); the provider is Twilio for both WhatsApp and SMS (D2); push is out of scope (D3, no mobile app exists); the DPDP/privacy review was approved by the user in-session (D9); the "parent help desk" is a later slice (D12). **Follow-ups (open):**
+- Platinum `parent_help_desk` slice (D12) — still the owner of the unbuilt Platinum channel.
+- Student and Teacher recipients for result publish (D6) — students have no login or contact fields (`DEC-ROLE-004`).
+- Mobile push (D3) — blocked on a mobile app existing.
+- Twilio delivery-receipt callbacks (`delivered`/`undelivered`) with signature verification — `sent` currently means Twilio accepted the message.
+- Per-event templates and WhatsApp/SMS template management in `ADM-011` (D13); OTP phone verification (D14).
+- Twilio sandbox run (D8) and production account/template approval before release; the outcome (not the number) belongs in the release evidence.
+- Pre-existing issues found during ENH-014, **not caused or fixed by it** (RAID): `I-42` fresh api/CI image builds break because `sqlalchemy>=2.0,<3` resolves to 2.1.x without `greenlet` (worked around locally only); `I-43` the shared `PublicShell` header overflows by 32 px at 320 px width on `/account/profile`; `I-38` `sch-007-parent-portal` "unlinked child denied" fails on an ambiguous 'Career guidance' heading selector (h3 + h4) in files ENH-014 did not change.
 
 ---
 
