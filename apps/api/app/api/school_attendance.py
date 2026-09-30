@@ -51,15 +51,27 @@ async def _enrolled_on(db: AsyncSession, school_id: UUID, students: Sequence[tup
     """Review I-3 (DEC-SCOPE-038, user-approved 2026-09-30): the school-calendar day each student's time at `school_id` began -- the
     latest approved transfer into it, else when the student was created there. A day before that is not theirs to be marked for."""
     ids = [student_id for student_id, _created in students]
-    moved: dict[UUID, datetime] = {}
+    moved: dict[UUID, datetime | None] = {}
     if ids:
         rows = await db.execute(
             select(SchoolStudentTransferRequest.school_student_id, func.max(SchoolStudentTransferRequest.decided_at))
             .where(SchoolStudentTransferRequest.school_student_id.in_(ids), SchoolStudentTransferRequest.to_school_id == school_id, SchoolStudentTransferRequest.status == "approved")
             .group_by(SchoolStudentTransferRequest.school_student_id)
         )
-        moved = {student_id: decided for student_id, decided in rows.all() if decided is not None}
+        moved = dict(rows.all())
     return {student_id: (moved.get(student_id) or created).astimezone(TIER_TIMEZONE).date() for student_id, created in students}
+
+
+async def _statuses_on(db: AsyncSession, school_id: UUID, day: date, student_ids: Sequence[UUID]) -> dict[UUID, str]:
+    """Each listed student's status on `day` in this school's register (C1); a student with no row is absent from the result."""
+    rows = await db.execute(
+        select(SchoolAttendanceRecord.school_student_id, SchoolAttendanceRecord.status).where(
+            SchoolAttendanceRecord.school_student_id.in_(student_ids),
+            SchoolAttendanceRecord.school_id == school_id,
+            SchoolAttendanceRecord.session_date == day,
+        )
+    )
+    return dict(rows.all())
 
 
 async def _roster(db: AsyncSession, user: User, school_id: UUID, day: date) -> dict:
@@ -69,16 +81,7 @@ async def _roster(db: AsyncSession, user: User, school_id: UUID, day: date) -> d
     students = (await db.scalars(scoped.order_by(SchoolStudent.grade_or_class, SchoolStudent.full_name, SchoolStudent.id))).all()
     enrolled = await _enrolled_on(db, school_id, [(s.id, s.created_at) for s in students])
     students = [s for s in students if enrolled[s.id] <= day]
-    marks: dict[UUID, str] = {}
-    if students:
-        rows = await db.execute(
-            select(SchoolAttendanceRecord.school_student_id, SchoolAttendanceRecord.status).where(
-                SchoolAttendanceRecord.school_student_id.in_([s.id for s in students]),
-                SchoolAttendanceRecord.session_date == day,
-                SchoolAttendanceRecord.school_id == school_id,
-            )
-        )
-        marks = dict(rows.all())
+    marks = await _statuses_on(db, school_id, day, [s.id for s in students]) if students else {}
     return {
         "session_date": day,
         "today": _today_ist(),
@@ -145,17 +148,7 @@ async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depend
         raise HTTPException(422, f"{NOT_ENROLLED} {payload.session_date.strftime('%d %b %Y')}")
     # ENH-022: after scope, before any write -- a denial commits only its own audit row.
     await require_school_entitlement(db, user, school_id, None)
-    before = dict(
-        (
-            await db.execute(
-                select(SchoolAttendanceRecord.school_student_id, SchoolAttendanceRecord.status).where(
-                    SchoolAttendanceRecord.school_student_id.in_(ids),
-                    SchoolAttendanceRecord.school_id == school_id,  # this school's register only (C1)
-                    SchoolAttendanceRecord.session_date == payload.session_date,
-                )
-            )
-        ).all()
-    )
+    before = await _statuses_on(db, school_id, payload.session_date, ids)
     # Spec §11 S5: the audit names who changed, from what, to what -- only rows whose status actually changed.
     changes = [{"student_id": str(r.student_id), "from": before.get(r.student_id), "to": r.status} for r in records if before.get(r.student_id) != r.status]
     stmt = pg_insert(SchoolAttendanceRecord).values(

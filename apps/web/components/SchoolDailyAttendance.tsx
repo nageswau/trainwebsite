@@ -22,6 +22,15 @@ const CLASS_CHANGED = "Your class list changed since this page was opened, so no
 const savedMarks = (roster: DailyRoster): Marks => Object.fromEntries(roster.students.map((s) => [s.id, s.status]));
 const plural = (n: number) => `${n} student${n === 1 ? "" : "s"}`;
 
+/** QA30-01: the Date field may hold a day the teacher has not opened yet, while the list (and Save) still belong to
+ * `roster.session_date`. Returns what to tell them, or null when the field matches the list. */
+function pendingDateNote(picked: string, roster: DailyRoster): string | null {
+  if (picked === roster.session_date) return null;
+  if (!picked) return "Choose a date and press Show.";
+  if (picked > roster.today) return `${formatCalendarDate(picked)} is in the future; attendance cannot be marked for it.`;
+  return `Showing ${formatCalendarDate(roster.session_date)}. Press Show to open ${formatCalendarDate(picked)}.`;
+}
+
 export default function SchoolDailyAttendance({ roster: rosterProp }: { roster: DailyRoster }) {
   const router = useRouter();
   // QA30-04: the roster on screen. A successful save replaces it with the server's answer at once (the PUT returns the day's
@@ -40,12 +49,9 @@ export default function SchoolDailyAttendance({ roster: rosterProp }: { roster: 
   const [loadingDate, startDateChange] = useTransition(); // spec §11 F1: feedback while the next day's roster loads
   const locked = busy || loadingDate;
   // `?? null`: a student who appeared after a refresh has no entry in `marks` yet, and that is not a change (QA30-04).
-  const dirty = roster.students.some((s) => (marks[s.id] ?? null) !== (saved[s.id] ?? null));
+  const dirty = roster.students.some((s) => (marks[s.id] ?? null) !== saved[s.id]);
   const marked = roster.students.filter((s) => marks[s.id]).length;
-  // QA30-01: the field may hold a date the teacher has not opened yet; the list (and Save) still belong to `roster.session_date`.
-  const dateNote = pickedDate === roster.session_date ? null : !pickedDate ? "Choose a date and press Show."
-    : pickedDate > roster.today ? `${formatCalendarDate(pickedDate)} is in the future; attendance cannot be marked for it.`
-    : `Showing ${formatCalendarDate(roster.session_date)}. Press Show to open ${formatCalendarDate(pickedDate)}.`;
+  const dateNote = pendingDateNote(pickedDate, roster);
 
   useEffect(() => {
     if (!dirty) return;
