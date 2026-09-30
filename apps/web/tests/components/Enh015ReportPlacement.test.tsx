@@ -83,6 +83,13 @@ describe("ENH-015 report download placement", () => {
     expect(screen.getByRole("heading", { level: 2, name: heading }).closest(".report-downloads")).not.toBeNull();
   });
 
+  // QA15-11: only the parent's button row narrows the hint (globals.css `.child-page-actions`); in the cards it runs full width.
+  it("marks the parent's action row as the one place that narrows the hint", async () => {
+    serve("school_parent");
+    render(await ParentChildPage({ params: Promise.resolve({ id: "stu-1" }) }));
+    expect(screen.getByRole("link", { name: "Open 360° view" }).parentElement).toHaveClass("child-page-actions");
+  });
+
   // QA15-03: a message under the button must not stretch the other buttons in the row.
   it("keeps the parent's action row from stretching its buttons", async () => {
     serve("school_parent");

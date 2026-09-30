@@ -180,3 +180,16 @@ session-expiry 401.
 42ch` (meant for the parent's button row) wraps it into three short lines, with a break inside "grade-wise". That makes
 the card about 67 px taller (236 px vs 169 px), so the report starts at y ≈ 364. Suggested fix: apply the 42ch cap only
 inside the parent action row. Not changed in this pass.
+
+**QA15-11 — fixed (2026-09-30).** The 42ch cap now applies only inside the parent child page's action row (a new
+`child-page-actions` class; a placement test pins it). Elsewhere the hint runs at full card width.
+
+Browser re-test, with only the web image rebuilt:
+- **Cards (coordinator/principal Reports and student pages):** `max-width: none`.
+- **1440 px:** the hint is one line on all four cards; the Reports card is 195 px (was 236), and the report starts at
+  y = 323 (was 364).
+- **768 px:** the longer Reports hint wraps naturally at the full card width (658 px, 2 lines); the student cards stay
+  at one line.
+- **390 and 320 px:** natural wrapping, no overflow.
+- **Parent row:** still capped (294 px, 2 lines); QA15-03 neighbour heights unchanged (49.25 px).
+- **Regression:** the layout section (30/30) and the QA15-01/03/04/08/10 re-tests all pass. Web unit suite: 1066 pass.
