@@ -36,7 +36,7 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
 export const SCHOOL_NAV: Record<string, NavItem[]> = {
   coordinator: ["dashboard", "students", "promotion", "transfers", "activities", "feedback", "team", "reports", "global-education", "entitlements", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/coordinator/${x}` })),
   principal: ["dashboard", "reports", "global-education", "feedback", "entitlements", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/principal/${x}` })),
-  teacher: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/teacher/${x}` })),
+  teacher: ["dashboard", "attendance"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/teacher/${x}` })),
   parent: ["dashboard", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/parent/${x}` })),
   // SCH-004/005/006 -- single-item nav, same shape as principal/teacher/parent above.
   "academic-team": ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/academic-team/${x}` })),
