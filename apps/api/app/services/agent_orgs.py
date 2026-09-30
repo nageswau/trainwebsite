@@ -1,4 +1,4 @@
-"""AGN-001 / DEC-SCOPE-036 -- agent organisations (tenants) and their Master members.
+"""AGN-001 / DEC-SCOPE-038 -- agent organisations (tenants) and their Master members.
 
 Functions only -- no class layer (same shape as `services/provisioning.py`). Spec:
 docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md.

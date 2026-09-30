@@ -851,7 +851,7 @@ class AgentCommission(Base, TimestampMixin):
 
 
 class AgentOrg(Base, TimestampMixin):
-    """AGN-001 / DEC-SCOPE-036: an agent company -- a separate tenant. Its `status` is the agent approval gate
+    """AGN-001 / DEC-SCOPE-038: an agent company -- a separate tenant. Its `status` is the agent approval gate
     (`core.rbac.agent_denial_reason`); `master_seq` is the highest Master number ever issued, so codes are never reused."""
 
     __tablename__ = "agent_orgs"

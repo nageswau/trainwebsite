@@ -1,0 +1,123 @@
+"""ENH-015 -- downloadable PDF reports for the School domain (docs/superpowers/specs/2026-09-29-enh-015-reports-downloads-design.md,
+DEC-SCOPE-037 provisional). Slice 1: the School Summary (coordinator/principal, own school) and the Student Progress Report.
+
+A pure export layer: every figure comes from an existing read helper under the caller's existing scope, the PDF is
+rendered in memory and streamed back, and nothing is stored -- so `/files/download` and `/local-files` can never reach
+a report (spec §1). Rendering lives in `app.reporting.pdf`; this module only decides who may read what."""
+
+from time import perf_counter
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_current_user
+from app.api.portfolio_certificates import HEADERS
+from app.api.school_analytics import _roster, grade_label, grade_table, student_indicators, students_in
+from app.api.school_feedback import _require_school_reader
+from app.api.schools import _active_academic_year, _load_readable_student, _overview_payload, _own_school_id, _today_ist
+from app.core.database import get_db
+from app.core.logging import get_logger
+from app.models import AuditLog, School, User
+from app.reporting.pdf import render_progress_report, render_school_summary
+
+router = APIRouter(prefix="/school", tags=["school-reports"])
+logger = get_logger("app.school_reports")
+
+PDF = "application/pdf"
+PDF_RESPONSES: dict[int | str, dict] = {200: {"content": {PDF: {}}, "description": "The report as a PDF attachment"}}
+FAILED = "Could not generate the report; please try again"
+# §30 management figures, in the source's own order, as (label, indicator key) -- the ENH-016 indicator sets, worded as
+# the dashboard KPI tiles that count the same students (`/school/dashboard` `school_crm_kpis`), so a figure never reads like
+# the Reports panel's broader "Career guidance" (any career record).
+MANAGEMENT_FIGURES = (
+    ("Career Guidance Completed", "guidance"),
+    ("Psychometric Tests Completed", "psych_completed"),
+    ("Individual Counselling Completed", "counselling"),
+    ("Students in Skills Programs", "skills_enrolled"),
+    ("Students in Global Education Pathway", "global"),
+)
+
+
+def _pdf_response(content: bytes, filename: str) -> Response:
+    return Response(content=content, media_type=PDF, headers={**HEADERS, "Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+def _render(user: User, report: str, render, *args) -> bytes:
+    """Render, or a generic 500. Only the exception *type* is logged: its message could quote student text (spec §9)."""
+    try:
+        return render(*args)
+    except Exception as exc:
+        logger.error("school_report_failed", extra={"extra_fields": {"actor_id": str(user.id), "report": report, "error_type": type(exc).__name__}})
+        raise HTTPException(500, FAILED) from None
+
+
+def _log_generated(user: User, report: str, started: float, content: bytes, **fields) -> None:
+    logger.info(
+        "school_report_generated",
+        extra={
+            "extra_fields": {
+                "actor_id": str(user.id),
+                "role": user.role,
+                "report": report,
+                **{k: str(v) for k, v in fields.items()},
+                "bytes": len(content),
+                "ms": round((perf_counter() - started) * 1000),
+            }
+        },
+    )
+
+
+async def school_summary_data(db: AsyncSession, school_id: UUID) -> dict:
+    """Spec §5.1's figures for one school, in a fixed number of queries (AC09)."""
+    school = await db.get(School, school_id)
+    roster = await _roster(db, [school_id])
+    indicators = await student_indicators(db, students_in([school_id]))
+    table = grade_table(roster, indicators)
+    year = await _active_academic_year(db)
+    return {
+        "school_name": school.name if school else "",
+        "as_of": _today_ist(),
+        "academic_year": year.label if year else None,
+        "total_students": len(roster),
+        "kpis": [("Total Students", len(roster)), *[(label, len(indicators[key])) for label, key in MANAGEMENT_FIGURES]],
+        "grades": [grade_label(g) for g in table.grades],
+        "students": {grade_label(g): n for g, n in table.students.items()},
+        "metrics": [{"label": m.label, "is_proxy": m.is_proxy, "definition": m.definition, "cells": {grade_label(g): c.model_dump() for g, c in m.cells.items()}} for m in table.metrics],
+    }
+
+
+@router.get("/reports/school-summary", response_class=Response, responses=PDF_RESPONSES)
+async def school_summary_report(user: User = Depends(_require_school_reader), db: AsyncSession = Depends(get_db)):
+    """Coordinator/Principal, own school only (D4). Aggregate counts only, so a log line and no AuditLog row (D9)."""
+    started = perf_counter()
+    school_id = _own_school_id(user)
+    data = await school_summary_data(db, school_id)
+    content = _render(user, "school_summary", render_school_summary, data)
+    _log_generated(user, "school_summary", started, content, school_id=school_id, student_count=data["total_students"])
+    return _pdf_response(content, "school-report.pdf")
+
+
+REPORT_READERS = {"school_parent", "school_coordinator", "school_principal"}
+
+
+async def _require_report_reader(user: User = Depends(get_current_user)) -> User:
+    """D5. A dependency, so a wrong role is 403 before a malformed id is 422 -- and before any student is looked up."""
+    if user.role not in REPORT_READERS:
+        raise HTTPException(403, "Parent, School Coordinator or Principal role required")
+    return user
+
+
+@router.get("/students/{student_id}/progress-report", response_class=Response, responses=PDF_RESPONSES)
+async def student_progress_report(student_id: UUID, user: User = Depends(_require_report_reader), db: AsyncSession = Depends(get_db)):
+    """The SCH-007 overview of one student as a PDF (D6): same loader, so the same scope and errors as
+    `/students/{id}/overview` -- a Parent their linked children only, Coordinator/Principal their own institution.
+    The audit row is committed before any byte leaves; if it cannot be written, nothing is sent (D9, fail closed)."""
+    started = perf_counter()
+    student = await _load_readable_student(db, user, student_id)
+    overview = await _overview_payload(db, student)
+    content = _render(user, "progress_report", render_progress_report, overview, _today_ist())
+    db.add(AuditLog(user_id=user.id, action="school.progress_report_download", entity_type="school_student", entity_id=str(student.id), metadata_json={"role": user.role}))
+    await db.commit()
+    _log_generated(user, "progress_report", started, content, school_student_id=student.id)
+    return _pdf_response(content, "progress-report.pdf")

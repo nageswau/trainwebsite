@@ -635,8 +635,13 @@ def _decide_promotion(*, action: str, student_year_id: UUID | None, active_year_
     return PromotionDecision("promoted", new_level, new_label)
 
 
+async def _active_academic_year(db: AsyncSession) -> AcademicYear | None:
+    """The one "current academic year" rule (ENH-001): the latest-starting active year."""
+    return await db.scalar(select(AcademicYear).where(AcademicYear.status == "active").order_by(AcademicYear.start_date.desc()))
+
+
 async def _current_academic_year_id(db: AsyncSession) -> UUID | None:
-    year = await db.scalar(select(AcademicYear).where(AcademicYear.status == "active").order_by(AcademicYear.start_date.desc()))
+    year = await _active_academic_year(db)
     return year.id if year else None
 
 
@@ -1257,7 +1262,7 @@ async def active_academic_year(user: User = Depends(get_current_user), db: Async
     privilege even though this data isn't sensitive (spec's security review)."""
     if user.role not in SCHOOL_DOMAIN_ROLES:
         raise HTTPException(403, "Not a School-domain role")
-    year = await db.scalar(select(AcademicYear).where(AcademicYear.status == "active").order_by(AcademicYear.start_date.desc()))
+    year = await _active_academic_year(db)
     if not year:
         return None
     return {"id": year.id, "label": year.label, "start_date": year.start_date, "end_date": year.end_date, "status": year.status}

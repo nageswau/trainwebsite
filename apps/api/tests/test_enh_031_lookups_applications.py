@@ -1,4 +1,4 @@
-"""ENH-031 (DEC-SCOPE-037) -- GET /lookups/overseas-applications (the _assigned_application scope) and /lookups/it-job-applications."""
+"""ENH-031 (DEC-SCOPE-039) -- GET /lookups/overseas-applications (the _assigned_application scope) and /lookups/it-job-applications."""
 
 import pytest
 

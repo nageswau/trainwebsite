@@ -76,7 +76,7 @@ const options = (values: string[]) => values.map(value => ({ value, label: value
 // DATA_MODEL.md #6.2's contract-fixed enum (OVS-002/003) -- exception-path values
 // (rejected/waitlisted/deferred) are a deliberate open item, not offered here.
 const applicationStatuses = options(["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"]);
-// ENH-031 (DEC-SCOPE-037): student/application references are picked, never typed.
+// ENH-031 (DEC-SCOPE-039): student/application references are picked, never typed.
 const lookupField = (name: string, label: string, lookup: NonNullable<Field["lookup"]>, required = true): Field => ({ name, label, type: "lookup", required, lookup });
 
 function detailMessage(detail: unknown) {

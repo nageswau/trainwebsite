@@ -1,4 +1,4 @@
-"""ENH-031 (DEC-SCOPE-037 D4) -- pick a school, then search only that school's students."""
+"""ENH-031 (DEC-SCOPE-039 D4) -- pick a school, then search only that school's students."""
 
 import uuid
 

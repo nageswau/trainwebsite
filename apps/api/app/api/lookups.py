@@ -1,4 +1,4 @@
-"""ENH-031 (DEC-SCOPE-037) -- read-only lookups behind the searchable reference pickers.
+"""ENH-031 (DEC-SCOPE-039) -- read-only lookups behind the searchable reference pickers.
 
 Every lookup applies the scope of the write endpoint it feeds (spec §5), so a picker never offers a value that write would
 refuse. Reads only: one structured log line per call (counts, never the search text) and no AuditLog row (ENH-016 D15).

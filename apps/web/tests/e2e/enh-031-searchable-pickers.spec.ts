@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { pickFromList } from "./helpers/pick";
 
-// ENH-031 (DEC-SCOPE-037): an agent links a student through the 3-character search, creates an application with the
+// ENH-031 (DEC-SCOPE-039): an agent links a student through the 3-character search, creates an application with the
 // load-once picker, and Overseas Admin finds that application by searching the student's name. Uses the seeded demo
 // agent (active agency) and Overseas Admin.
 async function signIn(page: import("@playwright/test").Page, email: string, landing: string) {

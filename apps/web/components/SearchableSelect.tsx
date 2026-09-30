@@ -4,7 +4,7 @@ import { type ChangeEvent, type KeyboardEvent, useEffect, useId, useRef, useStat
 
 import { type LookupPage, optionText, type PickOption } from "@/lib/lookups";
 
-// ENH-031 (DEC-SCOPE-037): an accessible searchable dropdown (WAI-ARIA 1.2 combobox) that only ever submits a picked value.
+// ENH-031 (DEC-SCOPE-039): an accessible searchable dropdown (WAI-ARIA 1.2 combobox) that only ever submits a picked value.
 // Load-once mode filters `options` in the browser; server mode calls `search` (debounced; a reply for an older query is
 // dropped). The chosen id travels in a hidden input under `name`, so the host form's FormData and its API are unchanged.
 // Validity uses the constraint API: an unpicked required field, or text that is not a pick, blocks the form's submit and

@@ -7,7 +7,7 @@ Written spec awaiting user review.
 **Source requirement:** `functionalities/edusphere_markdown/Agent CRM Functionalities.md` (`EVID-015`,
 `DERIVED_BLUEPRINT`) §1, §3, "Best approach". **Backlog item:** `docs/delivery/ENHANCEMENT_BACKLOG.md`
 §AGN-001 (AGN-001-AC01…AC10). **Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` →
-`DEC-SCOPE-036` (D1–D13, `EXPLICIT_APPROVAL`, user, 2026-09-28; number provisional). This spec adds the
+`DEC-SCOPE-038` (D1–D13, `EXPLICIT_APPROVAL`, user, 2026-09-28; number provisional). This spec adds the
 design decisions in §3 (E1–E12), also confirmed in-session.
 
 **Branch:** `feature/agn-001-multi-tenant-agent-crm`.
@@ -33,7 +33,7 @@ user PATCH (E9), the frozen `app/agents/` package, or any Zoho/CRM webhook code.
 
 ## 3. Decisions
 
-`DEC-SCOPE-036` D1–D13 apply unchanged, except D2 as corrected by E2. Design decisions confirmed
+`DEC-SCOPE-038` D1–D13 apply unchanged, except D2 as corrected by E2. Design decisions confirmed
 in-session, 2026-09-28 (`EXPLICIT_APPROVAL`):
 
 - **E1 — Scoping approach A** (§2).

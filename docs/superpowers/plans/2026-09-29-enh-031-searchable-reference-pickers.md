@@ -94,7 +94,7 @@ async def mk_application(db, *, student=None, university, counselor=None, agent=
 `apps/api/tests/test_enh_031_lookups_students.py`:
 
 ```python
-"""ENH-031 (DEC-SCOPE-037) -- GET /lookups/overseas-students: scope per role, the agent link rules, q/limit, logging."""
+"""ENH-031 (DEC-SCOPE-039) -- GET /lookups/overseas-students: scope per role, the agent link rules, q/limit, logging."""
 
 import logging
 
@@ -283,7 +283,7 @@ Expected: every test FAILS with 404 (no `/lookups` route); the 422 parameter tes
 `apps/api/app/api/lookups.py`:
 
 ```python
-"""ENH-031 (DEC-SCOPE-037) -- read-only lookups behind the searchable reference pickers.
+"""ENH-031 (DEC-SCOPE-039) -- read-only lookups behind the searchable reference pickers.
 
 Every lookup applies the scope of the write endpoint it feeds (spec §5), so a picker never offers a value that write would
 refuse. Reads only: one structured log line per call (counts, never the search text) and no AuditLog row (ENH-016 D15).
@@ -391,7 +391,7 @@ Run the same command. Expected: all tests in `test_enh_031_lookups_students.py` 
 
 ```bash
 git add apps/api/app/api/lookups.py apps/api/app/main.py apps/api/tests/enh031_helpers.py apps/api/tests/test_enh_031_lookups_students.py
-git commit -m "feat(enh-031): role-scoped overseas-students lookup, incl. the agent link search (DEC-SCOPE-037 D2)"
+git commit -m "feat(enh-031): role-scoped overseas-students lookup, incl. the agent link search (DEC-SCOPE-039 D2)"
 ```
 
 ---
@@ -411,7 +411,7 @@ git commit -m "feat(enh-031): role-scoped overseas-students lookup, incl. the ag
 `apps/api/tests/test_enh_031_lookups_applications.py`:
 
 ```python
-"""ENH-031 (DEC-SCOPE-037) -- GET /lookups/overseas-applications (the _assigned_application scope) and /lookups/it-job-applications."""
+"""ENH-031 (DEC-SCOPE-039) -- GET /lookups/overseas-applications (the _assigned_application scope) and /lookups/it-job-applications."""
 
 import pytest
 
@@ -710,7 +710,7 @@ git commit -m "feat(enh-031): overseas-applications and it-job-applications look
 `apps/api/tests/test_enh_031_lookups_schools.py`:
 
 ```python
-"""ENH-031 (DEC-SCOPE-037 D4) -- pick a school, then search only that school's students."""
+"""ENH-031 (DEC-SCOPE-039 D4) -- pick a school, then search only that school's students."""
 
 import uuid
 
@@ -1080,7 +1080,7 @@ Run the web command with `tests/lib/lookups.test.ts tests/components/SearchableS
 - [ ] **Step 3: Implement `lib/lookups.ts`**
 
 ```ts
-// ENH-031 (DEC-SCOPE-037): the client side of the role-scoped read-only lookups (GET /api/v1/lookups/*) behind
+// ENH-031 (DEC-SCOPE-039): the client side of the role-scoped read-only lookups (GET /api/v1/lookups/*) behind
 // SearchableSelect. The server decides what each role may see; this only builds the request.
 export type PickOption = { id: string; label: string; detail?: string | null };
 export type LookupPage = { items: PickOption[]; truncated: boolean };
@@ -1111,7 +1111,7 @@ import { type ChangeEvent, type KeyboardEvent, useEffect, useId, useRef, useStat
 
 import { type LookupPage, optionText, type PickOption } from "@/lib/lookups";
 
-// ENH-031 (DEC-SCOPE-037): an accessible searchable dropdown (WAI-ARIA 1.2 combobox) that only ever submits a picked value.
+// ENH-031 (DEC-SCOPE-039): an accessible searchable dropdown (WAI-ARIA 1.2 combobox) that only ever submits a picked value.
 // Load-once mode filters `options` in the browser; server mode calls `search` (debounced; a reply for an older query is
 // dropped). The chosen id travels in a hidden input under `name`, so the host form's FormData and its API are unchanged.
 // Validity uses the constraint API: an unpicked required field, or text that is not a pick, blocks the form's submit and
@@ -1505,7 +1505,7 @@ import SearchableSelect, { type Noun } from "./SearchableSelect";
 After `const applicationStatuses = …;` add:
 
 ```tsx
-// ENH-031 (DEC-SCOPE-037): student/application references are picked, never typed.
+// ENH-031 (DEC-SCOPE-039): student/application references are picked, never typed.
 const lookupField = (name: string, label: string, lookup: NonNullable<Field["lookup"]>, required = true): Field => ({ name, label, type: "lookup", required, lookup });
 ```
 
@@ -1633,7 +1633,7 @@ Run the web command with `tests/components/AdminSchoolApplicationsPanel.test.tsx
 
 In `AdminSchoolApplicationsPanel.tsx`:
 - imports: add `import SearchableSelect from "@/components/SearchableSelect";` and `import { lookupSearch, type PickOption } from "@/lib/lookups";`; remove the now-unused `ResolvedStudent` type.
-- replace the header comment's last two lines with: `// ENH-031 (DEC-SCOPE-037 D4): pick the school first, then search only that school's students by name or Student ID -- no cross-school name browsing.`
+- replace the header comment's last two lines with: `// ENH-031 (DEC-SCOPE-039 D4): pick the school first, then search only that school's students by name or Student ID -- no cross-school name browsing.`
 - replace the `studentCode`/`resolved` state and `lookupStudent` with:
 
 ```tsx
@@ -1920,7 +1920,7 @@ import { expect, test } from "@playwright/test";
 
 import { pickFromList } from "./helpers/pick";
 
-// ENH-031 (DEC-SCOPE-037): an agent links a student through the 3-character search, creates an application with the
+// ENH-031 (DEC-SCOPE-039): an agent links a student through the 3-character search, creates an application with the
 // load-once picker, and Overseas Admin finds that application by searching the student's name. Uses the seeded demo
 // agent (active agency) and Overseas Admin.
 async function signIn(page: import("@playwright/test").Page, email: string, landing: string) {
@@ -1998,7 +1998,7 @@ git commit -m "test(enh-031): E2E picks references from the searchable dropdowns
 ### Task 9: Traceability documents and the final verification
 
 **Files:**
-- Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append `DEC-SCOPE-037` after `DEC-SCOPE-036`)
+- Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append `DEC-SCOPE-039` after `DEC-SCOPE-038`)
 - Modify: `docs/delivery/ENHANCEMENT_BACKLOG.md` (summary row after `AGN-001` at line 139; new `## ENH-031` section before `## 2. Dependency graph`)
 - Modify: `docs/architecture/API_CONTRACT.md` (append an "ENH-031 lookups" section)
 - Modify: `docs/ux/SCREEN_CATALOG.md` (append an "ENH-031 update" note)
@@ -2007,7 +2007,7 @@ git commit -m "test(enh-031): E2E picks references from the searchable dropdowns
 - [ ] **Step 1: Decision register** — append:
 
 ```markdown
-### DEC-SCOPE-037 — Searchable reference pickers (`ENH-031`)
+### DEC-SCOPE-039 — Searchable reference pickers (`ENH-031`)
 
 **ID note:** provisional; the later-merging branch renumbers (precedent: `DEC-SCOPE-024`…`036`).
 
@@ -2031,7 +2031,7 @@ and before `## 2. Dependency graph`:
 ```markdown
 ## ENH-031 — Searchable Reference Pickers (Student / Application References)
 
-**Requirement:** the owner, in-session 2026-09-29 (`EXPLICIT_APPROVAL`): every student and application reference is a searchable dropdown of valid values. **Decision:** `DEC-SCOPE-037` (D1–D5). **Spec:** `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` (AC01–AC10). **Plan:** `docs/superpowers/plans/2026-09-29-enh-031-searchable-reference-pickers.md`.
+**Requirement:** the owner, in-session 2026-09-29 (`EXPLICIT_APPROVAL`): every student and application reference is a searchable dropdown of valid values. **Decision:** `DEC-SCOPE-039` (D1–D5). **Spec:** `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` (AC01–AC10). **Plan:** `docs/superpowers/plans/2026-09-29-enh-031-searchable-reference-pickers.md`.
 
 **Status (2026-09-29):** implemented on `feature/agn-001-multi-tenant-agent-crm`; evidence in `docs/quality/RTM.md` (ENH-031 row).
 
@@ -2041,7 +2041,7 @@ and before `## 2. Dependency graph`:
 - [ ] **Step 3: API contract** — append:
 
 ```markdown
-## ENH-031 — Lookups (read-only, `DEC-SCOPE-037`)
+## ENH-031 — Lookups (read-only, `DEC-SCOPE-039`)
 
 `GET /api/v1/lookups/{name}` — query `q` (≤ 100 chars, literal case-insensitive substring), `limit` (1–50, default 20). Response `{"items": [{"id", "label", "detail"}], "truncated": bool}`, ordered by label. 403 `"This role cannot use this lookup"` for other roles; agent gate messages for pending/suspended/deactivated agents; 422 for bad parameters. One `app.lookups` log line per call (counts only), no audit row.
 
@@ -2058,7 +2058,7 @@ and before `## 2. Dependency graph`:
 - [ ] **Step 4: Screen catalog** — append:
 
 ```markdown
-### ENH-031 update (2026-09-29, `DEC-SCOPE-037`)
+### ENH-031 update (2026-09-29, `DEC-SCOPE-039`)
 
 Student, application and candidate references on these screens are searchable dropdowns (type to filter, arrow keys, Enter, Esc) that only accept a listed value: agent Students (Link student — search after 3 characters) and Documents; counselor/admin Appointments; University Rep/Admin Applications, Admission updates, Offer letters, Student communication; Admin Visa and Applications; Placement Interviews and Offers; the School→Overseas bridge (pick the school, then the student); the School academic results, psychometric, test-prep, language, career record and career preferences forms; counselor chat; agent Create application; employer Interviews.
 ```
@@ -2070,7 +2070,7 @@ Student, application and candidate references on these screens are searchable dr
 
 | Feature ID | Contract documents | Old workbook cases | Status |
 |---|---|---|---|
-| `ENH-031` | Requirement (owner, 2026-09-29) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-037` (D1–D5) → spec `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` (AC01–AC10) → plan `docs/superpowers/plans/2026-09-29-enh-031-searchable-reference-pickers.md`; `API_CONTRACT.md` ENH-031 lookups; `SCREEN_CATALOG.md` ENH-031 update | **Not audited** (an enhancement) | **IMPLEMENTED on `feature/agn-001-multi-tenant-agent-crm`, NOT complete — awaiting browser validation.** Evidence: <fill with the Step 6 results: API test counts, web counts, tsc/eslint/build, E2E results, and which existing specs changed because the control changed by decision D1> |
+| `ENH-031` | Requirement (owner, 2026-09-29) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-039` (D1–D5) → spec `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` (AC01–AC10) → plan `docs/superpowers/plans/2026-09-29-enh-031-searchable-reference-pickers.md`; `API_CONTRACT.md` ENH-031 lookups; `SCREEN_CATALOG.md` ENH-031 update | **Not audited** (an enhancement) | **IMPLEMENTED on `feature/agn-001-multi-tenant-agent-crm`, NOT complete — awaiting browser validation.** Evidence: <fill with the Step 6 results: API test counts, web counts, tsc/eslint/build, E2E results, and which existing specs changed because the control changed by decision D1> |
 ```
 
 (Replace the angle-bracket text with the real numbers from Step 6 before committing — no placeholder may be committed.)
@@ -2086,5 +2086,5 @@ Fill the RTM row with these numbers.
 
 ```bash
 git add docs/decisions/PRODUCT_DECISION_REGISTER.md docs/delivery/ENHANCEMENT_BACKLOG.md docs/architecture/API_CONTRACT.md docs/ux/SCREEN_CATALOG.md docs/quality/RTM.md
-git commit -m "docs(enh-031): DEC-SCOPE-037, backlog entry, API contract, screen catalog and RTM evidence"
+git commit -m "docs(enh-031): DEC-SCOPE-039, backlog entry, API contract, screen catalog and RTM evidence"
 ```

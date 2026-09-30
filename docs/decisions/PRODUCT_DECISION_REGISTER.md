@@ -2597,9 +2597,46 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 
 **Consequences:** migration `0045` (ten additive nullable columns: `test_date`, `strengths`, `interest_areas`, `personality_indicators`, `recommended_careers`, `recommended_stream`, `counsellor_remarks`, `parent_discussion_on`, `parent_discussion_notes`, `follow_up_on`; no backfill); additive request/response keys on the existing psychometric endpoints and read shapes; update audit metadata gains `fields` (names only). Unchanged: roles and scoping, the completion/notification rule, which endpoints return `report_url` (Client Question #20 stays open), reports/KPIs, timeline. `ENH-019` may later read `follow_up_on`; `ENH-028` bulk entry reuses this shape.
 
-### DEC-SCOPE-036 — Multi-tenant Agent CRM: agent organisation as tenant, Master accounts (`AGN-001`)
+### DEC-SCOPE-036 — ENH-017 School-visible Global Education pipeline (provisional number)
 
-**ID note:** recorded in-session as `DEC-SCOPE-034`. `ENH-016` and `ENH-027` reached `main` first holding `DEC-SCOPE-034`/`035`, so this entry was renumbered to `DEC-SCOPE-036` when `main` was merged into the `AGN-001` branch (2026-09-29), as its provisional-number note provided (precedent: `DEC-SCOPE-024`/`025`/`027`/`029`/`030`/`033`/`034`/`035`). Its migration moved the same way: cut as `0045_agent_orgs` on `0044`, re-chained as `0046_agent_orgs` on `0045_psychometric_result_fields`. Earlier `AGN-001` commit messages and docs that say `DEC-SCOPE-034` or `0045_agent_orgs` mean this decision and that migration.
+**ID note:** provisional number, recorded in-session 2026-09-29. Renumber on merge if another decision has taken `DEC-SCOPE-036` first, as `DEC-SCOPE-034`/`035` were.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-017 (`DERIVED_BLUEPRINT`) consolidates `School CRM.md` §16, §17, §19, §20 (`EVID-014`, `ORIGINAL_REQUIREMENT`): what may a school see of its students' overseas applications, and how is the §17 funnel computed from data that already exists, without exposing application detail (§19)?
+
+**Evidence:** Graphify-led audit, 2026-09-29 (`docs/superpowers/specs/2026-09-29-enh-017-global-education-pipeline-design.md` §1): the `SCH-010` bridge (`overseas_applications.school_student_id`, migration `0029`) exists and `GET /school/dashboard` already computes bridged KPI counts, but no page shows which students are at which stage and there is no §17 funnel; no data source exists for Applications started/submitted, Deposit, Scholarship (`ScholarshipApplication` links to `users` only), Top-100 (no ranking on `University`) or Alumni (no model); §19 limits the school to high-level status. `EVID-014` §16/§17/§19/§20.
+
+**Resolution:** User confirmed in-session, 2026-09-29 (`EXPLICIT_APPROVAL`), D1–D10 in `docs/superpowers/specs/2026-09-29-enh-017-global-education-pipeline-design.md` §3:
+
+| ID | Decision |
+|---|---|
+| D1 | **Scope: present-only.** Build over existing data; no migrations. Scholarship, Top 100, Alumni, Applications started/submitted and Deposit render as *not tracked* with a reason. |
+| D2 | **Granularity:** funnel counts **plus** a per-student row: name, student code, grade, furthest stage, visa stage label, application count. No university/course/country, no overseas record ids, no notes/references/offer letters/documents/counselor/agent. |
+| D3 | **Counting:** cumulative, per **student** — a student counts once in every stage they have reached on any of their applications. |
+| D4 | **Roles:** `school_coordinator` and `school_principal` only (DEC-SCOPE-011; reuses `_require_school_reader`). Every other role 403. |
+| D5 | **Existing exposure unchanged:** overview/timeline/360 `global_education` fields stay as confirmed under DEC-SCOPE-018 (they are already stage-level). |
+| D6 | **Placement:** a new "Global Education" page for coordinator and principal (`SCR-SCH-038`); no existing page changes. |
+| D7 | **Grade filter:** optional (All grades default, Grades 8–12), same `grade_key` rule as ENH-016 so a grade means the same students everywhere. |
+| D8 | **Tier:** no read gate (DEC-SCOPE-027 D3 keeps reads open). `require_school_entitlement` is not called. |
+| D9 | **Audit:** one structured log line per request (ids and counts only); no AuditLog row — the ENH-016 precedent for read-only school analytics. |
+| D10 | **Visa stage** = a `VisaCase` exists (matches the "Visa Applications" KPI tile). The funnel is therefore not forced monotonic at Visa → Admitted (§17's own example is not monotonic either). |
+
+**Consequences:** new `apps/api/app/api/school_global_education.py` (`GET /api/v1/school/global-education/pipeline`, query `grade` 8–12, `limit` 1–100, `offset`); output models `GlobalEducationPipelineOut` and its parts appended to `schemas.py`; router registered in `main.py`; pages `/school/coordinator/global-education` and `/school/principal/global-education` with `GlobalEducationPage`, `GlobalEducationFunnel`, `GlobalEducationStudentTable` and a sidebar "Global Education" entry. The endpoint uses column-level selects and allowlisted response models; the offer letter is reduced to a non-null-and-non-empty boolean in SQL, matching the dashboard's truthiness test. Existing endpoints, helpers and constants are imported read-only and unchanged. No migration, no new dependency, no write. **Known residuals:** no rate limiting; no `AuditLog` for reads (D9). **Release evidence:** COMPLETE (verified 2026-09-29 at `949aa2c`); `docs/quality/ENH-017_BROWSER_QA_2026-09-29.md`. **Follow-ups (not ENH-017, each `NEEDS_CONFIRMATION`):** scholarship-to-school-student link; university ranking/Top-100; alumni definition, `alumni_network` usage and a Platinum read gate; visa outcomes; started/submitted/deposit statuses; `school_partnership_manager` (PRD open item 75).
+
+### DEC-SCOPE-037 — ENH-015 Reports & Downloads, slice 1 (provisional number)
+
+**ID note:** provisional number, recorded in-session 2026-09-29. Renumber on merge if taken.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-015 (`DERIVED_BLUEPRINT`) asks for `School CRM.md` §30 (`EVID-014`) student, school and management reports, with format, generation mode, teacher/service-team scope, tier gating and audit all unstated.
+
+**Evidence:** Graphify-led audit, 2026-09-29 (`docs/superpowers/specs/2026-09-29-enh-015-reports-downloads-design.md` §1): no downloadable report exists in the School domain; every §30 management figure is already an `ENH-016` indicator set; the SCH-007 overview is the scope-checked per-student read; `reportlab` is already a dependency; stored files would be reachable through `/files/download` and `/local-files`.
+
+**Resolution:** User answered in-session, 2026-09-29, and instructed "proceed" on the presented design (D1–D10, spec §3): D1 slice 1 = School Summary + Student Progress Report; D2 PDF only (reportlab); D3 synchronous, in memory, nothing stored; D4 summary for coordinator/principal, own school; D5 progress report for parent (linked children) and coordinator/principal (own institution), every other role 403; D6 content = the SCH-007 overview (includes the `ENH-027` fields already parent-visible; never `report_url` — Client Question #20 stays open); D7 all records to date, "as of" date; D8 no tier gate; D9 progress-report download audited (fail closed), summary log line only; D10 buttons on existing pages, no nav change.
+
+**Consequences:** new `apps/api/app/api/school_reports.py` and `apps/api/app/reporting/pdf.py`; `grade_table` extracted from `school_analytics.grade_performance` (behaviour-preserving); new web `components/ReportDownloadButton.tsx` placed on five existing pages. No migration, no new dependency. **Still `NEEDS_CONFIRMATION`:** the other §30 report types; teacher "Limited" reports; service-team domain reports; a per-academic-year Annual report; scholarship figures; non-Latin font support; Client Question #20.
+
+### DEC-SCOPE-038 — Multi-tenant Agent CRM: agent organisation as tenant, Master accounts (`AGN-001`)
+
+**ID note:** recorded in-session as `DEC-SCOPE-034`. `ENH-016` and `ENH-027` reached `main` first holding `DEC-SCOPE-034`/`035`, so this entry was renumbered to `DEC-SCOPE-036` when `main` was merged into the `AGN-001` branch (2026-09-29); `ENH-017` and `ENH-015` then reached `main` first holding `DEC-SCOPE-036`/`037`, so it was renumbered again to `DEC-SCOPE-038` when `main` was merged in on 2026-09-30 (the migration did not move: neither adds one), as its provisional-number note provided (precedent: `DEC-SCOPE-024`/`025`/`027`/`029`/`030`/`033`/`034`/`035`). Its migration moved the same way: cut as `0045_agent_orgs` on `0044`, re-chained as `0046_agent_orgs` on `0045_psychometric_result_fields`. Earlier `AGN-001` commit messages and docs that say `DEC-SCOPE-034` or `0045_agent_orgs` mean this decision and that migration.
 
 **Question:** `functionalities/edusphere_markdown/Agent CRM Functionalities.md` (`EVID-015`, `DERIVED_BLUEPRINT`, parked in `ENHANCEMENT_BACKLOG.md` Appendix B, `CONFLICT_MATRIX.md` `C-10`, `PRD_OPEN_ITEMS.md` item 69) proposes that "every agent gets their own separate CRM environment" (Best approach), a Master login with full access (§1, §2), and account codes such as `ABC-M001` (§3). Is the tenant model wanted, and how does it replace today's one-user-per-agent model (`DEC-SCOPE-004`, `AGT-001`–`004`) without changing existing data access?
 
@@ -2630,9 +2667,9 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 
 **Consequences:** new organisation and member tables plus a backfill migration; the approval gate moves from the assignment to the organisation; every agent-scoped query changes from `user.id` to the organisation; new admin and Master-management endpoints; `RegisterForm`, `AgentApprovalPanel` and a new Master team screen change. `SEC-001`'s audit `entity_type` for org actions changes by decision (D7), not to make a test pass. Schema, endpoint shapes and screens are fixed in the `AGN-001` design spec, not here.
 
-### DEC-SCOPE-037 — Searchable reference pickers (`ENH-031`)
+### DEC-SCOPE-039 — Searchable reference pickers (`ENH-031`)
 
-**ID note:** provisional; the later-merging branch renumbers (precedent: `DEC-SCOPE-024`…`036`).
+**ID note:** recorded as `DEC-SCOPE-037`; `ENH-017`/`ENH-015` reached `main` first holding `DEC-SCOPE-036`/`037`, so this entry was renumbered to `DEC-SCOPE-039` when `main` was merged into the branch (2026-09-30). Earlier `ENH-031` commits and docs that say `DEC-SCOPE-037` mean this decision.
 
 **Question:** the owner asked (in-session, 2026-09-29): "all the student references and application references should be the drop down with valid values. drop down values should be able to search". Which fields, what may each role see, and how?
 

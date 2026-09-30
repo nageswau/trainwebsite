@@ -121,6 +121,26 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
 - **Direction:** the assignment-scope mechanism itself is undesigned (`RBAC_MATRIX.md` §5,
   `PRD_OPEN_ITEMS.md` item 76) — this threat cannot be fully mitigated until that mechanism exists;
   carried forward as a named, open risk rather than assumed closed.
+- **Threat (added 2026-09-29, `ENH-017`) — School roles reading Overseas application data:** the
+  Coordinator/Principal Global Education pipeline joins school students to their overseas applications.
+  (a) Over-disclosure: application detail (university, course, country, notes, references, offer letters,
+  documents, counselor/agent) reaching a school, contrary to `School CRM.md` §19's high-level-status limit.
+  (b) Cross-school leakage: one school seeing another school's bridged students or counts.
+- **Direction:** column-level selects with the offer letter reduced to a boolean in SQL; allowlisted
+  response models; the school taken from the session with no id parameter; role gate before validation;
+  exact key-set and planted-value tests on the raw body; GET only, no state change; ids and counts only in
+  logs (`DEC-SCOPE-036`, design spec §11). **Residual, stated:** no rate limiting (no read-endpoint rate limiting exists, this endpoint included;
+  the endpoint is single-school and row-capped) and no `AuditLog` row for reads (`DEC-SCOPE-036` D9, the
+  `ENH-016` precedent).
+- **Threat (added 2026-09-29, `ENH-015`) — PDF report downloads:** (a) an export bypassing row-level scope (another school's figures, an
+  unlinked child's report); (b) a stored report reachable through `/files/download` (any key, any authenticated user) or the
+  unauthenticated `/local-files` mount; (c) stored text (counsellor notes, remarks) injected into reportlab's paragraph markup;
+  (d) PII in logs, filenames or shared caches.
+- **Direction:** the existing loaders decide scope (school from the session; SCH-007 `_load_readable_student`); nothing is
+  stored; one escape point for all text; fixed filenames and `private, no-store`; progress-report downloads audited before
+  bytes leave (fail closed); ids/counts/exception type only in logs (`DEC-SCOPE-037`, spec §11). **Residual, stated:** no rate
+  limiting (platform-wide gap, `ENH-016` D16 precedent); GET + `SameSite=Lax` means a cross-site link can make a user download
+  their own report (one extra audit row, no disclosure); the progress report grows with the student's record count.
 
 ### File uploads (general)
 - **Threat:** malicious file upload (resumes, assignments, documents, resources) used for stored

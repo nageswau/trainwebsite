@@ -1058,7 +1058,7 @@ async def list_agents(status: str | None = None, user: User = Depends(get_curren
     return [{"id": agent.id, "name": agent.full_name, "email": agent.email, "approval_status": assignment.approval_status} for agent, assignment in rows]
 
 
-# AGN-001 (DEC-SCOPE-036 D6/D7): Overseas Admin acts on the agent ORGANISATION.
+# AGN-001 (DEC-SCOPE-038 D6/D7): Overseas Admin acts on the agent ORGANISATION.
 def _require_overseas_admin(user: User) -> None:
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")

@@ -1702,7 +1702,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.  
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Approval flips the Agent to Active and unlocks SCR-AGT-003/004 for them; every decision audit-logged (SEC-001).  
-- **AGN-001 update (2026-09-28/29, `DEC-SCOPE-036`, R2):** the queue now lists agent **organisations**, one status tab at a time (Pending / Approved / Suspended / Rejected toggle buttons, Pending first), 20 per page with "Showing x–y of N" and Previous/Next; each card shows agency name, prefix and every Master's code, name and email. Actions: Pending → Approve / Reject; Rejected → Approve; Approved → Suspend (inline confirmation, focus moves to Confirm and back on Cancel); Suspended → Reinstate. After an action the panel switches to the organisation's new tab. Loading text, an error state with Retry (no longer a silent empty list), per-tab empty text, per-card busy state and inline error. Component `AgentApprovalPanel.tsx`.  
+- **AGN-001 update (2026-09-28/29, `DEC-SCOPE-038`, R2):** the queue now lists agent **organisations**, one status tab at a time (Pending / Approved / Suspended / Rejected toggle buttons, Pending first), 20 per page with "Showing x–y of N" and Previous/Next; each card shows agency name, prefix and every Master's code, name and email. Actions: Pending → Approve / Reject; Rejected → Approve; Approved → Suspend (inline confirmation, focus moves to Confirm and back on Cancel); Suspended → Reinstate. After an action the panel switches to the organisation's new tab. Loading text, an error state with Retry (no longer a silent empty list), per-tab empty text, per-card busy state and inline error. Component `AgentApprovalPanel.tsx`.  
 
 ### `SCR-AGT-003`
 - **Route:** `/overseas/agent (Dashboard: referred students)`  
@@ -1779,7 +1779,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 ### `SCR-AGT-007`
 - **Route:** `/overseas/agent/team`  
 - **Role(s):** Agent — an active Master of an active agency  
-- **Purpose:** The agency's Master accounts: list, invite, deactivate *(net-new, added 2026-09-28, `AGN-001` / `DEC-SCOPE-036`)*.  
+- **Purpose:** The agency's Master accounts: list, invite, deactivate *(net-new, added 2026-09-28, `AGN-001` / `DEC-SCOPE-038`)*.  
 - **Linked Feature ID(s):** `AGN-001`  
 - **Entry points:** Agent portal navigation, "Team".  
 - **Required data:** The caller's agency (name, prefix) and its Masters (code, name, email, status, whether the invite link is still unused).  
@@ -2607,6 +2607,24 @@ correction, not deleted, per this project's traceability convention.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** `AcademicTeamStudentPage.test.tsx`, `PortfolioPanel.test.tsx`, `PortfolioEntryForm.test.tsx` (passing); `test_enh_024_skill_india.py` (academic_team writer cases); browser verification 2026-09-28 (Academic Team records, certifies, edits and deletes from this page; 360° "Back to student" returns here).
 
+### `SCR-SCH-038` *(added 2026-09-29, `ENH-017` / `DEC-SCOPE-036`, provisional number)*
+- **Route:** `/school/coordinator/global-education`, `/school/principal/global-education`
+- **Role(s):** School Coordinator, School Principal (own school; identical data for both).
+- **Purpose:** A read-only view of the school's bridged students on the global education pathway: a §17-shaped funnel (pathway, profile evaluation, shortlisted, offer, visa, admitted), a "Not tracked yet" group for stages with no data source, and a paged per-student list of each student's high-level stage. High-level stage only (`School CRM.md` §19).
+- **Linked Feature ID(s):** `ENH-017`
+- **Entry points:** Sidebar "Global Education" for Coordinator and Principal (after "Reports").
+- **Required data:** Server-rendered: GET /auth/me, GET /school/global-education/pipeline (`grade`, `limit`, `offset` forwarded from the URL only when digit strings).
+- **Key actions:** Choose a grade (All grades, 8–12) with the GET form and Show; page with Previous/Next. No write actions.
+- **Empty state:** "No students from this school are on the global education pathway yet. Students appear here once an EduSphere counselor links their application."; with a grade filter, "No students in this grade are on the global education pathway."; past the end, "This page is past the end of the list."
+- **Loading state:** `loading.tsx` skeleton lines with `aria-busy="true"`.
+- **Error state:** 401/403 or a failed `/auth/me` → the shared Access Unavailable card; any other pipeline failure → the shell with an `h1` and a "Global education pipeline" section-unavailable card (navigation stays usable).
+- **Permissions/resource scope:** `school_coordinator` and `school_principal`, own school only, server-checked (`_require_school_reader`); every other role is refused. No read tier gate.
+- **Responsive behavior:** Single-column funnel with fluid bars; the student table scrolls horizontally with a sticky first column. Verification at 320/768/1024/1440 px is `NEEDS_CONFIRMATION` (browser QA pending).
+- **Accessibility requirements:** h1→h2→h3 order; counts are text, never colour or bar length alone (bars are `aria-hidden`); native labelled `<select>` and GET form, no client JS; table has a caption and row headers.
+- **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet/mobile: single column, table scrolls horizontally.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `GlobalEducationPipeline.test.tsx`, `GlobalEducationPage.test.tsx`, `tests/e2e/enh-017-global-education.spec.ts`, `test_enh_017_global_education_pipeline.py` (passing as implemented); browser QA and accessibility passed (`docs/quality/ENH-017_BROWSER_QA_2026-09-29.md`) — COMPLETE (verified 2026-09-29 at `949aa2c`).
+
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  
 - **Role(s):** IT Admin, Placement Team  
@@ -2668,7 +2686,7 @@ catalogue to stay in step. Where a surface has no catalogue ID today (a pre-exis
 | Create school + seed Coordinator | `/overseas/admin/schools` | `SCR-SCH-010` | No password shown; success/warning message states whether the 72-hour link was emailed. |
 | School staff | `/overseas/admin/school-staff` | `SCR-SCH-021` | Same as above for Academic Team / Career Counselor / Psychometric Team accounts. |
 
-## ENH-031 addendum (2026-09-29, `DEC-SCOPE-037`) — searchable reference pickers
+## ENH-031 addendum (2026-09-29, `DEC-SCOPE-039`) — searchable reference pickers
 
 Student, application and candidate references on these screens are searchable dropdowns (type to filter, arrow keys, Enter, Esc) that accept only a listed value; an unpicked required field shows "Choose a student/an application from the list." and blocks the save: agent Students (Link student — search starts at 3 characters, emails partly masked) and Documents; counselor/admin Appointments; University Rep/Admin Applications, Admission updates, Offer letters, Student communication; Admin Visa and Applications; Placement Interviews and Offers; the School→Overseas bridge (pick the school, then the student); the School academic results, psychometric, test-prep, language, career record and career preferences forms; counselor chat; agent Create application; employer Interviews. The list opens under its field, scrolls inside itself and never widens the page at 320 px.
 

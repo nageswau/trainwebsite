@@ -2063,7 +2063,7 @@
       "Agent (Master)"
     ],
     "route": "/overseas/agent/team",
-    "purpose": "The agency's Master accounts: list, invite, deactivate (AGN-001 / DEC-SCOPE-036, added 2026-09-28).",
+    "purpose": "The agency's Master accounts: list, invite, deactivate (AGN-001 / DEC-SCOPE-038, added 2026-09-28).",
     "features": [
       "AGN-001"
     ],
@@ -2981,5 +2981,29 @@
     "dtm": "Same as the Coordinator's portfolio card; verified at 1366, 768, 375 and 320.",
     "visual": "None — not inspected. Do not claim parity.",
     "evidence": "AcademicTeamStudentPage.test.tsx, PortfolioPanel.test.tsx, PortfolioEntryForm.test.tsx (passing); test_enh_024_skill_india.py (academic_team writer cases); browser verification 2026-09-28."
+  },
+  {
+    "id": "SCR-SCH-038",
+    "roles": [
+      "School Coordinator",
+      "School Principal"
+    ],
+    "route": "/school/coordinator/global-education, /school/principal/global-education",
+    "purpose": "A read-only view of the school's bridged students on the global education pathway: a funnel (pathway, profile evaluation, shortlisted, offer, visa, admitted), a Not tracked yet group, and a paged per-student high-level stage list. High-level stage only (School CRM.md §19).",
+    "features": [
+      "ENH-017"
+    ],
+    "entry": "Sidebar \"Global Education\" for Coordinator and Principal (after \"Reports\").",
+    "data": "GET /auth/me, GET /school/global-education/pipeline (grade, limit, offset forwarded only when digit strings), server-rendered.",
+    "actions": "Choose a grade (All grades, 8-12) with the GET form and Show; Previous/Next paging. No write actions.",
+    "empty": "\"No students from this school are on the global education pathway yet. Students appear here once an EduSphere counselor links their application.\"; with a grade filter \"No students in this grade are on the global education pathway.\"; past the end \"This page is past the end of the list.\"",
+    "loading": "loading.tsx skeleton lines with aria-busy=\"true\".",
+    "error": "401/403 or a failed /auth/me renders the Access Unavailable card; any other pipeline failure keeps the shell with an h1 and a \"Global education pipeline\" section-unavailable card.",
+    "perms": "school_coordinator and school_principal, own school only, server-checked (_require_school_reader); every other role refused. No read tier gate.",
+    "responsive": "Single-column funnel with fluid bars; the student table scrolls horizontally with a sticky first column. Verification at 320/768/1024/1440 px is NEEDS_CONFIRMATION (browser QA pending).",
+    "a11y": "h1, h2, h3 order; counts are text, never colour or bar length alone (bars aria-hidden); native labelled select and GET form, no client JS; table has a caption and row headers.",
+    "dtm": "Desktop: full layout. Tablet/mobile: single column, table scrolls horizontally.",
+    "visual": "None — not inspected. Do not claim parity.",
+    "evidence": "GlobalEducationPipeline.test.tsx, GlobalEducationPage.test.tsx, tests/e2e/enh-017-global-education.spec.ts, test_enh_017_global_education_pipeline.py (passing as implemented); browser QA and accessibility passed (docs/quality/ENH-017_BROWSER_QA_2026-09-29.md) — COMPLETE (verified 2026-09-29 at 949aa2c)."
   }
 ]

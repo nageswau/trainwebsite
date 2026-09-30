@@ -12,7 +12,7 @@ const TEAM_URL = "/api/v1/workflows/overseas/agent/team";
 const NETWORK_ERROR = "Network error. Check your connection and try again.";
 const FAILED = "Unable to complete this action.";
 
-// AGN-001 (DEC-SCOPE-036 D4/D8/D9): an agency's Master accounts. Up to 3 active at once; invites use the
+// AGN-001 (DEC-SCOPE-038 D4/D8/D9): an agency's Master accounts. Up to 3 active at once; invites use the
 // DEC-SCOPE-019 set-password email; the last active Master cannot be deactivated (server-enforced, 422 shown on a race).
 export default function AgentTeamPanel() {
   const router = useRouter();

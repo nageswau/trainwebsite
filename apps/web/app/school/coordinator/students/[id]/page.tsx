@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { accessDenied } from "@/components/AccessUnavailable";
 import PortalShell from "@/components/PortalShell";
+import ReportDownloadButton from "@/components/ReportDownloadButton";
 import SchoolStudentDetailPanel from "@/components/SchoolStudentDetailPanel";
 import SectionUnavailable from "@/components/SectionUnavailable";
 import StudentScorecard from "@/components/StudentScorecard";
@@ -43,6 +44,14 @@ export default async function SchoolCoordinatorStudentDetailPage({ params }: { p
   return (
     <PortalShell nav={SCHOOL_NAV.coordinator} roleLabel="School Coordinator" userName={user.full_name}>
       <SchoolStudentDetailPanel student={student} role="school_coordinator" backHref="/school/coordinator/students" backLabel="Back to students" showGradeHistory showTransfer canEditPhoto />
+      {/* ENH-015: this student's overview as a PDF (same scope as the overview). */}
+      <div className="portal-content report-downloads">
+        <div className="card">
+          <h2>Progress report</h2>
+          <p className="muted">A PDF of this student&apos;s profile and progress to date.</p>
+          <ReportDownloadButton url={`/api/v1/school/students/${student.id}/progress-report`} label="Download progress report (PDF)" filename="progress-report.pdf" hint="PDFs are not screen-reader friendly. The same information is in this student's 360° view." />
+        </div>
+      </div>
       <div className="portal-content">{scorecard ? <StudentScorecard card={scorecard} /> : <SectionUnavailable title="Progress scorecard" />}</div>
     </PortalShell>
   );

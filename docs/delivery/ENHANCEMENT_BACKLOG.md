@@ -55,7 +55,7 @@ bulk-first so it doesn't repeat the pattern of needing bulk retrofitted later).
 
 **Revision 6 (2026-09-28):** the user brought one slice of `Agent CRM Functionalities.md` (`EVID-015`,
 Appendix B) into scope as **AGN-001** — agent organisation as tenant, with Master accounts — and gave the
-approval and answers recorded as `DEC-SCOPE-036` (D1–D13). Only that slice leaves Appendix B; Staff logins
+approval and answers recorded as `DEC-SCOPE-038` (D1–D13). Only that slice leaves Appendix B; Staff logins
 and the rest of `EVID-015` stay parked. AGN-001 keeps the ID the user gave it rather than an `ENH-` number.
 
 ## 0. Scope and exclusions (read this before the backlog)
@@ -120,9 +120,9 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-012 | Digital Portfolio module | Large | Medium | Yes | ENH-001 (portfolio entries reference academic year) |
 | ENH-013 | Student 360° unified profile / Career Passport view | Large | Medium | Possibly (TBD) | ENH-011, ENH-012 |
 | ENH-014 | Multi-channel Communication Centre (WhatsApp/SMS/Email/push) | Large | High | Yes | — |
-| ENH-015 | Reports & downloads (student/school/management exports) | Medium | Low | No | — |
+| ENH-015 | Reports & downloads (student/school/management exports) — **slice 1 complete (verified 2026-09-30)**; other §30 report types are later slices (`DEC-SCOPE-037` provisional) | Medium | Low | No | — |
 | ENH-016 | School & Edusphere analytics dashboards *(scope corrected, Rev. 3 — see below)* | Medium | Low | Possibly (TBD) | — |
-| ENH-017 | School-visible global education pipeline dashboard *(now owns Alumni Network)* | Medium | Medium | No | SCH-010 (bridge, already built) |
+| ENH-017 | School-visible global education pipeline dashboard *(now owns Alumni Network)* — **Complete (verified 2026-09-29)** (2026-09-29, `DEC-SCOPE-036`; Alumni Network not built, follow-up) | Medium | Medium | No | SCH-010 (bridge, already built) |
 | ENH-018 | School feedback capture | Small | Low | Yes | — |
 | ENH-019 | School event calendar | Small | Low | Yes | — |
 | ENH-020 | Financial support / loan assistance tracking | Medium | Medium | Yes | — |
@@ -930,11 +930,11 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 13 | SAT / Test Preparation | ✅ Built | `SCH-009` |
 | 14 | Digital Portfolio | ❌ Gap | Confirmed `OPEN` in `PRD_OPEN_ITEMS.md` item 77 — see **ENH-012** |
 | 15 | Global Education Module | ✅ Built | `SCH-010` (bridge) |
-| 16 | University Shortlisting (school-visible) | ⚠️ Partial | Bridge exists (`SCH-010`); school-facing dashboard view not confirmed — see **ENH-017** |
-| 17 | Top 100 University Tracking dashboard | ❌ Gap | See **ENH-017** |
-| 18 | Scholarship Management (school-visible) | ⚠️ Partial | See **ENH-017** |
-| 19 | Application Support (status-only, school-visible) | ⚠️ Partial | See **ENH-017**; note source text itself says school should NOT see full detail — respect that boundary |
-| 20 | Visa Tracking (school-visible) | ⚠️ Partial | See **ENH-017** |
+| 16 | University Shortlisting (school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017** (2026-09-29, `DEC-SCOPE-036`): `SCR-SCH-038` shows each bridged student's high-level stage and a "University shortlisted" funnel count |
+| 17 | Top 100 University Tracking dashboard | ⚠️ Partial — funnel complete (2026-09-29); Top 100 not tracked | **ENH-017** delivers the §17-shaped funnel; the Top 100 stage renders as *not tracked* (universities carry no ranking) — follow-up, not tracked |
+| 18 | Scholarship Management (school-visible) | ⚠️ Partial | **ENH-017** shows Scholarships as *not tracked* (`ScholarshipApplication` has no school-student link) — follow-up, not tracked |
+| 19 | Application Support (status-only, school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017**: high-level stage only, application detail never selected or returned (§19 boundary enforced at the API, key-set and planted-value tests) |
+| 20 | Visa Tracking (school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017**: Visa funnel stage (a `VisaCase` exists) and a per-student visa stage label; visa outcomes are a follow-up, not tracked |
 | 21 | Financial Support / Loan Assistance | ❌ Gap | See **ENH-020** |
 | 22 | Internship Management | ❌ Gap | See **ENH-021** |
 | 23 | Parent Portal | ✅ Built | `SCH-007`; "Skills"/"Portfolio" sub-items depend on ENH-012, ENH-011 |
@@ -1631,6 +1631,8 @@ a background job with a "ready for download" notification.
 
 **Complexity:** Medium. **Risk:** Low.
 
+**Status (2026-09-30): SLICE 1 COMPLETE (verified 2026-09-30 at `d38dff6`: backend 1890 passed, 15 failed (all outside ENH-015: 11 Razorpay + 3 Zoho need real credentials; 1 `test_enh_003` count check disturbed by concurrent Playwright runs on the shared test DB -- its file passes 96/96 alone); web unit 1066/1066; `tsc` and `eslint` 0 errors (changed files 0 warnings); `next build` exit 0; Playwright `enh-015-reports-downloads` passes (related `sch-reports`, `enh-016`, `enh-017` pass; `sch-007` fails identically on `main` -- pre-existing duplicate "Career guidance" heading); browser AC01-AC12 (AC06 fail-closed clause and AC09 not browser-observable, covered by API tests); axe-core WCAG 2.0/2.1 A+AA: 0 violations in ENH-015 elements (existing page violations in ENH-016/SCH-008 components recorded); no new ruff/format/mypy findings vs `main`; no migration; `alembic check` drift (`ix_schools_school_code`) is pre-existing on `main`). Codex review waived by the owner.** History: implemented 2026-09-29; Built on `feature/enh-015-student-school-reports` per `docs/superpowers/specs/2026-09-29-enh-015-reports-downloads-design.md` and `DEC-SCOPE-037` (provisional). Slice 1 delivers the two reports the acceptance criteria need: a **School Summary PDF** (coordinator/principal, own school: the §30 management figures and the §29 grade-wise table) and a **Student Progress Report PDF** (parent — linked children only; coordinator/principal — own institution: the SCH-007 overview). **Corrections to this entry:** PDF only via the existing `reportlab` (no tooling decision needed); generated synchronously in memory and never stored (aggregate-only school output is bounded, so no background job, no report-log table, no migration); a `school_student` role does not exist (DEC-ROLE-004), so "own report" for students is not deliverable; teachers are refused (403), not auto-scoped, until "Limited" is defined. **Still `NEEDS_CONFIRMATION`:** the other §30 report types (later slices), teacher and service-team reports, a per-academic-year Annual report, scholarship figures, non-Latin fonts, Client Question #20. Evidence in the `RTM.md` ENH-015 row and `docs/quality/ENH-015_BROWSER_QA_2026-09-29.md`.
+
 ---
 
 ## ENH-016 — School & Edusphere Analytics Dashboards
@@ -1748,7 +1750,7 @@ restriction — never full application detail) for school roles, showing bridged
 through: Global Education Interest → Profile Evaluation → University Shortlisted → Application Started/
 Submitted → Offer → Scholarship → Visa → Admitted → **Alumni**, matching the `§17` funnel example and
 `§36`'s own pipeline diagram, which explicitly ends at "ALUMNI." **Explicitly in scope (Revision 3):**
-the Platinum-exclusive `alumni_network` service (`TIER_SERVICES["platinum"]`, `schools.py:664`) has no
+the Platinum-exclusive `alumni_network` service (`TIER_SERVICES["platinum"]`, `schools.py:972`) has no
 tracking module anywhere today and always reports `used: None` via `/schools/entitlements` — this item
 is its owner. An admitted, bridged student who has completed their journey should be trackable as an
 alumnus, visible to Platinum-tier schools only (enforced via **ENH-022** once it lands).
@@ -1797,6 +1799,8 @@ dashboard entirely, not shown with empty/null fields.
 **Regression risks.** None on the Overseas domain or `SCH-010`'s existing bridge behavior.
 
 **Complexity:** Medium. **Risk:** Medium (field-level authorization correctness).
+
+**Delivered scope (2026-09-29).** Built present-only under `DEC-SCOPE-036` (D1–D10, `EXPLICIT_APPROVAL` in-session; design `docs/superpowers/specs/2026-09-29-enh-017-global-education-pipeline-design.md`): read-only `GET /school/global-education/pipeline` and the Coordinator/Principal "Global Education" page (`SCR-SCH-038`) — a cumulative per-student funnel (pathway, profile evaluation, shortlisted, offer, visa, admitted), a "not tracked" group and a paged per-student high-level stage list, with the §19 boundary enforced by column-level selects and an allowlisted response. No migration. Status: **COMPLETE (verified 2026-09-29 at `949aa2c`)** — fresh test, browser and accessibility evidence in `docs/quality/ENH-017_BROWSER_QA_2026-09-29.md`; independent whole-branch review done and its findings fixed; the Codex review was set aside by the owner; API/E2E evidence ran on the locally pinned SQLAlchemy image (RAID `I-42`); QA17-03/QA17-04 (shared patterns) left open by decision. Not yet merged to `main`. Not built and not tracked (follow-ups, each `NEEDS_CONFIRMATION`): scholarship-to-school-student link; university ranking / Top 100; **alumni definition, `alumni_network` usage and the Platinum read gate (the Alumni Network ownership above is not delivered)**; visa outcomes; started/submitted/deposit statuses; `school_partnership_manager` access (PRD item 75).
 
 ---
 
@@ -2868,7 +2872,7 @@ student on the same day — second call should update, not duplicate (enforced b
 **Business requirement.** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`): §1 "Master
 Login — Agent Admin: full access to the agent's CRM account"; §3 example codes (`ABC-M001`); Best approach
 "a multi-tenant Agent CRM: every agent gets their own separate CRM environment". Brought into scope by the
-user's `AGN-001` statement and decided as `DEC-SCOPE-036` (D1–D13). The source's "one Master account"
+user's `AGN-001` statement and decided as `DEC-SCOPE-038` (D1–D13). The source's "one Master account"
 conflicts with the user's criteria; the user chose up to three (D4).
 
 **Existing behavior.** An agent is one `User` + `UserRoleAssignment(role='agent')`. Its `approval_status`
@@ -2876,7 +2880,7 @@ gates every agent route (`core/rbac.py:75`, `workflows.py:100`, `api/portal.py:3
 write is scoped by `agent_id == user.id`. Overseas Admin approves/rejects the assignment by user id
 (`admin.py:981-1026`), audited as `user_role_assignment`. No organisation, member or account code exists.
 
-**Expected behavior.** Per `DEC-SCOPE-036`: an agent organisation (tenant) with status
+**Expected behavior.** Per `DEC-SCOPE-038`: an agent organisation (tenant) with status
 `pending`/`active`/`rejected`/`suspended`; Master members with display codes `<PREFIX>-M###`; the
 approval gate and all data scoping move to the organisation; Masters invite and deactivate Masters;
 Overseas Admin approves, rejects, suspends and reinstates organisations.
@@ -2951,7 +2955,7 @@ routes used by `AgentApprovalPanel`, `ADM-001`'s agent role option, seed data.
 
 **Status (2026-09-29) — COMPLETE for AGN-001's scope; merge to `main` open.** Designed (`docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md`,
 E1–E12), planned (`docs/superpowers/plans/2026-09-28-agn-001-multi-tenant-agent-crm.md`) and built test-first on branch
-`feature/agn-001-multi-tenant-agent-crm` (migration `0046_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-036`. Browser
+`feature/agn-001-multi-tenant-agent-crm` (migration `0046_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-038`. Browser
 QA (QA-01…13) fixed and re-verified, including after merging `main`; the independent Codex review was set aside by the owner
 (in-session, 2026-09-29), as for ENH-024/ENH-027. Evidence in `docs/quality/RTM.md` (AGN-001 row). QA-01 replaced the admin
 portal "Agent Registrations" table with "Agent Masters" (organisation + Master status). Internal-review minors #7, #8, #11, #12
@@ -2961,7 +2965,7 @@ accepted by the owner as known limitations (2026-09-29): #7 a fast tab switch ca
 
 ## ENH-031 — Searchable Reference Pickers (Student / Application References)
 
-**Requirement:** the owner, in-session 2026-09-29 (`EXPLICIT_APPROVAL`): every student and application reference is a searchable dropdown of valid values. **Decision:** `DEC-SCOPE-037` (D1–D5). **Spec:** `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` (AC01–AC10). **Plan:** `docs/superpowers/plans/2026-09-29-enh-031-searchable-reference-pickers.md`.
+**Requirement:** the owner, in-session 2026-09-29 (`EXPLICIT_APPROVAL`): every student and application reference is a searchable dropdown of valid values. **Decision:** `DEC-SCOPE-039` (D1–D5). **Spec:** `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` (AC01–AC10). **Plan:** `docs/superpowers/plans/2026-09-29-enh-031-searchable-reference-pickers.md`.
 
 **Status (2026-09-29):** implemented on `feature/agn-001-multi-tenant-agent-crm`; evidence in `docs/quality/RTM.md` (ENH-031 row).
 
@@ -3130,7 +3134,7 @@ item, only for the progress-view question).
 | ENH-010 | `DEC-SCOPE-025` — "School Master" (`School CRM.md` Part B §2) = `school_coordinator`; activate/deactivate scope mapping proposed, drafted 2026-09-22 | Drafted, `UNCONFIRMED` |
 | ENH-011, ENH-012, ENH-013, ENH-015, ENH-017, ENH-018, ENH-019, ENH-021, ENH-024, ENH-026, ENH-027, ENH-028, ENH-029, ENH-030 | None structurally required — each operates within already-confirmed School-domain scope (`DEC-SCOPE-011/012/013/017`) as a completion/extension, not a new scope question. ENH-026/ENH-027 additionally need a *design* choice (shared shape for "Recommended..."/"Career recommendations" fields); ENH-028's batch-size limit and ENH-030's session-vs-period granularity are also design, not scope, questions | N/A |
 | ENH-016 | None — corrected in Revision 3 to a narrower scope entirely within already-confirmed `DEC-SCOPE-017` | N/A |
-| AGN-001 | `DEC-SCOPE-036` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
+| AGN-001 | `DEC-SCOPE-038` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
@@ -3167,7 +3171,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6).** Still parked: Staff logins, staff assignment/ownership, staff performance, CRM settings | `DEC-SCOPE-036` covers AGN-001 only; none yet for the rest |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6).** Still parked: Staff logins, staff assignment/ownership, staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001 only; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

@@ -1,7 +1,7 @@
 # ENH-031 — Searchable reference pickers: design
 
 **Status:** design approved section by section in-session, 2026-09-29; this written spec awaits the owner's review.
-**Decision:** `DEC-SCOPE-037` (provisional number; renumbered by whichever branch merges later, as for earlier entries).
+**Decision:** `DEC-SCOPE-039` (provisional number; renumbered by whichever branch merges later, as for earlier entries).
 **Branch:** built on `feature/agn-001-multi-tenant-agent-crm` (owner's choice, 2026-09-29), so AGN-001 and ENH-031 reach
 `main` together. Agent scoping uses AGN-001's organisation scope (`services/agent_orgs.org_member_ids`).
 
@@ -133,5 +133,5 @@ School roster screens, and all other reference fields (D1).
 
 ## 9. Traceability
 
-Requirement (owner, 2026-09-29) → `DEC-SCOPE-037` D1–D5 → this spec AC01–AC10 → `API_CONTRACT.md` (lookups) →
+Requirement (owner, 2026-09-29) → `DEC-SCOPE-039` D1–D5 → this spec AC01–AC10 → `API_CONTRACT.md` (lookups) →
 `SCREEN_CATALOG.md` (changed forms) → tests (§8) → code → `RTM.md` ENH-031 row; `ENHANCEMENT_BACKLOG.md` ENH-031 entry.

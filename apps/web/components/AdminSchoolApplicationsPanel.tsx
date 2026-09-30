@@ -12,7 +12,7 @@ type BridgedApplication = { id: string; student_name: string; student_code: stri
 
 // DEC-SCOPE-018 (2026-09-15): Overseas Admin/Counselor links a School-affiliated student
 // to a real Overseas application -- never school_coordinator, per direct decision.
-// ENH-031 (DEC-SCOPE-037 D4): pick the school first, then search only that school's students by name or Student ID -- no cross-school name browsing.
+// ENH-031 (DEC-SCOPE-039 D4): pick the school first, then search only that school's students by name or Student ID -- no cross-school name browsing.
 export default function AdminSchoolApplicationsPanel() {
   const [universities, setUniversities] = useState<UniversityOption[]>([]);
   const [applications, setApplications] = useState<BridgedApplication[] | null>(null);

@@ -413,7 +413,7 @@ predate an application record).
   not exist yet and is required scope, not optional polish, once the on-behalf-of model is built.
   See §6.2's note above for the same open `student_user_id` schema question.
 
-### 6.8a `AgentOrg`, `AgentOrgMember` — built 2026-09-28 (`AGN-001`, `DEC-SCOPE-036`, migration `0046_agent_orgs`)
+### 6.8a `AgentOrg`, `AgentOrgMember` — built 2026-09-28 (`AGN-001`, `DEC-SCOPE-038`, migration `0046_agent_orgs`)
 Design: `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md` §4.
 - **`agent_orgs`** (the tenant): `id`, `name` String(160), `prefix` String(8) unique
   (`uq_agent_orgs_prefix`; D5), `status` String(20) indexed, CHECK `pending`/`active`/`rejected`/`suspended`

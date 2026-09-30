@@ -78,7 +78,7 @@ DEACTIVATED_MESSAGE = "Your Master account is deactivated"
 
 
 def agent_denial_reason(user) -> str | None:
-    """AGN-001 (DEC-SCOPE-036 D6, spec E10): why an agent is denied every agent route, or None.
+    """AGN-001 (DEC-SCOPE-038 D6, spec E10): why an agent is denied every agent route, or None.
 
     Reads `user.agent_membership` (+ `.org`), eager-loaded by `get_current_user` on every request, so a suspension
     applies on the member's next request. The organisation's status is the gate (AGT-001-AC02 preserved: a pending or

@@ -124,7 +124,7 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .table-scroll { overflow-x: auto; max-width: 100%; position: relative; }
 .table-scroll table th:first-child, .table-scroll table td:first-child { position: sticky; left: 0; background: #fff; }
 /* QA-016-02: the report forms land on these sections; keep their heading clear of the sticky portal header. */
-#development, #scorecards { scroll-margin-top: 88px; }
+#development, #scorecards, #students { scroll-margin-top: 88px; }
 /* QA-016-04: a row header is a label (a student, a metric), not a column heading -- normal case at body size. */
 .table-scroll tbody th[scope="row"] { text-transform: none; letter-spacing: normal; font-size: 14px; color: #0b1f3a; font-weight: 600; }
 .table-scroll tbody th[scope="row"] .kpi-note { font-weight: 400; }
@@ -140,3 +140,22 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .combo-list [role="option"] { padding: 8px 10px; border-radius: 8px; cursor: pointer; overflow-wrap: anywhere; }
 .combo-list [role="option"][aria-selected="true"], .combo-list [role="option"]:hover { background: #eef4fc; }
 .combo-status:empty { display: none; }
+
+/* ENH-017 Global Education pipeline (SCR-SCH-038) */
+.pipeline-page h1 { font-size: 28px; margin-bottom: 16px; }
+.pipeline-page .card h2 { font-size: 22px; } /* QA17-02: section headings sit below the 28px page title, above the 20px h3 */
+.pipeline-funnel { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.pipeline-stage { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; }
+.pipeline-label { color: var(--ink); font-weight: 600; min-width: 0; }
+.pipeline-count { font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pipeline-track { grid-column: 1 / -1; height: 8px; border-radius: 99px; background: var(--soft); border: 1px solid var(--line); overflow: hidden; }
+.pipeline-fill { display: block; height: 100%; background: var(--blue); }
+
+/* ENH-015 (QA15-04): the report download card is a secondary action -- a section-sized heading, and no second
+   .portal-content padding between it and the report below it. */
+.report-downloads { padding-bottom: 0; }
+.report-downloads h2 { font-size: 22px; margin-bottom: 6px; }
+/* QA15-10: where the PDF's content can be read accessibly. Full width in the report cards; narrowed only in the parent's
+   button row, where it would otherwise widen the row (QA15-11). */
+.report-download .field-hint { margin-top: 6px; }
+.child-page-actions .report-download .field-hint { max-width: 42ch; }

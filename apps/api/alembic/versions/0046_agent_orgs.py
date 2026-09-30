@@ -3,7 +3,7 @@
 Revision ID: 0046_agent_orgs
 Revises: 0045_psychometric_result_fields
 
-docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md §4 (DEC-SCOPE-036 D10; cut as 0045_agent_orgs,
+docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md §4 (DEC-SCOPE-038 D10; cut as 0045_agent_orgs,
 re-chained on ENH-027's 0045 when main was merged). Creates two tables and
 backfills one organisation + Master M001 per existing agent. No existing table or row is altered. The backfill only touches
 agents that have no membership yet, so it is safe if the tables were already created by `auto_create_schema` and safe to
