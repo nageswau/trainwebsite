@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { pickOption } from "../helpers/pickOption";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import CareerRecordForm from "@/components/CareerRecordForm";
 import type { CareerRecord } from "@/lib/careerRecords";
@@ -43,7 +44,7 @@ describe("CareerRecordForm", () => {
   it("resets the whole form after a create and clears the success message on the next change", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => ({ id: "r9" }) }));
     render(<CareerRecordForm students={STUDENTS} onDone={vi.fn()} onCancel={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText("Student"), { target: { value: "s1" } });
+    pickOption(screen, "Student", "s1");
     fireEvent.change(screen.getByLabelText("Type"), { target: { value: "counselling_note" } });
     fireEvent.change(screen.getByLabelText("Status"), { target: { value: "not_started" } });
     fireEvent.click(screen.getByRole("button", { name: "Save record" }));

@@ -9,6 +9,7 @@ from app.core.database import SessionLocal, engine
 from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
 from app.models import *
+from app.services.agent_orgs import ensure_agent_org
 
 PASSWORD = "Demo@123"
 USERS = [
@@ -80,8 +81,9 @@ async def main():
         us["counselor"].profile = {"demo": True, "specialisms": ["UK", "Germany", "Ireland"]}
         us["university_rep"].profile = {"demo": True, "university": "University Partner Demo"}
         us["agent"].profile = {"demo": True, "agency_name": "EduSphere Partner Agency", "registration_status": "approved"}
-        # AGT-001's approval gate (`core.rbac.agent_is_approved`) checks the
-        # `UserRoleAssignment` table, not `User.profile["registration_status"]` above --
+        # AGT-001's approval lives in the `UserRoleAssignment` table (AGN-001: kept in step
+        # with the organisation, whose status is now the gate -- `core.rbac.agent_denial_reason`),
+        # not in `User.profile["registration_status"]` above --
         # without an approved row here the demo agent 403s on every agent-scoped route,
         # including its own portal dashboard. `auth._sync_role_assignment` lazily creates
         # a *pending* row for any role="agent" user on their first-ever login and (by
@@ -93,6 +95,10 @@ async def main():
             demo_agent_assignment.approval_status = "approved"
         else:
             db.add(UserRoleAssignment(user_id=us["agent"].id, division="overseas", role="agent", approval_status="approved"))
+        # AGN-001 (E7): the demo agent's organisation, active like its assignment above.
+        await db.flush()
+        demo_member = await ensure_agent_org(db, us["agent"], agency_name=us["agent"].profile.get("agency_name"), status="active")
+        (await db.get(AgentOrg, demo_member.org_id)).status = "active"
         pmap = {}
         for slug, cat, title, summary, duration, fees, curr in programs:
             p = await db.scalar(select(Program).where(Program.slug == slug))

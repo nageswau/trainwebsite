@@ -2,10 +2,11 @@ import json
 import logging
 import re
 from datetime import UTC, date, datetime
+from typing import Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,9 +14,36 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code, uuid_reference
-from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, SchoolStaffAssignment, SchoolStudent, University, User, UserRoleAssignment
+from app.models import (
+    AcademicYear,
+    AgentCommission,
+    AgentOrg,
+    AgentOrgMember,
+    AuditLog,
+    Batch,
+    Company,
+    Country,
+    DataSubjectRequest,
+    Enquiry,
+    Enrollment,
+    Job,
+    JobApplication,
+    Notification,
+    NotificationDelivery,
+    OverseasApplication,
+    Payment,
+    Program,
+    School,
+    SchoolStaffAssignment,
+    SchoolStudent,
+    University,
+    User,
+    UserRoleAssignment,
+)
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
+from app.services.agent_orgs import ensure_agent_org, lock_org, set_org_status, transition_org
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
+from app.services.provisioning import flush_unique_email as _flush_unique_email
 from app.services.storage import storage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -137,15 +165,6 @@ async def _school_outs_batch(db: AsyncSession, schools: list["School"]) -> list[
         ))
     return results
 
-
-async def _flush_unique_email(db: AsyncSession) -> None:
-    """Flush a new account; two simultaneous creates for one email are settled by the unique
-    constraint (409 for the loser, never a 500). Rolling back also drops anything created with it."""
-    try:
-        await db.flush()
-    except IntegrityError:
-        await db.rollback()
-        raise HTTPException(409, "Email already exists") from None
 
 
 @router.get("/dashboard")
@@ -409,6 +428,11 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
     )
     db.add(item)
     await _flush_unique_email(db)
+    if role == "agent":
+        # AGN-001 (D11): an admin-created agent gets its own pending organisation as Master M001.
+        # `payload` is an untyped dict: only a string agency name is used; anything else falls back to the full name.
+        agency_name = item.profile.get("agency_name") if isinstance(item.profile, dict) else None
+        await ensure_agent_org(db, item, agency_name=agency_name if isinstance(agency_name, str) else None, status="pending")
     issued = await issue_welcome_token(db, user=item, issued_by=user)
     db.add(AuditLog(user_id=user.id, action="user.create", entity_type="user", entity_id=str(item.id), metadata_json={"role": role, "division": division}))
     await db.commit()
@@ -992,10 +1016,15 @@ async def _pending_agent_assignment(agent_id: UUID, user: User, db: AsyncSession
 
 @agents_router.post("/agents/{agent_id}/approve")
 async def approve_agent(agent_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _, assignment = await _pending_agent_assignment(agent_id, user, db)
+    agent, assignment = await _pending_agent_assignment(agent_id, user, db)
+    # AGN-001 (E4): same any-state behaviour and audit row as before; the agent's organisation follows. The org row is
+    # locked BEFORE the assignment is touched -- the same order as `transition_org` -- so the two paths cannot deadlock.
+    member = await ensure_agent_org(db, agent)
+    org = await lock_org(db, member.org_id)
     assignment.approval_status = "approved"
     assignment.approved_by_user_id = user.id
     assignment.approved_at = datetime.now(UTC)
+    await set_org_status(db, org, "active", user, write_through=True)
     # SEC-001: every Agent-approval action writes an audit record -- fail closed, not
     # open, if this write itself somehow failed (it shares the same transaction as the
     # approval below, so a rollback here rolls back the approval too, never the reverse).
@@ -1006,10 +1035,13 @@ async def approve_agent(agent_id: UUID, user: User = Depends(get_current_user), 
 
 @agents_router.post("/agents/{agent_id}/reject")
 async def reject_agent(agent_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _, assignment = await _pending_agent_assignment(agent_id, user, db)
+    agent, assignment = await _pending_agent_assignment(agent_id, user, db)
+    member = await ensure_agent_org(db, agent)  # AGN-001 (E4); org locked before the assignment, as in approve_agent
+    org = await lock_org(db, member.org_id)
     assignment.approval_status = "rejected"
     assignment.approved_by_user_id = user.id
     assignment.approved_at = datetime.now(UTC)
+    await set_org_status(db, org, "rejected", user, write_through=True)
     db.add(AuditLog(user_id=user.id, action="agent.reject", entity_type="user_role_assignment", entity_id=str(assignment.id), outcome="rejected"))
     await db.commit()
     return {"id": assignment.id, "approval_status": assignment.approval_status}
@@ -1024,6 +1056,54 @@ async def list_agents(status: str | None = None, user: User = Depends(get_curren
         stmt = stmt.where(UserRoleAssignment.approval_status == status)
     rows = (await db.execute(stmt.order_by(User.created_at.desc()))).all()
     return [{"id": agent.id, "name": agent.full_name, "email": agent.email, "approval_status": assignment.approval_status} for agent, assignment in rows]
+
+
+# AGN-001 (DEC-SCOPE-038 D6/D7): Overseas Admin acts on the agent ORGANISATION.
+def _require_overseas_admin(user: User) -> None:
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+
+
+@agents_router.get("/agent-orgs")
+async def list_agent_orgs(
+    status: Literal["pending", "active", "rejected", "suspended"] | None = None,
+    q: str | None = Query(None, max_length=100),
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Newest first. `{items, total, limit, offset}` like the school skill-batch list (the only built paginated list).
+    `q` (browser QA-13) matches agency name, prefix, or any Master's code or email, case-insensitively and literally."""
+    _require_overseas_admin(user)
+    filters = [AgentOrg.status == status] if status else []
+    term = (q or "").strip()
+    if term:
+        pattern = "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        member_match = (
+            select(AgentOrgMember.org_id)
+            .join(User, User.id == AgentOrgMember.user_id)
+            .where(or_(AgentOrgMember.code.ilike(pattern, escape="\\"), User.email.ilike(pattern, escape="\\")))
+        )
+        filters.append(or_(AgentOrg.name.ilike(pattern, escape="\\"), AgentOrg.prefix.ilike(pattern, escape="\\"), AgentOrg.id.in_(member_match)))
+    total = await db.scalar(select(func.count()).select_from(AgentOrg).where(*filters))
+    orgs = (await db.scalars(select(AgentOrg).where(*filters).order_by(AgentOrg.created_at.desc(), AgentOrg.id.desc()).limit(limit).offset(offset))).all()
+    masters: dict = {}
+    if orgs:
+        rows = (await db.execute(select(AgentOrgMember, User).join(User, User.id == AgentOrgMember.user_id).where(AgentOrgMember.org_id.in_([o.id for o in orgs])).order_by(AgentOrgMember.seq))).all()
+        for member, member_user in rows:
+            masters.setdefault(member.org_id, []).append({"id": member.id, "code": member.code, "full_name": member_user.full_name, "email": member_user.email, "status": member.status})
+    items = [{"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, [])} for o in orgs]
+    return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
+
+
+@agents_router.post("/agent-orgs/{org_id}/{action}")
+async def act_on_agent_org(org_id: UUID, action: Literal["approve", "reject", "suspend", "reinstate"], user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_overseas_admin(user)
+    org = await transition_org(db, org_id, action, user)
+    result = {"id": org.id, "status": org.status}
+    await db.commit()
+    return result
 
 
 @agents_router.post("/commissions/{commission_id}/approve-payout")

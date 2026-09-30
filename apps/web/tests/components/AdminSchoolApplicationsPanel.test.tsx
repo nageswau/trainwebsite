@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AdminSchoolApplicationsPanel from "@/components/AdminSchoolApplicationsPanel";
@@ -14,22 +14,28 @@ const json = (status: number, body: unknown) => Promise.resolve({ ok: status < 4
 
 /** The panel's reads succeed; the application POST gets `onPost`. */
 function stubApi(onPost: () => Promise<unknown>) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string, init?: RequestInit) => {
-      if (init?.method === "POST") return onPost();
-      if (url.startsWith("/api/v1/public/universities")) return json(200, [{ id: "u1", name: "Test University", city: "Testville" }]);
-      if (url.startsWith("/api/v1/overseas-admin/school-applications")) return json(200, []);
-      return json(200, { id: "s1", full_name: "Asha", student_code: "A3F9C21B", school_name: "Hill School" });
-    }),
-  );
+  const mock = vi.fn((url: string, init?: RequestInit) => {
+    if (init?.method === "POST") return onPost();
+    if (url.startsWith("/api/v1/public/universities")) return json(200, [{ id: "u1", name: "Test University", city: "Testville" }]);
+    if (url.startsWith("/api/v1/overseas-admin/school-applications")) return json(200, []);
+    if (url.startsWith("/api/v1/lookups/schools?")) return json(200, { items: [{ id: "sch1", label: "Hill School", detail: "HILL0001" }], truncated: false });
+    if (url.startsWith("/api/v1/lookups/school-students?")) return json(200, { items: [{ id: "s1", label: "Asha", detail: "Grade 5 · A3F9C21B" }], truncated: false });
+    return json(404, {});
+  });
+  vi.stubGlobal("fetch", mock);
+  return mock;
+}
+
+async function pickSchoolAndStudent() {
+  fireEvent.focus(screen.getByRole("combobox", { name: "School" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Hill School — HILL0001" }));
+  fireEvent.focus(await screen.findByRole("combobox", { name: "Student" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Asha — Grade 5 · A3F9C21B" }));
 }
 
 async function startApplication() {
   render(<AdminSchoolApplicationsPanel />);
-  fireEvent.change(screen.getByLabelText("Student ID"), { target: { value: "a3f9c21b" } });
-  fireEvent.click(screen.getByRole("button", { name: "Look up" }));
-  await screen.findByText("Asha — Hill School");
+  await pickSchoolAndStudent();
   await screen.findByRole("option", { name: "Test University (Testville)" });
   fireEvent.change(screen.getByLabelText("University"), { target: { value: "u1" } });
   fireEvent.change(screen.getByLabelText("Intake"), { target: { value: "Fall 2027" } });
@@ -56,5 +62,19 @@ describe("AdminSchoolApplicationsPanel save failures", () => {
     stubApi(() => json(201, { id: "app1" }));
     await startApplication();
     expect(await screen.findByRole("status")).toHaveTextContent("Application started for Asha.");
+  });
+
+  it("searches students only within the chosen school and posts that student's id", async () => {
+    const mock = stubApi(() => json(201, { id: "app1" }));
+    await startApplication();
+    expect(mock.mock.calls.some(([url]) => String(url) === "/api/v1/lookups/school-students?limit=20&school_id=sch1")).toBe(true);
+    await waitFor(() => expect(mock.mock.calls.some(([url, init]) => url === "/api/v1/overseas-admin/school-students/s1/applications" && init?.method === "POST")).toBe(true));
+  });
+
+  it("offers no student search until a school is picked", () => {
+    stubApi(() => json(201, {}));
+    render(<AdminSchoolApplicationsPanel />);
+    expect(screen.queryByRole("combobox", { name: "Student" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Start application" })).toBeNull();
   });
 });

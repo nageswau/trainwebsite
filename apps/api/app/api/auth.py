@@ -17,6 +17,7 @@ from app.core.identifiers import unique_student_code
 from app.core.security import create_token, decode_token, hash_password, verify_password
 from app.models import AuditLog, Notification, NotificationDelivery, PasswordResetToken, User, UserRoleAssignment
 from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
+from app.services.agent_orgs import ensure_agent_org
 from app.services.integrations import send_notification
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -60,25 +61,26 @@ async def _sync_role_assignment(db: AsyncSession, user: User, assigned_by_user_i
     an Agent's approval_status is never reset by a later login).
     """
 
-    existing = await db.scalar(
+    assignment = await db.scalar(
         select(UserRoleAssignment).where(
             UserRoleAssignment.user_id == user.id,
             UserRoleAssignment.division == user.division,
             UserRoleAssignment.role == user.role,
         )
     )
-    if existing:
-        return existing
-    assignment = UserRoleAssignment(
-        user_id=user.id,
-        division=user.division,
-        role=user.role,
-        is_active=True,
-        assigned_by_user_id=assigned_by_user_id,
-        approval_status="pending" if user.role == "agent" else "approved",
-    )
-    db.add(assignment)
-    await db.flush()
+    if assignment is None:
+        assignment = UserRoleAssignment(
+            user_id=user.id,
+            division=user.division,
+            role=user.role,
+            is_active=True,
+            assigned_by_user_id=assigned_by_user_id,
+            approval_status="pending" if user.role == "agent" else "approved",
+        )
+        db.add(assignment)
+        await db.flush()
+    if user.role == "agent":
+        await ensure_agent_org(db, user)  # AGN-001 (E7): every agent has an organisation
     return assignment
 
 
@@ -126,6 +128,9 @@ async def register(payload: RegistrationRequest, response: Response, db: AsyncSe
     )
     db.add(user)
     await db.flush()
+    if role == "agent":
+        # AGN-001 (D2, E2): one pending organisation + Master M001, named from the optional agency name.
+        await ensure_agent_org(db, user, agency_name=payload.agency_name, status="pending")
     await _sync_role_assignment(db, user)
     db.add(AuditLog(user_id=user.id, action="auth.register", entity_type="user", entity_id=str(user.id), metadata_json={"division": user.division, "role": user.role}))
     await db.commit()

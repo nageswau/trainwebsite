@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, KeyboardEvent, useRef, useState } from "react";
+import SearchableSelect from "@/components/SearchableSelect";
 import { useRouter } from "next/navigation";
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
@@ -107,13 +108,7 @@ export default function CareerRecordForm({ students, record, onDone, onCancel }:
       <fieldset className="form-busy-wrap" disabled={busy}>
         {!editing && (
           <>
-            <div className="field">
-              <label htmlFor={`${prefix}-student`}>Student</label>
-              <select id={`${prefix}-student`} name="school_student_id" required defaultValue="">
-                <option value="" disabled>Select student</option>
-                {students.map((s) => <option key={s.id} value={s.id}>{s.full_name} — {s.school_name}</option>)}
-              </select>
-            </div>
+            <SearchableSelect id={`${prefix}-student`} label="Student" name="school_student_id" required noun="student" options={students.map((s) => ({ id: s.id, label: s.full_name, detail: s.school_name }))} />
             <div className="field">
               <label htmlFor={`${prefix}-type`}>Type</label>
               <select id={`${prefix}-type`} name="record_type" required value={recordType} onChange={(e) => setRecordType(e.target.value)}>

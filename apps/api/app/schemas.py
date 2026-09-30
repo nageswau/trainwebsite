@@ -52,6 +52,13 @@ class RegistrationRequest(BaseModel):
     phone: str | None = Field(default=None, max_length=40)
     division: str = Field(pattern="^(it|overseas)$")
     account_type: str = Field(default="student", pattern="^(student|agent)$")
+    # AGN-001 (E2): optional; blank -> None, and the organisation is then named after the agent's full name.
+    agency_name: str | None = Field(default=None, max_length=160)
+
+    @field_validator("agency_name")
+    @classmethod
+    def blank_agency_name_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
 
     @field_validator("account_type")
     @classmethod
@@ -393,6 +400,23 @@ class ProfileDocumentCreate(BaseModel):
 
 class AgentStudentCreate(BaseModel):
     student_id: UUID
+
+
+class AgentMasterInvite(BaseModel):
+    """AGN-001 (D9): a Master inviting another Master to their agency."""
+
+    full_name: str = Field(min_length=1, max_length=160)
+    email: str = Field(pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=320)
+    phone: str | None = Field(default=None, max_length=40)
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            # A plain message, not pydantic's "Value error, ..." prefix (browser QA-06).
+            raise PydanticCustomError("blank_full_name", "Full name is required")
+        return value
 
 
 class CommissionCreate(BaseModel):

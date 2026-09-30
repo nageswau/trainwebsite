@@ -39,6 +39,11 @@ class User(Base, TimestampMixin):
     role_assignments: Mapped[list["UserRoleAssignment"]] = relationship(
         foreign_keys="UserRoleAssignment.user_id", viewonly=True, order_by="UserRoleAssignment.assigned_at"
     )
+    # AGN-001: eager-loaded (with `.org`) by `deps.get_current_user` for every request; `lazy="raise"` makes any other
+    # unloaded access fail loudly instead of an async lazy-load crash.
+    agent_membership: Mapped["AgentOrgMember | None"] = relationship(
+        foreign_keys="AgentOrgMember.user_id", viewonly=True, uselist=False, lazy="raise"
+    )
 
 
 class UserRoleAssignment(Base, TimestampMixin):
@@ -843,6 +848,50 @@ class AgentCommission(Base, TimestampMixin):
     payout_approved_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     payout_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentOrg(Base, TimestampMixin):
+    """AGN-001 / DEC-SCOPE-038: an agent company -- a separate tenant. Its `status` is the agent approval gate
+    (`core.rbac.agent_denial_reason`); `master_seq` is the highest Master number ever issued, so codes are never reused."""
+
+    __tablename__ = "agent_orgs"
+    __table_args__ = (
+        UniqueConstraint("prefix", name="uq_agent_orgs_prefix"),
+        CheckConstraint("status IN ('pending', 'active', 'rejected', 'suspended')", name="ck_agent_orgs_status"),
+        CheckConstraint("master_seq >= 0", name="ck_agent_orgs_master_seq"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(160))
+    prefix: Mapped[str] = mapped_column(String(8))
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    master_seq: Mapped[int] = mapped_column(Integer, default=0)
+    status_changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentOrgMember(Base, TimestampMixin):
+    """AGN-001: a user's membership of exactly one agent organisation, for good (`user_id` unique). Only `master`
+    exists today (D13: Staff is not decided)."""
+
+    __tablename__ = "agent_org_members"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_agent_org_members_user"),
+        UniqueConstraint("code", name="uq_agent_org_members_code"),
+        UniqueConstraint("org_id", "seq", name="uq_agent_org_members_org_seq"),
+        CheckConstraint("role = 'master'", name="ck_agent_org_members_role"),
+        CheckConstraint("status IN ('active', 'deactivated')", name="ck_agent_org_members_status"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    org_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id"), index=True)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    role: Mapped[str] = mapped_column(String(20), default="master")
+    seq: Mapped[int] = mapped_column(Integer)
+    code: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    invited_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    deactivated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    org: Mapped["AgentOrg"] = relationship(lazy="raise")
 
 
 class InboundUniversityEmail(Base, TimestampMixin):

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.core.rbac import agent_is_approved
+from app.core.rbac import agent_denial_reason
 from app.models import User
 from app.services.portal import section_payload
 
@@ -28,8 +28,9 @@ async def portal(division: str, role: str, section: str, user: User = Depends(ge
     # AGT-001-AC02: a Pending/Rejected Agent cannot view data, even though the role/
     # division check above already passed (that check reads the legacy `User.role`
     # column, which has no approval concept of its own).
-    if not agent_is_approved(user):
-        raise HTTPException(403, "Agent registration is pending approval")
+    reason = agent_denial_reason(user)
+    if reason:
+        raise HTTPException(403, reason)
     payload = await section_payload(db, user, section)
     if payload is None:
         raise HTTPException(404, "Workspace not found")

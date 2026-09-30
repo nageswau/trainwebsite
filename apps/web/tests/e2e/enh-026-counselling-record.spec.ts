@@ -1,4 +1,5 @@
 import { expect, request as playwrightRequest, test, type APIRequestContext, type Page } from "@playwright/test";
+import { pickFromList } from "./helpers/pick";
 import { E2E_PASSWORD, createAndActivate } from "./helpers/welcome";
 
 // ENH-026 (docs/superpowers/specs/2026-09-27-enh-021-026-internship-and-counselling-record-design.md, AC26-1..AC26-8, AC-R5):
@@ -59,7 +60,7 @@ test.describe.serial("ENH-026 counselling record", () => {
   test("counsellor schedules a session, then completes it with the keyboard", async ({ page }) => {
     await signIn(page, email("counselor"), E2E_PASSWORD, "/school/career-counselor/dashboard");
     const add = page.locator(".action-card", { has: page.getByRole("heading", { name: "Add a record" }) });
-    await add.getByLabel("Student").selectOption({ label: `${ctx.studentName} — ${schoolName}` });
+    await pickFromList(add.getByRole("combobox", { name: "Student" }), ctx.studentName, `${ctx.studentName} — ${schoolName}`);
     await add.getByLabel("Type").selectOption("counselling_note");
     await add.getByLabel("Status").selectOption("scheduled");
     await add.getByLabel("Scheduled for").fill("2026-12-01T10:00");

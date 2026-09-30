@@ -9,6 +9,8 @@ from app.core.identifiers import uuid_reference
 from app.core.rbac import PERMISSIONS
 from app.models import (
     AgentCommission,
+    AgentOrg,
+    AgentOrgMember,
     AgentStudent,
     Agreement,
     Appointment,
@@ -37,7 +39,6 @@ from app.models import (
     PlacementProfile,
     Program,
     QuestionReply,
-    UserRoleAssignment,
     QuestionThread,
     Scholarship,
     ScholarshipApplication,
@@ -51,6 +52,7 @@ from app.models import (
     User,
     VisaCase,
 )
+from app.services.agent_orgs import org_member_ids
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")
@@ -675,13 +677,14 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
 
 
 async def _agent(db: AsyncSession, user: User, section: str):
-    students = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(AgentStudent.agent_id == user.id))).all()
+    # AGN-001 (D1): everything referred by any member of the caller's organisation.
+    students = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(AgentStudent.agent_id.in_(org_member_ids(user))))).all()
     applications = (
         await db.execute(
             select(OverseasApplication, University, User)
             .join(University, University.id == OverseasApplication.university_id)
             .join(User, User.id == OverseasApplication.student_id)
-            .where(OverseasApplication.agent_id == user.id)
+            .where(OverseasApplication.agent_id.in_(org_member_ids(user)))
             .order_by(OverseasApplication.updated_at.desc())
         )
     ).all()
@@ -692,7 +695,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
     latest_application_by_student = {}
     for a, u, s in applications:
         latest_application_by_student.setdefault(s.id, (a, u))
-    commissions = (await db.scalars(select(AgentCommission).where(AgentCommission.agent_id == user.id))).all()
+    commissions = (await db.scalars(select(AgentCommission).where(AgentCommission.agent_id.in_(org_member_ids(user))))).all()
     if section == "dashboard":
         return _payload(
             "Agent Dashboard",
@@ -704,7 +707,24 @@ async def _agent(db: AsyncSession, user: User, section: str):
                 {"label": "Applications", "value": len(applications)},
                 {"label": "Claimable commission", "value": f"INR {sum(float(c.amount) for c in commissions if c.status in {'eligible', 'estimated'}):,.0f}"},
                 {"label": "Claims", "value": sum(1 for c in commissions if c.status == "claimed")},
+                *(({"label": "Your code", "value": user.agent_membership.code},) if user.agent_membership else ()),
             ),
+        )
+    if section == "team":
+        # AGN-001: the agency's Master accounts, read-only here; AgentTeamPanel carries the actions.
+        membership = user.agent_membership
+        rows = (
+            (await db.execute(select(AgentOrgMember, User).join(User, User.id == AgentOrgMember.user_id).where(AgentOrgMember.org_id == membership.org_id).order_by(AgentOrgMember.seq))).all()
+            if membership
+            else []
+        )
+        # Browser QA-05: same status wording as AgentTeamPanel -- an active Master who has not set a password is "invite pending".
+        pending = set(await provisioning_statuses(db, [u.id for _, u in rows]))
+        return _payload(
+            "Team",
+            "Your agency's Master accounts. Up to 3 can be active at once.",
+            (("code", "Code"), ("name", "Name"), ("email", "Email"), ("status", "Status")),
+            ({"code": m.code, "name": u.full_name, "email": u.email, "status": "invite pending" if m.status == "active" and u.id in pending else m.status} for m, u in rows),
         )
     if section == "students":
         return _payload(
@@ -1346,16 +1366,21 @@ async def _operations(db: AsyncSession, user: User, section: str):
         if section == "agents" and division == "overseas":
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic
             # role_map listing below has no `approval_status` column to show at all.
+            # AGN-001 (browser QA-01): one row per Master with the ORGANISATION's status -- the per-user assignment status
+            # read "approved" for a suspended agency. Approve/reject/suspend/reinstate stay in AgentApprovalPanel below.
             rows = (
                 await db.execute(
-                    select(User, UserRoleAssignment).join(UserRoleAssignment, UserRoleAssignment.user_id == User.id).where(User.role == "agent", UserRoleAssignment.role == "agent").order_by(User.created_at.desc())
+                    select(AgentOrgMember, AgentOrg, User)
+                    .join(AgentOrg, AgentOrg.id == AgentOrgMember.org_id)
+                    .join(User, User.id == AgentOrgMember.user_id)
+                    .order_by(AgentOrg.created_at.desc(), AgentOrgMember.seq)
                 )
             ).all()
             return _payload(
-                "Agent Registrations",
-                "Approve or reject Agent self-registrations.",
-                (("id", "reference"), ("name", "Name"), ("email", "Email"), ("status", "Approval status")),
-                ({"id": agent.id, "name": agent.full_name, "email": agent.email, "status": assignment.approval_status} for agent, assignment in rows),
+                "Agent Masters",
+                "Every Master of every agent organisation. Approve, reject, suspend or reinstate agencies below.",
+                (("agency", "Agency"), ("code", "Code"), ("name", "Name"), ("email", "Email"), ("org_status", "Agency status"), ("master_status", "Master status")),
+                ({"agency": org.name, "code": member.code, "name": member_user.full_name, "email": member_user.email, "org_status": org.status, "master_status": member.status} for member, org, member_user in rows),
             )
         if section == "schools" and division == "overseas":
             # SCH-003 / ENH-009 (DEC-SCOPE-025): Overseas Admin's own partner-school list --

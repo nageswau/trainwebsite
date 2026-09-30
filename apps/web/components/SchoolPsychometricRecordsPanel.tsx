@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import SearchableSelect from "@/components/SearchableSelect";
 import { useRouter } from "next/navigation";
 
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
@@ -176,15 +177,7 @@ export default function SchoolPsychometricRecordsPanel({ records, students }: { 
           <p className="muted">No students in your portfolio yet. Contact your Overseas Admin.</p>
         ) : (
           <form className="form" onSubmit={submit}>
-            <div className="field">
-              <label htmlFor="psych-student">Student</label>
-              <select id="psych-student" name="school_student_id" required defaultValue="">
-                <option value="" disabled>Select student</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>{s.full_name} — {s.school_name}</option>
-                ))}
-              </select>
-            </div>
+            <SearchableSelect id="psych-student" label="Student" name="school_student_id" required noun="student" options={students.map((s) => ({ id: s.id, label: s.full_name, detail: s.school_name }))} />
             <div className="field">
               <label htmlFor="psych-type">Assessment type</label>
               <input id="psych-type" name="assessment_type" required placeholder="e.g. Aptitude Test" />

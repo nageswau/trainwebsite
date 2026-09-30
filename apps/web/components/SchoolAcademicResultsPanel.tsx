@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import SearchableSelect from "@/components/SearchableSelect";
 import { useRouter } from "next/navigation";
 
 type Student = { id: string; full_name: string; school_name: string };
@@ -138,15 +139,7 @@ export default function SchoolAcademicResultsPanel({ results, students, currentU
           <p className="muted">No students in your portfolio yet. Contact your Overseas Admin.</p>
         ) : (
           <form className="form" onSubmit={createResult}>
-            <div className="field">
-              <label htmlFor="result-student">Student</label>
-              <select id="result-student" name="school_student_id" required defaultValue="">
-                <option value="" disabled>Select student</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>{s.full_name} — {s.school_name}</option>
-                ))}
-              </select>
-            </div>
+            <SearchableSelect id="result-student" label="Student" name="school_student_id" required noun="student" options={students.map((s) => ({ id: s.id, label: s.full_name, detail: s.school_name }))} />
             <div className="field">
               <label htmlFor="result-year">Academic year</label>
               <input id="result-year" name="academic_year" placeholder="2026" required />

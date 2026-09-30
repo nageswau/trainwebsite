@@ -190,6 +190,19 @@ never a frontend-only gate (`FND-002`, `NFR-SEC-001`).
 | `POST /overseas-admin/commissions` | Authenticated | Overseas Admin | Manual creation path, retained (`DATA_MODEL.md` §6.7 `created_by='admin_manual'`). |
 | `POST /overseas-admin/commissions/{id}/approve-payout` | Authenticated | Overseas Admin, distinct actor from creation where system-triggered | **Net-new** — no equivalent existed in the base codebase (`REFERENCE_IMPLEMENTATION_FINDINGS.md` §5.4). 403 if the acting Admin is the same identity that created a manually-entered commission, where that separation is enforceable (`NFR-SEC-002`, `AGT-004-AC02`). |
 
+**`AGN-001` / `DEC-SCOPE-038` (built 2026-09-28).** Design spec §5.4.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `POST /auth/register` (`account_type='agent'`) | Public | — | Optional `agency_name` (≤160, blank → full name; E2). Creates one `pending` organisation + Master `M001` in the same transaction (D2, D5). Response unchanged. |
+| `GET /overseas-admin/agent-orgs?status=&limit=25&offset=0` | Authenticated | Overseas Admin / Super Admin | **Paginated** (review decision 2026-09-29; limit/offset like the built school skill-batch list, not §0.1's cursor form): `limit` 1–100 (default 25), `offset` ≥ 0 → `{items: [{id, name, prefix, status, created_at, masters: [{id, code, full_name, email, status}]}], total, limit, offset}`, newest first. Unknown `status` or out-of-range paging → `422`. |
+| `POST /overseas-admin/agent-orgs/{org_id}/{approve\|reject\|suspend\|reinstate}` | Authenticated | Overseas Admin / Super Admin | approve: pending/rejected → active; reject: pending → rejected; suspend: active → suspended; reinstate: suspended → active. Row lock; `409 "Cannot <action> an organisation that is <status>"`; `404` unknown; audit `agent_org.<action>`, `entity_type='agent_org'`, outcome = new status, `{"from": old}`, same transaction. Response `{id, status}`. Approve/reject also set the Masters' assignment `approval_status` (E11). |
+| `POST /overseas-admin/agents/{id}/approve`, `/reject` | Authenticated | Overseas Admin | Kept: same any-state behaviour, response and `agent.approve`/`agent.reject` audit rows; additionally set that agent's organisation to `active`/`rejected` (E4). |
+| `GET /workflows/overseas/agent/team` | Authenticated | Active Master of an active organisation | `{org: {id, name, prefix, status}, masters: [{id, code, full_name, email, status, invite_pending, is_you}], limit: 3}`. |
+| `POST /workflows/overseas/agent/team/masters` `{full_name, email, phone?}` | Authenticated | Same | `422 "This agency already has 3 active Masters"`; **`429 "This agency has sent 10 invites in the last 24 hours. Try again later."` with `Retry-After`** (at most 10 invites per agency per rolling 24 h, counted from `agent_org.master_invite` audit rows under the organisation lock — security review decision 2026-09-29); `409 "Email already exists"`; creates the user (unusable password), approved assignment and member `M<master_seq+1>`, DEC-SCOPE-019 welcome token, audit `agent_org.master_invite`; email sent after commit. `201 {member, email_status, expires_at[, development_welcome_token]}`. |
+| `POST /workflows/overseas/agent/team/masters/{member_id}/deactivate` | Authenticated | Same | `404` if not in the caller's organisation; `409 "Already deactivated"`; `422 "An agency must keep at least one active Master"`; `422 "At least one other Master must have accepted their invite first"` unless another active Master has login enabled and a password set (review decision R3, 2026-09-29 — prevents self-lockout by unaccepted invites); disables the user's login and revokes open welcome links; audit `agent_org.master_deactivate`. `200 {member}`. No reactivation route. |
+| Every agent route in this section, `/workflows/overseas/applications`, `/workflows/overseas/documents*`, `/portal/overseas/agent/*` | Authenticated | Own **organisation** | Replaces "Self (Agent)" (D1). `403 "Agent registration is pending approval"` (pending/rejected), `403 "Your agency's account is suspended"`, `403 "Your Master account is deactivated"`. Linking a student already linked by the organisation → `409 "Student is already linked to this agency"`. Claim locks the commission row. New portal section `team`; dashboard adds "Your code". |
+
 ---
 
 ## 9. Overseas Staff (`CNS-001`, `UNI-001`)
@@ -340,6 +353,19 @@ service-delivery modules (`DATA_MODEL.md` §6.16–6.18 each flag their own fiel
 `academic_team`/`career_counselor`/`psychometric_team` assignment-scope mechanism, and how those three
 roles' own accounts are provisioned (`SCH-003`'s invite flow covers only the four school-side roles).
 Do not build against an assumed answer to any of these — confirm first.
+
+### ENH-031 — Lookups (read-only, `DEC-SCOPE-039`, 2026-09-29)
+
+`GET /api/v1/lookups/{name}` — query `q` (≤ 100 chars, literal case-insensitive substring), `limit` (1–50, default 20). Response `{"items": [{"id", "label", "detail"}], "truncated": bool}`, ordered by label. 403 `"This role cannot use this lookup"` for other roles; the agent gate messages for pending/suspended/deactivated agents; 422 for bad parameters. One `app.lookups` log line per call (counts only, never the search text), no audit row. Each lookup applies the scope of the write endpoint it feeds, so a picker never offers a value that write would refuse. No write endpoint changes.
+
+| name | Roles | Scope | `label` / `detail` |
+|---|---|---|---|
+| `overseas-students` | overseas_admin, super_admin, counselor, agent | admin all; counselor students of own applications; agent students linked to own agency | full name / email |
+| `overseas-students?purpose=link` | agent | any overseas student not linked to own agency; `q` ≥ 3 else 422; ≤ 10; email matches only in full (case-insensitive), names only from the start of a word; 30 searches/minute per agent → `429` + `Retry-After`; each search writes one `lookup.agent_link_search` audit row without the text | full name / masked email (`a***@domain`) |
+| `overseas-applications` (`student_id=` optional) | overseas_student, counselor, university_rep, agent, overseas_admin, super_admin | `_assigned_application` rule (student own; counselor own; university_rep own university; agent own agency; admin all) | student (school student's name for bridged rows) / university · course · status |
+| `it-job-applications` | placement_team, hr_team, it_admin, super_admin | all | candidate / job title · company · status |
+| `schools` | overseas_admin, super_admin, counselor | all partner schools | name / school code |
+| `school-students?school_id=` (required; 404 unknown) | overseas_admin, super_admin, counselor | that one school only | full name / grade · student code |
 
 ---
 

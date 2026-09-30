@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import SearchableSelect from "@/components/SearchableSelect";
 import { useRouter } from "next/navigation";
 import type { University } from "@/lib/types";
 
@@ -32,6 +33,8 @@ export default function AgentApplicationCreatePanel() {
   const [courseId, setCourseId] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  // ENH-031: bumped after a successful create so the student picker remounts empty.
+  const [formVersion, setFormVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +92,7 @@ export default function AgentApplicationCreatePanel() {
     }
     setMessage({ text: "Application created.", failed: false });
     setStudentId("");
+    setFormVersion((v) => v + 1);
     setUniversityId("");
     setCourses(null);
     router.refresh();
@@ -108,17 +112,16 @@ export default function AgentApplicationCreatePanel() {
       <h3>Create application</h3>
       {!students.length && <p className="muted">No actively linked students yet -- link a student first.</p>}
       <form className="form" onSubmit={submit}>
-        <div className="field">
-          <label htmlFor="agent-app-student">Linked student</label>
-          <select id="agent-app-student" value={studentId} onChange={(event) => setStudentId(event.target.value)} required disabled={!students.length}>
-            <option value="">Select student</option>
-            {students.map((s) => (
-              <option key={s.student_id} value={s.student_id}>
-                {s.student} -- {s.email}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SearchableSelect
+          key={formVersion}
+          id="agent-app-student"
+          label="Linked student"
+          required
+          disabled={!students.length}
+          noun="student"
+          options={students.map((s) => ({ id: s.student_id, label: s.student, detail: s.email }))}
+          onChange={(option) => setStudentId(option?.id ?? "")}
+        />
         <div className="field">
           <label htmlFor="agent-app-university">University</label>
           <select id="agent-app-university" value={universityId} onChange={(event) => setUniversityId(event.target.value)} required>
