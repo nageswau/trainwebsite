@@ -36,7 +36,8 @@ def _unescape(text: bytes) -> str:
 
 def pdf_pages(data: bytes) -> list[list[str]]:
     """The text lines of each page, in order. One output line per text object (reportlab draws a paragraph line as one BT..ET,
-    split into several `Tj` runs); one content stream per page -- the reports embed no fonts or images, which would add streams."""
+    split into several `Tj` runs); one content stream per page. Only for Latin-only reports: an embedded font (the Devanagari
+    one) adds streams, and its shaped glyphs are not readable text."""
     pages = []
     for raw in _STREAM.findall(data):
         pages.append(["".join(_unescape(text) for text in _SHOW.findall(block)) for block in _TEXT_OBJECT.findall(_decode(raw))])

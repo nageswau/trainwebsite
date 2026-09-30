@@ -114,13 +114,9 @@ def test_markup_in_the_school_name_is_rendered_literally():
     assert "A & B <School>" in pdf_text(render_school_summary(_summary(school_name="A & B <School>")))
 
 
-def test_non_latin_text_does_not_break_generation():
-    overview = _overview(student={**_overview()["student"], "full_name": "आशा राव"})
-    assert render_progress_report(overview, AS_OF).startswith(b"%PDF-")
-
-
 def test_devanagari_text_is_set_in_the_embedded_devanagari_font():  # QA15-02: was drawn as ■ in Helvetica
     pdf = render_progress_report(_overview(student={**_overview()["student"], "full_name": "आशा राव"}), AS_OF)
+    assert pdf.startswith(b"%PDF-")
     assert b"NotoSansDevanagari" in pdf
 
 

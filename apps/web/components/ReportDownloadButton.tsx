@@ -47,7 +47,7 @@ export default function ReportDownloadButton({ url, label, filename, hint }: { u
           {busy ? "Preparing PDF…" : label}
         </button>
       </div>
-      {hint && <p id={hintId} className="muted report-hint">{hint}</p>}
+      {hint && <p id={hintId} className="field-hint">{hint}</p>}
       {message && <FormMessage message={message} />}
     </div>
   );

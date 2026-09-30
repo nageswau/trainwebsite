@@ -39,7 +39,7 @@ describe("ReportDownloadButton (ENH-015)", () => {
     render(<ReportDownloadButton url={URL_UNDER_TEST} label="Download school report (PDF)" filename="school-report.pdf" hint="The same figures are on this page." />);
     const button = screen.getByRole("button", { name: "Download school report (PDF)" });
     expect(button).toHaveAccessibleDescription("The same figures are on this page.");
-    expect(screen.getByText("The same figures are on this page.")).toHaveClass("muted");
+    expect(screen.getByText("The same figures are on this page.")).toHaveClass("field-hint");
   });
 
   it("renders no description without a hint", () => {

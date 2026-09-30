@@ -10,6 +10,7 @@ by `uharfbuzz` so vowel signs and conjuncts are correct (QA15-02). Other non-Lat
 import re
 from collections.abc import Iterable, Sequence
 from datetime import date, datetime
+from functools import cache
 from io import BytesIO
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -30,12 +31,12 @@ DEVANAGARI_FONT = "NotoSansDevanagari"
 pdfmetrics.registerFont(TTFont(DEVANAGARI_FONT, str(Path(__file__).parent / "fonts" / "NotoSansDevanagari-Regular.ttf")))
 # Devanagari (+ Extended, Vedic Extensions, ZWNJ/ZWJ); spaces between words stay inside a run, so a name is shaped as one.
 _DEVANAGARI = "ऀ-ॿ꣠-ꣿ᳐-᳿‌‍"
-_DEVANAGARI_RUN = re.compile(rf"[{_DEVANAGARI}]+(?: +[{_DEVANAGARI}]+)*")
+# Capturing, so `split` returns the other text at even indexes and the Devanagari runs at odd ones.
+_DEVANAGARI_RUN = re.compile(rf"([{_DEVANAGARI}]+(?: +[{_DEVANAGARI}]+)*)")
 _STYLES = getSampleStyleSheet()
-# shaping=1 on every style: it only acts on shapable (TrueType) runs, so Helvetica text is unaffected.
-TITLE = ParagraphStyle("ReportTitle", parent=_STYLES["Title"], shaping=1)
-HEADING = ParagraphStyle("ReportHeading", parent=_STYLES["Heading2"], shaping=1)
-BODY = ParagraphStyle("ReportBody", parent=_STYLES["BodyText"], shaping=1)
+TITLE = _STYLES["Title"]
+HEADING = _STYLES["Heading2"]
+BODY = _STYLES["BodyText"]
 SMALL = ParagraphStyle("Small", parent=BODY, fontSize=8, leading=10, textColor=colors.HexColor("#4B5563"))
 CELL = ParagraphStyle("Cell", parent=BODY, fontSize=8.5, leading=10.5)
 STATUS = ParagraphStyle("Status", parent=BODY, spaceAfter=4)  # QA15-06: a gap between the status line and the table
@@ -97,13 +98,10 @@ def _text(value) -> str:
     return str(value)
 
 
-_DEVANAGARI_STYLES: dict[str, ParagraphStyle] = {}
-
-
+@cache
 def _devanagari_style(style: ParagraphStyle) -> ParagraphStyle:
-    if style.name not in _DEVANAGARI_STYLES:
-        _DEVANAGARI_STYLES[style.name] = ParagraphStyle(f"{style.name}Devanagari", parent=style, fontName=DEVANAGARI_FONT)
-    return _DEVANAGARI_STYLES[style.name]
+    """`style` set in the Devanagari font, with shaping on (it only acts on a TrueType base font)."""
+    return ParagraphStyle(f"{style.name}Devanagari", parent=style, fontName=DEVANAGARI_FONT, shaping=1)
 
 
 def _p(value, style: ParagraphStyle = BODY) -> Paragraph:
@@ -115,7 +113,7 @@ def _p(value, style: ParagraphStyle = BODY) -> Paragraph:
     markup = escape(_CONTROL.sub("", _text(value))).replace("\n", "<br/>")
     if not _DEVANAGARI_RUN.search(markup):
         return Paragraph(markup, style)
-    pieces = re.split(f"({_DEVANAGARI_RUN.pattern})", markup)  # even indexes: other text; odd: Devanagari runs
+    pieces = _DEVANAGARI_RUN.split(markup)
     latin = f'<font name="{style.fontName}">{{}}</font>'
     return Paragraph("".join(latin.format(piece) if i % 2 == 0 and piece else piece for i, piece in enumerate(pieces)), _devanagari_style(style))
 
