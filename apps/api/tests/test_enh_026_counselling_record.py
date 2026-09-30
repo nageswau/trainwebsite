@@ -9,13 +9,14 @@ import httpx
 import pytest
 import pytest_asyncio
 from enh005_helpers import login, mk_school, mk_staff
+from enh014_helpers import drain
 from httpx import ASGITransport
 from sqlalchemy import func, select, update
 
-from app.api import schools as schools_api
+from app.notifications import delivery as delivery_module
 from app.core.database import SessionLocal
 from app.main import app
-from app.models import AuditLog, Notification, SchoolCareerRecord, SchoolStudent
+from app.models import AuditLog, Notification, NotificationDelivery, SchoolCareerRecord, SchoolStudent
 
 RECORDS = "/api/v1/school/career-counselor/records"
 IST = ZoneInfo("Asia/Kolkata")
@@ -274,16 +275,22 @@ async def test_parents_are_notified_only_on_status_change(client, world, db_sess
 
 
 @pytest.mark.asyncio
-async def test_notification_failure_keeps_the_status_change(client, world, db_session, monkeypatch):
+async def test_notification_failure_keeps_the_status_change(client, world, db_session, monkeypatch, enqueued):
     async def boom(*args, **kwargs):
         raise RuntimeError("smtp down")
     await login(client, world["counselor"].email)
     rec = await _new(client, world)  # created while the mailer is healthy
-    monkeypatch.setattr(schools_api, "send_parent_notification_email", boom)
+    # ENH-014: the send now happens in the worker; force the failure where it happens.
+    monkeypatch.setattr(delivery_module, "send_parent_notification_email", boom)
     r = await client.patch(_patch_url(rec["id"]), json={"status": "follow_up_required", "next_follow_up_date": (TODAY + timedelta(days=2)).isoformat()})
     assert r.status_code == 200
     saved = await db_session.get(SchoolCareerRecord, rec["id"], populate_existing=True)
     assert saved.status == "follow_up_required"
+    await drain(enqueued)
+    failed = (await db_session.scalars(select(NotificationDelivery).join(Notification, Notification.id == NotificationDelivery.notification_id)
+                                       .where(Notification.user_id == world["parent"].id, NotificationDelivery.status == "failed"))).all()
+    assert failed and all(d.error == "unexpected RuntimeError" for d in failed)
+
 
 
 @pytest.mark.asyncio

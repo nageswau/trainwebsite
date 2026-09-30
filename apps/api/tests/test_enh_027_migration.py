@@ -28,7 +28,9 @@ def test_migration_follows_enh024_and_is_the_single_head():
         parent = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("down_revision =")), None)
         if rev:
             parents[rev] = parent
-    assert set(parents) - set(parents.values()) == {"0045_psychometric_result_fields"}
+    # ENH-014 added 0046_notification_channels on top of 0045, so the single head is now 0046; 0045 must still be its parent.
+    assert set(parents) - set(parents.values()) == {"0046_notification_channels"}
+    assert parents["0046_notification_channels"] == "0045_psychometric_result_fields"
 
 
 def test_migration_adds_exactly_the_ten_columns():
