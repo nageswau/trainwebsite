@@ -2541,7 +2541,7 @@ correction, not deleted, per this project's traceability convention.
 - **Entry points:** "Open 360° view" on the Coordinator/Principal/Teacher student page (SCR-SCH-025 family) and on the Parent's child page; a "Student 360° view" list on the Career Counselor and Psychometric Team dashboards. *Updated 2026-09-28 (`ENH-024`, QA24-01):* the Academic Team reaches it through its own student page (SCR-SCH-037, from the dashboard's "Students" list), and its "Back to student" link returns there.
 - **Required data:** Server-rendered: GET /auth/me, GET /school/students/{id}/360-view. Client: PATCH /school/students/{id}/career-goal (Career Counselor only). Switching tabs makes no request (`history.replaceState`).
 - **Key actions:** Switch tabs (click, arrows, Home/End); Career Counselor sets/edits/clears the career goal on the Overview tab; follow a psychometric report link (same-origin or https only).
-- **Empty state:** Every tab without records shows a `role="status"` message naming who records the data (e.g. "No published results yet. Results appear after the Academic Team publishes them."); tabs a role cannot read show "This section is not available for your role."; sources not built yet show a "not tracked yet (ENH-030 / ENH-025 / ENH-013b / ENH-014)" note.
+- **Empty state:** Every tab without records shows a `role="status"` message naming who records the data (e.g. "No published results yet. Results appear after the Academic Team publishes them."); tabs a role cannot read show "This section is not available for your role."; sources not built yet show a "not tracked yet (ENH-025 / ENH-013b / ENH-014)" note. *Updated 2026-09-30 (`ENH-030`):* the Attendance tab now shows daily attendance (last 30 marked days: a count line and a Date/Status table) above activity and skills attendance; its "not tracked yet (ENH-030)" note is removed and its empty text reads "No attendance recorded yet. Teachers mark daily attendance; the School Coordinator marks activity attendance."
 - **Loading state:** `loading.tsx` skeleton (header, tab list, panel) with `aria-busy` on navigation; the career-goal form shows "Saving…", keeps the input read-only (still focusable) and disables Save.
 - **Error state:** 401/403/404/network → the shared Access Unavailable card with the server's reason (e.g. "This student is not assigned to you"); career goal: the server's message, or "The career goal could not be saved. Please try again." for a 5xx, and a kept-entry message for a dropped connection, with focus returned to the input.
 - **Permissions/resource scope:** The shared 7-role loader; per-tab projection so no role sees more than elsewhere (`RBAC_MATRIX.md` ENH-013 addendum); results Published only; career goal writable by the Career Counselor only.
@@ -2604,6 +2604,24 @@ correction, not deleted, per this project's traceability convention.
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet/mobile: single column, table scrolls horizontally.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** `GlobalEducationPipeline.test.tsx`, `GlobalEducationPage.test.tsx`, `tests/e2e/enh-017-global-education.spec.ts`, `test_enh_017_global_education_pipeline.py` (passing as implemented); browser QA and accessibility passed (`docs/quality/ENH-017_BROWSER_QA_2026-09-29.md`) — COMPLETE (verified 2026-09-29 at `949aa2c`).
+
+### `SCR-SCH-039` *(added 2026-09-30, `ENH-030` / `DEC-SCOPE-038`, provisional number)*
+- **Route:** `/school/teacher/attendance` (`?date=YYYY-MM-DD`, forwarded only when well-formed; otherwise the school's today)
+- **Role(s):** School Teacher (own school, assigned students only).
+- **Purpose:** Mark the whole assigned class's daily attendance for one day with one Save (`School CRM.md` Teacher Dashboard "Student Attendance").
+- **Linked Feature ID(s):** `ENH-030`
+- **Entry points:** Sidebar "Attendance" for the Teacher (after "Dashboard").
+- **Required data:** Server-rendered: GET /auth/me, GET /school/attendance?date=. Client: PUT /school/attendance `{session_date, records:[{student_id, status}]}`.
+- **Key actions:** Choose a date (max = the server's school-calendar today); "Mark all present" (fills only unmarked students); one radio group per student (Present / Absent / Late / Excused); Save attendance.
+- **Empty state:** "No students assigned to you yet. Your School Coordinator assigns students to teachers."; an unmarked student shows a "Not marked" badge and no preselected status.
+- **Loading state:** `loading.tsx` skeleton with `aria-busy`; changing the date disables the form and shows "Loading the selected date…"; saving disables the form and shows "Saving…".
+- **Error state:** a refused read (future date 422, wrong role 403, 401) → the shared Access Unavailable card with the server's reason; a refused save (scope 403, tier 403, busy 409, 422, network) → the server's message as an alert under the form, marks kept; saving with nothing chosen → "Choose a status for at least one student." (no request).
+- **Permissions/resource scope:** `school_teacher` only; the roster and every saved id are limited server-side to the teacher's own school and assigned students; tier gate: any valid partnership tier.
+- **Responsive behavior:** One fieldset per student; the four radios wrap under the name on a phone; no horizontal page scroll at 320 px (Playwright). Other widths: browser QA pending.
+- **Accessibility requirements:** one h1; each student is a `fieldset` named by its `legend`; native radios (Tab between students, arrow keys within one), ≥44 px targets; status always as text; results announced via `FormMessage` (`status`/`alert`); unsaved-changes guard on reload and in-app links.
+- **Desktop/tablet/mobile behavior:** Same single-column form at every width.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `SchoolDailyAttendance.test.tsx`, `TeacherAttendancePage.test.tsx`, `tests/e2e/enh-030-daily-attendance.spec.ts`, `test_enh_030_mark.py`; browser QA — pending.
 
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  

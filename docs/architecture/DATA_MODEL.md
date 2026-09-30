@@ -774,6 +774,28 @@ list); `ck_portfolio_cert_fields` (an untagged row has all four NULL; a tagged r
 existing `organization` column. No index (nothing filters by tag). `downgrade()` drops the four
 CHECKs and columns only; entries survive as plain certifications. **Feature ID:** `ENH-024`.
 
+### 6.23 School daily attendance (`ENH-030`) — added 2026-09-30, propagating `DEC-SCOPE-038` (provisional number); migration `0046_school_attendance_records`
+
+One new table, `school_attendance_records` — create-table only, no existing table altered, no backfill
+(design `docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md` §4):
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | uuid PK | |
+| `school_student_id` | uuid FK `school_students.id`, not null | the student |
+| `school_id` | uuid FK `schools.id`, not null | the student's school when marked; readers see only rows of the student's current school (C1) |
+| `session_date` | date, not null | the school-calendar day (Asia/Kolkata); never in the future |
+| `status` | varchar(20), not null | `present` / `absent` / `late` / `excused` (the IT `attendance` values) |
+| `marked_by_user_id` | uuid FK `users.id`, not null | the last `school_teacher` who marked it |
+| `created_at`, `updated_at` | timestamptz | `updated_at` set on every re-mark |
+
+`uq_school_attendance_student_date (school_student_id, session_date)` — one row per student per day;
+re-marking upserts. `ck_school_attendance_status` — the four statuses. The unique constraint's index is
+the only index (it serves the roster and summary reads). A **missing row means "not marked"**, never
+absent. After a transfer the old school's rows are kept (not shown to the new school's readers).
+`downgrade()` drops the table. Writes are audited as `school.daily_attendance_mark` (with the changed
+students, from → to) and refusals as `school.daily_attendance_denied` (counts only). **Feature ID:** `ENH-030`.
+
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)
 
 ### 7.1 `NotificationLog`
