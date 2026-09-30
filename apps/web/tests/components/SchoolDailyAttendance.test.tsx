@@ -146,7 +146,7 @@ describe("SchoolDailyAttendance", () => {
   });
 
   it("explains an empty class", () => {
-    render(<SchoolDailyAttendance roster={{ ...ROSTER, students: [] }} />);
+    render(<SchoolDailyAttendance roster={{ ...ROSTER, session_date: ROSTER.today, students: [] }} />);
     expect(screen.getByRole("status").textContent).toBe("No students assigned to you yet. Your School Coordinator assigns students to teachers.");
   });
 
@@ -263,6 +263,14 @@ describe("SchoolDailyAttendance", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save attendance" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("This school has no active partnership tier."));
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("review I-3: a past day before any of the class enrolled says so and keeps the date picker usable", () => {
+    render(<SchoolDailyAttendance roster={{ ...ROSTER, session_date: "2026-01-05", students: [] }} />);
+    expect(screen.getByRole("status").textContent).toBe("None of your current students were enrolled at your school on 05 Jan 2026.");
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-09-29" } });
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    expect(push).toHaveBeenCalledWith("/school/teacher/attendance?date=2026-09-29");
   });
 
   it("adds Attendance to the teacher's navigation only", () => {

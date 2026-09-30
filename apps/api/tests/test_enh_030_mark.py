@@ -3,7 +3,7 @@
 import json
 import logging
 import uuid
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from enh005_helpers import login, mk_school, move_student_directly
@@ -11,10 +11,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import DBAPIError
 
 from app.api.schools import TIER_DENIED, _today_ist
-from app.models import AuditLog, SchoolAttendanceRecord, SchoolStudent
+from app.models import AuditLog, SchoolAttendanceRecord, SchoolStudent, SchoolStudentTransferRequest
 
 URL = "/api/v1/school/attendance"
 DAY = "2026-09-01"
+ENROLLED = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 @pytest.fixture(autouse=True)
@@ -32,6 +33,8 @@ async def _world(db, *, students: int = 3, **over) -> dict:
     w = await mk_school(db, label="Att", students=students, **over)
     for s in w["students"][:-1]:
         s.assigned_teacher_user_id = w["teacher"].id
+    for s in w["students"]:  # enrolled well before the past dates these tests mark (review I-3 enrolment rule)
+        s.created_at = ENROLLED
     await db.commit()
     w["mine"] = w["students"][:-1]
     w["unassigned"] = w["students"][-1]
@@ -280,3 +283,69 @@ async def test_another_schools_locked_student_is_refused_at_once(client, db_sess
     finally:
         await db_session.rollback()
     assert response.status_code == 403 and response.json()["detail"] == "One or more students are not assigned to you"
+
+
+# --- Review I-3 (DEC-SCOPE-038, user-approved 2026-09-30): a past day lists and accepts only students enrolled at this school on
+# that day. Enrolment at the current school begins at the latest approved transfer into it, else when the student was created there
+# (both read on the school calendar, Asia/Kolkata). ------------------------------------------------------------------------------
+
+
+async def _joined(db, student, when: datetime) -> None:
+    student.created_at = when
+    await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_past_roster_lists_only_students_enrolled_that_day(client, db_session):
+    w = await _world(db_session)
+    late_joiner = w["mine"][1]
+    await _joined(db_session, late_joiner, datetime(2026, 9, 10, 4, 0, tzinfo=UTC))  # 10 Sep 09:30 IST
+    await login(client, w["teacher"].email)
+    before = (await client.get(URL, params={"date": "2026-09-09"})).json()["students"]
+    assert [s["id"] for s in before] == [str(w["mine"][0].id)]
+    on_the_day = (await client.get(URL, params={"date": "2026-09-10"})).json()["students"]  # the joining day itself counts
+    assert {s["id"] for s in on_the_day} == {str(w["mine"][0].id), str(late_joiner.id)}
+
+
+@pytest.mark.asyncio
+async def test_enrolment_day_uses_the_school_calendar(client, db_session):
+    w = await _world(db_session)
+    student = w["mine"][1]
+    await _joined(db_session, student, datetime(2026, 9, 9, 20, 0, tzinfo=UTC))  # 10 Sep 01:30 IST: not enrolled on 9 Sep
+    await login(client, w["teacher"].email)
+    ids = [s["id"] for s in (await client.get(URL, params={"date": "2026-09-09"})).json()["students"]]
+    assert str(student.id) not in ids
+
+
+@pytest.mark.asyncio
+async def test_past_save_refuses_a_student_not_yet_enrolled_and_writes_nothing(client, db_session):
+    w = await _world(db_session)
+    late_joiner = w["mine"][1]
+    await _joined(db_session, late_joiner, datetime(2026, 9, 10, 4, 0, tzinfo=UTC))
+    await login(client, w["teacher"].email)
+    response = await client.put(URL, json={"session_date": "2026-09-05", "records": _marks(w["mine"])})
+    assert response.status_code == 422
+    assert response.json()["detail"] == "One or more students were not enrolled at your school on 05 Sep 2026"
+    assert await _rows(db_session, school_id=w["school"].id) == []
+    assert await _mark_audits(db_session, w["school"].id) == 0
+    assert (await client.put(URL, json={"session_date": "2026-09-10", "records": _marks(w["mine"])})).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_a_transferred_in_student_counts_from_the_transfer_approval(client, db_session):
+    w = await _world(db_session)
+    old = await mk_school(db_session, admin=w["admin"], label="AttFrom")
+    student = w["mine"][1]  # created (at the old school) on ENROLLED; moved in by a transfer approved on 20 Sep
+    db_session.add(
+        SchoolStudentTransferRequest(
+            school_student_id=student.id, from_school_id=old["school"].id, to_school_id=w["school"].id, requested_by_user_id=w["coordinator"].id,
+            filed_by_school_id=w["school"].id, status="approved", decided_by_user_id=w["admin"].id, decided_at=datetime(2026, 9, 20, 5, 0, tzinfo=UTC),
+        )
+    )
+    await db_session.commit()
+    await login(client, w["teacher"].email)
+    before = [s["id"] for s in (await client.get(URL, params={"date": "2026-09-19"})).json()["students"]]
+    after = [s["id"] for s in (await client.get(URL, params={"date": "2026-09-20"})).json()["students"]]
+    assert str(student.id) not in before and str(student.id) in after
+    refused = await client.put(URL, json={"session_date": "2026-09-19", "records": _marks([student])})
+    assert refused.status_code == 422

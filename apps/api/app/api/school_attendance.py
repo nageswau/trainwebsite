@@ -5,7 +5,8 @@ A teacher marks their assigned students for one day in one call (DEC-SCOPE-038 D
 """
 
 from collections import Counter
-from datetime import date
+from collections.abc import Sequence
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -15,10 +16,10 @@ from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.schools import _own_school_id, _scoped_students_query, _today_ist, require_school_entitlement
+from app.api.schools import TIER_TIMEZONE, _own_school_id, _scoped_students_query, _today_ist, require_school_entitlement
 from app.core.database import get_db
 from app.core.logging import get_logger
-from app.models import ATTENDANCE_STATUSES, AuditLog, SchoolAttendanceRecord, SchoolStudent, User
+from app.models import ATTENDANCE_STATUSES, AuditLog, SchoolAttendanceRecord, SchoolStudent, SchoolStudentTransferRequest, User
 from app.schemas import SchoolAttendanceIn, SchoolAttendanceRosterOut
 
 router = APIRouter(prefix="/school", tags=["school-attendance"])
@@ -28,6 +29,7 @@ TEACHER_REQUIRED = "Teacher role required"
 FUTURE_DATE = "Attendance cannot be marked for a future date"
 NOT_ASSIGNED = "One or more students are not assigned to you"
 BUSY = "This class's attendance is being changed elsewhere. Try again."
+NOT_ENROLLED = "One or more students were not enrolled at your school on"  # + the day (review I-3)
 MARK_ACTION = "school.daily_attendance_mark"
 DENIED_ACTION = "school.daily_attendance_denied"
 ATTENDANCE_LOCK_TIMEOUT = "5s"  # bounded wait for the student row locks (ENH-004/005 value); a bound parameter, never request input
@@ -45,10 +47,28 @@ def _check_date(day: date) -> None:
         raise HTTPException(422, FUTURE_DATE)
 
 
+async def _enrolled_on(db: AsyncSession, school_id: UUID, students: Sequence[tuple[UUID, datetime]]) -> dict[UUID, date]:
+    """Review I-3 (DEC-SCOPE-038, user-approved 2026-09-30): the school-calendar day each student's time at `school_id` began -- the
+    latest approved transfer into it, else when the student was created there. A day before that is not theirs to be marked for."""
+    ids = [student_id for student_id, _created in students]
+    moved: dict[UUID, datetime] = {}
+    if ids:
+        rows = await db.execute(
+            select(SchoolStudentTransferRequest.school_student_id, func.max(SchoolStudentTransferRequest.decided_at))
+            .where(SchoolStudentTransferRequest.school_student_id.in_(ids), SchoolStudentTransferRequest.to_school_id == school_id, SchoolStudentTransferRequest.status == "approved")
+            .group_by(SchoolStudentTransferRequest.school_student_id)
+        )
+        moved = {student_id: decided for student_id, decided in rows.all() if decided is not None}
+    return {student_id: (moved.get(student_id) or created).astimezone(TIER_TIMEZONE).date() for student_id, created in students}
+
+
 async def _roster(db: AsyncSession, user: User, school_id: UUID, day: date) -> dict:
-    """The teacher's assigned students (the existing SCH-001-AC03 scope) with that day's status at this school, or None (not marked)."""
+    """The teacher's assigned students (the existing SCH-001-AC03 scope) who were enrolled at this school on `day` (review I-3), with
+    that day's status at this school, or None (not marked)."""
     scoped = await _scoped_students_query(db, user, school_id)
     students = (await db.scalars(scoped.order_by(SchoolStudent.grade_or_class, SchoolStudent.full_name, SchoolStudent.id))).all()
+    enrolled = await _enrolled_on(db, school_id, [(s.id, s.created_at) for s in students])
+    students = [s for s in students if enrolled[s.id] <= day]
     marks: dict[UUID, str] = {}
     if students:
         rows = await db.execute(
@@ -96,8 +116,8 @@ async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depend
     # griefing); unknown, unassigned and other-school ids are the same absence, so the 403 cannot be used to probe ids.
     try:
         locked = (
-            await db.scalars(
-                select(SchoolStudent.id)
+            await db.execute(
+                select(SchoolStudent.id, SchoolStudent.created_at)
                 .where(SchoolStudent.id.in_(ids), SchoolStudent.school_id == school_id, SchoolStudent.assigned_teacher_user_id == user.id)
                 .order_by(SchoolStudent.id)
                 .with_for_update(read=True)
@@ -116,6 +136,13 @@ async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depend
         await db.commit()
         logger.warning("school_attendance_denied", extra={"extra_fields": {**actor, "requested": len(ids), "outside": outside}})
         raise HTTPException(403, NOT_ASSIGNED)
+    # Review I-3: a past day may only be marked for students enrolled at this school on it (read under the same lock, so a transfer
+    # approved meanwhile is seen). Nothing has been written yet.
+    enrolled = await _enrolled_on(db, school_id, [(row.id, row.created_at) for row in locked])
+    not_yet = sum(1 for day in enrolled.values() if day > payload.session_date)
+    if not_yet:
+        logger.info("school_attendance_not_enrolled", extra={"extra_fields": {**actor, "requested": len(ids), "not_enrolled": not_yet}})
+        raise HTTPException(422, f"{NOT_ENROLLED} {payload.session_date.strftime('%d %b %Y')}")
     # ENH-022: after scope, before any write -- a denial commits only its own audit row.
     await require_school_entitlement(db, user, school_id, None)
     before = dict(

@@ -1,6 +1,6 @@
 """ENH-030 -- where a mark is read (spec §5.3, AC08-AC11)."""
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from enh005_helpers import login, mk_school, mk_staff, mk_student, move_student_directly
@@ -15,6 +15,9 @@ ZERO = {"present": 0, "absent": 0, "late": 0, "excused": 0}
 async def _marked_world(client, db):
     """Student 0 (assigned to the teacher, linked to the parent) marked on two days by the real endpoint."""
     w = await mk_school(db, label="AttRead", students=2)
+    for s in w["students"]:  # enrolled well before the past dates marked below (review I-3 enrolment rule)
+        s.created_at = datetime(2026, 1, 1, tzinfo=UTC)
+    await db.commit()
     await login(client, w["teacher"].email)
     sid = str(w["students"][0].id)
     for day, status in (("2026-09-01", "present"), ("2026-09-02", "late")):

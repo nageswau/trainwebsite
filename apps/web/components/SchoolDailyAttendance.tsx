@@ -120,9 +120,10 @@ export default function SchoolDailyAttendance({ roster: rosterProp }: { roster: 
     router.refresh();
   }
 
-  if (roster.students.length === 0) {
-    return <p className="muted" role="status">No students assigned to you yet. Your School Coordinator assigns students to teachers.</p>;
-  }
+  // Review I-3: a past day lists only students already enrolled at this school that day, so an empty past day is not "no class".
+  const emptyText = roster.session_date === roster.today
+    ? "No students assigned to you yet. Your School Coordinator assigns students to teachers."
+    : `None of your current students were enrolled at your school on ${formatCalendarDate(roster.session_date)}.`;
   return (
     <>
       <form className="form" onSubmit={showDate} style={{ marginBottom: 16 }}>
@@ -135,38 +136,42 @@ export default function SchoolDailyAttendance({ roster: rosterProp }: { roster: 
         </div>
         {dateNote && <p className="form-warning" aria-live="polite" style={{ margin: "8px 0 0" }}>{dateNote}</p>}
       </form>
-      <form className="form" onSubmit={save} aria-busy={locked}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-          <p className="muted" style={{ margin: 0 }}>{loadingDate ? "Loading the selected date…" : `${marked} of ${plural(roster.students.length)} marked`}</p>
-          <button type="button" className="btn secondary small" disabled={locked} onClick={() => setMarks((m) => Object.fromEntries(roster.students.map((s) => [s.id, m[s.id] ?? "present"])))}>
-            Mark all present
-          </button>
-        </div>
-        <div style={{ display: "grid", gap: 12 }}>
-          {roster.students.map((s) => (
-            <fieldset key={s.id} style={{ border: 0, borderTop: "1px solid var(--line)", padding: "8px 0 0", margin: 0, minWidth: 0 }}>
-              <legend style={{ padding: 0 }}>
-                <strong>{s.full_name}</strong>
-                {s.grade_or_class ? <span className="muted"> · {s.grade_or_class}</span> : null}
-                {saved[s.id] === null ? <> <span className="badge">Not marked</span></> : null}
-              </legend>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0 18px" }}>
-                {ATTENDANCE_STATUSES.map((status) => (
-                  <label key={status} style={{ display: "inline-flex", alignItems: "center", gap: 8, minHeight: 44 }}>
-                    <input type="radio" name={`attendance-${s.id}`} value={status} checked={marks[s.id] === status} disabled={locked} onChange={() => setMarks((m) => ({ ...m, [s.id]: status }))} />
-                    {ATTENDANCE_LABEL[status]}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          ))}
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-          <button type="submit" className="btn small" disabled={locked}>{busy ? "Saving…" : "Save attendance"}</button>
-          {dirty && <span className="muted">Unsaved changes</span>}
-        </div>
-        {message && <FormMessage message={message} />}
-      </form>
+      {roster.students.length === 0 ? (
+        <p className="muted" role="status">{emptyText}</p>
+      ) : (
+        <form className="form" onSubmit={save} aria-busy={locked}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+            <p className="muted" style={{ margin: 0 }}>{loadingDate ? "Loading the selected date…" : `${marked} of ${plural(roster.students.length)} marked`}</p>
+            <button type="button" className="btn secondary small" disabled={locked} onClick={() => setMarks((m) => Object.fromEntries(roster.students.map((s) => [s.id, m[s.id] ?? "present"])))}>
+              Mark all present
+            </button>
+          </div>
+          <div style={{ display: "grid", gap: 12 }}>
+            {roster.students.map((s) => (
+              <fieldset key={s.id} style={{ border: 0, borderTop: "1px solid var(--line)", padding: "8px 0 0", margin: 0, minWidth: 0 }}>
+                <legend style={{ padding: 0 }}>
+                  <strong>{s.full_name}</strong>
+                  {s.grade_or_class ? <span className="muted"> · {s.grade_or_class}</span> : null}
+                  {saved[s.id] === null ? <> <span className="badge">Not marked</span></> : null}
+                </legend>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0 18px" }}>
+                  {ATTENDANCE_STATUSES.map((status) => (
+                    <label key={status} style={{ display: "inline-flex", alignItems: "center", gap: 8, minHeight: 44 }}>
+                      <input type="radio" name={`attendance-${s.id}`} value={status} checked={marks[s.id] === status} disabled={locked} onChange={() => setMarks((m) => ({ ...m, [s.id]: status }))} />
+                      {ATTENDANCE_LABEL[status]}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ))}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+            <button type="submit" className="btn small" disabled={locked}>{busy ? "Saving…" : "Save attendance"}</button>
+            {dirty && <span className="muted">Unsaved changes</span>}
+          </div>
+          {message && <FormMessage message={message} />}
+        </form>
+      )}
     </>
   );
 }

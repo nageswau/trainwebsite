@@ -790,11 +790,11 @@ One new table, `school_attendance_records` — create-table only, no existing ta
 | `created_at`, `updated_at` | timestamptz | `updated_at` set on every re-mark |
 
 `uq_school_attendance_student_school_date (school_student_id, school_id, session_date)` — one row per
-student per day per school (D5 as amended, `NEEDS_CONFIRMATION`); re-marking upserts, and after a
+student per day per school (D5 as amended, confirmed by the user 2026-09-30); re-marking upserts, and after a
 transfer each school keeps its own register (the new school never overwrites the old school's row). `ck_school_attendance_status` — the four statuses. The unique constraint's index is
 the only index (it serves the roster and summary reads). A **missing row means "not marked"**, never
 absent. After a transfer the old school's rows are kept (not shown to the new school's readers).
-`downgrade()` drops the table. Writes are audited as `school.daily_attendance_mark` (with the changed
+A past day may only be marked for students enrolled at the school that day (latest approved transfer into it, else `school_students.created_at`, school calendar; DEC-SCOPE-038 I-3). `downgrade()` drops the table. Writes are audited as `school.daily_attendance_mark` (with the changed
 students, from → to) and refusals as `school.daily_attendance_denied` (counts only). **Feature ID:** `ENH-030`.
 
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)
