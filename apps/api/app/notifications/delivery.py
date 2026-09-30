@@ -102,11 +102,14 @@ async def _send(channel: str, s: _Snapshot | None, context: dict | None) -> twil
 
 
 async def _send_email(s: _Snapshot, context: dict | None) -> twilio.SendResult:
-    """Exactly the two email paths that existed inline before ENH-014 (AC12)."""
+    """Exactly the email paths that existed inline before ENH-014 (AC12): school SMTP (webhook fallback), inbound's webhook
+    payload without the phone, and _notify_user's webhook payload with it."""
     if context and context.get("kind") == "school":
         status, error = await send_parent_notification_email(to_email=s.email, recipient_name=s.full_name, school_name=context.get("school_name") or "your school", title=s.title, body=s.body, action_url=s.action_url)
         if status == "not_configured":
             status, error = await send_notification("email", {"to": s.email, "title": s.title, "body": s.body, "action_url": s.action_url})
+    elif context and context.get("kind") == "inbound":  # inbound._notify_student never sent the phone
+        status, error = await send_notification("email", {"to": s.email, "title": s.title, "body": s.body, "action_url": s.action_url})
     else:
         status, error = await send_notification("email", {"to": s.email, "phone": s.phone, "title": s.title, "body": s.body, "action_url": s.action_url})
     return twilio.SendResult(status, error=error, transient=status == "failed")

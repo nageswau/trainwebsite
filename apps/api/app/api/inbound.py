@@ -73,7 +73,7 @@ async def _notify_student(db: AsyncSession, email: InboundUniversityEmail, appli
     notification = Notification(user_id=student.id, title="University update received", body=email.subject, read=False, action_url="/overseas/student/university-communication")
     db.add(notification)
     await db.flush()
-    await queue_deliveries(db, notification, student)
+    await queue_deliveries(db, notification, student, context={"kind": "inbound"})  # the pre-ENH-014 email payload had no phone (AC12)
 
 
 @router.post("/university-email", status_code=202)

@@ -82,8 +82,8 @@ export default function NotificationPreferencesForm({ initial, phone }: { initia
 
   const canTurnOn = saved.phone_valid;
   const channels: { key: Channel; label: string; detail: string }[] = [
-    { key: "whatsapp", label: "WhatsApp", detail: phone ? `Messages go to ${phone}` : "" },
-    { key: "sms", label: "SMS", detail: phone ? `Texts go to ${phone}` : "" },
+    { key: "whatsapp", label: "WhatsApp", detail: phone && saved.phone_valid ? `Messages go to ${phone}` : "" },
+    { key: "sms", label: "SMS", detail: phone && saved.phone_valid ? `Texts go to ${phone}` : "" },
   ];
 
   return (

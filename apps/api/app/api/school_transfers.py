@@ -451,8 +451,8 @@ async def _approve(db: AsyncSession, request_id: UUID, admin_id: UUID):
 
 async def _notify_transfer_approved(db: AsyncSession, student: SchoolStudent, from_school: School, to_school: School) -> None:
     """After the commit (a rolled-back approval can never have told anyone). Both schools' coordinators are told in-app only; the
-    parents get the existing SCH-007 notice (in-app plus the email channel). The student is named to all of them: it is now, or was,
-    their student."""
+    parents get the existing SCH-007 notice (in-app plus deliveries queued for the worker, ENH-014). The student is named to all
+    of them: it is now, or was, their student."""
     parents_told = await _notify_student_parents(
         db,
         student,

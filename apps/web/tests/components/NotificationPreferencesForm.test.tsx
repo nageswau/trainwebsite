@@ -32,6 +32,11 @@ describe("NotificationPreferencesForm (ENH-014)", () => {
     expect(screen.getByRole("link", { name: "Add a mobile number" })).toHaveAttribute("href", "#profile-phone");
   });
 
+  it("never shows an invalid saved number as the destination", () => {
+    render(<NotificationPreferencesForm initial={{ ...off, phone_valid: false }} phone="12345" />);
+    expect(screen.queryByText(/go to 12345/)).not.toBeInTheDocument();
+  });
+
   it("keeps a checked channel enabled so it can be turned off without a phone", () => {
     render(<NotificationPreferencesForm initial={{ whatsapp: true, sms: false, phone_valid: false }} phone={null} />);
     expect(screen.getByRole("checkbox", { name: /^WhatsApp/ })).toBeEnabled();

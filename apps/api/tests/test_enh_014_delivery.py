@@ -93,6 +93,34 @@ async def test_school_email_falls_back_to_the_webhook_when_smtp_is_not_configure
 
 
 @pytest.mark.asyncio
+async def test_inbound_email_payload_omits_the_phone_but_notify_user_keeps_it(db_session, monkeypatch):
+    """AC12: the pre-ENH-014 inbound._notify_student webhook payload never carried the phone; _notify_user's did."""
+    from types import SimpleNamespace
+
+    from sqlalchemy import select
+
+    from app.api.inbound import _notify_student
+
+    payloads = []
+
+    async def webhook(channel, payload):
+        payloads.append(payload)
+        return "not_configured", None
+
+    monkeypatch.setattr(delivery, "send_notification", webhook)
+    user = await make_user(db_session, role="overseas_student", phone="9876543210")
+    await _notify_student(db_session, SimpleNamespace(subject="Offer letter"), SimpleNamespace(student_id=user.id))
+    await db_session.commit()
+    [inbound_row] = (await db_session.scalars(select(NotificationDelivery).join(Notification).where(Notification.user_id == user.id))).all()
+    assert inbound_row.context == {"kind": "inbound"}
+    await deliver(inbound_row.id)
+    generic = await _queued(db_session, user)
+    await deliver(generic["email"].id)
+    assert "phone" not in payloads[0] and payloads[0]["title"] == "University update received"
+    assert payloads[1]["phone"] == "9876543210"
+
+
+@pytest.mark.asyncio
 async def test_generic_email_uses_the_email_webhook(db_session, sent):
     user = await make_user(db_session, role="it_student", division="it")
     rows = await _queued(db_session, user)

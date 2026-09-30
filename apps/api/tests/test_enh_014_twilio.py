@@ -66,6 +66,12 @@ def test_missing_or_offsite_link_falls_back_to_portal_home(action_url):
     assert twilio.portal_link(action_url) == "https://portal.example/"
 
 
+@pytest.mark.parametrize(("action_url", "expected"), [("/x\ny", "https://portal.example/x y"), ("/a\t\r\n\n/b", "https://portal.example/a /b"), (" \n//evil.example", "https://portal.example/")])
+def test_the_link_is_flattened_like_the_other_variables(action_url, expected):
+    link = twilio.portal_link(action_url)
+    assert link == expected and "\n" not in link and "\t" not in link
+
+
 def test_variables_are_single_line_and_capped():
     # Review Focus 5: newlines/tabs collapse (WhatsApp rejects them in variables); non-Latin text survives the cap.
     assert twilio.plain("विद्यालय\n\n  परिणाम\tघोषित") == "विद्यालय परिणाम घोषित"

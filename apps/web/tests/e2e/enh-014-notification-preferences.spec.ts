@@ -68,7 +68,7 @@ test("keyboard only: tab to SMS, toggle with Space, save with Enter", async ({ p
 });
 
 for (const width of [320, 1440]) {
-  test(`fits ${width}px with no horizontal scroll and labelled controls`, async ({ page }) => {
+  test(`Notifications section fits ${width}px with labelled controls`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await signIn(page);
     // The shared site header already overflows the document at 320px on this page (pre-existing, not ENH-014), so assert

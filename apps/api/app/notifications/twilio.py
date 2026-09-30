@@ -40,8 +40,9 @@ def plain(text: str | None, limit: int = VARIABLE_MAX) -> str:
 
 def portal_link(action_url: str | None) -> str:
     base = settings.frontend_url.rstrip("/")
-    internal = action_url is not None and action_url.startswith("/") and not action_url.startswith(("//", "/\\"))
-    return base + (action_url if internal and action_url else "/")
+    path = plain(action_url)  # flattened first, like the other variables: a newline would break the WhatsApp template
+    internal = path.startswith("/") and not path.startswith(("//", "/\\"))
+    return base + (path if internal else "/")
 
 
 async def send_whatsapp(to: str, title: str, body: str, action_url: str | None, *, client: httpx.AsyncClient | None = None) -> SendResult:
