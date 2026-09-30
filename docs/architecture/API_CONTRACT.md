@@ -358,7 +358,7 @@ Do not build against an assumed answer to any of these — confirm first.
 | name | Roles | Scope | `label` / `detail` |
 |---|---|---|---|
 | `overseas-students` | overseas_admin, super_admin, counselor, agent | admin all; counselor students of own applications; agent students linked to own agency | full name / email |
-| `overseas-students?purpose=link` | agent | any overseas student not linked to own agency; `q` ≥ 3 else 422; ≤ 10 | full name / masked email (`a***@domain`) |
+| `overseas-students?purpose=link` | agent | any overseas student not linked to own agency; `q` ≥ 3 else 422; ≤ 10; email matches only in full (case-insensitive), names only from the start of a word; 30 searches/minute per agent → `429` + `Retry-After`; each search writes one `lookup.agent_link_search` audit row without the text | full name / masked email (`a***@domain`) |
 | `overseas-applications` (`student_id=` optional) | overseas_student, counselor, university_rep, agent, overseas_admin, super_admin | `_assigned_application` rule (student own; counselor own; university_rep own university; agent own agency; admin all) | student (school student's name for bridged rows) / university · course · status |
 | `it-job-applications` | placement_team, hr_team, it_admin, super_admin | all | candidate / job title · company · status |
 | `schools` | overseas_admin, super_admin, counselor | all partner schools | name / school code |

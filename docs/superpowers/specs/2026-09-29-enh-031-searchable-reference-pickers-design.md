@@ -17,7 +17,7 @@
 | # | Question | Answer |
 |---|---|---|
 | D1 | Which fields? | Both groups: every free-text student/application reference becomes a searchable dropdown of valid values, **and** every existing student/application `<select>` becomes searchable. Other reference fields (commission, visa case, appointment, batch, enrollment, job, document, payment, user, …) are **out of scope**. |
-| D2 | Agent "Link student" | Server search only: nothing until 3+ characters; at most 10 matches; email partly masked; students already linked to the caller's agency are left out. No browsable directory. |
+| D2 | Agent "Link student" | Server search only: nothing until 3+ characters; at most 10 matches; email partly masked; students already linked to the caller's agency are left out. No browsable directory. **Revised 2026-09-30 (owner, after the final review showed substring search could probe emails and harvest names):** an email matches only when typed in full (case-insensitive); names match from the start of a word only; at most 30 link searches per agent per minute (`429` + `Retry-After`), counted from `lookup.agent_link_search` audit rows that carry no search text — the one exception to AC10's "no audit row". |
 | D3 | Approach | Own accessible `SearchableSelect` component (no new dependency) with a load-once mode and a server-search mode, plus role-scoped read-only lookup endpoints. Rejected: native `<datalist>` (weak label→id mapping, accessibility and mobile behaviour); a library such as react-select/Downshift (new dependency). |
 | D4 | Admin School→Overseas bridge "Student ID" | Pick the school first (searchable), then search only that school's students by name or code. No cross-school name browsing. |
 | D5 | Branch | Continue on the AGN-001 branch. |

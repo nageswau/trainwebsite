@@ -100,6 +100,58 @@ async def test_link_returns_at_most_ten(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_link_matches_an_email_only_when_typed_in_full(client, db_session):
+    """Owner decision after the final review (2026-09-30): no probing emails by substring."""
+    tag = uniq("e31")
+    (student,) = await students(db_session, tag, 1)
+    a = await mk_active_org(db_session)
+    await login(client, a["master"].email)
+    partial = (await client.get(URL, params={"purpose": "link", "q": student.email.split("@")[0]})).json()["items"]
+    full = (await client.get(URL, params={"purpose": "link", "q": student.email.upper()})).json()["items"]
+    assert str(student.id) not in {i["id"] for i in partial}
+    assert [i["id"] for i in full] == [str(student.id)]
+
+
+@pytest.mark.asyncio
+async def test_link_matches_names_by_word_prefix_only(client, db_session):
+    tag = uniq("e31")
+    student = await mk_user(db_session, role="overseas_student", full_name=f"Aarav {tag}")
+    a = await mk_active_org(db_session)
+    await login(client, a["master"].email)
+    by_word_prefix = (await client.get(URL, params={"purpose": "link", "q": tag[:9]})).json()["items"]
+    by_first_name = (await client.get(URL, params={"purpose": "link", "q": "aara"})).json()["items"]
+    mid_word = (await client.get(URL, params={"purpose": "link", "q": tag[2:9]})).json()["items"]
+    assert str(student.id) in {i["id"] for i in by_word_prefix}
+    assert str(student.id) in {i["id"] for i in by_first_name}
+    assert str(student.id) not in {i["id"] for i in mid_word}
+
+
+@pytest.mark.asyncio
+async def test_link_search_is_rate_limited_per_agent(client, db_session):
+    a = await mk_active_org(db_session, name=uniq("E31 A"))
+    b = await mk_active_org(db_session, name=uniq("E31 B"))
+    await login(client, a["master"].email)
+    for _ in range(30):
+        assert (await client.get(URL, params={"purpose": "link", "q": "zzz"})).status_code == 200
+    limited = await client.get(URL, params={"purpose": "link", "q": "zzz"})
+    assert limited.status_code == 429
+    assert int(limited.headers["Retry-After"]) >= 1
+    await login(client, b["master"].email)
+    assert (await client.get(URL, params={"purpose": "link", "q": "zzz"})).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_link_search_audits_the_attempt_without_the_text(client, db_session):
+    a = await mk_active_org(db_session)
+    await login(client, a["master"].email)
+    secret = uniq("probe")
+    await client.get(URL, params={"purpose": "link", "q": secret})
+    rows = (await db_session.scalars(select(AuditLog).where(AuditLog.user_id == a["master"].id, AuditLog.action == "lookup.agent_link_search"))).all()
+    assert len(rows) == 1
+    assert secret not in str(rows[0].metadata_json)
+
+
+@pytest.mark.asyncio
 async def test_link_is_for_agents_only(client, db_session):
     admin = await mk_user(db_session, role="overseas_admin")
     await login(client, admin.email)

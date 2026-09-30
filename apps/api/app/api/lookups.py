@@ -5,7 +5,9 @@ refuse. Reads only: one structured log line per call (counts, never the search t
 """
 
 import logging
+import math
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
@@ -17,7 +19,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.core.rbac import agent_denial_reason
-from app.models import AgentStudent, Company, Job, JobApplication, OverseasApplication, OverseasCourse, School, SchoolStudent, University, User
+from app.models import AgentStudent, AuditLog, Company, Job, JobApplication, OverseasApplication, OverseasCourse, School, SchoolStudent, University, User
 from app.services.agent_orgs import org_member_ids
 
 logger = logging.getLogger("app.lookups")
@@ -25,6 +27,12 @@ router = APIRouter(prefix="/lookups", tags=["lookups"])
 
 LINK_MIN_CHARS = 3
 LINK_LIMIT = 10
+# Owner decision after the final review (2026-09-30): the agent link search cannot be used to probe emails or harvest the
+# directory -- email matches only in full, names only from the start of a word, and each agent gets 30 searches a minute
+# (counted from audit rows, the house no-new-table throttle pattern; the rows carry no search text).
+LINK_RATE_LIMIT = 30
+LINK_RATE_WINDOW = timedelta(minutes=1)
+LINK_AUDIT_ACTION = "lookup.agent_link_search"
 FORBIDDEN = "This role cannot use this lookup"
 
 
@@ -61,6 +69,22 @@ def mask_email(email: str) -> str:
     return f"{local[:1]}***@{domain}"
 
 
+async def _link_wait_seconds(db: AsyncSession, user: User) -> int:
+    """Seconds before this agent may search again; 0 means allowed."""
+    now = datetime.now(UTC)
+    recent = (
+        await db.scalars(
+            select(AuditLog.created_at)
+            .where(AuditLog.user_id == user.id, AuditLog.action == LINK_AUDIT_ACTION, AuditLog.created_at > now - LINK_RATE_WINDOW)
+            .order_by(AuditLog.created_at.desc())
+            .limit(LINK_RATE_LIMIT)
+        )
+    ).all()
+    if len(recent) < LINK_RATE_LIMIT:
+        return 0
+    return max(1, math.ceil((recent[-1] + LINK_RATE_WINDOW - now).total_seconds()))
+
+
 @router.get("/overseas-students")
 async def overseas_students(
     q: str | None = Query(None, max_length=100),
@@ -70,25 +94,37 @@ async def overseas_students(
     db: AsyncSession = Depends(get_db),
 ):
     """Admin: every overseas student. Counselor: students of their own applications. Agent: students linked to their agency.
-    `purpose=link` (agent only, D2): search-only (q >= 3 chars), at most 10, masked email, own agency's links left out."""
+    `purpose=link` (agent only, D2 as revised 2026-09-30): search-only (q >= 3 chars), at most 10, masked email, own agency's
+    links left out; the email must be typed in full, names match from the start of a word, 30 searches a minute per agent."""
     stmt = select(User).where(User.role == "overseas_student")
     pattern = _pattern(q)
     if purpose == "link":
         if user.role != "agent":
             raise HTTPException(403, FORBIDDEN)
         _allow(user, {"agent"})
-        if len((q or "").strip()) < LINK_MIN_CHARS:
+        term = (q or "").strip()
+        if len(term) < LINK_MIN_CHARS:
             raise HTTPException(422, f"Type at least {LINK_MIN_CHARS} characters")
+        wait = await _link_wait_seconds(db, user)
+        if wait:
+            logger.warning("agent_link_search_throttled", extra={"extra_fields": {"actor_id": str(user.id), "wait_seconds": wait}})
+            raise HTTPException(429, f"Too many student searches; try again in {wait} seconds", headers={"Retry-After": str(wait)})
         limit = min(limit, LINK_LIMIT)
-        stmt = stmt.where(User.id.not_in(select(AgentStudent.student_id).where(AgentStudent.agent_id.in_(org_member_ids(user)))))
+        escaped = pattern[1:-1]  # the literal, escaped term without _pattern's surrounding wildcards
+        stmt = stmt.where(
+            User.id.not_in(select(AgentStudent.student_id).where(AgentStudent.agent_id.in_(org_member_ids(user)))),
+            or_(func.lower(User.email) == term.lower(), _like(User.full_name, f"{escaped}%"), _like(User.full_name, f"% {escaped}%")),
+        )
+        db.add(AuditLog(user_id=user.id, action=LINK_AUDIT_ACTION, entity_type="lookup", outcome="searched", metadata_json={"purpose": "link"}))
+        await db.commit()
     else:
         _allow(user, {"overseas_admin", "counselor", "agent"})
         if user.role == "counselor":
             stmt = stmt.where(User.id.in_(select(OverseasApplication.student_id).where(OverseasApplication.counselor_id == user.id)))
         elif user.role == "agent":
             stmt = stmt.where(User.id.in_(select(AgentStudent.student_id).where(AgentStudent.agent_id.in_(org_member_ids(user)))))
-    if pattern:
-        stmt = stmt.where(or_(_like(User.full_name, pattern), _like(User.email, pattern)))
+        if pattern:
+            stmt = stmt.where(or_(_like(User.full_name, pattern), _like(User.email, pattern)))
     stmt = stmt.order_by(User.full_name, User.id)
     masked = purpose == "link"
     return await _page(
