@@ -61,5 +61,15 @@ def sync_enquiry_to_crm_task(self, enquiry_id: str):
 
 @celery.task
 def deliver_notification_task(delivery_id: str):
-    """ENH-014: replaced with the real body in Task 6."""
-    raise NotImplementedError
+    """ENH-014 (spec §6.5): send one queued NotificationDelivery. Retries are re-enqueued by `deliver` itself with the D11
+    countdowns (not Celery autoretry), so attempts are counted on the row. Each run is a fresh event loop, so the pooled
+    asyncpg connections from the previous loop are disposed first (same reason as tests/conftest.py)."""
+
+    async def _run():
+        from app.core.database import engine
+        from app.notifications.delivery import deliver
+
+        await engine.dispose()
+        return await deliver(UUID(delivery_id))
+
+    return asyncio.run(_run())
