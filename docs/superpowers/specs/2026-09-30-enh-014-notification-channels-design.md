@@ -194,6 +194,8 @@ Strip spaces, `-`, `(`, `)`, `.`. Then:
    Error truncated to 500 characters. Webhook-channel failures (email webhook, legacy WhatsApp/SMS webhooks)
    are treated as transient; SMTP failures as transient.
 5. Log `notification_delivery` with delivery id, channel, status, attempt — never phone, email or text.
+   (QA fixes, 2026-09-30) O-1: `app/worker.py` connects Celery's `setup_logging` signal to `configure_logging`, so
+   worker and beat log through the API's JsonFormatter and these fields appear (secret keys redacted).
 
 `sweep_stale_deliveries` (Celery beat, every 5 minutes):
 - `queued`/`retrying` rows whose `updated_at` is older than 30 minutes (longer than the largest retry
