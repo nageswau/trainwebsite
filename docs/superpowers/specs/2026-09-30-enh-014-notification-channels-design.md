@@ -356,7 +356,22 @@ Regression: full pytest suite, full vitest, and the School/notification Playwrig
 | Auth emails accidentally queued | AC11 test; `auth.py` untouched |
 | CRM webhook shares `post_optional_webhook` | function unchanged |
 
-## 12. Traceability
+## 12. Plan-time refinements (2026-09-30)
+
+Made while writing `docs/superpowers/plans/2026-09-30-enh-014-notification-channels.md`; they supersede the
+sections cited:
+- §6.1: `normalise_phone` lives in `app/notifications/phone.py`; `deliver`/sweeper in `app/notifications/delivery.py`
+  (the worker imports dispatch, so keeping them apart avoids an import cycle).
+- §5.2: the 422 applies only to a false→true change. A user whose phone was cleared can still turn channels off;
+  the form keeps a checked channel enabled for that reason (§7).
+- §6.4: a missing or non-internal link (including `/\…`) becomes the portal home link rather than being dropped,
+  because Twilio rejects an empty template variable.
+- §7: preferences are fetched after `/auth/me` succeeds (sequential), which keeps today's `/auth/me` error branches
+  unchanged; the preferences body is shape-checked and a malformed one is treated as a load failure.
+- §10: no axe dependency exists and none is added; the E2E asserts roles, names, 44 px rows and no horizontal
+  scroll instead.
+
+## 13. Traceability
 
 Evidence (`School CRM.md` §32, Part B §11) → `DEC-NOT-001` (2026-09-30 extension) → `BR-NOT-001` →
 `PRD-NOT-001/002/003` → ENH-014 → ENH-014-AC01…AC14 → `/account/profile` → §4–§6 (DB, API, integration) →
