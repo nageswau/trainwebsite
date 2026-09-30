@@ -6,6 +6,7 @@ audits and commits. Spec: docs/superpowers/specs/2026-09-30-agn-004-agent-studen
 
 import logging
 import re
+from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from sqlalchemy import ColumnElement, Select, func, or_, select
@@ -14,7 +15,7 @@ from sqlalchemy.orm import aliased
 
 from app.core.rbac import is_agent_staff
 from app.models import AgentOrgMember, AgentStudent, OverseasApplication, User
-from app.services.agent_orgs import org_member_ids
+from app.services.agent_orgs import STAFF, org_member_ids
 
 logger = logging.getLogger("app.agent_students")
 
@@ -168,9 +169,7 @@ async def find_duplicates(db: AsyncSession, user: User, *, email: str | None, di
 
 
 def duplicate_conflict(matches: list[dict], hidden: int) -> HTTPException:
-    return HTTPException(
-        409, {"message": "A student with this email or phone already exists in your agency", "code": "possible_duplicate", "matches": matches, "hidden_matches": hidden}
-    )
+    return HTTPException(409, {"message": "A student with this email or phone already exists in your agency", "code": "possible_duplicate", "matches": matches, "hidden_matches": hidden})
 
 
 # --- writes (no commit) ------------------------------------------------------------------------------------------------------------
@@ -189,3 +188,32 @@ def create_record(db: AsyncSession, user: User, data: dict) -> AgentStudent:
     )
     db.add(row)
     return row
+
+
+def apply_update(row: AgentStudent, user: User, changes: dict) -> list[str]:
+    """Returns the names of the fields whose value actually changed (a no-op PATCH audits nothing)."""
+    changed = [field for field, value in changes.items() if getattr(row, field) != value]
+    for field in changed:
+        setattr(row, field, changes[field])
+    if "phone" in changed:
+        row.phone_digits = phone_digits(row.phone)
+    if changed:
+        row.updated_by_user_id = user.id
+    return sorted(changed)
+
+
+def set_archived(row: AgentStudent, user: User, archived: bool) -> None:
+    row.status = "archived" if archived else "active"
+    row.archived_at = datetime.now(UTC) if archived else None
+    row.archived_by_user_id = user.id if archived else None
+    row.updated_by_user_id = user.id
+
+
+async def active_staff_member(db: AsyncSession, user: User, member_id) -> AgentOrgMember:
+    """G5: only an ACTIVE staff member of the caller's own agency can receive a new assignment."""
+    member = await db.scalar(
+        select(AgentOrgMember).where(AgentOrgMember.id == member_id, AgentOrgMember.org_id == user.agent_membership.org_id, AgentOrgMember.role == STAFF, AgentOrgMember.status == "active")
+    )
+    if member is None:
+        raise HTTPException(422, "Choose an active Staff member of this agency")
+    return member
