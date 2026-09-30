@@ -62,14 +62,16 @@ def sync_enquiry_to_crm_task(self, enquiry_id: str):
 @celery.task
 def deliver_notification_task(delivery_id: str):
     """ENH-014 (spec §6.5): send one queued NotificationDelivery. Retries are re-enqueued by `deliver` itself with the D11
-    countdowns (not Celery autoretry), so attempts are counted on the row. Each run is a fresh event loop, so the pooled
-    asyncpg connections from the previous loop are disposed first (same reason as tests/conftest.py)."""
+    countdowns (not Celery autoretry), so attempts are counted on the row. Each run is a fresh event loop, so the pool is
+    disposed at the end of each run: connections are closed on the loop that opened them."""
 
     async def _run():
         from app.core.database import engine
         from app.notifications.delivery import deliver
 
-        await engine.dispose()
-        return await deliver(UUID(delivery_id))
+        try:
+            return await deliver(UUID(delivery_id))
+        finally:
+            await engine.dispose()
 
     return asyncio.run(_run())
