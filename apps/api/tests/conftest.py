@@ -57,4 +57,4 @@ def _reset_broker_backoff(monkeypatch):
     """ENH-014 QAF-01: a test that makes a publish fail opens the broker back-off; start every test with it closed."""
     from app.notifications import dispatch
 
-    monkeypatch.setattr(dispatch, "_broker_unavailable_until", 0.0, raising=False)
+    monkeypatch.setattr(dispatch, "_broker_unavailable_until", 0.0)

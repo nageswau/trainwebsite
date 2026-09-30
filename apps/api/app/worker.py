@@ -14,7 +14,8 @@ celery.conf.update(task_serializer="json", result_serializer="json", accept_cont
 @setup_logging.connect
 def configure_worker_logging(**_kwargs) -> None:
     """O-1 (spec §6.5): with a receiver connected, Celery skips its own logging setup, so worker and beat log through the
-    API's JsonFormatter: `extra_fields` (delivery id, channel, status, attempt) are rendered and secret keys redacted."""
+    API's JsonFormatter: `extra_fields` (delivery id, channel, status, attempt) are rendered and secret keys redacted.
+    The level comes from settings.log_level (LOG_LEVEL); Celery's `--loglevel` flag no longer applies."""
     configure_logging(settings.log_level)
 
 
