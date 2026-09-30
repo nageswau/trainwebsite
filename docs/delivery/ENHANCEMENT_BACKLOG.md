@@ -138,6 +138,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-030 | Daily/period attendance tracking (new entity, built bulk-first) | Medium | Low | Yes | Feeds ENH-013, ENH-016 |
 | AGN-001 | Multi-tenant Agent CRM — agent organisation as tenant, Master accounts (Rev. 6) | Large | High | Yes | AGT-001–004, SEC-001, RPT-002, ADM-001 (all change) |
 | ENH-031 | Searchable reference pickers — student/application references picked from role-scoped searchable dropdowns | Medium | Medium | No | AGN-001 (agency scope) |
+| AGN-004 | Agent students — Master/Staff create, edit, view and (Master) archive students who never log in; staff assigned-only | Large | High | Yes | AGT-002, AGN-001, ENH-031 (scope change); AGN-002 (merge) |
 
 ---
 
@@ -2963,6 +2964,36 @@ accepted by the owner as known limitations (2026-09-29): #7 a fast tab switch ca
 
 ---
 
+## AGN-004 — Agent Students: Master/Staff Create, Edit, View and Archive Students Who Never Log In
+
+**Business requirement.** The owner's `AGN-004` statement (in-session, 2026-09-30): "Master/Staff create, edit, view and archive
+students who never log in (§2 Students, §5 Step 1; DEC-ROLE-004; DEC-SCOPE-035 D3)." Acceptance: create/edit/view/archive work for
+the right roles; an archived student leaves default lists but remains in history and reports; Staff cannot see a student assigned
+to someone else (`404`); no `users` row is ever created for an agent student; the within-org duplicate warning fires. The cited
+`DEC-SCOPE-035 D3` does not decide agent students (it is ENH-027's decision; `DEC-SCOPE-038` D3 is the account-code rule) —
+recorded, not silently fixed; this feature's decisions are `DEC-SCOPE-041`.
+
+**Source.** `functionalities/edusphere_markdown/Agent CRM Functionalities.md` (`EVID-015`, `DERIVED_BLUEPRINT`) §2 "Students",
+§5 Step 1, §6. `DEC-ROLE-004` (no login for agent-referred students).
+
+**Expected behavior.** Per `DEC-SCOPE-041`: students with no login live on `agent_students` (identity, academic, preference
+fields; assignment; archive) and never get a `users` row; the existing "link a student who has an account" flow stays. A
+student created or linked by Staff is assigned to them; a Master's starts unassigned; only a Master assigns, archives and
+unarchives. Staff see only their assigned students on every agent path (new student routes, roster, applications, documents,
+lookups, portal pages); Team and Commissions stay Master-only (AGN-002 S1). Same email (any case) or phone (≥ 7 digits) inside
+the agency warns; saving again with confirmation proceeds (audited).
+
+**Dependencies.** Independent of `AGN-002` (owner G1) with AGN-002's exact Staff names (G2); merge notes in the design spec §12.
+
+**Acceptance criteria.** AGN-004-AC01…AC13, verbatim in `docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md` §8.
+
+**Status (2026-09-30) — IMPLEMENTED; NOT COMPLETE.** Designed (spec rev. 2), planned
+(`docs/superpowers/plans/2026-09-30-agn-004-agent-students.md`) and built test-first on `feature/agn-004-agent-students`
+(migration `0047_agent_students_crm`). Outstanding before COMPLETE: browser validation and the independent Codex review (owner
+instruction); Staff browser flows and the named-Staff Assign picker wait for the AGN-002 merge. Evidence in `docs/quality/RTM.md`.
+
+---
+
 ## ENH-031 — Searchable Reference Pickers (Student / Application References)
 
 **Requirement:** the owner, in-session 2026-09-29 (`EXPLICIT_APPROVAL`): every student and application reference is a searchable dropdown of valid values. **Decision:** `DEC-SCOPE-039` (D1–D5). **Spec:** `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` (AC01–AC10). **Plan:** `docs/superpowers/plans/2026-09-29-enh-031-searchable-reference-pickers.md`.
@@ -3135,6 +3166,7 @@ item, only for the progress-view question).
 | ENH-011, ENH-012, ENH-013, ENH-015, ENH-017, ENH-018, ENH-019, ENH-021, ENH-024, ENH-026, ENH-027, ENH-028, ENH-029, ENH-030 | None structurally required — each operates within already-confirmed School-domain scope (`DEC-SCOPE-011/012/013/017`) as a completion/extension, not a new scope question. ENH-026/ENH-027 additionally need a *design* choice (shared shape for "Recommended..."/"Career recommendations" fields); ENH-028's batch-size limit and ENH-030's session-vs-period granularity are also design, not scope, questions | N/A |
 | ENH-016 | None — corrected in Revision 3 to a narrower scope entirely within already-confirmed `DEC-SCOPE-017` | N/A |
 | AGN-001 | `DEC-SCOPE-038` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
+| AGN-004 | `DEC-SCOPE-041` — students with no login, staff assignment, archive, duplicate warning, relation to AGN-002 | **Resolved 2026-09-30** (D1, D3–D5, D7, D8, G1–G5, `EXPLICIT_APPROVAL` in-session; number provisional) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
@@ -3171,7 +3203,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6).** Still parked: Staff logins, staff assignment/ownership, staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001 only; none yet for the rest |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6).** Staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-041`, 2026-09-30; Staff logins are AGN-002 on its own branch). Still parked: staff performance, permission levels, CRM settings | `DEC-SCOPE-038` covers AGN-001; `DEC-SCOPE-041` covers AGN-004; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

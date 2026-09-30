@@ -143,6 +143,26 @@ members. Staff roles are not decided (D13). Enforcement: `core/rbac.agent_denial
 `workflows._require`, `portal()` and `api/agent_team.py`) and `services/agent_orgs.org_member_ids` (scope). Proved by
 `tests/test_agn_001_tenancy.py` (cross-organisation matrix) and `test_agn_001_team.py`.
 
+**`AGN-004` / `DEC-SCOPE-041` (2026-09-30) — agency students and staff scope, BUILT 2026-09-30 (independent of `AGN-002`, same
+staff model).** A staff member is a `role='agent'` user whose organisation membership has `role='staff'` (created by `AGN-002`).
+
+| Action | Master | Staff |
+|---|---|---|
+| View students (new `/crm/students` list/detail; roster; portal Students) | Whole agency | **Assigned to them only** |
+| Create a student with no login; link a student with an account | ✓ (unassigned) | ✓ (assigned to them) |
+| Edit a student with no login | ✓ | ✓ (assigned only) |
+| Archive / unarchive; assign | ✓ | ✗ (`403`) |
+| Applications, documents, lookups, dashboard, reports | Whole agency | Assigned students' only |
+| Team, Commissions | ✓ | ✗ (`403`, `AGN-002` S1) |
+
+**Existence mask (required by `API_CONTRACT.md` §0.3):** on the `/workflows/overseas/agent/crm/students` routes a row outside
+the caller's scope — another agency's, another staff member's, or an unassigned one for staff — answers **`404 "Student not
+found"`**, never `403`, so its existence is not revealed. A Master-only action on an in-scope row answers `403`. Existing
+routes keep their existing status codes. Assignment targets only an active staff member of the same agency; a deactivated
+staff member keeps their students (G5). Enforcement: `services/agent_students.student_scope` / `application_scope` in the
+`WHERE` clause (identical to AGN-001's clauses for a Master) and `core/rbac.is_agent_staff`. Proved by
+`tests/test_agn_004_students.py`, `test_agn_004_student_actions.py`, `test_agn_004_staff_scope.py`, `test_agn_004_staff_guards.py`.
+
 **`DEC-ROLE-004` (2026-09-14) — Agent on-behalf-of a referred student, NOT YET BUILT:** the
 approved Agent row above is read-only (view roster/commissions, claim). Since an Agent-referred
 student is never issued a login, the Agent must also **create** the referral (`AgentStudent`) and

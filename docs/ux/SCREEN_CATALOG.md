@@ -1666,6 +1666,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 | `SCR-AGT-005` | `/overseas/agent/commissions/[id]/claim` | Agent | `AGT-004` |
 | `SCR-AGT-006` | `/overseas/admin/commissions` | Overseas Admin | `AGT-004` |
 | `SCR-AGT-007` | `/overseas/agent/team` | Agent (Master) | `AGN-001` |
+| `SCR-AGT-008` | `/overseas/agent/students` (Students panel) | Agent (Master, Staff) | `AGN-004`, `AGT-002` |
 
 ### `SCR-AGT-001`
 - **Route:** `/overseas/agent/register`  
@@ -1793,6 +1794,24 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** Same single-column layout at all widths.  
 - **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** AGN-001-AC07, AC08 (API tests `test_agn_001_team.py`; `AgentTeamPanel.test.tsx`; e2e `agn-001-multi-tenant.spec.ts`).  
+
+### `SCR-AGT-008`
+- **Route:** `/overseas/agent/students` — the Students panel above the existing roster and "Link student" form  
+- **Role(s):** Agent — a Master (whole agency) or a staff member (assigned students only) of an active agency  
+- **Purpose:** Create, edit, view and (Master) archive the agency's students, including students who never log in *(net-new, added 2026-09-30, `AGN-004` / `DEC-SCOPE-041`)*.  
+- **Linked Feature ID(s):** `AGN-004`, `AGT-002`  
+- **Entry points:** Agent portal navigation, "Students".  
+- **Required data:** Students (name, contact, preferred country/intake, has-login, assignee with code and deactivated state, status); on View the full record (personal, contact, academic, preferences, notes, created by, archived by).  
+- **Key actions:** Search (debounced), Show archived, Master "Assigned to" filter (Anyone/Unassigned), Add student, View, Edit (students with no login, not archived), Archive/Unarchive (Master, inline confirmation), duplicate warning with "Save anyway". Named-staff assignment waits for AGN-002's staff list.  
+- **Empty state:** "No students yet. Use Add student…"; with filters "No students match." + Clear filters.  
+- **Loading state:** "Loading students…" first; later loads keep the cards and set `aria-busy`; detail shows "Loading student…".  
+- **Error state:** server message + Retry (a non-page 200 is an error); per-card action errors; detail "This student is no longer available." (404) or "Unable to load this student."; form errors inline per field, network drop keeps the entry.  
+- **Permissions/resource scope:** Own agency; staff assigned-only (other rows `404`); archive/unarchive/assign Master-only (`403`); pending/suspended agencies `403`.  
+- **Responsive behavior:** Cards in the `.grid.two` layout (one column on phones), 44px buttons on phones; no horizontal scroll at 320px (E2E).  
+- **Accessibility requirements:** Labelled search/filters; fields grouped with `fieldset`/`legend`; errors tied by `aria-describedby`/`aria-invalid`, focus to the first invalid field; named buttons ("View/Archive <name>"); confirmation as a labelled group with focus returned on Cancel; Escape closes the detail; results announced (`role="status"`); status and login shown as text badges.  
+- **Desktop/tablet/mobile behavior:** Two card columns on wide screens, one on phones; the detail and form sit above the list so list refreshes never move them.  
+- **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
+- **Acceptance evidence needed:** AGN-004-AC01–AC13 (`test_agn_004_*.py`; `AgentStudentsPanel.test.tsx`, `AgentStudentForm.test.tsx`; e2e `agn-004-agent-students.spec.ts`); browser validation pending.  
 
 
 ## CNS

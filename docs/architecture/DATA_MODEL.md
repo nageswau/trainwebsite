@@ -412,6 +412,21 @@ predate an application record).
   today `AGT-002` only reads this table (`DB impact: N`); a create/manage path for the Agent does
   not exist yet and is required scope, not optional polish, once the on-behalf-of model is built.
   See §6.2's note above for the same open `student_user_id` schema question.
+- **Addendum, 2026-09-30 (`AGN-004`, `DEC-SCOPE-041`, migration `0047_agent_students_crm`) — students with no login.**
+  `student_id` becomes **nullable** (`NULL` = a student who never logs in; no `users` row is ever created for them).
+  Additive nullable columns: `full_name` String(160), `email` String(320, stored lowercased), `phone` String(40),
+  `phone_digits` String(20, server-set, digits only — duplicate check), `date_of_birth` Date, `highest_qualification`
+  String(200), `institution` String(200), `graduation_year` SmallInteger, `preferred_country` String(120),
+  `preferred_course` String(200), `preferred_intake` String(40), `notes` Text (≤ 2000 at the API), `assigned_member_id` →
+  `agent_org_members.id` (`NULL` = unassigned), `archived_at`, `archived_by_user_id` → `users.id`, `updated_by_user_id` →
+  `users.id`. CHECKs `ck_agent_students_identity` (`student_id IS NOT NULL OR full_name IS NOT NULL`) and
+  `ck_agent_students_status` (`active`/`archived`). Indexes `(agent_id, status)`, `(agent_id, lower(email))`,
+  `(agent_id, phone_digits)`, `(assigned_member_id)`. `agent_id` keeps meaning "created or linked by" and still fixes the
+  agency (F1 — no `org_id` column). Linked rows read name/email/phone from `users`; their identity columns stay `NULL`.
+  Upgrade changes no existing row; `downgrade()` refuses while a student with no login, an assignment or a staff member
+  exists. Round trip and refusals verified in a throwaway database (`tests/test_agn_004_migration.py`).
+  `overseas_applications`, `student_documents` and `agent_commissions` are unchanged (D8: applications for students with no
+  login are a later feature).
 
 ### 6.8a `AgentOrg`, `AgentOrgMember` — built 2026-09-28 (`AGN-001`, `DEC-SCOPE-038`, migration `0046_agent_orgs`)
 Design: `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md` §4.
@@ -433,6 +448,11 @@ Design: `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design
   No existing row altered; idempotent; `downgrade()` drops only the two tables. Round trip verified on a throwaway
   database (RTM `AGN-001` row).
 - **Feature IDs:** `AGN-001` (changes `AGT-001`–`004`).
+- **Addendum, 2026-09-30 (`AGN-004` G2, same names as `AGN-002`):** member `role` CHECK widens to `master`/`staff`;
+  numbering unique per role (`uq_agent_org_members_org_role_seq` on `org_id, role, seq` replaces `uq_agent_org_members_org_seq`,
+  so `M001` and `S001` coexist); `agent_orgs.staff_seq` Integer ≥ 0 (`ck_agent_orgs_staff_seq`). Guarded in migration
+  `0047_agent_students_crm` so AGN-002's identical `0047_agent_org_staff` and this one never apply them twice. The 3-Master
+  limit, the last-Master rule and commission notifications count `role='master'` only.
 
 ### 6.9 `InboundUniversityEmail`
 **Carries over.** Supports `UNI-001`'s university-communication surface.

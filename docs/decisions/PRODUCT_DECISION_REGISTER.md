@@ -2658,7 +2658,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 - **D10 — Migration.** Each existing agent becomes Master `M001` of its own organisation: `approved` → `active`, `pending` → `pending`, `rejected` → `pending` (for re-review). Data access is unchanged.
 - **D11 — Admin-created agents.** Creating a `role='agent'` user through admin user-create (`ADM-001`) also creates a `pending` organisation with that user as `M001`.
 - **D12 — Notifications.** Agent notifications that today go to the single agent (commission estimated, commission eligible) go to every active Master of the organisation.
-- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`.
+- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`. *(2026-09-30: staff assignment and ownership of students since decided as `DEC-SCOPE-041`, `AGN-004`; staff logins are `AGN-002` on its own branch.)*
 
 **Review decisions, 2026-09-29 (`EXPLICIT_APPROVAL`, in-session, after the API / security / frontend review of the build):**
 - **R1 — Invite throttle.** At most 10 Master invites per agency per rolling 24 hours (counted from `agent_org.master_invite` audit rows, under the organisation lock); over the limit → `429` with `Retry-After`. Reason: invite → deactivate → invite loops otherwise let an approved agency send unlimited set-password emails to any address under a name it chooses.
@@ -2678,3 +2678,52 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 **Resolution:** owner, in-session 2026-09-29 (`EXPLICIT_APPROVAL`), D1–D5 in `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` §2: D1 both groups of fields, other reference fields out of scope; D2 agent link = server search only (≥ 3 characters, ≤ 10 results, masked email, own agency's links left out; **revised 2026-09-30, owner, after the final review:** email matches only in full, names only from the start of a word, 30 searches per agent per minute counted from text-free `lookup.agent_link_search` audit rows); D3 own accessible combobox + role-scoped read-only lookups, no new dependency; D4 bridge = pick the school, then search only its students; D5 built on the AGN-001 branch.
 
 **Consequences:** new `GET /api/v1/lookups/{overseas-students,overseas-applications,it-job-applications,schools,school-students}` (read-only, each with its write endpoint's scope); new `SearchableSelect` component; 20 form fields change control. No write endpoint, schema or migration changes.
+
+### DEC-SCOPE-041 — Agent students: students with no login, staff assignment (`AGN-004`)
+
+**ID note:** provisional number. `DEC-SCOPE-040` is held by `AGN-002` (staff logins) on `feature/agn-002-staff-logins`; whichever
+of the two reaches `main` second keeps its number if free or renumbers on merge (precedent: `DEC-SCOPE-038`/`039`).
+
+**Question:** the owner's `AGN-004` statement (in-session, 2026-09-30): "Master/Staff create, edit, view and archive students who
+never log in (§2 Students, §5 Step 1; DEC-ROLE-004; DEC-SCOPE-035 D3)", with acceptance: create/edit/view/archive work for the right
+roles; an archived student leaves default lists but remains in history and reports; Staff cannot see a student assigned to someone
+else (`404`); no `users` row is ever created for an agent student; the within-org duplicate warning fires.
+
+**Evidence:** Graphify-oriented impact analysis, 2026-09-30: `agent_students` is a link table whose `agent_id` and `student_id` are
+both FKs to `users.id` (`models.py` `AgentStudent`) — every agent student is today a real `users` account; there is no edit,
+detail or archive route and no duplicate *warning* anywhere; `OverseasApplication`/`StudentDocument` key the student through
+`users.id` and about fifteen queries inner-join it; `DEC-SCOPE-038` D13 left staff assignment and ownership blocked under `C-10`;
+`AGN-002` (a parallel branch) models staff as `role='agent'` + member role `staff` with agency-wide access (its S1).
+
+**Conflicts recorded, not silently resolved:** (1) the requirement's `DEC-SCOPE-035 D3` citation — `DEC-SCOPE-035` is ENH-027's
+psychometric decision and `DEC-SCOPE-038` D3 is AGN-001's account-code rule; neither decides agent students. (2) `EVID-015` §6
+lists Staff "Delete Student ✗" while the request reads "Master/Staff … archive" — the owner chose Master-only (D5). (3) `AGN-002` S1
+gives staff agency-wide student and application access, while AGN-004's acceptance says staff cannot see another's student — the
+owner chose assigned-only everywhere (G4).
+
+**Resolution:** owner, in-session 2026-09-30 (`EXPLICIT_APPROVAL` — the owner's own statement and answers to structured
+questions, not the source document's wording):
+
+- **D1 — Staff for students.** Staff (as modelled by AGN-002 S2) create, edit and view students. Lifts the staff
+  assignment/ownership part of `DEC-SCOPE-038` D13 / `C-10`; staff performance, permission levels and CRM settings stay blocked.
+- **D3 — Two kinds of student.** The existing "link a student who has an account" flow stays; a new flow creates a student with no
+  login whose details live on `agent_students`; no `users` row is ever created for them.
+- **D4 — Assignment.** Created or linked by staff → assigned to that staff member; by a Master → unassigned. Only a Master assigns.
+- **D5 — Archive.** Master only (and unarchive). Archived students leave default lists but stay in history and reports.
+- **D7 — Duplicate warning.** Same email (case-insensitive) or same normalised phone inside the agency → a warning listing the
+  matches; saving again with confirmation proceeds.
+- **D8 — Downstream deferred.** Applications, documents and commissions for students with no login are a later feature.
+- **G1 — Independent of AGN-002**, reconciled at merge.
+- **G2 — Minimal staff code with AGN-002's exact names** (member role `staff`, `staff_seq`, per-role numbering, `is_agent_staff`,
+  Master-only role filters and guards, `agent_member_role`, `agentNavFor`); no staff-management endpoint or UI.
+- **G3 — Staff reach = AGN-002 S1** (Team and Commissions Master-only).
+- **G4 — Assigned-only everywhere** — the new student routes (`404` outside scope) and every existing roster, link, application,
+  document, lookup and portal path (their existing out-of-scope status codes). Narrows AGN-002 S1.
+- **G5 — Deactivation keeps assignments**; only an active staff member can receive a new assignment.
+- Design choices F1–F5 (no `org_id` column; linked students not editable here; duplicates include archived and linked students;
+  staff see invisible matches only as a count; the detail view sits on the Students page) — design spec §3.
+
+**Consequences:** migration `0047_agent_students_crm` (additive; staff pieces guarded for the AGN-002 merge); new
+`/workflows/overseas/agent/crm/students` routes; scope helpers applied to every agent path; new Students panel. Staff browser flows
+and the named-staff Assign picker wait for the AGN-002 merge. Schema, endpoint shapes and screens are fixed in
+`docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md`, not here.
