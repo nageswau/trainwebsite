@@ -1,11 +1,12 @@
 import PortalShell from "@/components/PortalShell";
+import ReportDownloadButton from "@/components/ReportDownloadButton";
 import SchoolAnalyticsSections from "@/components/SchoolAnalyticsSections";
 import SchoolReportsPanel from "@/components/SchoolReportsPanel";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import { loadSchoolAnalytics } from "@/lib/schoolAnalytics";
 import type { User } from "@/lib/types";
-import { accessUnavailable } from "@/components/AccessUnavailable";
+import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 
 type ReportData = {
   student_count: number;
@@ -29,13 +30,24 @@ export default async function SchoolPrincipalReportsPage({ searchParams }: { sea
   let user: User;
   let report: ReportData;
   try {
-    [user, report] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<ReportData>("/api/v1/school/reports")]);
+    user = await serverApi<User>("/api/v1/auth/me");
+    // QA15-08: the principal's page only -- a coordinator has their own Reports page and must not get this shell and nav.
+    if (user.role !== "school_principal") return accessDenied(user, "Principal role required");
+    report = await serverApi<ReportData>("/api/v1/school/reports");
   } catch (e) {
     return accessUnavailable(e);
   }
   const analytics = await loadSchoolAnalytics(await searchParams);
   return (
     <PortalShell nav={SCHOOL_NAV.principal} roleLabel="Principal" userName={user.full_name}>
+      {/* ENH-015: the downloadable School Summary PDF (own school), above the on-screen report it summarises. */}
+      <div className="portal-content report-downloads">
+        <div className="card">
+          <h2>Download reports</h2>
+          <p className="muted">A PDF of your school&apos;s summary figures and grade-by-grade table, as of today.</p>
+          <ReportDownloadButton url="/api/v1/school/reports/school-summary" label="Download school report (PDF)" filename="school-report.pdf" hint="PDFs are not screen-reader friendly. The same figures are on your dashboard and in the grade-wise comparison on this page." />
+        </div>
+      </div>
       <SchoolReportsPanel report={report} />
       <SchoolAnalyticsSections data={analytics} role="principal" />
     </PortalShell>

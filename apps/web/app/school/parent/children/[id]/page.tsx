@@ -4,6 +4,7 @@ import SchoolGradeHistory, { loadGradeHistory, type StudentGradeHistory } from "
 import SchoolStudentTimeline, { loadStudentTimeline, type StudentTimeline } from "@/components/SchoolStudentTimeline";
 import SchoolTransferHistory, { loadTransferHistory, type TransferHistoryEntry } from "@/components/SchoolTransferHistory";
 import PortfolioPanel from "@/components/PortfolioPanel";
+import ReportDownloadButton from "@/components/ReportDownloadButton";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
@@ -39,8 +40,12 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
   return (
     <PortalShell nav={SCHOOL_NAV.parent} roleLabel="Parent" userName={user.full_name}>
       <div className="portal-content">
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {/* QA15-03: flex-start, so a download message under its button does not stretch the other buttons in the row.
+            QA15-11: `child-page-actions` narrows the download hint here only, so it cannot widen the row. */}
+        <div className="child-page-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
           <a className="btn" href={`/school/parent/children/${id}/360`}>Open 360° view</a>
+          {/* ENH-015: the same overview as a PDF -- own linked child only, checked by the server. */}
+          <ReportDownloadButton url={`/api/v1/school/students/${id}/progress-report`} label="Download progress report (PDF)" filename="progress-report.pdf" hint="PDFs are not screen-reader friendly. The same information is on this page." />
           <a className="btn secondary" href="/school/parent/dashboard">Back to my children</a>
         </div>
         <SchoolChildOverview overview={overview} />
