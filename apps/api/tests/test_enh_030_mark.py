@@ -213,9 +213,7 @@ async def test_new_school_mark_keeps_the_previous_schools_record(client, db_sess
     await login(client, w["teacher"].email)
     assert (await client.put(URL, json={"session_date": DAY, "records": _marks([student])})).status_code == 200
     rows = await _rows(db_session, school_student_id=student.id)
-    assert sorted((str(r.school_id), r.status, r.marked_by_user_id) for r in rows) == sorted(
-        [(str(old["school"].id), "absent", old["teacher"].id), (str(w["school"].id), "present", w["teacher"].id)]
-    )
+    assert sorted((str(r.school_id), r.status, r.marked_by_user_id) for r in rows) == sorted([(str(old["school"].id), "absent", old["teacher"].id), (str(w["school"].id), "present", w["teacher"].id)])
     audit = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.daily_attendance_mark", AuditLog.entity_id == str(w["school"].id)))).one()
     assert audit.metadata_json["changes"] == [{"student_id": str(student.id), "from": None, "to": "present"}]
 
@@ -338,8 +336,14 @@ async def test_a_transferred_in_student_counts_from_the_transfer_approval(client
     student = w["mine"][1]  # created (at the old school) on ENROLLED; moved in by a transfer approved on 20 Sep
     db_session.add(
         SchoolStudentTransferRequest(
-            school_student_id=student.id, from_school_id=old["school"].id, to_school_id=w["school"].id, requested_by_user_id=w["coordinator"].id,
-            filed_by_school_id=w["school"].id, status="approved", decided_by_user_id=w["admin"].id, decided_at=datetime(2026, 9, 20, 5, 0, tzinfo=UTC),
+            school_student_id=student.id,
+            from_school_id=old["school"].id,
+            to_school_id=w["school"].id,
+            requested_by_user_id=w["coordinator"].id,
+            filed_by_school_id=w["school"].id,
+            status="approved",
+            decided_by_user_id=w["admin"].id,
+            decided_at=datetime(2026, 9, 20, 5, 0, tzinfo=UTC),
         )
     )
     await db_session.commit()

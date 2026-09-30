@@ -135,7 +135,16 @@ async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depend
     if len(locked) != len(ids):
         # A security-relevant event (probing, or a stale roster after a reassignment): record it with counts only, then refuse.
         outside = len(ids) - len(locked)
-        db.add(AuditLog(user_id=user.id, action=DENIED_ACTION, entity_type="school", entity_id=str(school_id), outcome="denied", metadata_json={"session_date": actor["session_date"], "requested": len(ids), "outside": outside}))
+        db.add(
+            AuditLog(
+                user_id=user.id,
+                action=DENIED_ACTION,
+                entity_type="school",
+                entity_id=str(school_id),
+                outcome="denied",
+                metadata_json={"session_date": actor["session_date"], "requested": len(ids), "outside": outside},
+            )
+        )
         await db.commit()
         logger.warning("school_attendance_denied", extra={"extra_fields": {**actor, "requested": len(ids), "outside": outside}})
         raise HTTPException(403, NOT_ASSIGNED)
@@ -152,12 +161,9 @@ async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depend
     # Spec §11 S5: the audit names who changed, from what, to what -- only rows whose status actually changed.
     changes = [{"student_id": str(r.student_id), "from": before.get(r.student_id), "to": r.status} for r in records if before.get(r.student_id) != r.status]
     stmt = pg_insert(SchoolAttendanceRecord).values(
-        [
-            {"id": uuid4(), "school_student_id": r.student_id, "school_id": school_id, "session_date": payload.session_date, "status": r.status, "marked_by_user_id": user.id}
-            for r in records
-        ]
+        [{"id": uuid4(), "school_student_id": r.student_id, "school_id": school_id, "session_date": payload.session_date, "status": r.status, "marked_by_user_id": user.id} for r in records]
     )
-    tally = Counter(r.status for r in records)
+    tally: Counter[str] = Counter(r.status for r in records)
     statuses = {s: tally[s] for s in ATTENDANCE_STATUSES if tally[s]}
     metadata = {"session_date": actor["session_date"], "count": len(records), "statuses": statuses, "changes": changes}
     # The marks and their audit row commit together or not at all; a failure is rolled back, logged (ids and counts only), re-raised.
