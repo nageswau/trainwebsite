@@ -120,6 +120,10 @@ def downgrade() -> None:
     _refuse_if(
         bind, "SELECT 1 FROM agent_students WHERE assigned_member_id IS NOT NULL LIMIT 1", "Cannot downgrade 0047_agent_students_crm: assigned students exist. Unassign them deliberately first."
     )
+    # Archive state lives in columns dropped below; the pre-AGN-004 roster would show those links again.
+    _refuse_if(
+        bind, "SELECT 1 FROM agent_students WHERE status = 'archived' LIMIT 1", "Cannot downgrade 0047_agent_students_crm: archived students exist. Unarchive them deliberately first."
+    )
     # AGN-002's rule, checked before anything is dropped: never turn staff into Masters by a rollback.
     _refuse_if(bind, "SELECT 1 FROM agent_org_members WHERE role = 'staff' LIMIT 1", "Cannot downgrade 0047_agent_students_crm: staff members exist. Remove them deliberately first.")
     op.drop_index("ix_agent_students_agent_email_lower", table_name="agent_students")
@@ -132,9 +136,14 @@ def downgrade() -> None:
         op.drop_column("agent_students", name)
     for name, _ in reversed(STUDENT_COLUMNS):
         op.drop_column("agent_students", name)
-    op.drop_constraint("uq_agent_org_members_org_role_seq", "agent_org_members", type_="unique")
-    op.create_unique_constraint("uq_agent_org_members_org_seq", "agent_org_members", ["org_id", "seq"])
+    # The staff pieces are shared with AGN-002's 0047_agent_org_staff. Once the two are chained, whichever is rolled back first
+    # removes them; each is reverted here only if still present, so the second rollback never fails half-way.
+    if "uq_agent_org_members_org_role_seq" in _unique_constraints("agent_org_members"):
+        op.drop_constraint("uq_agent_org_members_org_role_seq", "agent_org_members", type_="unique")
+        op.create_unique_constraint("uq_agent_org_members_org_seq", "agent_org_members", ["org_id", "seq"])
     op.drop_constraint("ck_agent_org_members_role", "agent_org_members", type_="check")
     op.create_check_constraint("ck_agent_org_members_role", "agent_org_members", "role = 'master'")
-    op.drop_constraint("ck_agent_orgs_staff_seq", "agent_orgs", type_="check")
-    op.drop_column("agent_orgs", "staff_seq")
+    if "ck_agent_orgs_staff_seq" in _check_constraints("agent_orgs"):
+        op.drop_constraint("ck_agent_orgs_staff_seq", "agent_orgs", type_="check")
+    if "staff_seq" in _columns("agent_orgs"):
+        op.drop_column("agent_orgs", "staff_seq")

@@ -146,6 +146,22 @@ def test_staff_pieces_are_added_to_an_agn001_database(isolated_db):
     assert _sql(url, "SELECT staff_seq FROM agent_orgs") == [(0,)]
 
 
+def test_downgrade_skips_staff_pieces_already_removed(isolated_db):
+    """Final review I1: after the AGN-002 merge the two 0047s are chained; rolling back the later one first (AGN-002's
+    0047_agent_org_staff) removes the staff pieces, so this downgrade must not try to drop them again."""
+    cfg, url = isolated_db["cfg"], isolated_db["url"]
+    command.upgrade(cfg, "0047_agent_students_crm")
+    _sql(url, "ALTER TABLE agent_orgs DROP CONSTRAINT ck_agent_orgs_staff_seq")
+    _sql(url, "ALTER TABLE agent_orgs DROP COLUMN staff_seq")
+    _sql(url, "ALTER TABLE agent_org_members DROP CONSTRAINT uq_agent_org_members_org_role_seq")
+    _sql(url, "ALTER TABLE agent_org_members ADD CONSTRAINT uq_agent_org_members_org_seq UNIQUE (org_id, seq)")
+    _sql(url, "ALTER TABLE agent_org_members DROP CONSTRAINT ck_agent_org_members_role")
+    _sql(url, "ALTER TABLE agent_org_members ADD CONSTRAINT ck_agent_org_members_role CHECK (role = 'master')")
+    command.downgrade(cfg, "0046_agent_orgs")
+    assert _sql(url, "SELECT version_num FROM alembic_version") == [("0046_agent_orgs",)]
+    assert _sql(url, STAFF_PIECES) == [(0, 0, 1)]
+
+
 @pytest.mark.parametrize(
     ("setup_sql", "message"),
     [
@@ -155,6 +171,8 @@ def test_staff_pieces_are_added_to_an_agn001_database(isolated_db):
             "INSERT INTO agent_org_members (id, org_id, user_id, role, seq, code, status) VALUES (:new, :org, :student, 'staff', 1, :code, 'active')",
             "staff members exist",
         ),
+        # Final review M1: archive state (archived_at/by) would be dropped and the pre-AGN-004 roster would show the link again.
+        ("UPDATE agent_students SET status = 'archived'", "archived students exist"),
     ],
 )
 def test_downgrade_refuses_to_lose_agn004_data(isolated_db, setup_sql, message):

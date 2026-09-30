@@ -440,7 +440,10 @@ the AGN-002 merge** (stated gap, §11).
 ## 12. Merge with AGN-002 (notes for whoever merges second)
 
 - Migrations: re-chain the later one (`0047_agent_org_staff` → `0047_agent_students_crm` or the reverse); the
-  guarded Staff pieces make the second a no-op for them; rename the file number to `0048` for order.
+  guarded Staff pieces make the second a no-op for them; rename the file number to `0048` for order. AGN-004's
+  `downgrade()` also reverts each Staff piece only if still present (final review I1), so rolling back through both works
+  whichever runs first; AGN-002's own `downgrade()` is unguarded, so if AGN-004's migration is the later one, it is
+  rolled back first — or AGN-002 adopts the same guards on merge.
 - Decision IDs: `DEC-SCOPE-040` (AGN-002) and `DEC-SCOPE-041` (AGN-004) do not collide.
 - G2 code is identical to AGN-002's; take either side. AGN-002's `_agent` portal and `lookups` changes do not
   narrow Staff scope — keep AGN-004's G4 narrowing on top.
