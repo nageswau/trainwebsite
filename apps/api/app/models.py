@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid, text
+from sqlalchemy import JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint, Uuid, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -826,12 +826,39 @@ class LiveSession(Base, TimestampMixin):
 
 
 class AgentStudent(Base, TimestampMixin):
+    """AGT-002 link of an agent to a student with an account; AGN-004 (DEC-SCOPE-041) adds students with no login
+    (`student_id` NULL, identity on the row), assignment to a staff member, and archive. `agent_id` is the member who created
+    or linked the row; it fixes the agency (membership is permanent)."""
+
     __tablename__ = "agent_students"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     agent_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
-    student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True, nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="active")
-    __table_args__ = (UniqueConstraint("agent_id", "student_id", name="uq_agent_student"),)
+    full_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    phone_digits: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    highest_qualification: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    institution: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    graduation_year: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    preferred_country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    preferred_course: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    preferred_intake: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assigned_member_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_org_members.id"), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    __table_args__ = (
+        UniqueConstraint("agent_id", "student_id", name="uq_agent_student"),
+        CheckConstraint("student_id IS NOT NULL OR full_name IS NOT NULL", name="ck_agent_students_identity"),
+        CheckConstraint("status IN ('active', 'archived')", name="ck_agent_students_status"),
+        Index("ix_agent_students_agent_status", "agent_id", "status"),
+        Index("ix_agent_students_agent_phone_digits", "agent_id", "phone_digits"),
+        Index("ix_agent_students_assigned_member", "assigned_member_id"),
+    )
 
 
 class AgentCommission(Base, TimestampMixin):
@@ -852,33 +879,36 @@ class AgentCommission(Base, TimestampMixin):
 
 class AgentOrg(Base, TimestampMixin):
     """AGN-001 / DEC-SCOPE-038: an agent company -- a separate tenant. Its `status` is the agent approval gate
-    (`core.rbac.agent_denial_reason`); `master_seq` is the highest Master number ever issued, so codes are never reused."""
+    (`core.rbac.agent_denial_reason`); `master_seq` is the highest Master number ever issued, so codes are never reused.
+    `staff_seq` is the highest staff number ever issued (AGN-002)."""
 
     __tablename__ = "agent_orgs"
     __table_args__ = (
         UniqueConstraint("prefix", name="uq_agent_orgs_prefix"),
         CheckConstraint("status IN ('pending', 'active', 'rejected', 'suspended')", name="ck_agent_orgs_status"),
         CheckConstraint("master_seq >= 0", name="ck_agent_orgs_master_seq"),
+        CheckConstraint("staff_seq >= 0", name="ck_agent_orgs_staff_seq"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(160))
     prefix: Mapped[str] = mapped_column(String(8))
     status: Mapped[str] = mapped_column(String(20), index=True)
     master_seq: Mapped[int] = mapped_column(Integer, default=0)
+    staff_seq: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     status_changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class AgentOrgMember(Base, TimestampMixin):
-    """AGN-001: a user's membership of exactly one agent organisation, for good (`user_id` unique). Only `master`
-    exists today (D13: Staff is not decided)."""
+    """AGN-001: a user's membership of exactly one agent organisation, for good (`user_id` unique). AGN-002 adds `staff`
+    (DEC-SCOPE-040): Masters and staff are numbered separately (M001 and S001 coexist)."""
 
     __tablename__ = "agent_org_members"
     __table_args__ = (
         UniqueConstraint("user_id", name="uq_agent_org_members_user"),
         UniqueConstraint("code", name="uq_agent_org_members_code"),
-        UniqueConstraint("org_id", "seq", name="uq_agent_org_members_org_seq"),
-        CheckConstraint("role = 'master'", name="ck_agent_org_members_role"),
+        UniqueConstraint("org_id", "role", "seq", name="uq_agent_org_members_org_role_seq"),
+        CheckConstraint("role IN ('master', 'staff')", name="ck_agent_org_members_role"),
         CheckConstraint("status IN ('active', 'deactivated')", name="ck_agent_org_members_status"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
