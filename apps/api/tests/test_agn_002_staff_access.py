@@ -79,3 +79,6 @@ async def test_admin_lists_show_masters_only_and_staff_cannot_be_approved_as_age
     assert str(staff["user"].id) not in (await client.get("/api/v1/overseas-admin/agents")).text
     response = await client.post(f"/api/v1/overseas-admin/agents/{staff['user'].id}/approve")
     assert response.status_code == 422 and response.json()["detail"] == "Staff accounts are managed by their agency"
+    # Final review #1: the admin portal's "Agent Masters" page lists Masters only.
+    masters_page = (await client.get("/api/v1/portal/overseas/admin/agents")).json()
+    assert f"{ctx['org'].prefix}-M001" in str(masters_page) and staff["member"].code not in str(masters_page)

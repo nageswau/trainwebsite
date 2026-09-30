@@ -1388,6 +1388,7 @@ async def _operations(db: AsyncSession, user: User, section: str):
                     select(AgentOrgMember, AgentOrg, User)
                     .join(AgentOrg, AgentOrg.id == AgentOrgMember.org_id)
                     .join(User, User.id == AgentOrgMember.user_id)
+                    .where(AgentOrgMember.role == "master")  # AGN-002: staff are managed by their agency, not listed as Masters
                     .order_by(AgentOrg.created_at.desc(), AgentOrgMember.seq)
                 )
             ).all()

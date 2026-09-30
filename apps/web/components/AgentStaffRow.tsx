@@ -27,8 +27,9 @@ function InlineConfirm({ label, name, text, busy, onConfirm, onCancel }: { label
   );
 }
 
-// AGN-002: one staff member with its actions. Confirmations are inline (AgentTeamPanel's pattern): focus goes to Confirm, and
-// Cancel/Escape return it to the button that opened them. Server messages (409/429) show on the row.
+// AGN-002: one staff member with its actions. Confirmations are inline (AgentTeamPanel's pattern): focus goes to Confirm; Cancel
+// (and Escape in Edit) return it to the button that opened them, and a successful action moves it to the row's next logical
+// control (which may only appear once the parent reloads the row). Server messages (409/429) show in the row's status region.
 export default function AgentStaffRow({ member, onChanged }: { member: StaffMember; onChanged: (message: string) => void }) {
   const [mode, setMode] = useState<Mode>("view");
   const [busy, setBusy] = useState(false);
@@ -38,19 +39,23 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
   const id = (action: string) => `staff-${action}-${member.id}`;
   const who = `${member.code} ${member.full_name}`;
 
+  // Re-tried when the row's data changes: after a deactivation the Reactivate button only exists once the parent has reloaded.
   useEffect(() => {
-    if (mode === "view" && returnFocusTo.current) {
-      document.getElementById(returnFocusTo.current)?.focus();
+    if (mode !== "view" || !returnFocusTo.current) return;
+    const target = document.getElementById(returnFocusTo.current);
+    if (target) {
+      target.focus();
       returnFocusTo.current = null;
     }
-  }, [mode]);
+  }, [mode, member.status, member.setup]);
 
   function close(action: string) {
     returnFocusTo.current = id(action);
+    setError(null);
     setMode("view");
   }
 
-  async function run(path: string, method: "POST" | "PATCH", body: unknown, done: (data: Record<string, unknown>) => string) {
+  async function run(path: string, method: "POST" | "PATCH", body: unknown, focusNext: string, done: (data: Record<string, unknown>) => string) {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -62,6 +67,7 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
       setError(outcome.message);
       return;
     }
+    returnFocusTo.current = id(focusNext);
     setMode("view");
     onChanged(done(outcome.data));
   }
@@ -70,7 +76,7 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const phone = String(data.get("phone") ?? "").trim();
-    run("", "PATCH", { full_name: String(data.get("full_name") ?? ""), phone: phone || null }, () => `${member.code} updated.`);
+    run("", "PATCH", { full_name: String(data.get("full_name") ?? ""), phone: phone || null }, "edit", () => `${member.code} updated.`);
   }
 
   const label = badge(member);
@@ -94,7 +100,7 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
         <InlineConfirm
           label="Confirm deactivate" name={member.full_name} busy={busy} onCancel={() => close("deactivate")}
           text={`Deactivate ${member.full_name}? They will be signed out and can no longer sign in.`}
-          onConfirm={() => run("/deactivate", "POST", {}, () => `${who} deactivated. They have been signed out.`)}
+          onConfirm={() => run("/deactivate", "POST", {}, "reactivate", () => `${who} deactivated. They have been signed out.`)}
         />
       )}
       {mode === "confirm-reset" && (
@@ -102,7 +108,7 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
           label="Confirm reset" name={member.full_name} busy={busy} onCancel={() => close("reset")}
           text={`Reset ${member.full_name}'s login? Their password stops working, they are signed out, and a new set-password link is emailed to them.`}
           onConfirm={() =>
-            run("/reset", "POST", {}, (data) =>
+            run("/reset", "POST", {}, "reset", (data) =>
               data.email_status === "sent" ? `A new set-password link was emailed to ${member.full_name}.` : `${member.full_name}'s login was reset, but the email was not delivered. Try Reset again in a minute.`,
             )
           }
@@ -118,15 +124,16 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
             </>
           ) : (
             <button
-              className="btn secondary small" aria-label={`Reactivate ${member.full_name}`} disabled={busy}
-              onClick={() => run("/reactivate", "POST", {}, () => `${who} reactivated.${member.setup ? " They have not set a password yet: use Reset to send a new link." : ""}`)}
+              id={id("reactivate")} className="btn secondary small" aria-label={`Reactivate ${member.full_name}`} disabled={busy}
+              onClick={() => run("/reactivate", "POST", {}, "deactivate", () => `${who} reactivated.${member.setup ? " They have not set a password yet: use Reset to send a new link." : ""}`)}
             >
               {busy ? "Working…" : "Reactivate"}
             </button>
           )}
         </div>
       )}
-      {error && <div className="form-error" role="status" aria-live="polite" style={{ marginTop: 8, fontSize: 13 }}>{error}</div>}
+      {/* Always mounted so screen readers announce an error when it arrives; styled only while it has something to say. */}
+      <div data-testid={`staff-row-status-${member.id}`} className={error ? "form-error" : undefined} role="status" aria-live="polite" style={error ? { marginTop: 8, fontSize: 13 } : undefined}>{error}</div>
     </li>
   );
 }

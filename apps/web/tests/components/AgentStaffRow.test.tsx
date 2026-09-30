@@ -74,6 +74,48 @@ describe("AgentStaffRow (AGN-002)", () => {
     expect(onChanged).not.toHaveBeenCalled();
   });
 
+  // Final review #2: after a successful action focus lands on the row's next logical control, even when that control only
+  // appears once the parent has reloaded the row.
+  it("moves focus to Reactivate after a deactivation once the row reloads", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ member: { ...active, status: "deactivated" } })));
+    const onChanged = vi.fn();
+    const { rerender } = render(<ul><AgentStaffRow member={active} onChanged={onChanged} /></ul>);
+    fireEvent.click(screen.getByRole("button", { name: "Deactivate Rahul Kumar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalled());
+    rerender(<ul><AgentStaffRow member={{ ...active, status: "deactivated" }} onChanged={onChanged} /></ul>);
+    expect(screen.getByRole("button", { name: "Reactivate Rahul Kumar" })).toHaveFocus();
+  });
+
+  it("returns focus to Edit after a save and to Deactivate after a reactivation", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ member: active })));
+    const onChanged = vi.fn();
+    const { rerender } = render(<ul><AgentStaffRow member={active} onChanged={onChanged} /></ul>);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Rahul Kumar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Edit Rahul Kumar" })).toHaveFocus());
+
+    rerender(<ul><AgentStaffRow member={{ ...active, status: "deactivated" }} onChanged={onChanged} /></ul>);
+    fireEvent.click(screen.getByRole("button", { name: "Reactivate Rahul Kumar" }));
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledTimes(2));
+    rerender(<ul><AgentStaffRow member={active} onChanged={onChanged} /></ul>);
+    expect(screen.getByRole("button", { name: "Deactivate Rahul Kumar" })).toHaveFocus();
+  });
+
+  // Final review #3: the error region is always mounted (announced reliably) and a cancelled confirmation clears it.
+  it("keeps an always-mounted status region for errors and clears it on Cancel", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ detail: "Already deactivated" }, 409)));
+    renderRow();
+    const region = screen.getByTestId("staff-row-status-s1");
+    expect(region).toHaveAttribute("role", "status");
+    expect(region).toBeEmptyDOMElement();
+    fireEvent.click(screen.getByRole("button", { name: "Deactivate Rahul Kumar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
+    expect(await screen.findByText("Already deactivated")).toBe(region);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(region).toBeEmptyDOMElement();
+  });
+
   it("offers Reset and Deactivate only while active, Reactivate only while deactivated", () => {
     renderRow({ ...active, status: "deactivated" });
     expect(screen.queryByRole("button", { name: /^Reset / })).toBeNull();
