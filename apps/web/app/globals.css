@@ -108,6 +108,15 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
   .table.psy-records td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
   .table.psy-records td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
 }
+/* AGN-004: the agency Students list uses the same phone card layout (labels from data-label; 44px row actions). */
+@media (max-width: 640px) {
+  .table.stack-cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .table.stack-cards, .table.stack-cards tbody, .table.stack-cards tr, .table.stack-cards td { display: block; width: 100%; min-width: 0; }
+  .table.stack-cards tr { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+  .table.stack-cards td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
+  .table.stack-cards td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
+  .table.stack-cards td .btn { min-height: 44px; }
+}
 
 /* ENH-016 analytics dashboards: KPI tiles 1 -> 2 -> 4 columns; wide tables scroll inside their card, never the page. */
 .kpi-group { margin-top: 16px; }
