@@ -75,3 +75,22 @@ def deliver_notification_task(delivery_id: str):
             await engine.dispose()
 
     return asyncio.run(_run())
+
+
+@celery.task
+def sweep_stale_deliveries_task():
+    """ENH-014 (spec §6.5): every 5 minutes via beat. Same per-run pool disposal as `deliver_notification_task`."""
+
+    async def _run():
+        from app.core.database import engine
+        from app.notifications.delivery import sweep_stale_deliveries
+
+        try:
+            return await sweep_stale_deliveries()
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(_run())
+
+
+celery.conf.beat_schedule = {"enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0}}

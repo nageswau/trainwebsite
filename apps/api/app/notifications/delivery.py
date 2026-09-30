@@ -4,7 +4,7 @@ duplicate task, a redelivered message or a concurrent worker can never send twic
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import update
@@ -110,3 +110,38 @@ async def _send_email(s: _Snapshot, context: dict | None) -> twilio.SendResult:
     else:
         status, error = await send_notification("email", {"to": s.email, "phone": s.phone, "title": s.title, "body": s.body, "action_url": s.action_url})
     return twilio.SendResult(status, error=error, transient=status == "failed")
+
+
+STALE_QUEUED = timedelta(minutes=30)  # longer than the largest retry countdown (25 min)
+STALE_SENDING = timedelta(minutes=15)
+
+
+async def sweep_stale_deliveries(now: datetime | None = None) -> dict[str, int]:
+    """Publish queued/retrying rows nobody picked up (broker outage, lost message) again, touching `updated_at` so the
+    next sweep does not re-publish them at once; a duplicate publish is harmless because the claim lets one through.
+    A row stuck in `sending` has an unknown outcome (the worker died mid-send): it is failed, never resent -- Twilio has
+    no idempotency key, and a duplicate message to a parent is worse than a missed copy (email and in-app remain)."""
+    now = now or datetime.now(UTC)
+    async with SessionLocal() as db:
+        requeue = (
+            await db.scalars(
+                update(NotificationDelivery)
+                .where(NotificationDelivery.status.in_(CLAIMABLE), NotificationDelivery.updated_at < now - STALE_QUEUED)
+                .values(updated_at=now)
+                .returning(NotificationDelivery.id)
+            )
+        ).all()
+        interrupted = (
+            await db.scalars(
+                update(NotificationDelivery)
+                .where(NotificationDelivery.status == "sending", NotificationDelivery.updated_at < now - STALE_SENDING)
+                .values(status="failed", error="worker interrupted")
+                .returning(NotificationDelivery.id)
+            )
+        ).all()
+        await db.commit()
+    for delivery_id in requeue:
+        enqueue(delivery_id)
+    counts = {"requeued": len(requeue), "interrupted": len(interrupted)}
+    logger.info("notification_sweep", extra={"extra_fields": counts})
+    return counts
