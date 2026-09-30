@@ -14,6 +14,14 @@ from tests.agn001_helpers import client_for, login, mk_active_org, mk_user
 from tests.agn004_helpers import RECORDS, mk_record, mk_staff
 
 
+@pytest.fixture(autouse=True)
+def _app_loggers_enabled():
+    # alembic's fileConfig (run by test_agn_004_migration.py and other migration tests) disables loggers that already exist;
+    # re-enable ours so the log assertions do not depend on test order (the test_enh_015_progress_report.py precedent).
+    logging.getLogger("app.agent_students").disabled = False
+    yield
+
+
 def _email(label: str) -> str:
     return f"{label}-{uuid.uuid4().hex[:8]}@example.local"
 
