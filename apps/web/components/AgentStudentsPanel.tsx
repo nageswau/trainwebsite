@@ -225,37 +225,25 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
           )
         ) : (
           <>
-            <table className="table stack-cards">
-              <thead>
-                <tr>
-                  <th scope="col">Student</th>
-                  <th scope="col">Contact</th>
-                  <th scope="col">Preference</th>
-                  <th scope="col">Login</th>
-                  <th scope="col">Assigned to</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">
-                    <span className="visually-hidden">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.map((s) => {
-                  const kind = s.status === "archived" ? "unarchive" : "archive";
-                  const openerId = `agent-student-${kind}-${s.id}`;
-                  return (
-                    <tr key={s.id}>
-                      <td data-label="Student">{s.full_name}</td>
-                      <td data-label="Contact">{[s.email, s.phone].filter(Boolean).join(" · ") || "—"}</td>
-                      <td data-label="Preference">{[s.preferred_country, s.preferred_intake].filter(Boolean).join(", ") || "—"}</td>
-                      <td data-label="Login">
-                        <span className="badge">{s.has_login ? "Has login" : "No login"}</span>
-                      </td>
-                      <td data-label="Assigned to">{assignedText(s.assigned_to)}</td>
-                      <td data-label="Status">
-                        <span className="badge">{s.status === "archived" ? "Archived" : "Active"}</span>
-                      </td>
-                      <td data-label="Actions">
+            {/* Cards (the AgentApprovalPanel layout), not a table: the page's roster table above stays the only table, and the
+                grid already collapses to one column on phones. */}
+            <ul className="grid two" aria-label="Students" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {data.items.map((s) => {
+                const kind = s.status === "archived" ? "unarchive" : "archive";
+                const openerId = `agent-student-${kind}-${s.id}`;
+                return (
+                  <li className="card" key={s.id}>
+                    <span className="badge">{s.status === "archived" ? "Archived" : "Active"}</span> <span className="badge">{s.has_login ? "Has login" : "No login"}</span>
+                    <h4 style={{ marginTop: 10, fontSize: "1rem", overflowWrap: "anywhere" }}>{s.full_name}</h4>
+                    <dl className="record-details" style={{ fontSize: 13 }}>
+                      <dt>Contact</dt>
+                      <dd>{[s.email, s.phone].filter(Boolean).join(" · ") || "—"}</dd>
+                      <dt>Preference</dt>
+                      <dd>{[s.preferred_country, s.preferred_intake].filter(Boolean).join(", ") || "—"}</dd>
+                      <dt>Assigned to</dt>
+                      <dd>{assignedText(s.assigned_to)}</dd>
+                    </dl>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                         <button id={`agent-student-view-${s.id}`} type="button" className="btn secondary small" aria-label={`View ${s.full_name}`} onClick={() => openDetail(s.id)}>
                           View
                         </button>{" "}
@@ -291,17 +279,16 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
                               {kind === "archive" ? "Archive" : "Unarchive"}
                             </button>
                           ))}
-                        {rowError?.id === s.id && (
-                          <p className="form-error" role="status" aria-live="polite" style={{ fontSize: 13 }}>
-                            {rowError.text}
-                          </p>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    </div>
+                    {rowError?.id === s.id && (
+                      <p className="form-error" role="status" aria-live="polite" style={{ fontSize: 13, marginTop: 8 }}>
+                        {rowError.text}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
             <nav aria-label="Student pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
               <span className="muted" style={{ fontSize: 13 }}>
                 Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}

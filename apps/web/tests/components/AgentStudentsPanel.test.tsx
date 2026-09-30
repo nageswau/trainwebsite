@@ -30,6 +30,14 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     expect(screen.getByText("Showing 1–1 of 1")).toBeInTheDocument();
   });
 
+  it("lists students as cards, not a second table (the page's roster table stays the only one)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([item(), item({ id: "s2", full_name: "Ravi Iyer" })])))));
+    const { container } = render(<AgentStudentsPanel memberRole="master" />);
+    const list = await screen.findByRole("list", { name: "Students" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+    expect(container.querySelector("table")).toBeNull();
+  });
+
   it("shows the empty state with an Add student action", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([])))));
     render(<AgentStudentsPanel memberRole="staff" />);
@@ -176,7 +184,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
       vi.fn().mockResolvedValue(res(page([item({ has_login: true, assigned_to: { id: "m", code: "ABC-S001", full_name: "Rahul", status: "deactivated" } })]))),
     );
     render(<AgentStudentsPanel memberRole="master" />);
-    const row = (await screen.findByText("Asha Rao")).closest("tr")!;
+    const row = (await screen.findByText("Asha Rao")).closest("li")!;
     expect(within(row).getByText("Has login")).toBeInTheDocument();
     expect(within(row).getByText("ABC-S001 · Rahul (deactivated)")).toBeInTheDocument();
   });
