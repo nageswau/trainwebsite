@@ -2617,11 +2617,11 @@ correction, not deleted, per this project's traceability convention.
 - **Loading state:** `loading.tsx` skeleton with `aria-busy`; changing the date disables the form and shows "Loading the selected date…"; saving disables the form and shows "Saving…".
 - **Error state:** a refused read (future date 422, wrong role 403, 401) → the shared Access Unavailable card with the server's reason; a refused save (scope 403, tier 403, busy 409, 422, network) → the server's message as an alert under the form, marks kept; saving with nothing chosen → "Choose a status for at least one student." (no request).
 - **Permissions/resource scope:** `school_teacher` only; the roster and every saved id are limited server-side to the teacher's own school and assigned students; tier gate: any valid partnership tier.
-- **Responsive behavior:** One fieldset per student; the four radios wrap under the name on a phone; no horizontal page scroll at 320 px (Playwright). Other widths: browser QA pending.
+- **Responsive behavior:** One fieldset per student; the four radios wrap under the name on a phone; no horizontal page scroll at 1440/768/390/320 px (browser verification 2026-09-30).
 - **Accessibility requirements:** one h1; each student is a `fieldset` named by its `legend`; native radios (Tab between students, arrow keys within one), ≥44 px targets; status always as text; results announced via `FormMessage` (`status`/`alert`); unsaved-changes guard on reload and in-app links.
 - **Desktop/tablet/mobile behavior:** Same single-column form at every width.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
-- **Acceptance evidence needed:** `SchoolDailyAttendance.test.tsx`, `TeacherAttendancePage.test.tsx`, `tests/e2e/enh-030-daily-attendance.spec.ts`, `test_enh_030_mark.py`; browser QA — pending.
+- **Acceptance evidence needed:** `SchoolDailyAttendance.test.tsx`, `TeacherAttendancePage.test.tsx`, `tests/e2e/enh-030-daily-attendance.spec.ts`, `test_enh_030_mark.py`; browser QA passed (2026-09-30) — COMPLETE (verified at `634b5e5`).
 
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  
