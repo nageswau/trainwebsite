@@ -142,3 +142,41 @@ Typecheck and lint clean.
 All QA findings are now resolved, except QA15-07 (Low, a Next.js framework race, documented above). The on-screen
 grade display and the Reports panel's "Students by grade" chart (QA15-09, screen side) belong to SCH-007 and SCH reports,
 not ENH-015.
+
+## Final browser verification (2026-09-30, at `48e9db5`; no source code changed)
+
+**Setup and scope**
+- **Environment:** web and API rebuilt at `48e9db5` (`uharfbuzz` 0.56.2 installed from `requirements.txt`, plus the local
+  `greenlet` addition — RAID `I-42`); same isolated stack and data. Headless Chromium, a fresh context per role.
+- **Checks run:**
+  - A new acceptance-criteria script: 28 browser checks, plus 17 checks on the downloaded PDFs and the API logs.
+  - The full first-pass regression: 101 checks.
+  - The two fix re-tests: 7 and 6 checks. The QA15-10 re-test first failed on a stale script locator (`.report-hint`,
+    replaced by `.field-hint` in `48e9db5`). After the locator was corrected, all 6 checks pass.
+
+| AC | Result | Browser evidence |
+|---|---|---|
+| AC01 | **PASS** | Coordinator: sidebar → Reports → `school-report.pdf`. PDF figures equal the dashboard tiles of the same name (26 / 12 / 8 / 7 / 1). Every grade-table cell equals `GET /school/analytics/grade-performance`. |
+| AC02 | **PASS** | The principal downloads the same figures. Teacher, parent, academic_team, career_counselor, psychometric_team, overseas_admin, super_admin and it_admin all get 403, and no button appears on the Reports URL. A coordinator with no school gets 403 "This account is not linked to a school". Signed out: 401/401. |
+| AC03 | **PASS** | School B's PDF: its own name and 1 student, nothing from School A. Empty school: zeros and "No students on the roster yet." A tampered `school_id` query parameter is ignored. |
+| AC04 | **PASS** | Parent: own child and a linked child at another school → 200. Unlinked sibling → no button, API 403. Coordinator/principal: own-school students → 200; other school 403; unknown 404; malformed 422. Wrong roles get 403 even for `not-a-uuid`. |
+| AC05 | **PASS** | Each PDF holds only that child's data and published Mathematics (92.5 / 100). No `PLANTED` value (draft result, verified result, report URL, application notes) appears anywhere in the PDF bytes. |
+| AC06 | **PASS** — fail-closed clause **NOT TESTABLE** | The audit-row delta equals the real downloads: kid 4, sibling 1, other-school child 1; refusals wrote none. Metadata is `{"role": …}` only. A failed audit write cannot be induced from the browser; the API tests cover it. |
+| AC07 | **PASS** | Both endpoints return `application/pdf`, the fixed attachment filename, `private, no-store`, `nosniff` and `default-src 'none'; sandbox`. |
+| AC08 | **PASS** | `<b>engineering</b>`, `<font color=red>ok</font>`, `Strong <reasoning>` and a lone `<` print literally in the PDF. |
+| AC09 | **NOT TESTABLE** | The query count is not observable from a browser; the API test covers it. Observed: the 1,200-student school's PDF in 169 ms and the 26-student school's in about 150 ms. |
+| AC10 | **PASS** | Busy state ("Preparing PDF…", `aria-disabled`, `aria-busy`). Success message. Error messages for 500, 502, 403, a 200 HTML page, a network drop and a real 401. Retry works. Enter and Space download, and focus stays on the button. Double-click → one request. No overflow at 1440, 1024, 768, 390 and 320. |
+| AC11 | **PASS** | Coordinator, principal and parent sidebars are unchanged. The Reports panel and analytics render. `/school/reports` and `/overview` keep their shapes (no `report_url`). |
+| AC12 | **PASS** | The API container's 13 `school_report_*` log lines hold ids and counts only; no student or school names. |
+
+**Previous defects:** QA15-01, 02, 03, 04, 05, 06, 08, 09 (PDF side) and 10 all **PASS** on re-test. QA15-07 still
+reproduces 5 out of 5 times when Forward follows Back with no pause (known framework race, Low, outside the ACs).
+
+**Console and network:** in normal use, no console errors, no failed requests and no unexpected redirects. Every error
+recorded was either one deliberately injected by the test (6 × 500, 11 × 403, 1 × 502, the network drop) or the real
+session-expiry 401.
+
+**New, Low — QA15-11:** on the coordinator and principal Reports cards (and the student cards), the hint's `max-width:
+42ch` (meant for the parent's button row) wraps it into three short lines, with a break inside "grade-wise". That makes
+the card about 67 px taller (236 px vs 169 px), so the report starts at y ≈ 364. Suggested fix: apply the 42ch cap only
+inside the parent action row. Not changed in this pass.
