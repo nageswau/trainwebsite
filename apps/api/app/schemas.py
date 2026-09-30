@@ -37,6 +37,8 @@ class UserOut(BaseModel):
     student_code: str | None = None
     profile: dict = Field(default_factory=dict)
     role_assignments: list[RoleAssignmentOut] = Field(default_factory=list)
+    # AGN-002: set by GET /auth/me only (login/refresh do not load the membership); "master" | "staff" | None.
+    agent_member_role: str | None = None
     model_config = {"from_attributes": True}
 
 
@@ -417,6 +419,38 @@ class AgentMasterInvite(BaseModel):
             # A plain message, not pydantic's "Value error, ..." prefix (browser QA-06).
             raise PydanticCustomError("blank_full_name", "Full name is required")
         return value
+
+
+class AgentStaffCreate(AgentMasterInvite):
+    """AGN-002 (DEC-SCOPE-040 S4): a Master adding a staff login -- the same fields and rules as a Master invite."""
+
+
+class AgentStaffUpdate(BaseModel):
+    """AGN-002 (DEC-SCOPE-040 S4): name and phone only. Email is fixed after creation, so a Master can never redirect a staff
+    member's set-password link to an address they control. Omitted = unchanged; phone null or "" clears it."""
+
+    model_config = {"extra": "forbid"}
+    full_name: str | None = Field(default=None, max_length=160)
+    phone: str | None = Field(default=None, max_length=40)
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_present(cls, value: str | None) -> str:
+        value = (value or "").strip()
+        if not value:
+            raise PydanticCustomError("blank_full_name", "Full name is required")
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def phone_blank_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
+
+    @model_validator(mode="after")
+    def something_to_update(self):
+        if not self.model_fields_set:
+            raise PydanticCustomError("nothing_to_update", "Nothing to update")
+        return self
 
 
 class CommissionCreate(BaseModel):
