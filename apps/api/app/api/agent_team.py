@@ -55,9 +55,7 @@ async def team(user: User = Depends(get_current_user), db: AsyncSession = Depend
     membership = _require_master(user)
     org = membership.org
     rows = (
-        await db.execute(
-            select(AgentOrgMember, User).join(User, User.id == AgentOrgMember.user_id).where(AgentOrgMember.org_id == org.id, AgentOrgMember.role == MASTER).order_by(AgentOrgMember.seq)
-        )
+        await db.execute(select(AgentOrgMember, User).join(User, User.id == AgentOrgMember.user_id).where(AgentOrgMember.org_id == org.id, AgentOrgMember.role == MASTER).order_by(AgentOrgMember.seq))
     ).all()
     pending = set(await provisioning_statuses(db, [u.id for _, u in rows]))
     return {"org": {"id": org.id, "name": org.name, "prefix": org.prefix, "status": org.status}, "masters": [_member_out(m, u, pending, user) for m, u in rows], "limit": MASTER_LIMIT}

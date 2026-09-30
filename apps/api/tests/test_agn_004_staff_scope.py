@@ -12,10 +12,14 @@ from tests.agn004_helpers import mk_staff
 
 
 async def _university(db) -> University:
-    country = Country(slug=f"a4-c-{uuid.uuid4().hex[:8]}", name="Testland", overview="", tuition="", living_expenses="", visa_process=[], work_opportunities="", post_study_work="", pr_opportunities="", faq=[])
+    country = Country(
+        slug=f"a4-c-{uuid.uuid4().hex[:8]}", name="Testland", overview="", tuition="", living_expenses="", visa_process=[], work_opportunities="", post_study_work="", pr_opportunities="", faq=[]
+    )
     db.add(country)
     await db.flush()
-    uni = University(country_id=country.id, slug=f"a4-u-{uuid.uuid4().hex[:8]}", name=f"A4 Uni {uuid.uuid4().hex[:6]}", city="", overview="", eligibility="", requirements=[], deadlines=[], scholarships=[])
+    uni = University(
+        country_id=country.id, slug=f"a4-u-{uuid.uuid4().hex[:8]}", name=f"A4 Uni {uuid.uuid4().hex[:6]}", city="", overview="", eligibility="", requirements=[], deadlines=[], scholarships=[]
+    )
     db.add(uni)
     await db.commit()
     return uni

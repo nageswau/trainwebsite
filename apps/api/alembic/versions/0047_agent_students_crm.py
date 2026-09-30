@@ -117,7 +117,9 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
     _refuse_if(bind, "SELECT 1 FROM agent_students WHERE student_id IS NULL LIMIT 1", "Cannot downgrade 0047_agent_students_crm: students with no login exist. Remove them deliberately first.")
-    _refuse_if(bind, "SELECT 1 FROM agent_students WHERE assigned_member_id IS NOT NULL LIMIT 1", "Cannot downgrade 0047_agent_students_crm: assigned students exist. Unassign them deliberately first.")
+    _refuse_if(
+        bind, "SELECT 1 FROM agent_students WHERE assigned_member_id IS NOT NULL LIMIT 1", "Cannot downgrade 0047_agent_students_crm: assigned students exist. Unassign them deliberately first."
+    )
     # AGN-002's rule, checked before anything is dropped: never turn staff into Masters by a rollback.
     _refuse_if(bind, "SELECT 1 FROM agent_org_members WHERE role = 'staff' LIMIT 1", "Cannot downgrade 0047_agent_students_crm: staff members exist. Remove them deliberately first.")
     op.drop_index("ix_agent_students_agent_email_lower", table_name="agent_students")

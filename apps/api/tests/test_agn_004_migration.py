@@ -12,12 +12,12 @@ from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
-from alembic import command
 from alembic.config import Config
 from sqlalchemy import inspect
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from alembic import command
 from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
@@ -89,7 +89,11 @@ def isolated_db():
                 {"id": ids[key], "email": f"{key}-{name}@example.local", "name": f"{key} user", "role": role},
             )
         _sql(url, "INSERT INTO agent_orgs (id, name, prefix, status, master_seq) VALUES (:id, 'Mig Agency', :prefix, 'active', 1)", {"id": ids["org"], "prefix": f"M{uuid.uuid4().hex[:5].upper()}"})
-        _sql(url, "INSERT INTO agent_org_members (id, org_id, user_id, role, seq, code, status) VALUES (:id, :org, :user, 'master', 1, :code, 'active')", {"id": ids["member"], "org": ids["org"], "user": ids["master"], "code": f"MIG-{uuid.uuid4().hex[:6]}"})
+        _sql(
+            url,
+            "INSERT INTO agent_org_members (id, org_id, user_id, role, seq, code, status) VALUES (:id, :org, :user, 'master', 1, :code, 'active')",
+            {"id": ids["member"], "org": ids["org"], "user": ids["master"], "code": f"MIG-{uuid.uuid4().hex[:6]}"},
+        )
         _sql(url, "INSERT INTO agent_students (id, agent_id, student_id, status) VALUES (:id, :agent, :student, 'active')", {"id": ids["link"], "agent": ids["master"], "student": ids["student"]})
         yield {"cfg": cfg, "url": url, "ids": ids}
     finally:
