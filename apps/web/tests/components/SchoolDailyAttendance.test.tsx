@@ -38,11 +38,31 @@ describe("SchoolDailyAttendance", () => {
     expect(screen.queryByText("Unsaved changes")).toBeNull();
   });
 
-  it("caps the date at the server's today and navigates on change", () => {
+  it("caps the date at the server's today", () => {
+    render(<SchoolDailyAttendance roster={ROSTER} />);
+    expect(screen.getByLabelText("Date").getAttribute("max")).toBe("2026-09-30");
+  });
+
+  it("lets a date be typed without navigating, then shows it on request (final review I2: keyboard entry)", () => {
+    render(<SchoolDailyAttendance roster={ROSTER} />);
+    const date = screen.getByLabelText("Date") as HTMLInputElement;
+    // Keyboard entry fires change per segment ("1", then "15"); none of these may navigate or disable the field.
+    fireEvent.change(date, { target: { value: "2026-09-01" } });
+    fireEvent.change(date, { target: { value: "2026-09-15" } });
+    expect(push).not.toHaveBeenCalled();
+    expect(date.value).toBe("2026-09-15");
+    expect(date.disabled).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    expect(push).toHaveBeenCalledWith("/school/teacher/attendance?date=2026-09-15");
+  });
+
+  it("shows the chosen date on Enter (form submit) and ignores the current date", () => {
     render(<SchoolDailyAttendance roster={ROSTER} />);
     const date = screen.getByLabelText("Date");
-    expect(date.getAttribute("max")).toBe("2026-09-30");
+    fireEvent.submit(date.closest("form")!);
+    expect(push).not.toHaveBeenCalled();
     fireEvent.change(date, { target: { value: "2026-09-28" } });
+    fireEvent.submit(date.closest("form")!);
     expect(push).toHaveBeenCalledWith("/school/teacher/attendance?date=2026-09-28");
   });
 
@@ -53,6 +73,7 @@ describe("SchoolDailyAttendance", () => {
     fireEvent.click(within(group("Ben Das")).getByLabelText("Late"));
     expect(screen.getByText("Unsaved changes")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-09-28" } });
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
     expect(confirm).toHaveBeenCalled();
     expect(push).not.toHaveBeenCalled();
   });
