@@ -45,7 +45,7 @@ export default async function SchoolCoordinatorStudentDetailPage({ params }: { p
     <PortalShell nav={SCHOOL_NAV.coordinator} roleLabel="School Coordinator" userName={user.full_name}>
       <SchoolStudentDetailPanel student={student} role="school_coordinator" backHref="/school/coordinator/students" backLabel="Back to students" showGradeHistory showTransfer canEditPhoto />
       {/* ENH-015: this student's overview as a PDF (same scope as the overview). */}
-      <div className="portal-content">
+      <div className="portal-content report-downloads">
         <div className="card">
           <h2>Progress report</h2>
           <p className="muted">A PDF of this student&apos;s profile and progress to date.</p>

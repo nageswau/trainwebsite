@@ -40,7 +40,8 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
   return (
     <PortalShell nav={SCHOOL_NAV.parent} roleLabel="Parent" userName={user.full_name}>
       <div className="portal-content">
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {/* QA15-03: flex-start, so a download message under its button does not stretch the other buttons in the row. */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
           <a className="btn" href={`/school/parent/children/${id}/360`}>Open 360° view</a>
           {/* ENH-015: the same overview as a PDF -- own linked child only, checked by the server. */}
           <ReportDownloadButton url={`/api/v1/school/students/${id}/progress-report`} label="Download progress report (PDF)" filename="progress-report.pdf" />

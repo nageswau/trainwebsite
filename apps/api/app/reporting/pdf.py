@@ -17,7 +17,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Flowable, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from app.schemas import CAREER_LIST_KEYS, PSYCHOMETRIC_RESULT_KEYS
 
@@ -28,6 +28,7 @@ HEADING = _STYLES["Heading2"]
 BODY = _STYLES["BodyText"]
 SMALL = ParagraphStyle("Small", parent=BODY, fontSize=8, leading=10, textColor=colors.HexColor("#4B5563"))
 CELL = ParagraphStyle("Cell", parent=BODY, fontSize=8.5, leading=10.5)
+STATUS = ParagraphStyle("Status", parent=BODY, spaceAfter=4)  # QA15-06: a gap between the status line and the table
 GRID = TableStyle(
     [
         ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
@@ -99,22 +100,31 @@ def _empty(value) -> bool:
     return value is None or value == "" or value == [] or value == {}
 
 
+def _value(key: str, value):
+    """A stored value as the screens show it (QA15-06): statuses in words, test types in capitals (Student360Panels)."""
+    if key.endswith("status"):
+        return _status(value)
+    return str(value).upper() if key == "test_type" else value
+
+
 def _record_table(record: dict, keys: Iterable[str]) -> Table:
-    rows = [[_p(_humanize(key), CELL), _p(_status(record[key]) if key.endswith("status") else record[key], CELL)] for key in keys if not _empty(record.get(key))]
+    rows = [[_p(_humanize(key), CELL), _p(_value(key, record[key]), CELL)] for key in keys if not _empty(record.get(key))]
     table = Table(rows or [[_p("Details", CELL), _p(NONE, CELL)]], colWidths=[45 * mm, 125 * mm])
     table.setStyle(FIELDS)
     return table
 
 
 def _section(title: str, status: str | None, records: Sequence[dict], keys: Sequence[str]) -> list[Flowable]:
-    story: list[Flowable] = [_p(title, HEADING)]
+    """QA15-05: each record is kept on one page, and the heading (with its overall status) stays with what follows it.
+    QA15-06: "Overall status", so it is not read as the Status row of the record printed right under it."""
+    head: list[Flowable] = [_p(title, HEADING)]
     if status is not None:
-        story.append(_p(f"Status: {_status(status)}"))
+        head.append(_p(f"Overall status: {_status(status)}", STATUS))
     if not records:
-        story.append(_p("No records yet."))
-    for record in records:
-        story += [_record_table(record, keys), Spacer(1, 3 * mm)]
-    return story
+        return [KeepTogether([*head, _p("No records yet.")])]
+    blocks: list[list[Flowable]] = [[_record_table(record, keys), Spacer(1, 3 * mm)] for record in records]
+    blocks[0] = head + blocks[0]
+    return [KeepTogether(block) for block in blocks]
 
 
 def _build(story: list[Flowable], title: str, footer: str) -> bytes:

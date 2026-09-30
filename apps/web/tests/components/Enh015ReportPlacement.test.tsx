@@ -71,6 +71,38 @@ describe("ENH-015 report download placement", () => {
     expect(screen.getByRole("link", { name: "Open 360° view" }).parentElement).toContainElement(studentButton());
   });
 
+  // QA15-04: a compact card (smaller heading, no second page padding below it) so the report stays the page's focus.
+  it.each([
+    ["coordinator Reports", "school_coordinator", () => CoordinatorReportsPage({ searchParams: Promise.resolve({}) }), "Download reports"],
+    ["principal Reports", "school_principal", () => PrincipalReportsPage({ searchParams: Promise.resolve({}) }), "Download reports"],
+    ["coordinator student", "school_coordinator", () => CoordinatorStudentPage({ params: Promise.resolve({ id: "stu-1" }) }), "Progress report"],
+    ["principal student", "school_principal", () => PrincipalStudentPage({ params: Promise.resolve({ id: "stu-1" }) }), "Progress report"],
+  ])("uses the compact download card on the %s page", async (_label, role, page, heading) => {
+    serve(role);
+    render(await page());
+    expect(screen.getByRole("heading", { level: 2, name: heading }).closest(".report-downloads")).not.toBeNull();
+  });
+
+  // QA15-03: a message under the button must not stretch the other buttons in the row.
+  it("keeps the parent's action row from stretching its buttons", async () => {
+    serve("school_parent");
+    render(await ParentChildPage({ params: Promise.resolve({ id: "stu-1" }) }));
+    expect(screen.getByRole("link", { name: "Open 360° view" }).parentElement).toHaveStyle({ alignItems: "flex-start" });
+  });
+
+  // QA15-08: each Reports page belongs to its own role; the other role gets the access card, not a borrowed shell.
+  it.each([
+    ["coordinator page, principal user", CoordinatorReportsPage, "school_principal", "School Coordinator role required"],
+    ["principal page, coordinator user", PrincipalReportsPage, "school_coordinator", "Principal role required"],
+  ])("refuses the %s", async (_label, Page, role, message) => {
+    serve(role);
+    render(await Page({ searchParams: Promise.resolve({}) }));
+    expect(screen.getByRole("heading", { level: 1, name: "Access unavailable" })).toBeInTheDocument();
+    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Download school report (PDF)" })).toBeNull();
+    expect(vi.mocked(serverApi).mock.calls.map(([path]) => path)).toEqual(["/api/v1/auth/me"]);
+  });
+
   it("adds no navigation items (spec §2 non-goal)", () => {
     expect(SCHOOL_NAV.parent.map((item) => item.label)).toEqual(["Dashboard", "Notifications"]);
     expect(SCHOOL_NAV.principal.map((item) => item.label)).toEqual(["Dashboard", "Reports", "Global Education", "Feedback", "Entitlements", "Notifications"]);

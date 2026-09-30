@@ -6,7 +6,7 @@ import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import { loadSchoolAnalytics } from "@/lib/schoolAnalytics";
 import type { User } from "@/lib/types";
-import { accessUnavailable } from "@/components/AccessUnavailable";
+import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 
 type ReportData = {
   student_count: number;
@@ -31,7 +31,10 @@ export default async function SchoolCoordinatorReportsPage({ searchParams }: { s
   let user: User;
   let report: ReportData;
   try {
-    [user, report] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<ReportData>("/api/v1/school/reports")]);
+    user = await serverApi<User>("/api/v1/auth/me");
+    // QA15-08: the coordinator's page only -- a principal has their own Reports page and must not get this shell and nav.
+    if (user.role !== "school_coordinator") return accessDenied(user, "School Coordinator role required");
+    report = await serverApi<ReportData>("/api/v1/school/reports");
   } catch (e) {
     return accessUnavailable(e);
   }
@@ -39,7 +42,7 @@ export default async function SchoolCoordinatorReportsPage({ searchParams }: { s
   return (
     <PortalShell nav={SCHOOL_NAV.coordinator} roleLabel="School Coordinator" userName={user.full_name}>
       {/* ENH-015: the downloadable School Summary PDF (own school), above the on-screen report it summarises. */}
-      <div className="portal-content">
+      <div className="portal-content report-downloads">
         <div className="card">
           <h2>Download reports</h2>
           <p className="muted">A PDF of your school&apos;s summary figures and grade-by-grade table, as of today.</p>

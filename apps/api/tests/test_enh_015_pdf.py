@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 
-from pdf_text import pdf_text
+from pdf_text import pdf_pages, pdf_text
 
 from app.reporting.pdf import render_progress_report, render_school_summary
 
@@ -122,3 +122,53 @@ def test_non_latin_text_does_not_break_generation():  # known limitation: glyphs
 def test_control_characters_do_not_break_generation():
     overview = _overview(career_guidance={"status": "completed", "sessions": [{"status": "completed", "notes": "a\x00b\x07c\nline two"}]})
     assert "line two" in pdf_text(render_progress_report(overview, AS_OF))
+
+
+SECTION_HEADINGS = {
+    "Career guidance",
+    "Counselling",
+    "Career recommendations",
+    "Psychometric assessment",
+    "Academic results (published)",
+    "Activities attended",
+    "Test preparation (IELTS/SAT)",
+    "Foreign language",
+    "Global education",
+    "Soft skills",
+    "Digital skills",
+}
+RESULT = {"subject": "Physics", "term": "Term 1", "academic_year": "2026-27", "marks_obtained": 40.0, "max_marks": 50.0, "percentage": 80.0, "grade": "A2", "teacher_remarks": "Steady"}
+
+
+def test_a_record_is_never_split_across_pages():  # QA15-05
+    pages = pdf_pages(render_progress_report(_overview(results=[RESULT] * 30), AS_OF))
+    assert len(pages) > 2
+    for number, lines in enumerate(pages, 1):
+        assert lines.count("Subject") == lines.count("Teacher remarks"), f"a results record is split on page {number}"
+
+
+def test_a_section_heading_is_never_the_last_line_of_a_page():  # QA15-05
+    # The QA case: a student with no records (every section "No records yet."); then 0-20 results slide every heading past
+    # the page foot in turn.
+    bare = _overview(
+        student={"full_name": "Asha Rao", "student_code": "STU-0001", "school_name": "Greenfield High"},
+        career_guidance={"status": "not_started", "sessions": []},
+        psychometric={"status": "not_started", "assessments": []},
+        results=[],
+        activities={"attended": [], "upcoming": []},
+    )
+    for count in range(21):
+        for number, lines in enumerate(pdf_pages(render_progress_report({**bare, "results": [RESULT] * count}, AS_OF)), 1):
+            assert lines[-1] not in SECTION_HEADINGS, f"heading {lines[-1]!r} stranded at the foot of page {number} ({count} results)"
+
+
+def test_the_section_status_reads_as_an_overall_status():  # QA15-06: not mistaken for the record's own Status row
+    lines = pdf_text(render_progress_report(_overview(), AS_OF)).split("\n")
+    assert "Overall status: Completed" in lines
+    assert not any(line.startswith("Status: ") for line in lines)
+
+
+def test_test_types_read_as_on_screen():  # QA15-06: "IELTS", as Student360Panels shows it, not the stored "ielts"
+    overview = _overview(test_prep={"status": "in_progress", "records": [{"test_type": "ielts", "status": "in_progress"}]})
+    lines = pdf_text(render_progress_report(overview, AS_OF)).split("\n")
+    assert "IELTS" in lines and "ielts" not in lines
