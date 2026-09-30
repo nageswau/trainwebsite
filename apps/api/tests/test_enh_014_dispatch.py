@@ -1,5 +1,7 @@
 """ENH-014 Task 4 -- queue_deliveries and the after-commit publish (spec §6.1; AC04, AC05)."""
 
+import time
+
 import pytest
 from sqlalchemy import select
 
@@ -128,8 +130,51 @@ async def test_root_rollback_with_open_savepoint_discards_everything(db_session,
 async def test_publish_calls_celery_with_fail_fast_options(db_session, monkeypatch):
     from app import worker
 
-    real_publish = _REAL_PUBLISH
     calls = []
     monkeypatch.setattr(worker.deliver_notification_task, "apply_async", lambda *a, **kw: calls.append((a, kw)))
-    real_publish("abc", 60)
-    assert calls == [((("abc",),), {"countdown": 60, "retry": False})]
+    _REAL_PUBLISH("abc", 60)
+    [(args, kwargs)] = calls
+    connection = kwargs.pop("connection")
+    assert (args, kwargs) == ((("abc",),), {"countdown": 60, "retry": False, "ignore_result": True})
+    assert {k: connection.transport_options.get(k) for k in ("socket_connect_timeout", "max_retries")} == {"socket_connect_timeout": 1, "max_retries": 0}
+    assert worker.celery.conf.broker_transport_options.get("socket_connect_timeout") is None  # the worker's own settings are untouched
+
+
+@pytest.mark.parametrize("broker_url", ["redis://10.255.255.1:6379/0", "redis://127.0.0.1:6390/0"], ids=["unreachable", "refused"])
+def test_a_dead_broker_fails_the_real_publish_within_a_bounded_time(monkeypatch, broker_url):
+    """The real `_publish` against a dead broker AND a dead result backend (both are Redis in production)."""
+    from celery.backends.redis import RedisBackend
+
+    from app import worker
+
+    real_connection_for_write = worker.celery.connection_for_write
+    monkeypatch.setattr(worker.celery, "connection_for_write", lambda **kw: real_connection_for_write(broker_url, **kw))
+    monkeypatch.setattr(worker.celery._local, "backend", RedisBackend(app=worker.celery, url=broker_url), raising=False)
+    monkeypatch.setattr(dispatch, "_publish", _REAL_PUBLISH)
+    started = time.monotonic()
+    assert dispatch.enqueue("abc") is False
+    assert time.monotonic() - started < 3
+
+
+@pytest.mark.asyncio
+async def test_after_commit_stops_publishing_at_the_first_broker_failure(db_session, monkeypatch):
+    calls = []
+
+    def broken(delivery_id, countdown):
+        calls.append(delivery_id)
+        raise ConnectionError("redis down")
+
+    monkeypatch.setattr(dispatch, "_publish", broken)
+    user = await make_user(db_session, phone="9876543210")
+    await set_prefs(db_session, user, whatsapp=True, sms=True)
+    note = await _notice(db_session, user)
+    await queue_deliveries(db_session, note, user)
+    await db_session.commit()  # must not raise
+    rows = await _rows(db_session, note)
+    assert len(calls) == 1
+    assert [r.status for r in rows] == ["queued", "queued", "queued"]  # left for the sweeper
+
+
+@pytest.mark.asyncio
+async def test_enqueue_reports_success(db_session, enqueued):
+    assert dispatch.enqueue("abc", countdown=5) is True and enqueued == [("abc", 5)]

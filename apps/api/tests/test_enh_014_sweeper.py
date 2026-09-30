@@ -46,3 +46,22 @@ async def test_a_stuck_sending_row_is_failed_never_resent(db_session, enqueued):
     assert (await db_session.get(NotificationDelivery, stuck.id)).error == "worker interrupted"
     assert (await db_session.get(NotificationDelivery, recent.id, populate_existing=True)).status == "sending"
     assert str(stuck.id) not in {d for d, _ in enqueued}
+
+
+@pytest.mark.asyncio
+async def test_the_sweeper_stops_publishing_at_the_first_broker_failure(db_session, monkeypatch):
+    from app.notifications import dispatch
+
+    first = await _row(db_session, status="queued", age=timedelta(minutes=31))
+    second = await _row(db_session, status="queued", age=timedelta(minutes=31))
+    calls = []
+
+    def broken(delivery_id, countdown):
+        calls.append(delivery_id)
+        raise ConnectionError("redis down")
+
+    monkeypatch.setattr(dispatch, "_publish", broken)
+    counts = await sweep_stale_deliveries()
+    assert counts["requeued"] >= 2 and len(calls) == 1
+    for row in (first, second):
+        assert (await db_session.get(NotificationDelivery, row.id, populate_existing=True)).status == "queued"  # the next sweep retries

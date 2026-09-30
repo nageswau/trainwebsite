@@ -38,8 +38,20 @@ async def queue_deliveries(db: AsyncSession, notification: Notification, recipie
 def _publish_when_root_commits(session: Session) -> None:
     """SQLAlchemy also dispatches this for a SAVEPOINT release, when the session is still inside the savepoint."""
     if not session.in_nested_transaction():
-        for delivery_id in session.info.pop(PENDING_KEY, []):
-            enqueue(delivery_id)
+        publish_all(session.info.pop(PENDING_KEY, []), "after_commit")
+
+
+def publish_all(delivery_ids: list, source: str) -> int:
+    """Publish in order and stop at the first broker failure: this runs synchronously (for the after-commit path, inside
+    `await db.commit()` on the event loop), so trying every id against a dead broker would stall the process once per
+    delivery. The unpublished rows stay queued/retrying for the stale sweeper. Returns how many were published."""
+    for index, delivery_id in enumerate(delivery_ids):
+        if not enqueue(delivery_id):
+            skipped = len(delivery_ids) - index - 1
+            if skipped:
+                logger.warning("notification_enqueue_skipped", extra={"extra_fields": {"source": source, "skipped": skipped}})
+            return index
+    return len(delivery_ids)
 
 
 @event.listens_for(Session, "after_rollback")
@@ -50,17 +62,26 @@ def _discard_when_root_rolls_back(session: Session) -> None:
         session.info.pop(PENDING_KEY, None)
 
 
-def enqueue(delivery_id: UUID | str, countdown: int = 0) -> None:
+def enqueue(delivery_id: UUID | str, countdown: int = 0) -> bool:
     """Never raises: a broker outage must not fail the request that already committed. The row stays queued/retrying and
-    the stale sweeper (delivery.sweep_stale_deliveries) publishes it again."""
+    the stale sweeper (delivery.sweep_stale_deliveries) publishes it again. Returns False when the publish failed."""
     try:
         _publish(str(delivery_id), countdown)
     except Exception as exc:  # noqa: BLE001 -- see docstring
         logger.warning("notification_enqueue_failed", extra={"extra_fields": {"delivery_id": str(delivery_id), "error_type": type(exc).__name__}})
+        return False
+    return True
+
+
+# Applied only to the publish connection, so the worker's consumer connection keeps the global broker settings. Without
+# socket_connect_timeout a dead Redis blocks each publish for ~6 s (refused) to ~21 s (unreachable host).
+PUBLISH_TRANSPORT_OPTIONS = {"socket_connect_timeout": 1, "socket_timeout": 1, "max_retries": 0}
 
 
 def _publish(delivery_id: str, countdown: int) -> None:
-    from app.worker import deliver_notification_task  # noqa: PLC0415 -- the worker module imports this package
+    from app.worker import celery, deliver_notification_task  # noqa: PLC0415 -- the worker module imports this package
 
-    # retry=False: fail fast instead of blocking the request in Celery's publish-retry loop when Redis is down.
-    deliver_notification_task.apply_async((delivery_id,), countdown=countdown, retry=False)
+    # retry=False: no publish-retry loop. ignore_result=True: nothing reads this task's result, and registering interest in
+    # it first makes the Redis result backend reconnect (~19 s when refused, unbounded when the host is unreachable).
+    with celery.connection_for_write(transport_options=PUBLISH_TRANSPORT_OPTIONS) as conn:
+        deliver_notification_task.apply_async((delivery_id,), countdown=countdown, retry=False, ignore_result=True, connection=conn)

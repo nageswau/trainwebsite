@@ -12,7 +12,7 @@ from sqlalchemy import update
 from app.core.database import SessionLocal
 from app.models import Notification, NotificationDelivery, NotificationPreference, User
 from app.notifications import twilio
-from app.notifications.dispatch import enqueue
+from app.notifications.dispatch import enqueue, publish_all
 from app.notifications.phone import normalise_phone
 from app.services.integrations import send_notification
 from app.services.mailer import send_parent_notification_email
@@ -140,8 +140,7 @@ async def sweep_stale_deliveries(now: datetime | None = None) -> dict[str, int]:
             )
         ).all()
         await db.commit()
-    for delivery_id in requeue:
-        enqueue(delivery_id)
+    publish_all(list(requeue), "sweeper")  # stops at the first broker failure; the next sweep retries the rest
     counts = {"requeued": len(requeue), "interrupted": len(interrupted)}
     logger.info("notification_sweep", extra={"extra_fields": counts})
     return counts
