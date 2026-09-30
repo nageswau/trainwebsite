@@ -7,9 +7,10 @@ from datetime import date, timedelta
 import pytest
 from enh005_helpers import login, mk_school, move_student_directly
 from sqlalchemy import func, select
+from sqlalchemy.exc import DBAPIError
 
 from app.api.schools import TIER_DENIED, _today_ist
-from app.models import AuditLog, SchoolAttendanceRecord
+from app.models import AuditLog, SchoolAttendanceRecord, SchoolStudent
 
 URL = "/api/v1/school/attendance"
 DAY = "2026-09-01"
@@ -198,3 +199,62 @@ async def test_mark_after_transfer_restamps_school(client, db_session):  # Revie
     assert (await client.put(URL, json={"session_date": DAY, "records": _marks([student])})).status_code == 200
     rows = await _rows(db_session, school_student_id=student.id)
     assert [(r.school_id, r.status) for r in rows] == [(w["school"].id, "present")]
+
+
+# --- Hardening (the ENH-004 promotion precedent, schools.py:1680-1705): scope inside the locking query, a bounded lock wait, and an
+# audit row for a refused save. -----------------------------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_refused_save_is_audited_with_counts_only(client, db_session):
+    w = await _world(db_session)
+    await login(client, w["teacher"].email)
+    response = await client.put(URL, json={"session_date": DAY, "records": _marks([w["mine"][0], w["unassigned"]])})
+    assert response.status_code == 403
+    denied = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.daily_attendance_denied", AuditLog.entity_id == str(w["school"].id)))).one()
+    assert denied.outcome == "denied" and denied.user_id == w["teacher"].id
+    assert denied.metadata_json == {"session_date": DAY, "requested": 2, "outside": 1}  # counts only: no student ids or names
+
+
+@pytest.mark.asyncio
+async def test_a_class_row_locked_elsewhere_is_a_409_and_writes_nothing(client, db_session, monkeypatch):
+    w = await _world(db_session)
+    school_id = w["school"].id  # read before the rollback below expires the loaded objects
+    await login(client, w["teacher"].email)
+    monkeypatch.setattr("app.api.school_attendance.ATTENDANCE_LOCK_TIMEOUT", "200ms")
+    await db_session.execute(select(SchoolStudent).where(SchoolStudent.id == w["mine"][0].id).with_for_update())  # e.g. a transfer approval
+    try:
+        response = await client.put(URL, json={"session_date": DAY, "records": _marks(w["mine"])})
+    finally:
+        await db_session.rollback()
+    assert response.status_code == 409
+    assert response.json()["detail"] == "This class's attendance is being changed elsewhere. Try again."
+    assert await _rows(db_session, school_id=school_id) == []
+
+
+@pytest.mark.asyncio
+async def test_a_failed_commit_writes_nothing_and_is_logged(client, db_session, monkeypatch, caplog):
+    """The marks and their audit row are one transaction: if the audit row cannot be written, no mark is kept either."""
+    w = await _world(db_session)
+    await login(client, w["teacher"].email)
+    monkeypatch.setattr("app.api.school_attendance.MARK_ACTION", "x" * 121)  # AuditLog.action is String(120): the commit fails
+    with pytest.raises(DBAPIError):
+        await client.put(URL, json={"session_date": DAY, "records": _marks(w["mine"])})
+    assert await _rows(db_session, school_id=w["school"].id) == []
+    failed = [r for r in caplog.records if r.getMessage() == "school_attendance_mark_failed"]
+    assert len(failed) == 1 and failed[0].levelname == "ERROR"
+
+
+@pytest.mark.asyncio
+async def test_another_schools_locked_student_is_refused_at_once(client, db_session, monkeypatch):
+    """Lock griefing: naming a student the teacher does not teach must never make the save wait on (or lock) that student's row."""
+    w = await _world(db_session)
+    other = await mk_school(db_session, admin=w["admin"], label="AttLocked")
+    await login(client, w["teacher"].email)
+    monkeypatch.setattr("app.api.school_attendance.ATTENDANCE_LOCK_TIMEOUT", "200ms")
+    await db_session.execute(select(SchoolStudent).where(SchoolStudent.id == other["students"][0].id).with_for_update())
+    try:
+        response = await client.put(URL, json={"session_date": DAY, "records": _marks([w["mine"][0], other["students"][0]])})
+    finally:
+        await db_session.rollback()
+    assert response.status_code == 403 and response.json()["detail"] == "One or more students are not assigned to you"

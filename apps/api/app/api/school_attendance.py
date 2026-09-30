@@ -9,8 +9,9 @@ from datetime import date
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -26,7 +27,10 @@ logger = get_logger("app.school.attendance")
 TEACHER_REQUIRED = "Teacher role required"
 FUTURE_DATE = "Attendance cannot be marked for a future date"
 NOT_ASSIGNED = "One or more students are not assigned to you"
+BUSY = "This class's attendance is being changed elsewhere. Try again."
 MARK_ACTION = "school.daily_attendance_mark"
+DENIED_ACTION = "school.daily_attendance_denied"
+ATTENDANCE_LOCK_TIMEOUT = "5s"  # bounded wait for the student row locks (ENH-004/005 value); a bound parameter, never request input
 RECENT_LIMIT = 30  # C3: the read summary covers the 30 most recent marked days
 
 
@@ -75,21 +79,42 @@ async def attendance_roster(day: date | None = Query(None, alias="date"), user: 
 
 @router.put("/attendance", response_model=SchoolAttendanceRosterOut)
 async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depends(_require_teacher), db: AsyncSession = Depends(get_db)):
-    """Spec §5.2. One transaction: lock the listed students FOR SHARE (a transfer approval or reassignment takes them FOR UPDATE, so
-    it waits for this write, or this waits for it and sees the result), re-check scope under the lock, tier gate, upsert, audit,
-    commit. Any failure before the commit leaves nothing written. Records are sorted by student id, so every save locks and
-    inserts in one order and two overlapping saves cannot deadlock (spec §11 A3). Unlisted students are untouched; a retry of the
-    same body is harmless."""
+    """Spec §5.2. One transaction: lock the listed students FOR SHARE with the teacher's scope inside the locking query (a transfer
+    approval or reassignment takes the row FOR UPDATE, so one waits for the other and this one then sees the result; a wait past
+    ATTENDANCE_LOCK_TIMEOUT is a 409), refuse and audit if any listed student is outside the scope, tier gate, upsert, audit, commit.
+    Any failure before the commit leaves no mark written. Records are sorted by student id, so every save locks and inserts in one
+    order and two overlapping saves cannot deadlock (spec §11 A3). Unlisted students are untouched; a retry of the same body is
+    harmless."""
     school_id = _own_school_id(user)
     _check_date(payload.session_date)
     records = sorted(payload.records, key=lambda r: r.student_id)
     ids = [r.student_id for r in records]
-    locked = (
-        await db.scalars(
-            select(SchoolStudent).where(SchoolStudent.id.in_(ids)).order_by(SchoolStudent.id).with_for_update(read=True).execution_options(populate_existing=True)
-        )
-    ).all()
-    if len(locked) != len(ids) or any(s.school_id != school_id or s.assigned_teacher_user_id != user.id for s in locked):
+    actor = {"actor_id": str(user.id), "school_id": str(school_id), "session_date": payload.session_date.isoformat()}
+    # `set_config(..., true)` is SET LOCAL with a bound parameter, so no SQL is built from a string (the ENH-004/005 pattern).
+    await db.execute(text("SELECT set_config('lock_timeout', :timeout, true)"), {"timeout": ATTENDANCE_LOCK_TIMEOUT})
+    # The scope filter is part of the locking query, so a student this teacher does not teach is never locked or waited on (no lock
+    # griefing); unknown, unassigned and other-school ids are the same absence, so the 403 cannot be used to probe ids.
+    try:
+        locked = (
+            await db.scalars(
+                select(SchoolStudent.id)
+                .where(SchoolStudent.id.in_(ids), SchoolStudent.school_id == school_id, SchoolStudent.assigned_teacher_user_id == user.id)
+                .order_by(SchoolStudent.id)
+                .with_for_update(read=True)
+            )
+        ).all()
+    except DBAPIError as exc:
+        await db.rollback()
+        if getattr(exc.orig, "sqlstate", None) == "55P03":  # lock_not_available: a transfer/reassignment held a row past the bound
+            logger.warning("school_attendance_lock_timeout", extra={"extra_fields": {**actor, "requested": len(ids), "lock_timeout": ATTENDANCE_LOCK_TIMEOUT}})
+            raise HTTPException(409, BUSY) from exc
+        raise
+    if len(locked) != len(ids):
+        # A security-relevant event (probing, or a stale roster after a reassignment): record it with counts only, then refuse.
+        outside = len(ids) - len(locked)
+        db.add(AuditLog(user_id=user.id, action=DENIED_ACTION, entity_type="school", entity_id=str(school_id), outcome="denied", metadata_json={"session_date": actor["session_date"], "requested": len(ids), "outside": outside}))
+        await db.commit()
+        logger.warning("school_attendance_denied", extra={"extra_fields": {**actor, "requested": len(ids), "outside": outside}})
         raise HTTPException(403, NOT_ASSIGNED)
     # ENH-022: after scope, before any write -- a denial commits only its own audit row.
     await require_school_entitlement(db, user, school_id, None)
@@ -110,16 +135,22 @@ async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depend
             for r in records
         ]
     )
-    await db.execute(
-        stmt.on_conflict_do_update(
-            constraint="uq_school_attendance_student_date",
-            set_={"status": stmt.excluded.status, "school_id": stmt.excluded.school_id, "marked_by_user_id": stmt.excluded.marked_by_user_id, "updated_at": func.now()},
-        )
-    )
     tally = Counter(r.status for r in records)
     statuses = {s: tally[s] for s in ATTENDANCE_STATUSES if tally[s]}
-    metadata = {"session_date": payload.session_date.isoformat(), "count": len(records), "statuses": statuses, "changes": changes}
-    db.add(AuditLog(user_id=user.id, action=MARK_ACTION, entity_type="school", entity_id=str(school_id), metadata_json=metadata))
-    await db.commit()
-    logger.info("school_attendance_marked", extra={"extra_fields": {"actor_id": str(user.id), "school_id": str(school_id), "session_date": payload.session_date.isoformat(), "count": len(records), "changed": len(changes)}})
+    metadata = {"session_date": actor["session_date"], "count": len(records), "statuses": statuses, "changes": changes}
+    # The marks and their audit row commit together or not at all; a failure is rolled back, logged (ids and counts only), re-raised.
+    try:
+        await db.execute(
+            stmt.on_conflict_do_update(
+                constraint="uq_school_attendance_student_date",
+                set_={"status": stmt.excluded.status, "school_id": stmt.excluded.school_id, "marked_by_user_id": stmt.excluded.marked_by_user_id, "updated_at": func.now()},
+            )
+        )
+        db.add(AuditLog(user_id=user.id, action=MARK_ACTION, entity_type="school", entity_id=str(school_id), metadata_json=metadata))
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+        logger.exception("school_attendance_mark_failed", extra={"extra_fields": {**actor, "count": len(records)}})
+        raise
+    logger.info("school_attendance_marked", extra={"extra_fields": {**actor, "count": len(records), "changed": len(changes)}})
     return await _roster(db, user, school_id, payload.session_date)
