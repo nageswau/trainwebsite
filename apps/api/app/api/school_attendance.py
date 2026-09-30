@@ -154,3 +154,18 @@ async def mark_daily_attendance(payload: SchoolAttendanceIn, user: User = Depend
         raise
     logger.info("school_attendance_marked", extra={"extra_fields": {**actor, "count": len(records), "changed": len(changes)}})
     return await _roster(db, user, school_id, payload.session_date)
+
+
+async def daily_attendance_summary(db: AsyncSession, student: SchoolStudent) -> dict:
+    """Spec §5.3 / C1 / C3: the student's 30 most recent records at their CURRENT school, newest first, with per-status counts over
+    those same records. No scope check here: callers (`_overview_payload`) have already applied the reader's own."""
+    rows = (
+        await db.execute(
+            select(SchoolAttendanceRecord.session_date, SchoolAttendanceRecord.status)
+            .where(SchoolAttendanceRecord.school_student_id == student.id, SchoolAttendanceRecord.school_id == student.school_id)
+            .order_by(SchoolAttendanceRecord.session_date.desc())
+            .limit(RECENT_LIMIT)
+        )
+    ).all()
+    counts = Counter(status for _day, status in rows)
+    return {"counts": {s: counts[s] for s in ATTENDANCE_STATUSES}, "recent": [{"session_date": day, "status": status} for day, status in rows]}
