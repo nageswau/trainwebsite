@@ -2629,3 +2629,15 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 - **R3 — No self-lockout.** A Master can be deactivated only if some other active Master has login enabled and has accepted their invite (password set); otherwise `422 "At least one other Master must have accepted their invite first"`. Invite-pending Masters still count toward the 3-Master limit.
 
 **Consequences:** new organisation and member tables plus a backfill migration; the approval gate moves from the assignment to the organisation; every agent-scoped query changes from `user.id` to the organisation; new admin and Master-management endpoints; `RegisterForm`, `AgentApprovalPanel` and a new Master team screen change. `SEC-001`'s audit `entity_type` for org actions changes by decision (D7), not to make a test pass. Schema, endpoint shapes and screens are fixed in the `AGN-001` design spec, not here.
+
+### DEC-SCOPE-037 — Searchable reference pickers (`ENH-031`)
+
+**ID note:** provisional; the later-merging branch renumbers (precedent: `DEC-SCOPE-024`…`036`).
+
+**Question:** the owner asked (in-session, 2026-09-29): "all the student references and application references should be the drop down with valid values. drop down values should be able to search". Which fields, what may each role see, and how?
+
+**Evidence:** read-only investigation, 2026-09-29: 11 forms take a typed student/application id (document upload, appointments, agent Link student, application updates, visa case, University Rep update, interviews, offers, School→Overseas bridge); 9 offer a plain `<select>`; no combobox component and no lookup endpoints exist.
+
+**Resolution:** owner, in-session 2026-09-29 (`EXPLICIT_APPROVAL`), D1–D5 in `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` §2: D1 both groups of fields, other reference fields out of scope; D2 agent link = server search only (≥ 3 characters, ≤ 10 results, masked email, own agency's links left out); D3 own accessible combobox + role-scoped read-only lookups, no new dependency; D4 bridge = pick the school, then search only its students; D5 built on the AGN-001 branch.
+
+**Consequences:** new `GET /api/v1/lookups/{overseas-students,overseas-applications,it-job-applications,schools,school-students}` (read-only, each with its write endpoint's scope); new `SearchableSelect` component; 20 form fields change control. No write endpoint, schema or migration changes.

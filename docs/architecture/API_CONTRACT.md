@@ -351,6 +351,19 @@ service-delivery modules (`DATA_MODEL.md` §6.16–6.18 each flag their own fiel
 roles' own accounts are provisioned (`SCH-003`'s invite flow covers only the four school-side roles).
 Do not build against an assumed answer to any of these — confirm first.
 
+### ENH-031 — Lookups (read-only, `DEC-SCOPE-037`, 2026-09-29)
+
+`GET /api/v1/lookups/{name}` — query `q` (≤ 100 chars, literal case-insensitive substring), `limit` (1–50, default 20). Response `{"items": [{"id", "label", "detail"}], "truncated": bool}`, ordered by label. 403 `"This role cannot use this lookup"` for other roles; the agent gate messages for pending/suspended/deactivated agents; 422 for bad parameters. One `app.lookups` log line per call (counts only, never the search text), no audit row. Each lookup applies the scope of the write endpoint it feeds, so a picker never offers a value that write would refuse. No write endpoint changes.
+
+| name | Roles | Scope | `label` / `detail` |
+|---|---|---|---|
+| `overseas-students` | overseas_admin, super_admin, counselor, agent | admin all; counselor students of own applications; agent students linked to own agency | full name / email |
+| `overseas-students?purpose=link` | agent | any overseas student not linked to own agency; `q` ≥ 3 else 422; ≤ 10 | full name / masked email (`a***@domain`) |
+| `overseas-applications` (`student_id=` optional) | overseas_student, counselor, university_rep, agent, overseas_admin, super_admin | `_assigned_application` rule (student own; counselor own; university_rep own university; agent own agency; admin all) | student (school student's name for bridged rows) / university · course · status |
+| `it-job-applications` | placement_team, hr_team, it_admin, super_admin | all | candidate / job title · company · status |
+| `schools` | overseas_admin, super_admin, counselor | all partner schools | name / school code |
+| `school-students?school_id=` (required; 404 unknown) | overseas_admin, super_admin, counselor | that one school only | full name / grade · student code |
+
 ---
 
 ## 13. Traceability check
