@@ -97,11 +97,29 @@ in-flight ref instead of `disabled`); QA15-03, QA15-04, QA15-05, QA15-06 and QA1
 hidden route announcer instead of the form message). Backend ENH-015 tests: 53 pass. Web unit suite: 1058 pass.
 Typecheck and lint clean.
 
-**Still open — each needs a decision, not fixed:**
-- QA15-02: Devanagari names need a bundled font *and* text shaping. reportlab shapes Indic scripts only with the
+### Second fix pass (2026-09-30, `398e240`)
+
+- **"Career guidance" mismatch — fixed on the PDF side.** The on-screen `/school/reports` panel's "Career guidance"
+  counts students with any career record; the PDF's figure counts completed guidance sessions. The two counts are both
+  correct under their own rules. The PDF now uses the wording of the dashboard KPI tiles that count exactly the same
+  students ("Career Guidance Completed", "Psychometric Tests Completed", "Individual Counselling Completed", "Students in
+  Global Education Pathway", plus "Students in Skills Programs"). A new API test pins each PDF figure to the dashboard
+  tile of the same name.
+- **QA15-09 — fixed on the PDF side.** "Grade / class" falls back to "Grade N" when only `grade_level` is stored. The
+  on-screen "Grade/Class: -" and the Reports panel's "Students by grade" chart (by `grade_or_class`) belong to SCH-007
+  and SCH reports, whose API shapes are pinned. They are unchanged here and stay open for their owners.
+- **QA15-07 — root cause found; external; downgraded to Low.** Instrumented trace (history API, popstate, RSC requests):
+  1. Back → Next.js starts fetching the dashboard's RSC payload (its client cache is empty after the reload).
+  2. Forward, 5 ms later, while that fetch is in flight → Reports renders correctly.
+  3. ~280 ms later the stale dashboard response arrives. Next.js 15.5.24 commits it anyway (`replaceState` with the
+     dashboard tree at the `/reports` URL).
+
+  It is a router race in the framework, reproducible only when Forward follows Back before the Back target has loaded.
+  With a 1.5 s pause between Back and Forward it does not occur (verified). No app code is involved; there is no app-side
+  fix worth its risk. A framework upgrade is a separate decision.
+
+**Still open — each needs a decision:**
+- **QA15-02:** Devanagari names need a bundled font *and* text shaping. reportlab shapes Indic scripts only with the
   optional `uharfbuzz` package, so the fix is a new dependency plus a font asset.
-- QA15-07: pre-existing Next.js history issue, shared by every portal page.
-- QA15-09: pre-existing grade display rules.
-- QA15-10: no PDF accessibility requirement has been decided.
-- "Career guidance" count mismatch: the on-screen `/school/reports` panel counts any career record, while the PDF counts
-  completed guidance sessions (the ENH-016 rule).
+- **QA15-10:** reportlab cannot produce tagged (screen-reader-structured) PDFs. No PDF accessibility requirement has
+  been decided; the same content is available as an accessible web page (the student overview).
