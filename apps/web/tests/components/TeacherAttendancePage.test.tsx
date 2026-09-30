@@ -54,7 +54,8 @@ describe("Teacher attendance page", () => {
 
   it("QA30-03: an impossible calendar date (well-formed but not a real day) falls back to today, never '[object Object]'", async () => {
     serve(() => ROSTER);
-    for (const bad of ["2026-02-30", "2026-13-01", "2026-00-10", "2025-02-29"]) {
+    // "0000-01-01" is a valid ISO date but outside the server's date range (years 1-9999; review M-5).
+    for (const bad of ["2026-02-30", "2026-13-01", "2026-00-10", "2025-02-29", "0000-01-01"]) {
       calls.length = 0;
       await SchoolTeacherAttendancePage({ searchParams: Promise.resolve({ date: bad }) });
       expect(calls, bad).toContain("/api/v1/school/attendance");

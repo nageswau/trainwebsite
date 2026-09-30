@@ -17,6 +17,8 @@ export type DailyRoster = { session_date: string; today: string; students: Roste
 type Marks = Record<string, AttendanceStatus | null>;
 const PAGE = "/school/teacher/attendance";
 const LEAVE_WITH_UNSAVED = "You have unsaved attendance. Leave without saving it?";
+const NOT_ASSIGNED = "One or more students are not assigned to you"; // the API's scope refusal (school_attendance.py)
+const CLASS_CHANGED = "Your class list changed since this page was opened, so nothing was saved. The list has been updated — check the marks and save again.";
 const savedMarks = (roster: DailyRoster): Marks => Object.fromEntries(roster.students.map((s) => [s.id, s.status]));
 const plural = (n: number) => `${n} student${n === 1 ? "" : "s"}`;
 
@@ -61,19 +63,13 @@ export default function SchoolDailyAttendance({ roster: rosterProp }: { roster: 
       }
     };
     // QA30-02: browser Back/Forward is a history change the two guards above never see. This capture listener runs before the
-    // router's own popstate handler: staying stops that handler and steps forward again to restore this date's URL; the popstate
-    // that step fires is swallowed too, so the teacher is asked once and the page is left untouched.
-    let restoring = false;
+    // router's own popstate handler. Staying stops that handler and tells the router to show this page's own URL again in place of
+    // the entry the browser moved to -- whatever the direction or distance of the move (review I-1: no history.go guess, no
+    // swallowed follow-up event). The key does not change, so the form keeps its marks.
     const guardHistory = (event: PopStateEvent) => {
-      if (restoring) {
-        restoring = false;
-        event.stopImmediatePropagation();
-        return;
-      }
       if (window.confirm(LEAVE_WITH_UNSAVED)) return;
       event.stopImmediatePropagation();
-      restoring = true;
-      window.history.go(1);
+      router.replace(`${PAGE}?date=${roster.session_date}`, { scroll: false });
     };
     window.addEventListener("beforeunload", warn);
     window.addEventListener("popstate", guardHistory, true);
@@ -83,7 +79,7 @@ export default function SchoolDailyAttendance({ roster: rosterProp }: { roster: 
       window.removeEventListener("popstate", guardHistory, true);
       document.removeEventListener("click", guardLinks, true);
     };
-  }, [dirty]);
+  }, [dirty, router, roster.session_date]);
 
   // Final review I2: a date input fires change per typed segment, so the field keeps its own value and the page navigates only when
   // the teacher asks (Show, or Enter in the field) -- keyboard and screen-reader entry can then finish typing a whole date.
@@ -111,7 +107,11 @@ export default function SchoolDailyAttendance({ roster: rosterProp }: { roster: 
     const outcome = await sendJson("/api/v1/school/attendance", "PUT", { session_date: roster.session_date, records });
     setBusy(false);
     if (!outcome.ok) {
-      setMessage({ text: outcome.message, failed: true });
+      // Review I-2: the class list changed under the teacher (a reassignment or transfer -> 403 scope; a transfer in progress -> 409).
+      // Refresh the list in place -- the key is unchanged and `marks` is keyed by student, so every remaining mark is kept.
+      const classChanged = outcome.status === 403 && outcome.message === NOT_ASSIGNED;
+      setMessage({ text: classChanged ? CLASS_CHANGED : outcome.message, failed: true });
+      if (classChanged || outcome.status === 409) router.refresh();
       return;
     }
     const left = roster.students.length - records.length;

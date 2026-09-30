@@ -11,7 +11,8 @@ import type { User } from "@/lib/types";
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function calendarDate(raw: string | string[] | undefined): string | null {
-  if (typeof raw !== "string" || !ISO_DATE.test(raw)) return null;
+  // Year 0000 is valid ISO but outside the server's date range (years 1-9999), which would answer with a validation list (review M-5).
+  if (typeof raw !== "string" || !ISO_DATE.test(raw) || raw.startsWith("0000")) return null;
   const parsed = new Date(`${raw}T00:00:00Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === raw ? raw : null;
 }

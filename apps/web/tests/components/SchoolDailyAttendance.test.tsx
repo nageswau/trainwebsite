@@ -10,7 +10,8 @@ import { json, stubFetch } from "./skillFixtures";
 // present fills only unmarked rows, one Save for the class, messages under the form, unsaved-changes flag, server-provided "today".
 const push = vi.fn();
 const refresh = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh }) }));
+const replace = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh, replace }) }));
 
 const ROSTER: DailyRoster = {
   session_date: "2026-09-29",
@@ -115,11 +116,12 @@ describe("SchoolDailyAttendance", () => {
   });
 
   it("keeps the marks and shows the server's reason when a save fails", async () => {
-    stubFetch(() => json({ detail: "One or more students are not assigned to you" }, 403));
+    // (The scope refusal has its own wording and refresh since review I-2; any other refusal shows the server's reason as-is.)
+    stubFetch(() => json({ detail: "Attendance cannot be marked for a future date" }, 422));
     render(<SchoolDailyAttendance roster={ROSTER} />);
     fireEvent.click(within(group("Ben Das")).getByLabelText("Late"));
     fireEvent.click(screen.getByRole("button", { name: "Save attendance" }));
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("One or more students are not assigned to you"));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Attendance cannot be marked for a future date"));
     expect((within(group("Ben Das")).getByLabelText("Late") as HTMLInputElement).checked).toBe(true);
     expect(refresh).not.toHaveBeenCalled();
   });
@@ -172,30 +174,33 @@ describe("SchoolDailyAttendance", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
   });
 
-  it("QA30-02: browser Back with unsaved marks asks first, and staying cancels the navigation", () => {
+  it("QA30-02 / review I-1: a history move (Back, Forward, any distance) with unsaved marks asks; staying restores this page's URL", () => {
     const confirm = vi.fn(() => false);
     vi.stubGlobal("confirm", confirm);
-    const go = vi.spyOn(window.history, "go").mockImplementation(() => {});
+    const go = vi.spyOn(window.history, "go");
     const router = vi.fn(); // stands in for Next's own (non-capture) popstate listener
     window.addEventListener("popstate", router);
     try {
       render(<SchoolDailyAttendance roster={ROSTER} />);
       fireEvent.click(within(group("Ben Das")).getByLabelText("Late"));
-      window.dispatchEvent(new PopStateEvent("popstate"));
-      expect(confirm).toHaveBeenCalledWith("You have unsaved attendance. Leave without saving it?");
-      expect(router).not.toHaveBeenCalled(); // the page stays
-      expect(go).toHaveBeenCalledWith(1); // and the URL returns to this date
-      // The forward step that restores the URL is not a second question and does not reach the router either.
-      window.dispatchEvent(new PopStateEvent("popstate"));
-      expect(confirm).toHaveBeenCalledTimes(1);
-      expect(router).not.toHaveBeenCalled();
-      // Leaving on purpose: confirm -> the router handles Back.
+      // Back, Forward or a multi-step jump all arrive as one popstate: each one asks, and staying never assumes a direction --
+      // the router is told to show this page's own URL again (no history.go guess, no swallowed follow-up event).
+      for (let move = 1; move <= 2; move += 1) {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+        expect(confirm).toHaveBeenCalledTimes(move);
+        expect(router).not.toHaveBeenCalled();
+        expect(replace).toHaveBeenLastCalledWith("/school/teacher/attendance?date=2026-09-29", { scroll: false });
+      }
+      expect(go).not.toHaveBeenCalled();
+      expect(within(group("Ben Das")).getByLabelText("Late")).toBeChecked(); // the marks survive
+      // Leaving on purpose: confirm -> the router handles the move.
       confirm.mockReturnValue(true);
       window.dispatchEvent(new PopStateEvent("popstate"));
       expect(router).toHaveBeenCalledTimes(1);
     } finally {
       window.removeEventListener("popstate", router);
       go.mockRestore();
+      replace.mockReset();
     }
   });
 
@@ -230,6 +235,34 @@ describe("SchoolDailyAttendance", () => {
     rerender(<SchoolDailyAttendance roster={{ ...ROSTER, students: [...ROSTER.students, { id: "s3", full_name: "New Kid", grade_or_class: null, status: null }] }} />);
     expect(screen.getByRole("group", { name: /New Kid/ })).toBeTruthy();
     expect(screen.queryByText("Unsaved changes")).toBeNull();
+  });
+
+  it("review I-2: a save refused because the class list changed refreshes the list in place and keeps the marks", async () => {
+    stubFetch(() => json({ detail: "One or more students are not assigned to you" }, 403));
+    render(<SchoolDailyAttendance roster={ROSTER} />);
+    fireEvent.click(within(group("Ben Das")).getByLabelText("Late"));
+    fireEvent.click(screen.getByRole("button", { name: "Save attendance" }));
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toBe("Your class list changed since this page was opened, so nothing was saved. The list has been updated — check the marks and save again."),
+    );
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(within(group("Ben Das")).getByLabelText("Late")).toBeChecked();
+  });
+
+  it("review I-2: a busy class (409) also refreshes and keeps the server's own words", async () => {
+    stubFetch(() => json({ detail: "This class's attendance is being changed elsewhere. Try again." }, 409));
+    render(<SchoolDailyAttendance roster={ROSTER} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save attendance" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("This class's attendance is being changed elsewhere. Try again."));
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("review I-2: other refusals (e.g. the partnership tier) do not refresh", async () => {
+    stubFetch(() => json({ detail: "This school has no active partnership tier." }, 403));
+    render(<SchoolDailyAttendance roster={ROSTER} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save attendance" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("This school has no active partnership tier."));
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("adds Attendance to the teacher's navigation only", () => {
