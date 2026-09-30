@@ -91,6 +91,47 @@ describe("NotificationPreferencesForm (ENH-014)", () => {
     }
   });
 
+  it("explains an unusable saved number instead of asking to add one", () => {
+    render(<NotificationPreferencesForm initial={{ ...off, phone_valid: false }} phone="12345" />);
+    const hint = document.getElementById("notification-phone-hint")!;
+    expect(hint).toHaveTextContent("The mobile number in your profile can't be used for WhatsApp or SMS. Update your mobile number — use a 10-digit Indian mobile number or an international number starting with +.");
+    expect(screen.getByRole("link", { name: "Update your mobile number" })).toHaveAttribute("href", "#profile-phone");
+    expect(screen.queryByRole("link", { name: "Add a mobile number" })).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /^SMS/ })).toHaveAttribute("aria-describedby", "notification-phone-hint");
+  });
+
+  it("keeps the add-a-number hint when no phone is saved", () => {
+    render(<NotificationPreferencesForm initial={{ ...off, phone_valid: false }} phone={null} />);
+    expect(screen.getByRole("link", { name: "Add a mobile number" })).toHaveAttribute("href", "#profile-phone");
+    expect(screen.queryByRole("link", { name: "Update your mobile number" })).not.toBeInTheDocument();
+  });
+
+  it("keeps a saved-on channel enabled and focused while it is unchecked and re-checked without a valid phone", () => {
+    render(<NotificationPreferencesForm initial={{ whatsapp: true, sms: false, phone_valid: false }} phone={null} />);
+    const whatsapp = screen.getByRole("checkbox", { name: /^WhatsApp/ });
+    whatsapp.focus();
+    fireEvent.click(whatsapp);
+    expect(whatsapp).not.toBeChecked();
+    expect(whatsapp).toBeEnabled();
+    expect(whatsapp).toHaveFocus();
+    fireEvent.click(whatsapp);
+    expect(whatsapp).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /^SMS/ })).toBeDisabled();
+  });
+
+  it("disables the WhatsApp and SMS checkboxes while saving and re-enables them afterwards", async () => {
+    let resolve: (r: Response) => void = () => undefined;
+    vi.mocked(global.fetch).mockReturnValue(new Promise((r) => (resolve = r)));
+    render(<NotificationPreferencesForm initial={off} phone="+91 98765 43210" />);
+    save();
+    expect(screen.getByRole("checkbox", { name: /^WhatsApp/ })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: /^SMS/ })).toBeDisabled();
+    resolve(ok(off));
+    await screen.findByText("Notification settings saved.");
+    expect(screen.getByRole("checkbox", { name: /^WhatsApp/ })).toBeEnabled();
+    expect(screen.getByRole("checkbox", { name: /^SMS/ })).toBeEnabled();
+  });
+
   it("shows the session-expired block on 401", async () => {
     vi.mocked(global.fetch).mockResolvedValue(new Response("{}", { status: 401 }));
     render(<NotificationPreferencesForm initial={off} phone="+91 98765 43210" />);

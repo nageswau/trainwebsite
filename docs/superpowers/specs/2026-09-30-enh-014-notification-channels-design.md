@@ -221,8 +221,13 @@ Form (`NotificationPreferencesForm`, props `{ initial, phone, phoneValid }`):
   - In-app — checked, disabled, hint "Always on".
   - WhatsApp — "Messages go to {phone}".
   - SMS — "Texts go to {phone}".
-- No valid phone (empty state): WhatsApp/SMS disabled, and a hint (linked by `aria-describedby`) "Add a mobile
-  number in your profile above to turn on WhatsApp or SMS." with an in-page link to `#profile-phone`.
+- No valid phone (QA fixes, 2026-09-30): a hint (id `notification-phone-hint`, linked by `aria-describedby`) with an
+  in-page link to `#profile-phone`, in two variants. Empty phone: "Add a mobile number in your profile above to turn
+  on WhatsApp or SMS." Phone present but `phone_valid` false: "The mobile number in your profile can't be used for
+  WhatsApp or SMS. Update your mobile number — use a 10-digit Indian mobile number or an international number
+  starting with +." The lock is computed from the saved state: a channel is disabled only if it is off server-side
+  and `phone_valid` is false, so a saved-on channel stays toggleable (uncheck/re-check before saving, focus kept).
+  WhatsApp and SMS checkboxes are also disabled while a save is in flight (Email/In-app are always disabled).
 - Consent copy under the channels: "By turning on WhatsApp or SMS you agree to receive these messages from
   EduSphere. You can turn them off here at any time." (version `enh014-v1`, recorded in the audit, §5.2).
 - Explicit "Save notification settings" button — consent is a deliberate act, so toggles do not autosave.

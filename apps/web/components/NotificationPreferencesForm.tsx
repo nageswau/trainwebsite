@@ -102,7 +102,9 @@ export default function NotificationPreferencesForm({ initial, phone }: { initia
           </label>
         ))}
         {channels.map(({ key, label, detail }) => {
-          const locked = !canTurnOn && !draft[key];
+          // Locked from the SAVED state: a channel that is off server-side can't be turned on without a valid phone, but one
+          // that is already on stays toggleable (so unchecking it doesn't drop focus). Also locked while saving.
+          const locked = busy || (!canTurnOn && !saved[key]);
           return (
             <label key={key} className="pf-check" htmlFor={`notify-${key}`}>
               <input
@@ -121,7 +123,15 @@ export default function NotificationPreferencesForm({ initial, phone }: { initia
         })}
         {!canTurnOn && (
           <p id={HINT_ID} className="field-hint">
-            <a href="#profile-phone">Add a mobile number</a> in your profile above to turn on WhatsApp or SMS.
+            {phone ? (
+              <>
+                The mobile number in your profile can&apos;t be used for WhatsApp or SMS. <a href="#profile-phone">Update your mobile number</a> — use a 10-digit Indian mobile number or an international number starting with +.
+              </>
+            ) : (
+              <>
+                <a href="#profile-phone">Add a mobile number</a> in your profile above to turn on WhatsApp or SMS.
+              </>
+            )}
           </p>
         )}
         <p className="field-hint">By turning on WhatsApp or SMS you agree to receive these messages from EduSphere. You can turn them off here at any time.</p>
