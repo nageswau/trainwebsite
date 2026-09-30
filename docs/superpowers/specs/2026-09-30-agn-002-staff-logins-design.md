@@ -71,7 +71,9 @@ with the 8-char prefix maximum).
 - `create_token(..., session_version: int = 0)` adds claim `"sv"`. `_set_auth_cookies` passes
   `user.session_version`.
 - `get_current_user` and `/auth/refresh`: after loading the active user, `p.get("sv", 0) != user.session_version`
-  → `401 "Session ended"`. A token without `sv` counts as `0`, so the deploy logs nobody out.
+  → `401 "Session ended"` (reworded after browser QA-03 to "Your session has ended. Please sign in again."; a deactivated staff
+  member is told "Your account was deactivated by your agency. Contact your agency's Master." — QA-02). A token without `sv`
+  counts as `0`, so the deploy logs nobody out.
 - Incremented by: staff **reset** (S3) and staff **deactivation** (E6). Nothing else changes it.
 - Window: a request that already passed the check when the reset commits may complete; the next one is refused.
 - Login issues tokens carrying the current version, so signing in again after a reset works immediately.

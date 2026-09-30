@@ -223,7 +223,8 @@ is never returned. Member shape: `{id, code, full_name, email, phone, status: ac
 | `GET /overseas-admin/agent-orgs` | Authenticated | Overseas Admin | `masters` and the `q` member match cover Masters only. |
 | `GET /overseas-admin/agents`; `POST …/agents/{id}/approve\|reject` | Authenticated | Overseas Admin | Staff excluded from the list; approve/reject of a staff id → `422 "Staff accounts are managed by their agency"`. |
 | `GET /auth/me` | Authenticated | Self | Adds `agent_member_role: "master"\|"staff"\|null` (other responses carry `null`). |
-| Every authenticated route, `POST /auth/refresh` | — | — | Tokens carry `sv`; a mismatch with `users.session_version` → `401 "Session ended"`; tokens without `sv` count as 0. |
+| Every authenticated route, `POST /auth/refresh` | — | — | Tokens carry `sv`; a mismatch with `users.session_version` → `401 "Your session has ended. Please sign in again."`; tokens without `sv` count as 0. A deactivated staff member → `401 "Your account was deactivated by your agency. Contact your agency's Master."`; any other missing/inactive account keeps `401 "User unavailable"` (browser QA-02/03). |
+| `POST …/team/staff`, `POST …/team/masters` — invalid `email` | — | — | `422` with "Enter a valid email address, like name@example.com" (same rule `x@y.z`; browser QA-01). |
 
 ---
 
