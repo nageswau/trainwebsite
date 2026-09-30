@@ -11,7 +11,7 @@ import { isNotificationPreferences, type NotificationPreferences } from "@/lib/t
 // to the button after a save. Server-side validation is the source of truth (a 422 message is shown as-is).
 // The PUT body must carry exactly these two fields (the server rejects extras).
 const channelsOf = (p: { whatsapp: boolean; sms: boolean }) => ({ whatsapp: p.whatsapp, sms: p.sms });
-const NEXT =encodeURIComponent("/account/profile");
+const NEXT = encodeURIComponent("/account/profile");
 const HINT_ID = "notification-phone-hint";
 const SAVE_FAILED = "Couldn't save your settings. Check your connection and try again.";
 
@@ -45,6 +45,7 @@ export default function NotificationPreferencesForm({ initial, phone }: { initia
     setFocusTick((t) => t + 1);
   }
 
+  // Back to the last saved choice; `null` shows no message (the 401 path renders its own block).
   function revert(text: string | null) {
     setDraft(channelsOf(saved));
     finish(text === null ? null : { text, failed: true });
