@@ -7,6 +7,14 @@ export type PortalPayload = {
   rows:Record<string, unknown>[]; panels:{title:string;items:string[]}[];
 };
 export type User = {id:string; email:string; full_name:string; role:string; division:string; phone?:string; student_code?:string|null; profile:Record<string,unknown>};
+
+// ENH-014 (spec §5.1): GET/PUT /api/v1/account/notification-preferences.
+export type NotificationPreferences = { whatsapp: boolean; sms: boolean; phone_valid: boolean };
+export function isNotificationPreferences(value: unknown): value is NotificationPreferences {
+  const v = value as Partial<NotificationPreferences> | null;
+  return !!v && typeof v.whatsapp === "boolean" && typeof v.sms === "boolean" && typeof v.phone_valid === "boolean";
+}
+
 export type CareerPath = {id:string; division:string; slug:string; title:string; summary:string; skills:string[]; related_program_slugs:string[]; outcomes:string};
 export type RealProject = {id:string; division:string; slug:string; title:string; summary:string; description:string; tech_stack:string[]};
 export type Testimonial = {id:string; division:string; person_name:string; headline:string; quote:string; rating:number};
