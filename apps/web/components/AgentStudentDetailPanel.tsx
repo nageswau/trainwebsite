@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import AgentShortlistPanel from "./AgentShortlistPanel";
 import AgentStudentForm from "./AgentStudentForm";
 import { AgentStudentDetail, AgentStudentItem } from "@/lib/agentStudents";
 
@@ -86,6 +87,8 @@ export default function AgentStudentDetailPanel({
           <button type="button" className="btn secondary small" onClick={onClose}>
             Close
           </button>
+          {/* AGN-007 (DEC-SCOPE-049): the student's university shortlist; hidden while the record is being edited. */}
+          <AgentShortlistPanel studentId={detail.id} archived={detail.status === "archived"} onStudentGone={onClose} onStudentChanged={onClose} />
         </>
       )}
     </section>
