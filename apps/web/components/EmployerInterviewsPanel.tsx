@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import SearchableSelect from "@/components/SearchableSelect";
 
 import LocalTime from "@/components/LocalTime";
 
@@ -90,15 +91,7 @@ export default function EmployerInterviewsPanel() {
             ))}
           </select>
         </div>
-        <div className="field">
-          <label htmlFor="shortlist-candidate">Candidate</label>
-          <select id="shortlist-candidate" name="student_id" required>
-            <option value="">Select a candidate…</option>
-            {candidates.map((candidate) => (
-              <option key={candidate.student_id} value={candidate.student_id}>{candidate.name}</option>
-            ))}
-          </select>
-        </div>
+        <SearchableSelect id="shortlist-candidate" label="Candidate" name="student_id" required noun="candidate" options={candidates.map((candidate) => ({ id: candidate.student_id, label: candidate.name }))} />
         <button className="btn small">Shortlist</button>
       </form>
       {shortlistMessage && (

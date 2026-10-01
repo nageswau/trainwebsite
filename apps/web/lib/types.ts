@@ -6,7 +6,7 @@ export type PortalPayload = {
   actions:{label:string;href:string}[]; columns:{key:string;label:string;type?:string}[];
   rows:Record<string, unknown>[]; panels:{title:string;items:string[]}[];
 };
-export type User = {id:string; email:string; full_name:string; role:string; division:string; phone?:string; student_code?:string|null; profile:Record<string,unknown>};
+export type User = {id:string; email:string; full_name:string; role:string; division:string; phone?:string; student_code?:string|null; profile:Record<string,unknown>; agent_member_role?:"master"|"staff"|null};
 
 // ENH-014 (spec §5.1): GET/PUT /api/v1/account/notification-preferences.
 export type NotificationPreferences = { whatsapp: boolean; sms: boolean; phone_valid: boolean };

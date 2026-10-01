@@ -48,6 +48,28 @@ describe("AccessUnavailable", () => {
     expect(screen.getByRole("link", { name: "Return to login" }).getAttribute("href")).toBe("/it/login");
   });
 
+  it("offers Sign out to a signed-in user, but not to a signed-out one (AGN-001 browser QA-02)", async () => {
+    me.mockResolvedValue({ role: "counselor" });
+    render(await accessUnavailable(new ApiError("Role/division mismatch", 403)));
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Go to your dashboard" })).toBeTruthy();
+    cleanup();
+    render(await accessUnavailable(new ApiError("Not authenticated", 401)));
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+  });
+
+  it.each(["Agent registration is pending approval", "Your agency's account is suspended", "Your Master account is deactivated"])(
+    "for an agent denied with %j: guidance and Sign out, no self-looping dashboard link (AGN-001 browser QA-02)",
+    async (reason) => {
+      me.mockResolvedValue({ role: "agent" });
+      render(await accessUnavailable(new ApiError(reason, 403)));
+      expect(screen.getByText(reason)).toBeTruthy();
+      expect(screen.getByText("Contact EduSphere Overseas Admin if you think this is a mistake.")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+      expect(screen.queryByRole("link", { name: "Go to your dashboard" })).toBeNull();
+    },
+  );
+
   it("shows a generic reason for something that is not an Error", async () => {
     me.mockResolvedValue({ role: "school_parent" });
     render(await accessUnavailable({ reason: "not an Error" }));

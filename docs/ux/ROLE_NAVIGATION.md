@@ -149,11 +149,12 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-AGT-003` — /overseas/agent (Dashboard: referred students) — Referred-student roster and status.
 - `SCR-AGT-004` — /overseas/agent/commissions — Commission list (auto-accrued).
 - `SCR-AGT-005` — /overseas/agent/commissions/[id]/claim — Commission claim action.
+- `SCR-AGT-007` — /overseas/agent/team — The agency's Master accounts: list, invite, deactivate *(net-new, 2026-09-28, `AGN-001`)*.
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Overseas Admin
 
-- `SCR-AGT-002` — /overseas/admin/agents — Agent approval queue (Overseas Admin side).
+- `SCR-AGT-002` — /overseas/admin/agents — Agent approval queue (Overseas Admin side); since `AGN-001` it acts on agent organisations (approve / reject / suspend / reinstate).
 - `SCR-AGT-006` — /overseas/admin/commissions — Commission payout approval queue.
 - `SCR-SCH-010` — /overseas/admin/schools — All partner schools + create School/seed Coordinator on the same screen *(net-new, added 2026-09-14, `DEC-SCOPE-012`; `SCR-SCH-011`'s separate `/new` route merged in during `SCH-003`'s build, same day)*.
 - `SCR-SCH-021` — /overseas/admin/school-staff — Create/manage Academic Team, Career Counselor, Psychometric Team accounts and their school portfolios *(net-new, added 2026-09-14, `DEC-SCOPE-014`)*.

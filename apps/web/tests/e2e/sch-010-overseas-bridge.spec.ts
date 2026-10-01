@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { pickFromList } from "./helpers/pick";
 import { E2E_PASSWORD, activateWithToken, createAndActivateFromUi } from "./helpers/welcome";
 
 // SCH-010 -- School->Overseas bridge (`DEC-SCOPE-018`). A Counselor (never
@@ -69,9 +70,8 @@ test("counselor links a School student to a real Overseas application via their 
   await page.waitForURL("**/overseas/counselor/dashboard");
 
   await page.goto("/overseas/counselor/school-applications");
-  await page.fill("#bridge-student-code", studentCode!);
-  await page.click('button:has-text("Look up")');
-  await expect(page.getByText(new RegExp(`E2E SCH-010 Student.*${schoolName}`))).toBeVisible();
+  await pickFromList(page.locator("#bridge-school"), schoolName);
+  await pickFromList(page.locator("#bridge-student"), studentCode!, new RegExp(`^E2E SCH-010 Student — .*${studentCode}`));
 
   // The option label is "{name} ({city})" -- this university was created via the admin API
   // with no city, so it renders with empty parens.

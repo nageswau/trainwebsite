@@ -53,6 +53,15 @@ Student 360° view. Added **ENH-028** (generalized bulk data-entry for Results/P
 **ENH-029** (bulk school onboarding), and **ENH-030** (the new attendance entity, deliberately designed
 bulk-first so it doesn't repeat the pattern of needing bulk retrofitted later).
 
+**Revision 6 (2026-09-28):** the user brought one slice of `Agent CRM Functionalities.md` (`EVID-015`,
+Appendix B) into scope as **AGN-001** — agent organisation as tenant, with Master accounts — and gave the
+approval and answers recorded as `DEC-SCOPE-038` (D1–D13). Only that slice leaves Appendix B; Staff logins
+and the rest of `EVID-015` stay parked. AGN-001 keeps the ID the user gave it rather than an `ENH-` number.
+
+**Revision 7 (2026-09-30):** the owner brought Staff logins (`EVID-015` §2 Staff, §3) into scope as
+**AGN-002**, decided as `DEC-SCOPE-040` (S1–S6). Staff assignment/ownership, staff performance and CRM
+settings stay parked.
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -131,6 +140,8 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-028 | Bulk data-entry — Academic Results, Psychometric, Test Prep/Language records | Medium | Medium | Yes | ENH-011 (Test Prep/Language part only) |
 | ENH-029 | Bulk school partner onboarding (multiple schools at once) | Medium | Medium | Yes | Coordinates with ENH-003, ENH-028's design |
 | ENH-030 | Daily/period attendance tracking (new entity, built bulk-first) | Medium | Low | Yes | Feeds ENH-013, ENH-016 |
+| AGN-001 | Multi-tenant Agent CRM — agent organisation as tenant, Master accounts (Rev. 6) | Large | High | Yes | AGT-001–004, SEC-001, RPT-002, ADM-001 (all change) |
+| ENH-031 | Searchable reference pickers — student/application references picked from role-scoped searchable dropdowns | Medium | Medium | No | AGN-001 (agency scope) |
 
 ---
 
@@ -1556,7 +1567,7 @@ established for `SCH-002-AC04`'s bulk upload).
 **Complexity:** Large. **Risk:** High (provider selection, cost, and privacy/consent — not primarily a
 coding risk).
 
-**Status (2026-10-01): SLICE 1 COMPLETE — accepted by the user on 2026-10-01 on `feature/enh-014-notification-channels` (not yet merged). Release step still open: the Twilio sandbox run (RAID `D-03`), the only evidence missing for AC06 and the live-provider parts of AC08/AC12/AC16.** **Completion evidence (fresh, 2026-10-01, at `935456b`):** backend suite 1994 passed / 14 failed — exactly the 14 credential-dependent Razorpay/Zoho tests, untouched by ENH-014 — 0 skipped; frontend 1087/1087; typecheck and lint clean (0 problems in ENH-014 files); `next build` OK; Playwright 16/17 (all 5 ENH-014 tests pass; the failure is pre-existing `I-38`); browser verification 12 PASS / 0 FAIL / 4 NOT TESTABLE (AC06, AC08, AC12 need a live provider; AC09 is covered by its unit test and an earlier browser run); migration `0046` round trip with existing rows preserved. **Fixed after browser QA (2026-09-30/10-01):** QA14-01 distinct hint when a saved phone can't be used; QA14-02 a saved-on channel stays toggleable (focus kept); QA14-03 channel toggles locked while saving; QA14-04 the section heading sits below the page title; QAF-01 a Redis outage now costs at most ~1.5 s once per 30 s per API process (bounded publish wait + 30 s back-off; was 4–8 s per request, stalling other users); O-1 worker and beat log through the app's JSON formatter so delivery lines carry id/channel/status/attempt (spec §6.1, §6.5, §7 "QA fixes" notes). Pre-existing issues found by the QA and left for separate changes: `I-43` (header overflow, upgraded), `I-44` (profile phone accepts any text), `I-45` (activity notification time shown in UTC). Design: `docs/superpowers/specs/2026-09-30-enh-014-notification-channels-design.md` (incl. §12 plan-time refinements); decision: `DEC-NOT-001`, extension of 2026-09-30 (D1–D14). **What slice 1 delivers:** `notification_preferences` table and `notification_deliveries.context` plus a sweeper index (migration `0046`, spec §4); `GET/PUT /api/v1/account/notification-preferences` (spec §5); Twilio WhatsApp and SMS via Messages REST over `httpx`, opt-in only with a recorded timestamp, email and in-app always on (D4); every trigger that sent email now queues one row per channel and publishes to Celery only after the root commit (D10, spec §6); retries 60 s / 300 s / 1500 s, at most 4 attempts (D11); a 5-minute Celery beat sweeper (stale `queued`/`retrying` re-published, stale `sending` → `failed` "worker interrupted"); GDPR erasure deletes preferences and the export includes them; a Notifications section on `/account/profile` (spec §7). Acceptance criteria `ENH-014-AC01…AC16` (`FEATURE_ACCEPTANCE_CRITERIA.md`). **Smoke check (2026-09-30):** against the real worker with Twilio unconfigured, school activity creation queued an email delivery that moved `queued` → `not_configured` with `attempt_count` 1, and a second task in the same worker process also completed. **Corrections to this entry:** Email is no longer "always inline" (it is queued too); the provider is Twilio for both WhatsApp and SMS (D2); push is out of scope (D3, no mobile app exists); the DPDP/privacy review was approved by the user in-session (D9); the "parent help desk" is a later slice (D12). **Follow-ups (open):**
+**Status (2026-10-01): SLICE 1 COMPLETE — accepted by the user on 2026-10-01 on `feature/enh-014-notification-channels` (not yet merged). Release step still open: the Twilio sandbox run (RAID `D-03`), the only evidence missing for AC06 and the live-provider parts of AC08/AC12/AC16.** **Completion evidence (fresh, 2026-10-01, at `935456b`):** backend suite 1994 passed / 14 failed — exactly the 14 credential-dependent Razorpay/Zoho tests, untouched by ENH-014 — 0 skipped; frontend 1087/1087; typecheck and lint clean (0 problems in ENH-014 files); `next build` OK; Playwright 16/17 (all 5 ENH-014 tests pass; the failure is pre-existing `I-38`); browser verification 12 PASS / 0 FAIL / 4 NOT TESTABLE (AC06, AC08, AC12 need a live provider; AC09 is covered by its unit test and an earlier browser run); migration round trip with existing rows preserved (verified as `0046`; renamed `0049_notification_channels` and chained after `0048_school_attendance_records` on the 2026-10-01 merge with `main`). **Fixed after browser QA (2026-09-30/10-01):** QA14-01 distinct hint when a saved phone can't be used; QA14-02 a saved-on channel stays toggleable (focus kept); QA14-03 channel toggles locked while saving; QA14-04 the section heading sits below the page title; QAF-01 a Redis outage now costs at most ~1.5 s once per 30 s per API process (bounded publish wait + 30 s back-off; was 4–8 s per request, stalling other users); O-1 worker and beat log through the app's JSON formatter so delivery lines carry id/channel/status/attempt (spec §6.1, §6.5, §7 "QA fixes" notes). Pre-existing issues found by the QA and left for separate changes: `I-43` (header overflow, upgraded), `I-44` (profile phone accepts any text), `I-45` (activity notification time shown in UTC). Design: `docs/superpowers/specs/2026-09-30-enh-014-notification-channels-design.md` (incl. §12 plan-time refinements); decision: `DEC-NOT-001`, extension of 2026-09-30 (D1–D14). **What slice 1 delivers:** `notification_preferences` table and `notification_deliveries.context` plus a sweeper index (migration `0049_notification_channels`, spec §4); `GET/PUT /api/v1/account/notification-preferences` (spec §5); Twilio WhatsApp and SMS via Messages REST over `httpx`, opt-in only with a recorded timestamp, email and in-app always on (D4); every trigger that sent email now queues one row per channel and publishes to Celery only after the root commit (D10, spec §6); retries 60 s / 300 s / 1500 s, at most 4 attempts (D11); a 5-minute Celery beat sweeper (stale `queued`/`retrying` re-published, stale `sending` → `failed` "worker interrupted"); GDPR erasure deletes preferences and the export includes them; a Notifications section on `/account/profile` (spec §7). Acceptance criteria `ENH-014-AC01…AC16` (`FEATURE_ACCEPTANCE_CRITERIA.md`). **Smoke check (2026-09-30):** against the real worker with Twilio unconfigured, school activity creation queued an email delivery that moved `queued` → `not_configured` with `attempt_count` 1, and a second task in the same worker process also completed. **Corrections to this entry:** Email is no longer "always inline" (it is queued too); the provider is Twilio for both WhatsApp and SMS (D2); push is out of scope (D3, no mobile app exists); the DPDP/privacy review was approved by the user in-session (D9); the "parent help desk" is a later slice (D12). **Follow-ups (open):**
 - Platinum `parent_help_desk` slice (D12) — still the owner of the unbuilt Platinum channel.
 - Student and Teacher recipients for result publish (D6) — students have no login or contact fields (`DEC-ROLE-004`).
 - Mobile push (D3) — blocked on a mobile app existing.
@@ -2865,6 +2876,214 @@ student on the same day — second call should update, not duplicate (enforced b
 
 **Complexity:** Medium. **Risk:** Low.
 
+**Status (2026-09-30). COMPLETE for ENH-030's scope** on branch `feature/enh-030-class-attendance` (verified at `634b5e5`; browser
+verification and a substitute independent review done — see the `RTM.md` `ENH-030` row). Designed and decided in
+`docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md` (`DEC-SCOPE-041`, provisional number; plan
+`docs/superpowers/plans/2026-09-30-enh-030-daily-attendance.md`). Corrections to this entry, all recorded in the spec:
+"class" = the teacher's assigned students (no class/section entity exists; ENH-013 D3); the routes are
+`GET`/`PUT /api/v1/school/attendance` (the school comes from the caller, never the path); statuses are
+present/absent/late/excused (the IT set includes `excused`); writer = `school_teacher` only (Coordinator/Principal read);
+"Student dashboard" = the Student 360° Attendance tab (school students have no login). Evidence: `RTM.md` `ENH-030` row.
+
+---
+
+## AGN-001 — Multi-Tenant Agent CRM: Agent Organisation as Tenant, Master Accounts
+
+**Title.** Every agent company is a separate CRM tenant with Master logins that have full access.
+
+**Business requirement.** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`): §1 "Master
+Login — Agent Admin: full access to the agent's CRM account"; §3 example codes (`ABC-M001`); Best approach
+"a multi-tenant Agent CRM: every agent gets their own separate CRM environment". Brought into scope by the
+user's `AGN-001` statement and decided as `DEC-SCOPE-041` (D1–D13). The source's "one Master account"
+conflicts with the user's criteria; the user chose up to three (D4).
+
+**Existing behavior.** An agent is one `User` + `UserRoleAssignment(role='agent')`. Its `approval_status`
+gates every agent route (`core/rbac.py:75`, `workflows.py:100`, `api/portal.py:31`). Every agent read and
+write is scoped by `agent_id == user.id`. Overseas Admin approves/rejects the assignment by user id
+(`admin.py:981-1026`), audited as `user_role_assignment`. No organisation, member or account code exists.
+
+**Expected behavior.** Per `DEC-SCOPE-041`: an agent organisation (tenant) with status
+`pending`/`active`/`rejected`/`suspended`; Master members with display codes `<PREFIX>-M###`; the
+approval gate and all data scoping move to the organisation; Masters invite and deactivate Masters;
+Overseas Admin approves, rejects, suspends and reinstates organisations.
+
+**User roles affected.** `agent` (now an organisation Master), `overseas_admin`, `super_admin`; indirectly
+`counselor`/`overseas_admin` where they attach an application or commission to an agent.
+
+**Frontend impact.** `RegisterForm.tsx` (agency name), `AgentApprovalPanel.tsx` (organisation, code,
+status, suspend/reinstate), a new Master team screen under `/overseas/agent/`, `lib/navigation.ts`.
+Screens get `SCR-` IDs in the design spec.
+
+**Backend impact.** `auth.register`, `_sync_role_assignment`, `rbac.agent_is_approved`, every agent-scoped
+query in `workflows.py` and `services/portal._agent`, admin approve/reject/list, admin user-create,
+commission notifications.
+
+**Database impact.** New organisation and member tables; the scope key for `agent_students`,
+`agent_commissions` and `overseas_applications.agent_id` moves to the organisation (column shape decided
+in the design spec); backfill migration (D10).
+
+**API impact.** New `/overseas-admin/agent-orgs/{org_id}/approve|reject|suspend|reinstate`; new Master
+invite/deactivate/list endpoints; registration gains an agency name; existing
+`/overseas-admin/agents/{agent_id}/approve|reject` kept and delegated (D7).
+
+**Integration impact.** Invite email through the existing notification delivery and the `DEC-SCOPE-019`
+set-password link. No new provider.
+
+**Authentication/Authorization impact.** High. The approval gate moves to the organisation; suspension
+must bite on the next request; tenant isolation on every agent route.
+
+**Security impact.** High — cross-tenant data exposure is the main risk. **Performance impact.** One extra
+organisation lookup per agent request (loaded with the user).
+
+**Reusable existing modules.** `get_current_user` (already reloads the user each request),
+`agent_is_approved` call sites, `DEC-SCOPE-019` set-password token, `_audit`, `_notify_user`.
+
+**Dependencies.** Changes `AGT-001`–`004`, `SEC-001`, `RPT-002`, `ADM-001`. None must land first.
+
+**Acceptance criteria.**
+- **AGN-001-AC01** Registering as an agent creates exactly one `pending` organisation and one Master member
+  with code `<PREFIX>-M001`, in one transaction; prefix per D5.
+- **AGN-001-AC02** Until the organisation is `active`, its Master is denied every agent route (today's
+  `AGT-001-AC02`, preserved).
+- **AGN-001-AC03** Approve, reject, suspend and reinstate act on the organisation and each writes an audit
+  row (`entity_type='agent_org'`) in the same transaction; the old per-agent routes act on the agent's
+  organisation.
+- **AGN-001-AC04** Suspending an organisation denies every member every agent route on their next
+  request; `/auth/me`, logout and notifications still work; reinstating restores access.
+- **AGN-001-AC05** After migration, each pre-existing agent is `M001` of its own organisation —
+  approved → `active`, pending or rejected → `pending` — with unchanged data access.
+- **AGN-001-AC06** No agent route returns or changes data from another organisation; a cross-tenant test
+  exists for every agent read and write.
+- **AGN-001-AC07** A 4th active-or-invited Master → `422`; deactivating the last active Master → `422`;
+  a code is never reassigned (next = highest ever + 1); a deactivated Master cannot be reactivated.
+- **AGN-001-AC08** Only an active Master of the organisation can invite or deactivate its Masters;
+  the invite uses the `DEC-SCOPE-019` set-password link.
+- **AGN-001-AC09** An admin-created `role='agent'` user gets a `pending` organisation and code `M001`.
+- **AGN-001-AC10** Commission-estimated and commission-eligible notifications go to every active Master.
+
+**Positive scenarios.** Register → pending → approved → Master sees org data; Master invites M002, who sets
+a password and sees the same org data; suspend → denied → reinstate → allowed.
+**Negative scenarios.** Master of org A reads/writes any org B student, application, document or
+commission → `403`/`404`; pending/rejected/suspended org → `403`; non-Master or other-org Master invites
+→ `403`; 4th Master and last-Master deactivation → `422`.
+**Edge cases.** Prefix collisions and padding (D5); two registrations racing for the same prefix; invite
+to an email that already exists; deactivated Master's open session; rejected legacy agent migrated to
+`pending`.
+
+**Regression risks.** High — `AGT-001`–`004`, `SEC-001` and `RPT-002` tests and E2E specs, the approval
+routes used by `AgentApprovalPanel`, `ADM-001`'s agent role option, seed data.
+
+**Complexity:** Large. **Risk:** High.
+
+**Status (2026-09-29) — COMPLETE for AGN-001's scope; merge to `main` open.** Designed (`docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md`,
+E1–E12), planned (`docs/superpowers/plans/2026-09-28-agn-001-multi-tenant-agent-crm.md`) and built test-first on branch
+`feature/agn-001-multi-tenant-agent-crm` (migration `0046_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-041`. Browser
+QA (QA-01…13) fixed and re-verified, including after merging `main`; the independent Codex review was set aside by the owner
+(in-session, 2026-09-29), as for ENH-024/ENH-027. Evidence in `docs/quality/RTM.md` (AGN-001 row). QA-01 replaced the admin
+portal "Agent Registrations" table with "Agent Masters" (organisation + Master status). Internal-review minors #7, #8, #11, #12
+accepted by the owner as known limitations (2026-09-29): #7 a fast tab switch can briefly show the previous tab's rows (a server 409 prevents acting on the wrong one); #8 a page emptied by another admin shows no Previous (the tab recovers); #11 the Team panel shows a generic load error on 403 (the portal page shows the reason); #12 the migration backfill's idempotence is verified by a manual round trip only (#10, a dead branch, was removed).
+
+---
+
+## ENH-031 — Searchable Reference Pickers (Student / Application References)
+
+**Requirement:** the owner, in-session 2026-09-29 (`EXPLICIT_APPROVAL`): every student and application reference is a searchable dropdown of valid values. **Decision:** `DEC-SCOPE-039` (D1–D5). **Spec:** `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` (AC01–AC10). **Plan:** `docs/superpowers/plans/2026-09-29-enh-031-searchable-reference-pickers.md`.
+
+**Status (2026-09-29):** implemented on `feature/agn-001-multi-tenant-agent-crm`; evidence in `docs/quality/RTM.md` (ENH-031 row).
+
+---
+
+## AGN-002 — Agent Staff Logins: Master Creates, Edits, Activates/Deactivates and Resets Staff
+
+**Title.** An agency's Masters manage staff logins with auto-generated Staff IDs.
+
+**Business requirement.** The owner's `AGN-002` statement (in-session, 2026-09-30): "Master creates, edits,
+activates/deactivates and resets staff logins; Staff ID is auto-generated (§2 Staff, §3)", referring to
+`EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 and §3. Decided as `DEC-SCOPE-040`
+(S1–S6).
+
+**Existing behavior.** `AGN-001` members are Masters only (`ck_agent_org_members_role`); one `seq` per
+organisation; Masters invite and deactivate Masters (`api/agent_team.py`, `services/agent_orgs.py`).
+Every agent route is scoped to the whole organisation (`org_member_ids`). No staff concept exists.
+
+**Expected behavior.** Per `DEC-SCOPE-040`: a Master creates a staff login (name, email, phone) with code
+`<PREFIX>-S###` and a set-password email; edits name and phone; deactivates and reactivates it; resets it
+(password unusable, new set-password link, sessions ended). Staff use the agent student/application
+routes organisation-wide but not team management or commissions.
+
+**User roles affected.** `agent` (Master and the new staff member role). Indirectly `overseas_admin` /
+`super_admin` (agent list and approval routes, user reactivation).
+
+**Frontend impact.** `AgentTeamPanel.tsx` (Staff section), the portal `team` section, possibly the agent
+sidebar for staff (`lib/navigation.ts`, `WorkflowPanel.tsx`); screen `SCR-AGT-007`.
+
+**Backend impact.** `services/agent_orgs.py` (staff functions; Master-only role filters in
+`count_active_masters`, `deactivate_master`, `notification_recipients`), `api/agent_team.py` (staff
+routes; Master-only guard), commission routes in `workflows.py` / `services/portal.py` (Master-only),
+`rbac.agent_denial_reason` (message), `deps.get_current_user` and `auth.refresh` (session revocation),
+`admin.py` agent list/approve/reject and user `PATCH` (staff handling).
+
+**Database impact.** Migration after `0046_agent_orgs`: member role `master|staff`, per-role sequence
+uniqueness, a staff counter on `agent_orgs`, member status allowing reactivation; session-revocation
+field on `users` (design spec).
+
+**API impact.** New staff endpoints under `/workflows/overseas/agent/team/staff` (list, create, edit,
+deactivate, reactivate, reset), with a paginated staff list; the existing team `GET` keeps its shape and lists
+Masters only. Design: `docs/superpowers/specs/2026-09-30-agn-002-staff-logins-design.md`.
+
+**Integration impact.** Set-password email through the existing `DEC-SCOPE-019` delivery. No new provider.
+
+**Authentication/Authorization impact.** High. Master-only vs staff checks on every agent route;
+session revocation on reset; deactivation denies every API.
+
+**Security impact.** High — privilege escalation (staff reaching Master-only actions), cross-tenant
+access, mail abuse via create/reset loops. **Performance impact.** None significant (the session check
+reads the already-loaded user).
+
+**Reusable existing modules.** `_require_master`, `lock_org`, `issue_welcome_token`,
+`deliver_welcome_link`, `revoke_welcome_tokens`, `unusable_password_hash`, `flush_unique_email`, the
+`AGN-001` invite throttle pattern, `AuditLog`.
+
+**Dependencies.** `AGN-001` (built, on `main`). None must land first.
+
+**Acceptance criteria.**
+- **AGN-002-AC01** Creating staff yields code `<PREFIX>-S001`, `S002`, … unique per organisation and never
+  reused (next = highest ever issued + 1), independent of Master codes.
+- **AGN-002-AC02** Creating staff sends a one-time set-password email (`DEC-SCOPE-019`), or the response
+  reports that it could not be sent; the Master never receives the token.
+- **AGN-002-AC03** A Master edits a staff member's name and phone; email cannot be changed.
+- **AGN-002-AC04** Deactivated staff are denied every API (not only agent routes) on their next request,
+  and their open set-password link is revoked.
+- **AGN-002-AC05** Reactivation restores access.
+- **AGN-002-AC06** Reset makes the current password unusable, emails a new set-password link and ends the
+  staff member's existing sessions.
+- **AGN-002-AC07** A Master of another organisation cannot list, see or change the staff member (`404`);
+  staff cannot manage staff or Masters, or use commission routes (`403`).
+- **AGN-002-AC08** Every staff action (create, edit, deactivate, reactivate, reset) writes an audit row
+  (`entity_type='agent_org'`) in the same transaction.
+- **AGN-002-AC09** Staff do not count toward the 3-Master limit or the last-Master rule and do not receive
+  commission notifications; an active staff member of an `active` organisation reaches the agent
+  student/application routes with organisation scope.
+- **AGN-002-AC10** Staff creations and resets are throttled per agency on a rolling 24 hours (`429` with
+  `Retry-After`).
+
+**Positive scenarios.** Master creates S001 → staff sets password → sees org students/applications;
+deactivate → denied → reactivate → allowed; reset → old password and session fail → new link works.
+**Negative scenarios.** Other-org Master acts on the staff member → `404`; staff calls team or commission
+routes → `403`; duplicate email → `409`; over the throttle → `429`.
+**Edge cases.** Reset or deactivate of staff who never set a password; reactivation after the link
+expired; concurrent creations (code uniqueness under the organisation lock); suspended organisation.
+
+**Regression risks.** High — the `AGN-001` suite (`test_agn_001_*.py`, `AgentTeamPanel.test.tsx`,
+`agn-001-multi-tenant.spec.ts`), every agent-scoped route (`AGT-001`–`004`), commission notifications,
+Overseas Admin agent approval.
+
+**Complexity:** Medium–Large. **Risk:** High.
+
+**Status (2026-09-30):** implemented test-first on `feature/agn-002-staff-logins` (migration `0047_agent_org_staff`); evidence
+in `docs/quality/RTM.md` (AGN-002 row). Browser QA pass done 2026-09-30 (QA-01…08 fixed, re-verified). **COMPLETE (2026-10-01,
+verified at `2e7ac9a`)**; the owner waived the Codex review and runs the full backend suite in their 4-5-story batch.
+
 ---
 
 ## 2. Dependency graph
@@ -3030,6 +3249,8 @@ item, only for the progress-view question).
 | ENH-010 | `DEC-SCOPE-025` — "School Master" (`School CRM.md` Part B §2) = `school_coordinator`; activate/deactivate scope mapping proposed, drafted 2026-09-22 | Drafted, `UNCONFIRMED` |
 | ENH-011, ENH-012, ENH-013, ENH-015, ENH-017, ENH-018, ENH-019, ENH-021, ENH-024, ENH-026, ENH-027, ENH-028, ENH-029, ENH-030 | None structurally required — each operates within already-confirmed School-domain scope (`DEC-SCOPE-011/012/013/017`) as a completion/extension, not a new scope question. ENH-026/ENH-027 additionally need a *design* choice (shared shape for "Recommended..."/"Career recommendations" fields); ENH-028's batch-size limit and ENH-030's session-vs-period granularity are also design, not scope, questions | N/A |
 | ENH-016 | None — corrected in Revision 3 to a narrower scope entirely within already-confirmed `DEC-SCOPE-017` | N/A |
+| AGN-001 | `DEC-SCOPE-038` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
+| AGN-002 | `DEC-SCOPE-040` — staff access, model, reset, fields/limits, activation, tenancy/audit | **Resolved 2026-09-30** (S1–S6, `EXPLICIT_APPROVAL` in-session) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
@@ -3066,7 +3287,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` | none yet |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7).** Still parked: staff assignment/ownership, staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

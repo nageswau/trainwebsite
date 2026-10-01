@@ -337,6 +337,13 @@ def _skills():
     return school_skills
 
 
+def _attendance():
+    """ENH-030's module, imported at call time for the same reason as `_skills()`: `school_attendance` imports this module's helpers."""
+    from app.api import school_attendance  # noqa: PLC0415
+
+    return school_attendance
+
+
 def _own_school_id(user: User) -> UUID:
     if user.role not in SCHOOL_ROLES:
         raise HTTPException(403, "School role required")
@@ -1399,6 +1406,8 @@ async def _overview_payload(db: AsyncSession, student: SchoolStudent) -> dict:
         },
         # ENH-011 (`DEC-SCOPE-026`): additive key; same reader scope as everything above.
         "skills": await _skills().skills_overview(db, student),
+        # ENH-030 (DEC-SCOPE-041): additive key; same reader scope as everything above.
+        "daily_attendance": await _attendance().daily_attendance_summary(db, student),
     }
 
 

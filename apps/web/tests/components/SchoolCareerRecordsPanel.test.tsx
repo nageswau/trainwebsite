@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { pickOption } from "../helpers/pickOption";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import SchoolCareerRecordsPanel from "@/components/SchoolCareerRecordsPanel";
@@ -17,7 +18,7 @@ const STUDENTS = [{ id: "s1", full_name: "Asha", school_name: "Hill School" }];
 // Scoped to the "Add a record" card: the page also carries ENH-025's career-preferences card, which has its own "Student" select.
 function save() {
   const card = within(screen.getByRole("heading", { name: "Add a record" }).closest(".action-card") as HTMLElement);
-  fireEvent.change(card.getByLabelText("Student"), { target: { value: "s1" } });
+  pickOption(card, "Student", "s1");
   fireEvent.change(card.getByLabelText("Type"), { target: { value: "guidance_session" } });
   fireEvent.change(card.getByLabelText("Notes"), { target: { value: "Discussed options." } });
   fireEvent.click(card.getByRole("button", { name: "Save record" }));

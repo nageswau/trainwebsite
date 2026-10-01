@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { pickFromList } from "./helpers/pick";
 
 // EMP-004 -- Interview scheduling and shortlist. Requires the stack running via
 // `docker compose up`. Creates its own throwaway Employer + a real candidate (the
@@ -42,7 +43,7 @@ test("employer shortlists a candidate for their own posting and schedules an int
   await page.reload();
   const interviewsCard = page.locator(".action-card", { has: page.getByRole("heading", { name: "Shortlist & Interviews" }) });
   await interviewsCard.getByLabel("Job posting").selectOption({ label: "E2E Hiring Role" });
-  await interviewsCard.getByLabel("Candidate").selectOption({ label: name });
+  await pickFromList(interviewsCard.getByRole("combobox", { name: "Candidate" }), name);
   await interviewsCard.getByRole("button", { name: "Shortlist" }).click();
   await expect(interviewsCard.getByText("Candidate shortlisted.")).toBeVisible();
 

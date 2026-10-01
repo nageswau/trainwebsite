@@ -28,9 +28,11 @@ def test_migration_follows_enh024_and_is_the_single_head():
         parent = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("down_revision =")), None)
         if rev:
             parents[rev] = parent
-    # ENH-014 added 0046_notification_channels on top of 0045, so the single head is now 0046; 0045 must still be its parent.
-    assert set(parents) - set(parents.values()) == {"0046_notification_channels"}
-    assert parents["0046_notification_channels"] == "0045_psychometric_result_fields"
+    # AGN-001 chained 0046 after this migration, so the intent is kept without pinning the head -- the relaxation ENH-013/ENH-025
+    # received on earlier merges: one head, and 0045 is a parent in the chain.
+    heads = set(parents) - set(parents.values())
+    assert len(heads) == 1
+    assert "0045_psychometric_result_fields" in parents.values()
 
 
 def test_migration_adds_exactly_the_ten_columns():

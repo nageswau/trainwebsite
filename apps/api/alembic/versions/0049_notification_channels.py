@@ -1,12 +1,17 @@
 """ENH-014 -- notification channel preferences and the delivery render context.
 
-Revision ID: 0046_notification_channels
-Revises: 0045_psychometric_result_fields
+Revision ID: 0049_notification_channels
+Revises: 0048_school_attendance_records
 
 docs/superpowers/specs/2026-09-30-enh-014-notification-channels-design.md §4 (DEC-NOT-001, 2026-09-30 extension).
 Additive only: one new table, one nullable column, one index. No existing row is touched. `downgrade()` drops exactly
 these three. Guarded like 0045: on a fresh database 0001_initial's create_all() has already built them from the models.
-If another branch merges a 0046 first, re-chain this one on top of it (precedent: 0045's note).
+
+Re-chained on merge with `main`, 2026-10-01: cut as `0046_notification_channels` on `0045_psychometric_result_fields`, but
+AGN-001/AGN-002/ENH-030 merged first with `0046_agent_orgs` → `0047_agent_org_staff` → `0048_school_attendance_records`,
+so this became `0049` on top of `0048` (the later-merging branch moves; precedent: 0045's note). None of them touch the
+notification tables. A database that ran the old `0046_notification_channels` (an ENH-014 dev stack only) already has these
+objects: stamp it back to 0045, then `alembic upgrade head` — the guards below skip what exists.
 """
 
 import sqlalchemy as sa
@@ -14,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0046_notification_channels"
-down_revision = "0045_psychometric_result_fields"
+revision = "0049_notification_channels"
+down_revision = "0048_school_attendance_records"
 branch_labels = None
 depends_on = None
 

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { pickFromList } from "./helpers/pick";
 
 // RAID.md I-19: the Overseas Student's "Counselor Chat" page only ever showed
 // read-only history -- no way to send a message. The Counselor role had no nav entry
@@ -29,7 +30,7 @@ test("student sends a message to their counselor, and the counselor can reply", 
   await loginAs(page, "counselor@edusphere.local", "Demo@123", "/overseas/counselor/dashboard");
   await page.goto("/overseas/counselor/counselor-chat");
   const replyCard = page.locator(".action-card", { has: page.getByRole("heading", { name: "Reply to a student" }) });
-  await replyCard.getByLabel("Student").selectOption({ label: "Ananya Sharma" });
+  await pickFromList(replyCard.getByRole("combobox", { name: "Student" }), "Ananya Sharma");
   await expect(replyCard.getByText(marker)).toBeVisible();
   await replyCard.getByLabel("Reply").fill(replyMarker);
   await replyCard.getByRole("button", { name: "Send reply" }).click();

@@ -10,13 +10,14 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import get_current_user
+from app.api.deps import check_session, get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code
 from app.core.security import create_token, decode_token, hash_password, verify_password
 from app.models import AuditLog, Notification, NotificationDelivery, PasswordResetToken, User, UserRoleAssignment
 from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
+from app.services.agent_orgs import ensure_agent_org
 from app.services.integrations import send_notification
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -60,31 +61,32 @@ async def _sync_role_assignment(db: AsyncSession, user: User, assigned_by_user_i
     an Agent's approval_status is never reset by a later login).
     """
 
-    existing = await db.scalar(
+    assignment = await db.scalar(
         select(UserRoleAssignment).where(
             UserRoleAssignment.user_id == user.id,
             UserRoleAssignment.division == user.division,
             UserRoleAssignment.role == user.role,
         )
     )
-    if existing:
-        return existing
-    assignment = UserRoleAssignment(
-        user_id=user.id,
-        division=user.division,
-        role=user.role,
-        is_active=True,
-        assigned_by_user_id=assigned_by_user_id,
-        approval_status="pending" if user.role == "agent" else "approved",
-    )
-    db.add(assignment)
-    await db.flush()
+    if assignment is None:
+        assignment = UserRoleAssignment(
+            user_id=user.id,
+            division=user.division,
+            role=user.role,
+            is_active=True,
+            assigned_by_user_id=assigned_by_user_id,
+            approval_status="pending" if user.role == "agent" else "approved",
+        )
+        db.add(assignment)
+        await db.flush()
+    if user.role == "agent":
+        await ensure_agent_org(db, user)  # AGN-001 (E7): every agent has an organisation
     return assignment
 
 
 def _set_auth_cookies(response: Response, user: User):
-    access = create_token(str(user.id), user.role, user.division, "access")
-    refresh = create_token(str(user.id), user.role, user.division, "refresh")
+    access = create_token(str(user.id), user.role, user.division, "access", user.session_version)
+    refresh = create_token(str(user.id), user.role, user.division, "refresh", user.session_version)
     common = {"httponly": True, "secure": settings.cookie_secure, "samesite": "lax", "path": "/"}
     response.set_cookie("edusphere_access", access, max_age=settings.access_token_minutes * 60, **common)
     response.set_cookie("edusphere_refresh", refresh, max_age=settings.refresh_token_days * 86400, **common)
@@ -126,6 +128,9 @@ async def register(payload: RegistrationRequest, response: Response, db: AsyncSe
     )
     db.add(user)
     await db.flush()
+    if role == "agent":
+        # AGN-001 (D2, E2): one pending organisation + Master M001, named from the optional agency name.
+        await ensure_agent_org(db, user, agency_name=payload.agency_name, status="pending")
     await _sync_role_assignment(db, user)
     db.add(AuditLog(user_id=user.id, action="auth.register", entity_type="user", entity_id=str(user.id), metadata_json={"division": user.division, "role": user.role}))
     await db.commit()
@@ -149,8 +154,7 @@ async def refresh(response: Response, edusphere_refresh: str | None = Cookie(def
     user = await db.scalar(
         select(User).where(User.id == uid, User.active.is_(True)).options(selectinload(User.role_assignments))
     )
-    if not user:
-        raise HTTPException(401, "User unavailable")
+    user = await check_session(db, uid, user, p)
     _set_auth_cookies(response, user)
     return LoginResponse(user=UserOut.model_validate(user), expires_in_minutes=settings.access_token_minutes)
 
@@ -164,7 +168,10 @@ async def logout(response: Response):
 
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)):
-    return user
+    out = UserOut.model_validate(user)
+    # AGN-002: the portal hides Master-only pages from staff (the server refuses them regardless).
+    out.agent_member_role = user.agent_membership.role if user.agent_membership else None
+    return out
 
 
 # Profile keys that carry an authorization scope. A user may echo their own current value back (the web
