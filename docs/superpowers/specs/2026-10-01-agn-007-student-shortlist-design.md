@@ -242,6 +242,13 @@ All entries are written in the same transaction and fail closed (SEC-001). They 
 
 ## 6. Frontend
 
+**Plan-time corrections (2026-10-01, while writing the implementation plan).** These follow the existing code more closely; the design intent is unchanged.
+1. **Cards, not a table.** `AgentStudentsPanel` deliberately lists cards, as a `ul.grid.two` (its test asserts "cards, not a second table"). The shortlist and the agency university list do the same.
+2. **A native `<select>` with `<optgroup>` ("Catalogue" / "Your agency") picks the university, not `SearchableSelect`.** `SearchableSelect`'s `Noun` type has no "university", so using it would mean editing a shared component. A native select is the precedent in `AgentApplicationCreatePanel`.
+3. **The Universities page panel is mounted by `PortalPage`** (the Students precedent) rather than `WorkflowPanel`. A header-only payload rendered by `PortalSection` would show a misleading "No records yet". `WorkflowPanel` is untouched.
+
+Where §6.1–§6.2 below say "table", `SearchableSelect` or `WorkflowPanel`, read them with these corrections.
+
 **Reuse first:**
 - existing classes: `card`, `btn`, `btn secondary small`, `form-error`;
 - the table, paging ("Showing x–y of N", Previous/Next, step back when a page empties), confirm and stale-response (`current()`) patterns from `AgentStudentsPanel`;
