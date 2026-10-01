@@ -2724,7 +2724,7 @@ correction, not deleted, per this project's traceability convention.
 - **Accessibility requirements:** one h1 ("Funding support"), h2 for Open cases, the edit form and Add a case (QA-06); table named by its heading with column headers; stage as text ("Stage 3 of 6 · Documents"), never colour alone; unique Edit names; focus to the edit heading and back to the row's Edit button; Escape closes; choosing Closed focuses the required reason; results via `FormMessage`.
 - **Desktop/tablet/mobile behavior:** table on desktop/tablet; stacked cards on phones.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
-- **Acceptance evidence needed:** `SchoolFundingRecordsPanel.test.tsx`, `FundingRecordForm.test.tsx`, `tests/e2e/enh-020-funding-support.spec.ts`, `test_enh_020_*.py`. IMPLEMENTED — NOT YET COMPLETE (browser validation and independent review pending).
+- **Acceptance evidence needed:** `SchoolFundingRecordsPanel.test.tsx`, `FundingRecordForm.test.tsx`, `tests/e2e/enh-020-funding-support.spec.ts`, `test_enh_020_*.py`. COMPLETE (verified 2026-10-01 at `0f8ed2e`: browser verification 49/49, e2e 6/6).
 
 ### `SCR-SCH-042` *(added 2026-10-01, `ENH-020` / `DEC-SCOPE-045`)*
 - **Route:** card on `/school/parent/children/[id]`, `/school/coordinator/students/[id]`, `/school/principal/students/[id]` — on the parent page directly after the child overview (QA-04)
@@ -2740,7 +2740,7 @@ correction, not deleted, per this project's traceability convention.
 - **Permissions/resource scope:** parent sees all of their child's cases; coordinator/principal see only cases opened at the student's current school; teachers refused by the API.
 - **Responsive behavior / Accessibility requirements:** `record-details` list (one column on phones); heading level follows the page; stage as text; no controls.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
-- **Acceptance evidence needed:** `FundingRecordsCard.test.tsx`, `Enh015ReportPlacement.test.tsx`, e2e parent test. IMPLEMENTED — NOT YET COMPLETE.
+- **Acceptance evidence needed:** `FundingRecordsCard.test.tsx`, `Enh015ReportPlacement.test.tsx`, e2e parent test. COMPLETE (verified 2026-10-01 at `0f8ed2e`).
 
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  

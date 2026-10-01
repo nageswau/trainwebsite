@@ -133,7 +133,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-017 | School-visible global education pipeline dashboard *(now owns Alumni Network)* — **Complete (verified 2026-09-29)** (2026-09-29, `DEC-SCOPE-036`; Alumni Network not built, follow-up) | Medium | Medium | No | SCH-010 (bridge, already built) |
 | ENH-018 | School feedback capture | Small | Low | Yes | — |
 | ENH-019 | School event calendar | Small | Low | Yes | — |
-| ENH-020 | Financial support / loan assistance tracking — **in progress (`DEC-SCOPE-045`, 2026-10-01): audit found no Overseas equivalent; new School tracker** | Medium | Medium | Yes | — |
+| ENH-020 | Financial support / loan assistance tracking — **Complete (verified 2026-10-01, `DEC-SCOPE-045`): audit found no Overseas equivalent; new School tracker** | Medium | Medium | Yes | — |
 | ENH-021 | Internship management | Medium | Low | Yes | — |
 | ENH-022 | Tier-gated feature access enforcement | Medium | Medium | No | — (build early) |
 | ENH-023 | Partnership tier change (upgrade/downgrade) workflow | Medium | High | No (history table optional) | ENH-022 |
@@ -945,7 +945,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 18 | Scholarship Management (school-visible) | ⚠️ Partial | **ENH-017** shows Scholarships as *not tracked* (`ScholarshipApplication` has no school-student link) — follow-up, not tracked |
 | 19 | Application Support (status-only, school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017**: high-level stage only, application detail never selected or returned (§19 boundary enforced at the API, key-set and planted-value tests) |
 | 20 | Visa Tracking (school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017**: Visa funnel stage (a `VisaCase` exists) and a per-student visa stage label; visa outcomes are a follow-up, not tracked |
-| 21 | Financial Support / Loan Assistance | ⏳ In progress | **ENH-020** (`DEC-SCOPE-045`) |
+| 21 | Financial Support / Loan Assistance | ✅ Complete (verified 2026-10-01) | **ENH-020** (`DEC-SCOPE-045`) |
 | 22 | Internship Management | ❌ Gap | See **ENH-021** |
 | 23 | Parent Portal | ✅ Built | `SCH-007`; "Skills"/"Portfolio" sub-items depend on ENH-012, ENH-011 |
 | 24 | School Event Calendar | ❌ Gap | See **ENH-019** |
@@ -1986,17 +1986,26 @@ regression risk (data fragmentation) — the primary reason this item leads with
 `docs/superpowers/plans/2026-10-01-enh-020-funding-support-tracking.md`. The backlog's `school_student` viewer does not exist
 (no student login, DEC-ROLE-004) and `require_tier()` does not exist (`require_school_entitlement` is used).
 
-**Status (2026-10-01): IMPLEMENTED — NOT YET COMPLETE** on `feature/enh-020-funding-tracker` (from `main` @ `18886bf`).
-Pending: browser validation and an independent (Codex) review. Evidence (isolated Compose project `enh020`, API 8020 / web 3020):
-backend full suite **2499 passed / 16 failed** before the last test-isolation fix — 14 = the provider-credential baseline (11
-Razorpay `test_pay_001_stu_010`, 3 Zoho); 2 = ENH-020 `caplog` tests silenced by an earlier in-process Alembic run (fixed with
-ENH-030's logger fixture, reproduced RED→GREEN); ENH-020 backend tests **136/136**; downstream ENH-016/017/022/023/SCH-011
-**187/187**. Web: vitest **126 files / 1333 tests**; `tsc` clean; `eslint` 0 errors (31 baseline warnings); `next build` OK.
-Playwright: `enh-020-funding-support` **5/5**, `enh-026-counselling-record` 6/6, `sch-011-entitlements` 1/1. Migration 0053 (cut as 0051)
-upgrade → downgrade → upgrade OK; `alembic check` shows only two pre-existing non-ENH-020 drifts. A fresh whole-branch review
-found no Critical issues; its two Important accessibility findings (focus lost and save not announced when an edit makes a
-case final) are fixed with tests. **Open product question (`NEEDS_CONFIRMATION`):** a case left open at a previous school
-stays open after a transfer (neither school can change it; the parent still sees it) — follows from D7/D12.
+**Status (2026-10-01): COMPLETE (verified 2026-10-01 at merge `0f8ed2e`, `main` @ `6360dc0` merged in)** on
+`feature/enh-020-funding-tracker`. Fresh evidence after the merge (isolated Compose project `enh020`, images rebuilt from that HEAD):
+backend full suite **2700 passed / 14 failed** — all 14 the provider-credential baseline (11 Razorpay `test_pay_001_stu_010`,
+3 Zoho "not configured"), no ENH-020 test among them; merge-sensitive set (all ENH-020, ENH-028, AGN-003, SCH-011, ENH-016/017,
+migration tests) **435/435**. Web: vitest **133 files / 1391 tests**; `tsc` exit 0; `eslint` 0 errors (31 baseline warnings);
+`next build` exit 0 (88/88 static pages; the funding route is dynamic). `ruff check` clean on every ENH-020 file; `mypy` adds no
+error (266 repo-wide, none on ENH-020 lines). Migration `0053_school_funding_records` (cut as `0051`, re-chained after ENH-028's
+`0051` and AGN-003's `0052`): single head; empty-DB upgrade → downgrade → upgrade OK; upgrade SQL is CREATE TABLE + 3 indexes only,
+downgrade drops only that table; `alembic check` shows only two drifts that pre-date this branch (`0035`, `0049`). Playwright:
+`enh-020-funding-support` 6/6 plus `enh-026`, `sch-011`, `enh-015`, `enh-016`, `enh-017`, `sch-007`, `enh-028`, `agn-003` all pass
+(24 passed); `enh-022` QA-022-05 and `enh-023` downgrade fail identically on a base-commit build and their files are unchanged on
+`main` and this branch (pre-existing, not ENH-020). Browser verification (isolated Chromium, every role): **49/49 checks** —
+AC01–AC14, AC16, AC17, AC20 and QA-01..06 by browser behaviour; AC18/AC19 by browser-triggered actions plus database and log
+checks (7 denial rows for 7 refusals, 4 tier rows; 0 audit rows, notifications or log lines with case contents); AC15 is not
+browser-testable (database at `0053`). No skipped/focused tests, no debug code, no secrets (only the shared test fixture password)
+in the diff. Independent Codex review waived by the user ("ignore codex review"); a fresh whole-branch review ran instead (2
+Important accessibility findings fixed with tests). **Still `NEEDS_CONFIRMATION` (not blocking):** a case left open at a previous
+school stays open after a transfer (follows from D7/D12); QA-07 (refused page reads audited) and QA-08 (counsellor notes visible
+to parents) — product calls. Deferred minors: `expected_status: null` gives a 409; tier check runs before the final-case check;
+`notes` accepts non-text JSON and bidi overrides; the card's "Updated by" falls back to the creator.
 
 **Complexity:** Medium (pending audit). **Risk:** Medium.
 

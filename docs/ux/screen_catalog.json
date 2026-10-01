@@ -3052,7 +3052,7 @@
     "a11y": "one h1 (Funding support), h2 for Open cases, the edit form and Add a case (QA-06); table named by its heading with column headers; stage shown as text (\"Stage 3 of 6 · Documents\"), never colour alone; unique Edit button names; focus to the edit heading on open, back to the row's Edit button on close; Escape closes; choosing Closed moves focus to the required reason; results via FormMessage live region.",
     "dtm": "Desktop/tablet: table; mobile: stacked cards.",
     "visual": "None — not inspected. Do not claim parity.",
-    "evidence": "SchoolFundingRecordsPanel.test.tsx, FundingRecordForm.test.tsx, fundingRecords.test.ts, tests/e2e/enh-020-funding-support.spec.ts, test_enh_020_funding_records.py, test_enh_020_reads.py. IMPLEMENTED — NOT YET COMPLETE (browser validation and independent review pending)."
+    "evidence": "SchoolFundingRecordsPanel.test.tsx, FundingRecordForm.test.tsx, fundingRecords.test.ts, tests/e2e/enh-020-funding-support.spec.ts, test_enh_020_funding_records.py, test_enh_020_reads.py. COMPLETE (verified 2026-10-01 at 0f8ed2e: browser verification 49/49, e2e 6/6)."
   },
   {
     "id": "SCR-SCH-042",
@@ -3077,6 +3077,6 @@
     "a11y": "Heading level follows the page (h3 on the parent page, h2 on staff pages); stage as text; no controls.",
     "dtm": "Same card at every width.",
     "visual": "None — not inspected. Do not claim parity.",
-    "evidence": "FundingRecordsCard.test.tsx, Enh015ReportPlacement.test.tsx (pages render with the card), tests/e2e/enh-020-funding-support.spec.ts (parent). IMPLEMENTED — NOT YET COMPLETE."
+    "evidence": "FundingRecordsCard.test.tsx, Enh015ReportPlacement.test.tsx (pages render with the card), tests/e2e/enh-020-funding-support.spec.ts (parent). COMPLETE (verified 2026-10-01 at 0f8ed2e)."
   }
 ]
