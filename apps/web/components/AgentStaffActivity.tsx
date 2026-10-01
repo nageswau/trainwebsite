@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { activityLabel, STAFF_URL, type StaffActivityItem, type StaffMember } from "@/lib/agentStaff";
 import { isPage, type Page } from "@/lib/apiErrors";
-import { formatDate } from "@/lib/formatDate";
+import { formatDate, viewerTimeZone } from "@/lib/formatDate";
 
 export const ACTIVITY_PAGE_SIZE = 10;
 const UNABLE = "Unable to load activity.";
@@ -68,7 +68,7 @@ export default function AgentStaffActivity({ member, onClose }: { member: StaffM
             <li key={item.id} style={{ fontSize: 13, marginBottom: 4, overflowWrap: "anywhere" }}>
               <strong>{activityLabel(item.action)}</strong> · {item.subject}
               {item.fields && item.fields.length > 0 ? ` — ${item.fields.map((f) => f.replaceAll("_", " ")).join(", ")}` : ""}{" "}
-              <span className="muted"><time dateTime={item.at}>{formatDate(item.at, true)}</time></span>
+              <span className="muted"><time dateTime={item.at}>{formatDate(item.at, true, viewerTimeZone())}</time></span>
             </li>
           ))}
         </ol>
