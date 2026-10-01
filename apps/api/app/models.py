@@ -877,7 +877,8 @@ class AgentOrg(Base, TimestampMixin):
 
 class AgentOrgMember(Base, TimestampMixin):
     """AGN-001: a user's membership of exactly one agent organisation, for good (`user_id` unique). AGN-002 adds `staff`
-    (DEC-SCOPE-040): Masters and staff are numbered separately (M001 and S001 coexist)."""
+    (DEC-SCOPE-040): Masters and staff are numbered separately (M001 and S001 coexist). AGN-003 adds two per-staff permission
+    flags (DEC-SCOPE-041)."""
 
     __tablename__ = "agent_org_members"
     __table_args__ = (
@@ -897,6 +898,10 @@ class AgentOrgMember(Base, TimestampMixin):
     invited_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     deactivated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # AGN-003 (DEC-SCOPE-041 P1/P2): the two optional §6 rows for staff. Stored on every member but never read for a Master
+    # (`core.rbac.agent_may` always allows Masters).
+    can_verify_documents: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    can_view_reports: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     org: Mapped["AgentOrg"] = relationship(lazy="raise")
 
 
