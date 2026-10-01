@@ -9,7 +9,7 @@ import re
 from datetime import UTC, datetime
 
 from fastapi import HTTPException
-from sqlalchemy import ColumnElement, Select, func, or_, select
+from sqlalchemy import ColumnElement, Select, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -42,6 +42,21 @@ def application_scope(user: User) -> list[ColumnElement]:
     if is_agent_staff(user):
         clauses.append(OverseasApplication.student_id.in_(visible_student_user_ids(user)))
     return clauses
+
+
+PHONE_KEY_DIGITS = 10  # browser QA-04 (owner, 2026-10-01): compare the last 10 digits (country code / trunk 0 ignored)
+
+
+def phone_key(digits: str | None) -> str | None:
+    """The part of a phone's digits the duplicate check compares: the last 10 when there are at least 10, else all of them."""
+    if not digits:
+        return None
+    return digits[-PHONE_KEY_DIGITS:] if len(digits) >= PHONE_KEY_DIGITS else digits
+
+
+def _phone_key_sql(digits_column):
+    """SQL twin of `phone_key` for a column holding digits only."""
+    return case((func.length(digits_column) >= PHONE_KEY_DIGITS, func.right(digits_column, PHONE_KEY_DIGITS)), else_=digits_column)
 
 
 def phone_digits(phone: str | None) -> str | None:
@@ -147,7 +162,8 @@ async def find_duplicates(db: AsyncSession, user: User, *, email: str | None, di
     if email:
         conditions += [func.lower(AgentStudent.email) == email, func.lower(User.email) == email]
     if digits and len(digits) >= PHONE_MIN_DIGITS:
-        conditions += [AgentStudent.phone_digits == digits, func.regexp_replace(User.phone, r"\D", "", "g") == digits]
+        key = phone_key(digits)
+        conditions += [_phone_key_sql(AgentStudent.phone_digits) == key, _phone_key_sql(func.regexp_replace(User.phone, r"\D", "", "g")) == key]
     else:
         digits = None
     if not conditions:
@@ -162,7 +178,11 @@ async def find_duplicates(db: AsyncSession, user: User, *, email: str | None, di
             hidden += 1
             continue
         ident = _identity(row, account)
-        matched_on = [label for label, hit in (("email", bool(email) and (ident["email"] or "").lower() == email), ("phone", bool(digits) and phone_digits(ident["phone"]) == digits)) if hit]
+        matched_on = [
+            label
+            for label, hit in (("email", bool(email) and (ident["email"] or "").lower() == email), ("phone", bool(digits) and phone_key(phone_digits(ident["phone"])) == phone_key(digits)))
+            if hit
+        ]
         # str(): an HTTPException detail is not run through FastAPI's JSON encoder, so a UUID would fail to serialise.
         matches.append({"id": str(row.id), "full_name": ident["full_name"], "has_login": row.student_id is not None, "status": row.status, "matched_on": matched_on})
     return matches, hidden

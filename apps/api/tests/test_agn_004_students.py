@@ -137,6 +137,25 @@ async def test_phone_formats_match_on_digits_only(db_session, agency):
 
 
 @pytest.mark.asyncio
+async def test_phone_with_or_without_country_code_or_trunk_zero_is_a_duplicate(db_session, agency):
+    """Browser QA-04 (owner decision 2026-10-01): phones match on their last 10 digits, so the same number typed with a
+    country code, without one, or with a leading 0 warns; shorter numbers (7-9 digits) must match exactly."""
+    national = "9" + str(uuid.uuid4().int)[:9]
+    await mk_record(db_session, agent=agency["master"], full_name="Has Country Code", phone=f"+91 {national[:5]} {national[5:]}")
+    short = str(uuid.uuid4().int)[:8]
+    await mk_record(db_session, agent=agency["master"], full_name="Short Number", phone=short)
+    async with client_for(agency["master"].email) as c:
+        bare = await c.post(RECORDS, json={"full_name": "No Code", "phone": national})
+        trunk = await c.post(RECORDS, json={"full_name": "Trunk Zero", "phone": "0" + national})
+        short_other = await c.post(RECORDS, json={"full_name": "Short Other", "phone": "1" + short})
+        short_same = await c.post(RECORDS, json={"full_name": "Short Same", "phone": short})
+    assert bare.status_code == 409 and bare.json()["detail"]["matches"][0]["matched_on"] == ["phone"]
+    assert trunk.status_code == 409
+    assert short_other.status_code == 201  # 9 digits vs 8: never a suffix match below 10 digits
+    assert short_same.status_code == 409
+
+
+@pytest.mark.asyncio
 async def test_linked_student_account_email_counts_as_a_duplicate(db_session, agency):
     student = await mk_user(db_session, role="overseas_student", full_name="Linked Dup")
     db_session.add(AgentStudent(agent_id=agency["master"].id, student_id=student.id, status="active"))
