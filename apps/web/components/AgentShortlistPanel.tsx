@@ -22,8 +22,8 @@ const focusLater = (...ids: string[]) =>
     }
   });
 
-function ShortlistCard({ e, writable, confirming, onEdit, onAskRemove, onCancelRemove, onRemove }: {
-  e: ShortlistEntry; writable: boolean; confirming: boolean; onEdit: () => void; onAskRemove: () => void; onCancelRemove: () => void; onRemove: () => void;
+function ShortlistCard({ e, writable, confirming, removing, onEdit, onAskRemove, onCancelRemove, onRemove }: {
+  e: ShortlistEntry; writable: boolean; confirming: boolean; removing: boolean; onEdit: () => void; onAskRemove: () => void; onCancelRemove: () => void; onRemove: () => void;
 }) {
   const name = e.university.name;
   return (
@@ -53,7 +53,7 @@ function ShortlistCard({ e, writable, confirming, onEdit, onAskRemove, onCancelR
               }
             }}
           >
-            <button type="button" className="btn small" onClick={onRemove}>Confirm remove</button>{" "}
+            <button type="button" className="btn small" disabled={removing} onClick={onRemove}>Confirm remove</button>{" "}
             <button type="button" className="btn secondary small" autoFocus onClick={onCancelRemove}>Cancel</button>
           </span>
         ) : (
@@ -74,6 +74,7 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
   const [offset, setOffset] = useState(0);
   const [editing, setEditing] = useState<Editing>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
   const [notice, setNotice] = useState("");
   const request = useRef<AbortController | null>(null);
   // The parent's callbacks are re-created on each of its renders; refs keep them out of any dependency list (no refetch loop).
@@ -120,6 +121,8 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
   }
 
   async function remove(e: ShortlistEntry) {
+    if (removing) return;
+    setRemoving(true);
     setActionError(null);
     try {
       const response = await fetch(`${shortlistUrl(studentId)}/${e.id}`, { method: "DELETE" });
@@ -134,6 +137,8 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
       setActionError(detailMessage((await response.json().catch(() => null))?.detail, "Unable to remove the entry."));
     } catch {
       setActionError("Network error. Check your connection and try again.");
+    } finally {
+      setRemoving(false);
     }
     closeConfirm(e.id);
   }
@@ -184,6 +189,7 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
                   e={e}
                   writable={writable}
                   confirming={confirmId === e.id}
+                  removing={removing}
                   onEdit={() => setEditing({ mode: "edit", entry: e })}
                   onAskRemove={() => setConfirmId(e.id)}
                   onCancelRemove={() => closeConfirm(e.id)}

@@ -196,7 +196,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
   });
 
   it("shows the detail above the list, so list refreshes never move it", async () => {
-    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.endsWith("/s1") ? res({ student: detail() }) : res(page([item()])))));
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.includes("/shortlist") ? res(page([])) : url.endsWith("/s1") ? res({ student: detail() }) : res(page([item()])))));
     render(<AgentStudentsPanel memberRole="master" />);
     fireEvent.click(await screen.findByRole("button", { name: "View Asha Rao" }));
     const panel = await screen.findByRole("region", { name: "Asha Rao" });

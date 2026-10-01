@@ -145,4 +145,104 @@ describe("AgentShortlistPanel (AGN-007)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Cannot remove");
     await waitFor(() => expect(screen.getByRole("button", { name: "Remove Agency U" })).toHaveFocus());
   });
+
+  // --- fix round 1 ---------------------------------------------------------------------------------------------------------
+  // A router for the real form: one agency university to choose, an empty catalogue, and a configurable write answer.
+  const formRouter = (listed: () => unknown[], write: (method: string) => Response) =>
+    vi.fn((url: string, init?: RequestInit) => {
+      const u = String(url);
+      if (init?.method === "POST" || init?.method === "PATCH") return Promise.resolve(write(init.method));
+      if (u.includes("/shortlist")) return Promise.resolve(res(page(listed())));
+      if (u.includes("crm/universities")) return Promise.resolve(res({ items: [{ id: "a1", name: "Agency U", country: "Malta", city: null, entry_requirements: null }] }));
+      return Promise.resolve(res([]));
+    });
+
+  it("returns focus to Add after a successful save from the Add form", async () => {
+    vi.stubGlobal("fetch", formRouter(() => [], () => res({ entry: entry() }, 201)));
+    render(<AgentShortlistPanel {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Add university to shortlist" }));
+    const uni = await screen.findByLabelText("University (required)");
+    await waitFor(() => expect(uni).not.toBeDisabled());
+    fireEvent.change(uni, { target: { value: "a:a1" } });
+    fireEvent.change(await screen.findByLabelText("Course"), { target: { value: "BA Typed" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    expect(await screen.findByText("Saved to shortlist.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add university to shortlist" })).toHaveFocus());
+  });
+
+  it("returns focus to that entry's Edit button after a successful save from the Edit form", async () => {
+    vi.stubGlobal("fetch", formRouter(() => [entry()], () => res({ entry: entry({ intake: "Jan 2028" }) })));
+    render(<AgentShortlistPanel {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Agency U" }));
+    fireEvent.change(await screen.findByLabelText("Intake"), { target: { value: "Jan 2028" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    expect(await screen.findByText("Saved to shortlist.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Agency U" })).toHaveFocus());
+  });
+
+  it("tells the parent when a remove hits a 409", async () => {
+    const onStudentChanged = vi.fn();
+    vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => Promise.resolve(init?.method === "DELETE" ? res({ detail: "changed" }, 409) : res(page([entry()])))));
+    render(<AgentShortlistPanel {...props} onStudentChanged={onStudentChanged} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Agency U" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
+    await waitFor(() => expect(onStudentChanged).toHaveBeenCalledTimes(1));
+  });
+
+  it("pages: Showing 1–20 of 25, Next fetches offset 20 and shows 21–25", async () => {
+    const many = (from: number, n: number) => Array.from({ length: n }, (_, i) => entry({ id: `e${from + i}`, university: { source: "agency", id: `a${from + i}`, name: `Uni ${from + i}`, slug: null, country: "Malta" } }));
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(String(url).includes("offset=20") ? res(page(many(20, 5), 25, 20)) : res(page(many(0, 20), 25, 0))),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentShortlistPanel {...props} />);
+    expect(await screen.findByText("Showing 1–20 of 25")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next page of the shortlist" }));
+    expect(await screen.findByText("Showing 21–25 of 25")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes("offset=20"))).toBe(true);
+  });
+
+  it("steps back a page when the page it lands on is empty", async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (String(url).includes("offset=20")) return Promise.resolve(res(page([], 20, 20)));
+      return Promise.resolve(res(page([entry()], 25, 0)));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentShortlistPanel {...props} />);
+    await screen.findByText("Agency U");
+    fireEvent.click(screen.getByRole("button", { name: "Next page of the shortlist" }));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([u]) => String(u).includes("offset=0")).length).toBe(2));
+    expect(await screen.findByText("Showing 1–1 of 25")).toBeInTheDocument();
+  });
+
+  it("does not refetch when the parent re-renders with new callback identities", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(res(page([entry()]))));
+    vi.stubGlobal("fetch", fetchMock);
+    const { rerender } = render(<AgentShortlistPanel {...props} />);
+    await screen.findByText("Agency U");
+    rerender(<AgentShortlistPanel studentId="s1" archived={false} onStudentGone={vi.fn()} onStudentChanged={vi.fn()} />);
+    await new Promise((r) => setTimeout(r, 30));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables Confirm remove while the DELETE is in flight (no double DELETE)", async () => {
+    let release: () => void = () => {};
+    const deletes = vi.fn();
+    vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "DELETE") {
+        deletes();
+        return new Promise<Response>((r) => { release = () => r(res(null, 204)); });
+      }
+      return Promise.resolve(res(page([entry()])));
+    }));
+    render(<AgentShortlistPanel {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Agency U" }));
+    const confirm = screen.getByRole("button", { name: "Confirm remove" });
+    fireEvent.click(confirm);
+    await waitFor(() => expect(confirm).toBeDisabled());
+    fireEvent.click(confirm);
+    expect(deletes).toHaveBeenCalledTimes(1);
+    release();
+    await waitFor(() => expect(screen.getByText("Agency U removed from the shortlist.")).toBeInTheDocument());
+  });
 });
