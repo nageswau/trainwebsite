@@ -42,3 +42,27 @@ keyboard-only operation could therefore not be observed here. They are covered b
 Web vitest 113 files / 1194 tests; `tsc` 0; `eslint .` 0 errors / 31 warnings (baseline); `npm run build` 0. API: AGN-004 files +
 `test_agt_002_referrals` + `test_enh_031_lookups_students` 132 passed. Playwright (`--workers=1`) AGN-004 + agt-002 + agn-001 +
 enh-031 + agt-004: 13 passed. Screenshots: `.superpowers/sdd/2026-09-30-agn-004-agent-students/qa-shots/` (git-ignored).
+
+## Post-merge verification (2026-10-01, merged build `a1ae9f4`, `agn004` images rebuilt 04:28/04:29 UTC)
+
+Browser Use (isolated Chrome, script `qa_merged_verify.py` in the git-ignored workspace), demo agency `EDU`: Master
+`agent@edusphere.local`, Staff `EDU-S001` / `EDU-S002`.
+
+| Check | AC | Result |
+|---|---|---|
+| Staff nav has no Team/Commissions; role label "Agency Staff"; Team and Commissions pages refused | AC10 | PASS |
+| Staff list holds only their assigned students; no Archive control | AC05, AC04 | PASS |
+| Staff adds a student in the form → toast, card "Assigned to EDU-S001 · QA Staff One"; DB `student_id IS NULL`, no `users` row | AC01, AC02 | PASS |
+| Staff GET / PATCH / archive of another Staff member's student → `404 Student not found`; archiving their own → `403` | AC05, AC04 | PASS |
+| Staff duplicate on another Staff member's email → `409 possible_duplicate`, `matches: []`, `hidden_matches: 1`; warning shown in the form | AC08 | PASS |
+| Staff Two never lists Staff One's new student; by id → `404` | AC05 | PASS |
+| Master sees it with its assignee; archives → gone from default list, listed with `include_archived`, readable by id (Master and assigned Staff); unarchive → `200`; audit rows create/archive/unarchive | AC04, AC11 | PASS |
+| Staff Students page at 320 px: horizontal overflow 0 | AC13 | PASS |
+
+Two script assertions first failed on the script, not the product (looked for `student_id` instead of the API's `has_login`;
+truncated body) and were confirmed against the database. Playwright on the rebuilt stack (`--workers=1`): agn-004, agn-002,
+agn-001, agt-002/003/004, enh-031 — **16 passed** (incl. keyboard-only add and 320 px). API: AGN-001/002/004 + AGT + ENH-031
+**357 passed**, 0 skipped. Web: vitest 117 files / 1231 tests; `tsc` 0; eslint 0 errors / 31 warnings; build exit 0.
+
+**Gap (not closed):** spec §6 lists a Master **Assign** row action; the UI has none (only the "Assigned to" filter), so AC09
+reassignment is available through `POST /{id}/assign` only. AGN-004 stays NOT COMPLETE until this is resolved.

@@ -2994,8 +2994,8 @@ the agency warns; saving again with confirmation proceeds (audited).
 **Status (2026-10-01) — IMPLEMENTED; NOT COMPLETE.** Browser QA done (QA-01…QA-10 found and fixed, `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`); the independent Codex review is pending. Designed (spec rev. 2), planned
 (`docs/superpowers/plans/2026-09-30-agn-004-agent-students.md`) and built test-first on `feature/agn-004-agent-students`
 (migration `0048_agent_students_crm`, re-chained after AGN-002's `0047_agent_org_staff` when main was merged 2026-10-01). Outstanding
-before COMPLETE: the independent Codex review (owner set it aside 2026-10-01); Staff browser flows and the named-Staff Assign picker,
-unblocked now that AGN-002 is merged. Evidence in `docs/quality/RTM.md`.
+before COMPLETE: the Master Assign row action (spec §6) — not in the UI, so AC09 reassignment is API-only. Staff browser flows and
+Playwright verified on the merged build 2026-10-01 (QA file, post-merge section). The independent Codex review was set aside by the owner. Evidence in `docs/quality/RTM.md`.
 
 ---
 

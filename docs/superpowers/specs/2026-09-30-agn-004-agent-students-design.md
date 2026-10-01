@@ -379,7 +379,7 @@ create without email/phone; no erasure path for students with no login.
 | AGN-004-AC09 | Assignment targets only an active Staff member of the same agency (`422` otherwise). A deactivated Staff member keeps their students; Masters still see them and can reassign. |
 | AGN-004-AC10 | Staff get `403` on Team and Commissions (API and portal pages) and do not see those nav items; Staff never count toward the 3-Master limit or last-Master rule and never receive commission notifications; Overseas Admin cannot approve/reject a Staff user. |
 | AGN-004-AC11 | Every write writes an audit row in the same transaction with no personal data; if the audit write fails, nothing is written. |
-| AGN-004-AC12 | Migration `0048_agent_students_crm`: existing rows unchanged; upgrade → downgrade → upgrade leaves pre-existing rows identical; downgrade refuses while students with no login, assignments or Staff exist; the Staff pieces are no-ops on a database that already has them. |
+| AGN-004-AC12 | Migration `0048_agent_students_crm`: existing rows unchanged; upgrade → downgrade → upgrade leaves pre-existing rows identical; downgrade refuses while students with no login, assignments or archived students exist (the Staff pieces and their Staff-exist refusal moved to AGN-002's `0047_agent_org_staff` on the 2026-10-01 merge); each new column, CHECK and index is a no-op on a database that already has it. |
 | AGN-004-AC13 | The Students screen works at 320 px and keyboard-only, with loading, empty, error and 401 states. |
 
 ## 9. Tests (written first, per behaviour; real runs, never judged by reasoning)
