@@ -22,7 +22,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.schools import OUTSIDE_PORTFOLIO, TIER_DENIED, _apply_master_fields, _entitlement_denial, _notify_student_parents, _portfolio_school_ids, _today_ist
+from app.api.schools import OUTSIDE_PORTFOLIO, TEST_PREP_SERVICE_KEYS, TIER_DENIED, _apply_master_fields, _entitlement_denial, _notify_student_parents, _portfolio_school_ids, _today_ist
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import (
@@ -31,12 +31,14 @@ from app.models import (
     SchoolAcademicResult,
     SchoolBulkUploadBatch,
     SchoolBulkUploadRow,
+    SchoolLanguageRecord,
     SchoolPsychometricRecord,
     SchoolResultStatusHistory,
     SchoolStudent,
+    SchoolTestPrepRecord,
     User,
 )
-from app.schemas import PSYCHOMETRIC_RESULT_KEYS, BulkPsychometricRow, BulkResultRow, validation_message
+from app.schemas import PSYCHOMETRIC_RESULT_KEYS, BulkLanguageRow, BulkPsychometricRow, BulkResultRow, BulkTestPrepRow, validation_message
 
 router = APIRouter(prefix="/school", tags=["school-bulk"])
 logger = get_logger("app.school.bulk")
@@ -151,6 +153,53 @@ PSYCHOMETRIC = BulkTarget(
     columns=("assessment_type", "report_url", *PSYCHOMETRIC_RESULT_KEYS), required=("assessment_type",),
     row_model=BulkPsychometricRow, noun="an assessment", key_fields="assessment_type and test_date",
     natural_key=_psychometric_key, existing_keys=_existing_psychometric, service_key=lambda row: "psychometric_test", create=_create_psychometric,
+)
+
+
+# --- Test Prep and Language (SCH-009): each row consumes its own tier service ---------------------------------------------------
+
+
+async def _existing_test_prep(db: AsyncSession, student_ids: list[UUID]) -> set[tuple]:
+    rows = await db.execute(select(SchoolTestPrepRecord.school_student_id, SchoolTestPrepRecord.test_type).where(SchoolTestPrepRecord.school_student_id.in_(student_ids)))
+    return {(student_id, test_type) for student_id, test_type in rows}
+
+
+async def _create_test_prep(db: AsyncSession, user: User, student: SchoolStudent, row: BulkTestPrepRow, batch_id: UUID) -> Created:
+    record = SchoolTestPrepRecord(school_student_id=student.id, academic_team_user_id=user.id, test_type=row.test_type, target_score=row.target_score)
+    db.add(record)
+    await db.flush()
+    db.add(AuditLog(user_id=user.id, action="school.test_prep_record_create", entity_type="school_test_prep_record", entity_id=str(record.id), metadata_json={"test_type": row.test_type, "bulk_batch_id": str(batch_id)}))
+    name, test = student.full_name, row.test_type.upper()
+    return Created(record.id, (f"{test} preparation started for {name}", f"{name} has started {test} preparation."))
+
+
+TEST_PREP = BulkTarget(
+    target_type="test_prep_record", role="academic_team", role_error="Academic Team role required",
+    columns=("test_type", "target_score"), required=("test_type",),
+    row_model=BulkTestPrepRow, noun="a test preparation record", key_fields="test_type",
+    natural_key=lambda row: (row.test_type,), existing_keys=_existing_test_prep, service_key=lambda row: TEST_PREP_SERVICE_KEYS[row.test_type], create=_create_test_prep,
+)
+
+
+async def _existing_languages(db: AsyncSession, student_ids: list[UUID]) -> set[tuple]:
+    rows = await db.execute(select(SchoolLanguageRecord.school_student_id, SchoolLanguageRecord.language).where(SchoolLanguageRecord.school_student_id.in_(student_ids)))
+    return {(student_id, language.casefold()) for student_id, language in rows}
+
+
+async def _create_language(db: AsyncSession, user: User, student: SchoolStudent, row: BulkLanguageRow, batch_id: UUID) -> Created:
+    record = SchoolLanguageRecord(school_student_id=student.id, academic_team_user_id=user.id, language=row.language, level=row.level)
+    db.add(record)
+    await db.flush()
+    db.add(AuditLog(user_id=user.id, action="school.language_record_create", entity_type="school_language_record", entity_id=str(record.id), metadata_json={"language": row.language, "bulk_batch_id": str(batch_id)}))
+    name = student.full_name
+    return Created(record.id, (f"{row.language} classes started for {name}", f"{name} has started {row.language} classes."))
+
+
+LANGUAGE = BulkTarget(
+    target_type="language_record", role="academic_team", role_error="Academic Team role required",
+    columns=("language", "level"), required=("language",),
+    row_model=BulkLanguageRow, noun="a language record", key_fields="language",
+    natural_key=lambda row: (row.language.casefold(),), existing_keys=_existing_languages, service_key=lambda row: "foreign_language_classes", create=_create_language,
 )
 
 
@@ -364,3 +413,13 @@ async def bulk_upload_results(file: UploadFile = File(...), idempotency_key: str
 @router.post("/psychometric-team/records/bulk-upload", status_code=201)
 async def bulk_upload_psychometric(file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await _upload(PSYCHOMETRIC, file, idempotency_key, user, db)
+
+
+@router.post("/academic-team/test-prep-records/bulk-upload", status_code=201)
+async def bulk_upload_test_prep(file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _upload(TEST_PREP, file, idempotency_key, user, db)
+
+
+@router.post("/academic-team/language-records/bulk-upload", status_code=201)
+async def bulk_upload_language(file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _upload(LANGUAGE, file, idempotency_key, user, db)
