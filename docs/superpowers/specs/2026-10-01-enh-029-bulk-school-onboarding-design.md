@@ -384,3 +384,8 @@ outcome wording; `errorText`/`toneClass` reused instead of a new `detailMessage`
   `IntegrityError`). Pinned by `test_a_row_waiting_on_an_uncommitted_create_of_its_email_is_rejected_alone`.
 - **Migration evidence.** §11's round-trip and downgrade-refusal tests now run against a throwaway database (the AGN-004
   harness), not only the migration source text.
+- **Plain-HTTP origins (browser QA-029-01).** `crypto.randomUUID` exists only in secure contexts, so on a plain-HTTP page reached by
+  IP or hostname choosing a file threw and the panel reported "Choose a filled-in CSV file first.". The panel's key now comes from
+  `lib/idempotencyKey.newIdempotencyKey()`: `randomUUID` when present, otherwise a version-4 UUID from `crypto.getRandomValues`
+  (available in every context). Pinned by `idempotencyKey.test.ts` and a panel test without `randomUUID`; re-verified in a browser
+  on an insecure origin.
