@@ -15,7 +15,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
@@ -403,6 +403,57 @@ async def _upload(target: BulkTarget, file: UploadFile, idempotency_key: str | N
     }})
     await _notify_after_commit(db, batch.id, notices)
     return report
+
+
+# --- Pre-filled templates (spec §5.2) -----------------------------------------------------------------------------------------
+
+FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _safe_cell(value: str) -> str:
+    """Stored text (a coordinator-typed name) must not run as a formula when the template is opened in a spreadsheet."""
+    return f"'{value}" if value.startswith(FORMULA_PREFIXES) else value
+
+
+async def _template(target: BulkTarget, user: User, db: AsyncSession) -> Response:
+    if user.role != target.role:
+        raise HTTPException(403, target.role_error)
+    portfolio = await _portfolio_school_ids(db, user)
+    students = (
+        await db.execute(
+            select(SchoolStudent.student_code, SchoolStudent.full_name, School.name)
+            .join(School, School.id == SchoolStudent.school_id)
+            .where(SchoolStudent.school_id.in_(portfolio))
+            .order_by(School.name, SchoolStudent.full_name)
+        )
+    ).all() if portfolio else []
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow([*STUDENT_COLUMNS, *target.columns])
+    for code, name, school in students:
+        writer.writerow([code, _safe_cell(name), _safe_cell(school), *[""] * len(target.columns)])
+    filename = f"{target.target_type.replace('_', '-')}-bulk-template.csv"
+    return Response(content=buffer.getvalue(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}", "Cache-Control": "private, no-store"})
+
+
+@router.get("/academic-team/results/bulk-template")
+async def bulk_template_results(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _template(RESULTS, user, db)
+
+
+@router.get("/psychometric-team/records/bulk-template")
+async def bulk_template_psychometric(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _template(PSYCHOMETRIC, user, db)
+
+
+@router.get("/academic-team/test-prep-records/bulk-template")
+async def bulk_template_test_prep(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _template(TEST_PREP, user, db)
+
+
+@router.get("/academic-team/language-records/bulk-template")
+async def bulk_template_language(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _template(LANGUAGE, user, db)
 
 
 @router.post("/academic-team/results/bulk-upload", status_code=201)
