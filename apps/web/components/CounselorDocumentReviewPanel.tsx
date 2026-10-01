@@ -105,14 +105,15 @@ export default function CounselorDocumentReviewPanel({
     if (!outcome.ok) {
       setMessage({ id: documentId, text: outcome.status !== undefined && outcome.status >= 500 ? SERVER_FAILED : outcome.message, failed: true });
       // AGN-003 browser QA-03: someone else decided it first -- show the real status instead of a stale form.
-      if (outcome.status === 409) {
-        setOpenId(null);
-        router.refresh();
-        load();
-      }
+      if (outcome.status === 409) closeAndReload();
       return;
     }
     setMessage({ id: documentId, text: "Document reviewed -- the student has been notified.", failed: false });
+    closeAndReload();
+  }
+
+  // The document's status changed (our review, or someone else's): close the form and show the queue as the server has it now.
+  function closeAndReload() {
     setOpenId(null);
     router.refresh();
     load();
