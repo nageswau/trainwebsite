@@ -1,13 +1,15 @@
-"""AGN-001 / DEC-SCOPE-038 -- agent organisations (tenants) and their Master members.
+"""AGN-001 / DEC-SCOPE-038 -- agent organisations (tenants) and their Master members; AGN-002 / DEC-SCOPE-040 -- their staff.
 
-Functions only -- no class layer (same shape as `services/provisioning.py`). Spec:
-docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md.
+Functions only -- no class layer (same shape as `services/provisioning.py`). Specs:
+docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md,
+docs/superpowers/specs/2026-09-30-agn-002-staff-logins-design.md.
 """
 
 import logging
 import math
 import re
 from datetime import UTC, datetime, timedelta
+from typing import NoReturn
 
 from fastapi import HTTPException
 from sqlalchemy import Select, func, select, update
@@ -15,12 +17,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AgentOrg, AgentOrgMember, AuditLog, User, UserRoleAssignment
-from app.services.provisioning import flush_unique_email, issue_welcome_token, provisioning_statuses, revoke_welcome_tokens, unusable_password_hash
+from app.services.provisioning import (
+    IssuedWelcome,
+    flush_unique_email,
+    issue_welcome_token,
+    provisioning_statuses,
+    resend_wait_seconds,
+    revoke_welcome_tokens,
+    unusable_password_hash,
+)
 
 logger = logging.getLogger("app.agent_orgs")
 
 MASTER_LIMIT = 3
-MASTER, STAFF = "master", "staff"  # AgentOrgMember.role (AGN-002 adds staff)
 
 _LATIN = re.compile(r"[A-Za-z]")
 
@@ -45,6 +54,10 @@ def pick_prefix(base: str, taken: set[str]) -> str:
 
 def member_code(prefix: str, seq: int) -> str:
     return f"{prefix}-M{seq:03d}"
+
+
+def staff_code(prefix: str, seq: int) -> str:
+    return f"{prefix}-S{seq:03d}"
 
 
 _PREFIX_ATTEMPTS = 5
@@ -114,7 +127,8 @@ async def lock_org(db: AsyncSession, org_id) -> AgentOrg:
 
 
 async def lock_active_org(db: AsyncSession, org_id) -> AgentOrg:
-    """`lock_org`, then refuse an organisation suspended (or no longer active) between the request's gate check and the lock."""
+    """AGN-004: `lock_org`, then refuse an organisation suspended (or no longer active) between the request's gate check and the
+    lock -- the agency student writes take this before touching a student row."""
     from app.core.rbac import PENDING_MESSAGE, SUSPENDED_MESSAGE
 
     org = await lock_org(db, org_id)
@@ -165,81 +179,215 @@ async def member_user_ids(db: AsyncSession, user: User) -> set:
 async def count_active_masters(db: AsyncSession, org_id) -> int:
     """Active Masters only; staff never count (AGN-002 S2)."""
     return await db.scalar(
-        select(func.count()).select_from(AgentOrgMember).where(AgentOrgMember.org_id == org_id, AgentOrgMember.role == MASTER, AgentOrgMember.status == "active")
+        select(func.count()).select_from(AgentOrgMember).where(AgentOrgMember.org_id == org_id, AgentOrgMember.role == "master", AgentOrgMember.status == "active")
+    )
+
+
+def org_masters(*org_ids) -> Select:
+    """`(member, user)` rows for the Masters of `org_ids`, in code order -- the one listing every Master list uses, so staff
+    (AGN-002) never appear in it."""
+    return (
+        select(AgentOrgMember, User)
+        .join(User, User.id == AgentOrgMember.user_id)
+        .where(AgentOrgMember.org_id.in_(org_ids), AgentOrgMember.role == "master")
+        .order_by(AgentOrgMember.seq)
     )
 
 
 INVITE_LIMIT = 10
-INVITE_WINDOW = timedelta(hours=24)
+INVITE_ACTIONS = ("agent_org.master_invite", "agent_org.master_invite_rejected")  # QA-10: failed attempts count too
+STAFF_ACTION_LIMIT = 20
+STAFF_ACTIONS = ("agent_org.staff_create", "agent_org.staff_create_rejected", "agent_org.staff_reset")
+THROTTLE_WINDOW = timedelta(hours=24)
 
 
-async def _invite_wait_seconds(db: AsyncSession, org_id) -> int:
-    """Seconds before this agency may send another invite; 0 means allowed. Counted from the `agent_org.master_invite`
-    audit rows (the change-password throttle's no-new-table pattern), so invite -> deactivate -> invite loops cannot turn
-    the platform's mail into a relay (security review, 2026-09-29). Runs under the organisation lock, so it is race-free."""
+async def _wait_seconds(db: AsyncSession, org_id, actions: tuple[str, ...], limit: int) -> int:
+    """Seconds before this agency may perform another of `actions`; 0 means allowed. Counted from the audit rows (the
+    change-password throttle's no-new-table pattern), so the count is shared by every API instance and invite -> deactivate ->
+    invite loops cannot turn the platform's mail into a relay (security review, 2026-09-29). Master invites (R1, budget
+    INVITE_LIMIT) and staff creations + resets (AGN-002 E2, budget STAFF_ACTION_LIMIT) are separate budgets. Runs under the
+    organisation lock, so it is race-free."""
     now = datetime.now(UTC)
     recent = (
         await db.scalars(
             select(AuditLog.created_at)
-            .where(
-                AuditLog.entity_type == "agent_org",
-                AuditLog.entity_id == str(org_id),
-                AuditLog.action.in_(("agent_org.master_invite", "agent_org.master_invite_rejected")),  # QA-10: failed attempts count too
-                AuditLog.created_at > now - INVITE_WINDOW,
-            )
+            .where(AuditLog.entity_type == "agent_org", AuditLog.entity_id == str(org_id), AuditLog.action.in_(actions), AuditLog.created_at > now - THROTTLE_WINDOW)
             .order_by(AuditLog.created_at.desc())
-            .limit(INVITE_LIMIT)
+            .limit(limit)
         )
     ).all()
-    if len(recent) < INVITE_LIMIT:
+    if len(recent) < limit:
         return 0
-    return max(1, math.ceil((recent[-1] + INVITE_WINDOW - now).total_seconds()))
+    return max(1, math.ceil((recent[-1] + THROTTLE_WINDOW - now).total_seconds()))
 
 
-async def _reject_invite(db: AsyncSession, org_id, actor_id) -> None:
-    """Browser QA-10: an invite to an existing address is audited and COUNTED toward the invite throttle, so probing which
-    emails have accounts is capped at INVITE_LIMIT a day per agency. Committed before the 409 (a raised request would
-    otherwise roll the row back). The address itself is never recorded."""
-    db.add(AuditLog(user_id=actor_id, action="agent_org.master_invite_rejected", entity_type="agent_org", entity_id=str(org_id), outcome="rejected", metadata_json={"reason": "email_exists"}))
+async def _enforce_budget(db: AsyncSession, org_id, actor_id, *, actions: tuple[str, ...], limit: int, event: str, message: str) -> None:
+    """429 with Retry-After once the agency has used this budget (see `_wait_seconds`)."""
+    wait = await _wait_seconds(db, org_id, actions, limit)
+    if wait:
+        logger.warning(event, extra={"extra_fields": {"org_id": str(org_id), "actor_id": str(actor_id), "wait_seconds": wait}})
+        raise HTTPException(429, message, headers={"Retry-After": str(wait)})
+
+
+async def _reject_existing_email(db: AsyncSession, org_id, actor_id, *, action: str, event: str) -> NoReturn:
+    """Browser QA-10: a Master invite or staff creation for an existing address is audited and COUNTED toward its throttle, so
+    probing which emails have accounts is capped per agency per day. Committed before the 409 (a raised request would otherwise
+    roll the row back). The address itself is never recorded."""
+    db.add(AuditLog(user_id=actor_id, action=action, entity_type="agent_org", entity_id=str(org_id), outcome="rejected", metadata_json={"reason": "email_exists"}))
     await db.commit()
-    logger.info("agent_org_invite_rejected", extra={"extra_fields": {"org_id": str(org_id), "actor_id": str(actor_id), "reason": "email_exists"}})
+    logger.info(event, extra={"extra_fields": {"org_id": str(org_id), "actor_id": str(actor_id), "reason": "email_exists"}})
     raise HTTPException(409, "Email already exists")
 
 
-async def invite_master(db: AsyncSession, org: AgentOrg, actor: User, *, full_name: str, email: str, phone: str | None):
-    """No commit; `org` must be locked. D4/D9/E5/E6: a real agent account with an unusable password + a DEC-SCOPE-019
-    welcome token; the next code is master_seq + 1. At most INVITE_LIMIT invites per agency per INVITE_WINDOW."""
+async def _provision_member(
+    db: AsyncSession, org: AgentOrg, actor: User, *, role: str, full_name: str, email: str, phone: str | None, source: str, rejected_action: str, rejected_event: str
+) -> tuple[AgentOrgMember, User, IssuedWelcome]:
+    """No commit; `org` must be locked. Shared by Master invites (D4/D9/E5/E6) and staff creation (AGN-002 S2-S4): a real agent
+    account with an unusable password, an approved agent assignment, the next never-reused number for `role` (`master_seq` /
+    `staff_seq`) and a DEC-SCOPE-019 welcome token. An existing email is audited as `rejected_action` and refused with 409."""
     org_id, actor_id = org.id, actor.id  # plain values: a rollback below expires the ORM objects
-    if await count_active_masters(db, org_id) >= MASTER_LIMIT:
-        raise HTTPException(422, "This agency already has 3 active Masters")
-    wait = await _invite_wait_seconds(db, org_id)
-    if wait:
-        logger.warning("agent_org_invite_throttled", extra={"extra_fields": {"org_id": str(org_id), "actor_id": str(actor_id), "wait_seconds": wait}})
-        raise HTTPException(429, f"This agency has made {INVITE_LIMIT} invite attempts in the last 24 hours. Try again later.", headers={"Retry-After": str(wait)})
     email = email.lower().strip()
     if await db.scalar(select(User.id).where(User.email == email)):
-        await _reject_invite(db, org_id, actor_id)
-    now = datetime.now(UTC)
-    user = User(email=email, password_hash=unusable_password_hash(), full_name=full_name, role="agent", division="overseas", phone=phone, active=True, email_verified=False, profile={"registration_source": "agent_master_invite"})
+        await _reject_existing_email(db, org_id, actor_id, action=rejected_action, event=rejected_event)
+    user = User(
+        email=email, password_hash=unusable_password_hash(), full_name=full_name, role="agent", division="overseas", phone=phone, active=True, email_verified=False,
+        profile={"registration_source": source},
+    )
     db.add(user)
     try:
         await flush_unique_email(db)  # a collision rolls back (releasing the org lock) and raises 409
     except HTTPException:
-        await _reject_invite(db, org_id, actor_id)
-    db.add(UserRoleAssignment(user_id=user.id, division="overseas", role="agent", is_active=True, assigned_by_user_id=actor.id, approval_status="approved", approved_by_user_id=actor.id, approved_at=now))
-    org.master_seq += 1
-    member = AgentOrgMember(org_id=org.id, user_id=user.id, role="master", seq=org.master_seq, code=member_code(org.prefix, org.master_seq), status="active", invited_by_user_id=actor.id)
+        await _reject_existing_email(db, org_id, actor_id, action=rejected_action, event=rejected_event)
+    db.add(UserRoleAssignment(user_id=user.id, division="overseas", role="agent", is_active=True, assigned_by_user_id=actor_id, approval_status="approved", approved_by_user_id=actor_id, approved_at=datetime.now(UTC)))
+    if role == "master":
+        org.master_seq += 1
+        seq, code = org.master_seq, member_code(org.prefix, org.master_seq)
+    else:
+        org.staff_seq += 1
+        seq, code = org.staff_seq, staff_code(org.prefix, org.staff_seq)
+    member = AgentOrgMember(org_id=org_id, user_id=user.id, role=role, seq=seq, code=code, status="active", invited_by_user_id=actor_id)
     db.add(member)
     await db.flush()
     issued = await issue_welcome_token(db, user=user, issued_by=actor)
+    return member, user, issued
+
+
+async def invite_master(db: AsyncSession, org: AgentOrg, actor: User, *, full_name: str, email: str, phone: str | None):
+    """No commit; `org` must be locked. D4/D9: at most MASTER_LIMIT active Masters and INVITE_LIMIT invites per agency per
+    THROTTLE_WINDOW; the account itself is `_provision_member`'s."""
+    if await count_active_masters(db, org.id) >= MASTER_LIMIT:
+        raise HTTPException(422, "This agency already has 3 active Masters")
+    await _enforce_budget(
+        db, org.id, actor.id, actions=INVITE_ACTIONS, limit=INVITE_LIMIT, event="agent_org_invite_throttled",
+        message=f"This agency has made {INVITE_LIMIT} invite attempts in the last 24 hours. Try again later.",
+    )
+    member, user, issued = await _provision_member(
+        db, org, actor, role="master", full_name=full_name, email=email, phone=phone, source="agent_master_invite",
+        rejected_action="agent_org.master_invite_rejected", rejected_event="agent_org_invite_rejected",
+    )
     db.add(AuditLog(user_id=actor.id, action="agent_org.master_invite", entity_type="agent_org", entity_id=str(org.id), outcome="invited", metadata_json={"member_id": str(member.id), "code": member.code}))
+    return member, user, issued
+
+
+async def _check_staff_budget(db: AsyncSession, org_id, actor_id) -> None:
+    """AGN-002 E2: staff creations + resets share one budget (create_staff, reset_staff)."""
+    await _enforce_budget(
+        db, org_id, actor_id, actions=STAFF_ACTIONS, limit=STAFF_ACTION_LIMIT, event="agent_org_staff_throttled",
+        message=f"This agency has created or reset {STAFF_ACTION_LIMIT} staff logins in the last 24 hours. Try again later.",
+    )
+
+
+async def create_staff(db: AsyncSession, org: AgentOrg, actor: User, *, full_name: str, email: str, phone: str | None):
+    """No commit; `org` must be locked. AGN-002 (S2-S4): the staff budget, then `_provision_member` numbered from `staff_seq`."""
+    await _check_staff_budget(db, org.id, actor.id)
+    member, user, issued = await _provision_member(
+        db, org, actor, role="staff", full_name=full_name, email=email, phone=phone, source="agent_staff_create",
+        rejected_action="agent_org.staff_create_rejected", rejected_event="agent_org_staff_create_rejected",
+    )
+    _staff_audit(db, actor, org, member, "staff_create", "created")
+    return member, user, issued
+
+
+def _staff_audit(db: AsyncSession, actor: User, org: AgentOrg, member: AgentOrgMember, action: str, outcome: str, **extra) -> None:
+    """S6: every staff action, in the caller's transaction; ids and codes only (never an email, password or token)."""
+    db.add(
+        AuditLog(
+            user_id=actor.id, action=f"agent_org.{action}", entity_type="agent_org", entity_id=str(org.id), outcome=outcome,
+            metadata_json={"member_id": str(member.id), "code": member.code, **extra},
+        )
+    )
+
+
+async def _staff_member(db: AsyncSession, org: AgentOrg, member_id) -> tuple[AgentOrgMember, User]:
+    """The caller's organisation's staff member, else 404 -- another agency's member and every Master read the same (no
+    disclosure). The user row is locked after the organisation (lock order: org -> user -> tokens, as reset-password/Re-send)."""
+    member = await db.scalar(
+        select(AgentOrgMember).where(AgentOrgMember.id == member_id, AgentOrgMember.org_id == org.id, AgentOrgMember.role == "staff").execution_options(populate_existing=True)
+    )
+    if not member:
+        raise HTTPException(404, "Staff member not found")
+    user = await db.get(User, member.user_id, with_for_update=True, populate_existing=True)
+    return member, user
+
+
+async def update_staff(db: AsyncSession, org: AgentOrg, member_id, actor: User, changes: dict) -> tuple[AgentOrgMember, User]:
+    """No commit; `org` locked. S4: `changes` holds only `full_name` / `phone`; audited by field name, never by value."""
+    member, user = await _staff_member(db, org, member_id)
+    for field, value in changes.items():
+        setattr(user, field, value)
+    _staff_audit(db, actor, org, member, "staff_update", "updated", fields=sorted(changes))
+    return member, user
+
+
+async def deactivate_staff(db: AsyncSession, org: AgentOrg, member_id, actor: User) -> tuple[AgentOrgMember, User]:
+    """No commit; `org` locked. S5 + E6: login disabled (every API refuses on the next request), sessions ended by the version,
+    any open set-password link revoked."""
+    member, user = await _staff_member(db, org, member_id)
+    if member.status != "active":
+        raise HTTPException(409, "Already deactivated")
+    member.status, member.deactivated_at, member.deactivated_by_user_id = "deactivated", datetime.now(UTC), actor.id
+    user.active = False
+    user.session_version += 1
+    await revoke_welcome_tokens(db, user.id)
+    _staff_audit(db, actor, org, member, "staff_deactivate", "deactivated")
+    return member, user
+
+
+async def reactivate_staff(db: AsyncSession, org: AgentOrg, member_id, actor: User) -> tuple[AgentOrgMember, User]:
+    """No commit; `org` locked. S5 / E3: restores the login only. Open links stay revoked (as admin reactivation); a staff
+    member who never set a password is sent a new link with Reset."""
+    member, user = await _staff_member(db, org, member_id)
+    if member.status == "active":
+        raise HTTPException(409, "Already active")
+    member.status, member.deactivated_at, member.deactivated_by_user_id = "active", None, None
+    user.active = True
+    await revoke_welcome_tokens(db, user.id)
+    _staff_audit(db, actor, org, member, "staff_reactivate", "reactivated")
+    return member, user
+
+
+async def reset_staff(db: AsyncSession, org: AgentOrg, member_id, actor: User):
+    """No commit; `org` locked. S3: the password stops working, every session ends, and a new DEC-SCOPE-019 link (which revokes
+    the previous one) goes to the staff member's own address. Counts toward the staff budget; E7: per-account 60 s cooldown."""
+    member, user = await _staff_member(db, org, member_id)
+    if member.status != "active":
+        raise HTTPException(409, "Reactivate this staff member first")
+    await _check_staff_budget(db, org.id, actor.id)
+    wait = await resend_wait_seconds(db, user.id)
+    if wait:
+        logger.warning("agent_org_staff_reset_cooldown", extra={"extra_fields": {"org_id": str(org.id), "member_id": str(member.id), "wait_seconds": wait}})
+        raise HTTPException(429, f"A link was just sent; wait {wait} seconds before resetting again", headers={"Retry-After": str(wait)})
+    user.password_hash = unusable_password_hash()
+    user.session_version += 1
+    issued = await issue_welcome_token(db, user=user, issued_by=actor)
+    _staff_audit(db, actor, org, member, "staff_reset", "reset")
     return member, user, issued
 
 
 async def deactivate_master(db: AsyncSession, org: AgentOrg, member_id, actor: User) -> tuple[AgentOrgMember, User]:
     """No commit; `org` must be locked. D8/E3: never the last active Master; login disabled; open invite revoked."""
     member = await db.scalar(
-        select(AgentOrgMember).where(AgentOrgMember.id == member_id, AgentOrgMember.org_id == org.id, AgentOrgMember.role == MASTER).execution_options(populate_existing=True)
+        select(AgentOrgMember).where(AgentOrgMember.id == member_id, AgentOrgMember.org_id == org.id, AgentOrgMember.role == "master").execution_options(populate_existing=True)
     )
     if not member:
         raise HTTPException(404, "Master not found")
@@ -253,7 +401,7 @@ async def deactivate_master(db: AsyncSession, org: AgentOrg, member_id, actor: U
         await db.scalars(
             select(User.id)
             .join(AgentOrgMember, AgentOrgMember.user_id == User.id)
-            .where(AgentOrgMember.org_id == org.id, AgentOrgMember.role == MASTER, AgentOrgMember.status == "active", AgentOrgMember.id != member.id, User.active.is_(True))
+            .where(AgentOrgMember.org_id == org.id, AgentOrgMember.role == "master", AgentOrgMember.status == "active", AgentOrgMember.id != member.id, User.active.is_(True))
         )
     ).all()
     pending = await provisioning_statuses(db, others)
@@ -279,7 +427,7 @@ async def notification_recipients(db: AsyncSession, agent: User) -> list[User]:
             await db.scalars(
                 select(User)
                 .join(AgentOrgMember, AgentOrgMember.user_id == User.id)
-                .where(AgentOrgMember.org_id == org_id, AgentOrgMember.role == MASTER, AgentOrgMember.status == "active")
+                .where(AgentOrgMember.org_id == org_id, AgentOrgMember.role == "master", AgentOrgMember.status == "active")
                 .order_by(AgentOrgMember.seq)
             )
         ).all()

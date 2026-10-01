@@ -404,20 +404,36 @@ class AgentStudentCreate(BaseModel):
     student_id: UUID
 
 
+_EMAIL_SHAPE = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
+
+
+def _required_full_name(value: str | None) -> str:
+    """Trimmed; blank (or null) is refused with a plain message, not pydantic's "Value error, ..." prefix (browser QA-06)."""
+    value = (value or "").strip()
+    if not value:
+        raise PydanticCustomError("blank_full_name", "Full name is required")
+    return value
+
+
 class AgentMasterInvite(BaseModel):
     """AGN-001 (D9): a Master inviting another Master to their agency."""
 
     full_name: str = Field(min_length=1, max_length=160)
-    email: str = Field(pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=320)
+    email: str = Field(max_length=320)
     phone: str | None = Field(default=None, max_length=40)
 
     @field_validator("full_name")
     @classmethod
     def full_name_not_blank(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
-            # A plain message, not pydantic's "Value error, ..." prefix (browser QA-06).
-            raise PydanticCustomError("blank_full_name", "Full name is required")
+        return _required_full_name(value)
+
+    @field_validator("email")
+    @classmethod
+    def email_looks_valid(cls, value: str) -> str:
+        # AGN-002 browser QA-01: the same rule as before (something@domain.tld), worded for people -- a `pattern=` constraint
+        # showed the raw regex ("String should match pattern ...") for an address the browser itself accepts (`a@b`).
+        if not _EMAIL_SHAPE.fullmatch(value):
+            raise PydanticCustomError("invalid_email", "Enter a valid email address, like name@example.com")
         return value
 
 
@@ -505,6 +521,35 @@ class AgentStudentAssign(BaseModel):
 
     model_config = {"extra": "forbid"}
     member_id: UUID | None
+
+
+class AgentStaffCreate(AgentMasterInvite):
+    """AGN-002 (DEC-SCOPE-040 S4): a Master adding a staff login -- the same fields and rules as a Master invite."""
+
+
+class AgentStaffUpdate(BaseModel):
+    """AGN-002 (DEC-SCOPE-040 S4): name and phone only. Email is fixed after creation, so a Master can never redirect a staff
+    member's set-password link to an address they control. Omitted = unchanged; phone null or "" clears it."""
+
+    model_config = {"extra": "forbid"}
+    full_name: str | None = Field(default=None, max_length=160)
+    phone: str | None = Field(default=None, max_length=40)
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_present(cls, value: str | None) -> str:
+        return _required_full_name(value)  # an explicit null is refused too (omitting the field leaves the name unchanged)
+
+    @field_validator("phone")
+    @classmethod
+    def phone_blank_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
+
+    @model_validator(mode="after")
+    def something_to_update(self):
+        if not self.model_fields_set:
+            raise PydanticCustomError("nothing_to_update", "Nothing to update")
+        return self
 
 
 class CommissionCreate(BaseModel):

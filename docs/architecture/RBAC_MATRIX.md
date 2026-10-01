@@ -143,7 +143,20 @@ members. Staff roles are not decided (D13). Enforcement: `core/rbac.agent_denial
 `workflows._require`, `portal()` and `api/agent_team.py`) and `services/agent_orgs.org_member_ids` (scope). Proved by
 `tests/test_agn_001_tenancy.py` (cross-organisation matrix) and `test_agn_001_team.py`.
 
-**`AGN-004` / `DEC-SCOPE-041` (2026-09-30) — agency students and staff scope, BUILT 2026-09-30 (independent of `AGN-002`, same
+**`AGN-002` / `DEC-SCOPE-040` (2026-09-30) — agency staff, BUILT 2026-09-30.** A staff member (`role='agent'`, member
+role `staff`, code `<prefix>-S###`) of an `active` organisation works on the organisation's students, applications and
+documents with the same organisation-wide scope as a Master (S1; narrowed to assigned students by `AGN-004`, below). Staff are
+**denied** team management (`403 "Only an agency Master can manage the team"`), commission list/claim (`403 "Only an agency
+Master can view commissions"`) and the `team`/`commissions` portal pages; their dashboard/reports omit commission figures.
+Only an active Master of the organisation creates, edits, deactivates, reactivates or resets its staff; another
+organisation's Master gets `404`. A deactivated staff member is refused every API (`users.active = false`); a reset or
+deactivation ends every session (`users.session_version`). Staff never count as Masters (3-Master limit, last-Master rule,
+commission notifications) and cannot be approved/rejected as agents by Overseas Admin (`422`). Enforcement:
+`core/rbac.is_agent_staff`, `api/agent_team._require_master`, `services/agent_orgs._staff_member`. Proved by
+`tests/test_agn_002_staff.py`, `test_agn_002_staff_access.py`, `test_agn_002_master_rules.py`, `test_agn_002_sessions.py`.
+Known limitation: admin `PATCH /admin/users/{id}` can still change `active` on any agent user (spec §10, E4).
+
+**`AGN-004` / `DEC-SCOPE-041` (2026-09-30) — agency students and staff scope, BUILT 2026-09-30 (narrows `AGN-002` S1 above; same
 staff model).** A staff member is a `role='agent'` user whose organisation membership has `role='staff'` (created by `AGN-002`).
 
 | Action | Master | Staff |

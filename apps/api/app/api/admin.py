@@ -41,7 +41,7 @@ from app.models import (
     UserRoleAssignment,
 )
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
-from app.services.agent_orgs import ensure_agent_org, lock_org, set_org_status, transition_org
+from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.provisioning import flush_unique_email as _flush_unique_email
 from app.services.storage import storage
@@ -1098,15 +1098,7 @@ async def list_agent_orgs(
     orgs = (await db.scalars(select(AgentOrg).where(*filters).order_by(AgentOrg.created_at.desc(), AgentOrg.id.desc()).limit(limit).offset(offset))).all()
     masters: dict = {}
     if orgs:
-        rows = (
-            await db.execute(
-                select(AgentOrgMember, User)
-                .join(User, User.id == AgentOrgMember.user_id)
-                .where(AgentOrgMember.org_id.in_([o.id for o in orgs]), AgentOrgMember.role == "master")  # AGN-002: staff are not listed here
-                .order_by(AgentOrgMember.seq)
-            )
-        ).all()
-        for member, member_user in rows:
+        for member, member_user in (await db.execute(org_masters(*(o.id for o in orgs)))).all():  # AGN-002: Masters only, never staff
             masters.setdefault(member.org_id, []).append({"id": member.id, "code": member.code, "full_name": member_user.full_name, "email": member_user.email, "status": member.status})
     items = [{"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, [])} for o in orgs]
     return {"items": items, "total": total or 0, "limit": limit, "offset": offset}

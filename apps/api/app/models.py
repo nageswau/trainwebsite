@@ -44,6 +44,9 @@ class User(Base, TimestampMixin):
     agent_membership: Mapped["AgentOrgMember | None"] = relationship(
         foreign_keys="AgentOrgMember.user_id", viewonly=True, uselist=False, lazy="raise"
     )
+    # AGN-002 (DEC-SCOPE-040 S3, spec §5): copied into every token as `sv`; a staff reset or deactivation increments it, which ends
+    # every session issued before. Tokens without the claim count as 0.
+    session_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 
 class UserRoleAssignment(Base, TimestampMixin):

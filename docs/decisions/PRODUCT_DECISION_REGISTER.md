@@ -2658,7 +2658,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 - **D10 — Migration.** Each existing agent becomes Master `M001` of its own organisation: `approved` → `active`, `pending` → `pending`, `rejected` → `pending` (for re-review). Data access is unchanged.
 - **D11 — Admin-created agents.** Creating a `role='agent'` user through admin user-create (`ADM-001`) also creates a `pending` organisation with that user as `M001`.
 - **D12 — Notifications.** Agent notifications that today go to the single agent (commission estimated, commission eligible) go to every active Master of the organisation.
-- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`. *(2026-09-30: staff assignment and ownership of students since decided as `DEC-SCOPE-041`, `AGN-004`; staff logins are `AGN-002` on its own branch.)*
+- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`. *(2026-09-30: Staff logins since decided as `DEC-SCOPE-040`, `AGN-002`; staff assignment and ownership of students since decided as `DEC-SCOPE-041`, `AGN-004`; staff performance and CRM settings remain blocked.)*
 
 **Review decisions, 2026-09-29 (`EXPLICIT_APPROVAL`, in-session, after the API / security / frontend review of the build):**
 - **R1 — Invite throttle.** At most 10 Master invites per agency per rolling 24 hours (counted from `agent_org.master_invite` audit rows, under the organisation lock); over the limit → `429` with `Retry-After`. Reason: invite → deactivate → invite loops otherwise let an approved agency send unlimited set-password emails to any address under a name it chooses.
@@ -2679,10 +2679,31 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 
 **Consequences:** new `GET /api/v1/lookups/{overseas-students,overseas-applications,it-job-applications,schools,school-students}` (read-only, each with its write endpoint's scope); new `SearchableSelect` component; 20 form fields change control. No write endpoint, schema or migration changes.
 
+### DEC-SCOPE-040 — Agent staff logins (`AGN-002`)
+
+**ID note:** provisional number, the next free after `DEC-SCOPE-039`. If another branch reaches `main` first holding `DEC-SCOPE-040`, this entry is renumbered on merge (precedent: `DEC-SCOPE-038`/`039`).
+
+**Question:** the owner's `AGN-002` statement (in-session, 2026-09-30): "Master creates, edits, activates/deactivates and resets staff logins; Staff ID is auto-generated (§2 Staff, §3)", with acceptance criteria: codes `<PREFIX>-S001`, `S002`, … unique per organisation and never reused; a set-password email is sent or reported; deactivated staff cannot call any API; reactivation restores access; a Master of another organisation cannot see or edit the staff member; every action is audited. `DEC-SCOPE-038` D13 had left Staff logins blocked under `CONFLICT_MATRIX.md` `C-10`. What may staff do, how are they modelled, what does "reset" mean, and which fields and limits apply?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 "Staff — Create staff login, Edit staff, Activate/deactivate staff, Reset password", §3 staff fields and example codes `ABC-S001`…, §6 Master-vs-Staff permission table, Best approach "unlimited Staff accounts". Graphify-oriented impact analysis, 2026-09-30: `AgentOrgMember` allows only `role = 'master'` (`ck_agent_org_members_role`) and numbers members by one `seq` unique per organisation (`uq_agent_org_members_org_seq`); every agent read/write is scoped by `org_member_ids` (organisation-wide, `workflows.py`, `lookups.py`, `services/portal.py`); `count_active_masters`, `deactivate_master`'s other-Master check, `notification_recipients` (D12) and the team listings do not filter by member role; `User.active = False` already denies every API (`deps.get_current_user`, login, refresh); the admin Re-send route deliberately cannot reset an account that has a password; there is no session-revocation mechanism.
+
+**Conflicts recorded, not silently resolved:** `EVID-015` §3 has the Master type a "Temporary Password"; `AGN-001` (`DEC-SCOPE-038` D9, spec E5) decided a Master must never be able to set another user's password. The owner chose the set-password link (S3). `EVID-015` §3's Username, Designation, Branch, Joining Date, Assigned Students and Permission Level fields are not taken (S4). `EVID-015` §6 limits staff to "Assigned" students; assignment is not decided (S1).
+
+**Resolution:** owner, in-session 2026-09-30 (`EXPLICIT_APPROVAL` — the owner's `AGN-002` statement and answers to four structured questions, not the source document's wording):
+
+- **S1 — Staff access.** A staff member of an `active` organisation uses the existing agent student and application routes with the organisation-wide scope Masters have today. Team management (Masters and staff) and commissions stay Master-only. Narrowing staff to assigned students, staff assignment/ownership, staff performance and permission levels stay out of scope (still blocked under `C-10`).
+- **S2 — Model.** A staff member is a `User` with `role='agent'`, division `overseas`, an approved `agent` role assignment, and an `AgentOrgMember` with member role `staff`. Staff codes are `<PREFIX>-S###` from a per-organisation staff counter separate from `master_seq`: unique, monotonic (next = highest ever issued + 1), never reassigned. Every Master-only check tests the member role, and the Master rules of `DEC-SCOPE-038` (3-Master limit D4, last-Master rule D8/R3, notifications D12) count Masters only.
+- **S3 — Reset.** Only a Master of the staff member's organisation resets a staff login: the current password becomes unusable, a one-time set-password link is emailed through the `DEC-SCOPE-019` mechanism (the Master never sees the token, as for Master invites), and the staff member's existing sessions end. Creating staff sends the same link; the response reports whether the email was sent.
+- **S4 — Fields and limits.** Name, email and phone. Email is fixed after creation (name and phone are editable). No cap on the number of staff. Staff creations and resets are throttled per agency on a rolling 24 hours, like `DEC-SCOPE-038` R1; the exact budget is set in the design spec.
+- **S5 — Activation.** Only a Master of the organisation deactivates or reactivates its staff. Deactivation disables the login (denied every API on the next request) and revokes any open set-password link; reactivation restores access. Unlike Masters (D8), staff can be reactivated.
+- **S6 — Tenancy and audit.** A Master of another organisation cannot list, see or change a staff member (`404`). Every staff action (create, edit, deactivate, reactivate, reset) writes an audit row with `entity_type='agent_org'` in the same transaction.
+
+**Consequences:** migration widening the member role, the member sequence constraint and the member status set, and adding a staff counter; new staff endpoints under the Master team route; a session-revocation check in `get_current_user` and refresh (design spec); role filters added to the Master rules and team listings; Overseas Admin's per-agent approve/reject and admin user reactivation must not bypass S1/S5 for staff (design spec); `AgentTeamPanel` gains a Staff section. Open design details (session-revocation mechanism, throttle budget, reactivation of a never-activated staff account, admin-route handling) are settled in the `AGN-002` design spec, not here.
+
 ### DEC-SCOPE-041 — Agent students: students with no login, staff assignment (`AGN-004`)
 
-**ID note:** provisional number. `DEC-SCOPE-040` is held by `AGN-002` (staff logins) on `feature/agn-002-staff-logins`; whichever
-of the two reaches `main` second keeps its number if free or renumbers on merge (precedent: `DEC-SCOPE-038`/`039`).
+**ID note:** `DEC-SCOPE-040` is `AGN-002` (staff logins), on `main` since PR #28; this entry keeps `DEC-SCOPE-041` (no clash
+when `main` was merged into the AGN-004 branch, 2026-10-01).
 
 **Question:** the owner's `AGN-004` statement (in-session, 2026-09-30): "Master/Staff create, edit, view and archive students who
 never log in (§2 Students, §5 Step 1; DEC-ROLE-004; DEC-SCOPE-035 D3)", with acceptance: create/edit/view/archive work for the right
@@ -2724,7 +2745,8 @@ questions, not the source document's wording):
 - Design choices F1–F5 (no `org_id` column; linked students not editable here; duplicates include archived and linked students;
   staff see invisible matches only as a count; the detail view sits on the Students page) — design spec §3.
 
-**Consequences:** migration `0047_agent_students_crm` (additive; staff pieces guarded for the AGN-002 merge); new
-`/workflows/overseas/agent/crm/students` routes; scope helpers applied to every agent path; new Students panel. Staff browser flows
-and the named-staff Assign picker wait for the AGN-002 merge. Schema, endpoint shapes and screens are fixed in
+**Consequences:** migration `0048_agent_students_crm` (additive; cut as `0047_agent_students_crm` with AGN-002's staff pieces copied
+in, re-chained after AGN-002's `0047_agent_org_staff` on merge, 2026-10-01, which owns those pieces); new
+`/workflows/overseas/agent/crm/students` routes; scope helpers applied to every agent path; new Students panel. With AGN-002 merged,
+Staff browser flows and a named-staff Assign picker are now possible; both remain to be done. Schema, endpoint shapes and screens are fixed in
 `docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md`, not here.

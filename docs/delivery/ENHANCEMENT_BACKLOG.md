@@ -58,6 +58,10 @@ Appendix B) into scope as **AGN-001** — agent organisation as tenant, with Mas
 approval and answers recorded as `DEC-SCOPE-038` (D1–D13). Only that slice leaves Appendix B; Staff logins
 and the rest of `EVID-015` stay parked. AGN-001 keeps the ID the user gave it rather than an `ENH-` number.
 
+**Revision 7 (2026-09-30):** the owner brought Staff logins (`EVID-015` §2 Staff, §3) into scope as
+**AGN-002**, decided as `DEC-SCOPE-040` (S1–S6). Staff assignment/ownership, staff performance and CRM
+settings stay parked.
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -2989,8 +2993,9 @@ the agency warns; saving again with confirmation proceeds (audited).
 
 **Status (2026-10-01) — IMPLEMENTED; NOT COMPLETE.** Browser QA done (QA-01…QA-10 found and fixed, `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`); the independent Codex review is pending. Designed (spec rev. 2), planned
 (`docs/superpowers/plans/2026-09-30-agn-004-agent-students.md`) and built test-first on `feature/agn-004-agent-students`
-(migration `0047_agent_students_crm`). Outstanding before COMPLETE: browser validation and the independent Codex review (owner
-instruction); Staff browser flows and the named-Staff Assign picker wait for the AGN-002 merge. Evidence in `docs/quality/RTM.md`.
+(migration `0048_agent_students_crm`, re-chained after AGN-002's `0047_agent_org_staff` when main was merged 2026-10-01). Outstanding
+before COMPLETE: the independent Codex review (owner set it aside 2026-10-01); Staff browser flows and the named-Staff Assign picker,
+unblocked now that AGN-002 is merged. Evidence in `docs/quality/RTM.md`.
 
 ---
 
@@ -2999,6 +3004,99 @@ instruction); Staff browser flows and the named-Staff Assign picker wait for the
 **Requirement:** the owner, in-session 2026-09-29 (`EXPLICIT_APPROVAL`): every student and application reference is a searchable dropdown of valid values. **Decision:** `DEC-SCOPE-039` (D1–D5). **Spec:** `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` (AC01–AC10). **Plan:** `docs/superpowers/plans/2026-09-29-enh-031-searchable-reference-pickers.md`.
 
 **Status (2026-09-29):** implemented on `feature/agn-001-multi-tenant-agent-crm`; evidence in `docs/quality/RTM.md` (ENH-031 row).
+
+---
+
+## AGN-002 — Agent Staff Logins: Master Creates, Edits, Activates/Deactivates and Resets Staff
+
+**Title.** An agency's Masters manage staff logins with auto-generated Staff IDs.
+
+**Business requirement.** The owner's `AGN-002` statement (in-session, 2026-09-30): "Master creates, edits,
+activates/deactivates and resets staff logins; Staff ID is auto-generated (§2 Staff, §3)", referring to
+`EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 and §3. Decided as `DEC-SCOPE-040`
+(S1–S6).
+
+**Existing behavior.** `AGN-001` members are Masters only (`ck_agent_org_members_role`); one `seq` per
+organisation; Masters invite and deactivate Masters (`api/agent_team.py`, `services/agent_orgs.py`).
+Every agent route is scoped to the whole organisation (`org_member_ids`). No staff concept exists.
+
+**Expected behavior.** Per `DEC-SCOPE-040`: a Master creates a staff login (name, email, phone) with code
+`<PREFIX>-S###` and a set-password email; edits name and phone; deactivates and reactivates it; resets it
+(password unusable, new set-password link, sessions ended). Staff use the agent student/application
+routes organisation-wide but not team management or commissions.
+
+**User roles affected.** `agent` (Master and the new staff member role). Indirectly `overseas_admin` /
+`super_admin` (agent list and approval routes, user reactivation).
+
+**Frontend impact.** `AgentTeamPanel.tsx` (Staff section), the portal `team` section, possibly the agent
+sidebar for staff (`lib/navigation.ts`, `WorkflowPanel.tsx`); screen `SCR-AGT-007`.
+
+**Backend impact.** `services/agent_orgs.py` (staff functions; Master-only role filters in
+`count_active_masters`, `deactivate_master`, `notification_recipients`), `api/agent_team.py` (staff
+routes; Master-only guard), commission routes in `workflows.py` / `services/portal.py` (Master-only),
+`rbac.agent_denial_reason` (message), `deps.get_current_user` and `auth.refresh` (session revocation),
+`admin.py` agent list/approve/reject and user `PATCH` (staff handling).
+
+**Database impact.** Migration after `0046_agent_orgs`: member role `master|staff`, per-role sequence
+uniqueness, a staff counter on `agent_orgs`, member status allowing reactivation; session-revocation
+field on `users` (design spec).
+
+**API impact.** New staff endpoints under `/workflows/overseas/agent/team/staff` (list, create, edit,
+deactivate, reactivate, reset), with a paginated staff list; the existing team `GET` keeps its shape and lists
+Masters only. Design: `docs/superpowers/specs/2026-09-30-agn-002-staff-logins-design.md`.
+
+**Integration impact.** Set-password email through the existing `DEC-SCOPE-019` delivery. No new provider.
+
+**Authentication/Authorization impact.** High. Master-only vs staff checks on every agent route;
+session revocation on reset; deactivation denies every API.
+
+**Security impact.** High — privilege escalation (staff reaching Master-only actions), cross-tenant
+access, mail abuse via create/reset loops. **Performance impact.** None significant (the session check
+reads the already-loaded user).
+
+**Reusable existing modules.** `_require_master`, `lock_org`, `issue_welcome_token`,
+`deliver_welcome_link`, `revoke_welcome_tokens`, `unusable_password_hash`, `flush_unique_email`, the
+`AGN-001` invite throttle pattern, `AuditLog`.
+
+**Dependencies.** `AGN-001` (built, on `main`). None must land first.
+
+**Acceptance criteria.**
+- **AGN-002-AC01** Creating staff yields code `<PREFIX>-S001`, `S002`, … unique per organisation and never
+  reused (next = highest ever issued + 1), independent of Master codes.
+- **AGN-002-AC02** Creating staff sends a one-time set-password email (`DEC-SCOPE-019`), or the response
+  reports that it could not be sent; the Master never receives the token.
+- **AGN-002-AC03** A Master edits a staff member's name and phone; email cannot be changed.
+- **AGN-002-AC04** Deactivated staff are denied every API (not only agent routes) on their next request,
+  and their open set-password link is revoked.
+- **AGN-002-AC05** Reactivation restores access.
+- **AGN-002-AC06** Reset makes the current password unusable, emails a new set-password link and ends the
+  staff member's existing sessions.
+- **AGN-002-AC07** A Master of another organisation cannot list, see or change the staff member (`404`);
+  staff cannot manage staff or Masters, or use commission routes (`403`).
+- **AGN-002-AC08** Every staff action (create, edit, deactivate, reactivate, reset) writes an audit row
+  (`entity_type='agent_org'`) in the same transaction.
+- **AGN-002-AC09** Staff do not count toward the 3-Master limit or the last-Master rule and do not receive
+  commission notifications; an active staff member of an `active` organisation reaches the agent
+  student/application routes with organisation scope.
+- **AGN-002-AC10** Staff creations and resets are throttled per agency on a rolling 24 hours (`429` with
+  `Retry-After`).
+
+**Positive scenarios.** Master creates S001 → staff sets password → sees org students/applications;
+deactivate → denied → reactivate → allowed; reset → old password and session fail → new link works.
+**Negative scenarios.** Other-org Master acts on the staff member → `404`; staff calls team or commission
+routes → `403`; duplicate email → `409`; over the throttle → `429`.
+**Edge cases.** Reset or deactivate of staff who never set a password; reactivation after the link
+expired; concurrent creations (code uniqueness under the organisation lock); suspended organisation.
+
+**Regression risks.** High — the `AGN-001` suite (`test_agn_001_*.py`, `AgentTeamPanel.test.tsx`,
+`agn-001-multi-tenant.spec.ts`), every agent-scoped route (`AGT-001`–`004`), commission notifications,
+Overseas Admin agent approval.
+
+**Complexity:** Medium–Large. **Risk:** High.
+
+**Status (2026-09-30):** implemented test-first on `feature/agn-002-staff-logins` (migration `0047_agent_org_staff`); evidence
+in `docs/quality/RTM.md` (AGN-002 row). Browser QA pass done 2026-09-30 (QA-01…08 fixed, re-verified). **COMPLETE (2026-10-01,
+verified at `2e7ac9a`)**; the owner waived the Codex review and runs the full backend suite in their 4-5-story batch.
 
 ---
 
@@ -3166,6 +3264,7 @@ item, only for the progress-view question).
 | ENH-011, ENH-012, ENH-013, ENH-015, ENH-017, ENH-018, ENH-019, ENH-021, ENH-024, ENH-026, ENH-027, ENH-028, ENH-029, ENH-030 | None structurally required — each operates within already-confirmed School-domain scope (`DEC-SCOPE-011/012/013/017`) as a completion/extension, not a new scope question. ENH-026/ENH-027 additionally need a *design* choice (shared shape for "Recommended..."/"Career recommendations" fields); ENH-028's batch-size limit and ENH-030's session-vs-period granularity are also design, not scope, questions | N/A |
 | ENH-016 | None — corrected in Revision 3 to a narrower scope entirely within already-confirmed `DEC-SCOPE-017` | N/A |
 | AGN-001 | `DEC-SCOPE-038` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
+| AGN-002 | `DEC-SCOPE-040` — staff access, model, reset, fields/limits, activation, tenancy/audit | **Resolved 2026-09-30** (S1–S6, `EXPLICIT_APPROVAL` in-session) |
 | AGN-004 | `DEC-SCOPE-041` — students with no login, staff assignment, archive, duplicate warning, relation to AGN-002 | **Resolved 2026-09-30** (D1, D3–D5, D7, D8, G1–G5, `EXPLICIT_APPROVAL` in-session; number provisional) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
@@ -3203,7 +3302,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6).** Staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-041`, 2026-09-30; Staff logins are AGN-002 on its own branch). Still parked: staff performance, permission levels, CRM settings | `DEC-SCOPE-038` covers AGN-001; `DEC-SCOPE-041` covers AGN-004; none yet for the rest |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-041`, 2026-09-30).** Still parked: staff performance, permission levels, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-041` covers AGN-004; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

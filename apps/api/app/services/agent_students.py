@@ -14,7 +14,7 @@ from sqlalchemy.orm import aliased
 
 from app.core.rbac import is_agent_staff
 from app.models import AgentOrgMember, AgentStudent, OverseasApplication, User
-from app.services.agent_orgs import STAFF, org_member_ids
+from app.services.agent_orgs import org_member_ids
 
 PHONE_MIN_DIGITS = 7
 
@@ -228,7 +228,7 @@ def set_archived(row: AgentStudent, user: User, archived: bool) -> None:
 async def active_staff_member(db: AsyncSession, user: User, member_id) -> AgentOrgMember:
     """G5: only an ACTIVE staff member of the caller's own agency can receive a new assignment."""
     member = await db.scalar(
-        select(AgentOrgMember).where(AgentOrgMember.id == member_id, AgentOrgMember.org_id == user.agent_membership.org_id, AgentOrgMember.role == STAFF, AgentOrgMember.status == "active")
+        select(AgentOrgMember).where(AgentOrgMember.id == member_id, AgentOrgMember.org_id == user.agent_membership.org_id, AgentOrgMember.role == "staff", AgentOrgMember.status == "active")
     )
     if member is None:
         raise HTTPException(422, "Choose an active Staff member of this agency")

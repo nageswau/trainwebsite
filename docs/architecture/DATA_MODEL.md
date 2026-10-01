@@ -412,7 +412,7 @@ predate an application record).
   today `AGT-002` only reads this table (`DB impact: N`); a create/manage path for the Agent does
   not exist yet and is required scope, not optional polish, once the on-behalf-of model is built.
   See §6.2's note above for the same open `student_user_id` schema question.
-- **Addendum, 2026-09-30 (`AGN-004`, `DEC-SCOPE-041`, migration `0047_agent_students_crm`) — students with no login.**
+- **Addendum, 2026-09-30 (`AGN-004`, `DEC-SCOPE-041`, migration `0048_agent_students_crm`, cut as `0047_agent_students_crm`) — students with no login.**
   `student_id` becomes **nullable** (`NULL` = a student who never logs in; no `users` row is ever created for them).
   Additive nullable columns: `full_name` String(160), `email` String(320, stored lowercased), `phone` String(40),
   `phone_digits` String(20, server-set, digits only — duplicate check), `date_of_birth` Date, `highest_qualification`
@@ -450,9 +450,22 @@ Design: `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design
 - **Feature IDs:** `AGN-001` (changes `AGT-001`–`004`).
 - **Addendum, 2026-09-30 (`AGN-004` G2, same names as `AGN-002`):** member `role` CHECK widens to `master`/`staff`;
   numbering unique per role (`uq_agent_org_members_org_role_seq` on `org_id, role, seq` replaces `uq_agent_org_members_org_seq`,
-  so `M001` and `S001` coexist); `agent_orgs.staff_seq` Integer ≥ 0 (`ck_agent_orgs_staff_seq`). Guarded in migration
-  `0047_agent_students_crm` so AGN-002's identical `0047_agent_org_staff` and this one never apply them twice. The 3-Master
+  so `M001` and `S001` coexist); `agent_orgs.staff_seq` Integer ≥ 0 (`ck_agent_orgs_staff_seq`). Owned by AGN-002's migration
+  `0047_agent_org_staff` (AGN-004 carried an identical guarded copy until the 2026-10-01 merge; now removed). The 3-Master
   limit, the last-Master rule and commission notifications count `role='master'` only.
+
+### 6.8b Agent staff and session version — built 2026-09-30 (`AGN-002`, `DEC-SCOPE-040`, migration `0047_agent_org_staff`)
+Design: `docs/superpowers/specs/2026-09-30-agn-002-staff-logins-design.md` §4.
+- **`agent_orgs.staff_seq`** Integer ≥ 0 (`ck_agent_orgs_staff_seq`), server default 0: the highest staff number ever issued.
+- **`agent_org_members`**: `role` CHECK now `master`/`staff` (`ck_agent_org_members_role`); the sequence is unique per role
+  (`uq_agent_org_members_org_role_seq (org_id, role, seq)`, replacing `uq_agent_org_members_org_seq`), so `M001` and `S001`
+  coexist. Staff codes `<prefix>-S###`, never reassigned. Staff move `active` ↔ `deactivated` (Masters still cannot be
+  reactivated — a service rule). A staff member is a `users` row with `role='agent'` and an approved `agent` assignment.
+- **`users.session_version`** Integer, server default 0: copied into every token as `sv`; a staff reset or deactivation
+  increments it, which ends every older session (tokens without `sv` count as 0).
+- **Migration `0047`:** additive; no row changes; columns added only when missing; `downgrade()` refuses while a staff member
+  exists.
+- **Feature IDs:** `AGN-002`.
 
 ### 6.9 `InboundUniversityEmail`
 **Carries over.** Supports `UNI-001`'s university-communication surface.
