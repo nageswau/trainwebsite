@@ -63,6 +63,27 @@ test("a Master adds, edits, archives and restores a student with no login (AGN-0
   await expect(page.getByText(`${name} restored.`)).toBeVisible();
 });
 
+test("the Students page leads with all students, full width; the roster is a separate application-status table (browser QA-01/02)", async ({ page }) => {
+  await signInAsDemoAgent(page);
+  await page.goto("/overseas/agent/students");
+  const panelHeading = page.getByRole("heading", { name: "All students", level: 3 });
+  const rosterHeading = page.getByRole("heading", { name: "Application status", level: 2 });
+  await expect(panelHeading).toBeVisible();
+  await expect(rosterHeading).toBeVisible();
+  const panelTop = (await panelHeading.boundingBox())!.y;
+  const rosterTop = (await rosterHeading.boundingBox())!.y;
+  expect(panelTop).toBeLessThan(rosterTop);
+  const widths = await page.evaluate(() => {
+    const panel = document.querySelector(".agent-students")!.getBoundingClientRect().width;
+    const content = document.querySelector(".action-grid")!.getBoundingClientRect().width;
+    return { panel, content };
+  });
+  expect(widths.panel).toBeGreaterThan(widths.content * 0.9);
+  // The link form for students with an account is still on the page, and the roster still lists them.
+  await expect(page.getByRole("button", { name: "Link student" })).toBeVisible();
+  await expect(page.locator("table tbody tr", { hasText: "Ananya Sharma" })).toBeVisible();
+});
+
 test("keyboard only: add a student (AGN-004-AC13)", async ({ page }) => {
   const name = `Keyboard ${stamp()}`;
   await signInAsDemoAgent(page);
@@ -79,7 +100,7 @@ test("320 px: the Students page has no horizontal overflow (AGN-004-AC13)", asyn
   await page.setViewportSize({ width: 320, height: 800 });
   await signInAsDemoAgent(page);
   await page.goto("/overseas/agent/students");
-  await expect(page.getByRole("heading", { name: "Students", level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "All students", level: 3 })).toBeVisible();
   await expect(page.getByRole("list", { name: "Students" }).or(page.getByText(/No students yet/))).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
