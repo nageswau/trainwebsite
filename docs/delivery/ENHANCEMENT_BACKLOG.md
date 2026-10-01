@@ -3176,9 +3176,7 @@ pending-only agent review under a row lock.
 
 **Complexity:** Medium. **Risk:** High.
 
-**Status (2026-10-01):** designed (`docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md`) and **IMPLEMENTED, NOT COMPLETE**
-(Tasks 1–9 built on branch `feature/agn-003-staff-permissions`; browser spec and verification evidence pending; traceability in
-`docs/quality/RTM.md` `AGN-003` row).
+**Status (2026-10-01):** implemented test-first on `feature/agn-003-staff-permissions` (migration `0048_agent_staff_permissions`); verification evidence in `docs/quality/RTM.md` (AGN-003 row). **NOT COMPLETE** — pending the owner's browser validation and the independent Codex review.
 
 ---
 
