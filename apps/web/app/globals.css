@@ -110,6 +110,17 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
   .table.psy-records td, .table.funding-records td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
   .table.psy-records td::before, .table.funding-records td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
 }
+/* ENH-029 bulk school onboarding (browser QA-029-02/03): the card spans the full action grid so its six-column result table fits
+   on a desktop; below 760px (where that table's 650px minimum no longer fits) each result row becomes a labelled card, like
+   QA27-05 above, so a rejected row's reason is never hidden behind a sideways scroll. */
+.action-grid > .bulk-onboarding { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+  .table.bulk-report thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .table.bulk-report, .table.bulk-report tbody, .table.bulk-report tr, .table.bulk-report td { display: block; width: 100%; min-width: 0; }
+  .table.bulk-report tr { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+  .table.bulk-report td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
+  .table.bulk-report td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
+}
 /* AGN-004: the agency Students panel -- every button (toolbar, cards, paging, forms) is a 44px touch target on phones
    (browser QA-07); the panel spans the full width of the action grid (browser QA-01). ENH-020: the funding panel too. */
 .action-grid > .agent-students { grid-column: 1 / -1; }

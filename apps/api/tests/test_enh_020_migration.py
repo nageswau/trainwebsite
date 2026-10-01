@@ -32,12 +32,19 @@ def _parents() -> dict[str, str | None]:
     return parents
 
 
-def test_migration_follows_0052_and_is_the_single_head():
+def test_migration_follows_0052_and_is_on_the_single_head():
+    # Merged with ENH-029 (2026-10-01): `0054_school_onboarding_bulk` now chains after this revision, so 0053 is an ancestor of the
+    # one head (the relaxation the ENH-028 migration test received on the same merge).
     assert _migration.revision == "0053_school_funding_records"
     assert _migration.down_revision == "0052_agent_staff_permissions"
     parents = _parents()
     heads = set(parents) - set(parents.values())
-    assert heads == {"0053_school_funding_records"}
+    assert len(heads) == 1
+    chain, rev = set(), next(iter(heads))
+    while rev:
+        chain.add(rev)
+        rev = parents.get(rev)
+    assert "0053_school_funding_records" in chain
 
 
 @pytest.mark.asyncio
