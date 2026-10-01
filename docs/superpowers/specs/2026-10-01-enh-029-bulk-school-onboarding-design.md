@@ -388,4 +388,6 @@ outcome wording; `errorText`/`toneClass` reused instead of a new `detailMessage`
   IP or hostname choosing a file threw and the panel reported "Choose a filled-in CSV file first.". The panel's key now comes from
   `lib/idempotencyKey.newIdempotencyKey()`: `randomUUID` when present, otherwise a version-4 UUID from `crypto.getRandomValues`
   (available in every context). Pinned by `idempotencyKey.test.ts` and a panel test without `randomUUID`; re-verified in a browser
-  on an insecure origin.
+  on an insecure origin. The same defect existed in the app's four other `Idempotency-Key` senders (`SchoolBulkEntryPanel`,
+  `SchoolBulkUploadPanel`, `FeePaymentPanel`, `DataPrivacyPanel`); they use the same helper now, pinned by
+  `plainHttpIdempotencyKey.test.tsx`, and the ENH-028 / SCH-002 / ENH-029 Playwright specs pass on a plain-HTTP origin.
