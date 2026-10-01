@@ -11,6 +11,7 @@ import hashlib
 import io
 import re
 import time
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from uuid import UUID
@@ -314,7 +315,8 @@ def _read_csv(
         header = [name.strip().lower() for name in next(reader, [])]
         if known is not None:
             named = [name for name in header if name]
-            repeated = next((name for name in named if named.count(name) > 1), None)
+            counts = Counter(named)
+            repeated = next((name for name in named if counts[name] > 1), None)
             if repeated:
                 raise _file_error(target_type, user, "duplicate_column", f"Duplicate column: {repeated[:40]}")
             unknown = next((name for name in named if name not in known), None)

@@ -170,10 +170,11 @@ async def _report(db: AsyncSession, batch: SchoolBulkUploadBatch, rows: list[Sch
     user_ids = [r.created_user_id for r in rows if r.created_user_id]
     schools = {sid: (code, name) for sid, code, name in (await db.execute(select(School.id, School.school_code, School.name).where(School.id.in_(school_ids)))).all()} if school_ids else {}
     emails = dict((await db.execute(select(User.id, User.email).where(User.id.in_(user_ids)))).all()) if user_ids else {}
+    deliveries = deliveries or {}
     out = []
     for r in rows:
         code, name = schools.get(r.created_record_id, (None, None))
-        delivery = (deliveries or {}).get(r.row_number, {})
+        delivery = deliveries.get(r.row_number, {})
         item = {
             "row_number": r.row_number,
             "status": r.status,

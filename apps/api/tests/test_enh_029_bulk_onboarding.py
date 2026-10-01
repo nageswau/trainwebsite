@@ -104,6 +104,20 @@ async def test_unknown_column_name_is_truncated(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_a_huge_header_of_distinct_names_is_rejected_quickly(client, db_session):
+    # Simplification review: the repeated-column check must stay linear -- a near-1 MB header of distinct names is one admin
+    # request away from pinning the event loop if each name is counted against the whole header.
+    import time
+
+    await login(client, await mk_admin(db_session))
+    header = [*HEADER, *(f"c{i}" for i in range(120_000))]
+    started = time.monotonic()
+    response = await upload(client, csv_bytes([school_row()], header=header))
+    assert (response.status_code, response.json()["detail"]) == (422, "Unknown column: c0")
+    assert time.monotonic() - started < 3
+
+
+@pytest.mark.asyncio
 async def test_trailing_empty_header_is_ignored(client, db_session):
     await login(client, await mk_admin(db_session))
     response = await upload(client, csv_bytes([school_row()], header=[*HEADER, ""]))
