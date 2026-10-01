@@ -45,6 +45,12 @@ function headerOf(call: unknown[]): string {
 }
 
 describe("SchoolBulkEntryPanel", () => {
+  it("sits in the dashboard's page rhythm like its sibling panels", () => {
+    // Browser verification 2026-10-01: without the shared .portal-content wrapper the card ran wider than its neighbours.
+    const { container } = render(<SchoolBulkEntryPanel target={BULK_RESULTS} hasStudents />);
+    expect((container.firstElementChild as HTMLElement).className).toBe("portal-content");
+  });
+
   it("explains the empty portfolio instead of offering a form", () => {
     render(<SchoolBulkEntryPanel target={BULK_RESULTS} hasStudents={false} />);
     fireEvent.click(screen.getByText(BULK_RESULTS.title));
