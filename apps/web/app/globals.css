@@ -100,13 +100,15 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .psy-result summary { cursor: pointer; font-weight: 800; }
 .psy-result-text { white-space: pre-wrap; }
 /* QA27-05: on phones each assessment row is a card (Student, Assessment, Status, then the actions) -- no sideways scroll,
-   so the results button always sits next to the student it is for. Labels come from each cell's data-label. */
+   so the results button always sits next to the student it is for. Labels come from each cell's data-label.
+   ENH-020: the counsellor's open funding cases use the same card rows. */
 @media (max-width: 640px) {
-  .table.psy-records thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .table.psy-records, .table.psy-records tbody, .table.psy-records tr, .table.psy-records td { display: block; width: 100%; min-width: 0; }
-  .table.psy-records tr { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
-  .table.psy-records td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
-  .table.psy-records td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
+  .table.psy-records thead, .table.funding-records thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .table.psy-records, .table.psy-records tbody, .table.psy-records tr, .table.psy-records td,
+  .table.funding-records, .table.funding-records tbody, .table.funding-records tr, .table.funding-records td { display: block; width: 100%; min-width: 0; }
+  .table.psy-records tr, .table.funding-records tr { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+  .table.psy-records td, .table.funding-records td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
+  .table.psy-records td::before, .table.funding-records td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
 }
 /* ENH-029 bulk school onboarding (browser QA-029-02/03): the card spans the full action grid so its six-column result table fits
    on a desktop; below 760px (where that table's 650px minimum no longer fits) each result row becomes a labelled card, like
@@ -120,11 +122,23 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
   .table.bulk-report td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
 }
 /* AGN-004: the agency Students panel -- every button (toolbar, cards, paging, forms) is a 44px touch target on phones
-   (browser QA-07); the panel spans the full width of the action grid (browser QA-01). */
+   (browser QA-07); the panel spans the full width of the action grid (browser QA-01). ENH-020: the funding panel too. */
 .action-grid > .agent-students { grid-column: 1 / -1; }
 @media (max-width: 640px) {
-  .agent-students .btn { min-height: 44px; }
+  .agent-students .btn, .funding-panel .btn { min-height: 44px; }
 }
+/* ENH-020: Closed is an outcome, not an error -- a neutral pill that carries its word; finished cases sit under a disclosure. */
+.status.closed { background: var(--soft); color: var(--muted); }
+.funding-finished { margin-top: 16px; }
+.funding-finished summary { cursor: pointer; font-weight: 800; }
+.funding-finished .record-details, .funding-card .record-details + .record-details { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+.funding-notes { white-space: pre-wrap; }
+/* QA-06: real heading levels (h1 page, h2 sections) at the sizes the page already had -- the site-wide h1/h2 are marketing sizes. */
+.funding-panel h1 { font-size: clamp(28px, 3.5vw, 44px); }
+.funding-panel h2 { font-size: 20px; }
+/* QA-02: a field with help text made its row taller and the grid stretched its neighbour's input; fields keep their own height
+   (the fieldset.form-section rule above does the same). */
+.funding-panel .form-grid { align-items: start; }
 
 /* ENH-016 analytics dashboards: KPI tiles 1 -> 2 -> 4 columns; wide tables scroll inside their card, never the page. */
 .kpi-group { margin-top: 16px; }

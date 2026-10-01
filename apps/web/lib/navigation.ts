@@ -1,3 +1,4 @@
+import type { AgentPermissions } from "@/lib/types";
 export type NavItem = { label:string; href:string; children?:NavItem[] };
 
 // Single source of truth for "which dashboard does this role land on" -- used by
@@ -40,8 +41,8 @@ export const SCHOOL_NAV: Record<string, NavItem[]> = {
   parent: ["dashboard", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/parent/${x}` })),
   // SCH-004/005/006 -- single-item nav, same shape as principal/teacher/parent above.
   "academic-team": ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/academic-team/${x}` })),
-  // ENH-011: Skills (Soft Skills / Digital Skills batches).
-  "career-counselor": ["dashboard", "skills"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/career-counselor/${x}` })),
+  // ENH-011: Skills (Soft Skills / Digital Skills batches). ENH-020: Funding (loan / scholarship / funding support cases).
+  "career-counselor": ["dashboard", "skills", "funding"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/career-counselor/${x}` })),
   "psychometric-team": ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/psychometric-team/${x}` })),
 };
 export const IT_PUBLIC:NavItem[] = [
@@ -77,8 +78,12 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
 // AGN-002 (DEC-SCOPE-040 S1): an agency's staff work on students and applications; Team and Commissions stay Master-only (the
 // server refuses them regardless -- this only keeps dead links out of the sidebar).
 const STAFF_HIDDEN = new Set(["/overseas/agent/team", "/overseas/agent/commissions"]);
-export function agentNavFor(nav: NavItem[], memberRole?: string | null): NavItem[] {
-  return memberRole === "staff" ? nav.filter((item) => !STAFF_HIDDEN.has(item.href)) : nav;
+const STAFF_REPORTS = "/overseas/agent/reports";
+// AGN-003 (DEC-SCOPE-044 P1): Reports is optional for staff -- shown only once their Master switches it on (the server refuses it
+// regardless; this keeps a dead link out of the sidebar). Masters are never limited.
+export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissions?: AgentPermissions | null): NavItem[] {
+  if (memberRole !== "staff") return nav;
+  return nav.filter((item) => !STAFF_HIDDEN.has(item.href) && (item.href !== STAFF_REPORTS || permissions?.can_view_reports === true));
 }
 // ENH-016: the cross-school School Analytics page lives under /overseas/admin (D1: Overseas and Super Admins).
 export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"School Analytics",href:"/overseas/admin/school-analytics"}];

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.core.rbac import agent_denial_reason, is_agent_staff
+from app.core.rbac import REPORTS_REFUSED, agent_denial_reason, agent_may, is_agent_staff
 from app.models import User
 from app.services.portal import section_payload
 
@@ -34,6 +34,9 @@ async def portal(division: str, role: str, section: str, user: User = Depends(ge
     # AGN-002 (DEC-SCOPE-040 S1): the agency's team and commissions are Master-only pages.
     if is_agent_staff(user) and section in {"team", "commissions"}:
         raise HTTPException(403, "Only an agency Master can open this page")
+    # AGN-003 (DEC-SCOPE-044 P1): Reports is an optional §6 row -- off for staff until their Master switches it on.
+    if section == "reports" and user.role == "agent" and not agent_may(user, "can_view_reports"):
+        raise HTTPException(403, REPORTS_REFUSED)
     payload = await section_payload(db, user, section)
     if payload is None:
         raise HTTPException(404, "Workspace not found")

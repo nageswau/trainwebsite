@@ -467,6 +467,16 @@ Design: `docs/superpowers/specs/2026-09-30-agn-002-staff-logins-design.md` §4.
   exists.
 - **Feature IDs:** `AGN-002`.
 
+### 6.8c AgentOrgMember permission flags (AGN-003, migration `0052_agent_staff_permissions`)
+Design: `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md` §5. `DEC-SCOPE-044`.
+- **`agent_org_members.can_verify_documents`** and **`.can_view_reports`**: `BOOLEAN NOT NULL DEFAULT false` (`server_default`).
+  The column names are also the API keys.
+- **Staff-only semantics:** the flags apply to `role='staff'`. On Master rows they are stored but never read (`core/rbac.agent_may`
+  returns true for Masters). Read from the membership `get_current_user` already loads: no extra query, no cache.
+- **Migration `0052`** (`down_revision = "0051_school_bulk_uploads"`; drafted as `0048` after `0047`, re-chained to `0051` after `0050` and then to `0052` after ENH-028's `0051` when `main` was merged, 2026-10-01): additive; no constraint, index or backfill. Every existing row reads
+  `false` (existing staff lose the Reports page until a Master switches it on, P1). `downgrade()` drops both columns.
+- **Feature IDs:** `AGN-003`.
+
 ### 6.9 `InboundUniversityEmail`
 **Carries over.** Supports `UNI-001`'s university-communication surface.
 - **Feature IDs:** `UNI-001`.
@@ -868,11 +878,35 @@ The roster upload keeps its own `SchoolRosterUploadBatch`/`Row` (§6.13), unchan
 `SchoolAcademicResult`/`SchoolPsychometricRecord`/`SchoolTestPrepRecord`/`SchoolLanguageRecord` rows; their per-record audit
 entries carry `bulk_batch_id`. Create-table only; `downgrade()` drops both tables. **Feature ID:** `ENH-028`.
 
-**Addendum, 2026-10-01 (`ENH-029`, `DEC-SCOPE-044`; migration `0052_school_onboarding_bulk`).** `target_type` also allows
+**Addendum, 2026-10-01 (`ENH-029`, `DEC-SCOPE-047`; migration `0054_school_onboarding_bulk`).** `target_type` also allows
 `school_onboarding` (CHECK widened), and `school_bulk_upload_rows` gains `created_user_id` (nullable FK users, no index — read
 only by `batch_id`). For an onboarding row `created_record_id` is the new `schools.id`, `created_user_id` its seed Coordinator,
 `student_code` NULL; every ENH-028 row leaves `created_user_id` NULL. No existing row is read or written; `downgrade()` refuses
-while onboarding batches exist, otherwise drops the column and restores the 0051 CHECK. **Feature ID:** `ENH-029`.
+while onboarding batches exist, otherwise drops the column and restores the previous CHECK. **Feature ID:** `ENH-029`.
+
+### 6.25 School funding support cases (`ENH-020`) — added 2026-10-01, propagating `DEC-SCOPE-045` (provisional number); migration `0053_school_funding_records`
+
+`school_funding_records` — one financial support / loan assistance case (`School CRM.md` §21) for a `school_students` row:
+`id`, `school_student_id` (FK, indexed), `school_id` (FK `schools`; the student's school when the case was opened, never
+changes — D12), `support_type` (`education_loan`/`financial_assistance`/`scholarship`/`funding_guidance`, fixed after creation),
+`status` (`required`/`counselling`/`documents`/`application`/`approved`/`completed`/`closed`), `status_changed_on` (date the
+current stage was entered, school calendar), `provider_name` (≤200, nullable), `amount_text` (≤120, nullable, free text — no
+currency arithmetic), `notes` (text, `""` when empty), `closure_reason` (≤500, nullable), `career_counselor_user_id` (creator),
+`updated_by_user_id` (nullable), `created_at`, `updated_at`.
+
+Constraints: `ck_funding_record_support_type`, `ck_funding_record_status`, `ck_funding_record_closure` (`(status = 'closed') =
+(closure_reason IS NOT NULL)`). Indexes: `uq_funding_record_open_student_type` — **partial unique** on (`school_student_id`,
+`school_id`, `support_type`) `WHERE status NOT IN ('completed', 'closed')`, one open case per student, school and type (D7/D12;
+an open case left at a previous school never blocks the new school); `ix_school_funding_records_school_type` (`school_id`,
+`support_type`) for the entitlement usage count; `ix_school_funding_records_school_student_id`.
+
+Lifecycle: created at `required`; one stage forward at a time or `closed` (with a reason) from any open stage; `completed` and
+`closed` are final (read-only). No delete path (a case is closed, not erased). **Data classification:** the existence of a case and
+its `provider_name`, `amount_text`, `notes`, `closure_reason` are sensitive personal data (a family's financial need): never copied
+into audit rows, logs or notifications. Retention follows `school_students` (no school-student deletion path exists — a
+pre-existing gap, not widened here). Audit: `school.funding_record_create`/`_update` (field names, status old→new) and
+`school.funding_record_denied` (actor, role, reason). Usage: `loan_assistance`/`scholarship_assistance` = distinct students per
+`school_id`. **Feature ID:** `ENH-020`.
 
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)
 

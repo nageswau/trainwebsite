@@ -61,7 +61,7 @@ export default function AgentStaffPanel() {
   return (
     <div className="action-card">
       <h3>Staff</h3>
-      <p className="muted" style={{ fontSize: 13 }}>Staff work on your agency&apos;s students and applications. Only Masters see the team and commissions.</p>
+      <p className="muted" style={{ fontSize: 13 }}>Staff work on your agency&apos;s students and applications. Only Masters see the team and commissions. Use Permissions to let a staff member verify documents or view reports.</p>
       {/* Always mounted so screen readers announce the text when it arrives; styled only while it has something to say. */}
       <div className={notice ? "form-message" : undefined} role="status" aria-live="polite" style={notice ? { marginBottom: 8, overflowWrap: "anywhere" } : undefined}>{notice}</div>
       {data.items.length === 0 ? (

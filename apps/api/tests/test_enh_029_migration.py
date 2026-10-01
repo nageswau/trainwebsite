@@ -1,4 +1,4 @@
-"""ENH-029 -- migration 0052 (spec §4, AC10): single head, CHECK swap + nullable created_user_id, data preserved, guarded downgrade."""
+"""ENH-029 -- migration 0054 (spec §4, AC10): single head, CHECK swap + nullable created_user_id, data preserved, guarded downgrade."""
 
 import importlib.util
 import uuid
@@ -20,20 +20,22 @@ from tests.test_enh_028_migration import _parents
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_enh_029_migration_0052", VERSIONS / "0052_school_onboarding_bulk.py")
+MIGRATION = VERSIONS / "0054_school_onboarding_bulk.py"
+_spec = importlib.util.spec_from_file_location("_enh_029_migration_0054", MIGRATION)
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
 
-def test_migration_follows_0051_and_is_the_single_head():
-    assert _migration.revision == "0052_school_onboarding_bulk"
-    assert _migration.down_revision == "0051_school_bulk_uploads"
+def test_migration_follows_0053_and_is_the_single_head():
+    # Cut as 0052 after 0051; renumbered to 0054 after AGN-003's 0052 and ENH-020's 0053 on merging main.
+    assert _migration.revision == "0054_school_onboarding_bulk"
+    assert _migration.down_revision == "0053_school_funding_records"
     parents = _parents()
-    assert set(parents) - set(parents.values()) == {"0052_school_onboarding_bulk"}
+    assert set(parents) - set(parents.values()) == {"0054_school_onboarding_bulk"}
 
 
 def test_migration_touches_only_the_constraint_and_the_new_column():
-    source = (VERSIONS / "0052_school_onboarding_bulk.py").read_text(encoding="utf-8")
+    source = MIGRATION.read_text(encoding="utf-8")
     for forbidden in ("op.create_table", "op.drop_table", "op.alter_column", "UPDATE ", "DELETE ", "INSERT "):
         assert forbidden not in source
     assert source.count("op.add_column(") == 1
@@ -41,7 +43,7 @@ def test_migration_touches_only_the_constraint_and_the_new_column():
 
 
 def test_downgrade_refuses_when_onboarding_batches_exist():
-    downgrade = (VERSIONS / "0052_school_onboarding_bulk.py").read_text(encoding="utf-8").split("def downgrade", 1)[1]
+    downgrade = MIGRATION.read_text(encoding="utf-8").split("def downgrade", 1)[1]
     assert "target_type = 'school_onboarding'" in downgrade
     assert "raise RuntimeError" in downgrade
 
@@ -71,10 +73,10 @@ async def test_constraint_accepts_school_onboarding_and_still_rejects_unknown(db
 
 
 # --- Behaviour on a throwaway database (final review; the AGN-004 / ENH-001 harness) ------------------------------------------
-# 0001 builds a fresh database from the current models, so it already has 0052's shape; each test first downgrades to a real
-# 0051 schema, then exercises the upgrade. Plain tests: alembic/env.py calls asyncio.run() itself.
+# 0001 builds a fresh database from the current models, so it already has 0054's shape; each test first downgrades to the real
+# pre-0054 schema (0053), then exercises the upgrade. Plain tests: alembic/env.py calls asyncio.run() itself.
 
-BEFORE, AFTER = "0051_school_bulk_uploads", "0052_school_onboarding_bulk"
+BEFORE, AFTER = "0053_school_funding_records", "0054_school_onboarding_bulk"
 ROWS_SQL = "SELECT id, batch_id, row_number, status, error_message, student_code, created_record_id FROM school_bulk_upload_rows ORDER BY id"
 
 
@@ -83,7 +85,7 @@ def _columns(url: str) -> set[str]:
 
 
 @pytest.fixture
-def db_at_0051():
+def db_before_0054():
     cfg = Config(str(API_ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
     original = settings.database_url
@@ -122,9 +124,9 @@ def _add_batch(url: str, user, target_type: str):
     return batch
 
 
-def test_round_trip_keeps_existing_enh028_rows_identical(db_at_0051):
-    cfg, url, user = db_at_0051["cfg"], db_at_0051["url"], db_at_0051["user"]
-    assert "created_user_id" not in _columns(url)  # really at 0051
+def test_round_trip_keeps_existing_enh028_rows_identical(db_before_0054):
+    cfg, url, user = db_before_0054["cfg"], db_before_0054["url"], db_before_0054["user"]
+    assert "created_user_id" not in _columns(url)  # really before 0054
     _add_batch(url, user, "academic_result")
     before = _sql(url, ROWS_SQL)
     command.upgrade(cfg, AFTER)
@@ -136,12 +138,12 @@ def test_round_trip_keeps_existing_enh028_rows_identical(db_at_0051):
     command.downgrade(cfg, BEFORE)
     assert _sql(url, ROWS_SQL) == before
     assert "created_user_id" not in _columns(url)
-    with pytest.raises(sa.exc.IntegrityError):  # the 0051 CHECK is back
+    with pytest.raises(sa.exc.IntegrityError):  # the pre-0054 CHECK is back
         _add_batch(url, user, "school_onboarding")
 
 
-def test_downgrade_refuses_while_onboarding_batches_exist(db_at_0051):
-    cfg, url, user = db_at_0051["cfg"], db_at_0051["url"], db_at_0051["user"]
+def test_downgrade_refuses_while_onboarding_batches_exist(db_before_0054):
+    cfg, url, user = db_before_0054["cfg"], db_before_0054["url"], db_before_0054["user"]
     command.upgrade(cfg, AFTER)
     _add_batch(url, user, "school_onboarding")
     with pytest.raises(RuntimeError, match="school_onboarding bulk batches exist"):

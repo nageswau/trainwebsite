@@ -318,14 +318,21 @@ def _staff_audit(db: AsyncSession, actor: User, org: AgentOrg, member: AgentOrgM
     )
 
 
-async def _staff_member(db: AsyncSession, org: AgentOrg, member_id) -> tuple[AgentOrgMember, User]:
-    """The caller's organisation's staff member, else 404 -- another agency's member and every Master read the same (no
-    disclosure). The user row is locked after the organisation (lock order: org -> user -> tokens, as reset-password/Re-send)."""
+async def find_staff_member(db: AsyncSession, org_id, member_id) -> AgentOrgMember:
+    """The organisation's staff member, else 404 -- another agency's member, every Master and an unknown id read the same (no
+    disclosure). No lock: read paths (AGN-021 activity) use it as is; `_staff_member` adds the user lock for changes."""
     member = await db.scalar(
-        select(AgentOrgMember).where(AgentOrgMember.id == member_id, AgentOrgMember.org_id == org.id, AgentOrgMember.role == "staff").execution_options(populate_existing=True)
+        select(AgentOrgMember).where(AgentOrgMember.id == member_id, AgentOrgMember.org_id == org_id, AgentOrgMember.role == "staff").execution_options(populate_existing=True)
     )
     if not member:
         raise HTTPException(404, "Staff member not found")
+    return member
+
+
+async def _staff_member(db: AsyncSession, org: AgentOrg, member_id) -> tuple[AgentOrgMember, User]:
+    """`find_staff_member`, then the user row locked after the organisation (lock order: org -> user -> tokens, as
+    reset-password/Re-send)."""
+    member = await find_staff_member(db, org.id, member_id)
     user = await db.get(User, member.user_id, with_for_update=True, populate_existing=True)
     return member, user
 
@@ -382,6 +389,19 @@ async def reset_staff(db: AsyncSession, org: AgentOrg, member_id, actor: User):
     issued = await issue_welcome_token(db, user=user, issued_by=actor)
     _staff_audit(db, actor, org, member, "staff_reset", "reset")
     return member, user, issued
+
+
+async def set_staff_permissions(db: AsyncSession, org: AgentOrg, member_id, actor: User, *, can_verify_documents: bool, can_view_reports: bool):
+    """No commit; `org` locked. DEC-SCOPE-044 P2/P8: any staff member of the organisation, whatever their status; audited only when
+    a value changes (a repeated save writes nothing), with the before/after flags."""
+    member, user = await _staff_member(db, org, member_id)
+    after = {"can_verify_documents": can_verify_documents, "can_view_reports": can_view_reports}
+    before = {name: getattr(member, name) for name in after}
+    if before != after:
+        for name, value in after.items():
+            setattr(member, name, value)
+        _staff_audit(db, actor, org, member, "staff_permissions", "updated", before=before, after=after)
+    return member, user
 
 
 async def deactivate_master(db: AsyncSession, org: AgentOrg, member_id, actor: User) -> tuple[AgentOrgMember, User]:

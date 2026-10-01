@@ -1,5 +1,5 @@
 """ENH-029 -- bulk school partner onboarding (docs/superpowers/specs/2026-10-01-enh-029-bulk-school-onboarding-design.md,
-DEC-SCOPE-044).
+DEC-SCOPE-047).
 
 Each accepted CSV row creates exactly what `POST /overseas-admin/schools` creates, through the same `admin._provision_school`.
 One request = one transaction with a savepoint per row, on ENH-028's batch/row tables (`target_type = 'school_onboarding'`);

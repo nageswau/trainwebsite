@@ -23,11 +23,18 @@ def _parents() -> dict[str, str | None]:
     return parents
 
 
-def test_migration_follows_0050_and_is_the_single_head():
+def test_migration_follows_0050_and_is_on_the_single_head():
+    # Merged with AGN-003 (2026-10-01): `0052_agent_staff_permissions` now chains after this revision, so 0051 is an ancestor of the one head.
     assert _migration.revision == "0051_school_bulk_uploads"
     assert _migration.down_revision == "0050_notification_channels"
     parents = _parents()
-    assert "0051_school_bulk_uploads" in parents.values()  # ENH-029's 0052 now follows it (the head is asserted there)
+    heads = set(parents) - set(parents.values())
+    assert len(heads) == 1
+    chain, rev = set(), next(iter(heads))
+    while rev:
+        chain.add(rev)
+        rev = parents.get(rev)
+    assert "0051_school_bulk_uploads" in chain
 
 
 def test_migration_only_creates_and_drops_its_own_tables():
@@ -81,7 +88,7 @@ async def test_tables_match_the_model(db_session):
         "error_message": True,
         "student_code": True,
         "created_record_id": True,
-        "created_user_id": True,  # ENH-029 (0052)
+        "created_user_id": True,  # ENH-029 (0054)
         "created_at": False,
         "updated_at": False,
     }

@@ -1,5 +1,9 @@
 # ENH-029 Bulk School Onboarding Implementation Plan
 
+> **Renumbered on merging `main` (2026-10-01):** this plan was executed as written with `DEC-SCOPE-044` and migration
+> `0052_school_onboarding_bulk` (after `0051`). `main` had already used 044–046 and 0052–0053, so the decision is now
+> `DEC-SCOPE-047` and the migration `0054_school_onboarding_bulk` (after `0053_school_funding_records`).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let an Overseas Admin / Super Admin onboard up to 100 schools (each with its seed Coordinator) from one CSV upload, with

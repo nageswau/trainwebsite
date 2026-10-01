@@ -43,7 +43,8 @@ async def agency(db_session):
     tag = uuid.uuid4().hex[:6]
     ctx = await mk_active_org(db_session, name="Scope Agency")
     uni = await _university(db_session)
-    s1 = await mk_staff(db_session, ctx["org"], full_name="Staff One")
+    # AGN-003 (DEC-SCOPE-044 P1, reconciled on merging `main`): Reports is off for staff by default; this scope fixture keeps it on.
+    s1 = await mk_staff(db_session, ctx["org"], full_name="Staff One", can_view_reports=True)
     s2 = await mk_staff(db_session, ctx["org"], full_name="Staff Two")
     mine = await _linked(db_session, master=ctx["master"], member=s1["member"], name=f"Mine Student {tag}", university=uni)
     theirs = await _linked(db_session, master=ctx["master"], member=s2["member"], name=f"Theirs Student {tag}", university=uni)

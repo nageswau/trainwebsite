@@ -13,6 +13,7 @@ import { AgentStudentDetail, AgentStudentItem, RECORDS_URL } from "@/lib/agentSt
 // AgentApprovalPanel (20 per page); archive uses the inline confirmation pattern with focus returned to the opener.
 const PAGE_SIZE = 20;
 const LIST_ID = "agent-students-list";
+const ADD_ID = "agent-student-add";
 type Confirm = { id: string; kind: "archive" | "unarchive" } | null;
 
 // Browser QA-10: an email has no spaces, so on a narrow card it broke mid-word ("…edusphere.loca / l"). Offer line-break
@@ -130,6 +131,21 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
     }
   }, [confirm]);
 
+  // AGN-005 QA5-02: Add student is disabled while its form is open, so keyboard focus would fall to the page; give it back to the
+  // opener once the form closes (Cancel or saved). An effect runs after the commit that re-enables the button -- a frame-timed
+  // focus missed it after a save, which re-renders outside the click (browser re-check).
+  const focusAddOnClose = useRef(false);
+  function closeAdd() {
+    focusAddOnClose.current = true;
+    setAdding(false);
+  }
+  useEffect(() => {
+    if (!adding && focusAddOnClose.current) {
+      focusAddOnClose.current = false;
+      document.getElementById(ADD_ID)?.focus();
+    }
+  }, [adding]);
+
   function clearFilters() {
     setDraft("");
     setQuery("");
@@ -237,7 +253,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
             </select>
           </div>
         )}
-        <button type="button" className="btn small" onClick={() => setAdding(true)} disabled={adding}>
+        <button id={ADD_ID} type="button" className="btn small" onClick={() => setAdding(true)} disabled={adding}>
           Add student
         </button>
       </div>
@@ -245,9 +261,9 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
       {adding && (
         <AgentStudentForm
           mode="create"
-          onCancel={() => setAdding(false)}
+          onCancel={closeAdd}
           onSaved={(s) => {
-            setAdding(false);
+            closeAdd();
             setNotice(`${s.full_name} added.`);
             load(); // the new student may not belong to this page or filter, and the total changes
           }}

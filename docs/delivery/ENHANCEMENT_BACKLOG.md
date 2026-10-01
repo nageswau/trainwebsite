@@ -62,6 +62,19 @@ and the rest of `EVID-015` stay parked. AGN-001 keeps the ID the user gave it ra
 **AGN-002**, decided as `DEC-SCOPE-040` (S1–S6). Staff assignment/ownership, staff performance and CRM
 settings stay parked.
 
+**Revision 8 (2026-10-01):** the owner brought the `EVID-015` §6 Master-vs-Staff permission matrix into scope as
+**AGN-003**, decided as `DEC-SCOPE-044` (P1–P9): two per-staff toggles (Verify Documents, Reports), enforced on existing
+routes, plus agent document verification. Assignment/ownership, staff performance and CRM settings stay parked.
+
+**Revision 9 (2026-10-01):** the owner brought "View staff activity" (`EVID-015` §2 Staff) into scope as **AGN-021**, decided as
+`DEC-SCOPE-046` (A1–A5; drafted as `045`, renumbered on merging `main` because `ENH-020` holds `045`): a Master reads a staff member's student-journey activity from the existing audit log. Staff performance
+and CRM settings stay parked.
+
+**Revision 10 (2026-10-01):** the owner's `AGN-005` statement repeats AGN-003's word for word. AGN-003 is COMPLETE, so the owner scoped
+**AGN-005** to closing the one gap: AGN-004's `/crm/students` routes were missing from the §6 matrix (Edit, Delete and Assign Student
+still read N/A). Tests and docs only, no new decision; the owner later had four browser-QA findings fixed on the same branch
+(QA5-01/02/03/05, see §AGN-005).
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -129,7 +142,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-017 | School-visible global education pipeline dashboard *(now owns Alumni Network)* — **Complete (verified 2026-09-29)** (2026-09-29, `DEC-SCOPE-036`; Alumni Network not built, follow-up) | Medium | Medium | No | SCH-010 (bridge, already built) |
 | ENH-018 | School feedback capture | Small | Low | Yes | — |
 | ENH-019 | School event calendar | Small | Low | Yes | — |
-| ENH-020 | Financial support / loan assistance tracking | Medium | Medium | Yes | — |
+| ENH-020 | Financial support / loan assistance tracking — **Complete (verified 2026-10-01, `DEC-SCOPE-045`): audit found no Overseas equivalent; new School tracker** | Medium | Medium | Yes | — |
 | ENH-021 | Internship management | Medium | Low | Yes | — |
 | ENH-022 | Tier-gated feature access enforcement | Medium | Medium | No | — (build early) |
 | ENH-023 | Partnership tier change (upgrade/downgrade) workflow | Medium | High | No (history table optional) | ENH-022 |
@@ -141,8 +154,11 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-029 | Bulk school partner onboarding (multiple schools at once) | Medium | Medium | Yes | Coordinates with ENH-003, ENH-028's design |
 | ENH-030 | Daily/period attendance tracking (new entity, built bulk-first) | Medium | Low | Yes | Feeds ENH-013, ENH-016 |
 | AGN-001 | Multi-tenant Agent CRM — agent organisation as tenant, Master accounts (Rev. 6) | Large | High | Yes | AGT-001–004, SEC-001, RPT-002, ADM-001 (all change) |
+| AGN-003 | Agent staff permissions — §6 Master-vs-Staff matrix, per-staff Verify Documents / Reports toggles (Rev. 8) | Medium | High | Yes | AGN-002 (staff routes), AGT-002/OVS-005 (document verify), RPT-002 (agent reports) |
 | ENH-031 | Searchable reference pickers — student/application references picked from role-scoped searchable dropdowns | Medium | Medium | No | AGN-001 (agency scope) |
 | AGN-004 | Agent students — Master/Staff create, edit, view and (Master) archive students who never log in; staff assigned-only | Large | High | Yes | AGT-002, AGN-001, ENH-031 (scope change); AGN-002 (merge) |
+| AGN-021 | Agent staff activity — a Master views a staff member's student-journey activity (Rev. 9) | Small | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004 |
+| AGN-005 | Close the §6 staff matrix gap for agency student records — tests and docs, plus four browser-QA fixes (Rev. 10) | Small | Low | No | AGN-003, AGN-004 |
 
 ---
 
@@ -940,7 +956,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 18 | Scholarship Management (school-visible) | ⚠️ Partial | **ENH-017** shows Scholarships as *not tracked* (`ScholarshipApplication` has no school-student link) — follow-up, not tracked |
 | 19 | Application Support (status-only, school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017**: high-level stage only, application detail never selected or returned (§19 boundary enforced at the API, key-set and planted-value tests) |
 | 20 | Visa Tracking (school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017**: Visa funnel stage (a `VisaCase` exists) and a per-student visa stage label; visa outcomes are a follow-up, not tracked |
-| 21 | Financial Support / Loan Assistance | ❌ Gap | See **ENH-020** |
+| 21 | Financial Support / Loan Assistance | ✅ Complete (verified 2026-10-01) | **ENH-020** (`DEC-SCOPE-045`) |
 | 22 | Internship Management | ❌ Gap | See **ENH-021** |
 | 23 | Parent Portal | ✅ Built | `SCH-007`; "Skills"/"Portfolio" sub-items depend on ENH-012, ENH-011 |
 | 24 | School Event Calendar | ❌ Gap | See **ENH-019** |
@@ -1974,6 +1990,34 @@ whether this duplicates existing Overseas-domain functionality.
 **Regression risks.** Building a duplicate tracker alongside an existing Overseas one would itself be a
 regression risk (data fragmentation) — the primary reason this item leads with an audit requirement.
 
+**Audit result and decision (2026-10-01).** No Overseas-domain equivalent exists (no loan/funding model or route; the
+`finance/` package is empty; `ScholarshipApplication` is overseas-only with no school-student link and a single
+`submitted` status). Built as option (b), a new School tracker — `DEC-SCOPE-045`. Spec:
+`docs/superpowers/specs/2026-10-01-enh-020-funding-support-tracking-design.md` (acceptance criteria AC01–AC20); plan:
+`docs/superpowers/plans/2026-10-01-enh-020-funding-support-tracking.md`. The backlog's `school_student` viewer does not exist
+(no student login, DEC-ROLE-004) and `require_tier()` does not exist (`require_school_entitlement` is used).
+
+**Status (2026-10-01): COMPLETE (verified 2026-10-01 at merge `0f8ed2e`, `main` @ `6360dc0` merged in)** on
+`feature/enh-020-funding-tracker`. Fresh evidence after the merge (isolated Compose project `enh020`, images rebuilt from that HEAD):
+backend full suite **2700 passed / 14 failed** — all 14 the provider-credential baseline (11 Razorpay `test_pay_001_stu_010`,
+3 Zoho "not configured"), no ENH-020 test among them; merge-sensitive set (all ENH-020, ENH-028, AGN-003, SCH-011, ENH-016/017,
+migration tests) **435/435**. Web: vitest **133 files / 1391 tests**; `tsc` exit 0; `eslint` 0 errors (31 baseline warnings);
+`next build` exit 0 (88/88 static pages; the funding route is dynamic). `ruff check` clean on every ENH-020 file; `mypy` adds no
+error (266 repo-wide, none on ENH-020 lines). Migration `0053_school_funding_records` (cut as `0051`, re-chained after ENH-028's
+`0051` and AGN-003's `0052`): single head; empty-DB upgrade → downgrade → upgrade OK; upgrade SQL is CREATE TABLE + 3 indexes only,
+downgrade drops only that table; `alembic check` shows only two drifts that pre-date this branch (`0035`, `0049`). Playwright:
+`enh-020-funding-support` 6/6 plus `enh-026`, `sch-011`, `enh-015`, `enh-016`, `enh-017`, `sch-007`, `enh-028`, `agn-003` all pass
+(24 passed); `enh-022` QA-022-05 and `enh-023` downgrade fail identically on a base-commit build and their files are unchanged on
+`main` and this branch (pre-existing, not ENH-020). Browser verification (isolated Chromium, every role): **49/49 checks** —
+AC01–AC14, AC16, AC17, AC20 and QA-01..06 by browser behaviour; AC18/AC19 by browser-triggered actions plus database and log
+checks (7 denial rows for 7 refusals, 4 tier rows; 0 audit rows, notifications or log lines with case contents); AC15 is not
+browser-testable (database at `0053`). No skipped/focused tests, no debug code, no secrets (only the shared test fixture password)
+in the diff. Independent Codex review waived by the user ("ignore codex review"); a fresh whole-branch review ran instead (2
+Important accessibility findings fixed with tests). **Still `NEEDS_CONFIRMATION` (not blocking):** a case left open at a previous
+school stays open after a transfer (follows from D7/D12); QA-07 (refused page reads audited) and QA-08 (counsellor notes visible
+to parents) — product calls. Deferred minors: `expected_status: null` gives a 409; tier check runs before the final-case check;
+`notes` accepts non-text JSON and bidi overrides; the card's "Updated by" falls back to the creator.
+
 **Complexity:** Medium (pending audit). **Risk:** Medium.
 
 ---
@@ -2746,7 +2790,7 @@ question above is resolved: 1 MB / 500 filled-in rows for the new endpoints.
 ## ENH-029 — Bulk School Partner Onboarding (Admin, Multiple Schools at Once)
 
 **Status (2026-10-01): COMPLETE on `feature/enh-029-bulk-school-onboarding` (verified at `842d4c8`; evidence in the `RTM.md`
-ENH-029 row; not yet merged).** Open low-severity follow-ups: browser QA-029-04/05/06/07/08. Designed and decided in `docs/superpowers/specs/2026-10-01-enh-029-bulk-school-onboarding-design.md` (`DEC-SCOPE-044`); plan `docs/superpowers/plans/2026-10-01-enh-029-bulk-school-onboarding.md`.
+ENH-029 row; not yet merged).** Open low-severity follow-ups: browser QA-029-04/05/06/07/08. Designed and decided in `docs/superpowers/specs/2026-10-01-enh-029-bulk-school-onboarding-design.md` (`DEC-SCOPE-047`); plan `docs/superpowers/plans/2026-10-01-enh-029-bulk-school-onboarding.md`.
 **Corrections to this entry (2026-10-01):** the security note below is stale — `create_school` no longer sets
 `"ChangeMe@12345"`; since ENH-003 it issues an unusable password + a 72 h set-password link, and bulk onboarding reuses that
 path (`admin._provision_school`), so the ENH-003 dependency is met. Line references `admin.py:900-939`/`:920` predate later
@@ -3167,6 +3211,237 @@ verified at `2e7ac9a`)**; the owner waived the Codex review and runs the full ba
 
 ---
 
+## AGN-003 — Agent Staff Permissions: the Master vs Staff Matrix
+
+**Title.** Staff are limited to the student journey; a Master switches two optional permissions on per staff member.
+
+**Business requirement.** The owner's `AGN-003` statement (in-session, 2026-10-01): "the §6 matrix: Staff are limited to the
+student journey, with no admin modules; 'Set permissions' / 'Permission Level'", referring to `EVID-015`
+(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2, §3, §4 and §6. Decided as `DEC-SCOPE-044` (P1–P9).
+
+**Existing behavior.**
+- Staff are refused only team management and commissions (`AGN-002`).
+- Staff reach the agent Reports page.
+- No agent can verify or reject documents.
+- There is no permission storage.
+
+**Expected behavior.** Per `DEC-SCOPE-044`:
+- Every ❌ cell of §6 that has a route returns `403` for staff; every ✅ cell succeeds.
+- Verify Documents and Reports are per-staff toggles, off by default, set by a Master and effective on the next request.
+- Agents (Masters, and staff with Verify) may decide pending documents of their agency; staff may only mark them verified.
+- §6 rows with no capability are N/A. The full matrix is in the design spec §3.
+
+**User roles affected.**
+- `agent` (Master and staff).
+- Indirectly `counselor` / `overseas_admin` (shared document verify route; their behaviour is unchanged).
+
+**Frontend impact.**
+- `AgentStaffRow.tsx` (Permissions) and `AgentStaffPanel.tsx` (help text).
+- `lib/navigation.ts` (staff Reports) and `PortalPage.tsx`.
+- `CounselorDocumentReviewPanel.tsx`, generalised and reused on the agent Documents page.
+- `WorkflowPanel.tsx`.
+- Screens SCR-AGT-005, SCR-AGT-007.
+
+**Backend impact.**
+- `core/rbac.py` (`agent_may`, `agent_permissions`).
+- `api/portal.py` (Reports).
+- `api/workflows.py` `verify_document` (agent branch).
+- `api/agent_team.py` and `services/agent_orgs.py` (set permissions).
+- `api/auth.py` `/me` and `schemas.py`.
+
+**Database impact.** Migration `0052_agent_staff_permissions`: `agent_org_members.can_verify_documents`, `can_view_reports`
+(`BOOLEAN NOT NULL DEFAULT false`); additive, existing rows preserved.
+
+**API impact.**
+- New `PUT /workflows/overseas/agent/team/staff/{member_id}/permissions`.
+- An agent branch on `PATCH /workflows/overseas/documents/{id}/verify`.
+- Additive `permissions` on the staff shape and `agent_permissions` on `/auth/me`.
+- Portal Reports `403` for staff without the toggle.
+
+**Integration impact.** None (the existing student "Document reviewed" notification is reused).
+
+**Authentication/Authorization impact.** High. Per-request permission checks from the database row; Master-only toggle route;
+pending-only agent review under a row lock.
+
+**Security impact.**
+- High: staff escalation to Master-only actions, cross-tenant toggling, agents overwriting the counselor's review.
+- Mitigations: spec §10.
+
+**Performance impact.** None (the flags ride on the membership already loaded per request).
+
+**Reusable existing modules.** `_require_master`, `_staff_org`, `_staff_member`, `_commit_staff_change`, `_staff_audit`, `_require`,
+`_assigned_application`, `org_member_ids`, `CounselorDocumentReviewPanel`, `sendJson`/`staffFailure`.
+
+**Dependencies.** `AGN-002` (built, on `main`). None must land first.
+
+**Acceptance criteria.**
+- **AGN-003-AC01** Every ❌ cell of §6 that has a route returns `403` for staff with both toggles off, each with a test.
+- **AGN-003-AC02** Every ✅ cell succeeds for staff and for Masters; Masters also succeed on Verify, Reject and Reports.
+- **AGN-003-AC03** Reports: staff toggle off → `403`, on → `200` without commission figures; Masters always `200`.
+- **AGN-003-AC04** Verify: staff toggle off → `403`; on + `verified` → `200`; on + `rejected`/`changes_required` → `403`.
+- **AGN-003-AC05** A toggle change applies on the staff member's next request without signing them out.
+- **AGN-003-AC06** Only a Master of the staff member's organisation sets toggles (another agency or a Master id → `404`, staff → `403`,
+  bad body → `422`); every change writes an `agent_org.staff_permissions` audit row in the same transaction.
+- **AGN-003-AC07** Agents decide only `pending` documents in their agency's scope (`409` / `403` / `404` / `422` as in the spec); a
+  counselor or Overseas Admin can still re-review; the student is notified and the decision audited.
+- **AGN-003-AC08** `/auth/me` returns `agent_permissions`; the staff member shape returns `permissions`.
+- **AGN-003-AC09** Migration `0052` follows ENH-028 `0051_school_bulk_uploads` as the single head (re-chained on merging `main` twice; drafted as `0048` after `0047`); defaults `false`; existing members preserved.
+
+**Positive scenarios.**
+- Master turns Reports on → the staff member's next page load shows Reports.
+- Master turns Verify on → staff mark a pending document verified → the student is notified.
+- Master rejects a pending document.
+
+**Negative scenarios.**
+- Staff open Reports with the toggle off → `403`.
+- Staff reject → `403`.
+- Staff call the permissions route → `403`.
+- Another agency's Master toggles → `404`.
+- An agent decides an already-reviewed document → `409`.
+
+**Edge cases.**
+- Toggling a deactivated staff member.
+- A toggle switched off while the staff member's page is open.
+- Two agents deciding the same document at once.
+- A document not attached to an application.
+- Upgrade with existing staff (Reports turns off).
+
+**Regression risks.**
+- High: the counselor/admin document verify path (`test_ovs_005_documents.py`).
+- The two AGN-002 staff Reports tests (updated deliberately to Reports on).
+- The agent nav (`navigation.test.ts`, `agn-002-staff.spec.ts`).
+- The counselor review panel UI.
+
+**Complexity:** Medium. **Risk:** High.
+
+**Status (2026-10-01):** implemented test-first on `feature/agn-003-staff-permissions` (migration `0052_agent_staff_permissions`); verification evidence in `docs/quality/RTM.md` (AGN-003 row). **COMPLETE (2026-10-01, verified at `5cb16ad`)** — final verification-before-completion pass recorded in the RTM (AGN-003 row); the owner waived the independent Codex review.
+
+---
+
+## AGN-021 — Agent Staff Activity: a Master Views a Staff Member's Student-Journey Activity
+
+**Title.** A Master opens a staff member's recent student-journey work from the Team page.
+
+**Business requirement.** The owner's `AGN-021` statement (in-session, 2026-10-01): requirement **"View staff activity" (§2 Staff)**;
+acceptance criteria: **a Staff member's actions appear within one page load; other orgs' users → 404.** Referring to `EVID-015`
+(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2. Decided as `DEC-SCOPE-046` (A1–A5).
+
+**Existing behavior.**
+- The seven student-journey actions are already audited with the staff user as `user_id` (`agent_student.create`/`update`/`duplicate_override`, `agent.student_link`, `overseas.application.create`, `document.upload`, `document.verify`).
+- No route or screen reads them for a Master; `GET /admin/audit` is admin-only and not tenant-scoped.
+
+**Expected behavior.** Per `DEC-SCOPE-046`:
+- A Master sees a staff member's activity (time, plain label, subject; field names for an edit) newest first, read fresh on every request.
+- Staff are refused (`403`); another agency's user, a Master's own member id and an unknown id are `404 "Staff member not found"`.
+- Deactivated staff remain viewable. Notes, values, emails and ids are never shown.
+
+**User roles affected.** `agent` (Master views; Staff refused).
+
+**Frontend impact.** `AgentStaffActivity` (new), `AgentStaffRow.tsx` (Activity button and section), `lib/agentStaff.ts` (types, labels). Screen `SCR-AGT-007`.
+
+**Backend impact.** `api/agent_team.py` (route), `services/agent_orgs.py` (`find_staff_member`), new `services/staff_activity.py`.
+
+**Database impact.** None. No migration, no new audit writes, no new index (a composite `(user_id, created_at)` index is noted in RAID, not built).
+
+**API impact.** New `GET /workflows/overseas/agent/team/staff/{member_id}/activity` (`limit` 1–100 default 25, `offset` 0–10000; `{items,total,limit,offset}`; `422` out of range).
+
+**Integration impact.** None.
+
+**Authentication/Authorization impact.** Medium. Master-only; tenant scope through the caller's organisation; no org id in the path.
+
+**Security impact.**
+- Medium: cross-tenant read (IDOR) and over-exposure of audit metadata.
+- Mitigations: spec §8 (identical 404, allow-list of seven actions, subjects limited to what the Master can already see, field names only).
+
+**Performance impact.** Paged read on the indexed `audit_logs.user_id`; subjects resolved in at most three batched queries per page.
+
+**Reusable existing modules.** `_require_master`, `_staff_org`, `_staff_member` (lookup extracted), `AuditLog`, `staffFailure`/`detailMessage`, `formatDate`.
+
+**Dependencies.** `AGN-001`, `AGN-002`, `AGN-003`, `AGN-004` (all on `main`).
+
+**Acceptance criteria.**
+- **AGN-021-AC01** Each allow-listed action a Staff member performs through the real API appears in the Master's next activity request, newest first.
+- **AGN-021-AC02** Another agency's Master, a Master's own member id and an unknown id → `404 "Staff member not found"`; Staff → `403`; inactive agency → `403`.
+- **AGN-021-AC03** Rows outside the allow-list (sign-in, profile/password change, link search, message) and another staff member's rows never appear.
+- **AGN-021-AC04** Subjects resolve for each entity type; a missing entity reads "No longer available"; reviewer notes, emails, field values and ids other than the row id are never in the response.
+- **AGN-021-AC05** Paging: `{items,total,limit,offset}`, stable order on equal timestamps (`id` tiebreak), `limit` 1–100 and `offset` 0–10000 else `422`.
+- **AGN-021-AC06** Deactivated staff remain viewable.
+- **AGN-021-AC07** UI: Activity opens from the staff row; loading / empty / error + Try again / paging / Refresh; stale responses ignored; keyboard + focus return; 320 px.
+
+**Regression risks.**
+- The `_staff_member` refactor (used by edit/deactivate/reactivate/reset/permissions): extraction only, lock behaviour unchanged; AGN-002/003 suites in the lite set.
+- `AgentStaffRow` gains a mode: existing row tests keep passing; new cases added.
+- Audit row shape changes in future: allow-list plus defensive parsing; a missing subject reads "No longer available".
+
+**Status (2026-10-01) — COMPLETE on `feature/agn-021-staff-activity` (verified at `7b2b085`; evidence in `RTM.md`, AGN-021 row; not yet merged to `main`).** The independent Codex review was waived by the owner in-session 2026-10-01. Earlier status line, kept for history: IMPLEMENTED, NOT complete. Backend and web unit tests pass (evidence in `RTM.md`). Playwright e2e recorded as passed (see `RTM.md`, AGN-021 row). Browser QA done 2026-10-01: QA-01…QA-04 found, fixed (`aa11adc`) and re-verified in the browser (`docs/quality/AGN-021_BROWSER_QA_2026-10-01.md`). Independent Codex review: waived by the owner (2026-10-01). Full backend suite not run (owner cadence).
+
+---
+
+## AGN-005 — Close the §6 Staff Matrix Gap for Agency Student Records
+
+**Title.** Put AGN-004's student routes into the §6 Master-vs-Staff matrix tests and docs.
+
+**Business requirement.** The owner's `AGN-005` statement (in-session, 2026-10-01) repeats `AGN-003`'s: "the §6 matrix: Staff are
+limited to the student journey, with no admin modules; 'Set permissions' / 'Permission Level'", with the same acceptance (every ❌ cell
+`403` for Staff with a test, every ✅ cell succeeds, toggles flip the two optional rows, a toggle change applies on the next request).
+AGN-003 met all of it except the student rows. The owner scoped AGN-005 to that gap: tests and docs only (Revision 10).
+
+**Existing behavior.** AGN-004's `/workflows/overseas/agent/crm/students` routes already let staff create, view and edit their
+assigned students and refuse them archive, unarchive and assign (`403`). AGN-003's matrix test, its spec §3 and `RBAC_MATRIX.md` §2.8
+still marked Edit, Delete and Assign Student N/A, and no test covered unarchive by the assigned staff member or the staff UI on an
+archived student.
+
+**Expected behavior.** Unchanged. The matrix tests and docs now cover every §6 row that has an agent route. Delete Student maps to
+archive and unarchive (no delete route; `DEC-SCOPE-042` D5).
+
+**User roles affected.** `agent` (Master and staff) — tests and docs only.
+
+**Frontend / backend / database / API / integration impact.** None (no production code, migration or contract change). Tests:
+`apps/api/tests/test_agn_003_matrix.py` (+14 cases), `apps/web/tests/components/AgentStudentsPanel.test.tsx` (+1 case).
+
+**Authentication/Authorization impact.** None changed; the staff refusals are now pinned in the matrix with their exact messages, an
+unchanged record and no audit row.
+
+**Security impact.** None changed. Recorded observation (spec §10): on `PATCH /crm/students/{id}` and `…/assign` a malformed body gets
+`422` before the staff `403` (AGN-004 behaviour; reveals nothing) — a follow-up candidate, not changed here.
+
+**Reusable existing modules.** `agn004_helpers.mk_record`, `RECORDS`; the matrix's `_world` / `_call` / `_fill`; the panel test's
+`item` / `page` / `res`.
+
+**Dependencies.** AGN-003, AGN-004 (both COMPLETE on `main`).
+
+**Acceptance criteria** (verbatim from `docs/superpowers/specs/2026-10-01-agn-005-staff-matrix-gap-design.md` §6).
+- **AGN-005-AC01** On a student assigned to them, staff get `403` with the exact message on archive, unarchive and assign; the record is
+  unchanged and no `agent_student.*` audit row is written.
+- **AGN-005-AC02** Staff create (`201`), list, open and edit (`200`) their assigned student with no login through `crm/students`.
+- **AGN-005-AC03** A Master succeeds on every AC02 row plus archive, unarchive and assign (`200`).
+- **AGN-005-AC04** In `RBAC_MATRIX.md` §2.8 no §6 row that has an agent route is N/A; only Edit Application, Change Application Status,
+  Staff Performance and CRM Settings remain N/A.
+- **AGN-005-AC05** No change under `apps/api/app`, `apps/api/alembic`, `apps/web/components`, `apps/web/lib` or `apps/web/app`; every
+  pre-existing `test_agn_003_matrix.py` and `AgentStudentsPanel.test.tsx` case is unchanged and passing; the lite regression set is green.
+  *Superseded in part by the owner's "Fix them" (2026-10-01): see "Browser QA fixes" below.*
+- **AGN-005-AC06** Staff who show archived students see no Unarchive control on an archived card (the UI follows the server's `403`).
+
+**Regression risks.** Low: the matrix's `_world` builds two extra students for every case (no email/phone, so no duplicate clash).
+
+**Complexity:** Small. **Risk:** Low.
+
+**Browser QA fixes (owner, in-session 2026-10-01: "Fix them").** The first browser QA pass
+(`docs/quality/AGN-005_BROWSER_QA_2026-10-01.md`) found four issues in AGN-004 behaviour; the owner had them fixed on this branch,
+which widens AGN-005 beyond tests and docs for these four only:
+- **QA5-01** An agency student's phone follows the school mobile rule (7–20 characters of digits, spaces, `+ - ( )`, at least 7 digits),
+  server `422 invalid_phone` and the same message in the form; a phone saved before the rule survives edits of other fields. API
+  contract updated (`API_CONTRACT.md` AGN-004 rows). Deliberate test change: `test_agn_004_students.py::
+  test_phone_formats_match_on_digits_only` now expects `422` for a 4-digit phone (was `201`).
+- **QA5-02** The new-student form focuses Full name when it opens; focus returns to Add student after Cancel or a save.
+- **QA5-03** Staff read "Students assigned to you, with or without a login…".
+- **QA5-05** A non-agency user who can open the page (Super Admin) sees a note instead of a panel whose every action is refused.
+
+**Status (2026-10-01): IMPLEMENTED, NOT COMPLETE** on `feature/agn-005-staff-permission-matrix` — evidence in `docs/quality/RTM.md`
+(AGN-005 row). Browser QA done, the four fixes re-checked, and a final browser verification at `15d4047` passed (AC01, AC02, AC03,
+AC06 PASS; AC04, AC05 not browser-testable). The owner waived the independent Codex review (2026-10-01). Remaining before COMPLETE:
+the owner's full backend suite run (standing 4–5-story cadence) and the merge.
+
 ## 2. Dependency graph
 
 **Must be sequential:**
@@ -3324,7 +3599,7 @@ item, only for the progress-view question).
 | ENH-025 | Scope is mandatory (same directive). Needs a *design* decision on whether Career interests/Global education interest/Preferred countries/Preferred courses live on `SchoolStudent` directly or inside a `SCH-004` career-guidance record | None exists |
 | ENH-014 | `DEC-INTEGRATION-0xx` — WhatsApp/SMS provider selection, plus a DPDP/privacy-consent review | None exists |
 | ENH-016 | Indirectly blocked on Appendix A item 3 (entitlement quota vs. `DEC-SCOPE-017`) before its Service Utilization view is meaningful | See Appendix A |
-| ENH-020 | Audit-first: confirm whether this duplicates an existing Overseas-domain capability before any Decision ID is even drafted | None exists |
+| ENH-020 | Audit-first: confirm whether this duplicates an existing Overseas-domain capability before any Decision ID is even drafted | **Resolved 2026-10-01: `DEC-SCOPE-045`** (audit: no Overseas duplicate) |
 | ENH-022 | `DEC-SCOPE-027` — enforcement strictness (hard `403` vs. soft warning) for out-of-tier or expired-partnership access | **Resolved 2026-09-23:** hard `403`, expired = no tier (D1–D12, `PRODUCT_DECISION_REGISTER.md`) |
 | ENH-023 | `DEC-SCOPE-0xx` — downgrade policy for in-flight Platinum-tier commitments (grandfather / wind-down / immediate) | None exists |
 | ENH-010 | `DEC-SCOPE-025` — "School Master" (`School CRM.md` Part B §2) = `school_coordinator`; activate/deactivate scope mapping proposed, drafted 2026-09-22 | Drafted, `UNCONFIRMED` |
@@ -3333,6 +3608,9 @@ item, only for the progress-view question).
 | AGN-001 | `DEC-SCOPE-038` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
 | AGN-002 | `DEC-SCOPE-040` — staff access, model, reset, fields/limits, activation, tenancy/audit | **Resolved 2026-09-30** (S1–S6, `EXPLICIT_APPROVAL` in-session) |
 | AGN-004 | `DEC-SCOPE-042` — students with no login, staff assignment, archive, duplicate warning, relation to AGN-002 | **Resolved 2026-09-30** (D1, D3–D5, D7, D8, G1–G5, `EXPLICIT_APPROVAL` in-session; number provisional) |
+| AGN-003 | `DEC-SCOPE-044` — optional rows, toggle granularity, matrix reach, student scope, agent review, staff outcome | **Resolved 2026-10-01** (P1–P6 `EXPLICIT_APPROVAL` in-session; P7–P9 design assumptions) |
+| AGN-021 | `DEC-SCOPE-046` — what counts as activity, viewers, detail, freshness, source | **Resolved 2026-10-01** (A1–A5, `EXPLICIT_APPROVAL` in-session) |
+| AGN-005 | None — scope (tests + docs), Delete Student = archive/unarchive, test placement, and the QA5-01 phone rule / QA5-05 note set by the owner in-session 2026-10-01 | N/A |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
@@ -3369,7 +3647,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30).** Still parked: staff performance, permission levels, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004; none yet for the rest |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30); the §6 permission matrix moved out to AGN-003 (`DEC-SCOPE-044`, Rev. 8); staff activity moved out to AGN-021 (`DEC-SCOPE-046`, Rev. 9).** Still parked: staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004, `DEC-SCOPE-044` covers AGN-003, `DEC-SCOPE-046` covers AGN-021; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

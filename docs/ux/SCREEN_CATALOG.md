@@ -1759,6 +1759,15 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Claim reference generated once, immutable.  
 
+- **AGN-003 update (2026-10-01, `DEC-SCOPE-044`) — agent Documents page (`/overseas/agent/documents`; the catalog has no separate entry for it, so it is recorded on this agent screen):** below the upload form, a **review queue** for Masters and for staff whose
+  Verify permission is on (`CounselorDocumentReviewPanel` reused with `queueUrl=/api/v1/portal/overseas/agent/documents`, `pendingOnly`).
+  **Review** is offered on `pending` rows only; decided rows show their status as text. Masters choose Verified / Rejected / Changes
+  required; staff see one **Mark verified** button (no select). States: loading "Loading your review queue…" (`role="status"`); empty "No documents
+  have been uploaded for your agency's applications yet."; load error "Couldn't load documents." with **Try again** (`role="alert"`; also
+  applies to the counselor queue); per-row server errors (`403`/`409`/`422` text). Success "Document reviewed -- the student has been
+  notified." Staff without Verify see the upload form only. Evidence: AGN-003-AC04, AC07 (`test_agn_003_verify.py`;
+  `CounselorDocumentReviewPanel.test.tsx`, `WorkflowPanel.agentDocuments.test.tsx`; e2e `agn-003-staff-permissions.spec.ts`).
+
 ### `SCR-AGT-006`
 - **Route:** `/overseas/admin/commissions`  
 - **Role(s):** Overseas Admin  
@@ -1802,6 +1811,27 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
   reports the new code and whether the email was sent. Results announced (`role="status"`); focus returns to the opening
   button. Staff themselves see no Team or Commissions link (role label "Agency Staff"); typing the URL shows the 403 card.
   Evidence: AGN-002-AC01…AC10 (`test_agn_002_*.py`; `AgentStaff*.test.tsx`; `navigation.test.ts`; e2e `agn-002-staff.spec.ts`).  
+- **AGN-003 update (2026-10-01, `DEC-SCOPE-044`):** each staff row (active or deactivated) gains a **Permissions** button
+  (`aria-label="Permissions for <name>"`). It opens a `fieldset.form-section` (`AgentStaffPermissionsForm`, legend "What <name> can do")
+  with two checkboxes, each with a hint tied by `aria-describedby`: "Verify documents" (Mark pending documents as verified. Only Masters
+  can reject or request changes.) and "View reports" (See the agency's application summary.). The first checkbox is focused; Save /
+  Cancel wrap on narrow screens; Escape cancels. Save shows "Saving…" with buttons disabled, then announces "<CODE> permissions
+  saved." (`role="status"`), or the server's message in the row; focus returns to Permissions. Each row shows a **text summary**, not
+  colour: "Student journey only", or "Can verify documents" / "Can view reports" joined with " · ". The Staff panel help text now reads
+  "Staff work on your agency's students and applications. Only Masters see the team and commissions. Use Permissions to let a staff
+  member verify documents or view reports." New staff start with both off (P7). A staff member whose toggle is switched off while
+  their page is open gets the server's `403` message on their next click. Evidence: AGN-003-AC05, AC06 (`test_agn_003_permissions.py`;
+  `AgentStaffPermissionsForm.test.tsx`, `AgentStaffRow.test.tsx`; e2e `agn-003-staff-permissions.spec.ts`).
+- **AGN-021 update (2026-10-01, `DEC-SCOPE-046`):** each staff row (active or deactivated) gains an **Activity** button beside Permissions
+  (Masters only; `AgentStaffActivity`). It opens a section with an ordered list (`aria-label="Activity of <code>"`): each item shows a plain
+  label ("Created a student record", "Edited a student record", "Saved a student record despite a duplicate warning", "Linked a student
+  account", "Created an application", "Uploaded a document", "Verified a document", else "Other activity"), the subject (student;
+  application as student — university; document as type — student; "No longer available" when gone), for an edit the changed field
+  names, and the time in the viewer's zone (`<time dateTime>`). States: loading "Loading activity…" (`role="status"`, list `aria-busy`);
+  empty "No activity yet."; error "Unable to load activity." (`role="alert"`) with **Try again**. Page size 10 with "Showing a–b of N" and
+  Previous/Next (disabled at the ends and while loading); **Refresh** reloads the current page; a response older than the latest request
+  is ignored. **Close** (or Escape) closes the section and focus returns to Activity. Text wraps, no horizontal scroll at 320 px.
+  Evidence: AGN-021-AC07 (`AgentStaffActivity.test.tsx`, `AgentStaffRow.test.tsx`; e2e `agn-021-staff-activity.spec.ts` pending, Task 4).
 
 ### `SCR-AGT-008`
 - **Route:** `/overseas/agent/students` — a "Students" header and the "All students" panel (full width), then the AGT-002 roster retitled "Application status" (students who have a login), then the "Link student" form *(layout from browser QA-01/02, 2026-10-01)*; search, Show archived and page are kept in the URL (`?q=- **Route:** `/overseas/agent/students` — the Students panel above the existing roster and "Link student" form  archived=1- **Route:** `/overseas/agent/students` — the Students panel above the existing roster and "Link student" form  page=`)  
@@ -2147,7 +2177,7 @@ extended same day with `SCH-003` onboarding per `DEC-SCOPE-012`, then again with
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Only Overseas Admin/Super Admin reaches this screen — no other role, including School Coordinator, can list or create schools (`SCH-003-AC03`). No activation gate — the new School and its Coordinator account are usable immediately on save, not held Pending (`SCH-003-AC04`).  
 - **Addendum, 2026-09-23 (`ENH-023` / `DEC-SCOPE-030`):** the per-school edit panel (`AdminSchoolEditPanel.tsx`) gains two fields — **Partnership tier** (select: Not set / Bronze / Silver / Gold / Platinum) and **Valid until** (date) — prefilled from the looked-up school. A tier change previews first; an upgrade saves immediately, a downgrade/removal shows an inline confirmation block directly under Save (lost services, "work already started can still be completed", Confirm/Cancel) before sending. Every save that changes the tier also sends the `expected_tier` precondition; a `409` (tier changed since lookup) renders as an alert and keeps the input. Success text stays `School profile updated.` (unchanged, `sch-003` E2E) followed by a tier-change sentence built from the PATCH response. No new route, no CSS change — existing classes only.  
-- **Addendum, 2026-10-01 (`ENH-029` / `DEC-SCOPE-044`):** a full-width card, **"Onboard several schools (CSV)"** (`AdminSchoolBulkOnboardPanel.tsx`), sits after Create school and Edit school profile, which keep sharing a row (same role gate, no new route or nav entry; placement revised after browser QA-029-02/09). Step 1: "Download the template (.csv)" link + a collapsed "Column reference" table (Column / Required / Format / Example). Step 2: labelled file input ("CSV, up to 1 MB and 100 schools. One school per row.") + "Upload schools". **States:** instant client pre-checks (no file / not .csv / > 1 MB) in `role="alert"`, nothing sent; uploading → controls disabled, `aria-busy`, polite status "creating schools and sending set-password emails…"; server file error → its message in `role="alert"`, file and key kept; dropped connection → "The connection dropped. Upload again — the same file won't be added twice." (same key). **Result:** "Upload result" heading focused; summary success / warning ("N of M schools onboarded, K rejected. Schools that succeeded are kept — fix the rejected rows and upload just those.") / error ("No schools were onboarded…"), plus a count of undelivered welcome emails; table Row · Result · School ID · School · Coordinator · Detail; below 760 px each row is a labelled card (`table.bulk-report`), so a rejection reason is never behind a sideways scroll (QA-029-03). The list refreshes. **Evidence:** `AdminSchoolBulkOnboardPanel.test.tsx`, `WorkflowPanel.bulk-onboarding.test.tsx`, `tests/e2e/enh-029-bulk-school-onboarding.spec.ts`; browser validation pending.
+- **Addendum, 2026-10-01 (`ENH-029` / `DEC-SCOPE-047`):** a full-width card, **"Onboard several schools (CSV)"** (`AdminSchoolBulkOnboardPanel.tsx`), sits after Create school and Edit school profile, which keep sharing a row (same role gate, no new route or nav entry; placement revised after browser QA-029-02/09). Step 1: "Download the template (.csv)" link + a collapsed "Column reference" table (Column / Required / Format / Example). Step 2: labelled file input ("CSV, up to 1 MB and 100 schools. One school per row.") + "Upload schools". **States:** instant client pre-checks (no file / not .csv / > 1 MB) in `role="alert"`, nothing sent; uploading → controls disabled, `aria-busy`, polite status "creating schools and sending set-password emails…"; server file error → its message in `role="alert"`, file and key kept; dropped connection → "The connection dropped. Upload again — the same file won't be added twice." (same key). **Result:** "Upload result" heading focused; summary success / warning ("N of M schools onboarded, K rejected. Schools that succeeded are kept — fix the rejected rows and upload just those.") / error ("No schools were onboarded…"), plus a count of undelivered welcome emails; table Row · Result · School ID · School · Coordinator · Detail; below 760 px each row is a labelled card (`table.bulk-report`), so a rejection reason is never behind a sideways scroll (QA-029-03). The list refreshes. **Evidence:** `AdminSchoolBulkOnboardPanel.test.tsx`, `WorkflowPanel.bulk-onboarding.test.tsx`, `tests/e2e/enh-029-bulk-school-onboarding.spec.ts`; browser validation pending.
 
 ### `SCR-SCH-011` — **corrected 2026-09-14, during `SCH-003`'s build**
 **Merged into `SCR-SCH-010` above, not a separate route.** This catalogue originally specified
@@ -2688,6 +2718,40 @@ correction, not deleted, per this project's traceability convention.
 - **Accessibility requirements:** native `details`/`summary` (keyboard), labelled file input with a format hint (`aria-describedby`), result text never colour-only.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** `SchoolBulkEntryPanel.test.tsx`, `tests/e2e/enh-028-bulk-entry.spec.ts`, `test_enh_028_*.py`, browser verification.
+
+### `SCR-SCH-041` *(added 2026-10-01, `ENH-020` / `DEC-SCOPE-045`, provisional number)*
+- **Route:** `/school/career-counselor/funding`
+- **Role(s):** Career Counselor (own school portfolio).
+- **Purpose:** Track students' education loan, financial assistance, scholarship and funding guidance cases through Required → Counselling → Documents → Application → Approved → Completed, or Closed with a reason (`School CRM.md` §21).
+- **Linked Feature ID(s):** `ENH-020`
+- **Entry points:** Sidebar "Funding" for the Career Counselor (after "Skills").
+- **Required data:** Server-rendered (one parallel read): GET /auth/me, GET /school/career-counselor/funding-records, GET /school/portfolio-students. Client: POST /school/funding-records, PATCH /school/funding-records/{id}.
+- **Key actions:** Add a case (student, support type, optional provider, amount, notes); Edit an open case — one stage forward, or Close with a required reason; edit provider/amount/notes. Finished cases (Completed/Closed) are read-only in a collapsed "Finished cases (n)" section.
+- **Empty state:** "No funding support cases yet. Add one below when a student needs a loan, scholarship or funding guidance."; no portfolio: "No students in your portfolio yet. Contact your Overseas Admin."
+- **Loading state:** `loading.tsx` skeleton with `aria-busy` inside the portal shell; saving disables the form, the button reads "Saving…" with `aria-busy`.
+- **Error state:** refused page read → Access Unavailable card; refused save → the server's words as an alert under the form, entry kept (tier 403, duplicate open case 409, 422 stage/reason rules); stale edit 409 → "Discard my changes and reload"; 5xx/network → plain-language alert, entry kept.
+- **Permissions/resource scope:** `career_counselor` only, own portfolio; writes only while the student is still at the case's school (D12); per-type tier gate on writes (`scholarship` ⇒ Gold+, others ⇒ Platinum); reads not tier-gated.
+- **Responsive behavior:** At ≤640 px open-case rows become stacked cards labelled by `data-label` (the `psy-records` rule), 44 px buttons; no horizontal page scroll at 320/768 px (e2e).
+- **Accessibility requirements:** one h1 ("Funding support"), h2 for Open cases, the edit form and Add a case (QA-06); table named by its heading with column headers; stage as text ("Stage 3 of 6 · Documents"), never colour alone; unique Edit names; focus to the edit heading and back to the row's Edit button; Escape closes; choosing Closed focuses the required reason; results via `FormMessage`.
+- **Desktop/tablet/mobile behavior:** table on desktop/tablet; stacked cards on phones.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `SchoolFundingRecordsPanel.test.tsx`, `FundingRecordForm.test.tsx`, `tests/e2e/enh-020-funding-support.spec.ts`, `test_enh_020_*.py`. COMPLETE (verified 2026-10-01 at `0f8ed2e`: browser verification 49/49, e2e 6/6).
+
+### `SCR-SCH-042` *(added 2026-10-01, `ENH-020` / `DEC-SCOPE-045`)*
+- **Route:** card on `/school/parent/children/[id]`, `/school/coordinator/students/[id]`, `/school/principal/students/[id]` — on the parent page directly after the child overview (QA-04)
+- **Role(s):** School Parent (own child), School Coordinator and Principal (own institution).
+- **Purpose:** Read-only view of one student's funding support cases.
+- **Linked Feature ID(s):** `ENH-020`
+- **Entry points:** the existing student / child detail pages.
+- **Required data:** GET /school/students/{id}/funding-records, joined into each page's existing parallel read.
+- **Key actions:** none.
+- **Empty state:** "No funding support cases for this student."
+- **Loading state:** the host page's.
+- **Error state:** "Funding support cases couldn't be loaded. Reload the page to try again." — the rest of the page still renders.
+- **Permissions/resource scope:** parent sees all of their child's cases; coordinator/principal see only cases opened at the student's current school; teachers refused by the API.
+- **Responsive behavior / Accessibility requirements:** `record-details` list (one column on phones); heading level follows the page; stage as text; no controls.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `FundingRecordsCard.test.tsx`, `Enh015ReportPlacement.test.tsx`, e2e parent test. COMPLETE (verified 2026-10-01 at `0f8ed2e`).
 
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  

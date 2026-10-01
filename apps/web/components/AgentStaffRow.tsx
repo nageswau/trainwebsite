@@ -4,16 +4,25 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { STAFF_URL, type StaffMember, staffFailure } from "@/lib/agentStaff";
 import { sendJson } from "@/lib/apiErrors";
+import type { AgentPermissions } from "@/lib/types";
+import AgentStaffActivity from "./AgentStaffActivity";
+import AgentStaffPermissionsForm from "./AgentStaffPermissionsForm";
 
-type Mode = "view" | "edit" | "confirm-deactivate" | "confirm-reset";
+type Mode = "view" | "edit" | "confirm-deactivate" | "confirm-reset" | "permissions" | "activity";
 // One row action: `path` below the member's URL, the control that gets focus after success, the announced result, and whether
 // the request carried typed values (then a dropped connection says the entry is kept).
-type Action = { path?: string; method?: "POST" | "PATCH"; body?: unknown; keepsEntry?: boolean; focusNext: string; message: string | ((data: Record<string, unknown>) => string) };
+type Action = { path?: string; method?: "POST" | "PATCH" | "PUT"; body?: unknown; keepsEntry?: boolean; focusNext: string; message: string | ((data: Record<string, unknown>) => string) };
 
 function badge(m: StaffMember): string | null {
   if (m.status === "deactivated") return "Deactivated";
   if (m.setup === "link_expired") return "Link expired";
   return m.setup === "pending_setup" ? "Set-up pending" : null;
+}
+
+// AGN-003: what this staff member may do beyond the student journey, as text (never colour alone).
+function permissionSummary(p: AgentPermissions): string {
+  const granted = [p.can_verify_documents && "Can verify documents", p.can_view_reports && "Can view reports"].filter(Boolean);
+  return granted.length ? granted.join(" · ") : "Student journey only";
 }
 
 function InlineConfirm({ label, name, text, busy, onConfirm, onCancel }: { label: string; name: string; text: string; busy: boolean; onConfirm: () => void; onCancel: () => void }) {
@@ -29,7 +38,7 @@ function InlineConfirm({ label, name, text, busy, onConfirm, onCancel }: { label
   );
 }
 
-// AGN-002: one staff member with its actions. Confirmations are inline (AgentTeamPanel's pattern): focus goes to Confirm; Cancel
+// AGN-002/AGN-003/AGN-021: one staff member with its actions (edit, permissions, activity, deactivate/reactivate, reset). Confirmations are inline (AgentTeamPanel's pattern): focus goes to Confirm; Cancel
 // and Escape return it to the button that opened them, and a successful action moves it to the row's next logical
 // control (which may only appear once the parent reloads the row). Server messages (409/429) show in the row's status region.
 export default function AgentStaffRow({ member, onChanged }: { member: StaffMember; onChanged: (message: string) => void }) {
@@ -87,6 +96,7 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
   return (
     <li className="card" style={{ marginBottom: 8, overflowWrap: "anywhere" }}>
       <strong>{member.code}</strong> {member.full_name} <span className="muted" style={{ fontSize: 13 }}>{member.email}{member.phone && <> · <span style={{ whiteSpace: "nowrap" }}>{member.phone}</span></>}</span> {label && <span className="badge">{label}</span>}
+      <div className="muted" style={{ fontSize: 13 }}>{permissionSummary(member.permissions)}</div>
       {mode === "edit" && (
         <form className="form" onSubmit={save} onKeyDown={(e) => e.key === "Escape" && close("edit")} aria-label={`Edit ${member.full_name}`} style={{ marginTop: 8 }}>
           <div className="field"><label htmlFor={id("name")}>Full name</label><input id={id("name")} name="full_name" defaultValue={member.full_name} maxLength={160} required autoFocus /></div>
@@ -119,9 +129,18 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
           }
         />
       )}
+      {mode === "permissions" && (
+        <AgentStaffPermissionsForm
+          idPrefix={id("perm")} name={member.full_name} value={member.permissions} busy={busy} onCancel={() => close("permissions")}
+          onSave={(next) => run({ path: "/permissions", method: "PUT", body: next, keepsEntry: true, focusNext: "permissions", message: `${member.code} permissions saved.` })}
+        />
+      )}
+      {mode === "activity" && <AgentStaffActivity member={member} onClose={() => close("activity")} />}
       {mode === "view" && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
           <button id={id("edit")} className="btn secondary small" aria-label={`Edit ${member.full_name}`} onClick={() => setMode("edit")}>Edit</button>
+          <button id={id("permissions")} className="btn secondary small" aria-label={`Permissions for ${member.full_name}`} onClick={() => setMode("permissions")}>Permissions</button>
+          <button id={id("activity")} className="btn secondary small" aria-label={`Activity of ${member.full_name}`} onClick={() => setMode("activity")}>Activity</button>
           {active ? (
             <>
               <button id={id("reset")} className="btn secondary small" aria-label={`Reset ${member.full_name}`} onClick={() => setMode("confirm-reset")}>Reset</button>

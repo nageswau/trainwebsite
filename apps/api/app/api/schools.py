@@ -48,6 +48,7 @@ from app.models import (
     SchoolActivityAttendance,
     SchoolActivityFeedback,
     SchoolCareerRecord,
+    SchoolFundingRecord,
     SchoolLanguageRecord,
     SchoolParentLink,
     SchoolPsychometricRecord,
@@ -675,7 +676,7 @@ ROLL_CONSTRAINT = "uq_school_students_roll"
 ROLL_TAKEN = "roll_number '{roll}' is already used in this grade and section for this academic year"
 
 
-def _master_fields_or_422(model: type[BaseModel], data: dict) -> BaseModel:
+def _master_fields_or_422[M: BaseModel](model: type[M], data: dict) -> M:
     try:
         return model.model_validate(data)
     except ValidationError as exc:
@@ -1056,6 +1057,8 @@ def tier_change_payload(old: str | None, new: str | None) -> dict:
 # Request values -> the service they consume; also the allowlists those request fields are validated against.
 ACTIVITY_SERVICE_KEYS = {"career_seminar": "career_seminar", "career_awareness_session": "career_awareness_session", "parent_orientation": "parent_orientation", "campus_visit": "monthly_campus_visits"}
 TEST_PREP_SERVICE_KEYS = {"ielts": "ielts_coaching", "sat": "sat_coaching"}
+# ENH-020 D2 (DEC-SCOPE-045): a funding support case consumes the service of its type; the type never changes after creation.
+FUNDING_SERVICE_KEYS = {"education_loan": "loan_assistance", "financial_assistance": "loan_assistance", "funding_guidance": "loan_assistance", "scholarship": "scholarship_assistance"}
 
 
 def _today_ist() -> date:
@@ -1192,6 +1195,12 @@ async def service_usage(db: AsyncSession, school_ids: Collection[UUID]) -> dict[
         .where(in_schools)
         .group_by(SchoolStudent.school_id),
     )
+    # ENH-020 D8/D12: distinct students with a funding support case, credited to the school that opened it (no join to where the
+    # student is now). A closed case still counts: the guidance was delivered.
+    funding_students = select(SchoolFundingRecord.school_id, func.count(distinct(SchoolFundingRecord.school_student_id))).where(SchoolFundingRecord.school_id.in_(ids)).group_by(SchoolFundingRecord.school_id)
+    for service in ("loan_assistance", "scholarship_assistance"):
+        types = [support_type for support_type, key in FUNDING_SERVICE_KEYS.items() if key == service]
+        await _per_school(service, funding_students.where(SchoolFundingRecord.support_type.in_(types)))
     activity_counts = await db.execute(
         select(SchoolActivity.school_id, SchoolActivity.activity_type, func.count())
         .where(SchoolActivity.school_id.in_(ids), SchoolActivity.activity_type.in_(list(ACTIVITY_SERVICE_KEYS)))

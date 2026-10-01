@@ -130,10 +130,11 @@ async def test_phone_formats_match_on_digits_only(db_session, agency):
     await mk_record(db_session, agent=agency["master"], full_name="Phone One", phone=f"+{digits[:2]} {digits[2:7]}-{digits[7:]}")
     async with client_for(agency["master"].email) as c:
         same = await c.post(RECORDS, json={"full_name": "Phone Two", "phone": f"({digits[:2]}) {digits[2:]}"})
-        await c.post(RECORDS, json={"full_name": "Phone Three", "phone": "12-34"})
         short = await c.post(RECORDS, json={"full_name": "Phone Four", "phone": "1234"})
     assert same.status_code == 409 and same.json()["detail"]["matches"][0]["matched_on"] == ["phone"]
-    assert short.status_code == 201  # fewer than 7 digits never counts as a match
+    # AGN-005 QA5-01 (owner, 2026-10-01): a phone needs at least 7 digits now, so a 4-digit one is refused instead of being saved as a
+    # non-matching number (was 201). The duplicate check still ignores short numbers saved before the rule.
+    assert short.status_code == 422 and short.json()["detail"][0]["loc"] == ["body", "phone"]
 
 
 @pytest.mark.asyncio

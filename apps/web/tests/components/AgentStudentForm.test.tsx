@@ -30,6 +30,29 @@ describe("AgentStudentForm (AGN-004)", () => {
     expect(screen.getByLabelText("Date of birth")).toHaveAttribute("type", "date");
   });
 
+  it("refuses a phone with no digits before sending (AGN-005 QA5-01)", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentStudentForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    type(/^Full name/, "Meera");
+    type(/^Phone$/, "abc");
+    fireEvent.click(screen.getByRole("button", { name: "Save student" }));
+    expect(screen.getByLabelText("Phone")).toHaveFocus();
+    expect(screen.getByText("Enter a phone number of 7–20 digits, spaces, +, -, ( or ) with at least 7 digits")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("lets a student whose phone was saved before the rule be edited without touching the phone (AGN-005 QA5-01)", async () => {
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() => Promise.resolve(res({ student: { ...saved, full_name: "Asha R", phone: "abc" } })));
+    vi.stubGlobal("fetch", fetchMock);
+    const onSaved = vi.fn();
+    render(<AgentStudentForm mode="edit" student={{ ...saved, phone: "abc" }} onSaved={onSaved} onCancel={vi.fn()} />);
+    type(/^Full name/, "Asha R");
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ full_name: "Asha R" });
+  });
+
   it("moves focus to the first invalid field and does not submit", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

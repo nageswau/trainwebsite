@@ -1,11 +1,12 @@
 """ENH-029 -- school_onboarding bulk target + school_bulk_upload_rows.created_user_id.
 
-Revision ID: 0052_school_onboarding_bulk
-Revises: 0051_school_bulk_uploads
+Revision ID: 0054_school_onboarding_bulk
+Revises: 0053_school_funding_records
 
-docs/superpowers/specs/2026-10-01-enh-029-bulk-school-onboarding-design.md §4 (DEC-SCOPE-044). Widens the target_type CHECK and adds
+docs/superpowers/specs/2026-10-01-enh-029-bulk-school-onboarding-design.md §4 (DEC-SCOPE-047). Widens the target_type CHECK and adds
 one nullable column (no default, no backfill); no existing row is read or written. downgrade() refuses while onboarding batches
-exist rather than silently deleting that history.
+exist rather than silently deleting that history. Cut as 0052 (after 0051); renumbered to 0054 after AGN-003's 0052 and ENH-020's
+0053 on merging main.
 """
 
 import sqlalchemy as sa
@@ -13,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0052_school_onboarding_bulk"
-down_revision = "0051_school_bulk_uploads"
+revision = "0054_school_onboarding_bulk"
+down_revision = "0053_school_funding_records"
 branch_labels = None
 depends_on = None
 
@@ -38,7 +39,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         count = op.get_bind().execute(sa.text(f"SELECT count(*) FROM {BATCHES} WHERE target_type = 'school_onboarding'")).scalar()
         if count:
-            raise RuntimeError(f"{count} school_onboarding bulk batches exist; refusing to downgrade 0052 and lose them")
+            raise RuntimeError(f"{count} school_onboarding bulk batches exist; refusing to downgrade 0054 and lose them")
     op.drop_column(ROWS, "created_user_id")
     op.drop_constraint(CHECK, BATCHES, type_="check")
     op.create_check_constraint(CHECK, BATCHES, BEFORE)

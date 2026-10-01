@@ -2,9 +2,9 @@
 
 **Status:** design sections 1–4 approved by the user in-session 2026-10-01; revised the same day after an API-design,
 security-hardening and frontend-engineering review (§15) with the user's answers D8/D9; approved for implementation by the user
-("Proceed with ENH-029", 2026-10-01) and recorded as `DEC-SCOPE-044`. Final-review addendum: §16.
+("Proceed with ENH-029", 2026-10-01) and recorded as `DEC-SCOPE-047`. Final-review addendum: §16.
 **Feature:** `ENH-029` (`docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-029). **Branch:** `feature/enh-029-bulk-school-onboarding`.
-**Decision:** `DEC-SCOPE-044` (§12) — recorded in `PRODUCT_DECISION_REGISTER.md` once this spec is approved.
+**Decision:** `DEC-SCOPE-047` (recorded as `DEC-SCOPE-044` before merging `main`, which gave 044–046 to AGN-003, ENH-020 and AGN-021; migration likewise renumbered `0052` → `0054`) (§12) — recorded in `PRODUCT_DECISION_REGISTER.md` once this spec is approved.
 
 ## 1. Evidence and intent
 
@@ -48,7 +48,7 @@ one new React panel on the existing Admin Schools page, tests, docs.
 /overseas-admin/schools/{id}`, tier preview, lookup; the four ENH-028 endpoints and their reports; the SCH-002 roster upload;
 `provisioning.py`; tier entitlements; navigation; XLSX; async/background processing; editing schools by bulk; rate limiting.
 
-## 4. Data model (migration `0052_school_onboarding_bulk`)
+## 4. Data model (migration `0054_school_onboarding_bulk`)
 
 - `ck_school_bulk_upload_target_type` dropped and recreated as
   `target_type IN ('academic_result','psychometric_record','test_prep_record','language_record','school_onboarding')`.
@@ -58,8 +58,8 @@ one new React panel on the existing Admin Schools page, tests, docs.
 - No existing row is read or written. Onboarding rows: `student_code = NULL`, `created_record_id = schools.id`,
   `created_user_id = users.id` (the coordinator).
 - `downgrade()`: if any `school_onboarding` batch exists, raise (never silently delete onboarding history); otherwise drop the
-  column and restore the 0051 constraint.
-- `down_revision = "0051_school_bulk_uploads"`; must be the single head. Both statements are metadata-only on Postgres (adding a
+  column and restore the previous (0051) constraint.
+- `down_revision = "0053_school_funding_records"` (after merging `main`; cut as 0052 after `0051_school_bulk_uploads`); must be the single head. Both statements are metadata-only on Postgres (adding a
   nullable column without a default does not rewrite the table; re-adding the CHECK validates the existing, small table once).
 
 ## 5. API contract
@@ -296,7 +296,7 @@ found the earlier half-width card hid the Detail column on desktop and never sta
 | ENH-029-AC07 | A database-level email conflict during a row's create rolls back only that row; the rest of the batch commits. |
 | ENH-029-AC08 | Concurrent onboarding uploads never both create the same (name, city); the later one waits (then rejects duplicates) or gets 409. |
 | ENH-029-AC09 | Template is header-only with exactly the `SchoolCreate` fields in §5.1 order; admin-only; `no-store`. |
-| ENH-029-AC10 | `POST /overseas-admin/schools` and all ENH-028 endpoints behave and respond exactly as before; migration 0052 preserves every existing batch/row. |
+| ENH-029-AC10 | `POST /overseas-admin/schools` and all ENH-028 endpoints behave and respond exactly as before; migration 0054 preserves every existing batch/row. |
 | ENH-029-AC11 | Panel: idle, client pre-check, uploading, file-error, network-retry (same key), report (all/some/none accepted; sent / not delivered / replay wording) states; keyboard-operable; screen-reader announcements; focus to report; usable at 320 px. |
 | ENH-029-AC12 | No email address, name, file content or token appears in application logs for any upload outcome. |
 
@@ -309,8 +309,8 @@ found the earlier half-width card hid the Detail column on desktop and never sta
   savepoint isolation (rule-6 `IntegrityError` forced by inserting the user after pre-load); advisory-lock 409 (a second
   connection holds the lock); dev token present in `test`; template contents equal `SchoolCreate.model_fields` order / headers
   / 403; both new paths reachable (no shadowing); `caplog` shows no emails/names/tokens.
-- `test_enh_029_migration.py` — `0052` follows `0051` and is the single head; constraint accepts `school_onboarding`, still
-  rejects an unknown value; `created_user_id` nullable FK; existing 0051 rows survive upgrade; downgrade refuses when onboarding
+- `test_enh_029_migration.py` — `0054` follows `0053` and is the single head; constraint accepts `school_onboarding`, still
+  rejects an unknown value; `created_user_id` nullable FK; existing ENH-028 rows survive the upgrade; downgrade refuses when onboarding
   batches exist and succeeds otherwise.
 - `test_enh_029_provision_refactor.py` — single create response keys/values and audit actions unchanged; single-create email
   race still → 409 (the `flush_unique_email` path intact).
@@ -327,7 +327,7 @@ found the earlier half-width card hid the Detail column on desktop and never sta
 - Regression: `sch-003-school-onboarding.spec.ts`, `enh-028-bulk-entry.spec.ts`, `AdminSchoolCreatePanel.test.tsx`,
   `SchoolBulkEntryPanel.test.tsx`.
 
-## 12. Decision record (`DEC-SCOPE-044`, recorded in `PRODUCT_DECISION_REGISTER.md`)
+## 12. Decision record (`DEC-SCOPE-047`, recorded in `PRODUCT_DECISION_REGISTER.md`)
 
 "ENH-029 bulk school onboarding: Overseas Admin/Super Admin CSV upload, all `SchoolCreate` columns (D1), bulk-only rejection of
 duplicate (name, city) and duplicate/existing coordinator emails (D2), 1 MB / 100 rows with post-commit welcome links ≤ 5
@@ -342,7 +342,7 @@ CSV parser (D10)." Status `CONFIRMED_CURRENT` only once the user approves this s
 | Extracting `create_school`'s body changes the single create | pure move, default `flush_coordinator=flush_unique_email`; SCH-003/ENH-003/ENH-009/ENH-023/SCH-011 tests + ~30 e2e specs that create schools through it; dedicated refactor test |
 | `flush_unique_email`'s `db.rollback()` discarding a batch | bulk passes a plain flush inside a savepoint; AC07 test |
 | Parameterizing ENH-028 private helpers | signatures only, `known=None` keeps today's header behaviour; ENH-028 suite (core, results, migration) + e2e unchanged |
-| Migration on the shared table | CHECK swap + nullable column, no backfill, data-guarded downgrade; migration test asserts 0051 rows survive |
+| Migration on the shared table | CHECK swap + nullable column, no backfill, data-guarded downgrade; migration test asserts existing ENH-028 rows survive |
 | `SchoolBulkUploadRow` model gains a column | ENH-028 never sets it (NULL); its `_report` does not expose it — ENH-028 response unchanged |
 | Welcome email volume / request latency | 100-row cap, Semaphore(5), delivery never raises and runs after commit (locks released) |
 | Advisory lock contention | held only for the DB phase; 5 s timeout → 409 with retry wording |
@@ -352,7 +352,7 @@ CSV parser (D10)." Status `CONFIRMED_CURRENT` only once the user approves this s
 
 ## 14. Docs to update (with the code)
 
-`PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-044`), `API_CONTRACT.md` §12A, `DATA_MODEL.md` (bulk tables: target list +
+`PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-047`), `API_CONTRACT.md` §12A, `DATA_MODEL.md` (bulk tables: target list +
 `created_user_id`), `RBAC_MATRIX.md`, `SECURITY_CONTROLS.md` (controls + D9 accepted risk), `SCREEN_CATALOG.md`,
 `USER_FLOW_MAP.md`, `MASTER_FEATURE_CATALOG.md`, `RTM.md`, `ENHANCEMENT_BACKLOG.md` §ENH-029 (status + stale security note /
 line references corrected).

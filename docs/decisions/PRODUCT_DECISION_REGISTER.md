@@ -2683,7 +2683,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 - **D10 — Migration.** Each existing agent becomes Master `M001` of its own organisation: `approved` → `active`, `pending` → `pending`, `rejected` → `pending` (for re-review). Data access is unchanged.
 - **D11 — Admin-created agents.** Creating a `role='agent'` user through admin user-create (`ADM-001`) also creates a `pending` organisation with that user as `M001`.
 - **D12 — Notifications.** Agent notifications that today go to the single agent (commission estimated, commission eligible) go to every active Master of the organisation.
-- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`. *(2026-09-30: Staff logins since decided as `DEC-SCOPE-040`, `AGN-002`; staff assignment and ownership of students since decided as `DEC-SCOPE-042`, `AGN-004`; staff performance and CRM settings remain blocked.)*
+- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`. *(2026-09-30: Staff logins since decided as `DEC-SCOPE-040`, `AGN-002`; staff assignment and ownership of students since decided as `DEC-SCOPE-042`, `AGN-004`; staff performance and CRM settings remain blocked. 2026-10-01: staff permissions decided as `DEC-SCOPE-044`, `AGN-003`; staff activity decided as `DEC-SCOPE-046` (`AGN-021`); staff performance remains blocked.)*
 
 **Review decisions, 2026-09-29 (`EXPLICIT_APPROVAL`, in-session, after the API / security / frontend review of the build):**
 - **R1 — Invite throttle.** At most 10 Master invites per agency per rolling 24 hours (counted from `agent_org.master_invite` audit rows, under the organisation lock); over the limit → `429` with `Retry-After`. Reason: invite → deactivate → invite loops otherwise let an approved agency send unlimited set-password emails to any address under a name it chooses.
@@ -2716,7 +2716,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 
 **Resolution:** owner, in-session 2026-09-30 (`EXPLICIT_APPROVAL` — the owner's `AGN-002` statement and answers to four structured questions, not the source document's wording):
 
-- **S1 — Staff access.** A staff member of an `active` organisation uses the existing agent student and application routes with the organisation-wide scope Masters have today. Team management (Masters and staff) and commissions stay Master-only. Narrowing staff to assigned students, staff assignment/ownership, staff performance and permission levels stay out of scope (still blocked under `C-10`).
+- **S1 — Staff access.** A staff member of an `active` organisation uses the existing agent student and application routes with the organisation-wide scope Masters have today. Team management (Masters and staff) and commissions stay Master-only. Narrowing staff to assigned students, staff assignment/ownership, staff performance and permission levels stay out of scope (still blocked under `C-10`). *(2026-10-01: permission levels since decided as `DEC-SCOPE-044`, `AGN-003` — two per-staff toggles, Verify Documents and Reports; assigned-only scope stays parked. 2026-10-01: staff activity decided as `DEC-SCOPE-046` (`AGN-021`); staff performance remains blocked.)*
 - **S2 — Model.** A staff member is a `User` with `role='agent'`, division `overseas`, an approved `agent` role assignment, and an `AgentOrgMember` with member role `staff`. Staff codes are `<PREFIX>-S###` from a per-organisation staff counter separate from `master_seq`: unique, monotonic (next = highest ever issued + 1), never reassigned. Every Master-only check tests the member role, and the Master rules of `DEC-SCOPE-038` (3-Master limit D4, last-Master rule D8/R3, notifications D12) count Masters only.
 - **S3 — Reset.** Only a Master of the staff member's organisation resets a staff login: the current password becomes unusable, a one-time set-password link is emailed through the `DEC-SCOPE-019` mechanism (the Master never sees the token, as for Master invites), and the staff member's existing sessions end. Creating staff sends the same link; the response reports whether the email was sent.
 - **S4 — Fields and limits.** Name, email and phone. Email is fixed after creation (name and phone are editable). No cap on the number of staff. Staff creations and resets are throttled per agency on a rolling 24 hours, like `DEC-SCOPE-038` R1; the exact budget is set in the design spec.
@@ -2767,7 +2767,7 @@ owner chose assigned-only everywhere (G4).
 questions, not the source document's wording):
 
 - **D1 — Staff for students.** Staff (as modelled by AGN-002 S2) create, edit and view students. Lifts the staff
-  assignment/ownership part of `DEC-SCOPE-038` D13 / `C-10`; staff performance, permission levels and CRM settings stay blocked.
+  assignment/ownership part of `DEC-SCOPE-038` D13 / `C-10`; staff performance, permission levels and CRM settings stay blocked. *(2026-10-01: staff activity decided as `DEC-SCOPE-046` (`AGN-021`); staff performance remains blocked.)*
 - **D3 — Two kinds of student.** The existing "link a student who has an account" flow stays; a new flow creates a student with no
   login whose details live on `agent_students`; no `users` row is ever created for them.
 - **D4 — Assignment.** Created or linked by staff → assigned to that staff member; by a Master → unassigned. Only a Master assigns.
@@ -2806,7 +2806,90 @@ Staff browser flows were verified and the named-staff Assign action built (2026-
 
 **Consequences:** migration `0051_school_bulk_uploads` (two new tables `school_bulk_upload_batches` / `school_bulk_upload_rows`, create-table only); new `apps/api/app/api/school_bulk.py` (four `GET …/bulk-template` and four `POST …/bulk-upload` routes under the modules' existing prefixes); new `SchoolBulkEntryPanel` on the Academic Team and Psychometric Team dashboards. Unchanged: every single-record endpoint, the roster upload and its tables, Draft → Verified → Published and DEC-ROLE-007, tier rules, every reader.
 
-### DEC-SCOPE-044 — ENH-029 Bulk school partner onboarding (Admin, multiple schools at once)
+---
+
+### DEC-SCOPE-044 — Agent staff permissions: the Master vs Staff matrix (`AGN-003`)
+
+**ID note (renumbered twice on 2026-10-01 when merging `main`):** drafted as `DEC-SCOPE-041`; `DEC-SCOPE-041` went to `ENH-030` (PR #27), `DEC-SCOPE-042` to `AGN-004` (PR #29) and `DEC-SCOPE-044` to `ENH-028` (PR #32) first, so this entry is `DEC-SCOPE-044`.
+
+**Question:** the owner's `AGN-003` statement (in-session, 2026-10-01): "the §6 matrix: Staff are limited to the student journey, with no admin modules; 'Set permissions' / 'Permission Level'", with acceptance criteria: every ❌ cell in §6 returns 403 for Staff with a test; every ✅ cell succeeds; toggles flip the two optional rows; a toggle change applies on the next request. `DEC-SCOPE-040` S1 had left permission levels blocked under `CONFLICT_MATRIX.md` `C-10`. Which rows are optional and toggleable, at what granularity, how far does the matrix reach, and how does agent document verification relate to the counselor's review?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 "Set permissions", §3 "Permission Level", §4 "Staff Login – Student Journey Only", §6 "Master vs Staff Permissions" (Verify Documents "⚠️ Optional", Reports "❌/Limited"). Impact analysis, 2026-10-01:
+- Staff are refused only team management and commissions today (`agent_team._require_master`, `workflows._require_agent_master`, `portal.py` `{team, commissions}`).
+- No agent can verify or reject documents. `PATCH /workflows/overseas/documents/{id}/verify` is counselor/Overseas Admin only.
+- Several §6 rows have no agent route at all: Create/Edit/Delete Student as records, Assign Student(s), Edit Application, Change Application Status, Add University, Staff Performance and CRM Settings.
+- No per-organisation or per-member settings storage exists.
+
+**Conflicts recorded, not silently resolved:**
+- `EVID-015` §6 limits staff to "Assigned" students and applications; `DEC-SCOPE-040` S1 gives them agency-wide scope (kept as P4; superseded by `DEC-SCOPE-042` G4 on merging `main`, 2026-10-01 -- §6's "Assigned" now holds).
+- `EVID-015` §6 gives Masters "Add University"; no agent has that route (P3, recorded in the spec matrix).
+
+**Resolution:** owner, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — the owner's `AGN-003` statement and answers to six structured questions, not the source document's wording):
+
+- **P1 — Toggles.** Verify Documents and Reports are the two optional rows. Both are off by default for staff. Existing staff therefore lose the Reports page until a Master switches it on.
+- **P2 — Granularity.** Per staff member, set by a Master of the staff member's organisation ("Set permissions").
+- **P3 — Reach.** The matrix is enforced on routes that exist. §6 rows with no capability for any agent are recorded N/A and stay parked under `C-10`. The one new capability is agent document verification, so the Verify toggle has effect.
+- **P4 — Student scope.** Staff keep agency-wide students and applications (`DEC-SCOPE-040` S1). Assignment/ownership stays parked. *(Superseded 2026-10-01 when `main` was merged: the owner adopted `DEC-SCOPE-042` G4 (`AGN-004`) for AGN-003 -- staff reach only their assigned students, their applications and documents, including the agent document review (attached or not).)*
+- **P5 — Agent review.** An agent (a Master, or staff with Verify) decides only a document still `pending`. A counselor's or Overseas Admin's decision is never overwritten by an agent; they may still re-review an agent's decision.
+- **P6 — Staff outcome.** Staff with Verify may record `verified` only. Rejecting or requesting changes stays Master-only.
+
+**Assumptions stated by design (owner may correct in spec review):**
+- **P7** "Permission Level" is not a create-form field.
+- **P8** Toggles may be set on a deactivated staff member, are not throttled, and every change is audited.
+- **P9** Staff with Verify may verify a document they uploaded themselves (§6 asks for no maker-checker); the decision is attributed and counselors/Overseas Admins can still re-review.
+
+**Consequences:**
+- Migration `0048` adds two staff flags to `agent_org_members`.
+- A Master-only `PUT …/team/staff/{id}/permissions`.
+- An agent branch on the document verify route.
+- `agent_permissions` on `/auth/me` and `permissions` on the staff shape (additive).
+- The portal refuses staff Reports without the toggle.
+- The staff row gains Permissions; the agent Documents page gains a review queue.
+- Design and full matrix: `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md`.
+
+### DEC-SCOPE-045 — ENH-020 Financial support / loan assistance tracking (provisional number)
+
+**Status:** CONFIRMED_CURRENT — resolved 2026-10-01, in-session. **ID note (renumbered 2026-10-01 on merging `main` @ `6360dc0`):** recorded in-session as `DEC-SCOPE-043`; `main` gave `043` to `ENH-028` and `044` to `AGN-003` first, so this entry is `DEC-SCOPE-045`. Its migration moved from `0051` to `0053_school_funding_records` (after ENH-028's `0051_school_bulk_uploads` and AGN-003's `0052_agent_staff_permissions`) and its screens from `SCR-SCH-040`/`041` to `SCR-SCH-041`/`042` (`SCR-SCH-040` is ENH-028's).
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-020 (`DERIVED_BLUEPRINT`, from `School CRM.md` §21 = `EVID-014`) asks to track students requiring an education loan, financial assistance, scholarship or funding guidance through **Required → Counselling → Documents → Application → Approved → Completed**, and made the design conditional on an audit: does the Overseas domain already do this?
+
+**Evidence:** Graphify-led audit, 2026-10-01 (`docs/superpowers/specs/2026-10-01-enh-020-funding-support-tracking-design.md` §1): no loan, financial-assistance or funding-guidance model, route or UI exists; `apps/api/app/finance/` is an empty reserved package; `ScholarshipApplication` is overseas-only (`student_id` → `users`, one hard-coded `submitted` status, no school-student link, never updated); `EMISchedule`/`Payment` are fee instalments (`DEC-PAY-001/002`). `DEC-SCOPE-017` already lists `loan_assistance` (Platinum) and `scholarship_assistance` (Gold) as included services reported `used: null`. **Verdict:** a new School-domain tracker, not a view of an existing one.
+
+**Resolution:** user, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — answers to structured questions, then approval of the written spec): D1 writer = `career_counselor`, own portfolio; D2 per-type tier gate (`scholarship` → `scholarship_assistance`, the other three → `loan_assistance`), type fixed after creation; D3 the six source stages forward one step at a time **plus a terminal `closed` with a required reason** (an addition beyond the source wording), `completed`/`closed` final; D4 lean fields (notes, closure reason, optional provider name, optional amount as free text, stage-entered date — no files, no lender integration); D5 readers = coordinator/principal (own school) and linked parent (own child, read-only), **teachers excluded**, parents notified on create and stage change; D6 new table + router reusing `schools.py` helpers; D7 one open case per student per school per type; D8 usage = distinct students per creating school, closed cases count; D9 ENH-016 scorecard "Scholarship", `UNTRACKED_OUTCOMES["scholarships"]` and ENH-017 "Scholarships" stay *not tracked* (they describe §18, not built here); D10 final cases read-only; D11 counsellor page `/school/career-counselor/funding` + read-only card on parent/coordinator/principal student pages; D12 **cases stay with the creating school** (staff of a student's new school do not see the previous school's cases; parents see all); D13 role/scope denials audited (`school.funding_record_denied`).
+
+**Consequences:** migration `0053_school_funding_records` (additive), `apps/api/app/api/school_funding.py` (`POST`/`PATCH /school/funding-records`, `GET /school/career-counselor/funding-records`, `GET /school/students/{id}/funding-records`), `GET /school/entitlements` `used` for `loan_assistance`/`scholarship_assistance` becomes an integer (ENH-016 utilization follows). **New Feature ID authorized:** `ENH-020`. Schema, endpoint shapes and screens are fixed in the spec, not here.
+
+### DEC-SCOPE-046 — Agent staff activity (`AGN-021`)
+
+**ID note (renumbered 2026-10-01 on merging `main` @ `057dfe0`):** drafted as `DEC-SCOPE-045`; `ENH-020` (PR #34) reached `main` first holding `045`, so this entry is `DEC-SCOPE-046` (precedent: `DEC-SCOPE-038`/`039`, `041`–`045`). Still provisional if another branch lands `046` first.
+
+**Question:** the owner's `AGN-021` statement (in-session, 2026-10-01): requirement **"View staff activity" (§2 Staff)**; acceptance criteria: **a Staff member's actions appear within one page load; other orgs' users → 404.** `DEC-SCOPE-038` D13 / `DEC-SCOPE-040` S1 / `DEC-SCOPE-042` D1 had left staff activity blocked under `CONFLICT_MATRIX.md` `C-10`. What counts as activity, who may view it, how much detail, how fresh, and where does it come from?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Staff "View staff activity" (the source's wording is not the approval). Design spec `docs/superpowers/specs/2026-10-01-agn-021-staff-activity-design.md` §4 audit table: all seven student-journey actions are already written to `audit_logs` with the staff user as `user_id`; no activity store exists.
+
+**Conflicts recorded, not silently resolved:**
+- The earlier AGN-021 scope (staff permission matrix, spec `2026-10-01-agn-021-staff-permission-matrix-design.md`, branch `feature/agn-021-staff-permission-matrix`) shipped as `AGN-003` (PR #33) before AGN-021 was built. The owner re-scoped `AGN-021` to staff activity in-session on 2026-10-01; the earlier scope is `SUPERSEDED`.
+- Staff performance (KPIs, funnels; `EVID-015` §8) is not decided here and stays blocked under `C-10`.
+
+**Resolution:** owner, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — the owner's `AGN-021` statement and answers, not the source document's wording):
+
+- **A1 — What is activity.** Student-journey work only: student records created / edited / saved over a duplicate warning, a student account linked, an application created, a document uploaded, a document verified. Sign-ins, password and profile changes, messages, support tickets and lookup searches are not shown.
+- **A2 — Viewers.** Only an active Master of the staff member's agency. Staff are refused (403); any other organisation's user → 404. Deactivated staff remain viewable (history is kept).
+- **A3 — Detail.** Each line: time, a plain action label, and the subject the Master can already see (student name; application as student — university; document as type — student). For an edit, the names of the fields changed — never their values. Reviewer notes, emails and ids are never shown.
+- **A4 — Freshness.** "Within one page load" = read from the audit log on every request with no cache, so an action is visible the next time the Master opens or refreshes the view. A Refresh button; no live push or polling.
+- **A5 — Source.** The existing audit log (no new store, no new writes). Lifts "staff activity" out of `C-10`; **staff performance (KPIs) stays parked**.
+
+**Consequences:**
+- A Master-only `GET /api/v1/workflows/overseas/agent/team/staff/{member_id}/activity` (`limit` 1–100 default 25, `offset` 0–10000; `{items, total, limit, offset}`).
+- Two services: `services/agent_orgs.find_staff_member` (non-locking lookup, 404 "Staff member not found") and the new `services/staff_activity.py` (allow-list of seven actions, batched subject resolution).
+- An **Activity** button and section on each staff row of the Team page (`AgentStaffActivity`).
+- One operational log line `agent_org_staff_activity_viewed` (ids only).
+- No migration, no new audit writes, no cache.
+- Design: `docs/superpowers/specs/2026-10-01-agn-021-staff-activity-design.md`.
+
+### DEC-SCOPE-047 — ENH-029 Bulk school partner onboarding (Admin, multiple schools at once)
+
+**ID note (renumbered 2026-10-01 on merging `main`):** recorded in-session as `DEC-SCOPE-044`; `main` gave 044 to `AGN-003`, 045 to `ENH-020` and 046 to `AGN-021` first, so this entry is `DEC-SCOPE-047`, and its migration moved from `0052` to `0054_school_onboarding_bulk`, chained after `0052_agent_staff_permissions` and `0053_school_funding_records`.
 
 **Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-029 (user, in-session: *"Admin also may on-board multiple schools at a time."*) asks that an Overseas Admin onboard N schools in one upload, each row creating its school + seed Coordinator independently, per-row failures never blocking the batch, with a per-row batch report. Open points: which columns, duplicate handling, size limit and welcome-email volume, transaction shape, how a replayed report names the created coordinator, rate limiting.
 
@@ -2814,4 +2897,4 @@ Staff browser flows were verified and the named-staff Assign action built (2026-
 
 **Resolution:** User answered in-session, 2026-10-01 (`EXPLICIT_APPROVAL`): D1 columns = every `SchoolCreate` field (required `name`, `coordinator_full_name`, `coordinator_email`); D2 duplicate (normalized name + city) rejected per row, bulk only, and coordinator emails existing or repeated in the file rejected; D3 ≤ 1 MB, 1–100 filled-in rows, welcome links after the commit, ≤ 5 at a time; D4 approach A — one transaction, a savepoint per row, ENH-028's tables with `target_type = 'school_onboarding'`; D8 `school_bulk_upload_rows.created_user_id` records the coordinator; D9 no extra rate limit (parity with the single create and ENH-028 S1; accepted risk). Design D5 (create-only), D6 (ENH-028 idempotency), D7 (own router module), D10 (one shared CSV parser). Design sections approved in-session; spec revised after an API / security / frontend review and approved for implementation ("Proceed with ENH-029").
 
-**Consequences:** migration `0052_school_onboarding_bulk` (CHECK widened + one nullable column; no data read or written; downgrade refuses while onboarding batches exist); new `apps/api/app/api/school_onboarding_bulk.py` (`GET /overseas-admin/schools/bulk-template`, `POST /overseas-admin/schools/bulk-upload`); `admin.create_school`'s body extracted to `admin._provision_school` (behaviour unchanged); ENH-028's private parser/claim helpers take a `target_type` (behaviour unchanged); new `AdminSchoolBulkOnboardPanel` on `/overseas/admin/schools`. Unchanged: `POST /overseas-admin/schools` contract, every ENH-028 endpoint and report, the roster upload, provisioning/welcome-link services, tier rules, navigation.
+**Consequences:** migration `0054_school_onboarding_bulk` (CHECK widened + one nullable column; no data read or written; downgrade refuses while onboarding batches exist); new `apps/api/app/api/school_onboarding_bulk.py` (`GET /overseas-admin/schools/bulk-template`, `POST /overseas-admin/schools/bulk-upload`); `admin.create_school`'s body extracted to `admin._provision_school` (behaviour unchanged); ENH-028's private parser/claim helpers take a `target_type` (behaviour unchanged); new `AdminSchoolBulkOnboardPanel` on `/overseas/admin/schools`. Unchanged: `POST /overseas-admin/schools` contract, every ENH-028 endpoint and report, the roster upload, provisioning/welcome-link services, tier rules, navigation.
