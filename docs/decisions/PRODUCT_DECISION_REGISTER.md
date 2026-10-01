@@ -2748,5 +2748,5 @@ questions, not the source document's wording):
 **Consequences:** migration `0048_agent_students_crm` (additive; cut as `0047_agent_students_crm` with AGN-002's staff pieces copied
 in, re-chained after AGN-002's `0047_agent_org_staff` on merge, 2026-10-01, which owns those pieces); new
 `/workflows/overseas/agent/crm/students` routes; scope helpers applied to every agent path; new Students panel. With AGN-002 merged,
-Staff browser flows and a named-staff Assign picker are now possible; both remain to be done. Schema, endpoint shapes and screens are fixed in
+Staff browser flows were verified and the named-staff Assign action built (2026-10-01, `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`). Schema, endpoint shapes and screens are fixed in
 `docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md`, not here.

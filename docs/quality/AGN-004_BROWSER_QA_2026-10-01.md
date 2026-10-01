@@ -64,5 +64,24 @@ truncated body) and were confirmed against the database. Playwright on the rebui
 agn-001, agt-002/003/004, enh-031 — **16 passed** (incl. keyboard-only add and 320 px). API: AGN-001/002/004 + AGT + ENH-031
 **357 passed**, 0 skipped. Web: vitest 117 files / 1231 tests; `tsc` 0; eslint 0 errors / 31 warnings; build exit 0.
 
-**Gap (not closed):** spec §6 lists a Master **Assign** row action; the UI has none (only the "Assigned to" filter), so AC09
-reassignment is available through `POST /{id}/assign` only. AGN-004 stays NOT COMPLETE until this is resolved.
+**Gap found:** spec §6 lists a Master **Assign** row action; the UI had none (only the "Assigned to" filter), so AC09
+reassignment was API-only. Owner chose to build it in AGN-004 — see the next section.
+
+## Assign action (2026-10-01, commits `666c7f4`, `4f30c4e`; web image rebuilt 05:29 UTC)
+
+Built test-first: `AgentStudentAssign.test.tsx` (9) + panel test, each seen failing first; the new E2E failed on the old build at
+the missing Assign button. Browser Use (`qa_assign_verify.py`), first run on `666c7f4`: 14/15 — **QA-11 (Medium, a11y):** opening
+Assign left keyboard focus on the page (the select is disabled while the staff list loads, so `autoFocus` did nothing). Fixed in
+`4f30c4e` (focus moves in once the list loads; regression test seen failing first). Re-run on `4f30c4e`: **15/15 PASS**:
+
+| Check | Result |
+|---|---|
+| Master's new student starts Unassigned; Assign lists Unassigned + `EDU-S001 · QA Staff One`, `EDU-S002 · QA Staff Two`; Save off until changed | PASS |
+| Focus moves into the choice; at 320 px no horizontal overflow | PASS |
+| Assign to S002 → notice "… assigned to EDU-S002 · QA Staff Two.", card updated, focus back on Assign | PASS |
+| Staff Two lists it and has no Assign control; Staff One by id → `404` | PASS |
+| Reopen starts on current assignee; reassign to S001; unassign → "… unassigned."; Cancel returns focus | PASS |
+
+Playwright on the rebuilt web: agn-004 (5, incl. the new assign test), agn-002, agt-002 — **8 passed**; earlier on `666c7f4` the
+wider AGN/AGT/ENH-031 set: 17 passed. Web: vitest 118 files / 1243 tests; `tsc` 0; eslint 0 errors / 31 warnings; build exit 0.
+API code unchanged since the 357-passed run.

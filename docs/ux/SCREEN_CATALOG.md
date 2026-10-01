@@ -1810,7 +1810,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Linked Feature ID(s):** `AGN-004`, `AGT-002`  
 - **Entry points:** Agent portal navigation, "Students".  
 - **Required data:** Students (name, contact, preferred country/intake, has-login, assignee with code and deactivated state, status); on View the full record (personal, contact, academic, preferences, notes, created by, archived by).  
-- **Key actions:** Search (debounced), Show archived, Master "Assigned to" filter (Anyone/Unassigned), Add student, View, Edit (students with no login, not archived), Archive/Unarchive (Master, inline confirmation), duplicate warning with "Save anyway". Named-staff assignment waits for AGN-002's staff list.  
+- **Key actions:** Search (debounced), Show archived, Master "Assigned to" filter (Anyone/Unassigned), Add student, View, Edit (students with no login, not archived), Archive/Unarchive (Master, inline confirmation), Assign (Master, active students: inline choice of Unassigned or an active Staff member from AGN-002's staff list; a deactivated assignee shows as current but cannot be re-chosen), duplicate warning with "Save anyway".  
 - **Empty state:** "No students yet. Use Add student…"; with filters "No students match." + Clear filters.  
 - **Loading state:** "Loading students…" first; later loads keep the cards and set `aria-busy`; detail shows "Loading student…".  
 - **Error state:** server message + Retry (a non-page 200 is an error); per-card action errors; detail "This student is no longer available." (404) or "Unable to load this student."; form errors inline per field, network drop keeps the entry.  

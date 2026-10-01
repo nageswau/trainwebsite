@@ -2094,7 +2094,7 @@
     ],
     "entry": "Agent portal navigation, \"Students\".",
     "data": "Students (name, contact, preferred country/intake, has-login, assignee, status); on View the full record.",
-    "actions": "Search, Show archived, Master Assigned-to filter, Add student, View, Edit (no login, not archived), Archive/Unarchive (Master, inline confirmation), duplicate warning with Save anyway.",
+    "actions": "Search, Show archived, Master Assigned-to filter, Add student, View, Edit (no login, not archived), Archive/Unarchive (Master, inline confirmation), Assign (Master, active students: Unassigned or an active Staff member), duplicate warning with Save anyway.",
     "empty": "\"No students yet\"; with filters \"No students match\" + Clear filters.",
     "loading": "\"Loading students…\" first; later loads keep the cards with aria-busy.",
     "error": "Server message + Retry; per-card action errors; detail 404 \"This student is no longer available.\"; form errors inline.",
