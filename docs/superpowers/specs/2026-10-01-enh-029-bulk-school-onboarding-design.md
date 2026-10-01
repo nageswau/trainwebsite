@@ -1,7 +1,8 @@
 # ENH-029 — Bulk school partner onboarding (Admin, multiple schools at once) — design
 
 **Status:** design sections 1–4 approved by the user in-session 2026-10-01; revised the same day after an API-design,
-security-hardening and frontend-engineering review (§15) with the user's answers D8/D9. This written spec is AWAITING USER REVIEW.
+security-hardening and frontend-engineering review (§15) with the user's answers D8/D9; approved for implementation by the user
+("Proceed with ENH-029", 2026-10-01) and recorded as `DEC-SCOPE-044`. Final-review addendum: §16.
 **Feature:** `ENH-029` (`docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-029). **Branch:** `feature/enh-029-bulk-school-onboarding`.
 **Decision:** `DEC-SCOPE-044` (§12) — recorded in `PRODUCT_DECISION_REGISTER.md` once this spec is approved.
 
@@ -368,3 +369,15 @@ rather than omitted; single shared parser so file hardening cannot drift (D10).
 **Frontend UI engineering:** `action-card` instead of a collapsed card, matching sibling panels; `h3`/`h4` hierarchy; instant
 client pre-checks; honest long-running busy copy; three summary tones with a fix-and-re-upload instruction; per-row email
 outcome wording; `errorText`/`toneClass` reused instead of a new `detailMessage`; keyboard-only and 320 px checks added.
+
+## 16. Final-review addendum (2026-10-01, after implementation)
+
+- **Password hashing off the event loop.** `unusable_password_hash()` (bcrypt, cost 12, synchronous) ran once per row on the event
+  loop while the onboarding lock was held. Bulk now computes one hash per filled-in row in worker threads after claiming the key
+  and **before** taking the advisory lock, and passes it to `_provision_school(..., password_hash=...)` (optional; the single
+  create still computes its own). Pinned by `test_password_hashing_never_runs_on_the_event_loop` and a 100-row success test.
+- **Row lock timeout.** A row insert that waits past `lock_timeout` on another request's uncommitted create of the same email is
+  rejected with the rule-6 conflict message instead of failing the batch (`DBAPIError` with SQLSTATE 55P03 joins
+  `IntegrityError`). Pinned by `test_a_row_waiting_on_an_uncommitted_create_of_its_email_is_rejected_alone`.
+- **Migration evidence.** §11's round-trip and downgrade-refusal tests now run against a throwaway database (the AGN-004
+  harness), not only the migration source text.
