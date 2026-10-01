@@ -18,7 +18,7 @@
 
 **Tech Stack:** FastAPI, Pydantic v2, SQLAlchemy 2 async, Alembic, PostgreSQL 16; Next.js 15 (App Router), React 19, Vitest + Testing Library, Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md`. Read it with this plan; §3 is the matrix. Decision: `DEC-SCOPE-041` (P1–P9).
+**Spec:** `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md`. Read it with this plan; §3 is the matrix. Decision: `DEC-SCOPE-043` (P1–P9).
 
 ## Global Constraints
 
@@ -34,7 +34,7 @@
 - No new dependency (Python or npm).
 
 **Migration and data**
-- Migration `0048_agent_staff_permissions`, `down_revision = "0047_agent_org_staff"`.
+- Migration `0051_agent_staff_permissions`, `down_revision = "0047_agent_org_staff"`.
 - Columns `can_verify_documents`, `can_view_reports` on `agent_org_members`: `Boolean`, `nullable=False`, `server_default false`.
 - No row rewrite.
 
@@ -80,7 +80,7 @@
 
 ## Deviations from existing tests (record in the RTM)
 
-These are forced by `DEC-SCOPE-041`. They are behaviour changes, not test-only edits.
+These are forced by `DEC-SCOPE-043`. They are behaviour changes, not test-only edits.
 
 - `tests/test_agn_002_staff_access.py::test_staff_dashboard_and_reports_leave_out_commission_figures` and `tests/test_agn_002_qa_messages.py::test_staff_pages_never_mention_commissions` create their staff member with `can_view_reports=True`. Reports is off by default now (P1); their "no commission figures" intent is unchanged (Task 3).
 - `tests/agn002_helpers.mk_staff` gains keyword arguments `can_verify_documents=False, can_view_reports=False`. Existing callers are unaffected (Task 1).
@@ -131,7 +131,7 @@ These are the five failure modes the spec implies that a user is most likely to 
 ### Task 1: Migration `0048` and the two staff flags
 
 **Files:**
-- Create: `apps/api/alembic/versions/0048_agent_staff_permissions.py`
+- Create: `apps/api/alembic/versions/0051_agent_staff_permissions.py`
 - Modify: `apps/api/app/models.py` (class `AgentOrgMember`, after `deactivated_at`)
 - Modify: `apps/api/tests/agn002_helpers.py` (`mk_staff`)
 - Test: `apps/api/tests/test_agn_003_schema.py`
@@ -157,7 +157,7 @@ from tests.agn001_helpers import mk_active_org
 from tests.agn002_helpers import mk_staff
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_agn_003_migration_0048", VERSIONS / "0048_agent_staff_permissions.py")
+_spec = importlib.util.spec_from_file_location("_agn_003_migration_0048", VERSIONS / "0051_agent_staff_permissions.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
@@ -165,7 +165,7 @@ FLAGS = ("can_verify_documents", "can_view_reports")
 
 
 def test_migration_follows_0047():
-    assert _migration.revision == "0048_agent_staff_permissions"
+    assert _migration.revision == "0051_agent_staff_permissions"
     assert _migration.down_revision == "0047_agent_org_staff"
 
 
@@ -200,14 +200,14 @@ async def test_mk_staff_can_switch_flags_on(db_session):
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: API(`tests/test_agn_003_schema.py`)
-Expected: FAIL. Collection raises `FileNotFoundError` for `0048_agent_staff_permissions.py`.
+Expected: FAIL. Collection raises `FileNotFoundError` for `0051_agent_staff_permissions.py`.
 
-- [ ] **Step 3: Write the migration** — `apps/api/alembic/versions/0048_agent_staff_permissions.py`
+- [ ] **Step 3: Write the migration** — `apps/api/alembic/versions/0051_agent_staff_permissions.py`
 
 ```python
-"""AGN-003 -- per-staff optional permissions: Verify Documents and Reports (DEC-SCOPE-041 P1/P2).
+"""AGN-003 -- per-staff optional permissions: Verify Documents and Reports (DEC-SCOPE-043 P1/P2).
 
-Revision ID: 0048_agent_staff_permissions
+Revision ID: 0051_agent_staff_permissions
 Revises: 0047_agent_org_staff
 
 docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md §5. Additive: two NOT NULL booleans on agent_org_members with
@@ -220,7 +220,7 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0048_agent_staff_permissions"
+revision = "0051_agent_staff_permissions"
 down_revision = "0047_agent_org_staff"
 branch_labels = None
 depends_on = None
@@ -249,13 +249,13 @@ def downgrade() -> None:
 - [ ] **Step 4: Add the model columns** — in `apps/api/app/models.py`, class `AgentOrgMember`, directly after the `deactivated_at` line:
 
 ```python
-    # AGN-003 (DEC-SCOPE-041 P1/P2): the two optional §6 rows for staff. Stored on every member but never read for a Master
+    # AGN-003 (DEC-SCOPE-043 P1/P2): the two optional §6 rows for staff. Stored on every member but never read for a Master
     # (`core.rbac.agent_may` always allows Masters).
     can_verify_documents: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     can_view_reports: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
 ```
 
-`Boolean` and `text` are already imported on line 5. Extend the class docstring's last sentence with: `AGN-003 adds two per-staff permission flags (DEC-SCOPE-041).`
+`Boolean` and `text` are already imported on line 5. Extend the class docstring's last sentence with: `AGN-003 adds two per-staff permission flags (DEC-SCOPE-043).`
 
 - [ ] **Step 5: Extend `mk_staff`** — replace the function in `apps/api/tests/agn002_helpers.py`:
 
@@ -284,7 +284,7 @@ Expected: PASS. The two older schema tests stay green because they assert "one h
 Run: LINT. Expected: `All checks passed!`
 
 ```bash
-git add apps/api/alembic/versions/0048_agent_staff_permissions.py apps/api/app/models.py apps/api/tests/agn002_helpers.py apps/api/tests/test_agn_003_schema.py
+git add apps/api/alembic/versions/0051_agent_staff_permissions.py apps/api/app/models.py apps/api/tests/agn002_helpers.py apps/api/tests/test_agn_003_schema.py
 git commit -m "feat(agn-003): migration 0048 -- per-staff Verify Documents and Reports flags"
 ```
 
@@ -352,7 +352,7 @@ Expected: FAIL with `KeyError: 'agent_permissions'`.
 - [ ] **Step 3: Implement the helpers** — in `apps/api/app/core/rbac.py`, append after `is_agent_staff`:
 
 ```python
-# AGN-003 (DEC-SCOPE-041): the two optional §6 rows. The column names on AgentOrgMember are also the API keys.
+# AGN-003 (DEC-SCOPE-043): the two optional §6 rows. The column names on AgentOrgMember are also the API keys.
 STAFF_PERMISSIONS = ("can_verify_documents", "can_view_reports")
 REPORTS_REFUSED = "Your agency Master hasn't given you access to reports"
 VERIFY_REFUSED = "Your agency Master hasn't given you permission to verify documents"
@@ -360,7 +360,7 @@ REVIEW_MASTER_ONLY = "Only an agency Master can reject documents or request chan
 
 
 def agent_may(user, permission: str) -> bool:
-    """AGN-003 (DEC-SCOPE-041 P1/P2): whether the caller may use an optional §6 row. Masters (and every non-staff caller -- route
+    """AGN-003 (DEC-SCOPE-043 P1/P2): whether the caller may use an optional §6 row. Masters (and every non-staff caller -- route
     role checks run first) are never limited; staff follow their own flag. Reads the membership `get_current_user` eager-loads on
     every request, so a Master's change applies on the staff member's next request."""
 
@@ -461,7 +461,7 @@ Expected: `test_reports_is_off_for_staff_by_default` FAILS (200 != 403); the oth
 - After the existing `team`/`commissions` staff check, add:
 
 ```python
-    # AGN-003 (DEC-SCOPE-041 P1): Reports is an optional §6 row -- off for staff until their Master switches it on.
+    # AGN-003 (DEC-SCOPE-043 P1): Reports is an optional §6 row -- off for staff until their Master switches it on.
     if section == "reports" and user.role == "agent" and not agent_may(user, "can_view_reports"):
         raise HTTPException(403, REPORTS_REFUSED)
 ```
@@ -470,7 +470,7 @@ Expected: `test_reports_is_off_for_staff_by_default` FAILS (200 != 403); the oth
 - In `tests/test_agn_002_staff_access.py`, test `test_staff_dashboard_and_reports_leave_out_commission_figures`, replace `staff = await mk_staff(db_session, ctx["org"])` with:
 
 ```python
-    # AGN-003 (DEC-SCOPE-041 P1): Reports is off for staff by default; this test keeps its intent with it switched on.
+    # AGN-003 (DEC-SCOPE-043 P1): Reports is off for staff by default; this test keeps its intent with it switched on.
     staff = await mk_staff(db_session, ctx["org"], can_view_reports=True)
 ```
 
@@ -626,7 +626,7 @@ Expected: the new tests FAIL with `405 Method Not Allowed`, or a `KeyError: 'per
 
 ```python
 class AgentStaffPermissions(BaseModel):
-    """AGN-003 (DEC-SCOPE-041 P1/P2): one staff member's whole optional-permission set. PUT replaces both; strict booleans and no
+    """AGN-003 (DEC-SCOPE-043 P1/P2): one staff member's whole optional-permission set. PUT replaces both; strict booleans and no
     other key, so no other privilege can be named."""
 
     model_config = {"extra": "forbid"}
@@ -638,7 +638,7 @@ class AgentStaffPermissions(BaseModel):
 
 ```python
 async def set_staff_permissions(db: AsyncSession, org: AgentOrg, member_id, actor: User, *, can_verify_documents: bool, can_view_reports: bool):
-    """No commit; `org` locked. DEC-SCOPE-041 P2/P8: any staff member of the organisation, whatever their status; audited only when
+    """No commit; `org` locked. DEC-SCOPE-043 P2/P8: any staff member of the organisation, whatever their status; audited only when
     a value changes (a repeated save writes nothing), with the before/after flags."""
     member, user = await _staff_member(db, org, member_id)
     after = {"can_verify_documents": can_verify_documents, "can_view_reports": can_view_reports}
@@ -652,7 +652,7 @@ async def set_staff_permissions(db: AsyncSession, org: AgentOrg, member_id, acto
 
 - [ ] **Step 5: Add the route and the shape field** — in `apps/api/app/api/agent_team.py`:
 - Add `AgentStaffPermissions` to the `app.schemas` import and `set_staff_permissions` to the `app.services.agent_orgs` import.
-- Update the module docstring's AGN-002 line with: `AGN-003 -- a staff member's optional permissions (DEC-SCOPE-041; spec §8).`
+- Update the module docstring's AGN-002 line with: `AGN-003 -- a staff member's optional permissions (DEC-SCOPE-043; spec §8).`
 - Replace `_staff_out`:
 
 ```python
@@ -671,7 +671,7 @@ def _staff_out(member: AgentOrgMember, staff: User, statuses: dict) -> dict:
 ```python
 @router.put("/staff/{member_id}/permissions")
 async def staff_permissions(member_id: UUID, payload: AgentStaffPermissions, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AGN-003 (DEC-SCOPE-041 P2): replace one staff member's optional permissions. Effective on their next request."""
+    """AGN-003 (DEC-SCOPE-043 P2): replace one staff member's optional permissions. Effective on their next request."""
     org = await _staff_org(db, user)
     member, staff = await set_staff_permissions(db, org, member_id, user, **payload.model_dump())
     return {"member": await _commit_staff_change(db, "agent_org_staff_permissions_updated", org, user, member, staff, await provisioning_statuses(db, [staff.id]))}
@@ -761,7 +761,7 @@ async def agency_document(db, ctx: dict, *, attached: bool = True, status: str =
 - [ ] **Step 2: Write the failing tests** — `apps/api/tests/test_agn_003_verify.py`
 
 ```python
-"""AGN-003 -- agents decide pending documents of their agency (spec §7; AGN-003-AC04, AC07; DEC-SCOPE-041 P5/P6)."""
+"""AGN-003 -- agents decide pending documents of their agency (spec §7; AGN-003-AC04, AC07; DEC-SCOPE-043 P5/P6)."""
 
 import uuid
 
@@ -948,7 +948,7 @@ Expected: FAIL. Agents get `403 "This role cannot perform this operation"` every
 
 ```python
 class AgentDocumentReview(BaseModel):
-    """AGN-003 (DEC-SCOPE-041 P5/P6, spec §7): an agency member's decision on a pending document. The counselor/admin body of the
+    """AGN-003 (DEC-SCOPE-043 P5/P6, spec §7): an agency member's decision on a pending document. The counselor/admin body of the
     same route is not parsed by this (unchanged)."""
 
     model_config = {"extra": "forbid"}
@@ -968,7 +968,7 @@ class AgentDocumentReview(BaseModel):
 
 ```python
 async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID, payload: dict) -> dict:
-    """AGN-003 (DEC-SCOPE-041 P3/P5/P6, spec §7): an agency member decides a PENDING document of their agency. Permission checks
+    """AGN-003 (DEC-SCOPE-043 P3/P5/P6, spec §7): an agency member decides a PENDING document of their agency. Permission checks
     come before any read (a refused caller learns nothing about the document); the row lock makes a second agent decision see the
     first and get 409. Same notification and audit action as the counselor path, with validated metadata only."""
     if not agent_may(user, "can_verify_documents"):
@@ -1224,7 +1224,7 @@ Expected: FAIL. Reports is still present for staff.
 In `apps/web/lib/types.ts`, add above `export type User`:
 
 ```ts
-// AGN-003 (DEC-SCOPE-041): an agency member's effective optional permissions (GET /auth/me; a Master gets both true).
+// AGN-003 (DEC-SCOPE-043): an agency member's effective optional permissions (GET /auth/me; a Master gets both true).
 export type AgentPermissions = { can_verify_documents: boolean; can_view_reports: boolean };
 ```
 
@@ -1236,7 +1236,7 @@ In `apps/web/lib/navigation.ts`:
 
 ```ts
 const STAFF_REPORTS = "/overseas/agent/reports";
-// AGN-003 (DEC-SCOPE-041 P1): Reports is optional for staff -- shown only once their Master switches it on (the server refuses it
+// AGN-003 (DEC-SCOPE-043 P1): Reports is optional for staff -- shown only once their Master switches it on (the server refuses it
 // regardless; this keeps a dead link out of the sidebar). Masters are never limited.
 export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissions?: AgentPermissions | null): NavItem[] {
   if (memberRole !== "staff") return nav;
@@ -1398,7 +1398,7 @@ function detailMessage(detail: unknown) {
 type Props = { queueUrl?: string; decisions?: ReviewDecision[]; pendingOnly?: boolean; emptyText?: string };
 
 // OVS-005: a Counselor's assigned document queue with a real "View document" download action and Verify/Reject controls.
-// AGN-003 (DEC-SCOPE-041 P5/P6): reused on the agent Documents page -- `pendingOnly` (agents decide pending documents only) and
+// AGN-003 (DEC-SCOPE-043 P5/P6): reused on the agent Documents page -- `pendingOnly` (agents decide pending documents only) and
 // `decisions` (staff: verified only). Every prop defaults to the counselor panel exactly as before; a failed load now says so.
 export default function CounselorDocumentReviewPanel({
   queueUrl = "/api/v1/portal/overseas/counselor/documents",
@@ -1610,7 +1610,7 @@ Then edit `apps/web/components/WorkflowPanel.tsx`:
 - After the line `const showCounselorDocumentReview = user.role === "counselor" && section === "documents";`, add:
 
 ```tsx
-  // AGN-003 (DEC-SCOPE-041 P5/P6): agents review pending agency documents -- Masters always, staff when their Master allows it.
+  // AGN-003 (DEC-SCOPE-043 P5/P6): agents review pending agency documents -- Masters always, staff when their Master allows it.
   const showAgentDocumentReview = user.role === "agent" && section === "documents" && user.agent_permissions?.can_verify_documents === true;
 ```
 
@@ -1719,7 +1719,7 @@ const OPTIONS: { key: keyof AgentPermissions; label: string; hint: string }[] = 
   { key: "can_view_reports", label: "View reports", hint: "See the agency's application summary." },
 ];
 
-// AGN-003 (DEC-SCOPE-041 P1/P2): what one staff member may do beyond the student journey. Native checkboxes in the ENH-025
+// AGN-003 (DEC-SCOPE-043 P1/P2): what one staff member may do beyond the student journey. Native checkboxes in the ENH-025
 // form-section fieldset; each hint is tied to its box (aria-describedby). The row owns the request, busy state and errors.
 export default function AgentStaffPermissionsForm({ idPrefix, name, value, busy, onSave, onCancel }: {
   idPrefix: string; name: string; value: AgentPermissions; busy: boolean; onSave: (next: AgentPermissions) => void; onCancel: () => void;
@@ -2055,7 +2055,7 @@ git commit -m "test(agn-003): e2e -- a Master switches staff Reports and Verify 
   - `docs/quality/RTM.md` (AGN-003 addendum after the AGN-002 addendum ~:339-344)
   - `docs/delivery/ENHANCEMENT_BACKLOG.md` (AGN-003 status line)
 
-- [ ] **Step 1: RBAC_MATRIX §2.8** — add a block titled `**AGN-003 addendum (2026-10-01, DEC-SCOPE-041).**`. It contains the spec §3 table verbatim (§6 row / routes / Master / Staff) plus one line each for:
+- [ ] **Step 1: RBAC_MATRIX §2.8** — add a block titled `**AGN-003 addendum (2026-10-01, DEC-SCOPE-043).**`. It contains the spec §3 table verbatim (§6 row / routes / Master / Staff) plus one line each for:
 - toggles: per staff member, off by default, Master-only `PUT`, effective next request
 - Verify gives `verified` only; Reject is Master-only
 - N/A rows and the Add University departure
@@ -2070,7 +2070,7 @@ git commit -m "test(agn-003): e2e -- a Master switches staff Reports and Verify 
   - Counselor/admin behaviour unchanged.
 - **`GET /auth/me` / staff shape:** additive `agent_permissions` (effective; Master both true; non-agent `null`) and `permissions`. Also record `GET /portal/overseas/agent/reports` → `403 REPORTS_REFUSED` for staff without the toggle.
 
-- [ ] **Step 3: DATA_MODEL §6.8c** — "AgentOrgMember permission flags (AGN-003, migration `0048_agent_staff_permissions`)". Two `BOOLEAN NOT NULL DEFAULT false` columns; staff-only semantics; existing rows read `false`; downgrade drops them.
+- [ ] **Step 3: DATA_MODEL §6.8c** — "AgentOrgMember permission flags (AGN-003, migration `0051_agent_staff_permissions`)". Two `BOOLEAN NOT NULL DEFAULT false` columns; staff-only semantics; existing rows read `false`; downgrade drops them.
 
 - [ ] **Step 4: SCREEN_CATALOG and ROLE_NAVIGATION**
 - **SCR-AGT-007 Team:**

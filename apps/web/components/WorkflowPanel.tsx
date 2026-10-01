@@ -424,7 +424,7 @@ export default function WorkflowPanel({ user, section }: { user: User; section: 
   const showDocuments = section === "documents" && ["overseas_student", "agent"].includes(user.role);
   const showDocumentDownload = user.role === "overseas_student" && section === "documents";
   const showCounselorDocumentReview = user.role === "counselor" && section === "documents";
-  // AGN-003 (DEC-SCOPE-041 P5/P6): agents review pending agency documents -- Masters always, staff when their Master allows it.
+  // AGN-003 (DEC-SCOPE-043 P5/P6): agents review pending agency documents -- Masters always, staff when their Master allows it.
   const showAgentDocumentReview = user.role === "agent" && section === "documents" && user.agent_permissions?.can_verify_documents === true;
   const showVisaChecklist = user.role === "overseas_student" && section === "visa-status";
   const showCounselorVisa = user.role === "counselor" && section === "visa";

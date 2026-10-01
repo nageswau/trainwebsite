@@ -689,6 +689,31 @@ field) so those slot in later without rework, not hardcoded email-only.
 **Status:** extension CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date:
 2026-09-03 — `ADM-011` unblocked for email channel only
 
+**Extended (2026-09-30, ENH-014 — Multi-channel Communication Centre):** resolves the open items above
+for ENH-014's first slice. Each point was answered by the user in-session, one question at a time:
+
+| # | Question | Decision |
+|---|---|---|
+| D1 | Does this decision cover School-domain recipients? | Yes — extended to Parents, Coordinators, Principals and the other School roles as recipients |
+| D2 | SMS provider identity | **Twilio** (same account as WhatsApp) |
+| D3 | Mobile push notifications | Out of scope — no mobile app exists; the in-app notification list is the "CRM notification" channel |
+| D4 | Consent model | **Opt-in** for WhatsApp and SMS, recorded with a timestamp; Email and in-app are always on |
+| D5 | Which triggers | Every existing trigger that sends email today (School and IT/Overseas) also delivers on the recipient's opted-in channels; in-app-only triggers stay in-app-only |
+| D6 | Result-publish recipients | Parents only (unchanged). Part B §11's Student/Teacher recipients are a recorded follow-up |
+| D7 | Auth/invite messages | Password reset, set-password and invite links stay **email-only** regardless of preferences |
+| D8 | Credentials | Twilio sandbox for development; production account and template approval before release |
+| D9 | DPDP/privacy review | **Approved by the user today:** Twilio acts as data processor for phone numbers and message content; opt-in consent recorded; erasure also removes preferences; export includes them |
+| D10 | Dispatch | Celery queue for every channel, enqueued after commit |
+| D11 | Retry policy (`PRD_OPEN_ITEMS.md` item 13) | Up to 3 retries on transient errors (timeout, 5xx, 429) at ~60 s / 5 min / 25 min; then `failed` with the error kept |
+| D12 | Platinum `parent_help_desk` | Separate later slice of ENH-014 |
+| D13 | Message content | One generic approved WhatsApp utility template (title, body, link); SMS carries the same text |
+| D14 | Phone verification | Format check and E.164 normalisation only (default country India, +91); no OTP |
+
+Design: `docs/superpowers/specs/2026-09-30-enh-014-notification-channels-design.md`.
+
+**Status:** extension CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date:
+2026-09-30 — ENH-014 slice 1 unblocked (Twilio WhatsApp + SMS, sandbox credentials)
+
 ---
 
 ## Group 7 — Privacy / Security
@@ -2658,7 +2683,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 - **D10 — Migration.** Each existing agent becomes Master `M001` of its own organisation: `approved` → `active`, `pending` → `pending`, `rejected` → `pending` (for re-review). Data access is unchanged.
 - **D11 — Admin-created agents.** Creating a `role='agent'` user through admin user-create (`ADM-001`) also creates a `pending` organisation with that user as `M001`.
 - **D12 — Notifications.** Agent notifications that today go to the single agent (commission estimated, commission eligible) go to every active Master of the organisation.
-- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`. *(2026-09-30: Staff logins since decided as `DEC-SCOPE-040`, `AGN-002`; staff assignment/ownership, staff performance and CRM settings remain blocked. 2026-10-01: staff permissions decided as `DEC-SCOPE-041`, `AGN-003`.)*
+- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`. *(2026-09-30: Staff logins since decided as `DEC-SCOPE-040`, `AGN-002`; staff assignment and ownership of students since decided as `DEC-SCOPE-042`, `AGN-004`; staff performance and CRM settings remain blocked. 2026-10-01: staff permissions decided as `DEC-SCOPE-043`, `AGN-003`.)*
 
 **Review decisions, 2026-09-29 (`EXPLICIT_APPROVAL`, in-session, after the API / security / frontend review of the build):**
 - **R1 — Invite throttle.** At most 10 Master invites per agency per rolling 24 hours (counted from `agent_org.master_invite` audit rows, under the organisation lock); over the limit → `429` with `Retry-After`. Reason: invite → deactivate → invite loops otherwise let an approved agency send unlimited set-password emails to any address under a name it chooses.
@@ -2691,7 +2716,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 
 **Resolution:** owner, in-session 2026-09-30 (`EXPLICIT_APPROVAL` — the owner's `AGN-002` statement and answers to four structured questions, not the source document's wording):
 
-- **S1 — Staff access.** A staff member of an `active` organisation uses the existing agent student and application routes with the organisation-wide scope Masters have today. Team management (Masters and staff) and commissions stay Master-only. Narrowing staff to assigned students, staff assignment/ownership, staff performance and permission levels stay out of scope (still blocked under `C-10`). *(2026-10-01: permission levels since decided as `DEC-SCOPE-041`, `AGN-003` — two per-staff toggles, Verify Documents and Reports; assigned-only scope stays parked.)*
+- **S1 — Staff access.** A staff member of an `active` organisation uses the existing agent student and application routes with the organisation-wide scope Masters have today. Team management (Masters and staff) and commissions stay Master-only. Narrowing staff to assigned students, staff assignment/ownership, staff performance and permission levels stay out of scope (still blocked under `C-10`). *(2026-10-01: permission levels since decided as `DEC-SCOPE-043`, `AGN-003` — two per-staff toggles, Verify Documents and Reports; assigned-only scope stays parked.)*
 - **S2 — Model.** A staff member is a `User` with `role='agent'`, division `overseas`, an approved `agent` role assignment, and an `AgentOrgMember` with member role `staff`. Staff codes are `<PREFIX>-S###` from a per-organisation staff counter separate from `master_seq`: unique, monotonic (next = highest ever issued + 1), never reassigned. Every Master-only check tests the member role, and the Master rules of `DEC-SCOPE-038` (3-Master limit D4, last-Master rule D8/R3, notifications D12) count Masters only.
 - **S3 — Reset.** Only a Master of the staff member's organisation resets a staff login: the current password becomes unusable, a one-time set-password link is emailed through the `DEC-SCOPE-019` mechanism (the Master never sees the token, as for Master invites), and the staff member's existing sessions end. Creating staff sends the same link; the response reports whether the email was sent.
 - **S4 — Fields and limits.** Name, email and phone. Email is fixed after creation (name and phone are editable). No cap on the number of staff. Staff creations and resets are throttled per agency on a rolling 24 hours, like `DEC-SCOPE-038` R1; the exact budget is set in the design spec.
@@ -2700,9 +2725,76 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 
 **Consequences:** migration widening the member role, the member sequence constraint and the member status set, and adding a staff counter; new staff endpoints under the Master team route; a session-revocation check in `get_current_user` and refresh (design spec); role filters added to the Master rules and team listings; Overseas Admin's per-agent approve/reject and admin user reactivation must not bypass S1/S5 for staff (design spec); `AgentTeamPanel` gains a Staff section. Open design details (session-revocation mechanism, throttle budget, reactivation of a never-activated staff account, admin-route handling) are settled in the `AGN-002` design spec, not here.
 
-### DEC-SCOPE-041 — Agent staff permissions: the Master vs Staff matrix (`AGN-003`)
+### DEC-SCOPE-041 — ENH-030 Daily class attendance for School students (provisional number)
 
-**ID note:** provisional number, the next free after `DEC-SCOPE-040`. If another branch reaches `main` first holding `DEC-SCOPE-041`, this entry is renumbered on merge (precedent: `DEC-SCOPE-038`/`039`).
+**ID note:** provisional number, recorded in-session 2026-09-30 as `DEC-SCOPE-038`. Renumbered on merging `main`, 2026-10-01: decision `DEC-SCOPE-038` → `DEC-SCOPE-041` (AGN-001, ENH-031 and AGN-002 hold 038–040) and migration `0046` → `0048_school_attendance_records`, chained after AGN-002's `0047_agent_org_staff`.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-030 (`DERIVED_BLUEPRINT`, from `School CRM.md` = `EVID-014`) asks for routine School-domain attendance: a teacher marks their whole assigned class for a day in one action, visible on Parent/Student/360° views. Open points: what a "class" is, whether a teacher may write (DEC-SCOPE-011 says Teacher *views* attendance), what "Student dashboard" means with no student login, the status set, granularity, and the tier gate.
+
+**Evidence:** Graphify-led audit, 2026-09-30 (`docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md` §1): no class/section entity and no teacher-to-class assignment (per-student `assigned_teacher_user_id`; ENH-013 D3); teacher RBAC bundle read-only; no `school_student` role; IT `Attendance.status` ∈ present/absent/late/excused; the 360 Attendance tab carries a fixed "not tracked yet (ENH-030)" note.
+
+**Resolution:** User answered in-session, 2026-09-30 (`EXPLICIT_APPROVAL`): "go with your recommendations for all six" — spec §2 D1–D6. D1 class = the teacher's currently assigned students; D2 writer = `school_teacher`, assigned students only (additive to DEC-SCOPE-011; Coordinator/Principal read-only for daily attendance in v1); D3 "Student dashboard" = the Student 360° Attendance tab; D4 status ∈ present/absent/late/excused, a missing row = not marked; D5 one record per student per day; D6 tier gate = any valid tier (`service_key=None`).
+
+**Consequences:** new `school_attendance_records` table (migration `0048`), new `apps/api/app/api/school_attendance.py` (`GET`/`PUT /school/attendance`), additive `daily_attendance` key on `/school/students/{id}/overview`, 360 Attendance tab gains daily records and loses the ENH-030 note, new teacher page `/school/teacher/attendance`. Existing `/school/dashboard` and `/school/reports` `attendance` keys unchanged.
+
+**Amendment (executor ruling after the whole-branch review, 2026-09-30) — confirmed by the user in-session 2026-09-30 (`EXPLICIT_APPROVAL`: "confirm D5"):** D5 "one record per student per day" is implemented as one record per student per day **per school** (`UNIQUE (school_student_id, school_id, session_date)`), so a transferred student's previous school's records can never be overwritten by the new school (the review found they could be, for any past date). Refusing the new school's save instead was rejected because it would block a whole class on a transfer day.
+
+**I-3, raised by the substitute independent review, 2026-09-30 — RESOLVED: user in-session 2026-09-30 (`EXPLICIT_APPROVAL`: "go with your recommendation for I-3") chose option (b), built and tested; C4 (option (c)) decided by executor ruling under that approval as "no further lower bound" (changeable). Original question:** the roster for any date is the teacher's *current* class, so a back-dated save can mark a student for a day before they joined the school or the class (e.g. a student transferred in on 28 Sep, marked "present" for 20 Sep; the parent then sees that day as present at the new school). Options: (a) accept, with a note on past dates that the list is today's class; (b) for past dates, exclude or refuse students whose enrolment at this school began after that day (from `SchoolStudent.created_at` and the approved transfer's decision time); (c) bound how far back a teacher may mark (the existing open C4 question). Recommended: (b), with (c) decided alongside it.
+
+### DEC-SCOPE-042 — Agent students: students with no login, staff assignment (`AGN-004`)
+
+**ID note (renumbered 2026-10-01):** `DEC-SCOPE-041` went to `ENH-030` on `main` (PR #27) first, so this entry is now `DEC-SCOPE-042`. Earlier note: `DEC-SCOPE-040` is `AGN-002` (staff logins), on `main` since PR #28; this entry keeps `DEC-SCOPE-042` (no clash
+when `main` was merged into the AGN-004 branch, 2026-10-01).
+
+**Question:** the owner's `AGN-004` statement (in-session, 2026-09-30): "Master/Staff create, edit, view and archive students who
+never log in (§2 Students, §5 Step 1; DEC-ROLE-004; DEC-SCOPE-035 D3)", with acceptance: create/edit/view/archive work for the right
+roles; an archived student leaves default lists but remains in history and reports; Staff cannot see a student assigned to someone
+else (`404`); no `users` row is ever created for an agent student; the within-org duplicate warning fires.
+
+**Evidence:** Graphify-oriented impact analysis, 2026-09-30: `agent_students` is a link table whose `agent_id` and `student_id` are
+both FKs to `users.id` (`models.py` `AgentStudent`) — every agent student is today a real `users` account; there is no edit,
+detail or archive route and no duplicate *warning* anywhere; `OverseasApplication`/`StudentDocument` key the student through
+`users.id` and about fifteen queries inner-join it; `DEC-SCOPE-038` D13 left staff assignment and ownership blocked under `C-10`;
+`AGN-002` (a parallel branch) models staff as `role='agent'` + member role `staff` with agency-wide access (its S1).
+
+**Conflicts recorded, not silently resolved:** (1) the requirement's `DEC-SCOPE-035 D3` citation — `DEC-SCOPE-035` is ENH-027's
+psychometric decision and `DEC-SCOPE-038` D3 is AGN-001's account-code rule; neither decides agent students. (2) `EVID-015` §6
+lists Staff "Delete Student ✗" while the request reads "Master/Staff … archive" — the owner chose Master-only (D5). (3) `AGN-002` S1
+gives staff agency-wide student and application access, while AGN-004's acceptance says staff cannot see another's student — the
+owner chose assigned-only everywhere (G4).
+
+**Resolution:** owner, in-session 2026-09-30 (`EXPLICIT_APPROVAL` — the owner's own statement and answers to structured
+questions, not the source document's wording):
+
+- **D1 — Staff for students.** Staff (as modelled by AGN-002 S2) create, edit and view students. Lifts the staff
+  assignment/ownership part of `DEC-SCOPE-038` D13 / `C-10`; staff performance, permission levels and CRM settings stay blocked.
+- **D3 — Two kinds of student.** The existing "link a student who has an account" flow stays; a new flow creates a student with no
+  login whose details live on `agent_students`; no `users` row is ever created for them.
+- **D4 — Assignment.** Created or linked by staff → assigned to that staff member; by a Master → unassigned. Only a Master assigns.
+- **D5 — Archive.** Master only (and unarchive). Archived students leave default lists but stay in history and reports.
+- **D7 — Duplicate warning.** Same email (case-insensitive) or same normalised phone inside the agency → a warning listing the
+  matches; saving again with confirmation proceeds.
+- **D8 — Downstream deferred.** Applications, documents and commissions for students with no login are a later feature.
+- **G1 — Independent of AGN-002**, reconciled at merge.
+- **G2 — Minimal staff code with AGN-002's exact names** (member role `staff`, `staff_seq`, per-role numbering, `is_agent_staff`,
+  Master-only role filters and guards, `agent_member_role`, `agentNavFor`); no staff-management endpoint or UI.
+- **G3 — Staff reach = AGN-002 S1** (Team and Commissions Master-only).
+- **G4 — Assigned-only everywhere** — the new student routes (`404` outside scope) and every existing roster, link, application,
+  document, lookup and portal path (their existing out-of-scope status codes). Narrows AGN-002 S1.
+- **G5 — Deactivation keeps assignments**; only an active staff member can receive a new assignment.
+- **Browser-QA decisions, 2026-10-01 (owner, `EXPLICIT_APPROVAL`):** **Q1** the agent Students page leads with all students (the panel, full width) and the AGT-002 roster is retitled "Application status" for students who have a login (browser QA-01/02); **Q2** phones match for the duplicate warning on their last 10 digits (country code / trunk 0 ignored); numbers under 10 digits must match exactly, ≥ 7 digits (browser QA-04). Report: `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`.
+- Design choices F1–F5 (no `org_id` column; linked students not editable here; duplicates include archived and linked students;
+  staff see invisible matches only as a count; the detail view sits on the Students page) — design spec §3.
+
+**Consequences:** migration `0049_agent_students_crm` (additive; cut as `0047_agent_students_crm` with AGN-002's staff pieces copied
+in, re-chained after AGN-002's `0047_agent_org_staff` on merge, 2026-10-01, which owns those pieces); new
+`/workflows/overseas/agent/crm/students` routes; scope helpers applied to every agent path; new Students panel. With AGN-002 merged,
+Staff browser flows were verified and the named-staff Assign action built (2026-10-01, `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`). Schema, endpoint shapes and screens are fixed in
+`docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md`, not here.
+
+### DEC-SCOPE-043 — Agent staff permissions: the Master vs Staff matrix (`AGN-003`)
+
+**ID note (renumbered 2026-10-01 on merging `main`):** drafted as `DEC-SCOPE-041`; `DEC-SCOPE-041` went to `ENH-030` (PR #27) and `DEC-SCOPE-042` to `AGN-004` (PR #29) first, so this entry is `DEC-SCOPE-043`.
 
 **Question:** the owner's `AGN-003` statement (in-session, 2026-10-01): "the §6 matrix: Staff are limited to the student journey, with no admin modules; 'Set permissions' / 'Permission Level'", with acceptance criteria: every ❌ cell in §6 returns 403 for Staff with a test; every ✅ cell succeeds; toggles flip the two optional rows; a toggle change applies on the next request. `DEC-SCOPE-040` S1 had left permission levels blocked under `CONFLICT_MATRIX.md` `C-10`. Which rows are optional and toggleable, at what granularity, how far does the matrix reach, and how does agent document verification relate to the counselor's review?
 
@@ -2713,7 +2805,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 - No per-organisation or per-member settings storage exists.
 
 **Conflicts recorded, not silently resolved:**
-- `EVID-015` §6 limits staff to "Assigned" students and applications; `DEC-SCOPE-040` S1 gives them agency-wide scope (kept, P4).
+- `EVID-015` §6 limits staff to "Assigned" students and applications; `DEC-SCOPE-040` S1 gives them agency-wide scope (kept as P4; superseded by `DEC-SCOPE-042` G4 on merging `main`, 2026-10-01 -- §6's "Assigned" now holds).
 - `EVID-015` §6 gives Masters "Add University"; no agent has that route (P3, recorded in the spec matrix).
 
 **Resolution:** owner, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — the owner's `AGN-003` statement and answers to six structured questions, not the source document's wording):
@@ -2721,7 +2813,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 - **P1 — Toggles.** Verify Documents and Reports are the two optional rows. Both are off by default for staff. Existing staff therefore lose the Reports page until a Master switches it on.
 - **P2 — Granularity.** Per staff member, set by a Master of the staff member's organisation ("Set permissions").
 - **P3 — Reach.** The matrix is enforced on routes that exist. §6 rows with no capability for any agent are recorded N/A and stay parked under `C-10`. The one new capability is agent document verification, so the Verify toggle has effect.
-- **P4 — Student scope.** Staff keep agency-wide students and applications (`DEC-SCOPE-040` S1). Assignment/ownership stays parked.
+- **P4 — Student scope.** Staff keep agency-wide students and applications (`DEC-SCOPE-040` S1). Assignment/ownership stays parked. *(Superseded 2026-10-01 when `main` was merged: the owner adopted `DEC-SCOPE-042` G4 (`AGN-004`) for AGN-003 -- staff reach only their assigned students, their applications and documents, including the agent document review (attached or not).)*
 - **P5 — Agent review.** An agent (a Master, or staff with Verify) decides only a document still `pending`. A counselor's or Overseas Admin's decision is never overwritten by an agent; they may still re-review an agent's decision.
 - **P6 — Staff outcome.** Staff with Verify may record `verified` only. Rejecting or requesting changes stays Master-only.
 

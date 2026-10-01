@@ -126,6 +126,17 @@ async def lock_org(db: AsyncSession, org_id) -> AgentOrg:
     return org
 
 
+async def lock_active_org(db: AsyncSession, org_id) -> AgentOrg:
+    """AGN-004: `lock_org`, then refuse an organisation suspended (or no longer active) between the request's gate check and the
+    lock -- the agency student writes take this before touching a student row."""
+    from app.core.rbac import PENDING_MESSAGE, SUSPENDED_MESSAGE
+
+    org = await lock_org(db, org_id)
+    if org.status != "active":
+        raise HTTPException(403, SUSPENDED_MESSAGE if org.status == "suspended" else PENDING_MESSAGE)
+    return org
+
+
 async def set_org_status(db: AsyncSession, org: AgentOrg, status: str, actor: User, *, write_through: bool) -> None:
     """No commit. E11: approve/reject also set the Master assignments' approval_status; suspend/reinstate do not."""
     now = datetime.now(UTC)
@@ -374,7 +385,7 @@ async def reset_staff(db: AsyncSession, org: AgentOrg, member_id, actor: User):
 
 
 async def set_staff_permissions(db: AsyncSession, org: AgentOrg, member_id, actor: User, *, can_verify_documents: bool, can_view_reports: bool):
-    """No commit; `org` locked. DEC-SCOPE-041 P2/P8: any staff member of the organisation, whatever their status; audited only when
+    """No commit; `org` locked. DEC-SCOPE-043 P2/P8: any staff member of the organisation, whatever their status; audited only when
     a value changes (a repeated save writes nothing), with the before/after flags."""
     member, user = await _staff_member(db, org, member_id)
     after = {"can_verify_documents": can_verify_documents, "can_view_reports": can_view_reports}

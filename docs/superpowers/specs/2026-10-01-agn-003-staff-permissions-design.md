@@ -1,7 +1,7 @@
 # AGN-003 — Agent Staff Permissions (Master vs Staff matrix): Design
 
 **Status:** draft for owner review (2026-10-01). **Branch:** `feature/agn-003-staff-permissions` (from `origin/main` 1a0177c).
-**Decision:** `DEC-SCOPE-041` (P1–P9). **Backlog:** `ENHANCEMENT_BACKLOG.md` §AGN-003 (AGN-003-AC01…AC09).
+**Decision:** `DEC-SCOPE-043` (P1–P9). **Backlog:** `ENHANCEMENT_BACKLOG.md` §AGN-003 (AGN-003-AC01…AC09).
 **Builds on:** `AGN-001` (`DEC-SCOPE-038`, migration `0046_agent_orgs`) and `AGN-002` (`DEC-SCOPE-040`, migration
 `0047_agent_org_staff`, spec `2026-09-30-agn-002-staff-logins-design.md`).
 **Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 "Set permissions", §3 "Permission Level",
@@ -20,13 +20,14 @@ Staff are limited to the student journey with no admin modules, per `EVID-015` �
 - The toggles flip the two optional rows.
 - A toggle change applies on the next request.
 
-**Owner's answers (in-session 2026-10-01, `EXPLICIT_APPROVAL`) — recorded as `DEC-SCOPE-041`:**
+**Owner's answers (in-session 2026-10-01, `EXPLICIT_APPROVAL`) — recorded as `DEC-SCOPE-043`:**
 - **P1 — Toggles.** Verify Documents and Reports are the two optional rows. Both are **off by default** for Staff.
 - **P2 — Granularity.** Toggles are stored **per staff member**, set by a Master from the staff row ("Set permissions").
 - **P3 — Reach.** The matrix is enforced on routes that exist today. Rows with no capability for anyone are recorded **N/A**
   (§3) and stay parked. The one new capability is agent document verification, so that the Verify toggle has something to switch.
 - **P4 — Student scope.** Staff keep agency-wide students and applications (`DEC-SCOPE-040` S1). Assignment/ownership (§7 of
   the source) stays parked under `C-10`.
+  *(Superseded 2026-10-01 when `main` was merged: the owner adopted `DEC-SCOPE-042` G4 (`AGN-004`) for AGN-003 -- staff reach only their assigned students, their applications and documents, including the agent document review (attached or not).)*
 - **P5 — Agent review only on pending documents.** An agent (Master, or Staff with Verify) may decide only a document whose
   `verification_status` is `pending`. A counselor's or Overseas Admin's decision is never overwritten by an agent. They can still
   re-review anything an agent decided.
@@ -67,7 +68,7 @@ Legend:
 |---|---|---|---|
 | Dashboard | `GET /portal/overseas/agent/dashboard` | ✅ full | ✅ limited (no commission figures, AGN-002) |
 | Create Student | `POST /workflows/overseas/agent/students` (links an existing student) | ✅ | ✅ |
-| View Students | `GET /workflows/overseas/agent/students`, `GET /portal/overseas/agent/students`, `GET /lookups/overseas-students` | ✅ agency | ✅ agency (P4) |
+| View Students | `GET /workflows/overseas/agent/students`, `GET /portal/overseas/agent/students`, `GET /lookups/overseas-students` | ✅ agency | ✅ assigned only (`DEC-SCOPE-042` G4) |
 | Edit Student | — | N/A | N/A |
 | Delete Student | — | N/A | N/A |
 | Assign Student / Assign Students | — | N/A | N/A |
@@ -118,7 +119,7 @@ ever had it (P3). It is tested as `403` for both member roles and recorded here 
 
 **UI.** Generalise `CounselorDocumentReviewPanel` with optional props, defaults unchanged, rather than writing a second review panel.
 
-## 5. Data model — migration `0048_agent_staff_permissions` (additive)
+## 5. Data model — migration `0051_agent_staff_permissions` (additive)
 
 `agent_org_members` gains:
 
@@ -135,7 +136,7 @@ ever had it (P3). It is tested as `403` for both member roles and recorded here 
   RTM records it.
 - On Master rows the columns are stored but never read (§6).
 - The model docstring states that the columns apply to staff only.
-- `down_revision = "0047_agent_org_staff"`. The single-head tests (`test_agn_001_schema.py:13`, `test_agn_002_schema.py:24`) do not pin
+- `down_revision = "0050_notification_channels"` (re-chained when `main` was merged, 2026-10-01; drafted after `0047_agent_org_staff`). The single-head tests (`test_agn_001_schema.py:13`, `test_agn_002_schema.py:24`) do not pin
   the head and stay green.
 
 ## 6. Authorization (`core/rbac.py`)
@@ -144,7 +145,7 @@ ever had it (P3). It is tested as `403` for both member roles and recorded here 
 STAFF_PERMISSIONS = ("can_verify_documents", "can_view_reports")  # the column names are also the API keys (§8)
 
 def agent_may(user, permission: str) -> bool:
-    """AGN-003 (DEC-SCOPE-041 P1/P2): whether an agent may use an optional §6 row. Masters always may; staff follow their own
+    """AGN-003 (DEC-SCOPE-043 P1/P2): whether an agent may use an optional §6 row. Masters always may; staff follow their own
     toggle. Reads the membership get_current_user eager-loads, so a change applies on the next request."""
 
 def agent_permissions(user) -> dict | None:
@@ -354,7 +355,7 @@ Admin can still re-review, so this is accepted as **P9** unless the owner decide
 | AGN-003-AC06 | Only a Master of the staff member's agency sets toggles; another agency or a Master id → `404`; Staff → `403`; bad body (missing key, extra key, `"true"` string) → `422`; deactivated staff allowed; a real change writes one audit row with before/after; a no-op writes none | `test_agn_003_permissions.py` |
 | AGN-003-AC07 | Agents decide only `pending` documents in agency scope: non-pending `409`, out of scope `403`, unknown `404`, bad decision `422`; unattached document via `AgentStudent` works; a counselor can still overwrite an agent decision; student notified; audit row | `test_agn_003_verify.py` |
 | AGN-003-AC08 | `/auth/me` returns `agent_permissions` (Master both true, staff toggles, non-agent `null`); the staff shape returns `permissions` | `test_agn_003_permissions.py` |
-| AGN-003-AC09 | Migration `0048` follows `0047`, single head, defaults `false`, existing members preserved | `test_agn_003_schema.py` |
+| AGN-003-AC09 | Migration `0051` follows `0050` (re-chained on merging `main`, 2026-10-01), single head, defaults `false`, existing members preserved | `test_agn_003_schema.py` |
 
 **Existing tests changed deliberately (behaviour change P1, not to make a test pass):**
 - `test_agn_002_staff_access.py::test_staff_dashboard_and_reports_leave_out_commission_figures` and
@@ -391,7 +392,7 @@ Admin can still re-review, so this is accepted as **P9** unless the owner decide
 
 | Risk | Mitigation |
 |---|---|
-| Staff lose Reports on upgrade | Intended (P1); recorded in DEC-SCOPE-041, RTM and release notes |
+| Staff lose Reports on upgrade | Intended (P1); recorded in DEC-SCOPE-043, RTM and release notes |
 | Counselor/admin verify path changed by accident | Agent-only branch; counselor/admin statements untouched; `test_ovs_005_documents.py` plus a counselor-overwrite test |
 | Shared review panel changes the counselor UI | Defaults reproduce today's panel; tests for counselor defaults written first |
 | Every agent route slowed or broken | No new query per request (the flags ride on the already-loaded membership); `test_agt_00*`, `test_enh_031_*` in the lite set |
@@ -401,7 +402,7 @@ Admin can still re-review, so this is accepted as **P9** unless the owner decide
 
 ## 13. Documentation to update with the code
 
-- `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-041`, plus a cross-reference on `DEC-SCOPE-038` D13 and `DEC-SCOPE-040` S1.
+- `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-043`, plus a cross-reference on `DEC-SCOPE-038` D13 and `DEC-SCOPE-040` S1.
 - `CONFLICT_MATRIX.md` `C-10` (EVID-015 row).
 - `ENHANCEMENT_BACKLOG.md` (Revision 8, table row, §AGN-003, decision table, Appendix B row).
 - `RBAC_MATRIX.md` §2.8 (AGN-003 block, the matrix above).

@@ -92,7 +92,7 @@ async def _world(db_session) -> tuple[dict, dict, dict]:
     caller = await mk_staff(db_session, ctx["org"], full_name="Caller Staff")
     other = await mk_staff(db_session, ctx["org"], full_name="Other Staff")
     away = await mk_staff(db_session, ctx["org"], full_name="Away Staff", active=False)
-    world = await agency_document(db_session, ctx)
+    world = await agency_document(db_session, ctx, assigned_to=caller["member"])  # G4: staff reach their assigned students
     unlinked = await mk_user(db_session, role="overseas_student", full_name="Unlinked Student")
     other_university = await mk_university(db_session)
     ids = {

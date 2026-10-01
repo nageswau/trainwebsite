@@ -24,11 +24,12 @@ async def mk_university(db) -> University:
     return university
 
 
-async def agency_document(db, ctx: dict, *, attached: bool = True, status: str = "pending", counselor=None) -> dict:
+async def agency_document(db, ctx: dict, *, attached: bool = True, status: str = "pending", counselor=None, assigned_to=None) -> dict:
     """A student linked to the agency's Master, an application referred by that Master, and one document on it (or, with
-    attached=False, a document on the student only)."""
+    attached=False, a document on the student only). `assigned_to` (an AgentOrgMember) assigns the student to a staff member --
+    staff only reach their assigned students (AGN-004 DEC-SCOPE-042 G4, adopted by AGN-003 on merging `main`)."""
     student = await mk_user(db, role="overseas_student", full_name="Agency Student")
-    db.add(AgentStudent(agent_id=ctx["master"].id, student_id=student.id, status="active"))
+    db.add(AgentStudent(agent_id=ctx["master"].id, student_id=student.id, status="active", assigned_member_id=assigned_to.id if assigned_to else None))
     university = await mk_university(db)
     application = OverseasApplication(
         student_id=student.id, university_id=university.id, agent_id=ctx["master"].id, counselor_id=counselor.id if counselor else None,

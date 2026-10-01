@@ -44,7 +44,6 @@ from app.models import (
     LiveSession,
     Message,
     Notification,
-    NotificationDelivery,
     OverseasApplication,
     OverseasCourse,
     Payment,
@@ -62,6 +61,7 @@ from app.models import (
     User,
     VisaCase,
 )
+from app.notifications.dispatch import queue_deliveries
 from app.schemas import (
     AgentDocumentReview,
     AgentStudentCreate,
@@ -94,9 +94,9 @@ from app.schemas import (
     SupportTicketUpdate,
     VisaCaseCreate,
 )
-from app.services.agent_orgs import lock_org, member_user_ids, notification_recipients, org_member_ids
+from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
+from app.services.agent_students import application_scope, student_scope
 from app.services.certificates import generate_certificate_pdf
-from app.services.integrations import send_notification
 from app.services.storage import storage
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
@@ -129,12 +129,12 @@ async def _audit(db: AsyncSession, user: User, action: str, entity_type: str, en
 
 
 async def _notify_user(db: AsyncSession, recipient: User, title: str, body: str, action_url: str | None, channels: list[str] | None = None):
+    """ENH-014: in-app row plus queued deliveries (email + the recipient's opted-in channels), sent after commit.
+    `channels` can only narrow that set (admin sends); it never adds a channel the recipient did not opt in to."""
     item = Notification(user_id=recipient.id, title=title, body=body, read=False, action_url=action_url)
     db.add(item)
     await db.flush()
-    for channel in channels or ["email"]:
-        status, error = await send_notification(channel, {"to": recipient.email, "phone": recipient.phone, "title": title, "body": body, "action_url": action_url})
-        db.add(NotificationDelivery(notification_id=item.id, channel=channel, status=status, error=error, sent_at=datetime.now(UTC) if status == "sent" else None))
+    await queue_deliveries(db, item, recipient, channels=channels)
 
 
 def _grade(percentage: float) -> str:
@@ -160,7 +160,8 @@ async def _assigned_application(db: AsyncSession, user: User, application_id: UU
     if user.division != "overseas":
         raise HTTPException(403, "Wrong EduSphere division")
     # AGN-001 (D1): an agent may act on any application referred by a member of its own organisation.
-    agent_in_scope = user.role == "agent" and item.agent_id in await member_user_ids(db, user)
+    # AGN-004 (G4): a staff member only their assigned students' applications.
+    agent_in_scope = user.role == "agent" and bool(await db.scalar(select(OverseasApplication.id).where(OverseasApplication.id == item.id, *application_scope(user))))
     allowed = (
         user.role == "overseas_admin"
         or user.role == "overseas_student"
@@ -1267,7 +1268,7 @@ async def issue_certificate(enrollment_id: UUID, payload: dict, user: User = Dep
     )
     db.add(item)
     await db.flush()
-    await _notify_user(db, student, "Certificate issued", f"Your {program.title} certificate is ready.", "/it/student/certificates", ["email"])
+    await _notify_user(db, student, "Certificate issued", f"Your {program.title} certificate is ready.", "/it/student/certificates")
     item.emailed_at = datetime.now(UTC)
     await _audit(db, user, "certificate.issue", "certificate", item.id, {"enrollment_id": enrollment.id, "override": override, "override_reason": override_reason if override else None})
     await db.commit()
@@ -1426,7 +1427,7 @@ async def reply_to_question(thread_id: UUID, payload: QuestionReplyCreate, user:
     await db.flush()
     await _audit(db, user, "question.reply", "question_reply", reply.id, {"thread_id": str(thread.id)})
     student = await db.get(User, thread.student_id)
-    await _notify_user(db, student, "Your question has a new reply", f'"{thread.subject}" was answered.', "/it/student/questions", ["email"])
+    await _notify_user(db, student, "Your question has a new reply", f'"{thread.subject}" was answered.', "/it/student/questions")
     await db.commit()
     await db.refresh(reply)
     return _reply_payload(reply)
@@ -1757,7 +1758,7 @@ async def create_overseas_application(payload: OverseasApplicationCreate, user: 
     if not student or student.role != "overseas_student" or student.division != "overseas":
         raise HTTPException(422, "Valid overseas student is required")
     if user.role == "agent":
-        linked = await db.scalar(select(AgentStudent.id).where(AgentStudent.agent_id.in_(org_member_ids(user)), AgentStudent.student_id == student_id, AgentStudent.status == "active"))
+        linked = await db.scalar(select(AgentStudent.id).where(*student_scope(user), AgentStudent.student_id == student_id, AgentStudent.status == "active"))
         if not linked:
             raise HTTPException(403, "Student is not assigned to this agent")
     university = await db.get(University, payload.university_id)
@@ -1847,7 +1848,7 @@ async def list_overseas_applications(user: User = Depends(get_current_user), db:
     elif user.role == "counselor":
         stmt = stmt.where(OverseasApplication.counselor_id == user.id)
     elif user.role == "agent":
-        stmt = stmt.where(OverseasApplication.agent_id.in_(org_member_ids(user)))
+        stmt = stmt.where(*application_scope(user))
     elif user.role == "university_rep":
         stmt = stmt.where(OverseasApplication.university_id == uuid_reference(user.profile.get("university_id"), "university reference", required=False))
     rows = (await db.execute(stmt.order_by(OverseasApplication.updated_at.desc()).limit(500))).all()
@@ -2007,7 +2008,7 @@ async def add_document(payload: StudentDocumentCreate, user: User = Depends(get_
         if user.role == "counselor":
             linked = await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == student_id, OverseasApplication.counselor_id == user.id))
         else:
-            linked = await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == student_id, AgentStudent.agent_id.in_(org_member_ids(user))))
+            linked = await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == student_id, *student_scope(user)))
         if not linked:
             raise HTTPException(403, "Student is outside your assigned scope")
     item = StudentDocument(
@@ -2029,7 +2030,7 @@ async def add_document(payload: StudentDocumentCreate, user: User = Depends(get_
 
 
 async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID, payload: dict) -> dict:
-    """AGN-003 (DEC-SCOPE-041 P3/P5/P6, spec §7): an agency member decides a PENDING document of their agency. Permission checks
+    """AGN-003 (DEC-SCOPE-043 P3/P5/P6, spec §7): an agency member decides a PENDING document of their agency. Permission checks
     come before any read (a refused caller learns nothing about the document); the row lock makes a second agent decision see the
     first and get 409. Same notification and audit action as the counselor path, with validated metadata only."""
     if not agent_may(user, "can_verify_documents"):
@@ -2050,7 +2051,8 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
         raise HTTPException(404, "Document not found")
     if item.application_id:
         await _assigned_application(db, user, item.application_id)
-    elif not await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == item.student_id, AgentStudent.agent_id.in_(org_member_ids(user)))):
+    # AGN-004 G4 (adopted by AGN-003 on merging `main`): a staff member only their assigned students; a Master the agency's.
+    elif not await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == item.student_id, *student_scope(user))):
         raise HTTPException(403, "Document is outside your assigned scope")
     if item.verification_status != "pending":
         raise HTTPException(409, "This document has already been reviewed")
@@ -2117,7 +2119,7 @@ async def download_student_document(document_id: UUID, user: User = Depends(get_
             if not assigned:
                 raise HTTPException(403, "Document is outside your assigned scope")
     elif user.role == "agent":
-        assigned = await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == item.student_id, AgentStudent.agent_id.in_(org_member_ids(user))))
+        assigned = await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == item.student_id, *student_scope(user)))
         if not assigned:
             raise HTTPException(403, "Document is outside your assigned scope")
     # `file_url` is stored in two shapes depending on which upload path a client used
@@ -2333,7 +2335,12 @@ async def apply_scholarship(scholarship_id: UUID, user: User = Depends(get_curre
 @router.get("/overseas/agent/students")
 async def agent_students(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"agent"}, "overseas")
-    rows = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(AgentStudent.agent_id.in_(org_member_ids(user))).order_by(User.full_name))).all()
+    # AGN-004: archived links leave this list (D5); a staff member sees only their assigned students (G4).
+    rows = (
+        await db.execute(
+            select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(*student_scope(user), AgentStudent.status == "active").order_by(User.full_name)
+        )
+    ).all()
     return [{"link_id": link.id, "student_id": student.id, "student": student.full_name, "email": student.email, "phone": student.phone, "status": link.status} for link, student in rows]
 
 
@@ -2345,13 +2352,15 @@ async def add_agent_student(payload: AgentStudentCreate, user: User = Depends(ge
         raise HTTPException(404, "Overseas student not found")
     if user.agent_membership is not None:
         await lock_org(db, user.agent_membership.org_id)  # AGN-001 (E12): serialise this organisation's links
-    existing = await db.scalar(select(AgentStudent.id).where(AgentStudent.agent_id.in_(org_member_ids(user)), AgentStudent.student_id == student.id))
+    # Organisation-wide on purpose: a staff member must not re-link another staff member's student.
+    existing = await db.scalar(select(AgentStudent.status).where(AgentStudent.agent_id.in_(org_member_ids(user)), AgentStudent.student_id == student.id))
     if existing:
-        raise HTTPException(409, "Student is already linked to this agency")
-    item = AgentStudent(agent_id=user.id, student_id=student.id, status="active")
+        raise HTTPException(409, "This student is archived — unarchive them first" if existing == "archived" else "Student is already linked to this agency")
+    assigned = user.agent_membership.id if is_agent_staff(user) else None  # AGN-004 D4: a staff member's link is theirs
+    item = AgentStudent(agent_id=user.id, student_id=student.id, status="active", assigned_member_id=assigned)
     db.add(item)
     await db.flush()
-    await _audit(db, user, "agent.student_link", "agent_student", item.id, {"student_id": student.id})
+    await _audit(db, user, "agent.student_link", "agent_student", item.id, {"student_id": student.id, **({"assigned_member_id": str(assigned)} if assigned else {})})
     await db.commit()
     return {"id": item.id, "status": item.status}
 

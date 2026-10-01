@@ -1,6 +1,6 @@
 """AGN-001 -- an agency's Master team: list, invite, deactivate (DEC-SCOPE-038 D4, D8, D9; spec §5.4).
 AGN-002 -- the agency's staff logins: list, create, edit, deactivate, reactivate, reset (DEC-SCOPE-040; spec §6).
-AGN-003 -- a staff member's optional permissions (DEC-SCOPE-041; spec §8).
+AGN-003 -- a staff member's optional permissions (DEC-SCOPE-043; spec §8).
 
 Only an active Master of an ACTIVE organisation reaches these routes (same gate as every agent route, plus the member role);
 every change locks the organisation row so codes, the throttles, the 3-Master limit and the last-Master rule hold under
@@ -184,7 +184,7 @@ async def reset_staff_login(member_id: UUID, user: User = Depends(get_current_us
 
 @router.put("/staff/{member_id}/permissions")
 async def staff_permissions(member_id: UUID, payload: AgentStaffPermissions, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AGN-003 (DEC-SCOPE-041 P2): replace one staff member's optional permissions. Effective on their next request."""
+    """AGN-003 (DEC-SCOPE-043 P2): replace one staff member's optional permissions. Effective on their next request."""
     org = await _staff_org(db, user)
     member, staff = await set_staff_permissions(db, org, member_id, user, **payload.model_dump())
     return {"member": await _commit_staff_change(db, "agent_org_staff_permissions_updated", org, user, member, staff, await provisioning_statuses(db, [staff.id]))}

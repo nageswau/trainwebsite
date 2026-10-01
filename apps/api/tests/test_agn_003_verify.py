@@ -1,4 +1,4 @@
-"""AGN-003 -- agents decide pending documents of their agency (spec §7; AGN-003-AC04, AC07; DEC-SCOPE-041 P5/P6)."""
+"""AGN-003 -- agents decide pending documents of their agency (spec §7; AGN-003-AC04, AC07; DEC-SCOPE-043 P5/P6)."""
 
 import uuid
 
@@ -56,7 +56,7 @@ async def test_staff_without_verify_are_refused_before_anything_is_read(db_sessi
 async def test_staff_with_verify_mark_a_document_verified(db_session):
     ctx = await mk_active_org(db_session, name=f"Staff Verify {uniq()}")
     staff = await mk_staff(db_session, ctx["org"], can_verify_documents=True)
-    world = await agency_document(db_session, ctx)
+    world = await agency_document(db_session, ctx, assigned_to=staff["member"])
     async with client_for(staff["user"].email) as s:
         response = await s.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "verified"})
     assert response.status_code == 200
@@ -71,7 +71,7 @@ async def test_staff_with_verify_mark_a_document_verified(db_session):
 async def test_staff_with_verify_cannot_reject_or_request_changes(db_session, decision):  # Review Focus 3
     ctx = await mk_active_org(db_session, name=f"Staff Reject {uniq()}")
     staff = await mk_staff(db_session, ctx["org"], can_verify_documents=True)
-    world = await agency_document(db_session, ctx)
+    world = await agency_document(db_session, ctx, assigned_to=staff["member"])
     async with client_for(staff["user"].email) as s:
         response = await s.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": decision})
     assert response.status_code == 403 and response.json()["detail"] == REVIEW_MASTER_ONLY
@@ -83,7 +83,7 @@ async def test_staff_with_verify_cannot_reject_or_request_changes(db_session, de
 async def test_a_second_review_is_refused_and_the_first_stands(db_session):  # Review Focus 2
     ctx = await mk_active_org(db_session, name=f"Second Review {uniq()}")
     staff = await mk_staff(db_session, ctx["org"], can_verify_documents=True)
-    world = await agency_document(db_session, ctx)
+    world = await agency_document(db_session, ctx, assigned_to=staff["member"])
     async with client_for(ctx["master"].email) as m, client_for(staff["user"].email) as s:
         assert (await m.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "rejected"})).status_code == 200
         again = await s.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "verified"})
@@ -175,7 +175,8 @@ async def test_agent_review_422_loc_carries_the_body_prefix(db_session):
 async def test_verify_toggle_applies_on_next_request(db_session):  # Review Focus 1
     ctx = await mk_active_org(db_session, name=f"Verify Next {uniq()}")
     staff = await mk_staff(db_session, ctx["org"])
-    first, second = await agency_document(db_session, ctx), await agency_document(db_session, ctx)
+    first = await agency_document(db_session, ctx, assigned_to=staff["member"])
+    second = await agency_document(db_session, ctx, assigned_to=staff["member"])
     on = {"can_verify_documents": True, "can_view_reports": False}
     async with client_for(staff["user"].email) as s, client_for(ctx["master"].email) as m:
         assert (await s.patch(DOC_VERIFY.format(first["document"].id), json={"verification_status": "verified"})).status_code == 403
@@ -184,3 +185,27 @@ async def test_verify_toggle_applies_on_next_request(db_session):  # Review Focu
         off = {"can_verify_documents": False, "can_view_reports": False}
         assert (await m.put(f"{STAFF}/{staff['member'].id}/permissions", json=off)).status_code == 200
         assert (await s.patch(DOC_VERIFY.format(second["document"].id), json={"verification_status": "verified"})).status_code == 403
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("attached", "detail"), [(True, "Application is outside your assigned scope"), (False, "Document is outside your assigned scope")])
+@pytest.mark.parametrize("assignment", ["unassigned", "another staff member"])
+async def test_staff_only_review_their_assigned_students_documents(db_session, attached, detail, assignment):  # AGN-004 G4
+    ctx = await mk_active_org(db_session, name=f"Staff Scope {uniq()}")
+    staff = await mk_staff(db_session, ctx["org"], can_verify_documents=True)
+    other = await mk_staff(db_session, ctx["org"], full_name="Other Staff")
+    world = await agency_document(db_session, ctx, attached=attached, assigned_to=other["member"] if assignment != "unassigned" else None)
+    async with client_for(staff["user"].email) as s:
+        response = await s.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "verified"})
+    assert response.status_code == 403 and response.json()["detail"] == detail
+    assert (await _doc(db_session, world["document"].id)).verification_status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_staff_review_an_unattached_document_of_their_assigned_student(db_session):  # AGN-004 G4
+    ctx = await mk_active_org(db_session, name=f"Staff Unattached {uniq()}")
+    staff = await mk_staff(db_session, ctx["org"], can_verify_documents=True)
+    world = await agency_document(db_session, ctx, attached=False, assigned_to=staff["member"])
+    async with client_for(staff["user"].email) as s:
+        response = await s.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "verified"})
+    assert response.status_code == 200

@@ -35,7 +35,6 @@ logger = get_logger("app.student_360")
 
 # Fixed server-side text (spec §6.4) -- never built from user input.
 NOT_TRACKED = {
-    "attendance": "Daily and period attendance is not tracked yet (ENH-030).",
     "personal_details": "Additional profile fields are not tracked yet (ENH-025).",
     "documents": "A student document registry is not tracked yet (ENH-013b).",
     "teacher_remarks": "A standalone teacher remarks log is not tracked yet (ENH-013b).",
@@ -91,7 +90,12 @@ async def build_360(db: AsyncSession, user: User, student: SchoolStudent) -> dic
 
     tabs: dict[str, dict] = {"personal_details": _tab("personal_details", dict(header), None, has_data=True)}
     tabs["academic_records"] = _tab("academic_records", {"grade_or_class": header["grade_or_class"], "grade_history": history}, len(history)) if school_role else _restricted()
-    tabs["attendance"] = _tab("attendance", {"activities": attended, "skill_sessions": skill_sessions}, len(attended) + len(skill_sessions)) if school_role else _restricted()
+    daily = overview["daily_attendance"]  # ENH-030: School roles only, like the rest of this tab
+    tabs["attendance"] = (
+        _tab("attendance", {"activities": attended, "skill_sessions": skill_sessions, "daily": daily}, len(attended) + len(skill_sessions) + len(daily["recent"]))
+        if school_role
+        else _restricted()
+    )
     results = results_full if (school_role or academic) else portfolio["academic_achievements"]
     tabs["examination_results"] = _tab("examination_results", {"results": results}, len(results))
     tabs["career_guidance"] = _tab("career_guidance", {"records": portfolio["career_guidance"]}, len(portfolio["career_guidance"]))

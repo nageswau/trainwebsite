@@ -6,7 +6,7 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +30,7 @@ from app.models import (
     JobApplication,
     Notification,
     NotificationDelivery,
+    NotificationPreference,
     OverseasApplication,
     Payment,
     Program,
@@ -984,6 +985,8 @@ async def fulfil_data_request(request_id: UUID, payload: dict, user: User = Depe
         # this user (`_retention_hold_reason` in `account.py`).
         subject.full_name = "Deleted user"
         subject.phone = None
+        # ENH-014 (D9): consent state goes with the contact details it applied to.
+        await db.execute(delete(NotificationPreference).where(NotificationPreference.user_id == subject.id))
         subject.profile = {}
         subject.email = f"deleted-{subject.id}@deleted.local"
         subject.active = False
@@ -1248,9 +1251,10 @@ def _tier_notices(school_name: str, change: dict) -> tuple[tuple[str, str], tupl
 
 async def _notify_tier_change(db: AsyncSession, school_id: UUID, school_name: str, actor_id: UUID, change: dict) -> None:
     """ENH-023 (D5/D9), for a tier change that has ALREADY committed: the school's active Coordinators and Principals, then the
-    acting admin, each get an in-app notice plus the email channel. Each recipient is tried and committed alone; a failure is
-    logged and swallowed, never undoing or failing the tier change (SCH-007-AC04 pattern, school_skills._notify_after_commit)."""
-    from app.api.schools import _notify_parent  # noqa: PLC0415 -- takes any User: in-app row, email attempt, NotificationDelivery
+    acting admin, each get an in-app notice plus queued deliveries (email, and WhatsApp/SMS when opted in) that the worker sends
+    after the commit (ENH-014). Each recipient is queued and committed alone; a failure while queueing is logged and swallowed,
+    never undoing or failing the tier change (SCH-007-AC04 pattern, school_skills._notify_after_commit)."""
+    from app.api.schools import _notify_parent  # noqa: PLC0415 -- takes any User: in-app row plus queued NotificationDelivery rows
 
     (school_title, school_body), (admin_title, admin_body) = _tier_notices(school_name, change)
     staff = (
@@ -1267,7 +1271,8 @@ async def _notify_tier_change(db: AsyncSession, school_id: UUID, school_name: st
             await db.commit()
         except Exception as exc:  # noqa: BLE001 -- the tier change has committed; see docstring
             await db.rollback()
-            # No exc_info (security review S1): SMTP errors can carry the recipient's address. NotificationDelivery keeps the detail.
+            # No exc_info (security review S1): a queueing error can carry recipient data. Send errors happen in the worker and
+            # are recorded on the NotificationDelivery row, not here.
             logger.warning("tier_change_notification_failed", extra={"extra_fields": {"school_id": str(school_id), "recipient_id": str(user_id), "error_type": type(exc).__name__}})
 
 

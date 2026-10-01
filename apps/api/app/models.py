@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid, text
+from sqlalchemy import JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint, Uuid, false, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -718,6 +718,8 @@ class Notification(Base, TimestampMixin):
 
 class NotificationDelivery(Base, TimestampMixin):
     __tablename__ = "notification_deliveries"
+    # ENH-014: the stale-delivery sweeper filters on (status, updated_at).
+    __table_args__ = (Index("ix_notification_deliveries_status_updated_at", "status", "updated_at"),)
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     notification_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("notifications.id", ondelete="CASCADE"), index=True)
     channel: Mapped[str] = mapped_column(String(30))
@@ -726,6 +728,21 @@ class NotificationDelivery(Base, TimestampMixin):
     provider_reference: Mapped[str | None] = mapped_column(String(200), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # ENH-014: what the worker needs to render the email exactly as the old inline path did --
+    # {"kind": "school", "school_name": ...} for the School path, null for the generic path and every pre-ENH-014 row.
+    context: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class NotificationPreference(Base, TimestampMixin):
+    """ENH-014 (DEC-NOT-001 2026-09-30, D4): opt-in to WhatsApp and SMS. No row means both off; email and in-app are
+    always on and are not stored. The *_opted_in_at timestamps are the consent evidence (with the audit log)."""
+
+    __tablename__ = "notification_preferences"
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    whatsapp_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    sms_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    whatsapp_opted_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sms_opted_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class SupportTicket(Base, TimestampMixin):
@@ -829,12 +846,39 @@ class LiveSession(Base, TimestampMixin):
 
 
 class AgentStudent(Base, TimestampMixin):
+    """AGT-002 link of an agent to a student with an account; AGN-004 (DEC-SCOPE-042) adds students with no login
+    (`student_id` NULL, identity on the row), assignment to a staff member, and archive. `agent_id` is the member who created
+    or linked the row; it fixes the agency (membership is permanent)."""
+
     __tablename__ = "agent_students"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     agent_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
-    student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True, nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="active")
-    __table_args__ = (UniqueConstraint("agent_id", "student_id", name="uq_agent_student"),)
+    full_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    phone_digits: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    highest_qualification: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    institution: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    graduation_year: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    preferred_country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    preferred_course: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    preferred_intake: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assigned_member_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_org_members.id"), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    __table_args__ = (
+        UniqueConstraint("agent_id", "student_id", name="uq_agent_student"),
+        CheckConstraint("student_id IS NOT NULL OR full_name IS NOT NULL", name="ck_agent_students_identity"),
+        CheckConstraint("status IN ('active', 'archived')", name="ck_agent_students_status"),
+        Index("ix_agent_students_agent_status", "agent_id", "status"),
+        Index("ix_agent_students_agent_phone_digits", "agent_id", "phone_digits"),
+        Index("ix_agent_students_assigned_member", "assigned_member_id"),
+    )
 
 
 class AgentCommission(Base, TimestampMixin):
@@ -878,7 +922,7 @@ class AgentOrg(Base, TimestampMixin):
 class AgentOrgMember(Base, TimestampMixin):
     """AGN-001: a user's membership of exactly one agent organisation, for good (`user_id` unique). AGN-002 adds `staff`
     (DEC-SCOPE-040): Masters and staff are numbered separately (M001 and S001 coexist). AGN-003 adds two per-staff permission
-    flags (DEC-SCOPE-041)."""
+    flags (DEC-SCOPE-043)."""
 
     __tablename__ = "agent_org_members"
     __table_args__ = (
@@ -898,7 +942,7 @@ class AgentOrgMember(Base, TimestampMixin):
     invited_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     deactivated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # AGN-003 (DEC-SCOPE-041 P1/P2): the two optional §6 rows for staff. Stored on every member but never read for a Master
+    # AGN-003 (DEC-SCOPE-043 P1/P2): the two optional §6 rows for staff. Stored on every member but never read for a Master
     # (`core.rbac.agent_may` always allows Masters).
     can_verify_documents: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     can_view_reports: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
@@ -1283,6 +1327,31 @@ class SchoolActivityAttendance(Base, TimestampMixin):
     activity_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_activities.id"), index=True)
     school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
     present: Mapped[bool] = mapped_column(Boolean, default=True)
+    marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+# ENH-030 (DEC-SCOPE-041 D4): the IT `Attendance.status` values; a missing row is "not marked", never absent.
+ATTENDANCE_STATUSES = ("present", "absent", "late", "excused")
+
+
+class SchoolAttendanceRecord(Base, TimestampMixin):
+    """ENH-030 -- one School student's daily class attendance (docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md §4).
+
+    One row per student per day per school (D5 as amended after the final review): re-marking updates it, and after a transfer each
+    school keeps its own register, so the new school never overwrites or re-stamps the old school's row (C1/AC10). Readers see only
+    the student's current school's rows. No single-column indexes: the unique (school_student_id, school_id, session_date) index
+    serves every query (spec §11 A4)."""
+
+    __tablename__ = "school_attendance_records"
+    __table_args__ = (
+        UniqueConstraint("school_student_id", "school_id", "session_date", name="uq_school_attendance_student_school_date"),
+        CheckConstraint("status IN ('present', 'absent', 'late', 'excused')", name="ck_school_attendance_status"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"))
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    session_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20))
     marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 

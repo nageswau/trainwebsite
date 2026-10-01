@@ -412,6 +412,21 @@ predate an application record).
   today `AGT-002` only reads this table (`DB impact: N`); a create/manage path for the Agent does
   not exist yet and is required scope, not optional polish, once the on-behalf-of model is built.
   See §6.2's note above for the same open `student_user_id` schema question.
+- **Addendum, 2026-09-30 (`AGN-004`, `DEC-SCOPE-042`, migration `0049_agent_students_crm`, cut as `0047_agent_students_crm`) — students with no login.**
+  `student_id` becomes **nullable** (`NULL` = a student who never logs in; no `users` row is ever created for them).
+  Additive nullable columns: `full_name` String(160), `email` String(320, stored lowercased), `phone` String(40),
+  `phone_digits` String(20, server-set, digits only — duplicate check), `date_of_birth` Date, `highest_qualification`
+  String(200), `institution` String(200), `graduation_year` SmallInteger, `preferred_country` String(120),
+  `preferred_course` String(200), `preferred_intake` String(40), `notes` Text (≤ 2000 at the API), `assigned_member_id` →
+  `agent_org_members.id` (`NULL` = unassigned), `archived_at`, `archived_by_user_id` → `users.id`, `updated_by_user_id` →
+  `users.id`. CHECKs `ck_agent_students_identity` (`student_id IS NOT NULL OR full_name IS NOT NULL`) and
+  `ck_agent_students_status` (`active`/`archived`). Indexes `(agent_id, status)`, `(agent_id, lower(email))`,
+  `(agent_id, phone_digits)`, `(assigned_member_id)`. `agent_id` keeps meaning "created or linked by" and still fixes the
+  agency (F1 — no `org_id` column). Linked rows read name/email/phone from `users`; their identity columns stay `NULL`.
+  Upgrade changes no existing row; `downgrade()` refuses while a student with no login, an assignment or a staff member
+  exists. Round trip and refusals verified in a throwaway database (`tests/test_agn_004_migration.py`).
+  `overseas_applications`, `student_documents` and `agent_commissions` are unchanged (D8: applications for students with no
+  login are a later feature).
 
 ### 6.8a `AgentOrg`, `AgentOrgMember` — built 2026-09-28 (`AGN-001`, `DEC-SCOPE-038`, migration `0046_agent_orgs`)
 Design: `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md` §4.
@@ -433,6 +448,11 @@ Design: `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design
   No existing row altered; idempotent; `downgrade()` drops only the two tables. Round trip verified on a throwaway
   database (RTM `AGN-001` row).
 - **Feature IDs:** `AGN-001` (changes `AGT-001`–`004`).
+- **Addendum, 2026-09-30 (`AGN-004` G2, same names as `AGN-002`):** member `role` CHECK widens to `master`/`staff`;
+  numbering unique per role (`uq_agent_org_members_org_role_seq` on `org_id, role, seq` replaces `uq_agent_org_members_org_seq`,
+  so `M001` and `S001` coexist); `agent_orgs.staff_seq` Integer ≥ 0 (`ck_agent_orgs_staff_seq`). Owned by AGN-002's migration
+  `0047_agent_org_staff` (AGN-004 carried an identical guarded copy until the 2026-10-01 merge; now removed). The 3-Master
+  limit, the last-Master rule and commission notifications count `role='master'` only.
 
 ### 6.8b Agent staff and session version — built 2026-09-30 (`AGN-002`, `DEC-SCOPE-040`, migration `0047_agent_org_staff`)
 Design: `docs/superpowers/specs/2026-09-30-agn-002-staff-logins-design.md` §4.
@@ -447,13 +467,13 @@ Design: `docs/superpowers/specs/2026-09-30-agn-002-staff-logins-design.md` §4.
   exists.
 - **Feature IDs:** `AGN-002`.
 
-### 6.8c AgentOrgMember permission flags (AGN-003, migration `0048_agent_staff_permissions`)
-Design: `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md` §5. `DEC-SCOPE-041`.
+### 6.8c AgentOrgMember permission flags (AGN-003, migration `0051_agent_staff_permissions`)
+Design: `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md` §5. `DEC-SCOPE-043`.
 - **`agent_org_members.can_verify_documents`** and **`.can_view_reports`**: `BOOLEAN NOT NULL DEFAULT false` (`server_default`).
   The column names are also the API keys.
 - **Staff-only semantics:** the flags apply to `role='staff'`. On Master rows they are stored but never read (`core/rbac.agent_may`
   returns true for Masters). Read from the membership `get_current_user` already loads: no extra query, no cache.
-- **Migration `0048`** (`down_revision = "0047_agent_org_staff"`): additive; no constraint, index or backfill. Every existing row reads
+- **Migration `0051`** (`down_revision = "0050_notification_channels"`; drafted as `0048` after `0047`, re-chained when `main` was merged 2026-10-01): additive; no constraint, index or backfill. Every existing row reads
   `false` (existing staff lose the Reports page until a Master switches it on, P1). `downgrade()` drops both columns.
 - **Feature IDs:** `AGN-003`.
 
@@ -818,6 +838,29 @@ list); `ck_portfolio_cert_fields` (an untagged row has all four NULL; a tagged r
 existing `organization` column. No index (nothing filters by tag). `downgrade()` drops the four
 CHECKs and columns only; entries survive as plain certifications. **Feature ID:** `ENH-024`.
 
+### 6.23 School daily attendance (`ENH-030`) — added 2026-09-30, propagating `DEC-SCOPE-041` (provisional number); migration `0048_school_attendance_records`
+
+One new table, `school_attendance_records` — create-table only, no existing table altered, no backfill
+(design `docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md` §4):
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | uuid PK | |
+| `school_student_id` | uuid FK `school_students.id`, not null | the student |
+| `school_id` | uuid FK `schools.id`, not null | the student's school when marked; readers see only rows of the student's current school (C1) |
+| `session_date` | date, not null | the school-calendar day (Asia/Kolkata); never in the future |
+| `status` | varchar(20), not null | `present` / `absent` / `late` / `excused` (the IT `attendance` values) |
+| `marked_by_user_id` | uuid FK `users.id`, not null | the last `school_teacher` who marked it |
+| `created_at`, `updated_at` | timestamptz | `updated_at` set on every re-mark |
+
+`uq_school_attendance_student_school_date (school_student_id, school_id, session_date)` — one row per
+student per day per school (D5 as amended, confirmed by the user 2026-09-30); re-marking upserts, and after a
+transfer each school keeps its own register (the new school never overwrites the old school's row). `ck_school_attendance_status` — the four statuses. The unique constraint's index is
+the only index (it serves the roster and summary reads). A **missing row means "not marked"**, never
+absent. After a transfer the old school's rows are kept (not shown to the new school's readers).
+A past day may only be marked for students enrolled at the school that day (latest approved transfer into it, else `school_students.created_at`, school calendar; DEC-SCOPE-041 I-3). `downgrade()` drops the table. Writes are audited as `school.daily_attendance_mark` (with the changed
+students, from → to) and refusals as `school.daily_attendance_denied` (counts only). **Feature ID:** `ENH-030`.
+
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)
 
 ### 7.1 `NotificationLog`
@@ -828,6 +871,13 @@ CHECKs and columns only; entries survive as plain certifications. **Feature ID:*
   (`PRD_OPEN_ITEMS.md` item 13); this contract fixes only the *mechanism* (a retry-eligible state
   exists), not the *policy* (retry count/backoff), which is not invented here.
 - **Feature IDs:** `NOT-001`, `NOT-002`, `NOT-003`.
+
+**Updated 2026-09-30 (`ENH-014` slice 1; spec §4, migration `0050_notification_channels` — cut as `0046`, re-chained after `0049_agent_students_crm` on the 2026-10-01 merges with `main`; `DEC-NOT-001` extension D4/D10/D11).** Additive only; `downgrade()` removes exactly what `upgrade()` adds. The table in code is `notification_deliveries` (`NotificationDelivery`).
+- **`notification_deliveries.status` values** (column already `String(30)`, no schema change): `queued`, `sending`, `retrying`, `sent`, `failed`, `not_configured`, `skipped`. **This fixes the retry policy** left open above (`PRD_OPEN_ITEMS.md` item 13, resolved for slice 1 by D11): up to 3 retries on transient errors at 60 s / 300 s / 1500 s, at most 4 attempts, then `failed` with the error kept.
+- **`notification_deliveries.attempt_count`:** new queued rows start at 0; each worker claim increments it. The column default (1) is unchanged for the inline auth/invite paths that still construct rows directly.
+- **`notification_deliveries.context`** (new, JSON, nullable): `{"kind": "school", "school_name": "..."}` for the School email path; null for the generic path and every pre-existing row. Not personal data.
+- **Index** `ix_notification_deliveries_status_updated_at` on `(status, updated_at)` for the sweeper (queued/retrying older than 30 min re-published; sending older than 15 min marked `failed`, "worker interrupted").
+- **`notification_preferences`** (new; resolves the "`NotificationPreference` capability is schema-ready" note in `INTEGRATION_CONTRACTS.md` §4): PK `user_id` (FK `users.id`, ON DELETE CASCADE); `whatsapp_opt_in`, `sms_opt_in` (bool, not null, default false); `whatsapp_opted_in_at`, `sms_opted_in_at` (timestamptz, nullable; set on opt-in, cleared on opt-out); `created_at`, `updated_at`. One row per user; no row means WhatsApp and SMS are off. Personal data (consent state), no free text; retained for the life of the account, deleted on GDPR erasure, included in the data export. The phone number stays only in `users.phone`.
 
 ### 7.2 `Payment`, `Invoice`, `Receipt`, `EMISchedule`, `PaymentWebhookEvent`
 **Corrected 2026-09-03 (built alongside `STU-010`/`PAY-001`):** only `Payment` itself carries

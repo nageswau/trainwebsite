@@ -7,14 +7,18 @@ import { E2E_PASSWORD } from "./helpers/welcome";
 // change shows on the staff member's next page load. Requires the stack running with `python -m app.seed` applied (seeded
 // universities). A fresh overseas student is registered per run, so a re-run never meets the duplicate-application rule (409).
 
-async function agencyDocument(request: APIRequestContext, scratch: APIRequestContext, unique: number) {
+async function agencyDocument(request: APIRequestContext, scratch: APIRequestContext, unique: number, staffMemberId: string) {
   const studentEmail = `agn003-st-${unique}@example.local`;
   const registered = await scratch.post("/api/v1/auth/register", { data: { email: studentEmail, password: "Sup3r-Secret-Pass!", full_name: `AGN003 Student ${unique}`, division: "overseas", account_type: "student" } });
   expect(registered.status()).toBe(201);
   // purpose=link matches an email only when typed in full (AGN-001 D2 as revised).
   const found = await (await request.get(`/api/v1/lookups/overseas-students?q=${encodeURIComponent(studentEmail)}&purpose=link`)).json();
   const studentId = found.items[0].id;
-  expect((await request.post("/api/v1/workflows/overseas/agent/students", { data: { student_id: studentId } })).status()).toBe(201);
+  const link = await request.post("/api/v1/workflows/overseas/agent/students", { data: { student_id: studentId } });
+  expect(link.status()).toBe(201);
+  // AGN-004 G4 (adopted by AGN-003 on merging `main`): staff only reach students assigned to them, so the Master assigns this one.
+  const assigned = await request.post(`/api/v1/workflows/overseas/agent/crm/students/${(await link.json()).id}/assign`, { data: { member_id: staffMemberId } });
+  expect(assigned.status()).toBe(200);
   const universities = await (await request.get("/api/v1/public/universities")).json();
   const application = await request.post("/api/v1/workflows/overseas/applications", { data: { university_id: universities[0].id, student_id: studentId } });
   expect(application.status()).toBe(201);
@@ -30,9 +34,10 @@ test("a Master switches a staff member's Reports and Verify permissions (AGN-003
   const staffEmail = `agn003-s-${unique}@example.local`;
 
   await signIn(page, masterEmail, "Sup3r-Secret-Pass!");
-  expect((await page.request.post("/api/v1/workflows/overseas/agent/team/staff", { data: { full_name: "Tau Staff", email: staffEmail } })).status()).toBe(201);
+  const created = await page.request.post("/api/v1/workflows/overseas/agent/team/staff", { data: { full_name: "Tau Staff", email: staffEmail } });
+  expect(created.status()).toBe(201);
   const scratch = await browser.newContext(); // the student's own registration cookies stay out of the Master's and staff's sessions
-  await agencyDocument(page.request, scratch.request, unique);
+  await agencyDocument(page.request, scratch.request, unique, (await created.json()).member.id);
   await scratch.close();
 
   const staffContext = await browser.newContext();

@@ -37,7 +37,7 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
 export const SCHOOL_NAV: Record<string, NavItem[]> = {
   coordinator: ["dashboard", "students", "promotion", "transfers", "activities", "feedback", "team", "reports", "global-education", "entitlements", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/coordinator/${x}` })),
   principal: ["dashboard", "reports", "global-education", "feedback", "entitlements", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/principal/${x}` })),
-  teacher: ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/teacher/${x}` })),
+  teacher: ["dashboard", "attendance"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/teacher/${x}` })),
   parent: ["dashboard", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/parent/${x}` })),
   // SCH-004/005/006 -- single-item nav, same shape as principal/teacher/parent above.
   "academic-team": ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/academic-team/${x}` })),
@@ -79,7 +79,7 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
 // server refuses them regardless -- this only keeps dead links out of the sidebar).
 const STAFF_HIDDEN = new Set(["/overseas/agent/team", "/overseas/agent/commissions"]);
 const STAFF_REPORTS = "/overseas/agent/reports";
-// AGN-003 (DEC-SCOPE-041 P1): Reports is optional for staff -- shown only once their Master switches it on (the server refuses it
+// AGN-003 (DEC-SCOPE-043 P1): Reports is optional for staff -- shown only once their Master switches it on (the server refuses it
 // regardless; this keeps a dead link out of the sidebar). Masters are never limited.
 export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissions?: AgentPermissions | null): NavItem[] {
   if (memberRole !== "staff") return nav;

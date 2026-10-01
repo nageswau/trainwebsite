@@ -24,7 +24,7 @@ function statusLabel(status: string): string {
 type Props = { queueUrl?: string; decisions?: ReviewDecision[]; pendingOnly?: boolean; emptyText?: string };
 
 // OVS-005: a Counselor's assigned document queue with a real "View document" download action and Verify/Reject controls.
-// AGN-003 (DEC-SCOPE-041 P5/P6): reused on the agent Documents page -- `pendingOnly` (agents decide pending documents only) and
+// AGN-003 (DEC-SCOPE-043 P5/P6): reused on the agent Documents page -- `pendingOnly` (agents decide pending documents only) and
 // `decisions` (staff: verified only). Every prop defaults to the counselor panel exactly as before; a failed load now says so.
 export default function CounselorDocumentReviewPanel({
   queueUrl = "/api/v1/portal/overseas/counselor/documents",

@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, EmailStr, Field, StrictBool, StrictInt, ValidationError, field_validator, model_validator
+from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, StrictBool, StrictInt, ValidationError, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.models import GENDERS
@@ -108,6 +108,20 @@ class ProfileUpdate(BaseModel):
         if len(stripped) < 2:
             raise PydanticCustomError("full_name_too_short_after_trim", "full_name must be at least 2 characters, not counting leading/trailing spaces")
         return value
+
+
+class NotificationPreferencesIn(BaseModel):
+    """ENH-014 (spec §5.2): the only two writable values. Strict booleans; any other field is a 422 (AC15)."""
+
+    model_config = ConfigDict(extra="forbid")
+    whatsapp: StrictBool
+    sms: StrictBool
+
+
+class NotificationPreferencesOut(BaseModel):
+    whatsapp: bool
+    sms: bool
+    phone_valid: bool
 
 
 class ChangePasswordRequest(BaseModel):
@@ -352,7 +366,7 @@ class StudentDocumentCreate(BaseModel):
 
 
 class AgentDocumentReview(BaseModel):
-    """AGN-003 (DEC-SCOPE-041 P5/P6, spec §7): an agency member's decision on a pending document. The counselor/admin body of the
+    """AGN-003 (DEC-SCOPE-043 P5/P6, spec §7): an agency member's decision on a pending document. The counselor/admin body of the
     same route is not parsed by this (unchanged)."""
 
     model_config = {"extra": "forbid"}
@@ -448,6 +462,92 @@ class AgentMasterInvite(BaseModel):
         return value
 
 
+_RECORD_LIMITS = {"full_name": 160, "phone": 40, "highest_qualification": 200, "institution": 200, "preferred_country": 120, "preferred_course": 200, "preferred_intake": 40, "notes": 2000}
+_RECORD_EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+
+
+class _AgentStudentRecordFields(BaseModel):
+    """AGN-004 (DEC-SCOPE-042, EVID-015 §5 Step 1): a student with no login. Server-owned fields (agent, account, status,
+    assignment, archive) are not accepted -- `extra="forbid"` answers 422 (mass assignment)."""
+
+    model_config = {"extra": "forbid"}
+    email: str | None = Field(default=None, max_length=320)
+    phone: str | None = None
+    date_of_birth: date | None = None
+    highest_qualification: str | None = None
+    institution: str | None = None
+    graduation_year: int | None = None
+    preferred_country: str | None = None
+    preferred_course: str | None = None
+    preferred_intake: str | None = None
+    notes: str | None = None
+    confirm_duplicate: bool = False
+
+    @field_validator("phone", "highest_qualification", "institution", "preferred_country", "preferred_course", "preferred_intake", "notes")
+    @classmethod
+    def _text(cls, value, info):
+        return clean_free_text(value, _RECORD_LIMITS[info.field_name])
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, value):
+        value = (value or "").strip().lower()
+        if not value:
+            return None
+        if not _RECORD_EMAIL.match(value):
+            raise PydanticCustomError("invalid_email", "Enter a valid email address")
+        return value
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def _dob(cls, value):
+        if value is not None and not (date(1900, 1, 1) <= value <= date.today()):
+            raise PydanticCustomError("invalid_date_of_birth", "Date of birth must be between 1900 and today")
+        return value
+
+    @field_validator("graduation_year")
+    @classmethod
+    def _year(cls, value):
+        if value is not None and not (1950 <= value <= date.today().year + 6):
+            raise PydanticCustomError("invalid_graduation_year", "Graduation year is out of range")
+        return value
+
+
+def _record_name(value: str | None) -> str:
+    value = clean_free_text(value, _RECORD_LIMITS["full_name"]) if value is not None else None
+    if not value:
+        raise PydanticCustomError("blank_full_name", "Full name is required")
+    return value
+
+
+class AgentStudentRecordCreate(_AgentStudentRecordFields):
+    full_name: str
+
+    @field_validator("full_name")
+    @classmethod
+    def _name(cls, value):
+        return _record_name(value)
+
+
+class AgentStudentRecordUpdate(_AgentStudentRecordFields):
+    """Omitted = unchanged; null clears an optional field; the name cannot be cleared."""
+
+    full_name: str | None = None
+
+    @model_validator(mode="after")
+    def _name_present_when_sent(self):
+        if "full_name" in self.model_fields_set:
+            self.full_name = _record_name(self.full_name)
+        return self
+
+
+class AgentStudentAssign(BaseModel):
+    """AGN-004 D4: a Master assigns a student to an active staff member of the agency, or unassigns (null)."""
+
+    model_config = {"extra": "forbid"}
+    member_id: UUID | None
+
+
 class AgentStaffCreate(AgentMasterInvite):
     """AGN-002 (DEC-SCOPE-040 S4): a Master adding a staff login -- the same fields and rules as a Master invite."""
 
@@ -478,7 +578,7 @@ class AgentStaffUpdate(BaseModel):
 
 
 class AgentStaffPermissions(BaseModel):
-    """AGN-003 (DEC-SCOPE-041 P1/P2): one staff member's whole optional-permission set. PUT replaces both; strict booleans and no
+    """AGN-003 (DEC-SCOPE-043 P1/P2): one staff member's whole optional-permission set. PUT replaces both; strict booleans and no
     other key, so no other privilege can be named."""
 
     model_config = {"extra": "forbid"}
@@ -1565,6 +1665,40 @@ class SkillAttendanceMark(BaseModel):
 class SkillAttendanceIn(BaseModel):
     model_config = {"extra": "forbid"}
     records: Annotated[list[SkillAttendanceMark], Field(min_length=1, max_length=200), AfterValidator(_unique_enrollments)]
+
+
+# ENH-030 (DEC-SCOPE-041): a teacher's whole-class mark for one day, one call (spec §5.2, §11 A1/A2).
+SchoolAttendanceStatus = Literal["present", "absent", "late", "excused"]
+
+
+class SchoolAttendanceMark(BaseModel):
+    model_config = {"extra": "forbid"}
+    student_id: UUID
+    status: SchoolAttendanceStatus
+
+
+def _unique_students(rows: list) -> list:
+    _unique_ids([r.student_id for r in rows])
+    return rows
+
+
+class SchoolAttendanceIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    session_date: date
+    records: Annotated[list[SchoolAttendanceMark], Field(min_length=1, max_length=500), AfterValidator(_unique_students)]  # IT AttendanceBulkIn's limit
+
+
+class SchoolAttendanceRosterStudent(BaseModel):
+    id: UUID
+    full_name: str
+    grade_or_class: str | None
+    status: SchoolAttendanceStatus | None  # None = not marked (never absent)
+
+
+class SchoolAttendanceRosterOut(BaseModel):
+    session_date: date
+    today: date  # the school calendar's today, so the UI never uses the browser clock
+    students: list[SchoolAttendanceRosterStudent]
 
 
 class SkillAssessmentCreate(BaseModel):

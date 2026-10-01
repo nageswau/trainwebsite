@@ -1666,6 +1666,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 | `SCR-AGT-005` | `/overseas/agent/commissions/[id]/claim` | Agent | `AGT-004` |
 | `SCR-AGT-006` | `/overseas/admin/commissions` | Overseas Admin | `AGT-004` |
 | `SCR-AGT-007` | `/overseas/agent/team` | Agent (Master) | `AGN-001` |
+| `SCR-AGT-008` | `/overseas/agent/students` (Students panel) | Agent (Master, Staff) | `AGN-004`, `AGT-002` |
 
 ### `SCR-AGT-001`
 - **Route:** `/overseas/agent/register`  
@@ -1758,7 +1759,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Claim reference generated once, immutable.  
 
-- **AGN-003 update (2026-10-01, `DEC-SCOPE-041`) — agent Documents page (`/overseas/agent/documents`; the catalog has no separate entry for it, so it is recorded on this agent screen):** below the upload form, a **review queue** for Masters and for staff whose
+- **AGN-003 update (2026-10-01, `DEC-SCOPE-043`) — agent Documents page (`/overseas/agent/documents`; the catalog has no separate entry for it, so it is recorded on this agent screen):** below the upload form, a **review queue** for Masters and for staff whose
   Verify permission is on (`CounselorDocumentReviewPanel` reused with `queueUrl=/api/v1/portal/overseas/agent/documents`, `pendingOnly`).
   **Review** is offered on `pending` rows only; decided rows show their status as text. Masters choose Verified / Rejected / Changes
   required; staff see one **Mark verified** button (no select). States: loading "Loading your review queue…" (`role="status"`); empty "No documents
@@ -1810,7 +1811,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
   reports the new code and whether the email was sent. Results announced (`role="status"`); focus returns to the opening
   button. Staff themselves see no Team or Commissions link (role label "Agency Staff"); typing the URL shows the 403 card.
   Evidence: AGN-002-AC01…AC10 (`test_agn_002_*.py`; `AgentStaff*.test.tsx`; `navigation.test.ts`; e2e `agn-002-staff.spec.ts`).  
-- **AGN-003 update (2026-10-01, `DEC-SCOPE-041`):** each staff row (active or deactivated) gains a **Permissions** button
+- **AGN-003 update (2026-10-01, `DEC-SCOPE-043`):** each staff row (active or deactivated) gains a **Permissions** button
   (`aria-label="Permissions for <name>"`). It opens a `fieldset.form-section` (`AgentStaffPermissionsForm`, legend "What <name> can do")
   with two checkboxes, each with a hint tied by `aria-describedby`: "Verify documents" (Mark pending documents as verified. Only Masters
   can reject or request changes.) and "View reports" (See the agency's application summary.). The first checkbox is focused; Save /
@@ -1821,6 +1822,24 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
   member verify documents or view reports." New staff start with both off (P7). A staff member whose toggle is switched off while
   their page is open gets the server's `403` message on their next click. Evidence: AGN-003-AC05, AC06 (`test_agn_003_permissions.py`;
   `AgentStaffPermissionsForm.test.tsx`, `AgentStaffRow.test.tsx`; e2e `agn-003-staff-permissions.spec.ts`).
+
+### `SCR-AGT-008`
+- **Route:** `/overseas/agent/students` — a "Students" header and the "All students" panel (full width), then the AGT-002 roster retitled "Application status" (students who have a login), then the "Link student" form *(layout from browser QA-01/02, 2026-10-01)*; search, Show archived and page are kept in the URL (`?q=- **Route:** `/overseas/agent/students` — the Students panel above the existing roster and "Link student" form  archived=1- **Route:** `/overseas/agent/students` — the Students panel above the existing roster and "Link student" form  page=`)  
+- **Role(s):** Agent — a Master (whole agency) or a staff member (assigned students only) of an active agency  
+- **Purpose:** Create, edit, view and (Master) archive the agency's students, including students who never log in *(net-new, added 2026-09-30, `AGN-004` / `DEC-SCOPE-042`)*.  
+- **Linked Feature ID(s):** `AGN-004`, `AGT-002`  
+- **Entry points:** Agent portal navigation, "Students".  
+- **Required data:** Students (name, contact, preferred country/intake, has-login, assignee with code and deactivated state, status); on View the full record (personal, contact, academic, preferences, notes, created by, archived by).  
+- **Key actions:** Search (debounced), Show archived, Master "Assigned to" filter (Anyone/Unassigned), Add student, View, Edit (students with no login, not archived), Archive/Unarchive (Master, inline confirmation), Assign (Master, active students: inline choice of Unassigned or an active Staff member from AGN-002's staff list; a deactivated assignee shows as current but cannot be re-chosen), duplicate warning with "Save anyway".  
+- **Empty state:** "No students yet. Use Add student…"; with filters "No students match." + Clear filters.  
+- **Loading state:** "Loading students…" first; later loads keep the cards and set `aria-busy`; detail shows "Loading student…".  
+- **Error state:** server message + Retry (a non-page 200 is an error); per-card action errors; detail "This student is no longer available." (404) or "Unable to load this student."; form errors inline per field, network drop keeps the entry.  
+- **Permissions/resource scope:** Own agency; staff assigned-only (other rows `404`); archive/unarchive/assign Master-only (`403`); pending/suspended agencies `403`.  
+- **Responsive behavior:** Cards in the `.grid.two` layout (one column on phones), 44px buttons on phones; no horizontal scroll at 320px (E2E).  
+- **Accessibility requirements:** Labelled search/filters; fields grouped with `fieldset`/`legend`; errors tied by `aria-describedby`/`aria-invalid`, focus to the first invalid field; named buttons ("View/Archive <name>"); confirmation as a labelled group with focus returned on Cancel; Escape closes the detail; results announced (`role="status"`); status and login shown as text badges.  
+- **Desktop/tablet/mobile behavior:** Two card columns on wide screens, one on phones; the detail and form sit above the list so list refreshes never move them.  
+- **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
+- **Acceptance evidence needed:** AGN-004-AC01–AC13 (`test_agn_004_*.py`; `AgentStudentsPanel.test.tsx`, `AgentStudentForm.test.tsx`; e2e `agn-004-agent-students.spec.ts`); browser validation pending.  
 
 
 ## CNS
@@ -2589,7 +2608,7 @@ correction, not deleted, per this project's traceability convention.
 - **Entry points:** "Open 360° view" on the Coordinator/Principal/Teacher student page (SCR-SCH-025 family) and on the Parent's child page; a "Student 360° view" list on the Career Counselor and Psychometric Team dashboards. *Updated 2026-09-28 (`ENH-024`, QA24-01):* the Academic Team reaches it through its own student page (SCR-SCH-037, from the dashboard's "Students" list), and its "Back to student" link returns there.
 - **Required data:** Server-rendered: GET /auth/me, GET /school/students/{id}/360-view. Client: PATCH /school/students/{id}/career-goal (Career Counselor only). Switching tabs makes no request (`history.replaceState`).
 - **Key actions:** Switch tabs (click, arrows, Home/End); Career Counselor sets/edits/clears the career goal on the Overview tab; follow a psychometric report link (same-origin or https only).
-- **Empty state:** Every tab without records shows a `role="status"` message naming who records the data (e.g. "No published results yet. Results appear after the Academic Team publishes them."); tabs a role cannot read show "This section is not available for your role."; sources not built yet show a "not tracked yet (ENH-030 / ENH-025 / ENH-013b / ENH-014)" note.
+- **Empty state:** Every tab without records shows a `role="status"` message naming who records the data (e.g. "No published results yet. Results appear after the Academic Team publishes them."); tabs a role cannot read show "This section is not available for your role."; sources not built yet show a "not tracked yet (ENH-025 / ENH-013b / ENH-014)" note. *Updated 2026-09-30 (`ENH-030`):* the Attendance tab now shows daily attendance (last 30 marked days: a count line and a Date/Status table) above activity and skills attendance; its "not tracked yet (ENH-030)" note is removed and its empty text reads "No attendance recorded yet. Teachers mark daily attendance; the School Coordinator marks activity attendance."
 - **Loading state:** `loading.tsx` skeleton (header, tab list, panel) with `aria-busy` on navigation; the career-goal form shows "Saving…", keeps the input read-only (still focusable) and disables Save.
 - **Error state:** 401/403/404/network → the shared Access Unavailable card with the server's reason (e.g. "This student is not assigned to you"); career goal: the server's message, or "The career goal could not be saved. Please try again." for a 5xx, and a kept-entry message for a dropped connection, with focus returned to the input.
 - **Permissions/resource scope:** The shared 7-role loader; per-tab projection so no role sees more than elsewhere (`RBAC_MATRIX.md` ENH-013 addendum); results Published only; career goal writable by the Career Counselor only.
@@ -2652,6 +2671,24 @@ correction, not deleted, per this project's traceability convention.
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet/mobile: single column, table scrolls horizontally.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** `GlobalEducationPipeline.test.tsx`, `GlobalEducationPage.test.tsx`, `tests/e2e/enh-017-global-education.spec.ts`, `test_enh_017_global_education_pipeline.py` (passing as implemented); browser QA and accessibility passed (`docs/quality/ENH-017_BROWSER_QA_2026-09-29.md`) — COMPLETE (verified 2026-09-29 at `949aa2c`).
+
+### `SCR-SCH-039` *(added 2026-09-30, `ENH-030` / `DEC-SCOPE-041`, provisional number)*
+- **Route:** `/school/teacher/attendance` (`?date=YYYY-MM-DD`, forwarded only when well-formed; otherwise the school's today)
+- **Role(s):** School Teacher (own school, assigned students only).
+- **Purpose:** Mark the whole assigned class's daily attendance for one day with one Save (`School CRM.md` Teacher Dashboard "Student Attendance").
+- **Linked Feature ID(s):** `ENH-030`
+- **Entry points:** Sidebar "Attendance" for the Teacher (after "Dashboard").
+- **Required data:** Server-rendered: GET /auth/me, GET /school/attendance?date=. Client: PUT /school/attendance `{session_date, records:[{student_id, status}]}`.
+- **Key actions:** Choose a date (max = the server's school-calendar today) and press Show or Enter (typing never navigates mid-entry); "Mark all present" (fills only unmarked students); one radio group per student (Present / Absent / Late / Excused); Save attendance.
+- **Empty state:** "No students assigned to you yet. Your School Coordinator assigns students to teachers." (today); on a past day before any of the class enrolled, "None of your current students were enrolled at your school on <day>." with the date picker still usable (DEC-SCOPE-041 I-3); an unmarked student shows a "Not marked" badge and no preselected status.
+- **Loading state:** `loading.tsx` skeleton with `aria-busy`; changing the date disables the form and shows "Loading the selected date…"; saving disables the form and shows "Saving…".
+- **Error state:** a refused read (future date 422, wrong role 403, 401) → the shared Access Unavailable card with the server's reason; a refused save (scope 403, tier 403, busy 409, 422, network) → the server's message as an alert under the form, marks kept; saving with nothing chosen → "Choose a status for at least one student." (no request).
+- **Permissions/resource scope:** `school_teacher` only; the roster and every saved id are limited server-side to the teacher's own school and assigned students; tier gate: any valid partnership tier.
+- **Responsive behavior:** One fieldset per student; the four radios wrap under the name on a phone; no horizontal page scroll at 1440/768/390/320 px (browser verification 2026-09-30).
+- **Accessibility requirements:** one h1; each student is a `fieldset` named by its `legend`; native radios (Tab between students, arrow keys within one), ≥44 px targets; status always as text; results announced via `FormMessage` (`status`/`alert`); unsaved-changes guard on reload and in-app links.
+- **Desktop/tablet/mobile behavior:** Same single-column form at every width.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `SchoolDailyAttendance.test.tsx`, `TeacherAttendancePage.test.tsx`, `tests/e2e/enh-030-daily-attendance.spec.ts`, `test_enh_030_mark.py`; browser QA passed (2026-09-30) — COMPLETE (verified at `634b5e5`).
 
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  
@@ -2717,6 +2754,21 @@ catalogue to stay in step. Where a surface has no catalogue ID today (a pre-exis
 ## ENH-031 addendum (2026-09-29, `DEC-SCOPE-039`) — searchable reference pickers
 
 Student, application and candidate references on these screens are searchable dropdowns (type to filter, arrow keys, Enter, Esc) that accept only a listed value; an unpicked required field shows "Choose a student/an application from the list." and blocks the save: agent Students (Link student — search starts at 3 characters, emails partly masked) and Documents; counselor/admin Appointments; University Rep/Admin Applications, Admission updates, Offer letters, Student communication; Admin Visa and Applications; Placement Interviews and Offers; the School→Overseas bridge (pick the school, then the student); the School academic results, psychometric, test-prep, language, career record and career preferences forms; counselor chat; agent Create application; employer Interviews. The list opens under its field, scrolls inside itself and never widens the page at 320 px.
+
+## ENH-014 addendum (2026-09-30) — Notifications section on `/account/profile`
+
+No new route. `ENH-014` slice 1 (`docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-014, spec `docs/superpowers/specs/2026-09-30-enh-014-notification-channels-design.md` §7, `DEC-NOT-001` extension 2026-09-30) adds a section to the existing profile page. The page has no catalogue ID today (pre-existing gap, not created by `ENH-014`), so none is invented here.
+
+- **Route:** `/account/profile` (any signed-in user). **Linked Feature ID(s):** `ENH-014`, `NOT-002`, `NOT-003`.
+- **Change:** `h2` "Notifications" with a one-line intro, then a second card holding `NotificationPreferencesForm`: a fieldset "Send me updates by" with four rows (Email and In-app checked and disabled, "Always on"; WhatsApp "Messages go to {phone}"; SMS "Texts go to {phone}"), the consent copy (version `enh014-v1`) and an explicit "Save notification settings" button (no autosave). `ProfileForm` refreshes the page after a successful save so a newly added phone enables the toggles.
+- **Required data:** `/auth/me` and `GET /account/notification-preferences` (preferences fetched after `/auth/me` succeeds, spec §12); `PUT /account/notification-preferences` on save.
+- **Empty state (no valid phone):** WhatsApp and SMS disabled; hint "Add a mobile number in your profile above to turn on WhatsApp or SMS." linked by `aria-describedby`, with an in-page link to `#profile-phone`. A checked channel stays enabled so it can be turned off (spec §12).
+- **Loading state:** none on the client; the page is server-rendered. Saving: button "Saving…", `aria-disabled`, `aria-busy` on the form, visually hidden status, second submit ignored.
+- **Error state:** preferences load failure shows "We couldn't load your notification settings right now." with a "Try again" link in the second card only (the profile form still works); save failure shows the server's 422 text or "Couldn't save your settings. Check your connection and try again." and the checkboxes revert; 401 shows the "session expired" block. Success: "Notification settings saved."
+- **Permissions/resource scope:** own data only; no admin override.
+- **Responsive / accessibility:** single column at every width, rows at least 44 px tall, labels wrap; native checkboxes inside labels, keyboard operable, focus returns to Save after a save, state never conveyed by colour alone. E2E `enh-014-notification-preferences.spec.ts` covers keyboard use and 320 and 1440 px (768 and 1024 px were specified in spec §7 but are not in the E2E; `NEEDS_CONFIRMATION`).
+- **Known issue found while testing (pre-existing, not fixed by `ENH-014`):** the shared `PublicShell` header overflows by 32 px at 320 px width on this page (RAID `I-43`).
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
 
 ## Required findings report
 

@@ -15,7 +15,7 @@ const EMPTY_DATA: Record<TabKey, Record<string, unknown>> = {
   overview: { achievements: [], portfolio_completion_percentage: 0 },
   personal_details: { id: "s1", full_name: "Asha Rao", school_name: "North School", student_code: null, grade_or_class: null, date_of_birth: null, assigned_teacher_name: null },
   academic_records: { grade_or_class: null, grade_history: [] },
-  attendance: { activities: [], skill_sessions: [] },
+  attendance: { activities: [], skill_sessions: [], daily: { counts: { present: 0, absent: 0, late: 0, excused: 0 }, recent: [] } },
   examination_results: { results: [] },
   career_guidance: { records: [] },
   psychometric_assessment: { assessments: [] },
@@ -46,10 +46,29 @@ describe("Student360Panels", () => {
     expect(screen.queryByText(/no attendance/i)).not.toBeInTheDocument();
   });
 
-  it("renders an empty state naming who records the data, plus the not-tracked note", () => {
-    render(<>{renderPanel("attendance", empty("attendance", ["Daily and period attendance is not tracked yet (ENH-030)."]), view())}</>);
-    expect(screen.getByRole("status")).toHaveTextContent(/no attendance recorded yet/i);
-    expect(screen.getByText(/not tracked yet \(ENH-030\)/)).toBeInTheDocument();
+  it("renders an empty state naming who records the data", () => {
+    render(<>{renderPanel("attendance", empty("attendance"), view())}</>);
+    expect(screen.getByRole("status")).toHaveTextContent("No attendance recorded yet. Teachers mark daily attendance; the School Coordinator marks activity attendance.");
+    expect(screen.queryByText(/not tracked yet/)).not.toBeInTheDocument();
+  });
+
+  it("renders daily attendance with its summary (ENH-030)", () => {
+    const tab: Tab360 = { status: "has_data", count: 2, not_tracked: [], data: { activities: [], skill_sessions: [], daily: {
+      counts: { present: 1, absent: 0, late: 1, excused: 0 },
+      recent: [{ session_date: "2026-09-02", status: "late" }, { session_date: "2026-09-01", status: "present" }],
+    } } };
+    render(<>{renderPanel("attendance", tab, view())}</>);
+    const table = screen.getByRole("table", { name: "Daily attendance" });
+    expect(within(table).getAllByRole("row")).toHaveLength(3);
+    expect(within(table).getByText("Late")).toBeInTheDocument();
+    expect(screen.getByText("Last 2 marked days: 1 present · 1 late · 0 absent · 0 excused")).toBeInTheDocument();
+  });
+
+  it("still renders a 360 payload from an older API without daily", () => {
+    const tab: Tab360 = { status: "has_data", count: 1, not_tracked: [], data: { activities: [{ title: "Career fair", scheduled_at: "2026-09-01T04:30:00Z", present: true }], skill_sessions: [] } };
+    render(<>{renderPanel("attendance", tab, view())}</>);
+    expect(screen.getByRole("table", { name: "School activity attendance" })).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Daily attendance" })).not.toBeInTheDocument();
   });
 
   it("links only safe document URLs and shows unsafe ones as text", () => {

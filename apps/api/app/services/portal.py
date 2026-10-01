@@ -53,6 +53,7 @@ from app.models import (
     VisaCase,
 )
 from app.services.agent_orgs import org_masters, org_member_ids
+from app.services.agent_students import application_scope, student_scope
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")
@@ -677,14 +678,15 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
 
 
 async def _agent(db: AsyncSession, user: User, section: str):
-    # AGN-001 (D1): everything referred by any member of the caller's organisation.
-    students = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(AgentStudent.agent_id.in_(org_member_ids(user))))).all()
+    # AGN-001 (D1): everything referred by any member of the caller's organisation; AGN-004 (G4): a staff member only their
+    # assigned students; archived links leave the student list and KPI (D5) while their applications stay.
+    students = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(*student_scope(user), AgentStudent.status == "active"))).all()
     applications = (
         await db.execute(
             select(OverseasApplication, University, User)
             .join(University, University.id == OverseasApplication.university_id)
             .join(User, User.id == OverseasApplication.student_id)
-            .where(OverseasApplication.agent_id.in_(org_member_ids(user)))
+            .where(*application_scope(user))
             .order_by(OverseasApplication.updated_at.desc())
         )
     ).all()

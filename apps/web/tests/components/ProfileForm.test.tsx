@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import ProfileForm from "@/components/ProfileForm";
 
+const refresh = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+
 afterEach(cleanup);
 
 beforeEach(() => {
@@ -90,5 +93,23 @@ describe("ProfileForm (ENH-007)", () => {
     fireEvent.click(button);
     resolveFirst(new Response(JSON.stringify({ full_name: "Asha Rao", phone: null }), { status: 200 }));
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+  });
+
+  it("refreshes the page once after a successful save (ENH-014: phone validity for the notification section)", async () => {
+    refresh.mockClear();
+    vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify({ full_name: "Asha Rao", phone: "+91 98765 43210" }), { status: 200 }));
+    render(<ProfileForm fullName="Asha Rao" phone={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Your profile was updated.");
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not refresh after a failed save", async () => {
+    refresh.mockClear();
+    vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify({ detail: "bad" }), { status: 422 }));
+    render(<ProfileForm fullName="Asha Rao" phone={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("bad");
+    expect(refresh).not.toHaveBeenCalled();
   });
 });

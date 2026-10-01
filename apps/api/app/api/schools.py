@@ -39,7 +39,6 @@ from app.models import (
     AcademicYear,
     AuditLog,
     Notification,
-    NotificationDelivery,
     OverseasApplication,
     PortfolioEntry,
     School,
@@ -64,6 +63,7 @@ from app.models import (
     UserRoleAssignment,
     VisaCase,
 )
+from app.notifications.dispatch import queue_deliveries
 from app.schemas import (
     CAREER_DATE_KEYS,
     CAREER_RECORD_TYPES,
@@ -87,7 +87,7 @@ from app.schemas import (
     validation_message,
 )
 from app.services.integrations import send_notification
-from app.services.mailer import send_parent_notification_email, send_school_invite_email
+from app.services.mailer import send_school_invite_email
 
 router = APIRouter(prefix="/school", tags=["school"])
 logger = get_logger("app.school")
@@ -335,6 +335,13 @@ def _skills():
     from app.api import school_skills  # noqa: PLC0415
 
     return school_skills
+
+
+def _attendance():
+    """ENH-030's module, imported at call time for the same reason as `_skills()`: `school_attendance` imports this module's helpers."""
+    from app.api import school_attendance  # noqa: PLC0415
+
+    return school_attendance
 
 
 def _own_school_id(user: User) -> UUID:
@@ -720,21 +727,17 @@ async def _flush_or_409(db: AsyncSession, roll_number: str | None) -> None:
 
 
 # --- SCH-007: Parent Portal notifications ---------------------------------------------------
-# Every trigger below writes the in-app `Notification` row first (what the Parent Portal
-# lists), then records one `NotificationDelivery` for the email copy (`NOT-001`'s per-channel
-# contract). Real SMTP via `mailer.send_parent_notification_email`; when SMTP isn't
-# configured the platform's generic webhook channel is tried instead, and whichever
-# outcome results is persisted -- a failed or unconfigured send never blocks the write
-# that triggered it (SCH-007-AC04).
+# Every trigger below writes the in-app `Notification` row, then queues one `NotificationDelivery` per channel -- email
+# always, WhatsApp/SMS when the recipient opted in (ENH-014, DEC-NOT-001 2026-09-30). The worker sends them after the
+# triggering write commits (app/notifications/delivery.py): real SMTP via `mailer.send_parent_notification_email`, the
+# generic email webhook when SMTP isn't configured, Twilio for WhatsApp/SMS. A failed or unconfigured send never blocks
+# or reverts the write that triggered it (SCH-007-AC04).
 
 async def _notify_parent(db: AsyncSession, parent: User, *, school_name: str, title: str, body: str, action_url: str | None) -> None:
     item = Notification(user_id=parent.id, title=title, body=body, read=False, action_url=action_url)
     db.add(item)
     await db.flush()
-    status, error = await send_parent_notification_email(to_email=parent.email, recipient_name=parent.full_name, school_name=school_name, title=title, body=body, action_url=action_url)
-    if status == "not_configured":
-        status, error = await send_notification("email", {"to": parent.email, "title": title, "body": body, "action_url": action_url})
-    db.add(NotificationDelivery(notification_id=item.id, channel="email", status=status, error=error, sent_at=datetime.now(UTC) if status == "sent" else None))
+    await queue_deliveries(db, item, parent, context={"kind": "school", "school_name": school_name})
 
 
 async def _notify_student_parents(db: AsyncSession, student: SchoolStudent, *, title: str, body: str, action_url: str | None) -> int:
@@ -1403,6 +1406,8 @@ async def _overview_payload(db: AsyncSession, student: SchoolStudent) -> dict:
         },
         # ENH-011 (`DEC-SCOPE-026`): additive key; same reader scope as everything above.
         "skills": await _skills().skills_overview(db, student),
+        # ENH-030 (DEC-SCOPE-041): additive key; same reader scope as everything above.
+        "daily_attendance": await _attendance().daily_attendance_summary(db, student),
     }
 
 
