@@ -14,6 +14,7 @@ from app.api.deps import check_session, get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code
+from app.core.rbac import agent_permissions
 from app.core.security import create_token, decode_token, hash_password, verify_password
 from app.models import AuditLog, Notification, NotificationDelivery, PasswordResetToken, User, UserRoleAssignment
 from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
@@ -171,6 +172,7 @@ async def me(user: User = Depends(get_current_user)):
     out = UserOut.model_validate(user)
     # AGN-002: the portal hides Master-only pages from staff (the server refuses them regardless).
     out.agent_member_role = user.agent_membership.role if user.agent_membership else None
+    out.agent_permissions = agent_permissions(user)
     return out
 
 

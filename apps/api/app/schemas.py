@@ -39,6 +39,8 @@ class UserOut(BaseModel):
     role_assignments: list[RoleAssignmentOut] = Field(default_factory=list)
     # AGN-002: set by GET /auth/me only (login/refresh do not load the membership); "master" | "staff" | None.
     agent_member_role: str | None = None
+    # AGN-003: set by GET /auth/me only -- effective permissions (a Master gets both True); None for non-agents.
+    agent_permissions: dict[str, bool] | None = None
     model_config = {"from_attributes": True}
 
 
