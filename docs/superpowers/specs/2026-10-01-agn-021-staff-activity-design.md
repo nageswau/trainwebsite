@@ -71,11 +71,12 @@ The `user_id` index serves the per-staff filter; the per-staff row count is smal
 - `logger.info("agent_staff_activity_viewed org=%s actor=%s member=%s offset=%s", ...)` — ids only.
 - Returns `service.staff_activity_page(db, member, limit, offset)`.
 
-### 5.2 Service — `services/agent_orgs.py`
+### 5.2 Services — `services/agent_orgs.py` (lookup) and new `services/staff_activity.py` (the read)
 
-- **`find_staff_member(db, org_id, member_id) -> AgentOrgMember`** — the existing `_staff_member` query (`id`, `org_id`, `role == 'staff'`)
-  extracted, 404 on miss, no lock. `_staff_member` calls it, then locks the user as today (behaviour unchanged).
-- **`STAFF_ACTIVITY_ACTIONS`** — the seven actions of §4 (a tuple; the single allow-list).
+- **`find_staff_member(db, org_id, member_id) -> AgentOrgMember`** (`agent_orgs.py`) — the existing `_staff_member` query (`id`,
+  `org_id`, `role == 'staff'`) extracted, 404 on miss, no lock. `_staff_member` calls it, then locks the user as today (behaviour unchanged).
+- `services/staff_activity.py` (one responsibility: reading a staff member's audited work; `agent_orgs.py` stays about membership):
+- **`STAFF_ACTIVITY_ACTIONS`** — the seven actions of §4 (a tuple; the single allow-list); `MAX_ACTIVITY_OFFSET = 10_000`.
 - **`staff_activity_page(db, member, limit, offset) -> dict`**:
   - `where = (AuditLog.user_id == member.user_id, AuditLog.action.in_(STAFF_ACTIVITY_ACTIONS))`
   - `total = count(where)`; `rows = select ... order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(limit).offset(offset)`.
