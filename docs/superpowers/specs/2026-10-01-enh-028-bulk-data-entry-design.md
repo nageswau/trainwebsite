@@ -1,8 +1,12 @@
 # ENH-028 — Bulk data entry: Academic Results, Psychometric, Test Prep, Language — design
 
-**Status:** DRAFT — awaiting user review (Superpowers brainstorming gate). Not `EXPLICIT_APPROVAL` until the user approves
-this file. **Feature:** `ENH-028` (`docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-028). **Branch:** `feature/enh-028-bulk-entry`.
-**Decision:** proposed `DEC-SCOPE-042` (provisional number; §12), recorded in the register only once this spec is approved.
+**Status:** APPROVED by the user in-session 2026-10-01 ("Spec + S1–S5"), with simplifications S1–S5 applied below.
+**Feature:** `ENH-028` (`docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-028). **Branch:** `feature/enh-028-bulk-entry`.
+**Decision:** `DEC-SCOPE-042` (§12).
+
+**Simplifications applied on approval:** S1 no hourly throttle · S2 no `GET /school/bulk-uploads/{id}` (the upload and its
+replay return the report; the audit trail lives in the tables) · S3 no batch `status` column (the response still carries
+`"status": "completed"`, the roster report's shape) · S4 no `school_student_id` on report rows · S5 report rows in file order.
 
 ## 1. Evidence and intent
 
@@ -29,11 +33,11 @@ this file. **Feature:** `ENH-028` (`docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-
 | D7 | One generalized `school_bulk_upload_batches` / `school_bulk_upload_rows` table pair with a `target_type` discriminator (backlog's preferred option). The roster tables are not touched. | Design (approved §1) |
 | D8 | New router module `app/api/school_bulk.py` (precedent: `school_attendance.py`, `school_skills.py`), reusing `schools.py` helpers by import. | Design (approved §1) |
 | D9 | Idempotency key scoped to **(uploader, target_type, key)**, file SHA-256 stored; same key + different file = 422. | Design (approved §3) |
-| D10 | 20 new uploads per user per hour (replays exempt), counted from the batch table. | Design (§3, flagged optional — user may drop) |
+| D10 | ~~20 uploads per user per hour~~ — **dropped (S1)**; the 1 MB / 500-row caps are the load guard. | User (S1) |
 
 ## 3. Scope
 
-**In:** four bulk-upload endpoints, four pre-filled template downloads, one batch-report read, one migration (two new tables),
+**In:** four bulk-upload endpoints, four pre-filled template downloads, one migration (two new tables),
 one new React panel mounted on the Academic Team and Psychometric Team dashboards, tests, contract/data-model docs.
 
 **Out (unchanged):** every existing single-record endpoint and response; the roster upload (`/school/students/bulk-upload`,
@@ -52,12 +56,11 @@ processing; XLSX.
 | `uploaded_by_user_id` | UUID FK users | from the session only |
 | `idempotency_key` | String(120) | |
 | `file_sha256` | String(64) | hex digest of the raw bytes |
-| `total_rows`, `accepted_count`, `rejected_count` | Integer | `accepted + rejected = total` once `completed` |
-| `status` | String(20) | `processing` → `completed` (same commit; `processing` is never visible to another session) |
+| `total_rows`, `accepted_count`, `rejected_count` | Integer | `accepted + rejected = total` (written in the same commit as the rows) |
 | `created_at`, `updated_at` | timestamptz | `TimestampMixin` |
 
-UNIQUE `(uploaded_by_user_id, target_type, idempotency_key)` named `uq_school_bulk_upload_key`; index on
-`(uploaded_by_user_id, created_at)` for the throttle count. No `school_id`: a portfolio spans schools.
+UNIQUE `(uploaded_by_user_id, target_type, idempotency_key)` named `uq_school_bulk_upload_key` (its index is the only one). No
+`school_id`: a portfolio spans schools. No `status` column (S3): a batch row only ever becomes visible already complete.
 
 `school_bulk_upload_rows`
 
@@ -68,8 +71,7 @@ UNIQUE `(uploaded_by_user_id, target_type, idempotency_key)` named `uq_school_bu
 | `row_number` | Integer | file line number (header = line 1) |
 | `status` | String(20) | `accepted` / `rejected` |
 | `error_message` | Text, nullable | never echoes a submitted value |
-| `student_code` | String(8), nullable | as typed (normalized upper-case), for the report |
-| `school_student_id` | UUID FK school_students, nullable | set when the code resolved |
+| `student_code` | String(8), nullable | normalized upper-case; NULL when blank or longer than 8 (never matches a student) |
 | `created_record_id` | UUID, nullable, **no FK** | id in the target table (polymorphic) |
 
 No existing table is altered; no existing row read or written; `downgrade()` drops both tables.
@@ -84,7 +86,6 @@ All under `/api/v1/school`, authenticated by the existing session cookie (`get_c
 | `GET /psychometric-team/records/bulk-template` · `POST /psychometric-team/records/bulk-upload` | `psychometric_team` |
 | `GET /academic-team/test-prep-records/bulk-template` · `POST /academic-team/test-prep-records/bulk-upload` | `academic_team` |
 | `GET /academic-team/language-records/bulk-template` · `POST /academic-team/language-records/bulk-upload` | `academic_team` |
-| `GET /bulk-uploads/{batch_id}` | the uploader only |
 
 Static `bulk-*` segments are registered before any dynamic `/{id}` route on the same prefix (roster-template precedent).
 
@@ -101,14 +102,13 @@ Checked in this order; every non-201 writes nothing (except the tier-denial audi
 | 5 | key already used by this user for this module: same SHA-256 | **201** + stored report (replay) |
 | 5b | … different SHA-256 | 422 `Idempotency-Key was already used for a different file` |
 | 5c | same key still processing in another request (> 5 s) | 409 `This upload is still being processed; retry shortly` |
-| 6 | > 20 new uploads in the last hour by this user | 429 `Too many bulk uploads; try again in N seconds` + `Retry-After` |
 | 7 | not UTF-8 (BOM allowed) / contains NUL / malformed CSV | 422 `The file must be a UTF-8 CSV` |
 | 8 | a required header missing | 422 `Missing required column: <name>` |
 | 9 | 0 filled-in rows / > 500 | 422 `The file has no filled-in rows` / `The file has more than 500 filled-in rows` |
 | 10 | student-row lock not acquired in 5 s | 409 `These students are being updated by another request; retry shortly` |
 | 11 | otherwise | **201** + report |
 
-Report (upload, replay and `GET /bulk-uploads/{id}` — identical shape):
+Report (upload and replay — identical shape; rows in file order, S5):
 
 ```json
 {"id": "…", "target_type": "academic_result", "status": "completed", "total_rows": 3,
@@ -117,8 +117,8 @@ Report (upload, replay and `GET /bulk-uploads/{id}` — identical shape):
           {"row_number": 4, "status": "rejected", "error_message": "marks_obtained must not exceed max_marks", "student_code": "…", "created_record_id": null}]}
 ```
 
-`GET /bulk-uploads/{id}`: 404 `Upload batch not found` for an unknown id **and** for another user's batch (no existence
-oracle); 401/403 as usual (any School service-delivery role may call; ownership decides).
+There is no batch-read endpoint (S2): a client that lost the response re-sends the same file with the same key and gets the
+stored report back (row 5).
 
 ### 5.2 Templates
 
@@ -141,8 +141,9 @@ Empty portfolio → header only.
   `YYYY-MM-DD` (`_iso_date_or_none`). Single-line text refuses control/bidi characters (existing helpers); multi-line text
   uses `_clean_multiline_text`.
 - **Rejection order (first failure wins, one message):** unknown code `student_code does not match a student` → outside
-  portfolio `OUTSIDE_PORTFOLIO` (existing text) → tier denial (existing `_entitlement_denial` message) → field validation
-  `<field> <reason>` → duplicate `this student already has a <noun> for the same <key fields>` (e.g. `this student already
+  portfolio `OUTSIDE_PORTFOLIO` (existing text) → field validation `<field> <reason>` → tier denial (existing
+  `_entitlement_denial` message; after validation because Test Prep's service depends on the validated `test_type`) →
+  duplicate `this student already has a <noun> for the same <key fields>` (e.g. `this student already
   has a result for the same academic_year, term and subject`) / `same student and <key fields> as row N of this file`.
 - Messages never echo submitted values (ENH-025 rule).
 
@@ -180,24 +181,22 @@ One request = one DB transaction, then post-commit notifications:
 2. `SET LOCAL lock_timeout = '5s'`. Claim the key: `INSERT` the batch in a savepoint. `IntegrityError` on
    `uq_school_bulk_upload_key` → roll back the savepoint, load the committed batch → replay (same hash) or 422 (different);
    lock timeout while the other request holds the key → 409 (5c). The unique index is the arbiter — no select-then-insert.
-3. Throttle count (rows of this user in the last hour, excluding the just-claimed one) → 429 (the transaction rolls back, so
-   the claimed key is released).
-4. Parse/validate the file shape (7–9) → 422 (rollback releases the key).
-5. One query resolves every distinct `student_code`; `SELECT … FOR UPDATE` on those students **ordered by id** (promotions
+3. Parse/validate the file shape (7–9) → 422 (rollback releases the key).
+4. One query resolves every distinct `student_code`; `SELECT … FOR UPDATE` on those students **ordered by id** (promotions
    pattern; lock order student → result matches transfer approval's request → student → parent → result, so no cycle);
    lock timeout → 409 (10).
-6. Per filled-in row: rules §6 in order; tier decision cached per (school, service_key) using the pure `_entitlement_denial`
+5. Per filled-in row: rules §6 in order; tier decision cached per (school, service_key) using the pure `_entitlement_denial`
    (never `require_school_entitlement`, which commits on denial); one `TIER_DENIED` AuditLog per denied (school, key) per batch,
    added to the same transaction. Duplicates checked against one pre-loaded set per module (existing rows for the locked
    students) plus the keys accepted earlier in this file.
-7. Insert records + per-record audit/history + row reports; batch counts, `status="completed"`, AuditLog `school.bulk_upload`
+6. Insert records + per-record audit/history + row reports; batch counts, AuditLog `school.bulk_upload`
    `{target_type, total, accepted, rejected, file_sha256}`; **commit**.
-8. Read everything the response needs, then notify parents per accepted row (Psychometric/Test Prep/Language only), each in
-   `try: notify; commit / except: rollback; log warning` (ENH-026 pattern, `schools.py:2181-2196`).
+7. Build the response from memory, then notify parents per accepted row (Psychometric/Test Prep/Language only), each in
+   `try: notify; commit / except: rollback; log warning` (ENH-026 pattern); each student is re-read by id, so a rolled-back
+   notification never leaves the next one touching an expired object.
 
-**Failure guarantees:** any exception before step 7's commit rolls back everything (no batch, no records, key free → a
-retry reprocesses cleanly). After the commit, nothing can undo records. Throttle is count-then-insert: two exactly
-simultaneous first uploads can both pass — accepted, it is a load guard, not a business rule.
+**Failure guarantees:** any exception before step 6's commit rolls back everything (no batch, no records, key free → a
+retry reprocesses cleanly). After the commit, nothing can undo records.
 
 **Race notes:** two uploads of the same file under *different* keys serialize on the student row locks; the second sees the
 first's records and rejects them as duplicates (D6). A single `POST` racing a bulk upload is not serialized (single creates
@@ -211,18 +210,18 @@ on by) the same student lock, so the portfolio check always sees the committed `
 | AuthN / session | unchanged `get_current_user`; no new tokens |
 | CSRF | `samesite=lax` session cookie not sent on cross-site POST; custom `Idempotency-Key` header forces CORS preflight, allowed only for `settings.frontend_url` |
 | AuthZ / role escalation | role first; actor from session; CSV can't set school, owner, status, verifier, publisher; Results always Draft so DEC-ROLE-007 still needs a different verifier/publisher |
-| IDOR | per-row portfolio check on the locked student; batch read owner-only with 404; keys scoped per user |
+| IDOR | per-row portfolio check on the locked student; no batch-read endpoint; keys scoped per user (another user's key never replays) |
 | Tier bypass | same denial rules as `require_school_entitlement`, per school |
 | Input validation | server-side per cell (§6); strict UTF-8, NUL refused, size/row caps; extension/MIME not trusted |
 | SQL injection | ORM only; codes bound in an `IN` list |
 | XSS | React escaping; errors rendered as text; `report_url` http(s)-only server-side (+ existing safe-href guard in `Student360Panels.tsx`) |
 | CSV injection | template cells sanitized (§5.2) |
-| DoS | 1 MB / 500 rows / 20 per hour; bounded read |
+| DoS | 1 MB (1,048,576 bytes) / 500 filled-in rows; bounded read |
 | Logs | ids and counts only — never cell values, marks, names, codes or keys |
-| Audit | `school.bulk_upload` per batch + unchanged per-record actions with `bulk_batch_id` + `TIER_DENIED`; `school.bulk_upload_throttled` on 429 is **not** added (log line only) |
+| Audit | `school.bulk_upload` per batch + unchanged per-record actions with `bulk_batch_id` + `TIER_DENIED` |
 
 Operational logs: `bulk_upload_completed` (batch_id, target_type, actor_id, total, accepted, rejected, duration_ms),
-`bulk_upload_replayed`, `bulk_upload_rejected_file` (reason token), `bulk_upload_throttled`, `bulk_upload_lock_timeout`,
+`bulk_upload_replayed`, `bulk_upload_rejected_file` (reason token), `bulk_upload_lock_timeout`,
 `bulk_upload_notify_failed` (batch_id, record_id).
 
 ## 9. Frontend
@@ -245,12 +244,12 @@ States:
 - **Ready:** step 1 "Download the pre-filled template" (`btn secondary`, a real `<a download>` link, not `window.open`);
   "Column reference" table; step 2 labelled file input (`accept=".csv,text/csv"`) + submit.
 - **Loading:** submit and file input disabled, button text "Uploading…", form `aria-busy="true"`, polite `role="status"`.
-- **Request error** (`role="alert"`): API `detail` via `friendlyMessage`; 413/422/409/429 messages as sent (429 adds the wait);
+- **Request error** (`role="alert"`): API `detail` as sent (413/422/409);
   network failure → "The connection dropped. Upload again — the same file won't be added twice." The idempotency key is
   generated when a file is chosen and **kept across retries of that file**; a new file or a success resets it.
 - **Result:** heading "Upload result" receives focus (`tabIndex={-1}`); summary "N of M rows added, K rejected. Rows that
-  succeeded are kept." (text, not colour); table Row · Student ID · Result ("Added"/"Rejected") · Detail; rejected rows first
-  when any exist; `router.refresh()` so the lists above update.
+  succeeded are kept." (text, not colour); table Row · Student ID · Result ("Added"/"Rejected") · Detail, in file order (S5);
+  `router.refresh()` so the lists above update.
 - **Responsive:** existing `.table-wrap` horizontal scroll; form fields stack; tested at 320/768/1024/1440.
 
 ## 10. Acceptance criteria
@@ -263,7 +262,7 @@ States:
 | AC4 | A row naming a student outside the uploader's portfolio is rejected for that row only; the batch report never reveals data about that student. |
 | AC5 | A row for a school whose tier lacks the service is rejected for that row only, with one `TIER_DENIED` audit per school/service per batch; Results are not tier-gated. |
 | AC6 | Duplicates (existing record or earlier row) are rejected per §6 natural keys. |
-| AC7 | Batch and row audit trail stored (§4); `GET /bulk-uploads/{id}` returns it to the uploader only (404 otherwise). |
+| AC7 | Batch and row audit trail stored (§4) and returned as the report by the upload and by its replay; `school.bulk_upload` audit entry per batch. |
 | AC8 | Whole-file errors (§5.1 #2–#10) write nothing. |
 | AC9 | Parents of accepted Psychometric/Test Prep/Language rows get the single-create notice after commit; a send failure keeps the records; Results upload notifies nobody. |
 | AC10 | Bulk Results can't be verified/published by their uploader (DEC-ROLE-007 unchanged). |
@@ -277,8 +276,8 @@ States:
 Backend (`apps/api/tests/`):
 - `test_enh_028_migration.py` — AC13.
 - `test_enh_028_bulk_core.py` — key format, replay, different-file 422, concurrent same-key (two sessions: one wins, other
-  replays), size/encoding/header/row-count 4xx write nothing, throttle 429 + `Retry-After`, batch GET owner-only 404, report
-  arithmetic, operational log fields contain no values.
+  replays), size/encoding/header/row-count 4xx write nothing, another user's key never replays, report arithmetic,
+  operational log fields contain no values.
 - `test_enh_028_bulk_results.py` — AC1/3/4/6/10 for Results, incl. marks > max, overflow bounds, duplicate in file and in DB,
   outside-portfolio, unknown code, blank template rows skipped, no notification.
 - `test_enh_028_bulk_psychometric.py` — AC1/3/5/9: ENH-027 fields, list/date parsing, `report_url` scheme, completed vs
@@ -289,16 +288,16 @@ Backend (`apps/api/tests/`):
   `test_enh_022_*`, `test_enh_023_*`, `test_enh_027_*`, `test_sec_001_audit_trail`, `test_enh_005_*` (transfer interplay).
 
 Frontend:
-- `tests/components/SchoolBulkEntryPanel.test.tsx` (Vitest) — empty state; loading disables; result focus + rejected-first;
+- `tests/components/SchoolBulkEntryPanel.test.tsx` (Vitest) — empty state; loading disables; result focus + file order;
   error alert; retry reuses key, new file resets it; column reference.
 - `tests/e2e/enh-028-bulk-entry.spec.ts` (Playwright) — Academic Team uploads results CSV (one bad row) → report → Draft rows
   visible; Psychometric Team upload; template download contains only portfolio students. Browser validation at 320/1440.
 
-## 12. Proposed decision record (to add as `DEC-SCOPE-042` on approval)
+## 12. Decision record (`DEC-SCOPE-042`, recorded in `PRODUCT_DECISION_REGISTER.md`)
 
 "ENH-028 bulk data entry for Results/Psychometric/Test Prep/Language: create-only CSV, `student_code` key, same parent
 notices after commit, 1 MB/500 rows, bulk-only duplicate rejection, generalized batch/row tables, user-scoped idempotency
-keys, 20 uploads/user/hour." Status `CONFIRMED_CURRENT` only with the user's approval of this spec.
+keys; simplifications S1–S5." `CONFIRMED_CURRENT` — approved by the user in-session 2026-10-01.
 
 ## 13. Regression risks and mitigations
 
