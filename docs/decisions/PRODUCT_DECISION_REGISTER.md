@@ -2658,7 +2658,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 - **D10 — Migration.** Each existing agent becomes Master `M001` of its own organisation: `approved` → `active`, `pending` → `pending`, `rejected` → `pending` (for re-review). Data access is unchanged.
 - **D11 — Admin-created agents.** Creating a `role='agent'` user through admin user-create (`ADM-001`) also creates a `pending` organisation with that user as `M001`.
 - **D12 — Notifications.** Agent notifications that today go to the single agent (commission estimated, commission eligible) go to every active Master of the organisation.
-- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`. *(2026-09-30: Staff logins since decided as `DEC-SCOPE-040`, `AGN-002`; staff assignment/ownership, staff performance and CRM settings remain blocked.)*
+- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`. *(2026-09-30: Staff logins since decided as `DEC-SCOPE-040`, `AGN-002`; staff assignment/ownership, staff performance and CRM settings remain blocked. 2026-10-01: staff permissions decided as `DEC-SCOPE-041`, `AGN-003`.)*
 
 **Review decisions, 2026-09-29 (`EXPLICIT_APPROVAL`, in-session, after the API / security / frontend review of the build):**
 - **R1 — Invite throttle.** At most 10 Master invites per agency per rolling 24 hours (counted from `agent_org.master_invite` audit rows, under the organisation lock); over the limit → `429` with `Retry-After`. Reason: invite → deactivate → invite loops otherwise let an approved agency send unlimited set-password emails to any address under a name it chooses.
@@ -2691,7 +2691,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 
 **Resolution:** owner, in-session 2026-09-30 (`EXPLICIT_APPROVAL` — the owner's `AGN-002` statement and answers to four structured questions, not the source document's wording):
 
-- **S1 — Staff access.** A staff member of an `active` organisation uses the existing agent student and application routes with the organisation-wide scope Masters have today. Team management (Masters and staff) and commissions stay Master-only. Narrowing staff to assigned students, staff assignment/ownership, staff performance and permission levels stay out of scope (still blocked under `C-10`).
+- **S1 — Staff access.** A staff member of an `active` organisation uses the existing agent student and application routes with the organisation-wide scope Masters have today. Team management (Masters and staff) and commissions stay Master-only. Narrowing staff to assigned students, staff assignment/ownership, staff performance and permission levels stay out of scope (still blocked under `C-10`). *(2026-10-01: permission levels since decided as `DEC-SCOPE-041`, `AGN-003` — two per-staff toggles, Verify Documents and Reports; assigned-only scope stays parked.)*
 - **S2 — Model.** A staff member is a `User` with `role='agent'`, division `overseas`, an approved `agent` role assignment, and an `AgentOrgMember` with member role `staff`. Staff codes are `<PREFIX>-S###` from a per-organisation staff counter separate from `master_seq`: unique, monotonic (next = highest ever issued + 1), never reassigned. Every Master-only check tests the member role, and the Master rules of `DEC-SCOPE-038` (3-Master limit D4, last-Master rule D8/R3, notifications D12) count Masters only.
 - **S3 — Reset.** Only a Master of the staff member's organisation resets a staff login: the current password becomes unusable, a one-time set-password link is emailed through the `DEC-SCOPE-019` mechanism (the Master never sees the token, as for Master invites), and the staff member's existing sessions end. Creating staff sends the same link; the response reports whether the email was sent.
 - **S4 — Fields and limits.** Name, email and phone. Email is fixed after creation (name and phone are editable). No cap on the number of staff. Staff creations and resets are throttled per agency on a rolling 24 hours, like `DEC-SCOPE-038` R1; the exact budget is set in the design spec.
@@ -2699,3 +2699,41 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 - **S6 — Tenancy and audit.** A Master of another organisation cannot list, see or change a staff member (`404`). Every staff action (create, edit, deactivate, reactivate, reset) writes an audit row with `entity_type='agent_org'` in the same transaction.
 
 **Consequences:** migration widening the member role, the member sequence constraint and the member status set, and adding a staff counter; new staff endpoints under the Master team route; a session-revocation check in `get_current_user` and refresh (design spec); role filters added to the Master rules and team listings; Overseas Admin's per-agent approve/reject and admin user reactivation must not bypass S1/S5 for staff (design spec); `AgentTeamPanel` gains a Staff section. Open design details (session-revocation mechanism, throttle budget, reactivation of a never-activated staff account, admin-route handling) are settled in the `AGN-002` design spec, not here.
+
+### DEC-SCOPE-041 — Agent staff permissions: the Master vs Staff matrix (`AGN-003`)
+
+**ID note:** provisional number, the next free after `DEC-SCOPE-040`. If another branch reaches `main` first holding `DEC-SCOPE-041`, this entry is renumbered on merge (precedent: `DEC-SCOPE-038`/`039`).
+
+**Question:** the owner's `AGN-003` statement (in-session, 2026-10-01): "the §6 matrix: Staff are limited to the student journey, with no admin modules; 'Set permissions' / 'Permission Level'", with acceptance criteria: every ❌ cell in §6 returns 403 for Staff with a test; every ✅ cell succeeds; toggles flip the two optional rows; a toggle change applies on the next request. `DEC-SCOPE-040` S1 had left permission levels blocked under `CONFLICT_MATRIX.md` `C-10`. Which rows are optional and toggleable, at what granularity, how far does the matrix reach, and how does agent document verification relate to the counselor's review?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 "Set permissions", §3 "Permission Level", §4 "Staff Login – Student Journey Only", §6 "Master vs Staff Permissions" (Verify Documents "⚠️ Optional", Reports "❌/Limited"). Impact analysis, 2026-10-01:
+- Staff are refused only team management and commissions today (`agent_team._require_master`, `workflows._require_agent_master`, `portal.py` `{team, commissions}`).
+- No agent can verify or reject documents. `PATCH /workflows/overseas/documents/{id}/verify` is counselor/Overseas Admin only.
+- Several §6 rows have no agent route at all: Create/Edit/Delete Student as records, Assign Student(s), Edit Application, Change Application Status, Add University, Staff Performance and CRM Settings.
+- No per-organisation or per-member settings storage exists.
+
+**Conflicts recorded, not silently resolved:**
+- `EVID-015` §6 limits staff to "Assigned" students and applications; `DEC-SCOPE-040` S1 gives them agency-wide scope (kept, P4).
+- `EVID-015` §6 gives Masters "Add University"; no agent has that route (P3, recorded in the spec matrix).
+
+**Resolution:** owner, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — the owner's `AGN-003` statement and answers to six structured questions, not the source document's wording):
+
+- **P1 — Toggles.** Verify Documents and Reports are the two optional rows. Both are off by default for staff. Existing staff therefore lose the Reports page until a Master switches it on.
+- **P2 — Granularity.** Per staff member, set by a Master of the staff member's organisation ("Set permissions").
+- **P3 — Reach.** The matrix is enforced on routes that exist. §6 rows with no capability for any agent are recorded N/A and stay parked under `C-10`. The one new capability is agent document verification, so the Verify toggle has effect.
+- **P4 — Student scope.** Staff keep agency-wide students and applications (`DEC-SCOPE-040` S1). Assignment/ownership stays parked.
+- **P5 — Agent review.** An agent (a Master, or staff with Verify) decides only a document still `pending`. A counselor's or Overseas Admin's decision is never overwritten by an agent; they may still re-review an agent's decision.
+- **P6 — Staff outcome.** Staff with Verify may record `verified` only. Rejecting or requesting changes stays Master-only.
+
+**Assumptions stated by design (owner may correct in spec review):**
+- **P7** "Permission Level" is not a create-form field.
+- **P8** Toggles may be set on a deactivated staff member, are not throttled, and every change is audited.
+
+**Consequences:**
+- Migration `0048` adds two staff flags to `agent_org_members`.
+- A Master-only `PUT …/team/staff/{id}/permissions`.
+- An agent branch on the document verify route.
+- `agent_permissions` on `/auth/me` and `permissions` on the staff shape (additive).
+- The portal refuses staff Reports without the toggle.
+- The staff row gains Permissions; the agent Documents page gains a review queue.
+- Design and full matrix: `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md`.
