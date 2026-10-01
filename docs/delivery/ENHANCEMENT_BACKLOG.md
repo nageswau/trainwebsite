@@ -1981,6 +1981,18 @@ regression risk (data fragmentation) — the primary reason this item leads with
 `docs/superpowers/plans/2026-10-01-enh-020-funding-support-tracking.md`. The backlog's `school_student` viewer does not exist
 (no student login, DEC-ROLE-004) and `require_tier()` does not exist (`require_school_entitlement` is used).
 
+**Status (2026-10-01): IMPLEMENTED — NOT YET COMPLETE** on `feature/enh-020-funding-tracker` (from `main` @ `18886bf`).
+Pending: browser validation and an independent (Codex) review. Evidence (isolated Compose project `enh020`, API 8020 / web 3020):
+backend full suite **2499 passed / 16 failed** before the last test-isolation fix — 14 = the provider-credential baseline (11
+Razorpay `test_pay_001_stu_010`, 3 Zoho); 2 = ENH-020 `caplog` tests silenced by an earlier in-process Alembic run (fixed with
+ENH-030's logger fixture, reproduced RED→GREEN); ENH-020 backend tests **136/136**; downstream ENH-016/017/022/023/SCH-011
+**187/187**. Web: vitest **126 files / 1333 tests**; `tsc` clean; `eslint` 0 errors (31 baseline warnings); `next build` OK.
+Playwright: `enh-020-funding-support` **5/5**, `enh-026-counselling-record` 6/6, `sch-011-entitlements` 1/1. Migration 0051
+upgrade → downgrade → upgrade OK; `alembic check` shows only two pre-existing non-ENH-020 drifts. A fresh whole-branch review
+found no Critical issues; its two Important accessibility findings (focus lost and save not announced when an edit makes a
+case final) are fixed with tests. **Open product question (`NEEDS_CONFIRMATION`):** a case left open at a previous school
+stays open after a transfer (neither school can change it; the parent still sees it) — follows from D7/D12.
+
 **Complexity:** Medium (pending audit). **Risk:** Medium.
 
 ---
