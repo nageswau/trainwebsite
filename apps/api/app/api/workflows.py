@@ -2038,7 +2038,7 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
     try:
         review = AgentDocumentReview.model_validate(payload)
     except ValidationError as exc:
-        raise RequestValidationError(exc.errors(include_url=False)) from exc
+        raise RequestValidationError([{**e, "loc": ("body", *e["loc"])} for e in exc.errors(include_url=False)]) from exc
     if is_agent_staff(user) and review.verification_status != "verified":
         logger.warning(
             "document_review_refused_staff_outcome",

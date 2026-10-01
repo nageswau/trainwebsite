@@ -25,7 +25,7 @@ export async function adminActivate(request: APIRequestContext, email: string) {
 
 export async function registerApprovedAgency(page: Page, unique: number, label = "agn002") {
   const email = `${label}-m-${unique}@example.local`;
-  const agency = `Sigma Overseas ${unique}`;
+  const agency = `Sigma Overseas ${label} ${unique}`;
   await page.goto("/overseas/register");
   await page.fill('input[name="full_name"]', "Sigma Master");
   await page.fill('input[name="email"]', email);

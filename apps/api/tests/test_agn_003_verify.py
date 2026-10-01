@@ -162,6 +162,16 @@ async def test_bad_agent_review_bodies_are_refused(db_session, body):  # Review 
 
 
 @pytest.mark.asyncio
+async def test_agent_review_422_loc_carries_the_body_prefix(db_session):
+    ctx = await mk_active_org(db_session, name=f"Loc Prefix {uniq()}")
+    world = await agency_document(db_session, ctx)
+    async with client_for(ctx["master"].email) as m:
+        response = await m.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "approved"})
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "verification_status"]
+
+
+@pytest.mark.asyncio
 async def test_verify_toggle_applies_on_next_request(db_session):  # Review Focus 1
     ctx = await mk_active_org(db_session, name=f"Verify Next {uniq()}")
     staff = await mk_staff(db_session, ctx["org"])
