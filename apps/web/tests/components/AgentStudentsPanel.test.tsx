@@ -104,6 +104,27 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Add student" })).toHaveFocus());
   });
 
+  it("returns focus to Add student whenever the frame runs relative to the re-render (AGN-005 QA5-02 browser re-check)", async () => {
+    // In the browser a save resolves outside a click, and React re-rendered after the next frame, so a frame-timed focus hit the
+    // still-disabled button. Running frames immediately reproduces that ordering here.
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
+    const created = { ...item({ id: "s9", full_name: "Meera Qa" }), date_of_birth: null, highest_qualification: null, institution: null, graduation_year: null, preferred_course: null, notes: null, created_by: "M", archived_at: null, archived_by: null, updated_at: "" };
+    vi.stubGlobal("fetch", vi.fn((_url: string, init?: RequestInit) => Promise.resolve(init?.method === "POST" ? res({ student: created }, 201) : res(page([item()])))));
+    render(<AgentStudentsPanel memberRole="master" />);
+    await screen.findByText("Asha Rao");
+    fireEvent.click(screen.getByRole("button", { name: "Add student" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add student" })).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Add student" }));
+    fireEvent.change(await screen.findByLabelText("Full name (required)"), { target: { value: "Meera Qa" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save student" }));
+    expect(await screen.findByText("Meera Qa added.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add student" })).toHaveFocus());
+  });
+
   it("hides Unarchive from staff on an archived student (AGN-005-AC06)", async () => {
     window.history.replaceState(null, "", "/?archived=1"); // Show archived on (QA-06 keeps it in the URL; afterEach resets it)
     const fetchMock = vi.fn<(url: string) => Promise<Response>>(() => Promise.resolve(res(page([item({ status: "archived" })]))));

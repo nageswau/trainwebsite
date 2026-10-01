@@ -132,11 +132,19 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
   }, [confirm]);
 
   // AGN-005 QA5-02: Add student is disabled while its form is open, so keyboard focus would fall to the page; give it back to the
-  // opener once the form closes (Cancel or saved), after the re-render enables it.
+  // opener once the form closes (Cancel or saved). An effect runs after the commit that re-enables the button -- a frame-timed
+  // focus missed it after a save, which re-renders outside the click (browser re-check).
+  const focusAddOnClose = useRef(false);
   function closeAdd() {
+    focusAddOnClose.current = true;
     setAdding(false);
-    requestAnimationFrame(() => document.getElementById(ADD_ID)?.focus());
   }
+  useEffect(() => {
+    if (!adding && focusAddOnClose.current) {
+      focusAddOnClose.current = false;
+      document.getElementById(ADD_ID)?.focus();
+    }
+  }, [adding]);
 
   function clearFilters() {
     setDraft("");
