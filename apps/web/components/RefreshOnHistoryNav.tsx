@@ -9,10 +9,10 @@ import { useRouter } from "next/navigation";
 export default function RefreshOnHistoryNav() {
   const router = useRouter();
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    // After Next's own popstate handling has restored the cached page.
+    // After Next's own popstate handling has restored the cached page. The page that hears Back is the one being left and it
+    // unmounts during that swap, so the scheduled refresh is deliberately NOT cancelled on unmount (the router is app-wide).
     const onPopState = () => {
-      timer = setTimeout(() => router.refresh(), 0);
+      setTimeout(() => router.refresh(), 0);
     };
     const onPageShow = (event: PageTransitionEvent) => {
       if (event.persisted) router.refresh();
@@ -20,7 +20,6 @@ export default function RefreshOnHistoryNav() {
     window.addEventListener("popstate", onPopState);
     window.addEventListener("pageshow", onPageShow);
     return () => {
-      clearTimeout(timer);
       window.removeEventListener("popstate", onPopState);
       window.removeEventListener("pageshow", onPageShow);
     };

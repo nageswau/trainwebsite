@@ -36,6 +36,21 @@ describe("RefreshOnHistoryNav (AGN-003 browser QA-07)", () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
+  // Browser re-check of QA-07: the page that hears Back is the one being left, and it unmounts while Next swaps in the cached
+  // page -- the refresh it scheduled must still run.
+  it("still refreshes when the page that heard Back unmounts before the refresh runs", () => {
+    vi.useFakeTimers();
+    const { unmount } = render(<RefreshOnHistoryNav />);
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    unmount();
+    act(() => {
+      vi.runAllTimers();
+    });
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
   it("stops listening when unmounted", () => {
     vi.useFakeTimers();
     const { unmount } = render(<RefreshOnHistoryNav />);
