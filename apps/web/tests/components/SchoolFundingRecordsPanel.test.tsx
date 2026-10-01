@@ -48,7 +48,8 @@ describe("SchoolFundingRecordsPanel", () => {
     expect(screen.getByRole("button", { name: "Edit education loan case for Asha" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit scholarship case for Ravi" })).toBeInTheDocument();
     const firstRow = within(screen.getByRole("table", { name: "Open cases" })).getAllByRole("row")[1];
-    expect(within(firstRow).getAllByRole("cell").map((c) => c.getAttribute("data-label"))).toEqual(["Student", "Support type", "Stage", "Since", "Provider", "Actions"]);
+    // QA-05: the actions cell has no phone caption -- its Edit button already says what it does.
+    expect(within(firstRow).getAllByRole("cell").map((c) => c.getAttribute("data-label"))).toEqual(["Student", "Support type", "Stage", "Since", "Provider", null]);
   });
 
   it("opens the edit form with focus on its heading, and Escape closes it", async () => {

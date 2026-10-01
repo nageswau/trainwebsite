@@ -70,7 +70,7 @@ export default function SchoolFundingRecordsPanel({ records, students }: { recor
                     <td data-label="Stage"><span className={statusClass(r.status)}>{stageText(r.status)}</span></td>
                     <td data-label="Since">{formatCalendarDate(r.status_changed_on)}</td>
                     <td data-label="Provider">{r.provider_name || "—"}</td>
-                    <td data-label="Actions">
+                    <td>
                       <button id={`funding-edit-${r.id}`} type="button" className="btn secondary small" onClick={() => startEdit(r)}>
                         Edit<span className="visually-hidden"> {caseName(r)}</span>
                       </button>
