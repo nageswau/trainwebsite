@@ -80,6 +80,18 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     expect(screen.getByRole("button", { name: "View Asha Rao" })).toBeInTheDocument();
   });
 
+  it("hides Unarchive from staff on an archived student (AGN-005-AC06)", async () => {
+    window.history.replaceState(null, "", "/?archived=1"); // Show archived on (QA-06 keeps it in the URL; afterEach resets it)
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(() => Promise.resolve(res(page([item({ status: "archived" })]))));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentStudentsPanel memberRole="staff" />);
+    await screen.findByText("Asha Rao");
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("include_archived=true"))).toBe(true);
+    expect(screen.queryByRole("button", { name: "Unarchive Asha Rao" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Archive Asha Rao" })).toBeNull();
+    expect(screen.getByRole("button", { name: "View Asha Rao" })).toBeInTheDocument();
+  });
+
   it("lets a Master assign an active student to a staff member and updates the card (AC09)", async () => {
     const priya = { id: "m1", code: "EDU-S001", full_name: "Priya Nair", status: "active" };
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
