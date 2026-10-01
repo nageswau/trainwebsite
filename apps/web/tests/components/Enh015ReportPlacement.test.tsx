@@ -30,6 +30,7 @@ function serve(role: string) {
   vi.mocked(serverApi).mockImplementation(async (path: string) => {
     if (path === "/api/v1/auth/me") return user(role) as never;
     if (path === "/api/v1/school/reports") return {} as never;
+    if (path.endsWith("/funding-records")) return [] as never; // ENH-020: the student pages also read the funding support cases
     if (path.startsWith("/api/v1/school/students/")) return { id: "stu-1", student_code: "S1", full_name: "Kid", date_of_birth: null, grade_or_class: null } as never;
     throw new Error(`unexpected request ${path}`);
   });

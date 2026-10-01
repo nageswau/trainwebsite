@@ -2708,6 +2708,40 @@ correction, not deleted, per this project's traceability convention.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** `SchoolBulkEntryPanel.test.tsx`, `tests/e2e/enh-028-bulk-entry.spec.ts`, `test_enh_028_*.py`, browser verification.
 
+### `SCR-SCH-041` *(added 2026-10-01, `ENH-020` / `DEC-SCOPE-045`, provisional number)*
+- **Route:** `/school/career-counselor/funding`
+- **Role(s):** Career Counselor (own school portfolio).
+- **Purpose:** Track students' education loan, financial assistance, scholarship and funding guidance cases through Required → Counselling → Documents → Application → Approved → Completed, or Closed with a reason (`School CRM.md` §21).
+- **Linked Feature ID(s):** `ENH-020`
+- **Entry points:** Sidebar "Funding" for the Career Counselor (after "Skills").
+- **Required data:** Server-rendered (one parallel read): GET /auth/me, GET /school/career-counselor/funding-records, GET /school/portfolio-students. Client: POST /school/funding-records, PATCH /school/funding-records/{id}.
+- **Key actions:** Add a case (student, support type, optional provider, amount, notes); Edit an open case — one stage forward, or Close with a required reason; edit provider/amount/notes. Finished cases (Completed/Closed) are read-only in a collapsed "Finished cases (n)" section.
+- **Empty state:** "No funding support cases yet. Add one below when a student needs a loan, scholarship or funding guidance."; no portfolio: "No students in your portfolio yet. Contact your Overseas Admin."
+- **Loading state:** `loading.tsx` skeleton with `aria-busy` inside the portal shell; saving disables the form, the button reads "Saving…" with `aria-busy`.
+- **Error state:** refused page read → Access Unavailable card; refused save → the server's words as an alert under the form, entry kept (tier 403, duplicate open case 409, 422 stage/reason rules); stale edit 409 → "Discard my changes and reload"; 5xx/network → plain-language alert, entry kept.
+- **Permissions/resource scope:** `career_counselor` only, own portfolio; writes only while the student is still at the case's school (D12); per-type tier gate on writes (`scholarship` ⇒ Gold+, others ⇒ Platinum); reads not tier-gated.
+- **Responsive behavior:** At ≤640 px open-case rows become stacked cards labelled by `data-label` (the `psy-records` rule), 44 px buttons; no horizontal page scroll at 320/768 px (e2e).
+- **Accessibility requirements:** one h1 ("Funding support"), h2 for Open cases, the edit form and Add a case (QA-06); table named by its heading with column headers; stage as text ("Stage 3 of 6 · Documents"), never colour alone; unique Edit names; focus to the edit heading and back to the row's Edit button; Escape closes; choosing Closed focuses the required reason; results via `FormMessage`.
+- **Desktop/tablet/mobile behavior:** table on desktop/tablet; stacked cards on phones.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `SchoolFundingRecordsPanel.test.tsx`, `FundingRecordForm.test.tsx`, `tests/e2e/enh-020-funding-support.spec.ts`, `test_enh_020_*.py`. COMPLETE (verified 2026-10-01 at `0f8ed2e`: browser verification 49/49, e2e 6/6).
+
+### `SCR-SCH-042` *(added 2026-10-01, `ENH-020` / `DEC-SCOPE-045`)*
+- **Route:** card on `/school/parent/children/[id]`, `/school/coordinator/students/[id]`, `/school/principal/students/[id]` — on the parent page directly after the child overview (QA-04)
+- **Role(s):** School Parent (own child), School Coordinator and Principal (own institution).
+- **Purpose:** Read-only view of one student's funding support cases.
+- **Linked Feature ID(s):** `ENH-020`
+- **Entry points:** the existing student / child detail pages.
+- **Required data:** GET /school/students/{id}/funding-records, joined into each page's existing parallel read.
+- **Key actions:** none.
+- **Empty state:** "No funding support cases for this student."
+- **Loading state:** the host page's.
+- **Error state:** "Funding support cases couldn't be loaded. Reload the page to try again." — the rest of the page still renders.
+- **Permissions/resource scope:** parent sees all of their child's cases; coordinator/principal see only cases opened at the student's current school; teachers refused by the API.
+- **Responsive behavior / Accessibility requirements:** `record-details` list (one column on phones); heading level follows the page; stage as text; no controls.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `FundingRecordsCard.test.tsx`, `Enh015ReportPlacement.test.tsx`, e2e parent test. COMPLETE (verified 2026-10-01 at `0f8ed2e`).
+
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  
 - **Role(s):** IT Admin, Placement Team  

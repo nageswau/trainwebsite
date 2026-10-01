@@ -3030,5 +3030,53 @@
     "dtm": "Desktop: full layout. Tablet/mobile: single column, table scrolls horizontally.",
     "visual": "None — not inspected. Do not claim parity.",
     "evidence": "GlobalEducationPipeline.test.tsx, GlobalEducationPage.test.tsx, tests/e2e/enh-017-global-education.spec.ts, test_enh_017_global_education_pipeline.py (passing as implemented); browser QA and accessibility passed (docs/quality/ENH-017_BROWSER_QA_2026-09-29.md) — COMPLETE (verified 2026-09-29 at 949aa2c)."
+  },
+  {
+    "id": "SCR-SCH-041",
+    "roles": [
+      "Career Counselor"
+    ],
+    "route": "/school/career-counselor/funding",
+    "purpose": "The counsellor's funding support cases (education loan, financial assistance, scholarship, funding guidance) across the portfolio, tracked Required → Counselling → Documents → Application → Approved → Completed, or Closed with a reason (School CRM.md §21).",
+    "features": [
+      "ENH-020"
+    ],
+    "entry": "Sidebar \"Funding\" for the Career Counselor (after \"Skills\").",
+    "data": "Server-rendered: GET /auth/me, GET /school/career-counselor/funding-records, GET /school/portfolio-students (one parallel read). Client: POST /school/funding-records, PATCH /school/funding-records/{id}.",
+    "actions": "Add a case (student, support type, optional provider, amount, notes); Edit an open case: move one stage forward or Close with a reason, edit provider/amount/notes. Finished cases are read-only.",
+    "empty": "\"No funding support cases yet. Add one below when a student needs a loan, scholarship or funding guidance.\"; no portfolio: \"No students in your portfolio yet. Contact your Overseas Admin.\"",
+    "loading": "loading.tsx skeleton lines with aria-busy=\"true\" inside the portal shell; saving disables the form and shows \"Saving…\" (aria-busy).",
+    "error": "A refused page read renders the Access Unavailable card; a refused save shows the server's words as an alert under the form (tier 403, duplicate open case 409, 422 rules) and keeps the entry; a stale edit (409) offers \"Discard my changes and reload\"; 5xx and network failures keep the entry.",
+    "perms": "career_counselor only, own school portfolio; writes only while the student is still at the case's school; per-type tier gate on writes, none on reads.",
+    "responsive": "At ≤640px open-case rows become stacked cards labelled from data-label (no sideways scroll), buttons are 44px tall; finished cases are a single-column definition list.",
+    "a11y": "one h1 (Funding support), h2 for Open cases, the edit form and Add a case (QA-06); table named by its heading with column headers; stage shown as text (\"Stage 3 of 6 · Documents\"), never colour alone; unique Edit button names; focus to the edit heading on open, back to the row's Edit button on close; Escape closes; choosing Closed moves focus to the required reason; results via FormMessage live region.",
+    "dtm": "Desktop/tablet: table; mobile: stacked cards.",
+    "visual": "None — not inspected. Do not claim parity.",
+    "evidence": "SchoolFundingRecordsPanel.test.tsx, FundingRecordForm.test.tsx, fundingRecords.test.ts, tests/e2e/enh-020-funding-support.spec.ts, test_enh_020_funding_records.py, test_enh_020_reads.py. COMPLETE (verified 2026-10-01 at 0f8ed2e: browser verification 49/49, e2e 6/6)."
+  },
+  {
+    "id": "SCR-SCH-042",
+    "roles": [
+      "School Parent",
+      "School Coordinator",
+      "School Principal"
+    ],
+    "route": "Card on /school/parent/children/[id], /school/coordinator/students/[id], /school/principal/students/[id] (parent page: directly after the child overview, QA-04)",
+    "purpose": "Read-only view of one student's funding support cases.",
+    "features": [
+      "ENH-020"
+    ],
+    "entry": "The existing student / child detail pages.",
+    "data": "GET /school/students/{id}/funding-records, joined into each page's existing parallel read with .catch(() => null).",
+    "actions": "None (read-only).",
+    "empty": "\"No funding support cases for this student.\"",
+    "loading": "The host page's own loading state.",
+    "error": "\"Funding support cases couldn't be loaded. Reload the page to try again.\" — the rest of the page still renders.",
+    "perms": "Parent: own linked child, every case. Coordinator/Principal: own institution, only cases opened at the student's current school. Teachers are refused by the API.",
+    "responsive": "record-details definition list, one column on phones.",
+    "a11y": "Heading level follows the page (h3 on the parent page, h2 on staff pages); stage as text; no controls.",
+    "dtm": "Same card at every width.",
+    "visual": "None — not inspected. Do not claim parity.",
+    "evidence": "FundingRecordsCard.test.tsx, Enh015ReportPlacement.test.tsx (pages render with the card), tests/e2e/enh-020-funding-support.spec.ts (parent). COMPLETE (verified 2026-10-01 at 0f8ed2e)."
   }
 ]

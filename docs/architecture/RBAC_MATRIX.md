@@ -410,6 +410,19 @@ even via direct ID, same as every other use of that mechanism. Covered by `test_
 
 Covered by `test_enh_013_360_view.py` (scope matrix, per-role projection, mutation-checked) and `test_enh_013_career_goal.py`.
 
+**Addendum, 2026-10-01 (`ENH-020` / `DEC-SCOPE-045`) — funding support cases (financial-need data, scoped tighter than career records).**
+
+| Action | Granted | Denied |
+|---|---|---|
+| Open a case (`POST /school/funding-records`) | `career_counselor`, own school portfolio (checked under the student row lock), **and** the school's tier includes the type's service (`scholarship` ⇒ `scholarship_assistance`, Gold+; the other three ⇒ `loan_assistance`, Platinum) | every other role `403`; outside portfolio `403`; tier `403` (`school.tier_access_denied`) |
+| Advance / close a case (`PATCH /school/funding-records/{id}`) | any `career_counselor` whose portfolio covers the student, **only while the student is still at the school that opened the case** (D12); tier with grandfathering | every other role `403`; outside portfolio `403`; previous school's case `403` |
+| Read the counsellor list (`GET /school/career-counselor/funding-records`) | `career_counselor` — cases opened at a portfolio school whose student is still there | every other role `403` |
+| Read one student's cases (`GET /school/students/{id}/funding-records`) | `school_coordinator`/`school_principal` own institution, `school_parent` linked child, `career_counselor` portfolio — staff see only cases opened at the student's current school; parents see all of their child's | **`school_teacher` `403` even for an assigned student** (explicit, before the shared loader); `academic_team`, `psychometric_team`, every other role `403`; outside scope `403` |
+
+Every role/scope refusal on these routes writes `school.funding_record_denied` (actor, role, reason, target id — no contents).
+Reads are not tier-gated. Covered by `test_enh_020_funding_records.py` and `test_enh_020_reads.py` (role × scope matrix,
+teacher deny, transfer, parent with children at two schools).
+
 ---
 
 ## 3. Support / admin audit controls

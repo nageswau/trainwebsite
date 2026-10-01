@@ -1490,6 +1490,33 @@ class SchoolCareerRecord(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+class SchoolFundingRecord(Base, TimestampMixin):
+    """ENH-020 (DEC-SCOPE-045) -- School CRM.md §21 financial support / loan assistance case, `DATA_MODEL.md` §6.25.
+    `school_id` is the student's school when the case was opened (D12): staff see a case only while the student is still
+    there; a linked parent always sees it. One open case per student, school and type (partial unique index, D7)."""
+
+    __tablename__ = "school_funding_records"
+    __table_args__ = (
+        CheckConstraint("support_type IN ('education_loan', 'financial_assistance', 'scholarship', 'funding_guidance')", name="ck_funding_record_support_type"),
+        CheckConstraint("status IN ('required', 'counselling', 'documents', 'application', 'approved', 'completed', 'closed')", name="ck_funding_record_status"),
+        CheckConstraint("(status = 'closed') = (closure_reason IS NOT NULL)", name="ck_funding_record_closure"),
+        Index("uq_funding_record_open_student_type", "school_student_id", "school_id", "support_type", unique=True, postgresql_where=text("status NOT IN ('completed', 'closed')")),
+        Index("ix_school_funding_records_school_type", "school_id", "support_type"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    support_type: Mapped[str] = mapped_column(String(30))
+    status: Mapped[str] = mapped_column(String(20))
+    status_changed_on: Mapped[date] = mapped_column(Date)
+    provider_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    amount_text: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    notes: Mapped[str] = mapped_column(Text, default="")
+    closure_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    career_counselor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 class SchoolPsychometricRecord(Base, TimestampMixin):
     """SCH-005 -- Psychometric Assessment. Net-new, `DATA_MODEL.md` §6.18."""
 
