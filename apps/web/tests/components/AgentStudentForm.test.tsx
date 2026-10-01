@@ -152,7 +152,7 @@ describe("AgentStudentForm (AGN-004)", () => {
     const name = screen.getByLabelText("Full name (required)");
     await waitFor(() => expect(name).toHaveAttribute("aria-invalid", "true"));
     expect(name).toHaveAccessibleDescription("Must not contain control or bidirectional-override characters");
-    expect(name).toHaveFocus();
+    await waitFor(() => expect(name).toHaveFocus()); // focus moves on the next animation frame (lib/focus.refocus)
   });
 
   it("offers one next step while the duplicate warning is shown (QA-08)", async () => {
