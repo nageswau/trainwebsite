@@ -12,7 +12,7 @@ const OPEN: FundingRecord = {
 };
 const CLOSED: FundingRecord = { ...OPEN, id: "f2", support_type: "scholarship", status: "closed", provider_name: null, amount_text: null, notes: "", closure_reason: "Not eligible this year", updated_by_name: null };
 
-// ENH-020 (spec §6, SCR-SCH-041): the read-only view for parents, coordinators and principals.
+// ENH-020 (spec §6, SCR-SCH-042): the read-only view for parents, coordinators and principals.
 describe("FundingRecordsCard", () => {
   it("shows each case's type, stage in words and details, with no controls", () => {
     render(<FundingRecordsCard records={[OPEN, CLOSED]} />);

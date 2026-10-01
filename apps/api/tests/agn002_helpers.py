@@ -7,13 +7,14 @@ from tests.agn001_helpers import mk_user
 STAFF = "/api/v1/workflows/overseas/agent/team/staff"
 
 
-async def mk_staff(db, org: AgentOrg, *, full_name: str = "Staff Member", active: bool = True) -> dict:
+async def mk_staff(db, org: AgentOrg, *, full_name: str = "Staff Member", active: bool = True, can_verify_documents: bool = False, can_view_reports: bool = False) -> dict:
     org = await db.get(AgentOrg, org.id, populate_existing=True)
     user = await mk_user(db, role="agent", full_name=full_name, active=active)
     db.add(UserRoleAssignment(user_id=user.id, division="overseas", role="agent", approval_status="approved"))
     org.staff_seq += 1
     member = AgentOrgMember(
-        org_id=org.id, user_id=user.id, role="staff", seq=org.staff_seq, code=staff_code(org.prefix, org.staff_seq), status="active" if active else "deactivated"
+        org_id=org.id, user_id=user.id, role="staff", seq=org.staff_seq, code=staff_code(org.prefix, org.staff_seq), status="active" if active else "deactivated",
+        can_verify_documents=can_verify_documents, can_view_reports=can_view_reports,
     )
     db.add(member)
     await db.commit()

@@ -77,9 +77,11 @@ async def test_create_reports_the_email_and_never_returns_the_token(client, db_s
     body = response.json()
     # `email_status` is the SMTP outcome (not configured in the test stack); the webhook send is captured above.
     assert body["email_status"] in {"sent", "not_configured", "failed"} and body["expires_at"] and "development_welcome_token" not in body
+    # AGN-003 (DEC-SCOPE-044, spec §8): the staff shape now carries the two optional permissions.
     assert body["member"] | {"id": None} == {
         "id": None, "code": f"{ctx['org'].prefix}-S001", "full_name": "Rahul Staff", "email": body["member"]["email"],
         "phone": "+91 90000 00000", "status": "active", "setup": "pending_setup",
+        "permissions": {"can_verify_documents": False, "can_view_reports": False},
     }
     staff = await db_session.scalar(select(User).where(User.email == body["member"]["email"]))
     assert staff.role == "agent" and staff.division == "overseas" and staff.active and staff.profile["registration_source"] == "agent_staff_create"

@@ -1,9 +1,11 @@
 import PortalShell from "@/components/PortalShell";
 import SchoolAcademicProgressPanel, { type ProgressRow } from "@/components/SchoolAcademicProgressPanel";
 import SchoolAcademicResultsPanel from "@/components/SchoolAcademicResultsPanel";
+import SchoolBulkEntryPanel from "@/components/SchoolBulkEntryPanel";
 import SchoolTestPrepLanguagePanel from "@/components/SchoolTestPrepLanguagePanel";
 import Student360Directory from "@/components/Student360Directory";
 import { serverApi } from "@/lib/api";
+import { BULK_LANGUAGE, BULK_RESULTS, BULK_TEST_PREP } from "@/lib/bulkEntry";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 import { accessUnavailable } from "@/components/AccessUnavailable";
@@ -44,7 +46,10 @@ export default async function SchoolAcademicTeamDashboardPage() {
     <PortalShell nav={SCHOOL_NAV["academic-team"]} roleLabel="Academic Team" userName={user.full_name}>
       <SchoolAcademicProgressPanel progress={progress} />
       <SchoolAcademicResultsPanel results={results} students={students} currentUserId={user.id} />
+      <SchoolBulkEntryPanel target={BULK_RESULTS} hasStudents={students.length > 0} />
       <SchoolTestPrepLanguagePanel testPrepRecords={testPrepRecords} languageRecords={languageRecords} students={students} />
+      <SchoolBulkEntryPanel target={BULK_TEST_PREP} hasStudents={students.length > 0} />
+      <SchoolBulkEntryPanel target={BULK_LANGUAGE} hasStudents={students.length > 0} />
       <Student360Directory role="academic_team" students={students} />
     </PortalShell>
   );

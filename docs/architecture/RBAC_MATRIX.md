@@ -176,6 +176,51 @@ staff member keeps their students (G5). Enforcement: `services/agent_students.st
 `WHERE` clause (identical to AGN-001's clauses for a Master) and `core/rbac.is_agent_staff`. Proved by
 `tests/test_agn_004_students.py`, `test_agn_004_student_actions.py`, `test_agn_004_staff_scope.py`, `test_agn_004_staff_guards.py`.
 
+**AGN-003 addendum (2026-10-01, DEC-SCOPE-044).** The §6 Master-vs-Staff matrix as built (spec §3; ✅ = succeeds, ❌ = `403`,
+T = follows the staff member's toggle, N/A = no route for any agent, so parked under `C-10`). Enforcement: `core/rbac.agent_may`
+(Masters always; staff follow their own flag, read from the membership `get_current_user` loads on every request),
+`api/portal.py` (Reports), `workflows._agent_document_review` (Verify/Reject), `api/agent_team._require_master` (team routes).
+
+| §6 row | Route(s) | Master | Staff |
+|---|---|---|---|
+| Dashboard | `GET /portal/overseas/agent/dashboard` | ✅ full | ✅ limited (no commission figures, AGN-002) |
+| Create Student | `POST /workflows/overseas/agent/students` (links an existing student) | ✅ | ✅ |
+| View Students | `GET /workflows/overseas/agent/students`, `GET /portal/overseas/agent/students`, `GET /lookups/overseas-students` | ✅ agency | ✅ assigned only (`DEC-SCOPE-042` G4) |
+| Edit Student | — | N/A | N/A |
+| Delete Student | — | N/A | N/A |
+| Assign Student / Assign Students | — | N/A | N/A |
+| Create Application | `POST /workflows/overseas/applications` | ✅ | ✅ |
+| Edit Application | — (counselor/rep/admin only) | N/A | N/A |
+| View Applications | `GET /workflows/overseas/applications`, `GET /portal/overseas/agent/applications`, `GET /lookups/overseas-applications` | ✅ | ✅ |
+| Change Application Status | — (counselor/admin only) | N/A | N/A |
+| Upload Documents | `POST /workflows/overseas/documents`; `GET /portal/overseas/agent/documents` | ✅ | ✅ |
+| Verify Documents | `PATCH /workflows/overseas/documents/{id}/verify` with `verified` (**new for agents**) | ✅ | **T** |
+| Reject Documents | same route with `rejected` or `changes_required` | ✅ | ❌ (even with Verify on) |
+| University Database | `GET /public/universities`, `GET /public/universities/{slug}` | ✅ view | ✅ view |
+| Add University | `POST /admin/universities` (admin only) | ❌ | ❌ |
+| Staff Management | `GET /workflows/overseas/agent/team/staff`, `PATCH …/staff/{id}`, `PUT …/staff/{id}/permissions` (**new**), `GET /workflows/overseas/agent/team`, `GET /portal/overseas/agent/team` | ✅ | ❌ |
+| Create Staff Login | `POST /workflows/overseas/agent/team/staff`, `POST …/staff/{id}/reset` | ✅ | ❌ |
+| Deactivate Staff | `POST …/staff/{id}/deactivate`, `POST …/staff/{id}/reactivate` | ✅ | ❌ |
+| Staff Performance | — | N/A | N/A |
+| Reports | `GET /portal/overseas/agent/reports` | ✅ full | **T** (when on: today's staff report, no commission row) |
+| Commission | `GET /workflows/overseas/agent/commissions`, `POST …/commissions/{id}/claim`, `GET /portal/overseas/agent/commissions` | ✅ | ❌ |
+| CRM Settings | — | N/A | N/A |
+
+The Master-team routes (`POST …/team/masters`, `POST …/team/masters/{id}/deactivate`) sit under Staff Management and are ❌ for Staff.
+
+- **Toggles (P1/P2):** `can_verify_documents` and `can_view_reports`, per staff member, **off by default**. Only an active Master of the
+  staff member's organisation sets them (`PUT …/staff/{member_id}/permissions`). Nothing is copied into the JWT, so a change applies on
+  the staff member's next request with no session bump. On a Master's row the flags are stored but never read.
+- **Verify gives `verified` only (P6):** staff with Verify who send `rejected` or `changes_required` get `403`; Reject and Request
+  changes are Master-only. Agents decide only `pending` documents (P5); a counselor or Overseas Admin can still re-review.
+- **N/A rows** have no route for any agent, so no test is possible; they stay parked under `C-10` (spec §2). **Add University** is a
+  deliberate departure from the source's ✅ for Masters: the route is admin-only, no agent has ever had it (P3), and it is tested as
+  `403` for both member roles so the gap stays visible.
+
+Proved by `tests/test_agn_003_matrix.py` (every ❌ and every cheap ✅ cell; two Master ✅ cells are cited from `test_agn_001_team.py`
+(`test_a_pending_invitee_can_still_be_deactivated_by_an_accepted_master`, `test_a_master_may_deactivate_themselves_once_another_master_has_accepted`)
+and `test_agn_001_tenancy.py` (`test_a_second_master_sees_and_claims_what_the_first_created`)), `test_agn_003_permissions.py`, `test_agn_003_verify.py`.
+
 **`DEC-ROLE-004` (2026-09-14) — Agent on-behalf-of a referred student, NOT YET BUILT:** the
 approved Agent row above is read-only (view roster/commissions, claim). Since an Agent-referred
 student is never issued a login, the Agent must also **create** the referral (`AgentStudent`) and
@@ -231,6 +276,7 @@ merely a documented intent.
 | `psychometric_team` | **assign assessments, upload reports** | **Own school portfolio only** (`DEC-SCOPE-013`, same mechanism as `academic_team` above) — explicit deny on any student at a school outside the portfolio, even via direct record ID | `SCH-005` |
 | Global Education pipeline (`ENH-017`, `DEC-SCOPE-036`) | `school_coordinator` ✓ read, `school_principal` ✓ read (`GET /school/global-education/pipeline`); `school_teacher` ✗, `school_parent` ✗, `academic_team`/`career_counselor`/`psychometric_team` ✗, `counselor`/`overseas_admin`/`super_admin`/`it_admin` and every other Edusphere/overseas role ✗ (all `403`). Per-student high-level stage only; application detail never in payload (`School CRM.md` §19). | **Own school only** — derived from the session, no id parameter; no read tier gate (`DEC-SCOPE-027` D3) | `ENH-017` |
 | Reports & downloads, slice 1 (`ENH-015`, `DEC-SCOPE-037` provisional) | School Summary PDF (`GET /school/reports/school-summary`): `school_coordinator` ✓, `school_principal` ✓; every other role ✗ (`403`). Student Progress Report PDF (`GET /school/students/{id}/progress-report`): `school_parent` ✓ (linked children only), `school_coordinator` ✓, `school_principal` ✓ (own institution); `school_teacher` ✗ (teacher "Limited" reports undefined — `NEEDS_CONFIRMATION`), `academic_team`/`career_counselor`/`psychometric_team`, `overseas_admin`, `super_admin`, `it_admin` ✗ (`403`). Content never exceeds the same reader's on-screen view (summary = `ENH-016` figures; progress report = SCH-007 overview, no `report_url`). | **Own school** (summary, from the session) / **SCH-007 reader scope** (progress report); no tier gate | `ENH-015` |
+| Bulk data entry (`ENH-028`, `DEC-SCOPE-043`) | `academic_team` ✓ results / test-prep / language bulk upload and templates; `psychometric_team` ✓ psychometric bulk upload and template; every other role ✗ (`403`, checked before the file is read). **Per row**, the same scope as the single create: the row's student must be in the uploader's own portfolio (`SchoolStaffAssignment`), and the school's tier must include the row's service (not for results). The CSV cannot set the owner, school, status, verifier or publisher; bulk results are always Draft, so `SCH-006-AC04` still requires a different member to verify/publish. Idempotency keys are scoped per uploader. |
 
 **Supersedes `DEC-ROLE-005`'s row (2026-09-14, `DEC-ROLE-006`):** the earlier version of this section
 had a single `counselor` (extended) row for all service-delivery data, "if and when those modules are
@@ -364,7 +410,7 @@ even via direct ID, same as every other use of that mechanism. Covered by `test_
 
 Covered by `test_enh_013_360_view.py` (scope matrix, per-role projection, mutation-checked) and `test_enh_013_career_goal.py`.
 
-**Addendum, 2026-10-01 (`ENH-020` / `DEC-SCOPE-043`) — funding support cases (financial-need data, scoped tighter than career records).**
+**Addendum, 2026-10-01 (`ENH-020` / `DEC-SCOPE-045`) — funding support cases (financial-need data, scoped tighter than career records).**
 
 | Action | Granted | Denied |
 |---|---|---|

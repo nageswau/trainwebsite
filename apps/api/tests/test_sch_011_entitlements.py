@@ -137,7 +137,7 @@ async def test_usage_counts_reflect_real_data_hand_built_against_the_endpoint(cl
     assert _service(body, "digital_portfolio_creation")["used"] == 0  # ENH-016 D13 (DEC-SCOPE-034): ENH-012 portfolios are tracked, none yet
     for untracked_key in ("alumni_network", "parent_help_desk"):
         assert _service(body, untracked_key)["used"] is None
-    # ENH-020 (DEC-SCOPE-043 D8): funding support cases are tracked, none yet.
+    # ENH-020 (DEC-SCOPE-045 D8): funding support cases are tracked, none yet.
     assert _service(body, "loan_assistance")["used"] == 0 and _service(body, "scholarship_assistance")["used"] == 0
     assert _service(body, "internships")["used"] == 0  # ENH-021 (DEC-SCOPE-032): internships are tracked by requirement
 

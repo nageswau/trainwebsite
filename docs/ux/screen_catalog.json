@@ -3032,7 +3032,7 @@
     "evidence": "GlobalEducationPipeline.test.tsx, GlobalEducationPage.test.tsx, tests/e2e/enh-017-global-education.spec.ts, test_enh_017_global_education_pipeline.py (passing as implemented); browser QA and accessibility passed (docs/quality/ENH-017_BROWSER_QA_2026-09-29.md) — COMPLETE (verified 2026-09-29 at 949aa2c)."
   },
   {
-    "id": "SCR-SCH-040",
+    "id": "SCR-SCH-041",
     "roles": [
       "Career Counselor"
     ],
@@ -3055,7 +3055,7 @@
     "evidence": "SchoolFundingRecordsPanel.test.tsx, FundingRecordForm.test.tsx, fundingRecords.test.ts, tests/e2e/enh-020-funding-support.spec.ts, test_enh_020_funding_records.py, test_enh_020_reads.py. IMPLEMENTED — NOT YET COMPLETE (browser validation and independent review pending)."
   },
   {
-    "id": "SCR-SCH-041",
+    "id": "SCR-SCH-042",
     "roles": [
       "School Parent",
       "School Coordinator",

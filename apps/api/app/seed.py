@@ -766,7 +766,7 @@ async def main():
         # Every tracked entitlement service gets a real, non-zero usage count; every
         # deliberately-untracked service (alumni network, parent help desk) is left alone --
         # it has no seed data because it has no confirmed module, not because seeding was
-        # skipped. ENH-020 (DEC-SCOPE-043): loan and scholarship assistance are tracked by
+        # skipped. ENH-020 (DEC-SCOPE-045): loan and scholarship assistance are tracked by
         # funding support cases, seeded below.
         academic1 = await user(db, "school.academic1@edusphere.local", "Divya Academic Team", "academic_team", "overseas")
         academic2 = await user(db, "school.academic2@edusphere.local", "Suresh Academic Team", "academic_team", "overseas")

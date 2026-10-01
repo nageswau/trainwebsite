@@ -6,7 +6,7 @@
 case through Required → Counselling → Documents → Application → Approved → Completed (or Closed), and coordinators,
 principals and linked parents can read it.
 
-**Architecture:** New table `school_funding_records` (migration `0051`), new router `apps/api/app/api/school_funding.py`
+**Architecture:** New table `school_funding_records` (migration `0053`, cut as `0051`), new router `apps/api/app/api/school_funding.py`
 reusing `schools.py` helpers (portfolio/reader scoping, tier gate, notifications, serializer names), two new usage counts in
 `schools.service_usage`. Frontend: one lib file, a form, a counsellor panel + page, and a read-only card on three existing
 student pages. No new dependency.
@@ -42,11 +42,11 @@ components), React, Vitest + Testing Library, Playwright.
 
 ### Task 0: Record the decision (coding gate)
 
-**Files:** Modify `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append `DEC-SCOPE-043`), `docs/delivery/ENHANCEMENT_BACKLOG.md` (row 132, row 943, §ENH-020 status line, §3 table row).
+**Files:** Modify `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append `DEC-SCOPE-045`), `docs/delivery/ENHANCEMENT_BACKLOG.md` (row 132, row 943, §ENH-020 status line, §3 table row).
 
-- [ ] Append `### DEC-SCOPE-043 — ENH-020 financial support / loan assistance tracking` with **Status:** CONFIRMED_CURRENT (2026-10-01, in-session, `EXPLICIT_APPROVAL` per answer, provisional number), the trigger (audit result), D1–D13 copied from spec §2, evidence (`School CRM.md` §21, `EVID-014`; `DEC-SCOPE-017`), "New Feature ID authorized: ENH-020".
-- [ ] Backlog: row 132 → "in progress (`DEC-SCOPE-043`)"; §3 ENH-020 row → "Resolved 2026-10-01: `DEC-SCOPE-043`"; §ENH-020 gets "**Audit result (2026-10-01):** no Overseas equivalent — new tracker; spec/plan paths".
-- [ ] Commit `docs(enh-020): record DEC-SCOPE-043`.
+- [ ] Append `### DEC-SCOPE-045 — ENH-020 financial support / loan assistance tracking` with **Status:** CONFIRMED_CURRENT (2026-10-01, in-session, `EXPLICIT_APPROVAL` per answer, provisional number), the trigger (audit result), D1–D13 copied from spec §2, evidence (`School CRM.md` §21, `EVID-014`; `DEC-SCOPE-017`), "New Feature ID authorized: ENH-020".
+- [ ] Backlog: row 132 → "in progress (`DEC-SCOPE-045`)"; §3 ENH-020 row → "Resolved 2026-10-01: `DEC-SCOPE-045`"; §ENH-020 gets "**Audit result (2026-10-01):** no Overseas equivalent — new tracker; spec/plan paths".
+- [ ] Commit `docs(enh-020): record DEC-SCOPE-045`.
 
 ### Task 1: Schema constants and request models
 
@@ -144,9 +144,9 @@ class FundingRecordUpdate(FundingRecordFields):
 
 - [ ] **Step 4:** tests pass. **Step 5:** commit `feat(enh-020): funding record schemas`.
 
-### Task 2: Model and migration 0051
+### Task 2: Model and migration 0053 (cut as 0051)
 
-**Files:** Modify `apps/api/app/models.py` (after `SchoolCareerRecord`); Create `apps/api/alembic/versions/0051_school_funding_records.py`; Test: `apps/api/tests/test_enh_020_migration.py`.
+**Files:** Modify `apps/api/app/models.py` (after `SchoolCareerRecord`); Create `apps/api/alembic/versions/0053_school_funding_records.py`; Test: `apps/api/tests/test_enh_020_migration.py`.
 
 **Produces:** `SchoolFundingRecord` with columns per spec §3.1; constraint/index names `ck_funding_record_support_type`,
 `ck_funding_record_status`, `ck_funding_record_closure`, `uq_funding_record_open_student_type`, `ix_school_funding_records_school_type`,
@@ -162,7 +162,7 @@ plus `ix_school_funding_records_school_student_id` (from `index=True`).
 
 ```python
 class SchoolFundingRecord(Base, TimestampMixin):
-    """ENH-020 (DEC-SCOPE-043) -- School CRM.md §21 financial support / loan assistance case. `school_id` is the student's school
+    """ENH-020 (DEC-SCOPE-045) -- School CRM.md §21 financial support / loan assistance case. `school_id` is the student's school
     when the case was opened (D12): staff see a case only while the student is still there; a parent always sees it."""
 
     __tablename__ = "school_funding_records"
@@ -187,7 +187,7 @@ class SchoolFundingRecord(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 ```
 
-  Migration `0051_school_funding_records` (revises `0050_notification_channels`): existing-table guard as `0048`;
+  Migration `0053_school_funding_records` (revises `0052_agent_staff_permissions`; cut as `0051` on `0050`): existing-table guard as `0048`;
   `op.create_table` with the same columns/FKs/checks (`created_at`/`updated_at` `server_default=sa.func.now()`, NOT NULL);
   `op.create_index` for the student index, the composite index, and the partial unique index
   (`postgresql_where=sa.text("status NOT IN ('completed', 'closed')")`); `downgrade()` drops the table.
@@ -356,7 +356,7 @@ Modify `apps/web/lib/navigation.ts`, `apps/web/app/globals.css`; Tests `apps/web
 
 ### Task 11: Contract docs
 
-**Files:** `docs/architecture/API_CONTRACT.md` §12A (E1–E4 rows, entitlements addendum), `docs/architecture/DATA_MODEL.md` §6.24, `docs/architecture/RBAC_MATRIX.md` §2.12, `docs/ux/SCREEN_CATALOG.md` + `screen_catalog.json` (SCR-SCH-040/041), `docs/ux/ROLE_NAVIGATION.md`, `docs/quality/RTM.md`.
+**Files:** `docs/architecture/API_CONTRACT.md` §12A (E1–E4 rows, entitlements addendum), `docs/architecture/DATA_MODEL.md` §6.25, `docs/architecture/RBAC_MATRIX.md` §2.12, `docs/ux/SCREEN_CATALOG.md` + `screen_catalog.json` (SCR-SCH-041/041), `docs/ux/ROLE_NAVIGATION.md`, `docs/quality/RTM.md`.
 
 - [ ] Write each entry from the spec; commit `docs(enh-020): contracts, data model, RBAC, screens, RTM`.
 

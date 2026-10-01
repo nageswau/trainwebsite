@@ -2,7 +2,7 @@ import { serverApi } from "@/lib/api";
 import { formatCalendarDate } from "@/lib/formatDate";
 import { type FundingRecord, stageText, statusClass, SUPPORT_TYPE_LABEL } from "@/lib/fundingRecords";
 
-// ENH-020 (spec §6, SCR-SCH-041): one student's funding support cases, read-only, for a linked parent, the coordinator or the
+// ENH-020 (spec §6, SCR-SCH-042): one student's funding support cases, read-only, for a linked parent, the coordinator or the
 // principal. The host page fetches the cases in its own parallel read with `.catch(() => null)`, so `null` means "could not load"
 // and never takes the rest of the page down. `headingLevel` follows the page: parent cards use h3, staff sections h2.
 export default function FundingRecordsCard({ records, headingLevel = 3 }: { records: FundingRecord[] | null; headingLevel?: 2 | 3 }) {

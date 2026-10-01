@@ -124,12 +124,13 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/career-counselor/dashboard");
 
-  await page.selectOption("#career-student", { label: `E2E Service Student — ${schoolName}` });
-  await page.selectOption("#career-type", "guidance_session");
-  await page.fill("#career-notes", "Discussed engineering vs. commerce streams.");
+  // ENH-026 prefixed the new-record form's ids (`career-new-*`); ENH-031 made the student a searchable picker.
+  await pickFromList(page.locator("#career-new-student"), "E2E Service Student", `E2E Service Student — ${schoolName}`);
+  await page.selectOption("#career-new-type", "guidance_session");
+  await page.fill("#career-new-notes", "Discussed engineering vs. commerce streams.");
   await page.click('button:has-text("Save record")');
   await expect(page.getByText(/Record saved\./)).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Guidance session" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Guidance session", exact: true })).toBeVisible();
 
   // 7. Psychometric Team assigns an assessment and attaches a report.
   await page.request.post("/api/v1/auth/logout");
@@ -221,7 +222,7 @@ test("the School portfolio search narrows the dropdown without losing a selectio
   await page.fill("#staff-email", staffEmail);
 
   // Search narrows the list to Alpha only, select it.
-  await page.fill('input[placeholder="Search schools…"]', "Search Alpha");
+  await page.fill('input[placeholder="Search schools…"]', `Search Alpha School ${unique}`); // unique: a shared DB keeps earlier runs' schools
   await expect(page.locator("#staff-schools option")).toHaveCount(1);
   await page.selectOption("#staff-schools", { label: alphaName });
   await expect(page.getByText("(1 selected)")).toBeVisible();
@@ -232,7 +233,7 @@ test("the School portfolio search narrows the dropdown without losing a selectio
   await expect(page.getByText("(1 selected)")).toBeVisible();
 
   // Search again and add Beta -- both selections must now be counted.
-  await page.fill('input[placeholder="Search schools…"]', "Search Beta");
+  await page.fill('input[placeholder="Search schools…"]', `Search Beta School ${unique}`);
   await page.selectOption("#staff-schools", { label: betaName });
   await expect(page.getByText("(2 selected)")).toBeVisible();
 
@@ -281,13 +282,13 @@ test("Select all / Select visible / Clear visible / Clear all act on the School 
   await expect(page.getByText(/\(\d+ selected\)/)).toHaveCount(0);
 
   // Select visible, scoped to a search, only adds the currently-filtered schools.
-  await page.fill('input[placeholder="Search schools…"]', "Bulk Alpha");
+  await page.fill('input[placeholder="Search schools…"]', `Bulk Alpha School ${unique}`); // unique: a shared DB keeps earlier runs' schools
   await page.getByRole("button", { name: /^Select visible/ }).click();
   await expect(page.getByText("(1 selected)")).toBeVisible();
 
   // Selecting visible again under a *different* search adds to the existing selection,
   // it does not replace it.
-  await page.fill('input[placeholder="Search schools…"]', "Bulk Beta");
+  await page.fill('input[placeholder="Search schools…"]', `Bulk Beta School ${unique}`);
   await page.getByRole("button", { name: /^Select visible/ }).click();
   await expect(page.getByText("(2 selected)")).toBeVisible();
 

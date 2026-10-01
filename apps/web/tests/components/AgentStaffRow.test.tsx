@@ -1,11 +1,11 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentStaffRow from "@/components/AgentStaffRow";
 import type { StaffMember } from "@/lib/agentStaff";
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
-const active: StaffMember = { id: "s1", code: "ABC-S001", full_name: "Rahul Kumar", email: "rahul@example.local", phone: "+91 1", status: "active", setup: null };
+const active: StaffMember = { id: "s1", code: "ABC-S001", full_name: "Rahul Kumar", email: "rahul@example.local", phone: "+91 1", status: "active", setup: null, permissions: { can_verify_documents: false, can_view_reports: false } };
 
 function renderRow(member: StaffMember = active) {
   const onChanged = vi.fn();
@@ -164,5 +164,49 @@ describe("AgentStaffRow (AGN-002)", () => {
     expect(screen.queryByRole("button", { name: /^Reset / })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Deactivate / })).toBeNull();
     expect(screen.getByRole("button", { name: "Reactivate Rahul Kumar" })).toBeInTheDocument();
+  });
+
+  it("summarises permissions as text", () => {
+    renderRow();
+    expect(screen.getByText("Student journey only")).toBeInTheDocument();
+    cleanup();
+    renderRow({ ...active, permissions: { can_verify_documents: true, can_view_reports: true } });
+    expect(screen.getByText("Can verify documents · Can view reports")).toBeInTheDocument();
+  });
+
+  it.each(["active", "deactivated"] as const)("offers Permissions while %s", (status) => {
+    renderRow({ ...active, status });
+    expect(screen.getByRole("button", { name: "Permissions for Rahul Kumar" })).toBeInTheDocument();
+  });
+
+  it("saves permissions with PUT, announces it and returns focus", async () => {
+    const mock = vi.fn().mockResolvedValue(res({ member: { ...active, permissions: { can_verify_documents: false, can_view_reports: true } } }));
+    vi.stubGlobal("fetch", mock);
+    const onChanged = renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Permissions for Rahul Kumar" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "View reports" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith("ABC-S001 permissions saved."));
+    const [url, init] = mock.mock.calls[0];
+    expect(url).toBe("/api/v1/workflows/overseas/agent/team/staff/s1/permissions");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(init.body)).toEqual({ can_verify_documents: false, can_view_reports: true });
+    expect(screen.getByRole("button", { name: "Permissions for Rahul Kumar" })).toHaveFocus();
+  });
+
+  it("Escape closes Permissions and returns focus", () => {
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Permissions for Rahul Kumar" }));
+    fireEvent.keyDown(screen.getByRole("checkbox", { name: "Verify documents" }), { key: "Escape" });
+    expect(screen.getByRole("button", { name: "Permissions for Rahul Kumar" })).toHaveFocus();
+  });
+
+  it("shows a refusal in the row's status region and keeps the form open", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ detail: "Only an agency Master can manage the team" }, 403)));
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Permissions for Rahul Kumar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByTestId("staff-row-status-s1")).toHaveTextContent("Only an agency Master can manage the team");
+    expect(screen.getByRole("checkbox", { name: "Verify documents" })).toBeInTheDocument();
   });
 });

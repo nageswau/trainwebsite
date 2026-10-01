@@ -1,11 +1,11 @@
 """ENH-020 -- school_funding_records.
 
-Revision ID: 0051_school_funding_records
-Revises: 0050_notification_channels
+Revision ID: 0053_school_funding_records
+Revises: 0052_agent_staff_permissions
 
 docs/superpowers/specs/2026-10-01-enh-020-funding-support-tracking-design.md §3.1 (DEC-SCOPE-043). Create-table only: no existing
 table is altered and no existing row is read or written. Guarded like 0048: on a fresh database 0001_initial's create_all() has
-already built the table from the model. `downgrade()` drops the table and its indexes. Renumber on merge if `main` takes 0051 first.
+already built the table from the model. `downgrade()` drops the table and its indexes. Cut as 0051 on 0050; re-chained after `main`'s 0051_school_bulk_uploads (ENH-028) and 0052_agent_staff_permissions (AGN-003) on merging main, 2026-10-01.
 """
 
 import sqlalchemy as sa
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0051_school_funding_records"
-down_revision = "0050_notification_channels"
+revision = "0053_school_funding_records"
+down_revision = "0052_agent_staff_permissions"
 branch_labels = None
 depends_on = None
 

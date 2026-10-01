@@ -1,7 +1,7 @@
 # ENH-020 — Financial Support / Loan Assistance Tracking: Design
 
 **Status:** Draft for review, 2026-10-01. Branch `feature/enh-020-funding-tracker` (from `main` @ `18886bf`).
-**Feature ID:** ENH-020. **Decision:** proposed `DEC-SCOPE-043` (provisional number; §2), recorded in the register only once
+**Feature ID:** ENH-020. **Decision:** `DEC-SCOPE-045` (recorded in-session as `043`; renumbered on merging `main` 2026-10-01; §2), recorded in the register only once
 this spec is approved.
 **Source:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-020 (`DERIVED_BLUEPRINT`), from `School CRM.md` §21
 (`ORIGINAL_REQUIREMENT`, `EVID-014`). The working copy `functionalities/edusphere_markdown/School CRM.md` matches the
@@ -32,7 +32,7 @@ an audit: is this already in the Overseas domain?
 | A partial unique index already has precedent | `uq_school_transfer_pending_student` `models.py:1216` |
 | `service_usage` is read by `/school/entitlements` **and** ENH-016 utilization / cross-school rollup | `schools.py:1147,1231`; `school_analytics.py:525,579` |
 
-## 2. Decisions (user, in-session, 2026-10-01 — `EXPLICIT_APPROVAL` per answer; proposed `DEC-SCOPE-043`)
+## 2. Decisions (user, in-session, 2026-10-01 — `EXPLICIT_APPROVAL` per answer; proposed `DEC-SCOPE-045`)
 
 | ID | Decision |
 |---|---|
@@ -55,7 +55,7 @@ login, ENH-013 360 tab, ENH-015 report rows, bulk entry, admin (Overseas) views 
 
 ## 3. Data model
 
-### 3.1 Table `school_funding_records` (migration `0051_school_funding_records`, revises `0050_notification_channels`)
+### 3.1 Table `school_funding_records` (migration `0053_school_funding_records`, revises `0052_agent_staff_permissions`; cut as `0051` on `0050`, re-chained on merging `main` 2026-10-01)
 
 | Column | Type | Null | Notes |
 |---|---|---|---|
@@ -320,9 +320,9 @@ changes are guarded server-side (409/422), so showing a stage before the server 
 
 ## 10. Documentation updates
 
-`PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-043`, D1–D13), `ENHANCEMENT_BACKLOG.md` (row 132, §21 audit row 943,
-§ENH-020 entry, §3 decision table), `DATA_MODEL.md` §6.24, `API_CONTRACT.md` §12A (E1–E4), `RBAC_MATRIX.md` §2.12,
-`SCREEN_CATALOG.md` + `screen_catalog.json` (SCR-SCH-040 counsellor funding page, SCR-SCH-041 read-only card),
+`PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-045`, D1–D13), `ENHANCEMENT_BACKLOG.md` (row 132, §21 audit row 943,
+§ENH-020 entry, §3 decision table), `DATA_MODEL.md` §6.25, `API_CONTRACT.md` §12A (E1–E4), `RBAC_MATRIX.md` §2.12,
+`SCREEN_CATALOG.md` + `screen_catalog.json` (SCR-SCH-041 counsellor funding page, SCR-SCH-042 read-only card),
 `ROLE_NAVIGATION.md`, `docs/quality/RTM.md`.
 
 ## 11. Review passes (2026-10-01, before planning)

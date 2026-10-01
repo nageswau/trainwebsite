@@ -1,7 +1,7 @@
 """ENH-020 -- financial support / loan assistance cases (docs/superpowers/specs/2026-10-01-enh-020-funding-support-tracking-design.md).
 
 A Career Counsellor tracks a school student's education loan, financial assistance, scholarship or funding guidance case through
-School CRM.md §21's stages (DEC-SCOPE-043). Its own router, like ENH-030's, so `schools.py` does not grow; the scope, tier,
+School CRM.md §21's stages (DEC-SCOPE-045). Its own router, like ENH-030's, so `schools.py` does not grow; the scope, tier,
 notification and name helpers are reused from there. Case contents (provider, amount, notes, closure reason) are sensitive: they are
 never written to audit rows, logs or notifications.
 """

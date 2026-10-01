@@ -8,7 +8,7 @@ import type { User } from "@/lib/types";
 
 type Student = { id: string; full_name: string; school_name: string };
 
-// ENH-020 (spec §6, SCR-SCH-040): the Career Counsellor's funding support cases across their portfolio.
+// ENH-020 (spec §6, SCR-SCH-041): the Career Counsellor's funding support cases across their portfolio.
 // QA-03: the role is checked before the cases and students are read, so every other role gets one message (it used to be whichever
 // parallel read was refused first) and its visit reads nothing. Same pattern as /school/coordinator/students/[id].
 export default async function SchoolCareerCounselorFundingPage() {

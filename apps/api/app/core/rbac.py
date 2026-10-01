@@ -110,6 +110,32 @@ def is_agent_staff(user) -> bool:
     return membership is not None and membership.role == "staff"
 
 
+# AGN-003 (DEC-SCOPE-044): the two optional §6 rows. The column names on AgentOrgMember are also the API keys.
+STAFF_PERMISSIONS = ("can_verify_documents", "can_view_reports")
+REPORTS_REFUSED = "Your agency Master hasn't given you access to reports"
+VERIFY_REFUSED = "Your agency Master hasn't given you permission to verify documents"
+REVIEW_MASTER_ONLY = "Only an agency Master can reject documents or request changes"
+
+
+def agent_may(user, permission: str) -> bool:
+    """AGN-003 (DEC-SCOPE-044 P1/P2): whether the caller may use an optional §6 row. Masters (and every non-staff caller -- route
+    role checks run first) are never limited; staff follow their own flag. Reads the membership `get_current_user` eager-loads on
+    every request, so a Master's change applies on the staff member's next request."""
+
+    assert permission in STAFF_PERMISSIONS, permission
+    if not is_agent_staff(user):
+        return True
+    return bool(getattr(user.agent_membership, permission))
+
+
+def agent_permissions(user) -> dict[str, bool] | None:
+    """The effective permissions an agency member's portal shows (GET /auth/me); None for anyone without a membership."""
+
+    if user.role != "agent" or user.agent_membership is None:
+        return None
+    return {name: agent_may(user, name) for name in STAFF_PERMISSIONS}
+
+
 async def get_active_assignments(db: AsyncSession, user_id: UUID) -> list[UserRoleAssignment]:
     rows = await db.scalars(
         select(UserRoleAssignment).where(UserRoleAssignment.user_id == user_id, UserRoleAssignment.is_active.is_(True))

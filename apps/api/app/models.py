@@ -921,7 +921,8 @@ class AgentOrg(Base, TimestampMixin):
 
 class AgentOrgMember(Base, TimestampMixin):
     """AGN-001: a user's membership of exactly one agent organisation, for good (`user_id` unique). AGN-002 adds `staff`
-    (DEC-SCOPE-040): Masters and staff are numbered separately (M001 and S001 coexist)."""
+    (DEC-SCOPE-040): Masters and staff are numbered separately (M001 and S001 coexist). AGN-003 adds two per-staff permission
+    flags (DEC-SCOPE-044)."""
 
     __tablename__ = "agent_org_members"
     __table_args__ = (
@@ -941,6 +942,10 @@ class AgentOrgMember(Base, TimestampMixin):
     invited_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     deactivated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # AGN-003 (DEC-SCOPE-044 P1/P2): the two optional §6 rows for staff. Stored on every member but never read for a Master
+    # (`core.rbac.agent_may` always allows Masters).
+    can_verify_documents: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    can_view_reports: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     org: Mapped["AgentOrg"] = relationship(lazy="raise")
 
 
@@ -1398,6 +1403,44 @@ class SchoolRosterUploadRow(Base, TimestampMixin):
     created_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), nullable=True)
 
 
+BULK_TARGET_TYPES = ("academic_result", "psychometric_record", "test_prep_record", "language_record")
+
+
+class SchoolBulkUploadBatch(Base, TimestampMixin):
+    """ENH-028 -- one bulk data-entry upload (docs/superpowers/specs/2026-10-01-enh-028-bulk-data-entry-design.md §4). The
+    roster upload keeps its own SCH-002 tables. The idempotency key is scoped to the uploader and the module, so one user's key
+    can never replay another user's report. No status column (S3): the row only becomes visible already complete."""
+
+    __tablename__ = "school_bulk_upload_batches"
+    __table_args__ = (
+        UniqueConstraint("uploaded_by_user_id", "target_type", "idempotency_key", name="uq_school_bulk_upload_key"),
+        CheckConstraint(f"target_type IN {BULK_TARGET_TYPES}", name="ck_school_bulk_upload_target_type"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    target_type: Mapped[str] = mapped_column(String(30))
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0)
+    accepted_count: Mapped[int] = mapped_column(Integer, default=0)
+    rejected_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class SchoolBulkUploadRow(Base, TimestampMixin):
+    """ENH-028 -- one filled-in CSV row's outcome. `created_record_id` points into the batch's target table (no FK: it is
+    polymorphic); `student_code` is what the row named, kept for the report even when it matched nobody."""
+
+    __tablename__ = "school_bulk_upload_rows"
+    __table_args__ = (CheckConstraint("status IN ('accepted', 'rejected')", name="ck_school_bulk_upload_row_status"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_bulk_upload_batches.id"), index=True)
+    row_number: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20))
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    student_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    created_record_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+
+
 class SchoolStaffAssignment(Base, TimestampMixin):
     """School-staff portfolio assignment (`DEC-SCOPE-013`) -- scopes an `academic_team`/
     `career_counselor`/`psychometric_team` member to one or more entire schools. Many-to-
@@ -1448,7 +1491,7 @@ class SchoolCareerRecord(Base, TimestampMixin):
 
 
 class SchoolFundingRecord(Base, TimestampMixin):
-    """ENH-020 (DEC-SCOPE-043) -- School CRM.md §21 financial support / loan assistance case, `DATA_MODEL.md` §6.24.
+    """ENH-020 (DEC-SCOPE-045) -- School CRM.md §21 financial support / loan assistance case, `DATA_MODEL.md` §6.25.
     `school_id` is the student's school when the case was opened (D12): staff see a case only while the student is still
     there; a linked parent always sees it. One open case per student, school and type (partial unique index, D7)."""
 

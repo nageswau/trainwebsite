@@ -2,7 +2,7 @@ import { expect, request as playwrightRequest, test, type APIRequestContext, typ
 import { pickFromList } from "./helpers/pick";
 import { E2E_PASSWORD, createAndActivate } from "./helpers/welcome";
 
-// ENH-020 (docs/superpowers/specs/2026-10-01-enh-020-funding-support-tracking-design.md, AC16, AC20; DEC-SCOPE-043): a counsellor opens
+// ENH-020 (docs/superpowers/specs/2026-10-01-enh-020-funding-support-tracking-design.md, AC16, AC20; DEC-SCOPE-045): a counsellor opens
 // an education-loan case through the real form, advances it one stage with the keyboard, closes it with a reason; the parent sees the
 // case read-only; an assigned teacher is refused. Setup is API-only on a throwaway Platinum school, like enh-026/enh-030.
 const INVITE_PASSWORD = "Sup3r-Secret-Pass!";

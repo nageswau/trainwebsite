@@ -1,4 +1,4 @@
-// ENH-020 (DEC-SCOPE-043): one source for the funding support case lifecycle and labels, used by the form, the counsellor's list and
+// ENH-020 (DEC-SCOPE-045): one source for the funding support case lifecycle and labels, used by the form, the counsellor's list and
 // every read-only view. The stage table mirrors the API's (schemas.FUNDING_STATUS_NEXT); the API still decides.
 export type FundingSupportType = "education_loan" | "financial_assistance" | "scholarship" | "funding_guidance";
 export type FundingStatus = "required" | "counselling" | "documents" | "application" | "approved" | "completed" | "closed";

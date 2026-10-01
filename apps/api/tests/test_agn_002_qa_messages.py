@@ -62,7 +62,8 @@ async def test_an_ended_session_says_to_sign_in_again(client, db_session):  # QA
 @pytest.mark.parametrize("section", ["dashboard", "reports"])
 async def test_staff_pages_never_mention_commissions(db_session, section):  # QA-07
     ctx = await mk_active_org(db_session, name=f"Qa Words {uniq()}")
-    staff = await mk_staff(db_session, ctx["org"])
+    # AGN-003 (DEC-SCOPE-044 P1): Reports is off for staff by default; this test keeps its intent with it switched on.
+    staff = await mk_staff(db_session, ctx["org"], can_view_reports=True)
     async with client_for(staff["user"].email) as c:
         page = (await c.get(f"/api/v1/portal/overseas/agent/{section}")).json()
     assert "commission" not in str(page).lower()

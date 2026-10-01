@@ -1,4 +1,4 @@
-"""ENH-020 -- migration 0051 (spec §3.1, AC15): single head, create-table only, matches the model, constraints enforced by the database."""
+"""ENH-020 -- migration 0053 (spec §3.1, AC15): single head, create-table only, matches the model, constraints enforced by the database."""
 
 import importlib.util
 import re
@@ -15,7 +15,7 @@ from app.models import SchoolFundingRecord
 from app.schemas import FundingStatus, FundingSupportType
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_enh_020_migration_0051", VERSIONS / "0051_school_funding_records.py")
+_spec = importlib.util.spec_from_file_location("_enh_020_migration_0053", VERSIONS / "0053_school_funding_records.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 TABLE = "school_funding_records"
@@ -32,12 +32,12 @@ def _parents() -> dict[str, str | None]:
     return parents
 
 
-def test_migration_follows_0050_and_is_the_single_head():
-    assert _migration.revision == "0051_school_funding_records"
-    assert _migration.down_revision == "0050_notification_channels"
+def test_migration_follows_0052_and_is_the_single_head():
+    assert _migration.revision == "0053_school_funding_records"
+    assert _migration.down_revision == "0052_agent_staff_permissions"
     parents = _parents()
     heads = set(parents) - set(parents.values())
-    assert heads == {"0051_school_funding_records"}
+    assert heads == {"0053_school_funding_records"}
 
 
 @pytest.mark.asyncio
