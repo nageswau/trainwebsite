@@ -851,6 +851,30 @@ absent. After a transfer the old school's rows are kept (not shown to the new sc
 A past day may only be marked for students enrolled at the school that day (latest approved transfer into it, else `school_students.created_at`, school calendar; DEC-SCOPE-041 I-3). `downgrade()` drops the table. Writes are audited as `school.daily_attendance_mark` (with the changed
 students, from → to) and refusals as `school.daily_attendance_denied` (counts only). **Feature ID:** `ENH-030`.
 
+### 6.24 School funding support cases (`ENH-020`) — added 2026-10-01, propagating `DEC-SCOPE-043` (provisional number); migration `0051_school_funding_records`
+
+`school_funding_records` — one financial support / loan assistance case (`School CRM.md` §21) for a `school_students` row:
+`id`, `school_student_id` (FK, indexed), `school_id` (FK `schools`; the student's school when the case was opened, never
+changes — D12), `support_type` (`education_loan`/`financial_assistance`/`scholarship`/`funding_guidance`, fixed after creation),
+`status` (`required`/`counselling`/`documents`/`application`/`approved`/`completed`/`closed`), `status_changed_on` (date the
+current stage was entered, school calendar), `provider_name` (≤200, nullable), `amount_text` (≤120, nullable, free text — no
+currency arithmetic), `notes` (text, `""` when empty), `closure_reason` (≤500, nullable), `career_counselor_user_id` (creator),
+`updated_by_user_id` (nullable), `created_at`, `updated_at`.
+
+Constraints: `ck_funding_record_support_type`, `ck_funding_record_status`, `ck_funding_record_closure` (`(status = 'closed') =
+(closure_reason IS NOT NULL)`). Indexes: `uq_funding_record_open_student_type` — **partial unique** on (`school_student_id`,
+`school_id`, `support_type`) `WHERE status NOT IN ('completed', 'closed')`, one open case per student, school and type (D7/D12;
+an open case left at a previous school never blocks the new school); `ix_school_funding_records_school_type` (`school_id`,
+`support_type`) for the entitlement usage count; `ix_school_funding_records_school_student_id`.
+
+Lifecycle: created at `required`; one stage forward at a time or `closed` (with a reason) from any open stage; `completed` and
+`closed` are final (read-only). No delete path (a case is closed, not erased). **Data classification:** the existence of a case and
+its `provider_name`, `amount_text`, `notes`, `closure_reason` are sensitive personal data (a family's financial need): never copied
+into audit rows, logs or notifications. Retention follows `school_students` (no school-student deletion path exists — a
+pre-existing gap, not widened here). Audit: `school.funding_record_create`/`_update` (field names, status old→new) and
+`school.funding_record_denied` (actor, role, reason). Usage: `loan_assistance`/`scholarship_assistance` = distinct students per
+`school_id`. **Feature ID:** `ENH-020`.
+
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)
 
 ### 7.1 `NotificationLog`

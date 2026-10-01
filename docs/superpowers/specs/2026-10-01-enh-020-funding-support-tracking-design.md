@@ -172,10 +172,10 @@ closure_reason, created_at, updated_at, counselor_name, updated_by_name` (names 
    no longer be changed." (audited). Lock order record → student, the same as ENH-026, so the two never deadlock.
 4. `require_school_entitlement(…, FUNDING_SERVICE_KEYS[record.support_type], grandfathered_since=record.created_at)`.
 5. Validate body (`FundingRecordUpdate`) → 422.
-6. `expected_status` sent and ≠ `record.status` → **409** "This record was changed by someone else (now {label}). Reload to see the latest."
-7. Record final (D10) → 422 "This record is {label} and can no longer be changed."
+6. `expected_status` sent and ≠ `record.status` → **409** "This case was changed by someone else (now {label}). Reload to see the latest."
+7. Record final (D10) → 422 "This case is {label} and can no longer be changed."
 8. `status` sent and ≠ current: not in `FUNDING_STATUS_NEXT[current]` → 422 "Cannot change status from {a} to {b}."
-   Entering `closed` without a non-blank `closure_reason` → 422 "Give a reason for closing this record."
+   Entering `closed` without a non-blank `closure_reason` → 422 "Give a reason for closing this case."; a closure reason on any other change → 422 "A closure reason can only be given when closing the case."
    `closure_reason` sent while the resulting status ≠ `closed` → 422. On a status change set `status_changed_on=_today_ist()`.
 9. No tracked field changed → return the record, write nothing (repeat-safe).
 10. `updated_by_user_id`; `AuditLog` `school.funding_record_update` with `changed_fields` (names only) and `status {old,new}`.
