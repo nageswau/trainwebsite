@@ -3260,7 +3260,7 @@ pending-only agent review under a row lock.
 
 **Complexity:** Medium. **Risk:** High.
 
-**Status (2026-10-01):** implemented test-first on `feature/agn-003-staff-permissions` (migration `0051_agent_staff_permissions`); verification evidence in `docs/quality/RTM.md` (AGN-003 row). **NOT COMPLETE** — pending the owner's browser validation and the independent Codex review.
+**Status (2026-10-01):** implemented test-first on `feature/agn-003-staff-permissions` (migration `0051_agent_staff_permissions`); verification evidence in `docs/quality/RTM.md` (AGN-003 row). **COMPLETE (2026-10-01, verified at `5cb16ad`)** — final verification-before-completion pass recorded in the RTM (AGN-003 row); the owner waived the independent Codex review.
 
 ---
 
