@@ -467,6 +467,16 @@ Design: `docs/superpowers/specs/2026-09-30-agn-002-staff-logins-design.md` §4.
   exists.
 - **Feature IDs:** `AGN-002`.
 
+### 6.8c AgentOrgMember permission flags (AGN-003, migration `0052_agent_staff_permissions`)
+Design: `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md` §5. `DEC-SCOPE-044`.
+- **`agent_org_members.can_verify_documents`** and **`.can_view_reports`**: `BOOLEAN NOT NULL DEFAULT false` (`server_default`).
+  The column names are also the API keys.
+- **Staff-only semantics:** the flags apply to `role='staff'`. On Master rows they are stored but never read (`core/rbac.agent_may`
+  returns true for Masters). Read from the membership `get_current_user` already loads: no extra query, no cache.
+- **Migration `0052`** (`down_revision = "0051_school_bulk_uploads"`; drafted as `0048` after `0047`, re-chained to `0051` after `0050` and then to `0052` after ENH-028's `0051` when `main` was merged, 2026-10-01): additive; no constraint, index or backfill. Every existing row reads
+  `false` (existing staff lose the Reports page until a Master switches it on, P1). `downgrade()` drops both columns.
+- **Feature IDs:** `AGN-003`.
+
 ### 6.9 `InboundUniversityEmail`
 **Carries over.** Supports `UNI-001`'s university-communication surface.
 - **Feature IDs:** `UNI-001`.

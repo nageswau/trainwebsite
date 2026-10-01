@@ -62,6 +62,10 @@ and the rest of `EVID-015` stay parked. AGN-001 keeps the ID the user gave it ra
 **AGN-002**, decided as `DEC-SCOPE-040` (S1–S6). Staff assignment/ownership, staff performance and CRM
 settings stay parked.
 
+**Revision 8 (2026-10-01):** the owner brought the `EVID-015` §6 Master-vs-Staff permission matrix into scope as
+**AGN-003**, decided as `DEC-SCOPE-044` (P1–P9): two per-staff toggles (Verify Documents, Reports), enforced on existing
+routes, plus agent document verification. Assignment/ownership, staff performance and CRM settings stay parked.
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -141,6 +145,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-029 | Bulk school partner onboarding (multiple schools at once) | Medium | Medium | Yes | Coordinates with ENH-003, ENH-028's design |
 | ENH-030 | Daily/period attendance tracking (new entity, built bulk-first) | Medium | Low | Yes | Feeds ENH-013, ENH-016 |
 | AGN-001 | Multi-tenant Agent CRM — agent organisation as tenant, Master accounts (Rev. 6) | Large | High | Yes | AGT-001–004, SEC-001, RPT-002, ADM-001 (all change) |
+| AGN-003 | Agent staff permissions — §6 Master-vs-Staff matrix, per-staff Verify Documents / Reports toggles (Rev. 8) | Medium | High | Yes | AGN-002 (staff routes), AGT-002/OVS-005 (document verify), RPT-002 (agent reports) |
 | ENH-031 | Searchable reference pickers — student/application references picked from role-scoped searchable dropdowns | Medium | Medium | No | AGN-001 (agency scope) |
 | AGN-004 | Agent students — Master/Staff create, edit, view and (Master) archive students who never log in; staff assigned-only | Large | High | Yes | AGT-002, AGN-001, ENH-031 (scope change); AGN-002 (merge) |
 
@@ -3159,6 +3164,113 @@ verified at `2e7ac9a`)**; the owner waived the Codex review and runs the full ba
 
 ---
 
+## AGN-003 — Agent Staff Permissions: the Master vs Staff Matrix
+
+**Title.** Staff are limited to the student journey; a Master switches two optional permissions on per staff member.
+
+**Business requirement.** The owner's `AGN-003` statement (in-session, 2026-10-01): "the §6 matrix: Staff are limited to the
+student journey, with no admin modules; 'Set permissions' / 'Permission Level'", referring to `EVID-015`
+(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2, §3, §4 and §6. Decided as `DEC-SCOPE-044` (P1–P9).
+
+**Existing behavior.**
+- Staff are refused only team management and commissions (`AGN-002`).
+- Staff reach the agent Reports page.
+- No agent can verify or reject documents.
+- There is no permission storage.
+
+**Expected behavior.** Per `DEC-SCOPE-044`:
+- Every ❌ cell of §6 that has a route returns `403` for staff; every ✅ cell succeeds.
+- Verify Documents and Reports are per-staff toggles, off by default, set by a Master and effective on the next request.
+- Agents (Masters, and staff with Verify) may decide pending documents of their agency; staff may only mark them verified.
+- §6 rows with no capability are N/A. The full matrix is in the design spec §3.
+
+**User roles affected.**
+- `agent` (Master and staff).
+- Indirectly `counselor` / `overseas_admin` (shared document verify route; their behaviour is unchanged).
+
+**Frontend impact.**
+- `AgentStaffRow.tsx` (Permissions) and `AgentStaffPanel.tsx` (help text).
+- `lib/navigation.ts` (staff Reports) and `PortalPage.tsx`.
+- `CounselorDocumentReviewPanel.tsx`, generalised and reused on the agent Documents page.
+- `WorkflowPanel.tsx`.
+- Screens SCR-AGT-005, SCR-AGT-007.
+
+**Backend impact.**
+- `core/rbac.py` (`agent_may`, `agent_permissions`).
+- `api/portal.py` (Reports).
+- `api/workflows.py` `verify_document` (agent branch).
+- `api/agent_team.py` and `services/agent_orgs.py` (set permissions).
+- `api/auth.py` `/me` and `schemas.py`.
+
+**Database impact.** Migration `0052_agent_staff_permissions`: `agent_org_members.can_verify_documents`, `can_view_reports`
+(`BOOLEAN NOT NULL DEFAULT false`); additive, existing rows preserved.
+
+**API impact.**
+- New `PUT /workflows/overseas/agent/team/staff/{member_id}/permissions`.
+- An agent branch on `PATCH /workflows/overseas/documents/{id}/verify`.
+- Additive `permissions` on the staff shape and `agent_permissions` on `/auth/me`.
+- Portal Reports `403` for staff without the toggle.
+
+**Integration impact.** None (the existing student "Document reviewed" notification is reused).
+
+**Authentication/Authorization impact.** High. Per-request permission checks from the database row; Master-only toggle route;
+pending-only agent review under a row lock.
+
+**Security impact.**
+- High: staff escalation to Master-only actions, cross-tenant toggling, agents overwriting the counselor's review.
+- Mitigations: spec §10.
+
+**Performance impact.** None (the flags ride on the membership already loaded per request).
+
+**Reusable existing modules.** `_require_master`, `_staff_org`, `_staff_member`, `_commit_staff_change`, `_staff_audit`, `_require`,
+`_assigned_application`, `org_member_ids`, `CounselorDocumentReviewPanel`, `sendJson`/`staffFailure`.
+
+**Dependencies.** `AGN-002` (built, on `main`). None must land first.
+
+**Acceptance criteria.**
+- **AGN-003-AC01** Every ❌ cell of §6 that has a route returns `403` for staff with both toggles off, each with a test.
+- **AGN-003-AC02** Every ✅ cell succeeds for staff and for Masters; Masters also succeed on Verify, Reject and Reports.
+- **AGN-003-AC03** Reports: staff toggle off → `403`, on → `200` without commission figures; Masters always `200`.
+- **AGN-003-AC04** Verify: staff toggle off → `403`; on + `verified` → `200`; on + `rejected`/`changes_required` → `403`.
+- **AGN-003-AC05** A toggle change applies on the staff member's next request without signing them out.
+- **AGN-003-AC06** Only a Master of the staff member's organisation sets toggles (another agency or a Master id → `404`, staff → `403`,
+  bad body → `422`); every change writes an `agent_org.staff_permissions` audit row in the same transaction.
+- **AGN-003-AC07** Agents decide only `pending` documents in their agency's scope (`409` / `403` / `404` / `422` as in the spec); a
+  counselor or Overseas Admin can still re-review; the student is notified and the decision audited.
+- **AGN-003-AC08** `/auth/me` returns `agent_permissions`; the staff member shape returns `permissions`.
+- **AGN-003-AC09** Migration `0052` follows ENH-028 `0051_school_bulk_uploads` as the single head (re-chained on merging `main` twice; drafted as `0048` after `0047`); defaults `false`; existing members preserved.
+
+**Positive scenarios.**
+- Master turns Reports on → the staff member's next page load shows Reports.
+- Master turns Verify on → staff mark a pending document verified → the student is notified.
+- Master rejects a pending document.
+
+**Negative scenarios.**
+- Staff open Reports with the toggle off → `403`.
+- Staff reject → `403`.
+- Staff call the permissions route → `403`.
+- Another agency's Master toggles → `404`.
+- An agent decides an already-reviewed document → `409`.
+
+**Edge cases.**
+- Toggling a deactivated staff member.
+- A toggle switched off while the staff member's page is open.
+- Two agents deciding the same document at once.
+- A document not attached to an application.
+- Upgrade with existing staff (Reports turns off).
+
+**Regression risks.**
+- High: the counselor/admin document verify path (`test_ovs_005_documents.py`).
+- The two AGN-002 staff Reports tests (updated deliberately to Reports on).
+- The agent nav (`navigation.test.ts`, `agn-002-staff.spec.ts`).
+- The counselor review panel UI.
+
+**Complexity:** Medium. **Risk:** High.
+
+**Status (2026-10-01):** implemented test-first on `feature/agn-003-staff-permissions` (migration `0052_agent_staff_permissions`); verification evidence in `docs/quality/RTM.md` (AGN-003 row). **COMPLETE (2026-10-01, verified at `5cb16ad`)** — final verification-before-completion pass recorded in the RTM (AGN-003 row); the owner waived the independent Codex review.
+
+---
+
 ## 2. Dependency graph
 
 **Must be sequential:**
@@ -3325,6 +3437,7 @@ item, only for the progress-view question).
 | AGN-001 | `DEC-SCOPE-038` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
 | AGN-002 | `DEC-SCOPE-040` — staff access, model, reset, fields/limits, activation, tenancy/audit | **Resolved 2026-09-30** (S1–S6, `EXPLICIT_APPROVAL` in-session) |
 | AGN-004 | `DEC-SCOPE-042` — students with no login, staff assignment, archive, duplicate warning, relation to AGN-002 | **Resolved 2026-09-30** (D1, D3–D5, D7, D8, G1–G5, `EXPLICIT_APPROVAL` in-session; number provisional) |
+| AGN-003 | `DEC-SCOPE-044` — optional rows, toggle granularity, matrix reach, student scope, agent review, staff outcome | **Resolved 2026-10-01** (P1–P6 `EXPLICIT_APPROVAL` in-session; P7–P9 design assumptions) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
@@ -3361,7 +3474,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30).** Still parked: staff performance, permission levels, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004; none yet for the rest |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30); the §6 permission matrix moved out to AGN-003 (`DEC-SCOPE-044`, Rev. 8).** Still parked: staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004, `DEC-SCOPE-044` covers AGN-003; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

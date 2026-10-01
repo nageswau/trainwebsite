@@ -1,5 +1,6 @@
 """AGN-001 -- an agency's Master team: list, invite, deactivate (DEC-SCOPE-038 D4, D8, D9; spec §5.4).
 AGN-002 -- the agency's staff logins: list, create, edit, deactivate, reactivate, reset (DEC-SCOPE-040; spec §6).
+AGN-003 -- a staff member's optional permissions (DEC-SCOPE-044; spec §8).
 
 Only an active Master of an ACTIVE organisation reaches these routes (same gate as every agent route, plus the member role);
 every change locks the organisation row so codes, the throttles, the 3-Master limit and the last-Master rule hold under
@@ -17,7 +18,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.rbac import PENDING_MESSAGE, SUSPENDED_MESSAGE, agent_denial_reason, is_agent_staff
 from app.models import AgentOrg, AgentOrgMember, User
-from app.schemas import AgentMasterInvite, AgentStaffCreate, AgentStaffUpdate
+from app.schemas import AgentMasterInvite, AgentStaffCreate, AgentStaffPermissions, AgentStaffUpdate
 from app.services.agent_orgs import (
     MASTER_LIMIT,
     create_staff,
@@ -28,6 +29,7 @@ from app.services.agent_orgs import (
     org_masters,
     reactivate_staff,
     reset_staff,
+    set_staff_permissions,
     update_staff,
 )
 from app.services.provisioning import deliver_welcome_link, provisioning_statuses
@@ -102,8 +104,13 @@ async def deactivate(member_id: UUID, user: User = Depends(get_current_user), db
 
 
 def _staff_out(member: AgentOrgMember, staff: User, statuses: dict) -> dict:
-    """AGN-002 member shape; `setup` is the DEC-SCOPE-019 provisioning status (None once the staff member has a password)."""
-    return {"id": member.id, "code": member.code, "full_name": staff.full_name, "email": staff.email, "phone": staff.phone, "status": member.status, "setup": statuses.get(staff.id)}
+    """AGN-002 member shape; `setup` is the DEC-SCOPE-019 provisioning status (None once the staff member has a password).
+    AGN-003 adds `permissions` (the two optional §6 rows)."""
+    return {
+        "id": member.id, "code": member.code, "full_name": staff.full_name, "email": staff.email, "phone": staff.phone, "status": member.status,
+        "setup": statuses.get(staff.id),
+        "permissions": {"can_verify_documents": member.can_verify_documents, "can_view_reports": member.can_view_reports},
+    }
 
 
 async def _deliver(target: User, issued, actor: User) -> dict:
@@ -173,3 +180,11 @@ async def reset_staff_login(member_id: UUID, user: User = Depends(get_current_us
     member, staff, issued = await reset_staff(db, org, member_id, user)
     out = await _commit_staff_change(db, "agent_org_staff_reset", org, user, member, staff, {staff.id: "pending_setup"})
     return {"member": out, **await _deliver(staff, issued, user)}
+
+
+@router.put("/staff/{member_id}/permissions")
+async def staff_permissions(member_id: UUID, payload: AgentStaffPermissions, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-003 (DEC-SCOPE-044 P2): replace one staff member's optional permissions. Effective on their next request."""
+    org = await _staff_org(db, user)
+    member, staff = await set_staff_permissions(db, org, member_id, user, **payload.model_dump())
+    return {"member": await _commit_staff_change(db, "agent_org_staff_permissions_updated", org, user, member, staff, await provisioning_statuses(db, [staff.id]))}

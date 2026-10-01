@@ -6,7 +6,9 @@ export type PortalPayload = {
   actions:{label:string;href:string}[]; columns:{key:string;label:string;type?:string}[];
   rows:Record<string, unknown>[]; panels:{title:string;items:string[]}[];
 };
-export type User = {id:string; email:string; full_name:string; role:string; division:string; phone?:string; student_code?:string|null; profile:Record<string,unknown>; agent_member_role?:"master"|"staff"|null};
+// AGN-003 (DEC-SCOPE-044): an agency member's effective optional permissions (GET /auth/me; a Master gets both true).
+export type AgentPermissions = { can_verify_documents: boolean; can_view_reports: boolean };
+export type User = {id:string; email:string; full_name:string; role:string; division:string; phone?:string; student_code?:string|null; profile:Record<string,unknown>; agent_member_role?:"master"|"staff"|null; agent_permissions?:AgentPermissions|null};
 
 // ENH-014 (spec §5.1): GET/PUT /api/v1/account/notification-preferences.
 export type NotificationPreferences = { whatsapp: boolean; sms: boolean; phone_valid: boolean };

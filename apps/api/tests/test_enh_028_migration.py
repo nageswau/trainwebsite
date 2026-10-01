@@ -23,12 +23,18 @@ def _parents() -> dict[str, str | None]:
     return parents
 
 
-def test_migration_follows_0050_and_is_the_single_head():
+def test_migration_follows_0050_and_is_on_the_single_head():
+    # Merged with AGN-003 (2026-10-01): `0052_agent_staff_permissions` now chains after this revision, so 0051 is an ancestor of the one head.
     assert _migration.revision == "0051_school_bulk_uploads"
     assert _migration.down_revision == "0050_notification_channels"
     parents = _parents()
     heads = set(parents) - set(parents.values())
-    assert heads == {"0051_school_bulk_uploads"}
+    assert len(heads) == 1
+    chain, rev = set(), next(iter(heads))
+    while rev:
+        chain.add(rev)
+        rev = parents.get(rev)
+    assert "0051_school_bulk_uploads" in chain
 
 
 def test_migration_only_creates_and_drops_its_own_tables():
