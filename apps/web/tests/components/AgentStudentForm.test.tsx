@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import Link from "next/link";
+
 import AgentStudentForm from "@/components/AgentStudentForm";
 import type { AgentStudentDetail } from "@/lib/agentStudents";
 
@@ -128,7 +130,7 @@ describe("AgentStudentForm (AGN-004)", () => {
     vi.spyOn(window, "confirm").mockReturnValue(false);
     render(
       <>
-        <a href="/overseas/agent/dashboard">Dashboard</a>
+        <Link href="/overseas/agent/dashboard">Dashboard</Link>
         <AgentStudentForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />
       </>,
     );

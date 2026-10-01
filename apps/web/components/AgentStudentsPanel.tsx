@@ -14,6 +14,17 @@ const PAGE_SIZE = 20;
 const LIST_ID = "agent-students-list";
 type Confirm = { id: string; kind: "archive" | "unarchive" } | null;
 
+// Browser QA-10: an email has no spaces, so on a narrow card it broke mid-word ("…edusphere.loca / l"). Offer line-break
+// points after "@" and each "." instead; the text itself (and what a screen reader reads) is unchanged.
+export function breakable(text: string) {
+  return text.split(/(?<=[@.])/).map((part, i) => (
+    <span key={i}>
+      {i > 0 && <wbr />}
+      {part}
+    </span>
+  ));
+}
+
 export default function AgentStudentsPanel({ memberRole }: { memberRole: "master" | "staff" | null | undefined }) {
   const isMaster = memberRole !== "staff";
   const [draft, setDraft] = useState("");
@@ -34,6 +45,32 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
   const returnFocusTo = useRef<string | null>(null);
   const request = useRef<AbortController | null>(null);
   const detailRequest = useRef(0); // only the latest View may fill the detail panel
+  const lastDetailId = useRef<string | null>(null);
+  // Browser QA-06: search, Show archived and page live in the URL (the AgentApprovalPanel pattern), so refresh and Back keep
+  // them. Read once on mount (the server has no URL state to match) and hold the first fetch until then.
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const searched = (params.get("q") ?? "").trim().slice(0, 100);
+    setDraft(searched);
+    setQuery(searched);
+    setShowArchived(params.get("archived") === "1");
+    const pageNumber = Number.parseInt(params.get("page") ?? "1", 10);
+    if (Number.isFinite(pageNumber) && pageNumber > 1) setOffset((pageNumber - 1) * PAGE_SIZE);
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    const params = new URLSearchParams(window.location.search);
+    ["q", "archived", "page"].forEach((key) => params.delete(key));
+    if (query) params.set("q", query);
+    if (showArchived) params.set("archived", "1");
+    if (offset > 0) params.set("page", String(offset / PAGE_SIZE + 1));
+    const search = params.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`);
+  }, [ready, query, showArchived, offset]);
 
   // Search is debounced; a changed search starts again at page 1.
   useEffect(() => {
@@ -50,6 +87,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
   // Each load cancels the previous one, and a response for an older query is discarded, so a slow earlier search can never
   // overwrite a newer one. The current rows stay on screen (dimmed, aria-busy) until the new page arrives.
   const load = useCallback(() => {
+    if (!ready) return;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
@@ -80,7 +118,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
-  }, [offset, query, showArchived, assigned, isMaster]);
+  }, [ready, offset, query, showArchived, assigned, isMaster]);
 
   useEffect(load, [load]);
   useEffect(() => () => request.current?.abort(), []);
@@ -103,6 +141,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
   async function openDetail(id: string) {
     const ticket = ++detailRequest.current;
     const current = () => ticket === detailRequest.current; // a slower, earlier View must not replace a later one
+    lastDetailId.current = id;
     setDetail(null);
     setDetailState("loading");
     try {
@@ -160,7 +199,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
 
   return (
     <div className="action-card agent-students">
-      <h3>Students</h3>
+      <h3>All students</h3>
       {/* Always mounted so screen readers announce the text when it arrives. */}
       <div className={notice ? "form-message" : undefined} role="status" aria-live="polite">
         {notice}
@@ -227,7 +266,11 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
       )}
       {detailState === "error" && (
         <p className="form-error" role="alert">
-          Unable to load this student.
+          Unable to load this student.{" "}
+          {/* Browser QA-09: the failed View can be retried in place. */}
+          <button type="button" className="btn secondary small" aria-label="Retry loading the student" onClick={() => lastDetailId.current && openDetail(lastDetailId.current)}>
+            Retry
+          </button>
         </p>
       )}
       {detail && (
@@ -279,7 +322,17 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
                     <h4 style={{ marginTop: 10, fontSize: "1rem", overflowWrap: "anywhere" }}>{s.full_name}</h4>
                     <dl className="record-details" style={{ fontSize: 13 }}>
                       <dt>Contact</dt>
-                      <dd>{[s.email, s.phone].filter(Boolean).join(" · ") || "—"}</dd>
+                      <dd>
+                        {s.email || s.phone ? (
+                          <>
+                            {s.email && breakable(s.email)}
+                            {s.email && s.phone && " · "}
+                            {s.phone}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </dd>
                       <dt>Preference</dt>
                       <dd>{[s.preferred_country, s.preferred_intake].filter(Boolean).join(", ") || "—"}</dd>
                       <dt>Assigned to</dt>

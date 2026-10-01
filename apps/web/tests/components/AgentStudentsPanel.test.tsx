@@ -19,6 +19,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+  window.history.replaceState(null, "", "/"); // the panel keeps its filters in the URL (QA-06); jsdom keeps the URL between tests
 });
 
 describe("AgentStudentsPanel (AGN-004)", () => {
@@ -296,6 +297,55 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     save.focus(); // a keyboard user is on the button; it unmounts when the form closes
     fireEvent.click(save);
     await waitFor(() => expect(within(panel).getByRole("heading", { name: "Asha Rao" })).toHaveFocus());
+  });
+
+  // --- browser QA fixes ----------------------------------------------------------------------------------------------------
+  it("is headed 'All students' (the page itself is titled Students) (QA-01)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([item()])))));
+    render(<AgentStudentsPanel memberRole="master" />);
+    expect(screen.getByRole("heading", { name: "All students", level: 3 })).toBeInTheDocument();
+  });
+
+  it("keeps search, Show archived and page in the URL, and reads them back (QA-06)", async () => {
+    window.history.replaceState(null, "", "/overseas/agent/students?q=Asha&archived=1&page=2");
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(() => Promise.resolve(res({ items: [item()], total: 25, limit: 20, offset: 20 })));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentStudentsPanel memberRole="master" />);
+    await screen.findByText("Asha Rao");
+    expect(screen.getByLabelText("Search students")).toHaveValue("Asha");
+    expect(screen.getByLabelText("Show archived")).toBeChecked();
+    const firstUrl = String(fetchMock.mock.calls[0][0]);
+    expect(firstUrl).toContain("q=Asha");
+    expect(firstUrl).toContain("include_archived=true");
+    expect(firstUrl).toContain("offset=20");
+    fireEvent.click(screen.getByLabelText("Show archived"));
+    await waitFor(() => expect(window.location.search).toBe("?q=Asha"));
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("offers Retry when a student's details fail to load (QA-09)", async () => {
+    let detailCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.endsWith("/s1")) return Promise.resolve(++detailCalls === 1 ? res({ detail: "Internal Server Error" }, 500) : res({ student: detail() }));
+        return Promise.resolve(res(page([item()])));
+      }),
+    );
+    render(<AgentStudentsPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "View Asha Rao" }));
+    expect(await screen.findByText("Unable to load this student.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading the student" }));
+    expect(await screen.findByRole("region", { name: "Asha Rao" })).toBeInTheDocument();
+  });
+
+  it("lets long emails break after @ and dots instead of mid-word (QA-10)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([item({ email: "student.overseas@edusphere.local" })])))));
+    const { container } = render(<AgentStudentsPanel memberRole="master" />);
+    await screen.findByText("Asha Rao");
+    const contact = container.querySelector("ul[aria-label='Students'] dd") as HTMLElement;
+    expect(contact.querySelectorAll("wbr").length).toBeGreaterThanOrEqual(3);
+    expect(contact.textContent).toBe("student.overseas@edusphere.local");
   });
 
   it("renders markup in a name as text", async () => {
