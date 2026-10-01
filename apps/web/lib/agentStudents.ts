@@ -62,7 +62,7 @@ const LIMITS: Partial<Record<FieldKey, number>> = {
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // AGN-005 QA5-01: the server's rule (schemas `_MOBILE`) -- digits, spaces, + - ( ), 7-20 characters, at least 7 digits.
 const PHONE = /^[0-9+\-() ]{7,20}$/;
-export const PHONE_MESSAGE = "Enter a phone number of 7–20 digits, spaces, +, -, ( or ) with at least 7 digits";
+const PHONE_MESSAGE = "Enter a phone number of 7–20 digits, spaces, +, -, ( or ) with at least 7 digits";
 
 export function emptyValues(): FormValues {
   return Object.fromEntries(FIELD_KEYS.map((k) => [k, ""])) as FormValues;

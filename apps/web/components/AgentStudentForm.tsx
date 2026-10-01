@@ -96,11 +96,6 @@ export default function AgentStudentForm({
     };
   }, [dirty]);
 
-  // AGN-005 QA5-02: a new-student form opens with focus on its first field, so keyboard users start typing where they expect.
-  useEffect(() => {
-    if (mode === "create") document.getElementById(`${idPrefix}-full_name`)?.focus();
-  }, [mode, idPrefix]); // both fixed while the form is open, so this runs once, when it opens
-
   function cancel() {
     if (dirty && !window.confirm(LEAVE_PROMPT)) return;
     onCancel();
@@ -186,6 +181,8 @@ export default function AgentStudentForm({
                   autoComplete={f.autoComplete}
                   value={values[f.key]}
                   max={f.type === "date" ? today : undefined}
+                  // AGN-005 QA5-02: a new-student form opens on its first field, so keyboard users start typing where they expect.
+                  autoFocus={mode === "create" && f.key === "full_name"}
                   aria-required={f.key === "full_name" ? true : undefined}
                   aria-invalid={errors[f.key] ? true : undefined}
                   aria-describedby={describedBy(f.key)}
