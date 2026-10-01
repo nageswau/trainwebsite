@@ -82,6 +82,7 @@ export default function AgentShortlistForm(props: { studentId: string; mode: "ad
   };
   const type = (field: Field, value: string) => {
     touched.current.add(field);
+    prefilled.current.delete(field); // typed over a prefill: now the user's value
     setDraft((d) => ({ ...d, [field]: value }));
   };
 

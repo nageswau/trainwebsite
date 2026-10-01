@@ -147,6 +147,20 @@ describe("AgentShortlistForm (AGN-007)", () => {
     expect(screen.getByLabelText("Intake")).toHaveValue("Typed intake");
   });
 
+  it("keeps a value the user typed over a prefill when the university changes", async () => {
+    stubApi();
+    render(<AgentShortlistForm {...props} />);
+    const select = await screen.findByLabelText("University (required)");
+    await waitFor(() => expect(select).not.toBeDisabled());
+    fireEvent.change(select, { target: { value: "c:u1" } });
+    fireEvent.change(await screen.findByLabelText("Course"), { target: { value: "k1" } });
+    expect(screen.getByLabelText("Tuition fee")).toHaveValue("EUR 20,000");
+    fireEvent.change(screen.getByLabelText("Tuition fee"), { target: { value: "Edited fee" } });
+    fireEvent.change(select, { target: { value: "c:u2" } });
+    expect(screen.getByLabelText("Tuition fee")).toHaveValue("Edited fee");
+    expect(screen.getByLabelText("Intake")).toHaveValue("");
+  });
+
   it("re-fetches the agency list on every mount", async () => {
     const fetchMock = stubApi();
     const agencyCalls = () => fetchMock.mock.calls.filter(([u]) => String(u).includes("/crm/universities")).length;
