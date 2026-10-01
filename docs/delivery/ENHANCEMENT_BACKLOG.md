@@ -3331,7 +3331,7 @@ acceptance criteria: **a Staff member's actions appear within one page load; oth
 - `AgentStaffRow` gains a mode: existing row tests keep passing; new cases added.
 - Audit row shape changes in future: allow-list plus defensive parsing; a missing subject reads "No longer available".
 
-**Status (2026-10-01) — IMPLEMENTED on `feature/agn-021-staff-activity`, NOT complete.** Backend and web unit tests pass (evidence in `RTM.md`). Playwright e2e recorded as passed (see `RTM.md`, AGN-021 row). **PENDING (owner requirement):** the owner's browser validation and the independent Codex review. Full backend suite not run (owner cadence).
+**Status (2026-10-01) — IMPLEMENTED on `feature/agn-021-staff-activity`, NOT complete.** Backend and web unit tests pass (evidence in `RTM.md`). Playwright e2e recorded as passed (see `RTM.md`, AGN-021 row). Browser QA done 2026-10-01: QA-01…QA-04 found, fixed (`aa11adc`) and re-verified in the browser (`docs/quality/AGN-021_BROWSER_QA_2026-10-01.md`). **PENDING (owner requirement):** the independent Codex review. Full backend suite not run (owner cadence).
 
 ## 2. Dependency graph
 
