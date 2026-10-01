@@ -7,9 +7,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.api.files import _allowed
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
-from app.core.rbac import agent_is_approved
+from app.core.rbac import agent_denial_reason, is_agent_staff
 from app.models import (
     AgentCommission,
     AgentStudent,
@@ -76,8 +78,8 @@ from app.schemas import (
     EnrollmentCreate,
     EnrollmentProgressUpdate,
     LearningResourceCreate,
-    OverseasApplicationCreate,
     OverseasApplicationAdvance,
+    OverseasApplicationCreate,
     OverseasApplicationUpdate,
     ProfileDocumentCreate,
     QuestionReplyCreate,
@@ -88,8 +90,7 @@ from app.schemas import (
     SupportTicketUpdate,
     VisaCaseCreate,
 )
-from app.api.files import _allowed
-from app.core.config import settings
+from app.services.agent_orgs import lock_org, member_user_ids, notification_recipients, org_member_ids
 from app.services.certificates import generate_certificate_pdf
 from app.services.integrations import send_notification
 from app.services.storage import storage
@@ -107,8 +108,15 @@ def _require(user: User, roles: set[str], division: str | None = None):
     # AGT-001-AC02: a Pending/Rejected Agent cannot refer students or view data, even
     # though `user.role == "agent"` already passed above -- this codebase's `_require`
     # checks the legacy `User.role` column, which has no approval concept of its own.
-    if not agent_is_approved(user):
-        raise HTTPException(403, "Agent registration is pending approval")
+    reason = agent_denial_reason(user)
+    if reason:
+        raise HTTPException(403, reason)
+
+
+def _require_agent_master(user: User) -> None:
+    """AGN-002 (DEC-SCOPE-040 S1): commissions are Master-only; an agency's staff are refused."""
+    if is_agent_staff(user):
+        raise HTTPException(403, "Only an agency Master can view commissions")
 
 
 async def _audit(db: AsyncSession, user: User, action: str, entity_type: str, entity_id: UUID | str | None, metadata: dict | None = None):
@@ -146,14 +154,15 @@ async def _assigned_application(db: AsyncSession, user: User, application_id: UU
         return item
     if user.division != "overseas":
         raise HTTPException(403, "Wrong EduSphere division")
+    # AGN-001 (D1): an agent may act on any application referred by a member of its own organisation.
+    agent_in_scope = user.role == "agent" and item.agent_id in await member_user_ids(db, user)
     allowed = (
         user.role == "overseas_admin"
         or user.role == "overseas_student"
         and item.student_id == user.id
         or user.role == "counselor"
         and item.counselor_id == user.id
-        or user.role == "agent"
-        and item.agent_id == user.id
+        or agent_in_scope
         or user.role == "university_rep"
         and uuid_reference(user.profile.get("university_id"), "university reference", required=False) == item.university_id
     )
@@ -1730,7 +1739,8 @@ async def _maybe_trigger_agent_commission(db: AsyncSession, application: Oversea
     await db.flush()
     agent = await db.get(User, application.agent_id)
     if agent:
-        await _notify_user(db, agent, "Commission estimated", "A referred student has enrolled -- a commission is now estimated and awaiting an amount from Overseas Admin.", "/overseas/agent/commissions")
+        for recipient in await notification_recipients(db, agent):  # AGN-001 (D12): every active Master
+            await _notify_user(db, recipient, "Commission estimated", "A referred student has enrolled -- a commission is now estimated and awaiting an amount from Overseas Admin.", "/overseas/agent/commissions")
     await _audit(db, changed_by, "agent.commission_auto_create", "agent_commission", item.id, {"application_id": str(application.id), "trigger": "enrolled"})
 
 
@@ -1742,7 +1752,7 @@ async def create_overseas_application(payload: OverseasApplicationCreate, user: 
     if not student or student.role != "overseas_student" or student.division != "overseas":
         raise HTTPException(422, "Valid overseas student is required")
     if user.role == "agent":
-        linked = await db.scalar(select(AgentStudent.id).where(AgentStudent.agent_id == user.id, AgentStudent.student_id == student_id, AgentStudent.status == "active"))
+        linked = await db.scalar(select(AgentStudent.id).where(AgentStudent.agent_id.in_(org_member_ids(user)), AgentStudent.student_id == student_id, AgentStudent.status == "active"))
         if not linked:
             raise HTTPException(403, "Student is not assigned to this agent")
     university = await db.get(University, payload.university_id)
@@ -1832,7 +1842,7 @@ async def list_overseas_applications(user: User = Depends(get_current_user), db:
     elif user.role == "counselor":
         stmt = stmt.where(OverseasApplication.counselor_id == user.id)
     elif user.role == "agent":
-        stmt = stmt.where(OverseasApplication.agent_id == user.id)
+        stmt = stmt.where(OverseasApplication.agent_id.in_(org_member_ids(user)))
     elif user.role == "university_rep":
         stmt = stmt.where(OverseasApplication.university_id == uuid_reference(user.profile.get("university_id"), "university reference", required=False))
     rows = (await db.execute(stmt.order_by(OverseasApplication.updated_at.desc()).limit(500))).all()
@@ -1992,7 +2002,7 @@ async def add_document(payload: StudentDocumentCreate, user: User = Depends(get_
         if user.role == "counselor":
             linked = await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == student_id, OverseasApplication.counselor_id == user.id))
         else:
-            linked = await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == student_id, AgentStudent.agent_id == user.id))
+            linked = await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == student_id, AgentStudent.agent_id.in_(org_member_ids(user))))
         if not linked:
             raise HTTPException(403, "Student is outside your assigned scope")
     item = StudentDocument(
@@ -2058,7 +2068,7 @@ async def download_student_document(document_id: UUID, user: User = Depends(get_
             if not assigned:
                 raise HTTPException(403, "Document is outside your assigned scope")
     elif user.role == "agent":
-        assigned = await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == item.student_id, AgentStudent.agent_id == user.id))
+        assigned = await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == item.student_id, AgentStudent.agent_id.in_(org_member_ids(user))))
         if not assigned:
             raise HTTPException(403, "Document is outside your assigned scope")
     # `file_url` is stored in two shapes depending on which upload path a client used
@@ -2274,7 +2284,7 @@ async def apply_scholarship(scholarship_id: UUID, user: User = Depends(get_curre
 @router.get("/overseas/agent/students")
 async def agent_students(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"agent"}, "overseas")
-    rows = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(AgentStudent.agent_id == user.id).order_by(User.full_name))).all()
+    rows = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(AgentStudent.agent_id.in_(org_member_ids(user))).order_by(User.full_name))).all()
     return [{"link_id": link.id, "student_id": student.id, "student": student.full_name, "email": student.email, "phone": student.phone, "status": link.status} for link, student in rows]
 
 
@@ -2284,9 +2294,11 @@ async def add_agent_student(payload: AgentStudentCreate, user: User = Depends(ge
     student = await db.get(User, payload.student_id)
     if not student or student.role != "overseas_student" or student.division != "overseas":
         raise HTTPException(404, "Overseas student not found")
-    existing = await db.scalar(select(AgentStudent).where(AgentStudent.agent_id == user.id, AgentStudent.student_id == student.id))
+    if user.agent_membership is not None:
+        await lock_org(db, user.agent_membership.org_id)  # AGN-001 (E12): serialise this organisation's links
+    existing = await db.scalar(select(AgentStudent.id).where(AgentStudent.agent_id.in_(org_member_ids(user)), AgentStudent.student_id == student.id))
     if existing:
-        raise HTTPException(409, "Student is already linked to this agent")
+        raise HTTPException(409, "Student is already linked to this agency")
     item = AgentStudent(agent_id=user.id, student_id=student.id, status="active")
     db.add(item)
     await db.flush()
@@ -2298,13 +2310,15 @@ async def add_agent_student(payload: AgentStudentCreate, user: User = Depends(ge
 @router.get("/overseas/agent/commissions")
 async def agent_commissions(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"agent"}, "overseas")
+    _require_agent_master(user)
     rows = (
         await db.execute(
             select(AgentCommission, OverseasApplication, University, User)
-            .join(OverseasApplication)
-            .join(University)
+            .select_from(AgentCommission)
+            .join(OverseasApplication, OverseasApplication.id == AgentCommission.application_id)
+            .join(University, University.id == OverseasApplication.university_id)
             .join(User, User.id == OverseasApplication.student_id)
-            .where(AgentCommission.agent_id == user.id)
+            .where(AgentCommission.agent_id.in_(org_member_ids(user)))
             .order_by(AgentCommission.created_at.desc())
         )
     ).all()
@@ -2328,8 +2342,12 @@ async def agent_commissions(user: User = Depends(get_current_user), db: AsyncSes
 @router.post("/overseas/agent/commissions/{commission_id}/claim")
 async def claim_commission(commission_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"agent"}, "overseas")
-    item = await db.get(AgentCommission, commission_id)
-    if not item or item.agent_id != user.id:
+    _require_agent_master(user)
+    # AGN-001: organisation scope, and a row lock so two Masters claiming one commission claim it once.
+    item = await db.scalar(
+        select(AgentCommission).where(AgentCommission.id == commission_id, AgentCommission.agent_id.in_(org_member_ids(user))).with_for_update().execution_options(populate_existing=True)
+    )
+    if not item:
         raise HTTPException(404, "Commission not found")
     if item.status not in {"eligible", "estimated"}:
         raise HTTPException(409, "Commission cannot be claimed in its current status")
@@ -2360,7 +2378,8 @@ async def create_commission(payload: CommissionCreate, user: User = Depends(get_
     item = AgentCommission(agent_id=agent.id, application_id=application.id, amount=payload.amount, currency=payload.currency, status="eligible", created_by="admin_manual")
     db.add(item)
     await db.flush()
-    await _notify_user(db, agent, "Commission eligible", f"A {payload.currency} {payload.amount:,.2f} commission is available to claim.", "/overseas/agent/commissions")
+    for recipient in await notification_recipients(db, agent):  # AGN-001 (D12): every active Master
+        await _notify_user(db, recipient, "Commission eligible", f"A {payload.currency} {payload.amount:,.2f} commission is available to claim.", "/overseas/agent/commissions")
     await _audit(db, user, "agent.commission_create", "agent_commission", item.id)
     await db.commit()
     return {"id": item.id, "status": item.status}

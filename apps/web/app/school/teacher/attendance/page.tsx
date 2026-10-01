@@ -5,7 +5,7 @@ import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-// ENH-030 (DEC-SCOPE-038): the teacher marks their assigned class for one day. The server scopes the roster (assigned students
+// ENH-030 (DEC-SCOPE-041): the teacher marks their assigned class for one day. The server scopes the roster (assigned students
 // only) and decides "today" on the school calendar; only a real calendar date in YYYY-MM-DD form is passed on -- anything else
 // (malformed, or well-formed but impossible like 2026-02-30, QA30-03) falls back to the school's today.
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;

@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
+import { pickFromList } from "./helpers/pick";
 import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // ENH-002 -- Academic Team: `teacher_remarks` on a result, the portfolio progress summary,
@@ -49,7 +50,7 @@ async function addStudent(page: Page, data: Record<string, string>) {
 }
 
 async function fillResult(page: Page, schoolName: string, f: { student: string; subject: string; obtained: string; remarks: string }) {
-  await page.selectOption("#result-student", { label: `${f.student} — ${schoolName}` });
+  await pickFromList(page.locator("#result-student"), f.student, `${f.student} — ${schoolName}`);
   await page.fill("#result-year", "2026");
   await page.fill("#result-term", "Term 1");
   await page.fill("#result-subject", f.subject);

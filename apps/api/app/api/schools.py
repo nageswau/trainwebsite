@@ -1410,7 +1410,7 @@ async def _overview_payload(db: AsyncSession, student: SchoolStudent) -> dict:
         },
         # ENH-011 (`DEC-SCOPE-026`): additive key; same reader scope as everything above.
         "skills": await _skills().skills_overview(db, student),
-        # ENH-030 (DEC-SCOPE-038): additive key; same reader scope as everything above.
+        # ENH-030 (DEC-SCOPE-041): additive key; same reader scope as everything above.
         "daily_attendance": await _attendance().daily_attendance_summary(db, student),
     }
 

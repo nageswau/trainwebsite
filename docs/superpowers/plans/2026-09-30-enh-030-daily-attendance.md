@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md` (decisions D1–D6, choices C1–C4, AC01–AC13, engineering review §11). Decision: `DEC-SCOPE-038`.
 
+> **Note (2026-10-01):** Renumbered on merging `main`, 2026-10-01: decision `DEC-SCOPE-038` → `DEC-SCOPE-041` (AGN-001, ENH-031 and AGN-002 hold 038–040) and migration `0046` → `0048_school_attendance_records`, chained after AGN-002's `0047_agent_org_staff`. The task text below keeps the original numbers as executed.
+
 ## Global Constraints
 
 - No new dependency (backend or frontend).

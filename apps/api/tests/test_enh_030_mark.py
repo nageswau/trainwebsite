@@ -283,7 +283,7 @@ async def test_another_schools_locked_student_is_refused_at_once(client, db_sess
     assert response.status_code == 403 and response.json()["detail"] == "One or more students are not assigned to you"
 
 
-# --- Review I-3 (DEC-SCOPE-038, user-approved 2026-09-30): a past day lists and accepts only students enrolled at this school on
+# --- Review I-3 (DEC-SCOPE-041, user-approved 2026-09-30): a past day lists and accepts only students enrolled at this school on
 # that day. Enrolment at the current school begins at the latest approved transfer into it, else when the student was created there
 # (both read on the school calendar, Asia/Kolkata). ------------------------------------------------------------------------------
 

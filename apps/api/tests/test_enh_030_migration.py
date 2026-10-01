@@ -1,4 +1,4 @@
-"""ENH-030 -- migration 0046 (spec §4, AC13): single head, create-table only, matches the model."""
+"""ENH-030 -- migration 0048 (spec §4, AC13): single head, create-table only, matches the model."""
 
 import importlib.util
 from pathlib import Path
@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import inspect
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_enh_030_migration_0046", VERSIONS / "0046_school_attendance_records.py")
+_spec = importlib.util.spec_from_file_location("_enh_030_migration_0048", VERSIONS / "0048_school_attendance_records.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
@@ -23,13 +23,13 @@ def _parents() -> dict[str, str | None]:
     return parents
 
 
-def test_migration_follows_0045_and_is_the_single_head():
-    assert _migration.revision == "0046_school_attendance_records"
-    assert _migration.down_revision == "0045_psychometric_result_fields"
+def test_migration_follows_0047_and_is_the_single_head():
+    assert _migration.revision == "0048_school_attendance_records"
+    assert _migration.down_revision == "0047_agent_org_staff"
     parents = _parents()
     heads = set(parents) - set(parents.values())
     assert len(heads) == 1
-    assert "0045_psychometric_result_fields" in set(parents.values())
+    assert "0047_agent_org_staff" in set(parents.values())
 
 
 @pytest.mark.asyncio

@@ -1,10 +1,10 @@
 """ENH-030 -- school_attendance_records.
 
-Revision ID: 0046_school_attendance_records
-Revises: 0045_psychometric_result_fields
+Revision ID: 0048_school_attendance_records
+Revises: 0047_agent_org_staff
 
 docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md §4. Create-table only: no existing table is altered and no
-existing row is read or written. The unique constraint's index is the only one (spec §11 A4). `downgrade()` drops the table.
+existing row is read or written. Renumbered from 0046 on merging `main` (AGN-001/002 hold 0046/0047). The unique constraint's index is the only one (spec §11 A4). `downgrade()` drops the table.
 """
 
 import sqlalchemy as sa
@@ -12,8 +12,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0046_school_attendance_records"
-down_revision = "0045_psychometric_result_fields"
+revision = "0048_school_attendance_records"
+down_revision = "0047_agent_org_staff"
 branch_labels = None
 depends_on = None
 

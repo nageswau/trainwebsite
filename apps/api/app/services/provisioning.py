@@ -20,7 +20,9 @@ from datetime import UTC, datetime, timedelta
 from typing import NamedTuple
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -49,6 +51,16 @@ class IssuedWelcome(NamedTuple):
 def unusable_password_hash() -> str:
     """Hash of a random secret that is discarded immediately -- never a constant."""
     return hash_password(secrets.token_urlsafe(48))
+
+
+async def flush_unique_email(db: AsyncSession) -> None:
+    """Flush a new account; two simultaneous creates for one email are settled by the unique
+    constraint (409 for the loser, never a 500). Rolling back also drops anything created with it."""
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "Email already exists") from None
 
 
 def _set_password_url(user: User, raw: str) -> str:

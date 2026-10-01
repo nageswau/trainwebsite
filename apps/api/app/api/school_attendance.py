@@ -1,6 +1,6 @@
 """ENH-030 -- daily class attendance for School students (docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md).
 
-A teacher marks their assigned students for one day in one call (DEC-SCOPE-038 D1/D2). Its own router, like ENH-005/011/013's, so
+A teacher marks their assigned students for one day in one call (DEC-SCOPE-041 D1/D2). Its own router, like ENH-005/011/013's, so
 `schools.py` does not grow; `schools._overview_payload` reads `daily_attendance_summary` through a call-time import.
 """
 
@@ -48,7 +48,7 @@ def _check_date(day: date) -> None:
 
 
 async def _enrolled_on(db: AsyncSession, school_id: UUID, students: Sequence[tuple[UUID, datetime]]) -> dict[UUID, date]:
-    """Review I-3 (DEC-SCOPE-038, user-approved 2026-09-30): the school-calendar day each student's time at `school_id` began -- the
+    """Review I-3 (DEC-SCOPE-041, user-approved 2026-09-30): the school-calendar day each student's time at `school_id` began -- the
     latest approved transfer into it, else when the student was created there. A day before that is not theirs to be marked for."""
     ids = [student_id for student_id, _created in students]
     moved: dict[UUID, datetime | None] = {}

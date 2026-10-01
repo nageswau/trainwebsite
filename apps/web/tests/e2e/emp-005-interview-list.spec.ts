@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { pickFromList } from "./helpers/pick";
 
 // EMP-005 -- Interview list and status. The list itself and its RBAC scoping already
 // existed (built for EMP-004); the real gap was the UI never displaying an interview's
@@ -48,7 +49,7 @@ test("Employer's interview list shows an honest status before and after Placemen
   await page.reload();
   const interviewsCard = page.locator(".action-card", { has: page.getByRole("heading", { name: "Shortlist & Interviews" }) });
   await interviewsCard.getByLabel("Job posting").selectOption({ label: "E2E Reporting Role" });
-  await interviewsCard.getByLabel("Candidate").selectOption({ label: name });
+  await pickFromList(interviewsCard.getByRole("combobox", { name: "Candidate" }), name);
   await interviewsCard.getByRole("button", { name: "Shortlist" }).click();
   await expect(interviewsCard.getByText("Candidate shortlisted.")).toBeVisible();
 

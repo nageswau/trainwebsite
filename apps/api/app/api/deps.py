@@ -8,7 +8,34 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.core.rbac import user_has_division, user_has_permission, user_has_role
 from app.core.security import decode_token
-from app.models import User
+from app.models import AgentOrgMember, User
+
+# AGN-002 browser QA-02/QA-03: what a refused session is told. Staff learn that their agency deactivated them (they cannot
+# fix it by signing in again); everyone else keeps the generic message, so nothing new is disclosed about other accounts.
+USER_UNAVAILABLE = "User unavailable"
+DEACTIVATED_STAFF = "Your account was deactivated by your agency. Contact your agency's Master."
+SESSION_ENDED = "Your session has ended. Please sign in again."
+
+
+async def _unavailable_reason(db: AsyncSession, uid: UUID) -> str:
+    """Only runs for a token whose user is missing or inactive (one extra query on the failure path)."""
+    staff = await db.scalar(
+        select(AgentOrgMember.id)
+        .join(User, User.id == AgentOrgMember.user_id)
+        .where(AgentOrgMember.user_id == uid, AgentOrgMember.role == "staff", AgentOrgMember.status == "deactivated", User.active.is_(False))
+    )
+    return DEACTIVATED_STAFF if staff else USER_UNAVAILABLE
+
+
+async def check_session(db: AsyncSession, uid: UUID, user: User | None, payload: dict) -> User:
+    """The two refusals every token check shares (access here, refresh in `auth.refresh`): the user must exist and be active,
+    and the token's `sv` must match `users.session_version` (AGN-002 spec §5: a staff reset or deactivation increments it;
+    tokens from before AGN-002 carry no `sv` and count as 0, the column's default)."""
+    if not user:
+        raise HTTPException(401, await _unavailable_reason(db, uid))
+    if payload.get("sv", 0) != user.session_version:
+        raise HTTPException(401, SESSION_ENDED)
+    return user
 
 
 async def get_current_user(edusphere_access: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)) -> User:
@@ -21,12 +48,14 @@ async def get_current_user(edusphere_access: str | None = Cookie(default=None), 
             raise ValueError()
     except Exception as exc:
         raise HTTPException(401, "Invalid session") from exc
+    # AGN-001: the agent membership (+ organisation) is loaded with every request, so the organisation gate
+    # (`rbac.agent_denial_reason`) sees a suspension on the member's next request.
     user = await db.scalar(
-        select(User).where(User.id == uid, User.active.is_(True)).options(selectinload(User.role_assignments))
+        select(User).where(User.id == uid, User.active.is_(True)).options(
+            selectinload(User.role_assignments), selectinload(User.agent_membership).selectinload(AgentOrgMember.org)
+        )
     )
-    if not user:
-        raise HTTPException(401, "User unavailable")
-    return user
+    return await check_session(db, uid, user, p)
 
 
 def require_division(*divisions: str):

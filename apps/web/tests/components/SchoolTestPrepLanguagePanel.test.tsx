@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { pickOption } from "../helpers/pickOption";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import SchoolTestPrepLanguagePanel from "@/components/SchoolTestPrepLanguagePanel";
@@ -26,7 +27,7 @@ function deny(detail: string) {
 }
 
 function startPreparation() {
-  fireEvent.change(within(section("Start test preparation")).getByLabelText("Student"), { target: { value: "s1" } });
+  pickOption(within(section("Start test preparation")), "Student", "s1");
   fireEvent.change(screen.getByLabelText("Test"), { target: { value: "ielts" } });
   fireEvent.click(screen.getByRole("button", { name: "Start preparation" }));
 }
@@ -60,7 +61,7 @@ describe("SchoolTestPrepLanguagePanel save failures", () => {
     const certify = await screen.findByRole("alert");
     expect(within(section("Foreign language classes")).getByRole("alert")).toBe(certify);
 
-    fireEvent.change(within(section("Start language classes")).getByLabelText("Student"), { target: { value: "s1" } });
+    pickOption(within(section("Start language classes")), "Student", "s1");
     fireEvent.change(screen.getByLabelText("Language"), { target: { value: "French" } });
     fireEvent.click(screen.getByRole("button", { name: "Start classes" }));
     await within(section("Start language classes")).findByRole("alert");

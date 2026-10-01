@@ -413,6 +413,40 @@ predate an application record).
   not exist yet and is required scope, not optional polish, once the on-behalf-of model is built.
   See §6.2's note above for the same open `student_user_id` schema question.
 
+### 6.8a `AgentOrg`, `AgentOrgMember` — built 2026-09-28 (`AGN-001`, `DEC-SCOPE-038`, migration `0046_agent_orgs`)
+Design: `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md` §4.
+- **`agent_orgs`** (the tenant): `id`, `name` String(160), `prefix` String(8) unique
+  (`uq_agent_orgs_prefix`; D5), `status` String(20) indexed, CHECK `pending`/`active`/`rejected`/`suspended`
+  (`ck_agent_orgs_status`), `master_seq` Integer ≥ 0 (highest Master number ever issued), `status_changed_by_user_id`
+  → `users.id`, `status_changed_at`, timestamps. `status` is the agent approval gate (`core/rbac.agent_denial_reason`).
+- **`agent_org_members`**: `id`, `org_id` → `agent_orgs.id` (indexed), `user_id` → `users.id` **unique** (a user
+  belongs to one organisation for good), `role` CHECK `master`, `seq` (unique with `org_id`), `code` String(16) unique
+  (`<prefix>-M###`, never reassigned), `status` CHECK `active`/`deactivated` (no reactivation), `invited_by_user_id`,
+  `deactivated_by_user_id`, `deactivated_at`, timestamps. "Active or pending invite" (D4) = `status='active'`; an
+  invited Master is a real `users` row with an unused DEC-SCOPE-019 welcome token.
+- **Invariants (enforced under a row lock on `agent_orgs`):** at most 3 active members; never 0 active once created.
+- **Scope (approach A):** `agent_students`, `agent_commissions` and `overseas_applications` are **unchanged** —
+  `agent_id` still records the acting user; agent queries filter `agent_id IN (member user ids of the caller's
+  organisation)`.
+- **Migration `0045`:** creates both tables; backfills one organisation + active `M001` per `role='agent'` user without
+  a membership (name = `profile.agency_name` or `full_name`; approved assignment → `active`, anything else → `pending`).
+  No existing row altered; idempotent; `downgrade()` drops only the two tables. Round trip verified on a throwaway
+  database (RTM `AGN-001` row).
+- **Feature IDs:** `AGN-001` (changes `AGT-001`–`004`).
+
+### 6.8b Agent staff and session version — built 2026-09-30 (`AGN-002`, `DEC-SCOPE-040`, migration `0047_agent_org_staff`)
+Design: `docs/superpowers/specs/2026-09-30-agn-002-staff-logins-design.md` §4.
+- **`agent_orgs.staff_seq`** Integer ≥ 0 (`ck_agent_orgs_staff_seq`), server default 0: the highest staff number ever issued.
+- **`agent_org_members`**: `role` CHECK now `master`/`staff` (`ck_agent_org_members_role`); the sequence is unique per role
+  (`uq_agent_org_members_org_role_seq (org_id, role, seq)`, replacing `uq_agent_org_members_org_seq`), so `M001` and `S001`
+  coexist. Staff codes `<prefix>-S###`, never reassigned. Staff move `active` ↔ `deactivated` (Masters still cannot be
+  reactivated — a service rule). A staff member is a `users` row with `role='agent'` and an approved `agent` assignment.
+- **`users.session_version`** Integer, server default 0: copied into every token as `sv`; a staff reset or deactivation
+  increments it, which ends every older session (tokens without `sv` count as 0).
+- **Migration `0047`:** additive; no row changes; columns added only when missing; `downgrade()` refuses while a staff member
+  exists.
+- **Feature IDs:** `AGN-002`.
+
 ### 6.9 `InboundUniversityEmail`
 **Carries over.** Supports `UNI-001`'s university-communication surface.
 - **Feature IDs:** `UNI-001`.
@@ -774,7 +808,7 @@ list); `ck_portfolio_cert_fields` (an untagged row has all four NULL; a tagged r
 existing `organization` column. No index (nothing filters by tag). `downgrade()` drops the four
 CHECKs and columns only; entries survive as plain certifications. **Feature ID:** `ENH-024`.
 
-### 6.23 School daily attendance (`ENH-030`) — added 2026-09-30, propagating `DEC-SCOPE-038` (provisional number); migration `0046_school_attendance_records`
+### 6.23 School daily attendance (`ENH-030`) — added 2026-09-30, propagating `DEC-SCOPE-041` (provisional number); migration `0048_school_attendance_records`
 
 One new table, `school_attendance_records` — create-table only, no existing table altered, no backfill
 (design `docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md` §4):
@@ -794,7 +828,7 @@ student per day per school (D5 as amended, confirmed by the user 2026-09-30); re
 transfer each school keeps its own register (the new school never overwrites the old school's row). `ck_school_attendance_status` — the four statuses. The unique constraint's index is
 the only index (it serves the roster and summary reads). A **missing row means "not marked"**, never
 absent. After a transfer the old school's rows are kept (not shown to the new school's readers).
-A past day may only be marked for students enrolled at the school that day (latest approved transfer into it, else `school_students.created_at`, school calendar; DEC-SCOPE-038 I-3). `downgrade()` drops the table. Writes are audited as `school.daily_attendance_mark` (with the changed
+A past day may only be marked for students enrolled at the school that day (latest approved transfer into it, else `school_students.created_at`, school calendar; DEC-SCOPE-041 I-3). `downgrade()` drops the table. Writes are audited as `school.daily_attendance_mark` (with the changed
 students, from → to) and refusals as `school.daily_attendance_denied` (counts only). **Feature ID:** `ENH-030`.
 
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)

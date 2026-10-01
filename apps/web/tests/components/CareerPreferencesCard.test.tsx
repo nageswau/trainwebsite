@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { pickOption } from "../helpers/pickOption";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import CareerPreferencesCard from "@/components/CareerPreferencesCard";
 
@@ -17,18 +18,27 @@ describe("CareerPreferencesCard", () => {
     let resolve!: (r: Response) => void;
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((r) => { resolve = r; })));
     render(<CareerPreferencesCard students={students} />);
-    fireEvent.change(screen.getByLabelText("Student"), { target: { value: "s1" } });
+    pickOption(screen, "Student", "s1");
     expect(await screen.findByText("Loading…")).toBeTruthy();
     resolve(json(prefs));
     expect(((await screen.findByLabelText("Career interests")) as HTMLInputElement).value).toBe("Design");
     expect((screen.getByLabelText("Interested in studying abroad") as HTMLSelectElement).value).toBe("yes");
   });
 
+  it("hides the previous student's form once the pick is cleared (ENH-031 final review #2)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(prefs)));
+    render(<CareerPreferencesCard students={students} />);
+    pickOption(screen, "Student", "s1");
+    expect(await screen.findByLabelText("Career interests")).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox", { name: "Student" }), { target: { value: "Bo" } });
+    expect(screen.queryByLabelText("Career interests")).toBeNull();
+  });
+
   it("shows an error with Retry when loading fails", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(json({}, 500)).mockResolvedValueOnce(json(prefs));
     vi.stubGlobal("fetch", fetchMock);
     render(<CareerPreferencesCard students={students} />);
-    fireEvent.change(screen.getByLabelText("Student"), { target: { value: "s1" } });
+    pickOption(screen, "Student", "s1");
     expect((await screen.findByRole("alert")).textContent).toContain("Could not load");
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByLabelText("Career interests")).toBeTruthy();
@@ -38,7 +48,7 @@ describe("CareerPreferencesCard", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(json(prefs)).mockResolvedValueOnce(json({ ...prefs, preferred_countries: ["Japan", "Korea"] }));
     vi.stubGlobal("fetch", fetchMock);
     render(<CareerPreferencesCard students={students} />);
-    fireEvent.change(screen.getByLabelText("Student"), { target: { value: "s1" } });
+    pickOption(screen, "Student", "s1");
     fireEvent.change(await screen.findByLabelText("Preferred countries"), { target: { value: "Japan, Korea" } });
     fireEvent.click(screen.getByRole("button", { name: "Save preferences" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
@@ -55,7 +65,7 @@ describe("CareerPreferencesCard", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(json(prefs)).mockResolvedValueOnce(json({ detail: "preferred_countries items must be at most 80 characters" }, 422));
     vi.stubGlobal("fetch", fetchMock);
     render(<CareerPreferencesCard students={students} />);
-    fireEvent.change(screen.getByLabelText("Student"), { target: { value: "s1" } });
+    pickOption(screen, "Student", "s1");
     fireEvent.click(await screen.findByRole("button", { name: "Save preferences" }));
     // QA2-05/06: the user's words, and the field it is about is marked, described and focused.
     const alert = await screen.findByRole("alert");

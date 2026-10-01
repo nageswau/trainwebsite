@@ -1,7 +1,7 @@
 # ENH-030 — Daily Class Attendance for School Students: Design
 
 **Status:** Draft for review, 2026-09-30. Branch `feature/enh-030-class-attendance` (from `main` @ `32e76a1`).
-**Feature ID:** ENH-030. **Decision:** `DEC-SCOPE-038` (provisional number; renumber on merge if taken).
+**Feature ID:** ENH-030. **Decision:** `DEC-SCOPE-041` (provisional number). Renumbered on merging `main`, 2026-10-01: decision `DEC-SCOPE-038` → `DEC-SCOPE-041` (AGN-001, ENH-031 and AGN-002 hold 038–040) and migration `0046` → `0048_school_attendance_records`, chained after AGN-002's `0047_agent_org_staff`.
 **Source:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-030 (`DERIVED_BLUEPRINT`, from `School CRM.md` = `EVID-014`).
 
 ## 1. Problem (audit result, 2026-09-30, Graphify-led, verified against the files)
@@ -66,7 +66,7 @@ Design choices made here (reviewable, not user decisions):
 
 ## 4. Data model
 
-New table `school_attendance_records` (model `SchoolAttendanceRecord`, migration `0046_school_attendance_records`, create-table only):
+New table `school_attendance_records` (model `SchoolAttendanceRecord`, migration `0048_school_attendance_records`, create-table only):
 
 | Column | Type | Notes |
 |---|---|---|

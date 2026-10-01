@@ -37,6 +37,8 @@ class UserOut(BaseModel):
     student_code: str | None = None
     profile: dict = Field(default_factory=dict)
     role_assignments: list[RoleAssignmentOut] = Field(default_factory=list)
+    # AGN-002: set by GET /auth/me only (login/refresh do not load the membership); "master" | "staff" | None.
+    agent_member_role: str | None = None
     model_config = {"from_attributes": True}
 
 
@@ -52,6 +54,13 @@ class RegistrationRequest(BaseModel):
     phone: str | None = Field(default=None, max_length=40)
     division: str = Field(pattern="^(it|overseas)$")
     account_type: str = Field(default="student", pattern="^(student|agent)$")
+    # AGN-001 (E2): optional; blank -> None, and the organisation is then named after the agent's full name.
+    agency_name: str | None = Field(default=None, max_length=160)
+
+    @field_validator("agency_name")
+    @classmethod
+    def blank_agency_name_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
 
     @field_validator("account_type")
     @classmethod
@@ -393,6 +402,68 @@ class ProfileDocumentCreate(BaseModel):
 
 class AgentStudentCreate(BaseModel):
     student_id: UUID
+
+
+_EMAIL_SHAPE = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
+
+
+def _required_full_name(value: str | None) -> str:
+    """Trimmed; blank (or null) is refused with a plain message, not pydantic's "Value error, ..." prefix (browser QA-06)."""
+    value = (value or "").strip()
+    if not value:
+        raise PydanticCustomError("blank_full_name", "Full name is required")
+    return value
+
+
+class AgentMasterInvite(BaseModel):
+    """AGN-001 (D9): a Master inviting another Master to their agency."""
+
+    full_name: str = Field(min_length=1, max_length=160)
+    email: str = Field(max_length=320)
+    phone: str | None = Field(default=None, max_length=40)
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_not_blank(cls, value: str) -> str:
+        return _required_full_name(value)
+
+    @field_validator("email")
+    @classmethod
+    def email_looks_valid(cls, value: str) -> str:
+        # AGN-002 browser QA-01: the same rule as before (something@domain.tld), worded for people -- a `pattern=` constraint
+        # showed the raw regex ("String should match pattern ...") for an address the browser itself accepts (`a@b`).
+        if not _EMAIL_SHAPE.fullmatch(value):
+            raise PydanticCustomError("invalid_email", "Enter a valid email address, like name@example.com")
+        return value
+
+
+class AgentStaffCreate(AgentMasterInvite):
+    """AGN-002 (DEC-SCOPE-040 S4): a Master adding a staff login -- the same fields and rules as a Master invite."""
+
+
+class AgentStaffUpdate(BaseModel):
+    """AGN-002 (DEC-SCOPE-040 S4): name and phone only. Email is fixed after creation, so a Master can never redirect a staff
+    member's set-password link to an address they control. Omitted = unchanged; phone null or "" clears it."""
+
+    model_config = {"extra": "forbid"}
+    full_name: str | None = Field(default=None, max_length=160)
+    phone: str | None = Field(default=None, max_length=40)
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_present(cls, value: str | None) -> str:
+        return _required_full_name(value)  # an explicit null is refused too (omitting the field leaves the name unchanged)
+
+    @field_validator("phone")
+    @classmethod
+    def phone_blank_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
+
+    @model_validator(mode="after")
+    def something_to_update(self):
+        if not self.model_fields_set:
+            raise PydanticCustomError("nothing_to_update", "Nothing to update")
+        return self
 
 
 class CommissionCreate(BaseModel):
@@ -1476,7 +1547,7 @@ class SkillAttendanceIn(BaseModel):
     records: Annotated[list[SkillAttendanceMark], Field(min_length=1, max_length=200), AfterValidator(_unique_enrollments)]
 
 
-# ENH-030 (DEC-SCOPE-038): a teacher's whole-class mark for one day, one call (spec §5.2, §11 A1/A2).
+# ENH-030 (DEC-SCOPE-041): a teacher's whole-class mark for one day, one call (spec §5.2, §11 A1/A2).
 SchoolAttendanceStatus = Literal["present", "absent", "late", "excused"]
 
 

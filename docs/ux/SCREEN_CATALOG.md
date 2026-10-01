@@ -1665,6 +1665,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 | `SCR-AGT-004` | `/overseas/agent/commissions` | Agent | `AGT-003` |
 | `SCR-AGT-005` | `/overseas/agent/commissions/[id]/claim` | Agent | `AGT-004` |
 | `SCR-AGT-006` | `/overseas/admin/commissions` | Overseas Admin | `AGT-004` |
+| `SCR-AGT-007` | `/overseas/agent/team` | Agent (Master) | `AGN-001` |
 
 ### `SCR-AGT-001`
 - **Route:** `/overseas/agent/register`  
@@ -1701,6 +1702,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.  
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Approval flips the Agent to Active and unlocks SCR-AGT-003/004 for them; every decision audit-logged (SEC-001).  
+- **AGN-001 update (2026-09-28/29, `DEC-SCOPE-038`, R2):** the queue now lists agent **organisations**, one status tab at a time (Pending / Approved / Suspended / Rejected toggle buttons, Pending first), 20 per page with "Showing x–y of N" and Previous/Next; each card shows agency name, prefix and every Master's code, name and email. Actions: Pending → Approve / Reject; Rejected → Approve; Approved → Suspend (inline confirmation, focus moves to Confirm and back on Cancel); Suspended → Reinstate. After an action the panel switches to the organisation's new tab. Loading text, an error state with Retry (no longer a silent empty list), per-tab empty text, per-card busy state and inline error. Component `AgentApprovalPanel.tsx`.  
 
 ### `SCR-AGT-003`
 - **Route:** `/overseas/agent (Dashboard: referred students)`  
@@ -1773,6 +1775,32 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.  
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Approval action is itself audit-logged (SEC-001); Agent cannot self-approve.  
+
+### `SCR-AGT-007`
+- **Route:** `/overseas/agent/team`  
+- **Role(s):** Agent — an active Master of an active agency  
+- **Purpose:** The agency's Master accounts: list, invite, deactivate *(net-new, added 2026-09-28, `AGN-001` / `DEC-SCOPE-038`)*.  
+- **Linked Feature ID(s):** `AGN-001`  
+- **Entry points:** Agent portal navigation, "Team".  
+- **Required data:** The caller's agency (name, prefix) and its Masters (code, name, email, status, whether the invite link is still unused).  
+- **Key actions:** Invite a Master (full name, email, optional phone; emailed DEC-SCOPE-019 set-password link); deactivate a Master (inline confirmation; deactivating yourself signs you out).  
+- **Empty state:** N/A — an agency always has at least one active Master.  
+- **Loading state:** "Loading your team…".  
+- **Error state:** "Unable to load your team." with Retry; per-row inline errors; invite errors inline (limit reached, email exists, validation); an undelivered invite email is reported ("Invite created, but the email was not delivered…").  
+- **Permissions/resource scope:** Own agency only; pending/rejected/suspended agencies are denied (403). Up to 3 active Masters; the last active Master cannot be deactivated; codes are never reused; no reactivation.  
+- **Responsive behavior:** Single-column card list and form; long names/emails wrap (no horizontal scroll at 320px).  
+- **Accessibility requirements:** Labelled fields, named Deactivate buttons ("Deactivate <name>"), confirmation as a labelled group, status messages announced (`role="status"`).  
+- **Desktop/tablet/mobile behavior:** Same single-column layout at all widths.  
+- **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
+- **Acceptance evidence needed:** AGN-001-AC07, AC08 (API tests `test_agn_001_team.py`; `AgentTeamPanel.test.tsx`; e2e `agn-001-multi-tenant.spec.ts`).  
+- **AGN-002 update (2026-09-30, `DEC-SCOPE-040`):** a **Staff** section below the Masters (`AgentStaffPanel`, `AgentStaffRow`,
+  `AgentStaffCreateForm`). States: loading "Loading staff…"; error "Unable to load your staff." + Retry; empty "No staff yet. Add
+  your first staff member below."; list of cards (code, name, email, phone, text badge Deactivated / Set-up pending / Link
+  expired), 20 per page with "Showing x–y of z" and Previous/Next. Actions per row: Edit (inline name/phone, email read-only,
+  Escape cancels), Reset and Deactivate (inline confirmations), Reactivate. "Add staff" form (name, email, optional phone)
+  reports the new code and whether the email was sent. Results announced (`role="status"`); focus returns to the opening
+  button. Staff themselves see no Team or Commissions link (role label "Agency Staff"); typing the URL shows the 403 card.
+  Evidence: AGN-002-AC01…AC10 (`test_agn_002_*.py`; `AgentStaff*.test.tsx`; `navigation.test.ts`; e2e `agn-002-staff.spec.ts`).  
 
 
 ## CNS
@@ -2605,7 +2633,7 @@ correction, not deleted, per this project's traceability convention.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** `GlobalEducationPipeline.test.tsx`, `GlobalEducationPage.test.tsx`, `tests/e2e/enh-017-global-education.spec.ts`, `test_enh_017_global_education_pipeline.py` (passing as implemented); browser QA and accessibility passed (`docs/quality/ENH-017_BROWSER_QA_2026-09-29.md`) — COMPLETE (verified 2026-09-29 at `949aa2c`).
 
-### `SCR-SCH-039` *(added 2026-09-30, `ENH-030` / `DEC-SCOPE-038`, provisional number)*
+### `SCR-SCH-039` *(added 2026-09-30, `ENH-030` / `DEC-SCOPE-041`, provisional number)*
 - **Route:** `/school/teacher/attendance` (`?date=YYYY-MM-DD`, forwarded only when well-formed; otherwise the school's today)
 - **Role(s):** School Teacher (own school, assigned students only).
 - **Purpose:** Mark the whole assigned class's daily attendance for one day with one Save (`School CRM.md` Teacher Dashboard "Student Attendance").
@@ -2613,7 +2641,7 @@ correction, not deleted, per this project's traceability convention.
 - **Entry points:** Sidebar "Attendance" for the Teacher (after "Dashboard").
 - **Required data:** Server-rendered: GET /auth/me, GET /school/attendance?date=. Client: PUT /school/attendance `{session_date, records:[{student_id, status}]}`.
 - **Key actions:** Choose a date (max = the server's school-calendar today) and press Show or Enter (typing never navigates mid-entry); "Mark all present" (fills only unmarked students); one radio group per student (Present / Absent / Late / Excused); Save attendance.
-- **Empty state:** "No students assigned to you yet. Your School Coordinator assigns students to teachers." (today); on a past day before any of the class enrolled, "None of your current students were enrolled at your school on <day>." with the date picker still usable (DEC-SCOPE-038 I-3); an unmarked student shows a "Not marked" badge and no preselected status.
+- **Empty state:** "No students assigned to you yet. Your School Coordinator assigns students to teachers." (today); on a past day before any of the class enrolled, "None of your current students were enrolled at your school on <day>." with the date picker still usable (DEC-SCOPE-041 I-3); an unmarked student shows a "Not marked" badge and no preselected status.
 - **Loading state:** `loading.tsx` skeleton with `aria-busy`; changing the date disables the form and shows "Loading the selected date…"; saving disables the form and shows "Saving…".
 - **Error state:** a refused read (future date 422, wrong role 403, 401) → the shared Access Unavailable card with the server's reason; a refused save (scope 403, tier 403, busy 409, 422, network) → the server's message as an alert under the form, marks kept; saving with nothing chosen → "Choose a status for at least one student." (no request).
 - **Permissions/resource scope:** `school_teacher` only; the roster and every saved id are limited server-side to the teacher's own school and assigned students; tier gate: any valid partnership tier.
@@ -2683,6 +2711,10 @@ catalogue to stay in step. Where a surface has no catalogue ID today (a pre-exis
 | Admin dashboards | `/it/admin/dashboard`, `/overseas/admin/dashboard`, `/admin` | `SCR-ADM-001` (IT); no catalogue ID was found for the Overseas Admin or Super Admin dashboards | "Expired welcome links" metric tile in the first viewport, plus an expired-links list with Re-send (loading, empty, error-with-retry states). |
 | Create school + seed Coordinator | `/overseas/admin/schools` | `SCR-SCH-010` | No password shown; success/warning message states whether the 72-hour link was emailed. |
 | School staff | `/overseas/admin/school-staff` | `SCR-SCH-021` | Same as above for Academic Team / Career Counselor / Psychometric Team accounts. |
+
+## ENH-031 addendum (2026-09-29, `DEC-SCOPE-039`) — searchable reference pickers
+
+Student, application and candidate references on these screens are searchable dropdowns (type to filter, arrow keys, Enter, Esc) that accept only a listed value; an unpicked required field shows "Choose a student/an application from the list." and blocks the save: agent Students (Link student — search starts at 3 characters, emails partly masked) and Documents; counselor/admin Appointments; University Rep/Admin Applications, Admission updates, Offer letters, Student communication; Admin Visa and Applications; Placement Interviews and Offers; the School→Overseas bridge (pick the school, then the student); the School academic results, psychometric, test-prep, language, career record and career preferences forms; counselor chat; agent Create application; employer Interviews. The list opens under its field, scrolls inside itself and never widens the page at 320 px.
 
 ## Required findings report
 

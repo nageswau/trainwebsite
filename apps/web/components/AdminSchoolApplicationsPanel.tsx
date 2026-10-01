@@ -3,22 +3,23 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
-import { detailMessage, sendJson } from "@/lib/apiErrors";
+import SearchableSelect from "@/components/SearchableSelect";
+import { sendJson } from "@/lib/apiErrors";
+import { lookupSearch, type PickOption } from "@/lib/lookups";
 
 type UniversityOption = { id: string; name: string; city: string };
 type BridgedApplication = { id: string; student_name: string; student_code: string; university_name: string; status: string; created_at: string };
-type ResolvedStudent = { id: string; full_name: string; student_code: string; school_name: string | null };
 
 // DEC-SCOPE-018 (2026-09-15): Overseas Admin/Counselor links a School-affiliated student
-// to a real Overseas application -- never school_coordinator, per direct decision. Looks
-// the student up by their business-facing Student ID (DEC-DATA-003's own 8-character
-// code) rather than a raw internal id picker, since Overseas Admin/Counselor need to find
-// a student across every partner school, not just one they're already scoped to.
+// to a real Overseas application -- never school_coordinator, per direct decision.
+// ENH-031 (DEC-SCOPE-039 D4): pick the school first, then search only that school's students by name or Student ID -- no cross-school name browsing.
 export default function AdminSchoolApplicationsPanel() {
   const [universities, setUniversities] = useState<UniversityOption[]>([]);
   const [applications, setApplications] = useState<BridgedApplication[] | null>(null);
-  const [studentCode, setStudentCode] = useState("");
-  const [resolved, setResolved] = useState<ResolvedStudent | null>(null);
+  const [school, setSchool] = useState<PickOption | null>(null);
+  const [student, setStudent] = useState<PickOption | null>(null);
+  // Bumped after a successful start so both pickers remount empty.
+  const [version, setVersion] = useState(0);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
 
@@ -37,55 +38,57 @@ export default function AdminSchoolApplicationsPanel() {
     loadApplications();
   }, []);
 
-  async function lookupStudent() {
-    setMessage(null);
-    setResolved(null);
-    const code = studentCode.trim().toUpperCase();
-    if (!code) return;
-    const response = await fetch(`/api/v1/overseas-admin/school-students/lookup?code=${encodeURIComponent(code)}`);
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      setMessage({ text: detailMessage(data.detail, "Unable to complete this action."), failed: true });
-      return;
-    }
-    setResolved(data);
-  }
-
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!resolved) {
-      setMessage({ text: "Look up a student by their Student ID first.", failed: true });
+    if (!student) {
+      setMessage({ text: "Choose a school, then a student, first.", failed: true });
       return;
     }
     const form = new FormData(event.currentTarget);
     setBusy(true);
     setMessage(null);
-    const result = await sendJson(`/api/v1/overseas-admin/school-students/${resolved.id}/applications`, "POST", { university_id: form.get("university_id"), intake: form.get("intake") });
+    const result = await sendJson(`/api/v1/overseas-admin/school-students/${student.id}/applications`, "POST", { university_id: form.get("university_id"), intake: form.get("intake") });
     setBusy(false);
     if (!result.ok) {
       setMessage({ text: result.message, failed: true });
       return;
     }
-    setMessage({ text: `Application started for ${resolved.full_name}.`, failed: false });
-    setStudentCode("");
-    setResolved(null);
+    setMessage({ text: `Application started for ${student.label}.`, failed: false });
+    setSchool(null);
+    setStudent(null);
+    setVersion((v) => v + 1);
     loadApplications();
   }
 
   return (
     <div className="action-card">
       <h3>Start an Overseas application for a School student</h3>
-      <div className="field">
-        <label htmlFor="bridge-student-code">Student ID</label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input id="bridge-student-code" value={studentCode} onChange={(event) => setStudentCode(event.target.value)} placeholder="e.g. A3F9C21B" />
-          <button type="button" className="btn secondary" onClick={lookupStudent}>Look up</button>
-        </div>
-        {resolved && (
-          <p className="muted" style={{ fontSize: 13 }}>{resolved.full_name} — {resolved.school_name}</p>
-        )}
-      </div>
-      {resolved && (
+      <SearchableSelect
+        key={`school-${version}`}
+        id="bridge-school"
+        label="School"
+        noun="school"
+        search={lookupSearch("schools")}
+        onChange={(option) => {
+          setSchool(option);
+          setStudent(null);
+          setMessage(null);
+        }}
+      />
+      {school && (
+        <SearchableSelect
+          key={`student-${school.id}-${version}`}
+          id="bridge-student"
+          label="Student"
+          noun="student"
+          search={lookupSearch("school-students", { school_id: school.id })}
+          onChange={(option) => {
+            setStudent(option);
+            setMessage(null);
+          }}
+        />
+      )}
+      {student && (
         <form className="form" onSubmit={submit}>
           <div className="field">
             <label htmlFor="bridge-university">University</label>

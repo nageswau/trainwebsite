@@ -8,7 +8,7 @@ import { sendJson } from "@/lib/apiErrors";
 import { ATTENDANCE_LABEL, ATTENDANCE_STATUSES, type AttendanceStatus } from "@/lib/attendance";
 import { formatCalendarDate } from "@/lib/formatDate";
 
-// ENH-030 spec §6: the teacher marks their assigned class for one day with one Save (DEC-SCOPE-038 D1/D2). Four labelled radios per
+// ENH-030 spec §6: the teacher marks their assigned class for one day with one Save (DEC-SCOPE-041 D1/D2). Four labelled radios per
 // student (D4); an unmarked student starts with nothing chosen (C2) and "Mark all present" fills only those. The date picker's max is
 // the server's school-calendar "today", never the browser clock. Unsaved marks are flagged and guarded against leaving the page.
 export type RosterStudent = { id: string; full_name: string; grade_or_class: string | null; status: AttendanceStatus | null };

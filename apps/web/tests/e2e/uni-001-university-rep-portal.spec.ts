@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { pickByValue } from "./helpers/pick";
 
 // UNI-001 -- University Representative portal. Two real gaps this feature closed:
 // "Reports" 404'd for this role (same bug class as CNS-001's own Leads/Reports fix), and
@@ -48,7 +49,7 @@ test("University Rep posts an admission update through the real UI action (UNI-0
   await page.goto("/overseas/university/student-communication");
   await expect(page.getByRole("heading", { name: "Post admission update" })).toBeVisible();
   const card = page.locator(".action-card", { has: page.getByRole("heading", { name: "Post admission update" }) });
-  await card.locator("input[name='application_id']").fill(applicationId);
+  await pickByValue(card.getByRole("combobox", { name: "Application reference" }), applicationId);
   await card.locator("textarea[name='message']").fill("Your application has moved to offer review.");
   await card.getByRole("button", { name: "Post admission update" }).click();
   await expect(card.getByText("Update posted to the student and counselor.")).toBeVisible();
