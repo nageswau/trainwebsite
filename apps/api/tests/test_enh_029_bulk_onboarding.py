@@ -1,10 +1,14 @@
 """ENH-029 -- bulk school onboarding (docs/superpowers/specs/2026-10-01-enh-029-bulk-school-onboarding-design.md, AC01-AC12)."""
 
+import asyncio
+import logging
 import uuid
 
 import pytest
 from sqlalchemy import func, select
 
+from app.api import school_onboarding_bulk
+from app.core.database import SessionLocal
 from app.models import AuditLog, PasswordResetToken, School, SchoolBulkUploadBatch, SchoolBulkUploadRow, User, UserRoleAssignment
 from app.schemas import SchoolCreate
 from tests.enh029_helpers import HEADER, TEMPLATE_URL, UPLOAD_URL, csv_bytes, login, mk_admin, school_row, upload
@@ -233,3 +237,72 @@ async def test_replay_returns_the_same_report_and_creates_nothing(client, db_ses
         assert "development_welcome_token" not in b
     other = await upload(client, csv_bytes([school_row()]), key)
     assert (other.status_code, other.json()["detail"]) == (422, "Idempotency-Key was already used for a different file")
+
+
+# --- Welcome delivery after commit, logs (AC06, AC12) ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_welcome_links_sent_after_commit_at_most_five_at_a_time(client, db_session, monkeypatch):
+    await login(client, await mk_admin(db_session))
+    state = {"now": 0, "peak": 0, "calls": 0, "committed": True}
+    fail_email = f"enh029-fail-{uuid.uuid4().hex[:6]}@example.local"
+
+    async def fake_deliver(*, user, issued, issued_by):
+        async with SessionLocal() as other:  # the account must already be committed when its link is sent
+            state["committed"] &= await other.get(User, user.id) is not None
+        state["now"] += 1
+        state["calls"] += 1
+        state["peak"] = max(state["peak"], state["now"])
+        await asyncio.sleep(0.02)
+        state["now"] -= 1
+        return {"email_status": "failed" if user.email == fail_email else "sent", "expires_at": issued.expires_at}
+
+    monkeypatch.setattr(school_onboarding_bulk, "deliver_welcome_link", fake_deliver)
+    rows = [school_row() for _ in range(12)] + [school_row(coordinator_email=fail_email)]
+    report = await _ok(client, rows)
+    assert state["calls"] == 13
+    assert 1 < state["peak"] <= 5
+    assert state["committed"]
+    assert [r["email_status"] for r in report["rows"]] == ["sent"] * 12 + ["failed"]
+    assert report["accepted_count"] == 13  # a failed send never undoes a school
+
+
+@pytest.mark.asyncio
+async def test_rejected_rows_get_no_welcome_link(client, db_session, monkeypatch):
+    await login(client, await mk_admin(db_session))
+    sent: list[str] = []
+
+    async def fake_deliver(*, user, issued, issued_by):
+        sent.append(user.email)
+        return {"email_status": "sent", "expires_at": issued.expires_at}
+
+    monkeypatch.setattr(school_onboarding_bulk, "deliver_welcome_link", fake_deliver)
+    good = school_row()
+    await _ok(client, [good, school_row(tier="diamond")])
+    assert sent == [good["coordinator_email"]]
+
+
+@pytest.mark.asyncio
+async def test_dev_token_only_in_first_response_and_lets_the_coordinator_sign_in(client, db_session):
+    await login(client, await mk_admin(db_session))
+    data, key = csv_bytes([school_row()]), uuid.uuid4().hex
+    row = (await upload(client, data, key)).json()["rows"][0]
+    assert row["email_status"] in {"sent", "not_configured", "failed"}
+    activation = await client.post("/api/v1/auth/reset-password", json={"token": row["development_welcome_token"], "new_password": "Sup3r-Secret-Pass!"})
+    assert activation.status_code == 200
+    replayed = (await upload(client, data, key)).json()["rows"][0]
+    assert "development_welcome_token" not in replayed
+    assert replayed["email_status"] is None
+
+
+@pytest.mark.asyncio
+async def test_logs_never_carry_emails_names_or_tokens(client, db_session, caplog):
+    await login(client, await mk_admin(db_session))
+    row = school_row()
+    caplog.set_level(logging.DEBUG)
+    report = await _ok(client, [row, school_row(tier="diamond")])
+    logged = "\n".join(f"{r.getMessage()} {getattr(r, 'extra_fields', '')}" for r in caplog.records)
+    assert "bulk_upload_completed" in logged
+    for secret in (row["coordinator_email"], row["name"], row["coordinator_full_name"], report["rows"][0]["development_welcome_token"]):
+        assert secret not in logged

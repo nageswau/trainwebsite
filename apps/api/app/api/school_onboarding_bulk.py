@@ -6,6 +6,7 @@ One request = one transaction with a savepoint per row, on ENH-028's batch/row t
 welcome links go out after the commit. Its own router so `admin.py` does not grow; imports from `admin`/`school_bulk` only.
 """
 
+import asyncio
 import csv
 import hashlib
 import io
@@ -24,7 +25,7 @@ from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import AuditLog, School, SchoolBulkUploadBatch, SchoolBulkUploadRow, User
 from app.schemas import SchoolCreate, validation_message
-from app.services.provisioning import IssuedWelcome
+from app.services.provisioning import IssuedWelcome, deliver_welcome_link
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/overseas-admin", tags=["school-onboarding-bulk"])
@@ -34,6 +35,7 @@ ADMIN_ROLES = {"overseas_admin", "super_admin"}
 COLUMNS = tuple(SchoolCreate.model_fields)  # D1: the template is exactly the single create's fields, in order
 REQUIRED = ("name", "coordinator_full_name", "coordinator_email")
 MAX_ROWS = 100
+SEND_CONCURRENCY = 5  # D3: welcome emails in flight at once, after the commit
 ROW_CONFLICT = "This row conflicts with a record created at the same time; upload it again"
 
 Created = tuple[int, User, IssuedWelcome]  # (file line, coordinator, welcome token) of an accepted row
@@ -122,6 +124,20 @@ async def _process(db: AsyncSession, user: User, batch: SchoolBulkUploadBatch, f
     return rows, created
 
 
+async def _deliver(created: list[Created], actor: User) -> dict[int, dict]:
+    """After the commit: each accepted row's welcome link, at most SEND_CONCURRENCY at once, keyed by file line. deliver_welcome_link
+    never raises and audits in its own session, so a failed send leaves the school and account in place (pending_setup, re-sendable
+    from the Users page)."""
+    gate = asyncio.Semaphore(SEND_CONCURRENCY)
+
+    async def one(coordinator: User, issued: IssuedWelcome) -> dict:
+        async with gate:
+            return await deliver_welcome_link(user=coordinator, issued=issued, issued_by=actor)
+
+    results = await asyncio.gather(*(one(coordinator, issued) for _, coordinator, issued in created))
+    return {line: result for (line, _, _), result in zip(created, results, strict=True)}
+
+
 async def _report(db: AsyncSession, batch: SchoolBulkUploadBatch, rows: list[SchoolBulkUploadRow], deliveries: dict[int, dict] | None = None) -> dict:
     """One fixed row shape for the first response and every replay: names, codes and emails are read back by the stored ids."""
     school_ids = [r.created_record_id for r in rows if r.created_record_id]
@@ -202,7 +218,8 @@ async def bulk_onboard_schools(
         )
     )
     await db.commit()
-    report = await _report(db, batch, rows)
+    deliveries = await _deliver(created, user)
+    report = await _report(db, batch, rows, deliveries)
     logger.info(
         "bulk_upload_completed",
         extra={
