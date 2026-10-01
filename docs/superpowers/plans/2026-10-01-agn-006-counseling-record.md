@@ -5,7 +5,7 @@
 **Goal:** An agency Master or the assigned staff member records and reads back one counseling record (completed, career interest,
 course preference, country preference, budget + currency, remarks) per agency student with no login.
 
-**Architecture:** A new one-to-one table `agent_student_counseling` (create-table-only migration 0054) written by a new
+**Architecture:** A new one-to-one table `agent_student_counseling` (create-table-only migration 0055) written by a new
 `PUT /workflows/overseas/agent/crm/students/{id}/counseling` in the existing AGN-004 router, reusing its gate, organisation-then-row
 lock, scope (404) and audit helpers; read back as an additive `counseling` key on the student detail. The web detail panel gains a
 view card and a separate form; the AGN-021 Staff Activity allowlist gains one action.
@@ -19,8 +19,8 @@ Next.js + React + Vitest + Testing Library; Playwright; Docker Compose `ci` prof
 
 - No new dependency (Python or npm); no new CSS rule; no change to unrelated modules.
 - The AGN-004 `PATCH /students/{id}` contract, the list item shape (`record_item`) and every existing message stay unchanged.
-- Migration revision `0054_agent_student_counseling`, `down_revision = "0053_school_funding_records"` — **recheck `origin/main` before
-  Task 1 and before merging**; AGN-007 may take 0054 / `DEC-SCOPE-047` first, then renumber (precedent 0052, 0053).
+- Migration revision `0055_agent_student_counseling`, `down_revision = "0054_school_onboarding_bulk"` — **recheck `origin/main` before
+  Task 1 and before merging**; AGN-007 may take 0055 / `DEC-SCOPE-048` first (ENH-029 already took 0054 and 047), then renumber (precedent 0052, 0053).
 - Currencies, exactly: `INR, USD, GBP, EUR, CAD, AUD, NZD` (default `INR`). Amount: `0 ≤ amount ≤ 99,999,999.99`, ≤ 2 decimals.
 - Text limits: `career_interest` 200, `course_preference` 200, `country_preference` 120, `remarks` 2000.
 - 404 text `Student not found`; 409 texts `Counseling is recorded only for students without a login` and `Unarchive this student first`.
@@ -65,13 +65,13 @@ dc run --rm --no-deps -v "${API}:/app" api-test alembic upgrade head
 - **WEB(x)** = `dc run --rm --no-deps -v "${WEB}/components:/app/components" -v "${WEB}/lib:/app/lib" -v "${WEB}/tests:/app/tests" -v "${WEB}/app:/app/app" web-test npx vitest run x`
 - **TSC** = `dc run --rm --no-deps -v "${WEB}/components:/app/components" -v "${WEB}/lib:/app/lib" -v "${WEB}/tests:/app/tests" -v "${WEB}/app:/app/app" web-test npx tsc --noEmit`
 
-If the isolated test DB carries a stale alembic stamp: `alembic stamp --purge 0053_school_funding_records` then `alembic upgrade head`.
+If the isolated test DB carries a stale alembic stamp: `alembic stamp --purge 0054_school_onboarding_bulk` then `alembic upgrade head`.
 
 ## File map
 
 | File | Responsibility |
 |---|---|
-| Create `apps/api/alembic/versions/0054_agent_student_counseling.py` | Create table; refuse downgrade while rows exist |
+| Create `apps/api/alembic/versions/0055_agent_student_counseling.py` | Create table; refuse downgrade while rows exist |
 | Modify `apps/api/app/models.py` (after `AgentStudent`, ~L882) | `COUNSELING_CURRENCIES`, `AgentStudentCounseling` |
 | Modify `apps/api/app/schemas.py` (after `AgentStudentAssign`, ~L559) | `CounselingCurrency`, `AgentStudentCounselingSave` |
 | Modify `apps/api/app/services/agent_students.py` | `counseling_detail`, `save_counseling`; `record_detail` adds `counseling` |
@@ -89,10 +89,10 @@ If the isolated test DB carries a stale alembic stamp: `alembic stamp --purge 00
 
 ---
 
-### Task 1: Table, model and migration 0054 (AC09)
+### Task 1: Table, model and migration 0055 (AC09)
 
 **Files:**
-- Create: `apps/api/alembic/versions/0054_agent_student_counseling.py`
+- Create: `apps/api/alembic/versions/0055_agent_student_counseling.py`
 - Modify: `apps/api/app/models.py` (insert after the `AgentStudent` class, before `class AgentCommission`)
 - Test: `apps/api/tests/test_agn_006_migration.py`
 
@@ -103,14 +103,14 @@ If the isolated test DB carries a stale alembic stamp: `alembic stamp --purge 00
 - [ ] **Step 0: Recheck main**
 
 Run: `git fetch origin` then `git log --oneline -3 origin/main` and `git ls-tree --name-only origin/main apps/api/alembic/versions/ | Select-Object -Last 3`.
-Expected: the newest revision is still `0053_school_funding_records`. If a `0054_*` exists, stop and ask the owner (renumber to 0055).
+Expected: the newest revision is still `0054_school_onboarding_bulk`. If a `0055_*` exists, renumber to the next free revision and ledger it.
 
 - [ ] **Step 1: Write the failing test**
 
 Create `apps/api/tests/test_agn_006_migration.py`:
 
 ```python
-"""AGN-006 -- migration 0054_agent_student_counseling (spec §4, AC09): single head after 0053, create-table only, matches the model,
+"""AGN-006 -- migration 0055_agent_student_counseling (spec §4, AC09): single head after 0054, create-table only, matches the model,
 database checks enforced, round trip keeps existing rows, downgrade refuses while counseling records exist.
 
 Round trips run in a throwaway database built from scratch (the AGN-004 / ENH-001 pattern): a downgrade never runs against the shared
@@ -139,17 +139,17 @@ from tests.agn004_helpers import mk_record
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_agn_006_migration_0054", VERSIONS / "0054_agent_student_counseling.py")
+_spec = importlib.util.spec_from_file_location("_agn_006_migration_0055", VERSIONS / "0055_agent_student_counseling.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-REV = "0054_agent_student_counseling"
-BASE = "0053_school_funding_records"
+REV = "0055_agent_student_counseling"
+BASE = "0054_school_onboarding_bulk"
 TABLE = "agent_student_counseling"
 STUDENTS = "SELECT id, agent_id, student_id, status, full_name FROM agent_students ORDER BY id"
 
 
-def test_migration_follows_0053_and_is_the_single_head():
+def test_migration_follows_0054_and_is_the_single_head():
     assert _migration.revision == REV
     assert _migration.down_revision == BASE
     parents = {}
@@ -227,7 +227,7 @@ def _has_table(url: str) -> bool:
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0053 with one agent and one agency student with no login."""
+    """A fresh database at 0054 with one agent and one agency student with no login."""
     cfg = Config(str(API_ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
     original = settings.database_url
@@ -292,7 +292,7 @@ COUNSELING_CURRENCIES = ("INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD")  # AGN
 
 
 class AgentStudentCounseling(Base, TimestampMixin):
-    """AGN-006 (DEC-SCOPE-047, EVID-015 §5 Step 2): one counseling record per agency student with no login. Replaced whole on every
+    """AGN-006 (DEC-SCOPE-048, EVID-015 §5 Step 2): one counseling record per agency student with no login. Replaced whole on every
     save (C1); its history is the audit log. `completed_at`/`completed_by_user_id` are stamped by the server (C5)."""
 
     __tablename__ = "agent_student_counseling"
@@ -325,16 +325,16 @@ class AgentStudentCounseling(Base, TimestampMixin):
 
 - [ ] **Step 4: Add the migration**
 
-Create `apps/api/alembic/versions/0054_agent_student_counseling.py`:
+Create `apps/api/alembic/versions/0055_agent_student_counseling.py`:
 
 ```python
 """AGN-006 -- agent_student_counseling.
 
-Revision ID: 0054_agent_student_counseling
-Revises: 0053_school_funding_records
+Revision ID: 0055_agent_student_counseling
+Revises: 0054_school_onboarding_bulk
 
-docs/superpowers/specs/2026-10-01-agn-006-counseling-record-design.md §4 (DEC-SCOPE-047). Create-table only: no existing table is
-altered and no existing row is read or written. Guarded like 0053: on a fresh database 0001_initial's create_all() has already built
+docs/superpowers/specs/2026-10-01-agn-006-counseling-record-design.md §4 (DEC-SCOPE-048). Create-table only: no existing table is
+altered and no existing row is read or written. Guarded like 0054: on a fresh database 0001_initial's create_all() has already built
 the table from the model. `downgrade()` refuses while any counseling record exists (the 0049 pattern), so no counseling data is dropped
 by accident; otherwise it drops the empty table.
 """
@@ -344,8 +344,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0054_agent_student_counseling"
-down_revision = "0053_school_funding_records"
+revision = "0055_agent_student_counseling"
+down_revision = "0054_school_onboarding_bulk"
 branch_labels = None
 depends_on = None
 
@@ -386,21 +386,21 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0054_agent_student_counseling: counseling records exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0055_agent_student_counseling: counseling records exist. Remove them deliberately first.")
     op.drop_table(TABLE)
 ```
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: API(`tests/test_agn_006_migration.py`) and LINT(`app/models.py alembic/versions/0054_agent_student_counseling.py tests/test_agn_006_migration.py`)
+Run: API(`tests/test_agn_006_migration.py`) and LINT(`app/models.py alembic/versions/0055_agent_student_counseling.py tests/test_agn_006_migration.py`)
 Expected: 11 passed; ruff "All checks passed!". If `test_table_matches_the_model` fails on `created_at`/`updated_at` nullability, compare with
 `TimestampMixin` (the model's columns are not-null via `Mapped[datetime]`) and fix the migration, not the test.
 
 - [ ] **Step 6: Commit**
 
 ```powershell
-git add apps/api/app/models.py apps/api/alembic/versions/0054_agent_student_counseling.py apps/api/tests/test_agn_006_migration.py
-git commit -m "feat(agn-006): agent_student_counseling table and migration 0054"
+git add apps/api/app/models.py apps/api/alembic/versions/0055_agent_student_counseling.py apps/api/tests/test_agn_006_migration.py
+git commit -m "feat(agn-006): agent_student_counseling table and migration 0055"
 ```
 
 ---
@@ -504,7 +504,7 @@ _COUNSELING_LIMITS = {"career_interest": 200, "course_preference": 200, "country
 
 
 class AgentStudentCounselingSave(BaseModel):
-    """AGN-006 (DEC-SCOPE-047 C1-C5, EVID-015 §5 Step 2): the whole counseling record, replaced on every save -- an omitted optional
+    """AGN-006 (DEC-SCOPE-048 C1-C5, EVID-015 §5 Step 2): the whole counseling record, replaced on every save -- an omitted optional
     field is stored as null. Server-owned fields (completed at/by, updated by) are not accepted: `extra="forbid"` answers 422."""
 
     model_config = {"extra": "forbid"}
@@ -567,7 +567,7 @@ git commit -m "feat(agn-006): counseling save schema"
 Create `apps/api/tests/test_agn_006_counseling.py`:
 
 ```python
-"""AGN-006 -- an agency student's counseling record (spec §5; DEC-SCOPE-047 C1-C6; AC01-AC08, AC12)."""
+"""AGN-006 -- an agency student's counseling record (spec §5; DEC-SCOPE-048 C1-C6; AC01-AC08, AC12)."""
 
 import asyncio
 import json
@@ -828,7 +828,7 @@ from app.models import AgentOrgMember, AgentStudent, AgentStudentCounseling, Ove
 3. Insert this section immediately before `# --- duplicate warning (D7, F3, F4) ---`:
 
 ```python
-# --- counseling record (AGN-006, DEC-SCOPE-047) -------------------------------------------------------------------------------------
+# --- counseling record (AGN-006, DEC-SCOPE-048) -------------------------------------------------------------------------------------
 
 COUNSELING_FIELDS = ("counseling_completed", "career_interest", "course_preference", "country_preference", "budget_amount", "budget_currency", "remarks")
 Completer = aliased(User)
@@ -906,7 +906,7 @@ from app.schemas import AgentStudentAssign, AgentStudentCounselingSave, AgentStu
 ```python
 @router.put("/{student_id}/counseling")
 async def save_student_counseling(student_id: UUID, payload: AgentStudentCounselingSave, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AGN-006 (DEC-SCOPE-047): replace the student's counseling record. Same locks and scope as an edit: out of scope is 404 before
+    """AGN-006 (DEC-SCOPE-048): replace the student's counseling record. Same locks and scope as an edit: out of scope is 404 before
     any other check; a student with a login or an archived student is 409. A save that changes nothing is 200 with no audit row."""
     membership = _gate(user)
     row = await _locked_row(db, user, membership, student_id)
@@ -969,7 +969,7 @@ git commit -m "feat(agn-006): PUT counseling record and read-back on the student
 Create `apps/api/tests/test_agn_006_activity.py`:
 
 ```python
-"""AGN-006 -- a counseling save appears in the Master's Staff Activity with field names only (spec §5.6; DEC-SCOPE-047 C7; AC06)."""
+"""AGN-006 -- a counseling save appears in the Master's Staff Activity with field names only (spec §5.6; DEC-SCOPE-048 C7; AC06)."""
 
 import pytest
 
@@ -1012,7 +1012,7 @@ Run: WEB(`tests/components/AgentStaffActivity.test.tsx`) — Expected: FAIL, rec
 In `apps/api/app/services/staff_activity.py`, add to `STAFF_ACTIVITY_ACTIONS` after `"agent_student.duplicate_override",`:
 
 ```python
-    "agent_student.counseling",  # AGN-006 (DEC-SCOPE-047 C7): field names only, like an edit
+    "agent_student.counseling",  # AGN-006 (DEC-SCOPE-048 C7): field names only, like an edit
 ```
 
 and change `_fields`:
@@ -1138,7 +1138,7 @@ In `apps/web/lib/agentStudents.ts`, add to `AgentStudentDetail` after `updated_a
 Append at the end of the file:
 
 ```ts
-// AGN-006 (DEC-SCOPE-047): the counseling record (EVID-015 §5 Step 2), replaced whole by PUT …/counseling. Mirrors
+// AGN-006 (DEC-SCOPE-048): the counseling record (EVID-015 §5 Step 2), replaced whole by PUT …/counseling. Mirrors
 // schemas.AgentStudentCounselingSave; the server remains the authority.
 export const CURRENCIES = ["INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD"] as const;
 export type Currency = (typeof CURRENCIES)[number];
@@ -1418,7 +1418,7 @@ import {
   validateCounseling,
 } from "@/lib/agentStudents";
 
-// AGN-006 (DEC-SCOPE-047): record a student's counseling outcome (EVID-015 §5 Step 2). The whole record is sent (PUT); the server
+// AGN-006 (DEC-SCOPE-048): record a student's counseling outcome (EVID-015 §5 Step 2). The whole record is sent (PUT); the server
 // stamps who completed it and when. Validation mirrors the server's schema; the server remains the authority.
 const TEXT_FIELDS: { key: "career_interest" | "course_preference" | "country_preference"; label: string }[] = [
   { key: "career_interest", label: "Career interest" },
@@ -1795,7 +1795,7 @@ function stamp(at: string | null, by: string | null): string {
   return [at ? formatDate(at) : null, by ? `by ${by}` : null].filter(Boolean).join(", ");
 }
 
-// AGN-006 (DEC-SCOPE-047): the student's counseling record (EVID-015 §5 Step 2) under the AGN-004 details. It arrives with the
+// AGN-006 (DEC-SCOPE-048): the student's counseling record (EVID-015 §5 Step 2) under the AGN-004 details. It arrives with the
 // detail -- no fetch of its own. Recorded only for an active student with no login (C4); everything is rendered as text.
 export default function AgentStudentCounselingCard({
   detail,
@@ -2088,12 +2088,12 @@ git commit -m "test(agn-006): browser test for recording counseling"
 - [ ] **Step 1: Recheck main for the decision number**
 
 Run: `git fetch origin` and `git show origin/main:docs/decisions/PRODUCT_DECISION_REGISTER.md | Select-String "DEC-SCOPE-04[7-9]"`.
-Expected: no `DEC-SCOPE-047`. If taken, use the next free number everywhere below and in the spec header.
+Expected: no `DEC-SCOPE-048`. If taken, use the next free number everywhere below and in the spec header.
 
 - [ ] **Step 2: Decision register** — append after the `DEC-SCOPE-046` entry, in its format:
 
 ```markdown
-### DEC-SCOPE-047 — Agent student counseling record (`AGN-006`)
+### DEC-SCOPE-048 — Agent student counseling record (`AGN-006`)
 
 **ID note:** provisional; `AGN-007` (university shortlist) may land a decision first — renumber on merge if so.
 
@@ -2113,32 +2113,32 @@ Expected: no `DEC-SCOPE-047`. If taken, use the next free number everywhere belo
 - **C8 — Storage:** a separate one-to-one table `agent_student_counseling`.
 - **C9 — Leave prompt** on unsaved counseling changes.
 
-**Consequences:** migration `0054_agent_student_counseling` (create-table only; downgrade refuses while records exist); new route; additive `counseling` key on every student-detail response; Staff Activity allowlist +1; no rate limit added (residual, as AGN-004 writes). §5 Step 2 leaves `EVID-015`'s parked list.
+**Consequences:** migration `0055_agent_student_counseling` (create-table only; downgrade refuses while records exist); new route; additive `counseling` key on every student-detail response; Staff Activity allowlist +1; no rate limit added (residual, as AGN-004 writes). §5 Step 2 leaves `EVID-015`'s parked list.
 ```
 
 - [ ] **Step 3: Backlog** — in `docs/delivery/ENHANCEMENT_BACKLOG.md`:
   - summary table, after the `AGN-005` row: `| AGN-006 | Agent student counseling record — completed, career interest, course/country preference, budget, remarks (§5 Step 2) | Medium | Medium | Yes | AGN-004 (detail), AGN-021 (activity) |`
-  - decisions appendix table, after the `AGN-005` row: `| AGN-006 | \`DEC-SCOPE-047\` — storage, budget, access, completed stamp, API, activity | **Resolved 2026-10-01** (C1–C9, \`EXPLICIT_APPROVAL\` in-session; number provisional) |`
-  - the `Agent CRM Functionalities.md` row (Appendix B): add "§5 Step 2 counseling moved out to AGN-006 (`DEC-SCOPE-047`)." to the moved-out list and `DEC-SCOPE-047 covers AGN-006` to the decisions cell.
-  - a `## AGN-006 — Agent Student Counseling Record` section after `## AGN-005`, in the AGN-021 section's format: business requirement (the owner's statement), source (`EVID-015` §5 Step 2), decision (`DEC-SCOPE-047`), expected behaviour (spec §1/§5/§6 in five bullets), AC01–AC12 copied verbatim from spec §7, status "IMPLEMENTED, NOT COMPLETE — browser QA and independent review pending".
+  - decisions appendix table, after the `AGN-005` row: `| AGN-006 | \`DEC-SCOPE-048\` — storage, budget, access, completed stamp, API, activity | **Resolved 2026-10-01** (C1–C9, \`EXPLICIT_APPROVAL\` in-session; number provisional) |`
+  - the `Agent CRM Functionalities.md` row (Appendix B): add "§5 Step 2 counseling moved out to AGN-006 (`DEC-SCOPE-048`)." to the moved-out list and `DEC-SCOPE-048 covers AGN-006` to the decisions cell.
+  - a `## AGN-006 — Agent Student Counseling Record` section after `## AGN-005`, in the AGN-021 section's format: business requirement (the owner's statement), source (`EVID-015` §5 Step 2), decision (`DEC-SCOPE-048`), expected behaviour (spec §1/§5/§6 in five bullets), AC01–AC12 copied verbatim from spec §7, status "IMPLEMENTED, NOT COMPLETE — browser QA and independent review pending".
 
 - [ ] **Step 4: API contract** — in `docs/architecture/API_CONTRACT.md`, after the AGN-004 `/crm/students` rows add:
 
 ```markdown
-| `PUT /workflows/overseas/agent/crm/students/{id}/counseling` | Authenticated | Agent (Master or assigned staff) of an active organisation; **not** `super_admin` (`403`) | AGN-006 / `DEC-SCOPE-047`. Body (all keys; `extra` → `422`): `counseling_completed` (required bool), `career_interest` ≤ 200, `course_preference` ≤ 200, `country_preference` ≤ 120, `remarks` ≤ 2000 (trimmed, blank → null), `budget_amount` number or numeric string 0–99,999,999.99 ≤ 2 dp, `budget_currency` INR\|USD\|GBP\|EUR\|CAD\|AUD\|NZD (defaults INR with an amount; alone → `422`). Replaces the whole record (omitted optional = null); idempotent. Out of scope / unknown → `404 Student not found` (before any other check); student with a login → `409`; archived → `409 Unarchive this student first`. `200 {student}`; a save that changes nothing is `200` with no audit row. |
+| `PUT /workflows/overseas/agent/crm/students/{id}/counseling` | Authenticated | Agent (Master or assigned staff) of an active organisation; **not** `super_admin` (`403`) | AGN-006 / `DEC-SCOPE-048`. Body (all keys; `extra` → `422`): `counseling_completed` (required bool), `career_interest` ≤ 200, `course_preference` ≤ 200, `country_preference` ≤ 120, `remarks` ≤ 2000 (trimmed, blank → null), `budget_amount` number or numeric string 0–99,999,999.99 ≤ 2 dp, `budget_currency` INR\|USD\|GBP\|EUR\|CAD\|AUD\|NZD (defaults INR with an amount; alone → `422`). Replaces the whole record (omitted optional = null); idempotent. Out of scope / unknown → `404 Student not found` (before any other check); student with a login → `409`; archived → `409 Unarchive this student first`. `200 {student}`; a save that changes nothing is `200` with no audit row. |
 ```
 
   and, on each existing AGN-004 detail-returning row (create, get, patch, archive, unarchive, assign), append: "Detail also carries `counseling: null | {counseling_completed, completed_at, completed_by, career_interest, course_preference, country_preference, budget_amount (2-dp string), budget_currency, remarks, updated_at, updated_by}` (AGN-006; names, never ids)."
 
 - [ ] **Step 5: Data model** — in `docs/architecture/DATA_MODEL.md`, after the AGN-004 `agent_students` addendum add an
-  "**Addendum, 2026-10-01 (`AGN-006` / `DEC-SCOPE-047` — `agent_student_counseling`)**" paragraph: the column table from spec §4, the four
-  check constraints and the unique key, "migration `0054_agent_student_counseling` is create-table only; downgrade refuses while any record
+  "**Addendum, 2026-10-01 (`AGN-006` / `DEC-SCOPE-048` — `agent_student_counseling`)**" paragraph: the column table from spec §4, the four
+  check constraints and the unique key, "migration `0055_agent_student_counseling` is create-table only; downgrade refuses while any record
   exists (verified: upgrade → downgrade → upgrade, single head)", retention "lives and dies with the student row".
 
 - [ ] **Step 6: RBAC matrix** — in `docs/architecture/RBAC_MATRIX.md`, in the agent student-records section add a row: "Record counseling
   (§5 Step 2, AGN-006): Master ✓ whole agency; Staff ✓ assigned students only; students with a login / archived → 409; others → 404".
 
-- [ ] **Step 7: RTM** — in `docs/quality/RTM.md` add AGN-006-AC01…AC12, each mapped to its test file from spec §7 and to `DEC-SCOPE-047`.
+- [ ] **Step 7: RTM** — in `docs/quality/RTM.md` add AGN-006-AC01…AC12, each mapped to its test file from spec §7 and to `DEC-SCOPE-048`.
 
 - [ ] **Step 8: PRD open items** — in `docs/product/PRD_OPEN_ITEMS.md`, extend the AGN-004 erasure item: "`NEEDS_CONFIRMATION` — also
   covers AGN-006 counseling records (budget, remarks) of students with no login." and add "AGN-006: no rate limit on counseling saves
@@ -2151,5 +2151,5 @@ Expected: no `DEC-SCOPE-047`. If taken, use the next free number everywhere belo
 
 ```powershell
 git add docs
-git commit -m "docs(agn-006): backlog, DEC-SCOPE-047, contracts, data model, RBAC, RTM, open items"
+git commit -m "docs(agn-006): backlog, DEC-SCOPE-048, contracts, data model, RBAC, RTM, open items"
 ```

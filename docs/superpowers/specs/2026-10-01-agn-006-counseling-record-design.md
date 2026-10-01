@@ -1,13 +1,13 @@
 # AGN-006 — Agent Student Counseling Record: Design
 
 **Status:** approved in conversation, written for owner review (2026-10-01). **Branch:** `feature/agn-006-counseling-record` (from `origin/main` 52d0c08).
-**Decision:** `DEC-SCOPE-047` (provisional number; C1–C9 below, recorded with the code). **Backlog:** `ENHANCEMENT_BACKLOG.md` §AGN-006 (added with the code).
+**Decision:** `DEC-SCOPE-048` (provisional number; C1–C9 below, recorded with the code). **Backlog:** `ENHANCEMENT_BACKLOG.md` §AGN-006 (added with the code).
 **Builds on:** `AGN-001` (`DEC-SCOPE-038`), `AGN-004` (`DEC-SCOPE-042`), `AGN-003` (`DEC-SCOPE-044`), `AGN-021` (`DEC-SCOPE-046`).
 **Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 "Staff Student Journey", STEP 2 "Counseling". The source's
 wording is not the approval; the owner's statement and answers are.
 **Reviewed 2026-10-01:** api-and-interface-design (§5.4), frontend-ui-engineering (§6), security-and-hardening (§8).
 **Oriented with:** Graphify query + read-only inventory of the AGN-004 stack on `main` (2026-10-01); brainstorming (superpowers), in-session.
-**Parallel work:** `AGN-007` (university shortlist, `feature/agn-007-student-shortlist`, unpushed) also wants the next migration (0054),
+**Parallel work:** `AGN-007` (university shortlist, `feature/agn-007-student-shortlist`, unpushed) also wants the next migration (0055),
 the next `DEC-SCOPE` number, `agent_students.py`, `AgentStudentDetailPanel.tsx` and `STAFF_ACTIVITY_ACTIONS`. Whichever merges second
 renumbers its migration/decision and re-chains (precedent: 0052, 0053).
 
@@ -16,7 +16,7 @@ renumbers its migration/decision and re-chains (precedent: 0052, 0053).
 The owner's `AGN-006` statement (in-session, 2026-10-01): requirement **"record counseling completed, career interest, course preference,
 country preference, budget and remarks"**; acceptance criteria: **save and read back the record; a negative budget → 422; out-of-scope → 404.**
 
-**Owner answers (in-session 2026-10-01, `EXPLICIT_APPROVAL`; recorded as `DEC-SCOPE-047`):**
+**Owner answers (in-session 2026-10-01, `EXPLICIT_APPROVAL`; recorded as `DEC-SCOPE-048`):**
 - **C1 — One record per student.** Saving overwrites it; history is the audit log only.
 - **C2 — Budget.** An amount plus a currency from a fixed list: INR (default), USD, GBP, EUR, CAD, AUD, NZD; 0 ≤ amount ≤ 99,999,999.99,
   at most 2 decimals; otherwise 422.
@@ -49,9 +49,9 @@ country preference, budget and remarks"**; acceptance criteria: **save and read 
 | B | ~11 nullable columns on `agent_students` | Rejected: widens the hot table, a counseling save bumps the student's `updated_at` (changes AGN-004's meaning), higher collision risk with AGN-007. |
 | C | One JSON column | Rejected: the database cannot enforce budget ≥ 0 or the currency list. |
 
-## 4. Data model — migration `0054_agent_student_counseling`
+## 4. Data model — migration `0055_agent_student_counseling`
 
-Create-table only, guarded like 0053 (on a fresh database `0001_initial`'s `create_all()` has already built the table from the model).
+Create-table only, guarded like 0054 (on a fresh database `0001_initial`'s `create_all()` has already built the table from the model).
 No existing table is altered and no existing row is read or written. `downgrade()` **refuses while any counseling record exists**
 (`RuntimeError`, the 0049 pattern — the owner's "preserve database data" constraint) and drops the empty table otherwise. Model `AgentStudentCounseling` in `models.py` beside `AgentStudent`.
 
@@ -273,6 +273,6 @@ data) and counseling remarks (personal data). No new authentication, session, se
 
 ## 10. Documentation to update with the code
 
-`ENHANCEMENT_BACKLOG.md` (row + §AGN-006), `PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-047`, C1–C9), `API_CONTRACT.md` (new PUT, detail
+`ENHANCEMENT_BACKLOG.md` (row + §AGN-006), `PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-048`, C1–C9), `API_CONTRACT.md` (new PUT, detail
 `counseling` key), `DATA_MODEL.md` (table addendum), `RBAC_MATRIX.md` (row), `RTM.md` (AC01–AC12), `PRD_OPEN_ITEMS.md` (privacy note),
 `EVIDENCE_REGISTER`/backlog Appendix note that §5 STEP 2 left `EVID-015`'s parked list.
