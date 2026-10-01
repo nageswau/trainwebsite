@@ -136,3 +136,11 @@ async def test_inactive_agency_and_non_agents_are_refused(db_session, agency):
     admin = await mk_user(db_session, role="super_admin", division="global")
     async with client_for(admin.email) as a:
         assert (await a.get(UNIVERSITIES)).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_portal_section_exists_for_both_roles(agency):
+    for email in (agency["master"].email, agency["staff"]["user"].email):
+        async with client_for(email) as c:
+            body = (await c.get("/api/v1/portal/overseas/agent/universities")).json()
+        assert body["title"] == "Universities" and body["rows"] == []
