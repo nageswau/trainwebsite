@@ -197,8 +197,9 @@ The Master-team routes (`POST …/team/masters`, `POST …/team/masters/{id}/dea
   deliberate departure from the source's ✅ for Masters: the route is admin-only, no agent has ever had it (P3), and it is tested as
   `403` for both member roles so the gap stays visible.
 
-Proved by `tests/test_agn_003_matrix.py` (every ❌ and every cheap ✅ cell; two Master ✅ cells are cited from `test_agn_001_team.py` and
-`test_agt_004_commission_payout.py`), `test_agn_003_permissions.py`, `test_agn_003_verify.py`.
+Proved by `tests/test_agn_003_matrix.py` (every ❌ and every cheap ✅ cell; two Master ✅ cells are cited from `test_agn_001_team.py`
+(`test_a_pending_invitee_can_still_be_deactivated_by_an_accepted_master`, `test_a_master_may_deactivate_themselves_once_another_master_has_accepted`)
+and `test_agn_001_tenancy.py` (`test_a_second_master_sees_and_claims_what_the_first_created`)), `test_agn_003_permissions.py`, `test_agn_003_verify.py`.
 
 **`DEC-ROLE-004` (2026-09-14) — Agent on-behalf-of a referred student, NOT YET BUILT:** the
 approved Agent row above is read-only (view roster/commissions, claim). Since an Agent-referred

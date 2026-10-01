@@ -2,9 +2,8 @@
 is tested in test_agn_003_permissions.py and test_agn_003_verify.py. Rows with no route for any agent (Edit/Delete/Assign Student,
 Edit Application, Change Application Status, Staff Performance, CRM Settings) are N/A in spec §3 and have nothing to call.
 Two Master cells are proven elsewhere: a Master deactivating another Master (tests/test_agn_001_team.py::
-test_a_pending_invitee_can_still_be_deactivated_by_an_accepted_master) and a Master claiming a commission
-(tests/test_agn_001_tenancy.py::test_a_second_master_sees_and_claims_what_the_first_created, tests/test_agt_004_commission_payout.py::
-test_overseas_admin_approves_payout_and_it_reaches_paid)."""
+test_a_pending_invitee_can_still_be_deactivated_by_an_accepted_master, plus test_a_master_may_deactivate_themselves_once_another_master_has_accepted)
+and a Master claiming a commission (tests/test_agn_001_tenancy.py::test_a_second_master_sees_and_claims_what_the_first_created)."""
 
 import pytest
 
