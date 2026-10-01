@@ -75,6 +75,31 @@ describe("AgentStaffActivity (AGN-021)", () => {
     expect(mock.mock.calls[2][0]).toContain("offset=10");
   });
 
+  it("disables paging while loading, so a rapid second Next cannot run past the last page", async () => {
+    const mock = vi.fn()
+      .mockResolvedValueOnce(res(page(Array.from({ length: 10 }, (_, i) => item(i + 1)), 11)))
+      .mockReturnValueOnce(new Promise<Response>(() => {}));
+    vi.stubGlobal("fetch", mock);
+    render(<AgentStaffActivity member={member} onClose={() => {}} />);
+    const next = await screen.findByRole("button", { name: "Next page" });
+    fireEvent.click(next);
+    fireEvent.click(next);
+    await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(2));
+    expect(next).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
+    expect(mock.mock.calls[1][0]).toContain("offset=10");
+    expect(mock).toHaveBeenCalledTimes(2);
+  });
+
+  it("hides the pager while an error is shown", async () => {
+    const ten = Array.from({ length: 10 }, (_, i) => item(i + 1));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res(page(ten, 11))).mockResolvedValueOnce(res({ detail: "boom" }, 500)));
+    render(<AgentStaffActivity member={member} onClose={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Next page" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Activity pages" })).toBeNull();
+  });
+
   it("ignores a response older than the latest request", async () => {  // Review Focus 3
     let slow: (r: Response) => void = () => {};
     const mock = vi.fn()

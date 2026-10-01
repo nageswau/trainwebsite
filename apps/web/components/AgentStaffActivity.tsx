@@ -65,7 +65,7 @@ export default function AgentStaffActivity({ member, onClose }: { member: StaffM
       ) : (
         <ol aria-label={`Activity of ${member.code}`} aria-busy={loading} style={{ paddingLeft: 18, margin: "4px 0" }}>
           {data.items.map((item) => (
-            <li key={item.id} style={{ fontSize: 13, marginBottom: 4 }}>
+            <li key={item.id} style={{ fontSize: 13, marginBottom: 4, overflowWrap: "anywhere" }}>
               <strong>{activityLabel(item.action)}</strong> · {item.subject}
               {item.fields && item.fields.length > 0 ? ` — ${item.fields.map((f) => f.replaceAll("_", " ")).join(", ")}` : ""}{" "}
               <span className="muted"><time dateTime={item.at}>{formatDate(item.at, true)}</time></span>
@@ -73,11 +73,11 @@ export default function AgentStaffActivity({ member, onClose }: { member: StaffM
           ))}
         </ol>
       )}
-      {data && data.total > ACTIVITY_PAGE_SIZE && (
+      {data && !error && data.total > ACTIVITY_PAGE_SIZE && (
         <nav aria-label="Activity pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, margin: "4px 0" }}>
           <span className="muted" style={{ fontSize: 13 }}>Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}</span>
-          <button type="button" className="btn secondary small" aria-label="Previous page" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - ACTIVITY_PAGE_SIZE))}>Previous</button>
-          <button type="button" className="btn secondary small" aria-label="Next page" disabled={data.offset + data.items.length >= data.total} onClick={() => setOffset(offset + ACTIVITY_PAGE_SIZE)}>Next</button>
+          <button type="button" className="btn secondary small" aria-label="Previous page" disabled={loading || offset === 0} onClick={() => setOffset(Math.max(0, offset - ACTIVITY_PAGE_SIZE))}>Previous</button>
+          <button type="button" className="btn secondary small" aria-label="Next page" disabled={loading || offset + ACTIVITY_PAGE_SIZE >= data.total} onClick={() => setOffset(offset + ACTIVITY_PAGE_SIZE)}>Next</button>
         </nav>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
