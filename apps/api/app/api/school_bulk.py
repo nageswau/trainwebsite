@@ -22,11 +22,21 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.schools import OUTSIDE_PORTFOLIO, TIER_DENIED, _entitlement_denial, _notify_student_parents, _portfolio_school_ids, _today_ist
+from app.api.schools import OUTSIDE_PORTFOLIO, TIER_DENIED, _apply_master_fields, _entitlement_denial, _notify_student_parents, _portfolio_school_ids, _today_ist
 from app.core.database import get_db
 from app.core.logging import get_logger
-from app.models import AuditLog, School, SchoolAcademicResult, SchoolBulkUploadBatch, SchoolBulkUploadRow, SchoolResultStatusHistory, SchoolStudent, User
-from app.schemas import BulkResultRow, validation_message
+from app.models import (
+    AuditLog,
+    School,
+    SchoolAcademicResult,
+    SchoolBulkUploadBatch,
+    SchoolBulkUploadRow,
+    SchoolPsychometricRecord,
+    SchoolResultStatusHistory,
+    SchoolStudent,
+    User,
+)
+from app.schemas import PSYCHOMETRIC_RESULT_KEYS, BulkPsychometricRow, BulkResultRow, validation_message
 
 router = APIRouter(prefix="/school", tags=["school-bulk"])
 logger = get_logger("app.school.bulk")
@@ -58,7 +68,7 @@ class BulkTarget:
     columns: tuple[str, ...]  # module columns, in template order
     required: tuple[str, ...]  # columns whose header must be present
     row_model: type[BaseModel]
-    noun: str  # "result", for the duplicate message
+    noun: str  # "a result", for the duplicate message
     key_fields: str  # "academic_year, term and subject"
     natural_key: Callable[[BaseModel], tuple]
     existing_keys: Callable[[AsyncSession, list[UUID]], Awaitable[set[tuple]]]  # {(student_id, *natural_key)}
@@ -99,8 +109,48 @@ RESULTS = BulkTarget(
     target_type="academic_result", role="academic_team", role_error="Academic Team role required",
     columns=("academic_year", "term", "subject", "max_marks", "marks_obtained", "grade", "teacher_remarks"),
     required=("academic_year", "term", "subject", "max_marks", "marks_obtained"),
-    row_model=BulkResultRow, noun="result", key_fields="academic_year, term and subject",
+    row_model=BulkResultRow, noun="a result", key_fields="academic_year, term and subject",
     natural_key=_result_key, existing_keys=_existing_results, service_key=lambda row: None, create=_create_result,
+)
+
+
+# --- Psychometric (SCH-005 + ENH-027 result fields): status by report_url, parents told it was assigned or is ready ------------
+
+
+def _psychometric_key(row: BulkPsychometricRow) -> tuple:
+    return (row.assessment_type.casefold(), row.test_date)
+
+
+async def _existing_psychometric(db: AsyncSession, student_ids: list[UUID]) -> set[tuple]:
+    rows = await db.execute(
+        select(SchoolPsychometricRecord.school_student_id, SchoolPsychometricRecord.assessment_type, SchoolPsychometricRecord.test_date).where(
+            SchoolPsychometricRecord.school_student_id.in_(student_ids)
+        )
+    )
+    return {(student_id, assessment_type.casefold(), test_date) for student_id, assessment_type, test_date in rows}
+
+
+async def _create_psychometric(db: AsyncSession, user: User, student: SchoolStudent, row: BulkPsychometricRow, batch_id: UUID) -> Created:
+    record = SchoolPsychometricRecord(
+        school_student_id=student.id, psychometric_team_user_id=user.id, assessment_type=row.assessment_type,
+        report_url=row.report_url, status="completed" if row.report_url else "assigned",
+    )
+    fields = [name for name in _apply_master_fields(record, row) if name in PSYCHOMETRIC_RESULT_KEYS]
+    db.add(record)
+    await db.flush()
+    db.add(AuditLog(user_id=user.id, action="school.psychometric_record_create", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={"assessment_type": row.assessment_type, "fields": fields, "bulk_batch_id": str(batch_id)}))
+    if record.status == "completed":
+        notice = (f"Psychometric report ready for {student.full_name}", f"The {row.assessment_type} report for {student.full_name} is now available.")
+    else:
+        notice = (f"Psychometric assessment assigned to {student.full_name}", f"{student.full_name} has been assigned a {row.assessment_type}.")
+    return Created(record.id, notice)
+
+
+PSYCHOMETRIC = BulkTarget(
+    target_type="psychometric_record", role="psychometric_team", role_error="Psychometric Team role required",
+    columns=("assessment_type", "report_url", *PSYCHOMETRIC_RESULT_KEYS), required=("assessment_type",),
+    row_model=BulkPsychometricRow, noun="an assessment", key_fields="assessment_type and test_date",
+    natural_key=_psychometric_key, existing_keys=_existing_psychometric, service_key=lambda row: "psychometric_test", create=_create_psychometric,
 )
 
 
@@ -274,7 +324,7 @@ async def _upload(target: BulkTarget, file: UploadFile, idempotency_key: str | N
                 key = (student.id, *target.natural_key(row))
                 error = await tier.error(student.school_id, target.service_key(row))
                 if error is None and key in existing:
-                    error = f"this student already has a {target.noun} for the same {target.key_fields}"
+                    error = f"this student already has {target.noun} for the same {target.key_fields}"
                 elif error is None and key in seen:
                     error = f"same student and {target.key_fields} as row {seen[key]} of this file"
                 elif error is None:
@@ -309,3 +359,8 @@ async def _upload(target: BulkTarget, file: UploadFile, idempotency_key: str | N
 @router.post("/academic-team/results/bulk-upload", status_code=201)
 async def bulk_upload_results(file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await _upload(RESULTS, file, idempotency_key, user, db)
+
+
+@router.post("/psychometric-team/records/bulk-upload", status_code=201)
+async def bulk_upload_psychometric(file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _upload(PSYCHOMETRIC, file, idempotency_key, user, db)
