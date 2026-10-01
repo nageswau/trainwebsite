@@ -351,6 +351,15 @@ class StudentDocumentCreate(BaseModel):
     file_size: int | None = Field(default=None, ge=0, le=50 * 1024 * 1024)
 
 
+class AgentDocumentReview(BaseModel):
+    """AGN-003 (DEC-SCOPE-041 P5/P6, spec §7): an agency member's decision on a pending document. The counselor/admin body of the
+    same route is not parsed by this (unchanged)."""
+
+    model_config = {"extra": "forbid"}
+    verification_status: Literal["verified", "rejected", "changes_required"]
+    notes: str | None = Field(default=None, max_length=10000)
+
+
 class AppointmentCreate(BaseModel):
     student_id: UUID | None = None
     staff_id: UUID | None = None

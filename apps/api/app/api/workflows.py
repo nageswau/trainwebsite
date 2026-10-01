@@ -1,8 +1,11 @@
+import logging
 import secrets
 from datetime import UTC, date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +14,7 @@ from app.api.files import _allowed
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
-from app.core.rbac import agent_denial_reason, is_agent_staff
+from app.core.rbac import REVIEW_MASTER_ONLY, VERIFY_REFUSED, agent_denial_reason, agent_may, is_agent_staff
 from app.models import (
     AgentCommission,
     AgentStudent,
@@ -60,6 +63,7 @@ from app.models import (
     VisaCase,
 )
 from app.schemas import (
+    AgentDocumentReview,
     AgentStudentCreate,
     AppointmentCreate,
     AssessmentCreate,
@@ -96,6 +100,7 @@ from app.services.integrations import send_notification
 from app.services.storage import storage
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
+logger = logging.getLogger("app.workflows")
 
 
 def _require(user: User, roles: set[str], division: str | None = None):
@@ -2023,9 +2028,53 @@ async def add_document(payload: StudentDocumentCreate, user: User = Depends(get_
     return {"id": item.id, "verification_status": item.verification_status}
 
 
+async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID, payload: dict) -> dict:
+    """AGN-003 (DEC-SCOPE-041 P3/P5/P6, spec §7): an agency member decides a PENDING document of their agency. Permission checks
+    come before any read (a refused caller learns nothing about the document); the row lock makes a second agent decision see the
+    first and get 409. Same notification and audit action as the counselor path, with validated metadata only."""
+    if not agent_may(user, "can_verify_documents"):
+        logger.warning("document_review_refused_no_permission", extra={"extra_fields": {"document_id": str(document_id), "actor_id": str(user.id)}})
+        raise HTTPException(403, VERIFY_REFUSED)
+    try:
+        review = AgentDocumentReview.model_validate(payload)
+    except ValidationError as exc:
+        raise RequestValidationError(exc.errors(include_url=False)) from exc
+    if is_agent_staff(user) and review.verification_status != "verified":
+        logger.warning(
+            "document_review_refused_staff_outcome",
+            extra={"extra_fields": {"document_id": str(document_id), "actor_id": str(user.id), "verification_status": review.verification_status}},
+        )
+        raise HTTPException(403, REVIEW_MASTER_ONLY)
+    item = await db.scalar(select(StudentDocument).where(StudentDocument.id == document_id).with_for_update())
+    if not item:
+        raise HTTPException(404, "Document not found")
+    if item.application_id:
+        await _assigned_application(db, user, item.application_id)
+    elif not await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == item.student_id, AgentStudent.agent_id.in_(org_member_ids(user)))):
+        raise HTTPException(403, "Document is outside your assigned scope")
+    if item.verification_status != "pending":
+        raise HTTPException(409, "This document has already been reviewed")
+    item.verification_status = review.verification_status
+    item.verified_by_id = user.id
+    item.reviewer_notes = review.notes
+    student = await db.get(User, item.student_id)
+    if student:
+        await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
+    member_role = user.agent_membership.role
+    await _audit(db, user, "document.verify", "student_document", item.id, {**review.model_dump(), "member_role": member_role})
+    await db.commit()
+    logger.info(
+        "agent_document_reviewed",
+        extra={"extra_fields": {"document_id": str(item.id), "actor_id": str(user.id), "member_role": member_role, "verification_status": item.verification_status}},
+    )
+    return {"id": item.id, "verification_status": item.verification_status}
+
+
 @router.patch("/overseas/documents/{document_id}/verify")
 async def verify_document(document_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _require(user, {"counselor", "overseas_admin"}, "overseas")
+    _require(user, {"counselor", "overseas_admin", "agent"}, "overseas")
+    if user.role == "agent":  # AGN-003: the agent path is fully separate; the counselor/admin lines below are unchanged
+        return await _agent_document_review(db, user, document_id, payload)
     item = await db.get(StudentDocument, document_id)
     if not item:
         raise HTTPException(404, "Document not found")
