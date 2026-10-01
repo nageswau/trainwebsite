@@ -19,6 +19,8 @@ delivery-specific items surfaced while building the effort re-estimate and depen
 | R-09 *(new)* | The 2.0× overlay multiplier and day-per-complexity convention (`IMPLEMENTATION_PLAN.md` §2.1–2.2) are this document's own disclosed estimation assumption, not derived from any historical velocity data (none exists — from-scratch project). | Medium | This phase | Open by design — re-estimation checkpoint set after Wave 0 ships (`IMPLEMENTATION_PLAN.md` §2.5). |
 | R-10 *(new)* | Employer Stream D's exact publish-workflow (`EMP-002`) may need rework if `FEATURE_QUESTIONS.md` #1/#7 are answered after Stream D has already started. | Medium | `DEPENDENCY_PLAN.md` §2 | Open — recommend resolving before Stream D's first sprint. |
 | R-11 *(new)* | No team size/composition is specified anywhere in evidence — every calendar-time figure in `IMPLEMENTATION_PLAN.md` §2.5 is illustrative only. | High | This phase | Open — genuinely blocks turning the effort estimate into a real schedule until the user confirms team composition. |
+| R-12 *(new, `AGN-021`, 2026-10-01)* | Audit-log retention is still undecided (open PRD item), so staff activity shows everything retained in `audit_logs` — there is no age limit and no purge, so a Master may see old history and a future purge would shorten it. | Low | `DEC-SCOPE-045` / spec §2 | Open — decide with the retention policy. |
+| R-13 *(new, `AGN-021`, 2026-10-01)* | The per-staff activity read filters `audit_logs` by `user_id` (indexed) and orders by `created_at, id`. If the table grows large, a composite `(user_id, created_at)` index would serve the page query. **Not built** — per-staff row counts are small today. | Low | Spec §4 | Open — revisit if the activity route slows. |
 
 ## Assumptions
 

@@ -202,6 +202,7 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | Create Staff Login | `POST /workflows/overseas/agent/team/staff`, `POST …/staff/{id}/reset` | ✅ | ❌ |
 | Deactivate Staff | `POST …/staff/{id}/deactivate`, `POST …/staff/{id}/reactivate` | ✅ | ❌ |
 | Staff Performance | — | N/A | N/A |
+| View staff activity | `GET /workflows/overseas/agent/team/staff/{member_id}/activity` (**new**, `AGN-021` / `DEC-SCOPE-045`) | ✅ (own agency's staff; deactivated staff too) | ❌ `403` "Only an agency Master can manage the team"; another agency's user and any non-staff or unknown member id → `404` "Staff member not found" |
 | Reports | `GET /portal/overseas/agent/reports` | ✅ full | **T** (when on: today's staff report, no commission row) |
 | Commission | `GET /workflows/overseas/agent/commissions`, `POST …/commissions/{id}/claim`, `GET /portal/overseas/agent/commissions` | ✅ | ❌ |
 | CRM Settings | — | N/A | N/A |

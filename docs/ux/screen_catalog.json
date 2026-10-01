@@ -2069,16 +2069,16 @@
     ],
     "entry": "Agent portal navigation, \"Team\".",
     "data": "The caller's agency (name, prefix) and its Masters (code, name, email, status, invite pending).",
-    "actions": "Invite a Master (emailed DEC-SCOPE-019 set-password link); deactivate a Master (inline confirmation; self-deactivation signs out).",
-    "empty": "N/A — an agency always has at least one active Master.",
-    "loading": "\"Loading your team…\".",
-    "error": "\"Unable to load your team.\" with Retry; per-row and invite errors inline; undelivered invite email reported.",
+    "actions": "Invite a Master (emailed DEC-SCOPE-019 set-password link); deactivate a Master (inline confirmation; self-deactivation signs out). Per staff row (AGN-021): Activity opens a read-only list of the staff member's student-journey work, 10 per page, with Previous/Next, Refresh and Close.",
+    "empty": "N/A — an agency always has at least one active Master. Staff Activity section (AGN-021): \"No activity yet.\"",
+    "loading": "\"Loading your team…\". Staff Activity section: \"Loading activity…\".",
+    "error": "\"Unable to load your team.\" with Retry; per-row and invite errors inline; undelivered invite email reported. Staff Activity section: \"Unable to load activity.\" with Try again.",
     "perms": "Own agency only; pending/rejected/suspended agencies denied. Up to 3 active Masters; last active Master cannot be deactivated; codes never reused; no reactivation.",
     "responsive": "Single-column card list and form; long names/emails wrap (no horizontal scroll at 320px).",
     "a11y": "Labelled fields, named Deactivate buttons, confirmation as a labelled group, status messages announced.",
     "dtm": "Same single-column layout at all widths.",
     "visual": "None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
-    "evidence": "AGN-001-AC07, AC08: test_agn_001_team.py; AgentTeamPanel.test.tsx; agn-001-multi-tenant.spec.ts."
+    "evidence": "AGN-001-AC07, AC08: test_agn_001_team.py; AgentTeamPanel.test.tsx; agn-001-multi-tenant.spec.ts. AGN-021-AC07 (staff Activity section, DEC-SCOPE-045, 2026-10-01): AgentStaffActivity.test.tsx; AgentStaffRow.test.tsx; agn-021-staff-activity.spec.ts (pending)."
   },
   {
     "id": "SCR-AGT-008",

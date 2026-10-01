@@ -1822,6 +1822,16 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
   member verify documents or view reports." New staff start with both off (P7). A staff member whose toggle is switched off while
   their page is open gets the server's `403` message on their next click. Evidence: AGN-003-AC05, AC06 (`test_agn_003_permissions.py`;
   `AgentStaffPermissionsForm.test.tsx`, `AgentStaffRow.test.tsx`; e2e `agn-003-staff-permissions.spec.ts`).
+- **AGN-021 update (2026-10-01, `DEC-SCOPE-045`):** each staff row (active or deactivated) gains an **Activity** button beside Permissions
+  (Masters only; `AgentStaffActivity`). It opens a section with an ordered list (`aria-label="Activity of <code>"`): each item shows a plain
+  label ("Created a student record", "Edited a student record", "Saved a student record despite a duplicate warning", "Linked a student
+  account", "Created an application", "Uploaded a document", "Verified a document", else "Other activity"), the subject (student;
+  application as student — university; document as type — student; "No longer available" when gone), for an edit the changed field
+  names, and the time in the viewer's zone (`<time dateTime>`). States: loading "Loading activity…" (`role="status"`, list `aria-busy`);
+  empty "No activity yet."; error "Unable to load activity." (`role="alert"`) with **Try again**. Page size 10 with "Showing a–b of N" and
+  Previous/Next (disabled at the ends and while loading); **Refresh** reloads the current page; a response older than the latest request
+  is ignored. **Close** (or Escape) closes the section and focus returns to Activity. Text wraps, no horizontal scroll at 320 px.
+  Evidence: AGN-021-AC07 (`AgentStaffActivity.test.tsx`, `AgentStaffRow.test.tsx`; e2e `agn-021-staff-activity.spec.ts` pending, Task 4).
 
 ### `SCR-AGT-008`
 - **Route:** `/overseas/agent/students` — a "Students" header and the "All students" panel (full width), then the AGT-002 roster retitled "Application status" (students who have a login), then the "Link student" form *(layout from browser QA-01/02, 2026-10-01)*; search, Show archived and page are kept in the URL (`?q=- **Route:** `/overseas/agent/students` — the Students panel above the existing roster and "Link student" form  archived=1- **Route:** `/overseas/agent/students` — the Students panel above the existing roster and "Link student" form  page=`)  
