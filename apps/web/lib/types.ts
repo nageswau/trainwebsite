@@ -6,7 +6,9 @@ export type PortalPayload = {
   actions:{label:string;href:string}[]; columns:{key:string;label:string;type?:string}[];
   rows:Record<string, unknown>[]; panels:{title:string;items:string[]}[];
 };
-export type User = {id:string; email:string; full_name:string; role:string; division:string; phone?:string; student_code?:string|null; profile:Record<string,unknown>; agent_member_role?:"master"|"staff"|null};
+// AGN-003 (DEC-SCOPE-041): an agency member's effective optional permissions (GET /auth/me; a Master gets both true).
+export type AgentPermissions = { can_verify_documents: boolean; can_view_reports: boolean };
+export type User = {id:string; email:string; full_name:string; role:string; division:string; phone?:string; student_code?:string|null; profile:Record<string,unknown>; agent_member_role?:"master"|"staff"|null; agent_permissions?:AgentPermissions|null};
 export type CareerPath = {id:string; division:string; slug:string; title:string; summary:string; skills:string[]; related_program_slugs:string[]; outcomes:string};
 export type RealProject = {id:string; division:string; slug:string; title:string; summary:string; description:string; tech_stack:string[]};
 export type Testimonial = {id:string; division:string; person_name:string; headline:string; quote:string; rating:number};
