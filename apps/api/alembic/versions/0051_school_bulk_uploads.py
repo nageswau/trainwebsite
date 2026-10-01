@@ -1,10 +1,10 @@
 """ENH-028 -- school_bulk_upload_batches / school_bulk_upload_rows.
 
-Revision ID: 0049_school_bulk_uploads
-Revises: 0048_school_attendance_records
+Revision ID: 0051_school_bulk_uploads
+Revises: 0050_notification_channels
 
-docs/superpowers/specs/2026-10-01-enh-028-bulk-data-entry-design.md §4 (DEC-SCOPE-042). Create-table only: no existing table is
-altered and no existing row is read or written. `downgrade()` drops both tables (rows first, for the foreign key).
+docs/superpowers/specs/2026-10-01-enh-028-bulk-data-entry-design.md §4 (DEC-SCOPE-043). Create-table only: no existing table is
+altered and no existing row is read or written. Cut as 0049; renumbered to 0051 after AGN-004's 0049 and ENH-014's 0050 on merging main. `downgrade()` drops both tables (rows first, for the foreign key).
 """
 
 import sqlalchemy as sa
@@ -12,8 +12,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0049_school_bulk_uploads"
-down_revision = "0048_school_attendance_records"
+revision = "0051_school_bulk_uploads"
+down_revision = "0050_notification_channels"
 branch_labels = None
 depends_on = None
 

@@ -17,6 +17,7 @@ from sqlalchemy import select
 
 from app.core.security import hash_password
 from app.models import Country, NotificationDelivery, OverseasApplication, University, User
+from tests.enh014_helpers import drain
 
 
 async def _create_user(db_session, role: str, **overrides) -> User:
@@ -111,13 +112,13 @@ async def test_assigned_counselor_can_view_but_unassigned_counselor_cannot(clien
 
 
 @pytest.mark.asyncio
-async def test_a_notification_send_failure_never_blocks_the_status_write(client, db_session, monkeypatch):
-    import app.api.workflows as workflows_module
+async def test_a_notification_send_failure_never_blocks_the_status_write(client, db_session, enqueued, monkeypatch):
+    import app.notifications.delivery as delivery_module
 
     async def failing_send(channel, payload):
         return "failed", "Connection timed out after 10s"
 
-    monkeypatch.setattr(workflows_module, "send_notification", failing_send)
+    monkeypatch.setattr(delivery_module, "send_notification", failing_send)
 
     university = await _make_university(db_session)
     counselor = await _create_user(db_session, "counselor")
@@ -132,6 +133,7 @@ async def test_a_notification_send_failure_never_blocks_the_status_write(client,
     await db_session.refresh(application)
     assert application.status == "eligibility_evaluation"
 
+    await drain(enqueued)  # ENH-014: sent by the worker after the status change committed; retries exhaust to "failed"
     delivery = await db_session.scalar(select(NotificationDelivery).where(NotificationDelivery.channel == "email").order_by(NotificationDelivery.created_at.desc()))
     assert delivery is not None
     assert delivery.status == "failed"

@@ -7,12 +7,12 @@ per-row validation that never blocks the batch, and a batch/row audit trail.
 
 **Architecture:** One new router module `app/api/school_bulk.py` holds a single upload routine driven by a small
 `BulkTarget` description per module (role, row schema, natural key, tier key, record builder). Row validation is a Pydantic
-model per module in `app/schemas.py`, reusing the existing text/list/date cleaners. Two new tables (migration `0049`). One
+model per module in `app/schemas.py`, reusing the existing text/list/date cleaners. Two new tables (migration `0051`). One
 new React panel, configured per module from `lib/bulkEntry.ts`.
 
 **Tech Stack:** FastAPI, Pydantic v2, async SQLAlchemy, Alembic, PostgreSQL; Next.js 15 / React 19, Vitest, Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-10-01-enh-028-bulk-data-entry-design.md` (approved with S1–S5; `DEC-SCOPE-042`).
+**Spec:** `docs/superpowers/specs/2026-10-01-enh-028-bulk-data-entry-design.md` (approved with S1–S5; `DEC-SCOPE-043`).
 
 ## Global Constraints
 
@@ -38,7 +38,7 @@ new React panel, configured per module from `lib/bulkEntry.ts`.
 
 | File | Responsibility |
 |---|---|
-| `apps/api/alembic/versions/0049_school_bulk_uploads.py` (new) | create the two tables |
+| `apps/api/alembic/versions/0051_school_bulk_uploads.py` (new) | create the two tables |
 | `apps/api/app/models.py` (modify) | `SchoolBulkUploadBatch`, `SchoolBulkUploadRow` |
 | `apps/api/app/schemas.py` (modify) | `BulkResultRow`, `BulkPsychometricRow`, `BulkTestPrepRow`, `BulkLanguageRow` |
 | `apps/api/app/api/school_bulk.py` (new) | targets, upload routine, template routine, 8 routes |
@@ -56,17 +56,17 @@ Commands (PowerShell, repo root; `$T` = `docker compose -p enh028 -f docker-comp
 
 ---
 
-### Task 1: Tables, models, migration 0049
+### Task 1: Tables, models, migration 0051
 
-**Files:** Create `alembic/versions/0049_school_bulk_uploads.py`, `tests/test_enh_028_migration.py`; Modify `app/models.py` (after `SchoolRosterUploadRow`).
+**Files:** Create `alembic/versions/0051_school_bulk_uploads.py`, `tests/test_enh_028_migration.py`; Modify `app/models.py` (after `SchoolRosterUploadRow`).
 
 **Produces:** `SchoolBulkUploadBatch(id, target_type, uploaded_by_user_id, idempotency_key, file_sha256, total_rows, accepted_count, rejected_count, created_at, updated_at)`, `SchoolBulkUploadRow(id, batch_id, row_number, status, error_message, student_code, created_record_id)`, `BULK_TARGET_TYPES`.
 
-- [ ] Write `test_enh_028_migration.py`: revision `0049_school_bulk_uploads`, down `0048_school_attendance_records`, single head; live columns/nullability match; unique constraint `uq_school_bulk_upload_key` on the three columns; CHECK `ck_school_bulk_upload_target_type`; downgrade/upgrade body only creates/drops these two tables (source scan).
+- [ ] Write `test_enh_028_migration.py`: revision `0051_school_bulk_uploads`, down `0050_notification_channels`, single head; live columns/nullability match; unique constraint `uq_school_bulk_upload_key` on the three columns; CHECK `ck_school_bulk_upload_target_type`; downgrade/upgrade body only creates/drops these two tables (source scan).
 - [ ] Run → FAIL (file missing).
 - [ ] Add models + migration (create-table only, guarded like 0048).
 - [ ] `alembic upgrade head`; run → PASS.
-- [ ] Commit `feat(enh-028): bulk upload batch/row tables (migration 0049)`.
+- [ ] Commit `feat(enh-028): bulk upload batch/row tables (migration 0051)`.
 
 ### Task 2: Row schemas
 

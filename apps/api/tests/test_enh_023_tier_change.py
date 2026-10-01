@@ -243,10 +243,12 @@ async def test_unchanged_tier_notifies_nobody(client, db_session):
 
 @pytest.mark.asyncio
 async def test_failing_email_never_fails_or_undoes_the_tier_change(client, db_session, monkeypatch, caplog):
-    async def boom(**kwargs):
-        raise RuntimeError(f"recipient refused: <{kwargs['to_email']}>")  # what real SMTP errors look like
+    async def boom(db, notification, recipient, **kwargs):
+        raise RuntimeError(f"recipient refused: <{recipient.email}>")  # what a real failure could carry
 
-    monkeypatch.setattr(schools, "send_parent_notification_email", boom)
+    # ENH-014: sending moved to the worker (SMTP failures are covered by test_enh_014_delivery); the only
+    # in-request failure point left while notifying is queueing the deliveries.
+    monkeypatch.setattr(schools, "queue_deliveries", boom)
     w = await world(db_session, "gold")
     with caplog.at_level(logging.WARNING, logger="app.admin"):
         body = await change_tier(client, w, tier="platinum")

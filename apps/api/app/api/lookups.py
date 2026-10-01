@@ -21,6 +21,7 @@ from app.core.identifiers import uuid_reference
 from app.core.rbac import agent_denial_reason
 from app.models import AgentStudent, AuditLog, Company, Job, JobApplication, OverseasApplication, OverseasCourse, School, SchoolStudent, University, User
 from app.services.agent_orgs import org_member_ids
+from app.services.agent_students import application_scope, visible_student_user_ids
 
 logger = logging.getLogger("app.lookups")
 router = APIRouter(prefix="/lookups", tags=["lookups"])
@@ -112,7 +113,8 @@ async def overseas_students(
         limit = min(limit, LINK_LIMIT)
         escaped = pattern[1:-1]  # the literal, escaped term without _pattern's surrounding wildcards
         stmt = stmt.where(
-            User.id.not_in(select(AgentStudent.student_id).where(AgentStudent.agent_id.in_(org_member_ids(user)))),
+            # AGN-004: skip rows with no login -- one NULL in a NOT IN subquery would make it match nothing at all.
+            User.id.not_in(select(AgentStudent.student_id).where(AgentStudent.agent_id.in_(org_member_ids(user)), AgentStudent.student_id.is_not(None))),
             or_(func.lower(User.email) == term.lower(), _like(User.full_name, f"{escaped}%"), _like(User.full_name, f"% {escaped}%")),
         )
         db.add(AuditLog(user_id=user.id, action=LINK_AUDIT_ACTION, entity_type="lookup", outcome="searched", metadata_json={"purpose": "link"}))
@@ -122,7 +124,7 @@ async def overseas_students(
         if user.role == "counselor":
             stmt = stmt.where(User.id.in_(select(OverseasApplication.student_id).where(OverseasApplication.counselor_id == user.id)))
         elif user.role == "agent":
-            stmt = stmt.where(User.id.in_(select(AgentStudent.student_id).where(AgentStudent.agent_id.in_(org_member_ids(user)))))
+            stmt = stmt.where(User.id.in_(visible_student_user_ids(user)))  # AGN-004 (G4): staff see their assigned students only
         if pattern:
             stmt = stmt.where(or_(_like(User.full_name, pattern), _like(User.email, pattern)))
     stmt = stmt.order_by(User.full_name, User.id)
@@ -162,7 +164,7 @@ async def overseas_applications(
     elif user.role == "counselor":
         stmt = stmt.where(OverseasApplication.counselor_id == user.id)
     elif user.role == "agent":
-        stmt = stmt.where(OverseasApplication.agent_id.in_(org_member_ids(user)))
+        stmt = stmt.where(*application_scope(user))
     elif user.role == "university_rep":
         university_id = uuid_reference(user.profile.get("university_id"), "university reference", required=False)
         stmt = stmt.where(OverseasApplication.university_id == university_id if university_id else false())

@@ -2,7 +2,7 @@
 
 **Status:** APPROVED by the user in-session 2026-10-01 ("Spec + S1–S5"), with simplifications S1–S5 applied below.
 **Feature:** `ENH-028` (`docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-028). **Branch:** `feature/enh-028-bulk-entry`.
-**Decision:** `DEC-SCOPE-042` (§12).
+**Decision:** `DEC-SCOPE-043` (§12).
 
 **Simplifications applied on approval:** S1 no hourly throttle · S2 no `GET /school/bulk-uploads/{id}` (the upload and its
 replay return the report; the audit trail lives in the tables) · S3 no batch `status` column (the response still carries
@@ -45,7 +45,7 @@ one new React panel mounted on the Academic Team and Psychometric Team dashboard
 transfers, portfolio, 360, reports/PDF, parent portal); attendance; career records; updates via bulk; async/background
 processing; XLSX.
 
-## 4. Data model (migration `0049_school_bulk_uploads`, create-table only)
+## 4. Data model (migration `0051_school_bulk_uploads`, create-table only)
 
 `school_bulk_upload_batches`
 
@@ -293,7 +293,7 @@ Frontend:
 - `tests/e2e/enh-028-bulk-entry.spec.ts` (Playwright) — Academic Team uploads results CSV (one bad row) → report → Draft rows
   visible; Psychometric Team upload; template download contains only portfolio students. Browser validation at 320/1440.
 
-## 12. Decision record (`DEC-SCOPE-042`, recorded in `PRODUCT_DECISION_REGISTER.md`)
+## 12. Decision record (`DEC-SCOPE-043`, recorded in `PRODUCT_DECISION_REGISTER.md`)
 
 "ENH-028 bulk data entry for Results/Psychometric/Test Prep/Language: create-only CSV, `student_code` key, same parent
 notices after commit, 1 MB/500 rows, bulk-only duplicate rejection, generalized batch/row tables, user-scoped idempotency

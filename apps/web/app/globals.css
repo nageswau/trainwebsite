@@ -108,6 +108,12 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
   .table.psy-records td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
   .table.psy-records td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
 }
+/* AGN-004: the agency Students panel -- every button (toolbar, cards, paging, forms) is a 44px touch target on phones
+   (browser QA-07); the panel spans the full width of the action grid (browser QA-01). */
+.action-grid > .agent-students { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+  .agent-students .btn { min-height: 44px; }
+}
 
 /* ENH-016 analytics dashboards: KPI tiles 1 -> 2 -> 4 columns; wide tables scroll inside their card, never the page. */
 .kpi-group { margin-top: 16px; }

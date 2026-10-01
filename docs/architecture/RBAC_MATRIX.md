@@ -145,7 +145,7 @@ members. Staff roles are not decided (D13). Enforcement: `core/rbac.agent_denial
 
 **`AGN-002` / `DEC-SCOPE-040` (2026-09-30) — agency staff, BUILT 2026-09-30.** A staff member (`role='agent'`, member
 role `staff`, code `<prefix>-S###`) of an `active` organisation works on the organisation's students, applications and
-documents with the same organisation-wide scope as a Master (S1; "assigned students only" is not decided). Staff are
+documents with the same organisation-wide scope as a Master (S1; narrowed to assigned students by `AGN-004`, below). Staff are
 **denied** team management (`403 "Only an agency Master can manage the team"`), commission list/claim (`403 "Only an agency
 Master can view commissions"`) and the `team`/`commissions` portal pages; their dashboard/reports omit commission figures.
 Only an active Master of the organisation creates, edits, deactivates, reactivates or resets its staff; another
@@ -155,6 +155,26 @@ commission notifications) and cannot be approved/rejected as agents by Overseas 
 `core/rbac.is_agent_staff`, `api/agent_team._require_master`, `services/agent_orgs._staff_member`. Proved by
 `tests/test_agn_002_staff.py`, `test_agn_002_staff_access.py`, `test_agn_002_master_rules.py`, `test_agn_002_sessions.py`.
 Known limitation: admin `PATCH /admin/users/{id}` can still change `active` on any agent user (spec §10, E4).
+
+**`AGN-004` / `DEC-SCOPE-042` (2026-09-30) — agency students and staff scope, BUILT 2026-09-30 (narrows `AGN-002` S1 above; same
+staff model).** A staff member is a `role='agent'` user whose organisation membership has `role='staff'` (created by `AGN-002`).
+
+| Action | Master | Staff |
+|---|---|---|
+| View students (new `/crm/students` list/detail; roster; portal Students) | Whole agency | **Assigned to them only** |
+| Create a student with no login; link a student with an account | ✓ (unassigned) | ✓ (assigned to them) |
+| Edit a student with no login | ✓ | ✓ (assigned only) |
+| Archive / unarchive; assign | ✓ | ✗ (`403`) |
+| Applications, documents, lookups, dashboard, reports | Whole agency | Assigned students' only |
+| Team, Commissions | ✓ | ✗ (`403`, `AGN-002` S1) |
+
+**Existence mask (required by `API_CONTRACT.md` §0.3):** on the `/workflows/overseas/agent/crm/students` routes a row outside
+the caller's scope — another agency's, another staff member's, or an unassigned one for staff — answers **`404 "Student not
+found"`**, never `403`, so its existence is not revealed. A Master-only action on an in-scope row answers `403`. Existing
+routes keep their existing status codes. Assignment targets only an active staff member of the same agency; a deactivated
+staff member keeps their students (G5). Enforcement: `services/agent_students.student_scope` / `application_scope` in the
+`WHERE` clause (identical to AGN-001's clauses for a Master) and `core/rbac.is_agent_staff`. Proved by
+`tests/test_agn_004_students.py`, `test_agn_004_student_actions.py`, `test_agn_004_staff_scope.py`, `test_agn_004_staff_guards.py`.
 
 **`DEC-ROLE-004` (2026-09-14) — Agent on-behalf-of a referred student, NOT YET BUILT:** the
 approved Agent row above is read-only (view roster/commissions, claim). Since an Agent-referred
@@ -211,7 +231,7 @@ merely a documented intent.
 | `psychometric_team` | **assign assessments, upload reports** | **Own school portfolio only** (`DEC-SCOPE-013`, same mechanism as `academic_team` above) — explicit deny on any student at a school outside the portfolio, even via direct record ID | `SCH-005` |
 | Global Education pipeline (`ENH-017`, `DEC-SCOPE-036`) | `school_coordinator` ✓ read, `school_principal` ✓ read (`GET /school/global-education/pipeline`); `school_teacher` ✗, `school_parent` ✗, `academic_team`/`career_counselor`/`psychometric_team` ✗, `counselor`/`overseas_admin`/`super_admin`/`it_admin` and every other Edusphere/overseas role ✗ (all `403`). Per-student high-level stage only; application detail never in payload (`School CRM.md` §19). | **Own school only** — derived from the session, no id parameter; no read tier gate (`DEC-SCOPE-027` D3) | `ENH-017` |
 | Reports & downloads, slice 1 (`ENH-015`, `DEC-SCOPE-037` provisional) | School Summary PDF (`GET /school/reports/school-summary`): `school_coordinator` ✓, `school_principal` ✓; every other role ✗ (`403`). Student Progress Report PDF (`GET /school/students/{id}/progress-report`): `school_parent` ✓ (linked children only), `school_coordinator` ✓, `school_principal` ✓ (own institution); `school_teacher` ✗ (teacher "Limited" reports undefined — `NEEDS_CONFIRMATION`), `academic_team`/`career_counselor`/`psychometric_team`, `overseas_admin`, `super_admin`, `it_admin` ✗ (`403`). Content never exceeds the same reader's on-screen view (summary = `ENH-016` figures; progress report = SCH-007 overview, no `report_url`). | **Own school** (summary, from the session) / **SCH-007 reader scope** (progress report); no tier gate | `ENH-015` |
-| Bulk data entry (`ENH-028`, `DEC-SCOPE-042`) | `academic_team` ✓ results / test-prep / language bulk upload and templates; `psychometric_team` ✓ psychometric bulk upload and template; every other role ✗ (`403`, checked before the file is read). **Per row**, the same scope as the single create: the row's student must be in the uploader's own portfolio (`SchoolStaffAssignment`), and the school's tier must include the row's service (not for results). The CSV cannot set the owner, school, status, verifier or publisher; bulk results are always Draft, so `SCH-006-AC04` still requires a different member to verify/publish. Idempotency keys are scoped per uploader. |
+| Bulk data entry (`ENH-028`, `DEC-SCOPE-043`) | `academic_team` ✓ results / test-prep / language bulk upload and templates; `psychometric_team` ✓ psychometric bulk upload and template; every other role ✗ (`403`, checked before the file is read). **Per row**, the same scope as the single create: the row's student must be in the uploader's own portfolio (`SchoolStaffAssignment`), and the school's tier must include the row's service (not for results). The CSV cannot set the owner, school, status, verifier or publisher; bulk results are always Draft, so `SCH-006-AC04` still requires a different member to verify/publish. Idempotency keys are scoped per uploader. |
 
 **Supersedes `DEC-ROLE-005`'s row (2026-09-14, `DEC-ROLE-006`):** the earlier version of this section
 had a single `counselor` (extended) row for all service-delivery data, "if and when those modules are

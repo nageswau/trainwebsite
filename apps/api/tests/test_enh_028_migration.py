@@ -1,4 +1,4 @@
-"""ENH-028 -- migration 0049 (spec §4, AC13): single head, create-table only, matches the model."""
+"""ENH-028 -- migration 0051 (spec §4, AC13): single head, create-table only, matches the model."""
 
 import importlib.util
 from pathlib import Path
@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import inspect
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_enh_028_migration_0049", VERSIONS / "0049_school_bulk_uploads.py")
+_spec = importlib.util.spec_from_file_location("_enh_028_migration_0051", VERSIONS / "0051_school_bulk_uploads.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
@@ -23,16 +23,16 @@ def _parents() -> dict[str, str | None]:
     return parents
 
 
-def test_migration_follows_0048_and_is_the_single_head():
-    assert _migration.revision == "0049_school_bulk_uploads"
-    assert _migration.down_revision == "0048_school_attendance_records"
+def test_migration_follows_0050_and_is_the_single_head():
+    assert _migration.revision == "0051_school_bulk_uploads"
+    assert _migration.down_revision == "0050_notification_channels"
     parents = _parents()
     heads = set(parents) - set(parents.values())
-    assert heads == {"0049_school_bulk_uploads"}
+    assert heads == {"0051_school_bulk_uploads"}
 
 
 def test_migration_only_creates_and_drops_its_own_tables():
-    source = (VERSIONS / "0049_school_bulk_uploads.py").read_text(encoding="utf-8")
+    source = (VERSIONS / "0051_school_bulk_uploads.py").read_text(encoding="utf-8")
     for forbidden in ("op.add_column", "op.alter_column", "op.drop_column", "op.execute", "UPDATE ", "DELETE "):
         assert forbidden not in source
     assert source.count("op.create_table(") == 2

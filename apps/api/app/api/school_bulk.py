@@ -1,5 +1,5 @@
 """ENH-028 -- bulk data entry for Academic Results, Psychometric, Test Prep and Language records
-(docs/superpowers/specs/2026-10-01-enh-028-bulk-data-entry-design.md, DEC-SCOPE-042).
+(docs/superpowers/specs/2026-10-01-enh-028-bulk-data-entry-design.md, DEC-SCOPE-043).
 
 One upload routine serves every module; a `BulkTarget` says what differs (role, row schema, duplicate key, tier service, how one
 record is built). Each accepted row creates exactly what the module's single `POST` creates, so every reader is unaffected. Its
