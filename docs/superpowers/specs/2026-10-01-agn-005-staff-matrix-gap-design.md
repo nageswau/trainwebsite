@@ -120,6 +120,10 @@ observed result is recorded in the RTM. Nothing from the mutation is committed.
   Staff Performance and CRM Settings remain N/A.
 - **AGN-005-AC05** No change under `apps/api/app`, `apps/api/alembic`, `apps/web/components`, `apps/web/lib` or `apps/web/app`; every
   pre-existing `test_agn_003_matrix.py` and `AgentStudentsPanel.test.tsx` case is unchanged and passing; the lite regression set is green.
+  *Superseded in part (owner, in-session 2026-10-01, "Fix them"):* browser QA findings QA5-01, 02, 03 and 05 were fixed on this branch,
+  so the "no production change" clause no longer holds for those four (`docs/quality/AGN-005_BROWSER_QA_2026-10-01.md`; RTM AGN-005
+  row). The test clause still holds, except the one deliberate change recorded there
+  (`test_agn_004_students.py::test_phone_formats_match_on_digits_only`, 4-digit phone now `422`).
 - **AGN-005-AC06** Staff who show archived students see no Unarchive control on an archived card (the UI follows the server's `403`).
   → `AgentStudentsPanel.test.tsx` "hides Unarchive from staff on an archived student"
 

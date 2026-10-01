@@ -46,3 +46,22 @@ Confirmed again: a malformed assign body gets `422` before the staff `403` (AGN-
 | QA5-05 | Super Admin: "Agency student records are managed by the agency's own Masters and Staff."; no Add student, no Retry; no `/crm/students` request. |
 
 Console: no errors. Playwright (`--workers=1`, against `:3005`): agn-002, agn-003, agn-004, agt-002 — **9 passed**.
+
+## Final verification (2026-10-01, HEAD `15d4047`, rebuilt `agn005` web + API, fresh browser tab)
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC01 | **PASS** | Staff (EDU-S001) on their own assigned student: archive → `403 "Only an agency Master can archive students"`, unarchive → same, assign → `403 "Only an agency Master can assign students"`. Database: both students unchanged (active/archived, still EDU-S001); no `agent_student.archive/unarchive/assign` audit row by the staff member. |
+| AC02 | **PASS** | Staff: create `201` ("… added."), list and detail `200`, edit `PATCH 200` ("… saved."). |
+| AC03 | **PASS** | Master: create `201`, list/detail `200`, edit `200`, assign `200` ×2, archive `200` ×2, unarchive `200`, each with its success message. |
+| AC04 | **NOT TESTABLE** (documentation) | `RBAC_MATRIX.md` §2.8: N/A only for Edit Application, Change Application Status, Staff Performance, CRM Settings. |
+| AC05 | **NOT TESTABLE** (code/test property) | Superseded in part by the owner's "Fix them" (QA5-01/02/03/05 changed production code on this branch); see the spec §6 note. |
+| AC06 | **PASS** | Staff with Show archived (`?archived=1`): the archived student shows **View** only — no Unarchive, Archive or Assign. |
+| Toggles (owner's ask) | **PASS** (Reports) | Reports on → staff's next sign-in shows the link and page; off → link gone, typed URL "Access unavailable". Verify was not re-run in this pass (AGN-003 Playwright passed earlier the same day). |
+
+Defects re-tested: QA5-01, QA5-02, QA5-03, QA5-05 **PASS** (as in the re-check above, on the refactored build: `autoFocus`,
+`_is_mobile`). Also PASS: staff nav and typed Master-only URLs, 404 existence mask, signed-out redirect + `401`, student and Overseas
+Admin "Access unavailable" + `403`, loading/5xx/offline/Retry, failed edit keeps the entry, refresh/Back keep Show archived, layouts
+1440/820/390 (Master) and 820/390 (staff) with no page overflow or broken images, no console errors, no unexpected failed network
+calls. One script-side false FAIL (QA5-01 message match: the check's en dash was mis-decoded by the script loader) was re-run with an
+ASCII match and passed. Method limits as recorded at the top of this file.

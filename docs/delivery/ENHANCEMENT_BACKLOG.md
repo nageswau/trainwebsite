@@ -3318,6 +3318,7 @@ unchanged record and no audit row.
   Staff Performance and CRM Settings remain N/A.
 - **AGN-005-AC05** No change under `apps/api/app`, `apps/api/alembic`, `apps/web/components`, `apps/web/lib` or `apps/web/app`; every
   pre-existing `test_agn_003_matrix.py` and `AgentStudentsPanel.test.tsx` case is unchanged and passing; the lite regression set is green.
+  *Superseded in part by the owner's "Fix them" (2026-10-01): see "Browser QA fixes" below.*
 - **AGN-005-AC06** Staff who show archived students see no Unarchive control on an archived card (the UI follows the server's `403`).
 
 **Regression risks.** Low: the matrix's `_world` builds two extra students for every case (no email/phone, so no duplicate clash).
@@ -3336,7 +3337,9 @@ which widens AGN-005 beyond tests and docs for these four only:
 - **QA5-05** A non-agency user who can open the page (Super Admin) sees a note instead of a panel whose every action is refused.
 
 **Status (2026-10-01): IMPLEMENTED, NOT COMPLETE** on `feature/agn-005-staff-permission-matrix` — evidence in `docs/quality/RTM.md`
-(AGN-005 row). Browser QA done and the four fixes re-checked in the browser. Pending: the independent Codex review.
+(AGN-005 row). Browser QA done, the four fixes re-checked, and a final browser verification at `15d4047` passed (AC01, AC02, AC03,
+AC06 PASS; AC04, AC05 not browser-testable). The owner waived the independent Codex review (2026-10-01). Remaining before COMPLETE:
+the owner's full backend suite run (standing 4–5-story cadence) and the merge.
 
 ---
 
