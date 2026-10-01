@@ -30,6 +30,15 @@ SECRET_PROVIDER = "Secret Bank Ltd"
 SECRET_NOTES = "Family income details kept private"
 
 
+@pytest.fixture(autouse=True)
+def _app_loggers_enabled():
+    """Alembic's env.py calls `logging.config.fileConfig`, which DISABLES loggers that already exist; an earlier test that migrates
+    in-process (ENH-001's downgrade/upgrade cycle) would silence `app.school.funding` and `caplog` would see nothing (the ENH-030
+    fixture, same cause). Production is unaffected (Alembic runs in its own process)."""
+    logging.getLogger("app.school.funding").disabled = False
+    yield
+
+
 @pytest_asyncio.fixture
 async def world(db_session):
     ctx = await mk_school(db_session, label="E20", students=2)
