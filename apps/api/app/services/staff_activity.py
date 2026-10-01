@@ -34,27 +34,22 @@ def _uuid(value) -> uuid.UUID | None:
         return None
 
 
-def _key(entity_type: str, entity_id) -> tuple[str, str] | None:
-    parsed = _uuid(entity_id)
-    return (entity_type, str(parsed)) if parsed else None
-
-
 def _joined(*parts: str | None) -> str:
     return " — ".join(p for p in parts if p) or UNAVAILABLE
 
 
-async def _subjects(db: AsyncSession, rows: list[AuditLog]) -> dict[tuple[str, str], str]:
-    """At most one batched query per entity type on the page."""
+async def _subjects(db: AsyncSession, rows: list[AuditLog]) -> dict[tuple[str, uuid.UUID], str]:
+    """At most one batched query per entity type on the page; keyed by (entity_type, entity UUID)."""
     wanted: dict[str, set[uuid.UUID]] = {"agent_student": set(), "overseas_application": set(), "student_document": set()}
     for row in rows:
         parsed = _uuid(row.entity_id)
         if parsed and row.entity_type in wanted:
             wanted[row.entity_type].add(parsed)
-    names: dict[tuple[str, str], str] = {}
+    names: dict[tuple[str, uuid.UUID], str] = {}
     if wanted["agent_student"]:
         query = select(AgentStudent.id, AgentStudent.full_name, User.full_name).outerjoin(User, User.id == AgentStudent.student_id).where(AgentStudent.id.in_(wanted["agent_student"]))
         for rid, own, linked in (await db.execute(query)).all():
-            names[("agent_student", str(rid))] = _joined(own or linked)
+            names[("agent_student", rid)] = _joined(own or linked)
     if wanted["overseas_application"]:
         query = (
             select(OverseasApplication.id, User.full_name, University.name)
@@ -63,11 +58,11 @@ async def _subjects(db: AsyncSession, rows: list[AuditLog]) -> dict[tuple[str, s
             .where(OverseasApplication.id.in_(wanted["overseas_application"]))
         )
         for rid, student, university in (await db.execute(query)).all():
-            names[("overseas_application", str(rid))] = _joined(student, university)
+            names[("overseas_application", rid)] = _joined(student, university)
     if wanted["student_document"]:
         query = select(StudentDocument.id, StudentDocument.document_type, User.full_name).outerjoin(User, User.id == StudentDocument.student_id).where(StudentDocument.id.in_(wanted["student_document"]))
         for rid, document_type, student in (await db.execute(query)).all():
-            names[("student_document", str(rid))] = _joined(document_type, student)
+            names[("student_document", rid)] = _joined(document_type, student)
     return names
 
 
@@ -87,7 +82,7 @@ async def staff_activity_page(db: AsyncSession, member: AgentOrgMember, *, limit
     rows = list((await db.scalars(select(AuditLog).where(*where).order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(limit).offset(offset))).all())
     names = await _subjects(db, rows)
     items = [
-        {"id": row.id, "at": row.created_at, "action": row.action, "subject": names.get(_key(row.entity_type, row.entity_id), UNAVAILABLE), "fields": _fields(row)}
+        {"id": row.id, "at": row.created_at, "action": row.action, "subject": names.get((row.entity_type, _uuid(row.entity_id)), UNAVAILABLE), "fields": _fields(row)}
         for row in rows
     ]
     return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
