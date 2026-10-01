@@ -66,6 +66,10 @@ settings stay parked.
 **AGN-003**, decided as `DEC-SCOPE-044` (P1–P9): two per-staff toggles (Verify Documents, Reports), enforced on existing
 routes, plus agent document verification. Assignment/ownership, staff performance and CRM settings stay parked.
 
+**Revision 9 (2026-10-01):** the owner's `AGN-005` statement repeats AGN-003's word for word. AGN-003 is COMPLETE, so the owner scoped
+**AGN-005** to closing the one gap: AGN-004's `/crm/students` routes were missing from the §6 matrix (Edit, Delete and Assign Student
+still read N/A). Tests and docs only; no behaviour change and no new decision.
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -148,6 +152,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-003 | Agent staff permissions — §6 Master-vs-Staff matrix, per-staff Verify Documents / Reports toggles (Rev. 8) | Medium | High | Yes | AGN-002 (staff routes), AGT-002/OVS-005 (document verify), RPT-002 (agent reports) |
 | ENH-031 | Searchable reference pickers — student/application references picked from role-scoped searchable dropdowns | Medium | Medium | No | AGN-001 (agency scope) |
 | AGN-004 | Agent students — Master/Staff create, edit, view and (Master) archive students who never log in; staff assigned-only | Large | High | Yes | AGT-002, AGN-001, ENH-031 (scope change); AGN-002 (merge) |
+| AGN-005 | Close the §6 staff matrix gap for agency student records — tests and docs, no behaviour change (Rev. 9) | Small | Low | No | AGN-003, AGN-004 |
 
 ---
 
@@ -3271,6 +3276,59 @@ pending-only agent review under a row lock.
 
 ---
 
+## AGN-005 — Close the §6 Staff Matrix Gap for Agency Student Records
+
+**Title.** Put AGN-004's student routes into the §6 Master-vs-Staff matrix tests and docs.
+
+**Business requirement.** The owner's `AGN-005` statement (in-session, 2026-10-01) repeats `AGN-003`'s: "the §6 matrix: Staff are
+limited to the student journey, with no admin modules; 'Set permissions' / 'Permission Level'", with the same acceptance (every ❌ cell
+`403` for Staff with a test, every ✅ cell succeeds, toggles flip the two optional rows, a toggle change applies on the next request).
+AGN-003 met all of it except the student rows. The owner scoped AGN-005 to that gap: tests and docs only (Revision 9).
+
+**Existing behavior.** AGN-004's `/workflows/overseas/agent/crm/students` routes already let staff create, view and edit their
+assigned students and refuse them archive, unarchive and assign (`403`). AGN-003's matrix test, its spec §3 and `RBAC_MATRIX.md` §2.8
+still marked Edit, Delete and Assign Student N/A, and no test covered unarchive by the assigned staff member or the staff UI on an
+archived student.
+
+**Expected behavior.** Unchanged. The matrix tests and docs now cover every §6 row that has an agent route. Delete Student maps to
+archive and unarchive (no delete route; `DEC-SCOPE-042` D5).
+
+**User roles affected.** `agent` (Master and staff) — tests and docs only.
+
+**Frontend / backend / database / API / integration impact.** None (no production code, migration or contract change). Tests:
+`apps/api/tests/test_agn_003_matrix.py` (+14 cases), `apps/web/tests/components/AgentStudentsPanel.test.tsx` (+1 case).
+
+**Authentication/Authorization impact.** None changed; the staff refusals are now pinned in the matrix with their exact messages, an
+unchanged record and no audit row.
+
+**Security impact.** None changed. Recorded observation (spec §10): on `PATCH /crm/students/{id}` and `…/assign` a malformed body gets
+`422` before the staff `403` (AGN-004 behaviour; reveals nothing) — a follow-up candidate, not changed here.
+
+**Reusable existing modules.** `agn004_helpers.mk_record`, `RECORDS`; the matrix's `_world` / `_call` / `_fill`; the panel test's
+`item` / `page` / `res`.
+
+**Dependencies.** AGN-003, AGN-004 (both COMPLETE on `main`).
+
+**Acceptance criteria** (verbatim from `docs/superpowers/specs/2026-10-01-agn-005-staff-matrix-gap-design.md` §6).
+- **AGN-005-AC01** On a student assigned to them, staff get `403` with the exact message on archive, unarchive and assign; the record is
+  unchanged and no `agent_student.*` audit row is written.
+- **AGN-005-AC02** Staff create (`201`), list, open and edit (`200`) their assigned student with no login through `crm/students`.
+- **AGN-005-AC03** A Master succeeds on every AC02 row plus archive, unarchive and assign (`200`).
+- **AGN-005-AC04** In `RBAC_MATRIX.md` §2.8 no §6 row that has an agent route is N/A; only Edit Application, Change Application Status,
+  Staff Performance and CRM Settings remain N/A.
+- **AGN-005-AC05** No change under `apps/api/app`, `apps/api/alembic`, `apps/web/components`, `apps/web/lib` or `apps/web/app`; every
+  pre-existing `test_agn_003_matrix.py` and `AgentStudentsPanel.test.tsx` case is unchanged and passing; the lite regression set is green.
+- **AGN-005-AC06** Staff who show archived students see no Unarchive control on an archived card (the UI follows the server's `403`).
+
+**Regression risks.** Low: the matrix's `_world` builds two extra students for every case (no email/phone, so no duplicate clash).
+
+**Complexity:** Small. **Risk:** Low.
+
+**Status (2026-10-01): IMPLEMENTED, NOT COMPLETE** on `feature/agn-005-staff-permission-matrix` — evidence in `docs/quality/RTM.md`
+(AGN-005 row). Pending: the owner's browser validation and the independent Codex review.
+
+---
+
 ## 2. Dependency graph
 
 **Must be sequential:**
@@ -3438,6 +3496,7 @@ item, only for the progress-view question).
 | AGN-002 | `DEC-SCOPE-040` — staff access, model, reset, fields/limits, activation, tenancy/audit | **Resolved 2026-09-30** (S1–S6, `EXPLICIT_APPROVAL` in-session) |
 | AGN-004 | `DEC-SCOPE-042` — students with no login, staff assignment, archive, duplicate warning, relation to AGN-002 | **Resolved 2026-09-30** (D1, D3–D5, D7, D8, G1–G5, `EXPLICIT_APPROVAL` in-session; number provisional) |
 | AGN-003 | `DEC-SCOPE-044` — optional rows, toggle granularity, matrix reach, student scope, agent review, staff outcome | **Resolved 2026-10-01** (P1–P6 `EXPLICIT_APPROVAL` in-session; P7–P9 design assumptions) |
+| AGN-005 | None — no behaviour change; scope (tests + docs), Delete Student = archive/unarchive and test placement set by the owner in-session 2026-10-01 | N/A |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in

@@ -184,11 +184,11 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | §6 row | Route(s) | Master | Staff |
 |---|---|---|---|
 | Dashboard | `GET /portal/overseas/agent/dashboard` | ✅ full | ✅ limited (no commission figures, AGN-002) |
-| Create Student | `POST /workflows/overseas/agent/students` (links an existing student) | ✅ | ✅ |
-| View Students | `GET /workflows/overseas/agent/students`, `GET /portal/overseas/agent/students`, `GET /lookups/overseas-students` | ✅ agency | ✅ assigned only (`DEC-SCOPE-042` G4) |
-| Edit Student | — | N/A | N/A |
-| Delete Student | — | N/A | N/A |
-| Assign Student / Assign Students | — | N/A | N/A |
+| Create Student | `POST /workflows/overseas/agent/students` (links an existing student); `POST /workflows/overseas/agent/crm/students` (no login, AGN-004) | ✅ | ✅ (assigned to them) |
+| View Students | `GET /workflows/overseas/agent/students`, `GET /portal/overseas/agent/students`, `GET /lookups/overseas-students`, `GET /workflows/overseas/agent/crm/students`, `GET …/crm/students/{id}` | ✅ agency | ✅ assigned only (`DEC-SCOPE-042` G4) |
+| Edit Student | `PATCH /workflows/overseas/agent/crm/students/{id}` (students with no login) | ✅ | ✅ assigned only |
+| Delete Student | `POST …/crm/students/{id}/archive`, `POST …/crm/students/{id}/unarchive` (no delete route; `DEC-SCOPE-042` D5) | ✅ | ❌ |
+| Assign Student / Assign Students | `POST …/crm/students/{id}/assign` | ✅ | ❌ |
 | Create Application | `POST /workflows/overseas/applications` | ✅ | ✅ |
 | Edit Application | — (counselor/rep/admin only) | N/A | N/A |
 | View Applications | `GET /workflows/overseas/applications`, `GET /portal/overseas/agent/applications`, `GET /lookups/overseas-applications` | ✅ | ✅ |
@@ -213,13 +213,17 @@ The Master-team routes (`POST …/team/masters`, `POST …/team/masters/{id}/dea
   the staff member's next request with no session bump. On a Master's row the flags are stored but never read.
 - **Verify gives `verified` only (P6):** staff with Verify who send `rejected` or `changes_required` get `403`; Reject and Request
   changes are Master-only. Agents decide only `pending` documents (P5); a counselor or Overseas Admin can still re-review.
-- **N/A rows** have no route for any agent, so no test is possible; they stay parked under `C-10` (spec §2). **Add University** is a
+- **N/A rows** (Edit Application, Change Application Status, Staff Performance, CRM Settings) have no route for any agent, so no test
+  is possible; they stay parked under `C-10` (spec §2). **Add University** is a
   deliberate departure from the source's ✅ for Masters: the route is admin-only, no agent has ever had it (P3), and it is tested as
   `403` for both member roles so the gap stays visible.
 
 Proved by `tests/test_agn_003_matrix.py` (every ❌ and every cheap ✅ cell; two Master ✅ cells are cited from `test_agn_001_team.py`
 (`test_a_pending_invitee_can_still_be_deactivated_by_an_accepted_master`, `test_a_master_may_deactivate_themselves_once_another_master_has_accepted`)
 and `test_agn_001_tenancy.py` (`test_a_second_master_sees_and_claims_what_the_first_created`)), `test_agn_003_permissions.py`, `test_agn_003_verify.py`.
+The student rows: `test_agn_003_matrix.py` (**AGN-005**, 2026-10-01 — they were N/A in AGN-003's draft because AGN-004's `/crm/students`
+routes reached `main` later; staff act on a student assigned to them, so each `403` comes from the Master-only check, not the `404`
+existence mask). The staff UI hides Archive, Unarchive and Assign (`AgentStudentsPanel.test.tsx`, including AGN-005-AC06).
 
 **`DEC-ROLE-004` (2026-09-14) — Agent on-behalf-of a referred student, NOT YET BUILT:** the
 approved Agent row above is read-only (view roster/commissions, claim). Since an Agent-referred
