@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { accessDenied } from "@/components/AccessUnavailable";
+import FundingRecordsCard, { loadFundingRecords } from "@/components/FundingRecordsCard";
 import PortalShell from "@/components/PortalShell";
 import ReportDownloadButton from "@/components/ReportDownloadButton";
 import SchoolStudentDetailPanel from "@/components/SchoolStudentDetailPanel";
 import SectionUnavailable from "@/components/SectionUnavailable";
 import StudentScorecard from "@/components/StudentScorecard";
 import { serverApi } from "@/lib/api";
+import type { FundingRecord } from "@/lib/fundingRecords";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { Scorecard, User } from "@/lib/types";
 import type { SchoolStudent } from "@/lib/schoolStudents";
@@ -22,13 +24,16 @@ export default async function SchoolCoordinatorStudentDetailPage({ params }: { p
   let user: User;
   let student: SchoolStudent;
   let scorecard: Scorecard | null;
+  let funding: FundingRecord[] | null;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
     if (user.role !== "school_coordinator") return accessDenied(user, "School Coordinator role required");
-    // ENH-016 (§28, D9): the scorecard is read on its own; if it fails, the rest of the page still renders.
-    [student, scorecard] = await Promise.all([
+    // ENH-016 (§28, D9): the scorecard is read on its own; if it fails, the rest of the page still renders. ENH-020: so are the
+    // funding support cases.
+    [student, scorecard, funding] = await Promise.all([
       serverApi<SchoolStudent>(`/api/v1/school/students/${id}`),
       serverApi<Scorecard>(`/api/v1/school/students/${id}/scorecard`).catch(() => null),
+      loadFundingRecords(id),
     ]);
   } catch (e) {
     return (
@@ -53,6 +58,7 @@ export default async function SchoolCoordinatorStudentDetailPage({ params }: { p
         </div>
       </div>
       <div className="portal-content">{scorecard ? <StudentScorecard card={scorecard} /> : <SectionUnavailable title="Progress scorecard" />}</div>
+      <div className="portal-content"><FundingRecordsCard records={funding} headingLevel={2} /></div>
     </PortalShell>
   );
 }

@@ -89,6 +89,7 @@ describe("lib/skills", () => {
     expect(SCHOOL_NAV["career-counselor"].map((item) => [item.label, item.href])).toEqual([
       ["Dashboard", "/school/career-counselor/dashboard"],
       ["Skills", "/school/career-counselor/skills"],
+      ["Funding", "/school/career-counselor/funding"], // ENH-020 (DEC-SCOPE-043 D11)
     ]);
   });
 });
