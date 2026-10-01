@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import BulkColumnReference from "@/components/BulkColumnReference";
 import type { BulkTarget } from "@/lib/bulkEntry";
 
 type RowReport = { row_number: number; status: string; error_message: string | null; student_code: string | null; created_record_id: string | null };
@@ -79,26 +80,7 @@ export default function SchoolBulkEntryPanel({ target, hasStudents }: { target: 
               <h3>1. Download the template</h3>
               <p className="muted">One row per student in your portfolio. Fill in only the students you are entering; rows you leave blank are skipped.</p>
               <a className="btn secondary" href={target.templateUrl} download>Download the pre-filled template (.csv)</a>
-              <details style={{ marginTop: 12 }}>
-                <summary>Column reference</summary>
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr><th>Column</th><th>Required</th><th>Format</th><th>Example</th></tr>
-                    </thead>
-                    <tbody>
-                      {target.columns.map((c) => (
-                        <tr key={c.name}>
-                          <td data-label="Column"><code>{c.name}</code></td>
-                          <td data-label="Required">{c.required ? "Yes" : "No"}</td>
-                          <td data-label="Format">{c.format}</td>
-                          <td data-label="Example">{c.example}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </details>
+              <BulkColumnReference columns={target.columns} />
             </div>
 
             <div className="action-card">

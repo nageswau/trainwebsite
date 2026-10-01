@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import BulkColumnReference from "@/components/BulkColumnReference";
 import { SCHOOL_ONBOARDING } from "@/lib/bulkEntry";
 import { type Feedback, errorText, toneClass } from "@/lib/welcomeLink";
 
@@ -134,26 +135,7 @@ export default function AdminSchoolBulkOnboardPanel() {
       <p className="muted">Add many partner schools at once. Each school gets its own coordinator account and set-password email, exactly like Create school.</p>
       <h4>1. Download the template</h4>
       <a className="btn secondary" href={target.templateUrl} download>Download the template (.csv)</a>
-      <details style={{ marginTop: 12 }}>
-        <summary>Column reference</summary>
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr><th>Column</th><th>Required</th><th>Format</th><th>Example</th></tr>
-            </thead>
-            <tbody>
-              {target.columns.map((c) => (
-                <tr key={c.name}>
-                  <td data-label="Column"><code>{c.name}</code></td>
-                  <td data-label="Required">{c.required ? "Yes" : "No"}</td>
-                  <td data-label="Format">{c.format}</td>
-                  <td data-label="Example">{c.example}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+      <BulkColumnReference columns={target.columns} />
       <h4 style={{ marginTop: 16 }}>2. Upload the filled-in file</h4>
       <form className="form" onSubmit={upload} aria-busy={busy} noValidate>
         <div className="field">
