@@ -1,11 +1,13 @@
 # AGN-003 — Agent Staff Permissions (Master vs Staff matrix): Design
 
 **Status:** draft for owner review (2026-10-01). **Branch:** `feature/agn-003-staff-permissions` (from `origin/main` 1a0177c).
-**Decision:** `DEC-SCOPE-041` (P1–P8). **Backlog:** `ENHANCEMENT_BACKLOG.md` §AGN-003 (AGN-003-AC01…AC09).
+**Decision:** `DEC-SCOPE-041` (P1–P9). **Backlog:** `ENHANCEMENT_BACKLOG.md` §AGN-003 (AGN-003-AC01…AC09).
 **Builds on:** `AGN-001` (`DEC-SCOPE-038`, migration `0046_agent_orgs`) and `AGN-002` (`DEC-SCOPE-040`, migration
 `0047_agent_org_staff`, spec `2026-09-30-agn-002-staff-logins-design.md`).
 **Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 "Set permissions", §3 "Permission Level",
 §4 "Staff Login – Student Journey Only", §6 "Master vs Staff Permissions". The approval is the owner's, not the document's.
+**Reviewed with:** api-and-interface-design, frontend-ui-engineering, security-and-hardening (in-session, 2026-10-01; findings
+folded into §6–§11, summary in §14).
 
 ## 1. Intent
 
@@ -35,6 +37,8 @@ Staff are limited to the student journey with no admin modules, per `EVID-015` �
 - **P7** "Permission Level" is not a create-form field. New staff start with both toggles off; the Master sets them afterwards.
 - **P8** Toggles can be set on a deactivated staff member and survive reactivation. Setting them sends no email, so there is no
   throttle. Every change is audited.
+- **P9** Staff with Verify may verify a document they uploaded themselves (no maker-checker in §6). The decision is attributed and
+  counselors and Overseas Admins can still re-review (§10).
 
 ## 2. Out of scope
 
@@ -137,20 +141,20 @@ ever had it (P3). It is tested as `403` for both member roles and recorded here 
 ## 6. Authorization (`core/rbac.py`)
 
 ```python
-STAFF_PERMISSIONS = {"verify_documents": "can_verify_documents", "reports": "can_view_reports"}
+STAFF_PERMISSIONS = ("can_verify_documents", "can_view_reports")  # the column names are also the API keys (§8)
 
 def agent_may(user, permission: str) -> bool:
     """AGN-003 (DEC-SCOPE-041 P1/P2): whether an agent may use an optional §6 row. Masters always may; staff follow their own
     toggle. Reads the membership get_current_user eager-loads, so a change applies on the next request."""
 
 def agent_permissions(user) -> dict | None:
-    """{"verify_documents": bool, "reports": bool} for an agent member (Masters: both True); None otherwise."""
+    """{"can_verify_documents": bool, "can_view_reports": bool} for an agent member (Masters: both True); None otherwise."""
 ```
 
-- An unknown permission name raises `KeyError`, a programming error that is never reached from user input.
+- An unknown permission name is a programming error (`assert permission in STAFF_PERMISSIONS`). It is never reached from user input.
 - **Call sites:**
   - `api/portal.py` section check. After the existing `{team, commissions}` rule:
-    `if section == "reports" and not agent_may(user, "reports")` → `403 "Your agency Master hasn't given you access to reports"`.
+    `if section == "reports" and not agent_may(user, "can_view_reports")` → `403 "Your agency Master hasn't given you access to reports"`.
   - The agent branch of `verify_document` (§7).
 - `services/portal.py` `_agent` is unchanged. A staff member with Reports on sees today's staff report (no commission row).
 
@@ -164,9 +168,14 @@ The flags are read there. Nothing is copied into the JWT, so there is no session
 
 1. **Toggle.** Staff without Verify → `403 "Your agency Master hasn't given you permission to verify documents"`. A refused role gets
    `403` before any validation, which is the project's rule.
-2. **Decision validation.** `payload.get("verification_status")` must be one of `verified|rejected|changes_required` → else `422`
-   `"Choose verified, rejected or changes required"`. This applies to agents only; the counselor and admin path keeps today's
-   behaviour.
+2. **Decision validation.** `AgentDocumentReview.model_validate(payload)`, a new schema in `schemas.py`:
+   - `verification_status: Literal["verified", "rejected", "changes_required"]` (required)
+   - `notes: str | None = Field(None, max_length=10000)`, the same cap as `OverseasApplicationAdvance.notes`
+   - `model_config = {"extra": "forbid"}`
+
+   A `ValidationError` is re-raised as FastAPI's `RequestValidationError`, so agents get the project's standard `422`
+   `detail`-list shape. This applies to agents only. The route signature stays `payload: dict`, so the counselor and admin path keeps
+   today's behaviour (default `verified`, unvalidated). Hardening that path is out of scope.
 3. **Outcome (P6).** Staff with any decision other than `verified` → `403 "Only an agency Master can reject documents or request changes"`.
    Steps 1–3 come before the document is read, so a refused caller learns nothing about whether the document exists.
 4. **Row lock.** `select(StudentDocument).where(id).with_for_update()` → `404 "Document not found"`.
@@ -179,8 +188,18 @@ The flags are read there. Nothing is copied into the JWT, so there is no session
 7. **Tail (existing).**
    - Set the status, `verified_by_id` and `reviewer_notes`.
    - Notify the student ("Document reviewed").
-   - Write the `document.verify` audit row with the payload.
+   - Write the `document.verify` audit row.
    - Commit.
+
+   For agents the audit metadata is the **validated** model dump plus `{"member_role": "master"|"staff"}`, never the raw payload, so
+   unknown client keys never reach the audit table. Counselor and admin rows are unchanged.
+
+**Retry semantics.** The call is safe to retry. A repeat after success returns `409` and changes nothing, and the student is
+notified once. No idempotency key is needed.
+
+**Status codes for out-of-scope documents.** These keep the route's and `_assigned_application`'s existing `403` rather than `404`, so
+one route never answers two ways. Document ids are random UUIDv4 and the AGN-001 application routes already behave this way. This is
+recorded as an accepted limitation (§10).
 
 **Concurrency.**
 - The row lock serialises two agents deciding the same document. The second sees a non-pending status → `409`.
@@ -195,28 +214,34 @@ The flags are read there. Nothing is copied into the JWT, so there is no session
 
 | | |
 |---|---|
-| Body | `AgentStaffPermissions {verify_documents: StrictBool, reports: StrictBool}`, both required, `extra="forbid"`. Anything else → `422`. |
+| Body | `AgentStaffPermissions {can_verify_documents: StrictBool, can_view_reports: StrictBool}`, both required, `extra="forbid"`. Anything else → `422` (standard shape). |
 | Caller | `_staff_org` → `_require_master` (Staff `403 "Only an agency Master can manage the team"`; pending/suspended org `403`) + organisation row lock + active re-check |
 | Target | `_staff_member` → `404 "Staff member not found"` for another agency's member, a Master's id or an unknown id |
-| Effect | `set_staff_permissions(db, org, member_id, actor, verify_documents=, reports=)`: sets both columns and writes `AuditLog(action="agent_org.staff_permissions", entity_type="agent_org", entity_id=org.id, outcome="updated", metadata={member_id, code, verify_documents, reports})`. No commit inside; `_commit_staff_change(..., "agent_org_staff_permissions_updated", ...)` commits and logs ids/codes only. |
+| Effect | `set_staff_permissions(db, org, member_id, actor, can_verify_documents=, can_view_reports=)` sets both columns. **Only when a value changes** it writes `AuditLog(action="agent_org.staff_permissions", entity_type="agent_org", entity_id=org.id, outcome="updated", metadata={member_id, code, before: {…}, after: {…}})`. No commit inside; `_commit_staff_change(..., "agent_org_staff_permissions_updated", ...)` commits and logs ids/codes only. |
 | Response | `200 {"member": <staff shape>}` |
 
-- `PUT` replaces the whole permission set (idempotent). A repeat with the same values still writes an audit row.
-- **Allowed on deactivated staff (P8).** No throttle, because no email is sent.
-- **Race:** two Masters saving at once are serialised by the organisation lock; last write wins, and both are audited.
+- `PUT` replaces the whole permission set (idempotent). A repeat with the same values returns `200`, writes nothing and adds no audit
+  row, so a repeated click cannot flood the audit table.
+- **Allowed on deactivated staff (P8).** No throttle, because no email is sent and a no-op writes nothing.
+- **Race:** two Masters saving at once are serialised by the organisation lock; last write wins, and each real change is audited with
+  its before/after values.
+- **Naming.** The keys are the column names (`can_*`), matching the codebase's existing boolean style (e.g. `can_edit_career_goal` in
+  the 360 view) and the skill's is/has/can rule. The API uses snake_case, like every other EduSphere response.
 
 **Additive response fields** (existing fields unchanged):
 - The staff member shape (`_staff_out`, also used by list, create, edit, deactivate, reactivate and reset) gains
-  `"permissions": {"verify_documents": bool, "reports": bool}`.
-- `UserOut.agent_permissions: dict | None`, set by `GET /auth/me` only, like `agent_member_role`. Masters get both `true`, staff get
-  their toggles, non-agents get `null`.
+  `"permissions": {"can_verify_documents": bool, "can_view_reports": bool}`.
+- `UserOut.agent_permissions: dict | None`, set by `GET /auth/me` only, like `agent_member_role`. These are **effective** permissions:
+  Masters get both `true`, staff get their toggles, non-agents get `null`. This is documented in `API_CONTRACT.md`, because clients
+  will depend on it (Hyrum's law).
 
 ## 9. Frontend (`apps/web`)
 
-- **`lib/types.ts`:** `User.agent_permissions?: { verify_documents: boolean; reports: boolean } | null`.
-- **`lib/agentStaff.ts`:** `StaffMember.permissions`.
+- **`lib/types.ts`:** `User.agent_permissions?: AgentPermissions | null`, with
+  `type AgentPermissions = { can_verify_documents: boolean; can_view_reports: boolean }`.
+- **`lib/agentStaff.ts`:** `StaffMember.permissions: AgentPermissions`.
 - **`lib/navigation.ts`:** `agentNavFor(nav, memberRole, permissions?)`.
-  - Staff: hide Team and Commissions as before, and also Reports unless `permissions?.reports`.
+  - Staff: hide Team and Commissions as before, and also Reports unless `permissions?.can_view_reports`.
   - Masters and null are unchanged.
   - The optional third argument keeps existing callers compiling.
 - **`components/PortalPage.tsx`:** passes `user.agent_permissions`. A typed `/overseas/agent/reports` URL still renders, and the
@@ -225,51 +250,97 @@ The flags are read there. Nothing is copied into the JWT, so there is no session
   - `queueUrl` (default `/api/v1/portal/overseas/counselor/documents`)
   - `decisions` (default all three)
   - `pendingOnly` (default `false`)
-  - **New load-error state:** a non-OK or failed load shows "Could not load documents. Refresh the page to try again." instead of the
-    misleading "No documents…". This applies to counselors too; it is a deliberate small fix.
-  - With `pendingOnly`, "Review" shows only on `pending` rows; decided rows show their status only.
-- **`components/WorkflowPanel.tsx`:** on `section === "documents"` for `role === "agent"` with `agent_permissions?.verify_documents`,
+  - `emptyText` (default "No documents are awaiting your review yet."; agent: "No documents have been uploaded for your agency's
+    applications yet.")
+  - **New load-error state:** a non-OK or failed load shows "Couldn't load documents." with a **Try again** button that re-runs the load.
+    It replaces the misleading "No documents…" and is announced through `role="alert"`. This applies to counselors too; it is a
+    deliberate small fix.
+  - The loading text gets `role="status"`, so screen readers hear it.
+  - With `pendingOnly`, **Review** shows only on `pending` rows; decided rows show their status badge as text.
+  - **One decision only** (staff): no single-option `<select>`. The form shows the notes field and one **Mark verified** submit button,
+    sending `verification_status: "verified"`.
+  - After a submit, focus moves to the row's status message, so keyboard users are not dropped to the top of the page when the row
+    re-renders.
+- **`components/WorkflowPanel.tsx`:** on `section === "documents"` for `role === "agent"` with `agent_permissions?.can_verify_documents`,
   render the panel with:
   - `queueUrl="/api/v1/portal/overseas/agent/documents"`
   - `pendingOnly`
+  - `emptyText` as above
   - `decisions = staff ? ["verified"] : all three`
   - The upload form stays as it is.
-- **`components/AgentStaffRow.tsx`:** a new mode `"permissions"` opened by a **Permissions** button, shown for active and
-  deactivated members.
-  - A form with two checkboxes ("Verify documents", "View reports"), pre-set from `member.permissions`.
-  - Save sends `PUT …/permissions` through `sendJson`, with "Saving…" and buttons disabled while busy, and a double-submit guard
-    (`inFlight`).
-  - Cancel and Escape close the form; focus returns to the Permissions button.
-  - Success announces `"<CODE> permissions saved."`. Errors appear in the always-mounted status region via `staffFailure`.
-  - The row shows a one-line summary: "Student journey only", or "Can verify documents", "Can view reports" (joined with " · ").
+- **New `components/AgentStaffPermissionsForm.tsx`** (about 60 lines). It is extracted so that `AgentStaffRow` (144 lines) stays well
+  under 200 and the form is testable on its own.
+  - A `<fieldset className="form-section">` with `<legend>What {full_name} can do</legend>`, reusing the existing ENH-025 style.
+  - Two native checkboxes, each with a `<label>` and a hint linked by `aria-describedby`:
+    - "Verify documents": "Mark pending documents as verified. Only Masters can reject or request changes."
+    - "View reports": "See the agency's application summary."
+  - The first checkbox has `autoFocus`; Escape cancels.
+  - Save and Cancel use the row's existing `btn small` / `btn secondary small` and `flexWrap` gap 8 pattern, so the controls wrap on
+    narrow screens.
+- **`components/AgentStaffRow.tsx`:** a new mode `"permissions"` opened by a **Permissions** button (`aria-label="Permissions for
+  {name}"`), shown for active and deactivated members.
+  - It renders the form pre-set from `member.permissions`.
+  - Save calls the row's existing `run()` with `method: "PUT"`, path `/permissions` and `focusNext: "permissions"`. This gives the
+    "Saving…" state, disabled buttons, the `inFlight` double-submit guard, the status region and `staffFailure` errors that
+    AGN-002's actions already have.
+  - Success announces `"<CODE> permissions saved."`.
+  - The row shows a text summary (not colour): "Student journey only", or "Can verify documents" / "Can view reports" joined with " · ".
+  - The `Action.method` type widens to `"POST" | "PATCH" | "PUT"`.
 - **`components/AgentStaffPanel.tsx`:** help text becomes "Staff work on your agency's students and applications. Only Masters see the
   team and commissions. Use Permissions to let a staff member verify documents or view reports."
 
 **Loading, empty and error states:**
 - The staff list keeps its existing loading, empty and error handling.
-- The review panel has loading ("Loading your review queue…"), empty ("No documents are awaiting your review yet."), the new load
-  error, and per-row action errors (server `detail`: `403`/`409`/`422` text).
-- A toggle switched off while a staff member has the page open: their next click gets the server's `403` message in that row.
+- The review panel has loading (`role="status"`), empty (`emptyText`), load error with Try again, and per-row action errors (server
+  `detail`: `403`/`409`/`422` text).
+- A toggle switched off while a staff member has the page open: their next click gets the server's `403` message in that row. The
+  sidebar updates on their next navigation.
 
-## 10. Security review
+**Responsive, keyboard and perceived performance:**
+- No new layout. Rows and forms reuse `flexWrap` and `.grid.two`, which collapses to one column at ≤640px.
+- The nav is computed on the server in `PortalPage`, so Reports never flashes in and out.
+- Every control is a native `button`, `input` or `select`.
+- The existing `.action-grid` has no mobile breakpoint. That predates AGN-003 and is left unchanged; no unrelated redesign.
 
-- **Privilege escalation.**
-  - Every permission is decided on the server from the database row per request.
-  - The UI only hides links.
-  - Staff can never reach `PUT …/permissions` (`_require_master`).
-  - Strict booleans and `extra="forbid"` block payload smuggling.
-- **Tenancy.**
-  - Toggles: `_staff_member` filters by the caller's `org_id` and `role='staff'`, so another agency's member or a Master id → `404`
-    (no disclosure).
-  - Verification: scoped through `_assigned_application` / `org_member_ids`.
-- **Existence disclosure.** Staff permission refusals happen before the document read.
-- **Integrity of the counselor review.** Agents act only on `pending` (P5) under a row lock.
-- **Audit.** Every toggle change and every agent decision is audited in the same transaction. Logs carry ids and codes only, never
-  email or notes.
-- **Known limitations (unchanged, recorded):**
-  - `/files/download` presigns any key.
-  - Notifications, support and communications skip the agency gate.
-  - Admin `PATCH /users` (AGN-002 E4).
+## 10. Security review (security-and-hardening, 2026-10-01)
+
+**Trust boundaries.**
+- `PUT …/permissions`: body and path id.
+- `PATCH …/documents/{id}/verify`: body and path id.
+- `GET /portal/overseas/agent/reports`.
+- `/auth/me` output.
+
+**Assets.**
+- Document review decisions, which the student sees and which feed the counselor's workflow.
+- Staff privileges.
+- The audit trail.
+
+| Check | Finding |
+|---|---|
+| **Authentication** | Unchanged: `get_current_user` cookie JWT + `session_version`. Deactivated staff get `401` before any AGN-003 check. |
+| **Authorization** | Every decision is taken on the server from the database row on each request (§6); the UI only hides links. The portal Reports page and the verify route are refused server-side even when a URL is typed. |
+| **Role escalation** | Staff cannot reach `PUT …/permissions` (`_require_master`) and so cannot change their own flags. A Master cannot set flags on another Master (`_staff_member` filters `role='staff'` → `404`). The body is a closed two-key schema, so no other privilege can be named. The flags never widen beyond §3: Verify gives `verified` only, and Reports gives today's commission-free staff report. |
+| **IDOR** | Toggles: `member_id` is resolved only inside the caller's organisation (`404` otherwise, no disclosure). Documents: `_assigned_application` or the agency `AgentStudent` link. An out-of-scope document is `403` (accepted, §7). Ids are UUIDv4. |
+| **Input validation** | `StrictBool`, `Literal` decisions, `notes` ≤ 10000, `extra="forbid"` on both new bodies. Path ids are `UUID`-typed (`422`). |
+| **XSS** | `reviewer_notes`, names and statuses render as React text. No `dangerouslySetInnerHTML` is added. The agent queue shows the existing portal rows. |
+| **CSRF** | Unchanged and sufficient. Cookies are `httpOnly` + `SameSite=lax` (`auth.py:90`) and CORS allows only `frontend_url` with credentials (`main.py:58`). The new endpoints are JSON `PUT`/`PATCH`, which browsers cannot send cross-site with cookies. |
+| **SQL injection** | SQLAlchemy ORM only; no raw SQL. |
+| **Token/session** | The flags are not put in the JWT, so there is no stale grant. Switching a toggle off takes effect on the next request with no session bump. |
+| **Secret exposure** | None. No token or link is involved; `_deliver` is untouched. |
+| **Sensitive logs** | Structured logs carry ids and codes only. Audit metadata holds the validated decision, the member role and the before/after flags. It never holds an email or the raw payload. Reviewer notes stay in the audit row exactly as the counselor path already stores them (database, not logs). |
+| **Rate limiting** | `PUT` is not throttled: a no-op writes nothing and each real change is one row under the organisation lock. Agent verify cannot repeat because `pending` is single-use (`409`). No new email path. |
+| **Audit** | Every real toggle change (`agent_org.staff_permissions`, before/after) and every agent decision (`document.verify`, with `member_role`) is audited in the same transaction as the change. |
+| **Integrity of the counselor review** | Agents act only on `pending` (P5) under a row lock. Counselors and Overseas Admins can still re-review. |
+
+**Self-verification (recorded, owner may change).** A staff member with Verify could mark verified a document they uploaded themselves.
+§6 does not ask for maker-checker. The decision is attributed (`verified_by_id`, audit `member_role`) and the counselor or Overseas
+Admin can still re-review, so this is accepted as **P9** unless the owner decides otherwise.
+
+**Known limitations (unchanged, recorded, out of AGN-003 scope):**
+- `/files/download` presigns any key.
+- Notifications, support and communications skip the agency gate.
+- Admin `PATCH /users` (AGN-002 E4).
+- The counselor/admin verify body is still an unvalidated `dict`.
 
 ## 11. Acceptance criteria → tests (written before the code)
 
@@ -280,7 +351,7 @@ The flags are read there. Nothing is copied into the JWT, so there is no session
 | AGN-003-AC03 | Reports: Staff off → `403`, on → `200` (no commission row); Masters always `200` | `test_agn_003_permissions.py` |
 | AGN-003-AC04 | Verify: Staff off → `403`; on + `verified` → `200`; on + `rejected`/`changes_required` → `403` | `test_agn_003_verify.py` |
 | AGN-003-AC05 | A toggle change applies on the staff member's next request in the same session (off→403, on→200, off→403 with one cookie jar) | `test_agn_003_permissions.py::test_toggle_applies_on_next_request` |
-| AGN-003-AC06 | Only a Master of the staff member's agency sets toggles; another agency or a Master id → `404`; Staff → `403`; bad body → `422`; deactivated staff allowed; audited | `test_agn_003_permissions.py` |
+| AGN-003-AC06 | Only a Master of the staff member's agency sets toggles; another agency or a Master id → `404`; Staff → `403`; bad body (missing key, extra key, `"true"` string) → `422`; deactivated staff allowed; a real change writes one audit row with before/after; a no-op writes none | `test_agn_003_permissions.py` |
 | AGN-003-AC07 | Agents decide only `pending` documents in agency scope: non-pending `409`, out of scope `403`, unknown `404`, bad decision `422`; unattached document via `AgentStudent` works; a counselor can still overwrite an agent decision; student notified; audit row | `test_agn_003_verify.py` |
 | AGN-003-AC08 | `/auth/me` returns `agent_permissions` (Master both true, staff toggles, non-agent `null`); the staff shape returns `permissions` | `test_agn_003_permissions.py` |
 | AGN-003-AC09 | Migration `0048` follows `0047`, single head, defaults `false`, existing members preserved | `test_agn_003_schema.py` |
@@ -293,7 +364,10 @@ The flags are read there. Nothing is copied into the JWT, so there is no session
 
 **Frontend unit:**
 - `navigation.test.ts`: staff default hides Reports; Reports toggle shows it; Masters unchanged.
-- `AgentStaffRow.test.tsx`: Permissions mode (pre-set, save body, Escape, focus, error, button set per status).
+- `AgentStaffPermissionsForm.test.tsx`: labels and hints (`aria-describedby`), pre-set values, Escape cancels, first-checkbox focus.
+- `AgentStaffRow.test.tsx`: Permissions button per status, `PUT` body `{can_verify_documents, can_view_reports}`, "Saving…",
+  focus returns to Permissions, server error in the status region, summary text. The existing button-set assertion (`:162`) is
+  extended deliberately for the new button.
 - A new `CounselorDocumentReviewPanel.test.tsx`: counselor defaults first (locks today's behaviour before the change), load error, agent
   `pendingOnly`, staff decisions.
 - `WorkflowPanel` agent documents gating.
@@ -336,3 +410,29 @@ The flags are read there. Nothing is copied into the JWT, so there is no session
 - `SCREEN_CATALOG.md` SCR-AGT-005 (documents review) and SCR-AGT-007 (Permissions).
 - `ROLE_NAVIGATION.md` (agent staff Reports).
 - `RTM.md` (AGN-003 row).
+
+## 14. Review log (2026-10-01)
+
+**api-and-interface-design**
+- Permission keys renamed to the `can_*` column names (`can_verify_documents`, `can_view_reports`) in the body, the staff shape and
+  `/auth/me`. This matches `can_edit_career_goal` and the boolean naming rule.
+- The agent review body is a typed `AgentDocumentReview` (Literal decisions, notes cap, `extra="forbid"`). It returns the standard
+  `422` shape. The counselor path is untouched.
+- `PUT` is a full replacement and idempotent. A no-op writes no audit row, and a real change records before/after.
+- Agent verify retry semantics are documented (a repeat gets `409` with no second effect). The out-of-scope `403` is kept for
+  consistency with the route.
+- All new fields are additive; no existing field changes. `agent_permissions` is documented as effective permissions.
+
+**frontend-ui-engineering**
+- `AgentStaffPermissionsForm` is extracted, keeping `AgentStaffRow` under 200 lines. It reuses `fieldset.form-section` with a legend
+  and has hints linked by `aria-describedby`.
+- Staff get one **Mark verified** button instead of a single-option select.
+- The review panel gets a load error with **Try again** (`role="alert"`), loading `role="status"`, an agent `emptyText`, and focus on
+  the row message after a submit.
+- Responsive behaviour reuses existing wrap and grid classes. `.action-grid`'s missing breakpoint is noted and left as is (unrelated).
+
+**security-and-hardening**
+- §10 rewritten as a checklist covering authentication, authorization, escalation, IDOR, validation, XSS, CSRF, SQL injection,
+  session, secrets, logs, rate limits and audit.
+- Audit metadata for agents uses the validated dump plus `member_role`, never the raw payload.
+- Self-verification is recorded as P9.

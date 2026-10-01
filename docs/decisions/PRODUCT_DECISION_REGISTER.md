@@ -2728,6 +2728,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 **Assumptions stated by design (owner may correct in spec review):**
 - **P7** "Permission Level" is not a create-form field.
 - **P8** Toggles may be set on a deactivated staff member, are not throttled, and every change is audited.
+- **P9** Staff with Verify may verify a document they uploaded themselves (§6 asks for no maker-checker); the decision is attributed and counselors/Overseas Admins can still re-review.
 
 **Consequences:**
 - Migration `0048` adds two staff flags to `agent_org_members`.

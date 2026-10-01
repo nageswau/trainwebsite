@@ -63,7 +63,7 @@ and the rest of `EVID-015` stay parked. AGN-001 keeps the ID the user gave it ra
 settings stay parked.
 
 **Revision 8 (2026-10-01):** the owner brought the `EVID-015` §6 Master-vs-Staff permission matrix into scope as
-**AGN-003**, decided as `DEC-SCOPE-041` (P1–P8): two per-staff toggles (Verify Documents, Reports), enforced on existing
+**AGN-003**, decided as `DEC-SCOPE-041` (P1–P9): two per-staff toggles (Verify Documents, Reports), enforced on existing
 routes, plus agent document verification. Assignment/ownership, staff performance and CRM settings stay parked.
 
 ## 0. Scope and exclusions (read this before the backlog)
@@ -3079,7 +3079,7 @@ verified at `2e7ac9a`)**; the owner waived the Codex review and runs the full ba
 
 **Business requirement.** The owner's `AGN-003` statement (in-session, 2026-10-01): "the §6 matrix: Staff are limited to the
 student journey, with no admin modules; 'Set permissions' / 'Permission Level'", referring to `EVID-015`
-(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2, §3, §4 and §6. Decided as `DEC-SCOPE-041` (P1–P8).
+(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2, §3, §4 and §6. Decided as `DEC-SCOPE-041` (P1–P9).
 
 **Existing behavior.**
 - Staff are refused only team management and commissions (`AGN-002`).
@@ -3346,7 +3346,7 @@ item, only for the progress-view question).
 | ENH-016 | None — corrected in Revision 3 to a narrower scope entirely within already-confirmed `DEC-SCOPE-017` | N/A |
 | AGN-001 | `DEC-SCOPE-038` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
 | AGN-002 | `DEC-SCOPE-040` — staff access, model, reset, fields/limits, activation, tenancy/audit | **Resolved 2026-09-30** (S1–S6, `EXPLICIT_APPROVAL` in-session) |
-| AGN-003 | `DEC-SCOPE-041` — optional rows, toggle granularity, matrix reach, student scope, agent review, staff outcome | **Resolved 2026-10-01** (P1–P6 `EXPLICIT_APPROVAL` in-session; P7–P8 design assumptions) |
+| AGN-003 | `DEC-SCOPE-041` — optional rows, toggle granularity, matrix reach, student scope, agent review, staff outcome | **Resolved 2026-10-01** (P1–P6 `EXPLICIT_APPROVAL` in-session; P7–P9 design assumptions) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
