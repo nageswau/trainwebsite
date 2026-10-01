@@ -3,11 +3,13 @@ import SchoolChildOverview, { loadChildOverview, type ChildOverview } from "@/co
 import SchoolGradeHistory, { loadGradeHistory, type StudentGradeHistory } from "@/components/SchoolGradeHistory";
 import SchoolStudentTimeline, { loadStudentTimeline, type StudentTimeline } from "@/components/SchoolStudentTimeline";
 import SchoolTransferHistory, { loadTransferHistory, type TransferHistoryEntry } from "@/components/SchoolTransferHistory";
+import FundingRecordsCard, { loadFundingRecords } from "@/components/FundingRecordsCard";
 import PortfolioPanel from "@/components/PortfolioPanel";
 import ReportDownloadButton from "@/components/ReportDownloadButton";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
+import type { FundingRecord } from "@/lib/fundingRecords";
 import { loadPortfolio, type PortfolioData } from "@/lib/portfolio";
 
 // SCH-007: one child's full profile & progress for their Parent. Same own-child deny as
@@ -31,11 +33,12 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
       </div>
     );
   }
-  const [timeline, gradeHistory, transferHistory, portfolio]: [StudentTimeline | null, StudentGradeHistory | null, TransferHistoryEntry[] | null, PortfolioData | null] = await Promise.all([
+  const [timeline, gradeHistory, transferHistory, portfolio, funding]: [StudentTimeline | null, StudentGradeHistory | null, TransferHistoryEntry[] | null, PortfolioData | null, FundingRecord[] | null] = await Promise.all([
     loadStudentTimeline(id).catch(() => null),
     loadGradeHistory(id).catch(() => null),
     loadTransferHistory(id),
     loadPortfolio(id).catch(() => null),
+    loadFundingRecords(id),
   ]);
   return (
     <PortalShell nav={SCHOOL_NAV.parent} roleLabel="Parent" userName={user.full_name}>
@@ -49,6 +52,8 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
           <a className="btn secondary" href="/school/parent/dashboard">Back to my children</a>
         </div>
         <SchoolChildOverview overview={overview} />
+        {/* ENH-020: the child's funding support cases, read-only -- right after the overview (QA-04), not below the portfolio. */}
+        <FundingRecordsCard records={funding} />
         <div className="card">
           <h3>Grade history</h3>
           {gradeHistory ? <SchoolGradeHistory history={gradeHistory.history} /> : <p className="muted">Grade history is unavailable right now.</p>}

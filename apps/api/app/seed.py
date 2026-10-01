@@ -764,10 +764,10 @@ async def main():
         # inside "if not school:" above) so an already-seeded dev database also gets it, same
         # backfill pattern already used for Country.interview_prep earlier in this function.
         # Every tracked entitlement service gets a real, non-zero usage count; every
-        # deliberately-untracked service (soft skills, web designing, digital portfolio
-        # creation, internships, loan assistance, alumni network, parent help desk,
-        # scholarship assistance) is left alone -- it has no seed data because it has no
-        # confirmed module, not because seeding was skipped.
+        # deliberately-untracked service (alumni network, parent help desk) is left alone --
+        # it has no seed data because it has no confirmed module, not because seeding was
+        # skipped. ENH-020 (DEC-SCOPE-045): loan and scholarship assistance are tracked by
+        # funding support cases, seeded below.
         academic1 = await user(db, "school.academic1@edusphere.local", "Divya Academic Team", "academic_team", "overseas")
         academic2 = await user(db, "school.academic2@edusphere.local", "Suresh Academic Team", "academic_team", "overseas")
         school_coordinator = await user(db, "school.coordinator@edusphere.local", "Fatima School Coordinator", "school_coordinator", "overseas")
@@ -803,6 +803,19 @@ async def main():
             db.add(SchoolLanguageRecord(school_student_id=student_b.id, academic_team_user_id=academic1.id, language="French", level="A2", classes_attended=14, certification_status="certified", created_at=entitlement_now - timedelta(days=30), updated_at=entitlement_now - timedelta(days=3)))
         if student_d and not await db.scalar(select(SchoolLanguageRecord).where(SchoolLanguageRecord.school_student_id == student_d.id)):
             db.add(SchoolLanguageRecord(school_student_id=student_d.id, academic_team_user_id=academic2.id, language="German", level="A1", classes_attended=4, certification_status="in_progress", created_at=entitlement_now - timedelta(days=12)))
+
+        # ENH-020 demo funding support cases (one per student, so a re-run never trips the one-open-case index).
+        demo_counselor = await user(db, "school.careercounselor@edusphere.local", "Anita Career Counselor", "career_counselor", "overseas")
+        for demo_student, support_type, status, provider, days_ago in [
+            (student_b, "education_loan", "documents", "State Bank of India", 21),
+            (student_d, "scholarship", "required", None, 4),
+        ]:
+            if demo_student and not await db.scalar(select(SchoolFundingRecord.id).where(SchoolFundingRecord.school_student_id == demo_student.id)):
+                db.add(SchoolFundingRecord(
+                    school_student_id=demo_student.id, school_id=school.id, support_type=support_type, status=status, provider_name=provider,
+                    status_changed_on=(entitlement_now - timedelta(days=days_ago // 2)).date(), notes="Demo case.", career_counselor_user_id=demo_counselor.id,
+                    created_at=entitlement_now - timedelta(days=days_ago),
+                ))
 
         # School->Overseas bridge (SCH-010) demo: feeds the entitlements view's own
         # application_support/visa_support usage counts, and SCH-007/008's global_education

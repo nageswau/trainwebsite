@@ -67,10 +67,10 @@ async def test_entitlements_usage_is_unchanged_except_digital_portfolio(client, 
     assert used == {
         "career_seminar": 1, "career_awareness_session": 0, "parent_orientation": 0, "psychometric_test": 2, "soft_skills": 1,
         "individual_counselling": 1, "web_designing": 0,
-        "application_support": 1, "scholarship_assistance": None, "ielts_coaching": 1, "sat_coaching": 2, "foreign_language_classes": 1,
+        "application_support": 1, "scholarship_assistance": 0, "ielts_coaching": 1, "sat_coaching": 2, "foreign_language_classes": 1,  # ENH-020 D8: scholarship tracked, none seeded
         "digital_portfolio_creation": 1,  # D13 -- was None before ENH-016
         "dedicated_counselor": True, "monthly_campus_visits": 1, "internships": 0, "visa_support": 1,  # ENH-021: tracked since the merge with main
-        "loan_assistance": None,
+        "loan_assistance": 0,  # ENH-020 D8
         "alumni_network": None, "parent_help_desk": None,
     }
     assert [s["key"] for s in response.json()["services"]][:3] == ["career_seminar", "career_awareness_session", "parent_orientation"]
@@ -91,7 +91,8 @@ async def test_service_usage_keeps_schools_apart(db_session):
     assert usage[b["school"].id]["psychometric_test"] == 0
     assert usage[b["school"].id]["dedicated_counselor"] is False
     assert usage[b["school"].id]["digital_portfolio_creation"] == 0
-    assert "scholarship_assistance" not in usage[a["school"].id]
+    assert usage[a["school"].id]["scholarship_assistance"] == 0  # ENH-020 D8: tracked now
+    assert "alumni_network" not in usage[a["school"].id]
     assert await service_usage(db_session, []) == {}
 
 

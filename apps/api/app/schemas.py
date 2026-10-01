@@ -1027,6 +1027,82 @@ class CareerRecordUpdate(CareerRecordFields):
     expected_status: CareerStatus | None = None
 
 
+# --- ENH-020: financial support / loan assistance (docs/superpowers/specs/2026-10-01-enh-020-funding-support-tracking-design.md §3) ---
+
+FundingSupportType = Literal["education_loan", "financial_assistance", "scholarship", "funding_guidance"]
+FundingStatus = Literal["required", "counselling", "documents", "application", "approved", "completed", "closed"]
+FUNDING_SUPPORT_TYPE_LABEL: dict[str, str] = {
+    "education_loan": "Education loan", "financial_assistance": "Financial assistance", "scholarship": "Scholarship", "funding_guidance": "Funding guidance",
+}
+FUNDING_STATUS_LABEL: dict[str, str] = {
+    "required": "Required", "counselling": "Counselling", "documents": "Documents", "application": "Application",
+    "approved": "Approved", "completed": "Completed", "closed": "Closed",
+}
+FUNDING_STATUS_NEXT: dict[str, frozenset[str]] = {  # D3: one step forward, or Closed from any open stage; finals go nowhere
+    "required": frozenset({"counselling", "closed"}), "counselling": frozenset({"documents", "closed"}),
+    "documents": frozenset({"application", "closed"}), "application": frozenset({"approved", "closed"}),
+    "approved": frozenset({"completed", "closed"}), "completed": frozenset(), "closed": frozenset(),
+}
+FUNDING_FINAL_STATUSES: frozenset[str] = frozenset({"completed", "closed"})
+FUNDING_NOTES_MAX = 4000
+
+
+def funding_transition_allowed(current: str, requested: str) -> bool:
+    return requested == current or requested in FUNDING_STATUS_NEXT[current]
+
+
+def _funding_notes(value) -> str:
+    """The career-notes rule (trimmed, NUL refused, absent = "") plus a cap the career notes never had (new endpoint, spec §3.3)."""
+    text_value = _career_notes(value)
+    if len(text_value) > FUNDING_NOTES_MAX:
+        raise ValueError(f"must be at most {FUNDING_NOTES_MAX} characters")
+    return text_value
+
+
+class FundingRecordFields(BaseModel):
+    """ENH-020 body fields shared by create and update. extra="forbid": ids, owners, the school, status dates are never writable."""
+
+    model_config = {"extra": "forbid"}
+    provider_name: str | None = None
+    amount_text: str | None = None
+    notes: str = ""
+
+    @field_validator("provider_name", mode="before")
+    @classmethod
+    def _provider(cls, value):
+        return _clean_text(value, 200)
+
+    @field_validator("amount_text", mode="before")
+    @classmethod
+    def _amount(cls, value):
+        return _clean_text(value, 120)
+
+    @field_validator("notes", mode="before")
+    @classmethod
+    def _notes(cls, value):
+        return _funding_notes(value)
+
+
+class FundingRecordCreate(FundingRecordFields):
+    """POST body. Every case starts at `required`, so `status` is not a field (spec §3.3)."""
+
+    school_student_id: UUID
+    support_type: FundingSupportType
+
+
+class FundingRecordUpdate(FundingRecordFields):
+    """PATCH body, presence-aware (`model_fields_set`). `expected_status` is the optional precondition: a mismatch is a 409."""
+
+    status: FundingStatus | None = None
+    closure_reason: str | None = None
+    expected_status: FundingStatus | None = None
+
+    @field_validator("closure_reason", mode="before")
+    @classmethod
+    def _reason(cls, value):
+        return _clean_text(value, 500)
+
+
 # --- ENH-027: psychometric record result fields (docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md §4.1) ---
 
 PSYCHOMETRIC_LIST_KEYS: tuple[str, ...] = ("strengths", "interest_areas", "personality_indicators", "recommended_careers", "recommended_stream")
