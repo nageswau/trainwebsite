@@ -1,5 +1,5 @@
 import { act, cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import RefreshOnHistoryNav from "@/components/RefreshOnHistoryNav";
 
@@ -9,116 +9,73 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: nav.refresh }),
 const back = () => act(() => {
   window.dispatchEvent(new PopStateEvent("popstate"));
 });
+const runTimers = () => act(() => {
+  vi.runAllTimers();
+});
+
+beforeEach(() => {
+  vi.useFakeTimers();
+});
 
 afterEach(() => {
+  runTimers(); // consume anything a test left pending, so tests stay independent
   cleanup();
   nav.refresh.mockClear();
   nav.pathname = "/overseas/agent/dashboard";
+  vi.useRealTimers();
 });
 
 // AGN-003 browser QA-07: Back/Forward replays the client router's cached page, so a page whose access was just revoked reappeared
-// without asking the server. Browser re-checks showed a refresh issued from the popstate event itself is lost (Next has not applied
-// the restored page yet, and the leaving page unmounts mid-dispatch) -- so the refresh runs after the restored page renders.
+// without asking the server. Browser re-checks (four rounds on the running stack) showed Next swaps the page BEFORE popstate is
+// dispatched on a real Back: the leaving page's listener is already gone and the restored page's is not attached yet. So the Back
+// listener lives at module level; the refresh runs once, from a 0 ms timer or the restored page's render, whichever comes first.
 describe("RefreshOnHistoryNav (AGN-003 browser QA-07)", () => {
-  it("re-asks the server once the restored page has rendered (same component, new path)", () => {
+  it("re-asks the server after Back, not synchronously inside the event", () => {
+    render(<RefreshOnHistoryNav />);
+    back();
+    expect(nav.refresh).not.toHaveBeenCalled();
+    runTimers();
+    expect(nav.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("still re-asks when the leaving page unmounted before the event (Next restores first on a real Back)", () => {
+    const { unmount } = render(<RefreshOnHistoryNav />);
+    unmount(); // Next already swapped the page out
+    back(); // no instance mounted while the event is dispatched
+    nav.pathname = "/overseas/agent/reports";
+    render(<RefreshOnHistoryNav />); // the cached page Next restored
+    runTimers();
+    expect(nav.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes once when the restored page renders before the timer fires", () => {
     const { rerender } = render(<RefreshOnHistoryNav />);
     back();
-    expect(nav.refresh).not.toHaveBeenCalled(); // not from inside the popstate event
     nav.pathname = "/overseas/agent/reports";
     rerender(<RefreshOnHistoryNav />);
     expect(nav.refresh).toHaveBeenCalledTimes(1);
-  });
-
-  it("re-asks the server when the restored page mounts a new instance", () => {
-    const { unmount } = render(<RefreshOnHistoryNav />);
-    back();
-    unmount(); // the page being left
-    nav.pathname = "/overseas/agent/reports";
-    render(<RefreshOnHistoryNav />); // the cached page Next restored
+    runTimers();
     expect(nav.refresh).toHaveBeenCalledTimes(1);
-  });
-
-  it("still sees Back when an earlier popstate listener unmounts it synchronously (Next's own listener)", () => {
-    let unmount: () => void = () => {};
-    const nextRouter = () => unmount();
-    window.addEventListener("popstate", nextRouter);
-    try {
-      ({ unmount } = render(<RefreshOnHistoryNav />));
-      back();
-      nav.pathname = "/overseas/agent/reports";
-      render(<RefreshOnHistoryNav />);
-      expect(nav.refresh).toHaveBeenCalledTimes(1);
-    } finally {
-      window.removeEventListener("popstate", nextRouter);
-    }
   });
 
   it("does not refresh on an ordinary link navigation", () => {
     const { rerender } = render(<RefreshOnHistoryNav />);
     nav.pathname = "/overseas/agent/reports";
     rerender(<RefreshOnHistoryNav />);
-    const { unmount } = render(<RefreshOnHistoryNav />);
-    unmount();
+    runTimers();
     expect(nav.refresh).not.toHaveBeenCalled();
   });
 
-  it("refreshes only once per Back", () => {
-    const { rerender } = render(<RefreshOnHistoryNav />);
+  it("consumes the Back even when no instance is mounted, so a later link navigation does not refresh", () => {
+    const { unmount } = render(<RefreshOnHistoryNav />);
+    unmount();
     back();
-    nav.pathname = "/overseas/agent/reports";
-    rerender(<RefreshOnHistoryNav />);
-    render(<RefreshOnHistoryNav />);
-    nav.pathname = "/overseas/agent/documents";
-    rerender(<RefreshOnHistoryNav />);
+    runTimers(); // the router is app-wide: the timer refreshes once even between pages
     expect(nav.refresh).toHaveBeenCalledTimes(1);
-  });
-
-  // Fourth browser re-check: in the real browser the effect path above never fired after Back, while a refresh scheduled with a 0 ms
-  // timer from the capture-phase listener did (measured on the running stack). Both paths are kept; together they refresh once.
-  it("re-asks the server from a timer scheduled in the Back event, even if nothing re-renders", () => {
-    vi.useFakeTimers();
-    try {
-      render(<RefreshOnHistoryNav />);
-      back();
-      expect(nav.refresh).not.toHaveBeenCalled(); // not synchronously inside Next's popstate dispatch
-      act(() => {
-        vi.runAllTimers();
-      });
-      expect(nav.refresh).toHaveBeenCalledTimes(1);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("refreshes once when both the timer and the restored page's render see the same Back", () => {
-    vi.useFakeTimers();
-    try {
-      const { rerender } = render(<RefreshOnHistoryNav />);
-      back();
-      nav.pathname = "/overseas/agent/reports";
-      rerender(<RefreshOnHistoryNav />);
-      act(() => {
-        vi.runAllTimers();
-      });
-      expect(nav.refresh).toHaveBeenCalledTimes(1);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("the timer's refresh survives the leaving page unmounting", () => {
-    vi.useFakeTimers();
-    try {
-      const { unmount } = render(<RefreshOnHistoryNav />);
-      back();
-      unmount();
-      act(() => {
-        vi.runAllTimers();
-      });
-      expect(nav.refresh).toHaveBeenCalledTimes(1);
-    } finally {
-      vi.useRealTimers();
-    }
+    nav.pathname = "/overseas/agent/reports";
+    render(<RefreshOnHistoryNav />); // an ordinary navigation afterwards
+    runTimers();
+    expect(nav.refresh).toHaveBeenCalledTimes(1);
   });
 
   it("also re-asks when the browser restores the page from its back/forward cache", () => {
