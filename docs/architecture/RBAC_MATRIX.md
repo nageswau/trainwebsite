@@ -156,7 +156,7 @@ commission notifications) and cannot be approved/rejected as agents by Overseas 
 `tests/test_agn_002_staff.py`, `test_agn_002_staff_access.py`, `test_agn_002_master_rules.py`, `test_agn_002_sessions.py`.
 Known limitation: admin `PATCH /admin/users/{id}` can still change `active` on any agent user (spec §10, E4).
 
-**`AGN-004` / `DEC-SCOPE-041` (2026-09-30) — agency students and staff scope, BUILT 2026-09-30 (narrows `AGN-002` S1 above; same
+**`AGN-004` / `DEC-SCOPE-042` (2026-09-30) — agency students and staff scope, BUILT 2026-09-30 (narrows `AGN-002` S1 above; same
 staff model).** A staff member is a `role='agent'` user whose organisation membership has `role='staff'` (created by `AGN-002`).
 
 | Action | Master | Staff |

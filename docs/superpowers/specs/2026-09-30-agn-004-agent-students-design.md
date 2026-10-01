@@ -17,14 +17,14 @@ reports; Staff cannot see a student assigned to someone else (`404`); no `users`
 student; the within-org duplicate warning fires. Source sections: `functionalities/edusphere_markdown/Agent CRM
 Functionalities.md` (`EVID-015`, `DERIVED_BLUEPRINT`) §2 "Students", §5 Step 1, §6.
 
-**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → **`DEC-SCOPE-041`** (provisional; recorded
+**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → **`DEC-SCOPE-042`** (provisional; recorded
 with this feature's first docs commit). `DEC-SCOPE-040` is taken by AGN-002 on its branch; whichever reaches
 `main` second renumbers, per the existing precedent. `DEC-ROLE-004` (no login for agent-referred students; the
 agent acts on their behalf) applies unchanged.
 
 **Citation correction (recorded, not silently fixed):** the requirement cites `DEC-SCOPE-035 D3`.
 `DEC-SCOPE-035` is ENH-027's psychometric decision and `DEC-SCOPE-038` D3 is AGN-001's account-code rule;
-neither decides agent students. This feature's decisions are `DEC-SCOPE-041`.
+neither decides agent students. This feature's decisions are `DEC-SCOPE-042`.
 
 **Backlog item:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §AGN-004 (to be added; AGN-004-AC01…AC13 = §8).
 
@@ -59,7 +59,7 @@ import; Staff performance; CRM settings; session versioning (AGN-002); any chang
 
 ## 3. Decisions
 
-`DEC-SCOPE-041` (owner, in-session, 2026-09-30, `EXPLICIT_APPROVAL`):
+`DEC-SCOPE-042` (owner, in-session, 2026-09-30, `EXPLICIT_APPROVAL`):
 
 - **D1 — Staff in scope for students.** Staff (as modelled by AGN-002 S2) create, edit and view students; this
   lifts the "staff assignment/ownership" part of `DEC-SCOPE-038` D13 / `C-10` that AGN-002 S1 left blocked.
@@ -106,7 +106,7 @@ Design decisions (confirmed in-session, 2026-09-30):
 - **F4 — Staff see matches they cannot view only as a count** (`hidden_matches`), never name or id.
 - **F5 — Detail view is a side panel on the Students screen**, not a new route.
 
-## 4. Data model — migration `0048_agent_students_crm` (after AGN-002's `0047_agent_org_staff`; cut as `0047_agent_students_crm` after `0046_agent_orgs`, re-chained on merge 2026-10-01 — the staff pieces below are now AGN-002's)
+## 4. Data model — migration `0049_agent_students_crm` (after AGN-002's `0047_agent_org_staff`; cut as `0047_agent_students_crm` after `0046_agent_orgs`, re-chained on merge 2026-10-01 — the staff pieces below are now AGN-002's)
 
 **Staff pieces (G2) — identical to AGN-002's `0047_agent_org_staff`, each guarded so it is a no-op when already
 applied** (so after the merge, whichever migration runs second skips them):
@@ -379,7 +379,7 @@ create without email/phone; no erasure path for students with no login.
 | AGN-004-AC09 | Assignment targets only an active Staff member of the same agency (`422` otherwise). A deactivated Staff member keeps their students; Masters still see them and can reassign. |
 | AGN-004-AC10 | Staff get `403` on Team and Commissions (API and portal pages) and do not see those nav items; Staff never count toward the 3-Master limit or last-Master rule and never receive commission notifications; Overseas Admin cannot approve/reject a Staff user. |
 | AGN-004-AC11 | Every write writes an audit row in the same transaction with no personal data; if the audit write fails, nothing is written. |
-| AGN-004-AC12 | Migration `0048_agent_students_crm`: existing rows unchanged; upgrade → downgrade → upgrade leaves pre-existing rows identical; downgrade refuses while students with no login, assignments or archived students exist (the Staff pieces and their Staff-exist refusal moved to AGN-002's `0047_agent_org_staff` on the 2026-10-01 merge); each new column, CHECK and index is a no-op on a database that already has it. |
+| AGN-004-AC12 | Migration `0049_agent_students_crm`: existing rows unchanged; upgrade → downgrade → upgrade leaves pre-existing rows identical; downgrade refuses while students with no login, assignments or archived students exist (the Staff pieces and their Staff-exist refusal moved to AGN-002's `0047_agent_org_staff` on the 2026-10-01 merge); each new column, CHECK and index is a no-op on a database that already has it. |
 | AGN-004-AC13 | The Students screen works at 320 px and keyboard-only, with loading, empty, error and 401 states. |
 
 ## 9. Tests (written first, per behaviour; real runs, never judged by reasoning)
@@ -438,7 +438,7 @@ the AGN-002 merge** (stated gap, §11).
 
 ## 11. Documentation (updated with the build)
 
-`PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-041`: D1, D3–D5, D7, D8, G1–G5, the citation correction, the part of
+`PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-042`: D1, D3–D5, D7, D8, G1–G5, the citation correction, the part of
 `DEC-SCOPE-038` D13 / AGN-002 S1 it narrows); `ENHANCEMENT_BACKLOG.md` (AGN-004 entry, ACs, Appendix B note);
 `DATA_MODEL.md` §6.8/§6.8a; `API_CONTRACT.md`; `RBAC_MATRIX.md` §2.8 (Staff assigned-only; `404` mask);
 `SECURITY_CONTROLS.md`; `THREAT_MODEL.md`; `PRD_OPEN_ITEMS.md` (erasure, `NEEDS_CONFIRMATION`); `RTM.md`;
@@ -451,18 +451,23 @@ the AGN-002 merge** (stated gap, §11).
   `downgrade()` also reverts each Staff piece only if still present (final review I1), so rolling back through both works
   whichever runs first; AGN-002's own `downgrade()` is unguarded, so if AGN-004's migration is the later one, it is
   rolled back first — or AGN-002 adopts the same guards on merge.
-- Decision IDs: `DEC-SCOPE-040` (AGN-002) and `DEC-SCOPE-041` (AGN-004) do not collide.
+- Decision IDs: `DEC-SCOPE-040` (AGN-002) and `DEC-SCOPE-042` (AGN-004) do not collide.
 - G2 code is identical to AGN-002's; take either side. AGN-002's `_agent` portal and `lookups` changes do not
   narrow Staff scope — keep AGN-004's G4 narrowing on top.
 - After the merge: run the AGN-002 and AGN-004 suites together and the Staff browser flows (Staff sign-in, sees
   only assigned students, another's student is "not found").
-- **Merged 2026-10-01** (`git pull origin main`, AGN-002 PR #28): migration renamed `0048_agent_students_crm`,
+- **Merged 2026-10-01** (`git pull origin main`, AGN-002 PR #28): migration renamed `0049_agent_students_crm`,
   `down_revision = "0047_agent_org_staff"`; the Staff pieces and their tests removed here (AGN-002 owns them). Shared Staff
   code (`admin.py`, `agent_team.py`, `agent_orgs.py`) taken from main, with `lock_active_org` re-added. AGN-002's
   `test_staff_see_the_organisations_students` asserted S1's agency-wide reach; it now assigns the student and also asserts
   an unassigned one is hidden (G4, owner-approved). AGN-001/002/004, AGT and ENH-031 API suites: 357 passed after that
   change; web vitest 1231 passed, tsc 0 errors, eslint 0 errors (31 warnings, unchanged), build OK. E2E and the Staff
   browser flows wait for the `agn004` stack to be rebuilt from the merged code.
+- **Merged again 2026-10-01** (ENH-030, PR #27, on main first): ENH-030's `0048_school_attendance_records` also followed
+  `0047_agent_org_staff` (two Alembic heads), so this migration became `0049_agent_students_crm`, `down_revision =
+  "0048_school_attendance_records"`; its test now also asserts the single head. ENH-030 holds `DEC-SCOPE-041` on main, so this
+  feature's decision became `DEC-SCOPE-042` (register ID note). Main's ENH-030 renumbering had also turned three AGN-001 backlog
+  references from `DEC-SCOPE-038` into `041`; restored to `038` in the merge.
 
 ## 13. Completion gates (not claimed by implementation alone)
 

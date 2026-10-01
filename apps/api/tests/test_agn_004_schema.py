@@ -1,4 +1,4 @@
-"""AGN-004 -- model constraints added by migration 0048_agent_students_crm (spec §4)."""
+"""AGN-004 -- model constraints added by migration 0049_agent_students_crm (spec §4)."""
 
 import uuid
 

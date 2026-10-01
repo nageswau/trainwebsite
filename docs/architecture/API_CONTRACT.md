@@ -226,7 +226,7 @@ is never returned. Member shape: `{id, code, full_name, email, phone, status: ac
 | Every authenticated route, `POST /auth/refresh` | — | — | Tokens carry `sv`; a mismatch with `users.session_version` → `401 "Your session has ended. Please sign in again."`; tokens without `sv` count as 0. A deactivated staff member → `401 "Your account was deactivated by your agency. Contact your agency's Master."`; any other missing/inactive account keeps `401 "User unavailable"` (browser QA-02/03). |
 | `POST …/team/staff`, `POST …/team/masters` — invalid `email` | — | — | `422` with "Enter a valid email address, like name@example.com" (same rule `x@y.z`; browser QA-01). |
 
-**`AGN-004` / `DEC-SCOPE-041` (built 2026-09-30) — agency students, including students who never log in.** Design spec
+**`AGN-004` / `DEC-SCOPE-042` (built 2026-09-30) — agency students, including students who never log in.** Design spec
 `docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md` §5.4–§5.6. Errors are FastAPI `{"detail": ...}`; no
 `Idempotency-Key` (§0.2: not financial). Out-of-scope rows answer `404` on the new routes — an intentional existence mask recorded
 in `RBAC_MATRIX.md` §2.8 as §0.3 requires. Every write locks the organisation row and writes its audit row in the same transaction.

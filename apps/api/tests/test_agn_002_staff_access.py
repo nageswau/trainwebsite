@@ -18,7 +18,7 @@ async def _org_with_student(db_session, name: str):
 
 @pytest.mark.asyncio
 async def test_staff_see_the_organisations_students(db_session):
-    # AGN-004 G4 (DEC-SCOPE-041, owner-approved 2026-09-30) narrows S1: Staff see only the students assigned to them.
+    # AGN-004 G4 (DEC-SCOPE-042, owner-approved 2026-09-30) narrows S1: Staff see only the students assigned to them.
     ctx, student = await _org_with_student(db_session, "Staff Sees")
     other = await mk_user(db_session, role="overseas_student", full_name="Staff Sees Unassigned")
     db_session.add(AgentStudent(agent_id=ctx["master"].id, student_id=other.id, status="active"))

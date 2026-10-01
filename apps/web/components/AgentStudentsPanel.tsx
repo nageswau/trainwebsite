@@ -8,7 +8,7 @@ import AgentStudentForm from "./AgentStudentForm";
 import { detailMessage, isPage, Page } from "@/lib/apiErrors";
 import { AgentStudentDetail, AgentStudentItem, RECORDS_URL } from "@/lib/agentStudents";
 
-// AGN-004 (DEC-SCOPE-041): the agency's students -- with or without a login -- on the Students page. Masters see the agency and
+// AGN-004 (DEC-SCOPE-042): the agency's students -- with or without a login -- on the Students page. Masters see the agency and
 // may archive and assign; staff see their assigned students. The server enforces both; the controls here only follow it. Paging follows
 // AgentApprovalPanel (20 per page); archive uses the inline confirmation pattern with focus returned to the opener.
 const PAGE_SIZE = 20;

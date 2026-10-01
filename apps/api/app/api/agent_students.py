@@ -1,4 +1,4 @@
-"""AGN-004 -- an agency's students, including students who never log in (DEC-SCOPE-041; spec §5.4).
+"""AGN-004 -- an agency's students, including students who never log in (DEC-SCOPE-042; spec §5.4).
 
 Masters see the whole agency; staff only students assigned to them (G4); anything outside the caller's scope is 404. Every write
 locks the organisation row, writes an audit row in the same transaction and commits once, so the duplicate check and assignment

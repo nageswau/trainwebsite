@@ -6,7 +6,7 @@ import { detailMessage } from "@/lib/apiErrors";
 import { AgentStudentDetail, AgentStudentItem, RECORDS_URL } from "@/lib/agentStudents";
 import { STAFF_URL, StaffMember } from "@/lib/agentStaff";
 
-// AGN-004 (DEC-SCOPE-041, spec §6, AC09): a Master assigns a student to one of the agency's active Staff members, or unassigns.
+// AGN-004 (DEC-SCOPE-042, spec §6, AC09): a Master assigns a student to one of the agency's active Staff members, or unassigns.
 // The staff list is fetched each time the choice opens, so a member deactivated meanwhile is never offered (G5); the server
 // still refuses any target that is not an active Staff member of this agency. Inline, like the archive confirmation.
 export default function AgentStudentAssign({ student, onAssigned }: { student: AgentStudentItem; onAssigned: (s: AgentStudentDetail) => void }) {

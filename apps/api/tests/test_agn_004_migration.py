@@ -1,4 +1,5 @@
-"""AGN-004 -- migration 0048_agent_students_crm (spec §4, AC12; re-chained after AGN-002's 0047_agent_org_staff on merge).
+"""AGN-004 -- migration 0049_agent_students_crm (spec §4, AC12; re-chained after AGN-002's 0047_agent_org_staff, then after ENH-030's
+0048_school_attendance_records, on merging main).
 
 The round trip and the downgrade refusals run in a throwaway database built from scratch (the ENH-001 pattern,
 test_enh_001_academic_year.py): a downgrade is never run against the shared test database.
@@ -22,17 +23,24 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_agn_004_migration_0048", VERSIONS / "0048_agent_students_crm.py")
+_spec = importlib.util.spec_from_file_location("_agn_004_migration_0049", VERSIONS / "0049_agent_students_crm.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE = "0047_agent_org_staff"  # AGN-002; owns the staff pieces this migration used to carry
+BASE = "0048_school_attendance_records"  # ENH-030, on main first; AGN-002's 0047_agent_org_staff (the staff pieces) precedes it
 LINK_COLUMNS = "SELECT id, agent_id, student_id, status, created_at FROM agent_students ORDER BY id"
 
 
-def test_migration_chains_after_agn002():
-    assert _migration.revision == "0048_agent_students_crm"
+def test_migration_chains_after_enh030_and_is_the_single_head():
+    assert _migration.revision == "0049_agent_students_crm"
     assert _migration.down_revision == BASE
+    parents = {}
+    for file in VERSIONS.glob("*.py"):
+        lines = file.read_text(encoding="utf-8").splitlines()
+        rev = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("revision =")), None)
+        if rev:
+            parents[rev] = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("down_revision =")), None)
+    assert set(parents) - set(parents.values()) == {"0049_agent_students_crm"}
 
 
 def test_model_declares_every_new_column_nullable():
@@ -105,13 +113,13 @@ def isolated_db():
 def test_round_trip_keeps_existing_rows_identical(isolated_db):
     cfg, url = isolated_db["cfg"], isolated_db["url"]
     before = _sql(url, LINK_COLUMNS)
-    command.upgrade(cfg, "0048_agent_students_crm")
+    command.upgrade(cfg, "0049_agent_students_crm")
     assert _sql(url, LINK_COLUMNS) == before
     new_cols = _sql(url, "SELECT full_name, assigned_member_id, archived_at FROM agent_students")
     assert new_cols == [(None, None, None)]
     command.downgrade(cfg, BASE)
     assert _sql(url, LINK_COLUMNS) == before
-    command.upgrade(cfg, "0048_agent_students_crm")
+    command.upgrade(cfg, "0049_agent_students_crm")
     assert _sql(url, LINK_COLUMNS) == before
 
 
@@ -126,8 +134,8 @@ def test_round_trip_keeps_existing_rows_identical(isolated_db):
 )
 def test_downgrade_refuses_to_lose_agn004_data(isolated_db, setup_sql, message):
     cfg, url, ids = isolated_db["cfg"], isolated_db["url"], isolated_db["ids"]
-    command.upgrade(cfg, "0048_agent_students_crm")
+    command.upgrade(cfg, "0049_agent_students_crm")
     _sql(url, setup_sql, {"new": uuid.uuid4(), "agent": ids["master"], "member": ids["member"], "org": ids["org"], "student": ids["student"], "code": f"S-{uuid.uuid4().hex[:6]}"})
     with pytest.raises(RuntimeError, match=message):
         command.downgrade(cfg, BASE)
-    assert _sql(url, "SELECT version_num FROM alembic_version") == [("0048_agent_students_crm",)]
+    assert _sql(url, "SELECT version_num FROM alembic_version") == [("0049_agent_students_crm",)]

@@ -18,7 +18,7 @@ import {
   valuesFrom,
 } from "@/lib/agentStudents";
 
-// AGN-004 (DEC-SCOPE-041): add or edit an agency student who never logs in (EVID-015 §5 Step 1). Only Full name is required.
+// AGN-004 (DEC-SCOPE-042): add or edit an agency student who never logs in (EVID-015 §5 Step 1). Only Full name is required.
 // A possible duplicate is the server's 409; the user decides, and "Save anyway" resends the same entry with confirm_duplicate.
 type Field = { key: FieldKey; label: string; type?: string; inputMode?: "numeric"; autoComplete?: string };
 const GROUPS: { legend: string; fields: Field[] }[] = [

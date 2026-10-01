@@ -1,4 +1,4 @@
-"""AGN-004 / DEC-SCOPE-041 -- agent students: scoping, students with no login, duplicate warning.
+"""AGN-004 / DEC-SCOPE-042 -- agent students: scoping, students with no login, duplicate warning.
 
 Functions only (the shape of services/agent_orgs.py); write functions never commit -- the router locks the organisation, writes,
 audits and commits. Spec: docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md.

@@ -14,7 +14,7 @@
 
 - Branch `feature/agn-004-agent-students`, from `main` at `9d355e8`; independent of `feature/agn-002-staff-logins` (G1).
 - Every Staff piece listed in spec G2 uses AGN-002's exact identifiers and wording: `MASTER, STAFF = "master", "staff"`; `is_agent_staff`; `staff_seq`; `ck_agent_orgs_staff_seq`; `ck_agent_org_members_role` = `role IN ('master', 'staff')`; `uq_agent_org_members_org_role_seq`; `MASTER_ONLY = "Only an agency Master can manage the team"`; `"Only an agency Master can view commissions"`; `"Only an agency Master can open this page"`; `"Staff accounts are managed by their agency"`; `UserOut.agent_member_role`; `agentNavFor(nav, memberRole)`.
-- Decision ID `DEC-SCOPE-041` (provisional). Migration revision `0047_agent_students_crm`, `down_revision = "0046_agent_orgs"`.
+- Decision ID `DEC-SCOPE-042` (provisional). Migration revision `0047_agent_students_crm`, `down_revision = "0046_agent_orgs"`.
 - Authorization follows the inline pattern (`User.role` + `agent_denial_reason` + scope helpers); never `require_role`/`require_permission`.
 - Errors are FastAPI `{"detail": ...}`; `422` for validation, `404` masks out-of-scope rows on the new routes, `409` for state conflicts.
 - Every write: one transaction, organisation row locked, audit row in the same transaction, then commit. Logs and audit metadata carry ids, codes, field names and counts only.
@@ -197,7 +197,7 @@ async def test_student_without_login_is_stored_with_no_user(db_session):
     assert row.student_id is None and row.full_name == "Asha Rao"
 ```
 
-Edit `apps/api/tests/test_agn_001_schema.py` exactly as AGN-002 does (a decision change — `DEC-SCOPE-041` G2 widens the role set; record it in the Task 13 RTM row):
+Edit `apps/api/tests/test_agn_001_schema.py` exactly as AGN-002 does (a decision change — `DEC-SCOPE-042` G2 widens the role set; record it in the Task 13 RTM row):
 
 ```python
 @pytest.mark.asyncio
@@ -228,7 +228,7 @@ Expected: FAIL — `AttributeError: 'AgentOrg' object has no attribute 'staff_se
 Revision ID: 0047_agent_students_crm
 Revises: 0046_agent_orgs
 
-docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md §4 (DEC-SCOPE-041). The staff pieces (agent_orgs.staff_seq,
+docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md §4 (DEC-SCOPE-042). The staff pieces (agent_orgs.staff_seq,
 member role master|staff, member numbers unique per role) are identical to AGN-002's 0047_agent_org_staff and guarded, so whichever
 of the two runs second skips them. agent_students gains nullable identity, assignment and archive columns; student_id becomes
 nullable. No existing row changes. downgrade() refuses while a student with no login, an assignment or a staff member exists: it never
@@ -351,7 +351,7 @@ Replace `class AgentStudent` with:
 
 ```python
 class AgentStudent(Base, TimestampMixin):
-    """AGT-002 link of an agent to a student with an account; AGN-004 (DEC-SCOPE-041) adds students with no login
+    """AGT-002 link of an agent to a student with an account; AGN-004 (DEC-SCOPE-042) adds students with no login
     (`student_id` NULL, identity on the row), assignment to a staff member, and archive. `agent_id` is the member who created
     or linked the row; it fixes the agency (membership is permanent)."""
 
@@ -838,7 +838,7 @@ async def test_archived_link_keeps_its_applications_visible(db_session, agency):
 `apps/api/app/services/agent_students.py` (first slice; Task 6 appends to it):
 
 ```python
-"""AGN-004 / DEC-SCOPE-041 -- agent students: scoping, students with no login, duplicate warning.
+"""AGN-004 / DEC-SCOPE-042 -- agent students: scoping, students with no login, duplicate warning.
 
 Functions only (the shape of services/agent_orgs.py); write functions never commit -- the router locks the organisation, writes,
 audits and commits. Spec: docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md.
@@ -1054,7 +1054,7 @@ _EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 class _AgentStudentRecordFields(BaseModel):
-    """AGN-004 (DEC-SCOPE-041, EVID-015 §5 Step 1): a student with no login. Server-owned fields (agent, account, status,
+    """AGN-004 (DEC-SCOPE-042, EVID-015 §5 Step 1): a student with no login. Server-owned fields (agent, account, status,
     assignment, archive) are not accepted -- `extra="forbid"` answers 422 (mass assignment)."""
 
     model_config = {"extra": "forbid"}
@@ -1489,7 +1489,7 @@ def create_record(db, user: User, data: dict) -> AgentStudent:
 - [ ] **Step 4: Write the router** `apps/api/app/api/agent_students.py`:
 
 ```python
-"""AGN-004 -- an agency's students, including students who never log in (DEC-SCOPE-041; spec §5.4).
+"""AGN-004 -- an agency's students, including students who never log in (DEC-SCOPE-042; spec §5.4).
 
 Masters see the whole agency; staff only students assigned to them (G4); anything outside the caller's scope is 404. Every write
 locks the organisation row, writes an audit row in the same transaction and commits once, so the duplicate check and assignment
@@ -2007,7 +2007,7 @@ describe("agentStudents lib", () => {
 - [ ] **Step 3: Implement `lib/agentStudents.ts`**
 
 ```ts
-// AGN-004 (DEC-SCOPE-041): the shape and helpers of an agency student (with or without a login), shared by the list, the detail
+// AGN-004 (DEC-SCOPE-042): the shape and helpers of an agency student (with or without a login), shared by the list, the detail
 // panel and the form so they read one definition. Validation mirrors the server's schemas; the server remains the authority.
 
 export const RECORDS_URL = "/api/v1/workflows/overseas/agent/crm/students";
@@ -2425,7 +2425,7 @@ import AgentStudentForm from "./AgentStudentForm";
 import { detailMessage, isPage, Page } from "@/lib/apiErrors";
 import { AgentStudentDetail, AgentStudentItem, RECORDS_URL } from "@/lib/agentStudents";
 
-// AGN-004 (DEC-SCOPE-041): the agency's students -- with or without a login -- on the Students page. Masters see the agency and
+// AGN-004 (DEC-SCOPE-042): the agency's students -- with or without a login -- on the Students page. Masters see the agency and
 // may archive and assign; staff see their assigned students (the server enforces both; the controls here only follow it).
 // Paging follows AgentApprovalPanel (20 per page, page in the URL); archive/assign use the inline confirmation pattern.
 const PAGE_SIZE = 20;
@@ -2774,7 +2774,7 @@ git commit -m "test(agn-004): end-to-end Master student lifecycle, keyboard and 
 
 **Files:** `docs/decisions/PRODUCT_DECISION_REGISTER.md`, `docs/delivery/ENHANCEMENT_BACKLOG.md`, `docs/architecture/DATA_MODEL.md`, `docs/architecture/API_CONTRACT.md`, `docs/architecture/RBAC_MATRIX.md`, `docs/architecture/SECURITY_CONTROLS.md`, `docs/architecture/THREAT_MODEL.md`, `docs/product/PRD_OPEN_ITEMS.md`, `docs/evidence/CONFLICT_MATRIX.md`, `docs/ux/SCREEN_CATALOG.md`, `docs/ux/screen_catalog.json`, `docs/quality/RTM.md`.
 
-- [ ] **Step 1: Decision register** — append `### DEC-SCOPE-041 — Agent students: students with no login, staff assignment (`AGN-004`)` after `DEC-SCOPE-039`, with: ID note (provisional; AGN-002 holds `DEC-SCOPE-040` on its branch), Question, Evidence (the impact analysis of 2026-09-30 incl. the `agent_students.student_id → users.id` finding), Conflicts recorded (the `DEC-SCOPE-035 D3` citation; `EVID-015` §6 Staff-cannot-delete vs the request's "Master/Staff … archive" → Master-only; AGN-002 S1 agency-wide vs G4), Resolution (D1, D3, D4, D5, D7, D8, G1–G5, F1–F5 verbatim from the spec), Consequences. Add a one-line note under `DEC-SCOPE-038` D13 that staff assignment/ownership is now decided by `DEC-SCOPE-041`.
+- [ ] **Step 1: Decision register** — append `### DEC-SCOPE-042 — Agent students: students with no login, staff assignment (`AGN-004`)` after `DEC-SCOPE-039`, with: ID note (provisional; AGN-002 holds `DEC-SCOPE-040` on its branch), Question, Evidence (the impact analysis of 2026-09-30 incl. the `agent_students.student_id → users.id` finding), Conflicts recorded (the `DEC-SCOPE-035 D3` citation; `EVID-015` §6 Staff-cannot-delete vs the request's "Master/Staff … archive" → Master-only; AGN-002 S1 agency-wide vs G4), Resolution (D1, D3, D4, D5, D7, D8, G1–G5, F1–F5 verbatim from the spec), Consequences. Add a one-line note under `DEC-SCOPE-038` D13 that staff assignment/ownership is now decided by `DEC-SCOPE-042`.
 - [ ] **Step 2: Backlog** — summary-table row `AGN-004 | Agent students — create, edit, view, archive students who never log in; staff assigned-only | Large | High | Yes | AGT-002, AGN-001, AGN-002 (merge)`; a full `## AGN-004` section (requirement, expected behaviour, AC01–AC13 from spec §8, status "Implemented; browser validation and independent Codex review pending"); Appendix B note that staff assignment/ownership left `EVID-015`'s parked list.
 - [ ] **Step 3: Architecture docs** — DATA_MODEL §6.8 addendum (columns, CHECKs, indexes, migration `0047_agent_students_crm`) and §6.8a (member role `staff`, `staff_seq`); API_CONTRACT rows for the seven new routes and the three changed existing ones (roster hides archived; link archived `409`; staff scope), with every stable `detail` string; RBAC_MATRIX §2.8 (Master vs Staff table; the `404` existence mask; G4); SECURITY_CONTROLS row; THREAT_MODEL entries (§7 boundaries and residuals).
 - [ ] **Step 4: Open items and conflicts** — PRD_OPEN_ITEMS new item: erasure path for students with no login (`NEEDS_CONFIRMATION`); PRD item 68 note (agent half: students with no login now exist); CONFLICT_MATRIX `C-10` note.
@@ -2784,7 +2784,7 @@ git commit -m "test(agn-004): end-to-end Master student lifecycle, keyboard and 
 
 ```bash
 git add docs
-git commit -m "docs(agn-004): DEC-SCOPE-041, backlog, data model, API, RBAC, security, screens and RTM"
+git commit -m "docs(agn-004): DEC-SCOPE-042, backlog, data model, API, RBAC, security, screens and RTM"
 ```
 
 ---

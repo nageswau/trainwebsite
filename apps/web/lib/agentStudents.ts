@@ -1,4 +1,4 @@
-// AGN-004 (DEC-SCOPE-041): the shape and helpers of an agency student (with or without a login), shared by the list, the detail
+// AGN-004 (DEC-SCOPE-042): the shape and helpers of an agency student (with or without a login), shared by the list, the detail
 // panel and the form so they read one definition. Validation mirrors the server's schemas; the server remains the authority.
 
 export const RECORDS_URL = "/api/v1/workflows/overseas/agent/crm/students";

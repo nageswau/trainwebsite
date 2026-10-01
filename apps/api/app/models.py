@@ -829,7 +829,7 @@ class LiveSession(Base, TimestampMixin):
 
 
 class AgentStudent(Base, TimestampMixin):
-    """AGT-002 link of an agent to a student with an account; AGN-004 (DEC-SCOPE-041) adds students with no login
+    """AGT-002 link of an agent to a student with an account; AGN-004 (DEC-SCOPE-042) adds students with no login
     (`student_id` NULL, identity on the row), assignment to a staff member, and archive. `agent_id` is the member who created
     or linked the row; it fixes the agency (membership is permanent)."""
 
@@ -1305,6 +1305,31 @@ class SchoolActivityAttendance(Base, TimestampMixin):
     activity_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_activities.id"), index=True)
     school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
     present: Mapped[bool] = mapped_column(Boolean, default=True)
+    marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+# ENH-030 (DEC-SCOPE-041 D4): the IT `Attendance.status` values; a missing row is "not marked", never absent.
+ATTENDANCE_STATUSES = ("present", "absent", "late", "excused")
+
+
+class SchoolAttendanceRecord(Base, TimestampMixin):
+    """ENH-030 -- one School student's daily class attendance (docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md §4).
+
+    One row per student per day per school (D5 as amended after the final review): re-marking updates it, and after a transfer each
+    school keeps its own register, so the new school never overwrites or re-stamps the old school's row (C1/AC10). Readers see only
+    the student's current school's rows. No single-column indexes: the unique (school_student_id, school_id, session_date) index
+    serves every query (spec §11 A4)."""
+
+    __tablename__ = "school_attendance_records"
+    __table_args__ = (
+        UniqueConstraint("school_student_id", "school_id", "session_date", name="uq_school_attendance_student_school_date"),
+        CheckConstraint("status IN ('present', 'absent', 'late', 'excused')", name="ck_school_attendance_status"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"))
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    session_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20))
     marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 

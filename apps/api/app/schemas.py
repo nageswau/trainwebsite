@@ -442,7 +442,7 @@ _RECORD_EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 class _AgentStudentRecordFields(BaseModel):
-    """AGN-004 (DEC-SCOPE-041, EVID-015 §5 Step 1): a student with no login. Server-owned fields (agent, account, status,
+    """AGN-004 (DEC-SCOPE-042, EVID-015 §5 Step 1): a student with no login. Server-owned fields (agent, account, status,
     assignment, archive) are not accepted -- `extra="forbid"` answers 422 (mass assignment)."""
 
     model_config = {"extra": "forbid"}
@@ -1631,6 +1631,40 @@ class SkillAttendanceMark(BaseModel):
 class SkillAttendanceIn(BaseModel):
     model_config = {"extra": "forbid"}
     records: Annotated[list[SkillAttendanceMark], Field(min_length=1, max_length=200), AfterValidator(_unique_enrollments)]
+
+
+# ENH-030 (DEC-SCOPE-041): a teacher's whole-class mark for one day, one call (spec §5.2, §11 A1/A2).
+SchoolAttendanceStatus = Literal["present", "absent", "late", "excused"]
+
+
+class SchoolAttendanceMark(BaseModel):
+    model_config = {"extra": "forbid"}
+    student_id: UUID
+    status: SchoolAttendanceStatus
+
+
+def _unique_students(rows: list) -> list:
+    _unique_ids([r.student_id for r in rows])
+    return rows
+
+
+class SchoolAttendanceIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    session_date: date
+    records: Annotated[list[SchoolAttendanceMark], Field(min_length=1, max_length=500), AfterValidator(_unique_students)]  # IT AttendanceBulkIn's limit
+
+
+class SchoolAttendanceRosterStudent(BaseModel):
+    id: UUID
+    full_name: str
+    grade_or_class: str | None
+    status: SchoolAttendanceStatus | None  # None = not marked (never absent)
+
+
+class SchoolAttendanceRosterOut(BaseModel):
+    session_date: date
+    today: date  # the school calendar's today, so the UI never uses the browser clock
+    students: list[SchoolAttendanceRosterStudent]
 
 
 class SkillAssessmentCreate(BaseModel):

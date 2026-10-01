@@ -1,11 +1,12 @@
 """AGN-004 -- students with no login on agent_students.
 
-Revision ID: 0048_agent_students_crm
-Revises: 0047_agent_org_staff
+Revision ID: 0049_agent_students_crm
+Revises: 0048_school_attendance_records
 
-docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md §4 (DEC-SCOPE-041). Cut as 0047_agent_students_crm on 0046 with
+docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md §4 (DEC-SCOPE-042). Cut as 0047_agent_students_crm on 0046 with
 AGN-002's staff pieces copied in; re-chained after AGN-002's 0047_agent_org_staff when main was merged (2026-10-01), which owns the
-staff pieces, so they are no longer here. agent_students gains nullable identity, assignment and archive columns; student_id becomes
+staff pieces, so they are no longer here; re-chained again as 0049 after ENH-030's 0048_school_attendance_records (on main first,
+2026-10-01) so the history keeps a single head. agent_students gains nullable identity, assignment and archive columns; student_id becomes
 nullable. No existing row changes. downgrade() refuses while a student with no login, an assignment or an archived student exists: it
 never silently deletes students or their state.
 """
@@ -15,8 +16,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0048_agent_students_crm"
-down_revision = "0047_agent_org_staff"
+revision = "0049_agent_students_crm"
+down_revision = "0048_school_attendance_records"
 branch_labels = None
 depends_on = None
 
@@ -74,7 +75,7 @@ def upgrade() -> None:
     # 0001/0003 run Base.metadata.create_all from the CURRENT models, so a database built from scratch already has every column,
     # CHECK and index below by the time this runs: each one is created only when missing.
     if not op.get_context().as_sql:
-        _refuse_if(op.get_bind(), "SELECT 1 FROM agent_students WHERE status NOT IN ('active', 'archived') LIMIT 1", "agent_students has a status other than active/archived; fix it before 0048")
+        _refuse_if(op.get_bind(), "SELECT 1 FROM agent_students WHERE status NOT IN ('active', 'archived') LIMIT 1", "agent_students has a status other than active/archived; fix it before 0049")
     existing = _columns("agent_students")
     for name, type_ in STUDENT_COLUMNS:
         if name not in existing:
@@ -98,13 +99,13 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     bind = op.get_bind()
-    _refuse_if(bind, "SELECT 1 FROM agent_students WHERE student_id IS NULL LIMIT 1", "Cannot downgrade 0048_agent_students_crm: students with no login exist. Remove them deliberately first.")
+    _refuse_if(bind, "SELECT 1 FROM agent_students WHERE student_id IS NULL LIMIT 1", "Cannot downgrade 0049_agent_students_crm: students with no login exist. Remove them deliberately first.")
     _refuse_if(
-        bind, "SELECT 1 FROM agent_students WHERE assigned_member_id IS NOT NULL LIMIT 1", "Cannot downgrade 0048_agent_students_crm: assigned students exist. Unassign them deliberately first."
+        bind, "SELECT 1 FROM agent_students WHERE assigned_member_id IS NOT NULL LIMIT 1", "Cannot downgrade 0049_agent_students_crm: assigned students exist. Unassign them deliberately first."
     )
     # Archive state lives in columns dropped below; the pre-AGN-004 roster would show those links again.
     _refuse_if(
-        bind, "SELECT 1 FROM agent_students WHERE status = 'archived' LIMIT 1", "Cannot downgrade 0048_agent_students_crm: archived students exist. Unarchive them deliberately first."
+        bind, "SELECT 1 FROM agent_students WHERE status = 'archived' LIMIT 1", "Cannot downgrade 0049_agent_students_crm: archived students exist. Unarchive them deliberately first."
     )
     op.drop_index("ix_agent_students_agent_email_lower", table_name="agent_students")
     for name, _ in INDEXES:
