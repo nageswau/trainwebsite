@@ -48,6 +48,7 @@ from app.models import (
     SchoolActivityAttendance,
     SchoolActivityFeedback,
     SchoolCareerRecord,
+    SchoolFundingRecord,
     SchoolLanguageRecord,
     SchoolParentLink,
     SchoolPsychometricRecord,
@@ -1194,6 +1195,12 @@ async def service_usage(db: AsyncSession, school_ids: Collection[UUID]) -> dict[
         .where(in_schools)
         .group_by(SchoolStudent.school_id),
     )
+    # ENH-020 D8/D12: distinct students with a funding support case, credited to the school that opened it (no join to where the
+    # student is now). A closed case still counts: the guidance was delivered.
+    funding_students = select(SchoolFundingRecord.school_id, func.count(distinct(SchoolFundingRecord.school_student_id))).where(SchoolFundingRecord.school_id.in_(ids)).group_by(SchoolFundingRecord.school_id)
+    for service in ("loan_assistance", "scholarship_assistance"):
+        types = [support_type for support_type, key in FUNDING_SERVICE_KEYS.items() if key == service]
+        await _per_school(service, funding_students.where(SchoolFundingRecord.support_type.in_(types)))
     activity_counts = await db.execute(
         select(SchoolActivity.school_id, SchoolActivity.activity_type, func.count())
         .where(SchoolActivity.school_id.in_(ids), SchoolActivity.activity_type.in_(list(ACTIVITY_SERVICE_KEYS)))
