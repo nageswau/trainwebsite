@@ -41,8 +41,8 @@
 - No new npm or PyPI dependency.
 - No edits to shared components (`SearchableSelect`, `DataTable`, `PortalSection`, `WorkflowPanel`).
 - Numbering is provisional:
-  - `DEC-SCOPE-048`;
-  - migration `0055_agent_shortlist`, `down_revision` = the real head at execution (Task 0).
+  - `DEC-SCOPE-049`;
+  - migration `0056_agent_shortlist`, `down_revision` = the real head at execution (Task 0).
 - Tests run for real. Run the lite backend set only; the owner runs the full suite. The user controls docker: give them commands and wait for confirmation.
 
 ## Review Focus
@@ -62,7 +62,7 @@
 | File | Change | Responsibility |
 |---|---|---|
 | `app/models.py` | modify (append after `AgentOrgMember`) | `AgentUniversity`, `AgentStudentShortlistEntry` |
-| `alembic/versions/0055_agent_shortlist.py` | create | create-if-missing tables, constraints, indexes; downgrade drops them |
+| `alembic/versions/0056_agent_shortlist.py` | create | create-if-missing tables, constraints, indexes; downgrade drops them |
 | `app/schemas.py` | modify (after `AgentStudentAssign`) | `AgentUniversityCreate/Update`, `ShortlistEntryCreate/Update` |
 | `app/services/agent_shortlist.py` | create | queries, shapes, validation, caps (never commits) |
 | `app/api/agent_shortlist.py` | create | routes: gate, lock, scope, role, audit, commit |
@@ -111,7 +111,7 @@ API_TEST() { docker compose -p agn007 -f docker-compose.yml -f docker-compose.ci
   api-test sh -c "alembic upgrade head && python -m pytest -q $*"; }
 ```
 
-If `alembic upgrade head` fails on a stale stamp, run `alembic stamp --purge <real head before 0055>` and then `upgrade head`.
+If `alembic upgrade head` fails on a stale stamp, run `alembic stamp --purge 0054_school_onboarding_bulk` and then `upgrade head`.
 
 Web: `cd apps/web && npx vitest run <files>`, then `npx tsc --noEmit` and `npx eslint <changed files>`.
 
@@ -133,9 +133,8 @@ grep -o "### DEC-SCOPE-0[0-9][0-9]" docs/decisions/PRODUCT_DECISION_REGISTER.md 
 ```
 
 Then decide the numbers:
-- The migration is the next number after the real head. Expect `0055` if AGN-006's `0054` landed, otherwise `0054`. The `revision` id stays `0055_agent_shortlist` unless the number is free lower; then use `0054_agent_shortlist` and replace it everywhere in this plan.
-- `DEC-SCOPE` is the next free number. Expect `048` (047 is reserved by AGN-006).
-- If `main` moved, `git merge origin/main` first.
+- **Done 2026-10-01:** `main` @ `41fba25` (ENH-029) was merged into this branch. `main`'s head is `0054_school_onboarding_bulk` and ENH-029 holds `DEC-SCOPE-047`. AGN-006 claims `0055`/`DEC-SCOPE-048` on its branch. So AGN-007 is migration `0056_agent_shortlist` (`down_revision = "0054_school_onboarding_bulk"`, one head on this branch) and `DEC-SCOPE-049`. Whichever of AGN-006 and AGN-007 merges second re-chains.
+- If `main` moves again before execution, merge it and repeat this check.
 
 - [ ] **Step 2: Ask the user to start the `agn007` stack** (command above) and wait for confirmation. Then run `API_TEST tests/test_agn_004_students.py` once as a baseline. Expected: all pass.
 
@@ -145,7 +144,7 @@ Then decide the numbers:
 
 **Files:**
 - Modify: `apps/api/app/models.py` (append after class `AgentOrgMember`)
-- Create: `apps/api/alembic/versions/0055_agent_shortlist.py`
+- Create: `apps/api/alembic/versions/0056_agent_shortlist.py`
 - Modify: `apps/api/app/schemas.py` (append after `class AgentStudentAssign`)
 - Test: `apps/api/tests/test_agn_007_schema.py`
 
@@ -158,7 +157,7 @@ Then decide the numbers:
 - [ ] **Step 1: Write the failing tests** in `apps/api/tests/test_agn_007_schema.py`:
 
 ```python
-"""AGN-007 -- models, migration 0055_agent_shortlist and request schemas (spec §4, §5.3; AC03 DB-level, Review Focus 5)."""
+"""AGN-007 -- models, migration 0056_agent_shortlist and request schemas (spec §4, §5.3; AC03 DB-level, Review Focus 5)."""
 
 import importlib.util
 import uuid
@@ -176,20 +175,20 @@ from tests.agn004_helpers import mk_record
 from tests.agn007_helpers import mk_catalogue
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_agn_007_migration", VERSIONS / "0055_agent_shortlist.py")
+_spec = importlib.util.spec_from_file_location("_agn_007_migration", VERSIONS / "0056_agent_shortlist.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
 
 def test_migration_is_the_single_head():
-    assert _migration.revision == "0055_agent_shortlist"
+    assert _migration.revision == "0056_agent_shortlist"
     parents = {}
     for file in VERSIONS.glob("*.py"):
         lines = file.read_text(encoding="utf-8").splitlines()
         rev = next((l.split("=", 1)[1].strip().strip("\"'") for l in lines if l.startswith("revision =")), None)
         if rev:
             parents[rev] = next((l.split("=", 1)[1].strip().strip("\"'") for l in lines if l.startswith("down_revision =")), None)
-    assert set(parents) - set(parents.values()) == {"0055_agent_shortlist"}
+    assert set(parents) - set(parents.values()) == {"0056_agent_shortlist"}
 
 
 @pytest.mark.asyncio
@@ -306,7 +305,7 @@ Expected: collection error `ImportError: cannot import name 'AgentStudentShortli
 
 ```python
 class AgentUniversity(Base, TimestampMixin):
-    """AGN-007 / DEC-SCOPE-048 D1: an agency's private university ("Add University", Master only). Never part of the shared
+    """AGN-007 / DEC-SCOPE-049 D1: an agency's private university ("Add University", Master only). Never part of the shared
     catalogue (`universities`) and never on /public; `org_id` is the tenant key every read filters on."""
 
     __tablename__ = "agent_universities"
@@ -324,7 +323,7 @@ class AgentUniversity(Base, TimestampMixin):
 
 
 class AgentStudentShortlistEntry(Base, TimestampMixin):
-    """AGN-007 / DEC-SCOPE-048: one university on an agency student's shortlist. The university is exactly one of a catalogue
+    """AGN-007 / DEC-SCOPE-049: one university on an agency student's shortlist. The university is exactly one of a catalogue
     university or the agency's own (D6); a catalogue course needs a catalogue university (D4). Country is read from the university,
     never stored (D7). Scope is the parent student's (AGN-004 `load_scoped`)."""
 
@@ -350,13 +349,13 @@ class AgentStudentShortlistEntry(Base, TimestampMixin):
 
 `index=True` on `org_id` creates `ix_agent_universities_org_id`, SQLAlchemy's default name. `TimestampMixin.created_at` has `server_default=func.now()`, so the paging order is the insert transaction's time with the `id` tiebreak.
 
-- [ ] **Step 4: Create the migration** `apps/api/alembic/versions/0055_agent_shortlist.py`. Set `down_revision` to the head found in Task 0.
+- [ ] **Step 4: Create the migration** `apps/api/alembic/versions/0056_agent_shortlist.py`. Set `down_revision` to the head found in Task 0.
 
 ```python
-"""AGN-007 -- agency universities and a student's university shortlist (DEC-SCOPE-048).
+"""AGN-007 -- agency universities and a student's university shortlist (DEC-SCOPE-049).
 
-Revision ID: 0055_agent_shortlist
-Revises: <HEAD FROM TASK 0>
+Revision ID: 0056_agent_shortlist
+Revises: 0054_school_onboarding_bulk
 
 docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md §4. Creates two tables only; no existing table or row changes.
 0001/0003 run Base.metadata.create_all from the CURRENT models, so a database built from scratch already has both tables when this
@@ -367,8 +366,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0055_agent_shortlist"
-down_revision = "<HEAD FROM TASK 0>"
+revision = "0056_agent_shortlist"
+down_revision = "0054_school_onboarding_bulk"
 branch_labels = None
 depends_on = None
 
@@ -434,7 +433,7 @@ def downgrade() -> None:
 - [ ] **Step 5: Add the schemas.** Append to `apps/api/app/schemas.py` after `class AgentStudentAssign`:
 
 ```python
-# AGN-007 (DEC-SCOPE-048, spec §5.3): agency universities and shortlist entries. Server-owned fields (agency, student, authors) are
+# AGN-007 (DEC-SCOPE-049, spec §5.3): agency universities and shortlist entries. Server-owned fields (agency, student, authors) are
 # never accepted -- `extra="forbid"` answers 422 (mass assignment). Text goes through clean_free_text (NUL/bidi refused, blank -> None).
 UNIVERSITY_LIMITS = {"name": 200, "country": 120, "city": 120, "entry_requirements": 2000}
 ENTRY_LIMITS = {"course_title": 200, "intake": 120, "tuition_fee": 120, "entry_requirements": 2000}
@@ -554,13 +553,13 @@ def test_round_trip_keeps_existing_rows_and_drops_only_new_tables():
         settings.database_url = url
         command.upgrade(cfg, BASE)  # 0001/0003 create_all from the CURRENT models, so the new tables may already exist here
         before = _sql(url, "SELECT count(*) FROM agent_students")
-        command.upgrade(cfg, "0055_agent_shortlist")
+        command.upgrade(cfg, "0056_agent_shortlist")
         assert NEW_TABLES <= _tables(url)
         assert _sql(url, "SELECT count(*) FROM agent_students") == before
         command.downgrade(cfg, BASE)
         assert not NEW_TABLES & _tables(url)
         assert _sql(url, "SELECT count(*) FROM agent_students") == before
-        command.upgrade(cfg, "0055_agent_shortlist")
+        command.upgrade(cfg, "0056_agent_shortlist")
         assert NEW_TABLES <= _tables(url)
     finally:
         settings.database_url = original
@@ -572,7 +571,7 @@ This proves that upgrade creates the tables (or finds them), downgrade removes o
 - [ ] **Step 8: Commit.**
 
 ```bash
-git add apps/api/app/models.py apps/api/app/schemas.py apps/api/alembic/versions/0055_agent_shortlist.py apps/api/tests/agn007_helpers.py apps/api/tests/test_agn_007_schema.py
+git add apps/api/app/models.py apps/api/app/schemas.py apps/api/alembic/versions/0056_agent_shortlist.py apps/api/tests/agn007_helpers.py apps/api/tests/test_agn_007_schema.py
 git commit -m "feat(agn-007): agency university and shortlist tables, migration and request schemas"
 ```
 
@@ -756,7 +755,7 @@ Expected: FAIL. `ImportError` on `app.services.agent_shortlist`, or 404s.
 - [ ] **Step 3: Write the service (university part)** `apps/api/app/services/agent_shortlist.py`:
 
 ```python
-"""AGN-007 / DEC-SCOPE-048 -- an agency's own universities and a student's university shortlist.
+"""AGN-007 / DEC-SCOPE-049 -- an agency's own universities and a student's university shortlist.
 
 Functions only (the shape of services/agent_students.py); write functions never commit -- the router locks the agency, writes,
 audits and commits once. Spec: docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md.
@@ -833,7 +832,7 @@ The cap message must read the module constant at call time, because the test mon
 - [ ] **Step 4: Write the router (university part)** `apps/api/app/api/agent_shortlist.py`:
 
 ```python
-"""AGN-007 -- an agency's own universities and a student's university shortlist (DEC-SCOPE-048; spec §5).
+"""AGN-007 -- an agency's own universities and a student's university shortlist (DEC-SCOPE-049; spec §5).
 
 Reuses AGN-004's gate, lock order and scoped load unchanged (api/agent_students.py is imported, not edited). Every write locks the
 agency, loads its rows FOR UPDATE, validates, writes, audits in the same transaction and commits once, so the caps, the duplicate
@@ -1470,7 +1469,7 @@ STAFF_ACTIVITY_ACTIONS = (
     "agent_student.create",
     "agent_student.update",
     "agent_student.duplicate_override",
-    # AGN-007 (DEC-SCOPE-048): shortlist work on a student; the agent_student subject resolver already names the student.
+    # AGN-007 (DEC-SCOPE-049): shortlist work on a student; the agent_student subject resolver already names the student.
     "agent_student.shortlist_add",
     "agent_student.shortlist_update",
     "agent_student.shortlist_remove",
@@ -1510,8 +1509,8 @@ In `test_agn_003_matrix.py`, add `AGENCY_UNIS = "/api/v1/workflows/overseas/agen
 - Append to `STAFF_REFUSED`: `("Add University", "post", AGENCY_UNIS, {"name": "Matrix Uni", "country": "Testland"}, "Only an agency Master can add universities"),`. Keep the existing `/admin/universities` row: the shared catalogue stays admin-only.
 - Append to `BOTH_ALLOWED`: `("University Database", "get", AGENCY_UNIS, None, 200),` and `("University Database", "get", PORTAL + "/universities", None, 200),`.
 - Append to `MASTER_ALLOWED`: `("Add University", "post", AGENCY_UNIS, {"name": "{fresh_email}", "country": "Testland"}, 201),`. The `{fresh_email}` placeholder is unique per world, so the duplicate rule can't fire.
-- Rename `test_add_university_is_refused_to_masters_too` to `test_the_shared_catalogue_stays_admin_only_for_masters`. Replace its comment with: `# DEC-SCOPE-048 supersedes DEC-SCOPE-044 P3 for "Add University": a Master adds to their agency's own list (AGENCY_UNIS, MASTER_ALLOWED); the shared catalogue route stays admin-only.` Keep the body unchanged.
-- Update the module docstring with one sentence: `AGN-007 (DEC-SCOPE-048): "University Database" adds the agency list for both roles and "Add University" is now Master-only on the agency list.`
+- Rename `test_add_university_is_refused_to_masters_too` to `test_the_shared_catalogue_stays_admin_only_for_masters`. Replace its comment with: `# DEC-SCOPE-049 supersedes DEC-SCOPE-044 P3 for "Add University": a Master adds to their agency's own list (AGENCY_UNIS, MASTER_ALLOWED); the shared catalogue route stays admin-only.` Keep the body unchanged.
+- Update the module docstring with one sentence: `AGN-007 (DEC-SCOPE-049): "University Database" adds the agency list for both roles and "Add University" is now Master-only on the agency list.`
 
 - [ ] **Step 2: Run the matrix and confirm the new rows fail.**
 
@@ -1522,7 +1521,7 @@ Expected: the `PORTAL + "/universities"` rows FAIL with 404 "Workspace not found
 
 ```python
     if section == "universities":
-        # AGN-007 (DEC-SCOPE-048): header only -- PortalPage mounts AgentUniversitiesPanel for this section (the Students precedent).
+        # AGN-007 (DEC-SCOPE-049): header only -- PortalPage mounts AgentUniversitiesPanel for this section (the Students precedent).
         return _payload("Universities", "Your agency's own universities. Browse the public catalogue for the rest.")
 ```
 
@@ -1628,7 +1627,7 @@ Expected: FAIL (module not found; the nav doesn't have the item).
 ```ts
 import type { Page } from "@/lib/apiErrors";
 
-// AGN-007 (DEC-SCOPE-048): an agency's own universities and a student's university shortlist. The server is the authority; the
+// AGN-007 (DEC-SCOPE-049): an agency's own universities and a student's university shortlist. The server is the authority; the
 // checks here only spare a round trip (spec §6.3).
 export const UNIVERSITIES_URL = "/api/v1/workflows/overseas/agent/crm/universities";
 export const CATALOGUE_URL = "/api/v1/public/universities";
@@ -1854,7 +1853,7 @@ import { type FormEvent, type KeyboardEvent, useEffect, useId, useState } from "
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { type AgentUniversity, buildUniversityPayload, changedOnly, LIMITS, UNIVERSITIES_URL, type UniversityDraft, validateUniversityDraft } from "@/lib/agentShortlist";
 
-// AGN-007 (DEC-SCOPE-048 D1): a Master adds or edits one of the agency's own universities. The server re-checks everything.
+// AGN-007 (DEC-SCOPE-049 D1): a Master adds or edits one of the agency's own universities. The server re-checks everything.
 const FIELDS: { key: keyof UniversityDraft; label: string; limit: number }[] = [
   { key: "name", label: "Name (required)", limit: LIMITS.name },
   { key: "country", label: "Country (required)", limit: LIMITS.country },
@@ -1948,7 +1947,7 @@ import AgentUniversityForm from "./AgentUniversityForm";
 import { detailMessage, isPage, type Page } from "@/lib/apiErrors";
 import { type AgentUniversity, PAGE_SIZE, UNIVERSITIES_URL } from "@/lib/agentShortlist";
 
-// AGN-007 (DEC-SCOPE-048): the agency's own universities. §6 "University Database": Masters full, Staff view; "Add University" is
+// AGN-007 (DEC-SCOPE-049): the agency's own universities. §6 "University Database": Masters full, Staff view; "Add University" is
 // Master only. The server enforces both; the controls here only follow it. Paging and the inline confirm follow AgentStudentsPanel.
 type Editing = { mode: "add" } | { mode: "edit"; university: AgentUniversity } | null;
 
@@ -2130,7 +2129,7 @@ const main=agent&&section==="students"?<>
 </>:agent&&section==="universities"?<AgentUniversitiesPanel memberRole={user.agent_member_role}/>:<PortalSection data={data}/>;
 ```
 
-Precede it with the comment `// AGN-007 (DEC-SCOPE-048): the agency's own universities -- the panel is the page (the payload is header-only).`. If `user.agent_member_role` is typed wider than the prop, check the type in `lib/types.ts` and narrow it the way `AgentStudentsSection` L26 does.
+Precede it with the comment `// AGN-007 (DEC-SCOPE-049): the agency's own universities -- the panel is the page (the payload is header-only).`. If `user.agent_member_role` is typed wider than the prop, check the type in `lib/types.ts` and narrow it the way `AgentStudentsSection` L26 does.
 
 - [ ] **Step 6: Run the tests and confirm they pass.**
 
@@ -2307,7 +2306,7 @@ import {
 } from "@/lib/agentShortlist";
 import type { Country, University } from "@/lib/types";
 
-// AGN-007 (DEC-SCOPE-048 D4/D6): one shortlist entry. The university is a catalogue one or the agency's own; a catalogue course is offered
+// AGN-007 (DEC-SCOPE-049 D4/D6): one shortlist entry. The university is a catalogue one or the agency's own; a catalogue course is offered
 // only under its own catalogue university, otherwise the course is typed. Picking a course pre-fills intake, fee and requirements but
 // never overwrites what the user typed. The server re-checks every rule (spec §5.4).
 type Options = { catalogue: University[]; countries: Map<string, string>; agency: AgentUniversity[] };
@@ -2625,7 +2624,7 @@ import AgentShortlistForm from "./AgentShortlistForm";
 import { detailMessage, isPage, type Page } from "@/lib/apiErrors";
 import { PAGE_SIZE, type ShortlistEntry, shortlistUrl } from "@/lib/agentShortlist";
 
-// AGN-007 (DEC-SCOPE-048 D2/D3/D5): a student's university shortlist inside the AGN-004 detail view. Masters and staff (in scope) add,
+// AGN-007 (DEC-SCOPE-049 D2/D3/D5): a student's university shortlist inside the AGN-004 detail view. Masters and staff (in scope) add,
 // edit and remove; an archived student's shortlist is read-only. Paging and the inline confirm follow AgentStudentsPanel.
 type Editing = { mode: "add" } | { mode: "edit"; entry: ShortlistEntry } | null;
 const ADD_ID = "shortlist-add";
@@ -2790,7 +2789,7 @@ Add `import AgentShortlistPanel from "./AgentShortlistPanel";`. Inside the non-e
           <AgentShortlistPanel studentId={detail.id} archived={detail.status === "archived"} onStudentGone={onClose} onStudentChanged={onClose} />
 ```
 
-Add the comment `{/* AGN-007 (DEC-SCOPE-048): the student's university shortlist; hidden while the record is being edited. */}` above it. `onClose` closes the detail view. The parent list already handles a student that is gone or changed on its next load; this is the AGN-004 behaviour for a missing student.
+Add the comment `{/* AGN-007 (DEC-SCOPE-049): the student's university shortlist; hidden while the record is being edited. */}` above it. `onClose` closes the detail view. The parent list already handles a student that is gone or changed on its next load; this is the AGN-004 behaviour for a missing student.
 
 - [ ] **Step 5: Run the tests and confirm they pass**, including the AGN-004 panel suite.
 
@@ -2929,15 +2928,15 @@ git commit -m "test(agn-007): end-to-end shortlist flow, /public invisibility an
 
 **Files (modify unless noted):**
 - `docs/delivery/ENHANCEMENT_BACKLOG.md`: a new `## AGN-007` section after AGN-021, holding the requirement, AC01–AC14 copied from spec §8, and the source citations.
-- `docs/decisions/PRODUCT_DECISION_REGISTER.md`: `### DEC-SCOPE-048 — Agent student university shortlist and agency university database (AGN-007)`. Use the AGN-021 entry's structure:
+- `docs/decisions/PRODUCT_DECISION_REGISTER.md`: `### DEC-SCOPE-049 — Agent student university shortlist and agency university database (AGN-007)`. Use the AGN-021 entry's structure:
   - Status `CONFIRMED_CURRENT`, resolved in-session 2026-10-01 (`EXPLICIT_APPROVAL`).
   - D1–D10 from spec §1.
   - "Conflicts recorded, not silently resolved": the `DEC-SCOPE-035 D4` citation; superseding `DEC-SCOPE-044` P3 for the two rows.
-  - An ID note: provisional number, skipping 047 for AGN-006.
+  - An ID note: provisional number. 047 is ENH-029 (main) and 048 is AGN-006 (branch, migration 0055); whichever of AGN-006 and AGN-007 merges second renumbers and re-chains.
   - Also append a dated note to `DEC-SCOPE-038` D13 and `DEC-SCOPE-044` P3, in the parenthetical style used there.
-- `docs/evidence/CONFLICT_MATRIX.md` C-10: an update line saying EVID-015 §5 Step 3 and the §6 "University Database"/"Add University" rows are decided by `DEC-SCOPE-048`.
-- `docs/architecture/API_CONTRACT.md` §8: an `AGN-007 / DEC-SCOPE-048` block with the route tables from spec §5.1–§5.2, the entry shape, the errors and D10.
-- `docs/architecture/DATA_MODEL.md`: `### 6.8d AgentUniversity, AgentStudentShortlistEntry (AGN-007, migration 0055_agent_shortlist)`.
+- `docs/evidence/CONFLICT_MATRIX.md` C-10: an update line saying EVID-015 §5 Step 3 and the §6 "University Database"/"Add University" rows are decided by `DEC-SCOPE-049`.
+- `docs/architecture/API_CONTRACT.md` §8: an `AGN-007 / DEC-SCOPE-049` block with the route tables from spec §5.1–§5.2, the entry shape, the errors and D10.
+- `docs/architecture/DATA_MODEL.md`: `### 6.8d AgentUniversity, AgentStudentShortlistEntry (AGN-007, migration 0056_agent_shortlist)`.
 - `docs/architecture/RBAC_MATRIX.md` §2.8: University Database (Master ✅ full on the agency list plus view of the catalogue; Staff 👁 view) and Add University (Master ✅ agency list; Staff ❌ 403; shared catalogue admin-only). Point to `test_agn_003_matrix.py`.
 - `docs/architecture/SECURITY_CONTROLS.md`: one row with the controls from spec §7.
 - `docs/architecture/THREAT_MODEL.md`: a threat entry covering an agency-private university leaking to another agency or `/public`, and staff writing outside their scope, with the mitigations and tests.
@@ -2948,7 +2947,7 @@ git commit -m "test(agn-007): end-to-end shortlist flow, /public invisibility an
 - `docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md`: final numbers, if Task 0 changed them.
 
 - [ ] **Step 1: Write all of the above.** Use the real numbers from Task 0 and the real test names from Tasks 1–10.
-- [ ] **Step 2: Check the cross-references.** Every `DEC-SCOPE-048` and `0055_agent_shortlist` mention matches across code and docs: `grep -rn "DEC-SCOPE-048\|0055_agent_shortlist" apps docs | wc -l`, then eyeball the list for a stale number.
+- [ ] **Step 2: Check the cross-references.** Every `DEC-SCOPE-049` and `0056_agent_shortlist` mention matches across code and docs: `grep -rn "DEC-SCOPE-049\|0056_agent_shortlist" apps docs | wc -l`, then eyeball the list for a stale number.
 - [ ] **Step 3: Commit.**
 
 ```bash

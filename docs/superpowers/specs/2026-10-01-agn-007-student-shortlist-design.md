@@ -16,10 +16,11 @@ Master only (§6; DEC-SCOPE-035 D4)."* The acceptance criteria it gives:
 - §5 "STEP 3 — University Shortlisting" ("Staff can add: University, Course, Country, Intake, Tuition fee, Entry requirements");
 - §6 rows "University Database | ✅ Full | 👁️ View" and "Add University | ✅ | ❌".
 
-**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → **`DEC-SCOPE-048`**, provisional.
-- `DEC-SCOPE-047` is expected to go to the parallel AGN-006 (counseling) branch, so it is skipped. Whichever branch
-  reaches `main` second renumbers, following the existing precedent. Recheck the next free number before the first docs
-  commit.
+**Decision record:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` → **`DEC-SCOPE-049`**, provisional.
+- Renumbered 2026-10-01 after merging `main` @ `41fba25`: `DEC-SCOPE-047` went to ENH-029 (on `main`) and `DEC-SCOPE-048`
+  is claimed by the parallel AGN-006 branch (migration `0055`). So AGN-007 is `DEC-SCOPE-049`, with migration
+  `0056_agent_shortlist` chained on `main`'s head `0054_school_onboarding_bulk`. Whichever of AGN-006 and AGN-007 reaches
+  `main` second renumbers and re-chains, following the existing precedent.
 - The `C-10` (`CONFLICT_MATRIX.md`) line for EVID-015 §5 Step 3 and the §6 University DB / Add University rows moves
   from parked to decided.
 
@@ -84,7 +85,7 @@ only. Every other P3 row is unchanged.
 - Public catalogue reads `GET /public/universities` and `GET /public/universities/{slug}` (courses with `tuition_fee` and `intake`),
   used as-is by the frontend.
 
-## 4. Data model — migration `0055_agent_shortlist` (provisional; `down_revision` = the real head at execution)
+## 4. Data model — migration `0056_agent_shortlist` (provisional; `down_revision` = the real head at execution)
 
 The migration only creates tables. No existing table, column or row changes. The downgrade drops only the two new tables, entries first.
 
@@ -397,7 +398,7 @@ No shared component is edited, no new dependency is added and no new design toke
 ## 11. Documentation to update (AGN convention)
 
 - `ENHANCEMENT_BACKLOG.md` §AGN-007
-- `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-048`
+- `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-049`
 - `CONFLICT_MATRIX.md` C-10
 - `API_CONTRACT.md` §8
 - `DATA_MODEL.md` §6.8d
