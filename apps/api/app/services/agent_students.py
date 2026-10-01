@@ -4,7 +4,6 @@ Functions only (the shape of services/agent_orgs.py); write functions never comm
 audits and commits. Spec: docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md.
 """
 
-import logging
 import re
 from datetime import UTC, datetime
 
@@ -16,8 +15,6 @@ from sqlalchemy.orm import aliased
 from app.core.rbac import is_agent_staff
 from app.models import AgentOrgMember, AgentStudent, OverseasApplication, User
 from app.services.agent_orgs import STAFF, org_member_ids
-
-logger = logging.getLogger("app.agent_students")
 
 PHONE_MIN_DIGITS = 7
 
@@ -155,17 +152,16 @@ async def list_page(db: AsyncSession, user: User, *, q: str | None, include_arch
 # --- duplicate warning (D7, F3, F4) ------------------------------------------------------------------------------------------------
 
 
-async def find_duplicates(db: AsyncSession, user: User, *, email: str | None, digits: str | None, exclude_id=None) -> tuple[list[dict], int]:
-    """Same email or same phone digits inside the caller's agency, archived and linked included. Staff get the rows they can see;
-    the others only as a count. Never searches `users` beyond the agency's own linked rows."""
+async def find_duplicates(db: AsyncSession, user: User, *, email: str | None, phone: str | None, exclude_id=None) -> tuple[list[dict], int]:
+    """Same email or same phone (by `phone_key`) inside the caller's agency, archived and linked included. Staff get the rows they
+    can see; the others only as a count. Never searches `users` beyond the agency's own linked rows."""
+    digits = phone_digits(phone)
+    key = phone_key(digits) if digits and len(digits) >= PHONE_MIN_DIGITS else None
     conditions = []
     if email:
         conditions += [func.lower(AgentStudent.email) == email, func.lower(User.email) == email]
-    if digits and len(digits) >= PHONE_MIN_DIGITS:
-        key = phone_key(digits)
+    if key:
         conditions += [_phone_key_sql(AgentStudent.phone_digits) == key, _phone_key_sql(func.regexp_replace(User.phone, r"\D", "", "g")) == key]
-    else:
-        digits = None
     if not conditions:
         return [], 0
     stmt = select(AgentStudent, User).outerjoin(User, User.id == AgentStudent.student_id).where(AgentStudent.agent_id.in_(org_member_ids(user)), or_(*conditions))
@@ -178,11 +174,11 @@ async def find_duplicates(db: AsyncSession, user: User, *, email: str | None, di
             hidden += 1
             continue
         ident = _identity(row, account)
-        matched_on = [
-            label
-            for label, hit in (("email", bool(email) and (ident["email"] or "").lower() == email), ("phone", bool(digits) and phone_key(phone_digits(ident["phone"])) == phone_key(digits)))
-            if hit
-        ]
+        matched_on = []
+        if email and (ident["email"] or "").lower() == email:
+            matched_on.append("email")
+        if key and phone_key(phone_digits(ident["phone"])) == key:
+            matched_on.append("phone")
         # str(): an HTTPException detail is not run through FastAPI's JSON encoder, so a UUID would fail to serialise.
         matches.append({"id": str(row.id), "full_name": ident["full_name"], "has_login": row.student_id is not None, "status": row.status, "matched_on": matched_on})
     return matches, hidden

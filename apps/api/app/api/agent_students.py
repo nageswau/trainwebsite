@@ -25,7 +25,6 @@ from app.services.agent_students import (
     find_duplicates,
     list_page,
     load_scoped,
-    phone_digits,
     record_detail,
     set_archived,
 )
@@ -88,7 +87,7 @@ async def create_student(payload: AgentStudentRecordCreate, user: User = Depends
     membership = _gate(user)
     await lock_active_org(db, membership.org_id)  # serialises creates: two cannot both pass the duplicate check
     data = payload.model_dump(exclude={"confirm_duplicate"})
-    matches, hidden = await find_duplicates(db, user, email=data.get("email"), digits=phone_digits(data.get("phone")))
+    matches, hidden = await find_duplicates(db, user, email=data.get("email"), phone=data.get("phone"))
     found = len(matches) + hidden
     if found and not payload.confirm_duplicate:
         _log("agent_student_duplicate_warned", membership, user, "-", match_count=found)
@@ -136,7 +135,7 @@ async def update_student(student_id: UUID, payload: AgentStudentRecordUpdate, us
     if {"email", "phone"} & changes.keys():
         email = changes["email"] if "email" in changes else row.email
         phone = changes["phone"] if "phone" in changes else row.phone
-        matches, hidden = await find_duplicates(db, user, email=email, digits=phone_digits(phone), exclude_id=row.id)
+        matches, hidden = await find_duplicates(db, user, email=email, phone=phone, exclude_id=row.id)
         found = len(matches) + hidden
         if found and not payload.confirm_duplicate:
             _log("agent_student_duplicate_warned", membership, user, row.id, match_count=found)

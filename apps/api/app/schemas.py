@@ -421,10 +421,6 @@ class AgentMasterInvite(BaseModel):
         return value
 
 
-RECORD_FIELDS = (
-    "full_name", "email", "phone", "date_of_birth", "highest_qualification", "institution", "graduation_year",
-    "preferred_country", "preferred_course", "preferred_intake", "notes",
-)
 _RECORD_LIMITS = {"full_name": 160, "phone": 40, "highest_qualification": 200, "institution": 200, "preferred_country": 120, "preferred_course": 200, "preferred_intake": 40, "notes": 2000}
 _RECORD_EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
