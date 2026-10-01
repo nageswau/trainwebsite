@@ -11,23 +11,30 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.agent_students import _gate, _log, _require_master_action
+from app.api.agent_students import _audit, _gate, _locked_row, _log, _require_master_action
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import AgentUniversity, AuditLog, User
-from app.schemas import AgentUniversityCreate, AgentUniversityUpdate
+from app.models import AgentStudent, AgentStudentShortlistEntry, AgentUniversity, AuditLog, User
+from app.schemas import AgentUniversityCreate, AgentUniversityUpdate, ShortlistEntryCreate, ShortlistEntryUpdate
 from app.services.agent_orgs import lock_active_org
 from app.services.agent_shortlist import (
     DUPLICATE_UNIVERSITY,
     apply_changes,
+    ensure_entry_capacity,
     ensure_unique_university,
     ensure_university_capacity,
+    entry_detail,
+    entry_page,
+    entry_values,
     in_use_message,
+    load_entry,
     load_university,
     university_item,
     university_page,
     university_usage,
+    validate_entry,
 )
+from app.services.agent_students import load_scoped
 
 router = APIRouter(prefix="/workflows/overseas/agent/crm", tags=["agent-shortlist"])
 
@@ -104,4 +111,74 @@ async def delete_university(university_id: UUID, user: User = Depends(get_curren
     _university_audit(db, user, "delete", row.id)
     await db.delete(row)
     await _commit(db, in_use_message(1))
+    return Response(status_code=204)
+
+
+SHORTLIST = "/students/{student_id}/shortlist"
+ENTRY = SHORTLIST + "/{entry_id}"
+
+
+def _require_active(student: AgentStudent) -> None:
+    if student.status == "archived":
+        raise HTTPException(409, "Unarchive this student first")
+
+
+@router.get(SHORTLIST)
+async def list_shortlist(
+    student_id: UUID,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _gate(user)
+    await load_scoped(db, user, student_id)  # 404 outside the caller's scope (staff: assigned students only)
+    return await entry_page(db, student_id, limit=limit, offset=offset)
+
+
+@router.post(SHORTLIST, status_code=201)
+async def add_entry(student_id: UUID, payload: ShortlistEntryCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    membership = _gate(user)
+    student = await _locked_row(db, user, membership, student_id)
+    _require_active(student)
+    values = payload.model_dump()
+    await validate_entry(db, membership.org_id, values)
+    await ensure_entry_capacity(db, student.id)
+    entry = AgentStudentShortlistEntry(agent_student_id=student.id, **values, created_by_user_id=user.id, updated_by_user_id=user.id)
+    db.add(entry)
+    await db.flush()
+    source = "catalogue" if values["university_id"] else "agency"
+    _audit(db, user, "shortlist_add", student.id, {"entry_id": str(entry.id), "university_source": source, "fields": sorted(k for k, v in values.items() if v is not None)})
+    await db.commit()
+    _log("agent_shortlist_added", membership, user, student.id, entry_id=str(entry.id))
+    return {"entry": await entry_detail(db, entry.id)}
+
+
+@router.patch(ENTRY)
+async def update_entry(student_id: UUID, entry_id: UUID, payload: ShortlistEntryUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    membership = _gate(user)
+    student = await _locked_row(db, user, membership, student_id)
+    _require_active(student)
+    entry = await load_entry(db, student.id, entry_id, lock=True)
+    changes = payload.model_dump(exclude_unset=True)
+    await validate_entry(db, membership.org_id, {**entry_values(entry), **changes})
+    changed = apply_changes(entry, changes, user)
+    if changed:
+        _audit(db, user, "shortlist_update", student.id, {"entry_id": str(entry.id), "fields": changed})
+    await db.commit()
+    if changed:
+        _log("agent_shortlist_updated", membership, user, student.id, entry_id=str(entry.id), fields=changed)
+    return {"entry": await entry_detail(db, entry.id)}
+
+
+@router.delete(ENTRY, status_code=204)
+async def remove_entry(student_id: UUID, entry_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    membership = _gate(user)
+    student = await _locked_row(db, user, membership, student_id)
+    _require_active(student)
+    entry = await load_entry(db, student.id, entry_id, lock=True)
+    _audit(db, user, "shortlist_remove", student.id, {"entry_id": str(entry.id)})
+    await db.delete(entry)
+    await db.commit()
+    _log("agent_shortlist_removed", membership, user, student.id, entry_id=str(entry.id))
     return Response(status_code=204)
