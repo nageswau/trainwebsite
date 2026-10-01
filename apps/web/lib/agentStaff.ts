@@ -1,8 +1,10 @@
 // AGN-002 (DEC-SCOPE-040): what the agency staff screens (AgentStaffPanel, AgentStaffRow, AgentStaffCreateForm) share.
 
+import type { AgentPermissions } from "@/lib/types";
+
 export const STAFF_URL = "/api/v1/workflows/overseas/agent/team/staff";
 
-export type StaffMember = { id: string; code: string; full_name: string; email: string; phone: string | null; status: "active" | "deactivated"; setup: "pending_setup" | "link_expired" | null };
+export type StaffMember = { id: string; code: string; full_name: string; email: string; phone: string | null; status: "active" | "deactivated"; setup: "pending_setup" | "link_expired" | null; permissions: AgentPermissions };
 
 // Browser QA-05/QA-06: how the staff screens word a failed request. A server error (5xx) carries no useful detail, so it says to
 // retry; a dropped connection only promises a kept entry where something was typed (add / edit), not for a button action.

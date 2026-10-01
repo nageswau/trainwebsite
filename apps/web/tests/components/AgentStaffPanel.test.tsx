@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import AgentStaffPanel from "@/components/AgentStaffPanel";
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
-const staff = (n: number) => ({ id: `s${n}`, code: `ABC-S${String(n).padStart(3, "0")}`, full_name: `Staff ${n}`, email: `s${n}@example.local`, phone: null, status: "active", setup: null });
+const staff = (n: number) => ({ id: `s${n}`, code: `ABC-S${String(n).padStart(3, "0")}`, full_name: `Staff ${n}`, email: `s${n}@example.local`, phone: null, status: "active", setup: null, permissions: { can_verify_documents: false, can_view_reports: false } });
 const page = (items: unknown[], total = items.length, offset = 0) => ({ items, total, limit: 20, offset });
 const twenty = () => Array.from({ length: 20 }, (_, i) => staff(i + 1));
 
