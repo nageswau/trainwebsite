@@ -44,7 +44,7 @@ const resultTable = () => screen.getAllByRole("table").at(-1) as HTMLElement; //
 describe("AdminSchoolBulkOnboardPanel", () => {
   it("is an action card like its sibling admin panels, with the template link first", () => {
     const { container } = render(<AdminSchoolBulkOnboardPanel />);
-    expect((container.firstElementChild as HTMLElement).className).toBe("action-card");
+    expect((container.firstElementChild as HTMLElement).classList.contains("action-card")).toBe(true);
     expect(screen.getByRole("heading", { level: 3, name: "Onboard several schools (CSV)" })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Download the template/ }).getAttribute("href")).toBe("/api/v1/overseas-admin/schools/bulk-template");
   });
@@ -146,6 +146,16 @@ describe("AdminSchoolBulkOnboardPanel", () => {
     expect(within(rows[2]).getByText("Email not delivered — re-send from the Users page")).toBeTruthy();
     expect(within(rows[3]).getByText("Check the Users page for set-password status")).toBeTruthy();
     expect(screen.getByText(/1 welcome email was not delivered — re-send from the Users page\./)).toBeTruthy();
+  });
+
+  it("spans the full action grid and marks its result table for the stacked layout (QA-029-02/03)", async () => {
+    vi.stubGlobal("fetch", respond(201, report([accepted(2)])));
+    const { container } = render(<AdminSchoolBulkOnboardPanel />);
+    expect((container.firstElementChild as HTMLElement).classList.contains("bulk-onboarding")).toBe(true);
+    choose();
+    submit();
+    await screen.findByRole("heading", { name: "Upload result" });
+    expect(resultTable().className).toBe("table bulk-report");
   });
 
   it("labels every result cell for the stacked mobile layout", async () => {

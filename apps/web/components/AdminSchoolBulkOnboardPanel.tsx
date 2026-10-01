@@ -58,7 +58,7 @@ function OnboardReport({ report }: { report: BatchReport }) {
       <h4 ref={heading} tabIndex={-1}>Upload result</h4>
       <p className={toneClass[note.tone]}>{note.text}</p>
       <div className="table-wrap">
-        <table className="table">
+        <table className="table bulk-report">
           <thead>
             <tr><th>Row</th><th>Result</th><th>School ID</th><th>School</th><th>Coordinator</th><th>Detail</th></tr>
           </thead>
@@ -130,7 +130,7 @@ export default function AdminSchoolBulkOnboardPanel() {
   }
 
   return (
-    <div className="action-card">
+    <div className="action-card bulk-onboarding">
       <h3>{target.title}</h3>
       <p className="muted">Add many partner schools at once. Each school gets its own coordinator account and set-password email, exactly like Create school.</p>
       <h4>1. Download the template</h4>

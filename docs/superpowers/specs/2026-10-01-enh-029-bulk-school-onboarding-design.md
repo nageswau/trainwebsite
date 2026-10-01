@@ -232,7 +232,8 @@ login-capable Coordinator accounts, set-password tokens, school records, the aud
 ## 9. Frontend
 
 **Placement:** new `apps/web/components/AdminSchoolBulkOnboardPanel.tsx`, rendered in `WorkflowPanel.tsx` under the existing
-`showSchoolCreate` condition directly after `<AdminSchoolCreatePanel/>`. No new route, nav entry or role logic.
+`showSchoolCreate` condition after `<AdminSchoolCreatePanel/>` and `<AdminSchoolEditPanel/>` (browser QA-029-02/09: those two keep
+sharing a row, as before ENH-029), spanning the full action grid. No new route, nav entry or role logic.
 
 **Design language:** an `action-card` with an `h3`, like its sibling panels on the Admin Schools page (`AdminSchoolCreatePanel`,
 `AdminSchoolEditPanel`), using existing classes only — `form`, `field`, `field-help`, `btn`/`btn secondary`, `muted`,
@@ -273,9 +274,11 @@ column reference → file → Upload. Enter submits. No custom key handling.
   input cleared.
 - **Empty:** not applicable (no list is loaded); an upload whose rows are all blank gets the server's "no filled-in rows" 422.
 
-**Responsive / mobile:** the card follows the `action-grid` (single column on narrow screens); the report uses the existing
-`table-wrap` + `data-label` stacked-card layout; long names/emails wrap (`overflow-wrap: anywhere` only if the existing table
-styles don't already). Verified at 320/360, 768, 1024, 1440 px.
+**Responsive / mobile:** the card spans the full `action-grid` (`.action-grid > .bulk-onboarding`), so the six-column report
+fits on a desktop. Below 760 px — where the table's 650 px minimum no longer fits — the report (`table.bulk-report`) becomes one
+labelled card per row from each cell's `data-label` (the QA27-05 pattern), with `overflow-wrap: anywhere`. Browser QA-029-02/03
+found the earlier half-width card hid the Detail column on desktop and never stacked on phones; pinned by Playwright at 1440,
+820, 390 and 320 px.
 
 **Perceived performance:** instant client pre-checks; immediate busy state with honest duration copy; no full-page reload
 (`router.refresh()` only).

@@ -13,15 +13,17 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// ENH-029: the bulk onboarding panel sits on the Admin Schools page, right after Create school, under the same role gate.
+// ENH-029: the bulk onboarding panel sits on the Admin Schools page under the same role gate. QA-029-02/09: it comes after
+// Create school and Edit school profile (which keep sharing a row, as before ENH-029) and spans the full width, so its result
+// table has room for every column.
 describe("WorkflowPanel mounts the bulk school onboarding panel", () => {
-  it.each(["overseas_admin", "super_admin"])("on the %s schools page, after Create school", (role) => {
+  it.each(["overseas_admin", "super_admin"])("on the %s schools page, after Create school and Edit school profile", (role) => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify([]), { status: 200 }))));
     render(<WorkflowPanel user={asUser(role)} section="schools" />);
     const headings = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
     const create = headings.indexOf("Create school");
     expect(create).toBeGreaterThanOrEqual(0);
-    expect(headings[create + 1]).toBe("Onboard several schools (CSV)");
+    expect(headings.slice(create, create + 3)).toEqual(["Create school", "Edit school profile", "Onboard several schools (CSV)"]);
   });
 
   it.each([

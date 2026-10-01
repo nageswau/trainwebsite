@@ -70,3 +70,46 @@ test("keyboard-only use and a 360 px layout without horizontal scroll (ENH-029 A
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+// QA-029-02 / QA-029-03 (browser QA): every row's outcome -- above all a rejected row's reason -- must be readable without
+// discovering a sideways scroll, on a desktop and on a phone.
+for (const [label, viewport] of [
+  ["desktop", { width: 1440, height: 900 }],
+  ["tablet", { width: 820, height: 1180 }],
+  ["phone", { width: 390, height: 844 }],
+  ["small phone", { width: 320, height: 640 }],
+] as const) {
+  test(`the result table shows every row's detail without sideways scrolling on a ${label} (QA-029-02/03)`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await signIn(page, "overseasadmin@edusphere.local", "Demo@123", "/overseas/admin/dashboard");
+    await page.goto("/overseas/admin/schools");
+    const panel = panelOf(page);
+    const tag = `${label.replace(" ", "-")}-${Date.now()}`;
+    await panel.getByLabel("Filled-in schools file").setInputFiles({
+      name: "schools.csv",
+      mimeType: "text/csv",
+      buffer: csv([
+        `E2E 029 Layout ${tag},Pune,Coordinator With A Fairly Long Name,enh029-layout-${tag}@example.local`,
+        `E2E 029 Layout ${tag},Pune,Coord Two,enh029-layout-two-${tag}@example.local`, // rejected: same school name and city
+      ]),
+    });
+    await panel.getByRole("button", { name: "Upload schools" }).click();
+    await expect(panel.getByRole("heading", { name: "Upload result" })).toBeVisible();
+
+    const table = panel.locator("table").last();
+    const wrap = await table.evaluate((t) => { const w = t.parentElement as HTMLElement; return { scroll: w.scrollWidth, client: w.clientWidth }; });
+    expect(wrap.scroll).toBeLessThanOrEqual(wrap.client + 1); // nothing hidden behind a horizontal scroll
+
+    const card = (await panel.boundingBox())!;
+    const details = table.locator('td[data-label="Detail"]');
+    await expect(details).toHaveCount(2);
+    for (const cell of await details.all()) {
+      const box = (await cell.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(card.x - 1);
+      expect(box.x + box.width).toBeLessThanOrEqual(card.x + card.width + 1);
+    }
+    await expect(details.nth(1)).toContainText("same school name and city as row 2");
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+}
