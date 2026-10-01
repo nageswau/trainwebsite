@@ -91,6 +91,9 @@ test.describe.serial("ENH-020 funding support cases", () => {
     await expect(card.getByLabel("Reason for closing")).toBeFocused();
     await page.keyboard.type("Family chose another lender");
     await card.getByRole("button", { name: "Save changes" }).click();
+    // Final review I1/I2: the closed case leaves the open table, so focus goes to its heading and the panel announces the save.
+    await expect(page.getByRole("heading", { name: "Open cases" })).toBeFocused();
+    await expect(page.locator(".funding-panel").getByRole("status")).toHaveText("Case saved.");
     const finished = page.locator("details.funding-finished");
     await expect(finished.locator("summary")).toHaveText("Finished cases (1)");
     await finished.locator("summary").click();

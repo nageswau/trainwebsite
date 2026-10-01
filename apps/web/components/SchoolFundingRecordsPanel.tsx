@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import FormMessage from "@/components/FormMessage";
 import FundingRecordForm from "@/components/FundingRecordForm";
 import { refocus } from "@/lib/focus";
 import { formatCalendarDate } from "@/lib/formatDate";
@@ -14,6 +15,7 @@ const COLUMNS = ["Student", "Support type", "Stage", "Since", "Provider", "Actio
 // read-only history in a collapsed section. Editing opens inline with focus on its heading and returns focus to the row's button.
 export default function SchoolFundingRecordsPanel({ records, students }: { records: FundingRecord[]; students: Student[] }) {
   const [editing, setEditing] = useState<FundingRecord | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const open = records.filter((r) => !isFinal(r.status));
   const finished = records.filter((r) => isFinal(r.status));
 
@@ -26,6 +28,7 @@ export default function SchoolFundingRecordsPanel({ records, students }: { recor
   }
 
   function startEdit(r: FundingRecord) {
+    setNotice(null);
     setEditing(r);
     refocus("funding-edit-heading");
   }
@@ -36,12 +39,21 @@ export default function SchoolFundingRecordsPanel({ records, students }: { recor
     if (id) refocus(`funding-edit-${id}`);
   }
 
+  // Final review I1/I2: the panel announces the save (the edit form is gone by then) and, when the case became final, moves focus to
+  // the Open cases heading -- its row, and so its Edit button, leaves the open table on the refresh.
+  function saved(record: FundingRecord) {
+    setEditing(null);
+    setNotice("Case saved.");
+    refocus(isFinal(record.status) ? "funding-open-heading" : `funding-edit-${record.id}`);
+  }
+
   return (
     <div className="portal-content card-stack funding-panel">
       <div className="card">
         <h2>Funding support</h2>
         <p className="muted">Education loans, financial assistance, scholarships and funding guidance for your students.</p>
-        <h3 id="funding-open-heading">Open cases</h3>
+        <h3 id="funding-open-heading" tabIndex={-1}>Open cases</h3>
+        {notice && <FormMessage message={{ text: notice, failed: false }} />}
         {open.length === 0 ? (
           <p className="muted">{records.length === 0 ? "No funding support cases yet. Add one below when a student needs a loan, scholarship or funding guidance." : "No open cases."}</p>
         ) : (
@@ -89,7 +101,7 @@ export default function SchoolFundingRecordsPanel({ records, students }: { recor
           <h3 id="funding-edit-heading" tabIndex={-1} onKeyDown={(e) => { if (e.key === "Escape") close(); }}>
             Update {studentName(editing.school_student_id)}&apos;s {SUPPORT_TYPE_LABEL[editing.support_type].toLowerCase()} case
           </h3>
-          <FundingRecordForm key={editing.id} students={students} record={editing} onDone={close} onCancel={close} />
+          <FundingRecordForm key={editing.id} students={students} record={editing} onDone={saved} onCancel={close} />
         </div>
       )}
 

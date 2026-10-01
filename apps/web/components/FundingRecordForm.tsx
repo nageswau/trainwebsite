@@ -13,7 +13,9 @@ const CASES = "/api/v1/school/funding-records";
 
 // ENH-020 (spec §6): open or update one funding support case. The stage select only offers moves the API accepts, so a refused save
 // usually means someone else changed the case -- shown with a Reload action. Closing asks for a reason and puts focus on it.
-export default function FundingRecordForm({ students, record, onDone, onCancel }: { students: Student[]; record?: FundingRecord; onDone: () => void; onCancel: () => void }) {
+// `onDone` receives the saved case (the API's response) so the host can announce the result and place focus: an edit form unmounts
+// on save, so its own message would never be read (final review I2).
+export default function FundingRecordForm({ students, record, onDone, onCancel }: { students: Student[]; record?: FundingRecord; onDone: (saved: FundingRecord) => void; onCancel: () => void }) {
   const router = useRouter();
   const editing = Boolean(record);
   const [supportType, setSupportType] = useState("");
@@ -78,7 +80,7 @@ export default function FundingRecordForm({ students, record, onDone, onCancel }
       setSupportType("");
     }
     router.refresh();
-    onDone();
+    onDone(data as FundingRecord);
   }
 
   return (

@@ -60,6 +60,33 @@ describe("SchoolFundingRecordsPanel", () => {
     expect(screen.queryByRole("heading", { name: "Update Asha's education loan case" })).not.toBeInTheDocument();
   });
 
+  // Final review I1/I2: the edit form unmounts on save, so the panel itself must announce the result and place focus; a case that
+  // became final leaves the open table, so focus cannot go back to its (removed) Edit button.
+  it("after closing a case, announces the save and moves focus to the Open cases heading", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ...OPEN, status: "closed", closure_reason: "Withdrawn" }) }));
+    render(<SchoolFundingRecordsPanel records={[OPEN]} students={STUDENTS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit education loan case for Asha" }));
+    const card = within(screen.getByRole("heading", { name: "Update Asha's education loan case" }).closest(".action-card") as HTMLElement);
+    fireEvent.change(card.getByLabelText("Stage"), { target: { value: "closed" } });
+    fireEvent.change(card.getByLabelText("Reason for closing"), { target: { value: "Withdrawn" } });
+    fireEvent.click(card.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Case saved.");
+    await vi.waitFor(() => expect(screen.getByRole("heading", { name: "Open cases" })).toHaveFocus());
+    vi.unstubAllGlobals();
+  });
+
+  it("after advancing a case, announces the save and returns focus to its Edit button", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ...OPEN, status: "application" }) }));
+    render(<SchoolFundingRecordsPanel records={[OPEN]} students={STUDENTS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit education loan case for Asha" }));
+    const card = within(screen.getByRole("heading", { name: "Update Asha's education loan case" }).closest(".action-card") as HTMLElement);
+    fireEvent.change(card.getByLabelText("Stage"), { target: { value: "application" } });
+    fireEvent.click(card.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Case saved.");
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Edit education loan case for Asha" })).toHaveFocus());
+    vi.unstubAllGlobals();
+  });
+
   it("names the next action when there are no cases yet", () => {
     render(<SchoolFundingRecordsPanel records={[]} students={STUDENTS} />);
     expect(screen.getByText("No funding support cases yet. Add one below when a student needs a loan, scholarship or funding guidance.")).toBeInTheDocument();
