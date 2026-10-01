@@ -10,7 +10,7 @@ from typing import NoReturn
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,7 @@ from app.api.deps import get_current_user
 from app.api.schools import (
     FUNDING_SERVICE_KEYS,
     OUTSIDE_PORTFOLIO,
+    _load_student_for_reader,
     _master_fields_or_422,
     _notify_student_parents,
     _portfolio_school_ids,
@@ -34,6 +35,9 @@ router = APIRouter(prefix="/school", tags=["school-funding"])
 logger = get_logger("app.school.funding")
 
 COUNSELOR_REQUIRED = "Career Counselor role required"
+TEACHERS_DENIED = "Funding support cases are not visible to teachers."
+READERS_REQUIRED = "School Coordinator, Principal, Parent or Career Counselor role required"
+READER_ROLES = frozenset({"career_counselor", "school_coordinator", "school_principal", "school_parent"})  # D5; teachers excluded
 PREVIOUS_SCHOOL = "This case belongs to the student's previous school and can no longer be changed."
 CLOSURE_REASON_REQUIRED = "Give a reason for closing this case."
 CLOSURE_REASON_ONLY_WHEN_CLOSING = "A closure reason can only be given when closing the case."
@@ -66,6 +70,9 @@ async def _deny(db: AsyncSession, user: User, reason: str, entity_type: str, ent
     raise HTTPException(403, message)
 
 
+OPEN_FIRST = (case((SchoolFundingRecord.status.in_(FUNDING_FINAL_STATUSES), 1), else_=0), SchoolFundingRecord.updated_at.desc())
+
+
 async def _locked_student(db: AsyncSession, student_id: UUID) -> SchoolStudent | None:
     """The row transfer approval locks, so the student's school cannot change under us until this transaction ends."""
     return await db.scalar(select(SchoolStudent).where(SchoolStudent.id == student_id).with_for_update().execution_options(populate_existing=True))
@@ -79,6 +86,46 @@ async def _notify_parents(db: AsyncSession, student: SchoolStudent, *, title: st
     except Exception:
         await db.rollback()
         logger.warning("funding_record_notify_failed", extra={"extra_fields": ids})
+
+
+@router.get("/career-counselor/funding-records")
+async def list_counselor_funding_records(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """E3: every case opened at a school in the counsellor's portfolio whose student is still there (D12), open cases first. Not
+    paginated -- bounded by the portfolio, like `GET /school/career-counselor/records` (spec §4). Not tier-gated: history stays readable."""
+    if user.role != "career_counselor":
+        await _deny(db, user, "role", ENTITY, None, COUNSELOR_REQUIRED)
+    portfolio = await _portfolio_school_ids(db, user)
+    if not portfolio:
+        return []
+    rows = (
+        await db.scalars(
+            select(SchoolFundingRecord)
+            .join(SchoolStudent, SchoolStudent.id == SchoolFundingRecord.school_student_id)
+            .where(SchoolFundingRecord.school_id.in_(portfolio), SchoolStudent.school_id == SchoolFundingRecord.school_id)
+            .order_by(*OPEN_FIRST)
+        )
+    ).all()
+    return await _records_out(db, rows)
+
+
+@router.get("/students/{student_id}/funding-records")
+async def list_student_funding_records(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """E4: one student's cases, read-only. Teachers are refused before the shared loader (which would admit an assigned teacher).
+    Staff see only cases opened at the student's current school (D12); a linked parent sees all of their child's cases."""
+    if user.role == "school_teacher":
+        await _deny(db, user, "teacher", "school_student", student_id, TEACHERS_DENIED)
+    if user.role not in READER_ROLES:
+        await _deny(db, user, "role", "school_student", student_id, READERS_REQUIRED)
+    try:
+        student = await _load_student_for_reader(db, user, student_id)
+    except HTTPException as exc:
+        if exc.status_code == 403:
+            await _deny(db, user, "scope", "school_student", student_id, str(exc.detail))
+        raise
+    stmt = select(SchoolFundingRecord).where(SchoolFundingRecord.school_student_id == student.id)
+    if user.role != "school_parent":
+        stmt = stmt.where(SchoolFundingRecord.school_id == student.school_id)
+    return await _records_out(db, (await db.scalars(stmt.order_by(*OPEN_FIRST))).all())
 
 
 @router.post("/funding-records", status_code=201)
