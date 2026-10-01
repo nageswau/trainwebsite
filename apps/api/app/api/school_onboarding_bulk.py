@@ -15,12 +15,12 @@ import time
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from pydantic import ValidationError
 from sqlalchemy import func, select, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.admin import _provision_school, _valid_email
 from app.api.deps import get_current_user
-from app.api.school_bulk import LOCK_TIMEOUT, _claim, _read_csv, _read_upload
+from app.api.school_bulk import IN_PROGRESS, LOCK_TIMEOUT, _claim, _lock_timed_out, _read_csv, _read_upload
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import AuditLog, School, SchoolBulkUploadBatch, SchoolBulkUploadRow, User
@@ -36,6 +36,7 @@ COLUMNS = tuple(SchoolCreate.model_fields)  # D1: the template is exactly the si
 REQUIRED = ("name", "coordinator_full_name", "coordinator_email")
 MAX_ROWS = 100
 SEND_CONCURRENCY = 5  # D3: welcome emails in flight at once, after the commit
+LOCK_KEY = 290_029  # pg_advisory_xact_lock key serializing onboarding uploads (a fixed constant, bound as a parameter)
 ROW_CONFLICT = "This row conflicts with a record created at the same time; upload it again"
 
 Created = tuple[int, User, IssuedWelcome]  # (file line, coordinator, welcome token) of an accepted row
@@ -49,6 +50,18 @@ def _require_admin(user: User) -> None:
 async def _flush_row(db: AsyncSession) -> None:
     """A plain flush for the row's savepoint (never provisioning.flush_unique_email, whose rollback would discard the batch)."""
     await db.flush()
+
+
+async def _lock_onboarding(db: AsyncSession, user: User) -> None:
+    """Spec §7 step 4: one onboarding upload at a time, so two files cannot both pass the duplicate-school checks. Held until this
+    transaction ends (before any email is sent); the wait is bounded by the request's lock_timeout."""
+    try:
+        await db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": LOCK_KEY})
+    except DBAPIError as exc:
+        if _lock_timed_out(exc):
+            logger.warning("bulk_upload_lock_timeout", extra={"extra_fields": {"actor_id": str(user.id), "target_type": TARGET_TYPE, "lock": "onboarding"}})
+            raise HTTPException(409, IN_PROGRESS) from exc
+        raise
 
 
 def _norm(value: str | None) -> str:
@@ -203,6 +216,7 @@ async def bulk_onboard_schools(
     if isinstance(claimed, tuple):
         return await _report(db, *claimed)
     batch = claimed
+    await _lock_onboarding(db, user)
 
     rows, created = await _process(db, user, batch, filled)
     batch.total_rows = len(rows)

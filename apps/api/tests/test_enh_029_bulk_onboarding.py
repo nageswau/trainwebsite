@@ -5,7 +5,7 @@ import logging
 import uuid
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from app.api import school_onboarding_bulk
 from app.core.database import SessionLocal
@@ -306,3 +306,42 @@ async def test_logs_never_carry_emails_names_or_tokens(client, db_session, caplo
     assert "bulk_upload_completed" in logged
     for secret in (row["coordinator_email"], row["name"], row["coordinator_full_name"], report["rows"][0]["development_welcome_token"]):
         assert secret not in logged
+
+
+# --- Concurrency (AC07, AC08) ---------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_email_taken_mid_batch_rolls_back_only_that_row(client, db_session, monkeypatch):
+    await login(client, await mk_admin(db_session))
+    rows = [school_row(), school_row(), school_row()]
+    racer = rows[1]["coordinator_email"]
+    original = school_onboarding_bulk._flush_row
+
+    async def racing_flush(db):
+        # Past every pre-check, just before this row's coordinator is flushed, another request commits the same email.
+        if any(isinstance(o, User) and o.email == racer for o in db.new):
+            async with SessionLocal() as other:
+                other.add(User(email=racer, password_hash="x", full_name="Racer", role="student", division="overseas", active=True))
+                await other.commit()
+        await original(db)
+
+    monkeypatch.setattr(school_onboarding_bulk, "_flush_row", racing_flush)
+    report = await _ok(client, rows)
+    assert [r["status"] for r in report["rows"]] == ["accepted", "rejected", "accepted"]
+    assert report["rows"][1]["error_message"] == "This row conflicts with a record created at the same time; upload it again"
+    assert await db_session.scalar(select(func.count(School.id)).where(School.name == rows[1]["name"])) == 0  # its school rolled back too
+    assert await db_session.scalar(select(func.count(School.id)).where(School.name.in_([rows[0]["name"], rows[2]["name"]]))) == 2
+
+
+@pytest.mark.asyncio
+async def test_concurrent_onboarding_upload_gets_409_while_another_holds_the_lock(client, db_session, monkeypatch):
+    await login(client, await mk_admin(db_session))
+    monkeypatch.setattr(school_onboarding_bulk, "LOCK_TIMEOUT", "300ms")
+    key = uuid.uuid4().hex
+    async with SessionLocal() as holder:  # another onboarding upload, mid-transaction
+        await holder.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": school_onboarding_bulk.LOCK_KEY})
+        response = await upload(client, csv_bytes([school_row()]), key)
+        await holder.rollback()
+    assert (response.status_code, response.json()["detail"]) == (409, "This upload is still being processed; retry shortly")
+    assert not (await db_session.scalars(select(SchoolBulkUploadBatch).where(SchoolBulkUploadBatch.idempotency_key == key))).all()  # rolled back; key free
