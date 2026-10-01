@@ -13,6 +13,16 @@ from app.models import AuditLog, PasswordResetToken, School, SchoolBulkUploadBat
 from app.schemas import SchoolCreate
 from tests.enh029_helpers import HEADER, TEMPLATE_URL, UPLOAD_URL, csv_bytes, login, mk_admin, school_row, upload
 
+
+@pytest.fixture(autouse=True)
+def _app_loggers_enabled():
+    """Alembic's env.py calls `logging.config.fileConfig`, which DISABLES loggers that already exist; a migration test that runs
+    in-process earlier in the session (test_enh_029_migration.py's throwaway-DB tests) would silence this module's logger and
+    caplog would see nothing (same guard as test_enh_027_psychometric_results.py / test_enh_030_mark.py)."""
+    logging.getLogger(school_onboarding_bulk.__name__).disabled = False
+    yield
+
+
 # --- Authorization and template (AC09) -------------------------------------------------------------------------------------------
 
 
