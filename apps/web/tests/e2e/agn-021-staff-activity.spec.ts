@@ -20,7 +20,8 @@ test("a staff member's work appears in the Master's activity view on the next lo
   await page.getByRole("button", { name: "Activity of Upsilon Staff" }).click();
   await expect(page.getByText("No activity yet.")).toBeVisible();
 
-  const staff = await (await browser.newContext()).newPage();
+  const staffContext = await browser.newContext();
+  const staff = await staffContext.newPage();
   await adminActivate(staff.request, staffEmail);
   await signIn(staff, staffEmail, E2E_PASSWORD);
   const record = await staff.request.post("/api/v1/workflows/overseas/agent/crm/students", { data: { full_name: `Phi Student ${unique}` } });
@@ -31,18 +32,13 @@ test("a staff member's work appears in the Master's activity view on the next lo
   await expect(list.getByText("Created a student record")).toBeVisible();
   await expect(list.getByText(`Phi Student ${unique}`)).toBeVisible();
 
+  // The open view, with a real entry on screen, fits a 320 px screen (AC07).
+  await page.setViewportSize({ width: 320, height: 800 });
+  await expect(list.getByText("Created a student record")).toBeVisible();
+  await expect(list.getByText(`Phi Student ${unique}`)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+
   await page.getByRole("button", { name: "Close activity" }).click();
   await expect(page.getByRole("button", { name: "Activity of Upsilon Staff" })).toBeFocused();
-});
-
-test("the activity view fits a 320 px screen (AGN-021)", async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 800 });
-  await signIn(page, "agent@edusphere.local", "Demo@123");
-  await page.goto("/overseas/agent/team");
-  const activity = page.getByRole("button", { name: /^Activity of / }).first();
-  if (await activity.count()) {
-    await activity.click();
-    await expect(page.getByRole("region", { name: "Activity" })).toBeVisible();
-  }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+  await staffContext.close();
 });
