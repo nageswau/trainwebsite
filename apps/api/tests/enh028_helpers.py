@@ -30,7 +30,16 @@ def csv_bytes(header: list[str], rows: list[dict]) -> bytes:
 
 
 def result_row(student, subject: str = "Mathematics", max_marks: str = "100", obtained: str = "80", **over) -> dict:
-    return {"student_code": student.student_code, "student_name": student.full_name, "academic_year": "2026", "term": "Term 1", "subject": subject, "max_marks": max_marks, "marks_obtained": obtained, **over}
+    return {
+        "student_code": student.student_code,
+        "student_name": student.full_name,
+        "academic_year": "2026",
+        "term": "Term 1",
+        "subject": subject,
+        "max_marks": max_marks,
+        "marks_obtained": obtained,
+        **over,
+    }
 
 
 async def upload(client, url: str, data: bytes, key: str | None = None):

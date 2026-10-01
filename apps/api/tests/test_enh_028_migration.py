@@ -58,8 +58,16 @@ async def test_tables_match_the_model(db_session):
 
     columns, uniques, checks, indexes = described["school_bulk_upload_batches"]
     assert columns == {
-        "id": False, "target_type": False, "uploaded_by_user_id": False, "idempotency_key": False, "file_sha256": False,
-        "total_rows": False, "accepted_count": False, "rejected_count": False, "created_at": False, "updated_at": False,
+        "id": False,
+        "target_type": False,
+        "uploaded_by_user_id": False,
+        "idempotency_key": False,
+        "file_sha256": False,
+        "total_rows": False,
+        "accepted_count": False,
+        "rejected_count": False,
+        "created_at": False,
+        "updated_at": False,
     }
     assert uniques == {"uq_school_bulk_upload_key": ("uploaded_by_user_id", "target_type", "idempotency_key")}
     assert checks == {"ck_school_bulk_upload_target_type"}
@@ -67,8 +75,15 @@ async def test_tables_match_the_model(db_session):
 
     columns, uniques, checks, indexes = described["school_bulk_upload_rows"]
     assert columns == {
-        "id": False, "batch_id": False, "row_number": False, "status": False, "error_message": True, "student_code": True,
-        "created_record_id": True, "created_at": False, "updated_at": False,
+        "id": False,
+        "batch_id": False,
+        "row_number": False,
+        "status": False,
+        "error_message": True,
+        "student_code": True,
+        "created_record_id": True,
+        "created_at": False,
+        "updated_at": False,
     }
     assert uniques == {}
     assert checks == {"ck_school_bulk_upload_row_status"}

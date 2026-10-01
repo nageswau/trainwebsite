@@ -12,7 +12,25 @@ from tests.enh028_helpers import BASE, RESULTS_URL, login, upload, world
 
 TEMPLATES = [
     (f"{BASE}/academic-team/results/bulk-template", "academic_team", "academic-result", ["academic_year", "term", "subject", "max_marks", "marks_obtained", "grade", "teacher_remarks"]),
-    (f"{BASE}/psychometric-team/records/bulk-template", "psychometric_team", "psychometric-record", ["assessment_type", "report_url", "test_date", "strengths", "interest_areas", "personality_indicators", "recommended_careers", "recommended_stream", "counsellor_remarks", "parent_discussion_on", "parent_discussion_notes", "follow_up_on"]),
+    (
+        f"{BASE}/psychometric-team/records/bulk-template",
+        "psychometric_team",
+        "psychometric-record",
+        [
+            "assessment_type",
+            "report_url",
+            "test_date",
+            "strengths",
+            "interest_areas",
+            "personality_indicators",
+            "recommended_careers",
+            "recommended_stream",
+            "counsellor_remarks",
+            "parent_discussion_on",
+            "parent_discussion_notes",
+            "follow_up_on",
+        ],
+    ),
     (f"{BASE}/academic-team/test-prep-records/bulk-template", "academic_team", "test-prep-record", ["test_type", "target_score"]),
     (f"{BASE}/academic-team/language-records/bulk-template", "academic_team", "language-record", ["language", "level"]),
 ]

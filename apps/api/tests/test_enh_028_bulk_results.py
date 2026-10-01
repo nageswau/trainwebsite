@@ -28,7 +28,14 @@ async def test_forty_marks_become_forty_drafts_like_the_single_create(client, db
     results = (await db_session.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.id.in_(created)))).all()
     assert len(results) == 40
     for result in results:
-        assert (result.status, result.uploaded_by_user_id, float(result.max_marks), float(result.marks_obtained), result.grade, result.teacher_remarks) == ("draft", w["member"].id, 100.0, 77.0, "B", "Steady")
+        assert (result.status, result.uploaded_by_user_id, float(result.max_marks), float(result.marks_obtained), result.grade, result.teacher_remarks) == (
+            "draft",
+            w["member"].id,
+            100.0,
+            77.0,
+            "B",
+            "Steady",
+        )
     history = (await db_session.scalars(select(SchoolResultStatusHistory).where(SchoolResultStatusHistory.result_id.in_(created)))).all()
     assert len(history) == 40 and {(h.from_status, h.to_status) for h in history} == {("none", "draft")}
     audits = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "school.result_create", AuditLog.entity_id.in_([str(c) for c in created])))).all()

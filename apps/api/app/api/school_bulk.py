@@ -22,7 +22,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.schools import OUTSIDE_PORTFOLIO, TEST_PREP_SERVICE_KEYS, TIER_DENIED, _apply_master_fields, _entitlement_denial, _notify_student_parents, _portfolio_school_ids, _today_ist
+from app.api.schools import OUTSIDE_PORTFOLIO, TEST_PREP_SERVICE_KEYS, TIER_DENIED, _entitlement_denial, _notify_student_parents, _portfolio_school_ids, _today_ist
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import (
@@ -63,19 +63,19 @@ class Created:
 
 
 @dataclass(frozen=True)
-class BulkTarget:
+class BulkTarget[RowT: BaseModel]:
     target_type: str
     role: str
     role_error: str  # the module's existing 403 message
     columns: tuple[str, ...]  # module columns, in template order
     required: tuple[str, ...]  # columns whose header must be present
-    row_model: type[BaseModel]
+    row_model: type[RowT]
     noun: str  # "a result", for the duplicate message
     key_fields: str  # "academic_year, term and subject"
-    natural_key: Callable[[BaseModel], tuple]
+    natural_key: Callable[[RowT], tuple]
     existing_keys: Callable[[AsyncSession, list[UUID]], Awaitable[set[tuple]]]  # {(student_id, *natural_key)}
-    service_key: Callable[[BaseModel], str | None]  # tier service the row consumes; None = not tier-gated
-    create: Callable[[AsyncSession, User, SchoolStudent, BaseModel, UUID], Awaitable[Created]]
+    service_key: Callable[[RowT], str | None]  # tier service the row consumes; None = not tier-gated
+    create: Callable[[AsyncSession, User, SchoolStudent, RowT, UUID], Awaitable[Created]]
 
 
 # --- Results (SCH-006): always Draft, no tier gate, no parent notice (only Publish notifies) ----------------------------------
@@ -96,23 +96,39 @@ async def _existing_results(db: AsyncSession, student_ids: list[UUID]) -> set[tu
 
 async def _create_result(db: AsyncSession, user: User, student: SchoolStudent, row: BulkResultRow, batch_id: UUID) -> Created:
     result = SchoolAcademicResult(
-        school_student_id=student.id, academic_year=row.academic_year, term=row.term, subject=row.subject,
-        max_marks=row.max_marks, marks_obtained=row.marks_obtained, grade=row.grade, teacher_remarks=row.teacher_remarks,
-        status="draft", uploaded_by_user_id=user.id,
+        school_student_id=student.id,
+        academic_year=row.academic_year,
+        term=row.term,
+        subject=row.subject,
+        max_marks=row.max_marks,
+        marks_obtained=row.marks_obtained,
+        grade=row.grade,
+        teacher_remarks=row.teacher_remarks,
+        status="draft",
+        uploaded_by_user_id=user.id,
     )
     db.add(result)
     await db.flush()
     db.add(SchoolResultStatusHistory(result_id=result.id, from_status="none", to_status="draft", changed_by_user_id=user.id))
-    db.add(AuditLog(user_id=user.id, action="school.result_create", entity_type="school_academic_result", entity_id=str(result.id), metadata_json={"subject": row.subject, "bulk_batch_id": str(batch_id)}))
+    db.add(
+        AuditLog(user_id=user.id, action="school.result_create", entity_type="school_academic_result", entity_id=str(result.id), metadata_json={"subject": row.subject, "bulk_batch_id": str(batch_id)})
+    )
     return Created(result.id)
 
 
-RESULTS = BulkTarget(
-    target_type="academic_result", role="academic_team", role_error="Academic Team role required",
+RESULTS: BulkTarget[BulkResultRow] = BulkTarget(
+    target_type="academic_result",
+    role="academic_team",
+    role_error="Academic Team role required",
     columns=("academic_year", "term", "subject", "max_marks", "marks_obtained", "grade", "teacher_remarks"),
     required=("academic_year", "term", "subject", "max_marks", "marks_obtained"),
-    row_model=BulkResultRow, noun="a result", key_fields="academic_year, term and subject",
-    natural_key=_result_key, existing_keys=_existing_results, service_key=lambda row: None, create=_create_result,
+    row_model=BulkResultRow,
+    noun="a result",
+    key_fields="academic_year, term and subject",
+    natural_key=_result_key,
+    existing_keys=_existing_results,
+    service_key=lambda row: None,
+    create=_create_result,
 )
 
 
@@ -134,13 +150,25 @@ async def _existing_psychometric(db: AsyncSession, student_ids: list[UUID]) -> s
 
 async def _create_psychometric(db: AsyncSession, user: User, student: SchoolStudent, row: BulkPsychometricRow, batch_id: UUID) -> Created:
     record = SchoolPsychometricRecord(
-        school_student_id=student.id, psychometric_team_user_id=user.id, assessment_type=row.assessment_type,
-        report_url=row.report_url, status="completed" if row.report_url else "assigned",
+        school_student_id=student.id,
+        psychometric_team_user_id=user.id,
+        assessment_type=row.assessment_type,
+        report_url=row.report_url,
+        status="completed" if row.report_url else "assigned",
+        **{name: getattr(row, name) for name in PSYCHOMETRIC_RESULT_KEYS},
     )
-    fields = [name for name in _apply_master_fields(record, row) if name in PSYCHOMETRIC_RESULT_KEYS]
+    fields = sorted(name for name in PSYCHOMETRIC_RESULT_KEYS if getattr(row, name) is not None)  # names only, as the single create audits
     db.add(record)
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.psychometric_record_create", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={"assessment_type": row.assessment_type, "fields": fields, "bulk_batch_id": str(batch_id)}))
+    db.add(
+        AuditLog(
+            user_id=user.id,
+            action="school.psychometric_record_create",
+            entity_type="school_psychometric_record",
+            entity_id=str(record.id),
+            metadata_json={"assessment_type": row.assessment_type, "fields": fields, "bulk_batch_id": str(batch_id)},
+        )
+    )
     if record.status == "completed":
         notice = (f"Psychometric report ready for {student.full_name}", f"The {row.assessment_type} report for {student.full_name} is now available.")
     else:
@@ -148,11 +176,19 @@ async def _create_psychometric(db: AsyncSession, user: User, student: SchoolStud
     return Created(record.id, notice)
 
 
-PSYCHOMETRIC = BulkTarget(
-    target_type="psychometric_record", role="psychometric_team", role_error="Psychometric Team role required",
-    columns=("assessment_type", "report_url", *PSYCHOMETRIC_RESULT_KEYS), required=("assessment_type",),
-    row_model=BulkPsychometricRow, noun="an assessment", key_fields="assessment_type and test_date",
-    natural_key=_psychometric_key, existing_keys=_existing_psychometric, service_key=lambda row: "psychometric_test", create=_create_psychometric,
+PSYCHOMETRIC: BulkTarget[BulkPsychometricRow] = BulkTarget(
+    target_type="psychometric_record",
+    role="psychometric_team",
+    role_error="Psychometric Team role required",
+    columns=("assessment_type", "report_url", *PSYCHOMETRIC_RESULT_KEYS),
+    required=("assessment_type",),
+    row_model=BulkPsychometricRow,
+    noun="an assessment",
+    key_fields="assessment_type and test_date",
+    natural_key=_psychometric_key,
+    existing_keys=_existing_psychometric,
+    service_key=lambda row: "psychometric_test",
+    create=_create_psychometric,
 )
 
 
@@ -168,16 +204,32 @@ async def _create_test_prep(db: AsyncSession, user: User, student: SchoolStudent
     record = SchoolTestPrepRecord(school_student_id=student.id, academic_team_user_id=user.id, test_type=row.test_type, target_score=row.target_score)
     db.add(record)
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.test_prep_record_create", entity_type="school_test_prep_record", entity_id=str(record.id), metadata_json={"test_type": row.test_type, "bulk_batch_id": str(batch_id)}))
+    db.add(
+        AuditLog(
+            user_id=user.id,
+            action="school.test_prep_record_create",
+            entity_type="school_test_prep_record",
+            entity_id=str(record.id),
+            metadata_json={"test_type": row.test_type, "bulk_batch_id": str(batch_id)},
+        )
+    )
     name, test = student.full_name, row.test_type.upper()
     return Created(record.id, (f"{test} preparation started for {name}", f"{name} has started {test} preparation."))
 
 
-TEST_PREP = BulkTarget(
-    target_type="test_prep_record", role="academic_team", role_error="Academic Team role required",
-    columns=("test_type", "target_score"), required=("test_type",),
-    row_model=BulkTestPrepRow, noun="a test preparation record", key_fields="test_type",
-    natural_key=lambda row: (row.test_type,), existing_keys=_existing_test_prep, service_key=lambda row: TEST_PREP_SERVICE_KEYS[row.test_type], create=_create_test_prep,
+TEST_PREP: BulkTarget[BulkTestPrepRow] = BulkTarget(
+    target_type="test_prep_record",
+    role="academic_team",
+    role_error="Academic Team role required",
+    columns=("test_type", "target_score"),
+    required=("test_type",),
+    row_model=BulkTestPrepRow,
+    noun="a test preparation record",
+    key_fields="test_type",
+    natural_key=lambda row: (row.test_type,),
+    existing_keys=_existing_test_prep,
+    service_key=lambda row: TEST_PREP_SERVICE_KEYS[row.test_type],
+    create=_create_test_prep,
 )
 
 
@@ -190,20 +242,36 @@ async def _create_language(db: AsyncSession, user: User, student: SchoolStudent,
     record = SchoolLanguageRecord(school_student_id=student.id, academic_team_user_id=user.id, language=row.language, level=row.level)
     db.add(record)
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.language_record_create", entity_type="school_language_record", entity_id=str(record.id), metadata_json={"language": row.language, "bulk_batch_id": str(batch_id)}))
+    db.add(
+        AuditLog(
+            user_id=user.id,
+            action="school.language_record_create",
+            entity_type="school_language_record",
+            entity_id=str(record.id),
+            metadata_json={"language": row.language, "bulk_batch_id": str(batch_id)},
+        )
+    )
     name = student.full_name
     return Created(record.id, (f"{row.language} classes started for {name}", f"{name} has started {row.language} classes."))
 
 
-LANGUAGE = BulkTarget(
-    target_type="language_record", role="academic_team", role_error="Academic Team role required",
-    columns=("language", "level"), required=("language",),
-    row_model=BulkLanguageRow, noun="a language record", key_fields="language",
-    natural_key=lambda row: (row.language.casefold(),), existing_keys=_existing_languages, service_key=lambda row: "foreign_language_classes", create=_create_language,
+LANGUAGE: BulkTarget[BulkLanguageRow] = BulkTarget(
+    target_type="language_record",
+    role="academic_team",
+    role_error="Academic Team role required",
+    columns=("language", "level"),
+    required=("language",),
+    row_model=BulkLanguageRow,
+    noun="a language record",
+    key_fields="language",
+    natural_key=lambda row: (row.language.casefold(),),
+    existing_keys=_existing_languages,
+    service_key=lambda row: "foreign_language_classes",
+    create=_create_language,
 )
 
 
-# --- The upload routine (spec §7) ---------------------------------------------------------------------------------------------
+# --- The upload routine (spec Â§7) ---------------------------------------------------------------------------------------------
 
 
 def _file_error(target: BulkTarget, user: User, reason: str, message: str, status: int = 422) -> HTTPException:
@@ -242,8 +310,12 @@ def _filled_rows(raw: bytes, target: BulkTarget, user: User) -> list[tuple[int, 
 
 def _report(batch: SchoolBulkUploadBatch, rows: list[SchoolBulkUploadRow]) -> dict:
     return {
-        "id": batch.id, "target_type": batch.target_type, "status": "completed",
-        "total_rows": batch.total_rows, "accepted_count": batch.accepted_count, "rejected_count": batch.rejected_count,
+        "id": batch.id,
+        "target_type": batch.target_type,
+        "status": "completed",
+        "total_rows": batch.total_rows,
+        "accepted_count": batch.accepted_count,
+        "rejected_count": batch.rejected_count,
         "rows": [{"row_number": r.row_number, "status": r.status, "error_message": r.error_message, "student_code": r.student_code, "created_record_id": r.created_record_id} for r in rows],
     }
 
@@ -299,7 +371,8 @@ class _TierCheck:
     (school, service) per batch, and one denial audit row per denied pair, riding on the batch's own commit."""
 
     def __init__(self, db: AsyncSession, user: User):
-        self.db, self.user, self.decided = db, user, {}
+        self.db, self.user = db, user
+        self.decided: dict[tuple[UUID, str], str | None] = {}
 
     async def error(self, school_id: UUID, service_key: str | None) -> str | None:
         if service_key is None:
@@ -309,8 +382,19 @@ class _TierCheck:
             denial = _entitlement_denial(school.tier if school else None, school.tier_valid_until if school else None, service_key, _today_ist())
             self.decided[(school_id, service_key)] = denial[1] if denial else None
             if denial:
-                self.db.add(AuditLog(user_id=self.user.id, action=TIER_DENIED, entity_type="school", entity_id=str(school_id), outcome="denied", metadata_json={"service_key": service_key, "reason": denial[0], "tier": school.tier if school else None}))
-                logger.warning("tier_access_denied", extra={"extra_fields": {"actor_id": str(self.user.id), "role": self.user.role, "school_id": str(school_id), "service_key": service_key, "reason": denial[0]}})
+                self.db.add(
+                    AuditLog(
+                        user_id=self.user.id,
+                        action=TIER_DENIED,
+                        entity_type="school",
+                        entity_id=str(school_id),
+                        outcome="denied",
+                        metadata_json={"service_key": service_key, "reason": denial[0], "tier": school.tier if school else None},
+                    )
+                )
+                logger.warning(
+                    "tier_access_denied", extra={"extra_fields": {"actor_id": str(self.user.id), "role": self.user.role, "school_id": str(school_id), "service_key": service_key, "reason": denial[0]}}
+                )
         return self.decided[(school_id, service_key)]
 
 
@@ -320,8 +404,9 @@ async def _notify_after_commit(db: AsyncSession, batch_id: UUID, notices: list[t
     for student_id, title, body in notices:
         try:
             student = await db.get(SchoolStudent, student_id)
-            await _notify_student_parents(db, student, title=title, body=body, action_url=f"/school/parent/children/{student_id}")
-            await db.commit()
+            if student is not None:  # locked for the whole batch, so it exists; the check only satisfies the type
+                await _notify_student_parents(db, student, title=title, body=body, action_url=f"/school/parent/children/{student_id}")
+                await db.commit()
         except Exception:
             await db.rollback()
             logger.warning("bulk_upload_notify_failed", extra={"extra_fields": {"batch_id": str(batch_id), "student_id": str(student_id)}})
@@ -382,8 +467,12 @@ async def _upload(target: BulkTarget, file: UploadFile, idempotency_key: str | N
                     if created.notice:
                         notices.append((student.id, *created.notice))
         outcome = SchoolBulkUploadRow(
-            batch_id=batch.id, row_number=line, status="rejected" if error else "accepted", error_message=error,
-            student_code=code if 0 < len(code) <= 8 else None, created_record_id=created.record_id if created else None,
+            batch_id=batch.id,
+            row_number=line,
+            status="rejected" if error else "accepted",
+            error_message=error,
+            student_code=code if 0 < len(code) <= 8 else None,
+            created_record_id=created.record_id if created else None,
         )
         db.add(outcome)
         rows.append(outcome)
@@ -391,21 +480,36 @@ async def _upload(target: BulkTarget, file: UploadFile, idempotency_key: str | N
     batch.total_rows = len(rows)
     batch.accepted_count = sum(r.status == "accepted" for r in rows)
     batch.rejected_count = batch.total_rows - batch.accepted_count
-    db.add(AuditLog(
-        user_id=user.id, action="school.bulk_upload", entity_type="school_bulk_upload_batch", entity_id=str(batch.id),
-        metadata_json={"target_type": target.target_type, "total": batch.total_rows, "accepted": batch.accepted_count, "rejected": batch.rejected_count, "file_sha256": batch.file_sha256},
-    ))
+    db.add(
+        AuditLog(
+            user_id=user.id,
+            action="school.bulk_upload",
+            entity_type="school_bulk_upload_batch",
+            entity_id=str(batch.id),
+            metadata_json={"target_type": target.target_type, "total": batch.total_rows, "accepted": batch.accepted_count, "rejected": batch.rejected_count, "file_sha256": batch.file_sha256},
+        )
+    )
     await db.commit()
     report = _report(batch, rows)
-    logger.info("bulk_upload_completed", extra={"extra_fields": {
-        "batch_id": str(batch.id), "target_type": target.target_type, "actor_id": str(user.id), "total": batch.total_rows,
-        "accepted": batch.accepted_count, "rejected": batch.rejected_count, "duration_ms": round((time.monotonic() - started) * 1000),
-    }})
+    logger.info(
+        "bulk_upload_completed",
+        extra={
+            "extra_fields": {
+                "batch_id": str(batch.id),
+                "target_type": target.target_type,
+                "actor_id": str(user.id),
+                "total": batch.total_rows,
+                "accepted": batch.accepted_count,
+                "rejected": batch.rejected_count,
+                "duration_ms": round((time.monotonic() - started) * 1000),
+            }
+        },
+    )
     await _notify_after_commit(db, batch.id, notices)
     return report
 
 
-# --- Pre-filled templates (spec §5.2) -----------------------------------------------------------------------------------------
+# --- Pre-filled templates (spec Â§5.2) -----------------------------------------------------------------------------------------
 
 FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
@@ -420,13 +524,17 @@ async def _template(target: BulkTarget, user: User, db: AsyncSession) -> Respons
         raise HTTPException(403, target.role_error)
     portfolio = await _portfolio_school_ids(db, user)
     students = (
-        await db.execute(
-            select(SchoolStudent.student_code, SchoolStudent.full_name, School.name)
-            .join(School, School.id == SchoolStudent.school_id)
-            .where(SchoolStudent.school_id.in_(portfolio))
-            .order_by(School.name, SchoolStudent.full_name)
-        )
-    ).all() if portfolio else []
+        (
+            await db.execute(
+                select(SchoolStudent.student_code, SchoolStudent.full_name, School.name)
+                .join(School, School.id == SchoolStudent.school_id)
+                .where(SchoolStudent.school_id.in_(portfolio))
+                .order_by(School.name, SchoolStudent.full_name)
+            )
+        ).all()
+        if portfolio
+        else []
+    )
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow([*STUDENT_COLUMNS, *target.columns])
@@ -457,20 +565,28 @@ async def bulk_template_language(user: User = Depends(get_current_user), db: Asy
 
 
 @router.post("/academic-team/results/bulk-upload", status_code=201)
-async def bulk_upload_results(file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def bulk_upload_results(
+    file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
     return await _upload(RESULTS, file, idempotency_key, user, db)
 
 
 @router.post("/psychometric-team/records/bulk-upload", status_code=201)
-async def bulk_upload_psychometric(file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def bulk_upload_psychometric(
+    file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
     return await _upload(PSYCHOMETRIC, file, idempotency_key, user, db)
 
 
 @router.post("/academic-team/test-prep-records/bulk-upload", status_code=201)
-async def bulk_upload_test_prep(file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def bulk_upload_test_prep(
+    file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
     return await _upload(TEST_PREP, file, idempotency_key, user, db)
 
 
 @router.post("/academic-team/language-records/bulk-upload", status_code=201)
-async def bulk_upload_language(file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def bulk_upload_language(
+    file: UploadFile = File(...), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
     return await _upload(LANGUAGE, file, idempotency_key, user, db)

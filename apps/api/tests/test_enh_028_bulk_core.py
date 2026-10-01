@@ -160,7 +160,7 @@ async def test_an_excel_style_csv_parses(client, db_session):
     w = await world(db_session)
     await login(client, w["member"].email)
     code = w["students"][0].student_code
-    text = "﻿student_code,academic_year,term,subject,max_marks,marks_obtained,teacher_remarks\r\n" f'{code},2026,Term 1,"Maths, Paper 2",100,75,"Line one\nline two"\r\n'
+    text = f'﻿student_code,academic_year,term,subject,max_marks,marks_obtained,teacher_remarks\r\n{code},2026,Term 1,"Maths, Paper 2",100,75,"Line one\nline two"\r\n'
     response = await upload(client, RESULTS_URL, text.encode("utf-8"))
     assert response.status_code == 201, response.text
     assert response.json()["accepted_count"] == 1, response.json()

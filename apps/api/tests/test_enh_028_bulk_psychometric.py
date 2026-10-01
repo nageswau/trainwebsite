@@ -39,7 +39,13 @@ async def test_rows_create_records_with_status_and_result_fields(client, db_sess
     assert response.json()["accepted_count"] == 2
 
     [done] = await _records(db_session, first)
-    assert (done.status, done.report_url, done.test_date, done.strengths, done.counsellor_remarks) == ("completed", "https://reports.example/a.pdf", datetime.date(2026, 9, 1), ["Logic", "Maths"], "Strong\nfoundation")
+    assert (done.status, done.report_url, done.test_date, done.strengths, done.counsellor_remarks) == (
+        "completed",
+        "https://reports.example/a.pdf",
+        datetime.date(2026, 9, 1),
+        ["Logic", "Maths"],
+        "Strong\nfoundation",
+    )
     assert done.psychometric_team_user_id == w["member"].id
     [assigned] = await _records(db_session, second)
     assert (assigned.status, assigned.assessment_type, assigned.report_url) == ("assigned", "Interest Inventory", None)
@@ -92,7 +98,13 @@ async def test_duplicates_use_type_and_test_date(client, db_session):
     w = await world(db_session, role="psychometric_team")
     await login(client, w["member"].email)
     student = w["students"][0]
-    rows = [_row(student, test_date="2026-09-01"), _row(student, assessment_type="APTITUDE", test_date="2026-09-01"), _row(student, test_date="2026-10-01"), _row(student), _row(student, assessment_type=" aptitude ")]
+    rows = [
+        _row(student, test_date="2026-09-01"),
+        _row(student, assessment_type="APTITUDE", test_date="2026-09-01"),
+        _row(student, test_date="2026-10-01"),
+        _row(student),
+        _row(student, assessment_type=" aptitude "),
+    ]
     report = (await upload(client, PSYCH_URL, csv_bytes(PSYCH_HEADER, rows))).json()
     assert [r["status"] for r in report["rows"]] == ["accepted", "rejected", "accepted", "accepted", "rejected"]
     assert report["rows"][1]["error_message"] == "same student and assessment_type and test_date as row 2 of this file"
