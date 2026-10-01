@@ -52,6 +52,8 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
           <a className="btn secondary" href="/school/parent/dashboard">Back to my children</a>
         </div>
         <SchoolChildOverview overview={overview} />
+        {/* ENH-020: the child's funding support cases, read-only -- right after the overview (QA-04), not below the portfolio. */}
+        <FundingRecordsCard records={funding} />
         <div className="card">
           <h3>Grade history</h3>
           {gradeHistory ? <SchoolGradeHistory history={gradeHistory.history} /> : <p className="muted">Grade history is unavailable right now.</p>}
@@ -62,8 +64,6 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
           {timeline ? <SchoolStudentTimeline events={timeline.events} /> : <p className="muted">Timeline is unavailable right now.</p>}
         </div>
         {portfolio ? <PortfolioPanel data={portfolio} /> : <div className="card"><h3>Digital Portfolio</h3><p className="muted">Portfolio is unavailable right now.</p></div>}
-        {/* ENH-020: the child's funding support cases, read-only. */}
-        <FundingRecordsCard records={funding} />
       </div>
     </PortalShell>
   );
