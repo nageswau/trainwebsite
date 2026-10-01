@@ -210,3 +210,20 @@ describe("AgentStaffRow (AGN-002)", () => {
     expect(screen.getByRole("checkbox", { name: "Verify documents" })).toBeInTheDocument();
   });
 });
+
+describe("AgentStaffRow activity (AGN-021)", () => {
+  it("opens the member's activity in the row and returns focus to Activity on Close", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ items: [], total: 0, limit: 10, offset: 0 })));
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: `Activity of ${active.full_name}` }));
+    expect(await screen.findByText("No activity yet.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: `Edit ${active.full_name}` })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close activity" }));
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: `Activity of ${active.full_name}` })).toHaveFocus());
+  });
+
+  it("offers Activity for a deactivated member too", () => {
+    renderRow({ ...active, status: "deactivated" });
+    expect(screen.getByRole("button", { name: `Activity of ${active.full_name}` })).toBeInTheDocument();
+  });
+});
