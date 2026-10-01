@@ -50,9 +50,9 @@ export default function SchoolFundingRecordsPanel({ records, students }: { recor
   return (
     <div className="portal-content card-stack funding-panel">
       <div className="card">
-        <h2>Funding support</h2>
+        <h1>Funding support</h1>
         <p className="muted">Education loans, financial assistance, scholarships and funding guidance for your students.</p>
-        <h3 id="funding-open-heading" tabIndex={-1}>Open cases</h3>
+        <h2 id="funding-open-heading" tabIndex={-1}>Open cases</h2>
         {notice && <FormMessage message={{ text: notice, failed: false }} />}
         {open.length === 0 ? (
           <p className="muted">{records.length === 0 ? "No funding support cases yet. Add one below when a student needs a loan, scholarship or funding guidance." : "No open cases."}</p>
@@ -98,15 +98,15 @@ export default function SchoolFundingRecordsPanel({ records, students }: { recor
 
       {editing && (
         <div className="action-card">
-          <h3 id="funding-edit-heading" tabIndex={-1} onKeyDown={(e) => { if (e.key === "Escape") close(); }}>
+          <h2 id="funding-edit-heading" tabIndex={-1} onKeyDown={(e) => { if (e.key === "Escape") close(); }}>
             Update {studentName(editing.school_student_id)}&apos;s {SUPPORT_TYPE_LABEL[editing.support_type].toLowerCase()} case
-          </h3>
+          </h2>
           <FundingRecordForm key={editing.id} students={students} record={editing} onDone={saved} onCancel={close} />
         </div>
       )}
 
       <div className="action-card">
-        <h3>Add a case</h3>
+        <h2>Add a case</h2>
         {students.length === 0 ? (
           <p className="muted">No students in your portfolio yet. Contact your Overseas Admin.</p>
         ) : (

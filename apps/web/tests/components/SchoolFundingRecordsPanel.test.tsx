@@ -87,6 +87,14 @@ describe("SchoolFundingRecordsPanel", () => {
     vi.unstubAllGlobals();
   });
 
+  // QA-06 (browser QA 2026-10-01): the page had no h1. One h1 for the page, h2 for each section (including the edit form).
+  it("has one h1 and an h2 per section", () => {
+    render(<SchoolFundingRecordsPanel records={[OPEN]} students={STUDENTS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit education loan case for Asha" }));
+    expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual(["Funding support"]);
+    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(["Open cases", "Update Asha's education loan case", "Add a case"]);
+  });
+
   it("names the next action when there are no cases yet", () => {
     render(<SchoolFundingRecordsPanel records={[]} students={STUDENTS} />);
     expect(screen.getByText("No funding support cases yet. Add one below when a student needs a loan, scholarship or funding guidance.")).toBeInTheDocument();
