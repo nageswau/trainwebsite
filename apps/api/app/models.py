@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid, text
+from sqlalchemy import JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint, Uuid, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -829,12 +829,39 @@ class LiveSession(Base, TimestampMixin):
 
 
 class AgentStudent(Base, TimestampMixin):
+    """AGT-002 link of an agent to a student with an account; AGN-004 (DEC-SCOPE-042) adds students with no login
+    (`student_id` NULL, identity on the row), assignment to a staff member, and archive. `agent_id` is the member who created
+    or linked the row; it fixes the agency (membership is permanent)."""
+
     __tablename__ = "agent_students"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     agent_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
-    student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True, nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="active")
-    __table_args__ = (UniqueConstraint("agent_id", "student_id", name="uq_agent_student"),)
+    full_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    phone_digits: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    highest_qualification: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    institution: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    graduation_year: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    preferred_country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    preferred_course: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    preferred_intake: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assigned_member_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_org_members.id"), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    __table_args__ = (
+        UniqueConstraint("agent_id", "student_id", name="uq_agent_student"),
+        CheckConstraint("student_id IS NOT NULL OR full_name IS NOT NULL", name="ck_agent_students_identity"),
+        CheckConstraint("status IN ('active', 'archived')", name="ck_agent_students_status"),
+        Index("ix_agent_students_agent_status", "agent_id", "status"),
+        Index("ix_agent_students_agent_phone_digits", "agent_id", "phone_digits"),
+        Index("ix_agent_students_assigned_member", "assigned_member_id"),
+    )
 
 
 class AgentCommission(Base, TimestampMixin):

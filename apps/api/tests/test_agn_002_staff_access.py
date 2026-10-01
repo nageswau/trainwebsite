@@ -1,6 +1,7 @@
 """AGN-002 -- AC07/AC09 outside the team routes: staff reach organisation students/applications, never commissions."""
 
 import pytest
+from sqlalchemy import select
 
 from app.models import AgentStudent
 from tests.agn001_helpers import client_for, login, mk_active_org, mk_user
@@ -17,11 +18,17 @@ async def _org_with_student(db_session, name: str):
 
 @pytest.mark.asyncio
 async def test_staff_see_the_organisations_students(db_session):
+    # AGN-004 G4 (DEC-SCOPE-042, owner-approved 2026-09-30) narrows S1: Staff see only the students assigned to them.
     ctx, student = await _org_with_student(db_session, "Staff Sees")
+    other = await mk_user(db_session, role="overseas_student", full_name="Staff Sees Unassigned")
+    db_session.add(AgentStudent(agent_id=ctx["master"].id, student_id=other.id, status="active"))
     staff = await mk_staff(db_session, ctx["org"])
+    link = await db_session.scalar(select(AgentStudent).where(AgentStudent.student_id == student.id))
+    link.assigned_member_id = staff["member"].id
+    await db_session.commit()
     async with client_for(staff["user"].email) as c:
         response = await c.get("/api/v1/workflows/overseas/agent/students")
-        assert response.status_code == 200 and str(student.id) in response.text
+        assert response.status_code == 200 and str(student.id) in response.text and str(other.id) not in response.text
         assert (await c.get("/api/v1/portal/overseas/agent/students")).status_code == 200
 
 

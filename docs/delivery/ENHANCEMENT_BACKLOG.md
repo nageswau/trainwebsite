@@ -142,6 +142,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-030 | Daily/period attendance tracking (new entity, built bulk-first) | Medium | Low | Yes | Feeds ENH-013, ENH-016 |
 | AGN-001 | Multi-tenant Agent CRM — agent organisation as tenant, Master accounts (Rev. 6) | Large | High | Yes | AGT-001–004, SEC-001, RPT-002, ADM-001 (all change) |
 | ENH-031 | Searchable reference pickers — student/application references picked from role-scoped searchable dropdowns | Medium | Medium | No | AGN-001 (agency scope) |
+| AGN-004 | Agent students — Master/Staff create, edit, view and (Master) archive students who never log in; staff assigned-only | Large | High | Yes | AGT-002, AGN-001, ENH-031 (scope change); AGN-002 (merge) |
 
 ---
 
@@ -2885,7 +2886,7 @@ present/absent/late/excused (the IT set includes `excused`); writer = `school_te
 **Business requirement.** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`): §1 "Master
 Login — Agent Admin: full access to the agent's CRM account"; §3 example codes (`ABC-M001`); Best approach
 "a multi-tenant Agent CRM: every agent gets their own separate CRM environment". Brought into scope by the
-user's `AGN-001` statement and decided as `DEC-SCOPE-041` (D1–D13). The source's "one Master account"
+user's `AGN-001` statement and decided as `DEC-SCOPE-038` (D1–D13). The source's "one Master account"
 conflicts with the user's criteria; the user chose up to three (D4).
 
 **Existing behavior.** An agent is one `User` + `UserRoleAssignment(role='agent')`. Its `approval_status`
@@ -2893,7 +2894,7 @@ gates every agent route (`core/rbac.py:75`, `workflows.py:100`, `api/portal.py:3
 write is scoped by `agent_id == user.id`. Overseas Admin approves/rejects the assignment by user id
 (`admin.py:981-1026`), audited as `user_role_assignment`. No organisation, member or account code exists.
 
-**Expected behavior.** Per `DEC-SCOPE-041`: an agent organisation (tenant) with status
+**Expected behavior.** Per `DEC-SCOPE-038`: an agent organisation (tenant) with status
 `pending`/`active`/`rejected`/`suspended`; Master members with display codes `<PREFIX>-M###`; the
 approval gate and all data scoping move to the organisation; Masters invite and deactivate Masters;
 Overseas Admin approves, rejects, suspends and reinstates organisations.
@@ -2968,11 +2969,76 @@ routes used by `AgentApprovalPanel`, `ADM-001`'s agent role option, seed data.
 
 **Status (2026-09-29) — COMPLETE for AGN-001's scope; merge to `main` open.** Designed (`docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md`,
 E1–E12), planned (`docs/superpowers/plans/2026-09-28-agn-001-multi-tenant-agent-crm.md`) and built test-first on branch
-`feature/agn-001-multi-tenant-agent-crm` (migration `0046_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-041`. Browser
+`feature/agn-001-multi-tenant-agent-crm` (migration `0046_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-038`. Browser
 QA (QA-01…13) fixed and re-verified, including after merging `main`; the independent Codex review was set aside by the owner
 (in-session, 2026-09-29), as for ENH-024/ENH-027. Evidence in `docs/quality/RTM.md` (AGN-001 row). QA-01 replaced the admin
 portal "Agent Registrations" table with "Agent Masters" (organisation + Master status). Internal-review minors #7, #8, #11, #12
 accepted by the owner as known limitations (2026-09-29): #7 a fast tab switch can briefly show the previous tab's rows (a server 409 prevents acting on the wrong one); #8 a page emptied by another admin shows no Previous (the tab recovers); #11 the Team panel shows a generic load error on 403 (the portal page shows the reason); #12 the migration backfill's idempotence is verified by a manual round trip only (#10, a dead branch, was removed).
+
+---
+
+## AGN-004 — Agent Students: Master/Staff Create, Edit, View and Archive Students Who Never Log In
+
+**Business requirement.** The owner's `AGN-004` statement (in-session, 2026-09-30): "Master/Staff create, edit, view and archive
+students who never log in (§2 Students, §5 Step 1; DEC-ROLE-004; DEC-SCOPE-035 D3)." Acceptance: create/edit/view/archive work for
+the right roles; an archived student leaves default lists but remains in history and reports; Staff cannot see a student assigned
+to someone else (`404`); no `users` row is ever created for an agent student; the within-org duplicate warning fires. The cited
+`DEC-SCOPE-035 D3` does not decide agent students (it is ENH-027's decision; `DEC-SCOPE-038` D3 is the account-code rule) —
+recorded, not silently fixed; this feature's decisions are `DEC-SCOPE-042`.
+
+**Source.** `functionalities/edusphere_markdown/Agent CRM Functionalities.md` (`EVID-015`, `DERIVED_BLUEPRINT`) §2 "Students",
+§5 Step 1, §6. `DEC-ROLE-004` (no login for agent-referred students).
+
+**Expected behavior.** Per `DEC-SCOPE-042`: students with no login live on `agent_students` (identity, academic, preference
+fields; assignment; archive) and never get a `users` row; the existing "link a student who has an account" flow stays. A
+student created or linked by Staff is assigned to them; a Master's starts unassigned; only a Master assigns, archives and
+unarchives. Staff see only their assigned students on every agent path (new student routes, roster, applications, documents,
+lookups, portal pages); Team and Commissions stay Master-only (AGN-002 S1). Same email (any case) or phone (≥ 7 digits) inside
+the agency warns; saving again with confirmation proceeds (audited).
+
+**Dependencies.** Independent of `AGN-002` (owner G1) with AGN-002's exact Staff names (G2); merge notes in the design spec §12.
+
+**Acceptance criteria.** AGN-004-AC01…AC13, verbatim in `docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md` §8.
+
+**Status (2026-10-01) — COMPLETE** (evidence: `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md` post-merge and Assign sections). Browser QA done (QA-01…QA-10 found and fixed, `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`); the independent Codex review is pending. Designed (spec rev. 2), planned
+(`docs/superpowers/plans/2026-09-30-agn-004-agent-students.md`) and built test-first on `feature/agn-004-agent-students`
+(migration `0049_agent_students_crm`, re-chained after AGN-002's `0047_agent_org_staff` when main was merged 2026-10-01). The Master
+Assign row action (spec §6) was built on 2026-10-01; Staff browser flows and Playwright verified on the merged build. Open, outside
+the ACs: PRD open item 80 (erasure of students with no login) — moved to the backlog as `AGN-ERASE` below; the independent Codex review was set aside by the owner. Evidence in `docs/quality/RTM.md`.
+
+---
+
+## AGN-ERASE (provisional ID — `NEEDS_CONFIRMATION`) — Erasure of Agent Students Who Have No Login
+
+**Status (2026-10-01) — BACKLOG, not scheduled** (owner: "move to backlog" — the whole feature). Origin: PRD open item 80, found by
+the AGN-004 security review. The feature ID is provisional; the owner assigns AGN numbers.
+
+**Business requirement.** A student recorded by an agency without a login (AGN-004, `agent_students.student_id IS NULL`) holds
+personal data (name, email, phone, date of birth, education, preferences, notes) but has no way to have it erased: the SEC-002
+data-request flow is keyed to the requester's own `users` account, and AGN-004 gives agencies archive only (no delete, D5).
+
+**Owner decisions (in-session 2026-10-01, `EXPLICIT_APPROVAL` — answers to structured questions):**
+- **Requester:** the agency's Master raises the erasure request for one of the agency's students (e.g. after the student asks them).
+- **Verification:** the Master records how the student asked (free text); an EduSphere admin (Overseas Admin / Super Admin) approves
+  or rejects with a reason; both steps audited.
+- **Erasure:** anonymise the `agent_students` row in place — name becomes "Erased student", every other personal field cleared,
+  status archived, row id kept so audit history and counts stay consistent. Audit rows already hold ids and field names only.
+
+**Still `NEEDS_CONFIRMATION` before design:**
+- **Admin screen:** the SEC-002 queue (`GET`/`PATCH /admin/data-requests`) has no admin UI today; options offered — a Data requests
+  screen for both flows, a screen for agency requests only, or API-only like SEC-002. Not answered (deferred with the feature).
+- **Export:** whether the Master can also request an export for such a student (the Master can already view every field).
+- **Feature ID** and decision ID (next free is `DEC-SCOPE-043`).
+
+**Design constraints already found (from reading the code, 2026-10-01):**
+- `PATCH /admin/data-requests/{id}` anonymises the **requesting** `users` row. A Master's request on a student's behalf must carry
+  the target `agent_students` id and branch on it — otherwise fulfilling it would anonymise the Master's own account.
+- `data_subject_requests` needs a nullable target column (e.g. `agent_student_id`); the admin list scopes by the requester's
+  division, and a Master is in `overseas`, so Overseas Admin sees these requests.
+- Students with no login have no applications or commissions (those are keyed to student accounts), so erasure touches only the
+  `agent_students` row; the within-agency duplicate check must not match on erased (blank) fields.
+
+**Dependencies.** AGN-004 (merged into its branch, COMPLETE 2026-10-01); SEC-002 (data-request flow).
 
 ---
 
@@ -3242,6 +3308,7 @@ item, only for the progress-view question).
 | ENH-016 | None — corrected in Revision 3 to a narrower scope entirely within already-confirmed `DEC-SCOPE-017` | N/A |
 | AGN-001 | `DEC-SCOPE-038` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
 | AGN-002 | `DEC-SCOPE-040` — staff access, model, reset, fields/limits, activation, tenancy/audit | **Resolved 2026-09-30** (S1–S6, `EXPLICIT_APPROVAL` in-session) |
+| AGN-004 | `DEC-SCOPE-042` — students with no login, staff assignment, archive, duplicate warning, relation to AGN-002 | **Resolved 2026-09-30** (D1, D3–D5, D7, D8, G1–G5, `EXPLICIT_APPROVAL` in-session; number provisional) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
@@ -3278,7 +3345,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7).** Still parked: staff assignment/ownership, staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002; none yet for the rest |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30).** Still parked: staff performance, permission levels, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

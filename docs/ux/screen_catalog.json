@@ -2081,6 +2081,31 @@
     "evidence": "AGN-001-AC07, AC08: test_agn_001_team.py; AgentTeamPanel.test.tsx; agn-001-multi-tenant.spec.ts."
   },
   {
+    "id": "SCR-AGT-008",
+    "roles": [
+      "Agent (Master)",
+      "Agent (Staff)"
+    ],
+    "route": "/overseas/agent/students (Students header + All students panel first, then Application status roster, then Link student; filters in the URL)",
+    "purpose": "The agency's students, including students who never log in: create, edit, view and (Master) archive (AGN-004 / DEC-SCOPE-042, added 2026-09-30).",
+    "features": [
+      "AGN-004",
+      "AGT-002"
+    ],
+    "entry": "Agent portal navigation, \"Students\".",
+    "data": "Students (name, contact, preferred country/intake, has-login, assignee, status); on View the full record.",
+    "actions": "Search, Show archived, Master Assigned-to filter, Add student, View, Edit (no login, not archived), Archive/Unarchive (Master, inline confirmation), Assign (Master, active students: Unassigned or an active Staff member), duplicate warning with Save anyway.",
+    "empty": "\"No students yet\"; with filters \"No students match\" + Clear filters.",
+    "loading": "\"Loading students…\" first; later loads keep the cards with aria-busy.",
+    "error": "Server message + Retry; per-card action errors; detail 404 \"This student is no longer available.\"; form errors inline.",
+    "perms": "Own agency; staff assigned-only (others 404); archive/unarchive/assign Master-only (403).",
+    "responsive": "Cards in .grid.two (one column on phones); 44px buttons on phones; no horizontal scroll at 320px.",
+    "a11y": "Labelled controls, fieldsets, aria-describedby errors, focus to first invalid field, named buttons, focus return, Escape closes detail, announced results.",
+    "dtm": "Two card columns wide, one on phones; detail and form above the list.",
+    "visual": "None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "AGN-004-AC01–AC13: test_agn_004_*.py; AgentStudentsPanel.test.tsx; AgentStudentForm.test.tsx; agn-004-agent-students.spec.ts; browser validation pending."
+  },
+  {
     "id": "SCR-CNS-001",
     "roles": [
       "Counselor"

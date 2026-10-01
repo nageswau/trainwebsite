@@ -437,6 +437,92 @@ class AgentMasterInvite(BaseModel):
         return value
 
 
+_RECORD_LIMITS = {"full_name": 160, "phone": 40, "highest_qualification": 200, "institution": 200, "preferred_country": 120, "preferred_course": 200, "preferred_intake": 40, "notes": 2000}
+_RECORD_EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+
+
+class _AgentStudentRecordFields(BaseModel):
+    """AGN-004 (DEC-SCOPE-042, EVID-015 §5 Step 1): a student with no login. Server-owned fields (agent, account, status,
+    assignment, archive) are not accepted -- `extra="forbid"` answers 422 (mass assignment)."""
+
+    model_config = {"extra": "forbid"}
+    email: str | None = Field(default=None, max_length=320)
+    phone: str | None = None
+    date_of_birth: date | None = None
+    highest_qualification: str | None = None
+    institution: str | None = None
+    graduation_year: int | None = None
+    preferred_country: str | None = None
+    preferred_course: str | None = None
+    preferred_intake: str | None = None
+    notes: str | None = None
+    confirm_duplicate: bool = False
+
+    @field_validator("phone", "highest_qualification", "institution", "preferred_country", "preferred_course", "preferred_intake", "notes")
+    @classmethod
+    def _text(cls, value, info):
+        return clean_free_text(value, _RECORD_LIMITS[info.field_name])
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, value):
+        value = (value or "").strip().lower()
+        if not value:
+            return None
+        if not _RECORD_EMAIL.match(value):
+            raise PydanticCustomError("invalid_email", "Enter a valid email address")
+        return value
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def _dob(cls, value):
+        if value is not None and not (date(1900, 1, 1) <= value <= date.today()):
+            raise PydanticCustomError("invalid_date_of_birth", "Date of birth must be between 1900 and today")
+        return value
+
+    @field_validator("graduation_year")
+    @classmethod
+    def _year(cls, value):
+        if value is not None and not (1950 <= value <= date.today().year + 6):
+            raise PydanticCustomError("invalid_graduation_year", "Graduation year is out of range")
+        return value
+
+
+def _record_name(value: str | None) -> str:
+    value = clean_free_text(value, _RECORD_LIMITS["full_name"]) if value is not None else None
+    if not value:
+        raise PydanticCustomError("blank_full_name", "Full name is required")
+    return value
+
+
+class AgentStudentRecordCreate(_AgentStudentRecordFields):
+    full_name: str
+
+    @field_validator("full_name")
+    @classmethod
+    def _name(cls, value):
+        return _record_name(value)
+
+
+class AgentStudentRecordUpdate(_AgentStudentRecordFields):
+    """Omitted = unchanged; null clears an optional field; the name cannot be cleared."""
+
+    full_name: str | None = None
+
+    @model_validator(mode="after")
+    def _name_present_when_sent(self):
+        if "full_name" in self.model_fields_set:
+            self.full_name = _record_name(self.full_name)
+        return self
+
+
+class AgentStudentAssign(BaseModel):
+    """AGN-004 D4: a Master assigns a student to an active staff member of the agency, or unassigns (null)."""
+
+    model_config = {"extra": "forbid"}
+    member_id: UUID | None
+
+
 class AgentStaffCreate(AgentMasterInvite):
     """AGN-002 (DEC-SCOPE-040 S4): a Master adding a staff login -- the same fields and rules as a Master invite."""
 
