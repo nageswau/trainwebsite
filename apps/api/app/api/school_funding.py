@@ -48,6 +48,7 @@ ENTITY = "school_funding_record"
 OPEN_CASE_INDEX = "uq_funding_record_open_student_type"
 RECORD_KEYS = ("id", "school_student_id", "support_type", "status", "status_changed_on", "provider_name", "amount_text", "notes", "closure_reason", "created_at", "updated_at")
 TRACKED_FIELDS = ("status", "provider_name", "amount_text", "notes", "closure_reason")  # what a PATCH may change, in audit order
+OPEN_FIRST = (case((SchoolFundingRecord.status.in_(FUNDING_FINAL_STATUSES), 1), else_=0), SchoolFundingRecord.updated_at.desc())  # list order
 
 
 async def _records_out(db: AsyncSession, rows) -> list[dict]:
@@ -59,8 +60,9 @@ async def _records_out(db: AsyncSession, rows) -> list[dict]:
 async def _deny(db: AsyncSession, user: User, reason: str, entity_type: str, entity_id: UUID | None, message: str) -> NoReturn:
     """D13: a role or scope refusal is audited before the 403 (as ENH-030's). Nothing else may be pending in the session. The refusal
     stands even when its audit row cannot be written."""
-    fields = {"actor_id": str(user.id), "role": user.role, "reason": reason, "entity_type": entity_type, "entity_id": str(entity_id) if entity_id else None}
-    db.add(AuditLog(user_id=user.id, action=DENIED_ACTION, entity_type=entity_type, entity_id=str(entity_id) if entity_id else None, outcome="denied", metadata_json={"role": user.role, "reason": reason}))
+    target = str(entity_id) if entity_id else None
+    fields = {"actor_id": str(user.id), "role": user.role, "reason": reason, "entity_type": entity_type, "entity_id": target}
+    db.add(AuditLog(user_id=user.id, action=DENIED_ACTION, entity_type=entity_type, entity_id=target, outcome="denied", metadata_json={"role": user.role, "reason": reason}))
     try:
         await db.commit()
     except SQLAlchemyError:
@@ -68,9 +70,6 @@ async def _deny(db: AsyncSession, user: User, reason: str, entity_type: str, ent
         logger.exception("funding_record_denied_audit_failed", extra={"extra_fields": fields})
     logger.warning("funding_record_denied", extra={"extra_fields": fields})
     raise HTTPException(403, message)
-
-
-OPEN_FIRST = (case((SchoolFundingRecord.status.in_(FUNDING_FINAL_STATUSES), 1), else_=0), SchoolFundingRecord.updated_at.desc())
 
 
 async def _locked_student(db: AsyncSession, student_id: UUID) -> SchoolStudent | None:
@@ -212,11 +211,12 @@ async def update_funding_record(record_id: UUID, payload: dict, user: User = Dep
     if not changed:
         return (await _records_out(db, [record]))[0]  # a repeat PATCH writes nothing (safe to retry)
     old_status, new_status = before["status"], record.status
-    if new_status != old_status:
+    status_changed = new_status != old_status
+    if status_changed:
         record.status_changed_on = _today_ist()
     record.updated_by_user_id = user.id
     metadata: dict = {"changed_fields": changed}  # field names only, never contents (AC19)
-    if new_status != old_status:
+    if status_changed:
         metadata["status"] = {"old": old_status, "new": new_status}
     db.add(AuditLog(user_id=user.id, action=UPDATE_ACTION, entity_type=ENTITY, entity_id=str(record.id), metadata_json=metadata))
     await db.commit()
@@ -225,7 +225,7 @@ async def update_funding_record(record_id: UUID, payload: dict, user: User = Dep
     out = (await _records_out(db, [record]))[0]
     ids = {"actor_id": str(user.id), "record_id": str(record.id), "student_id": str(student.id)}
     logger.info("funding_record_update", extra={"extra_fields": {**ids, "status": new_status, "changed": len(changed)}})
-    if new_status != old_status:
+    if status_changed:
         title = f"Funding support update for {student.full_name}"
         body = f"{FUNDING_SUPPORT_TYPE_LABEL[record.support_type]} support is now at {FUNDING_STATUS_LABEL[new_status]}."
         await _notify_parents(db, student, title=title, body=body, ids=ids)
