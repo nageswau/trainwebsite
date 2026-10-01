@@ -467,13 +467,13 @@ Design: `docs/superpowers/specs/2026-09-30-agn-002-staff-logins-design.md` §4.
   exists.
 - **Feature IDs:** `AGN-002`.
 
-### 6.8c AgentOrgMember permission flags (AGN-003, migration `0051_agent_staff_permissions`)
-Design: `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md` §5. `DEC-SCOPE-043`.
+### 6.8c AgentOrgMember permission flags (AGN-003, migration `0052_agent_staff_permissions`)
+Design: `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md` §5. `DEC-SCOPE-044`.
 - **`agent_org_members.can_verify_documents`** and **`.can_view_reports`**: `BOOLEAN NOT NULL DEFAULT false` (`server_default`).
   The column names are also the API keys.
 - **Staff-only semantics:** the flags apply to `role='staff'`. On Master rows they are stored but never read (`core/rbac.agent_may`
   returns true for Masters). Read from the membership `get_current_user` already loads: no extra query, no cache.
-- **Migration `0051`** (`down_revision = "0050_notification_channels"`; drafted as `0048` after `0047`, re-chained when `main` was merged 2026-10-01): additive; no constraint, index or backfill. Every existing row reads
+- **Migration `0052`** (`down_revision = "0051_school_bulk_uploads"`; drafted as `0048` after `0047`, re-chained to `0051` after `0050` and then to `0052` after ENH-028's `0051` when `main` was merged, 2026-10-01): additive; no constraint, index or backfill. Every existing row reads
   `false` (existing staff lose the Reports page until a Master switches it on, P1). `downgrade()` drops both columns.
 - **Feature IDs:** `AGN-003`.
 
@@ -860,6 +860,23 @@ the only index (it serves the roster and summary reads). A **missing row means "
 absent. After a transfer the old school's rows are kept (not shown to the new school's readers).
 A past day may only be marked for students enrolled at the school that day (latest approved transfer into it, else `school_students.created_at`, school calendar; DEC-SCOPE-041 I-3). `downgrade()` drops the table. Writes are audited as `school.daily_attendance_mark` (with the changed
 students, from → to) and refusals as `school.daily_attendance_denied` (counts only). **Feature ID:** `ENH-030`.
+
+### 6.24 Bulk data-entry batches (`ENH-028`) — added 2026-10-01, propagating `DEC-SCOPE-043`; migration `0051_school_bulk_uploads`
+
+`school_bulk_upload_batches` — one row per accepted upload: `id`, `target_type` (`academic_result` | `psychometric_record` |
+`test_prep_record` | `language_record`, `ck_school_bulk_upload_target_type`), `uploaded_by_user_id` (FK users),
+`idempotency_key` (≤120), `file_sha256`, `total_rows`, `accepted_count`, `rejected_count`, timestamps.
+`uq_school_bulk_upload_key (uploaded_by_user_id, target_type, idempotency_key)` decides racing requests and is the only index.
+No `school_id` (a portfolio spans schools) and no status column: a batch is written in the same transaction as its rows.
+
+`school_bulk_upload_rows` — one row per filled-in CSV row: `batch_id` (FK, `ix_school_bulk_upload_rows_batch_id`),
+`row_number` (file line, header = 1), `status` (`accepted` | `rejected`, `ck_school_bulk_upload_row_status`),
+`error_message`, `student_code` (as typed, upper-cased; NULL when blank or longer than 8), `created_record_id` (the new
+record's id in the batch's target table — **no FK**, polymorphic).
+
+The roster upload keeps its own `SchoolRosterUploadBatch`/`Row` (§6.13), unchanged. Records created by a batch are ordinary
+`SchoolAcademicResult`/`SchoolPsychometricRecord`/`SchoolTestPrepRecord`/`SchoolLanguageRecord` rows; their per-record audit
+entries carry `bulk_batch_id`. Create-table only; `downgrade()` drops both tables. **Feature ID:** `ENH-028`.
 
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)
 

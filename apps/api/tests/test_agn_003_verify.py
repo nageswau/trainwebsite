@@ -1,4 +1,4 @@
-"""AGN-003 -- agents decide pending documents of their agency (spec §7; AGN-003-AC04, AC07; DEC-SCOPE-043 P5/P6)."""
+"""AGN-003 -- agents decide pending documents of their agency (spec §7; AGN-003-AC04, AC07; DEC-SCOPE-044 P5/P6)."""
 
 import uuid
 

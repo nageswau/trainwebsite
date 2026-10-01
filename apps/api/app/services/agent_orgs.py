@@ -385,7 +385,7 @@ async def reset_staff(db: AsyncSession, org: AgentOrg, member_id, actor: User):
 
 
 async def set_staff_permissions(db: AsyncSession, org: AgentOrg, member_id, actor: User, *, can_verify_documents: bool, can_view_reports: bool):
-    """No commit; `org` locked. DEC-SCOPE-043 P2/P8: any staff member of the organisation, whatever their status; audited only when
+    """No commit; `org` locked. DEC-SCOPE-044 P2/P8: any staff member of the organisation, whatever their status; audited only when
     a value changes (a repeated save writes nothing), with the before/after flags."""
     member, user = await _staff_member(db, org, member_id)
     after = {"can_verify_documents": can_verify_documents, "can_view_reports": can_view_reports}

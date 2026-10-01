@@ -79,7 +79,7 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
 // server refuses them regardless -- this only keeps dead links out of the sidebar).
 const STAFF_HIDDEN = new Set(["/overseas/agent/team", "/overseas/agent/commissions"]);
 const STAFF_REPORTS = "/overseas/agent/reports";
-// AGN-003 (DEC-SCOPE-043 P1): Reports is optional for staff -- shown only once their Master switches it on (the server refuses it
+// AGN-003 (DEC-SCOPE-044 P1): Reports is optional for staff -- shown only once their Master switches it on (the server refuses it
 // regardless; this keeps a dead link out of the sidebar). Masters are never limited.
 export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissions?: AgentPermissions | null): NavItem[] {
   if (memberRole !== "staff") return nav;

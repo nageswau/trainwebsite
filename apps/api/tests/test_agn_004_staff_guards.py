@@ -12,7 +12,7 @@ from tests.agn004_helpers import mk_staff
 @pytest_asyncio.fixture
 async def agency(db_session):
     ctx = await mk_active_org(db_session, name="Guard Agency")
-    # AGN-003 (DEC-SCOPE-043 P1, reconciled on merging `main`): Reports is off for staff by default; these page tests keep it on.
+    # AGN-003 (DEC-SCOPE-044 P1, reconciled on merging `main`): Reports is off for staff by default; these page tests keep it on.
     return ctx | {"staff": await mk_staff(db_session, ctx["org"], can_view_reports=True)}
 
 

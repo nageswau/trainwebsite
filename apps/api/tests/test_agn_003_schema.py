@@ -1,4 +1,4 @@
-"""AGN-003 -- migration 0051 (re-chained after main's 0050 on merge, 2026-10-01): per-staff permission flags (spec §5, AGN-003-AC09)."""
+"""AGN-003 -- migration 0052 (re-chained twice on merging main, 2026-10-01; now after ENH-028's 0051): per-staff permission flags (spec §5, AGN-003-AC09)."""
 
 import importlib.util
 from pathlib import Path
@@ -11,16 +11,16 @@ from tests.agn001_helpers import mk_active_org
 from tests.agn002_helpers import mk_staff
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_agn_003_migration_0051", VERSIONS / "0051_agent_staff_permissions.py")
+_spec = importlib.util.spec_from_file_location("_agn_003_migration_0052", VERSIONS / "0052_agent_staff_permissions.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
 FLAGS = ("can_verify_documents", "can_view_reports")
 
 
-def test_migration_follows_0050():
-    assert _migration.revision == "0051_agent_staff_permissions"
-    assert _migration.down_revision == "0050_notification_channels"
+def test_migration_follows_0051_school_bulk_uploads():
+    assert _migration.revision == "0052_agent_staff_permissions"
+    assert _migration.down_revision == "0051_school_bulk_uploads"
 
 
 @pytest.mark.asyncio

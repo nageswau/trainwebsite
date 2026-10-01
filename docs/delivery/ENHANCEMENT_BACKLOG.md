@@ -63,7 +63,7 @@ and the rest of `EVID-015` stay parked. AGN-001 keeps the ID the user gave it ra
 settings stay parked.
 
 **Revision 8 (2026-10-01):** the owner brought the `EVID-015` §6 Master-vs-Staff permission matrix into scope as
-**AGN-003**, decided as `DEC-SCOPE-043` (P1–P9): two per-staff toggles (Verify Documents, Reports), enforced on existing
+**AGN-003**, decided as `DEC-SCOPE-044` (P1–P9): two per-staff toggles (Verify Documents, Reports), enforced on existing
 routes, plus agent document verification. Assignment/ownership, staff performance and CRM settings stay parked.
 
 ## 0. Scope and exclusions (read this before the backlog)
@@ -2737,6 +2737,13 @@ timeout — replays the original result, does not create duplicate results.
 **Regression risks.** The existing single-record create endpoints for each module must keep working
 unchanged — bulk is additive, not a replacement.
 
+**Status (2026-10-01). COMPLETE for ENH-028's scope** on branch `feature/enh-028-bulk-entry` (verified at `cc16c04`; see the `RTM.md`
+`ENH-028` row). Decided as `DEC-SCOPE-043` (user-approved, with simplifications S1–S5): create-only CSV bulk entry for Results,
+Psychometric, Test Prep and Language; students named by `student_code`; pre-filled templates; idempotent replay per uploader;
+per-row validation, portfolio scope, tier and duplicate checks that never block the batch; parent notices after the commit; one
+generalized batch/row table pair (migration `0051`). The roster upload and every single-record endpoint are unchanged. The batch-size
+question above is resolved: 1 MB / 500 filled-in rows for the new endpoints.
+
 **Complexity:** Medium. **Risk:** Medium.
 
 ---
@@ -3042,7 +3049,7 @@ data-request flow is keyed to the requester's own `users` account, and AGN-004 g
 - **Admin screen:** the SEC-002 queue (`GET`/`PATCH /admin/data-requests`) has no admin UI today; options offered — a Data requests
   screen for both flows, a screen for agency requests only, or API-only like SEC-002. Not answered (deferred with the feature).
 - **Export:** whether the Master can also request an export for such a student (the Master can already view every field).
-- **Feature ID** and decision ID (next free is `DEC-SCOPE-043`).
+- **Feature ID** and decision ID (next free is `DEC-SCOPE-044`).
 
 **Design constraints already found (from reading the code, 2026-10-01):**
 - `PATCH /admin/data-requests/{id}` anonymises the **requesting** `users` row. A Master's request on a student's behalf must carry
@@ -3163,7 +3170,7 @@ verified at `2e7ac9a`)**; the owner waived the Codex review and runs the full ba
 
 **Business requirement.** The owner's `AGN-003` statement (in-session, 2026-10-01): "the §6 matrix: Staff are limited to the
 student journey, with no admin modules; 'Set permissions' / 'Permission Level'", referring to `EVID-015`
-(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2, §3, §4 and §6. Decided as `DEC-SCOPE-043` (P1–P9).
+(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2, §3, §4 and §6. Decided as `DEC-SCOPE-044` (P1–P9).
 
 **Existing behavior.**
 - Staff are refused only team management and commissions (`AGN-002`).
@@ -3171,7 +3178,7 @@ student journey, with no admin modules; 'Set permissions' / 'Permission Level'",
 - No agent can verify or reject documents.
 - There is no permission storage.
 
-**Expected behavior.** Per `DEC-SCOPE-043`:
+**Expected behavior.** Per `DEC-SCOPE-044`:
 - Every ❌ cell of §6 that has a route returns `403` for staff; every ✅ cell succeeds.
 - Verify Documents and Reports are per-staff toggles, off by default, set by a Master and effective on the next request.
 - Agents (Masters, and staff with Verify) may decide pending documents of their agency; staff may only mark them verified.
@@ -3195,7 +3202,7 @@ student journey, with no admin modules; 'Set permissions' / 'Permission Level'",
 - `api/agent_team.py` and `services/agent_orgs.py` (set permissions).
 - `api/auth.py` `/me` and `schemas.py`.
 
-**Database impact.** Migration `0051_agent_staff_permissions`: `agent_org_members.can_verify_documents`, `can_view_reports`
+**Database impact.** Migration `0052_agent_staff_permissions`: `agent_org_members.can_verify_documents`, `can_view_reports`
 (`BOOLEAN NOT NULL DEFAULT false`); additive, existing rows preserved.
 
 **API impact.**
@@ -3231,7 +3238,7 @@ pending-only agent review under a row lock.
 - **AGN-003-AC07** Agents decide only `pending` documents in their agency's scope (`409` / `403` / `404` / `422` as in the spec); a
   counselor or Overseas Admin can still re-review; the student is notified and the decision audited.
 - **AGN-003-AC08** `/auth/me` returns `agent_permissions`; the staff member shape returns `permissions`.
-- **AGN-003-AC09** Migration `0051` follows `0050` as the single head (re-chained on merging `main`; drafted as `0048` after `0047`); defaults `false`; existing members preserved.
+- **AGN-003-AC09** Migration `0052` follows ENH-028 `0051_school_bulk_uploads` as the single head (re-chained on merging `main` twice; drafted as `0048` after `0047`); defaults `false`; existing members preserved.
 
 **Positive scenarios.**
 - Master turns Reports on → the staff member's next page load shows Reports.
@@ -3260,7 +3267,7 @@ pending-only agent review under a row lock.
 
 **Complexity:** Medium. **Risk:** High.
 
-**Status (2026-10-01):** implemented test-first on `feature/agn-003-staff-permissions` (migration `0051_agent_staff_permissions`); verification evidence in `docs/quality/RTM.md` (AGN-003 row). **COMPLETE (2026-10-01, verified at `5cb16ad`)** — final verification-before-completion pass recorded in the RTM (AGN-003 row); the owner waived the independent Codex review.
+**Status (2026-10-01):** implemented test-first on `feature/agn-003-staff-permissions` (migration `0052_agent_staff_permissions`); verification evidence in `docs/quality/RTM.md` (AGN-003 row). **COMPLETE (2026-10-01, verified at `5cb16ad`)** — final verification-before-completion pass recorded in the RTM (AGN-003 row); the owner waived the independent Codex review.
 
 ---
 
@@ -3430,7 +3437,7 @@ item, only for the progress-view question).
 | AGN-001 | `DEC-SCOPE-038` — tenant model, Master count, codes, migration, org status, notifications | **Resolved 2026-09-28** (D1–D13, `EXPLICIT_APPROVAL` in-session) |
 | AGN-002 | `DEC-SCOPE-040` — staff access, model, reset, fields/limits, activation, tenancy/audit | **Resolved 2026-09-30** (S1–S6, `EXPLICIT_APPROVAL` in-session) |
 | AGN-004 | `DEC-SCOPE-042` — students with no login, staff assignment, archive, duplicate warning, relation to AGN-002 | **Resolved 2026-09-30** (D1, D3–D5, D7, D8, G1–G5, `EXPLICIT_APPROVAL` in-session; number provisional) |
-| AGN-003 | `DEC-SCOPE-043` — optional rows, toggle granularity, matrix reach, student scope, agent review, staff outcome | **Resolved 2026-10-01** (P1–P6 `EXPLICIT_APPROVAL` in-session; P7–P9 design assumptions) |
+| AGN-003 | `DEC-SCOPE-044` — optional rows, toggle granularity, matrix reach, student scope, agent review, staff outcome | **Resolved 2026-10-01** (P1–P6 `EXPLICIT_APPROVAL` in-session; P7–P9 design assumptions) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
@@ -3467,7 +3474,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30); the §6 permission matrix moved out to AGN-003 (`DEC-SCOPE-043`, Rev. 8).** Still parked: staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004, `DEC-SCOPE-043` covers AGN-003; none yet for the rest |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30); the §6 permission matrix moved out to AGN-003 (`DEC-SCOPE-044`, Rev. 8).** Still parked: staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004, `DEC-SCOPE-044` covers AGN-003; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

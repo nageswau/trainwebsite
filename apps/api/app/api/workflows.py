@@ -2030,7 +2030,7 @@ async def add_document(payload: StudentDocumentCreate, user: User = Depends(get_
 
 
 async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID, payload: dict) -> dict:
-    """AGN-003 (DEC-SCOPE-043 P3/P5/P6, spec §7): an agency member decides a PENDING document of their agency. Permission checks
+    """AGN-003 (DEC-SCOPE-044 P3/P5/P6, spec §7): an agency member decides a PENDING document of their agency. Permission checks
     come before any read (a refused caller learns nothing about the document); the row lock makes a second agent decision see the
     first and get 409. Same notification and audit action as the counselor path, with validated metadata only."""
     if not agent_may(user, "can_verify_documents"):

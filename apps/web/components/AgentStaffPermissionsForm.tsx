@@ -9,7 +9,7 @@ const OPTIONS: { key: keyof AgentPermissions; label: string; hint: string }[] = 
   { key: "can_view_reports", label: "View reports", hint: "See the agency's application summary." },
 ];
 
-// AGN-003 (DEC-SCOPE-043 P1/P2): what one staff member may do beyond the student journey. Native checkboxes in the ENH-025
+// AGN-003 (DEC-SCOPE-044 P1/P2): what one staff member may do beyond the student journey. Native checkboxes in the ENH-025
 // form-section fieldset; each hint is tied to its box (aria-describedby). The row owns the request, busy state and errors.
 export default function AgentStaffPermissionsForm({ idPrefix, name, value, busy, onSave, onCancel }: {
   idPrefix: string; name: string; value: AgentPermissions; busy: boolean; onSave: (next: AgentPermissions) => void; onCancel: () => void;

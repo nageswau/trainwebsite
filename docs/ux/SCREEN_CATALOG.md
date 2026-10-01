@@ -1759,7 +1759,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Claim reference generated once, immutable.  
 
-- **AGN-003 update (2026-10-01, `DEC-SCOPE-043`) — agent Documents page (`/overseas/agent/documents`; the catalog has no separate entry for it, so it is recorded on this agent screen):** below the upload form, a **review queue** for Masters and for staff whose
+- **AGN-003 update (2026-10-01, `DEC-SCOPE-044`) — agent Documents page (`/overseas/agent/documents`; the catalog has no separate entry for it, so it is recorded on this agent screen):** below the upload form, a **review queue** for Masters and for staff whose
   Verify permission is on (`CounselorDocumentReviewPanel` reused with `queueUrl=/api/v1/portal/overseas/agent/documents`, `pendingOnly`).
   **Review** is offered on `pending` rows only; decided rows show their status as text. Masters choose Verified / Rejected / Changes
   required; staff see one **Mark verified** button (no select). States: loading "Loading your review queue…" (`role="status"`); empty "No documents
@@ -1811,7 +1811,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
   reports the new code and whether the email was sent. Results announced (`role="status"`); focus returns to the opening
   button. Staff themselves see no Team or Commissions link (role label "Agency Staff"); typing the URL shows the 403 card.
   Evidence: AGN-002-AC01…AC10 (`test_agn_002_*.py`; `AgentStaff*.test.tsx`; `navigation.test.ts`; e2e `agn-002-staff.spec.ts`).  
-- **AGN-003 update (2026-10-01, `DEC-SCOPE-043`):** each staff row (active or deactivated) gains a **Permissions** button
+- **AGN-003 update (2026-10-01, `DEC-SCOPE-044`):** each staff row (active or deactivated) gains a **Permissions** button
   (`aria-label="Permissions for <name>"`). It opens a `fieldset.form-section` (`AgentStaffPermissionsForm`, legend "What <name> can do")
   with two checkboxes, each with a hint tied by `aria-describedby`: "Verify documents" (Mark pending documents as verified. Only Masters
   can reject or request changes.) and "View reports" (See the agency's application summary.). The first checkbox is focused; Save /
@@ -2689,6 +2689,24 @@ correction, not deleted, per this project's traceability convention.
 - **Desktop/tablet/mobile behavior:** Same single-column form at every width.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** `SchoolDailyAttendance.test.tsx`, `TeacherAttendancePage.test.tsx`, `tests/e2e/enh-030-daily-attendance.spec.ts`, `test_enh_030_mark.py`; browser QA passed (2026-09-30) — COMPLETE (verified at `634b5e5`).
+
+### `SCR-SCH-040` *(added 2026-10-01, `ENH-028` / `DEC-SCOPE-043`)*
+- **Route:** none of its own — a collapsible section (`<details>`, closed by default) on `/school/academic-team/dashboard` ("Bulk entry — results (CSV)" after Results; "— test preparation" and "— language classes" after Test preparation / Foreign language classes) and on `/school/psychometric-team/dashboard` ("Bulk entry — assessments (CSV)" after Assessments).
+- **Role(s):** Academic Team (results, test prep, language); Psychometric Team (assessments).
+- **Purpose:** Enter a whole class's or batch's records in one upload instead of one form at a time.
+- **Linked Feature ID(s):** `ENH-028`
+- **Entry points:** the dashboard sections above.
+- **Required data:** `GET …/bulk-template` (pre-filled with the portfolio's students); `POST …/bulk-upload` with an `Idempotency-Key` generated when a file is chosen and kept for retries of that file.
+- **Key actions:** 1. Download the pre-filled template (a real download link) and read the "Column reference" table; 2. choose the filled-in CSV and upload; read the row-by-row result (Row · Student ID · Result "Added"/"Rejected" · Detail, in file order).
+- **Empty state:** "No students in your portfolio yet. Bulk entry becomes available once a school is assigned to you." — no form.
+- **Loading state:** file input and button disabled, button "Uploading…", form `aria-busy`, a polite status message.
+- **Error state:** the server's message in a `role="alert"` box (wrong file, missing column, too large, busy); a dropped connection says "The connection dropped. Upload again — the same file won't be added twice." and the same key is reused on retry.
+- **Success state:** "Upload result" heading receives focus; "N of M rows added, K rejected. Rows that succeeded are kept."; the lists above refresh.
+- **Permissions/resource scope:** server-side only (see `RBAC_MATRIX.md` ENH-028 row).
+- **Responsive behavior:** one column; tables scroll inside `.table-wrap` and stack by `data-label` on a phone; no horizontal page scroll at 320 px.
+- **Accessibility requirements:** native `details`/`summary` (keyboard), labelled file input with a format hint (`aria-describedby`), result text never colour-only.
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+- **Acceptance evidence needed:** `SchoolBulkEntryPanel.test.tsx`, `tests/e2e/enh-028-bulk-entry.spec.ts`, `test_enh_028_*.py`, browser verification.
 
 ### `SCR-RPT-001`
 - **Route:** `/it/admin/reports`  

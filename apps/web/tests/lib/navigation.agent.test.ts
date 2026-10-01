@@ -5,7 +5,7 @@ import { agentNavFor, PORTAL_NAV } from "@/lib/navigation";
 describe("agentNavFor", () => {
   const nav = PORTAL_NAV["overseas/agent"];
 
-  // AGN-003 (DEC-SCOPE-043 P1, reconciled on merging `main`): Reports is also off for staff until their Master switches it on.
+  // AGN-003 (DEC-SCOPE-044 P1, reconciled on merging `main`): Reports is also off for staff until their Master switches it on.
   it("hides Team and Commissions from staff", () => {
     expect(agentNavFor(nav, "staff", { can_verify_documents: false, can_view_reports: true }).map((i) => i.href)).toEqual([
       "/overseas/agent/dashboard",

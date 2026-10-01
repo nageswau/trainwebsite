@@ -9,7 +9,7 @@ RECORDS = "/api/v1/workflows/overseas/agent/crm/students"
 
 
 async def mk_staff(db, org: AgentOrg, *, full_name: str = "Staff Member", active: bool = True, can_view_reports: bool = False) -> dict:
-    """`can_view_reports`: AGN-003 (DEC-SCOPE-043 P1) -- Reports is off for staff unless their Master switches it on."""
+    """`can_view_reports`: AGN-003 (DEC-SCOPE-044 P1) -- Reports is off for staff unless their Master switches it on."""
     org = await db.get(AgentOrg, org.id, populate_existing=True)
     user = await mk_user(db, role="agent", full_name=full_name, active=active)
     db.add(UserRoleAssignment(user_id=user.id, division="overseas", role="agent", approval_status="approved"))
