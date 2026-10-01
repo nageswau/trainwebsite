@@ -45,4 +45,7 @@ suite 128 files / 1368 tests passed; `tsc --noEmit` exit 0; eslint clean on the 
 | 20 | Unexpected redirects | ✅ none |
 
 **Notes (no change):** Refresh is not de-duplicated (read-only; latest request wins); times are shown to the minute.
-**Still pending (owner requirement):** the independent Codex review.
+**Independent Codex review:** waived by the owner (2026-10-01).
+**Final re-verification (2026-10-01, at `7b2b085`, after the simplification refactors):** against a fresh production build (`next start` on
+:3121 → the agn021 API) in an isolated headless Chrome with trusted input: AC01, AC02, AC03 (live allow-list check), AC04, AC05, AC06 and
+AC07 (focus/Tab/Escape, offline error with one retry, expired session → Sign in again, 320 px) all PASS; no console errors.

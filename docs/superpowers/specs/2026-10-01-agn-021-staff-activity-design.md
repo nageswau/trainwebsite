@@ -116,6 +116,11 @@ non-list `fields` are handled.
   `role="status"`); empty ("No activity yet."); error (`role="alert"`: a 4xx response with a string `detail` shows that detail; anything else — 5xx, network failure, non-page body, non-string `detail` — shows "Unable to load activity."; and
   **Try again**); pager ("Showing a–b of N", Previous/Next disabled at the ends and while loading); **Refresh** reloads the current page.
   A request counter ignores a response that is older than the latest request (no stale overwrite).
+  **Amended after browser QA (2026-10-01, `docs/quality/AGN-021_BROWSER_QA_2026-10-01.md`):** a 401 shows "Your session has expired."
+  with a **Sign in again** link to `/overseas/login` and no retry (QA-03, the app's `LoadFailureAlert` convention); the error state offers
+  one retry action, **Try again** — Refresh is hidden while an error shows (QA-01); while a newer page or a Refresh loads over the current
+  list, "Updating activity…" (`role="status"`) shows and the list is dimmed (QA-02); on open, focus moves to the Activity heading
+  (`tabIndex=-1`) rather than to the last button (QA-04).
 - **`AgentStaffRow`:** a new mode `activity` and an **Activity** button beside Permissions (all statuses, including deactivated); the
   section has a **Close** button; focus returns to the Activity button on close (the row's existing `id("<action>")` focus pattern).
 - **Accessibility / responsive:** native buttons; list semantics; `aria-busy` on the list while loading; no horizontal scroll at 320 px
