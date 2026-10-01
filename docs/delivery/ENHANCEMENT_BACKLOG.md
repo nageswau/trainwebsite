@@ -2995,7 +2995,41 @@ the agency warns; saving again with confirmation proceeds (audited).
 (`docs/superpowers/plans/2026-09-30-agn-004-agent-students.md`) and built test-first on `feature/agn-004-agent-students`
 (migration `0048_agent_students_crm`, re-chained after AGN-002's `0047_agent_org_staff` when main was merged 2026-10-01). The Master
 Assign row action (spec §6) was built on 2026-10-01; Staff browser flows and Playwright verified on the merged build. Open, outside
-the ACs: PRD open item 80 (erasure of students with no login, `NEEDS_CONFIRMATION`); the independent Codex review was set aside by the owner. Evidence in `docs/quality/RTM.md`.
+the ACs: PRD open item 80 (erasure of students with no login) — moved to the backlog as `AGN-ERASE` below; the independent Codex review was set aside by the owner. Evidence in `docs/quality/RTM.md`.
+
+---
+
+## AGN-ERASE (provisional ID — `NEEDS_CONFIRMATION`) — Erasure of Agent Students Who Have No Login
+
+**Status (2026-10-01) — BACKLOG, not scheduled** (owner: "move to backlog" — the whole feature). Origin: PRD open item 80, found by
+the AGN-004 security review. The feature ID is provisional; the owner assigns AGN numbers.
+
+**Business requirement.** A student recorded by an agency without a login (AGN-004, `agent_students.student_id IS NULL`) holds
+personal data (name, email, phone, date of birth, education, preferences, notes) but has no way to have it erased: the SEC-002
+data-request flow is keyed to the requester's own `users` account, and AGN-004 gives agencies archive only (no delete, D5).
+
+**Owner decisions (in-session 2026-10-01, `EXPLICIT_APPROVAL` — answers to structured questions):**
+- **Requester:** the agency's Master raises the erasure request for one of the agency's students (e.g. after the student asks them).
+- **Verification:** the Master records how the student asked (free text); an EduSphere admin (Overseas Admin / Super Admin) approves
+  or rejects with a reason; both steps audited.
+- **Erasure:** anonymise the `agent_students` row in place — name becomes "Erased student", every other personal field cleared,
+  status archived, row id kept so audit history and counts stay consistent. Audit rows already hold ids and field names only.
+
+**Still `NEEDS_CONFIRMATION` before design:**
+- **Admin screen:** the SEC-002 queue (`GET`/`PATCH /admin/data-requests`) has no admin UI today; options offered — a Data requests
+  screen for both flows, a screen for agency requests only, or API-only like SEC-002. Not answered (deferred with the feature).
+- **Export:** whether the Master can also request an export for such a student (the Master can already view every field).
+- **Feature ID** and decision ID (next free is `DEC-SCOPE-042`).
+
+**Design constraints already found (from reading the code, 2026-10-01):**
+- `PATCH /admin/data-requests/{id}` anonymises the **requesting** `users` row. A Master's request on a student's behalf must carry
+  the target `agent_students` id and branch on it — otherwise fulfilling it would anonymise the Master's own account.
+- `data_subject_requests` needs a nullable target column (e.g. `agent_student_id`); the admin list scopes by the requester's
+  division, and a Master is in `overseas`, so Overseas Admin sees these requests.
+- Students with no login have no applications or commissions (those are keyed to student accounts), so erasure touches only the
+  `agent_students` row; the within-agency duplicate check must not match on erased (blank) fields.
+
+**Dependencies.** AGN-004 (merged into its branch, COMPLETE 2026-10-01); SEC-002 (data-request flow).
 
 ---
 
