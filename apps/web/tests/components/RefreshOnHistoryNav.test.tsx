@@ -51,6 +51,27 @@ describe("RefreshOnHistoryNav (AGN-003 browser QA-07)", () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
+  // Second browser re-check of QA-07: Next registers its own popstate listener first and swaps the page synchronously inside it,
+  // which removed ours mid-dispatch, so ours never ran. Ours must run before Next's.
+  it("runs before an earlier popstate listener that unmounts it synchronously", () => {
+    vi.useFakeTimers();
+    let unmount: () => void = () => {};
+    const nextRouter = () => unmount();
+    window.addEventListener("popstate", nextRouter);
+    try {
+      ({ unmount } = render(<RefreshOnHistoryNav />));
+      act(() => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+      act(() => {
+        vi.runAllTimers();
+      });
+      expect(refresh).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener("popstate", nextRouter);
+    }
+  });
+
   it("stops listening when unmounted", () => {
     vi.useFakeTimers();
     const { unmount } = render(<RefreshOnHistoryNav />);
