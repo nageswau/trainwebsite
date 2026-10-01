@@ -295,8 +295,8 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
           key={detail.id}
           detail={detail}
           onClose={closeDetail}
-          onSaved={(s) => {
-            setNotice(`${s.full_name} saved.`);
+          onSaved={(s, notice) => {
+            setNotice(notice ?? `${s.full_name} saved.`);
             applyUpdate(s);
           }}
         />
