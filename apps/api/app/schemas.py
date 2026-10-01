@@ -1,3 +1,4 @@
+import math
 import re
 import unicodedata
 from datetime import date, datetime
@@ -949,6 +950,153 @@ class PsychometricResultFields(BaseModel):
         if value is not None and not isinstance(value, str):
             raise ValueError("must be text")
         return _clean_multiline_text(value)
+
+
+# --- ENH-028: bulk data-entry CSV rows (docs/superpowers/specs/2026-10-01-enh-028-bulk-data-entry-design.md §6) ---
+# Every value arrives as CSV text. Each bound below mirrors the target column's width, so a bad cell rejects its row instead
+# of failing the whole batch at the database. Unknown columns are ignored (a `status` or owner column has no effect).
+
+RESULT_MARKS_MAX = 9999.99  # Numeric(6, 2)
+
+
+def _required_text(value, max_length: int) -> str:
+    cleaned = _clean_text(value, max_length)
+    if cleaned is None:
+        raise ValueError("is required")
+    return cleaned
+
+
+def _marks(value) -> float:
+    if value is None or (isinstance(value, str) and not value.strip()):
+        raise ValueError("is required")
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise ValueError("must be a number") from None
+    if not math.isfinite(number):
+        raise ValueError("must be a number")
+    return number
+
+
+class BulkResultRow(BaseModel):
+    model_config = {"extra": "ignore"}
+
+    academic_year: str
+    term: str
+    subject: str
+    max_marks: float
+    marks_obtained: float
+    grade: str | None = None
+    teacher_remarks: str | None = None
+
+    @field_validator("academic_year", mode="before")
+    @classmethod
+    def _year(cls, value):
+        return _required_text(value, 20)
+
+    @field_validator("term", mode="before")
+    @classmethod
+    def _term(cls, value):
+        return _required_text(value, 40)
+
+    @field_validator("subject", mode="before")
+    @classmethod
+    def _subject(cls, value):
+        return _required_text(value, 80)
+
+    @field_validator("max_marks", mode="before")
+    @classmethod
+    def _max_marks(cls, value):
+        number = _marks(value)
+        if not 0 < number <= RESULT_MARKS_MAX:
+            raise ValueError(f"must be greater than 0 and at most {RESULT_MARKS_MAX}")
+        return number
+
+    @field_validator("marks_obtained", mode="before")
+    @classmethod
+    def _marks_obtained(cls, value, info):
+        number = _marks(value)
+        if not 0 <= number <= RESULT_MARKS_MAX:
+            raise ValueError(f"must be between 0 and {RESULT_MARKS_MAX}")
+        if "max_marks" in info.data and number > info.data["max_marks"]:
+            raise ValueError("must not exceed max_marks")
+        return number
+
+    @field_validator("grade", mode="before")
+    @classmethod
+    def _grade(cls, value):
+        return _clean_text(value, 10)
+
+    @field_validator("teacher_remarks", mode="before")
+    @classmethod
+    def _remarks(cls, value):
+        return clean_free_text(value, 2000)
+
+
+class BulkPsychometricRow(PsychometricResultFields):
+    """The single create's fields plus the ENH-027 result fields; list cells are `;`-separated."""
+
+    model_config = {"extra": "ignore"}
+
+    assessment_type: str
+    report_url: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _split_list_cells(cls, data):
+        if isinstance(data, dict):
+            data = {**data, **{key: data[key].split(";") if data[key].strip() else None for key in PSYCHOMETRIC_LIST_KEYS if isinstance(data.get(key), str)}}
+        return data
+
+    @field_validator("assessment_type", mode="before")
+    @classmethod
+    def _assessment_type(cls, value):
+        return _required_text(value, 120)
+
+    @field_validator("report_url", mode="before")
+    @classmethod
+    def _report_url(cls, value):
+        cleaned = _clean_text(value, 500)
+        if cleaned is not None and not cleaned.lower().startswith(("http://", "https://")):
+            raise ValueError("must start with http:// or https://")
+        return cleaned
+
+
+class BulkTestPrepRow(BaseModel):
+    model_config = {"extra": "ignore"}
+
+    test_type: str
+    target_score: str | None = None
+
+    @field_validator("test_type", mode="before")
+    @classmethod
+    def _test_type(cls, value):
+        cleaned = _required_text(value, 10).lower()
+        if cleaned not in ("ielts", "sat"):
+            raise ValueError("must be one of ielts, sat")
+        return cleaned
+
+    @field_validator("target_score", mode="before")
+    @classmethod
+    def _target_score(cls, value):
+        return _clean_text(value, 20)
+
+
+class BulkLanguageRow(BaseModel):
+    model_config = {"extra": "ignore"}
+
+    language: str
+    level: str | None = None
+
+    @field_validator("language", mode="before")
+    @classmethod
+    def _language(cls, value):
+        return _required_text(value, 60)
+
+    @field_validator("level", mode="before")
+    @classmethod
+    def _level(cls, value):
+        return _clean_text(value, 30)
 
 
 # --- ENH-005: student school transfer (docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md) ---
