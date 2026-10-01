@@ -27,6 +27,8 @@ export type AgentStudentDetail = AgentStudentItem & {
   archived_at: string | null;
   archived_by: string | null;
   updated_at: string;
+  // AGN-006: always sent by the server; optional here so records built before AGN-006 (tests, fixtures) stay valid.
+  counseling?: Counseling | null;
 };
 export type DuplicateMatch = { id: string; full_name: string; has_login: boolean; status: string; matched_on: string[] };
 export type DuplicateDetail = { message: string; matches: DuplicateMatch[]; hidden_matches: number };
@@ -124,4 +126,90 @@ export function duplicateDetail(detail: unknown): DuplicateDetail | null {
   const d = detail as (Partial<DuplicateDetail> & { code?: string }) | null;
   if (!d || typeof d !== "object" || d.code !== "possible_duplicate" || !Array.isArray(d.matches)) return null;
   return { message: String(d.message ?? ""), matches: d.matches, hidden_matches: Number(d.hidden_matches ?? 0) };
+}
+
+// AGN-006 (DEC-SCOPE-048): the counseling record (EVID-015 §5 Step 2), replaced whole by PUT …/counseling. Mirrors
+// schemas.AgentStudentCounselingSave; the server remains the authority.
+export const CURRENCIES = ["INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD"] as const;
+export type Currency = (typeof CURRENCIES)[number];
+export type Counseling = {
+  counseling_completed: boolean;
+  completed_at: string | null;
+  completed_by: string | null;
+  career_interest: string | null;
+  course_preference: string | null;
+  country_preference: string | null;
+  budget_amount: string | null;
+  budget_currency: Currency | null;
+  remarks: string | null;
+  updated_at: string;
+  updated_by: string | null;
+};
+export type CounselingValues = {
+  counseling_completed: boolean;
+  career_interest: string;
+  course_preference: string;
+  country_preference: string;
+  budget_amount: string;
+  budget_currency: Currency;
+  remarks: string;
+};
+export type CounselingField = keyof CounselingValues;
+
+const COUNSELING_LIMITS = { career_interest: 200, course_preference: 200, country_preference: 120, remarks: NOTES_MAX } as const;
+const AMOUNT = /^\d{1,8}(\.\d{1,2})?$/; // 0 to 99,999,999.99 with at most 2 decimals (the server's bounds)
+
+export function counselingUrl(id: string): string {
+  return `${RECORDS_URL}/${id}/counseling`;
+}
+
+export function counselingValues(c?: Counseling | null): CounselingValues {
+  return {
+    counseling_completed: c?.counseling_completed ?? false,
+    career_interest: c?.career_interest ?? "",
+    course_preference: c?.course_preference ?? "",
+    country_preference: c?.country_preference ?? "",
+    budget_amount: c?.budget_amount ?? "",
+    budget_currency: c?.budget_currency ?? "INR",
+    remarks: c?.remarks ?? "",
+  };
+}
+
+// "25,00,000" and "2 500 000" are what people type; the server gets digits only.
+function plainAmount(value: string): string {
+  return value.replace(/[,\s]/g, "");
+}
+
+export function counselingPayload(v: CounselingValues): Record<string, unknown> {
+  const text = (s: string) => s.trim() || null;
+  const amount = plainAmount(v.budget_amount);
+  return {
+    counseling_completed: v.counseling_completed,
+    career_interest: text(v.career_interest),
+    course_preference: text(v.course_preference),
+    country_preference: text(v.country_preference),
+    budget_amount: amount || null, // a string: no float rounding on the way
+    budget_currency: amount ? v.budget_currency : null,
+    remarks: text(v.remarks),
+  };
+}
+
+export function validateCounseling(v: CounselingValues): Partial<Record<CounselingField, string>> {
+  const errors: Partial<Record<CounselingField, string>> = {};
+  for (const [key, max] of Object.entries(COUNSELING_LIMITS) as [keyof typeof COUNSELING_LIMITS, number][]) {
+    if (v[key].trim().length > max) errors[key] = `Must be ${max} characters or fewer`;
+  }
+  const amount = plainAmount(v.budget_amount);
+  if (amount.startsWith("-")) errors.budget_amount = "Budget cannot be negative";
+  else if (amount && !AMOUNT.test(amount)) errors.budget_amount = "Enter an amount up to 99,999,999.99 with at most 2 decimals";
+  return errors;
+}
+
+export function formatBudget(amount: string | null, currency: string | null): string {
+  if (amount === null || !currency) return "—";
+  try {
+    return new Intl.NumberFormat(currency === "INR" ? "en-IN" : "en-GB", { style: "currency", currency }).format(Number(amount));
+  } catch {
+    return `${currency} ${amount}`;
+  }
 }
