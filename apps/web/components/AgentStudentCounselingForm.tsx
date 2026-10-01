@@ -25,7 +25,7 @@ const TEXT_FIELDS: { key: "career_interest" | "course_preference" | "country_pre
   { key: "country_preference", label: "Country preference" },
 ];
 const FOCUS_ORDER: CounselingField[] = ["counseling_completed", "career_interest", "course_preference", "country_preference", "budget_amount", "budget_currency", "remarks"];
-const LEAVE_PROMPT = "You have unsaved counseling changes. Leave without saving?";
+export const LEAVE_PROMPT = "You have unsaved counseling changes. Leave without saving?";
 
 // FastAPI's 422 list -> {field: message} for this form's fields, or null when any error is not one of them (then the whole detail is
 // shown as one message, so nothing is hidden) -- the AgentStudentForm rule.
@@ -44,10 +44,13 @@ export default function AgentStudentCounselingForm({
   detail,
   onSaved,
   onCancel,
+  onDirtyChange,
 }: {
   detail: AgentStudentDetail;
   onSaved: (s: AgentStudentDetail) => void;
   onCancel: () => void;
+  // Review #2: the list asks before another student replaces unsaved input (opening a student is leaving the form too).
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const original = useRef<CounselingValues>(counselingValues(detail.counseling));
   const [values, setValues] = useState<CounselingValues>(original.current);
@@ -61,6 +64,11 @@ export default function AgentStudentCounselingForm({
   useEffect(() => {
     document.getElementById(`${idPrefix}-counseling_completed`)?.focus();
   }, [idPrefix]);
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+    return () => onDirtyChange?.(false); // unmounted (saved, cancelled or left): nothing unsaved remains
+  }, [dirty, onDirtyChange]);
 
   // Leave prompt while there is unsaved input (C9; AgentStudentForm's pattern, browser QA-03): beforeunload covers reload/close; an
   // in-app link navigates client-side, so ask first -- capture phase runs before Next's Link handler.

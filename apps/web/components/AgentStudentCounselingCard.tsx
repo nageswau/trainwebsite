@@ -25,11 +25,13 @@ export default function AgentStudentCounselingCard({
   editing,
   onEditingChange,
   onSaved,
+  onDirtyChange,
 }: {
   detail: AgentStudentDetail;
   editing: boolean;
   onEditingChange: (open: boolean) => void;
   onSaved: (s: AgentStudentDetail) => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const c = detail.counseling ?? null;
   const headingId = `counseling-heading-${detail.id}`;
@@ -56,6 +58,7 @@ export default function AgentStudentCounselingCard({
       {editing ? (
         <AgentStudentCounselingForm
           detail={detail}
+          onDirtyChange={onDirtyChange}
           onCancel={() => {
             onEditingChange(false);
             refocus(openerId);

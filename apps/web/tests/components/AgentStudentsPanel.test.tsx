@@ -444,3 +444,34 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     expect(within(row).getByText("ABC-S001 · Rahul (deactivated)")).toBeInTheDocument();
   });
 });
+
+describe("AgentStudentsPanel with an unsaved counseling form (AGN-006 review #2)", () => {
+  it("asks before another student replaces unsaved counseling input, and keeps it when the user stays", async () => {
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(
+        url.endsWith("/s1")
+          ? res({ student: detail() })
+          : url.endsWith("/s2")
+            ? res({ student: detail({ id: "s2", full_name: "Ravi Iyer" }) })
+            : res(page([item(), item({ id: "s2", full_name: "Ravi Iyer" })])),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<AgentStudentsPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "View Asha Rao" }));
+    const panel = await screen.findByRole("region", { name: "Asha Rao" });
+    fireEvent.click(within(panel).getByRole("button", { name: "Record counseling" }));
+    fireEvent.change(within(panel).getByLabelText("Remarks"), { target: { value: "Long unsaved note" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "View Ravi Iyer" }));
+    expect(confirm).toHaveBeenCalledWith("You have unsaved counseling changes. Leave without saving?");
+    expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith("/s2"))).toBe(false);
+    expect(within(screen.getByRole("region", { name: "Asha Rao" })).getByLabelText("Remarks")).toHaveValue("Long unsaved note");
+
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "View Ravi Iyer" }));
+    expect(await screen.findByRole("region", { name: "Ravi Iyer" })).toBeInTheDocument();
+    confirm.mockRestore();
+  });
+});

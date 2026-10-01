@@ -16,10 +16,12 @@ export default function AgentStudentDetailPanel({
   detail,
   onClose,
   onSaved,
+  onDirtyChange,
 }: {
   detail: AgentStudentDetail;
   onClose: () => void;
   onSaved: (s: AgentStudentDetail, notice?: string) => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   // One form at a time (AGN-006): the Step 1 edit replaces the details; counseling edits inside its own section.
   const [editing, setEditing] = useState<"none" | "student" | "counseling">("none");
@@ -90,6 +92,7 @@ export default function AgentStudentDetailPanel({
             editing={editing === "counseling"}
             onEditingChange={(open) => setEditing(open ? "counseling" : "none")}
             onSaved={(s) => onSaved(s, `Counseling saved for ${s.full_name}.`)}
+            onDirtyChange={onDirtyChange}
           />
           {editing === "none" && (
             <button type="button" className="btn secondary small" onClick={onClose} style={{ marginTop: 16 }}>
