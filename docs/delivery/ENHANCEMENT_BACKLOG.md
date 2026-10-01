@@ -2789,6 +2789,14 @@ question above is resolved: 1 MB / 500 filled-in rows for the new endpoints.
 
 ## ENH-029 — Bulk School Partner Onboarding (Admin, Multiple Schools at Once)
 
+**Status (2026-10-01): COMPLETE on `feature/enh-029-bulk-school-onboarding` (verified at `842d4c8`; evidence in the `RTM.md`
+ENH-029 row; not yet merged).** Open low-severity follow-ups: browser QA-029-04/05/06/07/08. Designed and decided in `docs/superpowers/specs/2026-10-01-enh-029-bulk-school-onboarding-design.md` (`DEC-SCOPE-047`); plan `docs/superpowers/plans/2026-10-01-enh-029-bulk-school-onboarding.md`.
+**Corrections to this entry (2026-10-01):** the security note below is stale — `create_school` no longer sets
+`"ChangeMe@12345"`; since ENH-003 it issues an unusable password + a 72 h set-password link, and bulk onboarding reuses that
+path (`admin._provision_school`), so the ENH-003 dependency is met. Line references `admin.py:900-939`/`:920` predate later
+changes (`create_school` is now `admin.py` ~1220). Final design: CSV of every `SchoolCreate` field, ≤ 100 rows, one
+transaction with a savepoint per row, ENH-028's tables (`target_type = 'school_onboarding'`), welcome links after commit.
+
 **Title.** Let Overseas Admin/Super Admin onboard multiple school partners in one action instead of
 one `POST` per school.
 

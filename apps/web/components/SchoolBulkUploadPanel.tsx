@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { newIdempotencyKey } from "@/lib/idempotencyKey";
 import { ROSTER_COLUMNS, friendlyMessage } from "@/lib/schoolStudents";
 
 type RowReport = { row_number: number; status: string; error_message: string | null; created_student_id: string | null };
@@ -38,7 +39,7 @@ export default function SchoolBulkUploadPanel() {
     body.append("file", file);
     const response = await fetch("/api/v1/school/students/bulk-upload", {
       method: "POST",
-      headers: { "Idempotency-Key": crypto.randomUUID() },
+      headers: { "Idempotency-Key": newIdempotencyKey() },
       body,
     });
     const data = await response.json().catch(() => ({}));
