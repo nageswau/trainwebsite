@@ -156,6 +156,50 @@ commission notifications) and cannot be approved/rejected as agents by Overseas 
 `tests/test_agn_002_staff.py`, `test_agn_002_staff_access.py`, `test_agn_002_master_rules.py`, `test_agn_002_sessions.py`.
 Known limitation: admin `PATCH /admin/users/{id}` can still change `active` on any agent user (spec §10, E4).
 
+**AGN-003 addendum (2026-10-01, DEC-SCOPE-041).** The §6 Master-vs-Staff matrix as built (spec §3; ✅ = succeeds, ❌ = `403`,
+T = follows the staff member's toggle, N/A = no route for any agent, so parked under `C-10`). Enforcement: `core/rbac.agent_may`
+(Masters always; staff follow their own flag, read from the membership `get_current_user` loads on every request),
+`api/portal.py` (Reports), `workflows._agent_document_review` (Verify/Reject), `api/agent_team._require_master` (team routes).
+
+| §6 row | Route(s) | Master | Staff |
+|---|---|---|---|
+| Dashboard | `GET /portal/overseas/agent/dashboard` | ✅ full | ✅ limited (no commission figures, AGN-002) |
+| Create Student | `POST /workflows/overseas/agent/students` (links an existing student) | ✅ | ✅ |
+| View Students | `GET /workflows/overseas/agent/students`, `GET /portal/overseas/agent/students`, `GET /lookups/overseas-students` | ✅ agency | ✅ agency (P4) |
+| Edit Student | — | N/A | N/A |
+| Delete Student | — | N/A | N/A |
+| Assign Student / Assign Students | — | N/A | N/A |
+| Create Application | `POST /workflows/overseas/applications` | ✅ | ✅ |
+| Edit Application | — (counselor/rep/admin only) | N/A | N/A |
+| View Applications | `GET /workflows/overseas/applications`, `GET /portal/overseas/agent/applications`, `GET /lookups/overseas-applications` | ✅ | ✅ |
+| Change Application Status | — (counselor/admin only) | N/A | N/A |
+| Upload Documents | `POST /workflows/overseas/documents`; `GET /portal/overseas/agent/documents` | ✅ | ✅ |
+| Verify Documents | `PATCH /workflows/overseas/documents/{id}/verify` with `verified` (**new for agents**) | ✅ | **T** |
+| Reject Documents | same route with `rejected` or `changes_required` | ✅ | ❌ (even with Verify on) |
+| University Database | `GET /public/universities`, `GET /public/universities/{slug}` | ✅ view | ✅ view |
+| Add University | `POST /admin/universities` (admin only) | ❌ | ❌ |
+| Staff Management | `GET /workflows/overseas/agent/team/staff`, `PATCH …/staff/{id}`, `PUT …/staff/{id}/permissions` (**new**), `GET /workflows/overseas/agent/team`, `GET /portal/overseas/agent/team` | ✅ | ❌ |
+| Create Staff Login | `POST /workflows/overseas/agent/team/staff`, `POST …/staff/{id}/reset` | ✅ | ❌ |
+| Deactivate Staff | `POST …/staff/{id}/deactivate`, `POST …/staff/{id}/reactivate` | ✅ | ❌ |
+| Staff Performance | — | N/A | N/A |
+| Reports | `GET /portal/overseas/agent/reports` | ✅ full | **T** (when on: today's staff report, no commission row) |
+| Commission | `GET /workflows/overseas/agent/commissions`, `POST …/commissions/{id}/claim`, `GET /portal/overseas/agent/commissions` | ✅ | ❌ |
+| CRM Settings | — | N/A | N/A |
+
+The Master-team routes (`POST …/team/masters`, `POST …/team/masters/{id}/deactivate`) sit under Staff Management and are ❌ for Staff.
+
+- **Toggles (P1/P2):** `can_verify_documents` and `can_view_reports`, per staff member, **off by default**. Only an active Master of the
+  staff member's organisation sets them (`PUT …/staff/{member_id}/permissions`). Nothing is copied into the JWT, so a change applies on
+  the staff member's next request with no session bump. On a Master's row the flags are stored but never read.
+- **Verify gives `verified` only (P6):** staff with Verify who send `rejected` or `changes_required` get `403`; Reject and Request
+  changes are Master-only. Agents decide only `pending` documents (P5); a counselor or Overseas Admin can still re-review.
+- **N/A rows** have no route for any agent, so no test is possible; they stay parked under `C-10` (spec §2). **Add University** is a
+  deliberate departure from the source's ✅ for Masters: the route is admin-only, no agent has ever had it (P3), and it is tested as
+  `403` for both member roles so the gap stays visible.
+
+Proved by `tests/test_agn_003_matrix.py` (every ❌ and every cheap ✅ cell; two Master ✅ cells are cited from `test_agn_001_team.py` and
+`test_agt_004_commission_payout.py`), `test_agn_003_permissions.py`, `test_agn_003_verify.py`.
+
 **`DEC-ROLE-004` (2026-09-14) — Agent on-behalf-of a referred student, NOT YET BUILT:** the
 approved Agent row above is read-only (view roster/commissions, claim). Since an Agent-referred
 student is never issued a login, the Agent must also **create** the referral (`AgentStudent`) and

@@ -3176,8 +3176,9 @@ pending-only agent review under a row lock.
 
 **Complexity:** Medium. **Risk:** High.
 
-**Status (2026-10-01):** designed (`docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md`), awaiting owner spec
-review; branch `feature/agn-003-staff-permissions`.
+**Status (2026-10-01):** designed (`docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md`) and **IMPLEMENTED, NOT COMPLETE**
+(Tasks 1–9 built on branch `feature/agn-003-staff-permissions`; browser spec and verification evidence pending; traceability in
+`docs/quality/RTM.md` `AGN-003` row).
 
 ---
 
