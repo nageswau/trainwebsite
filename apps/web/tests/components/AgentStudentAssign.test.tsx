@@ -33,6 +33,13 @@ describe("AgentStudentAssign (AGN-004 AC09, spec §6)", () => {
     expect(select.value).toBe("");
   });
 
+  it("moves keyboard focus into the choice once the staff list has loaded (browser check)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(STAFF))));
+    const select = (await open()) as HTMLSelectElement;
+    await waitFor(() => expect(select.options).toHaveLength(3));
+    await waitFor(() => expect(select).toHaveFocus());
+  });
+
   it("starts on the current assignee, and Save waits for a different choice", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(STAFF))));
     const select = (await open(vi.fn(), { assigned_to: { id: "m1", code: "EDU-S001", full_name: "Priya Nair", status: "active" } })) as HTMLSelectElement;

@@ -17,7 +17,13 @@ export default function AgentStudentAssign({ student, onAssigned }: { student: A
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
+  const select = useRef<HTMLSelectElement>(null);
   const focusOpener = useRef(false);
+
+  // The select is disabled while the staff list loads (a disabled control cannot take focus), so focus moves in once it has.
+  useEffect(() => {
+    if (open && staff !== null) select.current?.focus();
+  }, [open, staff]);
 
   useEffect(() => {
     if (!open && focusOpener.current) {
@@ -83,7 +89,7 @@ export default function AgentStudentAssign({ student, onAssigned }: { student: A
     <div role="group" aria-label={`Assign ${student.full_name}`} style={{ flexBasis: "100%" }}>
       <div className="field" style={{ margin: 0 }}>
         <label htmlFor={selectId}>Assign to</label>
-        <select id={selectId} value={choice} disabled={staff === null || busy} autoFocus onChange={(e) => setChoice(e.target.value)}>
+        <select ref={select} id={selectId} value={choice} disabled={staff === null || busy} onChange={(e) => setChoice(e.target.value)}>
           <option value="">Unassigned</option>
           {/* A deactivated assignee keeps the student (G5) but cannot be chosen again. */}
           {staff && student.assigned_to && !staff.some((m) => m.id === current) && (
