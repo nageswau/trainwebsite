@@ -1,0 +1,81 @@
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import AgentUniversitiesPanel from "@/components/AgentUniversitiesPanel";
+
+const uni = (over: Record<string, unknown> = {}) => ({ id: "u1", name: "Trinity", country: "Ireland", city: "Dublin", entry_requirements: "IELTS 6.5", created_at: "", updated_at: "", ...over });
+const page = (items: unknown[], total = items.length) => ({ items, total, limit: 20, offset: 0 });
+const res = (body: unknown, status = 200) => new Response(body === null ? null : JSON.stringify(body), { status });
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+describe("AgentUniversitiesPanel (AGN-007)", () => {
+  it("shows loading, then the agency's universities as a list", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([uni()])))));
+    render(<AgentUniversitiesPanel memberRole="master" />);
+    expect(screen.getByText("Loading universities…")).toBeInTheDocument();
+    const list = await screen.findByRole("list", { name: "Agency universities" });
+    expect(within(list).getByText("Trinity")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Browse the university catalogue" })).toHaveAttribute("href", "/overseas/universities");
+  });
+
+  it("gives Masters Add, Edit and Delete; Staff see none", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([uni()])))));
+    const { unmount } = render(<AgentUniversitiesPanel memberRole="master" />);
+    await screen.findByText("Trinity");
+    expect(screen.getByRole("button", { name: "Add university" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit Trinity" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete Trinity" })).toBeInTheDocument();
+    unmount();
+    render(<AgentUniversitiesPanel memberRole="staff" />);
+    await screen.findByText("Trinity");
+    expect(screen.queryByRole("button", { name: /Add university|Edit|Delete/ })).toBeNull();
+  });
+
+  it("shows the empty state (with Add only for Masters)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([])))));
+    render(<AgentUniversitiesPanel memberRole="staff" />);
+    expect(await screen.findByText("Your agency hasn't added any universities yet.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add university" })).toBeNull();
+  });
+
+  it("shows an error with Retry", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(res({ detail: "boom" }, 500)).mockResolvedValueOnce(res(page([uni()])));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentUniversitiesPanel memberRole="master" />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("boom");
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading universities" }));
+    expect(await screen.findByText("Trinity")).toBeInTheDocument();
+  });
+
+  it("explains an in-use delete inline and keeps the row", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) =>
+      Promise.resolve(init?.method === "DELETE" ? res({ detail: "This university is on 2 shortlist entries; remove it from them first" }, 409) : res(page([uni()]))),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentUniversitiesPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Delete Trinity" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete" }));
+    expect(await screen.findByText(/on 2 shortlist entries/)).toBeInTheDocument();
+    expect(screen.getByText("Trinity")).toBeInTheDocument();
+  });
+
+  it("adds a university and shows it", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) =>
+      Promise.resolve(init?.method === "POST" ? res({ university: uni({ id: "u2", name: "UCD" }) }, 201) : res(page([]))),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentUniversitiesPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Add university" }));
+    const form = screen.getByRole("form", { name: "Add university" });
+    fireEvent.change(within(form).getByLabelText("Name (required)"), { target: { value: "UCD" } });
+    fireEvent.change(within(form).getByLabelText("Country (required)"), { target: { value: "Ireland" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save university" }));
+    expect(await screen.findByText("UCD added.")).toBeInTheDocument();
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")!;
+    expect(JSON.parse(String(post[1]!.body))).toEqual({ name: "UCD", country: "Ireland", city: null, entry_requirements: null });
+  });
+});
