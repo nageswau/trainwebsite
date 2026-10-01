@@ -128,4 +128,50 @@ describe("AgentStaffActivity (AGN-021)", () => {
     fireEvent.keyDown(screen.getByRole("region", { name: "Activity" }), { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  // Browser QA 2026-10-01 (AGN-021 QA-01..QA-04).
+  it("QA-03: an expired session offers Sign in again instead of a retry that cannot succeed", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ detail: "Not authenticated" }, 401)));
+    render(<AgentStaffActivity member={member} onClose={() => {}} />);
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Your session has expired.");
+    expect(alert).not.toHaveTextContent("Not authenticated");
+    expect(within(alert).getByRole("link", { name: "Sign in again" })).toHaveAttribute("href", "/overseas/login");
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Close activity" })).toBeInTheDocument();
+  });
+
+  it("QA-01: a failed load offers one retry action (Try again), not Try again and Refresh", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ detail: "boom" }, 500)));
+    render(<AgentStaffActivity member={member} onClose={() => {}} />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load activity.");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull();
+  });
+
+  it("QA-02: shows a visible updating cue while a newer page loads over the current one", async () => {
+    let finish: (r: Response) => void = () => {};
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res(page([item(1)]))).mockReturnValueOnce(new Promise<Response>((r) => { finish = r; })));
+    render(<AgentStaffActivity member={member} onClose={() => {}} />);
+    expect(await screen.findByText(/Student 1/)).toBeInTheDocument();
+    expect(screen.queryByText("Updating activity…")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText("Updating activity…")).toBeInTheDocument();
+    expect(screen.getByText(/Student 1/)).toBeInTheDocument(); // the current page stays readable
+    await act(async () => {
+      finish(res(page([item(2)])));
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(screen.queryByText("Updating activity…")).toBeNull();
+    expect(screen.getByText(/Student 2/)).toBeInTheDocument();
+  });
+
+  it("QA-04: focus moves to the Activity heading when it opens, not to the last button", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res(page([item(1)]))));
+    render(<AgentStaffActivity member={member} onClose={() => {}} />);
+    await screen.findByText(/Student 1/);
+    expect(screen.getByRole("heading", { name: "Activity" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Close activity" })).not.toHaveFocus();
+  });
 });
