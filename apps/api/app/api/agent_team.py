@@ -1,6 +1,7 @@
 """AGN-001 -- an agency's Master team: list, invite, deactivate (DEC-SCOPE-038 D4, D8, D9; spec §5.4).
 AGN-002 -- the agency's staff logins: list, create, edit, deactivate, reactivate, reset (DEC-SCOPE-040; spec §6).
 AGN-003 -- a staff member's optional permissions (DEC-SCOPE-044; spec §8).
+AGN-021 -- a staff member's activity (DEC-SCOPE-045; read-only).
 
 Only an active Master of an ACTIVE organisation reaches these routes (same gate as every agent route, plus the member role);
 every change locks the organisation row so codes, the throttles, the 3-Master limit and the last-Master rule hold under
@@ -24,6 +25,7 @@ from app.services.agent_orgs import (
     create_staff,
     deactivate_master,
     deactivate_staff,
+    find_staff_member,
     invite_master,
     lock_org,
     org_masters,
@@ -33,6 +35,7 @@ from app.services.agent_orgs import (
     update_staff,
 )
 from app.services.provisioning import deliver_welcome_link, provisioning_statuses
+from app.services.staff_activity import MAX_ACTIVITY_OFFSET, staff_activity_page
 
 logger = logging.getLogger("app.agent_orgs")
 
@@ -188,3 +191,23 @@ async def staff_permissions(member_id: UUID, payload: AgentStaffPermissions, use
     org = await _staff_org(db, user)
     member, staff = await set_staff_permissions(db, org, member_id, user, **payload.model_dump())
     return {"member": await _commit_staff_change(db, "agent_org_staff_permissions_updated", org, user, member, staff, await provisioning_statuses(db, [staff.id]))}
+
+
+@router.get("/staff/{member_id}/activity")
+async def staff_activity(
+    member_id: UUID,
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0, le=MAX_ACTIVITY_OFFSET),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """AGN-021 (DEC-SCOPE-045 A1-A4): one staff member's student-journey work, newest first. Master-only; another agency's member,
+    a Master and an unknown id are the same 404. Read-only: no lock, no commit, no cache."""
+    membership = _require_master(user)
+    member = await find_staff_member(db, membership.org_id, member_id)
+    page = await staff_activity_page(db, member, limit=limit, offset=offset)
+    logger.info(
+        "agent_org_staff_activity_viewed",
+        extra={"extra_fields": {"org_id": str(membership.org_id), "actor_id": str(user.id), "member_id": str(member.id), "offset": offset}},
+    )
+    return page
