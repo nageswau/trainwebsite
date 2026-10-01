@@ -53,6 +53,22 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
   is audited in the same transaction with ids and field names only. **Residual, stated:** no rate limiting on the new routes
   (none exists for writes platform-wide except invites and link search); last write wins on concurrent edits; a create with
   neither email nor phone is not idempotent; students with no login have no erasure path yet (`PRD_OPEN_ITEMS.md` item 80).
+- **Threat (`AGN-007`, 2026-10-01):** an agency-private university (or a shortlist entry that names one) leaking to another
+  agency or to `/public`; a staff member reading or writing the shortlist of a student outside their assignment, or creating,
+  editing or deleting an agency university (Master-only); another agency's university or entry id used to probe existence or to
+  attach a foreign row; mass assignment of `org_id` / `agent_student_id`; exhausting an agency's lists.
+- **Direction (built):** agency universities live in their own table (`agent_universities`) and never enter the shared catalogue,
+  so no public query can reach them; the tenant key `org_id` is in every `WHERE` clause and the student scope comes from
+  `load_scoped` (out of scope → `404` before any role check); an `agent_university_id` from another agency gets the same
+  `422 "University not found"` as a nonexistent id, and the entry is loaded by `id AND agent_student_id`; university writes check
+  `is_agent_staff` server-side after the scoped load; bodies are `extra="forbid"`; caps (50 / 500) and duplicates are checked
+  under the agency lock with a unique index and `RESTRICT` foreign keys behind them; audit rows (same transaction, ids and field
+  names only) never carry free-text. Tests: `test_agn_007_isolation.py` (`test_other_agencys_university_id_reads_as_not_found`,
+  `test_public_never_shows_agency_universities_or_entries`, `test_concurrent_adds_never_pass_the_cap`,
+  `test_delete_university_racing_an_add_never_orphans`), `test_agn_007_shortlist.py::test_staff_scope_is_404_before_any_role_check`,
+  `test_agn_007_universities.py::test_staff_view_but_cannot_write`, `::test_other_agency_cannot_see_or_touch`.
+  **Residual, stated:** no new rate limiter; POST is not idempotent and last write wins on concurrent PATCH (D10); an entry's
+  free-text course, intake, fee and requirements follow the `AGN-004` record lifecycle (no erasure path yet).
 
 ### Employer domain (new, external-party access)
 - **Threat:** an Employer account viewing more of a Student's profile than GDPR-approved visibility
