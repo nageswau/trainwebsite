@@ -3324,8 +3324,19 @@ unchanged record and no audit row.
 
 **Complexity:** Small. **Risk:** Low.
 
+**Browser QA fixes (owner, in-session 2026-10-01: "Fix them").** The first browser QA pass
+(`docs/quality/AGN-005_BROWSER_QA_2026-10-01.md`) found four issues in AGN-004 behaviour; the owner had them fixed on this branch,
+which widens AGN-005 beyond tests and docs for these four only:
+- **QA5-01** An agency student's phone follows the school mobile rule (7–20 characters of digits, spaces, `+ - ( )`, at least 7 digits),
+  server `422 invalid_phone` and the same message in the form; a phone saved before the rule survives edits of other fields. API
+  contract updated (`API_CONTRACT.md` AGN-004 rows). Deliberate test change: `test_agn_004_students.py::
+  test_phone_formats_match_on_digits_only` now expects `422` for a 4-digit phone (was `201`).
+- **QA5-02** The new-student form focuses Full name when it opens; focus returns to Add student after Cancel or a save.
+- **QA5-03** Staff read "Students assigned to you, with or without a login…".
+- **QA5-05** A non-agency user who can open the page (Super Admin) sees a note instead of a panel whose every action is refused.
+
 **Status (2026-10-01): IMPLEMENTED, NOT COMPLETE** on `feature/agn-005-staff-permission-matrix` — evidence in `docs/quality/RTM.md`
-(AGN-005 row). Pending: the owner's browser validation and the independent Codex review.
+(AGN-005 row). Browser QA done and the four fixes re-checked in the browser. Pending: the independent Codex review.
 
 ---
 
