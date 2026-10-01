@@ -253,6 +253,13 @@ staff member by a Master; the flags are read from the database on every request,
 | `GET /auth/me` and the staff member shape | Authenticated | Self / active Master | Additive. `/auth/me` gains `agent_permissions`: **effective** permissions `{can_verify_documents, can_view_reports}` — a Master gets both `true`, staff get their toggles, a non-agent gets `null`. Every staff member object (list, create, edit, deactivate, reactivate, reset, PUT) gains `permissions: {can_verify_documents, can_view_reports}`. |
 | `GET /portal/overseas/agent/reports` | Authenticated | Master; staff with Reports | Staff without `can_view_reports` → `403 "Your agency Master hasn't given you access to reports"`. With it on, staff get today's report without the commission row. |
 
+**`AGN-021` / `DEC-SCOPE-046` (built 2026-10-01).** Design spec §4–§5. A Master reads one staff member's student-journey activity from the
+existing audit log; read-only (no lock, no commit, no cache, no migration).
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /workflows/overseas/agent/team/staff/{member_id}/activity?limit=25&offset=0` | Authenticated | Active Master of the staff member's active organisation | `member_id` UUID. `limit` 1–100 (default 25), `offset` 0–10000 (default 0), else `422`. Response `{items, total, limit, offset}`; item `{id, at, action, subject, fields}`, ordered `created_at DESC, id DESC`. `action` is one of seven, in this order: `agent_student.create`, `agent_student.update`, `agent_student.duplicate_override`, `agent.student_link`, `overseas.application.create`, `document.upload`, `document.verify`. `subject`: record → student name; application → `"<student> — <university>"`; document → `"<document_type> — <student>"`; missing or unresolvable → `"No longer available"`. `fields`: field names for `agent_student.update`, else `null`. Errors: Staff `403` "Only an agency Master can manage the team"; inactive agency `403`; another agency's member, a Master's member id or an unknown id `404` "Staff member not found" (identical); `422` for bad `limit`/`offset`/`member_id`. **Never returned:** reviewer notes, field values, emails, phone numbers, other metadata. One info log `agent_org_staff_activity_viewed` (ids only). |
+
 ---
 
 ## 9. Overseas Staff (`CNS-001`, `UNI-001`)

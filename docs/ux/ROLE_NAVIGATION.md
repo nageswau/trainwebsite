@@ -154,6 +154,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
   their Reports permission (`can_view_reports`, off by default; `agentNavFor(nav, memberRole, permissions)` from `user.agent_permissions`).
   Masters' navigation is unchanged. A typed `/overseas/agent/reports` URL without the permission shows the access-unavailable card
   (server `403`). The Documents page gains a review queue only for Masters and staff with Verify (`SCR-AGT-005` AGN-003 update).
+- **Staff activity (`AGN-021`, `DEC-SCOPE-046`):** an **Activity** button on each staff row of the Team page (`SCR-AGT-007`), visible to Masters only. No new navigation item; staff never reach the Team page.
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Overseas Admin

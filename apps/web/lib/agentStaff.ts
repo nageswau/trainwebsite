@@ -13,3 +13,20 @@ export function staffFailure(outcome: { message: string; status?: number }, keep
   if (outcome.status >= 500) return "The server couldn't complete this. Please try again in a moment.";
   return outcome.message;
 }
+
+// AGN-021 (DEC-SCOPE-046): one line of a staff member's activity, as GET …/staff/{id}/activity returns it.
+export type StaffActivityItem = { id: string; at: string; action: string; subject: string; fields: string[] | null };
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  "agent_student.create": "Created a student record",
+  "agent_student.update": "Edited a student record",
+  "agent_student.duplicate_override": "Saved a student record despite a duplicate warning",
+  "agent.student_link": "Linked a student account",
+  "overseas.application.create": "Created an application",
+  "document.upload": "Uploaded a document",
+  "document.verify": "Verified a document",
+};
+
+export function activityLabel(action: string): string {
+  return ACTIVITY_LABELS[action] ?? "Other activity";
+}

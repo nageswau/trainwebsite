@@ -221,3 +221,5 @@ finding, not a decision. No Feature ID, RBAC entry, BRD/PRD requirement, or code
 against any of `EVID-015`–`EVID-020` until each is individually put through a decision (the same
 `DEC-SCOPE-010`/`DEC-ROLE-004` pattern used for `EVID-014`) or the item 61 CRM process document
 arrives, whichever is relevant to the specific point.
+
+*Update 2026-10-01 (`AGN-021`):* staff activity ("View staff activity", `EVID-015` §2 Staff) is lifted out of this blocker by `DEC-SCOPE-046` (A1–A5, `EXPLICIT_APPROVAL` in-session). Staff performance, CRM settings and the rest of `EVID-015` remain parked here.

@@ -5,9 +5,10 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { STAFF_URL, type StaffMember, staffFailure } from "@/lib/agentStaff";
 import { sendJson } from "@/lib/apiErrors";
 import type { AgentPermissions } from "@/lib/types";
+import AgentStaffActivity from "./AgentStaffActivity";
 import AgentStaffPermissionsForm from "./AgentStaffPermissionsForm";
 
-type Mode = "view" | "edit" | "confirm-deactivate" | "confirm-reset" | "permissions";
+type Mode = "view" | "edit" | "confirm-deactivate" | "confirm-reset" | "permissions" | "activity";
 // One row action: `path` below the member's URL, the control that gets focus after success, the announced result, and whether
 // the request carried typed values (then a dropped connection says the entry is kept).
 type Action = { path?: string; method?: "POST" | "PATCH" | "PUT"; body?: unknown; keepsEntry?: boolean; focusNext: string; message: string | ((data: Record<string, unknown>) => string) };
@@ -37,7 +38,7 @@ function InlineConfirm({ label, name, text, busy, onConfirm, onCancel }: { label
   );
 }
 
-// AGN-002/AGN-003: one staff member with its actions (edit, permissions, deactivate/reactivate, reset). Confirmations are inline (AgentTeamPanel's pattern): focus goes to Confirm; Cancel
+// AGN-002/AGN-003/AGN-021: one staff member with its actions (edit, permissions, activity, deactivate/reactivate, reset). Confirmations are inline (AgentTeamPanel's pattern): focus goes to Confirm; Cancel
 // and Escape return it to the button that opened them, and a successful action moves it to the row's next logical
 // control (which may only appear once the parent reloads the row). Server messages (409/429) show in the row's status region.
 export default function AgentStaffRow({ member, onChanged }: { member: StaffMember; onChanged: (message: string) => void }) {
@@ -134,10 +135,12 @@ export default function AgentStaffRow({ member, onChanged }: { member: StaffMemb
           onSave={(next) => run({ path: "/permissions", method: "PUT", body: next, keepsEntry: true, focusNext: "permissions", message: `${member.code} permissions saved.` })}
         />
       )}
+      {mode === "activity" && <AgentStaffActivity member={member} onClose={() => close("activity")} />}
       {mode === "view" && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
           <button id={id("edit")} className="btn secondary small" aria-label={`Edit ${member.full_name}`} onClick={() => setMode("edit")}>Edit</button>
           <button id={id("permissions")} className="btn secondary small" aria-label={`Permissions for ${member.full_name}`} onClick={() => setMode("permissions")}>Permissions</button>
+          <button id={id("activity")} className="btn secondary small" aria-label={`Activity of ${member.full_name}`} onClick={() => setMode("activity")}>Activity</button>
           {active ? (
             <>
               <button id={id("reset")} className="btn secondary small" aria-label={`Reset ${member.full_name}`} onClick={() => setMode("confirm-reset")}>Reset</button>

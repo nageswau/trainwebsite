@@ -2683,7 +2683,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 - **D10 — Migration.** Each existing agent becomes Master `M001` of its own organisation: `approved` → `active`, `pending` → `pending`, `rejected` → `pending` (for re-review). Data access is unchanged.
 - **D11 — Admin-created agents.** Creating a `role='agent'` user through admin user-create (`ADM-001`) also creates a `pending` organisation with that user as `M001`.
 - **D12 — Notifications.** Agent notifications that today go to the single agent (commission estimated, commission eligible) go to every active Master of the organisation.
-- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`. *(2026-09-30: Staff logins since decided as `DEC-SCOPE-040`, `AGN-002`; staff assignment and ownership of students since decided as `DEC-SCOPE-042`, `AGN-004`; staff performance and CRM settings remain blocked. 2026-10-01: staff permissions decided as `DEC-SCOPE-044`, `AGN-003`.)*
+- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`. *(2026-09-30: Staff logins since decided as `DEC-SCOPE-040`, `AGN-002`; staff assignment and ownership of students since decided as `DEC-SCOPE-042`, `AGN-004`; staff performance and CRM settings remain blocked. 2026-10-01: staff permissions decided as `DEC-SCOPE-044`, `AGN-003`; staff activity decided as `DEC-SCOPE-046` (`AGN-021`); staff performance remains blocked.)*
 
 **Review decisions, 2026-09-29 (`EXPLICIT_APPROVAL`, in-session, after the API / security / frontend review of the build):**
 - **R1 — Invite throttle.** At most 10 Master invites per agency per rolling 24 hours (counted from `agent_org.master_invite` audit rows, under the organisation lock); over the limit → `429` with `Retry-After`. Reason: invite → deactivate → invite loops otherwise let an approved agency send unlimited set-password emails to any address under a name it chooses.
@@ -2716,7 +2716,7 @@ guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031
 
 **Resolution:** owner, in-session 2026-09-30 (`EXPLICIT_APPROVAL` — the owner's `AGN-002` statement and answers to four structured questions, not the source document's wording):
 
-- **S1 — Staff access.** A staff member of an `active` organisation uses the existing agent student and application routes with the organisation-wide scope Masters have today. Team management (Masters and staff) and commissions stay Master-only. Narrowing staff to assigned students, staff assignment/ownership, staff performance and permission levels stay out of scope (still blocked under `C-10`). *(2026-10-01: permission levels since decided as `DEC-SCOPE-044`, `AGN-003` — two per-staff toggles, Verify Documents and Reports; assigned-only scope stays parked.)*
+- **S1 — Staff access.** A staff member of an `active` organisation uses the existing agent student and application routes with the organisation-wide scope Masters have today. Team management (Masters and staff) and commissions stay Master-only. Narrowing staff to assigned students, staff assignment/ownership, staff performance and permission levels stay out of scope (still blocked under `C-10`). *(2026-10-01: permission levels since decided as `DEC-SCOPE-044`, `AGN-003` — two per-staff toggles, Verify Documents and Reports; assigned-only scope stays parked. 2026-10-01: staff activity decided as `DEC-SCOPE-046` (`AGN-021`); staff performance remains blocked.)*
 - **S2 — Model.** A staff member is a `User` with `role='agent'`, division `overseas`, an approved `agent` role assignment, and an `AgentOrgMember` with member role `staff`. Staff codes are `<PREFIX>-S###` from a per-organisation staff counter separate from `master_seq`: unique, monotonic (next = highest ever issued + 1), never reassigned. Every Master-only check tests the member role, and the Master rules of `DEC-SCOPE-038` (3-Master limit D4, last-Master rule D8/R3, notifications D12) count Masters only.
 - **S3 — Reset.** Only a Master of the staff member's organisation resets a staff login: the current password becomes unusable, a one-time set-password link is emailed through the `DEC-SCOPE-019` mechanism (the Master never sees the token, as for Master invites), and the staff member's existing sessions end. Creating staff sends the same link; the response reports whether the email was sent.
 - **S4 — Fields and limits.** Name, email and phone. Email is fixed after creation (name and phone are editable). No cap on the number of staff. Staff creations and resets are throttled per agency on a rolling 24 hours, like `DEC-SCOPE-038` R1; the exact budget is set in the design spec.
@@ -2767,7 +2767,7 @@ owner chose assigned-only everywhere (G4).
 questions, not the source document's wording):
 
 - **D1 — Staff for students.** Staff (as modelled by AGN-002 S2) create, edit and view students. Lifts the staff
-  assignment/ownership part of `DEC-SCOPE-038` D13 / `C-10`; staff performance, permission levels and CRM settings stay blocked.
+  assignment/ownership part of `DEC-SCOPE-038` D13 / `C-10`; staff performance, permission levels and CRM settings stay blocked. *(2026-10-01: staff activity decided as `DEC-SCOPE-046` (`AGN-021`); staff performance remains blocked.)*
 - **D3 — Two kinds of student.** The existing "link a student who has an account" flow stays; a new flow creates a student with no
   login whose details live on `agent_students`; no `users` row is ever created for them.
 - **D4 — Assignment.** Created or linked by staff → assigned to that staff member; by a Master → unassigned. Only a Master assigns.
@@ -2858,3 +2858,31 @@ Staff browser flows were verified and the named-staff Assign action built (2026-
 **Resolution:** user, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — answers to structured questions, then approval of the written spec): D1 writer = `career_counselor`, own portfolio; D2 per-type tier gate (`scholarship` → `scholarship_assistance`, the other three → `loan_assistance`), type fixed after creation; D3 the six source stages forward one step at a time **plus a terminal `closed` with a required reason** (an addition beyond the source wording), `completed`/`closed` final; D4 lean fields (notes, closure reason, optional provider name, optional amount as free text, stage-entered date — no files, no lender integration); D5 readers = coordinator/principal (own school) and linked parent (own child, read-only), **teachers excluded**, parents notified on create and stage change; D6 new table + router reusing `schools.py` helpers; D7 one open case per student per school per type; D8 usage = distinct students per creating school, closed cases count; D9 ENH-016 scorecard "Scholarship", `UNTRACKED_OUTCOMES["scholarships"]` and ENH-017 "Scholarships" stay *not tracked* (they describe §18, not built here); D10 final cases read-only; D11 counsellor page `/school/career-counselor/funding` + read-only card on parent/coordinator/principal student pages; D12 **cases stay with the creating school** (staff of a student's new school do not see the previous school's cases; parents see all); D13 role/scope denials audited (`school.funding_record_denied`).
 
 **Consequences:** migration `0053_school_funding_records` (additive), `apps/api/app/api/school_funding.py` (`POST`/`PATCH /school/funding-records`, `GET /school/career-counselor/funding-records`, `GET /school/students/{id}/funding-records`), `GET /school/entitlements` `used` for `loan_assistance`/`scholarship_assistance` becomes an integer (ENH-016 utilization follows). **New Feature ID authorized:** `ENH-020`. Schema, endpoint shapes and screens are fixed in the spec, not here.
+
+### DEC-SCOPE-046 — Agent staff activity (`AGN-021`)
+
+**ID note (renumbered 2026-10-01 on merging `main` @ `057dfe0`):** drafted as `DEC-SCOPE-045`; `ENH-020` (PR #34) reached `main` first holding `045`, so this entry is `DEC-SCOPE-046` (precedent: `DEC-SCOPE-038`/`039`, `041`–`045`). Still provisional if another branch lands `046` first.
+
+**Question:** the owner's `AGN-021` statement (in-session, 2026-10-01): requirement **"View staff activity" (§2 Staff)**; acceptance criteria: **a Staff member's actions appear within one page load; other orgs' users → 404.** `DEC-SCOPE-038` D13 / `DEC-SCOPE-040` S1 / `DEC-SCOPE-042` D1 had left staff activity blocked under `CONFLICT_MATRIX.md` `C-10`. What counts as activity, who may view it, how much detail, how fresh, and where does it come from?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Staff "View staff activity" (the source's wording is not the approval). Design spec `docs/superpowers/specs/2026-10-01-agn-021-staff-activity-design.md` §4 audit table: all seven student-journey actions are already written to `audit_logs` with the staff user as `user_id`; no activity store exists.
+
+**Conflicts recorded, not silently resolved:**
+- The earlier AGN-021 scope (staff permission matrix, spec `2026-10-01-agn-021-staff-permission-matrix-design.md`, branch `feature/agn-021-staff-permission-matrix`) shipped as `AGN-003` (PR #33) before AGN-021 was built. The owner re-scoped `AGN-021` to staff activity in-session on 2026-10-01; the earlier scope is `SUPERSEDED`.
+- Staff performance (KPIs, funnels; `EVID-015` §8) is not decided here and stays blocked under `C-10`.
+
+**Resolution:** owner, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — the owner's `AGN-021` statement and answers, not the source document's wording):
+
+- **A1 — What is activity.** Student-journey work only: student records created / edited / saved over a duplicate warning, a student account linked, an application created, a document uploaded, a document verified. Sign-ins, password and profile changes, messages, support tickets and lookup searches are not shown.
+- **A2 — Viewers.** Only an active Master of the staff member's agency. Staff are refused (403); any other organisation's user → 404. Deactivated staff remain viewable (history is kept).
+- **A3 — Detail.** Each line: time, a plain action label, and the subject the Master can already see (student name; application as student — university; document as type — student). For an edit, the names of the fields changed — never their values. Reviewer notes, emails and ids are never shown.
+- **A4 — Freshness.** "Within one page load" = read from the audit log on every request with no cache, so an action is visible the next time the Master opens or refreshes the view. A Refresh button; no live push or polling.
+- **A5 — Source.** The existing audit log (no new store, no new writes). Lifts "staff activity" out of `C-10`; **staff performance (KPIs) stays parked**.
+
+**Consequences:**
+- A Master-only `GET /api/v1/workflows/overseas/agent/team/staff/{member_id}/activity` (`limit` 1–100 default 25, `offset` 0–10000; `{items, total, limit, offset}`).
+- Two services: `services/agent_orgs.find_staff_member` (non-locking lookup, 404 "Staff member not found") and the new `services/staff_activity.py` (allow-list of seven actions, batched subject resolution).
+- An **Activity** button and section on each staff row of the Team page (`AgentStaffActivity`).
+- One operational log line `agent_org_staff_activity_viewed` (ids only).
+- No migration, no new audit writes, no cache.
+- Design: `docs/superpowers/specs/2026-10-01-agn-021-staff-activity-design.md`.
