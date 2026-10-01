@@ -44,7 +44,7 @@ See `DEC-NOT-001` extension D1–D14. Design choices made in this brainstorm:
 | X5 | Twilio client | Direct REST calls over the existing `httpx` dependency; no Twilio SDK |
 | X6 | Stuck `sending` rows | Marked `failed` ("worker interrupted"), never resent — no duplicate messages to parents |
 
-## 4. Data model — migration `0046_notification_channels` (renamed `0049_notification_channels` on the 2026-10-01 merge with `main`, chained after `0048_school_attendance_records`; content unchanged)
+## 4. Data model — migration `0046_notification_channels` (renamed `0050_notification_channels` on the 2026-10-01 merges with `main`, chained after `0049_agent_students_crm`; content unchanged)
 
 Additive only. No existing row is modified; downgrade drops only what it adds.
 

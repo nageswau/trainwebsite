@@ -126,6 +126,17 @@ async def lock_org(db: AsyncSession, org_id) -> AgentOrg:
     return org
 
 
+async def lock_active_org(db: AsyncSession, org_id) -> AgentOrg:
+    """AGN-004: `lock_org`, then refuse an organisation suspended (or no longer active) between the request's gate check and the
+    lock -- the agency student writes take this before touching a student row."""
+    from app.core.rbac import PENDING_MESSAGE, SUSPENDED_MESSAGE
+
+    org = await lock_org(db, org_id)
+    if org.status != "active":
+        raise HTTPException(403, SUSPENDED_MESSAGE if org.status == "suspended" else PENDING_MESSAGE)
+    return org
+
+
 async def set_org_status(db: AsyncSession, org: AgentOrg, status: str, actor: User, *, write_through: bool) -> None:
     """No commit. E11: approve/reject also set the Master assignments' approval_status; suspend/reinstate do not."""
     now = datetime.now(UTC)

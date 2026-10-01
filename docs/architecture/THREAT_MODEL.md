@@ -43,6 +43,16 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
   loosely, allowing a status to be set to "joined" without real verification.
 - **Direction:** flagged for Contracts-phase design, not resolved here — do not let an easy-to-set
   status field become the actual trigger without a verification step.
+- **Threat (`AGN-004`, 2026-09-30):** a staff member reading or changing another staff member's (or another agency's)
+  students — directly by id, or indirectly through an application, document, lookup or portal page — or escalating to
+  Master-only actions (archive, assign, team, commissions); a duplicate warning used to enumerate students.
+- **Direction (built):** the agency and, for staff, the assignee are in every query's `WHERE` clause
+  (`services/agent_students.student_scope`/`application_scope`); out-of-scope ids on the new routes are `404` (existence
+  mask); Master-only actions check `is_agent_staff` server-side; server-owned fields are rejected (`extra="forbid"`); the
+  duplicate check reads only the caller's own agency and shows staff matches outside their scope only as a count; every write
+  is audited in the same transaction with ids and field names only. **Residual, stated:** no rate limiting on the new routes
+  (none exists for writes platform-wide except invites and link search); last write wins on concurrent edits; a create with
+  neither email nor phone is not idempotent; students with no login have no erasure path yet (`PRD_OPEN_ITEMS.md` item 80).
 
 ### Employer domain (new, external-party access)
 - **Threat:** an Employer account viewing more of a Student's profile than GDPR-approved visibility

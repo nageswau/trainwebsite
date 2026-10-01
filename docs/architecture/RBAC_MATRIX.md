@@ -145,7 +145,7 @@ members. Staff roles are not decided (D13). Enforcement: `core/rbac.agent_denial
 
 **`AGN-002` / `DEC-SCOPE-040` (2026-09-30) — agency staff, BUILT 2026-09-30.** A staff member (`role='agent'`, member
 role `staff`, code `<prefix>-S###`) of an `active` organisation works on the organisation's students, applications and
-documents with the same organisation-wide scope as a Master (S1; "assigned students only" is not decided). Staff are
+documents with the same organisation-wide scope as a Master (S1; narrowed to assigned students by `AGN-004`, below). Staff are
 **denied** team management (`403 "Only an agency Master can manage the team"`), commission list/claim (`403 "Only an agency
 Master can view commissions"`) and the `team`/`commissions` portal pages; their dashboard/reports omit commission figures.
 Only an active Master of the organisation creates, edits, deactivates, reactivates or resets its staff; another
@@ -155,6 +155,26 @@ commission notifications) and cannot be approved/rejected as agents by Overseas 
 `core/rbac.is_agent_staff`, `api/agent_team._require_master`, `services/agent_orgs._staff_member`. Proved by
 `tests/test_agn_002_staff.py`, `test_agn_002_staff_access.py`, `test_agn_002_master_rules.py`, `test_agn_002_sessions.py`.
 Known limitation: admin `PATCH /admin/users/{id}` can still change `active` on any agent user (spec §10, E4).
+
+**`AGN-004` / `DEC-SCOPE-042` (2026-09-30) — agency students and staff scope, BUILT 2026-09-30 (narrows `AGN-002` S1 above; same
+staff model).** A staff member is a `role='agent'` user whose organisation membership has `role='staff'` (created by `AGN-002`).
+
+| Action | Master | Staff |
+|---|---|---|
+| View students (new `/crm/students` list/detail; roster; portal Students) | Whole agency | **Assigned to them only** |
+| Create a student with no login; link a student with an account | ✓ (unassigned) | ✓ (assigned to them) |
+| Edit a student with no login | ✓ | ✓ (assigned only) |
+| Archive / unarchive; assign | ✓ | ✗ (`403`) |
+| Applications, documents, lookups, dashboard, reports | Whole agency | Assigned students' only |
+| Team, Commissions | ✓ | ✗ (`403`, `AGN-002` S1) |
+
+**Existence mask (required by `API_CONTRACT.md` §0.3):** on the `/workflows/overseas/agent/crm/students` routes a row outside
+the caller's scope — another agency's, another staff member's, or an unassigned one for staff — answers **`404 "Student not
+found"`**, never `403`, so its existence is not revealed. A Master-only action on an in-scope row answers `403`. Existing
+routes keep their existing status codes. Assignment targets only an active staff member of the same agency; a deactivated
+staff member keeps their students (G5). Enforcement: `services/agent_students.student_scope` / `application_scope` in the
+`WHERE` clause (identical to AGN-001's clauses for a Master) and `core/rbac.is_agent_staff`. Proved by
+`tests/test_agn_004_students.py`, `test_agn_004_student_actions.py`, `test_agn_004_staff_scope.py`, `test_agn_004_staff_guards.py`.
 
 **`DEC-ROLE-004` (2026-09-14) — Agent on-behalf-of a referred student, NOT YET BUILT:** the
 approved Agent row above is read-only (view roster/commissions, claim). Since an Agent-referred
