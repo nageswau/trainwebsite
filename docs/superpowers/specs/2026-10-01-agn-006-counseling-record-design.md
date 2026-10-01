@@ -1,6 +1,6 @@
 # AGN-006 — Agent Student Counseling Record: Design
 
-**Status:** approved in conversation, written for owner review (2026-10-01). **Branch:** `feature/agn-006-counseling-record` (from `origin/main` 52d0c08).
+**Status:** approved (2026-10-01); implemented on `feature/agn-006-counseling-record` — Playwright run, browser QA and independent review pending. **Branch:** `feature/agn-006-counseling-record` (from `origin/main` 52d0c08).
 **Decision:** `DEC-SCOPE-048` (provisional number; C1–C9 below, recorded with the code). **Backlog:** `ENHANCEMENT_BACKLOG.md` §AGN-006 (added with the code).
 **Builds on:** `AGN-001` (`DEC-SCOPE-038`), `AGN-004` (`DEC-SCOPE-042`), `AGN-003` (`DEC-SCOPE-044`), `AGN-021` (`DEC-SCOPE-046`).
 **Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 "Staff Student Journey", STEP 2 "Counseling". The source's
