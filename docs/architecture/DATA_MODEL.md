@@ -868,6 +868,12 @@ The roster upload keeps its own `SchoolRosterUploadBatch`/`Row` (§6.13), unchan
 `SchoolAcademicResult`/`SchoolPsychometricRecord`/`SchoolTestPrepRecord`/`SchoolLanguageRecord` rows; their per-record audit
 entries carry `bulk_batch_id`. Create-table only; `downgrade()` drops both tables. **Feature ID:** `ENH-028`.
 
+**Addendum, 2026-10-01 (`ENH-029`, `DEC-SCOPE-044`; migration `0052_school_onboarding_bulk`).** `target_type` also allows
+`school_onboarding` (CHECK widened), and `school_bulk_upload_rows` gains `created_user_id` (nullable FK users, no index — read
+only by `batch_id`). For an onboarding row `created_record_id` is the new `schools.id`, `created_user_id` its seed Coordinator,
+`student_code` NULL; every ENH-028 row leaves `created_user_id` NULL. No existing row is read or written; `downgrade()` refuses
+while onboarding batches exist, otherwise drops the column and restores the 0051 CHECK. **Feature ID:** `ENH-029`.
+
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)
 
 ### 7.1 `NotificationLog`
