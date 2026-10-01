@@ -7,6 +7,7 @@ from tests.agn001_helpers import client_for, mk_active_org, mk_user, uniq
 from tests.agn002_helpers import mk_staff
 
 ME = "/api/v1/auth/me"
+REPORTS = "/api/v1/portal/overseas/agent/reports"
 NONE_ON = {"can_verify_documents": False, "can_view_reports": False}
 ALL_ON = {"can_verify_documents": True, "can_view_reports": True}
 
@@ -25,3 +26,31 @@ async def test_auth_me_reports_effective_permissions(db_session):
     student = await mk_user(db_session, role="overseas_student")
     async with client_for(student.email) as s:
         assert (await s.get(ME)).json()["agent_permissions"] is None
+
+
+@pytest.mark.asyncio
+async def test_reports_is_off_for_staff_by_default(db_session):
+    ctx = await mk_active_org(db_session, name=f"Reports Off {uniq()}")
+    staff = await mk_staff(db_session, ctx["org"])
+    async with client_for(staff["user"].email) as c:
+        response = await c.get(REPORTS)
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Your agency Master hasn't given you access to reports"
+
+
+@pytest.mark.asyncio
+async def test_reports_on_shows_the_staff_report_without_commission(db_session):
+    ctx = await mk_active_org(db_session, name=f"Reports On {uniq()}")
+    staff = await mk_staff(db_session, ctx["org"], can_view_reports=True)
+    async with client_for(staff["user"].email) as c:
+        response = await c.get(REPORTS)
+    assert response.status_code == 200
+    assert "commission" not in str(response.json()).lower()
+
+
+@pytest.mark.asyncio
+async def test_masters_always_see_reports(db_session):
+    ctx = await mk_active_org(db_session, name=f"Reports Master {uniq()}")
+    async with client_for(ctx["master"].email) as m:
+        response = await m.get(REPORTS)
+    assert response.status_code == 200 and "Paid commission" in str(response.json())

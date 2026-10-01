@@ -43,7 +43,8 @@ async def test_staff_are_refused_master_only_pages(db_session, method, path, det
 @pytest.mark.asyncio
 async def test_staff_dashboard_and_reports_leave_out_commission_figures(db_session):
     ctx = await mk_active_org(db_session, name="Staff Figures")
-    staff = await mk_staff(db_session, ctx["org"])
+    # AGN-003 (DEC-SCOPE-041 P1): Reports is off for staff by default; this test keeps its intent with it switched on.
+    staff = await mk_staff(db_session, ctx["org"], can_view_reports=True)
     async with client_for(staff["user"].email) as c:
         dashboard = (await c.get("/api/v1/portal/overseas/agent/dashboard")).json()
         reports = (await c.get("/api/v1/portal/overseas/agent/reports")).json()
