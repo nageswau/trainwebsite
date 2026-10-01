@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import BulkColumnReference from "@/components/BulkColumnReference";
 import { SCHOOL_ONBOARDING } from "@/lib/bulkEntry";
+import { newIdempotencyKey } from "@/lib/idempotencyKey";
 import { type Feedback, errorText, toneClass } from "@/lib/welcomeLink";
 
 type RowReport = {
@@ -95,7 +96,7 @@ export default function AdminSchoolBulkOnboardPanel() {
 
   function choose(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    setChosen(file ? { file, key: crypto.randomUUID() } : null);
+    setChosen(file ? { file, key: newIdempotencyKey() } : null);
     setError(null);
   }
 

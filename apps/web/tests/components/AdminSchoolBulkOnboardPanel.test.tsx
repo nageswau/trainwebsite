@@ -71,6 +71,18 @@ describe("AdminSchoolBulkOnboardPanel", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("uploads from a plain-HTTP page, where crypto.randomUUID does not exist (QA-029-01)", async () => {
+    vi.stubGlobal("crypto", { getRandomValues: (a: Uint8Array) => a.fill(7) });
+    const fetchMock = respond(201, report([accepted(2)]));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AdminSchoolBulkOnboardPanel />);
+    choose();
+    submit();
+    await screen.findByRole("heading", { name: "Upload result" });
+    expect(screen.queryByText("Choose a filled-in CSV file first.")).toBeNull();
+    expect(keyOf(fetchMock, 0)).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+
   it("disables the form while uploading and announces honest progress", async () => {
     let resolve: (value: unknown) => void = () => {};
     vi.stubGlobal("fetch", vi.fn(() => new Promise((r) => { resolve = r; })));
