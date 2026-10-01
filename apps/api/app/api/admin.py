@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime
 from typing import Literal
 from uuid import UUID, uuid4
@@ -43,7 +44,7 @@ from app.models import (
 )
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
 from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
-from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
+from app.services.provisioning import IssuedWelcome, deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.provisioning import flush_unique_email as _flush_unique_email
 from app.services.storage import storage
 
@@ -1164,19 +1165,12 @@ async def approve_commission_payout(commission_id: UUID, user: User = Depends(ge
     return {"id": item.id, "status": item.status, "paid_at": item.paid_at}
 
 
-# SCH-003: Overseas Admin creates a School partner record and its seed School Coordinator
-# account together, both active immediately -- no approval gate, unlike Agent
-# (`DEC-SCOPE-012`). Same `/overseas-admin` namespace as the Agent approval routes above,
-# per `API_CONTRACT.md` §12A.
-@agents_router.post("/schools", status_code=201)
-async def create_school(payload: SchoolCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if user.role not in {"overseas_admin", "super_admin"}:
-        raise HTTPException(403, "Overseas Admin role required")
-    # SchoolCreate's `extra="forbid"` already rejects a supplied `coordinator_password` at the
-    # Pydantic layer, before this function body runs at all -- an explicit
-    # _reject_supplied_password() call here would be unreachable dead code (simplification pass,
-    # ENH-009). This does lose the WARNING-level `provisioning_password_field_rejected` telemetry
-    # that call used to emit; already noted and accepted in DEC-SCOPE-025's addendum.
+async def _provision_school(
+    db: AsyncSession, payload: SchoolCreate, actor: User, *, flush_coordinator: Callable[[AsyncSession], Awaitable[None]] = _flush_unique_email
+) -> tuple[School, User, IssuedWelcome]:
+    """SCH-003's School + seed Coordinator, shared by `create_school` and ENH-029's bulk onboarding: role assignment, welcome
+    token and audits included; no commit, no delivery. `flush_coordinator` settles the email race: the default rolls the whole
+    request back into a 409; bulk passes a plain flush so the IntegrityError undoes only that row's savepoint."""
     email = _valid_email(payload.coordinator_email)
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
@@ -1185,7 +1179,7 @@ async def create_school(payload: SchoolCreate, user: User = Depends(get_current_
     school_code = await unique_student_code(db, School.school_code)
     school = School(
         name=payload.name, city=payload.city, state=payload.state,
-        created_by_user_id=user.id, tier=payload.tier, tier_valid_until=payload.tier_valid_until,
+        created_by_user_id=actor.id, tier=payload.tier, tier_valid_until=payload.tier_valid_until,
         school_code=school_code,
         branch=payload.branch, address=payload.address, contact_number=payload.contact_number,
         email=payload.email, website=payload.website, grades_available=payload.grades_available,
@@ -1203,16 +1197,33 @@ async def create_school(payload: SchoolCreate, user: User = Depends(get_current_
         profile={"school_id": str(school.id)},
     )
     db.add(coordinator)
-    await _flush_unique_email(db)  # a lost race also rolls back the school created above
-    issued = await issue_welcome_token(db, user=coordinator, issued_by=user)
+    await flush_coordinator(db)  # the default's lost race also rolls back the school created above
+    issued = await issue_welcome_token(db, user=coordinator, issued_by=actor)
     # DATA_MODEL.md §6.12: `UserRoleAssignment` is created eagerly here (not lazily on
     # first login like `auth._sync_role_assignment`) so `created_by_user_id`/`assigned_by_
     # user_id` records the acting Overseas Admin from the moment the account exists,
     # satisfying the provisioning audit trail (RBAC_MATRIX.md §3) without waiting for the
     # Coordinator's first login.
-    db.add(UserRoleAssignment(user_id=coordinator.id, division="overseas", role="school_coordinator", is_active=True, assigned_by_user_id=user.id, approval_status="approved"))
-    db.add(AuditLog(user_id=user.id, action="school.create", entity_type="school", entity_id=str(school.id), metadata_json={"name": school.name, "school_code": school_code}))
-    db.add(AuditLog(user_id=user.id, action="school.coordinator_seed", entity_type="user", entity_id=str(coordinator.id), metadata_json={"school_id": str(school.id)}))
+    db.add(UserRoleAssignment(user_id=coordinator.id, division="overseas", role="school_coordinator", is_active=True, assigned_by_user_id=actor.id, approval_status="approved"))
+    db.add(AuditLog(user_id=actor.id, action="school.create", entity_type="school", entity_id=str(school.id), metadata_json={"name": school.name, "school_code": school_code}))
+    db.add(AuditLog(user_id=actor.id, action="school.coordinator_seed", entity_type="user", entity_id=str(coordinator.id), metadata_json={"school_id": str(school.id)}))
+    return school, coordinator, issued
+
+
+# SCH-003: Overseas Admin creates a School partner record and its seed School Coordinator
+# account together, both active immediately -- no approval gate, unlike Agent
+# (`DEC-SCOPE-012`). Same `/overseas-admin` namespace as the Agent approval routes above,
+# per `API_CONTRACT.md` §12A.
+@agents_router.post("/schools", status_code=201)
+async def create_school(payload: SchoolCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    # SchoolCreate's `extra="forbid"` already rejects a supplied `coordinator_password` at the
+    # Pydantic layer, before this function body runs at all -- an explicit
+    # _reject_supplied_password() call here would be unreachable dead code (simplification pass,
+    # ENH-009). This does lose the WARNING-level `provisioning_password_field_rejected` telemetry
+    # that call used to emit; already noted and accepted in DEC-SCOPE-025's addendum.
+    school, coordinator, issued = await _provision_school(db, payload, user)
     await db.commit()
     delivery = await deliver_welcome_link(user=coordinator, issued=issued, issued_by=user)
     out = await _school_out(db, school)
