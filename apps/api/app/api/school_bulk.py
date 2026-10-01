@@ -11,6 +11,7 @@ import hashlib
 import io
 import re
 import time
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from uuid import UUID
@@ -274,37 +275,68 @@ LANGUAGE: BulkTarget[BulkLanguageRow] = BulkTarget(
 # --- The upload routine (spec Â§7) ---------------------------------------------------------------------------------------------
 
 
-def _file_error(target: BulkTarget, user: User, reason: str, message: str, status: int = 422) -> HTTPException:
-    logger.info("bulk_upload_rejected_file", extra={"extra_fields": {"actor_id": str(user.id), "target_type": target.target_type, "reason": reason}})
+def _file_error(target_type: str, user: User, reason: str, message: str, status: int = 422) -> HTTPException:
+    logger.info("bulk_upload_rejected_file", extra={"extra_fields": {"actor_id": str(user.id), "target_type": target_type, "reason": reason}})
     return HTTPException(status, message)
+
+
+async def _read_upload(file: UploadFile, idempotency_key: str | None, target_type: str, user: User) -> tuple[str, bytes]:
+    """The key checks and the bounded read every bulk surface shares (ENH-028 §5.1, ENH-029 §5.2): the validated key and the
+    file's bytes."""
+    if not idempotency_key:
+        raise HTTPException(422, "Idempotency-Key header is required")
+    if not KEY_PATTERN.fullmatch(idempotency_key):
+        raise HTTPException(422, "Idempotency-Key must be 1-120 letters, digits or . _ : -")
+    raw = await file.read(MAX_FILE_BYTES + 1)
+    if len(raw) > MAX_FILE_BYTES:
+        raise _file_error(target_type, user, "too_large", "The file is larger than 1 MB", 413)
+    return idempotency_key, raw
 
 
 def _filled_rows(raw: bytes, target: BulkTarget, user: User) -> list[tuple[int, dict[str, str]]]:
     """(file line, {column: trimmed cell}) for every row with at least one module column filled. A template row the user left
     untouched (student columns only) is skipped, never reported."""
+    return _read_csv(raw, target_type=target.target_type, user=user, required=("student_code", *target.required), columns=target.columns, max_rows=MAX_ROWS)
+
+
+def _read_csv(
+    raw: bytes, *, target_type: str, user: User, required: tuple[str, ...], columns: tuple[str, ...], max_rows: int, known: tuple[str, ...] | None = None
+) -> list[tuple[int, dict[str, str]]]:
+    """The one CSV parser for every bulk surface (ENH-029 D10): (file line, {column: trimmed cell}) for every row with at least one
+    of `columns` filled. `known` (ENH-029) also rejects unknown and repeated header names; ENH-028 passes None and keeps ignoring
+    extra columns."""
     try:
         content = raw.decode("utf-8-sig")
     except UnicodeDecodeError:
-        raise _file_error(target, user, "encoding", NOT_CSV) from None
+        raise _file_error(target_type, user, "encoding", NOT_CSV) from None
     if "\x00" in content:
-        raise _file_error(target, user, "nul", NOT_CSV)
+        raise _file_error(target_type, user, "nul", NOT_CSV)
     reader = csv.reader(io.StringIO(content, newline=""), strict=True)
     try:
         header = [name.strip().lower() for name in next(reader, [])]
-        missing = [name for name in ("student_code", *target.required) if name not in header]
+        if known is not None:
+            named = [name for name in header if name]
+            counts = Counter(named)
+            repeated = next((name for name in named if counts[name] > 1), None)
+            if repeated:
+                raise _file_error(target_type, user, "duplicate_column", f"Duplicate column: {repeated[:40]}")
+            unknown = next((name for name in named if name not in known), None)
+            if unknown:
+                raise _file_error(target_type, user, "unknown_column", f"Unknown column: {unknown[:40]}")
+        missing = [name for name in required if name not in header]
         if missing:
-            raise _file_error(target, user, "header", f"Missing required column: {missing[0]}")
+            raise _file_error(target_type, user, "header", f"Missing required column: {missing[0]}")
         filled = []
         for cells in reader:
             row = {name: (cells[i] if i < len(cells) else "").strip() for i, name in enumerate(header) if name}
-            if any(row.get(name) for name in target.columns):
+            if any(row.get(name) for name in columns):
                 filled.append((reader.line_num, row))
     except csv.Error:
-        raise _file_error(target, user, "malformed", NOT_CSV) from None
+        raise _file_error(target_type, user, "malformed", NOT_CSV) from None
     if not filled:
-        raise _file_error(target, user, "empty", "The file has no filled-in rows")
-    if len(filled) > MAX_ROWS:
-        raise _file_error(target, user, "too_many_rows", f"The file has more than {MAX_ROWS} filled-in rows")
+        raise _file_error(target_type, user, "empty", "The file has no filled-in rows")
+    if len(filled) > max_rows:
+        raise _file_error(target_type, user, "too_many_rows", f"The file has more than {max_rows} filled-in rows")
     return filled
 
 
@@ -324,10 +356,11 @@ def _lock_timed_out(exc: DBAPIError) -> bool:
     return getattr(exc.orig, "sqlstate", None) == "55P03"  # lock_not_available: the wait exceeded LOCK_TIMEOUT
 
 
-async def _claim(db: AsyncSession, target: BulkTarget, user: User, key: str, digest: str) -> SchoolBulkUploadBatch | dict:
+async def _claim(db: AsyncSession, target_type: str, user: User, key: str, digest: str) -> SchoolBulkUploadBatch | tuple[SchoolBulkUploadBatch, list[SchoolBulkUploadRow]]:
     """Insert the batch row; the unique (uploader, target, key) index decides between racing requests -- no select-then-insert.
-    A request that loses waits for the winner's commit, then replays its report (same file) or refuses (different file)."""
-    batch = SchoolBulkUploadBatch(target_type=target.target_type, uploaded_by_user_id=user.id, idempotency_key=key, file_sha256=digest, total_rows=0, accepted_count=0, rejected_count=0)
+    A request that loses waits for the winner's commit, then gets the winner's batch and rows to replay (same file) or a refusal
+    (different file); each caller builds its own report from them."""
+    batch = SchoolBulkUploadBatch(target_type=target_type, uploaded_by_user_id=user.id, idempotency_key=key, file_sha256=digest, total_rows=0, accepted_count=0, rejected_count=0)
     try:
         async with db.begin_nested():
             db.add(batch)
@@ -337,17 +370,17 @@ async def _claim(db: AsyncSession, target: BulkTarget, user: User, key: str, dig
         pass
     except DBAPIError as exc:
         if _lock_timed_out(exc):
-            logger.warning("bulk_upload_lock_timeout", extra={"extra_fields": {"actor_id": str(user.id), "target_type": target.target_type, "lock": "key"}})
+            logger.warning("bulk_upload_lock_timeout", extra={"extra_fields": {"actor_id": str(user.id), "target_type": target_type, "lock": "key"}})
             raise HTTPException(409, IN_PROGRESS) from exc
         raise
     existing = await db.scalar(
-        select(SchoolBulkUploadBatch).where(SchoolBulkUploadBatch.uploaded_by_user_id == user.id, SchoolBulkUploadBatch.target_type == target.target_type, SchoolBulkUploadBatch.idempotency_key == key)
+        select(SchoolBulkUploadBatch).where(SchoolBulkUploadBatch.uploaded_by_user_id == user.id, SchoolBulkUploadBatch.target_type == target_type, SchoolBulkUploadBatch.idempotency_key == key)
     )
     if existing is None or existing.file_sha256 != digest:
         raise HTTPException(422, KEY_REUSED)
     rows = (await db.scalars(select(SchoolBulkUploadRow).where(SchoolBulkUploadRow.batch_id == existing.id).order_by(SchoolBulkUploadRow.row_number))).all()
-    logger.info("bulk_upload_replayed", extra={"extra_fields": {"actor_id": str(user.id), "target_type": target.target_type, "batch_id": str(existing.id)}})
-    return _report(existing, list(rows))
+    logger.info("bulk_upload_replayed", extra={"extra_fields": {"actor_id": str(user.id), "target_type": target_type, "batch_id": str(existing.id)}})
+    return existing, list(rows)
 
 
 async def _lock_students(db: AsyncSession, target: BulkTarget, user: User, codes: set[str]) -> dict[str, SchoolStudent]:
@@ -416,20 +449,14 @@ async def _upload(target: BulkTarget, file: UploadFile, idempotency_key: str | N
     started = time.monotonic()
     if user.role != target.role:
         raise HTTPException(403, target.role_error)
-    if not idempotency_key:
-        raise HTTPException(422, "Idempotency-Key header is required")
-    if not KEY_PATTERN.fullmatch(idempotency_key):
-        raise HTTPException(422, "Idempotency-Key must be 1-120 letters, digits or . _ : -")
-    raw = await file.read(MAX_FILE_BYTES + 1)
-    if len(raw) > MAX_FILE_BYTES:
-        raise _file_error(target, user, "too_large", "The file is larger than 1 MB", 413)
+    idempotency_key, raw = await _read_upload(file, idempotency_key, target.target_type, user)
     filled = _filled_rows(raw, target, user)
 
     # `set_config(..., true)` is SET LOCAL with a bound parameter: it bounds both the key wait and the student row locks.
     await db.execute(text("SELECT set_config('lock_timeout', :timeout, true)"), {"timeout": LOCK_TIMEOUT})
-    claimed = await _claim(db, target, user, idempotency_key, hashlib.sha256(raw).hexdigest())
-    if isinstance(claimed, dict):
-        return claimed
+    claimed = await _claim(db, target.target_type, user, idempotency_key, hashlib.sha256(raw).hexdigest())
+    if isinstance(claimed, tuple):
+        return _report(*claimed)
     batch = claimed
 
     students = await _lock_students(db, target, user, {cells.get("student_code", "").upper() for _, cells in filled} - {""})

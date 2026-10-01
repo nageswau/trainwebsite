@@ -88,6 +88,7 @@ async def test_tables_match_the_model(db_session):
         "error_message": True,
         "student_code": True,
         "created_record_id": True,
+        "created_user_id": True,  # ENH-029 (0054)
         "created_at": False,
         "updated_at": False,
     }

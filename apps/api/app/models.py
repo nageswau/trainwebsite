@@ -1403,7 +1403,7 @@ class SchoolRosterUploadRow(Base, TimestampMixin):
     created_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), nullable=True)
 
 
-BULK_TARGET_TYPES = ("academic_result", "psychometric_record", "test_prep_record", "language_record")
+BULK_TARGET_TYPES = ("academic_result", "psychometric_record", "test_prep_record", "language_record", "school_onboarding")  # ENH-029 (0054)
 
 
 class SchoolBulkUploadBatch(Base, TimestampMixin):
@@ -1428,7 +1428,8 @@ class SchoolBulkUploadBatch(Base, TimestampMixin):
 
 class SchoolBulkUploadRow(Base, TimestampMixin):
     """ENH-028 -- one filled-in CSV row's outcome. `created_record_id` points into the batch's target table (no FK: it is
-    polymorphic); `student_code` is what the row named, kept for the report even when it matched nobody."""
+    polymorphic); `student_code` is what the row named, kept for the report even when it matched nobody. `created_user_id` (ENH-029)
+    is the Coordinator a `school_onboarding` row created (`created_record_id` is then its school); NULL for every other target."""
 
     __tablename__ = "school_bulk_upload_rows"
     __table_args__ = (CheckConstraint("status IN ('accepted', 'rejected')", name="ck_school_bulk_upload_row_status"),)
@@ -1439,6 +1440,7 @@ class SchoolBulkUploadRow(Base, TimestampMixin):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     student_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
     created_record_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    created_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class SchoolStaffAssignment(Base, TimestampMixin):

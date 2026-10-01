@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Script from "next/script";
 
 import { formatCalendarDate } from "@/lib/formatDate";
+import { newIdempotencyKey } from "@/lib/idempotencyKey";
 
 type RazorpaySuccessResponse = {
   razorpay_payment_id: string;
@@ -103,7 +104,7 @@ export default function FeePaymentPanel() {
     setMessage(null);
     const response = await fetch(`/api/v1/payments/${row.id}/checkout`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+      headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
       body: JSON.stringify({ provider: "razorpay" }),
     });
     const data = await response.json().catch(() => ({}));

@@ -79,3 +79,35 @@ export const BULK_LANGUAGE: BulkTarget = {
     { name: "level", required: false, format: "Up to 30 characters", example: "A1" },
   ],
 };
+
+// ENH-029 -- bulk school onboarding (docs/superpowers/specs/2026-10-01-enh-029-bulk-school-onboarding-design.md §5.1). Same columns,
+// in the same order, as the server's header-only template (SchoolCreate); the server is the authority on every rule.
+const UP_TO = (n: number) => `Text, up to ${n} characters`;
+export const SCHOOL_ONBOARDING: BulkTarget = {
+  id: "bulk-schools",
+  title: "Onboard several schools (CSV)",
+  noun: "schools",
+  templateUrl: "/api/v1/overseas-admin/schools/bulk-template",
+  uploadUrl: "/api/v1/overseas-admin/schools/bulk-upload",
+  columns: [
+    { name: "name", required: true, format: UP_TO(200), example: "Sunrise Public School" },
+    { name: "city", required: false, format: UP_TO(120), example: "Pune" },
+    { name: "state", required: false, format: UP_TO(120), example: "Maharashtra" },
+    { name: "tier", required: false, format: "bronze, silver, gold or platinum", example: "gold" },
+    { name: "tier_valid_until", required: false, format: DATE, example: "2027-03-31" },
+    { name: "coordinator_full_name", required: true, format: UP_TO(160), example: "Meera Iyer" },
+    { name: "coordinator_email", required: true, format: "Email; must not already have an account", example: "meera@sunrise.edu.in" },
+    { name: "branch", required: false, format: UP_TO(200), example: "Kothrud" },
+    { name: "address", required: false, format: UP_TO(500), example: "12 FC Road, Pune" },
+    { name: "contact_number", required: false, format: UP_TO(30), example: "+91 98200 00000" },
+    { name: "email", required: false, format: "School email address", example: "office@sunrise.edu.in" },
+    { name: "website", required: false, format: UP_TO(255), example: "https://sunrise.edu.in" },
+    { name: "grades_available", required: false, format: UP_TO(200), example: "1-12" },
+    { name: "board", required: false, format: "CBSE, ICSE, State, IB or Other", example: "CBSE" },
+    { name: "partnership_date", required: false, format: DATE, example: "2026-10-01" },
+    { name: "mou_reference", required: false, format: UP_TO(255), example: "MOU-2026-014" },
+    { name: "edusphere_bdm", required: false, format: UP_TO(200), example: "Rahul Menon" },
+    { name: "monthly_visit_schedule", required: false, format: UP_TO(200), example: "First Monday" },
+    { name: "vice_principal_name", required: false, format: UP_TO(200), example: "Anil Rao" },
+  ],
+};
