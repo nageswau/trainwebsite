@@ -9,7 +9,8 @@ export type FundingRecord = {
   created_at: string; updated_at: string; counselor_name: string | null; updated_by_name: string | null;
 };
 
-export const FUNDING_STATUSES: FundingStatus[] = ["required", "counselling", "documents", "application", "approved", "completed", "closed"];
+const SOURCE_STAGES: FundingStatus[] = ["required", "counselling", "documents", "application", "approved", "completed"];
+export const FUNDING_STATUSES: FundingStatus[] = [...SOURCE_STAGES, "closed"]; // Closed is the one stage outside School CRM.md §21
 export const SUPPORT_TYPE_LABEL: Record<FundingSupportType, string> = {
   education_loan: "Education loan", financial_assistance: "Financial assistance", scholarship: "Scholarship", funding_guidance: "Funding guidance",
 };
@@ -17,8 +18,6 @@ export const STATUS_LABEL: Record<FundingStatus, string> = {
   required: "Required", counselling: "Counselling", documents: "Documents", application: "Application", approved: "Approved", completed: "Completed", closed: "Closed",
 };
 export const TEXT_LIMITS = { provider_name: 200, amount_text: 120, closure_reason: 500, notes: 4000 } as const;
-
-const SOURCE_STAGES: FundingStatus[] = ["required", "counselling", "documents", "application", "approved", "completed"];
 
 export function isFinal(status: FundingStatus): boolean {
   return status === "completed" || status === "closed";
