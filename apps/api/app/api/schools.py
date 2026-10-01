@@ -675,7 +675,7 @@ ROLL_CONSTRAINT = "uq_school_students_roll"
 ROLL_TAKEN = "roll_number '{roll}' is already used in this grade and section for this academic year"
 
 
-def _master_fields_or_422(model: type[BaseModel], data: dict) -> BaseModel:
+def _master_fields_or_422[M: BaseModel](model: type[M], data: dict) -> M:
     try:
         return model.model_validate(data)
     except ValidationError as exc:
@@ -1056,6 +1056,8 @@ def tier_change_payload(old: str | None, new: str | None) -> dict:
 # Request values -> the service they consume; also the allowlists those request fields are validated against.
 ACTIVITY_SERVICE_KEYS = {"career_seminar": "career_seminar", "career_awareness_session": "career_awareness_session", "parent_orientation": "parent_orientation", "campus_visit": "monthly_campus_visits"}
 TEST_PREP_SERVICE_KEYS = {"ielts": "ielts_coaching", "sat": "sat_coaching"}
+# ENH-020 D2 (DEC-SCOPE-043): a funding support case consumes the service of its type; the type never changes after creation.
+FUNDING_SERVICE_KEYS = {"education_loan": "loan_assistance", "financial_assistance": "loan_assistance", "funding_guidance": "loan_assistance", "scholarship": "scholarship_assistance"}
 
 
 def _today_ist() -> date:
