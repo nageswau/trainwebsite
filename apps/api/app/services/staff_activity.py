@@ -18,6 +18,10 @@ STAFF_ACTIVITY_ACTIONS = (
     "agent_student.create",
     "agent_student.update",
     "agent_student.duplicate_override",
+    # AGN-007 (DEC-SCOPE-049): shortlist work on a student; the agent_student subject resolver already names the student.
+    "agent_student.shortlist_add",
+    "agent_student.shortlist_update",
+    "agent_student.shortlist_remove",
     "agent.student_link",
     "overseas.application.create",
     "document.upload",
