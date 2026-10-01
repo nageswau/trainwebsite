@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentStaffActivity from "@/components/AgentStaffActivity";
@@ -105,15 +105,19 @@ describe("AgentStaffActivity (AGN-021)", () => {
     const mock = vi.fn()
       .mockResolvedValueOnce(res(page(Array.from({ length: 10 }, (_, i) => item(i + 1)), 11)))
       .mockReturnValueOnce(new Promise<Response>((r) => { slow = r; }))
-      .mockResolvedValueOnce(res(page(Array.from({ length: 10 }, (_, i) => item(i + 1)), 11)));
+      .mockResolvedValueOnce(res(page([item(11)], 11, 10)));
     vi.stubGlobal("fetch", mock);
     render(<AgentStaffActivity member={member} onClose={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: "Next page" })); // request 2 hangs
     fireEvent.click(screen.getByRole("button", { name: "Refresh" })); // request 3 resolves first
     await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(3));
-    slow(res(page([item(99)], 11, 10)));
-    await new Promise((r) => setTimeout(r, 0));
+    expect(await screen.findByText(/Student 11/)).toBeInTheDocument();
+    await act(async () => {
+      slow(res(page([item(99)], 11, 10)));
+      await new Promise((r) => setTimeout(r, 20));
+    });
     expect(screen.queryByText(/Student 99/)).toBeNull();
+    expect(screen.getByText(/Student 11/)).toBeInTheDocument();
   });
 
   it("closes with the Close button and with Escape", async () => {

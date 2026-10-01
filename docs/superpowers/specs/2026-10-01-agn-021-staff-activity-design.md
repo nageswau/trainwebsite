@@ -3,6 +3,7 @@
 **Status:** approved in conversation, written for owner review (2026-10-01). **Branch:** `feature/agn-021-staff-activity` (from `origin/main` 6360dc0).
 **Decision:** `DEC-SCOPE-045` (provisional number; A1–A5 below, recorded with the code). **Backlog:** `ENHANCEMENT_BACKLOG.md` §AGN-021 (added with the code).
 **Builds on:** `AGN-001` (`DEC-SCOPE-038`), `AGN-002` (`DEC-SCOPE-040`), `AGN-004` (`DEC-SCOPE-042`), `AGN-003` (`DEC-SCOPE-044`).
+**Amended 2026-10-01 after the final review (R4):** §5.1 log line, §6 error state and §6 edit line now describe the implemented behaviour.
 **Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Staff "View staff activity". The source's wording is not the approval; the owner's statement and answers are.
 **Supersedes:** the earlier AGN-021 design (`2026-10-01-agn-021-staff-permission-matrix-design.md`, branch `feature/agn-021-staff-permission-matrix`) — that scope shipped as `AGN-003` (PR #33) before AGN-021 was built; the owner re-scoped AGN-021 to staff activity on 2026-10-01.
 **Oriented with:** Graphify query + a read-only audit-trail inventory of `main` (2026-10-01); brainstorming (superpowers), in-session.
@@ -68,7 +69,7 @@ The `user_id` index serves the per-staff filter; the per-staff row count is smal
 - `member = await find_staff_member(db, membership.org_id, member_id)` → `404 "Staff member not found"` for another agency's member,
   a Master's member id, or an unknown id (identical response; no disclosure).
 - Read-only: no org lock, no user lock, no commit.
-- `logger.info("agent_staff_activity_viewed org=%s actor=%s member=%s offset=%s", ...)` — ids only.
+- `logger.info("agent_org_staff_activity_viewed", extra={"extra_fields": {"org_id", "actor_id", "member_id", "offset"}})` — ids only (the module's `_commit_staff_change` logging style).
 - Returns `service.staff_activity_page(db, member, limit, offset)`.
 
 ### 5.2 Services — `services/agent_orgs.py` (lookup) and new `services/staff_activity.py` (the read)
@@ -111,8 +112,8 @@ non-list `fields` are handled.
   document"; unknown action → "Other activity".
 - **`AgentStaffActivity`** (new component, `{ member: StaffMember }`): fetches `${STAFF_URL}/${member.id}/activity?limit=10&offset=…`
   (page size 10 inside a row), validates with `isPage`; renders an `<ol aria-label="Activity of <code>">` — each item: label, `subject`,
-  for an edit " — <fields joined by ', '>", and `<time dateTime={at}>{formatDate(at, true)}</time>`. States: loading ("Loading activity…",
-  `role="status"`); empty ("No activity yet."); error (`role="alert"` with the server's message via `staffFailure`/`detailMessage`, and
+  for an edit " — <field names joined by ', ', with `_` replaced by spaces>" (names only, never values), and `<time dateTime={at}>{formatDate(at, true)}</time>`. States: loading ("Loading activity…",
+  `role="status"`); empty ("No activity yet."); error (`role="alert"`: a 4xx response with a string `detail` shows that detail; anything else — 5xx, network failure, non-page body, non-string `detail` — shows "Unable to load activity."; and
   **Try again**); pager ("Showing a–b of N", Previous/Next disabled at the ends and while loading); **Refresh** reloads the current page.
   A request counter ignores a response that is older than the latest request (no stale overwrite).
 - **`AgentStaffRow`:** a new mode `activity` and an **Activity** button beside Permissions (all statuses, including deactivated); the
