@@ -3,16 +3,22 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { detailMessage, sendJson } from "@/lib/apiErrors";
+
 type DocumentRow = { id: string; student: string; document: string; status: string; notes?: string | null };
 export type ReviewDecision = "verified" | "rejected" | "changes_required";
 
 const ALL_DECISIONS: ReviewDecision[] = ["verified", "rejected", "changes_required"];
 const DECISION_LABELS: Record<ReviewDecision, string> = { verified: "Verified", rejected: "Rejected", changes_required: "Changes required" };
+// AGN-003 browser QA-04/QA-02: how a failed request reads. A 5xx carries nothing useful; a dropped connection on a button action
+// (View document) has no typed entry to keep -- the review form's own drop message comes from sendJson (NOT_COMPLETED).
+const SERVER_FAILED = "The server couldn't complete this. Please try again in a moment.";
+const UNREACHABLE = "Couldn't reach the server. Check your connection and try again.";
 
-function detailMessage(detail: unknown) {
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
-  return "Unable to complete this action.";
+// AGN-003 browser QA-05: a status reads as words ("Changes required"), never as the stored value.
+function statusLabel(status: string): string {
+  const label = DECISION_LABELS[status as ReviewDecision] ?? status.replaceAll("_", " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 type Props = { queueUrl?: string; decisions?: ReviewDecision[]; pendingOnly?: boolean; emptyText?: string };
@@ -30,7 +36,9 @@ export default function CounselorDocumentReviewPanel({
   const [rows, setRows] = useState<DocumentRow[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  // AGN-003 browser QA-06: viewing and submitting are separate actions, so each shows (and blocks) only itself.
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
 
   const load = useCallback(() => {
@@ -63,13 +71,21 @@ export default function CounselorDocumentReviewPanel({
   }
 
   async function view(row: DocumentRow) {
-    setBusyId(row.id);
+    setViewingId(row.id);
     setMessage(null);
-    const response = await fetch(`/api/v1/workflows/overseas/documents/${row.id}/download`);
+    let response: Response;
+    try {
+      response = await fetch(`/api/v1/workflows/overseas/documents/${row.id}/download`);
+    } catch {
+      // AGN-003 browser QA-02: a dropped connection must free the button and say so, not leave it on "Preparing…".
+      setViewingId(null);
+      setMessage({ id: row.id, text: UNREACHABLE, failed: true });
+      return;
+    }
     const data = await response.json().catch(() => ({}));
-    setBusyId(null);
+    setViewingId(null);
     if (!response.ok) {
-      setMessage({ id: row.id, text: detailMessage(data.detail), failed: true });
+      setMessage({ id: row.id, text: response.status >= 500 ? SERVER_FAILED : detailMessage(data.detail, "Unable to complete this action."), failed: true });
       return;
     }
     window.open(data.url, "_blank", "noreferrer");
@@ -77,18 +93,23 @@ export default function CounselorDocumentReviewPanel({
 
   async function submit(event: FormEvent<HTMLFormElement>, documentId: string) {
     event.preventDefault();
-    setBusyId(documentId);
+    setSubmittingId(documentId);
     setMessage(null);
     const form = new FormData(event.currentTarget);
-    const response = await fetch(`/api/v1/workflows/overseas/documents/${documentId}/verify`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ verification_status: String(form.get("verification_status")), notes: String(form.get("notes") || "") || null }),
+    // AGN-003 browser QA-01: sendJson never throws -- a dropped connection comes back as its "entry is kept" message.
+    const outcome = await sendJson(`/api/v1/workflows/overseas/documents/${documentId}/verify`, "PATCH", {
+      verification_status: String(form.get("verification_status")),
+      notes: String(form.get("notes") || "") || null,
     });
-    const data = await response.json().catch(() => ({}));
-    setBusyId(null);
-    if (!response.ok) {
-      setMessage({ id: documentId, text: detailMessage(data.detail), failed: true });
+    setSubmittingId(null);
+    if (!outcome.ok) {
+      setMessage({ id: documentId, text: outcome.status !== undefined && outcome.status >= 500 ? SERVER_FAILED : outcome.message, failed: true });
+      // AGN-003 browser QA-03: someone else decided it first -- show the real status instead of a stale form.
+      if (outcome.status === 409) {
+        setOpenId(null);
+        router.refresh();
+        load();
+      }
       return;
     }
     setMessage({ id: documentId, text: "Document reviewed -- the student has been notified.", failed: false });
@@ -133,13 +154,17 @@ export default function CounselorDocumentReviewPanel({
       <div className="grid two" style={{ marginTop: 16 }}>
         {rows.map((row) => (
           <div className="card" key={row.id}>
-            <span className="badge">{row.status}</span>
+            <span className="badge">{statusLabel(row.status)}</span>
             <h4 style={{ marginTop: 10 }}>{row.document}</h4>
             <p className="muted" style={{ fontSize: 13 }}>{row.student}</p>
-            <button className="btn small" disabled={busyId === row.id} onClick={() => view(row)}>
-              {busyId === row.id ? "Preparing…" : "View document"}
-            </button>
-            {openId === row.id ? (
+            {/* AGN-003 browser QA-08: the row's actions share one wrapping line instead of an offset second line. */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <button className="btn small" disabled={viewingId === row.id} onClick={() => view(row)}>
+                {viewingId === row.id ? "Preparing…" : "View document"}
+              </button>
+              {openId !== row.id && (!pendingOnly || row.status === "pending") && <button className="btn small" onClick={() => setOpenId(row.id)}>Review</button>}
+            </div>
+            {openId === row.id && (
               <form className="form" onSubmit={(event) => submit(event, row.id)} style={{ marginTop: 8 }}>
                 {single ? (
                   <input type="hidden" name="verification_status" value={single} />
@@ -155,12 +180,10 @@ export default function CounselorDocumentReviewPanel({
                   <label htmlFor={`notes-${row.id}`}>Reviewer notes</label>
                   <textarea id={`notes-${row.id}`} name="notes" maxLength={10000} />
                 </div>
-                <button className="btn small" disabled={busyId === row.id}>
-                  {busyId === row.id ? "Submitting…" : single ? `Mark ${DECISION_LABELS[single].toLowerCase()}` : "Submit review"}
+                <button className="btn small" disabled={submittingId === row.id}>
+                  {submittingId === row.id ? "Submitting…" : single ? `Mark ${DECISION_LABELS[single].toLowerCase()}` : "Submit review"}
                 </button>
               </form>
-            ) : (
-              (!pendingOnly || row.status === "pending") && <button className="btn small" style={{ marginLeft: 8 }} onClick={() => setOpenId(row.id)}>Review</button>
             )}
             {message?.id === row.id && (
               <div id={`review-status-${row.id}`} tabIndex={-1} className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 8, fontSize: 13 }}>
