@@ -52,8 +52,8 @@ country preference, budget and remarks"**; acceptance criteria: **save and read 
 ## 4. Data model — migration `0054_agent_student_counseling`
 
 Create-table only, guarded like 0053 (on a fresh database `0001_initial`'s `create_all()` has already built the table from the model).
-No existing table is altered and no existing row is read or written. `downgrade()` drops the table — **counseling data is lost on
-downgrade** (same as 0053). Model `AgentStudentCounseling` in `models.py` beside `AgentStudent`.
+No existing table is altered and no existing row is read or written. `downgrade()` **refuses while any counseling record exists**
+(`RuntimeError`, the 0049 pattern — the owner's "preserve database data" constraint) and drops the empty table otherwise. Model `AgentStudentCounseling` in `models.py` beside `AgentStudent`.
 
 | Column | Type | Rule |
 |---|---|---|
@@ -101,7 +101,8 @@ student row (AGN-004 has no hard delete).
 - `save_counseling(db, row, user, data) -> list[str]` (no commit, like `apply_update`): loads the existing counseling row (the student
   row is already locked); creates it if absent; applies C5 (`completed_at = now`, `completed_by = user` when changing to true; kept when
   already true; cleared on false); returns the sorted names of fields whose value changed (`completed_at` / `completed_by` are not
-  listed — `counseling_completed` is). Sets `updated_by_user_id` only when something changed.
+  listed — `counseling_completed` is). Sets `updated_by_user_id` only when something changed. A **first** save creates the record,
+so it is never a no-op: its changed fields are `counseling_completed` plus every non-empty field.
 
 ### 5.3 Route — `api/agent_students.py`
 
@@ -162,7 +163,8 @@ PUT /workflows/overseas/agent/crm/students/{student_id}/counseling   body: Agent
 
 ## 6. Frontend (`apps/web`)
 
-- **`lib/agentStudents.ts`** — `Counseling` type; `AgentStudentDetail.counseling: Counseling | null`; `CURRENCIES`; `BUDGET_MAX`;
+- **`lib/agentStudents.ts`** — `Counseling` type; `AgentStudentDetail.counseling?: Counseling | null` (optional in TypeScript so
+  existing test fixtures stay valid; the server always sends it); `CURRENCIES`; `BUDGET_MAX`;
   `counselingUrl(id)`; `counselingValues(c)`; `counselingPayload(values)`; `validateCounseling(values)` (amount ≥ 0, ≤ max, ≤ 2 decimals,
   currency needs an amount, remarks ≤ 2000); `formatBudget(amount, currency)` (`Intl.NumberFormat`, currency style).
 Two components, mirroring the existing `AgentStudentDetailPanel` (view) / `AgentStudentForm` (form) split so each stays well under 200
@@ -191,6 +193,8 @@ helpers are reused: `.record-details` (two columns, one column ≤ 640 px), `.fo
     "e", changes on mouse wheel and is locale-dependent). Help text: "Leave empty if no budget was discussed."
   - *Currency:* a labelled `<select>` of the seven codes, default INR; sent only when an amount is entered, so the UI can never
     produce "currency without amount".
+  - *Amount typing:* commas and spaces are removed before checking and sending ("25,00,000" → "2500000"); the amount is sent as a
+    string so no float rounds it.
   - *Client validation (`validateCounseling`) on submit:* amount must match `^\d{1,8}(\.\d{1,2})?$` (so ≥ 0, ≤ 99,999,999.99, ≤ 2
     decimals; a "-" gives "Budget cannot be negative"), text limits; errors shown under the field (`aria-invalid`,
     `aria-describedby`), the first invalid field focused, no request sent. The server stays the authority (§5.1).
@@ -199,8 +203,10 @@ helpers are reused: `.record-details` (two columns, one column ≤ 640 px), `.fo
     Save after a failure.
   - *Server errors:* 422 mapped to fields by `loc` (falls back to one message when a `loc` is not a form field); 404 / 409 → one
     `role="alert"` message with the server's text; network failure → `NOT_COMPLETED`.
-  - *Success:* `onSaved(student)`; the panel closes the form, shows the new record, announces `role="status"` "Counseling saved."
-    and moves focus to the "Counseling" heading.
+  - *Success:* `onSaved(student)`; the panel closes the form, shows the new record and moves focus to the "Counseling" heading;
+    "Counseling saved for {name}." is announced through the list's existing `role="status"` notice (no second live region):
+    `AgentStudentDetailPanel`'s `onSaved` gains an optional `notice` argument, and `AgentStudentsPanel` shows it instead of
+    "{name} saved." when given.
   - *Keyboard:* natural Tab order; Enter in a text input submits; Cancel is a button. Opening the form focuses the checkbox;
     Cancel returns focus to the "Record/Edit counseling" button.
   - *Leave prompt (C9):* while dirty, the `beforeunload` + capture-phase in-app link prompt pattern from `AgentStudentForm`
@@ -224,7 +230,7 @@ helpers are reused: `.record-details` (two columns, one column ≤ 640 px), `.fo
 | AGN-006-AC06 | One `agent_student.counseling` audit row with `{fields}` names only (no values); a no-op save writes none; Staff Activity lists it with field names and no budget/remarks | `test_agn_006_counseling.py`, `test_agn_006_activity.py` |
 | AGN-006-AC07 | Non-agent, `super_admin`, pending / suspended organisation → 403 | `test_agn_006_counseling.py` |
 | AGN-006-AC08 | PUT replaces: an omitted optional field becomes null; `counseling` is null before the first save; the list item shape is unchanged; the PATCH contract is unchanged | `test_agn_006_counseling.py` |
-| AGN-006-AC09 | Migration upgrade → downgrade → upgrade, single head; the DB rejects a negative budget, a currency without an amount and an unknown currency written directly | `test_agn_006_migration.py` |
+| AGN-006-AC09 | Migration upgrade → downgrade → upgrade keeps existing rows, single head; downgrade refuses while a counseling record exists; the DB rejects a negative budget, a currency without an amount and an unknown currency written directly | `test_agn_006_migration.py` |
 | AGN-006-AC10 | UI: empty / view / form states; button hidden for a login or archived student and while the student form is open; client errors (negative, 3 decimals, too long) send nothing and focus the field; currency not sent without an amount; unchanged Save sends nothing; 422 → field, 409 → alert, network → alert; success shows the record, the status message and focuses the heading; remarks `<script>` text renders literally; Escape does not close the panel while a form is open | `AgentStudentCounselingCard.test.tsx`, `AgentStudentCounselingForm.test.tsx`, `tests/lib/agentStudents.test.ts` |
 | AGN-006-AC11 | Browser: a Master records counseling, reloads and sees it; a negative budget shows the field error | `tests/e2e/agn-006-counseling.spec.ts` |
 | AGN-006-AC12 | Security: a numeric-string budget is accepted; the response never contains the counseling row id or user ids; a staff member cannot write by guessing another student's id (404, nothing written, no audit) | `test_agn_006_counseling.py` |
