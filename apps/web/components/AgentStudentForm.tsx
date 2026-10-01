@@ -96,6 +96,11 @@ export default function AgentStudentForm({
     };
   }, [dirty]);
 
+  // AGN-005 QA5-02: a new-student form opens with focus on its first field, so keyboard users start typing where they expect.
+  useEffect(() => {
+    if (mode === "create") document.getElementById(`${idPrefix}-full_name`)?.focus();
+  }, [mode, idPrefix]); // both fixed while the form is open, so this runs once, when it opens
+
   function cancel() {
     if (dirty && !window.confirm(LEAVE_PROMPT)) return;
     onCancel();
@@ -109,7 +114,7 @@ export default function AgentStudentForm({
 
   async function save(confirmDuplicate: boolean) {
     if (inFlight.current) return;
-    const found = validate(values);
+    const found = validate(values, mode === "edit" ? original.current : undefined);
     setErrors(found);
     const firstInvalid = FOCUS_ORDER.find((key) => found[key]);
     if (firstInvalid) {

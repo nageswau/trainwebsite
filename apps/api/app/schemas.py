@@ -489,6 +489,15 @@ class _AgentStudentRecordFields(BaseModel):
     def _text(cls, value, info):
         return clean_free_text(value, _RECORD_LIMITS[info.field_name])
 
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, value):
+        # AGN-005 browser QA5-01 (owner, 2026-10-01): the school mobile rule (`_MOBILE`), so "abc" can no longer be saved and every
+        # saved phone has digits for the duplicate check. Runs after `_text` (trimmed, blank -> None); only a sent phone is checked.
+        if value is not None and (not _MOBILE.match(value) or sum(ch.isdigit() for ch in value) < 7):
+            raise PydanticCustomError("invalid_phone", "Enter a phone number of 7–20 digits, spaces, +, -, ( or ) with at least 7 digits")
+        return value
+
     @field_validator("email")
     @classmethod
     def _email(cls, value):

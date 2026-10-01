@@ -60,6 +60,9 @@ const LIMITS: Partial<Record<FieldKey, number>> = {
   notes: NOTES_MAX,
 };
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// AGN-005 QA5-01: the server's rule (schemas `_MOBILE`) -- digits, spaces, + - ( ), 7-20 characters, at least 7 digits.
+const PHONE = /^[0-9+\-() ]{7,20}$/;
+export const PHONE_MESSAGE = "Enter a phone number of 7–20 digits, spaces, +, -, ( or ) with at least 7 digits";
 
 export function emptyValues(): FormValues {
   return Object.fromEntries(FIELD_KEYS.map((k) => [k, ""])) as FormValues;
@@ -91,7 +94,9 @@ export function buildPayload(values: FormValues, original?: FormValues): Record<
   return out;
 }
 
-export function validate(values: FormValues): Partial<Record<FieldKey, string>> {
+// Edit (`original` given): an unchanged phone is not re-checked, because the server checks only a phone that is sent and a value
+// saved before the AGN-005 rule must not block edits of other fields.
+export function validate(values: FormValues, original?: FormValues): Partial<Record<FieldKey, string>> {
   const errors: Partial<Record<FieldKey, string>> = {};
   for (const key of FIELD_KEYS) {
     const max = LIMITS[key];
@@ -99,6 +104,9 @@ export function validate(values: FormValues): Partial<Record<FieldKey, string>> 
   }
   if (!values.full_name.trim()) errors.full_name = "Full name is required";
   if (values.email.trim() && !EMAIL.test(values.email.trim())) errors.email = "Enter a valid email address";
+  const phone = values.phone.trim();
+  const phoneSent = !original || phone !== original.phone.trim();
+  if (phone && phoneSent && (!PHONE.test(phone) || phone.replace(/\D/g, "").length < 7)) errors.phone = PHONE_MESSAGE;
   if (values.date_of_birth) {
     const today = new Date().toISOString().slice(0, 10);
     if (values.date_of_birth > today || values.date_of_birth < "1900-01-01") errors.date_of_birth = "Date of birth must be between 1900 and today";
