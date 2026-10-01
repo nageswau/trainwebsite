@@ -270,9 +270,9 @@ only. A lock or commit failure is not caught: FastAPI returns `500` and the tran
   `AgentMasterInvite`; `date_of_birth` not in the future and not before 1900; `graduation_year` range as §4;
   `notes` ≤ 2000; `confirm_duplicate: bool = False`. Errors: `422`, never echoing the value. Validation runs
   after the role and scope checks and before any write.
-- `phone_digits` = digits of `phone`; used for matching only when it has ≥ 7 digits.
+- `phone_digits` = digits of `phone`. **Match key (browser QA-04, owner Q2, 2026-10-01):** the last 10 digits when there are at least 10 (country code and trunk 0 ignored), otherwise all digits, used only when ≥ 7.
 - **Match** within the agency (`agent_id IN org_member_ids`), excluding the row being edited: `lower(email)`
-  equal, or `phone_digits` equal. Linked students match on their `users.email` / `users.phone`. Archived
+  equal, or match keys equal. Linked students match on their `users.email` / `users.phone`. Archived
   students included (F3). The match never reads `users` beyond the agency's own linked rows, so it cannot
   discover platform accounts.
 - No match, or `confirm_duplicate: true` → proceed (an override writes `agent_student.duplicate_override`).
@@ -331,6 +331,13 @@ only. A lock or commit failure is not caught: FastAPI returns `500` and the tran
   button; the table becomes cards below 640 px; no horizontal overflow at 320 px; touch targets ≥ 44 px.
 - **Unchanged:** `AgentApplicationCreatePanel`, `AgentApprovalPanel`, `AgentTeamPanel`, `RegisterForm`.
 
+**Browser-QA revisions (2026-10-01, `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`):** `PortalPage` renders the agent Students
+page as a "Students" header with the panel first and full width (heading "All students"), then the AGT-002 roster retitled
+"Application status", then `WorkflowPanel` (Link student) — the panel is no longer rendered by `WorkflowPanel` (QA-01/02, owner
+Q1). The form asks before Cancel or an in-app link discards unsaved input (QA-03); a server 422 is shown on its field (QA-05); the
+main Save is disabled while the duplicate warning is open (QA-08). The panel keeps `q`, `archived` and `page` in the URL (QA-06),
+offers Retry on a failed detail (QA-09), every panel button is 44 px on phones (QA-07), and emails break after `@`/`.` (QA-10).
+
 ## 7. Security (security-and-hardening review)
 
 **Trust boundaries:** the new HTTP routes (JSON bodies and query strings from Masters and Staff); stored student
@@ -368,7 +375,7 @@ create without email/phone; no erasure path for students with no login.
 | AGN-004-AC05 | Staff get `404` on read, edit and archive of a student assigned to someone else, an unassigned student, or any student of another agency; Staff lists contain only their assigned students. |
 | AGN-004-AC06 | Staff see only their assigned students' links, applications and documents on every existing agent path (roster, application list/create, document upload/download, lookups, portal pages); another Staff member's student is refused with that path's existing out-of-scope status. |
 | AGN-004-AC07 | A Master of another agency gets `404` on every by-id route and never sees the rows in lists. |
-| AGN-004-AC08 | Same email (any case) or phone (≥ 7 digits) within the agency — archived and linked students included — → `409 possible_duplicate`; resending with `confirm_duplicate: true` → `201` and an override audit row. A match in another agency never warns. Staff see matches they cannot view only as `hidden_matches`. |
+| AGN-004-AC08 | Same email (any case) or phone (same last 10 digits; under 10 digits exact, ≥ 7) within the agency — archived and linked students included — → `409 possible_duplicate`; resending with `confirm_duplicate: true` → `201` and an override audit row. A match in another agency never warns. Staff see matches they cannot view only as `hidden_matches`. |
 | AGN-004-AC09 | Assignment targets only an active Staff member of the same agency (`422` otherwise). A deactivated Staff member keeps their students; Masters still see them and can reassign. |
 | AGN-004-AC10 | Staff get `403` on Team and Commissions (API and portal pages) and do not see those nav items; Staff never count toward the 3-Master limit or last-Master rule and never receive commission notifications; Overseas Admin cannot approve/reject a Staff user. |
 | AGN-004-AC11 | Every write writes an audit row in the same transaction with no personal data; if the audit write fails, nothing is written. |

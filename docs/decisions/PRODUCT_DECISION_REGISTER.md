@@ -2720,6 +2720,7 @@ questions, not the source document's wording):
 - **G4 — Assigned-only everywhere** — the new student routes (`404` outside scope) and every existing roster, link, application,
   document, lookup and portal path (their existing out-of-scope status codes). Narrows AGN-002 S1.
 - **G5 — Deactivation keeps assignments**; only an active staff member can receive a new assignment.
+- **Browser-QA decisions, 2026-10-01 (owner, `EXPLICIT_APPROVAL`):** **Q1** the agent Students page leads with all students (the panel, full width) and the AGT-002 roster is retitled "Application status" for students who have a login (browser QA-01/02); **Q2** phones match for the duplicate warning on their last 10 digits (country code / trunk 0 ignored); numbers under 10 digits must match exactly, ≥ 7 digits (browser QA-04). Report: `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`.
 - Design choices F1–F5 (no `org_id` column; linked students not editable here; duplicates include archived and linked students;
   staff see invisible matches only as a count; the detail view sits on the Students page) — design spec §3.
 

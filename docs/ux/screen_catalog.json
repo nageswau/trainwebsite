@@ -2086,7 +2086,7 @@
       "Agent (Master)",
       "Agent (Staff)"
     ],
-    "route": "/overseas/agent/students",
+    "route": "/overseas/agent/students (Students header + All students panel first, then Application status roster, then Link student; filters in the URL)",
     "purpose": "The agency's students, including students who never log in: create, edit, view and (Master) archive (AGN-004 / DEC-SCOPE-041, added 2026-09-30).",
     "features": [
       "AGN-004",

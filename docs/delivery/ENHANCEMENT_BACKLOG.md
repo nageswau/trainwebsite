@@ -2987,7 +2987,7 @@ the agency warns; saving again with confirmation proceeds (audited).
 
 **Acceptance criteria.** AGN-004-AC01…AC13, verbatim in `docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md` §8.
 
-**Status (2026-09-30) — IMPLEMENTED; NOT COMPLETE.** Designed (spec rev. 2), planned
+**Status (2026-10-01) — IMPLEMENTED; NOT COMPLETE.** Browser QA done (QA-01…QA-10 found and fixed, `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`); the independent Codex review is pending. Designed (spec rev. 2), planned
 (`docs/superpowers/plans/2026-09-30-agn-004-agent-students.md`) and built test-first on `feature/agn-004-agent-students`
 (migration `0047_agent_students_crm`). Outstanding before COMPLETE: browser validation and the independent Codex review (owner
 instruction); Staff browser flows and the named-Staff Assign picker wait for the AGN-002 merge. Evidence in `docs/quality/RTM.md`.

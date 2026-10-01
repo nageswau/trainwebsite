@@ -1796,7 +1796,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Acceptance evidence needed:** AGN-001-AC07, AC08 (API tests `test_agn_001_team.py`; `AgentTeamPanel.test.tsx`; e2e `agn-001-multi-tenant.spec.ts`).  
 
 ### `SCR-AGT-008`
-- **Route:** `/overseas/agent/students` — the Students panel above the existing roster and "Link student" form  
+- **Route:** `/overseas/agent/students` — a "Students" header and the "All students" panel (full width), then the AGT-002 roster retitled "Application status" (students who have a login), then the "Link student" form *(layout from browser QA-01/02, 2026-10-01)*; search, Show archived and page are kept in the URL (`?q=- **Route:** `/overseas/agent/students` — the Students panel above the existing roster and "Link student" form  archived=1- **Route:** `/overseas/agent/students` — the Students panel above the existing roster and "Link student" form  page=`)  
 - **Role(s):** Agent — a Master (whole agency) or a staff member (assigned students only) of an active agency  
 - **Purpose:** Create, edit, view and (Master) archive the agency's students, including students who never log in *(net-new, added 2026-09-30, `AGN-004` / `DEC-SCOPE-041`)*.  
 - **Linked Feature ID(s):** `AGN-004`, `AGT-002`  
