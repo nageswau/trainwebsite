@@ -3049,7 +3049,7 @@
     "error": "A refused page read renders the Access Unavailable card; a refused save shows the server's words as an alert under the form (tier 403, duplicate open case 409, 422 rules) and keeps the entry; a stale edit (409) offers \"Discard my changes and reload\"; 5xx and network failures keep the entry.",
     "perms": "career_counselor only, own school portfolio; writes only while the student is still at the case's school; per-type tier gate on writes, none on reads.",
     "responsive": "At ≤640px open-case rows become stacked cards labelled from data-label (no sideways scroll), buttons are 44px tall; finished cases are a single-column definition list.",
-    "a11y": "h2 page section, h3 Open cases / Add a case; table named by its heading with column headers; stage shown as text (\"Stage 3 of 6 · Documents\"), never colour alone; unique Edit button names; focus to the edit heading on open, back to the row's Edit button on close; Escape closes; choosing Closed moves focus to the required reason; results via FormMessage live region.",
+    "a11y": "one h1 (Funding support), h2 for Open cases, the edit form and Add a case (QA-06); table named by its heading with column headers; stage shown as text (\"Stage 3 of 6 · Documents\"), never colour alone; unique Edit button names; focus to the edit heading on open, back to the row's Edit button on close; Escape closes; choosing Closed moves focus to the required reason; results via FormMessage live region.",
     "dtm": "Desktop/tablet: table; mobile: stacked cards.",
     "visual": "None — not inspected. Do not claim parity.",
     "evidence": "SchoolFundingRecordsPanel.test.tsx, FundingRecordForm.test.tsx, fundingRecords.test.ts, tests/e2e/enh-020-funding-support.spec.ts, test_enh_020_funding_records.py, test_enh_020_reads.py. IMPLEMENTED — NOT YET COMPLETE (browser validation and independent review pending)."
@@ -3061,7 +3061,7 @@
       "School Coordinator",
       "School Principal"
     ],
-    "route": "Card on /school/parent/children/[id], /school/coordinator/students/[id], /school/principal/students/[id]",
+    "route": "Card on /school/parent/children/[id], /school/coordinator/students/[id], /school/principal/students/[id] (parent page: directly after the child overview, QA-04)",
     "purpose": "Read-only view of one student's funding support cases.",
     "features": [
       "ENH-020"

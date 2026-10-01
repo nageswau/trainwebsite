@@ -2683,13 +2683,13 @@ correction, not deleted, per this project's traceability convention.
 - **Error state:** refused page read → Access Unavailable card; refused save → the server's words as an alert under the form, entry kept (tier 403, duplicate open case 409, 422 stage/reason rules); stale edit 409 → "Discard my changes and reload"; 5xx/network → plain-language alert, entry kept.
 - **Permissions/resource scope:** `career_counselor` only, own portfolio; writes only while the student is still at the case's school (D12); per-type tier gate on writes (`scholarship` ⇒ Gold+, others ⇒ Platinum); reads not tier-gated.
 - **Responsive behavior:** At ≤640 px open-case rows become stacked cards labelled by `data-label` (the `psy-records` rule), 44 px buttons; no horizontal page scroll at 320/768 px (e2e).
-- **Accessibility requirements:** heading order h2 → h3; table named by its heading with column headers; stage as text ("Stage 3 of 6 · Documents"), never colour alone; unique Edit names; focus to the edit heading and back to the row's Edit button; Escape closes; choosing Closed focuses the required reason; results via `FormMessage`.
+- **Accessibility requirements:** one h1 ("Funding support"), h2 for Open cases, the edit form and Add a case (QA-06); table named by its heading with column headers; stage as text ("Stage 3 of 6 · Documents"), never colour alone; unique Edit names; focus to the edit heading and back to the row's Edit button; Escape closes; choosing Closed focuses the required reason; results via `FormMessage`.
 - **Desktop/tablet/mobile behavior:** table on desktop/tablet; stacked cards on phones.
 - **Visual-reference mapping:** None — not inspected. Do not claim parity.
 - **Acceptance evidence needed:** `SchoolFundingRecordsPanel.test.tsx`, `FundingRecordForm.test.tsx`, `tests/e2e/enh-020-funding-support.spec.ts`, `test_enh_020_*.py`. IMPLEMENTED — NOT YET COMPLETE (browser validation and independent review pending).
 
 ### `SCR-SCH-041` *(added 2026-10-01, `ENH-020` / `DEC-SCOPE-043`)*
-- **Route:** card on `/school/parent/children/[id]`, `/school/coordinator/students/[id]`, `/school/principal/students/[id]`
+- **Route:** card on `/school/parent/children/[id]`, `/school/coordinator/students/[id]`, `/school/principal/students/[id]` — on the parent page directly after the child overview (QA-04)
 - **Role(s):** School Parent (own child), School Coordinator and Principal (own institution).
 - **Purpose:** Read-only view of one student's funding support cases.
 - **Linked Feature ID(s):** `ENH-020`
