@@ -10,6 +10,7 @@ from typing import NoReturn
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import case, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +20,6 @@ from app.api.schools import (
     FUNDING_SERVICE_KEYS,
     OUTSIDE_PORTFOLIO,
     _load_student_for_reader,
-    _master_fields_or_422,
     _notify_student_parents,
     _portfolio_school_ids,
     _today_ist,
@@ -29,7 +29,7 @@ from app.api.schools import (
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import AuditLog, SchoolFundingRecord, SchoolStudent, User
-from app.schemas import FUNDING_FINAL_STATUSES, FUNDING_STATUS_LABEL, FUNDING_SUPPORT_TYPE_LABEL, FundingRecordCreate, FundingRecordUpdate, funding_transition_allowed
+from app.schemas import FUNDING_FINAL_STATUSES, FUNDING_STATUS_LABEL, FUNDING_SUPPORT_TYPE_LABEL, FundingRecordCreate, FundingRecordUpdate, funding_transition_allowed, validation_message
 
 router = APIRouter(prefix="/school", tags=["school-funding"])
 logger = get_logger("app.school.funding")
@@ -48,7 +48,25 @@ ENTITY = "school_funding_record"
 OPEN_CASE_INDEX = "uq_funding_record_open_student_type"
 RECORD_KEYS = ("id", "school_student_id", "support_type", "status", "status_changed_on", "provider_name", "amount_text", "notes", "closure_reason", "created_at", "updated_at")
 TRACKED_FIELDS = ("status", "provider_name", "amount_text", "notes", "closure_reason")  # what a PATCH may change, in audit order
+# QA-01: a 422 is shown to the counsellor as-is, so it names the form's label, not the API field (ENH-026 QA-03's rule).
+FIELD_LABELS = {
+    "school_student_id": "Student", "support_type": "Support type", "status": "Stage", "expected_status": "Expected stage",
+    "provider_name": "Provider or institution", "amount_text": "Amount", "notes": "Notes", "closure_reason": "Reason for closing",
+}
 OPEN_FIRST = (case((SchoolFundingRecord.status.in_(FUNDING_FINAL_STATUSES), 1), else_=0), SchoolFundingRecord.updated_at.desc())  # list order
+
+
+def _fields_or_422[M: BaseModel](model: type[M], payload: dict) -> M:
+    """The house string-422 (`validation_message`) with the field named by its form label. An unknown key keeps naming itself: only
+    an API caller sends one, and that message is the API contract."""
+    try:
+        return model.model_validate(payload)
+    except ValidationError as exc:
+        message, error = validation_message(exc), exc.errors()[0]
+        field = str(error["loc"][0]) if error["loc"] else ""
+        if error["type"] != "extra_forbidden" and field in FIELD_LABELS:
+            message = FIELD_LABELS[field] + message[len(field):]
+        raise HTTPException(422, message) from None
 
 
 async def _records_out(db: AsyncSession, rows) -> list[dict]:
@@ -132,7 +150,7 @@ async def create_funding_record(payload: dict, user: User = Depends(get_current_
     """Spec §4.1: one transaction up to the commit (student row locked, tier gate before any write); parents notified after it."""
     if user.role != "career_counselor":
         await _deny(db, user, "role", ENTITY, None, COUNSELOR_REQUIRED)
-    fields = _master_fields_or_422(FundingRecordCreate, payload)
+    fields = _fields_or_422(FundingRecordCreate, payload)
     student = await _locked_student(db, fields.school_student_id)
     if student is None:
         raise HTTPException(404, "Student not found")
@@ -190,7 +208,7 @@ async def update_funding_record(record_id: UUID, payload: dict, user: User = Dep
     if record.school_id != student.school_id:  # D12: the student has moved; the previous school's case is history now
         await _deny(db, user, "previous_school", ENTITY, record.id, PREVIOUS_SCHOOL)
     await require_school_entitlement(db, user, student.school_id, FUNDING_SERVICE_KEYS[record.support_type], grandfathered_since=record.created_at)
-    fields = _master_fields_or_422(FundingRecordUpdate, payload)
+    fields = _fields_or_422(FundingRecordUpdate, payload)
     sent = set(fields.model_fields_set)
     if "expected_status" in sent and fields.expected_status != record.status:
         raise HTTPException(409, f"This case was changed by someone else (now {FUNDING_STATUS_LABEL[record.status]}). Reload to see the latest.")

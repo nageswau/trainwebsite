@@ -134,7 +134,22 @@ async def test_unknown_or_malformed_student(client, world):  # AC02, AC04
     r = await _create(client, "00000000-0000-0000-0000-000000000000")
     assert (r.status_code, r.json()["detail"]) == (404, "Student not found")
     r = await _create(client, "not-a-uuid")
-    assert r.status_code == 422 and r.json()["detail"].startswith("school_student_id ")
+    assert r.status_code == 422 and r.json()["detail"].startswith("Student ")  # QA-01: the form's label, not the API field
+
+
+@pytest.mark.parametrize(
+    "body,detail",
+    [
+        ({"provider_name": "‮knab"}, "Provider or institution must not contain control or bidirectional-override characters"),
+        ({"amount_text": "9" * 121}, "Amount must be at most 120 characters"),
+        ({"notes": "x" * 4001}, "Notes must be at most 4000 characters"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_create_validation_messages_name_the_form_field(client, world, body, detail):  # QA-01
+    await login(client, world["counselor"].email)
+    r = await _create(client, world["sid"], **body)
+    assert (r.status_code, r.json()["detail"]) == (422, detail)
 
 
 @pytest.mark.parametrize(
@@ -299,6 +314,18 @@ async def test_a_reason_only_when_closing(client, world, db_session, body):  # A
     r = await client.patch(_url(rec["id"]), json=body)
     assert (r.status_code, r.json()["detail"]) == (422, "A closure reason can only be given when closing the case.")
     assert await db_session.scalar(_updates(rec["id"])) == 0
+
+
+@pytest.mark.asyncio
+async def test_update_validation_messages_name_the_form_field(client, world):  # QA-01
+    await login(client, world["counselor"].email)
+    rec = await _new(client, world)
+    r = await client.patch(_url(rec["id"]), json={"status": "closed", "closure_reason": "x" * 501})
+    assert (r.status_code, r.json()["detail"]) == (422, "Reason for closing must be at most 500 characters")
+    r = await client.patch(_url(rec["id"]), json={"status": "rejected"})
+    assert r.status_code == 422 and r.json()["detail"].startswith("Stage ")
+    r = await client.patch(_url(rec["id"]), json={"owner": "x"})
+    assert r.json()["detail"] == "owner is not an accepted field"  # API-only mistakes keep naming the key
 
 
 @pytest.mark.parametrize("final,label", [("completed", "Completed"), ("closed", "Closed")])
