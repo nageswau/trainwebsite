@@ -468,6 +468,15 @@ class AgentStaffUpdate(BaseModel):
         return self
 
 
+class AgentStaffPermissions(BaseModel):
+    """AGN-003 (DEC-SCOPE-041 P1/P2): one staff member's whole optional-permission set. PUT replaces both; strict booleans and no
+    other key, so no other privilege can be named."""
+
+    model_config = {"extra": "forbid"}
+    can_verify_documents: StrictBool
+    can_view_reports: StrictBool
+
+
 class CommissionCreate(BaseModel):
     agent_id: UUID
     application_id: UUID

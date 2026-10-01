@@ -373,6 +373,19 @@ async def reset_staff(db: AsyncSession, org: AgentOrg, member_id, actor: User):
     return member, user, issued
 
 
+async def set_staff_permissions(db: AsyncSession, org: AgentOrg, member_id, actor: User, *, can_verify_documents: bool, can_view_reports: bool):
+    """No commit; `org` locked. DEC-SCOPE-041 P2/P8: any staff member of the organisation, whatever their status; audited only when
+    a value changes (a repeated save writes nothing), with the before/after flags."""
+    member, user = await _staff_member(db, org, member_id)
+    after = {"can_verify_documents": can_verify_documents, "can_view_reports": can_view_reports}
+    before = {name: getattr(member, name) for name in after}
+    if before != after:
+        for name, value in after.items():
+            setattr(member, name, value)
+        _staff_audit(db, actor, org, member, "staff_permissions", "updated", before=before, after=after)
+    return member, user
+
+
 async def deactivate_master(db: AsyncSession, org: AgentOrg, member_id, actor: User) -> tuple[AgentOrgMember, User]:
     """No commit; `org` must be locked. D8/E3: never the last active Master; login disabled; open invite revoked."""
     member = await db.scalar(
