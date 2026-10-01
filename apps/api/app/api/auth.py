@@ -10,7 +10,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import get_current_user
+from app.api.deps import check_session, get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code
@@ -85,8 +85,8 @@ async def _sync_role_assignment(db: AsyncSession, user: User, assigned_by_user_i
 
 
 def _set_auth_cookies(response: Response, user: User):
-    access = create_token(str(user.id), user.role, user.division, "access")
-    refresh = create_token(str(user.id), user.role, user.division, "refresh")
+    access = create_token(str(user.id), user.role, user.division, "access", user.session_version)
+    refresh = create_token(str(user.id), user.role, user.division, "refresh", user.session_version)
     common = {"httponly": True, "secure": settings.cookie_secure, "samesite": "lax", "path": "/"}
     response.set_cookie("edusphere_access", access, max_age=settings.access_token_minutes * 60, **common)
     response.set_cookie("edusphere_refresh", refresh, max_age=settings.refresh_token_days * 86400, **common)
@@ -154,8 +154,7 @@ async def refresh(response: Response, edusphere_refresh: str | None = Cookie(def
     user = await db.scalar(
         select(User).where(User.id == uid, User.active.is_(True)).options(selectinload(User.role_assignments))
     )
-    if not user:
-        raise HTTPException(401, "User unavailable")
+    user = await check_session(db, uid, user, p)
     _set_auth_cookies(response, user)
     return LoginResponse(user=UserOut.model_validate(user), expires_in_minutes=settings.access_token_minutes)
 
@@ -169,7 +168,10 @@ async def logout(response: Response):
 
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)):
-    return user
+    out = UserOut.model_validate(user)
+    # AGN-002: the portal hides Master-only pages from staff (the server refuses them regardless).
+    out.agent_member_role = user.agent_membership.role if user.agent_membership else None
+    return out
 
 
 # Profile keys that carry an authorization scope. A user may echo their own current value back (the web

@@ -203,6 +203,29 @@ never a frontend-only gate (`FND-002`, `NFR-SEC-001`).
 | `POST /workflows/overseas/agent/team/masters/{member_id}/deactivate` | Authenticated | Same | `404` if not in the caller's organisation; `409 "Already deactivated"`; `422 "An agency must keep at least one active Master"`; `422 "At least one other Master must have accepted their invite first"` unless another active Master has login enabled and a password set (review decision R3, 2026-09-29 — prevents self-lockout by unaccepted invites); disables the user's login and revokes open welcome links; audit `agent_org.master_deactivate`. `200 {member}`. No reactivation route. |
 | Every agent route in this section, `/workflows/overseas/applications`, `/workflows/overseas/documents*`, `/portal/overseas/agent/*` | Authenticated | Own **organisation** | Replaces "Self (Agent)" (D1). `403 "Agent registration is pending approval"` (pending/rejected), `403 "Your agency's account is suspended"`, `403 "Your Master account is deactivated"`. Linking a student already linked by the organisation → `409 "Student is already linked to this agency"`. Claim locks the commission row. New portal section `team`; dashboard adds "Your code". |
 
+**`AGN-002` / `DEC-SCOPE-040` (built 2026-09-30).** Design spec §5–§8. All staff routes: active Master of an active
+organisation only (staff → `403 "Only an agency Master can manage the team"`); every change locks the organisation row and
+writes an `agent_org.staff_*` audit row in the same transaction; set-password links go out after the commit and the raw token
+is never returned. Member shape: `{id, code, full_name, email, phone, status: active|deactivated, setup: pending_setup|link_expired|null}`.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /workflows/overseas/agent/team` | Authenticated | Active Master | Shape unchanged; `masters` lists Masters only. |
+| `GET /workflows/overseas/agent/team/staff?limit=25&offset=0` | Authenticated | Active Master | `limit` 1–100, `offset` ≥ 0 → `{items, total, limit, offset}`, code order. |
+| `POST /workflows/overseas/agent/team/staff` `{full_name, email, phone?}` | Authenticated | Active Master | `201 {member, email_status, expires_at}`; `409 "Email already exists"` (audited, counted); `422` validation; `429` + `Retry-After` after 20 staff creations/resets per agency per rolling 24 h. |
+| `PATCH /workflows/overseas/agent/team/staff/{member_id}` `{full_name?, phone?}` | Authenticated | Active Master | `200 {member}`; unknown fields (incl. `email`) `422`; `{}` → `422 "Nothing to update"`; blank name `422 "Full name is required"`. |
+| `POST …/staff/{member_id}/deactivate` | Authenticated | Active Master | `200 {member}`; login disabled, sessions ended, open link revoked; `409 "Already deactivated"`. |
+| `POST …/staff/{member_id}/reactivate` | Authenticated | Active Master | `200 {member}`; login restored; links stay revoked; `409 "Already active"`. |
+| `POST …/staff/{member_id}/reset` | Authenticated | Active Master | `200 {member, email_status, expires_at}`; password unusable, sessions ended, new link emailed; `409 "Reactivate this staff member first"`; `429` staff budget or `"A link was just sent; wait N seconds before resetting again"`. |
+| Any `…/staff/{member_id}…` for another agency's member or a Master | Authenticated | — | `404 "Staff member not found"` (no disclosure). |
+| `GET/POST /workflows/overseas/agent/commissions*` (list, claim) | Authenticated | Master | Staff → `403 "Only an agency Master can view commissions"`. |
+| `GET /portal/overseas/agent/{team,commissions}` | Authenticated | Master | Staff → `403 "Only an agency Master can open this page"`; staff dashboard/reports omit commission figures. |
+| `GET /overseas-admin/agent-orgs` | Authenticated | Overseas Admin | `masters` and the `q` member match cover Masters only. |
+| `GET /overseas-admin/agents`; `POST …/agents/{id}/approve\|reject` | Authenticated | Overseas Admin | Staff excluded from the list; approve/reject of a staff id → `422 "Staff accounts are managed by their agency"`. |
+| `GET /auth/me` | Authenticated | Self | Adds `agent_member_role: "master"\|"staff"\|null` (other responses carry `null`). |
+| Every authenticated route, `POST /auth/refresh` | — | — | Tokens carry `sv`; a mismatch with `users.session_version` → `401 "Your session has ended. Please sign in again."`; tokens without `sv` count as 0. A deactivated staff member → `401 "Your account was deactivated by your agency. Contact your agency's Master."`; any other missing/inactive account keeps `401 "User unavailable"` (browser QA-02/03). |
+| `POST …/team/staff`, `POST …/team/masters` — invalid `email` | — | — | `422` with "Enter a valid email address, like name@example.com" (same rule `x@y.z`; browser QA-01). |
+
 ---
 
 ## 9. Overseas Staff (`CNS-001`, `UNI-001`)

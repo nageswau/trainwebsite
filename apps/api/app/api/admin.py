@@ -41,7 +41,7 @@ from app.models import (
     UserRoleAssignment,
 )
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
-from app.services.agent_orgs import ensure_agent_org, lock_org, set_org_status, transition_org
+from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
 from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
 from app.services.provisioning import flush_unique_email as _flush_unique_email
 from app.services.storage import storage
@@ -1008,6 +1008,9 @@ async def _pending_agent_assignment(agent_id: UUID, user: User, db: AsyncSession
     agent = await db.get(User, agent_id)
     if not agent or agent.role != "agent":
         raise HTTPException(404, "Agent not found")
+    # AGN-002: a staff login belongs to its agency's Masters; approving/rejecting it here would act on the whole organisation.
+    if await db.scalar(select(AgentOrgMember.id).where(AgentOrgMember.user_id == agent.id, AgentOrgMember.role == "staff")):
+        raise HTTPException(422, "Staff accounts are managed by their agency")
     assignment = await db.scalar(select(UserRoleAssignment).where(UserRoleAssignment.user_id == agent.id, UserRoleAssignment.role == "agent"))
     if not assignment:
         raise HTTPException(404, "Agent registration not found")
@@ -1051,7 +1054,12 @@ async def reject_agent(agent_id: UUID, user: User = Depends(get_current_user), d
 async def list_agents(status: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
-    stmt = select(User, UserRoleAssignment).join(UserRoleAssignment, UserRoleAssignment.user_id == User.id).where(User.role == "agent", UserRoleAssignment.role == "agent")
+    stmt = (
+        select(User, UserRoleAssignment)
+        .join(UserRoleAssignment, UserRoleAssignment.user_id == User.id)
+        .where(User.role == "agent", UserRoleAssignment.role == "agent")
+        .where(User.id.not_in(select(AgentOrgMember.user_id).where(AgentOrgMember.role == "staff")))  # AGN-002: staff are not agents to approve
+    )
     if status:
         stmt = stmt.where(UserRoleAssignment.approval_status == status)
     rows = (await db.execute(stmt.order_by(User.created_at.desc()))).all()
@@ -1083,15 +1091,14 @@ async def list_agent_orgs(
         member_match = (
             select(AgentOrgMember.org_id)
             .join(User, User.id == AgentOrgMember.user_id)
-            .where(or_(AgentOrgMember.code.ilike(pattern, escape="\\"), User.email.ilike(pattern, escape="\\")))
+            .where(AgentOrgMember.role == "master", or_(AgentOrgMember.code.ilike(pattern, escape="\\"), User.email.ilike(pattern, escape="\\")))
         )
         filters.append(or_(AgentOrg.name.ilike(pattern, escape="\\"), AgentOrg.prefix.ilike(pattern, escape="\\"), AgentOrg.id.in_(member_match)))
     total = await db.scalar(select(func.count()).select_from(AgentOrg).where(*filters))
     orgs = (await db.scalars(select(AgentOrg).where(*filters).order_by(AgentOrg.created_at.desc(), AgentOrg.id.desc()).limit(limit).offset(offset))).all()
     masters: dict = {}
     if orgs:
-        rows = (await db.execute(select(AgentOrgMember, User).join(User, User.id == AgentOrgMember.user_id).where(AgentOrgMember.org_id.in_([o.id for o in orgs])).order_by(AgentOrgMember.seq))).all()
-        for member, member_user in rows:
+        for member, member_user in (await db.execute(org_masters(*(o.id for o in orgs)))).all():  # AGN-002: Masters only, never staff
             masters.setdefault(member.org_id, []).append({"id": member.id, "code": member.code, "full_name": member_user.full_name, "email": member_user.email, "status": member.status})
     items = [{"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, [])} for o in orgs]
     return {"items": items, "total": total or 0, "limit": limit, "offset": offset}

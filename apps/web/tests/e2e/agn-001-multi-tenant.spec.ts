@@ -43,9 +43,11 @@ test("an agency registers, is approved, invites a second Master, and is suspende
   await signIn(page, email, "Sup3r-Secret-Pass!", "/overseas/agent/dashboard");
   await expect(page.getByText(/KAP\d*-M001/)).toBeVisible();
   await page.goto("/overseas/agent/team");
-  await page.getByLabel("Full name").fill("Kappa Second");
-  await page.getByLabel("Email").fill(`agn001-e2e-m2-${unique}@example.local`);
-  await page.getByRole("button", { name: "Send invite" }).click();
+  // AGN-002 put an "Add staff" form (also Full name / Email) on this page: scope to the invite form.
+  const invite = page.getByRole("form", { name: "Invite a Master" });
+  await invite.getByLabel("Full name").fill("Kappa Second");
+  await invite.getByLabel("Email").fill(`agn001-e2e-m2-${unique}@example.local`);
+  await invite.getByRole("button", { name: "Send invite" }).click();
   await expect(page.getByText(/KAP\d*-M002/).first()).toBeVisible();
   await expect(page.getByText("Invite pending").first()).toBeVisible();
 

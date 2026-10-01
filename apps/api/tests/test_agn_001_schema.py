@@ -12,11 +12,14 @@ from tests.agn001_helpers import mk_user
 
 
 @pytest.mark.asyncio
-async def test_alembic_head_is_0046(db_session):
+async def test_alembic_head_is_the_single_head_and_includes_0046(db_session):
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).resolve().parent.parent / "alembic"))
     script = ScriptDirectory.from_config(config)
-    assert await db_session.scalar(text("SELECT version_num FROM alembic_version")) == script.get_current_head() == "0046_agent_orgs"
+    head = await db_session.scalar(text("SELECT version_num FROM alembic_version"))
+    assert head == script.get_current_head()
+    # AGN-002 chained 0047 after 0046: keep the intent (0046 applied, one head) without pinning the head.
+    assert "0046_agent_orgs" in {rev.revision for rev in script.walk_revisions()}
 
 
 @pytest.mark.asyncio
@@ -43,7 +46,7 @@ async def test_a_user_belongs_to_one_organisation_only(db_session):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("overrides", [{"role": "staff"}, {"status": "invited"}])
+@pytest.mark.parametrize("overrides", [{"role": "owner"}, {"status": "invited"}])
 async def test_member_checks_reject_bad_values(db_session, overrides):
     user = await mk_user(db_session, role="agent")
     org = AgentOrg(name="Chk", prefix=f"Q{uuid.uuid4().hex[:6].upper()}", status="pending", master_seq=1)
