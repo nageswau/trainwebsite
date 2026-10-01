@@ -1175,11 +1175,17 @@ async def approve_commission_payout(commission_id: UUID, user: User = Depends(ge
 
 
 async def _provision_school(
-    db: AsyncSession, payload: SchoolCreate, actor: User, *, flush_coordinator: Callable[[AsyncSession], Awaitable[None]] = _flush_unique_email
+    db: AsyncSession,
+    payload: SchoolCreate,
+    actor: User,
+    *,
+    flush_coordinator: Callable[[AsyncSession], Awaitable[None]] = _flush_unique_email,
+    password_hash: str | None = None,
 ) -> tuple[School, User, IssuedWelcome]:
     """SCH-003's School + seed Coordinator, shared by `create_school` and ENH-029's bulk onboarding: role assignment, welcome
     token and audits included; no commit, no delivery. `flush_coordinator` settles the email race: the default rolls the whole
-    request back into a 409; bulk passes a plain flush so the IntegrityError undoes only that row's savepoint."""
+    request back into a 409; bulk passes a plain flush so the IntegrityError undoes only that row's savepoint. `password_hash`
+    lets bulk pass an `unusable_password_hash()` computed off the event loop; omitted, it is computed here as before."""
     email = _valid_email(payload.coordinator_email)
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
@@ -1200,7 +1206,7 @@ async def _provision_school(
     db.add(school)
     await db.flush()
     coordinator = User(
-        email=email, password_hash=unusable_password_hash(),
+        email=email, password_hash=password_hash or unusable_password_hash(),
         full_name=_fit(payload.coordinator_full_name, "Coordinator name", 160),
         role="school_coordinator", division="overseas", active=True, email_verified=False,
         profile={"school_id": str(school.id)},

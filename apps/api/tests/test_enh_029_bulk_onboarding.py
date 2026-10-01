@@ -345,3 +345,53 @@ async def test_concurrent_onboarding_upload_gets_409_while_another_holds_the_loc
         await holder.rollback()
     assert (response.status_code, response.json()["detail"]) == (409, "This upload is still being processed; retry shortly")
     assert not (await db_session.scalars(select(SchoolBulkUploadBatch).where(SchoolBulkUploadBatch.idempotency_key == key))).all()  # rolled back; key free
+
+
+@pytest.mark.asyncio
+async def test_a_row_waiting_on_an_uncommitted_create_of_its_email_is_rejected_alone(client, db_session, monkeypatch):
+    # Final review: the request-wide lock_timeout also bounds each row's insert; a timeout there must reject that row only.
+    await login(client, await mk_admin(db_session))
+    monkeypatch.setattr(school_onboarding_bulk, "LOCK_TIMEOUT", "300ms")
+    rows = [school_row(), school_row(), school_row()]
+    async with SessionLocal() as other:  # another request has inserted the same email and not committed yet
+        other.add(User(email=rows[1]["coordinator_email"], password_hash="x", full_name="Pending", role="student", division="overseas", active=True))
+        await other.flush()
+        response = await upload(client, csv_bytes(rows))
+        await other.rollback()
+    assert response.status_code == 201, response.text
+    report = response.json()
+    assert [r["status"] for r in report["rows"]] == ["accepted", "rejected", "accepted"]
+    assert report["rows"][1]["error_message"] == "This row conflicts with a record created at the same time; upload it again"
+
+
+# --- Load (final review) --------------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_password_hashing_never_runs_on_the_event_loop(client, db_session, monkeypatch):
+    # Final review: bcrypt (cost 12) is synchronous; 100 rows hashed on the loop would freeze the single-process API for tens of
+    # seconds while the onboarding lock is held. Every hash of a bulk upload must run in a worker thread.
+    import threading
+
+    import bcrypt
+
+    await login(client, await mk_admin(db_session))
+    on_loop: list[bool] = []
+    real = bcrypt.hashpw
+
+    def recording_hashpw(*args, **kwargs):
+        on_loop.append(threading.current_thread() is threading.main_thread())
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(bcrypt, "hashpw", recording_hashpw)
+    await _ok(client, [school_row() for _ in range(4)])
+    assert on_loop, "no password was hashed"
+    assert not any(on_loop), f"{sum(on_loop)} of {len(on_loop)} hashes ran on the event loop thread"
+
+
+@pytest.mark.asyncio
+async def test_a_full_100_row_file_onboards_every_school(client, db_session):
+    await login(client, await mk_admin(db_session))
+    report = await _ok(client, [school_row() for _ in range(100)])
+    assert (report["total_rows"], report["accepted_count"], report["rejected_count"]) == (100, 100, 0)
+    assert len({r["school_code"] for r in report["rows"]}) == 100

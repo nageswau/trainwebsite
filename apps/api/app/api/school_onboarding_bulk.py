@@ -25,7 +25,7 @@ from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import AuditLog, School, SchoolBulkUploadBatch, SchoolBulkUploadRow, User
 from app.schemas import SchoolCreate, validation_message
-from app.services.provisioning import IssuedWelcome, deliver_welcome_link
+from app.services.provisioning import IssuedWelcome, deliver_welcome_link, unusable_password_hash
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/overseas-admin", tags=["school-onboarding-bulk"])
@@ -102,7 +102,16 @@ async def _seen(db: AsyncSession, filled: list[tuple[int, dict[str, str]]]) -> _
     return _Seen(emails, schools)
 
 
-async def _process(db: AsyncSession, user: User, batch: SchoolBulkUploadBatch, filled: list[tuple[int, dict[str, str]]]) -> tuple[list[SchoolBulkUploadRow], list[Created]]:
+async def _password_hashes(filled: list[tuple[int, dict[str, str]]]) -> dict[int, str]:
+    """One unusable password hash per filled-in row, keyed by file line, computed in worker threads: bcrypt is synchronous and
+    slow by design, so up to 100 of them on the event loop would stall every other request (final review). Called before the
+    onboarding lock is taken, so the lock covers only the database work."""
+    lines = [line for line, _ in filled]
+    hashes = await asyncio.gather(*(asyncio.to_thread(unusable_password_hash) for _ in lines))
+    return dict(zip(lines, hashes, strict=True))
+
+
+async def _process(db: AsyncSession, user: User, batch: SchoolBulkUploadBatch, filled: list[tuple[int, dict[str, str]]], hashes: dict[int, str]) -> tuple[list[SchoolBulkUploadRow], list[Created]]:
     seen = await _seen(db, filled)
     rows: list[SchoolBulkUploadRow] = []
     created: list[Created] = []
@@ -117,11 +126,15 @@ async def _process(db: AsyncSession, user: User, batch: SchoolBulkUploadBatch, f
             if error is None:
                 try:
                     async with db.begin_nested():  # the row's own savepoint: a failure undoes this row only
-                        school, coordinator, issued = await _provision_school(db, payload, user, flush_coordinator=_flush_row)
+                        school, coordinator, issued = await _provision_school(db, payload, user, flush_coordinator=_flush_row, password_hash=hashes[line])
                     created.append((line, coordinator, issued))
                 except HTTPException as exc:
                     error, school, coordinator = exc.detail, None, None
-                except IntegrityError:
+                except DBAPIError as exc:
+                    # IntegrityError: another request committed the email/School ID first. Lock timeout: it holds them, uncommitted,
+                    # longer than lock_timeout. Either way only this row is rejected; anything else fails the batch as before.
+                    if not (isinstance(exc, IntegrityError) or _lock_timed_out(exc)):
+                        raise
                     error, school, coordinator = ROW_CONFLICT, None, None
                     logger.warning("bulk_upload_row_conflict", extra={"extra_fields": {"batch_id": str(batch.id), "target_type": TARGET_TYPE, "row_number": line}})
         row = SchoolBulkUploadRow(
@@ -216,9 +229,10 @@ async def bulk_onboard_schools(
     if isinstance(claimed, tuple):
         return await _report(db, *claimed)
     batch = claimed
+    hashes = await _password_hashes(filled)
     await _lock_onboarding(db, user)
 
-    rows, created = await _process(db, user, batch, filled)
+    rows, created = await _process(db, user, batch, filled, hashes)
     batch.total_rows = len(rows)
     batch.accepted_count = len(created)
     batch.rejected_count = batch.total_rows - batch.accepted_count
