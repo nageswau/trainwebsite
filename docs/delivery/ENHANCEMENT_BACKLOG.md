@@ -2722,6 +2722,13 @@ timeout — replays the original result, does not create duplicate results.
 **Regression risks.** The existing single-record create endpoints for each module must keep working
 unchanged — bulk is additive, not a replacement.
 
+**Status (2026-10-01). COMPLETE for ENH-028's scope** on branch `feature/enh-028-bulk-entry` (verified at `cc16c04`; see the `RTM.md`
+`ENH-028` row). Decided as `DEC-SCOPE-042` (user-approved, with simplifications S1–S5): create-only CSV bulk entry for Results,
+Psychometric, Test Prep and Language; students named by `student_code`; pre-filled templates; idempotent replay per uploader;
+per-row validation, portfolio scope, tier and duplicate checks that never block the batch; parent notices after the commit; one
+generalized batch/row table pair (migration `0049`). The roster upload and every single-record endpoint are unchanged. The batch-size
+question above is resolved: 1 MB / 500 filled-in rows for the new endpoints.
+
 **Complexity:** Medium. **Risk:** Medium.
 
 ---
