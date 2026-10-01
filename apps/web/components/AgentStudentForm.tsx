@@ -34,6 +34,20 @@ const GROUPS: { legend: string; fields: Field[] }[] = [
   },
 ];
 const FOCUS_ORDER: FieldKey[] = [...GROUPS.flatMap((g) => g.fields.map((f) => f.key)), "notes"];
+const LEAVE_PROMPT = "You have unsaved changes to this student. Leave without saving?";
+
+// FastAPI's 422 list -> {field: message} for the fields this form shows, or null when any error is not one of them (then the
+// whole detail is shown as one message instead, so nothing is hidden).
+function fieldErrors(detail: unknown): Partial<Record<FieldKey, string>> | null {
+  if (!Array.isArray(detail) || detail.length === 0) return null;
+  const out: Partial<Record<FieldKey, string>> = {};
+  for (const item of detail as { loc?: unknown[] }[]) {
+    const field = item?.loc?.[item.loc.length - 1];
+    if (typeof field !== "string" || !FOCUS_ORDER.includes(field as FieldKey)) return null;
+    out[field as FieldKey] = detailMessage([item]);
+  }
+  return out;
+}
 
 export default function AgentStudentForm({
   mode,
@@ -57,16 +71,35 @@ export default function AgentStudentForm({
   const today = new Date().toISOString().slice(0, 10);
   const dirty = Object.keys(buildPayload(values, original.current)).length > 0;
 
-  // Leave prompt while there is unsaved input (the PsychometricResultsForm pattern).
+  // Leave prompt while there is unsaved input (the PsychometricResultsForm pattern): beforeunload covers reload/close; an in-app
+  // link (sidebar) navigates client-side, so ask first -- capture phase runs before Next's Link handler (browser QA-03).
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
+    const guardLinks = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = (event.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!link || link.target === "_blank" || link.hasAttribute("download") || link.origin !== window.location.origin) return;
+      if (!window.confirm(LEAVE_PROMPT)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
     window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
+    document.addEventListener("click", guardLinks, true);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      document.removeEventListener("click", guardLinks, true);
+    };
   }, [dirty]);
+
+  function cancel() {
+    if (dirty && !window.confirm(LEAVE_PROMPT)) return;
+    onCancel();
+  }
 
   function set(key: FieldKey, value: string) {
     setValues((v) => ({ ...v, [key]: value }));
@@ -91,6 +124,7 @@ export default function AgentStudentForm({
     inFlight.current = true;
     setBusy(true);
     setFailure(null);
+    let focusAfter = `${idPrefix}-save`;
     try {
       const response = await fetch(mode === "create" ? RECORDS_URL : `${RECORDS_URL}/${student!.id}`, {
         method: mode === "create" ? "POST" : "PATCH",
@@ -105,14 +139,20 @@ export default function AgentStudentForm({
         return;
       }
       const dup = response.status === 409 ? duplicateDetail(body?.detail) : null;
+      const onFields = response.status === 422 ? fieldErrors(body?.detail) : null;
       if (dup) setDuplicate(dup);
-      else setFailure(detailMessage(body?.detail, "Unable to save this student."));
+      else if (onFields) {
+        // Browser QA-05: a server validation error belongs on its field, like the client-side ones.
+        setErrors(onFields);
+        const first = FOCUS_ORDER.find((key) => onFields[key]);
+        if (first) focusAfter = `${idPrefix}-${first}`;
+      } else setFailure(detailMessage(body?.detail, "Unable to save this student."));
     } catch {
       setFailure(NOT_COMPLETED);
     } finally {
       inFlight.current = false;
       setBusy(false);
-      refocus(`${idPrefix}-save`);
+      refocus(focusAfter);
     }
   }
 
@@ -201,10 +241,11 @@ export default function AgentStudentForm({
           {failure}
         </p>
       )}
-      <button id={`${idPrefix}-save`} type="submit" className="btn small" disabled={busy}>
+      {/* While the duplicate warning is open its own buttons are the next step (browser QA-08). */}
+      <button id={`${idPrefix}-save`} type="submit" className="btn small" disabled={busy || duplicate !== null}>
         {busy ? "Saving…" : mode === "create" ? "Save student" : "Save changes"}
       </button>{" "}
-      <button type="button" className="btn secondary small" onClick={onCancel} disabled={busy}>
+      <button type="button" className="btn secondary small" onClick={cancel} disabled={busy}>
         Cancel
       </button>
     </form>

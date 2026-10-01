@@ -102,6 +102,71 @@ describe("AgentStudentForm (AGN-004)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/did not complete/);
   });
 
+  // --- browser QA fixes ----------------------------------------------------------------------------------------------------
+  it("asks before Cancel throws away unsaved changes (QA-03)", () => {
+    const onCancel = vi.fn();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    render(<AgentStudentForm mode="create" onSaved={vi.fn()} onCancel={onCancel} />);
+    type(/Full name/, "Asha");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels a clean form without asking (QA-03)", () => {
+    const onCancel = vi.fn();
+    const confirm = vi.spyOn(window, "confirm");
+    render(<AgentStudentForm mode="create" onSaved={vi.fn()} onCancel={onCancel} />);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks before an in-app link leaves unsaved changes, and stays when declined (QA-03)", () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(
+      <>
+        <a href="/overseas/agent/dashboard">Dashboard</a>
+        <AgentStudentForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />
+      </>,
+    );
+    type(/Full name/, "Asha");
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    screen.getByRole("link", { name: "Dashboard" }).dispatchEvent(click);
+    expect(window.confirm).toHaveBeenCalled();
+    expect(click.defaultPrevented).toBe(true);
+  });
+
+  it("puts a server validation error on its field (QA-05)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(res({ detail: [{ type: "value_error", loc: ["body", "full_name"], msg: "Value error, must not contain control or bidirectional-override characters" }] }, 422)),
+    );
+    render(<AgentStudentForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    type(/Full name/, "Asha");
+    fireEvent.click(screen.getByRole("button", { name: "Save student" }));
+    const name = screen.getByLabelText("Full name (required)");
+    await waitFor(() => expect(name).toHaveAttribute("aria-invalid", "true"));
+    expect(name).toHaveAccessibleDescription("Must not contain control or bidirectional-override characters");
+    expect(name).toHaveFocus();
+  });
+
+  it("offers one next step while the duplicate warning is shown (QA-08)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(res({ detail: { code: "possible_duplicate", message: "m", matches: [{ id: "x", full_name: "Asha R", has_login: false, status: "active", matched_on: ["email"] }], hidden_matches: 0 } }, 409)),
+    );
+    render(<AgentStudentForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    type(/Full name/, "Asha");
+    fireEvent.click(screen.getByRole("button", { name: "Save student" }));
+    await screen.findByRole("button", { name: "Save anyway" });
+    expect(screen.getByRole("button", { name: "Save student" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Go back" }));
+    expect(screen.getByRole("button", { name: "Save student" })).toBeEnabled();
+  });
+
   it("asks before leaving with unsaved changes", () => {
     render(<AgentStudentForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
     type(/Full name/, "A");
