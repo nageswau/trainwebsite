@@ -119,6 +119,18 @@ test.describe.serial("ENH-020 funding support cases", () => {
     await teacher.dispose();
   });
 
+  test("form fields in one row line up, the page has one h1 (QA-02, QA-06)", async ({ page }) => {
+    await signIn(page, email("counselor"), E2E_PASSWORD, "/school/career-counselor/dashboard");
+    await page.goto("/school/career-counselor/funding");
+    const add = page.locator(".action-card", { has: page.getByRole("heading", { name: "Add a case" }) });
+    const provider = await add.getByLabel("Provider or institution (optional)").boundingBox();
+    const amount = await add.getByLabel("Amount (optional)").boundingBox();
+    expect(provider && amount).toBeTruthy();
+    expect(Math.abs(provider!.height - amount!.height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(provider!.y - amount!.y)).toBeLessThanOrEqual(1);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(["Funding support"]);
+  });
+
   for (const width of [320, 768]) {
     test(`funding page stacks rows and has no page-level horizontal overflow at ${width}px (AC20)`, async ({ page }) => {
       const counselor = await apiAs(email("counselor"), E2E_PASSWORD);
@@ -135,6 +147,9 @@ test.describe.serial("ENH-020 funding support cases", () => {
         const editButton = page.getByRole("button", { name: /^Edit scholarship case for / });
         expect((await editButton.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
         await expect(page.locator("table.funding-records thead")).toHaveCSS("position", "absolute");
+        // QA-05: the actions cell prints no caption above its button.
+        const caption = await editButton.evaluate((button) => getComputedStyle(button.closest("td")!, "::before").content);
+        expect(["none", "normal", '""']).toContain(caption);
       }
     });
   }

@@ -125,6 +125,9 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 /* QA-06: real heading levels (h1 page, h2 sections) at the sizes the page already had -- the site-wide h1/h2 are marketing sizes. */
 .funding-panel h1 { font-size: clamp(28px, 3.5vw, 44px); }
 .funding-panel h2 { font-size: 20px; }
+/* QA-02: a field with help text made its row taller and the grid stretched its neighbour's input; fields keep their own height
+   (the fieldset.form-section rule above does the same). */
+.funding-panel .form-grid { align-items: start; }
 
 /* ENH-016 analytics dashboards: KPI tiles 1 -> 2 -> 4 columns; wide tables scroll inside their card, never the page. */
 .kpi-group { margin-top: 16px; }
