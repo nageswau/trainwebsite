@@ -3,25 +3,74 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import RefreshOnHistoryNav from "@/components/RefreshOnHistoryNav";
 
-const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+const nav = vi.hoisted(() => ({ refresh: vi.fn(), pathname: "/overseas/agent/dashboard" }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: nav.refresh }), usePathname: () => nav.pathname }));
+
+const back = () => act(() => {
+  window.dispatchEvent(new PopStateEvent("popstate"));
+});
 
 afterEach(() => {
   cleanup();
-  refresh.mockClear();
-  vi.useRealTimers();
+  nav.refresh.mockClear();
+  nav.pathname = "/overseas/agent/dashboard";
 });
 
+// AGN-003 browser QA-07: Back/Forward replays the client router's cached page, so a page whose access was just revoked reappeared
+// without asking the server. Browser re-checks showed a refresh issued from the popstate event itself is lost (Next has not applied
+// the restored page yet, and the leaving page unmounts mid-dispatch) -- so the refresh runs after the restored page renders.
 describe("RefreshOnHistoryNav (AGN-003 browser QA-07)", () => {
-  it("re-asks the server after Back/Forward, so a revoked page is not shown from the cache", () => {
-    vi.useFakeTimers();
+  it("re-asks the server once the restored page has rendered (same component, new path)", () => {
+    const { rerender } = render(<RefreshOnHistoryNav />);
+    back();
+    expect(nav.refresh).not.toHaveBeenCalled(); // not from inside the popstate event
+    nav.pathname = "/overseas/agent/reports";
+    rerender(<RefreshOnHistoryNav />);
+    expect(nav.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-asks the server when the restored page mounts a new instance", () => {
+    const { unmount } = render(<RefreshOnHistoryNav />);
+    back();
+    unmount(); // the page being left
+    nav.pathname = "/overseas/agent/reports";
+    render(<RefreshOnHistoryNav />); // the cached page Next restored
+    expect(nav.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("still sees Back when an earlier popstate listener unmounts it synchronously (Next's own listener)", () => {
+    let unmount: () => void = () => {};
+    const nextRouter = () => unmount();
+    window.addEventListener("popstate", nextRouter);
+    try {
+      ({ unmount } = render(<RefreshOnHistoryNav />));
+      back();
+      nav.pathname = "/overseas/agent/reports";
+      render(<RefreshOnHistoryNav />);
+      expect(nav.refresh).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener("popstate", nextRouter);
+    }
+  });
+
+  it("does not refresh on an ordinary link navigation", () => {
+    const { rerender } = render(<RefreshOnHistoryNav />);
+    nav.pathname = "/overseas/agent/reports";
+    rerender(<RefreshOnHistoryNav />);
+    const { unmount } = render(<RefreshOnHistoryNav />);
+    unmount();
+    expect(nav.refresh).not.toHaveBeenCalled();
+  });
+
+  it("refreshes only once per Back", () => {
+    const { rerender } = render(<RefreshOnHistoryNav />);
+    back();
+    nav.pathname = "/overseas/agent/reports";
+    rerender(<RefreshOnHistoryNav />);
     render(<RefreshOnHistoryNav />);
-    expect(refresh).not.toHaveBeenCalled();
-    act(() => {
-      window.dispatchEvent(new PopStateEvent("popstate"));
-      vi.runAllTimers();
-    });
-    expect(refresh).toHaveBeenCalledTimes(1);
+    nav.pathname = "/overseas/agent/documents";
+    rerender(<RefreshOnHistoryNav />);
+    expect(nav.refresh).toHaveBeenCalledTimes(1);
   });
 
   it("also re-asks when the browser restores the page from its back/forward cache", () => {
@@ -29,57 +78,10 @@ describe("RefreshOnHistoryNav (AGN-003 browser QA-07)", () => {
     act(() => {
       window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
     });
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(nav.refresh).toHaveBeenCalledTimes(1);
     act(() => {
       window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: false }));
     });
-    expect(refresh).toHaveBeenCalledTimes(1);
-  });
-
-  // Browser re-check of QA-07: the page that hears Back is the one being left, and it unmounts while Next swaps in the cached
-  // page -- the refresh it scheduled must still run.
-  it("still refreshes when the page that heard Back unmounts before the refresh runs", () => {
-    vi.useFakeTimers();
-    const { unmount } = render(<RefreshOnHistoryNav />);
-    act(() => {
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    });
-    unmount();
-    act(() => {
-      vi.runAllTimers();
-    });
-    expect(refresh).toHaveBeenCalledTimes(1);
-  });
-
-  // Second browser re-check of QA-07: Next registers its own popstate listener first and swaps the page synchronously inside it,
-  // which removed ours mid-dispatch, so ours never ran. Ours must run before Next's.
-  it("runs before an earlier popstate listener that unmounts it synchronously", () => {
-    vi.useFakeTimers();
-    let unmount: () => void = () => {};
-    const nextRouter = () => unmount();
-    window.addEventListener("popstate", nextRouter);
-    try {
-      ({ unmount } = render(<RefreshOnHistoryNav />));
-      act(() => {
-        window.dispatchEvent(new PopStateEvent("popstate"));
-      });
-      act(() => {
-        vi.runAllTimers();
-      });
-      expect(refresh).toHaveBeenCalledTimes(1);
-    } finally {
-      window.removeEventListener("popstate", nextRouter);
-    }
-  });
-
-  it("stops listening when unmounted", () => {
-    vi.useFakeTimers();
-    const { unmount } = render(<RefreshOnHistoryNav />);
-    unmount();
-    act(() => {
-      window.dispatchEvent(new PopStateEvent("popstate"));
-      vi.runAllTimers();
-    });
-    expect(refresh).not.toHaveBeenCalled();
+    expect(nav.refresh).toHaveBeenCalledTimes(1);
   });
 });

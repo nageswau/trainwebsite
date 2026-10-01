@@ -1,19 +1,23 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+
+// Shared by the page being left (which hears Back) and the cached page Next restores (which renders it).
+let historyNavPending = false;
 
 // AGN-003 browser QA-07: Back/Forward replays the client router's cached page, so a page whose access was just revoked (a staff
-// member's Reports) reappeared without asking the server. After a history navigation -- or a restore from the browser's
-// back/forward cache -- re-fetch the server components; the server then answers with today's permissions.
+// member's Reports) reappeared without asking the server. Browser re-checks showed a refresh issued from the popstate event itself
+// is lost: Next's own popstate listener runs first and unmounts the leaving page mid-dispatch, and Next has not applied the
+// restored page yet. So the event only marks the navigation (capture phase, ahead of Next's listener), and the refresh runs from an
+// effect once the restored page has rendered -- the server then answers with today's permissions.
 export default function RefreshOnHistoryNav() {
   const router = useRouter();
+  const pathname = usePathname();
+
   useEffect(() => {
-    // The page that hears Back is the one being left. Next's own popstate listener (registered earlier) swaps it out synchronously,
-    // which removes ours mid-dispatch -- so ours listens in the capture phase (capture listeners on the target run first), and the
-    // refresh it schedules runs after Next's restore and is deliberately NOT cancelled on unmount (the router is app-wide).
     const onPopState = () => {
-      setTimeout(() => router.refresh(), 0);
+      historyNavPending = true;
     };
     const onPageShow = (event: PageTransitionEvent) => {
       if (event.persisted) router.refresh();
@@ -25,5 +29,13 @@ export default function RefreshOnHistoryNav() {
       window.removeEventListener("pageshow", onPageShow);
     };
   }, [router]);
+
+  // Runs after the restored page is committed: on a new instance's mount, or when the same instance sees the new path.
+  useEffect(() => {
+    if (!historyNavPending) return;
+    historyNavPending = false;
+    router.refresh();
+  }, [pathname, router]);
+
   return null;
 }
