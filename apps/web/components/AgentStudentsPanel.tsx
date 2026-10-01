@@ -16,7 +16,7 @@ type Confirm = { id: string; kind: "archive" | "unarchive" } | null;
 
 // Browser QA-10: an email has no spaces, so on a narrow card it broke mid-word ("…edusphere.loca / l"). Offer line-break
 // points after "@" and each "." instead; the text itself (and what a screen reader reads) is unchanged.
-export function breakable(text: string) {
+function breakable(text: string) {
   return text.split(/(?<=[@.])/).map((part, i) => (
     <span key={i}>
       {i > 0 && <wbr />}
@@ -74,15 +74,14 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
 
   // Search is debounced; a changed search starts again at page 1.
   useEffect(() => {
+    const next = draft.trim().slice(0, 100);
+    if (next === query) return;
     const handle = setTimeout(() => {
-      const next = draft.trim().slice(0, 100);
-      setQuery((current) => {
-        if (current !== next) setOffset(0);
-        return next;
-      });
+      setQuery(next);
+      setOffset(0);
     }, 300);
     return () => clearTimeout(handle);
-  }, [draft]);
+  }, [draft, query]);
 
   // Each load cancels the previous one, and a response for an older query is discarded, so a slow earlier search can never
   // overwrite a newer one. The current rows stay on screen (dimmed, aria-busy) until the new page arrives.
@@ -163,11 +162,12 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
     if (id) requestAnimationFrame(() => document.getElementById(`agent-student-view-${id}`)?.focus());
   }
 
-  // A write answers with the full record: update the row in place; refetch only when the row leaves the current filter.
+  // An edit or archive answers with the full record: update its card in place; refetch only when it leaves the current filter.
+  // (Adding a student reloads the list instead -- the new one may not belong to this page or filter.)
   function applyUpdate(s: AgentStudentDetail) {
     setDetail((d) => (d && d.id === s.id ? s : d));
     if (s.status === "archived" && !showArchived) return load();
-    setData((d) => (d ? { ...d, items: d.items.some((i) => i.id === s.id) ? d.items.map((i) => (i.id === s.id ? s : i)) : [s, ...d.items] } : d));
+    setData((d) => (d ? { ...d, items: d.items.map((i) => (i.id === s.id ? s : i)) } : d));
   }
 
   async function act(s: AgentStudentItem, kind: "archive" | "unarchive") {
