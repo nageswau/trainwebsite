@@ -2735,6 +2735,21 @@ catalogue to stay in step. Where a surface has no catalogue ID today (a pre-exis
 
 Student, application and candidate references on these screens are searchable dropdowns (type to filter, arrow keys, Enter, Esc) that accept only a listed value; an unpicked required field shows "Choose a student/an application from the list." and blocks the save: agent Students (Link student — search starts at 3 characters, emails partly masked) and Documents; counselor/admin Appointments; University Rep/Admin Applications, Admission updates, Offer letters, Student communication; Admin Visa and Applications; Placement Interviews and Offers; the School→Overseas bridge (pick the school, then the student); the School academic results, psychometric, test-prep, language, career record and career preferences forms; counselor chat; agent Create application; employer Interviews. The list opens under its field, scrolls inside itself and never widens the page at 320 px.
 
+## ENH-014 addendum (2026-09-30) — Notifications section on `/account/profile`
+
+No new route. `ENH-014` slice 1 (`docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-014, spec `docs/superpowers/specs/2026-09-30-enh-014-notification-channels-design.md` §7, `DEC-NOT-001` extension 2026-09-30) adds a section to the existing profile page. The page has no catalogue ID today (pre-existing gap, not created by `ENH-014`), so none is invented here.
+
+- **Route:** `/account/profile` (any signed-in user). **Linked Feature ID(s):** `ENH-014`, `NOT-002`, `NOT-003`.
+- **Change:** `h2` "Notifications" with a one-line intro, then a second card holding `NotificationPreferencesForm`: a fieldset "Send me updates by" with four rows (Email and In-app checked and disabled, "Always on"; WhatsApp "Messages go to {phone}"; SMS "Texts go to {phone}"), the consent copy (version `enh014-v1`) and an explicit "Save notification settings" button (no autosave). `ProfileForm` refreshes the page after a successful save so a newly added phone enables the toggles.
+- **Required data:** `/auth/me` and `GET /account/notification-preferences` (preferences fetched after `/auth/me` succeeds, spec §12); `PUT /account/notification-preferences` on save.
+- **Empty state (no valid phone):** WhatsApp and SMS disabled; hint "Add a mobile number in your profile above to turn on WhatsApp or SMS." linked by `aria-describedby`, with an in-page link to `#profile-phone`. A checked channel stays enabled so it can be turned off (spec §12).
+- **Loading state:** none on the client; the page is server-rendered. Saving: button "Saving…", `aria-disabled`, `aria-busy` on the form, visually hidden status, second submit ignored.
+- **Error state:** preferences load failure shows "We couldn't load your notification settings right now." with a "Try again" link in the second card only (the profile form still works); save failure shows the server's 422 text or "Couldn't save your settings. Check your connection and try again." and the checkboxes revert; 401 shows the "session expired" block. Success: "Notification settings saved."
+- **Permissions/resource scope:** own data only; no admin override.
+- **Responsive / accessibility:** single column at every width, rows at least 44 px tall, labels wrap; native checkboxes inside labels, keyboard operable, focus returns to Save after a save, state never conveyed by colour alone. E2E `enh-014-notification-preferences.spec.ts` covers keyboard use and 320 and 1440 px (768 and 1024 px were specified in spec §7 but are not in the E2E; `NEEDS_CONFIRMATION`).
+- **Known issue found while testing (pre-existing, not fixed by `ENH-014`):** the shared `PublicShell` header overflows by 32 px at 320 px width on this page (RAID `I-43`).
+- **Visual-reference mapping:** None — not inspected. Do not claim parity.
+
 ## Required findings report
 
 ### FEATURE_WITHOUT_REQUIRED_SCREEN

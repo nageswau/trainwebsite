@@ -689,6 +689,31 @@ field) so those slot in later without rework, not hardcoded email-only.
 **Status:** extension CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date:
 2026-09-03 — `ADM-011` unblocked for email channel only
 
+**Extended (2026-09-30, ENH-014 — Multi-channel Communication Centre):** resolves the open items above
+for ENH-014's first slice. Each point was answered by the user in-session, one question at a time:
+
+| # | Question | Decision |
+|---|---|---|
+| D1 | Does this decision cover School-domain recipients? | Yes — extended to Parents, Coordinators, Principals and the other School roles as recipients |
+| D2 | SMS provider identity | **Twilio** (same account as WhatsApp) |
+| D3 | Mobile push notifications | Out of scope — no mobile app exists; the in-app notification list is the "CRM notification" channel |
+| D4 | Consent model | **Opt-in** for WhatsApp and SMS, recorded with a timestamp; Email and in-app are always on |
+| D5 | Which triggers | Every existing trigger that sends email today (School and IT/Overseas) also delivers on the recipient's opted-in channels; in-app-only triggers stay in-app-only |
+| D6 | Result-publish recipients | Parents only (unchanged). Part B §11's Student/Teacher recipients are a recorded follow-up |
+| D7 | Auth/invite messages | Password reset, set-password and invite links stay **email-only** regardless of preferences |
+| D8 | Credentials | Twilio sandbox for development; production account and template approval before release |
+| D9 | DPDP/privacy review | **Approved by the user today:** Twilio acts as data processor for phone numbers and message content; opt-in consent recorded; erasure also removes preferences; export includes them |
+| D10 | Dispatch | Celery queue for every channel, enqueued after commit |
+| D11 | Retry policy (`PRD_OPEN_ITEMS.md` item 13) | Up to 3 retries on transient errors (timeout, 5xx, 429) at ~60 s / 5 min / 25 min; then `failed` with the error kept |
+| D12 | Platinum `parent_help_desk` | Separate later slice of ENH-014 |
+| D13 | Message content | One generic approved WhatsApp utility template (title, body, link); SMS carries the same text |
+| D14 | Phone verification | Format check and E.164 normalisation only (default country India, +91); no OTP |
+
+Design: `docs/superpowers/specs/2026-09-30-enh-014-notification-channels-design.md`.
+
+**Status:** extension CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date:
+2026-09-30 — ENH-014 slice 1 unblocked (Twilio WhatsApp + SMS, sandbox credentials)
+
 ---
 
 ## Group 7 — Privacy / Security

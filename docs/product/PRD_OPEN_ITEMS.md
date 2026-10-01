@@ -9,6 +9,8 @@ referenced; new PRD-only items start at 24.
 Items 1–23 all still apply — see `docs/product/BRD_OPEN_ITEMS.md` for full detail. The PRD sections
 that cite each are noted there (e.g. item 4 commission rate blocks `PRD-AGT-003`/`PRD-AGT-004`).
 
+**Update 2026-09-30 (`ENH-014` slice 1, `DEC-NOT-001` extension D1–D14, spec `docs/superpowers/specs/2026-09-30-enh-014-notification-channels-design.md`):** item 13 (notification triggers/templates; and the failed-send retry policy that `NOT-001-AC02` and `DATA_MODEL.md` §7.1 left open) is **resolved for slice 1**: retries at 60 s / 5 min / 25 min on transient errors, at most 4 attempts, then `failed` (D11); triggers = every existing email-sending trigger (D5); opt-in for WhatsApp/SMS with a recorded timestamp, email and in-app always on (D4); one generic WhatsApp template (D13). Per-event templates and WhatsApp/SMS template management (`ADM-011`, item 45) remain open. Item 14 (email provider) is **not** resolved.
+
 ## New PRD-level open items
 
 | # | Open item | What's confirmed | What's missing | Blocks |

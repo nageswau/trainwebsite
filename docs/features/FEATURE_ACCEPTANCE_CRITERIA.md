@@ -529,6 +529,29 @@ Extends `SCH-010`'s bridge with a school-facing, high-level view (`School CRM.md
 - **ENH-015-AC11:** `/school/reports`, `/school/dashboard`, `/school/analytics/grade-performance`, `/students/{id}/overview`, `SCHOOL_NAV`, `PORTAL_NAV` unchanged; their existing tests pass unmodified.
 - **ENH-015-AC12:** Logs for both reports contain ids and counts only — no student names or record text.
 
+## ENH-014 — Multi-channel notifications (WhatsApp / SMS via Twilio), slice 1 (addendum, 2026-09-30, `DEC-NOT-001` extension 2026-09-30)
+
+Slice 1 of `ENH-014`; traces to `NOT-001`/`NOT-002`/`NOT-003`. Copied from `docs/superpowers/specs/2026-09-30-enh-014-notification-channels-design.md` §9 (spec §13 lists "AC01…AC14"; §9 defines sixteen, AC15 and AC16 being the later additions — §9 is authoritative).
+
+- **ENH-014-AC01:** A signed-in user can view and change their WhatsApp/SMS opt-in; defaults are off; email and in-app cannot be turned off.
+- **ENH-014-AC02:** Turning a channel on without a phone that normalises returns 422 and changes nothing.
+- **ENH-014-AC03:** Every opt-in/opt-out is timestamped and audited; a user can change only their own.
+- **ENH-014-AC04:** Every trigger that sends email today queues email plus the recipient's opted-in channels, one row per channel; a rolled-back write queues and sends nothing.
+- **ENH-014-AC05:** Sending happens after commit; a provider outage or failure never fails or reverts the business request.
+- **ENH-014-AC06:** A parent opted in to WhatsApp receives the result-published message on WhatsApp; a parent not opted in receives no WhatsApp or SMS.
+- **ENH-014-AC07:** An invalid number or a Twilio rejection fails only that delivery; other recipients and channels in the batch are sent.
+- **ENH-014-AC08:** Transient failures retry up to 3 times (60 s, 5 min, 25 min) and then become `failed` with the error kept; permanent failures do not retry.
+- **ENH-014-AC09:** A delivery is never sent twice, including on duplicate task delivery or a worker crash.
+- **ENH-014-AC10:** Opting out after queueing but before sending results in `skipped`.
+- **ENH-014-AC11:** Password reset, set-password and invite messages stay email-only regardless of preferences.
+- **ENH-014-AC12:** Email content and routing are unchanged (School SMTP HTML with webhook fallback; generic email webhook for IT/Overseas).
+- **ENH-014-AC13:** GDPR erasure deletes the preferences row; the data export includes preferences.
+- **ENH-014-AC14:** With Twilio unconfigured, WhatsApp/SMS deliveries are `not_configured`; the legacy `WHATSAPP_WEBHOOK_URL`/`SMS_WEBHOOK_URL` still work when set.
+- **ENH-014-AC15:** The preference endpoint accepts only two strict booleans; any other field or type is 422 and writes nothing.
+- **ENH-014-AC16:** WhatsApp/SMS messages carry a link only for internal paths; phone numbers, message text and the Twilio token never appear in logs, and stored Twilio errors have phone-like digit runs redacted.
+
+Status: built and unit/API/E2E tested on `feature/enh-014-notification-channels`. The Twilio sandbox run that proves AC06 against a real WhatsApp message has **not** been done (no sandbox credentials were available); until it is, AC06's "receives on WhatsApp" clause is covered by mocked-adapter tests only.
+
 ## SCH-011 — Partnership tier entitlements
 
 - **SCH-011-AC01:** Given a School with a `tier` set (`bronze`/`silver`/`gold`/`platinum`), when a Coordinator or Principal opens `GET /school/entitlements`, then they see the exact cumulative service list for that tier (each tier adds only what the brochure's own image shows over the previous one) — no other role may call this endpoint (403).

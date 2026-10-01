@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, EmailStr, Field, StrictBool, StrictInt, ValidationError, field_validator, model_validator
+from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, StrictBool, StrictInt, ValidationError, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.models import GENDERS
@@ -106,6 +106,20 @@ class ProfileUpdate(BaseModel):
         if len(stripped) < 2:
             raise PydanticCustomError("full_name_too_short_after_trim", "full_name must be at least 2 characters, not counting leading/trailing spaces")
         return value
+
+
+class NotificationPreferencesIn(BaseModel):
+    """ENH-014 (spec §5.2): the only two writable values. Strict booleans; any other field is a 422 (AC15)."""
+
+    model_config = ConfigDict(extra="forbid")
+    whatsapp: StrictBool
+    sms: StrictBool
+
+
+class NotificationPreferencesOut(BaseModel):
+    whatsapp: bool
+    sms: bool
+    phone_valid: bool
 
 
 class ChangePasswordRequest(BaseModel):

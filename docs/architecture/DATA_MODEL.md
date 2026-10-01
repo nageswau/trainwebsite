@@ -862,6 +862,13 @@ students, from → to) and refusals as `school.daily_attendance_denied` (counts 
   exists), not the *policy* (retry count/backoff), which is not invented here.
 - **Feature IDs:** `NOT-001`, `NOT-002`, `NOT-003`.
 
+**Updated 2026-09-30 (`ENH-014` slice 1; spec §4, migration `0050_notification_channels` — cut as `0046`, re-chained after `0049_agent_students_crm` on the 2026-10-01 merges with `main`; `DEC-NOT-001` extension D4/D10/D11).** Additive only; `downgrade()` removes exactly what `upgrade()` adds. The table in code is `notification_deliveries` (`NotificationDelivery`).
+- **`notification_deliveries.status` values** (column already `String(30)`, no schema change): `queued`, `sending`, `retrying`, `sent`, `failed`, `not_configured`, `skipped`. **This fixes the retry policy** left open above (`PRD_OPEN_ITEMS.md` item 13, resolved for slice 1 by D11): up to 3 retries on transient errors at 60 s / 300 s / 1500 s, at most 4 attempts, then `failed` with the error kept.
+- **`notification_deliveries.attempt_count`:** new queued rows start at 0; each worker claim increments it. The column default (1) is unchanged for the inline auth/invite paths that still construct rows directly.
+- **`notification_deliveries.context`** (new, JSON, nullable): `{"kind": "school", "school_name": "..."}` for the School email path; null for the generic path and every pre-existing row. Not personal data.
+- **Index** `ix_notification_deliveries_status_updated_at` on `(status, updated_at)` for the sweeper (queued/retrying older than 30 min re-published; sending older than 15 min marked `failed`, "worker interrupted").
+- **`notification_preferences`** (new; resolves the "`NotificationPreference` capability is schema-ready" note in `INTEGRATION_CONTRACTS.md` §4): PK `user_id` (FK `users.id`, ON DELETE CASCADE); `whatsapp_opt_in`, `sms_opt_in` (bool, not null, default false); `whatsapp_opted_in_at`, `sms_opted_in_at` (timestamptz, nullable; set on opt-in, cleared on opt-out); `created_at`, `updated_at`. One row per user; no row means WhatsApp and SMS are off. Personal data (consent state), no free text; retained for the life of the account, deleted on GDPR erasure, included in the data export. The phone number stays only in `users.phone`.
+
 ### 7.2 `Payment`, `Invoice`, `Receipt`, `EMISchedule`, `PaymentWebhookEvent`
 **Corrected 2026-09-03 (built alongside `STU-010`/`PAY-001`):** only `Payment` itself carries
 over from the inherited codebase — `Invoice`, `Receipt`, `EMISchedule`, and `PaymentWebhookEvent`

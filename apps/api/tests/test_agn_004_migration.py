@@ -40,7 +40,11 @@ def test_migration_chains_after_enh030_and_is_the_single_head():
         rev = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("revision =")), None)
         if rev:
             parents[rev] = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("down_revision =")), None)
-    assert set(parents) - set(parents.values()) == {"0049_agent_students_crm"}
+    # ENH-014 chained 0050_notification_channels after this migration, so the intent is kept without pinning the head -- the
+    # relaxation ENH-013/ENH-025/ENH-027 received on earlier merges: one head, and 0049 is a parent in the chain.
+    heads = set(parents) - set(parents.values())
+    assert len(heads) == 1
+    assert "0049_agent_students_crm" in parents.values()
 
 
 def test_model_declares_every_new_column_nullable():

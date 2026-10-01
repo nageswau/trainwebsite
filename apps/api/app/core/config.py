@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     whatsapp_webhook_url: str | None = None
     sms_webhook_url: str | None = None
     email_webhook_url: str | None = None
+    # ENH-014 (DEC-NOT-001, 2026-09-30 extension): Twilio for WhatsApp and SMS. Unset or empty means "not configured";
+    # the generic whatsapp_webhook_url / sms_webhook_url above keep working in that case (AC14).
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
+    twilio_whatsapp_from: str | None = None
+    twilio_sms_from: str | None = None
+    twilio_whatsapp_content_sid: str | None = None
     inbound_email_webhook_secret: str | None = None
     # Real SMTP sending for School invite emails (Coordinator-issued Teacher/Principal/
     # Parent invites). Distinct from email_webhook_url above, which forwards a JSON payload

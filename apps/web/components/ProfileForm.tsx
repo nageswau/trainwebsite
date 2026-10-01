@@ -2,6 +2,7 @@
 
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 function message(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -18,6 +19,7 @@ const VISUALLY_HIDDEN: CSSProperties = { position: "absolute", width: 1, height:
 const NEXT = encodeURIComponent("/account/profile");
 
 export default function ProfileForm({ fullName, phone }: { fullName: string; phone: string | null }) {
+  const router = useRouter();
   const [error, setError] = useState("");
   const [errorField, setErrorField] = useState<"full_name" | null>(null);
   const [notice, setNotice] = useState("");
@@ -70,6 +72,8 @@ export default function ProfileForm({ fullName, phone }: { fullName: string; pho
     if (response.ok) {
       setSaved({ fullName: body.full_name, phone: body.phone ?? "" });
       setNotice("Your profile was updated.");
+      // ENH-014: the notification section below reads phone validity from the server; refresh it after a phone change.
+      router.refresh();
       finish();
       return;
     }

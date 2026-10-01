@@ -2,11 +2,21 @@ import asyncio
 from uuid import UUID
 
 from celery import Celery
+from celery.signals import setup_logging
 
 from app.core.config import settings
+from app.core.logging import configure_logging
 
 celery = Celery("edusphere", broker=settings.redis_url, backend=settings.redis_url)
 celery.conf.update(task_serializer="json", result_serializer="json", accept_content=["json"], timezone="UTC")
+
+
+@setup_logging.connect
+def configure_worker_logging(**_kwargs) -> None:
+    """O-1 (spec §6.5): with a receiver connected, Celery skips its own logging setup, so worker and beat log through the
+    API's JsonFormatter: `extra_fields` (delivery id, channel, status, attempt) are rendered and secret keys redacted.
+    The level comes from settings.log_level (LOG_LEVEL); Celery's `--loglevel` flag no longer applies."""
+    configure_logging(settings.log_level)
 
 
 @celery.task
@@ -57,3 +67,38 @@ def sync_enquiry_to_crm_task(self, enquiry_id: str):
                 raise RuntimeError("CRM webhook delivery failed")
 
     asyncio.run(_run())
+
+
+def _run_with_fresh_pool(make_coro):
+    """Each task run is a fresh event loop, so the engine pool is disposed at the end of each run: connections are
+    closed on the loop that opened them."""
+
+    async def _run():
+        from app.core.database import engine
+
+        try:
+            return await make_coro()
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(_run())
+
+
+@celery.task
+def deliver_notification_task(delivery_id: str):
+    """ENH-014 (spec §6.5): send one queued NotificationDelivery. Retries are re-enqueued by `deliver` itself with the D11
+    countdowns (not Celery autoretry), so attempts are counted on the row."""
+    from app.notifications.delivery import deliver
+
+    return _run_with_fresh_pool(lambda: deliver(UUID(delivery_id)))
+
+
+@celery.task
+def sweep_stale_deliveries_task():
+    """ENH-014 (spec §6.5): every 5 minutes via beat."""
+    from app.notifications.delivery import sweep_stale_deliveries
+
+    return _run_with_fresh_pool(sweep_stale_deliveries)
+
+
+celery.conf.beat_schedule = {"enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0}}

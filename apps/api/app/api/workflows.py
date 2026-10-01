@@ -41,7 +41,6 @@ from app.models import (
     LiveSession,
     Message,
     Notification,
-    NotificationDelivery,
     OverseasApplication,
     OverseasCourse,
     Payment,
@@ -59,6 +58,7 @@ from app.models import (
     User,
     VisaCase,
 )
+from app.notifications.dispatch import queue_deliveries
 from app.schemas import (
     AgentStudentCreate,
     AppointmentCreate,
@@ -93,7 +93,6 @@ from app.schemas import (
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
 from app.services.certificates import generate_certificate_pdf
-from app.services.integrations import send_notification
 from app.services.storage import storage
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
@@ -125,12 +124,12 @@ async def _audit(db: AsyncSession, user: User, action: str, entity_type: str, en
 
 
 async def _notify_user(db: AsyncSession, recipient: User, title: str, body: str, action_url: str | None, channels: list[str] | None = None):
+    """ENH-014: in-app row plus queued deliveries (email + the recipient's opted-in channels), sent after commit.
+    `channels` can only narrow that set (admin sends); it never adds a channel the recipient did not opt in to."""
     item = Notification(user_id=recipient.id, title=title, body=body, read=False, action_url=action_url)
     db.add(item)
     await db.flush()
-    for channel in channels or ["email"]:
-        status, error = await send_notification(channel, {"to": recipient.email, "phone": recipient.phone, "title": title, "body": body, "action_url": action_url})
-        db.add(NotificationDelivery(notification_id=item.id, channel=channel, status=status, error=error, sent_at=datetime.now(UTC) if status == "sent" else None))
+    await queue_deliveries(db, item, recipient, channels=channels)
 
 
 def _grade(percentage: float) -> str:
@@ -1264,7 +1263,7 @@ async def issue_certificate(enrollment_id: UUID, payload: dict, user: User = Dep
     )
     db.add(item)
     await db.flush()
-    await _notify_user(db, student, "Certificate issued", f"Your {program.title} certificate is ready.", "/it/student/certificates", ["email"])
+    await _notify_user(db, student, "Certificate issued", f"Your {program.title} certificate is ready.", "/it/student/certificates")
     item.emailed_at = datetime.now(UTC)
     await _audit(db, user, "certificate.issue", "certificate", item.id, {"enrollment_id": enrollment.id, "override": override, "override_reason": override_reason if override else None})
     await db.commit()
@@ -1423,7 +1422,7 @@ async def reply_to_question(thread_id: UUID, payload: QuestionReplyCreate, user:
     await db.flush()
     await _audit(db, user, "question.reply", "question_reply", reply.id, {"thread_id": str(thread.id)})
     student = await db.get(User, thread.student_id)
-    await _notify_user(db, student, "Your question has a new reply", f'"{thread.subject}" was answered.', "/it/student/questions", ["email"])
+    await _notify_user(db, student, "Your question has a new reply", f'"{thread.subject}" was answered.', "/it/student/questions")
     await db.commit()
     await db.refresh(reply)
     return _reply_payload(reply)
