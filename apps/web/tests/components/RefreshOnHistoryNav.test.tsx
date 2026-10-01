@@ -73,6 +73,54 @@ describe("RefreshOnHistoryNav (AGN-003 browser QA-07)", () => {
     expect(nav.refresh).toHaveBeenCalledTimes(1);
   });
 
+  // Fourth browser re-check: in the real browser the effect path above never fired after Back, while a refresh scheduled with a 0 ms
+  // timer from the capture-phase listener did (measured on the running stack). Both paths are kept; together they refresh once.
+  it("re-asks the server from a timer scheduled in the Back event, even if nothing re-renders", () => {
+    vi.useFakeTimers();
+    try {
+      render(<RefreshOnHistoryNav />);
+      back();
+      expect(nav.refresh).not.toHaveBeenCalled(); // not synchronously inside Next's popstate dispatch
+      act(() => {
+        vi.runAllTimers();
+      });
+      expect(nav.refresh).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("refreshes once when both the timer and the restored page's render see the same Back", () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(<RefreshOnHistoryNav />);
+      back();
+      nav.pathname = "/overseas/agent/reports";
+      rerender(<RefreshOnHistoryNav />);
+      act(() => {
+        vi.runAllTimers();
+      });
+      expect(nav.refresh).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("the timer's refresh survives the leaving page unmounting", () => {
+    vi.useFakeTimers();
+    try {
+      const { unmount } = render(<RefreshOnHistoryNav />);
+      back();
+      unmount();
+      act(() => {
+        vi.runAllTimers();
+      });
+      expect(nav.refresh).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("also re-asks when the browser restores the page from its back/forward cache", () => {
     render(<RefreshOnHistoryNav />);
     act(() => {
