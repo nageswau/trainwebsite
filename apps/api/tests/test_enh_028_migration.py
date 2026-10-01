@@ -27,8 +27,7 @@ def test_migration_follows_0050_and_is_the_single_head():
     assert _migration.revision == "0051_school_bulk_uploads"
     assert _migration.down_revision == "0050_notification_channels"
     parents = _parents()
-    heads = set(parents) - set(parents.values())
-    assert heads == {"0051_school_bulk_uploads"}
+    assert "0051_school_bulk_uploads" in parents.values()  # ENH-029's 0052 now follows it (the head is asserted there)
 
 
 def test_migration_only_creates_and_drops_its_own_tables():
@@ -82,6 +81,7 @@ async def test_tables_match_the_model(db_session):
         "error_message": True,
         "student_code": True,
         "created_record_id": True,
+        "created_user_id": True,  # ENH-029 (0052)
         "created_at": False,
         "updated_at": False,
     }
