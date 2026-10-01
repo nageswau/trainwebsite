@@ -34,7 +34,8 @@ describe("Counseling in the student detail panel (AGN-006)", () => {
   it("shows the record in words, formats the budget and renders remarks as text", () => {
     render(<AgentStudentDetailPanel detail={{ ...base, counseling: recorded }} onClose={vi.fn()} onSaved={vi.fn()} />);
     const region = counselingRegion();
-    expect(within(region).getByText(/^Yes — 01 Oct 2026, by Priya$/)).toBeInTheDocument();
+    expect(within(region).getByText("Counseling completed").nextElementSibling).toHaveTextContent(/^Yes — 01 Oct 2026, by Priya$/);
+    expect(within(region).getByText("Last updated").nextElementSibling).toHaveTextContent(/^01 Oct 2026, by Priya$/);
     expect(within(region).getByText("₹25,00,000.00")).toBeInTheDocument();
     expect(within(region).getByText("Ireland")).toBeInTheDocument();
     expect(within(region).getByText(/<script>alert\(1\)<\/script>/)).toBeInTheDocument();

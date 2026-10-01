@@ -1,12 +1,21 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import AgentStudentCounselingForm from "./AgentStudentCounselingForm";
+import LocalTime from "./LocalTime";
 import { refocus } from "@/lib/focus";
-import { formatDate } from "@/lib/formatDate";
 import { AgentStudentDetail, formatBudget } from "@/lib/agentStudents";
 
-function stamp(at: string | null, by: string | null): string {
-  return [at ? formatDate(at) : null, by ? `by ${by}` : null].filter(Boolean).join(", ");
+// When and by whom; the date in the viewer's zone (the date sweep rule -- server UTC and browser must not disagree).
+function stamp(at: string | null, by: string | null): ReactNode {
+  return (
+    <>
+      {at && <LocalTime value={at} />}
+      {at && by ? ", " : null}
+      {by ? `by ${by}` : null}
+    </>
+  );
 }
 
 // AGN-006 (DEC-SCOPE-048): the student's counseling record (EVID-015 §5 Step 2) under the AGN-004 details. It arrives with the
@@ -27,9 +36,9 @@ export default function AgentStudentCounselingCard({
   const openerId = `counseling-open-${detail.id}`;
   const editable = !detail.has_login && detail.status === "active";
 
-  const rows: [string, string | null][] = c
+  const rows: [string, ReactNode][] = c
     ? [
-        ["Counseling completed", c.counseling_completed ? `Yes — ${stamp(c.completed_at, c.completed_by)}` : "No"],
+        ["Counseling completed", c.counseling_completed ? <>Yes — {stamp(c.completed_at, c.completed_by)}</> : "No"],
         ["Career interest", c.career_interest],
         ["Course preference", c.course_preference],
         ["Country preference", c.country_preference],
