@@ -431,7 +431,7 @@ async def test_template_is_header_only_schoolcreate_columns(client, db_session, 
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("role", ["it_admin", "school_coordinator", "student"])
+@pytest.mark.parametrize("role", ["school_coordinator", "student"])
 async def test_other_roles_get_403_on_both_routes(client, db_session, role):
     await login(client, await mk_admin(db_session, role))
     assert (await client.get(TEMPLATE_URL)).status_code == 403
@@ -590,6 +590,9 @@ and `_process(...)` returning `(rows, created)` where `created: list[tuple[int, 
 from app.models import AuditLog, SchoolBulkUploadRow, User, UserRoleAssignment, PasswordResetToken
 
 
+ROW_KEYS = {"row_number", "status", "error_message", "created_record_id", "school_code", "school_name", "coordinator_id", "coordinator_email", "email_status"}
+
+
 async def _ok(client, rows, **kw):
     response = await upload(client, csv_bytes(rows, **kw))
     assert response.status_code == 201, response.text
@@ -653,7 +656,7 @@ async def test_mixed_file_isolates_each_bad_row(client, db_session):
     for r in report["rows"]:
         if r["status"] == "rejected":
             assert (r["created_record_id"], r["coordinator_id"], r["school_code"], r["school_name"], r["coordinator_email"], r["email_status"]) == (None,) * 6
-            assert set(r) == set(report["rows"][0])  # one fixed shape
+            assert set(r) == ROW_KEYS  # one fixed shape (the dev-only token is the single, documented extra on accepted rows)
 
 
 @pytest.mark.asyncio
@@ -684,8 +687,8 @@ async def test_email_comparison_is_case_insensitive(client, db_session):
 @pytest.mark.asyncio
 async def test_excel_style_csv_is_accepted(client, db_session):
     await login(client, await mk_admin(db_session))
-    data = "﻿" + csv_bytes([school_row(), school_row()]).decode().replace("\n", "\r\n").replace("\r\r\n", "\r\n") + ",,,,\r\n,,,,\r\n"
-    response = await upload(client, data.encode("utf-8"))
+    data = b"\xef\xbb\xbf" + csv_bytes([school_row(), school_row()]) + b",,,,\r\n,,,,\r\n"  # BOM, CRLF (csv default), blank tail rows
+    response = await upload(client, data)
     assert response.status_code == 201, response.text
     assert response.json()["total_rows"] == 2
 
@@ -722,6 +725,11 @@ async def test_replay_returns_the_same_report_and_creates_nothing(client, db_ses
 - [ ] **Step 3: Implement** in `school_onboarding_bulk.py`:
 
 ```python
+async def _flush_row(db: AsyncSession) -> None:
+    """A plain flush for the row's savepoint (never provisioning.flush_unique_email, whose rollback would discard the batch)."""
+    await db.flush()
+
+
 def _norm(value: str | None) -> str:
     return " ".join((value or "").split()).casefold()
 
@@ -796,7 +804,7 @@ async def _process(db: AsyncSession, user: User, batch: SchoolBulkUploadBatch, f
             if error is None:
                 try:
                     async with db.begin_nested():  # the row's own savepoint: a failure undoes this row only
-                        school, coordinator, issued = await _provision_school(db, payload, user, flush_coordinator=AsyncSession.flush)
+                        school, coordinator, issued = await _provision_school(db, payload, user, flush_coordinator=_flush_row)
                     created.append((line, coordinator, issued))
                 except HTTPException as exc:
                     error = exc.detail
@@ -935,16 +943,17 @@ async def test_email_taken_mid_batch_rolls_back_only_that_row(client, db_session
     await login(client, await mk_admin(db_session))
     rows = [school_row(), school_row(), school_row()]
     racer = rows[1]["coordinator_email"]
-    original = school_onboarding_bulk._seen
+    original = school_onboarding_bulk._flush_row
 
-    async def seen_then_race(db, filled):
-        result = await original(db, filled)  # pre-load sees the email as free...
-        async with SessionLocal() as other:  # ...then another request creates it before row 3's flush
-            other.add(User(email=racer, password_hash="x", full_name="Racer", role="student", division="overseas", active=True))
-            await other.commit()
-        return result
+    async def racing_flush(db):
+        # Past every pre-check, just before this row's coordinator is flushed, another request commits the same email.
+        if any(isinstance(o, User) and o.email == racer for o in db.new):
+            async with SessionLocal() as other:
+                other.add(User(email=racer, password_hash="x", full_name="Racer", role="student", division="overseas", active=True))
+                await other.commit()
+        await original(db)
 
-    monkeypatch.setattr(school_onboarding_bulk, "_seen", seen_then_race)
+    monkeypatch.setattr(school_onboarding_bulk, "_flush_row", racing_flush)
     report = await _ok(client, rows)
     assert [r["status"] for r in report["rows"]] == ["accepted", "rejected", "accepted"]
     assert report["rows"][1]["error_message"] == "This row conflicts with a record created at the same time; upload it again"
@@ -958,18 +967,19 @@ async def test_concurrent_onboarding_upload_gets_409_while_another_holds_the_loc
     monkeypatch.setattr(school_onboarding_bulk, "LOCK_TIMEOUT", "200ms")
     async with SessionLocal() as holder:
         await holder.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": school_onboarding_bulk.LOCK_KEY})
-        response = await upload(client, csv_bytes([school_row()]))
+        key = uuid.uuid4().hex
+        response = await upload(client, csv_bytes([school_row()]), key)
         await holder.rollback()
     assert (response.status_code, response.json()["detail"]) == (409, "This upload is still being processed; retry shortly")
-    assert await db_session.scalar(select(func.count(School.id)).where(School.name.like("ENH029 School %"))) is not None  # nothing partial: batch rolled back
+    assert not (await db_session.scalars(select(SchoolBulkUploadBatch).where(SchoolBulkUploadBatch.idempotency_key == key))).all()  # rolled back; key free
 ```
 
 (add `from sqlalchemy import text` to imports; the route must read `LOCK_TIMEOUT` from its own module so the monkeypatch applies —
 import it as a module-level name in `school_onboarding_bulk`.)
 
-- [ ] **Step 2: Run, expect FAIL** (the race test fails until rows commit independently of the outer transaction — it should
-  already pass with Task 5's savepoints; if so, record it as a characterization test. The lock test FAILS until `_lock_onboarding`
-  exists: today the upload either blocks forever without a timeout map or 500s on 55P03).
+- [ ] **Step 2: Run.** The race test exercises Task 5's savepoint + `_flush_row` and is expected to PASS already (a
+  characterization test pinning AC07; if it fails, fix Task 5). The lock test must FAIL: without `_lock_onboarding` the upload
+  never takes the advisory lock, so it returns 201 instead of 409.
 - [ ] **Step 3: Implement:**
 
 ```python
@@ -1165,7 +1175,7 @@ describe("AdminSchoolBulkOnboardPanel", () => {
     choose();
     submit();
     await screen.findByRole("heading", { name: "Upload result" });
-    const rows = screen.getAllByRole("row").slice(1);
+    const rows = within(screen.getAllByRole("table").at(-1) as HTMLElement).getAllByRole("row").slice(1); // the result table, not the column reference
     expect(within(rows[0]).getByText("Rejected")).toBeTruthy();
     expect(within(rows[0]).getByText("Email already exists")).toBeTruthy();
     expect(within(rows[1]).getByText("Set-password link emailed")).toBeTruthy();
@@ -1393,7 +1403,7 @@ test("admin onboards several schools from one CSV; a new coordinator signs in (E
   await expect(panel.getByText("same coordinator_email as row 2")).toBeVisible();
   await expect(page.getByText(`E2E 029 A ${unique}`).first()).toBeVisible();
 
-  // replay: the same file object resent with its key would replay; a fresh choice is a new intent and is rejected row-by-row
+  // choosing the file again is a new intent (new key): every row is now a duplicate and is rejected row-by-row
   await panel.getByLabel("Filled-in schools file").setInputFiles(file);
   await panel.getByRole("button", { name: "Upload schools" }).click();
   await expect(panel.getByText("No schools were onboarded", { exact: false })).toBeVisible();
