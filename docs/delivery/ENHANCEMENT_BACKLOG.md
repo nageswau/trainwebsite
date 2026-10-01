@@ -129,7 +129,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-017 | School-visible global education pipeline dashboard *(now owns Alumni Network)* — **Complete (verified 2026-09-29)** (2026-09-29, `DEC-SCOPE-036`; Alumni Network not built, follow-up) | Medium | Medium | No | SCH-010 (bridge, already built) |
 | ENH-018 | School feedback capture | Small | Low | Yes | — |
 | ENH-019 | School event calendar | Small | Low | Yes | — |
-| ENH-020 | Financial support / loan assistance tracking | Medium | Medium | Yes | — |
+| ENH-020 | Financial support / loan assistance tracking — **in progress (`DEC-SCOPE-043`, 2026-10-01): audit found no Overseas equivalent; new School tracker** | Medium | Medium | Yes | — |
 | ENH-021 | Internship management | Medium | Low | Yes | — |
 | ENH-022 | Tier-gated feature access enforcement | Medium | Medium | No | — (build early) |
 | ENH-023 | Partnership tier change (upgrade/downgrade) workflow | Medium | High | No (history table optional) | ENH-022 |
@@ -940,7 +940,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 18 | Scholarship Management (school-visible) | ⚠️ Partial | **ENH-017** shows Scholarships as *not tracked* (`ScholarshipApplication` has no school-student link) — follow-up, not tracked |
 | 19 | Application Support (status-only, school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017**: high-level stage only, application detail never selected or returned (§19 boundary enforced at the API, key-set and planted-value tests) |
 | 20 | Visa Tracking (school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017**: Visa funnel stage (a `VisaCase` exists) and a per-student visa stage label; visa outcomes are a follow-up, not tracked |
-| 21 | Financial Support / Loan Assistance | ❌ Gap | See **ENH-020** |
+| 21 | Financial Support / Loan Assistance | ⏳ In progress | **ENH-020** (`DEC-SCOPE-043`) |
 | 22 | Internship Management | ❌ Gap | See **ENH-021** |
 | 23 | Parent Portal | ✅ Built | `SCH-007`; "Skills"/"Portfolio" sub-items depend on ENH-012, ENH-011 |
 | 24 | School Event Calendar | ❌ Gap | See **ENH-019** |
@@ -1973,6 +1973,13 @@ whether this duplicates existing Overseas-domain functionality.
 
 **Regression risks.** Building a duplicate tracker alongside an existing Overseas one would itself be a
 regression risk (data fragmentation) — the primary reason this item leads with an audit requirement.
+
+**Audit result and decision (2026-10-01).** No Overseas-domain equivalent exists (no loan/funding model or route; the
+`finance/` package is empty; `ScholarshipApplication` is overseas-only with no school-student link and a single
+`submitted` status). Built as option (b), a new School tracker — `DEC-SCOPE-043`. Spec:
+`docs/superpowers/specs/2026-10-01-enh-020-funding-support-tracking-design.md` (acceptance criteria AC01–AC20); plan:
+`docs/superpowers/plans/2026-10-01-enh-020-funding-support-tracking.md`. The backlog's `school_student` viewer does not exist
+(no student login, DEC-ROLE-004) and `require_tier()` does not exist (`require_school_entitlement` is used).
 
 **Complexity:** Medium (pending audit). **Risk:** Medium.
 
@@ -3309,7 +3316,7 @@ item, only for the progress-view question).
 | ENH-025 | Scope is mandatory (same directive). Needs a *design* decision on whether Career interests/Global education interest/Preferred countries/Preferred courses live on `SchoolStudent` directly or inside a `SCH-004` career-guidance record | None exists |
 | ENH-014 | `DEC-INTEGRATION-0xx` — WhatsApp/SMS provider selection, plus a DPDP/privacy-consent review | None exists |
 | ENH-016 | Indirectly blocked on Appendix A item 3 (entitlement quota vs. `DEC-SCOPE-017`) before its Service Utilization view is meaningful | See Appendix A |
-| ENH-020 | Audit-first: confirm whether this duplicates an existing Overseas-domain capability before any Decision ID is even drafted | None exists |
+| ENH-020 | Audit-first: confirm whether this duplicates an existing Overseas-domain capability before any Decision ID is even drafted | **Resolved 2026-10-01: `DEC-SCOPE-043`** (audit: no Overseas duplicate) |
 | ENH-022 | `DEC-SCOPE-027` — enforcement strictness (hard `403` vs. soft warning) for out-of-tier or expired-partnership access | **Resolved 2026-09-23:** hard `403`, expired = no tier (D1–D12, `PRODUCT_DECISION_REGISTER.md`) |
 | ENH-023 | `DEC-SCOPE-0xx` — downgrade policy for in-flight Platinum-tier commitments (grandfather / wind-down / immediate) | None exists |
 | ENH-010 | `DEC-SCOPE-025` — "School Master" (`School CRM.md` Part B §2) = `school_coordinator`; activate/deactivate scope mapping proposed, drafted 2026-09-22 | Drafted, `UNCONFIRMED` |
