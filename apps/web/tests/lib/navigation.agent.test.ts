@@ -10,6 +10,7 @@ describe("agentNavFor", () => {
     expect(agentNavFor(nav, "staff", { can_verify_documents: false, can_view_reports: true }).map((i) => i.href)).toEqual([
       "/overseas/agent/dashboard",
       "/overseas/agent/students",
+      "/overseas/agent/universities",
       "/overseas/agent/applications",
       "/overseas/agent/documents",
       "/overseas/agent/reports",
@@ -17,9 +18,15 @@ describe("agentNavFor", () => {
     expect(agentNavFor(nav, "staff").map((i) => i.href)).toEqual([
       "/overseas/agent/dashboard",
       "/overseas/agent/students",
+      "/overseas/agent/universities",
       "/overseas/agent/applications",
       "/overseas/agent/documents",
     ]);
+  });
+
+  it("shows Universities to both roles (AGN-007)", () => {
+    expect(nav.map((i) => i.href)).toContain("/overseas/agent/universities");
+    expect(agentNavFor(nav, "staff").map((i) => i.href)).toContain("/overseas/agent/universities");
   });
 
   it("leaves a Master's nav unchanged", () => {
