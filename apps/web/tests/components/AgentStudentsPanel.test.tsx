@@ -75,8 +75,29 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     render(<AgentStudentsPanel memberRole="staff" />);
     await screen.findByText("Asha Rao");
     expect(screen.queryByRole("button", { name: "Archive Asha Rao" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Assign Asha Rao" })).toBeNull();
     expect(screen.queryByLabelText("Assigned to")).toBeNull();
     expect(screen.getByRole("button", { name: "View Asha Rao" })).toBeInTheDocument();
+  });
+
+  it("lets a Master assign an active student to a staff member and updates the card (AC09)", async () => {
+    const priya = { id: "m1", code: "EDU-S001", full_name: "Priya Nair", status: "active" };
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.startsWith("/api/v1/workflows/overseas/agent/team/staff")) return Promise.resolve(res({ items: [{ ...priya, email: "p@x.com", phone: null, setup: null }], total: 1, limit: 100, offset: 0 }));
+      if (init?.method === "POST") return Promise.resolve(res({ student: detail({ assigned_to: priya }) }));
+      return Promise.resolve(res(page([item(), item({ id: "s2", full_name: "Ravi Iyer", status: "archived" })])));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentStudentsPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Assign Asha Rao" }));
+    expect(screen.queryByRole("button", { name: "Assign Ravi Iyer" })).toBeNull(); // archived: unarchive first
+    const select = (await screen.findByLabelText("Assign to")) as HTMLSelectElement;
+    await waitFor(() => expect(select.options).toHaveLength(2));
+    fireEvent.change(select, { target: { value: "m1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save assignment" }));
+    expect(await screen.findByText("Asha Rao assigned to EDU-S001 · Priya Nair.")).toBeInTheDocument();
+    const card = screen.getByRole("heading", { name: "Asha Rao" }).closest("li")!;
+    expect(within(card).getByText("EDU-S001 · Priya Nair")).toBeInTheDocument();
   });
 
   it("archives inline with a confirmation, announces it and returns focus on cancel", async () => {

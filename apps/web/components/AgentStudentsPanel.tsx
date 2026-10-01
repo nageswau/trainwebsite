@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import AgentStudentAssign from "./AgentStudentAssign";
 import AgentStudentDetailPanel, { assignedText } from "./AgentStudentDetailPanel";
 import AgentStudentForm from "./AgentStudentForm";
 import { detailMessage, isPage, Page } from "@/lib/apiErrors";
 import { AgentStudentDetail, AgentStudentItem, RECORDS_URL } from "@/lib/agentStudents";
 
 // AGN-004 (DEC-SCOPE-041): the agency's students -- with or without a login -- on the Students page. Masters see the agency and
-// may archive; staff see their assigned students. The server enforces both; the controls here only follow it. Paging follows
+// may archive and assign; staff see their assigned students. The server enforces both; the controls here only follow it. Paging follows
 // AgentApprovalPanel (20 per page); archive uses the inline confirmation pattern with focus returned to the opener.
 const PAGE_SIZE = 20;
 const LIST_ID = "agent-students-list";
@@ -374,6 +375,15 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
                               {kind === "archive" ? "Archive" : "Unarchive"}
                             </button>
                           ))}
+                        {isMaster && s.status === "active" && confirm?.id !== s.id && (
+                          <AgentStudentAssign
+                            student={s}
+                            onAssigned={(updated) => {
+                              setNotice(updated.assigned_to ? `${s.full_name} assigned to ${assignedText(updated.assigned_to)}.` : `${s.full_name} unassigned.`);
+                              applyUpdate(updated);
+                            }}
+                          />
+                        )}
                     </div>
                     {rowError?.id === s.id && (
                       <p className="form-error" role="status" aria-live="polite" style={{ fontSize: 13, marginTop: 8 }}>
