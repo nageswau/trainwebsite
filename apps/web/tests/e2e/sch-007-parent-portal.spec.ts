@@ -83,7 +83,8 @@ test("parent sees child overview, upcoming session, and notification; unlinked c
   await page.click('a:has-text("View full profile & progress")');
   await page.waitForURL(`**/school/parent/children/${linked.id}`);
   for (const heading of ["Career guidance", "Counselling", "Recommended careers", "Psychometric assessment", "Academic results", "Activities", "Upcoming sessions"]) {
-    await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+    // level 3: the overview's sections. The digital portfolio (ENH-012) on the same page has its own h4 "Career guidance".
+    await expect(page.getByRole("heading", { name: heading, level: 3 })).toBeVisible();
   }
   await expect(page.getByText("No published results yet")).toBeVisible();
 
