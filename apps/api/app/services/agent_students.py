@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.core.rbac import is_agent_staff
-from app.models import AgentOrgMember, AgentStudent, OverseasApplication, User
+from app.models import AgentOrgMember, AgentStudent, AgentStudentCounseling, OverseasApplication, User
 from app.services.agent_orgs import org_member_ids
 
 PHONE_MIN_DIGITS = 7
@@ -112,6 +112,7 @@ async def record_detail(db: AsyncSession, row: AgentStudent) -> dict:
         "archived_at": student.archived_at,
         "archived_by": archived_by.full_name if archived_by else None,
         "updated_at": student.updated_at,
+        "counseling": await counseling_detail(db, student),
     }
 
 
@@ -147,6 +148,65 @@ async def list_page(db: AsyncSession, user: User, *, q: str | None, include_arch
     total = await db.scalar(select(func.count()).select_from(base.subquery()))
     rows = (await db.execute(base.order_by(name, AgentStudent.id).limit(limit).offset(offset))).all()
     return {"items": [record_item(*r) for r in rows], "total": total or 0, "limit": limit, "offset": offset}
+
+
+# --- counseling record (AGN-006, DEC-SCOPE-048) -------------------------------------------------------------------------------------
+
+COUNSELING_FIELDS = ("counseling_completed", "career_interest", "course_preference", "country_preference", "budget_amount", "budget_currency", "remarks")
+Completer = aliased(User)
+Updater = aliased(User)
+
+
+async def counseling_detail(db: AsyncSession, row: AgentStudent) -> dict | None:
+    """The student's counseling record or None. Found only through the already-scoped student row; an explicit allowlist -- the
+    record's own id and every user id stay server-side, people are named. Money is a 2-decimal string (no float rounding)."""
+    found = (
+        await db.execute(
+            select(AgentStudentCounseling, Completer.full_name, Updater.full_name)
+            .outerjoin(Completer, Completer.id == AgentStudentCounseling.completed_by_user_id)
+            .outerjoin(Updater, Updater.id == AgentStudentCounseling.updated_by_user_id)
+            .where(AgentStudentCounseling.agent_student_id == row.id)
+            .execution_options(populate_existing=True)
+        )
+    ).first()
+    if found is None:
+        return None
+    record, completed_by, updated_by = found
+    return {
+        "counseling_completed": record.counseling_completed,
+        "completed_at": record.completed_at,
+        "completed_by": completed_by,
+        "career_interest": record.career_interest,
+        "course_preference": record.course_preference,
+        "country_preference": record.country_preference,
+        "budget_amount": None if record.budget_amount is None else f"{record.budget_amount:.2f}",
+        "budget_currency": record.budget_currency,
+        "remarks": record.remarks,
+        "updated_at": record.updated_at,
+        "updated_by": updated_by,
+    }
+
+
+async def save_counseling(db: AsyncSession, row: AgentStudent, user: User, data: dict) -> list[str]:
+    """Replace the record (C1); no commit -- the router holds the organisation and student locks, audits and commits. Returns the
+    sorted names of the fields whose value changed; a first save is never a no-op (`counseling_completed` plus every non-empty field).
+    C5: stamped on the change to yes, kept while yes, cleared on no."""
+    record = await db.scalar(select(AgentStudentCounseling).where(AgentStudentCounseling.agent_student_id == row.id))
+    if record is None:
+        record = AgentStudentCounseling(agent_student_id=row.id, updated_by_user_id=user.id)
+        db.add(record)
+        changed = ["counseling_completed", *(f for f in COUNSELING_FIELDS[1:] if data[f] is not None)]
+    else:
+        changed = [f for f in COUNSELING_FIELDS if getattr(record, f) != data[f]]
+    for field in COUNSELING_FIELDS:
+        setattr(record, field, data[field])
+    if not data["counseling_completed"]:
+        record.completed_at = record.completed_by_user_id = None
+    elif record.completed_at is None:
+        record.completed_at, record.completed_by_user_id = datetime.now(UTC), user.id
+    if changed:
+        record.updated_by_user_id = user.id
+    return sorted(changed)
 
 
 # --- duplicate warning (D7, F3, F4) ------------------------------------------------------------------------------------------------
