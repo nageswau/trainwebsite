@@ -8,19 +8,24 @@ import { activityLabel, STAFF_URL, type StaffActivityItem, type StaffMember } fr
 import { isPage, type Page } from "@/lib/apiErrors";
 import { formatDate, viewerTimeZone } from "@/lib/formatDate";
 
-export const ACTIVITY_PAGE_SIZE = 10;
+const ACTIVITY_PAGE_SIZE = 10;
 const UNABLE = "Unable to load activity.";
 
-class Refused extends Error {}
-// Browser QA-03: an expired session (401) is not retryable -- it offers sign-in instead (the app's LoadFailureAlert convention).
-class Expired extends Error {}
+// Why the list could not be shown. Browser QA-03: an expired session (401) is not retryable -- it offers sign-in instead (the
+// app's LoadFailureAlert convention).
+type Failure = { text: string; expired: boolean };
+
+class LoadFailed extends Error {
+  constructor(text: string, readonly expired = false) {
+    super(text);
+  }
+}
 
 // AGN-021 (DEC-SCOPE-045 A1-A4): a staff member's student-journey work, shown inside their row on the Team page. Read on every
 // open / page / Refresh (no cache), so a new action shows on the next load. Only the newest request may update the screen.
 export default function AgentStaffActivity({ member, onClose }: { member: StaffMember; onClose: () => void }) {
   const [data, setData] = useState<Page<StaffActivityItem> | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [expired, setExpired] = useState(false);
+  const [failure, setFailure] = useState<Failure | null>(null);
   const [loading, setLoading] = useState(true);
   const [offset, setOffset] = useState(0);
   const latest = useRef(0);
@@ -35,23 +40,22 @@ export default function AgentStaffActivity({ member, onClose }: { member: StaffM
     (at: number) => {
       const request = ++latest.current;
       setLoading(true);
-      setError(null);
-      setExpired(false);
+      setFailure(null);
       fetch(`${STAFF_URL}/${member.id}/activity?limit=${ACTIVITY_PAGE_SIZE}&offset=${at}`)
         .then(async (response) => {
-          if (response.status === 401) throw new Expired(SESSION_EXPIRED);
+          if (response.status === 401) throw new LoadFailed(SESSION_EXPIRED, true);
           const body: unknown = await response.json().catch(() => null);
           if (!response.ok) {
             const detail = (body as { detail?: unknown } | null)?.detail;
-            throw new Refused(response.status < 500 && typeof detail === "string" ? detail : UNABLE);
+            throw new LoadFailed(response.status < 500 && typeof detail === "string" ? detail : UNABLE);
           }
-          if (!isPage<StaffActivityItem>(body)) throw new Refused(UNABLE);
+          if (!isPage<StaffActivityItem>(body)) throw new LoadFailed(UNABLE);
           if (request === latest.current) setData(body);
         })
-        .catch((failure: unknown) => {
+        .catch((caught: unknown) => {
           if (request !== latest.current) return;
-          setExpired(failure instanceof Expired);
-          setError(failure instanceof Refused || failure instanceof Expired ? failure.message : UNABLE);
+          // A dropped connection (TypeError) or anything unexpected reads as the generic message.
+          setFailure(caught instanceof LoadFailed ? { text: caught.message, expired: caught.expired } : { text: UNABLE, expired: false });
         })
         .finally(() => {
           if (request === latest.current) setLoading(false);
@@ -67,12 +71,12 @@ export default function AgentStaffActivity({ member, onClose }: { member: StaffM
   return (
     <section aria-labelledby={headingId} style={{ marginTop: 8 }} onKeyDown={(event) => event.key === "Escape" && onClose()}>
       <h4 id={headingId} ref={heading} tabIndex={-1} style={{ margin: "0 0 4px" }}>Activity</h4>
-      {error ? (
-        expired ? (
-          <p className="form-error" role="alert">{error} <Link href={SIGN_IN_PATH}>Sign in again</Link></p>
+      {failure ? (
+        failure.expired ? (
+          <p className="form-error" role="alert">{failure.text} <Link href={SIGN_IN_PATH}>Sign in again</Link></p>
         ) : (
           <>
-            <p className="form-error" role="alert">{error}</p>
+            <p className="form-error" role="alert">{failure.text}</p>
             <button type="button" className="btn secondary small" onClick={() => load(offset)}>Try again</button>
           </>
         )
@@ -95,7 +99,7 @@ export default function AgentStaffActivity({ member, onClose }: { member: StaffM
           </ol>
         </>
       )}
-      {data && !error && data.total > ACTIVITY_PAGE_SIZE && (
+      {data && !failure && data.total > ACTIVITY_PAGE_SIZE && (
         <nav aria-label="Activity pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, margin: "4px 0" }}>
           <span className="muted" style={{ fontSize: 13 }}>Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}</span>
           <button type="button" className="btn secondary small" aria-label="Previous page" disabled={loading || offset === 0} onClick={() => setOffset(Math.max(0, offset - ACTIVITY_PAGE_SIZE))}>Previous</button>
@@ -104,7 +108,7 @@ export default function AgentStaffActivity({ member, onClose }: { member: StaffM
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
         {/* Browser QA-01: an error state has one retry action (Try again above); an expired session has none (QA-03). */}
-        {!error && <button type="button" className="btn secondary small" onClick={() => load(offset)}>Refresh</button>}
+        {!failure && <button type="button" className="btn secondary small" onClick={() => load(offset)}>Refresh</button>}
         <button type="button" className="btn secondary small" aria-label="Close activity" onClick={onClose}>Close</button>
       </div>
     </section>
