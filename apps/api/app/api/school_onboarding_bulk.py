@@ -11,6 +11,7 @@ import csv
 import hashlib
 import io
 import time
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from pydantic import ValidationError
@@ -97,7 +98,7 @@ class _Seen:
 
 async def _seen(db: AsyncSession, filled: list[tuple[int, dict[str, str]]]) -> _Seen:
     wanted = {cells.get("coordinator_email", "").strip().lower() for _, cells in filled} - {""}
-    emails = set((await db.scalars(select(func.lower(User.email)).where(func.lower(User.email).in_(wanted)))).all()) if wanted else set()
+    emails: set[str] = set((await db.scalars(select(func.lower(User.email)).where(func.lower(User.email).in_(wanted)))).all()) if wanted else set()
     schools = {(_norm(name), _norm(city)) for name, city in (await db.execute(select(School.name, School.city))).all()}
     return _Seen(emails, schools)
 
@@ -168,8 +169,11 @@ async def _report(db: AsyncSession, batch: SchoolBulkUploadBatch, rows: list[Sch
     """One fixed row shape for the first response and every replay: names, codes and emails are read back by the stored ids."""
     school_ids = [r.created_record_id for r in rows if r.created_record_id]
     user_ids = [r.created_user_id for r in rows if r.created_user_id]
-    schools = {sid: (code, name) for sid, code, name in (await db.execute(select(School.id, School.school_code, School.name).where(School.id.in_(school_ids)))).all()} if school_ids else {}
-    emails = dict((await db.execute(select(User.id, User.email).where(User.id.in_(user_ids)))).all()) if user_ids else {}
+    # Keyed by the rows' optional ids, so a rejected row (no school, no user) simply finds nothing.
+    schools: dict[UUID | None, tuple[str | None, str | None]] = (
+        {sid: (code, name) for sid, code, name in (await db.execute(select(School.id, School.school_code, School.name).where(School.id.in_(school_ids)))).all()} if school_ids else {}
+    )
+    emails: dict[UUID | None, str] = dict((await db.execute(select(User.id, User.email).where(User.id.in_(user_ids)))).all()) if user_ids else {}
     deliveries = deliveries or {}
     out = []
     for r in rows:
@@ -221,7 +225,7 @@ async def bulk_onboard_schools(
 ):
     started = time.monotonic()
     _require_admin(user)
-    raw = await _read_upload(file, idempotency_key, TARGET_TYPE, user)
+    idempotency_key, raw = await _read_upload(file, idempotency_key, TARGET_TYPE, user)
     filled = _read_csv(raw, target_type=TARGET_TYPE, user=user, required=REQUIRED, columns=COLUMNS, max_rows=MAX_ROWS, known=COLUMNS)
 
     # `set_config(..., true)` is SET LOCAL with a bound parameter: it bounds the key wait (and, below, the onboarding lock).

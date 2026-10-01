@@ -280,8 +280,9 @@ def _file_error(target_type: str, user: User, reason: str, message: str, status:
     return HTTPException(status, message)
 
 
-async def _read_upload(file: UploadFile, idempotency_key: str | None, target_type: str, user: User) -> bytes:
-    """The key checks and the bounded read every bulk surface shares (ENH-028 §5.1, ENH-029 §5.2)."""
+async def _read_upload(file: UploadFile, idempotency_key: str | None, target_type: str, user: User) -> tuple[str, bytes]:
+    """The key checks and the bounded read every bulk surface shares (ENH-028 §5.1, ENH-029 §5.2): the validated key and the
+    file's bytes."""
     if not idempotency_key:
         raise HTTPException(422, "Idempotency-Key header is required")
     if not KEY_PATTERN.fullmatch(idempotency_key):
@@ -289,7 +290,7 @@ async def _read_upload(file: UploadFile, idempotency_key: str | None, target_typ
     raw = await file.read(MAX_FILE_BYTES + 1)
     if len(raw) > MAX_FILE_BYTES:
         raise _file_error(target_type, user, "too_large", "The file is larger than 1 MB", 413)
-    return raw
+    return idempotency_key, raw
 
 
 def _filled_rows(raw: bytes, target: BulkTarget, user: User) -> list[tuple[int, dict[str, str]]]:
@@ -448,7 +449,7 @@ async def _upload(target: BulkTarget, file: UploadFile, idempotency_key: str | N
     started = time.monotonic()
     if user.role != target.role:
         raise HTTPException(403, target.role_error)
-    raw = await _read_upload(file, idempotency_key, target.target_type, user)
+    idempotency_key, raw = await _read_upload(file, idempotency_key, target.target_type, user)
     filled = _filled_rows(raw, target, user)
 
     # `set_config(..., true)` is SET LOCAL with a bound parameter: it bounds both the key wait and the student row locks.
