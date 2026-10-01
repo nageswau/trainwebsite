@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentUniversitiesPanel from "@/components/AgentUniversitiesPanel";
@@ -77,5 +77,42 @@ describe("AgentUniversitiesPanel (AGN-007)", () => {
     expect(await screen.findByText("UCD added.")).toBeInTheDocument();
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")!;
     expect(JSON.parse(String(post[1]!.body))).toEqual({ name: "UCD", country: "Ireland", city: null, entry_requirements: null });
+  });
+
+  describe("focus and Escape", () => {
+    const listFetch = () => vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([uni()])))));
+
+    it("returns focus to Add university when the Add form is cancelled", async () => {
+      listFetch();
+      render(<AgentUniversitiesPanel memberRole="master" />);
+      fireEvent.click(await screen.findByRole("button", { name: "Add university" }));
+      fireEvent.click(within(screen.getByRole("form", { name: "Add university" })).getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Add university" })).toHaveFocus());
+    });
+
+    it("returns focus to Edit <name> when the Edit form is cancelled", async () => {
+      listFetch();
+      render(<AgentUniversitiesPanel memberRole="master" />);
+      fireEvent.click(await screen.findByRole("button", { name: "Edit Trinity" }));
+      fireEvent.click(within(screen.getByRole("form", { name: "Edit university" })).getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit Trinity" })).toHaveFocus());
+    });
+
+    it("focuses Cancel when the delete confirm opens", async () => {
+      listFetch();
+      render(<AgentUniversitiesPanel memberRole="master" />);
+      fireEvent.click(await screen.findByRole("button", { name: "Delete Trinity" }));
+      const group = screen.getByRole("group", { name: "Confirm delete Trinity" });
+      expect(within(group).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    });
+
+    it("closes the delete confirm on Escape and returns focus to Delete <name>", async () => {
+      listFetch();
+      render(<AgentUniversitiesPanel memberRole="master" />);
+      fireEvent.click(await screen.findByRole("button", { name: "Delete Trinity" }));
+      fireEvent.keyDown(screen.getByRole("group", { name: "Confirm delete Trinity" }), { key: "Escape" });
+      expect(screen.queryByRole("group", { name: "Confirm delete Trinity" })).toBeNull();
+      await waitFor(() => expect(screen.getByRole("button", { name: "Delete Trinity" })).toHaveFocus());
+    });
   });
 });

@@ -9,6 +9,15 @@ import { type AgentUniversity, PAGE_SIZE, UNIVERSITIES_URL } from "@/lib/agentSh
 
 // AGN-007 (DEC-SCOPE-049): the agency's own universities. §6 "University Database": Masters full, Staff view; "Add University" is
 // Master only. The server enforces both; the controls here only follow it. Paging and the inline confirm follow AgentStudentsPanel.
+const ADD_ID = "agent-uni-add";
+// Focus moves after the control has been re-rendered; fall back to the Add button when the target is gone.
+const focusLater = (...ids: string[]) =>
+  requestAnimationFrame(() => {
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) return el.focus();
+    }
+  });
 type Editing = { mode: "add" } | { mode: "edit"; university: AgentUniversity } | null;
 
 export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "master" | "staff" | null | undefined }) {
@@ -58,6 +67,17 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
     setOffset(0);
   }
 
+  function closeForm() {
+    const opener = editing?.mode === "edit" ? `agent-uni-edit-${editing.university.id}` : ADD_ID;
+    setEditing(null);
+    focusLater(opener, ADD_ID);
+  }
+
+  function closeConfirm(id: string) {
+    setConfirmId(null);
+    focusLater(`agent-uni-del-${id}`, ADD_ID);
+  }
+
   async function remove(u: AgentUniversity) {
     setRowError(null);
     try {
@@ -65,6 +85,7 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
       if (response.status === 204 || response.status === 404) {
         setConfirmId(null);
         setNotice(`${u.name} deleted.`);
+        focusLater(ADD_ID);
         return load();
       }
       const body = await response.json().catch(() => null);
@@ -72,7 +93,7 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
     } catch {
       setRowError({ id: u.id, text: "Network error. Check your connection and try again." });
     }
-    setConfirmId(null);
+    closeConfirm(u.id);
   }
 
   return (
@@ -92,15 +113,15 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
           <AgentUniversityForm
             mode={editing.mode}
             university={editing.mode === "edit" ? editing.university : undefined}
-            onCancel={() => setEditing(null)}
+            onCancel={closeForm}
             onSaved={(u) => {
               setNotice(`${u.name} ${editing.mode === "add" ? "added" : "saved"}.`);
-              setEditing(null);
+              closeForm();
               load();
             }}
           />
         ) : (
-          <button type="button" className="btn small" onClick={() => setEditing({ mode: "add" })}>
+          <button type="button" id={ADD_ID} className="btn small" onClick={() => setEditing({ mode: "add" })}>
             Add university
           </button>
         ))}
@@ -133,26 +154,35 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
                   )}
                   {isMaster &&
                     (confirmId === u.id ? (
-                      <span role="group" aria-label={`Confirm delete ${u.name}`}>
-                        <button type="button" className="btn small" autoFocus onClick={() => void remove(u)}>
+                      <span
+                        role="group"
+                        aria-label={`Confirm delete ${u.name}`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            e.stopPropagation();
+                            closeConfirm(u.id);
+                          }
+                        }}
+                      >
+                        <button type="button" className="btn small" onClick={() => void remove(u)}>
                           Confirm delete
                         </button>{" "}
-                        <button type="button" className="btn secondary small" onClick={() => setConfirmId(null)}>
+                        <button type="button" className="btn secondary small" autoFocus onClick={() => closeConfirm(u.id)}>
                           Cancel
                         </button>
                       </span>
                     ) : (
                       <>
-                        <button type="button" className="btn secondary small" aria-label={`Edit ${u.name}`} onClick={() => setEditing({ mode: "edit", university: u })}>
+                        <button type="button" id={`agent-uni-edit-${u.id}`} className="btn secondary small" aria-label={`Edit ${u.name}`} onClick={() => setEditing({ mode: "edit", university: u })}>
                           Edit
                         </button>{" "}
-                        <button type="button" className="btn secondary small" aria-label={`Delete ${u.name}`} onClick={() => setConfirmId(u.id)}>
+                        <button type="button" id={`agent-uni-del-${u.id}`} className="btn secondary small" aria-label={`Delete ${u.name}`} onClick={() => setConfirmId(u.id)}>
                           Delete
                         </button>
                       </>
                     ))}
                   {rowError?.id === u.id && (
-                    <p className="form-error" role="status" aria-live="polite">
+                    <p className="form-error" role="alert">
                       {rowError.text}
                     </p>
                   )}
