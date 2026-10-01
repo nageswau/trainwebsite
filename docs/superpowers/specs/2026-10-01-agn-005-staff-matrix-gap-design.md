@@ -2,12 +2,14 @@
 
 **Status:** draft for owner review (2026-10-01). **Branch:** `feature/agn-005-staff-permission-matrix` (from `origin/main` 6360dc0).
 **Decision:** none new — no behaviour changes. Scope set by the owner in-session (2026-10-01): "close the matrix gap", tests and docs only.
-**Backlog:** `ENHANCEMENT_BACKLOG.md` §AGN-005 (AGN-005-AC01…AC05, added with the tests).
+**Backlog:** `ENHANCEMENT_BACKLOG.md` §AGN-005 (AGN-005-AC01…AC06, added with the tests).
 **Builds on:** `AGN-003` (`DEC-SCOPE-044`, spec `2026-10-01-agn-003-staff-permissions-design.md`, COMPLETE) and `AGN-004`
 (`DEC-SCOPE-042`, spec `2026-09-30-agn-004-agent-students-design.md`, COMPLETE).
 **Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §6 "Master vs Staff Permissions". The approval is the
 owner's, not the document's.
 **Oriented with:** Graphify query (graph refreshed 2026-10-01; the earlier graph had no AGN-001…004 nodes) and targeted reads.
+**Reviewed with:** api-and-interface-design, frontend-ui-engineering, security-and-hardening (in-session, 2026-10-01; findings in §10 and
+folded into §5–§7).
 
 ## 1. Intent
 
@@ -33,7 +35,8 @@ are cited, not repeated.
 
 ## 2. Out of scope
 
-- Any change to `app/` code, migrations, API contracts or the web app.
+- Any change to `app/` code, migrations, API contracts or web components (one web **test** is added, §5).
+- AGN-004's validation-before-role order on `PATCH` and `…/assign` (§10, recorded, not changed).
 - Edit Application, Change Application Status, Staff Performance, CRM Settings — still no agent route; they stay N/A.
 - Editing a linked student (one with a login): AGN-004 answers `409 "Linked students are edited in their own account"` for every agent;
   that is AGN-004 behaviour, tested there.
@@ -96,8 +99,13 @@ observed result is recorded in the RTM. Nothing from the mutation is committed.
 - **Authorization.** Unchanged: `is_agent_staff` in `_require_master_action`, scope in `services/agent_students.load_scoped`. The tests
   pin the exact refusal text so a `404` or another gate's `403` cannot pass.
 - **Error states.** `403` refusals asserted by exact `detail`; no new error path.
-- **Frontend.** No change, so no new loading, empty or error state. Staff UI already hides archive and assign
-  (`AgentStudentsPanel.test.tsx` "hides Master-only controls from staff"; `agn-004-agent-students.spec.ts`).
+- **Frontend.** No component change, so no new loading, empty or error state, layout, form or keyboard path.
+  `AgentStudentsPanel.tsx` gates every Master-only control on `isMaster` (the filter at line 224, Archive/Unarchive at 346, Assign at
+  378), and the server enforces the same rules. The existing test "hides Master-only controls from staff" checks an **active** card
+  only (Archive, Assign, the Assigned-to filter). The UI mirror of the backend gap is that no test checks that staff who tick
+  **Show archived** see no **Unarchive** button. One vitest case is added to `apps/web/tests/components/AgentStudentsPanel.test.tsx`:
+  staff, Show archived on (URL `?archived=1`, the panel's QA-06 pattern) and the list returning `item({ status: "archived" })` → no
+  `Unarchive Asha Rao` button, `View Asha Rao` present. It uses the file's existing `res`/`page`/`item` fixtures.
 - **Data.** No migration; test data only, in the test database.
 
 ## 6. Acceptance criteria
@@ -110,16 +118,20 @@ observed result is recorded in the RTM. Nothing from the mutation is committed.
 - **AGN-005-AC03** A Master succeeds on every AC02 row plus archive, unarchive and assign (`200`). → `test_master_allowed[…]`
 - **AGN-005-AC04** In `RBAC_MATRIX.md` §2.8 no §6 row that has an agent route is N/A; only Edit Application, Change Application Status,
   Staff Performance and CRM Settings remain N/A.
-- **AGN-005-AC05** No change under `apps/api/app`, `apps/api/alembic` or `apps/web`; every pre-existing `test_agn_003_matrix.py` case is
-  unchanged and passing; the lite regression set is green.
+- **AGN-005-AC05** No change under `apps/api/app`, `apps/api/alembic`, `apps/web/components`, `apps/web/lib` or `apps/web/app`; every
+  pre-existing `test_agn_003_matrix.py` and `AgentStudentsPanel.test.tsx` case is unchanged and passing; the lite regression set is green.
+- **AGN-005-AC06** Staff who show archived students see no Unarchive control on an archived card (the UI follows the server's `403`).
+  → `AgentStudentsPanel.test.tsx` "hides Unarchive from staff on an archived student"
 
 ## 7. Tests (decided before writing them)
 
-- **New / extended:** `apps/api/tests/test_agn_003_matrix.py` only (≈ 3 refused + 4 × 2 allowed + 3 Master-only = 14 new cases).
-- **Mutation check:** §4.
+- **New / extended (backend):** `apps/api/tests/test_agn_003_matrix.py` (3 refused + 4 × 2 allowed + 3 Master-only = 14 new cases).
+- **New (web):** one case in `apps/web/tests/components/AgentStudentsPanel.test.tsx` (AC06). Mutation check: flip line 346's
+  `isMaster &&` locally, see the case fail, restore, `git diff --exit-code apps/web/components` clean.
+- **Mutation check (backend):** §4.
 - **Lite regression set** (per `test-regression-cadence`): `test_agn_00*` (all AGN-001…004 files, including `test_agn_003_matrix.py`),
-  `test_agt_00*`, `test_ovs_005_documents.py`, `test_enh_031_*`.
-- **Not needed:** web unit tests and Playwright (no web change); migration tests (no migration).
+  `test_agt_00*`, `test_ovs_005_documents.py`, `test_enh_031_*`; web `vitest run tests/components/AgentStudentsPanel.test.tsx`.
+- **Not needed:** Playwright (no component change; `agn-004-agent-students.spec.ts` already drives the staff UI); migration tests.
 
 ## 8. Regression risks
 
@@ -129,6 +141,7 @@ observed result is recorded in the RTM. Nothing from the mutation is committed.
 | A new case passes on the wrong gate (`404` mask, another `403`) | Exact `detail` asserted; records assigned to the caller |
 | A refusal silently mutates data | Extended "nothing changed" block (§4 item 3) |
 | The tests could never fail | Mutation check (§4) |
+| The new web case leaks URL state into later cases | The file's `afterEach` already resets `window.history` (QA-06) |
 | Docs drift again | `RBAC_MATRIX.md` §2.8 updated; a dated note in AGN-003 spec §3 points here |
 
 ## 9. Documentation to update with the tests
@@ -139,3 +152,36 @@ observed result is recorded in the RTM. Nothing from the mutation is committed.
 - `ENHANCEMENT_BACKLOG.md`: revision note, summary table row and §AGN-005 entry.
 - `RTM.md`: AGN-005 row with the evidence.
 - Not changed: `API_CONTRACT.md`, `DATA_MODEL.md`, `SCREEN_CATALOG.md` (nothing in them changes).
+
+## 10. Review log (2026-10-01)
+
+**api-and-interface-design**
+- **Contract check.** Every status and `detail` the new rows assert matches `API_CONTRACT.md` lines 236–241 (AGN-004 table):
+  create `201 {student}`; list `{items, total, limit, offset}`; detail `{student}`; `PATCH` `200`; archive/unarchive Master `200`, staff
+  `403 "Only an agency Master can archive students"` after the scope `404`; assign Master `200`, staff
+  `403 "Only an agency Master can assign students"`. No contract text changes; `API_CONTRACT.md` is not edited.
+- **HTTP semantics.** `403` for an in-scope Master-only action, `404` for out of scope (existence mask), `409` for state conflicts —
+  consistent with AGN-004. The matrix uses in-scope, state-valid rows (active record for archive/assign, archived record for unarchive)
+  so each Master `200` and each staff `403` is caused by the role, not by state.
+- **Hyrum's law.** The tests pin the `detail` strings, as `test_agn_003_matrix.py` already does for every other ❌ row. These strings
+  are documented in the contract, so pinning them adds no new commitment.
+- **Backward compatibility, validation, transactions, database usage.** No route, schema, query or transaction changes.
+
+**frontend-ui-engineering**
+- No component change, so visual hierarchy, responsive behaviour, loading, empty and error states, forms, keyboard support and perceived
+  performance are as AGN-004 shipped and browser-verified them (`docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`). Improving them is
+  outside AGN-005 (owner: no speculative changes).
+- Finding: no test covers the staff view of an **archived** card. Added as AC06 (§5); a test only.
+
+**security-and-hardening**
+
+| Check | Finding |
+|---|---|
+| Authentication | Unchanged (`get_current_user`, cookie JWT + `session_version`). Every new case signs in as a real member through `client_for`. |
+| Authorization / role escalation | The three staff escalation paths for student records (archive, unarchive, assign) are each proven `403`, with the record unchanged and no audit row. Assign names another staff member, so a missing guard would show as a reassignment. |
+| IDOR / cross-tenant | Unchanged and already proven by AGN-004: another staff member's student → `404` on every action (`test_agn_004_student_actions.py::test_other_staff_get_404_on_every_action`); another agency's Master → `404` (`::test_other_agency_master_gets_404_on_every_action`, `test_agn_004_students.py::test_other_agency_master_gets_404_and_never_sees_rows`). Cited, not repeated. |
+| Input validation | **Observation, not changed:** `PATCH /crm/students/{id}` and `POST …/assign` declare typed bodies, so FastAPI answers a malformed body with `422` before the handler can refuse staff with `403`. This differs from AGN-003's "a refused role gets `403` before any validation" rule. It reveals nothing (the schemas are public and the scope `404` still applies before any data is read). It is AGN-004 behaviour; recorded here and in the RTM as a follow-up candidate. The matrix uses valid bodies so it tests the role check. |
+| XSS / CSRF / SQL injection | No new rendering, endpoint or query. Unchanged: React text rendering; `SameSite=lax` httpOnly cookies + credentialed CORS to `frontend_url` only; SQLAlchemy ORM. |
+| Token/session, secrets, sensitive logs | No change. Fixtures use `@example.local` addresses and no secrets; the new records carry no email or phone. |
+| Rate limiting | No change; none of these routes send email. |
+| Audit | Allowed writes audit as AGN-004 designed; refused calls write no `agent_student.*` row (asserted, §4 item 3). Refusals are not audited anywhere in the agent routes today; unchanged. |
