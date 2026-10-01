@@ -13,23 +13,29 @@ import type { Country, University } from "@/lib/types";
 // only under its own catalogue university, otherwise the course is typed. Picking a course pre-fills intake, fee and requirements but
 // never overwrites what the user typed. The server re-checks every rule (spec §5.4).
 type Options = { catalogue: University[]; countries: Map<string, string>; agency: AgentUniversity[] };
-let catalogueCache: Promise<Options> | null = null;
+type Static = Pick<Options, "catalogue" | "countries">;
+// Only the static catalogue + countries are cached; the agency list changes (Master edits), so it is fetched on every mount.
+let staticCache: Promise<Static> | null = null;
 export function resetCatalogueCache() {
-  catalogueCache = null;
+  staticCache = null;
 }
 async function json<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(String(response.status));
   return response.json();
 }
-function loadOptions(): Promise<Options> {
-  catalogueCache ??= Promise.all([json<University[]>(CATALOGUE_URL), json<Country[]>(COUNTRIES_URL), json<{ items: AgentUniversity[] }>(`${UNIVERSITIES_URL}?limit=100`)])
-    .then(([catalogue, countries, agency]) => ({ catalogue, countries: new Map(countries.map((c) => [c.id, c.name])), agency: agency.items }))
+function loadStatic(): Promise<Static> {
+  staticCache ??= Promise.all([json<University[]>(CATALOGUE_URL), json<Country[]>(COUNTRIES_URL)])
+    .then(([catalogue, countries]) => ({ catalogue, countries: new Map(countries.map((c) => [c.id, c.name])) }))
     .catch((error) => {
-      catalogueCache = null; // a failed load is retried, not cached
+      staticCache = null; // a failed load is retried, not cached
       throw error;
     });
-  return catalogueCache;
+  return staticCache;
+}
+async function loadOptions(): Promise<Options> {
+  const [stat, agency] = await Promise.all([loadStatic(), json<{ items: AgentUniversity[] }>(`${UNIVERSITIES_URL}?limit=100`)]);
+  return { ...stat, agency: agency.items };
 }
 const OTHER = "__other__";
 type Field = "intake" | "tuitionFee" | "entryRequirements";
@@ -45,6 +51,7 @@ export default function AgentShortlistForm(props: { studentId: string; mode: "ad
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const touched = useRef(new Set<Field>(entry ? ["intake", "tuitionFee", "entryRequirements"] : []));
+  const prefilled = useRef(new Set<Field>());
   const courseTicket = useRef(0);
   const choice = parseUniversityKey(draft.university);
   const catalogueUni = choice?.source === "catalogue" ? options?.catalogue.find((u) => u.id === choice.id) : undefined;
@@ -68,15 +75,20 @@ export default function AgentShortlistForm(props: { studentId: string; mode: "ad
       .catch(() => ticket === courseTicket.current && setCourses([]));
   }, [catalogueUni]);
 
-  const prefill = (values: Partial<Record<Field, string>>) =>
-    setDraft((d) => ({ ...d, ...Object.fromEntries(Object.entries(values).filter(([k, v]) => v && !touched.current.has(k as Field))) }));
+  const prefill = (values: Partial<Record<Field, string>>) => {
+    const applied = Object.entries(values).filter(([k, v]) => v && !touched.current.has(k as Field));
+    applied.forEach(([k]) => prefilled.current.add(k as Field));
+    setDraft((d) => ({ ...d, ...Object.fromEntries(applied) }));
+  };
   const type = (field: Field, value: string) => {
     touched.current.add(field);
     setDraft((d) => ({ ...d, [field]: value }));
   };
 
   function chooseUniversity(key: string) {
-    setDraft((d) => ({ ...d, university: key, courseId: "", courseTitle: "" }));
+    const stale = [...prefilled.current]; // the old university's prefill must not linger; typed values stay
+    prefilled.current.clear();
+    setDraft((d) => ({ ...d, ...Object.fromEntries(stale.map((f) => [f, ""])), university: key, courseId: "", courseTitle: "" }));
     setTypedCourse(false);
     const picked = parseUniversityKey(key);
     if (picked?.source === "agency") prefill({ entryRequirements: options?.agency.find((u) => u.id === picked.id)?.entry_requirements ?? "" });
@@ -95,6 +107,7 @@ export default function AgentShortlistForm(props: { studentId: string; mode: "ad
     if (problem) return setFailure(problem);
     const payload = buildEntryPayload(draft);
     const body = entry ? changedOnly(payload, buildEntryPayload(draftFromEntry(entry))) : payload;
+    if (entry && Object.keys(body).length === 0) return onCancel(); // nothing changed: no request
     setBusy(true);
     setFailure(null);
     try {
@@ -116,9 +129,9 @@ export default function AgentShortlistForm(props: { studentId: string; mode: "ad
   }
 
   function onKeyDown(e: KeyboardEvent) {
-    if (e.key === "Escape" && !busy) {
-      e.stopPropagation(); // the detail panel closes on Escape too; only the form closes here (Review Focus 4)
-      onCancel();
+    if (e.key === "Escape") {
+      e.stopPropagation(); // the detail panel closes on Escape too; only the form closes here (Review Focus 4), never mid-save
+      if (!busy) onCancel();
     }
   }
 

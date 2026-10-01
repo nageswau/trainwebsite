@@ -1,13 +1,16 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { NOT_COMPLETED } from "@/lib/apiErrors";
 import AgentShortlistForm, { resetCatalogueCache } from "@/components/AgentShortlistForm";
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
-const catalogue = [{ id: "u1", country_id: "c1", slug: "uni-one", name: "Uni One", city: "Dublin", overview: "", eligibility: "", requirements: ["IELTS 6.5", "Transcript"], deadlines: [], scholarships: [] }];
+const uni2 = { id: "u2", country_id: "c1", slug: "uni-two", name: "Uni Two", city: "Cork", overview: "", eligibility: "", requirements: ["GPA 3"], deadlines: [], scholarships: [] };
+const catalogue = [{ id: "u1", country_id: "c1", slug: "uni-one", name: "Uni One", city: "Dublin", overview: "", eligibility: "", requirements: ["IELTS 6.5", "Transcript"], deadlines: [], scholarships: [] }, uni2];
 const countries = [{ id: "c1", slug: "ireland", name: "Ireland" }];
 const agency = { items: [{ id: "a1", name: "Agency U", country: "Malta", city: null, entry_requirements: "Interview", created_at: "", updated_at: "" }], total: 1, limit: 100, offset: 0 };
 const detail = { university: catalogue[0], courses: [{ id: "k1", title: "MSc Data", level: "PG", tuition_fee: "EUR 20,000", intake: "Sep 2027" }] };
+const detail2 = { university: uni2, courses: [{ id: "k2", title: "MSc Other", level: "PG", tuition_fee: "EUR 9,000", intake: "Jan 2028" }] };
 const saved = { id: "e1", university: { source: "catalogue", id: "u1", name: "Uni One", slug: "uni-one", country: "Ireland" }, course: { id: "k1", title: "MSc Data" }, intake: "Sep 2027", tuition_fee: "EUR 20,000", entry_requirements: "IELTS 6.5\nTranscript", created_by: "M", created_at: "", updated_at: "" };
 
 function stubApi(onWrite: (url: string, init: RequestInit) => Response = () => res({ entry: saved }, 201)) {
@@ -16,6 +19,7 @@ function stubApi(onWrite: (url: string, init: RequestInit) => Response = () => r
     if (url.endsWith("/public/universities")) return Promise.resolve(res(catalogue));
     if (url.endsWith("/public/countries")) return Promise.resolve(res(countries));
     if (url.includes("/public/universities/uni-one")) return Promise.resolve(res(detail));
+    if (url.includes("/public/universities/uni-two")) return Promise.resolve(res(detail2));
     if (url.includes("/crm/universities")) return Promise.resolve(res(agency));
     return Promise.resolve(res({}, 404));
   });
@@ -119,9 +123,109 @@ describe("AgentShortlistForm (AGN-007)", () => {
     const select = await screen.findByLabelText("University (required)");
     await waitFor(() => expect(select).not.toBeDisabled());
     fireEvent.change(select, { target: { value: "c:u1" } });
-    fireEvent.change(select, { target: { value: "a:a1" } });
-    release(res(detail));
+    fireEvent.change(select, { target: { value: "c:u2" } });
+    const course = await screen.findByLabelText("Course");
+    release(res(detail)); // A's reply arrives after B's
     await new Promise((r) => setTimeout(r, 20));
-    expect(screen.getByLabelText("Course").tagName).toBe("INPUT");
+    expect(within(screen.getByLabelText("Course")).getByText("MSc Other")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Course")).queryByText("MSc Data")).toBeNull();
+    expect(course).toBeInTheDocument();
+  });
+
+  it("clears an old prefill on university change but keeps typed values", async () => {
+    stubApi();
+    render(<AgentShortlistForm {...props} />);
+    const select = await screen.findByLabelText("University (required)");
+    await waitFor(() => expect(select).not.toBeDisabled());
+    fireEvent.change(screen.getByLabelText("Intake"), { target: { value: "Typed intake" } });
+    fireEvent.change(select, { target: { value: "c:u1" } });
+    fireEvent.change(await screen.findByLabelText("Course"), { target: { value: "k1" } });
+    expect(screen.getByLabelText("Tuition fee")).toHaveValue("EUR 20,000");
+    fireEvent.change(select, { target: { value: "c:u2" } });
+    expect(screen.getByLabelText("Tuition fee")).toHaveValue("");
+    expect(screen.getByLabelText("Entry requirements")).toHaveValue("");
+    expect(screen.getByLabelText("Intake")).toHaveValue("Typed intake");
+  });
+
+  it("re-fetches the agency list on every mount", async () => {
+    const fetchMock = stubApi();
+    const agencyCalls = () => fetchMock.mock.calls.filter(([u]) => String(u).includes("/crm/universities")).length;
+    const first = render(<AgentShortlistForm {...props} />);
+    await waitFor(() => expect(screen.getByLabelText("University (required)")).not.toBeDisabled());
+    first.unmount();
+    render(<AgentShortlistForm {...props} />);
+    await waitFor(() => expect(screen.getByLabelText("University (required)")).not.toBeDisabled());
+    expect(agencyCalls()).toBe(2);
+  });
+
+  it("disables Save while saving and swallows Escape without cancelling", async () => {
+    let finish: () => void = () => {};
+    const hold = new Promise<void>((r) => (finish = r));
+    const fetchMock = stubApi();
+    const base = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => (init?.method === "POST" ? hold.then(() => res({ entry: saved }, 201)) : base(url, init)));
+    props.onCancel.mockClear();
+    const outer = vi.fn();
+    render(<div onKeyDown={outer}><AgentShortlistForm {...props} /></div>);
+    const select = await screen.findByLabelText("University (required)");
+    await waitFor(() => expect(select).not.toBeDisabled());
+    fireEvent.change(select, { target: { value: "a:a1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    expect(await screen.findByRole("button", { name: "Saving…" })).toBeDisabled();
+    fireEvent.keyDown(select, { key: "Escape" });
+    expect(props.onCancel).not.toHaveBeenCalled();
+    expect(outer).not.toHaveBeenCalled();
+    finish();
+    await waitFor(() => expect(props.onSaved).toHaveBeenCalled());
+  });
+
+  async function pickAgencyAndSave(write: (url: string, init: RequestInit) => Response) {
+    stubApi(write);
+    render(<AgentShortlistForm {...props} />);
+    const select = await screen.findByLabelText("University (required)");
+    await waitFor(() => expect(select).not.toBeDisabled());
+    fireEvent.change(select, { target: { value: "a:a1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+  }
+
+  it("404 calls onGone", async () => {
+    props.onGone.mockClear();
+    await pickAgencyAndSave(() => res({}, 404));
+    await waitFor(() => expect(props.onGone).toHaveBeenCalled());
+  });
+
+  it("409 calls onConflict", async () => {
+    props.onConflict.mockClear();
+    await pickAgencyAndSave(() => res({}, 409));
+    await waitFor(() => expect(props.onConflict).toHaveBeenCalled());
+  });
+
+  it("shows NOT_COMPLETED when the network fails", async () => {
+    const fetchMock = stubApi();
+    const base = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => (init?.method === "POST" ? Promise.reject(new TypeError("down")) : base(url, init)));
+    render(<AgentShortlistForm {...props} />);
+    const select = await screen.findByLabelText("University (required)");
+    await waitFor(() => expect(select).not.toBeDisabled());
+    fireEvent.change(select, { target: { value: "a:a1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(NOT_COMPLETED);
+  });
+
+  it("edit sends only the changed fields, and a no-op edit sends nothing", async () => {
+    const fetchMock = stubApi(() => res({ entry: saved }, 200));
+    props.onSaved.mockClear();
+    props.onCancel.mockClear();
+    render(<AgentShortlistForm {...props} mode="edit" entry={saved as never} />);
+    await waitFor(() => expect(screen.getByLabelText("University (required)")).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    expect(props.onCancel).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method)).toBe(false);
+    fireEvent.change(screen.getByLabelText("Intake"), { target: { value: "Jan 2028" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    await waitFor(() => expect(props.onSaved).toHaveBeenCalled());
+    const patch = fetchMock.mock.calls.find(([, init]) => init?.method === "PATCH")!;
+    expect(String(patch[0])).toMatch(/\/students\/s1\/shortlist\/e1$/);
+    expect(JSON.parse(String(patch[1]!.body))).toEqual({ intake: "Jan 2028" });
   });
 });
