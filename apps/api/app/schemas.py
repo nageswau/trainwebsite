@@ -558,6 +558,71 @@ class AgentStudentAssign(BaseModel):
     member_id: UUID | None
 
 
+# AGN-007 (DEC-SCOPE-049, spec §5.3): agency universities and shortlist entries. Server-owned fields (agency, student, authors) are
+# never accepted -- `extra="forbid"` answers 422 (mass assignment). Text goes through clean_free_text (NUL/bidi refused, blank -> None).
+UNIVERSITY_LIMITS = {"name": 200, "country": 120, "city": 120, "entry_requirements": 2000}
+ENTRY_LIMITS = {"course_title": 200, "intake": 120, "tuition_fee": 120, "entry_requirements": 2000}
+
+
+class _AgentUniversityFields(BaseModel):
+    model_config = {"extra": "forbid"}
+    name: str | None = None
+    country: str | None = None
+    city: str | None = None
+    entry_requirements: str | None = None
+
+    @field_validator("name", "country", "city", "entry_requirements")
+    @classmethod
+    def _text(cls, value, info):
+        return clean_free_text(value, UNIVERSITY_LIMITS[info.field_name])
+
+
+class AgentUniversityCreate(_AgentUniversityFields):
+    name: str
+    country: str
+
+    @model_validator(mode="after")
+    def _required(self):
+        if not self.name or not self.country:
+            raise PydanticCustomError("required", "Name and country are required")
+        return self
+
+
+class AgentUniversityUpdate(_AgentUniversityFields):
+    """Omitted = unchanged; null clears city / entry requirements; name and country cannot be cleared."""
+
+    @model_validator(mode="after")
+    def _not_cleared(self):
+        for field in ("name", "country"):
+            if field in self.model_fields_set and not getattr(self, field):
+                raise PydanticCustomError("required", "Name and country cannot be empty")
+        return self
+
+
+class _ShortlistEntryFields(BaseModel):
+    model_config = {"extra": "forbid"}
+    university_id: UUID | None = None
+    agent_university_id: UUID | None = None
+    course_id: UUID | None = None
+    course_title: str | None = None
+    intake: str | None = None
+    tuition_fee: str | None = None
+    entry_requirements: str | None = None
+
+    @field_validator("course_title", "intake", "tuition_fee", "entry_requirements")
+    @classmethod
+    def _text(cls, value, info):
+        return clean_free_text(value, ENTRY_LIMITS[info.field_name])
+
+
+class ShortlistEntryCreate(_ShortlistEntryFields):
+    """The university rules (exactly one source, course belongs) need the database: services/agent_shortlist.validate_entry."""
+
+
+class ShortlistEntryUpdate(_ShortlistEntryFields):
+    """Omitted = unchanged; null clears. The merged row is validated as a whole (spec §5.4)."""
+
+
 class AgentStaffCreate(AgentMasterInvite):
     """AGN-002 (DEC-SCOPE-040 S4): a Master adding a staff login -- the same fields and rules as a Master invite."""
 
