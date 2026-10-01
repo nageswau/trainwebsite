@@ -9,6 +9,9 @@ export const SCHOOL_TIME_ZONE = "Asia/Kolkata";
 // zone is undetectable); formatting in it throws a RangeError, so fall back to India time rather than crash the page.
 export function viewerTimeZone(): string {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  // Newer runtimes (e.g. Node 24) report an unusable zone as undefined rather than "Etc/Unknown", and undefined passes the
+  // check below (it means "default zone"), so a missing zone must fall back explicitly.
+  if (!zone) return SCHOOL_TIME_ZONE;
   try {
     new Intl.DateTimeFormat("en-GB", { timeZone: zone });
     return zone;

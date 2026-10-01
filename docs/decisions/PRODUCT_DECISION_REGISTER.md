@@ -2791,3 +2791,17 @@ in, re-chained after AGN-002's `0047_agent_org_staff` on merge, 2026-10-01, whic
 `/workflows/overseas/agent/crm/students` routes; scope helpers applied to every agent path; new Students panel. With AGN-002 merged,
 Staff browser flows were verified and the named-staff Assign action built (2026-10-01, `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`). Schema, endpoint shapes and screens are fixed in
 `docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md`, not here.
+
+---
+
+### DEC-SCOPE-043 — ENH-028 Bulk data entry for Academic Results, Psychometric, Test Prep and Language records
+
+**ID note (renumbered 2026-10-01 on merging `main`):** recorded in-session as `DEC-SCOPE-042`; `main` gave that number to `AGN-004` first (PR #29), so this entry is `DEC-SCOPE-043`, and its migration moved from `0049` to `0051_school_bulk_uploads`, chained after `0049_agent_students_crm` and `0050_notification_channels`.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-028 (`MEETING_TRANSCRIPT_REQUEST`: *"check for the possibility of bulk uploads for various pages like results, exams, psychometrics tests etc."*) asks for a bulk-entry path per module with idempotent replay, per-row validation that never blocks the batch, and a batch/row audit trail matching the roster upload. Open points: create-only or also update, how a row names a student, parent notifications, size limits, which modules ("exams"), duplicate handling.
+
+**Evidence:** Graphify-led audit, 2026-10-01 (`docs/superpowers/specs/2026-10-01-enh-028-bulk-data-entry-design.md` §1): one bulk pattern exists (`POST /school/students/bulk-upload`, `SchoolRosterUploadBatch`/`Row`); none for `SchoolAcademicResult`, `SchoolPsychometricRecord`, `SchoolTestPrepRecord`, `SchoolLanguageRecord`. `DEC-SCOPE-010` part 2 already put academic-results bulk upload in scope. Baseline browser QA (2026-10-01) found the roster upload fails the whole batch on one over-long cell, has no size cap, and duplicates a re-uploaded file — the design avoids each.
+
+**Resolution:** User answered in-session, 2026-10-01 (`EXPLICIT_APPROVAL`): D1 create-only; D2 rows identify students by `student_code`; D3 parents get the single-create notice after the batch commits; D4 ≤ 1 MB, 1–500 filled-in rows (new endpoints only); D5 modules = Results, Psychometric, Test Prep, Language ("exams" = exam marks as Results; Career records and trainer assessments out); D6 duplicates rejected per row, bulk only. Spec approved with simplifications S1–S5 ("Spec + S1–S5"): no hourly throttle, no batch-read endpoint, no batch status column, no `school_student_id` on report rows, report rows in file order.
+
+**Consequences:** migration `0051_school_bulk_uploads` (two new tables `school_bulk_upload_batches` / `school_bulk_upload_rows`, create-table only); new `apps/api/app/api/school_bulk.py` (four `GET …/bulk-template` and four `POST …/bulk-upload` routes under the modules' existing prefixes); new `SchoolBulkEntryPanel` on the Academic Team and Psychometric Team dashboards. Unchanged: every single-record endpoint, the roster upload and its tables, Draft → Verified → Published and DEC-ROLE-007, tier rules, every reader.
