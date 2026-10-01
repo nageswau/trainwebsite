@@ -489,6 +489,15 @@ class _AgentStudentRecordFields(BaseModel):
     def _text(cls, value, info):
         return clean_free_text(value, _RECORD_LIMITS[info.field_name])
 
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, value):
+        # AGN-005 browser QA5-01 (owner, 2026-10-01): the school mobile rule, so "abc" can no longer be saved and every saved phone
+        # has digits for the duplicate check. Runs after `_text` (trimmed, blank -> None); only a sent phone is checked.
+        if value is not None and not _is_mobile(value):
+            raise PydanticCustomError("invalid_phone", "Enter a phone number of 7–20 digits, spaces, +, -, ( or ) with at least 7 digits")
+        return value
+
     @field_validator("email")
     @classmethod
     def _email(cls, value):
@@ -806,6 +815,11 @@ LIST_MAX_ITEMS = 20
 LIST_ITEM_MAX_LENGTH = 80
 
 
+def _is_mobile(value: str) -> bool:
+    """The mobile rule (ENH-025; agency student phones too, AGN-005 QA5-01): 7-20 of digits, spaces, + - ( ), at least 7 digits."""
+    return bool(_MOBILE.match(value)) and sum(ch.isdigit() for ch in value) >= 7
+
+
 def _clean_text(value, max_length: int) -> str | None:
     if value is None:
         return None
@@ -902,7 +916,7 @@ class StudentMasterFields(CareerPreferencesUpdate):
         value = _clean_text(value, 20)
         if value is None:
             return None
-        if not _MOBILE.match(value) or sum(ch.isdigit() for ch in value) < 7:
+        if not _is_mobile(value):
             raise ValueError("must be 7-20 characters of digits, spaces, +, -, ( or ) with at least 7 digits")
         return value
 

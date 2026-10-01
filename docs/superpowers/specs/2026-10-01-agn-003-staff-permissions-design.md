@@ -92,6 +92,10 @@ Legend:
 The Master-team routes (`POST …/team/masters`, `POST …/team/masters/{id}/deactivate`) sit under Staff Management. They are ❌ for Staff,
 as AGN-002 already does.
 
+> **Note (2026-10-01, AGN-005):** Edit, Delete and Assign Student were N/A when this table was drafted; AGN-004's `/crm/students`
+> routes reached `main` afterwards. The rows as built and tested are in `RBAC_MATRIX.md` §2.8 and
+> `2026-10-01-agn-005-staff-matrix-gap-design.md` §3. This table is kept as designed.
+
 **"Add University" ❌ for Masters** is a deliberate departure from §6's ✅. The route belongs to the admin console and no agent has
 ever had it (P3). It is tested as `403` for both member roles and recorded here so the gap is visible.
 

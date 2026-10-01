@@ -109,7 +109,7 @@ export default function AgentStudentForm({
 
   async function save(confirmDuplicate: boolean) {
     if (inFlight.current) return;
-    const found = validate(values);
+    const found = validate(values, mode === "edit" ? original.current : undefined);
     setErrors(found);
     const firstInvalid = FOCUS_ORDER.find((key) => found[key]);
     if (firstInvalid) {
@@ -181,6 +181,8 @@ export default function AgentStudentForm({
                   autoComplete={f.autoComplete}
                   value={values[f.key]}
                   max={f.type === "date" ? today : undefined}
+                  // AGN-005 QA5-02: a new-student form opens on its first field, so keyboard users start typing where they expect.
+                  autoFocus={mode === "create" && f.key === "full_name"}
                   aria-required={f.key === "full_name" ? true : undefined}
                   aria-invalid={errors[f.key] ? true : undefined}
                   aria-describedby={describedBy(f.key)}

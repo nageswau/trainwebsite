@@ -1,16 +1,20 @@
-"""AGN-003-AC01/AC02 -- the EVID-015 §6 matrix as built (spec §3). Staff have both optional toggles OFF here; the toggles' ON side
-is tested in test_agn_003_permissions.py and test_agn_003_verify.py. Rows with no route for any agent (Edit/Delete/Assign Student,
-Edit Application, Change Application Status, Staff Performance, CRM Settings) are N/A in spec §3 and have nothing to call.
+"""AGN-003-AC01/AC02 and AGN-005-AC01..AC03 -- the EVID-015 §6 matrix as built (AGN-003 spec §3, AGN-005 spec §3). Staff have both
+optional toggles OFF here; the toggles' ON side is tested in test_agn_003_permissions.py and test_agn_003_verify.py. The student rows
+(Create/View/Edit/Delete/Assign Student) use AGN-004's /crm/students routes on a student assigned to the caller, so a refusal comes
+from the Master-only check and not from the 404 existence mask. Rows with no route for any agent (Edit Application, Change
+Application Status, Staff Performance, CRM Settings) are N/A and have nothing to call.
 Two Master cells are proven elsewhere: a Master deactivating another Master (tests/test_agn_001_team.py::
 test_a_pending_invitee_can_still_be_deactivated_by_an_accepted_master, plus test_a_master_may_deactivate_themselves_once_another_master_has_accepted)
 and a Master claiming a commission (tests/test_agn_001_tenancy.py::test_a_second_master_sees_and_claims_what_the_first_created)."""
 
 import pytest
+from sqlalchemy import select
 
-from app.models import AgentOrgMember, StudentDocument, User
+from app.models import AgentOrgMember, AgentStudent, AuditLog, StudentDocument, User
 from tests.agn001_helpers import client_for, mk_active_org, mk_user, uniq
 from tests.agn002_helpers import STAFF, mk_staff
 from tests.agn003_helpers import agency_document, mk_university
+from tests.agn004_helpers import RECORDS, mk_record
 
 TEAM = "/api/v1/workflows/overseas/agent/team"
 VERIFY = "/api/v1/workflows/overseas/documents/{document}/verify"
@@ -38,6 +42,9 @@ STAFF_REFUSED = [
     ("Commission", "post", "/api/v1/workflows/overseas/agent/commissions/{zero}/claim", None, "Only an agency Master can view commissions"),
     ("Commission", "get", PORTAL + "/commissions", None, "Only an agency Master can open this page"),
     ("Add University", "post", "/api/v1/admin/universities", {}, "Admin role required"),
+    ("Delete Student", "post", RECORDS + "/{record}/archive", None, "Only an agency Master can archive students"),
+    ("Delete Student", "post", RECORDS + "/{archived_record}/unarchive", None, "Only an agency Master can archive students"),
+    ("Assign Student", "post", RECORDS + "/{record}/assign", {"member_id": "{other_staff}"}, "Only an agency Master can assign students"),
 ]
 
 # (§6 row, method, path, json body, expected status) -- succeeds for staff AND for a Master.
@@ -56,6 +63,10 @@ BOTH_ALLOWED = [
     ("Upload Documents", "get", PORTAL + "/documents", None, 200),
     ("University Database", "get", "/api/v1/public/universities", None, 200),
     ("University Database", "get", "/api/v1/public/universities/{university_slug}", None, 200),
+    ("Create Student", "post", RECORDS, {"full_name": "Matrix New Student"}, 201),
+    ("View Students", "get", RECORDS, None, 200),
+    ("View Students", "get", RECORDS + "/{record}", None, 200),
+    ("Edit Student", "patch", RECORDS + "/{record}", {"full_name": "Edited Student"}, 200),
 ]
 
 # Master-only cells that succeed for a Master.
@@ -76,6 +87,9 @@ MASTER_ALLOWED = [
     ("Create Staff Login", "post", STAFF + "/{other_staff}/reset", None, 200),
     ("Deactivate Staff", "post", STAFF + "/{deactivated_staff}/reactivate", None, 200),
     ("Reject Documents", "patch", VERIFY, {"verification_status": "changes_required"}, 200),
+    ("Delete Student", "post", RECORDS + "/{record}/archive", None, 200),
+    ("Delete Student", "post", RECORDS + "/{archived_record}/unarchive", None, 200),
+    ("Assign Student", "post", RECORDS + "/{record}/assign", {"member_id": "{other_staff}"}, 200),
 ]
 
 
@@ -95,7 +109,11 @@ async def _world(db_session) -> tuple[dict, dict, dict]:
     world = await agency_document(db_session, ctx, assigned_to=caller["member"])  # G4: staff reach their assigned students
     unlinked = await mk_user(db_session, role="overseas_student", full_name="Unlinked Student")
     other_university = await mk_university(db_session)
+    # AGN-005: agency students with no login, assigned to the caller (staff reach only their assigned students, DEC-SCOPE-042 G4).
+    record = await mk_record(db_session, agent=ctx["master"], full_name="Matrix Record", assigned_member=caller["member"])
+    archived = await mk_record(db_session, agent=ctx["master"], full_name="Matrix Archived", assigned_member=caller["member"], status="archived")
     ids = {
+        "record": record.id, "archived_record": archived.id,
         "other_staff": other["member"].id, "master_member": ctx["member"].id, "document": world["document"].id,
         "student": world["student"].id, "application": world["application"].id, "university": world["university"].id,
         "other_university": other_university.id, "university_slug": world["university"].slug, "deactivated_staff": away["member"].id,
@@ -124,6 +142,13 @@ async def test_staff_refused(db_session, row, method, path, body, detail):  # AG
     assert document.verification_status == "pending"
     assert (other.status, other.can_verify_documents, other.can_view_reports) == ("active", False, False)
     assert other_user.full_name == "Other Staff"
+    record = await db_session.get(AgentStudent, ids["record"], populate_existing=True)
+    archived = await db_session.get(AgentStudent, ids["archived_record"], populate_existing=True)
+    assert (record.status, record.assigned_member_id, record.full_name) == ("active", caller["member"].id, "Matrix Record")
+    assert archived.status == "archived"
+    student_ids = [str(ids["record"]), str(ids["archived_record"])]
+    audits = (await db_session.execute(select(AuditLog).where(AuditLog.action.like("agent_student.%"), AuditLog.entity_id.in_(student_ids)))).scalars().all()
+    assert audits == [], f"{row}: a refused call wrote {[a.action for a in audits]}"
 
 
 @pytest.mark.asyncio
