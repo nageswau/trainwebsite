@@ -26,6 +26,14 @@ FULL = {
 KEYS = tuple(FULL)
 
 
+@pytest.fixture(autouse=True)
+def _app_loggers_enabled():
+    """Alembic's env.py calls `logging.config.fileConfig`, which DISABLES loggers that already exist; a migration test that runs
+    in-process earlier in the session would silence `app.school` and caplog would see nothing (same guard as test_enh_030_mark.py)."""
+    logging.getLogger("app.school").disabled = False
+    yield
+
+
 async def _world(db, students: int = 1) -> dict:
     w = await mk_school(db, label="E27", students=students)
     w["psych"] = await mk_staff(db, w["school"], w["admin"], role="psychometric_team")
