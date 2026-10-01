@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { newIdempotencyKey } from "@/lib/idempotencyKey";
 
 type RequestResult = {
   id: string;
@@ -26,7 +27,7 @@ export default function DataPrivacyPanel() {
     try {
       const response = await fetch("/api/v1/account/data-requests", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ type }),
       });
       const data = await response.json().catch(() => null);

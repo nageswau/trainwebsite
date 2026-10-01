@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import BulkColumnReference from "@/components/BulkColumnReference";
 import type { BulkTarget } from "@/lib/bulkEntry";
+import { newIdempotencyKey } from "@/lib/idempotencyKey";
 
 type RowReport = { row_number: number; status: string; error_message: string | null; student_code: string | null; created_record_id: string | null };
 type BatchReport = { id: string; total_rows: number; accepted_count: number; rejected_count: number; rows: RowReport[] };
@@ -34,7 +35,7 @@ export default function SchoolBulkEntryPanel({ target, hasStudents }: { target: 
 
   function choose(event: ChangeEvent<HTMLInputElement>) {
     const chosen = event.target.files?.[0];
-    setFile(chosen ? { file: chosen, key: crypto.randomUUID() } : null);
+    setFile(chosen ? { file: chosen, key: newIdempotencyKey() } : null);
     setError(null);
   }
 
