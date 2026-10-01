@@ -1,7 +1,7 @@
 # AGN-021 — View Staff Activity: Design
 
 **Status:** approved in conversation, written for owner review (2026-10-01). **Branch:** `feature/agn-021-staff-activity` (from `origin/main` 6360dc0).
-**Decision:** `DEC-SCOPE-045` (provisional number; A1–A5 below, recorded with the code). **Backlog:** `ENHANCEMENT_BACKLOG.md` §AGN-021 (added with the code).
+**Decision:** `DEC-SCOPE-046` (provisional number; A1–A5 below, recorded with the code). **Backlog:** `ENHANCEMENT_BACKLOG.md` §AGN-021 (added with the code).
 **Builds on:** `AGN-001` (`DEC-SCOPE-038`), `AGN-002` (`DEC-SCOPE-040`), `AGN-004` (`DEC-SCOPE-042`), `AGN-003` (`DEC-SCOPE-044`).
 **Amended 2026-10-01 after the final review (R4):** §5.1 log line, §6 error state and §6 edit line now describe the implemented behaviour.
 **Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Staff "View staff activity". The source's wording is not the approval; the owner's statement and answers are.
@@ -13,7 +13,7 @@
 The owner's `AGN-021` statement (in-session, 2026-10-01): requirement **"View staff activity" (§2 Staff)**; acceptance criteria:
 **a Staff member's actions appear within one page load; other orgs' users → 404.**
 
-**Owner answers (in-session 2026-10-01, `EXPLICIT_APPROVAL`; recorded as `DEC-SCOPE-045`):**
+**Owner answers (in-session 2026-10-01, `EXPLICIT_APPROVAL`; recorded as `DEC-SCOPE-046`):**
 - **A1 — What is activity.** Student-journey work only: student records created / edited / saved over a duplicate warning, a student
   account linked, an application created, a document uploaded, a document verified. Sign-ins, password and profile changes, messages,
   support tickets and lookup searches are not shown.
@@ -166,7 +166,7 @@ The owner's AC map: "appear within one page load" = AC01 (+ AC07 Refresh); "othe
 
 ## 10. Documentation to update with the code
 
-`PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-045` A1–A5; D13/S1/D1 parentheticals: staff activity decided, staff performance parked),
+`PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-046` A1–A5; D13/S1/D1 parentheticals: staff activity decided, staff performance parked),
 `ENHANCEMENT_BACKLOG.md` (§AGN-021; EVID-015 row), `CONFLICT_MATRIX.md` `C-10`, `RBAC_MATRIX.md` (Staff activity row: Master ✅, Staff ❌),
 `API_CONTRACT.md` (the route), `SCREEN_CATALOG.md` + `screen_catalog.json` (SCR-AGT-007 Activity section), `ROLE_NAVIGATION.md` (no change
 — same Team page; note only), `RTM.md` (AGN-021 row), `RAID.md` (audit-log retention open; possible composite index later). The old

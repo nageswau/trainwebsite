@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Decision `DEC-SCOPE-045` A1–A5 (provisional number). Staff performance/KPIs stay parked under `C-10`.
+- Decision `DEC-SCOPE-046` A1–A5 (provisional number). Staff performance/KPIs stay parked under `C-10`.
 - Allow-list (exact, in this order): `agent_student.create`, `agent_student.update`, `agent_student.duplicate_override`, `agent.student_link`, `overseas.application.create`, `document.upload`, `document.verify`.
 - Route: `GET /api/v1/workflows/overseas/agent/team/staff/{member_id}/activity`, `limit` 1–100 default 25, `offset` 0–10000 default 0; response `{items, total, limit, offset}`; item `{id, at, action, subject, fields}`.
 - 404 detail exactly `"Staff member not found"` (existing); Staff → existing 403 `"Only an agency Master can manage the team"`.
@@ -69,7 +69,7 @@ docker compose -p agn021 -f docker-compose.yml -f docker-compose.ci.yml --profil
 - [ ] **Step 1: Write the failing tests** — `apps/api/tests/test_agn_021_activity.py`:
 
 ```python
-"""AGN-021 -- a Master views one staff member's student-journey activity (spec §4-§5, §7; DEC-SCOPE-045 A1-A5)."""
+"""AGN-021 -- a Master views one staff member's student-journey activity (spec §4-§5, §7; DEC-SCOPE-046 A1-A5)."""
 
 import uuid
 from datetime import UTC, datetime
@@ -273,7 +273,7 @@ async def _staff_member(db: AsyncSession, org: AgentOrg, member_id) -> tuple[Age
 - [ ] **Step 4: Create the read** — `apps/api/app/services/staff_activity.py`:
 
 ```python
-"""AGN-021 / DEC-SCOPE-045 -- a Master reads one staff member's student-journey work from the audit log.
+"""AGN-021 / DEC-SCOPE-046 -- a Master reads one staff member's student-journey work from the audit log.
 
 Spec: docs/superpowers/specs/2026-10-01-agn-021-staff-activity-design.md §4-§5. Read-only: no new audit writes, no lock, no cache
 (A4: an action is visible on the next request). Subjects are things the Master may already read -- every entity a staff member can
@@ -370,7 +370,7 @@ async def staff_activity_page(db: AsyncSession, member: AgentOrgMember, *, limit
 
 (`names.get(None, UNAVAILABLE)` is safe for a non-UUID `entity_id`: `None` is a valid dict key and never stored.)
 
-- [ ] **Step 5: Add the route** — `apps/api/app/api/agent_team.py`: add `find_staff_member` to the `app.services.agent_orgs` import list; add `from app.services.staff_activity import MAX_ACTIVITY_OFFSET, staff_activity_page`; append to the module docstring `AGN-021 -- a staff member's activity (DEC-SCOPE-045; read-only).`; after `staff_permissions`:
+- [ ] **Step 5: Add the route** — `apps/api/app/api/agent_team.py`: add `find_staff_member` to the `app.services.agent_orgs` import list; add `from app.services.staff_activity import MAX_ACTIVITY_OFFSET, staff_activity_page`; append to the module docstring `AGN-021 -- a staff member's activity (DEC-SCOPE-046; read-only).`; after `staff_permissions`:
 
 ```python
 @router.get("/staff/{member_id}/activity")
@@ -381,7 +381,7 @@ async def staff_activity(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """AGN-021 (DEC-SCOPE-045 A1-A4): one staff member's student-journey work, newest first. Master-only; another agency's member,
+    """AGN-021 (DEC-SCOPE-046 A1-A4): one staff member's student-journey work, newest first. Master-only; another agency's member,
     a Master and an unknown id are the same 404. Read-only: no lock, no commit, no cache."""
     membership = _require_master(user)
     member = await find_staff_member(db, membership.org_id, member_id)
@@ -533,7 +533,7 @@ Expected: FAIL — cannot resolve `@/components/AgentStaffActivity` / `activityL
 - [ ] **Step 3: Add the type and labels** — append to `apps/web/lib/agentStaff.ts`:
 
 ```ts
-// AGN-021 (DEC-SCOPE-045): one line of a staff member's activity, as GET …/staff/{id}/activity returns it.
+// AGN-021 (DEC-SCOPE-046): one line of a staff member's activity, as GET …/staff/{id}/activity returns it.
 export type StaffActivityItem = { id: string; at: string; action: string; subject: string; fields: string[] | null };
 
 export const ACTIVITY_LABELS: Record<string, string> = {
@@ -567,7 +567,7 @@ const UNABLE = "Unable to load activity.";
 
 class Refused extends Error {}
 
-// AGN-021 (DEC-SCOPE-045 A1-A4): a staff member's student-journey work, shown inside their row on the Team page. Read on every
+// AGN-021 (DEC-SCOPE-046 A1-A4): a staff member's student-journey work, shown inside their row on the Team page. Read on every
 // open / page / Refresh (no cache), so a new action shows on the next load. Only the newest request may update the screen.
 export default function AgentStaffActivity({ member, onClose }: { member: StaffMember; onClose: () => void }) {
   const [data, setData] = useState<Page<StaffActivityItem> | null>(null);
@@ -802,13 +802,13 @@ git commit -m "test(agn-021): e2e -- staff work appears in the Master's activity
 
 **Files:** `docs/decisions/PRODUCT_DECISION_REGISTER.md`, `docs/delivery/ENHANCEMENT_BACKLOG.md`, `docs/evidence/CONFLICT_MATRIX.md`, `docs/architecture/RBAC_MATRIX.md`, `docs/architecture/API_CONTRACT.md`, `docs/ux/SCREEN_CATALOG.md`, `docs/ux/screen_catalog.json`, `docs/ux/ROLE_NAVIGATION.md`, `docs/quality/RTM.md`, `docs/delivery/RAID.md`
 
-- [ ] **Step 1: Decision** — add `### DEC-SCOPE-045 — Agent staff activity (AGN-021)` after `DEC-SCOPE-044`, in its format: ID note (provisional; renumber on merge if taken), Question (the owner's AGN-021 statement and AC verbatim from spec §1), Evidence (EVID-015 §2; spec §4 audit table), Conflicts recorded (earlier AGN-021 scope superseded by AGN-003 PR #33 — owner re-scoped in-session 2026-10-01), Resolution A1–A5 verbatim from spec §1 (`EXPLICIT_APPROVAL`), Consequences (route, two services, Activity on the staff row; no migration). Update the D13 (DEC-SCOPE-038), S1 (DEC-SCOPE-040) and D1 (DEC-SCOPE-042) parentheticals: "staff activity decided as `DEC-SCOPE-045` (`AGN-021`); staff performance remains blocked".
+- [ ] **Step 1: Decision** — add `### DEC-SCOPE-046 — Agent staff activity (AGN-021)` after `DEC-SCOPE-044`, in its format: ID note (provisional; renumber on merge if taken), Question (the owner's AGN-021 statement and AC verbatim from spec §1), Evidence (EVID-015 §2; spec §4 audit table), Conflicts recorded (earlier AGN-021 scope superseded by AGN-003 PR #33 — owner re-scoped in-session 2026-10-01), Resolution A1–A5 verbatim from spec §1 (`EXPLICIT_APPROVAL`), Consequences (route, two services, Activity on the staff row; no migration). Update the D13 (DEC-SCOPE-038), S1 (DEC-SCOPE-040) and D1 (DEC-SCOPE-042) parentheticals: "staff activity decided as `DEC-SCOPE-046` (`AGN-021`); staff performance remains blocked".
 
 - [ ] **Step 2: Backlog** — `ENHANCEMENT_BACKLOG.md`: `## AGN-021` section in the AGN-003 format (business requirement, existing behaviour, decisions, dependencies AGN-001/002/003/004, AGN-021-AC01…AC07 = spec §7, regression risks = spec §9, status); summary-table row; decision-table row; the EVID-015 row ("staff activity → AGN-021; staff performance and CRM settings stay parked").
 
 - [ ] **Step 3: Architecture + UX** — `RBAC_MATRIX.md`: a "View staff activity" row (Master ✅, Staff ❌ 403, other agency 404) beside the Staff Performance N/A row; `API_CONTRACT.md`: the route (params, item shape, 403/404/422, allow-list, never-returned fields); `SCREEN_CATALOG.md` + `screen_catalog.json`: SCR-AGT-007 gains the Activity section (states, page size 10, Refresh/Close); `ROLE_NAVIGATION.md`: one note under Agent (Team page, Masters only; no new nav item).
 
-- [ ] **Step 4: RAID + C-10** — `RAID.md`: audit-log retention still open (activity shows everything retained); a composite `(user_id, created_at)` index if `audit_logs` grows (not built). `CONFLICT_MATRIX.md` `C-10`: staff activity lifted by `DEC-SCOPE-045`.
+- [ ] **Step 4: RAID + C-10** — `RAID.md`: audit-log retention still open (activity shows everything retained); a composite `(user_id, created_at)` index if `audit_logs` grows (not built). `CONFLICT_MATRIX.md` `C-10`: staff activity lifted by `DEC-SCOPE-046`.
 
 - [ ] **Step 5: Lite backend regression**
 
@@ -821,7 +821,7 @@ Expected: PASS. Also `cd apps/web && npx vitest run && npx tsc --noEmit && npm r
 
 ```bash
 git add docs/
-git commit -m "docs(agn-021): DEC-SCOPE-045, backlog, RBAC/API, screens, RTM evidence, RAID"
+git commit -m "docs(agn-021): DEC-SCOPE-046, backlog, RBAC/API, screens, RTM evidence, RAID"
 ```
 
 ---

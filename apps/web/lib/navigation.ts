@@ -41,8 +41,8 @@ export const SCHOOL_NAV: Record<string, NavItem[]> = {
   parent: ["dashboard", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/parent/${x}` })),
   // SCH-004/005/006 -- single-item nav, same shape as principal/teacher/parent above.
   "academic-team": ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/academic-team/${x}` })),
-  // ENH-011: Skills (Soft Skills / Digital Skills batches).
-  "career-counselor": ["dashboard", "skills"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/career-counselor/${x}` })),
+  // ENH-011: Skills (Soft Skills / Digital Skills batches). ENH-020: Funding (loan / scholarship / funding support cases).
+  "career-counselor": ["dashboard", "skills", "funding"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/career-counselor/${x}` })),
   "psychometric-team": ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/psychometric-team/${x}` })),
 };
 export const IT_PUBLIC:NavItem[] = [

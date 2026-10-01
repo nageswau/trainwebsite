@@ -67,7 +67,7 @@ settings stay parked.
 routes, plus agent document verification. Assignment/ownership, staff performance and CRM settings stay parked.
 
 **Revision 9 (2026-10-01):** the owner brought "View staff activity" (`EVID-015` §2 Staff) into scope as **AGN-021**, decided as
-`DEC-SCOPE-045` (A1–A5): a Master reads a staff member's student-journey activity from the existing audit log. Staff performance
+`DEC-SCOPE-046` (A1–A5; drafted as `045`, renumbered on merging `main` because `ENH-020` holds `045`): a Master reads a staff member's student-journey activity from the existing audit log. Staff performance
 and CRM settings stay parked.
 
 ## 0. Scope and exclusions (read this before the backlog)
@@ -137,7 +137,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | ENH-017 | School-visible global education pipeline dashboard *(now owns Alumni Network)* — **Complete (verified 2026-09-29)** (2026-09-29, `DEC-SCOPE-036`; Alumni Network not built, follow-up) | Medium | Medium | No | SCH-010 (bridge, already built) |
 | ENH-018 | School feedback capture | Small | Low | Yes | — |
 | ENH-019 | School event calendar | Small | Low | Yes | — |
-| ENH-020 | Financial support / loan assistance tracking | Medium | Medium | Yes | — |
+| ENH-020 | Financial support / loan assistance tracking — **Complete (verified 2026-10-01, `DEC-SCOPE-045`): audit found no Overseas equivalent; new School tracker** | Medium | Medium | Yes | — |
 | ENH-021 | Internship management | Medium | Low | Yes | — |
 | ENH-022 | Tier-gated feature access enforcement | Medium | Medium | No | — (build early) |
 | ENH-023 | Partnership tier change (upgrade/downgrade) workflow | Medium | High | No (history table optional) | ENH-022 |
@@ -950,7 +950,7 @@ gap, but deliberately not converted into a full ENH item this pass (reason given
 | 18 | Scholarship Management (school-visible) | ⚠️ Partial | **ENH-017** shows Scholarships as *not tracked* (`ScholarshipApplication` has no school-student link) — follow-up, not tracked |
 | 19 | Application Support (status-only, school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017**: high-level stage only, application detail never selected or returned (§19 boundary enforced at the API, key-set and planted-value tests) |
 | 20 | Visa Tracking (school-visible) | ✅ Complete (verified 2026-09-29) | **ENH-017**: Visa funnel stage (a `VisaCase` exists) and a per-student visa stage label; visa outcomes are a follow-up, not tracked |
-| 21 | Financial Support / Loan Assistance | ❌ Gap | See **ENH-020** |
+| 21 | Financial Support / Loan Assistance | ✅ Complete (verified 2026-10-01) | **ENH-020** (`DEC-SCOPE-045`) |
 | 22 | Internship Management | ❌ Gap | See **ENH-021** |
 | 23 | Parent Portal | ✅ Built | `SCH-007`; "Skills"/"Portfolio" sub-items depend on ENH-012, ENH-011 |
 | 24 | School Event Calendar | ❌ Gap | See **ENH-019** |
@@ -1983,6 +1983,34 @@ whether this duplicates existing Overseas-domain functionality.
 
 **Regression risks.** Building a duplicate tracker alongside an existing Overseas one would itself be a
 regression risk (data fragmentation) — the primary reason this item leads with an audit requirement.
+
+**Audit result and decision (2026-10-01).** No Overseas-domain equivalent exists (no loan/funding model or route; the
+`finance/` package is empty; `ScholarshipApplication` is overseas-only with no school-student link and a single
+`submitted` status). Built as option (b), a new School tracker — `DEC-SCOPE-045`. Spec:
+`docs/superpowers/specs/2026-10-01-enh-020-funding-support-tracking-design.md` (acceptance criteria AC01–AC20); plan:
+`docs/superpowers/plans/2026-10-01-enh-020-funding-support-tracking.md`. The backlog's `school_student` viewer does not exist
+(no student login, DEC-ROLE-004) and `require_tier()` does not exist (`require_school_entitlement` is used).
+
+**Status (2026-10-01): COMPLETE (verified 2026-10-01 at merge `0f8ed2e`, `main` @ `6360dc0` merged in)** on
+`feature/enh-020-funding-tracker`. Fresh evidence after the merge (isolated Compose project `enh020`, images rebuilt from that HEAD):
+backend full suite **2700 passed / 14 failed** — all 14 the provider-credential baseline (11 Razorpay `test_pay_001_stu_010`,
+3 Zoho "not configured"), no ENH-020 test among them; merge-sensitive set (all ENH-020, ENH-028, AGN-003, SCH-011, ENH-016/017,
+migration tests) **435/435**. Web: vitest **133 files / 1391 tests**; `tsc` exit 0; `eslint` 0 errors (31 baseline warnings);
+`next build` exit 0 (88/88 static pages; the funding route is dynamic). `ruff check` clean on every ENH-020 file; `mypy` adds no
+error (266 repo-wide, none on ENH-020 lines). Migration `0053_school_funding_records` (cut as `0051`, re-chained after ENH-028's
+`0051` and AGN-003's `0052`): single head; empty-DB upgrade → downgrade → upgrade OK; upgrade SQL is CREATE TABLE + 3 indexes only,
+downgrade drops only that table; `alembic check` shows only two drifts that pre-date this branch (`0035`, `0049`). Playwright:
+`enh-020-funding-support` 6/6 plus `enh-026`, `sch-011`, `enh-015`, `enh-016`, `enh-017`, `sch-007`, `enh-028`, `agn-003` all pass
+(24 passed); `enh-022` QA-022-05 and `enh-023` downgrade fail identically on a base-commit build and their files are unchanged on
+`main` and this branch (pre-existing, not ENH-020). Browser verification (isolated Chromium, every role): **49/49 checks** —
+AC01–AC14, AC16, AC17, AC20 and QA-01..06 by browser behaviour; AC18/AC19 by browser-triggered actions plus database and log
+checks (7 denial rows for 7 refusals, 4 tier rows; 0 audit rows, notifications or log lines with case contents); AC15 is not
+browser-testable (database at `0053`). No skipped/focused tests, no debug code, no secrets (only the shared test fixture password)
+in the diff. Independent Codex review waived by the user ("ignore codex review"); a fresh whole-branch review ran instead (2
+Important accessibility findings fixed with tests). **Still `NEEDS_CONFIRMATION` (not blocking):** a case left open at a previous
+school stays open after a transfer (follows from D7/D12); QA-07 (refused page reads audited) and QA-08 (counsellor notes visible
+to parents) — product calls. Deferred minors: `expected_status: null` gives a 409; tier check runs before the final-case check;
+`notes` accepts non-text JSON and bidi overrides; the card's "Updated by" falls back to the creator.
 
 **Complexity:** Medium (pending audit). **Risk:** Medium.
 
@@ -3282,13 +3310,13 @@ pending-only agent review under a row lock.
 
 **Business requirement.** The owner's `AGN-021` statement (in-session, 2026-10-01): requirement **"View staff activity" (§2 Staff)**;
 acceptance criteria: **a Staff member's actions appear within one page load; other orgs' users → 404.** Referring to `EVID-015`
-(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2. Decided as `DEC-SCOPE-045` (A1–A5).
+(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2. Decided as `DEC-SCOPE-046` (A1–A5).
 
 **Existing behavior.**
 - The seven student-journey actions are already audited with the staff user as `user_id` (`agent_student.create`/`update`/`duplicate_override`, `agent.student_link`, `overseas.application.create`, `document.upload`, `document.verify`).
 - No route or screen reads them for a Master; `GET /admin/audit` is admin-only and not tenant-scoped.
 
-**Expected behavior.** Per `DEC-SCOPE-045`:
+**Expected behavior.** Per `DEC-SCOPE-046`:
 - A Master sees a staff member's activity (time, plain label, subject; field names for an edit) newest first, read fresh on every request.
 - Staff are refused (`403`); another agency's user, a Master's own member id and an unknown id are `404 "Staff member not found"`.
 - Deactivated staff remain viewable. Notes, values, emails and ids are never shown.
@@ -3490,7 +3518,7 @@ item, only for the progress-view question).
 | ENH-025 | Scope is mandatory (same directive). Needs a *design* decision on whether Career interests/Global education interest/Preferred countries/Preferred courses live on `SchoolStudent` directly or inside a `SCH-004` career-guidance record | None exists |
 | ENH-014 | `DEC-INTEGRATION-0xx` — WhatsApp/SMS provider selection, plus a DPDP/privacy-consent review | None exists |
 | ENH-016 | Indirectly blocked on Appendix A item 3 (entitlement quota vs. `DEC-SCOPE-017`) before its Service Utilization view is meaningful | See Appendix A |
-| ENH-020 | Audit-first: confirm whether this duplicates an existing Overseas-domain capability before any Decision ID is even drafted | None exists |
+| ENH-020 | Audit-first: confirm whether this duplicates an existing Overseas-domain capability before any Decision ID is even drafted | **Resolved 2026-10-01: `DEC-SCOPE-045`** (audit: no Overseas duplicate) |
 | ENH-022 | `DEC-SCOPE-027` — enforcement strictness (hard `403` vs. soft warning) for out-of-tier or expired-partnership access | **Resolved 2026-09-23:** hard `403`, expired = no tier (D1–D12, `PRODUCT_DECISION_REGISTER.md`) |
 | ENH-023 | `DEC-SCOPE-0xx` — downgrade policy for in-flight Platinum-tier commitments (grandfather / wind-down / immediate) | None exists |
 | ENH-010 | `DEC-SCOPE-025` — "School Master" (`School CRM.md` Part B §2) = `school_coordinator`; activate/deactivate scope mapping proposed, drafted 2026-09-22 | Drafted, `UNCONFIRMED` |
@@ -3500,7 +3528,7 @@ item, only for the progress-view question).
 | AGN-002 | `DEC-SCOPE-040` — staff access, model, reset, fields/limits, activation, tenancy/audit | **Resolved 2026-09-30** (S1–S6, `EXPLICIT_APPROVAL` in-session) |
 | AGN-004 | `DEC-SCOPE-042` — students with no login, staff assignment, archive, duplicate warning, relation to AGN-002 | **Resolved 2026-09-30** (D1, D3–D5, D7, D8, G1–G5, `EXPLICIT_APPROVAL` in-session; number provisional) |
 | AGN-003 | `DEC-SCOPE-044` — optional rows, toggle granularity, matrix reach, student scope, agent review, staff outcome | **Resolved 2026-10-01** (P1–P6 `EXPLICIT_APPROVAL` in-session; P7–P9 design assumptions) |
-| AGN-021 | `DEC-SCOPE-045` — what counts as activity, viewers, detail, freshness, source | **Resolved 2026-10-01** (A1–A5, `EXPLICIT_APPROVAL` in-session) |
+| AGN-021 | `DEC-SCOPE-046` — what counts as activity, viewers, detail, freshness, source | **Resolved 2026-10-01** (A1–A5, `EXPLICIT_APPROVAL` in-session) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
@@ -3537,7 +3565,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30); the §6 permission matrix moved out to AGN-003 (`DEC-SCOPE-044`, Rev. 8); staff activity moved out to AGN-021 (`DEC-SCOPE-045`, Rev. 9).** Still parked: staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004, `DEC-SCOPE-044` covers AGN-003, `DEC-SCOPE-045` covers AGN-021; none yet for the rest |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30); the §6 permission matrix moved out to AGN-003 (`DEC-SCOPE-044`, Rev. 8); staff activity moved out to AGN-021 (`DEC-SCOPE-046`, Rev. 9).** Still parked: staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004, `DEC-SCOPE-044` covers AGN-003, `DEC-SCOPE-046` covers AGN-021; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

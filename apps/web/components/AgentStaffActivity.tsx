@@ -21,7 +21,7 @@ class LoadFailed extends Error {
   }
 }
 
-// AGN-021 (DEC-SCOPE-045 A1-A4): a staff member's student-journey work, shown inside their row on the Team page. Read on every
+// AGN-021 (DEC-SCOPE-046 A1-A4): a staff member's student-journey work, shown inside their row on the Team page. Read on every
 // open / page / Refresh (no cache), so a new action shows on the next load. Only the newest request may update the screen.
 export default function AgentStaffActivity({ member, onClose }: { member: StaffMember; onClose: () => void }) {
   const [data, setData] = useState<Page<StaffActivityItem> | null>(null);

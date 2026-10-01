@@ -1,4 +1,4 @@
-"""AGN-021 -- a Master views one staff member's student-journey activity (spec §4-§5, §7; DEC-SCOPE-045 A1-A5)."""
+"""AGN-021 -- a Master views one staff member's student-journey activity (spec §4-§5, §7; DEC-SCOPE-046 A1-A5)."""
 
 import uuid
 from datetime import UTC, datetime

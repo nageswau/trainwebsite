@@ -1,7 +1,7 @@
 """AGN-001 -- an agency's Master team: list, invite, deactivate (DEC-SCOPE-038 D4, D8, D9; spec §5.4).
 AGN-002 -- the agency's staff logins: list, create, edit, deactivate, reactivate, reset (DEC-SCOPE-040; spec §6).
 AGN-003 -- a staff member's optional permissions (DEC-SCOPE-044; spec §8).
-AGN-021 -- a staff member's activity (DEC-SCOPE-045; read-only).
+AGN-021 -- a staff member's activity (DEC-SCOPE-046; read-only).
 
 Only an active Master of an ACTIVE organisation reaches these routes (same gate as every agent route, plus the member role);
 every change locks the organisation row so codes, the throttles, the 3-Master limit and the last-Master rule hold under
@@ -201,7 +201,7 @@ async def staff_activity(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """AGN-021 (DEC-SCOPE-045 A1-A4): one staff member's student-journey work, newest first. Master-only; another agency's member,
+    """AGN-021 (DEC-SCOPE-046 A1-A4): one staff member's student-journey work, newest first. Master-only; another agency's member,
     a Master and an unknown id are the same 404. Read-only: no lock, no commit, no cache."""
     membership = _require_master(user)
     member = await find_staff_member(db, membership.org_id, member_id)

@@ -1,4 +1,4 @@
-"""AGN-021 / DEC-SCOPE-045 -- a Master reads one staff member's student-journey work from the audit log.
+"""AGN-021 / DEC-SCOPE-046 -- a Master reads one staff member's student-journey work from the audit log.
 
 Spec: docs/superpowers/specs/2026-10-01-agn-021-staff-activity-design.md §4-§5. Read-only: no new audit writes, no lock, no cache
 (A4: an action is visible on the next request). Subjects are things the Master may already read -- every entity a staff member can

@@ -154,7 +154,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
   their Reports permission (`can_view_reports`, off by default; `agentNavFor(nav, memberRole, permissions)` from `user.agent_permissions`).
   Masters' navigation is unchanged. A typed `/overseas/agent/reports` URL without the permission shows the access-unavailable card
   (server `403`). The Documents page gains a review queue only for Masters and staff with Verify (`SCR-AGT-005` AGN-003 update).
-- **Staff activity (`AGN-021`, `DEC-SCOPE-045`):** an **Activity** button on each staff row of the Team page (`SCR-AGT-007`), visible to Masters only. No new navigation item; staff never reach the Team page.
+- **Staff activity (`AGN-021`, `DEC-SCOPE-046`):** an **Activity** button on each staff row of the Team page (`SCR-AGT-007`), visible to Masters only. No new navigation item; staff never reach the Team page.
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Overseas Admin
@@ -231,6 +231,7 @@ distinct from the existing Trainer/"Teacher" role above)*
 - `SCR-SCH-018` — /school/career-counselor/students/[id]/records — Career guidance/counselling records.
 - `SCR-SCH-033` — /school/career-counselor/skills — Soft Skills / Digital Skills batches across the portfolio, and batch creation (`ENH-011`, added 2026-09-22).
 - `SCR-SCH-034` — /school/career-counselor/skills/[id] — One batch: enrolments, attendance, assessments, certification (`ENH-011`, added 2026-09-22).
+- `SCR-SCH-041` — /school/career-counselor/funding — Funding support cases (loan / financial assistance / scholarship / funding guidance) across the portfolio; sidebar "Funding" (`ENH-020`, added 2026-10-01).
 - `SCR-SCH-035` — /school/career-counselor/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (own school portfolio, from the dashboard's "Student 360° view" list; sets the career goal) (`ENH-013`, added 2026-09-23).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
