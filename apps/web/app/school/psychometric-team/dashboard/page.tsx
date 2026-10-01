@@ -1,7 +1,9 @@
 import PortalShell from "@/components/PortalShell";
+import SchoolBulkEntryPanel from "@/components/SchoolBulkEntryPanel";
 import SchoolPsychometricRecordsPanel from "@/components/SchoolPsychometricRecordsPanel";
 import Student360Directory from "@/components/Student360Directory";
 import { serverApi } from "@/lib/api";
+import { BULK_PSYCHOMETRIC } from "@/lib/bulkEntry";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { PsychometricResult } from "@/lib/psychometric";
 import type { User } from "@/lib/types";
@@ -28,6 +30,7 @@ export default async function SchoolPsychometricTeamDashboardPage() {
   return (
     <PortalShell nav={SCHOOL_NAV["psychometric-team"]} roleLabel="Psychometric Team" userName={user.full_name}>
       <SchoolPsychometricRecordsPanel records={records} students={students} />
+      <SchoolBulkEntryPanel target={BULK_PSYCHOMETRIC} hasStudents={students.length > 0} />
       <Student360Directory role="psychometric_team" students={students} />
     </PortalShell>
   );
