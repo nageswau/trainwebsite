@@ -25,11 +25,15 @@ async def two(db_session):
     b = await mk_active_org(db_session, name="Iso B")
     tag = uuid.uuid4().hex[:8]
     async with client_for(a["master"].email) as m:
-        uni = (await m.post(UNIVERSITIES, json={"name": f"Secret Uni {tag}", "country": "Atlantis"})).json()["university"]
+        created = await m.post(UNIVERSITIES, json={"name": f"Secret Uni {tag}", "country": "Atlantis"})
+        assert created.status_code == 201
+        uni = created.json()["university"]
     student_a = await mk_record(db_session, agent=a["master"], full_name="Iso Student A")
     student_b = await mk_record(db_session, agent=b["master"], full_name="Iso Student B")
     async with client_for(a["master"].email) as m:
-        entry = (await m.post(shortlist(student_a.id), json={"agent_university_id": uni["id"], "course_title": f"Secret Course {tag}"})).json()["entry"]
+        added = await m.post(shortlist(student_a.id), json={"agent_university_id": uni["id"], "course_title": f"Secret Course {tag}"})
+        assert added.status_code == 201
+        entry = added.json()["entry"]
     return {"a": a, "b": b, "tag": tag, "uni": uni, "student_a": student_a, "student_b": student_b, "entry": entry}
 
 
@@ -47,17 +51,22 @@ async def test_other_agencys_university_id_reads_as_not_found(two):  # AGN-007-A
 async def test_public_never_shows_agency_universities_or_entries(db_session, two):  # AGN-007-AC05
     cat = await mk_catalogue(db_session)
     secret = two["tag"]
+    uni_slug, country_slug = cat["university"].slug, cat["country"].slug
     async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as anon:  # no login: the public site
-        bodies = [
-            (await anon.get("/api/v1/public/universities")).text,
-            (await anon.get("/api/v1/public/universities", params={"q": "Secret"})).text,
-            (await anon.get(f"/api/v1/public/universities/{cat['university'].slug}")).text,
-            (await anon.get(f"/api/v1/public/countries/{cat['country'].slug}")).text,
-            (await anon.get("/api/v1/public/overseas-courses")).text,
-            (await anon.get("/api/v1/public/countries")).text,
-        ]
+        responses = {
+            "list": await anon.get("/api/v1/public/universities"),
+            "search": await anon.get("/api/v1/public/universities", params={"q": "Secret"}),
+            "detail": await anon.get(f"/api/v1/public/universities/{uni_slug}"),
+            "country": await anon.get(f"/api/v1/public/countries/{country_slug}"),
+            "courses": await anon.get("/api/v1/public/overseas-courses"),
+            "countries": await anon.get("/api/v1/public/countries"),
+        }
         by_id = await anon.get(f"/api/v1/public/universities/{two['uni']['id']}")  # an agency id is not a catalogue slug
-    for body in bodies:
+    for name, response in responses.items():  # no vacuous pass: every public page really answered
+        assert response.status_code == 200, name
+    assert uni_slug in responses["detail"].text and cat["university"].name in responses["detail"].text  # positive controls: the catalogue is served
+    assert cat["university"].name in responses["country"].text
+    for body in (r.text for r in responses.values()):
         assert secret not in body and "Atlantis" not in body
     assert by_id.status_code == 404
 
@@ -94,11 +103,15 @@ async def test_shortlist_work_shows_in_staff_activity(db_session):  # AGN-007-AC
     staff = await mk_staff(db_session, ctx["org"], full_name="Activity Staff")
     student = await mk_record(db_session, agent=ctx["master"], full_name="Activity Student", assigned_member=staff["member"])
     async with client_for(ctx["master"].email) as m:
-        uni = (await m.post(UNIVERSITIES, json={"name": f"Act {uuid.uuid4().hex[:6]}", "country": "Peru"})).json()["university"]
+        created = await m.post(UNIVERSITIES, json={"name": f"Act {uuid.uuid4().hex[:6]}", "country": "Peru"})
+        assert created.status_code == 201
+        uni = created.json()["university"]
     async with client_for(staff["user"].email) as s:
-        eid = (await s.post(shortlist(student.id), json={"agent_university_id": uni["id"]})).json()["entry"]["id"]
-        await s.patch(f"{shortlist(student.id)}/{eid}", json={"intake": "Sep"})
-        await s.delete(f"{shortlist(student.id)}/{eid}")
+        added = await s.post(shortlist(student.id), json={"agent_university_id": uni["id"]})
+        assert added.status_code == 201
+        eid = added.json()["entry"]["id"]
+        assert (await s.patch(f"{shortlist(student.id)}/{eid}", json={"intake": "Sep"})).status_code == 200
+        assert (await s.delete(f"{shortlist(student.id)}/{eid}")).status_code == 204
     async with client_for(ctx["master"].email) as m:
         items = (await m.get(ACTIVITY.format(member=staff["member"].id))).json()["items"]
     actions = [i["action"] for i in items]
