@@ -158,6 +158,9 @@ export type CounselingField = keyof CounselingValues;
 
 const COUNSELING_LIMITS = { career_interest: 200, course_preference: 200, country_preference: 120, remarks: NOTES_MAX } as const;
 const AMOUNT = /^\d{1,8}(\.\d{1,2})?$/; // 0 to 99,999,999.99 with at most 2 decimals (the server's bounds)
+// Separators only where they group digits -- Western (2,500,000), Indian (25,00,000) or none; a decimal comma ("1500,50") is refused,
+// never read as 150050 (review #1).
+const GROUPED = /^(?:\d{1,3}(?:[, ]\d{3})+|\d{1,2}(?:[, ]\d{2})*[, ]\d{3}|\d+)(?:\.\d{1,2})?$/;
 
 export function counselingUrl(id: string): string {
   return `${RECORDS_URL}/${id}/counseling`;
@@ -199,8 +202,10 @@ export function validateCounseling(v: CounselingValues): Partial<Record<Counseli
   for (const [key, max] of Object.entries(COUNSELING_LIMITS) as [keyof typeof COUNSELING_LIMITS, number][]) {
     if (v[key].trim().length > max) errors[key] = `Must be ${max} characters or fewer`;
   }
-  const amount = plainAmount(v.budget_amount);
+  const typed = v.budget_amount.trim();
+  const amount = plainAmount(typed);
   if (amount.startsWith("-")) errors.budget_amount = "Budget cannot be negative";
+  else if (/[, ]/.test(typed) && !GROUPED.test(typed)) errors.budget_amount = "Use a full stop for decimals (1500.50); commas only group digits";
   else if (amount && !AMOUNT.test(amount)) errors.budget_amount = "Enter an amount up to 99,999,999.99 with at most 2 decimals";
   return errors;
 }

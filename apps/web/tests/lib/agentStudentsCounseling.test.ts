@@ -39,6 +39,16 @@ describe("counseling helpers (AGN-006)", () => {
     expect(validateCounseling({ ...base, budget_amount: "99,999,999.99" })).toEqual({});
   });
 
+  it("refuses a decimal comma instead of saving a multiplied amount, but accepts Indian and Western grouping (review #1)", () => {
+    const base = counselingValues(null);
+    for (const typed of ["1500,50", "12,5", "1,50", "2,5000"]) {
+      expect(validateCounseling({ ...base, budget_amount: typed }).budget_amount).toBe("Use a full stop for decimals (1500.50); commas only group digits");
+    }
+    for (const typed of ["25,00,000", "2,500,000", "2 500 000", "1,000.50", "99,999,999.99"]) {
+      expect(validateCounseling({ ...base, budget_amount: typed })).toEqual({});
+    }
+  });
+
   it("formats a budget in its currency", () => {
     expect(formatBudget("2500000.00", "INR")).toBe("₹25,00,000.00");
     expect(formatBudget("1500.50", "USD")).toBe("US$1,500.50");
