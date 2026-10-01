@@ -2,6 +2,7 @@ import CareerRecordDetails from "@/components/CareerRecordDetails";
 import { PsychometricResultsList } from "@/components/PsychometricResultDetails";
 import SchoolStudentPhoto from "@/components/SchoolStudentPhoto";
 import { serverApi } from "@/lib/api";
+import { ATTENDANCE_LABEL, type AttendanceStatus } from "@/lib/attendance";
 import type { CareerRecord } from "@/lib/careerRecords";
 import { formatCalendarDate, formatDate, formatSchoolDateTime, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import type { PsychometricResult } from "@/lib/psychometric";
@@ -30,6 +31,17 @@ type SkillEnrolment = {
 };
 type SkillModuleProgress = { status: string; enrollments: SkillEnrolment[] };
 
+// ENH-030 (spec §5.3, C3): the 30 most recent marked days at the student's current school, with counts over those same days.
+export type DailyAttendance = { counts: Record<AttendanceStatus, number>; recent: { session_date: string; status: AttendanceStatus }[] };
+
+/** "18 present · 1 late · 1 absent · 0 excused" -- raw counts, no percentage (C3). Shared by the parent card and the 360 tab. */
+export function dailyAttendanceText(d: DailyAttendance): string {
+  return (["present", "late", "absent", "excused"] as const).map((s) => `${d.counts[s]} ${ATTENDANCE_LABEL[s].toLowerCase()}`).join(" · ");
+}
+
+/** "1 marked day" / "20 marked days". */
+export const markedDays = (n: number) => `${n} marked day${n === 1 ? "" : "s"}`;
+
 export type ChildOverview = {
   // ENH-025: section/roll_number/has_photo are additive on the overview's `student` (it reuses _student_out).
   student: { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null; school_name: string | null; assigned_teacher_name: string | null; section?: string | null; roll_number?: string | null; has_photo?: boolean };
@@ -43,6 +55,8 @@ export type ChildOverview = {
   activities: { attended: Attended[]; upcoming: Upcoming[] };
   // ENH-011. Optional: an API without it (an older deployment) renders exactly as before.
   skills?: { soft_skills: SkillModuleProgress; digital_skills: SkillModuleProgress };
+  // ENH-030. Optional: an API without it (an older deployment) renders exactly as before.
+  daily_attendance?: DailyAttendance;
 };
 
 export async function loadChildOverview(studentId: string): Promise<ChildOverview> {
@@ -73,6 +87,12 @@ export function ChildStatusRow({ overview }: { overview: ChildOverview }) {
       <div className="metric"><span>Counselling</span><StatusChip status={overview.counselling.status} /></div>
       <div className="metric"><span>Psychometric</span><StatusChip status={overview.psychometric.status} /></div>
       <div className="metric"><span>Published results</span><strong>{overview.results.length}</strong></div>
+      {overview.daily_attendance && (
+        <div className="metric">
+          <span>{overview.daily_attendance.recent.length ? `Attendance (last ${markedDays(overview.daily_attendance.recent.length)})` : "Attendance"}</span>
+          <strong>{overview.daily_attendance.recent.length ? dailyAttendanceText(overview.daily_attendance) : "Not marked yet"}</strong>
+        </div>
+      )}
       {overview.skills && (
         <>
           <div className="metric"><span>Soft skills</span><StatusChip status={overview.skills.soft_skills.status} /></div>

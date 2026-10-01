@@ -2867,6 +2867,15 @@ student on the same day — second call should update, not duplicate (enforced b
 
 **Complexity:** Medium. **Risk:** Low.
 
+**Status (2026-09-30). COMPLETE for ENH-030's scope** on branch `feature/enh-030-class-attendance` (verified at `634b5e5`; browser
+verification and a substitute independent review done — see the `RTM.md` `ENH-030` row). Designed and decided in
+`docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md` (`DEC-SCOPE-041`, provisional number; plan
+`docs/superpowers/plans/2026-09-30-enh-030-daily-attendance.md`). Corrections to this entry, all recorded in the spec:
+"class" = the teacher's assigned students (no class/section entity exists; ENH-013 D3); the routes are
+`GET`/`PUT /api/v1/school/attendance` (the school comes from the caller, never the path); statuses are
+present/absent/late/excused (the IT set includes `excused`); writer = `school_teacher` only (Coordinator/Principal read);
+"Student dashboard" = the Student 360° Attendance tab (school students have no login). Evidence: `RTM.md` `ENH-030` row.
+
 ---
 
 ## AGN-001 — Multi-Tenant Agent CRM: Agent Organisation as Tenant, Master Accounts
@@ -2876,7 +2885,7 @@ student on the same day — second call should update, not duplicate (enforced b
 **Business requirement.** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`): §1 "Master
 Login — Agent Admin: full access to the agent's CRM account"; §3 example codes (`ABC-M001`); Best approach
 "a multi-tenant Agent CRM: every agent gets their own separate CRM environment". Brought into scope by the
-user's `AGN-001` statement and decided as `DEC-SCOPE-038` (D1–D13). The source's "one Master account"
+user's `AGN-001` statement and decided as `DEC-SCOPE-041` (D1–D13). The source's "one Master account"
 conflicts with the user's criteria; the user chose up to three (D4).
 
 **Existing behavior.** An agent is one `User` + `UserRoleAssignment(role='agent')`. Its `approval_status`
@@ -2884,7 +2893,7 @@ gates every agent route (`core/rbac.py:75`, `workflows.py:100`, `api/portal.py:3
 write is scoped by `agent_id == user.id`. Overseas Admin approves/rejects the assignment by user id
 (`admin.py:981-1026`), audited as `user_role_assignment`. No organisation, member or account code exists.
 
-**Expected behavior.** Per `DEC-SCOPE-038`: an agent organisation (tenant) with status
+**Expected behavior.** Per `DEC-SCOPE-041`: an agent organisation (tenant) with status
 `pending`/`active`/`rejected`/`suspended`; Master members with display codes `<PREFIX>-M###`; the
 approval gate and all data scoping move to the organisation; Masters invite and deactivate Masters;
 Overseas Admin approves, rejects, suspends and reinstates organisations.
@@ -2959,7 +2968,7 @@ routes used by `AgentApprovalPanel`, `ADM-001`'s agent role option, seed data.
 
 **Status (2026-09-29) — COMPLETE for AGN-001's scope; merge to `main` open.** Designed (`docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md`,
 E1–E12), planned (`docs/superpowers/plans/2026-09-28-agn-001-multi-tenant-agent-crm.md`) and built test-first on branch
-`feature/agn-001-multi-tenant-agent-crm` (migration `0046_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-038`. Browser
+`feature/agn-001-multi-tenant-agent-crm` (migration `0046_agent_orgs`); review decisions R1–R3 added to `DEC-SCOPE-041`. Browser
 QA (QA-01…13) fixed and re-verified, including after merging `main`; the independent Codex review was set aside by the owner
 (in-session, 2026-09-29), as for ENH-024/ENH-027. Evidence in `docs/quality/RTM.md` (AGN-001 row). QA-01 replaced the admin
 portal "Agent Registrations" table with "Agent Masters" (organisation + Master status). Internal-review minors #7, #8, #11, #12

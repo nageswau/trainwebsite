@@ -5,7 +5,8 @@ import CertificationDetails from "@/components/CertificationDetails";
 import CareerRecordDetails from "@/components/CareerRecordDetails";
 import { PsychometricResultsList } from "@/components/PsychometricResultDetails";
 import type { CareerRecord } from "@/lib/careerRecords";
-import { type ChildOverview, SkillsCard, StatusChip } from "@/components/SchoolChildOverview";
+import { type ChildOverview, type DailyAttendance, dailyAttendanceText, markedDays, SkillsCard, StatusChip } from "@/components/SchoolChildOverview";
+import { ATTENDANCE_LABEL } from "@/lib/attendance";
 import SchoolGradeHistory, { type GradeHistoryEntry } from "@/components/SchoolGradeHistory";
 import { formatCalendarDate, formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import type { CertificationFields } from "@/lib/portfolio";
@@ -24,7 +25,7 @@ const EMPTY_TEXT: Record<TabKey, string> = {
   overview: "No achievements recorded yet.",
   personal_details: "",
   academic_records: "No grade changes yet. They appear here after the student's first promotion.",
-  attendance: "No attendance recorded yet. The School Coordinator marks activity attendance.",
+  attendance: "No attendance recorded yet. Teachers mark daily attendance; the School Coordinator marks activity attendance.",
   examination_results: "No published results yet. Results appear after the Academic Team publishes them.",
   career_guidance: "No career guidance recorded yet. The Career Counselor adds sessions and notes.",
   psychometric_assessment: "No psychometric assessments yet. The Psychometric Team assigns them.",
@@ -102,13 +103,21 @@ function body(key: TabKey, d: Row, view: Student360): ReactNode {
     }
     case "academic_records":
       return <Card><p><strong>Current grade/class:</strong> {d.grade_or_class ?? "-"}</p>{d.grade_history.length ? <SchoolGradeHistory history={d.grade_history as GradeHistoryEntry[]} /> : <Empty text={EMPTY_TEXT.academic_records} />}</Card>;
-    case "attendance":
+    case "attendance": {
+      const daily = d.daily as DailyAttendance | undefined; // ENH-030; absent from an older API
       return (
         <Card>
+          {daily?.recent.length ? (
+            <>
+              <p>{`Last ${markedDays(daily.recent.length)}: ${dailyAttendanceText(daily)}`}</p>
+              <Table caption="Daily attendance" head={["Date", "Status"]} rows={daily.recent.map((r) => [formatCalendarDate(r.session_date), ATTENDANCE_LABEL[r.status]])} />
+            </>
+          ) : null}
           {d.activities.length ? <Table caption="School activity attendance" head={["Activity", "Date", "Attendance"]} rows={d.activities.map((a: Row) => [a.title, formatDate(a.scheduled_at, false, SCHOOL_TIME_ZONE), a.present ? "Present" : "Absent"])} /> : null}
           {d.skill_sessions.length ? <Table caption="Skills session attendance" head={["Skills batch", "Sessions attended"]} rows={d.skill_sessions.map((s: Row) => [s.batch_title, `${s.present} of ${s.marked}`])} /> : null}
         </Card>
       );
+    }
     case "examination_results":
       return <Card><Table caption="Published results" head={["Year", "Term", "Subject", "Marks", "Grade"]} rows={d.results.map((r: Row) => [r.academic_year, r.term, r.subject, r.max_marks !== undefined ? `${r.marks_obtained} / ${r.max_marks}` : null, r.grade])} /></Card>;
     case "career_guidance":

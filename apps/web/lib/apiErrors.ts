@@ -36,7 +36,7 @@ export type SendOutcome = { ok: true; data: Record<string, unknown> } | { ok: fa
 
 // ENH-022: one JSON write for the older School panels. Never throws: a dropped network is NOT_COMPLETED (the entry is kept), and
 // any error response carries the server's `detail` -- e.g. a partnership-tier 403 -- worded by detailMessage.
-export async function sendJson(url: string, method: "POST" | "PATCH", body: unknown): Promise<SendOutcome> {
+export async function sendJson(url: string, method: "POST" | "PATCH" | "PUT", body: unknown): Promise<SendOutcome> {
   let response: Response;
   try {
     response = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
