@@ -31,6 +31,7 @@ export default function AgentTasksPanel({ view, studentId, readOnly = false, rel
   const request = useRef<AbortController | null>(null);
   const focusLater = useFocusAfterRender();
   const listId = `tasks-list-${studentId ?? view}`;
+  const resultsId = `tasks-results-${studentId ?? view}`; // focus fallback when the list itself is gone (its last task closed)
 
   const load = useCallback(() => {
     request.current?.abort();
@@ -76,7 +77,7 @@ export default function AgentTasksPanel({ view, studentId, readOnly = false, rel
       return focusLater(doneId(t.id));
     }
     load();
-    focusLater(listId);
+    focusLater(listId, resultsId);
   }
 
   function stopEditing(t: AgentTask, message?: string) {
@@ -85,14 +86,14 @@ export default function AgentTasksPanel({ view, studentId, readOnly = false, rel
       setNotice(message);
       load();
     }
-    focusLater(editId(t.id), listId);
+    focusLater(editId(t.id), listId, resultsId);
   }
 
   return (
     <div>
       <p aria-live="polite" className={notice ? "form-message" : undefined} style={notice ? undefined : { margin: 0 }}>{notice}</p>
       {actionError && <p className="form-error" role="alert">{actionError}</p>}
-      <div aria-busy={loading} style={{ marginTop: 12, opacity: loading && data ? 0.6 : 1 }}>
+      <div id={resultsId} role="region" aria-label="Task results" tabIndex={-1} aria-busy={loading} style={{ marginTop: 12, opacity: loading && data ? 0.6 : 1 }}>
         {loadError ? (
           <>
             <p className="form-error" role="alert">{loadError}</p>

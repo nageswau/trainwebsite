@@ -28,6 +28,8 @@ def test_create_trims_title_and_blank_notes_become_null():
         {"title": None},
         {"notes": "x" * 2001},
         {"title": "bad‮order"},
+        {"title": 5},  # final review: a non-string title is a 422, never an AttributeError (500)
+        {"title": ["Call"]},
         {"due_at": "2026-10-05T09:30:00"},  # no offset: refused, never silently read as UTC
         {"due_at": None},
         {"status": "done"},  # create never sets a status

@@ -1,7 +1,7 @@
 "use client";
 
-import { assignedText } from "./AgentStudentDetailPanel";
 import LocalTime from "./LocalTime";
+import { assignedText } from "@/lib/agentStudents";
 import type { AgentTask } from "@/lib/agentTasks";
 
 // AGN-016 (DEC-SCOPE-051): one task. State is always a word (Overdue / Open / Done / Cancelled), never colour alone. The cancel

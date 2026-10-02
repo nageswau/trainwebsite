@@ -68,7 +68,8 @@ export default function AgentTaskForm({ mode, task, studentId, onCancel, onSaved
   const past = isPastLocal(draft.dueLocal);
   return (
     <form className="form" noValidate onSubmit={submit} onKeyDown={(k) => {
-        if (k.key === "Escape") {
+        // An Escape the student picker already used (closing its open list) is not a cancel: the entry is kept.
+        if (k.key === "Escape" && !k.defaultPrevented) {
           k.stopPropagation(); // the student detail panel closes on Escape too; only the form closes here
           onCancel();
         }

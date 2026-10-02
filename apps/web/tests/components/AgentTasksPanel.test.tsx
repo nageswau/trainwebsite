@@ -71,6 +71,8 @@ describe("AgentTasksPanel (AGN-016)", () => {
     expect(patch[0]).toBe("/api/v1/workflows/overseas/agent/crm/tasks/t1");
     expect(JSON.parse(String(patch[1]!.body))).toEqual({ status: "done" });
     expect(screen.getByText("“Call Asha” marked done.")).toBeInTheDocument();
+    // final review: the list (and the button) are gone, so focus lands on the results region, never on <body>
+    await waitFor(() => expect(screen.getByRole("region", { name: "Task results" })).toHaveFocus());
   });
 
   it("cancels only after confirmation, with focus on the safe choice", async () => {

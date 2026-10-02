@@ -749,7 +749,9 @@ class AgentApplicationStatus(BaseModel):
 # --- AGN-016: agent tasks and follow-ups (DEC-SCOPE-051; docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md §3) ---
 
 
-def _task_title(value: str | None) -> str:
+def _task_title(value) -> str:
+    if value is not None and not isinstance(value, str):  # runs before type coercion: a number or list is a 422, never a 500
+        raise PydanticCustomError("task_title_text", "Title must be text")
     value = clean_free_text(value, 200)
     if not value:
         raise PydanticCustomError("task_title_required", "Title is required")

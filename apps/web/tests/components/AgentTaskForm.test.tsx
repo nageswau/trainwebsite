@@ -62,6 +62,23 @@ describe("AgentTaskForm (AGN-016)", () => {
     expect(screen.getByLabelText("Title")).toHaveValue("Call");
   });
 
+  it("Escape in the open student list closes only the list, never the form (final review)", async () => {
+    const students = { items: [{ id: "s1", full_name: "Asha Rao", has_login: false, email: null }], total: 1, limit: 20, offset: 0 };
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(res(String(url).includes("/crm/students") ? students : apps))));
+    const onCancel = vi.fn();
+    render(<AgentTaskForm mode="create" onCancel={onCancel} onSaved={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Kept title" } });
+    const combo = screen.getByRole("combobox", { name: "Student" });
+    fireEvent.focus(combo);
+    fireEvent.change(combo, { target: { value: "As" } });
+    await screen.findByRole("option", { name: /Asha Rao/ });
+    fireEvent.keyDown(combo, { key: "Escape" });
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Title")).toHaveValue("Kept title");
+    fireEvent.keyDown(combo, { key: "Escape" }); // the list is closed now: Escape cancels the form as before
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
   it("edits: sends only changed fields and cancels with Escape", async () => {
     const fetchMock = stub(() => res(saved));
     const onCancel = vi.fn();
