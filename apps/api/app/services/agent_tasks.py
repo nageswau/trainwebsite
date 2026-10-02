@@ -10,7 +10,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from fastapi import HTTPException
-from sqlalchemy import ColumnElement, Select, and_, func, or_, select
+from sqlalchemy import ColumnElement, Select, and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -87,6 +87,34 @@ async def task_detail(db: AsyncSession, user: User, task_id, now: datetime) -> d
     if row is None:
         raise HTTPException(404, NOT_FOUND)
     return item(row, now)
+
+
+CLOSED_FIRST_NEWEST = (AgentTask.closed_at.desc(), AgentTask.id)
+
+
+def _view(view: str, now: datetime) -> tuple[list[ColumnElement], tuple]:
+    """T3/T4: (filters, order) per view. Open and overdue leave archived students' tasks out unless a student is named."""
+    is_open = AgentTask.status == "open"
+    return {
+        "open": ([is_open], (AgentTask.due_at, AgentTask.id)),
+        "overdue": ([is_open, AgentTask.due_at < now], (AgentTask.due_at, AgentTask.id)),
+        "done": ([AgentTask.status == "done"], CLOSED_FIRST_NEWEST),
+        "cancelled": ([AgentTask.status == "cancelled"], CLOSED_FIRST_NEWEST),
+        "all": ([], (AgentTask.status != "open", case((is_open, AgentTask.due_at)), *CLOSED_FIRST_NEWEST)),
+    }[view]
+
+
+async def list_page(db: AsyncSession, user: User, *, view: str, student, limit: int, offset: int, now: datetime) -> dict:
+    filters, order = _view(view, now)
+    filters = [*task_scope(user), *filters]
+    if student is not None:
+        filters.append(AgentTask.agent_student_id == student)  # inside scope only: an out-of-scope id is an empty page
+    elif view in ("open", "overdue"):
+        filters.append(AgentStudent.status == "active")
+    base = _rows_stmt().where(*filters)
+    total = await db.scalar(select(func.count()).select_from(base.subquery()))
+    rows = (await db.execute(base.order_by(*order).limit(limit).offset(offset))).all()
+    return {"items": [item(r, now) for r in rows], "total": total or 0, "limit": limit, "offset": offset}
 
 
 # --- write checks (no commit) -------------------------------------------------------------------------------------------------------

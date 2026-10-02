@@ -8,9 +8,10 @@ transaction and commits once. Audit metadata and logs carry ids and field names 
 
 import logging
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_shortlist import _commit
@@ -20,7 +21,7 @@ from app.core.database import get_db
 from app.models import AgentOrgMember, AgentTask, AuditLog, User
 from app.schemas import AgentTaskCreate
 from app.services.agent_applications import ARCHIVED
-from app.services.agent_tasks import check_application, ensure_capacity, new_task, task_detail
+from app.services.agent_tasks import check_application, ensure_capacity, list_page, new_task, task_detail
 
 logger = logging.getLogger("app.agent_tasks")
 
@@ -42,6 +43,23 @@ def _log(event: str, membership: AgentOrgMember, user: User, student_id, task_id
 def _refuse(status: int, detail: str, membership: AgentOrgMember, user: User, student_id, task_id="-") -> HTTPException:
     _log("agent_task_write_refused", membership, user, student_id, task_id, level=logging.WARNING, status=status, reason=detail)
     return HTTPException(status, detail)
+
+
+TaskView = Literal["open", "overdue", "done", "cancelled", "all"]
+MAX_OFFSET = 10_000  # AGN-021's bound: deep offsets are a scan, not a use case
+
+
+@router.get("")
+async def list_tasks(
+    view: TaskView = "open",
+    student: UUID | None = None,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0, le=MAX_OFFSET),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _gate(user)
+    return await list_page(db, user, view=view, student=student, limit=limit, offset=offset, now=datetime.now(UTC))
 
 
 @router.get("/{task_id}")
