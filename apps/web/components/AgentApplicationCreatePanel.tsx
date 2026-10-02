@@ -2,27 +2,15 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import SearchableSelect from "@/components/SearchableSelect";
-import { isPage, sendJson } from "@/lib/apiErrors";
+import { sendJson } from "@/lib/apiErrors";
 import { APPLICATIONS_URL, todayIso } from "@/lib/agentApplications";
-import { AgentStudentItem, RECORDS_URL } from "@/lib/agentStudents";
-import type { LookupPage } from "@/lib/lookups";
+import { searchAgentStudents } from "@/lib/agentStudents";
 import type { University } from "@/lib/types";
 import { useUniversityCourses } from "@/lib/universityCourses";
 
 // AGN-008 (DEC-SCOPE-050): create an application for any of the agency's students -- with or without a login -- searched on the
-// server (AGN-004's records list), so a large agency is never truncated. University/course reuse OVS-002's cascading picker. Ids,
-// the "Linked student" name and the success text are kept for ENH-031's specs.
-async function searchStudents(q: string, signal: AbortSignal): Promise<LookupPage> {
-  const params = new URLSearchParams({ limit: "20" });
-  if (q) params.set("q", q);
-  const response = await fetch(`${RECORDS_URL}?${params}`, { signal });
-  const data = await response.json().catch(() => null);
-  if (!response.ok || !isPage<AgentStudentItem>(data)) throw new Error(`Student search failed (${response.status})`);
-  return {
-    items: data.items.map((s) => ({ id: s.id, label: s.full_name, detail: s.has_login ? s.email : "no login" })),
-    truncated: data.total > data.items.length,
-  };
-}
+// server (AGN-004's records list, `searchAgentStudents`), so a large agency is never truncated. University/course reuse OVS-002's
+// cascading picker. Ids, the "Linked student" name and the success text are kept for ENH-031's specs.
 
 const OPTIONAL = [
   ["application_reference", "Application ID", "text"],
@@ -105,7 +93,7 @@ export default function AgentApplicationCreatePanel({ onCreated }: { onCreated?:
       <h3>Create application</h3>
       {/* QA8-12: a blocked submit or an edit after an error drops the stale server message. */}
       <form className="form" onSubmit={submit} aria-label="Create application" onInvalidCapture={() => setMessage(null)} onChange={() => message?.failed && setMessage(null)}>
-        <SearchableSelect key={formVersion} id="agent-app-student" label="Linked student" required noun="student" search={searchStudents} onChange={(option) => setStudentId(option?.id ?? "")} />
+        <SearchableSelect key={formVersion} id="agent-app-student" label="Linked student" required noun="student" search={searchAgentStudents} onChange={(option) => setStudentId(option?.id ?? "")} />
         <div className="field">
           <label htmlFor="agent-app-university">University (required)</label>
           <select id="agent-app-university" value={universityId} onChange={(event) => setUniversityId(event.target.value)} required>
