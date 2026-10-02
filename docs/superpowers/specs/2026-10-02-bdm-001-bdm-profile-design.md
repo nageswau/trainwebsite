@@ -324,7 +324,7 @@ Mounted on the new static pages `/admin/bdms` (super_admin), `/it/admin/bdms` (i
 | BDM-001-AC13 | `AdminBdmPanel` shows loading, empty, error with Retry, and a "no managers" state that disables submit. Server errors appear inline. Type is read-only on edit. |
 | BDM-001-AC14 | Every non-BDM create, edit, login or reset behaves exactly as before. The existing ADM, ENH-003, ENH-006, ENH-029 and AGN-001 tests pass unchanged. |
 | BDM-001-AC15 | Response shapes don't vary. `POST /admin/users` always has `bdm_profile` (null for roles other than BDM), `reset-password` always has `login_portal` (null except for a manager), and every list is `{items, total, limit, offset}` with `limit` ≤ 100 and a stable order. |
-| BDM-001-AC16 | Nothing can be escalated or reached outside the caller's scope: `PATCH` ignores `role`/`division`; a `bdm_profile` with an unknown key (for example `user_id`) → 422; a manager must be an active `bdm_manager`; `/bdm/*` reads only the caller's own data; the picker returns no emails; logs contain IDs and type only, never email, phone or Employee ID. |
+| BDM-001-AC16 | Nothing can be escalated or reached outside the caller's scope: `PATCH` ignores `role`/`division`; a `bdm_profile` with an unknown key (for example `user_id`) → 422; a manager must be an active `bdm_manager`; `/bdm/*` reads only the caller's own data; the picker returns emails to admin roles only (amended by B10, §13); logs contain IDs and type only, never email, phone or Employee ID. |
 
 ## 8. Tests
 
@@ -466,3 +466,18 @@ Each finding is applied in the section named. Nothing here changes an approved d
 | Rate limiting / denial of service | Account and email creation | Admin-only routes. The existing 429 throttle on re-sending links already covers repeated link mail. **No new limiter is added**: changing rate limits needs approval first, and nothing in bdm-001 asks for one. Bounded `limit` keeps list queries cheap. |
 | Secrets | Code and config | No new secrets or settings. Before each commit, `git diff --cached` is checked for secrets. |
 | Personal data | Purpose and retention | The fields are exactly the ones §1 requires, with no extras. Retention follows the user account; deletion is outside bdm-001 and unchanged. |
+
+## 13. Addendum — browser QA fixes (2026-10-02)
+
+The first exploratory browser QA pass raised six Medium issues; the owner approved two decision changes (`DEC-SCOPE-052` B10, B11). Each fix was written test-first and re-verified in the browser.
+
+| QA | Problem | Fix |
+|---|---|---|
+| QA-01 | On desktop the BDM list sat in half a two-column grid; actions and the header were clipped | The list card spans the row (`.action-card.wide`, the existing convention) |
+| QA-02 | The picker loaded only the first 100 managers, with no search | The picker is `SearchableSelect` in server mode; `GET /admin/bdm-managers` gains `q` (name or email, literal, case-insensitive, ≤ 200). `SearchableSelect` gains an optional `initial` pick (additive) for the row editor |
+| QA-03 | Same-name managers were indistinguishable | **B10:** the picker returns and shows each manager's email (admin roles only) — supersedes §12.3's "no email" |
+| QA-04 | A new BDM could not be found without paging; no search | `GET /admin/bdms` gains `q` (name, email or Employee ID, ANDed with the type scope); the list has a search box with Clear and a "No BDMs match …" state; after a create the list filters to the new Employee ID |
+| QA-05 | Managers had no password recovery in their own portal | **B11:** public `/admin/forgot-password` and `/admin/reset-password`; "Forgot your password?" on `/admin/login`; a `bdm_manager`'s set-password link opens `/admin/reset-password` (other roles unchanged) |
+| QA-06 | Keyboard focus fell to `<body>` after save, an error, or a status change | Focus returns to the row's own controls after success and moves to the message after an error (so Esc keeps working) |
+
+The ten Low issues from the same pass are not addressed here.
