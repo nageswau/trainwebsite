@@ -109,15 +109,51 @@ async def test_admin_bdms_refuses_non_admins(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_manager_picker_lists_active_managers_without_email(client, db_session):
+async def test_manager_picker_lists_active_managers_with_email(client, db_session):
+    """QA-03 (owner, 2026-10-02): same-name managers are told apart by email, shown as a detail line."""
     inactive = await make_manager(db_session, active=False)
     inactive_id = inactive.id
     await login(client, await make_user(db_session, "it_admin", "it"))
     body = (await client.get(MANAGERS, params={"limit": 100})).json()
     assert str(inactive_id) not in {r["id"] for r in body["items"]}
-    assert body["items"] and all(set(r) == {"id", "full_name"} for r in body["items"])
+    assert body["items"] and all(set(r) == {"id", "full_name", "email"} for r in body["items"])
     await login(client, await make_user(db_session, "counselor", "overseas"))
     assert (await client.get(MANAGERS)).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_manager_picker_search_reaches_any_manager(client, db_session):
+    """QA-02: the picker is no longer capped at the first 100 -- `q` matches name or email, literally and case-insensitively."""
+    tag = uuid.uuid4().hex[:8]
+    target = await make_manager(db_session, name=f"Zz Search {tag}")
+    target_id, target_email = str(target.id), target.email
+    await make_manager(db_session, name=f"Zz Search {tag}")  # a same-name twin
+    await login(client, await make_user(db_session, "overseas_admin", "overseas"))
+    by_name = (await client.get(MANAGERS, params={"q": f"search {tag.upper()}"})).json()
+    assert by_name["total"] == 2 and {r["full_name"] for r in by_name["items"]} == {f"Zz Search {tag}"}
+    by_email = (await client.get(MANAGERS, params={"q": target_email.upper()})).json()
+    assert [r["id"] for r in by_email["items"]] == [target_id]
+    assert (await client.get(MANAGERS, params={"q": "%_%"})).json()["total"] == 0  # wildcards are literal, not "match all"
+    assert (await client.get(MANAGERS, params={"q": "x" * 201})).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_admin_bdms_search_by_name_email_or_employee_id_within_scope(client, db_session):
+    """QA-04: the admin list can be searched, and the search never widens the caller's type scope."""
+    m1, _, a, b, c = await _team_of_two(client, db_session)
+    for q in (a["email"].upper(), a["bdm_profile"]["employee_id"].lower()):
+        ids = {r["id"] for r in (await client.get(BDMS, params={"q": q, "limit": 100})).json()["items"]}
+        assert a["id"] in ids, q
+    unique_name = f"Qx Named {uuid.uuid4().hex[:8]}"
+    named = (await create_bdm(client, m1.id, full_name=unique_name)).json()
+    by_name = (await client.get(BDMS, params={"q": unique_name.lower()})).json()
+    assert [r["id"] for r in by_name["items"]] == [named["id"]]
+    exact = (await client.get(BDMS, params={"q": a["bdm_profile"]["employee_id"]})).json()
+    assert [r["id"] for r in exact["items"]] == [a["id"]] and exact["total"] == 1
+    await login(client, await make_user(db_session, "overseas_admin", "overseas"))
+    assert (await client.get(BDMS, params={"q": a["bdm_profile"]["employee_id"]})).json()["total"] == 0  # a College BDM
+    assert (await client.get(BDMS, params={"q": c["bdm_profile"]["employee_id"]})).json()["total"] == 1
+    assert (await client.get(BDMS, params={"q": "x" * 201})).status_code == 422
 
 
 @pytest.mark.asyncio

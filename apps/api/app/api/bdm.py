@@ -6,12 +6,13 @@ narrowed by type in SQL (D10). Lists are {items, total, limit, offset} (the AGN-
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.api.admin import ensure_admin
 from app.api.deps import get_current_user
+from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import BdmProfile, User
 from app.schemas import BdmAdminPage, BdmManagerPage, BdmMeOut, BdmTeamPage
@@ -22,6 +23,11 @@ admin_router = APIRouter(prefix="/admin", tags=["bdm-admin"])
 Manager = aliased(User)
 LIMIT = Query(50, ge=1, le=100)
 OFFSET = Query(0, ge=0)
+SEARCH = Query(None, max_length=200)  # browser QA-02/QA-04: a literal, case-insensitive substring (lookups._pattern)
+
+
+def _matching(pattern: str | None, *columns) -> list:
+    return [or_(*(column.ilike(pattern, escape="\\") for column in columns))] if pattern else []
 
 
 def _team_row(profile: BdmProfile, user: User, manager: User) -> dict:
@@ -73,19 +79,25 @@ async def team(limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(ge
 async def admin_bdms(
     bdm_type: Literal["agent", "school", "college"] | None = None,
     active: bool | None = None,
+    q: str | None = SEARCH,
     limit: int = LIMIT,
     offset: int = OFFSET,
     user: User = Depends(ensure_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    """`q` matches name, email or Employee ID; it is ANDed with the caller's type scope, so it can never widen it."""
     filters = admin_type_filter(user, bdm_type)
     if active is not None:
         filters.append(User.active.is_(active))
+    filters += _matching(like_pattern(q), User.full_name, User.email, BdmProfile.employee_id)
     return await _paged(db, _profiles(filters), limit, offset, _admin_row)
 
 
 @admin_router.get("/bdm-managers", response_model=BdmManagerPage)
-async def bdm_managers(limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
-    """The reporting-manager picker: active managers only, id and name only (no email -- data minimisation)."""
-    stmt = select(User.id, User.full_name).where(User.role == "bdm_manager", User.active.is_(True))
-    return await _paged(db, stmt, limit, offset, lambda id_, full_name: {"id": id_, "full_name": full_name})
+async def bdm_managers(q: str | None = SEARCH, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    """The reporting-manager picker: active managers only, searchable by name or email (QA-02). Email is shown as a detail line
+    so same-name managers can be told apart (QA-03, owner 2026-10-02)."""
+    stmt = select(User.id, User.full_name, User.email).where(
+        User.role == "bdm_manager", User.active.is_(True), *_matching(like_pattern(q), User.full_name, User.email)
+    )
+    return await _paged(db, stmt, limit, offset, lambda id_, full_name, email: {"id": id_, "full_name": full_name, "email": email})

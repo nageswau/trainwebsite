@@ -2718,8 +2718,11 @@ class BdmAdminRow(BdmTeamRow):
 
 
 class BdmManagerOption(BaseModel):
+    """QA-03 (owner, 2026-10-02): email is returned so the picker can tell same-name managers apart."""
+
     id: UUID
     full_name: str
+    email: str
 
 
 class BdmTeamPage(BaseModel):
