@@ -6,11 +6,13 @@ paid hook marks a deposit paid; only an Overseas Admin records remittance and re
 """
 
 import logging
+from datetime import date
+from typing import Literal
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_applications import _audit, _gate, _locked, _log, _refuse_closed
@@ -18,12 +20,14 @@ from app.api.deps import get_current_user
 from app.api.payments import _ensure_invoice
 from app.core.database import get_db
 from app.models import ApplicationDeposit, AuditLog, Payment, Receipt, User
-from app.schemas import AgentDepositSave
+from app.schemas import AgentDepositSave, DepositRefund, DepositRemit
 from app.services import agent_deposits as deposits
 from app.services.agent_applications import detail, load_scoped
 from app.services.agent_deposits import PAID_LOCKED, PAID_STATES, cancel_active, deposit_for
 from app.services.payment import payments
 from app.services.storage import storage
+
+logger = logging.getLogger("app.agent_deposits")
 
 router = APIRouter(prefix="/workflows/overseas/agent/crm/applications", tags=["agent-deposits"])
 admin_router = APIRouter(prefix="/overseas-admin/deposits", tags=["overseas-admin"])
@@ -151,6 +155,79 @@ async def deposit_receipt(application_id: UUID, user: User = Depends(get_current
     if receipt is None:
         raise HTTPException(404, "Receipt not available")
     return {"url": storage.presign_download(f"receipts/{receipt.receipt_no}.pdf"), "expires_in": 900 if storage.bucket else None}
+
+
+# --- Overseas Admin: Agent deposits (§4.7; D3, D5, AC4) ---
+
+ADMIN_ONLY = "Only an Overseas Admin can record remittances and refunds"
+
+
+def _recorded_on(value: date, deposit: ApplicationDeposit) -> None:
+    if value > date.today():
+        raise HTTPException(422, "The date cannot be in the future")
+    if value < deposit.paid_at.date():
+        raise HTTPException(422, "The date cannot be before the deposit was paid")
+
+
+async def _admin_locked(db: AsyncSession, user: User, deposit_id: UUID) -> ApplicationDeposit:
+    """D5: AC4 names the Overseas Admin, so `super_admin` reads the list but does not record remittance or refunds."""
+    if user.role != "overseas_admin":
+        raise HTTPException(403, ADMIN_ONLY)
+    deposit = await db.get(ApplicationDeposit, deposit_id, with_for_update=True, populate_existing=True)
+    if deposit is None:
+        raise HTTPException(404, "Deposit not found")
+    return deposit
+
+
+async def _admin_item(db: AsyncSession, deposit_id) -> dict:
+    return (await deposits.admin_rows(db, ApplicationDeposit.id == deposit_id, limit=1, offset=0))[0]
+
+
+@admin_router.get("")
+async def list_deposits(
+    status: Literal["all", "pending", "paid", "remitted", "refunded"] = "all",
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    filters = [ApplicationDeposit.status != "not_required"] if status == "all" else [ApplicationDeposit.status == status]
+    total = await db.scalar(select(func.count()).select_from(ApplicationDeposit).where(*filters))
+    return {"items": await deposits.admin_rows(db, *filters, limit=limit, offset=offset), "total": total or 0, "limit": limit, "offset": offset}
+
+
+@admin_router.post("/{deposit_id}/remit")
+async def remit_deposit(deposit_id: UUID, payload: DepositRemit, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """D12: EduSphere finance remitted the deposit to the university outside the system; recorded once, from `paid`."""
+    deposit = await _admin_locked(db, user, deposit_id)
+    if deposit.status != "paid":
+        raise HTTPException(409, "Only a paid deposit can be marked remitted")
+    _recorded_on(payload.remitted_on, deposit)
+    deposit.status, deposit.remitted_at, deposit.remittance_reference, deposit.updated_by_user_id = "remitted", payload.remitted_on, payload.reference, user.id
+    db.add(AuditLog(user_id=user.id, action="overseas.deposit.remit", entity_type="application_deposit", entity_id=str(deposit.id), metadata_json={"from_status": "paid"}))
+    await db.commit()
+    logger.info("agent_deposit_remitted", extra={"extra_fields": {"deposit_id": str(deposit.id), "actor_id": str(user.id)}})
+    return await _admin_item(db, deposit.id)
+
+
+@admin_router.post("/{deposit_id}/refund")
+async def refund_deposit(deposit_id: UUID, payload: DepositRefund, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """D3: the one refund, recorded by hand (no refund API), from `paid` or `remitted`, never above what was paid (AC4)."""
+    deposit = await _admin_locked(db, user, deposit_id)
+    if deposit.status not in ("paid", "remitted"):
+        raise HTTPException(409, "Only a paid or remitted deposit can be refunded")
+    _recorded_on(payload.refunded_on, deposit)
+    paid = await db.scalar(select(Payment.amount).where(Payment.id == deposit.paid_payment_id))
+    if payload.amount > paid:
+        raise HTTPException(422, "A refund cannot exceed the paid amount")
+    old = deposit.status
+    deposit.status, deposit.refunded_at, deposit.refund_amount, deposit.refund_reason, deposit.updated_by_user_id = "refunded", payload.refunded_on, payload.amount, payload.reason, user.id
+    db.add(AuditLog(user_id=user.id, action="overseas.deposit.refund", entity_type="application_deposit", entity_id=str(deposit.id), metadata_json={"amount": f"{payload.amount:.2f}", "from_status": old}))
+    await db.commit()
+    logger.info("agent_deposit_refunded", extra={"extra_fields": {"deposit_id": str(deposit.id), "actor_id": str(user.id), "from_status": old}})
+    return await _admin_item(db, deposit.id)
 
 
 async def _abandon(db: AsyncSession, deposit_id, payment_id) -> None:

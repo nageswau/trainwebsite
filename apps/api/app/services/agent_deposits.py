@@ -10,9 +10,10 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.config import settings
-from app.models import AgentStudent, ApplicationDeposit, AuditLog, OverseasApplication, Payment, Receipt, User
+from app.models import AgentOrg, AgentOrgMember, AgentStudent, ApplicationDeposit, AuditLog, OverseasApplication, Payment, Receipt, University, User
 
 logger = logging.getLogger("app.agent_deposits")
 
@@ -126,6 +127,68 @@ async def receipt_student(db: AsyncSession, payment: Payment) -> str | None:
         return None
     application_id = await db.scalar(select(ApplicationDeposit.application_id).where(ApplicationDeposit.id == payment.reference_id))
     return None if application_id is None else await student_name(db, application_id)
+
+
+Student = aliased(User)
+Payer = aliased(User)
+
+
+async def admin_rows(db: AsyncSession, *filters, limit: int, offset: int) -> list[dict]:
+    """Overseas Admin's Agent deposits rows (§4.7), newest paid first. Agency: the organisation of the member who created the
+    application; student: the account's name, else the agency record's."""
+    rows = (
+        await db.execute(
+            select(ApplicationDeposit, AgentOrg.name, func.coalesce(Student.full_name, AgentStudent.full_name), University.name, Payer.full_name)
+            .join(OverseasApplication, OverseasApplication.id == ApplicationDeposit.application_id)
+            .join(University, University.id == OverseasApplication.university_id)
+            .outerjoin(Student, Student.id == OverseasApplication.student_id)
+            .outerjoin(AgentStudent, AgentStudent.id == OverseasApplication.agent_student_id)
+            .outerjoin(AgentOrgMember, AgentOrgMember.user_id == OverseasApplication.agent_id)
+            .outerjoin(AgentOrg, AgentOrg.id == AgentOrgMember.org_id)
+            .outerjoin(Payment, Payment.id == ApplicationDeposit.paid_payment_id)
+            .outerjoin(Payer, Payer.id == Payment.user_id)
+            .where(*filters)
+            .order_by(ApplicationDeposit.paid_at.desc().nulls_last(), ApplicationDeposit.created_at.desc(), ApplicationDeposit.id.desc())
+            .limit(limit)
+            .offset(offset)
+            .execution_options(populate_existing=True)
+        )
+    ).all()
+    unlinked: dict = {}
+    if rows:
+        ids = [row[0].id for row in rows]
+        unlinked = dict(
+            (
+                await db.execute(
+                    select(Payment.reference_id, func.count())
+                    .join(ApplicationDeposit, ApplicationDeposit.id == Payment.reference_id)
+                    .where(Payment.reference_type == REFERENCE_TYPE, Payment.reference_id.in_(ids), Payment.status.in_(("paid", "succeeded")), Payment.id.is_distinct_from(ApplicationDeposit.paid_payment_id))
+                    .group_by(Payment.reference_id)
+                )
+            ).all()
+        )
+    return [
+        {
+            "id": d.id,
+            "application_id": d.application_id,
+            "agency": agency,
+            "student": student or "Unnamed student",
+            "university": university,
+            "amount": None if d.amount is None else f"{d.amount:.2f}",
+            "currency": d.currency,
+            "status": d.status,
+            "due_date": d.due_date,
+            "paid_at": d.paid_at,
+            "paid_by": paid_by,
+            "remitted_at": d.remitted_at,
+            "remittance_reference": d.remittance_reference,
+            "refunded_at": d.refunded_at,
+            "refund_amount": None if d.refund_amount is None else f"{d.refund_amount:.2f}",
+            "refund_reason": d.refund_reason,
+            "unlinked_paid_payments": unlinked.get(d.id, 0),
+        }
+        for d, agency, student, university, paid_by in rows
+    ]
 
 
 async def deposit_view(db: AsyncSession, deposit: ApplicationDeposit | None) -> dict | None:
