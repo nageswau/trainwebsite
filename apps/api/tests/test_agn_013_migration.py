@@ -36,11 +36,11 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0059_and_is_the_single_head():
+def test_migration_chains_after_0059_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert len(HEAD) <= 32  # alembic_version.version_num is VARCHAR(32)
     assert tuple(name for name, _ in _migration.COLUMNS) == NEW
-    assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
+    assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1  # AGN-012 chains 0061 after this one
 
 
 def test_model_declares_the_new_columns_nullable():
