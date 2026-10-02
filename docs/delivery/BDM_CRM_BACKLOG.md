@@ -192,7 +192,15 @@ Conventions used below:
 
 ### bdm-001 — BDM + BDM Manager roles, BDM profile, account provisioning
 
-> **Status (2026-10-02):** implemented on branch `feature/bdm-001-bdm-profile` — **pending browser validation and independent review; not COMPLETE.** Decisions B1–B9 in `DEC-SCOPE-052`. Deviations from this entry, settled in the design: routes live in a flat `app/api/bdm.py` + `app/services/bdm.py` (the codebase has no route packages); the BDM create form is a new admin "BDMs" page (`AdminBdmPanel`), not `AdminUserManagementPanel`; managers have no profile row (B6); a manager's reset ends at `/admin/login` via `login_portal` (B1). Spec: `docs/superpowers/specs/2026-10-02-bdm-001-bdm-profile-design.md`.
+> **Status (2026-10-02):** implemented on branch `feature/bdm-001-bdm-profile`, at `c81de8f`. **Verified with fresh evidence:**
+> - lite backend set: 422 passed;
+> - full web unit suite: 1778/1778;
+> - `tsc`, `eslint` (0 errors), `next build`: pass;
+> - Playwright (5 specs): 30/30;
+> - browser verification: 26/26;
+> - browser QA-01..16 fixed.
+>
+> **Open before merge:** the full backend suite (run by the owner), and the AC07 wording question below. Decisions B1–B11 are in `DEC-SCOPE-052`. Deviations from this entry, settled in the design: routes live in a flat `app/api/bdm.py` + `app/services/bdm.py` (the codebase has no route packages); the BDM create form is a new admin "BDMs" page (`AdminBdmPanel`), not `AdminUserManagementPanel`; managers have no profile row (B6); a manager's reset ends at `/admin/login` via `login_portal` (B1). Spec: `docs/superpowers/specs/2026-10-02-bdm-001-bdm-profile-design.md`.
 
 - **Business requirement:** every BDM has a profile (Name, Employee ID, Designation, Department, Territory, Mobile, Email, Reporting Manager, Active/Inactive; §1). BDMs work in one of three modules, Agent, School or College (Part 2), and report to management.
 - **Existing behavior:** there are no `bdm` or `bdm_manager` roles, and `admin.create_user` rejects any role outside the fixed per-division sets. BDM names exist only as free text on `schools.edusphere_bdm`.
