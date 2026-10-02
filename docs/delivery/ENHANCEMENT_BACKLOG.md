@@ -3854,6 +3854,69 @@ AGN-013 row): lite backend set 200 passed; web lite set 52 passed; `tsc` and esl
 (`docs/quality/AGN-013_BROWSER_QA_2026-10-02.md`; Playwright `agn-013` 2/2); QA13-01 (UX repetition) and QA13-02 fixed. Pending:
 the independent Codex review and the owner's full suites.
 
+## AGN-012 — Visa for agent-managed applications (Step 8)
+
+**Title.** An agency Master or Staff member runs the visa case of an application: document checklist, visa application date,
+appointment, interview, stage and the authority's decision (EVID-015 §5 Step 8).
+
+**Business requirement.** The owner's `AGN-012` statement (in-session, 2026-10-02): "visa documents, application date, appointment,
+interview, status and decision"; acceptance: "a decision can be set only at stage decision; the interview date may not precede the
+application date; the existing checklist rule blocks advancing past checklist with unverified documents." Source: `EVID-015`
+(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 8; `AGENT_CRM_BACKLOG.md` ang-012. Decided as `DEC-SCOPE-055` (V1–V9;
+provisional number — the open AGN-010 branch may claim it too).
+
+**Existing behavior.** `VisaCase` (stages `checklist → documentation → interview_prep → tracking → decision`) is created and updated
+by counselors and overseas admins only; agents get `403`. No application date, interview date or decision; the counselor create accepts
+any starting stage; checklist items are free text matched to document types.
+
+**Expected behavior.**
+- `POST …/crm/applications/{id}/visa` starts a case at `checklist` from `offer`, `visa_documentation` or `status_tracking` (one per application).
+- `PATCH …/crm/applications/{id}/visa` edits the dates (null clears), the checklist (at `checklist` only), moves forward (skips allowed;
+  leaving `checklist` needs every item's newest attached document verified) and records the decision (`approved`/`refused`/`withdrawn`,
+  only when already at `decision`; final).
+- The application detail gains a `visa` block and a Visa section (start, edit, move with a skip confirmation, record decision with a
+  confirmation; read-only when decided, withdrawn, archived or enrolled). The visa case never moves the application stage.
+
+**User roles affected.** `agent` Master and Staff (Staff on assigned students); counselor, overseas admin, student and school views unchanged.
+
+**Frontend / backend / database / API / integration impact.** Backend: new `services/agent_visa.py` (stage list and disclaimer moved
+here unchanged from `api/workflows.py`, which imports them), `api/agent_applications.py` (two routes), `services/agent_applications.py`
+(`visa` detail key), `schemas.py` (`AgentVisaStart`, `AgentVisaUpdate`), `services/staff_activity.py` (four actions), `models.py` +
+migration `0061_agent_visa_details` (four nullable `visa_cases` columns + `ck_visa_cases_decision`). Frontend: `lib/agentApplications.ts`,
+new `AgentApplicationVisa.tsx` and `AgentVisaDetailsForm.tsx`, `AgentApplicationDetail.tsx` (one section form at a time). No dependency,
+no notification, no integration.
+
+**Authentication/Authorization impact.** `_gate` (agent, overseas, active approved organisation; others `403`); scope through
+`load_scoped` (`404` across agencies and for Staff on unassigned students); organisation then application row lock.
+
+**Security impact.** Spec §10.3: `extra="forbid"` bodies, enum stage/decision/checklist values, dates 2000–2100; the case is read by
+application id only (no client-supplied case id); one transaction per write with its audit row; logs carry ids and stages only (never
+the decision or a date); the AGN-021 activity view shows field names only. No rate limit added (owner approval needed; writes are bounded).
+
+**Acceptance criteria** (spec §7).
+- **AGN-012-AC1** A decision only when already at `decision` → else `422`, nothing written.
+- **AGN-012-AC2** Interview before the visa application date → `422` on `interview_date`; same day and either alone accepted.
+- **AGN-012-AC3** Leaving `checklist` with an item whose newest attached document is not verified → `422` naming it; passes once all are verified.
+- **AGN-012-AC4** A case starts at `checklist`; forward-only moves, skips allowed; backward/same `422`.
+- **AGN-012-AC5** A recorded decision is final (`409`).
+- **AGN-012-AC6** Start from an offer onwards (`422`) and only once (`409`).
+- **AGN-012-AC7** Withdrawn/enrolled application or archived student `409`; stale screen or missing case `409`.
+- **AGN-012-AC8** Master: organisation; Staff: assigned only; other agency/unassigned `404`; non-agents `403`; anonymous `401`.
+- **AGN-012-AC9** Concurrent writes serialised on the application row: one case; a queued stale advance `409`.
+- **AGN-012-AC10** Existing visa routes and responses, the list, the status and enrollment routes unchanged.
+- **AGN-012-AC11** UI states, field errors, focus, one section form at a time, 320 px.
+- **AGN-012-AC12** No decision or date in application logs.
+
+**Regression risks.** `visa_cases` readers (portal, reports, school views) — additive nullable columns; the moved constants (pinned by
+`test_agn_012_schemas.py` and `test_visa_001/003`); `AgentApplicationDetail` form gating (AGN-008/013 component tests green); the
+migration chain (0061 may collide with AGN-010).
+
+**Complexity:** Medium. **Risk:** Medium.
+
+**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-012-agent-visa` (evidence in `docs/quality/RTM.md`, AGN-012 row).
+Pending: browser validation (the Playwright spec `agn-012-visa.spec.ts` is written, not yet run), the independent Codex review and the
+owner's full suites.
+
 ## 2. Dependency graph
 
 **Must be sequential:**

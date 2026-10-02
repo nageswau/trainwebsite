@@ -274,3 +274,18 @@ personal data about a student), the integrity of the checklist gate, cross-agenc
 | Rate limiting | No new limiter (changing throttling needs owner approval, and no comparable route has one: AGN-008 status, AGN-013 enrollment). Writes are bounded per application (five stages, one final decision, row-locked). Accepted and documented. |
 | Audit | One `overseas.application.visa_*` row per effective write, in the same transaction (fail closed); refusals and no-op `PATCH`es write nothing. |
 | Privacy | New personal data: visa application, interview and decision fields. Purpose: agency case tracking; retained with the visa case (no separate store); covered by the existing student/application lifecycle. No third-party sharing. |
+
+## 11. Implementation notes (2026-10-02)
+
+Deviations from §4–§9, each recorded as a ruling in the execution ledger:
+- `VISA_CASE_STAGES` and `VISA_DECISION_DISCLAIMER` moved, unchanged, from `api/workflows.py` to `services/agent_visa.py`;
+  `workflows.py` imports them (the service cannot import the API layer, which imports `services.agent_applications`). §2's "no change
+  to `VISA_CASE_STAGES`" holds for its value and every existing import.
+- The date-order rule runs in the service for both routes (one place, same `loc`), not as a schema validator.
+- A blocked checklist gate is logged as `agent_visa_gate_blocked` (WARNING) with the unverified item count only, via a small
+  `ChecklistGateRefused(HTTPException)` subclass.
+- Concurrency (AC9) is pinned by forced interleaving (a separate transaction holding the application row lock), since the plain
+  two-callers tests also passed with the lock removed.
+- `visa` is optional in the TS type, so earlier component fixtures needed no change; the §6 matrix row is covered by
+  `test_agn_012_security.py` (the matrix fixtures have no application at `offer`) and documented in `RBAC_MATRIX.md`.
+- `AgentApplicationVisa.tsx` is ~280 lines (one section: view, move, decide), with the shared dates/checklist form split out.

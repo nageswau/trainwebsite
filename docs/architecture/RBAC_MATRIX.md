@@ -195,6 +195,7 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | View Applications | `GET /workflows/overseas/applications`, `GET /portal/overseas/agent/applications`, `GET /lookups/overseas-applications` | ✅ | ✅ |
 | Change Application Status | `POST /workflows/overseas/agent/crm/applications/{id}/status` (**AGN-008**; forward only up to `status_tracking`, withdraw; never `enrolled`) | ✅ | ✅ assigned only |
 | Confirm Enrollment | `PUT /workflows/overseas/agent/crm/applications/{id}/enrollment` (**AGN-013**, `DEC-SCOPE-054` E1; from `offer` onwards; triggers the commission) | ✅ | ❌ `403` (reads the details on the application) |
+| Manage Visa Case | `POST`/`PATCH /workflows/overseas/agent/crm/applications/{id}/visa` (**AGN-012**, `DEC-SCOPE-055` V1; start from `offer` onwards, dates, checklist, forward moves through the checklist gate, final decision) | ✅ | ✅ assigned only |
 | Upload Documents | `POST /workflows/overseas/documents`; `GET /portal/overseas/agent/documents`; **AGN-009:** `GET`/`POST /workflows/overseas/agent/crm/documents`, `PUT …/documents/{id}/file`, `GET …/documents/{id}/history`, `GET`/`POST …/crm/document-requests`, `POST …/document-requests/{id}/cancel` (`DEC-SCOPE-052` G4: requests are Master and Staff) | ✅ | ✅ assigned only |
 | Verify Documents | `PATCH /workflows/overseas/documents/{id}/verify` with `verified` (**new for agents**) | ✅ | **T** |
 | Reject Documents | same route with `rejected` or `changes_required` (**AGN-009:** a reason is required, `422` when blank) | ✅ | ❌ (even with Verify on) |

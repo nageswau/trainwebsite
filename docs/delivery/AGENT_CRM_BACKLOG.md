@@ -20,6 +20,7 @@ NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was wri
 > | `AGN-008` | ang-008 (applications for no-login students, sidebar filters) | `DEC-SCOPE-050` | branch `feature/agn-008-agent-applications` (PR pending; browser QA done, Codex review pending) |
 > | `AGN-009` | ang-009 (documents: upload, download, verify, reject with a reason, requests, history; Pending/Uploaded/Additional) | `DEC-SCOPE-052` | branch `feature/agn-009-agent-documents` (implemented; browser validation and Codex review pending) |
 > | `AGN-016` | ang-016 (tasks and follow-ups; "Pending actions" KPI only — the rest of ang-018 stays open) | `DEC-SCOPE-053` | branch `feature/agn-016-tasks-followups` (implemented; browser QA, full suites and Codex review pending) |
+> | `AGN-012` | ang-012 (visa for agent-managed applications: documents checklist, application date, appointment, interview, stage, decision) | `DEC-SCOPE-055` | branch `feature/agn-012-agent-visa` (implemented; browser validation and Codex review pending) |
 >
 > Not started: ang-010 … ang-020 and ang-022. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
 > student to a staff member; staff see assigned students only) — check its remaining acceptance criteria before planning it.
@@ -502,6 +503,9 @@ table and column names are placeholders for the design spec, not decisions.
 - **Positive / Negative / Edge:** full visa flow to approved / decision without stage → 422 / a refused visa then re-application (new case vs reopen: spec).
 - **Regression risks:** `test_visa_001/002/003`.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-02):** implemented as `AGN-012` (`DEC-SCOPE-055` V1–V9: Master and Staff, outcomes final at `decision`, forward-only
+  from `checklist`, agency document types on the checklist, one case per application, `POST`/`PATCH …/crm/applications/{id}/visa`);
+  browser validation and Codex review pending. See `ENHANCEMENT_BACKLOG.md` §AGN-012.
 
 ---
 
