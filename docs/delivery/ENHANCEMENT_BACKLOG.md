@@ -83,6 +83,9 @@ See §AGN-008.
 **Revision 12 (2026-10-02):** the owner's `AGN-016` statement ("Tasks & Follow-ups" §4; "Pending Actions" KPI §2) is decided as
 `DEC-SCOPE-053` (T1–T8; drafted as `051`, renumbered on merging `main` @ `d371865`, where AGN-014 holds `051` and AGN-009 `052`). See §AGN-016.
 
+**Revision 13 (2026-10-02):** the owner's `AGN-017` statement ("Notifications" §4; "Monitor deadlines" §2) is decided as `DEC-SCOPE-055`
+(N1–N10; provisional — the next free number on `main` @ `e0395d6`). See §AGN-017.
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -172,6 +175,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-008 | Agent applications — Master/Staff create, edit, view, change status, Application ID, submission date and deadlines for agent students; Staff sidebar filters (Rev. 11) | Large | High | Yes | AGN-004, AGN-003, AGN-021, AGT-002, OVS-002/003/004, ENH-031, RPT-002 |
 | AGN-009 | Agent documents — upload, download, verify, reject (with a reason), request additional, history; §5 Step 4 types; Staff sidebar Pending/Uploaded/Additional (`DEC-SCOPE-052`) | Large | High | Yes | AGN-003, AGN-004, AGN-008, OVS-005, VISA-001 |
 | AGN-016 | Agent tasks and follow-ups — Master/Staff create, edit, complete and cancel tasks on agency students (task follows the student); "Pending actions" KPI (Rev. 12) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-021 |
+| AGN-017 | Agency notifications (in-app + email) on assignment, document request/rejection, status change, new task; daily deadline reminders and overdue digest; Notifications page + unread badge (Rev. 13) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-009, AGN-013, AGN-016, ENH-014 |
 
 ---
 
@@ -3745,6 +3749,39 @@ history; a reason required when an agent rejects or asks for changes; Pending / 
 
 **Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-009-agent-documents`. Lite test sets pass (see `RTM.md` AGN-009 row).
 Pending, owner-side: browser validation, the independent Codex review, the full backend/web/E2E suites, the merge.
+## AGN-017 — Agency Notifications and Deadline Reminders
+
+**Title.** Tell the right agency member, in-app and by email, when something about their student changes, and remind them daily of
+upcoming deadlines and overdue tasks.
+
+**Business requirement.** The owner's `AGN-017` statement (in-session, 2026-10-02): "Notifications" (§4); "Monitor deadlines" (§2).
+Acceptance: "each event produces exactly one notification to the right person; reminders are not sent twice for the same deadline/day; a
+failed email is recorded, never raised." Source: `EVID-015` (`DERIVED_BLUEPRINT`); channels `DEC-SCOPE-035` D19. Decision record:
+`DEC-SCOPE-055` (N1–N10, `EXPLICIT_APPROVAL` in-session 2026-10-02).
+
+**Existing behavior.** No agency member was notified of assignments, document requests/rejections, status changes or new tasks; no
+scheduled job besides the ENH-014 delivery sweeper.
+
+**Expected behavior.** Notices on assignment (new assignee only), document request, document rejected / changes required, status change
+(agency or EduSphere actor), enrollment (no double notice with "Commission estimated"), task created by someone else. Recipient: the active
+assignee, else the active Masters; never the actor. A daily 08:00 IST job: deadline reminders at 3/1/0 days and one overdue-task digest per
+recipient per day, idempotent by `notifications.dedupe_key`. A Notifications page (Master and Staff) and an unread badge. Spec:
+`docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md`; plan `docs/superpowers/plans/2026-10-02-agn-017-notifications.md`.
+
+**Roles.** Agency Master and Staff receive; students receive nothing new (D19).
+
+**Acceptance criteria.** Spec §10 AC1–AC10.
+
+**Regression risks.** Spec §12: shared `workflows.py` verify/PATCH/advance (additive hooks; students' notices unchanged), the enrollment
+commission notice, the first crontab beat entry, `PortalShell`/`NavItem` (optional `badge`), every agency page now also reads the unread
+count, the alembic head (`0061`).
+
+**Complexity:** Medium. **Risk:** Medium.
+
+**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-017-notifications`. Lite tests only, per the owner (the AGN-017 files
+plus the touched features' files). Outstanding: browser validation (with the e2e spec `agn-017-notifications.spec.ts`), independent Codex
+review, the owner's full suites.
+
 ## AGN-016 — Agent Tasks and Follow-ups, "Pending Actions" KPI
 
 **Title.** Let an agency Master, and Staff for their assigned students, record follow-up tasks on agency students and see what is open

@@ -315,6 +315,23 @@ only) in the same transaction. Responses are explicit allowlists: people are nam
 `GET /portal/overseas/agent/dashboard` gains `{"label": "Pending actions", "value": n}` after "Applications" (open tasks of active
 students in the caller's scope); `GET /portal/overseas/agent/tasks` is a header-only payload ("Tasks & follow-ups").
 
+**`AGN-017` / `DEC-SCOPE-055` (built 2026-10-02; migration `0061_agent_notifications`) — agency notifications and deadline
+reminders.** Design spec `docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md` §3–§9. One new read endpoint; the existing
+notification list and read routes are **unchanged** (newest 100 as a plain array; `{ok: true}`; `404` for another user's id; `dedupe_key`
+is never returned). Agency notices are written by existing routes in their own transaction, after their locks — no new write endpoint:
+`POST …/crm/students/{id}/assign` (the new assignee), `POST …/crm/document-requests`, `PATCH /workflows/overseas/documents/{id}/verify`
+(agency or counselor/admin; `rejected`/`changes_required` only), `POST …/crm/applications/{id}/status`, `PUT …/crm/applications/{id}/enrollment`,
+`PATCH /workflows/overseas/applications/{id}` and `POST …/applications/{id}/advance` (status actually changed; agency record present),
+`POST …/crm/tasks`. Recipient: the student's active assigned staff member, else the organisation's active Masters; never the actor; never
+a student (D19). Channels: in-app plus email (ENH-014 queue, email only). Bodies carry no names and no user-typed text; `action_url` is one
+of `/overseas/agent/{students|documents|applications|tasks}`. A daily beat job (02:30 UTC = 08:00 IST) adds deadline reminders (3, 1, 0
+days) and one overdue-task digest per recipient per India day, idempotent through `notifications.dedupe_key`.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /workflows/notifications/unread-count` | Authenticated | Self | `200 NotificationUnreadCount {"unread": n}` — the caller's unread notifications (may exceed the 100-row list). Any signed-in role; `401` without a session. |
+| `GET /portal/overseas/agent/notifications` | Authenticated | Agent (Master or staff), approved | Header-only payload ("Notifications"): the page's role/approval gate, as Tasks. |
+
 **`AGN-003` / `DEC-SCOPE-044` (built 2026-10-01).** Design spec §6–§8. Two optional §6 rows (Verify Documents, Reports) are switched on per
 staff member by a Master; the flags are read from the database on every request, so a change applies on the next request.
 

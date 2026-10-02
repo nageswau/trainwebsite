@@ -85,8 +85,8 @@ notified `notification_recipients(agent)`, and those users are removed from the 
     (§2). One notice per recipient per IST day: title "Overdue tasks"; body "You have N overdue task(s)."; key
     `agn017:overdue:{today}:{user_id}`. N is computed at send time; a later run the same day creates nothing (the count is not
     updated).
-  - *Recipients:* §2 with `actor=None`, resolved per chunk with one query for assignees and one for each org's active Masters
-    (no per-item N+1).
+  - *Recipients:* §2 with `actor=None`, cached per student record for the run (a record's recipients are resolved once, however many
+    deadlines and tasks it has). *Implementation note (2026-10-02):* this replaced "one query per chunk" — simpler, same bound in practice.
 - **Never twice:** each reminder is `INSERT INTO notifications … ON CONFLICT (dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING
   RETURNING id`; `queue_deliveries` runs only for a returned row. A rerun, a second beat process, or a concurrent run creates nothing
   new. A moved deadline has a new key, so its reminders fire for the new date.
@@ -161,14 +161,19 @@ migration so `create_all` (0001) and the migration agree.
 - `components/PortalPage.tsx`: `agentNotifications` joins the "portal-payload 404 tolerated" set (the payload call stays the
   role/approval gate); for agents it also fetches `unread-count` (failure → no badge, never a broken page) and sets it on the
   Notifications nav item.
-- `components/AgentNotificationsSection.tsx` (new, server): the existing agent page header (`portal-title`, eyebrow "Workspace",
-  one `h1` "Notifications", a one-line intro per role, as `AgentTasksSection`), then a `card` holding an async list child under
-  `<Suspense fallback={<p className="muted" role="status">Loading notifications…</p>}>` — the same loading text pattern as
-  Applications/Documents/Tasks, so the header paints immediately and the list streams. States:
+- `services/portal.py` gains a header-only `notifications` section for agents — the page's role/approval gate, as Tasks (without it the
+  payload would 404 and `PortalPage` would show "Access unavailable" to agency members).
+- `components/AgentNotificationsSection.tsx` (new, presentational): the existing agent page header (`portal-title`, eyebrow "Workspace",
+  one `h1` "Notifications", a one-line intro per role, as `AgentTasksSection`), then a `card` with the list. *Implementation note
+  (2026-10-02):* `PortalPage` fetches the list in its existing `Promise.all` (beside the payload and the unread count, one round trip)
+  and passes `items` (null when it failed) — replacing the streamed async child under Suspense, which this repo's component tests
+  cannot render; there is no separate "Loading notifications…" text (the route transition keeps the previous page until it renders).
+  States:
   - empty: "No notifications yet. You'll be told here about assignments, document requests, status changes, new tasks and upcoming
     deadlines.";
   - list failure (non-401): `SectionUnavailable` ("This section couldn't load. Refresh to try again.", `role="status"`);
-  - 401 (session expired): the existing `accessUnavailable` login card;
+  - 401 (session expired): the existing `accessUnavailable` login card (`PortalPage` rethrows a 401 from the list);
+  - document type "Other" is shown as "A document" (its label is user-typed) — implementation note, 2026-10-02;
   - exactly 100 rows: a muted line "Showing your latest 100 notifications." (the existing endpoint's window — the badge may count
     unread items older than the window);
   - non-agency viewer (Super Admin): a note, as Tasks.
