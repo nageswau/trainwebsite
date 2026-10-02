@@ -3778,10 +3778,24 @@ count, the alembic head (`0061`).
 
 **Complexity:** Medium. **Risk:** Medium.
 
-**Status (2026-10-03): VERIFIED, NOT COMPLETE** on `feature/agn-017-notifications`. Lite tests only, per the owner (the AGN-017 files
+**Status (2026-10-03): COMPLETE (AGN-017 scope; evidence below)** on `feature/agn-017-notifications`. Lite tests only, per the owner (the AGN-017 files
 plus the touched features' files). Browser QA done (`docs/quality/AGN-017_BROWSER_QA_2026-10-02.md`: QA17-01/03/04/05/06 fixed and
 re-verified; QA17-02 kept as designed, `DEC-SCOPE-055` N11); e2e `agn-017-notifications.spec.ts` 2/2. Codex review waived by the owner.
-Outstanding: the owner's full suites.
+
+**Verification before completion (2026-10-03, fresh runs; final code `2a49676`).** Backend: 90 files (`test_agn_*`, `test_agt_*`,
+`test_enh_014_*`, NOT-001, SCH-007, OVS-003/004/005, ENH-005 approve, ENH-023) 1229 passed / 1 failed — the failure,
+`test_enh_023_tier_change.py::test_failing_email_never_fails_or_undoes_the_tier_change`, is **pre-existing and order-dependent**: it
+fails after any migration test (alembic `env.py` `fileConfig` disables existing loggers, so its `caplog` sees nothing), reproduced on base
+`e0395d6` with `test_agn_013_migration.py`; it passes alone and in the 188-test run without the migration files. After the type-only fix,
+the 20 files that touch `agent_notifications.py` 209 passed; `alembic heads` = `0061_agent_notifications`; ruff clean on every changed
+Python file; mypy 283 errors = the base's 283, none in AGN-017 code; `alembic check` drift = two pre-existing indexes only. Web: 168/168
+test files (one AGN-017 omission fixed: `navigation.agent.test.ts` now lists Notifications), `tsc` 0, `npm run lint` 0 errors (31
+pre-existing warnings; `--max-warnings=0` on AGN-017 files), `npm run build` exit 0 (88/88). Playwright on stack `agn017qa`: AGN-017, 016,
+013, 009, 008, 004, ENH-005, ENH-023, SCH-007 — 22 passed (`--timeout=60000`, QA-grown demo agency); AGN-017 2/2 again on the final images.
+Browser Use on the final images: live event → badge 9→10, open → 9 on the destination, 0 px overflow at 1280/375, signed-out redirect,
+role refusal, Super Admin note without form, no console/network errors; daily job re-run 0 created / 2 duplicates; deliveries email-only.
+Diff: 42 files, all AGN-017; no skipped/focused tests, debug code or secrets. **Status: COMPLETE for AGN-017's scope**; the owner's full
+suite will show the pre-existing ENH-023 ordering failure above (not AGN-017's; recorded for its owner).
 
 ## AGN-016 — Agent Tasks and Follow-ups, "Pending Actions" KPI
 

@@ -20,7 +20,7 @@ NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was wri
 > | `AGN-008` | ang-008 (applications for no-login students, sidebar filters) | `DEC-SCOPE-050` | branch `feature/agn-008-agent-applications` (PR pending; browser QA done, Codex review pending) |
 > | `AGN-009` | ang-009 (documents: upload, download, verify, reject with a reason, requests, history; Pending/Uploaded/Additional) | `DEC-SCOPE-052` | branch `feature/agn-009-agent-documents` (implemented; browser validation and Codex review pending) |
 > | `AGN-016` | ang-016 (tasks and follow-ups; "Pending actions" KPI only — the rest of ang-018 stays open) | `DEC-SCOPE-053` | branch `feature/agn-016-tasks-followups` (implemented; browser QA, full suites and Codex review pending) |
-> | `AGN-017` | ang-017 (agency notifications, daily deadline reminders and overdue digest, Notifications page + unread badge) | `DEC-SCOPE-055` | branch `feature/agn-017-notifications` (verified: browser QA fixes re-checked, Codex review waived; full suites pending) |
+> | `AGN-017` | ang-017 (agency notifications, daily deadline reminders and overdue digest, Notifications page + unread badge) | `DEC-SCOPE-055` | branch `feature/agn-017-notifications` (complete for its scope 2026-10-03: verified with fresh evidence; Codex review waived; merge pending) |
 >
 > Not started: ang-010 … ang-020 and ang-022. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
 > student to a staff member; staff see assigned students only) — check its remaining acceptance criteria before planning it.
@@ -627,8 +627,8 @@ table and column names are placeholders for the design spec, not decisions.
 - **Complexity:** medium · **Risk:** medium
 - **Status (2026-10-02):** implemented as `AGN-017` (`DEC-SCOPE-055`: assignee else Masters, never the actor; task event = created by
   someone else; IST day; 3/1/0-day deadline reminders; one overdue digest per recipient per day; email only through the ENH-014 queue;
-  `notifications.dedupe_key`, migration `0061`); browser QA done and fixes re-verified, Codex review waived; the owner's full suites
-  pending. See `ENHANCEMENT_BACKLOG.md` §AGN-017.
+  `notifications.dedupe_key`, migration `0061`); browser QA done and fixes re-verified, Codex review waived; verification before
+  completion done 2026-10-03 (complete for its scope). See `ENHANCEMENT_BACKLOG.md` §AGN-017.
 
 ---
 
