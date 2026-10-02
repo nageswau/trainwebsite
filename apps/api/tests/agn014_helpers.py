@@ -13,11 +13,11 @@ CSV = REPORT + ".csv"
 async def mk_commission(
     db, ctx: dict, *, status: str = "paid", amount: float = 1000, currency: str = "INR", created_at: datetime | None = None,
     student_name: str = "Report Student", university_name: str = "Report University", country_name: str = "Reportland",
-    intake: str = "Sep 2027", agent=None, student: bool = True, claim_reference: str | None = None,
+    intake: str = "Sep 2027", agent=None, student: bool = True, claim_reference: str | None = None, school_student=None,
 ) -> AgentCommission:
     """`ctx["master"]` owns the commission unless `agent` (e.g. a staff user) is given; `student=False` leaves the application
-    without a login (`student_id` NULL), as a bridged school-student application has. Claimed-or-later statuses get a unique
-    claim reference unless one is given."""
+    without a login (`student_id` NULL) and `school_student` makes it a bridged school-student application. Claimed-or-later
+    statuses get a unique claim reference unless one is given."""
     suffix = uuid.uuid4().hex[:8]
     country = Country(
         slug=f"agn014-country-{suffix}", name=country_name, overview="", tuition="", living_expenses="", visa_process=[],
@@ -34,7 +34,8 @@ async def mk_commission(
     owner = agent or ctx["master"]
     student_user = await mk_user(db, role="overseas_student", full_name=student_name) if student else None
     application = OverseasApplication(
-        student_id=student_user.id if student_user else None, university_id=university.id, agent_id=owner.id, intake=intake, status="enrolled",
+        student_id=student_user.id if student_user else None, school_student_id=school_student.id if school_student else None,
+        university_id=university.id, agent_id=owner.id, intake=intake, status="enrolled",
     )
     db.add(application)
     await db.flush()

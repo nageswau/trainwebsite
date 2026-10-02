@@ -13,6 +13,7 @@ from app.models import AgentOrg, AgentOrgMember, UserRoleAssignment
 from tests.agn001_helpers import client_for, mk_active_org, mk_user, uniq
 from tests.agn002_helpers import mk_staff
 from tests.agn014_helpers import CSV, REPORT, mk_commission
+from tests.enh005_helpers import mk_school
 
 
 def _day(y, m, d, hh=12, mm=0, ss=0):
@@ -195,6 +196,25 @@ async def test_csv_neutralises_formulas(db_session):  # AC07, Review Focus 4
     async with client_for(ctx["master"].email) as c:
         row = _csv_rows(await c.get(CSV))[1]
     assert row[0] == "'=HYPERLINK(1)" and row[1] == "'+U" and row[3] == "'@Sep" and row[10] == "'" + reference
+
+
+@pytest.mark.asyncio
+async def test_csv_names_a_bridged_school_student(db_session):  # Review Focus 1 (final review I2)
+    ctx = await mk_active_org(db_session, name=f"CsvBridged {uniq()}")
+    school = await mk_school(db_session, label="AGN014")
+    kid = school["students"][0]
+    await mk_commission(db_session, ctx, student=False, school_student=kid)
+    async with client_for(ctx["master"].email) as c:
+        assert _csv_rows(await c.get(CSV))[1][0] == kid.full_name
+
+
+@pytest.mark.asyncio
+async def test_far_future_date_to_is_422_not_500(db_session):  # final review I1: date.max + 1 day overflows
+    ctx = await mk_active_org(db_session, name=f"Max {uniq()}")
+    async with client_for(ctx["master"].email) as c:
+        for path in (REPORT, CSV):
+            response = await c.get(path, params={"date_to": "9999-12-31"})
+            assert response.status_code == 422 and response.json()["detail"] == "date_to must be before 9999-12-31", response.text
 
 
 @pytest.mark.asyncio

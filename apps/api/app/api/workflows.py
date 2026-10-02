@@ -2425,6 +2425,8 @@ async def _commission_report_items(user: User, db: AsyncSession, date_from: str 
     start, end = _report_date(date_from, "date_from"), _report_date(date_to, "date_to")
     if start and end and end < start:
         raise HTTPException(422, "date_to must be on or after date_from")
+    if end == date.max:  # the exclusive bound below is the next day, which does not exist (a date input accepts 9999-12-31)
+        raise HTTPException(422, "date_to must be before 9999-12-31")
     query = (
         select(AgentCommission, OverseasApplication.intake, University.name, Country.name, func.coalesce(User.full_name, SchoolStudent.full_name))
         .select_from(AgentCommission)
