@@ -378,6 +378,8 @@ class AgentDocumentReview(BaseModel):
 # AGN-009 (DEC-SCOPE-052 G3): EVID-015 §5 Step 4, stored as written (the free-text style the visa checklist compares); the web mirrors
 # it in lib/agentDocuments.ts DOCUMENT_TYPES.
 AgentDocumentType = Literal["Passport", "Academic certificates", "Transcripts", "English test", "CV", "SOP", "LOR", "Financial documents", "Other"]
+# AGN-010 (DEC-SCOPE-054 O3): uploads also take an offer letter (against one application); requests keep the list above.
+AgentUploadDocumentType = Literal[AgentDocumentType, "Offer letter"]
 
 
 class AgentDocumentRequestCreate(BaseModel):
