@@ -89,4 +89,25 @@ describe("BdmOrganizationForm (bdm-002 AC1, AC2, §12.2 F5)", () => {
     expect(String(mock.mock.calls[0][0])).toBe("/api/v1/bdm/organizations/o1");
     expect(body(mock)).toEqual({ existing_partner: true });
   });
+
+  it("puts a contact's server error on that contact, not on the organization's field (final review I1)", async () => {
+    serve(res({ detail: [{ loc: ["body", "contacts", 0, "email"], msg: "Value error, Enter a valid email address" }] }, 422));
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fillRequired();
+    fireEvent.change(screen.getAllByLabelText("Email")[1], { target: { value: "bad" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
+    expect(await screen.findByText("Enter a valid email address")).toBeInTheDocument();
+    const [orgEmail, contactEmail] = screen.getAllByLabelText("Email");
+    expect(contactEmail).toHaveAttribute("aria-invalid", "true");
+    expect(orgEmail).not.toHaveAttribute("aria-invalid");
+    await waitFor(() => expect(contactEmail).toHaveFocus());
+  });
+
+  it("shows an unmappable 422 as one message", async () => {
+    serve(res({ detail: [{ loc: ["body", "contacts"], msg: "Value error, Only one contact can be primary" }] }, 422));
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fillRequired();
+    fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Only one contact can be primary");
+  });
 });

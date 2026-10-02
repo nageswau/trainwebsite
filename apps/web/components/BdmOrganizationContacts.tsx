@@ -66,6 +66,7 @@ export default function BdmOrganizationContacts({ organization, onChanged }: { o
   const canEdit = organization.permissions.can_edit;
   const url = `${ORGS_URL}/${organization.id}/contacts`;
   const last = organization.contacts.length <= 1;
+  const addId = `org-${organization.id}-add-contact`;
 
   async function run(request: Promise<SendOutcome>, notice: string) {
     setBusy(true);
@@ -75,6 +76,7 @@ export default function BdmOrganizationContacts({ organization, onChanged }: { o
     if (outcome.ok && isOrganizationBody(outcome.data)) {
       setEditing(null);
       setDeleting(null);
+      focus(addId); // the control that had focus is gone (final review M5, spec F6)
       onChanged(outcome.data.organization, notice);
     } else setFailure(outcome.ok ? "Unable to update the contacts." : outcome.message);
   }
@@ -130,7 +132,7 @@ export default function BdmOrganizationContacts({ organization, onChanged }: { o
           <ContactEditor busy={busy} onSave={(body) => void run(sendJson(url, "POST", body), "Contact added.")} onCancel={() => setEditing(null)} />
         ) : (
           <div>
-            <button type="button" className="btn secondary small" onClick={() => setEditing("new")} disabled={busy || organization.contacts.length >= 20}>Add contact</button>
+            <button id={addId} type="button" className="btn secondary small" onClick={() => setEditing("new")} disabled={busy || organization.contacts.length >= 20}>Add contact</button>
           </div>
         ))}
       {failure && <p className="form-error" role="alert">{failure}</p>}

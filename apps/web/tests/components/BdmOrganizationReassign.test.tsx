@@ -58,4 +58,16 @@ describe("BdmOrganizationReassign", () => {
     fireEvent.click(screen.getByRole("button", { name: "Yes, reassign" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Choose an active BDM of this type from your team");
   });
+
+  it("disarms Reassign after a successful reassignment (final review M1)", async () => {
+    const updated = { ...ORG, assigned_bdm: { id: "b2", full_name: "Ravi", active: true } };
+    serve(() => res({ organization: updated }));
+    const { rerender } = render(<BdmOrganizationReassign organization={ORG} onChanged={vi.fn()} />);
+    await pickRavi();
+    fireEvent.click(screen.getByRole("button", { name: "Reassign" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, reassign" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Reassign" })).toBeDisabled());
+    rerender(<BdmOrganizationReassign organization={updated as unknown as Organization} onChanged={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Reassign" })).toBeDisabled();
+  });
 });

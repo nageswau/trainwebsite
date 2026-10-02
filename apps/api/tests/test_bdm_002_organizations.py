@@ -212,3 +212,13 @@ async def test_archived_match_is_labelled_in_the_warning(client, db_session):
     await client.post(f"{ORGS}/{org['id']}/archive")
     warned = await client.post(ORGS, json=org_payload(name=org["name"], city=org["city"]))
     assert warned.status_code == 409 and warned.json()["detail"]["matches"][0]["archived"] is True
+
+
+@pytest.mark.asyncio
+async def test_a_long_name_that_expands_when_normalized_is_still_saved(client, db_session):
+    """Final review M2: casefold/NFKC can lengthen text ("ß" -> "ss"); a valid 200-character name must not overflow name_key."""
+    await login(client, await make_bdm(db_session, await make_manager(db_session)))
+    name = uuid.uuid4().hex[:10] + "ß" * 190  # unique part first: the key is cut at 200 characters
+    response = await client.post(ORGS, json=org_payload(name=name, city="ß" * 120))
+    assert response.status_code == 201, response.text
+    assert response.json()["organization"]["name"] == name

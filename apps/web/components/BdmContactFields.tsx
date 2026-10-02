@@ -22,6 +22,16 @@ export default function BdmContactFields({
 }) {
   const focus = useFocusAfterRender();
   const id = (c: ContactValues, field: string) => `${idPrefix}-${c.key}-${field}`;
+  const invalid = (c: ContactValues, field: string) => {
+    const message = errors[`${c.key}-${field}`];
+    return message ? { "aria-invalid": true, "aria-describedby": `${id(c, field)}-error` } : {};
+  };
+  const errorOf = (c: ContactValues, field: string) =>
+    errors[`${c.key}-${field}`] ? (
+      <p className="form-error" id={`${id(c, field)}-error`}>
+        {errors[`${c.key}-${field}`]}
+      </p>
+    ) : null;
   const set = (key: string, patch: Partial<ContactValues>) => onChange(contacts.map((c) => (c.key === key ? { ...c, ...patch } : c)));
   const add = () => {
     const added = blankContact();
@@ -65,7 +75,8 @@ export default function BdmContactFields({
             </div>
             <div className="field">
               <label htmlFor={id(c, "designation")}>Designation</label>
-              <input id={id(c, "designation")} autoComplete="organization-title" maxLength={120} value={c.designation} onChange={(e) => set(c.key, { designation: e.target.value })} />
+              <input id={id(c, "designation")} autoComplete="organization-title" maxLength={120} value={c.designation} {...invalid(c, "designation")} onChange={(e) => set(c.key, { designation: e.target.value })} />
+              {errorOf(c, "designation")}
             </div>
             <div className="field">
               <label htmlFor={id(c, "role")}>Role</label>
@@ -80,11 +91,13 @@ export default function BdmContactFields({
             </div>
             <div className="field">
               <label htmlFor={id(c, "phone")}>Phone</label>
-              <input id={id(c, "phone")} type="tel" autoComplete="tel" maxLength={30} value={c.phone} onChange={(e) => set(c.key, { phone: e.target.value })} />
+              <input id={id(c, "phone")} type="tel" autoComplete="tel" maxLength={30} value={c.phone} {...invalid(c, "phone")} onChange={(e) => set(c.key, { phone: e.target.value })} />
+              {errorOf(c, "phone")}
             </div>
             <div className="field">
               <label htmlFor={id(c, "email")}>Email</label>
-              <input id={id(c, "email")} type="email" autoComplete="email" maxLength={255} value={c.email} onChange={(e) => set(c.key, { email: e.target.value })} />
+              <input id={id(c, "email")} type="email" autoComplete="email" maxLength={255} value={c.email} {...invalid(c, "email")} onChange={(e) => set(c.key, { email: e.target.value })} />
+              {errorOf(c, "email")}
             </div>
             <label style={{ display: "flex", gap: 6, alignItems: "center", minHeight: 44 }}>
               <input type="radio" name={`${idPrefix}-primary`} checked={c.is_primary} onChange={() => onChange(contacts.map((x) => ({ ...x, is_primary: x.key === c.key })))} />

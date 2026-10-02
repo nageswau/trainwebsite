@@ -98,4 +98,17 @@ describe("BdmOrganizationContacts", () => {
     fireEvent.click(screen.getByRole("button", { name: "Make Ms Iyer primary" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Restore this organization first");
   });
+
+  it("keeps keyboard focus after a delete or an add (final review M5, spec F6)", async () => {
+    serve(res({ organization: org([RAO]) }), res({ organization: org() }, 201));
+    const { rerender } = render(<BdmOrganizationContacts organization={org()} onChanged={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Delete Ms Iyer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add contact" })).toHaveFocus());
+    rerender(<BdmOrganizationContacts organization={org([RAO])} onChanged={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add contact" }));
+    fireEvent.change(screen.getByLabelText("Contact name (required)"), { target: { value: "Ms Iyer" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save contact" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add contact" })).toHaveFocus());
+  });
 });

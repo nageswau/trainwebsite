@@ -88,7 +88,7 @@ async def create_organization(payload: BdmOrganizationCreate, user: User = Depen
     """AC1/AC2: BDMs only (C9: the creator is the assignee; C3: the creator's module). A likely duplicate is a 409 the BDM must
     acknowledge with confirm_duplicate; nothing is ever merged (Q-18). Concurrent identical creates both succeed (warn-only)."""
     profile = await bdm_context(db, user)
-    name_key, city_key = svc.normalize_key(payload.name), svc.normalize_key(payload.city)
+    name_key, city_key = svc.org_keys(payload.name, payload.city)
     matches, total = await svc.find_duplicates(db, profile.bdm_type, name_key, city_key)
     if total and not payload.confirm_duplicate:
         svc.log("bdm_org_duplicate_warned", user, "-", match_count=total)
@@ -144,8 +144,7 @@ async def update_organization(org_id: UUID, payload: BdmOrganizationUpdate, user
     changed = sorted(k for k, v in changes.items() if getattr(org, k) != v)
     total = 0
     if {"name", "city"} & set(changed):
-        name_key = svc.normalize_key(changes.get("name", org.name))
-        city_key = svc.normalize_key(changes.get("city", org.city))
+        name_key, city_key = svc.org_keys(changes.get("name", org.name), changes.get("city", org.city))
         matches, total = await svc.find_duplicates(db, org.bdm_type, name_key, city_key, exclude_id=org.id)
         if total and not payload.confirm_duplicate:
             svc.log("bdm_org_duplicate_warned", user, org.id, match_count=total)

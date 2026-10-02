@@ -32,8 +32,10 @@ export default function BdmOrganizationReassign({ organization, onChanged }: { o
     const outcome = await sendJson(`${ORGS_URL}/${organization.id}/assign`, "POST", { bdm_user_id: picked.id });
     setBusy(false);
     setConfirming(false);
-    if (outcome.ok && isOrganizationBody(outcome.data)) onChanged(outcome.data.organization, `Reassigned to ${picked.label}.`);
-    else setFailure(outcome.ok ? "Unable to reassign this organization." : outcome.message);
+    if (outcome.ok && isOrganizationBody(outcome.data)) {
+      setPicked(null); // the pick is now the assignee (final review M1)
+      onChanged(outcome.data.organization, `Reassigned to ${picked.label}.`);
+    } else setFailure(outcome.ok ? "Unable to reassign this organization." : outcome.message);
   }
   const cancel = () => {
     setConfirming(false);

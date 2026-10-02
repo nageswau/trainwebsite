@@ -20,6 +20,7 @@ logger = logging.getLogger("app.bdm")
 NOT_FOUND = "Organization not found"
 REASSIGN_INVALID = "Choose an active BDM of this type from your team"
 MAX_DUPLICATE_MATCHES = 10
+NAME_KEY_LENGTH, CITY_KEY_LENGTH = 200, 120  # the name_key / city_key columns
 ACTIONS = ("can_edit", "can_archive", "can_restore", "can_reassign")
 REFUSALS = {
     "can_edit": "Only the assigned BDM can edit this organization",
@@ -30,9 +31,15 @@ REFUSALS = {
 MANAGERS = ("bdm_manager", "super_admin")
 
 
-def normalize_key(value: str) -> str:
-    """Q-18's "normalized name / city": NFKC (full-width and compatibility forms), whitespace collapsed, casefolded."""
-    return " ".join(unicodedata.normalize("NFKC", value).split()).casefold()
+def normalize_key(value: str, limit: int) -> str:
+    """Q-18's "normalized name / city": NFKC (full-width and compatibility forms), whitespace collapsed, casefolded. NFKC and casefold
+    can lengthen text ("ß" -> "ss"), so the key is cut to its column length (final review M2); two names that differ only past that
+    point still match, which a warning can afford."""
+    return " ".join(unicodedata.normalize("NFKC", value).split()).casefold()[:limit]
+
+
+def org_keys(name: str, city: str) -> tuple[str, str]:
+    return normalize_key(name, NAME_KEY_LENGTH), normalize_key(city, CITY_KEY_LENGTH)
 
 
 def format_code(n: int) -> str:

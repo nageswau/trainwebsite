@@ -12,9 +12,9 @@ from app.services import bdm_organizations as svc
 
 
 def test_normalize_key_folds_case_whitespace_and_compatibility_forms():
-    assert svc.normalize_key("  St.  MARY'S\tCollege ") == "st. mary's college"
-    assert svc.normalize_key("ＳＴ ＭＡＲＹ") == svc.normalize_key("st mary")  # full-width (NFKC, §12.3)
-    assert svc.normalize_key("Straße") == svc.normalize_key("STRASSE")  # casefold, not lower
+    assert svc.normalize_key("  St.  MARY'S\tCollege ", 200) == "st. mary's college"
+    assert svc.normalize_key("ＳＴ ＭＡＲＹ", 200) == svc.normalize_key("st mary", 200)  # full-width (NFKC, §12.3)
+    assert svc.normalize_key("Straße", 200) == svc.normalize_key("STRASSE", 200)  # casefold, not lower
 
 
 def test_format_code_pads_to_six_and_grows_past_it():
@@ -75,3 +75,8 @@ def test_duplicate_conflict_shape():
     exc = svc.duplicate_conflict([{"id": "x"}], 3)
     assert exc.status_code == 409
     assert exc.detail["code"] == "possible_duplicate" and exc.detail["total"] == 3 and exc.detail["matches"] == [{"id": "x"}]
+
+
+def test_normalized_keys_fit_their_columns():
+    assert len(svc.normalize_key("ß" * 200, 200)) == 200
+    assert svc.normalize_key("ß" * 3, 200) == "ssssss"

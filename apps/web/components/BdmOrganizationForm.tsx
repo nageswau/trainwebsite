@@ -3,7 +3,6 @@ import { type FormEvent, useRef, useState } from "react";
 
 import BdmContactFields, { blankContact, type ContactValues } from "@/components/BdmContactFields";
 import BdmOrganizationFields, { type OrgField, type OrgValues } from "@/components/BdmOrganizationFields";
-import { fieldErrors } from "@/lib/agentStudents";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { isOrganizationBody, type Organization, orgDuplicate, type OrgDuplicate, ORGS_URL } from "@/lib/bdmOrganizations";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -39,6 +38,25 @@ function wire(key: OrgField, value: string | boolean): unknown {
   const trimmed = value.trim();
   if (trimmed === "") return null;
   return key === "student_count" ? Number(trimmed) : trimmed;
+}
+
+/** FastAPI's 422 list -> errors on the organization's own fields (`["body", field]`) or on the contact they belong to
+ * (`["body", "contacts", i, field]`, keyed like BdmContactFields). Null when any item maps to neither: the form then shows the
+ * whole detail as one message, so nothing is hidden (final review I1). */
+function serverErrors(detail: unknown, contacts: ContactValues[]): { org: Partial<Record<OrgField, string>>; contact: Record<string, string> } | null {
+  if (!Array.isArray(detail) || detail.length === 0) return null;
+  const org: Partial<Record<OrgField, string>> = {};
+  const contact: Record<string, string> = {};
+  for (const item of detail as { loc?: unknown[] }[]) {
+    const [where, field, index, contactField] = item?.loc ?? [];
+    const message = detailMessage([item]);
+    if (where !== "body") return null;
+    if (item.loc!.length === 2 && ORG_FIELDS.includes(field as OrgField)) org[field as OrgField] = message;
+    else if (item.loc!.length === 4 && field === "contacts" && typeof index === "number" && contacts[index] && typeof contactField === "string") {
+      contact[`${contacts[index].key}-${contactField}`] = message;
+    } else return null;
+  }
+  return { org, contact };
 }
 
 function contactBody(c: ContactValues): Record<string, unknown> {
@@ -110,13 +128,15 @@ export default function BdmOrganizationForm({
         return;
       }
       const dup = response.status === 409 ? orgDuplicate(data?.detail) : null;
-      const onFields = response.status === 422 ? fieldErrors(data?.detail, ORG_FIELDS) : null;
+      const onFields = response.status === 422 ? serverErrors(data?.detail, contacts) : null;
       if (dup) {
         setDuplicate(dup);
         focus(`${idPrefix}-duplicate`);
       } else if (onFields) {
-        setErrors(onFields);
-        focus(`${idPrefix}-${ORG_FIELDS.find((k) => onFields[k])}`);
+        setErrors(onFields.org);
+        setContactErrors(onFields.contact);
+        const firstOrg = ORG_FIELDS.find((k) => onFields.org[k]);
+        focus(`${idPrefix}-${firstOrg ?? Object.keys(onFields.contact)[0]}`);
       } else {
         setFailure(detailMessage(data?.detail, "Unable to save this organization."));
         focus(`${idPrefix}-failure`);
