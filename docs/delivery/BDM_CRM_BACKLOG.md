@@ -250,6 +250,8 @@ Conventions used below:
 
 ### bdm-002 — Organization CRM core (common fields, contacts, assignment, scope)
 
+> **Status (2026-10-03):** in implementation on `feature/bdm-002-organization-crm` (`DEC-SCOPE-058`, migration `0064_bdm_organizations`). **C1** supersedes the edge case below "an organization with no contacts yet (allowed, flagged)": create needs at least one contact and the last contact cannot be deleted. Spec: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`.
+
 - **Business requirement:** an Organization CRM for the institutions BDMs meet: Organization Name, Type, City, State, Contact Person, Designation, Phone, Email, Website, Existing Partner?, Courses Interested, Number of Students, Last Meeting, Next Meeting, Assigned BDM (§9). The types are College, University, Agent, School, Corporate, Training Institute and Other.
 - **Existing behavior:** there is no prospect or organization store. `schools` holds onboarded partner schools only, and `universities` is the global catalogue.
 - **Expected behavior:**
@@ -435,7 +437,7 @@ Conventions used below:
   3. Every status transition is recorded; the allowed transitions are documented and enforced.
   4. Reschedule keeps the old time in history and sets the status to Rescheduled.
   5. Completed requires an outcome and a past start time.
-  6. Appointments on archived organizations → 422.
+  6. Appointments on archived organizations → 422 (bdm-002 AC5b: resolve the organization with `services/bdm_organizations.load_scoped(..., lock=True)` and refuse when `archived_at` is set).
 - **Positive scenarios:** book → confirm → complete with outcome; reschedule twice.
 - **Negative scenarios:** Completed before the start time → 422; a type from another module → 422; editing another BDM's appointment → 403/404.
 - **Edge cases:** two appointments overlapping for the same BDM (warn, not block); an appointment spanning midnight; changing the timezone display (stored in UTC, shown in IST); cancelling an appointment that belongs to an approved trip (the trip's counts update).
