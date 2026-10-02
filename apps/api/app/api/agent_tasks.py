@@ -82,7 +82,7 @@ async def create_task(payload: AgentTaskCreate, user: User = Depends(get_current
     data = payload.model_dump(exclude={"agent_student_id"})
     task = new_task(db, user, student, data)
     _audit(db, user, "task_add", task, {"fields": sorted(k for k, v in data.items() if v is not None)})
-    await notices.task_created(db, student, task, user)  # AGN-017 (DEC-SCOPE-055 N1): in this transaction
+    await notices.task_created(db, student, task, user)  # AGN-017 (DEC-SCOPE-058 N1): in this transaction
     await _commit(db, CHANGED)
     _log("agent_task_created", membership, user, student.id, task.id)
     return {"task": await task_detail(db, user, task.id, datetime.now(UTC))}

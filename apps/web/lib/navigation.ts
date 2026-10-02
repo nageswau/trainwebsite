@@ -6,7 +6,7 @@ export type NavItem = { label:string; href:string; children?:NavItem[]; badge?:n
 
 export const AGENT_NOTIFICATIONS_HREF = "/overseas/agent/notifications";
 
-// AGN-017 (DEC-SCOPE-055 N8): the unread count on one nav item; no count (null, 0) leaves the nav as it was.
+// AGN-017 (DEC-SCOPE-058 N8): the unread count on one nav item; no count (null, 0) leaves the nav as it was.
 export function withBadge(nav: NavItem[], href: string, count: number | null): NavItem[] {
   return count ? nav.map((item) => (item.href === href ? { ...item, badge: count } : item)) : nav;
 }
@@ -36,7 +36,16 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
   academic_team: "/school/academic-team/dashboard",
   career_counselor: "/school/career-counselor/dashboard",
   psychometric_team: "/school/psychometric-team/dashboard",
+  // bdm-001 (DEC-SCOPE-055): the BDM CRM roles. bdm-014 / bdm-023 fill these pages in.
+  bdm: "/bdm/my-day",
+  bdm_manager: "/bdm/manager/dashboard",
 };
+
+// bdm-001: BDM and BDM-manager sidebars, and the signed-out chooser (College BDMs sign in at /it, Agent/School BDMs at /overseas;
+// managers at /admin).
+export const BDM_NAV: NavItem[] = [{ label: "My Day", href: "/bdm/my-day" }, { label: "Profile", href: "/bdm/profile" }];
+export const BDM_MANAGER_NAV: NavItem[] = [{ label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" }];
+export const BDM_SIGN_IN = "/bdm/sign-in";
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
 // not the generic PortalPage/[section] `_payload()` dispatcher every other role's console
@@ -82,14 +91,15 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   "it/trainer": ["dashboard","attendance","assignments","assessments","materials","live-sessions","student-progress","questions","support"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/trainer/${x}`})),
   "it/placement": ["dashboard","candidates","company-requirements","interviews","offers","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/placement/${x}`})),
   "it/hr": ["dashboard","job-requirements","shortlists","candidates","interviews"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/hr/${x}`})),
-  "it/admin": ["dashboard","users","students","trainers","employers","programs","batches","enrollments","certificates","resources","consent","payments","roles","leads","support","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/admin/${x}`})),
+  // bdm-001: "BDMs" is written out -- the generated label would read "Bdms".
+  "it/admin": [...["dashboard","users","students","trainers","employers","programs","batches","enrollments","certificates","resources","consent","payments","roles","leads","support","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/admin/${x}`})),{label:"BDMs",href:"/it/admin/bdms"}],
   "overseas/student": ["dashboard","profile","applications","documents","offer-letters","visa-status","scholarships","university-communication","payments","appointments","counselor-chat","downloads"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/student/${x}`})),
   "overseas/counselor": ["dashboard","students","leads","documents","applications","school-applications","visa","appointments","counselor-chat","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/counselor/${x}`})),
   "overseas/university": ["dashboard","applications","offer-letters","admission-updates","student-communication","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/university/${x}`})),
-  "overseas/admin": ["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","school-applications","school-transfers","activity-feedback","school-analytics","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),
+  "overseas/admin": [...["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","school-applications","school-transfers","activity-feedback","school-analytics","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),{label:"BDMs",href:"/overseas/admin/bdms"}],
   // AGN-007 (DEC-SCOPE-049): Universities is the agency's own university list. AGN-008 (DEC-SCOPE-050 A7): Applications carries
   // the EVID-015 §4 sidebar filters as sub-links (same page, ?status=). AGN-016 (DEC-SCOPE-053 T5): Tasks, for Masters and staff,
-  // after Documents (the EVID-015 §4 sidebar order). AGN-017 (DEC-SCOPE-055 N8): Notifications, for Masters and staff, after Tasks.
+  // after Documents (the EVID-015 §4 sidebar order). AGN-017 (DEC-SCOPE-058 N8): Notifications, for Masters and staff, after Tasks.
   "overseas/agent": ["dashboard","students","universities","applications","documents","tasks","notifications","commissions","reports","team"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/agent/${x}`,...(x==="applications"?{children:AGENT_APPLICATION_FILTERS}:x==="documents"?{children:AGENT_DOCUMENT_VIEWS}:{})})),
 };
 // AGN-002 (DEC-SCOPE-040 S1): an agency's staff work on students and applications; Team and Commissions stay Master-only (the
@@ -103,4 +113,4 @@ export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissi
   return nav.filter((item) => !STAFF_HIDDEN.has(item.href) && (item.href !== STAFF_REPORTS || permissions?.can_view_reports === true));
 }
 // ENH-016: the cross-school School Analytics page lives under /overseas/admin (D1: Overseas and Super Admins).
-export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"School Analytics",href:"/overseas/admin/school-analytics"}];
+export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];

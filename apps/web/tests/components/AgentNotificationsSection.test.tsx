@@ -5,7 +5,7 @@ import AgentNotificationsSection from "@/components/AgentNotificationsSection";
 import type { NotificationItem } from "@/components/SchoolNotificationList";
 import type { User } from "@/lib/types";
 
-// AGN-017 (DEC-SCOPE-055 N8, spec §9): the agency Notifications page -- the list, and its empty, failed, at-window and non-agency states.
+// AGN-017 (DEC-SCOPE-058 N8, spec §9): the agency Notifications page -- the list, and its empty, failed, at-window and non-agency states.
 afterEach(cleanup);
 
 const master = { id: "m1", role: "agent", full_name: "Master", email: "m@example.local", agent_member_role: "master" } as unknown as User;

@@ -185,3 +185,17 @@ async def test_agent_application_actions_appear_with_the_no_login_student(db_ses
     got = [(i["action"], i["subject"]) for i in items[:3]]
     subject = f"{w['record'].full_name} — {w['university'].name}"
     assert got == [("overseas.application.withdraw", subject), ("overseas.application.advance", subject), ("overseas.application.update", subject)]
+
+
+@pytest.mark.asyncio
+async def test_agent_visa_actions_appear_without_the_decision(db_session):  # AGN-012 spec §4.6
+    from tests.agn012_helpers import VISA, visa_world  # noqa: PLC0415
+
+    w = await visa_world(db_session)
+    async with client_for(w["staff"]["user"].email) as s:
+        assert (await s.post(VISA.format(w["app"].id), json={"expected_status": "offer"})).status_code == 201
+        assert (await s.patch(VISA.format(w["app"].id), json={"expected_stage": "checklist", "appointment_date": "2027-05-01"})).status_code == 200
+    async with client_for(w["master"].email) as m:
+        items = (await m.get(f"/api/v1/workflows/overseas/agent/team/staff/{w['staff']['member'].id}/activity")).json()["items"]
+    assert [i["action"] for i in items[:2]] == ["overseas.application.visa_update", "overseas.application.visa_start"]
+    assert "2027-05-01" not in str(items[:2])

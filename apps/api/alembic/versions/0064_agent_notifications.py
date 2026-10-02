@@ -1,9 +1,11 @@
 """AGN-017 -- notifications.dedupe_key (+ partial unique index) and partial indexes for the daily reminder queries.
 
-Revision ID: 0061_agent_notifications
-Revises: 0060_agent_app_enrollment
+Revision ID: 0064_agent_notifications
+Revises: 0063_agent_visa_details
 
-docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md §5 (DEC-SCOPE-055). One nullable column and four partial indexes;
+Drafted as 0061 after 0060; re-chained after 0063 on merging main @ ff27fa4, where 0061-0063 are bdm-001, AGN-010 and AGN-012.
+
+docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md §5 (DEC-SCOPE-058). One nullable column and four partial indexes;
 no existing row is read or written. 0001 builds a fresh database from the current models, which already carry them, so every add is
 guarded (0057's idiom). downgrade() drops exactly what upgrade() added: the keys are derived reminder markers, not user data.
 """
@@ -12,8 +14,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0061_agent_notifications"
-down_revision = "0060_agent_app_enrollment"
+revision = "0064_agent_notifications"
+down_revision = "0063_agent_visa_details"
 branch_labels = None
 depends_on = None
 

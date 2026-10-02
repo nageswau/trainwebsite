@@ -137,6 +137,8 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .funding-finished summary { cursor: pointer; font-weight: 800; }
 .funding-finished .record-details, .funding-card .record-details + .record-details { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
 .funding-notes { white-space: pre-wrap; }
+/* AGN-010: conditions as written, one per line; long words wrap at 320px. History notes carry the conditions too (QA-03/QA-04). */
+.offer-conditions, .history-note { white-space: pre-wrap; overflow-wrap: anywhere; }
 /* QA-06: real heading levels (h1 page, h2 sections) at the sizes the page already had -- the site-wide h1/h2 are marketing sizes. */
 .funding-panel h1 { font-size: clamp(28px, 3.5vw, 44px); }
 .funding-panel h2 { font-size: 20px; }
@@ -205,3 +207,6 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 /* AGN-017 QA17-05: the unread count in the portal top bar, only while the sidebar is collapsed into the menu (same 980 px breakpoint). */
 .topbar-unread{display:none}
 @media(max-width:980px){.topbar-unread{display:inline-flex}}
+/* bdm-001 browser QA-15: once .action-grid is one column, the BDM list comes before the long create form, so an admin
+   looking for a BDM on a phone or tablet does not scroll past nine fields first. Desktop keeps the form first. */
+@media(max-width:980px){.action-grid > .bdm-list{order:-1}}

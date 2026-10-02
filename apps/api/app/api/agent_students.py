@@ -190,7 +190,7 @@ async def assign_student(student_id: UUID, payload: AgentStudentAssign, user: Us
         previous = row.assigned_member_id
         row.assigned_member_id, row.updated_by_user_id = new_id, user.id
         _audit(db, user, "assign", row.id, {"from": str(previous) if previous else None, "to": str(new_id) if new_id else None})
-        if new_id:  # AGN-017 (DEC-SCOPE-055 N1): the new assignee, in this transaction
+        if new_id:  # AGN-017 (DEC-SCOPE-058 N1): the new assignee, in this transaction
             await notices.student_assigned(db, row, new_id, user)
     await db.commit()
     if changed:

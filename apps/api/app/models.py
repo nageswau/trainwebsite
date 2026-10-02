@@ -423,11 +423,6 @@ class OverseasCourse(Base, TimestampMixin):
 
 class OverseasApplication(Base, TimestampMixin):
     __tablename__ = "overseas_applications"
-    # AGN-017 (DEC-SCOPE-055): the daily reminder job reads agency deadlines through these partial indexes (migration 0061).
-    __table_args__ = (
-        Index("ix_overseas_applications_agent_application_deadline", "application_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
-        Index("ix_overseas_applications_agent_offer_deadline", "offer_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
-    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     # Owner (DEC-SCOPE-018, AGN-008 DEC-SCOPE-050). Exactly one of `school_student_id` or the agent pair is set, enforced at every
     # write site (app-level, this table's style). A School-bridged row has `school_student_id` only. An agency's application has
@@ -454,6 +449,22 @@ class OverseasApplication(Base, TimestampMixin):
     enrollment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     university_student_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
     enrollment_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # AGN-010 (DEC-SCOPE-056): the current offer, recorded by the agency. `offer_deadline` above is its deadline (O2); the letter is an
+    # AGN-009 document (O3). `use_alter`: student_documents.application_id points back at this table.
+    offer_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    offer_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    offer_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    offer_document_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL", use_alter=True, name="fk_overseas_applications_offer_document_id"), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint("offer_type IS NULL OR offer_type IN ('conditional', 'unconditional')", name="ck_overseas_applications_offer_type"),
+        CheckConstraint("(offer_type IS NULL) = (offer_date IS NULL)", name="ck_overseas_applications_offer_dated"),
+        # AGN-017 (DEC-SCOPE-058): the daily reminder job reads agency deadlines through these partial indexes (migration 0064).
+        Index("ix_overseas_applications_agent_application_deadline", "application_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
+        Index("ix_overseas_applications_agent_offer_deadline", "offer_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
+    )
 
 
 class ApplicationStatusHistory(Base, TimestampMixin):
@@ -556,12 +567,19 @@ class ProfileDocument(Base, TimestampMixin):
 
 class VisaCase(Base, TimestampMixin):
     __tablename__ = "visa_cases"
+    __table_args__ = (CheckConstraint("decision IN ('approved', 'refused', 'withdrawn')", name="ck_visa_cases_decision"),)
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id"), index=True)
     status: Mapped[str] = mapped_column(String(50), default="checklist")
     appointment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     checklist: Mapped[list] = mapped_column(JSON, default=list)
     tracking_reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # AGN-012 (DEC-SCOPE-057; migration 0063): written only by the agency visa routes; the counselor/student routes neither read nor
+    # write them (V8). `decision` is the authority's outcome as the agency records it, final once set (V2).
+    visa_application_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    interview_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    decision: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Scholarship(Base, TimestampMixin):
@@ -775,7 +793,7 @@ class RealProject(Base, TimestampMixin):
 
 class Notification(Base, TimestampMixin):
     __tablename__ = "notifications"
-    # AGN-017 (DEC-SCOPE-055 N6): only scheduled reminders set `dedupe_key`; the partial unique index makes a repeat run a no-op.
+    # AGN-017 (DEC-SCOPE-058 N6): only scheduled reminders set `dedupe_key`; the partial unique index makes a repeat run a no-op.
     __table_args__ = (Index("ux_notifications_dedupe_key", "dedupe_key", unique=True, postgresql_where=text("dedupe_key IS NOT NULL")),)
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
@@ -893,6 +911,27 @@ class AuditLog(Base):
     outcome: Mapped[str] = mapped_column(String(30), default="recorded")
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BdmProfile(Base, TimestampMixin):
+    """bdm-001 (DEC-SCOPE-055): a BDM's §1 profile, 1:1 with a `bdm` user. Name, email, mobile and active stay on `users`.
+    The reporting manager must be an active `bdm_manager` -- enforced in `services/bdm.py` under a row lock (no cross-table CHECK)."""
+
+    __tablename__ = "bdm_profiles"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_bdm_profiles_user"),
+        CheckConstraint("bdm_type IN ('agent', 'school', 'college')", name="ck_bdm_profiles_type"),
+        Index("uq_bdm_profiles_employee_id", text("lower(employee_id)"), unique=True),
+        Index("ix_bdm_profiles_reporting_manager", "reporting_manager_user_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    bdm_type: Mapped[str] = mapped_column(String(20))
+    employee_id: Mapped[str] = mapped_column(String(40))
+    designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    territory: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    reporting_manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 class LiveSession(Base, TimestampMixin):

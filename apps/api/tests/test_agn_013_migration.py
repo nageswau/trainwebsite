@@ -36,14 +36,12 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0059_and_is_the_single_head():
+def test_migration_chains_after_0059_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert len(HEAD) <= 32  # alembic_version.version_num is VARCHAR(32)
     assert tuple(name for name, _ in _migration.COLUMNS) == NEW
-    # One head, without pinning it to this revision: AGN-017's 0061 chains after 0060 (the AGN-016 test's form).
-    heads = ScriptDirectory.from_config(_config()).get_heads()
-    assert len(heads) == 1
-    assert ScriptDirectory.from_config(_config()).get_revision(HEAD) is not None
+    # One head, without pinning it to this revision: bdm-001's 0061_bdm_profiles chains after 0060 (AGN-016's test made the same change).
+    assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
 
 
 def test_model_declares_the_new_columns_nullable():

@@ -102,3 +102,17 @@ describe("ResetPasswordForm: network failure (QA-007)", () => {
     expect(push).not.toHaveBeenCalled();
   });
 });
+
+describe("bdm-001: the reset response names the sign-in portal", () => {
+  it.each([
+    [{ ok: true, login_portal: "admin" }, "/admin/login"],
+    [{ ok: true, login_portal: null }, "/overseas/login"],
+    [{ ok: true }, "/overseas/login"],
+    [{ ok: true, login_portal: "//evil.example" }, "/overseas/login"],
+  ])("routes %j to %s", async (body, path) => {
+    stubFetch(json(body, 200));
+    render(<ResetPasswordForm division="overseas" />);
+    await submit();
+    await waitFor(() => expect(push).toHaveBeenCalledWith(path));
+  });
+});

@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { adminActivate, registerApprovedAgency, signIn } from "./helpers/agency";
 import { E2E_PASSWORD } from "./helpers/welcome";
 
-// AGN-017 (DEC-SCOPE-055) AC9 -- a Master assigns a student to a staff member; the staff member sees the unread badge and the notice,
+// AGN-017 (DEC-SCOPE-058) AC9 -- a Master assigns a student to a staff member; the staff member sees the unread badge and the notice,
 // opens it (marking it read), and the badge is gone on the next page. Also the empty state and a 320 px phone. Unique names per run
 // (shared E2E DB).
 const stamp = () => `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;

@@ -24,6 +24,7 @@ from app.services.integrations import send_notification
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 logger = logging.getLogger("app.auth")
+PORTAL_SIGN_IN = {"it": "/it/login", "overseas": "/overseas/login", "global": "/admin/login"}
 
 CHANGE_PASSWORD_FAILED = "auth.change_password_failed"
 # DEC-SCOPE-021: 5 wrong current passwords per user per 15 minutes, counted from the audit rows written on each failure.
@@ -99,7 +100,8 @@ async def login(payload: LoginRequest, response: Response, db: AsyncSession = De
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(401, "Invalid credentials")
     if user.role != "super_admin" and payload.division != user.division:
-        raise HTTPException(403, "Use the correct EduSphere portal for this account")
+        # bdm-001 QA-07: BDMs are split across portals by module, so name the right one. Only reached after the password matched.
+        raise HTTPException(403, f"Use the correct EduSphere portal for this account: sign in at {PORTAL_SIGN_IN.get(user.division, '/')}")
     await _sync_role_assignment(db, user)
     _set_auth_cookies(response, user)
     db.add(AuditLog(user_id=user.id, action="auth.login", entity_type="user", entity_id=str(user.id), metadata_json={"division": payload.division}))
@@ -284,7 +286,9 @@ async def reset_password(payload: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     if welcome:
         logger.info("welcome_password_set", extra={"extra_fields": {"user_id": str(user.id)}})
-    return {"ok": True}
+    # bdm-001 (spec §5.6): a BDM manager (division `global`) signs in at /admin/login, and the reset form follows this. The key is
+    # always present (null for everyone else), so the response shape never varies by role.
+    return {"ok": True, "login_portal": "admin" if user.role == "bdm_manager" else None}
 
 
 @router.post("/change-password")

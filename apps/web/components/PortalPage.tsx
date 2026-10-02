@@ -8,7 +8,7 @@ const agentApplications=key==="overseas/agent"&&section==="applications";
 const agentDocuments=key==="overseas/agent"&&section==="documents";
 // AGN-016 browser QA16-01: the agency Tasks page also reads its own API, so a Super Admin gets its note the same way.
 const agentTasks=key==="overseas/agent"&&section==="tasks";
-// AGN-017 (DEC-SCOPE-055 N7/N8): the agency Notifications page reads the existing list (fetched beside the payload, so no extra round
+// AGN-017 (DEC-SCOPE-058 N7/N8): the agency Notifications page reads the existing list (fetched beside the payload, so no extra round
 // trip); every agency page carries the unread count on the Notifications nav item. A failed count only drops the badge; a failed list
 // shows the section-unavailable state; a 401 from it is an expired session, so the access-unavailable card.
 const agentNotifications=key==="overseas/agent"&&section==="notifications";

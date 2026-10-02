@@ -104,7 +104,7 @@ def sweep_stale_deliveries_task():
 
 @celery.task
 def send_daily_reminders_task():
-    """AGN-017 (DEC-SCOPE-055 N4): daily via beat. Idempotent per India day (notifications.dedupe_key), so a rerun or a second beat
+    """AGN-017 (DEC-SCOPE-058 N4): daily via beat. Idempotent per India day (notifications.dedupe_key), so a rerun or a second beat
     process creates nothing new."""
     from app.services.agent_notifications import run_daily_reminders
 

@@ -61,6 +61,8 @@ BOTH_ALLOWED = [
     ("View Applications", "get", "/api/v1/workflows/overseas/agent/crm/applications/{record_app}", None, 200),
     ("Edit Application", "patch", "/api/v1/workflows/overseas/agent/crm/applications/{record_app}", {"intake": "Spring 2028"}, 200),
     ("Change Application Status", "post", "/api/v1/workflows/overseas/agent/crm/applications/{record_app}/status", {"to_status": "eligibility_evaluation"}, 200),
+    # AGN-010 (DEC-SCOPE-056): recording an offer moves the stage to `offer`, so it is the status row's permission (D8).
+    ("Change Application Status", "put", "/api/v1/workflows/overseas/agent/crm/applications/{record_app}/offer", {"offer_type": "unconditional", "offer_date": "2025-09-01"}, 200),
     ("Dashboard", "get", PORTAL + "/dashboard", None, 200),
     ("Create Student", "post", "/api/v1/workflows/overseas/agent/students", {"student_id": "{unlinked_student}"}, 201),
     ("View Students", "get", "/api/v1/workflows/overseas/agent/students", None, 200),

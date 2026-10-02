@@ -108,6 +108,7 @@ from app.services.agent_applications import DEFAULT_NEXT_ACTION, OVERSEAS_APPLIC
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
+from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECISION_DISCLAIMER
 from app.services.certificates import generate_certificate_pdf
 from app.services.storage import storage
 
@@ -2093,7 +2094,7 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
     student = await db.get(User, item.student_id) if item.student_id else None  # AGN-009: an agency-only document has no account
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
-    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-055 N9): rejected / changes required only
+    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-058 N9): rejected / changes required only
     member_role = user.agent_membership.role
     await _audit(db, user, "document.verify", "student_document", item.id, {**review.model_dump(), "member_role": member_role})
     await db.commit()
@@ -2127,7 +2128,7 @@ async def verify_document(document_id: UUID, payload: dict, user: User = Depends
     student = await db.get(User, item.student_id) if item.student_id else None
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
-    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-055 N9): an agency document's assignee
+    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-058 N9): an agency document's assignee
     await _audit(db, user, "document.verify", "student_document", item.id, payload)
     await db.commit()
     return {"id": item.id, "verification_status": item.verification_status}
@@ -2168,10 +2169,7 @@ async def download_student_document(document_id: UUID, user: User = Depends(get_
     return {"url": storage.presign_download(key), "expires_in": 900 if storage.bucket else None}
 
 
-# DATA_MODEL.md #6.5, DEC-SCOPE-006: the four confirmed category names plus a terminal
-# `decision` state. Exact decision outcomes (approved/refused) are not modeled as
-# separate values -- no source confirms them.
-VISA_CASE_STAGES = ["checklist", "documentation", "interview_prep", "tracking", "decision"]
+# VISA_CASE_STAGES and VISA_DECISION_DISCLAIMER live in services/agent_visa.py (AGN-012 moved them unchanged; imported above).
 
 
 async def _checklist_verification(db: AsyncSession, application_id: UUID, checklist: list[str]) -> dict[str, str]:
@@ -2230,12 +2228,6 @@ async def get_interview_prep(user: User = Depends(get_current_user), db: AsyncSe
         }
         for case, application, university, country in rows
     ]
-
-
-# VISA-003-AC02: a fixed compliance sentence, sourced from the reference
-# implementation's own compliance language (DATA_MODEL.md #6.5) -- never invented, and
-# never varied per case, so no response can ever imply EduSphere decides visa outcomes.
-VISA_DECISION_DISCLAIMER = "Visa decisions are made by the relevant government or immigration authority. EduSphere does not decide visa outcomes."
 
 
 @router.get("/overseas/applications/{application_id}/visa-status")
@@ -2639,7 +2631,7 @@ async def notifications(user: User = Depends(get_current_user), db: AsyncSession
 
 @router.get("/notifications/unread-count", response_model=NotificationUnreadCount)
 async def unread_notification_count(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AGN-017 (DEC-SCOPE-055 N7): the caller's own unread count (it may exceed the newest-100 list above)."""
+    """AGN-017 (DEC-SCOPE-058 N7): the caller's own unread count (it may exceed the newest-100 list above)."""
     count = await db.scalar(select(func.count()).select_from(Notification).where(Notification.user_id == user.id, Notification.read.is_(False)))
     return {"unread": count or 0}
 

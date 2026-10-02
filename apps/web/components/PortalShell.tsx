@@ -10,7 +10,7 @@ import Link from "next/link"; import Image from "next/image"; import {usePathnam
 // already proven for the public site's own mobile nav (MobileNavToggle, built for
 // FRONTEND_ANALYSIS.md #4.1) instead of inventing a new interaction -- see globals.css's
 // `@media(max-width:640px)` block for the CSS side of this swap.
-// AGN-017 (DEC-SCOPE-055 N8): an item's unread count -- in the link's name as text (" unread" is visually hidden), never colour alone.
+// AGN-017 (DEC-SCOPE-058 N8): an item's unread count -- in the link's name as text (" unread" is visually hidden), never colour alone.
 const badgeText=(n:number)=>n>99?"99+":String(n);
 // QA17-05: below 980 px the sidebar collapses into the menu, so the top bar also links the first counted item (CSS shows it there only).
 function TopbarUnread({nav}:{nav:NavItem[]}){const item=nav.find(x=>x.badge);if(!item?.badge)return null;return <Link className="badge topbar-unread" href={item.href}>{badgeText(item.badge)}<span className="visually-hidden"> unread {item.label.toLowerCase()}</span></Link>}

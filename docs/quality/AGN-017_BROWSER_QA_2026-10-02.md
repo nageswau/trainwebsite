@@ -1,7 +1,7 @@
 # AGN-017 — Exploratory browser QA (first pass, 2026-10-02)
 
 **Build:** `feature/agn-017-notifications` @ `f07c7fd` (the stack was built from this worktree). **Stack:** isolated compose project `agn017qa` — web http://localhost:13017, API 18017, `alembic` head
-`0061_agent_notifications`, `python -m app.seed` applied, worker and beat running, no email webhook/SMTP configured.
+`0061_agent_notifications` (renumbered `0064` on merging `main` @ `ff27fa4`), `python -m app.seed` applied, worker and beat running, no email webhook/SMTP configured.
 **Browser:** Browser Use 0.13.10 (`uvx`), attached over CDP (port 9317) to an isolated headless Chromium 153 with a fresh profile.
 Trusted input was verified first (capture-phase listeners: `mousedown`/`click` `isTrusted: true` on the first page and after a
 navigation — the AGN-013 failure did not reproduce). Console errors, uncaught exceptions, HTTP ≥ 400 and failed requests were collected
@@ -70,7 +70,7 @@ tree and every fix re-checked with Browser Use on the same isolated Chromium. No
 | QA17-05 | Below 980 px the top bar links the unread count (`.topbar-unread`) | `PortalShell.badge.test.tsx` ×2 | Hidden at 1280; shown at 768 and 375 (0 px overflow); tap → Notifications (screenshot `12-recheck-mobile-topbar`) |
 | QA17-06 | No generic WorkflowPanel on the agency Notifications page | `PortalPage.agentNotifications.test.tsx` (Super Admin case) | Super Admin: 0 forms, no "Send notification" |
 
-Not changed: QA17-02 (owner decision 2026-10-03: keep as designed — no names, section links; `DEC-SCOPE-055` N11), QA17-07 (spec §9 ruling), QA17-08
+Not changed: QA17-02 (owner decision 2026-10-03: keep as designed — no names, section links; `DEC-SCOPE-058` N11), QA17-07 (spec §9 ruling), QA17-08
 (pre-existing shared card), QA17-09 (by design), QA17-10 (AGN-009). Evidence: backend events + AGN-016 create/read 38 passed; web 8 files /
 53 passed plus 12 neighbouring files (school pages that render the list or the shell) 75 passed; `tsc` 0; eslint 0 on the changed files;
 Playwright on the rebuilt stack: `agn-017` 2, `enh-005` 2, `enh-023` 1 — 5 passed.

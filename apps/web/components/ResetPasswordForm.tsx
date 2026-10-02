@@ -12,7 +12,8 @@ function message(detail: unknown) {
   return "Unable to reset password";
 }
 
-export default function ResetPasswordForm({ division }: { division: "it" | "overseas" }) {
+// bdm-001 QA-05: "admin" is the admin portal's own reset page (BDM managers); its links stay on /admin.
+export default function ResetPasswordForm({ division }: { division: "it" | "overseas" | "admin" }) {
   const router = useRouter();
   const search = useSearchParams();
   const token = search.get("token") || "";
@@ -49,7 +50,8 @@ export default function ResetPasswordForm({ division }: { division: "it" | "over
       setExpiredLink(response.status === 400);
       return;
     }
-    router.push(`/${division}/login`);
+    // bdm-001 (spec §5.6): a BDM manager signs in at /admin. Only the literal "admin" is honoured -- never a free-form path.
+    router.push(`/${data.login_portal === "admin" ? "admin" : division}/login`);
   }
 
   if (!token) {

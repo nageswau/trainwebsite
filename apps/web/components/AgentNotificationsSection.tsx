@@ -2,7 +2,7 @@ import SchoolNotificationList, { type NotificationItem } from "./SchoolNotificat
 import SectionUnavailable from "./SectionUnavailable";
 import type { User } from "@/lib/types";
 
-// AGN-017 (DEC-SCOPE-055 N8, spec §9): the agency Notifications page -- the signed-in member's own notices (assignments, document
+// AGN-017 (DEC-SCOPE-058 N8, spec §9): the agency Notifications page -- the signed-in member's own notices (assignments, document
 // requests and rejections, status changes, new tasks, deadline reminders). PortalPage fetches the list beside the page payload and the
 // unread count; `items` is null when that list failed (a 401 never reaches here: PortalPage shows the access-unavailable card).
 const EMPTY = "No notifications yet. You'll be told here about assignments, document requests, status changes, new tasks and upcoming deadlines.";

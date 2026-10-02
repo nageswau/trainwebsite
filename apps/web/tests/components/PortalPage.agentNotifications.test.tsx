@@ -5,7 +5,7 @@ import PortalPage from "@/components/PortalPage";
 import { ApiError, serverApi } from "@/lib/api";
 import type { NavItem } from "@/lib/navigation";
 
-// AGN-017 (DEC-SCOPE-055 N7/N8): the agency Notifications section reads the existing list; every agency page carries the unread count
+// AGN-017 (DEC-SCOPE-058 N7/N8): the agency Notifications section reads the existing list; every agency page carries the unread count
 // on the Notifications nav item, and a failed count never breaks the page.
 vi.mock("@/lib/api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");

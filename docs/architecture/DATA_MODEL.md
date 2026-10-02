@@ -345,6 +345,15 @@ covers the commission-specific piece).
   change has been made; this note only records that the previously-safe assumption no longer holds
   universally.
 
+- **Addendum, 2026-10-02 (`AGN-010`, `DEC-SCOPE-056`; migration `0062_agent_offer_details`, after `0061_bdm_profiles`).**
+  Four nullable columns on `overseas_applications` (one current offer per application, O1): `offer_type` VARCHAR(20) with CHECK
+  `ck_overseas_applications_offer_type` (`NULL` or `conditional`/`unconditional`); `offer_date` DATE with CHECK
+  `ck_overseas_applications_offer_dated` (`(offer_type IS NULL) = (offer_date IS NULL)`); `offer_conditions` TEXT; `offer_document_id`
+  UUID FK → `student_documents.id` `ON DELETE SET NULL` (`fk_overseas_applications_offer_document_id`, `use_alter` because
+  `student_documents.application_id` points back). The offer's deadline is the existing AGN-008 `offer_deadline` (O2);
+  `offer_letter_url` is untouched (O4). Guarded adds; no existing row is read or rewritten. Downgrade refuses while any `offer_type` is
+  set. Design: `docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md` §3.
+
 - **Addendum, 2026-10-02 (`AGN-009`, `DEC-SCOPE-052`; migration `0058_agent_documents`, after `0057_agent_applications`).**
   `student_documents.student_id` becomes nullable; new nullable columns `agent_student_id` (FK → `agent_students.id`, index
   `ix_student_documents_agent_student_id`), `document_label` String(80), `uploaded_by_user_id` (FK → `users.id`), `fulfils_request_id`
@@ -375,7 +384,7 @@ covers the commission-specific piece).
   TIMESTAMPTZ (first time the agency recorded details). No row is read or written by the upgrade; the downgrade refuses while any of the
   three holds data. The revision id is ≤ 32 characters (`alembic_version.version_num` is `VARCHAR(32)`). `agent_commissions` is unchanged:
   an agency Master's confirmation reaches `enrolled` through the same `ApplicationStatusHistory` write and §6.3 trigger (E3).
-- **Addendum, 2026-10-02 (`AGN-017`, `DEC-SCOPE-055`; migration `0061_agent_notifications`, chained after `0060_agent_app_enrollment`) —
+- **Addendum, 2026-10-02 (`AGN-017`, `DEC-SCOPE-058`; migration `0064_agent_notifications`, chained after `0063_agent_visa_details` — drafted as `0061` after `0060`, re-chained on merging `main` @ `ff27fa4`) —
   agency notifications and deadline reminders.** `notifications.dedupe_key` VARCHAR(200) NULL with the partial unique index
   `ux_notifications_dedupe_key` (`WHERE dedupe_key IS NOT NULL`): only the daily reminder job sets it
   (`agn017:deadline:{application}:{kind}:{date}:{days_left}:{user}`, `agn017:overdue:{india_date}:{user}`), inserting with
@@ -417,7 +426,14 @@ should gate it further — carried forward as an open item for BRD/PRD follow-up
 - **Compliance constraint:** no field or copy anywhere represents EduSphere as the visa
   decision-maker (`VISA-003-AC02`, sourced from the reference implementation's own compliance
   language, carried forward as a real requirement).
-- **Feature IDs:** `VISA-001`, `VISA-002`, `VISA-003`.
+- **Feature IDs:** `VISA-001`, `VISA-002`, `VISA-003`, `AGN-012`.
+- **Addendum, 2026-10-02 (`AGN-012`, `DEC-SCOPE-057`; migration `0063_agent_visa_details`, chained after `0060_agent_app_enrollment`) —
+  agency visa details.** Additive nullable columns: `visa_application_date` Date, `interview_date` Date, `decision` VARCHAR(20) with
+  `ck_visa_cases_decision` (`approved`/`refused`/`withdrawn` or NULL), `decided_at` TIMESTAMPTZ. The outcome is confirmed by the owner
+  (V2) for agency cases and recorded as the authority's decision (the compliance constraint above still holds; the disclaimer is shown
+  with it). The stage list is unchanged; the outcome is not a stage. Written only by the agency routes; counselor/student routes neither
+  read nor write the new columns. No row is read or written by the upgrade; the downgrade refuses while any of the four holds data.
+  Still one case per application (enforced by the routes, not a unique index).
 
 ### 6.6 `Appointment`
 **Carries over.** **Ownership:** Counselor (schedule), Student (self, view).

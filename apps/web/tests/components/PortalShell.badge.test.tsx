@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import PortalShell from "@/components/PortalShell";
 import type { NavItem } from "@/lib/navigation";
 
-// AGN-017 (DEC-SCOPE-055 N8): the agency nav's Notifications item carries the unread count. The count is part of the link's name
+// AGN-017 (DEC-SCOPE-058 N8): the agency nav's Notifications item carries the unread count. The count is part of the link's name
 // (visible text plus a visually hidden " unread"), never colour alone, and the mobile menu says it in words.
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),

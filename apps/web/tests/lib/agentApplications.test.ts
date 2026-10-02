@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { canConfirmEnrollment, canWithdraw, deadlineText, GROUP_LABELS, nextStages, parseGroup, stageLabel } from "@/lib/agentApplications";
+import {
+  canConfirmEnrollment,
+  canStartVisa,
+  canWithdraw,
+  checklistStatusLabel,
+  deadlineText,
+  GROUP_LABELS,
+  nextStages,
+  nextVisaStages,
+  parseGroup,
+  stageLabel,
+  VISA_DOCUMENT_TYPES,
+  visaChecklistEditable,
+} from "@/lib/agentApplications";
 import { activityLabel } from "@/lib/agentStaff";
 
 describe("canConfirmEnrollment (AGN-013 E6)", () => {
@@ -49,5 +62,28 @@ describe("agent application rules (AGN-008)", () => {
     expect(activityLabel("overseas.application.update")).toBe("Edited an application");
     expect(activityLabel("overseas.application.advance")).toBe("Moved an application forward");
     expect(activityLabel("overseas.application.withdraw")).toBe("Withdrew an application");
+    expect(activityLabel("overseas.application.offer")).toBe("Recorded an offer"); // AGN-010
+  });
+});
+
+describe("visa helpers (AGN-012)", () => {
+  it("offers forward stages only, a legacy stage counting as before checklist", () => {
+    expect(nextVisaStages("checklist")).toEqual(["documentation", "interview_prep", "tracking", "decision"]);
+    expect(nextVisaStages("tracking")).toEqual(["decision"]);
+    expect(nextVisaStages("decision")).toEqual([]);
+    expect(nextVisaStages("not_started")).toEqual(["checklist", "documentation", "interview_prep", "tracking", "decision"]);
+  });
+  it("edits the checklist only at checklist or a legacy stage", () => {
+    expect(visaChecklistEditable("checklist")).toBe(true);
+    expect(visaChecklistEditable("not_started")).toBe(true);
+    expect(visaChecklistEditable("documentation")).toBe(false);
+  });
+  it("starts a case from an offer onwards", () => {
+    expect(["enquiry", "offer", "visa_documentation", "status_tracking", "enrolled", "withdrawn"].map(canStartVisa)).toEqual([false, true, true, true, false, false]);
+  });
+  it("lists the named document types and words each checklist status", () => {
+    expect(VISA_DOCUMENT_TYPES).not.toContain("Other");
+    expect(VISA_DOCUMENT_TYPES).toHaveLength(8);
+    expect(["verified", "pending", "changes_required", "not_uploaded"].map(checklistStatusLabel)).toEqual(["Verified", "Pending review", "Changes required", "Not uploaded"]);
   });
 });
