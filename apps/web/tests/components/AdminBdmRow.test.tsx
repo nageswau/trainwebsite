@@ -8,10 +8,19 @@ const row = {
   id: "b1", full_name: "Asha", email: "a@x.local", phone: null, active: true, bdm_type: "college" as const, employee_id: "E-1", designation: null,
   department: null, territory: "Kochi", reporting_manager: { id: "m1", full_name: "Meera", active: true }, manager_active: true,
 };
-const managers = [{ id: "m1", full_name: "Meera" }, { id: "m2", full_name: "Ravi" }];
+const managerPage = { items: [{ id: "m2", full_name: "Ravi", email: "ravi@x.local" }], total: 1, limit: 20, offset: 0 };
+
+/** Picker searches get one manager (Ravi); every PATCH gets `patch`. */
+function route(patch: Response = res({ ok: true })) {
+  const mock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>((url) => Promise.resolve(String(url).startsWith("/api/v1/admin/bdm-managers") ? res(managerPage) : patch.clone()));
+  vi.stubGlobal("fetch", mock);
+  return mock;
+}
+const patches = (mock: ReturnType<typeof route>) => mock.mock.calls.filter(([, init]) => init?.method === "PATCH");
+const patchBody = (mock: ReturnType<typeof route>, index = 0) => JSON.parse(String(patches(mock)[index][1]?.body));
 
 function mount(overrides: Partial<typeof row> = {}, onChanged = vi.fn()) {
-  render(<table><tbody><AdminBdmRow row={{ ...row, ...overrides }} managers={managers} onChanged={onChanged} /></tbody></table>);
+  render(<table><tbody><AdminBdmRow row={{ ...row, ...overrides }} onChanged={onChanged} /></tbody></table>);
   return onChanged;
 }
 
@@ -22,6 +31,7 @@ afterEach(() => {
 
 describe("AdminBdmRow (bdm-001 AC13)", () => {
   it("edits inline with the type read-only, and focuses the first field", async () => {
+    route();
     mount();
     fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
     await waitFor(() => expect(screen.getByLabelText("Full name (required)")).toHaveFocus());
@@ -30,70 +40,71 @@ describe("AdminBdmRow (bdm-001 AC13)", () => {
   });
 
   it("Esc cancels and returns focus to Edit", async () => {
+    route();
     mount();
     fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
     fireEvent.keyDown(screen.getByLabelText("Full name (required)"), { key: "Escape" });
     await waitFor(() => expect(screen.getByRole("button", { name: "Edit Asha" })).toHaveFocus());
   });
 
-  it("saves user fields and profile in one PATCH, and reports only after success", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(res({ ok: true }));
-    vi.stubGlobal("fetch", fetchMock);
-    const onChanged = mount();
+  it("starts the picker on the current manager, so an unrelated save keeps it (QA-02)", async () => {
+    const mock = route();
+    mount();
     fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
+    expect(screen.getByRole("combobox", { name: "Reporting manager (required)" })).toHaveValue("Meera");
     fireEvent.change(screen.getByLabelText("Territory"), { target: { value: "" } });
-    fireEvent.change(screen.getByLabelText("Reporting manager (required)"), { target: { value: "m2" } });
-    expect(onChanged).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(onChanged).toHaveBeenCalledWith("Saved Asha."));
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("/api/v1/admin/users/b1");
-    expect(init.method).toBe("PATCH");
-    expect(JSON.parse(init.body)).toEqual({
+    await waitFor(() => expect(patches(mock)).toHaveLength(1));
+    expect(patchBody(mock)).toEqual({
       full_name: "Asha", phone: null,
-      bdm_profile: { employee_id: "E-1", designation: null, department: null, territory: null, reporting_manager_user_id: "m2" },
+      bdm_profile: { employee_id: "E-1", designation: null, department: null, territory: null, reporting_manager_user_id: "m1" },
     });
   });
 
-  it("keeps the form open with the server's message on a 409", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ detail: "Employee ID already exists" }, 409)));
+  it("labels an inactive current manager and still keeps it on save", async () => {
+    const mock = route();
+    mount({ manager_active: false, reporting_manager: { id: "m9", full_name: "Old Boss", active: false } });
+    fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
+    expect(screen.getByRole("combobox", { name: "Reporting manager (required)" })).toHaveValue("Old Boss (inactive)");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(patches(mock)).toHaveLength(1));
+    expect(patchBody(mock).bdm_profile.reporting_manager_user_id).toBe("m9");
+  });
+
+  it("can search for and pick a different manager", async () => {
+    const mock = route();
+    const onChanged = mount();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
+    const combo = screen.getByRole("combobox", { name: "Reporting manager (required)" });
+    fireEvent.change(combo, { target: { value: "rav" } });
+    fireEvent.click(await screen.findByRole("option", { name: "Ravi — ravi@x.local" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith("Saved Asha."));
+    expect(patchBody(mock).bdm_profile.reporting_manager_user_id).toBe("m2");
+  });
+
+  it("returns focus to Edit after a successful save (QA-06)", async () => {
+    route();
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Asha" })).toHaveFocus());
+  });
+
+  it("keeps the form open on a 409 and moves focus to the message, so Esc still works (QA-06)", async () => {
+    route(res({ detail: "Employee ID already exists" }, 409));
     const onChanged = mount();
     fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(await screen.findByText("Employee ID already exists")).toBeInTheDocument();
-    expect(screen.getByLabelText("Full name (required)")).toBeInTheDocument();
+    const message = await screen.findByText("Employee ID already exists");
+    await waitFor(() => expect(message).toHaveFocus());
     expect(onChanged).not.toHaveBeenCalled();
-  });
-
-  it("lists an inactive current manager so an unrelated edit keeps it", () => {
-    mount({ manager_active: false, reporting_manager: { id: "m9", full_name: "Old Boss", active: false } });
-    fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
-    expect(screen.getByLabelText("Reporting manager (required)")).toHaveValue("m9");
-    expect(screen.getByRole("option", { name: "Old Boss (inactive)" })).toBeInTheDocument();
-  });
-
-  it.each([
-    ["the picker failed or is loading", null],
-    ["the picker lacks the current (active) manager", [{ id: "m2", full_name: "Ravi" }]],
-  ])("keeps the current manager selected when %s, so an unrelated save never reassigns", async (_label, list) => {
-    const fetchMock = vi.fn().mockResolvedValue(res({ ok: true }));
-    vi.stubGlobal("fetch", fetchMock);
-    render(<table><tbody><AdminBdmRow row={row} managers={list} onChanged={vi.fn()} /></tbody></table>);
-    fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
-    expect(screen.getByLabelText("Reporting manager (required)")).toHaveValue("m1");
-    fireEvent.change(screen.getByLabelText("Territory"), { target: { value: "Kollam" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body).bdm_profile.reporting_manager_user_id).toBe("m1");
-  });
-
-  it("lists the current manager once, not twice, when the picker includes it", () => {
-    mount();
-    fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
-    expect(screen.getAllByRole("option", { name: "Meera" })).toHaveLength(1);
+    fireEvent.keyDown(message, { key: "Escape" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Asha" })).toHaveFocus());
   });
 
   it("moves keyboard focus into the deactivate confirmation and back out of it", async () => {
+    route();
     mount();
     fireEvent.click(screen.getByRole("button", { name: "Deactivate Asha" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Confirm deactivate" })).toHaveFocus());
@@ -101,19 +112,30 @@ describe("AdminBdmRow (bdm-001 AC13)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Deactivate Asha" })).toHaveFocus());
   });
 
-  it("deactivation needs a second, explicit confirm", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(res({ ok: true }));
-    vi.stubGlobal("fetch", fetchMock);
+  it("deactivation needs a second, explicit confirm, then focus lands on the row (QA-06)", async () => {
+    const mock = route();
     const onChanged = mount();
     fireEvent.click(screen.getByRole("button", { name: "Deactivate Asha" }));
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(patches(mock)).toHaveLength(0);
     expect(screen.getByText(/can no longer sign in/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith("Deactivated Asha."));
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ active: false });
+    expect(patchBody(mock)).toEqual({ active: false });
+    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+    expect(document.activeElement?.closest("tr")).not.toBeNull();
+  });
+
+  it("a failed status change shows the message and focuses it", async () => {
+    route(res({ detail: "Not allowed" }, 403));
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Deactivate Asha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
+    const message = await screen.findByText("Not allowed");
+    await waitFor(() => expect(message).toHaveFocus());
   });
 
   it("shows status in words and offers Reactivate for an inactive BDM", () => {
+    route();
     mount({ active: false });
     expect(screen.getByText("Inactive")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reactivate Asha" })).toBeInTheDocument();

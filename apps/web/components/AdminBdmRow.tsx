@@ -1,29 +1,33 @@
 "use client";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
+import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
-import { BDM_TYPE_LABEL, USERS_URL, formOptional, formText, statusLabel, type BdmAdminRow, type BdmManagerOption } from "@/lib/bdm";
+import { BDM_TYPE_LABEL, USERS_URL, formOptional, formText, managerSearch, statusLabel, type BdmAdminRow } from "@/lib/bdm";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-// bdm-001 (spec §6.3): one BDM -- view, inline edit (type read-only, B7; Esc cancels, focus returns to Edit), and
-// activate/deactivate with an inline confirm. The list refreshes only after the server says yes.
-export default function AdminBdmRow({ row, managers, onChanged }: { row: BdmAdminRow; managers: BdmManagerOption[] | null; onChanged: (notice: string) => void }) {
+// bdm-001 (spec §6.3): one BDM -- view, inline edit (type read-only, B7; Esc cancels), and activate/deactivate with an inline
+// confirm. The list refreshes only after the server says yes. Focus is never dropped to <body> (QA-06): success returns it to the
+// row's own controls, an error moves it to the message. The manager picker searches the server (QA-02) and starts on the current
+// manager -- inactive or not -- so an unrelated edit can never silently reassign the reporting line.
+export default function AdminBdmRow({ row, onChanged }: { row: BdmAdminRow; onChanged: (notice: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const editButton = useRef<HTMLButtonElement>(null);
   const focus = useFocusAfterRender();
   const id = (name: string) => `bdm-${name}-${row.id}`;
-  // The current manager is ALWAYS an option -- whether inactive, missing from a failed/loading picker, or beyond its first page --
-  // so the select keeps it and an unrelated edit can never silently reassign the reporting line (review Important #1).
-  const current = { id: row.reporting_manager.id, full_name: `${row.reporting_manager.full_name}${row.manager_active ? "" : " (inactive)"}` };
-  const options = [current, ...(managers ?? []).filter((m) => m.id !== current.id)];
+  const currentManager = { id: row.reporting_manager.id, label: `${row.reporting_manager.full_name}${row.manager_active ? "" : " (inactive)"}` };
 
   function close() {
     setEditing(false);
     setError(null);
-    setTimeout(() => editButton.current?.focus(), 0);
+    focus(id("edit"));
+  }
+
+  function fail(message: string, where: string) {
+    setError(message);
+    focus(where);
   }
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
@@ -38,7 +42,7 @@ export default function AdminBdmRow({ row, managers, onChanged }: { row: BdmAdmi
       },
     });
     setBusy(false);
-    if (!outcome.ok) return setError(outcome.message);
+    if (!outcome.ok) return fail(outcome.message, id("error"));
     close();
     onChanged(`Saved ${row.full_name}.`);
   }
@@ -48,10 +52,9 @@ export default function AdminBdmRow({ row, managers, onChanged }: { row: BdmAdmi
     const outcome = await sendJson(`${USERS_URL}/${row.id}`, "PATCH", { active });
     setBusy(false);
     setConfirming(false);
-    if (!outcome.ok) {
-      setError(outcome.message);
-      return focus(id("deactivate"), id("edit"));
-    }
+    if (!outcome.ok) return fail(outcome.message, id("status-error"));
+    // The opposite action appears once the list reloads; until then the row's Edit button holds focus.
+    focus(active ? id("deactivate") : id("reactivate"), id("edit"));
     onChanged(`${active ? "Reactivated" : "Deactivated"} ${row.full_name}.`);
   }
 
@@ -77,13 +80,8 @@ export default function AdminBdmRow({ row, managers, onChanged }: { row: BdmAdmi
             <div className="field"><label htmlFor={id("designation")}>Designation</label><input id={id("designation")} name="designation" defaultValue={row.designation ?? ""} maxLength={120} disabled={busy} /></div>
             <div className="field"><label htmlFor={id("department")}>Department</label><input id={id("department")} name="department" defaultValue={row.department ?? ""} maxLength={120} disabled={busy} /></div>
             <div className="field"><label htmlFor={id("territory")}>Territory</label><input id={id("territory")} name="territory" defaultValue={row.territory ?? ""} maxLength={120} disabled={busy} /></div>
-            <div className="field">
-              <label htmlFor={id("manager")}>Reporting manager (required)</label>
-              <select id={id("manager")} name="manager" defaultValue={row.reporting_manager.id} required disabled={busy}>
-                {options.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-              </select>
-            </div>
-            <div id={id("error")} className={error ? "form-error" : undefined} role="alert">{error}</div>
+            <SearchableSelect id={id("manager")} name="manager" label="Reporting manager (required)" noun="manager" required search={managerSearch} initial={currentManager} disabled={busy} />
+            <div id={id("error")} tabIndex={-1} className={error ? "form-error" : undefined} role="alert">{error}</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button className="btn small" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
               <button type="button" className="btn secondary small" onClick={close} disabled={busy}>Cancel</button>
@@ -104,9 +102,9 @@ export default function AdminBdmRow({ row, managers, onChanged }: { row: BdmAdmi
       <td><span className="badge">{statusLabel(row.active)}</span></td>
       <td>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <button ref={editButton} id={id("edit")} type="button" className="btn secondary small" aria-label={`Edit ${row.full_name}`} onClick={() => setEditing(true)} disabled={busy}>Edit</button>
+          <button id={id("edit")} type="button" className="btn secondary small" aria-label={`Edit ${row.full_name}`} onClick={() => setEditing(true)} disabled={busy}>Edit</button>
           {row.active && !confirming && <button id={id("deactivate")} type="button" className="btn secondary small" aria-label={`Deactivate ${row.full_name}`} onClick={askToDeactivate} disabled={busy}>Deactivate</button>}
-          {!row.active && <button type="button" className="btn secondary small" aria-label={`Reactivate ${row.full_name}`} onClick={() => setActive(true)} disabled={busy}>Reactivate</button>}
+          {!row.active && <button id={id("reactivate")} type="button" className="btn secondary small" aria-label={`Reactivate ${row.full_name}`} onClick={() => setActive(true)} disabled={busy}>Reactivate</button>}
         </div>
         {confirming && (
           <div role="group" aria-label={`Confirm deactivating ${row.full_name}`} style={{ marginTop: 6 }}>
@@ -115,7 +113,7 @@ export default function AdminBdmRow({ row, managers, onChanged }: { row: BdmAdmi
             <button type="button" className="btn secondary small" onClick={keepActive} disabled={busy}>Keep active</button>
           </div>
         )}
-        {error && <p className="form-error" role="alert">{error}</p>}
+        {error && <p id={id("status-error")} tabIndex={-1} className="form-error" role="alert">{error}</p>}
       </td>
     </tr>
   );

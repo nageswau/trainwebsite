@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+const PUBLIC_PATHS = new Set(["/admin/login", "/admin/forgot-password", "/admin/reset-password", "/bdm/sign-in"]);
 export function middleware(req:NextRequest) {
   const p=req.nextUrl.pathname;
-  // bdm-001 (AC12): /bdm is protected; /bdm/sign-in is the public chooser.
-  const protectedRoute = p!=="/admin/login" && p!=="/bdm/sign-in" && /^\/(it\/(student|trainer|placement|hr|admin)|overseas\/(student|counselor|university|agent|admin)|admin|bdm)(\/|$)/.test(p);
+  // bdm-001 (AC12): /bdm is protected; /bdm/sign-in is the public chooser. QA-05: the admin portal's recovery pages are public too.
+  const protectedRoute = !PUBLIC_PATHS.has(p) &&/^\/(it\/(student|trainer|placement|hr|admin)|overseas\/(student|counselor|university|agent|admin)|admin|bdm)(\/|$)/.test(p);
   if (protectedRoute && !req.cookies.get("edusphere_access")) {
     // AGN-008 QA8-07: `next` keeps the query string (e.g. an Applications filter); LoginForm only follows a same-origin path.
     const next=encodeURIComponent(p+req.nextUrl.search);

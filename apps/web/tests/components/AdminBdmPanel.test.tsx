@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AdminBdmPanel from "@/components/AdminBdmPanel";
@@ -9,13 +9,15 @@ const row = (n: number, managerActive = true) => ({
   id: `b${n}`, full_name: `BDM ${n}`, email: `b${n}@x.local`, phone: null, active: true, bdm_type: "college", employee_id: `E-${n}`,
   designation: null, department: null, territory: "Kochi", reporting_manager: { id: "m1", full_name: "Meera", active: managerActive }, manager_active: managerActive,
 });
+const MANAGERS = pg([{ id: "m1", full_name: "Meera", email: "m@x.local" }]);
 
-/** BDM list responses are served in order; the manager picker always gets one manager. */
-function route(bdms: Response[]) {
-  const mock = vi.fn((url: string) => Promise.resolve(url.startsWith("/api/v1/admin/bdm-managers") ? res(pg([{ id: "m1", full_name: "Meera" }])) : bdms.shift()!));
+/** BDM list responses are served in order; the manager check gets `managers` (one manager by default). */
+function route(bdms: Response[], managers: () => Response = () => res(MANAGERS)) {
+  const mock = vi.fn((url: string) => Promise.resolve(String(url).startsWith("/api/v1/admin/bdm-managers") ? managers() : bdms.shift()!));
   vi.stubGlobal("fetch", mock);
   return mock;
 }
+const listCalls = (mock: ReturnType<typeof route>) => mock.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/v1/admin/bdms"));
 
 afterEach(() => {
   cleanup();
@@ -23,35 +25,46 @@ afterEach(() => {
 });
 
 describe("AdminBdmPanel (bdm-001 AC13)", () => {
-  it("shows loading, then rows with a no-active-manager badge", async () => {
+  it("shows loading as a status, then rows with a no-active-manager badge", async () => {
     route([res(pg([row(1), row(2, false)]))]);
     render(<AdminBdmPanel role="super_admin" />);
-    expect(screen.getByText("Loading BDMs…")).toBeInTheDocument();
+    expect(screen.getByText("Loading BDMs…")).toHaveAttribute("role", "status");
     expect(await screen.findByText("E-1")).toBeInTheDocument();
     expect(screen.getByText("No active manager")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "BDMs" })).toHaveAttribute("tabindex", "0");
   });
 
-  it("announces loading as a status", () => {
+  it("gives the BDM list the full row width, so its columns are never clipped (QA-01)", async () => {
     route([res(pg([row(1)]))]);
     render(<AdminBdmPanel role="super_admin" />);
-    expect(screen.getByText("Loading BDMs…")).toHaveAttribute("role", "status");
+    const region = await screen.findByRole("region", { name: "BDMs" });
+    expect(region.closest(".action-card")).toHaveClass("wide");
   });
 
-  it("tells a failed manager load apart from 'no managers', with Retry", async () => {
+  it("checks for managers once, without loading the whole picker list", async () => {
+    const mock = route([res(pg([row(1)]))]);
+    render(<AdminBdmPanel role="super_admin" />);
+    await screen.findByText("E-1");
+    expect(mock.mock.calls.map(([url]) => String(url))).toContain("/api/v1/admin/bdm-managers?limit=1");
+    expect(screen.getByRole("button", { name: "Create BDM" })).not.toBeDisabled();
+  });
+
+  it("says when there are no managers yet", async () => {
+    route([res(pg([row(1)]))], () => res(pg([], 0)));
+    render(<AdminBdmPanel role="super_admin" />);
+    expect(await screen.findByText("No active BDM manager — a Super Admin must create one first.")).toBeInTheDocument();
+  });
+
+  it("tells a failed manager check apart from 'no managers', with Retry", async () => {
     let managersOk = false;
-    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(
-      url.startsWith("/api/v1/admin/bdm-managers")
-        ? (managersOk ? res(pg([{ id: "m1", full_name: "Meera" }])) : res({ detail: "boom" }, 500))
-        : res(pg([row(1)])),
-    )));
+    route([res(pg([row(1)]))], () => (managersOk ? res(MANAGERS) : res({ detail: "boom" }, 500)));
     render(<AdminBdmPanel role="super_admin" />);
     expect(await screen.findByText("Unable to load BDM managers.")).toBeInTheDocument();
     expect(screen.queryByText(/No active BDM manager/)).toBeNull();
     expect(screen.getByRole("button", { name: "Create BDM" })).toBeDisabled();
     managersOk = true;
     fireEvent.click(screen.getByRole("button", { name: "Retry loading managers" }));
-    expect(await screen.findByRole("option", { name: "Meera" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Create BDM" })).not.toBeDisabled());
     expect(screen.queryByText("Unable to load BDM managers.")).toBeNull();
   });
 
@@ -78,6 +91,54 @@ describe("AdminBdmPanel (bdm-001 AC13)", () => {
     fireEvent.click(within(pager).getByRole("button", { name: "Next page" }));
     expect(screen.getByText("E-1")).toBeInTheDocument();
     expect(await screen.findByText("E-51")).toBeInTheDocument();
-    expect(mock).toHaveBeenCalledWith("/api/v1/admin/bdms?limit=50&offset=50");
+    expect(listCalls(mock)).toContain("/api/v1/admin/bdms?limit=50&offset=50");
+  });
+});
+
+describe("AdminBdmPanel search (QA-04)", () => {
+  it("searches by name, email or Employee ID from the first page, and clears", async () => {
+    const mock = route([res(pg([row(1)], 120)), res(pg([row(7)])), res(pg([row(1)], 120))]);
+    render(<AdminBdmPanel role="super_admin" />);
+    await screen.findByText("E-1");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search BDMs" }), { target: { value: " e-7 " } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(await screen.findByText("E-7")).toBeInTheDocument();
+    expect(listCalls(mock)).toContain("/api/v1/admin/bdms?limit=50&offset=0&q=e-7");
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(await screen.findByText("E-1")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Search BDMs" })).toHaveValue("");
+  });
+
+  it("says when a search matches nothing (not the 'no BDMs yet' message)", async () => {
+    route([res(pg([row(1)])), res(pg([]))]);
+    render(<AdminBdmPanel role="super_admin" />);
+    await screen.findByText("E-1");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search BDMs" }), { target: { value: "nobody" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(await screen.findByText("No BDMs match “nobody”.")).toBeInTheDocument();
+  });
+
+  it("shows the BDM just created by filtering to its Employee ID", async () => {
+    const created = { ...row(9), employee_id: "E-NEW" };
+    const mock = vi.fn((url: string, init?: RequestInit) => {
+      const u = String(url);
+      if (u.startsWith("/api/v1/admin/bdm-managers")) return Promise.resolve(res(MANAGERS));
+      if (init?.method === "POST") return Promise.resolve(res({ id: "b9", email_status: "sent", bdm_profile: {} }, 201));
+      return Promise.resolve(res(u.includes("q=E-NEW") ? pg([created]) : pg([row(1)], 120)));
+    });
+    vi.stubGlobal("fetch", mock);
+    render(<AdminBdmPanel role="it_admin" />);
+    await screen.findByText("E-1");
+    fireEvent.change(screen.getByLabelText("Full name (required)"), { target: { value: "New" } });
+    fireEvent.change(screen.getByLabelText("Email (required)"), { target: { value: "new@x.local" } });
+    fireEvent.change(screen.getByLabelText("Employee ID (required)"), { target: { value: "E-NEW" } });
+    const combo = screen.getByRole("combobox", { name: "Reporting manager (required)" });
+    fireEvent.focus(combo);
+    fireEvent.change(combo, { target: { value: "mee" } });
+    fireEvent.click(await screen.findByRole("option", { name: "Meera — m@x.local" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create BDM" }));
+    expect(await screen.findByText("E-NEW")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Search BDMs" })).toHaveValue("E-NEW");
+    expect(screen.queryByText("E-1")).toBeNull();
   });
 });

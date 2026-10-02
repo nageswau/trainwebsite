@@ -32,6 +32,10 @@ describe("middleware /bdm (bdm-001 AC12)", () => {
     expect(go("/overseas/agent/dashboard")).toBe("http://localhost/overseas/login?next=%2Foverseas%2Fagent%2Fdashboard");
     expect(go("/admin/bdms")).toBe("http://localhost/admin/login?next=%2Fadmin%2Fbdms");
     expect(go("/admin/login")).toBeNull();
+    // QA-05: the admin portal's password-recovery pages are public, like /admin/login
+    expect(go("/admin/forgot-password")).toBeNull();
+    expect(go("/admin/reset-password?token=abc")).toBeNull();
+    expect(go("/admin/forgot-passwordx")).toBe("http://localhost/admin/login?next=%2Fadmin%2Fforgot-passwordx");
     expect(config.matcher).toContain("/bdm/:path*");
   });
 });

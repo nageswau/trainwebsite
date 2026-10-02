@@ -52,11 +52,10 @@ export default function LoginForm({ division }: { division: "it" | "overseas" | 
     </div>
     {error && <div className="form-error" role="alert" aria-live="assertive">{error}</div>}
     <button className="btn" disabled={busy}>{busy ? "Signing in…" : "Sign in securely"}</button>
-    {division !== "global" && (
-      <p className="muted" style={{ fontSize: 13 }}>
-        <Link href={`/${division}/forgot-password`} style={{ color: "var(--blue)", fontWeight: 800 }}>Forgot your password?</Link>
-      </p>
-    )}
+    {/* bdm-001 QA-05: the global sign-in (Super Admins, BDM Managers) recovers on the admin portal's own page. */}
+    <p className="muted" style={{ fontSize: 13 }}>
+      <Link href={`/${division === "global" ? "admin" : division}/forgot-password`} style={{ color: "var(--blue)", fontWeight: 800 }}>Forgot your password?</Link>
+    </p>
     <p className="muted" style={{ fontSize: 13 }}>
       Use the portal that matches your account. Role and division access is verified by the API.
     </p>
