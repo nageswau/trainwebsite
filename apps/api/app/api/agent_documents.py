@@ -168,6 +168,18 @@ async def replace_document_file(document_id: UUID, file: UploadFile = File(...),
     return {"document": await svc.item_by_id(db, user, item.id)}
 
 
+@router.get("/documents/{document_id}/history")
+async def document_history(
+    document_id: UUID,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _gate(user)
+    return await svc.history_page(db, await svc.load_scoped(db, user, document_id), limit=limit, offset=offset)
+
+
 @router.get("/document-requests")
 async def list_requests(
     status: Literal["open", "all"] = "open",

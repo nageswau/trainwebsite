@@ -115,6 +115,7 @@ STAFF_PERMISSIONS = ("can_verify_documents", "can_view_reports")
 REPORTS_REFUSED = "Your agency Master hasn't given you access to reports"
 VERIFY_REFUSED = "Your agency Master hasn't given you permission to verify documents"
 REVIEW_MASTER_ONLY = "Only an agency Master can reject documents or request changes"
+REVIEW_REASON_REQUIRED = "Give a reason when you reject a document or ask for changes"  # AGN-009 (DEC-SCOPE-051 G1)
 
 
 def agent_may(user, permission: str) -> bool:

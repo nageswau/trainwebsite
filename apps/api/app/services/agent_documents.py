@@ -237,6 +237,23 @@ async def reviewer_role(db: AsyncSession, document: StudentDocument) -> str | No
     return await db.scalar(select(User.role).where(User.id == document.verified_by_id)) if document.verified_by_id else None
 
 
+_Actor = aliased(User)
+
+
+async def history_page(db: AsyncSession, document: StudentDocument, *, limit: int, offset: int) -> dict:
+    """AC5: the document's events in the order they happened (`seq`), plus the `requested` event of the request it fulfilled. The
+    replaced file's key is never returned."""
+    clause = DocumentEvent.document_id == document.id
+    if document.fulfils_request_id is not None:
+        clause = or_(clause, and_(DocumentEvent.request_id == document.fulfils_request_id, DocumentEvent.document_id.is_(None)))
+    total = await db.scalar(select(func.count()).select_from(DocumentEvent).where(clause))
+    rows = (
+        await db.execute(select(DocumentEvent, _Actor.full_name).outerjoin(_Actor, _Actor.id == DocumentEvent.actor_user_id).where(clause).order_by(DocumentEvent.seq).limit(limit).offset(offset))
+    ).all()
+    items = [{"id": e.id, "event": e.event, "actor": actor, "from_status": e.from_status, "to_status": e.to_status, "notes": e.notes, "created_at": e.created_at} for e, actor in rows]
+    return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
+
+
 def student_clause(record: AgentStudent) -> ColumnElement:
     """One student's documents: those of the agency record, plus (for a student with a login) those on the account."""
     if record.student_id is None:

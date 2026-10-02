@@ -14,7 +14,7 @@ from app.api.files import _allowed
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
-from app.core.rbac import REVIEW_MASTER_ONLY, VERIFY_REFUSED, agent_denial_reason, agent_may, is_agent_staff
+from app.core.rbac import REVIEW_MASTER_ONLY, REVIEW_REASON_REQUIRED, VERIFY_REFUSED, agent_denial_reason, agent_may, is_agent_staff
 from app.models import (
     AgentCommission,
     AgentStudent,
@@ -2057,6 +2057,10 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
             extra={"extra_fields": {"document_id": str(document_id), "actor_id": str(user.id), "verification_status": review.verification_status}},
         )
         raise HTTPException(403, REVIEW_MASTER_ONLY)
+    # AGN-009 (DEC-SCOPE-051 G1/G2): an agent rejecting or asking for changes says why -- after the role rule, so staff still get 403.
+    notes = (review.notes or "").strip() or None
+    if review.verification_status != "verified" and notes is None:
+        raise HTTPException(422, REVIEW_REASON_REQUIRED)
     item = await db.scalar(select(StudentDocument).where(StudentDocument.id == document_id).with_for_update())
     if not item:
         raise HTTPException(404, "Document not found")
@@ -2070,8 +2074,8 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
         raise HTTPException(409, "This document has already been reviewed")
     item.verification_status = review.verification_status
     item.verified_by_id = user.id
-    item.reviewer_notes = review.notes
-    add_event(db, event=item.verification_status, actor=user, document=item, from_status="pending", to_status=item.verification_status, notes=review.notes)
+    item.reviewer_notes = notes
+    add_event(db, event=item.verification_status, actor=user, document=item, from_status="pending", to_status=item.verification_status, notes=notes)
     student = await db.get(User, item.student_id) if item.student_id else None  # AGN-009: an agency-only document has no account
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
