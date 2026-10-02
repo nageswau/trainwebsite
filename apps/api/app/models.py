@@ -461,6 +461,9 @@ class OverseasApplication(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint("offer_type IS NULL OR offer_type IN ('conditional', 'unconditional')", name="ck_overseas_applications_offer_type"),
         CheckConstraint("(offer_type IS NULL) = (offer_date IS NULL)", name="ck_overseas_applications_offer_dated"),
+        # AGN-017 (DEC-SCOPE-059): the daily reminder job reads agency deadlines through these partial indexes (migration 0065).
+        Index("ix_overseas_applications_agent_application_deadline", "application_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
+        Index("ix_overseas_applications_agent_offer_deadline", "offer_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
     )
 
 
@@ -790,12 +793,15 @@ class RealProject(Base, TimestampMixin):
 
 class Notification(Base, TimestampMixin):
     __tablename__ = "notifications"
+    # AGN-017 (DEC-SCOPE-059 N6): only scheduled reminders set `dedupe_key`; the partial unique index makes a repeat run a no-op.
+    __table_args__ = (Index("ux_notifications_dedupe_key", "dedupe_key", unique=True, postgresql_where=text("dedupe_key IS NOT NULL")),)
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
     title: Mapped[str] = mapped_column(String(180))
     body: Mapped[str] = mapped_column(Text)
     read: Mapped[bool] = mapped_column(Boolean, default=False)
     action_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    dedupe_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class NotificationDelivery(Base, TimestampMixin):
@@ -1140,6 +1146,7 @@ class AgentTask(Base, TimestampMixin):
         CheckConstraint("status IN ('open', 'done', 'cancelled')", name="ck_agent_tasks_status"),
         CheckConstraint("(status = 'open') = (closed_at IS NULL) AND (closed_at IS NULL) = (closed_by_user_id IS NULL)", name="ck_agent_tasks_closed"),
         Index("ix_agent_tasks_student_status_due", "agent_student_id", "status", "due_at"),
+        Index("ix_agent_tasks_open_due", "due_at", postgresql_where=text("status = 'open'")),  # AGN-017: the overdue digest's scan
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     agent_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id", ondelete="RESTRICT"))

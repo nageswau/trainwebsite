@@ -397,6 +397,14 @@ covers the commission-specific piece).
   TIMESTAMPTZ (first time the agency recorded details). No row is read or written by the upgrade; the downgrade refuses while any of the
   three holds data. The revision id is ≤ 32 characters (`alembic_version.version_num` is `VARCHAR(32)`). `agent_commissions` is unchanged:
   an agency Master's confirmation reaches `enrolled` through the same `ApplicationStatusHistory` write and §6.3 trigger (E3).
+- **Addendum, 2026-10-02 (`AGN-017`, `DEC-SCOPE-059`; migration `0065_agent_notifications`, chained after `0064_application_deposits` — drafted as `0061`, re-chained as `0064` on merging `main` @ `ff27fa4` and as `0065` @ `3d9244f`) —
+  agency notifications and deadline reminders.** `notifications.dedupe_key` VARCHAR(200) NULL with the partial unique index
+  `ux_notifications_dedupe_key` (`WHERE dedupe_key IS NOT NULL`): only the daily reminder job sets it
+  (`agn017:deadline:{application}:{kind}:{date}:{days_left}:{user}`, `agn017:overdue:{india_date}:{user}`), inserting with
+  `ON CONFLICT DO NOTHING`, so a rerun or a concurrent run creates nothing new. Partial indexes for the job's reads:
+  `ix_overseas_applications_agent_application_deadline` and `ix_overseas_applications_agent_offer_deadline` (`WHERE agent_student_id IS
+  NOT NULL`), `ix_agent_tasks_open_due` (`WHERE status = 'open'`). No row is read or written by the upgrade; existing notifications keep
+  `dedupe_key` NULL; the downgrade drops exactly what it added (the keys are derived reminder markers, not user data).
 
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an

@@ -90,6 +90,7 @@ from app.schemas import (
     EnrollmentCreate,
     EnrollmentProgressUpdate,
     LearningResourceCreate,
+    NotificationUnreadCount,
     OverseasApplicationAdvance,
     OverseasApplicationCreate,
     OverseasApplicationUpdate,
@@ -102,6 +103,7 @@ from app.schemas import (
     SupportTicketUpdate,
     VisaCaseCreate,
 )
+from app.services import agent_notifications as agency_notices
 from app.services.agent_applications import DEFAULT_NEXT_ACTION, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, owned, with_owner
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
@@ -1913,7 +1915,9 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     if item.status != old_status or item.next_action != old_next_action:
         db.add(ApplicationStatusHistory(application_id=item.id, from_status=old_status, to_status=item.status, next_action=item.next_action, notes=notes, changed_by_id=user.id))
     if item.status != old_status:
+        had_commission = await agency_notices.has_commission(db, item.id)
         await _maybe_trigger_agent_commission(db, item, old_status, user)
+        await agency_notices.status_changed(db, item, old_status, user, had_commission=had_commission)  # AGN-017 (N3, AC3)
     # DEC-SCOPE-018: a bridged (School-origin) application has `student_id IS NULL` --
     # guarded the same way as `advance_overseas_application` below.
     student = await db.get(User, item.student_id) if item.student_id else None
@@ -1973,7 +1977,9 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
     if payload.next_action is not None:
         item.next_action = payload.next_action
     db.add(ApplicationStatusHistory(application_id=item.id, from_status=old_status, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id))
+    had_commission = await agency_notices.has_commission(db, item.id)
     await _maybe_trigger_agent_commission(db, item, old_status, user)
+    await agency_notices.status_changed(db, item, old_status, user, had_commission=had_commission)  # AGN-017 (N3, AC3)
     # DEC-SCOPE-018: a bridged (School-origin) application has `student_id IS NULL` --
     # `db.get(User, None)` triggers a SAWarning ("fully NULL primary key identity") and
     # is documented as a future error, so it's guarded here rather than relied on to
@@ -2088,6 +2094,7 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
     student = await db.get(User, item.student_id) if item.student_id else None  # AGN-009: an agency-only document has no account
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
+    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): rejected / changes required only
     member_role = user.agent_membership.role
     await _audit(db, user, "document.verify", "student_document", item.id, {**review.model_dump(), "member_role": member_role})
     await db.commit()
@@ -2121,6 +2128,7 @@ async def verify_document(document_id: UUID, payload: dict, user: User = Depends
     student = await db.get(User, item.student_id) if item.student_id else None
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
+    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): an agency document's assignee
     await _audit(db, user, "document.verify", "student_document", item.id, payload)
     await db.commit()
     return {"id": item.id, "verification_status": item.verification_status}
@@ -2619,6 +2627,13 @@ async def update_commission_amount(commission_id: UUID, payload: CommissionAmoun
 async def notifications(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     rows = (await db.scalars(select(Notification).where(Notification.user_id == user.id).order_by(Notification.created_at.desc()).limit(100))).all()
     return [{"id": x.id, "title": x.title, "body": x.body, "read": x.read, "action_url": x.action_url, "created_at": x.created_at} for x in rows]
+
+
+@router.get("/notifications/unread-count", response_model=NotificationUnreadCount)
+async def unread_notification_count(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-017 (DEC-SCOPE-059 N7): the caller's own unread count (it may exceed the newest-100 list above)."""
+    count = await db.scalar(select(func.count()).select_from(Notification).where(Notification.user_id == user.id, Notification.read.is_(False)))
+    return {"unread": count or 0}
 
 
 @router.patch("/notifications/{notification_id}/read")

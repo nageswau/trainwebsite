@@ -344,6 +344,22 @@ application is withdrawn"` → stale `expected_status` `409` (the AGN-008 messag
 `GET /portal/overseas/agent/dashboard` gains `{"label": "Offers", "value": n}` after the commission metrics for a Master ("Revenue") and after "Pending actions" for
 Staff (staff scope applies; the order AGN-014/AGN-016 assert is kept), and the Reports "Offers" row now counts stage `offer` or later (incl. legacy `offer_received`/`accepted`) OR an offer recorded
 (O5). Other portals' offer counts are unchanged (`RAID.md` I-48).
+**`AGN-017` / `DEC-SCOPE-059` (built 2026-10-02; migration `0065_agent_notifications`) — agency notifications and deadline
+reminders.** Design spec `docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md` §3–§9. One new read endpoint; the existing
+notification list and read routes are **unchanged** (newest 100 as a plain array; `{ok: true}`; `404` for another user's id; `dedupe_key`
+is never returned). Agency notices are written by existing routes in their own transaction, after their locks — no new write endpoint:
+`POST …/crm/students/{id}/assign` (the new assignee), `POST …/crm/document-requests`, `PATCH /workflows/overseas/documents/{id}/verify`
+(agency or counselor/admin; `rejected`/`changes_required` only), `POST …/crm/applications/{id}/status`, `PUT …/crm/applications/{id}/enrollment`, `PUT …/crm/applications/{id}/offer` (AGN-010; when it moves the stage to `offer`),
+`PATCH /workflows/overseas/applications/{id}` and `POST …/applications/{id}/advance` (status actually changed; agency record present),
+`POST …/crm/tasks`. Recipient: the student's active assigned staff member, else the organisation's active Masters; never the actor; never
+a student (D19). Channels: in-app plus email (ENH-014 queue, email only). Bodies carry no names and no user-typed text; `action_url` is one
+of `/overseas/agent/{students|documents|applications|tasks}`. A daily beat job (02:30 UTC = 08:00 IST) adds deadline reminders (3, 1, 0
+days) and one overdue-task digest per recipient per India day, idempotent through `notifications.dedupe_key`.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /workflows/notifications/unread-count` | Authenticated | Self | `200 NotificationUnreadCount {"unread": n}` — the caller's unread notifications (may exceed the 100-row list). Any signed-in role; `401` without a session. |
+| `GET /portal/overseas/agent/notifications` | Authenticated | Agent (Master or staff), approved | Header-only payload ("Notifications"): the page's role/approval gate, as Tasks. |
 
 **`AGN-011` / `DEC-SCOPE-058` (built 2026-10-02/03) — agent deposit through Razorpay.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md` §4. Errors are FastAPI `{"detail": ...}`. INR only (D1). Every

@@ -20,6 +20,7 @@ from app.core.database import get_db
 from app.models import AgentOrgMember, AgentStudent, AuditLog, DocumentRequest, StudentDocument, User
 from app.schemas import AgentDocumentRequestCreate, AgentUploadDocumentType
 from app.services import agent_documents as svc
+from app.services import agent_notifications as notices
 from app.services.agent_applications import load_scoped as load_scoped_application
 from app.services.agent_orgs import lock_active_org
 from app.services.agent_students import load_scoped as load_scoped_student
@@ -211,6 +212,7 @@ async def create_request(payload: AgentDocumentRequestCreate, user: User = Depen
     db.add(request)
     await db.flush()
     svc.add_event(db, event="requested", actor=user, request=request, to_status="open", notes=note)
+    await notices.document_requested(db, record, payload.document_type, user)  # AGN-017 (DEC-SCOPE-059): never the label or note
     _audit(db, user, "document_request.create", "document_request", request.id, {"agent_student_id": str(record.id), "document_type": payload.document_type})
     await db.commit()
     _log("agent_document_requested", membership, user, request_id=request.id, agent_student_id=record.id)

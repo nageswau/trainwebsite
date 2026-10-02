@@ -23,8 +23,9 @@ NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was wri
 > | `AGN-010` | ang-010 (offer details, Step 6: type, offer date, deadline, conditions, offer letter; agent Offers count) | `DEC-SCOPE-056` | branch `feature/agn-010-offer-details` (implemented; browser QA, full suites and Codex review pending) |
 > | `AGN-012` | ang-012 (visa for agent-managed applications: documents checklist, application date, appointment, interview, stage, decision) | `DEC-SCOPE-057` | branch `feature/agn-012-agent-visa` (verified; main merged as 0063 / DEC-SCOPE-057; Browser Use gate open) |
 > | `AGN-011` | ang-011 (deposit through EduSphere Razorpay, Step 7; Overseas Admin remittance/refund recording) | `DEC-SCOPE-058` | branch `feature/agn-011-deposit-payment` (implemented; browser QA, full suites and Codex review pending) |
+> | `AGN-017` | ang-017 (agency notifications, daily deadline reminders and overdue digest, Notifications page + unread badge) | `DEC-SCOPE-059` | branch `feature/agn-017-notifications` (verified 2026-10-03; re-verification after merging main @ 3d9244f pending; Codex review waived) |
 >
-> Not started: ang-015, ang-017 … ang-020 and ang-022. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
+> Not started: ang-015, ang-018 … ang-020 and ang-022. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
 > student to a staff member; staff see assigned students only) — check its remaining acceptance criteria before planning it.
 > **Citation note:** the "`DEC-SCOPE-035`" this file cites as its scope decision was renumbered before merge;
 > `DEC-SCOPE-035` on `main` is `ENH-027` (psychometric). AGN-004 and AGN-007 recorded this mis-citation; each shipped
@@ -635,6 +636,10 @@ table and column names are placeholders for the design spec, not decisions.
 - **Positive / Negative / Edge:** deadline in 3 days → reminder / deactivated staff not notified / time zone of the "day" boundary (IST, as for tiers: confirm).
 - **Regression risks:** introducing beat affects deployment (compose `beat` already exists but has been idle).
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-02):** implemented as `AGN-017` (`DEC-SCOPE-059`: assignee else Masters, never the actor; task event = created by
+  someone else; IST day; 3/1/0-day deadline reminders; one overdue digest per recipient per day; email only through the ENH-014 queue;
+  `notifications.dedupe_key`, migration `0065`); browser QA done and fixes re-verified, Codex review waived; verification before
+  completion done 2026-10-03 (complete for its scope). See `ENHANCEMENT_BACKLOG.md` §AGN-017.
 
 ---
 

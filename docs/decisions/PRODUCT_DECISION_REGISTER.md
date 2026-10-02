@@ -3225,3 +3225,27 @@ create or discount agent-deposit payments; receipts of agent deposits name the s
 `lib/razorpayCheckout.ts`. Out of scope: partial payments, several refunds, notifications (ang-017), network deposit totals (ang-022),
 revenue reclassification, multi-currency. **Status:** implemented on `feature/agn-011-deposit-payment`; **not COMPLETE** — browser
 validation, the owner's full suites and an independent Codex review are pending.
+### DEC-SCOPE-059 — Agent notifications and daily deadline reminders (`AGN-017`)
+
+**ID note:** drafted as `DEC-SCOPE-055` with migration `0061_agent_notifications` (both free on `main` @ `e0395d6`); renumbered `DEC-SCOPE-058` on merging `main` @ `ff27fa4`, where `055` is bdm-001 (PR #45), `056` AGN-010 (PR #46) and `057` AGN-012 (PR #47), and the migration re-chained as `0064_agent_notifications` after `0063_agent_visa_details`. Renumbered again `DEC-SCOPE-059` on merging `main` @ `3d9244f`, where `058` is AGN-011 (PR #48) with `0064_application_deposits`; the migration is now `0065_agent_notifications` after it (one head).
+
+**Question:** the owner's `AGN-017` statement (in-session, 2026-10-02): requirement "Notifications" (§4); "Monitor deadlines" (§2). Acceptance: "each event produces exactly one notification to the right person; reminders are not sent twice for the same deadline/day; a failed email is recorded, never raised."
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) names only "Notifications" (§4) and "Monitor deadlines" (§2); `AGENT_CRM_BACKLOG.md` ang-017 (`DERIVED_BLUEPRINT`) proposed the events and a daily job. Channels were already settled by `DEC-SCOPE-035` D19 (in-app + email to agency Masters/Staff; students get nothing). Impact analysis 2026-10-02 (the graphify snapshot predates AGN-001…016, so the agency source was read directly): no path notifies agency staff; `Notification` has no dedupe column; deadline columns are unindexed; beat runs only the ENH-014 sweeper; AGN-016 tasks have no assignee (T1).
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — answers to structured questions and four design-section reviews):
+
+- **N1 — Task event.** A task created by someone else notifies the student's recipient; a reassignment sends one "student assigned" notice that states the moved open-task count; task edits/close notify nobody.
+- **N2 — Recipients.** The student's active assigned staff member, else every active Master of the org; never the actor; inactive org → nobody.
+- **N3 — Status changes.** Agency (CRM status, enrollment, and — after merging AGN-010 — the offer route when it moves the stage to `offer`) and EduSphere (counselor/admin/university-rep `PATCH`/`advance`) changes to applications with an agency record; students' existing notices unchanged.
+- **N4 — Reminders.** Application/offer deadlines at 3, 1 and 0 days; overdue open tasks as **one digest per recipient per IST day** (revised from one per task after the security review — email volume; owner-approved 2026-10-02); `Asia/Kolkata` day; daily at 08:00 IST; no catch-up.
+- **N4a — Content (security review).** Bodies carry no user-typed free text (task titles, document labels, notes) and no names; only fixed strings, known document types, stage labels, university name (control characters stripped, capped) and dates.
+- **N5 — Email.** Existing ENH-014 queue, email channel only.
+- **N6 — Exactly once.** Nullable `notifications.dedupe_key` with a partial unique index; reminders insert `ON CONFLICT DO NOTHING`.
+- **N7 — API.** Existing list/read unchanged; new `GET /workflows/notifications/unread-count`.
+- **N8 — Frontend.** Agent "Notifications" section (Master and Staff) with an unread nav badge; no "mark all read".
+- **N9 — Documents.** `rejected` and `changes_required` both notify; the previous assignee is not told on reassignment.
+- **N10 — Stage rules.** As `nearest_deadline`: none once withdrawn/enrolled; from `offer` on, only the offer deadline.
+- **N11 — Record context (browser QA QA17-02, owner 2026-10-03).** Kept as designed: notices name no student and Open goes to the section list; revisit with ang-018 dashboards.
+
+**Consequences:** migration `0065_agent_notifications` (one nullable column, four partial indexes); a new `services/agent_notifications.py`; additive hooks in `agent_students`, `agent_documents`, `agent_applications`, `agent_tasks` and three `workflows.py` routes; the first crontab beat entry; one new read endpoint; an agent nav item and optional `NavItem.badge`. Unchanged: ENH-014 dispatch/delivery, existing list/read contracts, students' and counselors' notices, `_maybe_trigger_agent_commission`. Design: `docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md`. **New Feature ID authorized:** `AGN-017`.

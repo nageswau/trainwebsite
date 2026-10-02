@@ -32,6 +32,7 @@ from app.schemas import (
     AgentVisaStart,
     AgentVisaUpdate,
 )
+from app.services import agent_notifications as notices
 from app.services.agent_applications import (
     ARCHIVED,
     DEFAULT_NEXT_ACTION,
@@ -198,6 +199,8 @@ async def change_status(application_id: UUID, payload: AgentApplicationStatus, u
     db.add(ApplicationStatusHistory(application_id=item.id, from_status=old, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id))
     withdrawn = item.status == WITHDRAWN
     _audit(db, user, "withdraw" if withdrawn else "advance", item.id, {"from_status": old, "to_status": item.status})
+    # AGN-017 (N3): this route never reaches `enrolled` (A4), so the commission trigger never ran here.
+    await notices.status_changed(db, item, old, user, had_commission=True)
     await db.commit()
     _log("agent_application_withdrawn" if withdrawn else "agent_application_advanced", membership, user, item.id, from_status=old, to_status=item.status)
     return {"application": await detail(db, user, item, record=record)}
@@ -226,8 +229,10 @@ async def save_enrollment(application_id: UUID, payload: AgentApplicationEnrollm
         item.enrollment_confirmed_at = datetime.now(UTC)
         item.status = "enrolled"
         db.add(ApplicationStatusHistory(application_id=item.id, from_status=old, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id))
+        had_commission = await notices.has_commission(db, item.id)
         await _maybe_trigger_agent_commission(db, item, old, user)
         _audit(db, user, "enroll", item.id, {"from_status": old, "to_status": item.status})
+        await notices.status_changed(db, item, old, user, had_commission=had_commission)  # AGN-017 (N3, AC3)
     elif changed:  # a correction: no history row, no commission; an unchanged re-save writes nothing
         item.enrollment_confirmed_at = item.enrollment_confirmed_at or datetime.now(UTC)
         _audit(db, user, "enrollment_update", item.id, {"fields": changed})
@@ -271,6 +276,8 @@ async def record_offer(application_id: UUID, payload: AgentApplicationOffer, use
     fields = sorted(k for k in new if old[k] != new[k])
     db.add(ApplicationStatusHistory(application_id=item.id, from_status=old_status, to_status=item.status, next_action=item.next_action, notes=notes, changed_by_id=user.id))
     _audit(db, user, "offer", item.id, {"fields": fields, "offer_type": item.offer_type, "from_status": old_status, "to_status": item.status})
+    # AGN-017 (DEC-SCOPE-059 N3): a stage move to `offer` is a status change; `offer` is never `enrolled`, so no commission was created.
+    await notices.status_changed(db, item, old_status, user, had_commission=True)
     await db.commit()
     _log("agent_application_offer_recorded", membership, user, item.id, fields=fields, stage_moved=old_status != item.status)
     return {"application": await detail(db, user, item, record=record)}

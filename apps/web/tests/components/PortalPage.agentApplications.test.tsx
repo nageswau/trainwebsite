@@ -19,7 +19,9 @@ vi.mock("@/components/AgentStudentsSection", () => ({ default: () => <p>students
 vi.mock("@/components/PortalSection", () => ({ default: ({ data }: { data: { title: string } }) => <p>portal section: {data.title}</p> }));
 
 const api = vi.mocked(serverApi);
-const superAdmin = { id: "s1", role: "super_admin", full_name: "Root", email: "root@example.local" };
+// AGN-017 (DEC-SCOPE-059 N8): every agency page also reads the unread count for the Notifications badge (a failure only drops it).
+const UNREAD = "/api/v1/workflows/notifications/unread-count";
+const superAdmin ={ id: "s1", role: "super_admin", full_name: "Root", email: "root@example.local" };
 
 beforeEach(() => {
   api.mockReset();
@@ -37,7 +39,7 @@ function refuse(me: Record<string, unknown>, message: string) {
 describe("PortalPage agent applications (QA8-09)", () => {
   it("shows a Super Admin the section's note instead of the payload's Workspace not found", async () => {
     render(await PortalPage({ division: "overseas", role: "agent", section: "applications" }));
-    expect(api.mock.calls.map(([path]) => path)).toEqual(["/api/v1/auth/me", "/api/v1/portal/overseas/agent/applications"]);
+    expect(api.mock.calls.map(([path]) => path)).toEqual(["/api/v1/auth/me", "/api/v1/portal/overseas/agent/applications", UNREAD]);
     expect(screen.getByText("Agency applications are managed by the agency's own Masters and Staff.")).toBeInTheDocument();
     expect(screen.queryByText("Workspace not found")).toBeNull();
   });
@@ -69,7 +71,7 @@ describe("PortalPage agent applications (QA8-09)", () => {
 
   it("renders the agency Documents section behind the same gate (AGN-009)", async () => {
     render(await PortalPage({ division: "overseas", role: "agent", section: "documents" }));
-    expect(api.mock.calls.map(([path]) => path)).toEqual(["/api/v1/auth/me", "/api/v1/portal/overseas/agent/documents"]);
+    expect(api.mock.calls.map(([path]) => path)).toEqual(["/api/v1/auth/me", "/api/v1/portal/overseas/agent/documents", UNREAD]);
     expect(screen.getByText("Agency documents are managed by the agency's own Masters and Staff.")).toBeInTheDocument();
     refuse({ id: "u4", role: "agent", full_name: "Pending", email: "p2@example.local", agent_member_role: "master" }, "Agent registration is pending approval");
     cleanup();
@@ -83,7 +85,7 @@ describe("PortalPage agent applications (QA8-09)", () => {
       Promise.resolve(path === "/api/v1/auth/me" ? { ...superAdmin, role: "agent", agent_member_role: "master", agent_permissions: [] } : { title: "Dashboard" }),
     );
     render(await PortalPage({ division: "overseas", role: "agent", section: "dashboard" }));
-    expect(api.mock.calls.map(([path]) => path)).toEqual(["/api/v1/auth/me", "/api/v1/portal/overseas/agent/dashboard"]);
+    expect(api.mock.calls.map(([path]) => path)).toEqual(["/api/v1/auth/me", "/api/v1/portal/overseas/agent/dashboard", UNREAD]);
     expect(screen.getByText("portal section: Dashboard")).toBeInTheDocument();
   });
 });

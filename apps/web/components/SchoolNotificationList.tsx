@@ -1,5 +1,6 @@
 "use client";
 
+import LocalTime from "./LocalTime";
 import { formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
 // The signed-in user's own in-app notifications, as the Parent page already shows them (same table, same "new" badge in text, same Open
@@ -9,7 +10,26 @@ import { formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 // stacks on a phone without a scroll container.
 export type NotificationItem = { id: string; title: string; body: string; read: boolean; action_url: string | null; created_at: string };
 
-export default function SchoolNotificationList({ notifications, emptyText }: { notifications: NotificationItem[]; emptyText: string }) {
+const READ_WAIT_MS = 1500;
+
+function markRead(id: string, keepalive: boolean): Promise<unknown> {
+  return fetch(`/api/v1/workflows/notifications/${id}/read`, { method: "PATCH", keepalive }).catch(() => undefined);
+}
+
+// AGN-017: `localTime` -- the agency page shows each time in the viewer's zone (LocalTime, hydration-safe); school pages keep the school zone.
+// `readBeforeOpen` (QA17-01) -- a plain click on an unread notice waits for its read (at most READ_WAIT_MS, failure or not) before
+// navigating, so the next page's unread badge already counts it; a modified click (new tab, new window) is left to the browser.
+export default function SchoolNotificationList({
+  notifications,
+  emptyText,
+  localTime = false,
+  readBeforeOpen = false,
+}: {
+  notifications: NotificationItem[];
+  emptyText: string;
+  localTime?: boolean;
+  readBeforeOpen?: boolean;
+}) {
   if (notifications.length === 0) return <p className="muted">{emptyText}</p>;
   return (
     <ul className="link-list" role="list" aria-label="Notifications">
@@ -17,8 +37,8 @@ export default function SchoolNotificationList({ notifications, emptyText }: { n
         <li key={n.id}>
           <div className="who">
             <strong>{n.title}{!n.read && <> <span className="badge">new</span></>}</strong>
-            <span>{n.body}</span>
-            <span className="muted">{formatDate(n.created_at, true, SCHOOL_TIME_ZONE)}</span>
+            <span id={`notice-${n.id}-body`}>{n.body}</span>
+            <span className="muted">{localTime ? <LocalTime value={n.created_at} time /> : formatDate(n.created_at, true, SCHOOL_TIME_ZONE)}</span>
           </div>
           {n.action_url && (
             <div className="meta">
@@ -28,8 +48,17 @@ export default function SchoolNotificationList({ notifications, emptyText }: { n
                 className="btn secondary small"
                 href={n.action_url}
                 aria-label={`Open: ${n.title}`}
-                onClick={() => {
-                  if (!n.read) void fetch(`/api/v1/workflows/notifications/${n.id}/read`, { method: "PATCH", keepalive: true }).catch(() => undefined);
+                aria-describedby={`notice-${n.id}-body`} // QA17-03: notices sharing a title stay distinguishable
+                onClick={(e) => {
+                  if (n.read) return;
+                  const plain = e.button === 0 && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
+                  if (!readBeforeOpen || !plain) {
+                    void markRead(n.id, true);
+                    return;
+                  }
+                  e.preventDefault();
+                  const href = n.action_url as string;
+                  void Promise.race([markRead(n.id, false), new Promise((resolve) => setTimeout(resolve, READ_WAIT_MS))]).then(() => window.location.assign(href));
                 }}
               >
                 Open
