@@ -835,6 +835,76 @@ class AgentApplicationOffer(BaseModel):
         return self
 
 
+# --- AGN-011: deposit collection (DEC-SCOPE-057; docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md §4) ---
+
+DepositAmount = Annotated[Decimal, Field(gt=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)]
+
+
+class AgentDepositSave(BaseModel):
+    """The agency's deposit on an application (§4.2). Currency (INR, D1) and status are server-owned: `extra="forbid"` answers 422."""
+
+    model_config = {"extra": "forbid"}
+    required: bool
+    amount: DepositAmount | None = None
+    due_date: date | None = None
+
+    @field_validator("due_date")
+    @classmethod
+    def _due_date(cls, value):
+        return _application_date(value)
+
+    @model_validator(mode="after")
+    def _deposit_rules(self):
+        if not self.required and (self.amount is not None or self.due_date is not None):
+            raise PydanticCustomError("deposit_not_required", "A deposit that is not required has no amount or due date")
+        if self.required and self.amount is None:
+            raise PydanticCustomError("deposit_amount_required", "Enter the deposit amount")
+        return self
+
+
+class DepositRemit(BaseModel):
+    """Overseas Admin records that EduSphere finance remitted the deposit to the university (D12/§4.7)."""
+
+    model_config = {"extra": "forbid"}
+    remitted_on: date
+    reference: str
+
+    @field_validator("remitted_on")
+    @classmethod
+    def _date(cls, value):
+        return _application_date(value)
+
+    @field_validator("reference")
+    @classmethod
+    def _reference(cls, value):
+        value = clean_free_text(value, 100)
+        if not value:
+            raise PydanticCustomError("blank_reference", "Enter the remittance reference")
+        return value
+
+
+class DepositRefund(BaseModel):
+    """Overseas Admin records the one refund (D3). The paid-amount ceiling is checked against the payment in the route."""
+
+    model_config = {"extra": "forbid"}
+    refunded_on: date
+    amount: DepositAmount
+    reason: str
+
+    @field_validator("refunded_on")
+    @classmethod
+    def _date(cls, value):
+        return _application_date(value)
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, value):
+        value = clean_free_text(value, 500)
+        if not value:
+            raise PydanticCustomError("blank_reason", "Enter the refund reason")
+        return value
+
+
 # --- AGN-016: agent tasks and follow-ups (DEC-SCOPE-053; docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md §3) ---
 
 
