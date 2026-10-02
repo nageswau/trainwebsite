@@ -46,8 +46,9 @@ test("manager and College BDM: create, activate, land, team", async ({ page }) =
   await expect(page.getByText(`E2E-${stamp}`)).toBeVisible();
   await page.request.post("/api/v1/auth/logout");
 
-  // The manager's welcome link opens the /it reset page (its URL is unchanged); the form sends them on to /admin/login.
-  await page.goto(`/it/reset-password?token=${manager.development_welcome_token}`);
+  // QA-05: the manager's welcome link opens the admin portal's own reset page; every link there stays on /admin.
+  await page.goto(`/admin/reset-password?token=${manager.development_welcome_token}`);
+  await expect(page.getByRole("link", { name: "← Back to sign in" })).toHaveAttribute("href", "/admin/login");
   await page.fill("#reset-new-password", E2E_PASSWORD);
   await page.getByRole("button", { name: "Reset password" }).click();
   await page.waitForURL("**/admin/login");
@@ -62,6 +63,27 @@ test("signed-out /bdm visits go to the right sign-in", async ({ page }) => {
   await expect(page.getByRole("link", { name: "College BDM" })).toHaveAttribute("href", "/it/login?next=%2Fbdm%2Fmy-day");
   await page.goto("/bdm/manager/team");
   await page.waitForURL("**/admin/login?next=%2Fbdm%2Fmanager%2Fteam");
+});
+
+test("admin BDM list is full width on desktop: no column or action is clipped (QA-01)", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await superAdmin(page);
+  await page.goto("/admin/bdms");
+  const region = page.getByRole("region", { name: "BDMs" });
+  await expect(region).toBeVisible();
+  const clipped = await region.evaluate((wrap) => {
+    const edge = wrap.getBoundingClientRect().right;
+    return [...wrap.querySelectorAll("button, th")].filter((el) => el.getBoundingClientRect().right > edge + 1).length;
+  });
+  expect(clipped).toBe(0);
+});
+
+test("the admin sign-in offers password recovery on the admin portal (QA-05)", async ({ page }) => {
+  await page.goto("/admin/login");
+  await page.getByRole("link", { name: "Forgot your password?" }).click();
+  await page.waitForURL("**/admin/forgot-password");
+  await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "← Back to sign in" })).toHaveAttribute("href", "/admin/login");
 });
 
 test("admin BDM page works at phone width without horizontal scroll", async ({ page }) => {
