@@ -1,8 +1,10 @@
+import { Suspense } from "react";
+
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 import AdminBdmPanel from "@/components/AdminBdmPanel";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
-import type { NavItem } from "@/lib/navigation";
+import { SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
 // bdm-001: the one body behind /admin/bdms, /it/admin/bdms and /overseas/admin/bdms (a static route wins over [module]/[section]).
@@ -15,8 +17,10 @@ export default async function AdminBdmPage({ roles, nav, roleLabel }: { roles: s
     return accessUnavailable(e);
   }
   if (!roles.includes(user.role)) return accessDenied(user, `${roleLabel} role required`);
+  // QA-12: a Super Admin who opens a division's BDM page is still labelled (and navigated) as the Super Admin.
+  const superAdmin = user.role === "super_admin";
   return (
-    <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
+    <PortalShell nav={superAdmin ? SUPER_ADMIN_NAV : nav} roleLabel={superAdmin ? "Super Administrator" : roleLabel} userName={user.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>
@@ -28,7 +32,10 @@ export default async function AdminBdmPage({ roles, nav, roleLabel }: { roles: s
       </div>
       <div className="portal-content action-center">
         <div className="action-grid">
-          <AdminBdmPanel role={user.role} />
+          {/* AdminBdmPanel reads its page and search from the URL (QA-13). */}
+          <Suspense fallback={<p className="muted" role="status">Loading BDMs…</p>}>
+            <AdminBdmPanel role={user.role} />
+          </Suspense>
         </div>
       </div>
     </PortalShell>

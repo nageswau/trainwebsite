@@ -3,6 +3,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AdminBdmPanel from "@/components/AdminBdmPanel";
 
+// QA-13: the page and search live in the URL. `search` is what useSearchParams returns at mount; push records navigations.
+const nav = vi.hoisted(() => ({ search: "", push: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: nav.push, replace: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/admin/bdms",
+  useSearchParams: () => new URLSearchParams(nav.search),
+}));
+
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const pg = (items: unknown[], total = items.length, offset = 0) => ({ items, total, limit: 50, offset });
 const row = (n: number, managerActive = true) => ({
@@ -22,6 +30,8 @@ const listCalls = (mock: ReturnType<typeof route>) => mock.mock.calls.map(([url]
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  nav.search = "";
+  nav.push.mockClear();
 });
 
 describe("AdminBdmPanel (bdm-001 AC13)", () => {
@@ -39,6 +49,7 @@ describe("AdminBdmPanel (bdm-001 AC13)", () => {
     render(<AdminBdmPanel role="super_admin" />);
     const region = await screen.findByRole("region", { name: "BDMs" });
     expect(region.closest(".action-card")).toHaveClass("wide");
+    expect(region.closest(".action-card")).toHaveClass("bdm-list"); // QA-15: CSS moves it above the form on small screens
   });
 
   it("checks for managers once, without loading the whole picker list", async () => {
@@ -62,6 +73,7 @@ describe("AdminBdmPanel (bdm-001 AC13)", () => {
     expect(await screen.findByText("Unable to load BDM managers.")).toBeInTheDocument();
     expect(screen.queryByText(/No active BDM manager/)).toBeNull();
     expect(screen.getByRole("button", { name: "Create BDM" })).toBeDisabled();
+    expect(screen.queryByText(/Loading managers/)).toBeNull(); // QA-11: a failed check never reads as "loading"
     managersOk = true;
     fireEvent.click(screen.getByRole("button", { name: "Retry loading managers" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Create BDM" })).not.toBeDisabled());
@@ -71,7 +83,8 @@ describe("AdminBdmPanel (bdm-001 AC13)", () => {
   it("shows the empty state", async () => {
     route([res(pg([]))]);
     render(<AdminBdmPanel role="it_admin" />);
-    expect(await screen.findByText("No BDMs yet. Use Create BDM above to add the first one.")).toBeInTheDocument();
+    // QA-15: the list comes first on small screens, so the hint no longer says "above".
+    expect(await screen.findByText("No BDMs yet. Use the Create BDM form to add the first one.")).toBeInTheDocument();
   });
 
   it("shows an error with Retry, including for a non-page body", async () => {
@@ -92,6 +105,47 @@ describe("AdminBdmPanel (bdm-001 AC13)", () => {
     expect(screen.getByText("E-1")).toBeInTheDocument();
     expect(await screen.findByText("E-51")).toBeInTheDocument();
     expect(listCalls(mock)).toContain("/api/v1/admin/bdms?limit=50&offset=50");
+  });
+});
+
+describe("AdminBdmPanel keeps its page and search in the URL (QA-13)", () => {
+  it("opens on the page and search the URL names, with the search box filled", async () => {
+    nav.search = "offset=50&q=asha";
+    const mock = route([res(pg([row(51)], 60, 50))]);
+    render(<AdminBdmPanel role="super_admin" />);
+    expect(await screen.findByText("E-51")).toBeInTheDocument();
+    expect(listCalls(mock)[0]).toBe("/api/v1/admin/bdms?limit=50&offset=50&q=asha");
+    expect(screen.getByRole("searchbox", { name: "Search BDMs" })).toHaveValue("asha");
+  });
+
+  it("ignores a junk offset in the URL", async () => {
+    nav.search = "offset=-7x";
+    const mock = route([res(pg([row(1)]))]);
+    render(<AdminBdmPanel role="super_admin" />);
+    await screen.findByText("E-1");
+    expect(listCalls(mock)[0]).toBe("/api/v1/admin/bdms?limit=50&offset=0");
+  });
+
+  it("records paging and searching as navigations, so refresh and Back keep the place", async () => {
+    const fifty = Array.from({ length: 50 }, (_, i) => row(i + 1));
+    route([res(pg(fifty, 51)), res(pg([row(51)], 51, 50)), res(pg([row(7)]))]);
+    render(<AdminBdmPanel role="super_admin" />);
+    fireEvent.click(within(await screen.findByRole("navigation", { name: "BDM pages" })).getByRole("button", { name: "Next page" }));
+    expect(nav.push).toHaveBeenLastCalledWith("/admin/bdms?offset=50", { scroll: false });
+    await screen.findByText("E-51");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search BDMs" }), { target: { value: "e-7" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(nav.push).toHaveBeenLastCalledWith("/admin/bdms?q=e-7", { scroll: false });
+  });
+
+  it("past the last page, offers a way back to the first (QA-14)", async () => {
+    nav.search = "offset=500";
+    const mock = route([res(pg([], 12, 500)), res(pg([row(1)], 12))]);
+    render(<AdminBdmPanel role="super_admin" />);
+    expect(await screen.findByText("This page is past the end of the list.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Go to the first page" }));
+    expect(await screen.findByText("E-1")).toBeInTheDocument();
+    expect(listCalls(mock)[1]).toBe("/api/v1/admin/bdms?limit=50&offset=0");
   });
 });
 

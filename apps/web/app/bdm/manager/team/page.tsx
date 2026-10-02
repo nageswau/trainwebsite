@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import BdmTeamTable from "@/components/BdmTeamTable";
 import PortalShell from "@/components/PortalShell";
@@ -29,7 +31,17 @@ export default async function BdmManagerTeamPage({ searchParams }: { searchParam
             <h2>BDMs who report to you</h2>
           </div>
         </div>
-        {team.total === 0 ? <p className="empty" role="status">No BDMs report to you yet.</p> : <BdmTeamTable page={team} />}
+        {team.total === 0 ? (
+          <p className="empty" role="status">No BDMs report to you yet.</p>
+        ) : team.items.length === 0 ? (
+          // QA-14: an ?offset= past the last row (an old link, or one edited by hand) offers a way back, not an empty table.
+          <>
+            <p className="empty" role="status">This page is past the end of your team.</p>
+            <Link className="btn secondary small" href="/bdm/manager/team">Go to the first page</Link>
+          </>
+        ) : (
+          <BdmTeamTable page={team} />
+        )}
       </div>
     </PortalShell>
   );

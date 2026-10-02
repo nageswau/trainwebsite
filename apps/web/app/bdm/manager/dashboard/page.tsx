@@ -21,7 +21,7 @@ export default async function BdmManagerDashboardPage() {
   const inactive = team.items.length - active;
   const summary = team.total === 0
     ? "No BDMs report to you yet."
-    : `${team.total} BDM${team.total === 1 ? "" : "s"} report to you: ${active} active, ${inactive} inactive${team.total > team.items.length ? " on the first page" : ""}.`;
+    : `${team.total} BDM${team.total === 1 ? " reports" : "s report"} to you: ${active} active, ${inactive} inactive${team.total > team.items.length ? " on the first page" : ""}.`;
   return (
     <PortalShell nav={BDM_MANAGER_NAV} roleLabel="BDM Manager" userName={user.full_name}>
       <div className="portal-content">
