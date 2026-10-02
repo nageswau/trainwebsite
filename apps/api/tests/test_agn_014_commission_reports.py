@@ -114,6 +114,25 @@ async def test_bad_dates_are_422_for_a_master(db_session, params, detail, path):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["20260930", "2026-W40-4", "2026-9-1", " 2026-09-01", "2026-09-01T00:00"])
+async def test_only_yyyy_mm_dd_is_accepted(db_session, value):  # API review A1: the contract says YYYY-MM-DD, nothing else
+    ctx = await mk_active_org(db_session, name=f"Shape {uniq()}")
+    async with client_for(ctx["master"].email) as c:
+        for path in (REPORT, CSV):
+            response = await c.get(path, params={"date_from": value})
+            assert response.status_code == 422 and response.json()["detail"] == "date_from must be a date (YYYY-MM-DD)", (value, response.text)
+
+
+@pytest.mark.asyncio
+async def test_openapi_documents_the_date_parameters(client):  # API review A2: the published contract states the format
+    spec = (await client.get("/openapi.json")).json()
+    for path in ("/api/v1/workflows/overseas/agent/commissions/report", "/api/v1/workflows/overseas/agent/commissions/report.csv"):
+        params = {p["name"]: p for p in spec["paths"][path]["get"]["parameters"]}
+        for name in ("date_from", "date_to"):
+            assert "YYYY-MM-DD" in params[name].get("description", ""), (path, name)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("path", [REPORT, CSV], ids=["json", "csv"])
 async def test_staff_get_403_before_any_date_error(db_session, path):  # AC02, Review Focus 5
     ctx = await mk_active_org(db_session, name=f"Staff {uniq()}")
