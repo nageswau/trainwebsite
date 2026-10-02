@@ -17,6 +17,7 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
   const [detail, setDetail] = useState<Detail | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "gone" | "error">("loading");
   const [editing, setEditing] = useState(false);
+  const [enrolling, setEnrolling] = useState(false); // AGN-013 QA13-06: the enrollment form is open, so no competing status action
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const focusAfter = useFocusAfterRender();
   const firstLoad = useRef(true); // the heading takes focus on the first successful load only
@@ -52,6 +53,7 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
     if (next.read_only_reason === "withdrawn" && detail?.read_only_reason !== "withdrawn") focusAfter(readOnlyId);
     setDetail(next);
     setEditing(false);
+    setEnrolling(false);
     setNotice({ text: message, failed: false });
     onChanged(next);
   }
@@ -60,6 +62,7 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
     if (status === 404) return setState("gone");
     if (status === 409 || status === 422) {
       setEditing(false); // the reload shows the real state; stale input must not stay on screen
+      setEnrolling(false);
       load().then((reloaded) => reloaded && onChanged(reloaded));
     }
   }
@@ -139,8 +142,8 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
       {!editing && (
         // A status change starts both action forms afresh.
         <Fragment key={detail.status}>
-          <AgentApplicationEnrollment detail={detail} isMaster={isMaster} onSaved={enrollmentSaved} onFailed={editFailed} />
-          {!detail.read_only_reason && <AgentApplicationStatusForm detail={detail} onSaved={saved} onFailed={failed} />}
+          <AgentApplicationEnrollment detail={detail} isMaster={isMaster} onSaved={enrollmentSaved} onFailed={editFailed} onOpenChange={setEnrolling} />
+          {!detail.read_only_reason && !enrolling && <AgentApplicationStatusForm detail={detail} onSaved={saved} onFailed={failed} />}
         </Fragment>
       )}
       <h5>Status history</h5>

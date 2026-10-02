@@ -140,6 +140,71 @@ describe("AgentApplicationEnrollment (AGN-013)", () => {
     expect(screen.queryByRole("button", { name: "Edit enrollment details" })).toBeNull();
   });
 
+  // Browser QA pass 2 (docs/quality/AGN-013_BROWSER_QA_2026-10-02_PASS2.md).
+  async function confirmWith(put: () => Response) {
+    mount(api(detail(), put));
+    await openAndFill("2027-09-20");
+    fireEvent.click(screen.getByRole("button", { name: "Yes, confirm enrollment" }));
+  }
+
+  it("QA13-03: an expired session says so, keeps the input and links to sign in again", async () => {
+    await confirmWith(() => json({ detail: "Not authenticated" }, 401));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Your session has expired. Your entry is kept; sign in again in a new tab, then save.");
+    const link = within(alert).getByRole("link", { name: "Sign in again" });
+    expect(link).toHaveAttribute("href", "/overseas/login");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(screen.getByLabelText("Enrollment date (required)")).toHaveValue("2027-09-20");
+  });
+
+  it("QA13-08: a server error says it is on our side and that the entry is kept", async () => {
+    await confirmWith(() => new Response("Internal Server Error", { status: 500 }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong on our side. Please try again; your entry is kept.");
+    expect(screen.getByLabelText("Enrollment date (required)")).toHaveValue("2027-09-20");
+  });
+
+  it("QA13-09: a 422 on the student ID marks that field, describes it and focuses it", async () => {
+    const detail422 = [{ type: "value_error", loc: ["body", "university_student_id"], msg: "Value error, must not contain control or bidirectional-override characters" }];
+    await confirmWith(() => json({ detail: detail422 }, 422));
+    const field = screen.getByLabelText("University student ID (optional)");
+    await waitFor(() => expect(field).toHaveAttribute("aria-invalid", "true"));
+    expect(field).toHaveAccessibleDescription("Must not contain control or bidirectional-override characters");
+    await waitFor(() => expect(field).toHaveFocus());
+  });
+
+  it("QA13-04: opening the form moves focus to the date field", async () => {
+    mount(api(detail()));
+    fireEvent.click(await screen.findByRole("button", { name: "Enroll student" }));
+    await waitFor(() => expect(screen.getByLabelText("Enrollment date (required)")).toHaveFocus());
+  });
+
+  it("QA13-05: Cancel discards what was typed", async () => {
+    mount(api(enrolled));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit enrollment details" }));
+    fireEvent.change(screen.getByLabelText("University student ID (optional)"), { target: { value: "TYPO" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit enrollment details" }));
+    expect(screen.getByLabelText("University student ID (optional)")).toHaveValue("S-1");
+  });
+
+  it("QA13-06: other status actions are hidden while the enrollment form is open", async () => {
+    mount(api(detail()));
+    expect(await screen.findByRole("button", { name: "Withdraw application" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Enroll student" }));
+    expect(screen.queryByRole("button", { name: "Withdraw application" })).toBeNull();
+    expect(screen.queryByLabelText("Move to")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Withdraw application" })).toBeInTheDocument();
+  });
+
+  it("QA13-07: editing replaces the read-only details instead of repeating them", async () => {
+    mount(api(enrolled));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit enrollment details" }));
+    const section = screen.getByRole("region", { name: "Enrollment" });
+    expect(within(section).queryByText("Confirmed by the agency")).toBeNull();
+    expect(within(section).queryByText("S-1")).toBeNull(); // only in the input now
+  });
+
   it("before an offer, withdrawn or archived there is no enrollment section", async () => {
     for (const over of [{ status: "enquiry" }, { status: "withdrawn", read_only_reason: "withdrawn" }, { read_only_reason: "archived" }]) {
       mount(api(detail(over)));
