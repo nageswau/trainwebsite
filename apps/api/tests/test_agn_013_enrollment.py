@@ -192,6 +192,8 @@ async def test_status_route_still_refuses_enrolled(db_session, world):
 
 @pytest.mark.asyncio
 async def test_logs_and_audit_never_carry_the_student_id_or_notes(db_session, world, caplog):
+    # alembic's fileConfig (run in-process by the migration tests) disables existing loggers; re-enable ours (test_agn_004_students.py precedent).
+    logging.getLogger("app.agent_applications").disabled = False
     caplog.set_level(logging.INFO, logger="app.agent_applications")
     async with client_for(world["master"].email) as c:
         assert (await _put(c, world["app"].id, _body(university_student_id="SECRET-ID-9", notes="private note"))).status_code == 200

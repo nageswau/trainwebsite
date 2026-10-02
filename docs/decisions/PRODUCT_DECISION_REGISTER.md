@@ -3017,3 +3017,24 @@ Staff browser flows were verified and the named-staff Assign action built (2026-
 - **R7** — date bounds are inclusive UTC calendar days; reading or exporting the report writes no audit row.
 
 **Consequences:** no migration; two Master-only routes `GET /workflows/overseas/agent/commissions/report` and `…/report.csv`; one additive "Revenue" metric on the Master dashboard; a new `AgentCommissionReportPanel`; `ReportDownloadButton` gains two optional props with PDF defaults. Unchanged: commission creation, amount, claim, payout approval and the same-admin rule (`AGT-004`), `RPT-002`, the staff pages. Design: `docs/superpowers/specs/2026-10-02-agn-014-commission-master-reports-design.md`. **New Feature ID authorized:** `AGN-014`.
+
+### DEC-SCOPE-052 — Enrollment confirmation by an agency Master, with the commission trigger (`AGN-013`)
+
+**ID note:** `DEC-SCOPE-050` is `AGN-008` and `DEC-SCOPE-051` is `AGN-014`, both on `main` at `268d132`; `052` was free there. Renumber only if another branch reaches `main` with `052` first.
+
+**Question:** the owner's `AGN-013` statement (in-session, 2026-10-02): "enrollment confirmed, university, course, intake, enrollment date, university student ID, final status ENROLLED", with acceptance criteria: enrolling creates exactly one estimated commission for the org; re-saving does not duplicate it; an enrollment date is required; a future date beyond intake is flagged (a warning, not blocked).
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 9; `AGENT_CRM_BACKLOG.md` ang-013 (`DERIVED_BLUEPRINT`). Impact analysis, 2026-10-02 (graphify-led):
+- `DEC-SCOPE-050` A4 forbade agents from setting `enrolled`, so an agent could never accrue their own commission; the status route returns `403`.
+- `overseas_applications.intake` is free text (`String(80)`, default "Next intake"); the structured intake of D16 was never built.
+- `AGN-014` kept `agent_commissions` keyed to a person (`agent_id`), scoped to the agency through `org_member_ids`.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — answers to structured questions and the Section 1 design review, not the source document's wording):
+- **E1** Only an agency **Master** confirms enrollment; Staff read the details and get `403`. Amends A4 for a dedicated route only: `POST …/status` still refuses `enrolled`.
+- **E2** Intake stays free text; a best-effort parser reads "Month YYYY" forms; the date check warns, never blocks, and says when the intake cannot be read.
+- **E3** The AGT-003 trigger is unchanged (`agent_id` = the application's `agent_id`; every Master of the agency sees it). No `agent_commissions` change.
+- **E4** Once enrolled, a Master corrects the date and student ID, also on an application a counselor/admin enrolled; neither creates a commission.
+- **E5** University, course and intake are shown read-only; changes go through the existing Edit. **E6** Enrollment from `offer`, `visa_documentation` or `status_tracking` only (else `422`).
+- **E7** The university student ID is optional and returned only on the agency's application detail. **E8** Approach A: a dedicated `PUT …/{id}/enrollment` in the AGN-008 router.
+
+**Consequences:** migration `0058_agent_app_enrollment` (three nullable columns on `overseas_applications`); one Master-only route; four additive detail fields; a new `AgentApplicationEnrollment` component. Unchanged: the status route, counselor/admin/university-rep routes, commission amount/claim/payout (`AGT-004`), `AGN-014` reports. Design: `docs/superpowers/specs/2026-10-02-agn-013-enrollment-confirmation-design.md`. **New Feature ID authorized:** `AGN-013`.

@@ -524,6 +524,8 @@ table and column names are placeholders for the design spec, not decisions.
 - **Positive / Negative / Edge:** enroll → commission estimated / missing date → 422 / enrolled then withdrawn (commission reversal: not modeled; confirm).
 - **Regression risks:** `test_agt_003_commission_accrual`.
 - **Complexity:** medium · **Risk:** high
+- **Status (2026-10-02):** implemented as `AGN-013` (`DEC-SCOPE-052`: Master only, best-effort intake check, trigger unchanged,
+  `PUT …/crm/applications/{id}/enrollment`); browser validation and Codex review pending. See `ENHANCEMENT_BACKLOG.md` §AGN-013.
 
 ---
 

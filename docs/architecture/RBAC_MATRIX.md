@@ -194,6 +194,7 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | Edit Application | `PATCH /workflows/overseas/agent/crm/applications/{id}` (**AGN-008**, `DEC-SCOPE-050`; now enforced) | ✅ | ✅ assigned only |
 | View Applications | `GET /workflows/overseas/applications`, `GET /portal/overseas/agent/applications`, `GET /lookups/overseas-applications` | ✅ | ✅ |
 | Change Application Status | `POST /workflows/overseas/agent/crm/applications/{id}/status` (**AGN-008**; forward only up to `status_tracking`, withdraw; never `enrolled`) | ✅ | ✅ assigned only |
+| Confirm Enrollment | `PUT /workflows/overseas/agent/crm/applications/{id}/enrollment` (**AGN-013**, `DEC-SCOPE-052` E1; from `offer` onwards; triggers the commission) | ✅ | ❌ `403` (reads the details on the application) |
 | Upload Documents | `POST /workflows/overseas/documents`; `GET /portal/overseas/agent/documents` | ✅ | ✅ |
 | Verify Documents | `PATCH /workflows/overseas/documents/{id}/verify` with `verified` (**new for agents**) | ✅ | **T** |
 | Reject Documents | same route with `rejected` or `changes_required` | ✅ | ❌ (even with Verify on) |

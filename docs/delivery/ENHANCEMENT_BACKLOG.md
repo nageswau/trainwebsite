@@ -3717,6 +3717,61 @@ AGN-007; evidence in `docs/quality/RTM.md`, AGN-014 row): AC01–AC11 met; lite 
 Codex review was waived by the owner; the full backend suite stays with the owner's batch cadence. Remaining: the merge into `main`
 (`main` with `AGN-007` and `AGN-008` merged in 2026-10-02; `DEC-SCOPE-051` was still free there).
 
+## AGN-013 — Enrollment confirmation + commission trigger (Step 9)
+
+**Title.** An agency Master confirms an application's enrollment; the commission is estimated exactly once (EVID-015 §5 Step 9).
+
+**Business requirement.** The owner's `AGN-013` statement (in-session, 2026-10-02): "enrollment confirmed, university, course, intake,
+enrollment date, university student ID, final status ENROLLED"; acceptance: "enrolling creates exactly one estimated commission for the
+org; re-saving does not duplicate it; an enrollment date is required; a future date beyond intake is flagged (a warning, not blocked)."
+Source: `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 9; `AGENT_CRM_BACKLOG.md` ang-013. Decided as
+`DEC-SCOPE-052` (E1–E8; provisional number).
+
+**Existing behavior.** Only a counselor, admin or university rep could set `enrolled` (`DEC-SCOPE-050` A4); the AGT-003 trigger then
+created one `estimated` commission keyed to `application.agent_id`. No enrollment date, university student ID or confirmation was stored.
+
+**Expected behavior.**
+- `PUT /workflows/overseas/agent/crm/applications/{id}/enrollment` (Master only): from `offer`, `visa_documentation` or
+  `status_tracking` it sets `enrolled`, the date, the optional student ID and `enrollment_confirmed_at`, writes one history row and runs
+  the unchanged AGT-003 trigger; once `enrolled` it corrects the date and student ID (audited, no history, no commission).
+- `enrollment_check` on the detail: `after_intake` (future date after the intake month) or `intake_unrecognised` (free-text intake not
+  read as a month and year) — a warning, never a block.
+- The application detail gains an Enrollment section: Masters confirm (with an explicit confirmation step) or correct; Staff read.
+
+**User roles affected.** `agent` Master (new action), Staff (read-only section; `403` on the route); `overseas_admin` (sees the
+estimated commission as before).
+
+**Frontend / backend / database / API / integration impact.** Backend: `api/agent_applications.py` (one route), `services/agent_applications.py`
+(`intake_end`, `enrollment_check`, detail fields), `schemas.py` (`AgentApplicationEnrollment`), `models.py` + migration
+`0058_agent_app_enrollment` (three nullable columns). Frontend: `lib/agentApplications.ts`, new `AgentApplicationEnrollment.tsx`,
+`AgentApplicationDetail.tsx` / `AgentApplicationsPanel.tsx` / `AgentApplicationsSection.tsx` (`isMaster`). No dependency; the existing
+"Commission estimated" notification to the agency's Masters is reused.
+
+**Authentication/Authorization impact.** `_gate` + `is_agent_staff` (`403` before any load); scope in the `WHERE` (`404` across agencies).
+
+**Security impact.** Spec §6: no role escalation through the body (`extra="forbid"`); organisation then row lock; required
+`expected_status`; one transaction with history, commission and audit; the student ID and notes never logged or audited.
+
+**Acceptance criteria** (from `docs/superpowers/specs/2026-10-02-agn-013-enrollment-confirmation-design.md` §7).
+- **AGN-013-AC01** Master confirms from offer / visa documentation / status tracking → `enrolled`, details set, one history row, one `estimated` commission visible to the Masters.
+- **AGN-013-AC02** Re-saving → still one commission, no new history row; changes audited as `enrollment_update`.
+- **AGN-013-AC03** Missing `enrollment_date` → `422`, nothing written.
+- **AGN-013-AC04** `after_intake` / `intake_unrecognised` / `null` flags; the save succeeds.
+- **AGN-013-AC05** Staff `403`; other agency `404`; archived / withdrawn / stale `409`; pre-offer `422`; unknown field `422`; nothing written.
+- **AGN-013-AC06** Counselor-enrolled application: a Master adds details; no commission from that call.
+- **AGN-013-AC07** Concurrent confirmations → one `200`, one `409`, one commission; a counselor landing first → the agency call is `409`.
+- **AGN-013-AC08** `POST …/status` still refuses `enrolled` (A4 unchanged).
+- **AGN-013-AC09** UI: Master confirm with a confirmation step, Staff read-only, enrolled view with badge and warning, 422 keeps input, keyboard and labels.
+
+**Regression risks.** A4 (pinned by AC08 and `test_agn_008_status.py`), commission duplication (locks + trigger guard + `UNIQUE`), the
+detail allowlist (additive only), the migration chain (`0058` may collide with parallel AGN branches).
+
+**Complexity:** Medium. **Risk:** High (financial trigger).
+
+**Status (2026-10-02): IMPLEMENTED, not complete** on `feature/agn-013-enrollment-confirmation` (evidence in `docs/quality/RTM.md`,
+AGN-013 row): lite backend set 200 passed; web lite set 52 passed; `tsc` and eslint clean. Pending: browser validation (including the
+Playwright spec `agn-013-enrollment.spec.ts`, written but not run), the independent Codex review, and the owner's full suites.
+
 ## 2. Dependency graph
 
 **Must be sequential:**
