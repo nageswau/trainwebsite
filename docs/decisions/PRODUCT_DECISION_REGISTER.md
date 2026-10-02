@@ -2899,11 +2899,33 @@ Staff browser flows were verified and the named-staff Assign action built (2026-
 
 **Consequences:** migration `0054_school_onboarding_bulk` (CHECK widened + one nullable column; no data read or written; downgrade refuses while onboarding batches exist); new `apps/api/app/api/school_onboarding_bulk.py` (`GET /overseas-admin/schools/bulk-template`, `POST /overseas-admin/schools/bulk-upload`); `admin.create_school`'s body extracted to `admin._provision_school` (behaviour unchanged); ENH-028's private parser/claim helpers take a `target_type` (behaviour unchanged); new `AdminSchoolBulkOnboardPanel` on `/overseas/admin/schools`. Unchanged: `POST /overseas-admin/schools` contract, every ENH-028 endpoint and report, the roster upload, provisioning/welcome-link services, tier rules, navigation.
 
+### DEC-SCOPE-048 — Agent student counseling record (`AGN-006`)
+
+**ID note:** drafted as `DEC-SCOPE-047`; `ENH-029` (PR #37) reached `main` first holding `047` (and migration `0054`), so this entry is `DEC-SCOPE-048` and the migration is `0055_agent_student_counseling`. Still provisional if another branch (e.g. `AGN-007`) lands `048` first.
+
+**Question:** the owner's `AGN-006` statement (in-session, 2026-10-01): requirement **"record counseling completed, career interest, course preference, country preference, budget and remarks"**; acceptance criteria: **save and read back the record; a negative budget → 422; out-of-scope → 404.** How is the record stored, what is a budget, who may write it and for which students, how is completion recorded, what is the API, and is it shown in Staff Activity?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 "Staff Student Journey", STEP 2 "Counseling" (the source's wording is not the approval). Design spec `docs/superpowers/specs/2026-10-01-agn-006-counseling-record-design.md` (reviewed with api-and-interface-design, frontend-ui-engineering and security-and-hardening).
+
+**Resolution:** owner, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — the owner's answers, not the source document's wording):
+
+- **C1 — One record per student;** a save overwrites it; its history is the audit log.
+- **C2 — Budget** = amount + currency (INR default, USD, GBP, EUR, CAD, AUD, NZD); 0 ≤ amount ≤ 99,999,999.99 with at most 2 decimals; otherwise `422`.
+- **C3 — Separate preferences:** counseling course/country preference are new fields; the Step 1 `preferred_course` / `preferred_country` are untouched and both are shown.
+- **C4 — Access:** the agency Master and the assigned staff member (`DEC-SCOPE-042` G4 scope); students with no login only — a student with a login or an archived student → `409`; out of scope → `404`.
+- **C5 — Completed:** yes/no; the server stamps when and by whom on the change to yes, keeps the stamp while it stays yes, clears it on no.
+- **C6 — API:** `PUT /workflows/overseas/agent/crm/students/{id}/counseling`; read back as a `counseling` object in the student detail; the AGN-004 `PATCH` contract is unchanged.
+- **C7 — Staff Activity:** a new audit action `agent_student.counseling`, shown with field names only, never values (adds one action to `DEC-SCOPE-046` A1).
+- **C8 — Storage:** a separate one-to-one table `agent_student_counseling` (approach A of three).
+- **C9 — Leave prompt** on unsaved counseling changes.
+
+**Consequences:** migration `0055_agent_student_counseling` (create-table only; no existing row read or written; downgrade refuses while records exist); one new route; an additive `counseling` key on every student-detail response; Staff Activity allowlist +1 action; no rate limit added (as for the AGN-004 writes — residual in `PRD_OPEN_ITEMS.md`). §5 Step 2 leaves `EVID-015`'s parked list.
+
 ### DEC-SCOPE-049 — Agent student university shortlist and agency university database (`AGN-007`)
 
 **Status:** CONFIRMED_CURRENT — resolved in-session 2026-10-01 (`EXPLICIT_APPROVAL`).
 
-**ID note (provisional number, 2026-10-01):** drafted as `DEC-SCOPE-047`; after merging `main` @ `41fba25`, `DEC-SCOPE-047` is `ENH-029` (on `main`) and `DEC-SCOPE-048` is claimed by the parallel `AGN-006` branch (migration `0055`); `DEC-SCOPE-050` is `AGN-008` (branch, migration `0057`). So this entry is `DEC-SCOPE-049`, with migration `0056_agent_shortlist` chained on `main`'s head `0054_school_onboarding_bulk`. Whichever of `AGN-006` / `AGN-007` / `AGN-008` reaches `main` later renumbers and re-chains (precedent: `DEC-SCOPE-038`/`039`, `041`–`047`).
+**ID note (provisional number, 2026-10-01):** drafted as `DEC-SCOPE-047`; after merging `main` @ `41fba25`, `DEC-SCOPE-047` is `ENH-029` (on `main`) and `DEC-SCOPE-048` is claimed by the parallel `AGN-006` branch (migration `0055`); `DEC-SCOPE-050` is `AGN-008` (branch, migration `0057`). So this entry is `DEC-SCOPE-049`, with migration `0056_agent_shortlist` chained on `main`'s head `0054_school_onboarding_bulk`. Whichever of `AGN-006` / `AGN-007` / `AGN-008` reaches `main` later renumbers and re-chains (precedent: `DEC-SCOPE-038`/`039`, `041`–`047`). **2026-10-02:** `AGN-006` reached `main` (PR #38) holding `DEC-SCOPE-048` and `0055_agent_student_counseling`; on merging `main` @ `8f0000d` this entry keeps `DEC-SCOPE-049` and `0056_agent_shortlist` now follows `0055` (one head).
 
 **Question:** the owner's `AGN-007` statement (in-session, 2026-10-01): "add university, course, country, intake, tuition fee and entry requirements to a student's shortlist. University DB: Master 'Full', Staff 'View'; 'Add University' is Master only (§6; DEC-SCOPE-035 D4)", with acceptance criteria: a catalogue-backed entry and a free-text entry both save; a free-text entry is invisible to other agencies and to `/public`; a course must belong to the chosen university. `DEC-SCOPE-044` P3 (`AGN-003`) had recorded the two §6 rows as N/A (no agent route) and left them parked under `CONFLICT_MATRIX.md` `C-10`. Where does a "free-text" university live, who owns a shortlist, who may write it, and what are the limits?
 

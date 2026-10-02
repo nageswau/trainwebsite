@@ -21,6 +21,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
   "agent_student.create": "Created a student record",
   "agent_student.update": "Edited a student record",
   "agent_student.duplicate_override": "Saved a student record despite a duplicate warning",
+  "agent_student.counseling": "Recorded counseling",
   "agent.student_link": "Linked a student account",
   "overseas.application.create": "Created an application",
   "document.upload": "Uploaded a document",

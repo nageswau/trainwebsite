@@ -70,6 +70,8 @@ BOTH_ALLOWED = [
     ("View Students", "get", RECORDS, None, 200),
     ("View Students", "get", RECORDS + "/{record}", None, 200),
     ("Edit Student", "patch", RECORDS + "/{record}", {"full_name": "Edited Student"}, 200),
+    # AGN-006: §5 Step 2 counseling on an assigned student with no login -- Master and staff alike.
+    ("Counseling", "put", RECORDS + "/{record}/counseling", {"counseling_completed": True}, 200),
     ("University Database", "get", AGENCY_UNIS, None, 200),
     ("University Database", "get", PORTAL + "/universities", None, 200),
 ]

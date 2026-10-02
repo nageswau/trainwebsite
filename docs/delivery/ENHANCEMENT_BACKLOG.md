@@ -159,6 +159,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-004 | Agent students — Master/Staff create, edit, view and (Master) archive students who never log in; staff assigned-only | Large | High | Yes | AGT-002, AGN-001, ENH-031 (scope change); AGN-002 (merge) |
 | AGN-021 | Agent staff activity — a Master views a staff member's student-journey activity (Rev. 9) | Small | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004 |
 | AGN-005 | Close the §6 staff matrix gap for agency student records — tests and docs, plus four browser-QA fixes (Rev. 10) | Small | Low | No | AGN-003, AGN-004 |
+| AGN-006 | Agent student counseling record — completed, career interest, course/country preference, budget, remarks (§5 Step 2) | Medium | Medium | Yes | AGN-004 (student detail), AGN-021 (activity) |
 | AGN-007 | Agent student university shortlist and agency-private university database (Master full / Staff view) | Large | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004, AGN-021 |
 
 ---
@@ -3515,6 +3516,66 @@ which widens AGN-005 beyond tests and docs for these four only:
 AC06 PASS; AC04, AC05 not browser-testable). The owner waived the independent Codex review (2026-10-01). Remaining before COMPLETE:
 the owner's full backend suite run (standing 4–5-story cadence) and the merge.
 
+## AGN-006 — Agent Student Counseling Record
+
+**Title.** Record and read back a student's counseling outcome (EVID-015 §5 Step 2).
+
+**Business requirement.** The owner's `AGN-006` statement (in-session, 2026-10-01): "record counseling completed, career interest,
+course preference, country preference, budget and remarks"; acceptance: "save and read back the record; a negative budget → 422;
+out-of-scope → 404." Source: `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 "Staff Student Journey" STEP 2.
+Decided as `DEC-SCOPE-048` (C1–C9).
+
+**Existing behavior.** AGN-004 stores Step 1 (personal, academic, contact, preferred country/course/intake) for agency students; there
+was no counseling record.
+
+**Expected behavior.**
+- One counseling record per agency student with no login, in a new table `agent_student_counseling` (migration
+  `0055_agent_student_counseling`, create-table only; downgrade refuses while records exist).
+- `PUT /workflows/overseas/agent/crm/students/{id}/counseling` replaces the record (idempotent; an unchanged save writes no audit row);
+  the student detail carries `counseling` (null until the first save). Budget is an amount (0–99,999,999.99, 2 dp) + currency.
+- The Master and the assigned staff member may save; out of scope → `404`; a student with a login or an archived student → `409`;
+  invalid input → `422`. Completion is stamped (when, by whom) by the server.
+- Audit `agent_student.counseling` with field names only; shown in AGN-021 Staff Activity as "Recorded counseling" (names, no values).
+- The student detail panel shows a Counseling section (empty / record / form; one form open at a time; leave prompt; 320 px).
+
+**User roles affected.** `agent` (Master and staff).
+
+**Frontend / backend / database / API / integration impact.** Backend: `models.py`, `schemas.py`, `services/agent_students.py`,
+`api/agent_students.py`, `services/staff_activity.py`, migration 0055. Frontend: `lib/agentStudents.ts`, `lib/agentStaff.ts`, new
+`AgentStudentCounselingCard.tsx` / `AgentStudentCounselingForm.tsx`, `AgentStudentDetailPanel.tsx`, `AgentStudentsPanel.tsx` (notice).
+No integration.
+
+**Authentication/Authorization impact.** Reuses the AGN-004 gate, organisation-then-row lock and scope (404 before any other check).
+
+**Security impact.** Reviewed with security-and-hardening (spec §8): no new auth path; IDOR closed by the scoped `WHERE`; `extra="forbid"`;
+budget/remarks never in logs, audit or Staff Activity; no rate limit added (residual, `PRD_OPEN_ITEMS.md`).
+
+**Acceptance criteria** (verbatim from `docs/superpowers/specs/2026-10-01-agn-006-counseling-record-design.md` §7).
+- **AGN-006-AC01** A Master saves all six fields; `GET /students/{id}` returns them exactly (`budget_amount` "2500000.00", currency).
+- **AGN-006-AC02** The assigned staff member can save; staff on another staff member's / an unassigned student, another agency's student, an unknown id → 404 and nothing written.
+- **AGN-006-AC03** 422 for: negative budget, > 99,999,999.99, 3 decimals, NaN, unknown currency, currency without amount, unknown key, missing `counseling_completed`, text over its limit, NUL byte; amount without currency stores INR.
+- **AGN-006-AC04** Student with a login → 409; archived student → 409; nothing written.
+- **AGN-006-AC05** Completed stamp: no→yes sets `completed_at`/`completed_by`; yes→yes keeps them; →no clears them.
+- **AGN-006-AC06** One `agent_student.counseling` audit row with `{fields}` names only (no values); a no-op save writes none; Staff Activity lists it with field names and no budget/remarks.
+- **AGN-006-AC07** Non-agent, `super_admin`, pending / suspended organisation → 403.
+- **AGN-006-AC08** PUT replaces: an omitted optional field becomes null; `counseling` is null before the first save; the list item shape is unchanged; the PATCH contract is unchanged.
+- **AGN-006-AC09** Migration upgrade → downgrade → upgrade keeps existing rows, single head; downgrade refuses while a counseling record exists; the DB rejects a negative budget, a currency without an amount and an unknown currency written directly.
+- **AGN-006-AC10** UI: empty / view / form states; buttons hidden for a login or archived student and while the student form is open; client errors send nothing and focus the field; currency not sent without an amount; unchanged Save sends nothing; 422 → field, 409 → alert, network → alert; success shows the record, the status message and focuses the heading; remarks `<script>` text renders literally; Escape does not close the panel while a form is open.
+- **AGN-006-AC11** Browser: a Master records counseling, reloads and sees it; a negative budget shows the field error.
+- **AGN-006-AC12** Security: a numeric-string budget is accepted; the response never contains the counseling row id or user ids; a staff member cannot write by guessing another student's id (404, nothing written, no audit).
+
+**Regression risks.** The additive `counseling` key on every student-detail response (AGN-004/005 tests green); the detail panel's
+Escape/focus behaviour (component tests green); migration numbering against parallel branches.
+
+**Complexity:** Medium. **Risk:** Medium.
+
+**Status (2026-10-02): COMPLETE** on `feature/agn-006-counseling-record` (verified at `d05fc15`; evidence in `docs/quality/RTM.md`,
+AGN-006 row): AC01–AC12 met; lite backend set 286 passed; web 142 files / 1479 passed; `tsc`, lint, production build pass;
+Playwright 7/7; browser QA done with QA6-01/02/03 fixed and re-verified. The independent Codex review was waived by the owner; the
+owner's full backend suite is deferred to their batch run after the next few enhancements (2026-10-02, the AGN-021 precedent).
+Remaining: the merge (recheck `main` for migration `0055` / `DEC-SCOPE-048` first). Deferred minors and open questions:
+`PRD_OPEN_ITEMS.md` rows 81–83 and the review minors listed in `docs/quality/RTM.md`.
+
 ## 2. Dependency graph
 
 **Must be sequential:**
@@ -3684,6 +3745,7 @@ item, only for the progress-view question).
 | AGN-003 | `DEC-SCOPE-044` — optional rows, toggle granularity, matrix reach, student scope, agent review, staff outcome | **Resolved 2026-10-01** (P1–P6 `EXPLICIT_APPROVAL` in-session; P7–P9 design assumptions) |
 | AGN-021 | `DEC-SCOPE-046` — what counts as activity, viewers, detail, freshness, source | **Resolved 2026-10-01** (A1–A5, `EXPLICIT_APPROVAL` in-session) |
 | AGN-005 | None — scope (tests + docs), Delete Student = archive/unarchive, test placement, and the QA5-01 phone rule / QA5-05 note set by the owner in-session 2026-10-01 | N/A |
+| AGN-006 | `DEC-SCOPE-048` — storage, budget, separate preferences, access, completed stamp, API, activity, leave prompt | **Resolved 2026-10-01** (C1–C9, `EXPLICIT_APPROVAL` in-session; number provisional) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
@@ -3720,7 +3782,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30); the §6 permission matrix moved out to AGN-003 (`DEC-SCOPE-044`, Rev. 8); staff activity moved out to AGN-021 (`DEC-SCOPE-046`, Rev. 9).** Still parked: staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004, `DEC-SCOPE-044` covers AGN-003, `DEC-SCOPE-046` covers AGN-021; none yet for the rest |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30); the §6 permission matrix moved out to AGN-003 (`DEC-SCOPE-044`, Rev. 8); staff activity moved out to AGN-021 (`DEC-SCOPE-046`, Rev. 9); §5 Step 2 counseling moved out to AGN-006 (`DEC-SCOPE-048`).** Still parked: staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004, `DEC-SCOPE-044` covers AGN-003, `DEC-SCOPE-046` covers AGN-021, `DEC-SCOPE-048` covers AGN-006; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

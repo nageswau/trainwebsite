@@ -1,11 +1,16 @@
 """AGN-007 -- agency universities and a student's university shortlist (DEC-SCOPE-049).
 
 Revision ID: 0056_agent_shortlist
-Revises: 0054_school_onboarding_bulk
+Revises: 0055_agent_student_counseling
 
 docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md §4. Creates two tables only; no existing table or row changes.
 0001/0003 run Base.metadata.create_all from the CURRENT models, so a database built from scratch already has both tables when this
 runs: each table is created only when missing. downgrade() drops the two new tables (entries first) -- it touches nothing else.
+
+Re-chained 2026-10-02 on merging `main` @ `8f0000d`: cut on `0054_school_onboarding_bulk`, but AGN-006's
+`0055_agent_student_counseling` (also on 0054) reached `main` first, so this revision now follows 0055 (one head). A database stamped
+at 0056-on-0054 is re-stamped with `alembic stamp --purge 0055_agent_student_counseling` then `upgrade head` (create-if-missing makes
+the re-run harmless).
 """
 
 import sqlalchemy as sa
@@ -13,7 +18,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0056_agent_shortlist"
-down_revision = "0054_school_onboarding_bulk"
+down_revision = "0055_agent_student_counseling"
 branch_labels = None
 depends_on = None
 

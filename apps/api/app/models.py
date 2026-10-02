@@ -881,6 +881,41 @@ class AgentStudent(Base, TimestampMixin):
     )
 
 
+COUNSELING_CURRENCIES = ("INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD")  # AGN-006 C2; schemas.CounselingCurrency mirrors it
+
+
+class AgentStudentCounseling(Base, TimestampMixin):
+    """AGN-006 (DEC-SCOPE-048, EVID-015 §5 Step 2): one counseling record per agency student with no login. Replaced whole on every
+    save (C1); its history is the audit log. `completed_at`/`completed_by_user_id` are stamped by the server (C5)."""
+
+    __tablename__ = "agent_student_counseling"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agent_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id"))
+    counseling_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    career_interest: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    course_preference: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    country_preference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    budget_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    budget_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    __table_args__ = (
+        UniqueConstraint("agent_student_id", name="uq_agent_student_counseling_student"),
+        CheckConstraint(
+            "counseling_completed = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL)",
+            name="ck_agent_student_counseling_completed",
+        ),
+        CheckConstraint("budget_amount IS NULL OR budget_amount >= 0", name="ck_agent_student_counseling_budget"),
+        CheckConstraint(
+            "budget_currency IS NULL OR budget_currency IN (" + ", ".join(f"'{c}'" for c in COUNSELING_CURRENCIES) + ")",
+            name="ck_agent_student_counseling_currency",
+        ),
+        CheckConstraint("(budget_amount IS NULL) = (budget_currency IS NULL)", name="ck_agent_student_counseling_budget_pair"),
+    )
+
+
 class AgentCommission(Base, TimestampMixin):
     __tablename__ = "agent_commissions"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

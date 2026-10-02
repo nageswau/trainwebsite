@@ -187,6 +187,7 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | Create Student | `POST /workflows/overseas/agent/students` (links an existing student); `POST /workflows/overseas/agent/crm/students` (no login, AGN-004) | ✅ | ✅ (assigned to them) |
 | View Students | `GET /workflows/overseas/agent/students`, `GET /portal/overseas/agent/students`, `GET /lookups/overseas-students`, `GET /workflows/overseas/agent/crm/students`, `GET …/crm/students/{id}` | ✅ agency | ✅ assigned only (`DEC-SCOPE-042` G4) |
 | Edit Student | `PATCH /workflows/overseas/agent/crm/students/{id}` (students with no login) | ✅ | ✅ assigned only |
+| Record counseling (§5 Step 2, AGN-006) | `PUT /workflows/overseas/agent/crm/students/{id}/counseling` (active students with no login; login / archived → `409`, out of scope → `404`) | ✅ | ✅ assigned only |
 | Delete Student | `POST …/crm/students/{id}/archive`, `POST …/crm/students/{id}/unarchive` (no delete route; `DEC-SCOPE-042` D5) | ✅ | ❌ |
 | Assign Student / Assign Students | `POST …/crm/students/{id}/assign` | ✅ | ❌ |
 | Create Application | `POST /workflows/overseas/applications` | ✅ | ✅ |

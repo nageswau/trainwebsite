@@ -31,7 +31,10 @@ def test_migration_follows_0053_and_is_the_single_head():
     assert _migration.revision == "0054_school_onboarding_bulk"
     assert _migration.down_revision == "0053_school_funding_records"
     parents = _parents()
-    assert set(parents) - set(parents.values()) == {"0054_school_onboarding_bulk"}
+    # AGN-006's 0055 and AGN-007's 0056 now chain after this revision, so the intent is kept without pinning the head -- the
+    # relaxation ENH-013/ENH-025/ENH-027/ENH-028 received on earlier merges: one head, and 0054 is a parent in the chain.
+    assert len(set(parents) - set(parents.values())) == 1
+    assert "0054_school_onboarding_bulk" in parents.values()
 
 
 def test_migration_touches_only_the_constraint_and_the_new_column():

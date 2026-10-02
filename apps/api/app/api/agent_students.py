@@ -15,7 +15,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.rbac import agent_denial_reason, is_agent_staff
 from app.models import AgentOrgMember, AuditLog, User
-from app.schemas import AgentStudentAssign, AgentStudentRecordCreate, AgentStudentRecordUpdate
+from app.schemas import AgentStudentAssign, AgentStudentCounselingSave, AgentStudentRecordCreate, AgentStudentRecordUpdate
 from app.services.agent_orgs import lock_active_org
 from app.services.agent_students import (
     active_staff_member,
@@ -26,6 +26,7 @@ from app.services.agent_students import (
     list_page,
     load_scoped,
     record_detail,
+    save_counseling,
     set_archived,
 )
 
@@ -191,4 +192,23 @@ async def assign_student(student_id: UUID, payload: AgentStudentAssign, user: Us
     await db.commit()
     if changed:
         _log("agent_student_assigned", membership, user, row.id, member_id=str(new_id) if new_id else None)
+    return {"student": await record_detail(db, row)}
+
+
+@router.put("/{student_id}/counseling")
+async def save_student_counseling(student_id: UUID, payload: AgentStudentCounselingSave, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-006 (DEC-SCOPE-048): replace the student's counseling record. Same locks and scope as an edit: out of scope is 404 before
+    any other check; a student with a login or an archived student is 409. A save that changes nothing is 200 with no audit row."""
+    membership = _gate(user)
+    row = await _locked_row(db, user, membership, student_id)
+    if row.student_id is not None:
+        raise HTTPException(409, "Counseling is recorded only for students without a login")
+    if row.status == "archived":
+        raise HTTPException(409, "Unarchive this student first")
+    changed = await save_counseling(db, row, user, payload.model_dump())
+    if changed:
+        _audit(db, user, "counseling", row.id, {"fields": changed})
+    await db.commit()
+    if changed:
+        _log("agent_student_counseling_saved", membership, user, row.id, fields=changed)
     return {"student": await record_detail(db, row)}
