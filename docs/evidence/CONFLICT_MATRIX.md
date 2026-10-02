@@ -223,3 +223,5 @@ against any of `EVID-015`–`EVID-020` until each is individually put through a 
 arrives, whichever is relevant to the specific point.
 
 *Update 2026-10-01 (`AGN-021`):* staff activity ("View staff activity", `EVID-015` §2 Staff) is lifted out of this blocker by `DEC-SCOPE-046` (A1–A5, `EXPLICIT_APPROVAL` in-session). Staff performance, CRM settings and the rest of `EVID-015` remain parked here.
+
+*Update 2026-10-02 (`AGN-014`):* the §2 Dashboard "Commission / Revenue" figure and the §2 Reports "Commission reports" line are lifted out of this blocker by `DEC-SCOPE-051` (R1–R7, `EXPLICIT_APPROVAL` in-session): Revenue = paid commissions; reports by status, university/country and intake with a created-date filter and CSV. A per-staff commission breakdown, staff performance, CRM settings and the other §2 report lines (student, application, university, country, intake, enrollment reports as separate reports) remain parked here.

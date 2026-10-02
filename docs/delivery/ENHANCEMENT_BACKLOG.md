@@ -3503,6 +3503,65 @@ owner's full backend suite is deferred to their batch run after the next few enh
 Remaining: the merge (recheck `main` for migration `0055` / `DEC-SCOPE-048` first). Deferred minors and open questions:
 `PRD_OPEN_ITEMS.md` rows 81–83 and the review minors listed in `docs/quality/RTM.md`.
 
+## AGN-014 — Commission is Master-only: Revenue on the Master dashboard and commission reports
+
+**Title.** Agency commission Revenue and a filterable, exportable commission report for Masters (EVID-015 §2, §6).
+
+**Business requirement.** The owner's `AGN-014` statement (in-session, 2026-10-02): "Commission is Master only (§6);
+Commission/Revenue on the Master dashboard; commission reports"; acceptance: "existing commissions are visible to the migrated Master;
+Staff → 403 on every commission route; the same-admin payout rules are unchanged." Source: `EVID-015` (`Agent CRM
+Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Dashboard "Commission / Revenue", §2 Reports "Commission reports", §6 "Commission ✅/❌".
+Decided as `DEC-SCOPE-051` (R1–R7; provisional number).
+
+**Existing behavior.** Commissions were already Master-only (`DEC-SCOPE-040` S1; AGN-003 matrix tests) and the `0046` backfill's
+Masters already saw their older commissions. The Master dashboard showed "Claimable commission" and "Claims"; the Master reports page
+one "Paid commission" row. There was no Revenue figure and no agent commission report.
+
+**Expected behavior.**
+- Master dashboard metric "Revenue" = total of `paid` commissions per currency (`INR 12,000`, `INR 12,000 · USD 500`, `INR 0`).
+- `GET /workflows/overseas/agent/commissions/report?date_from&date_to` → totals and breakdowns by status (lifecycle order),
+  university/country, country and intake, per currency; inclusive UTC days on the created date.
+- `GET /workflows/overseas/agent/commissions/report.csv?date_from&date_to` → one row per commission, formula-safe cells,
+  `attachment`, `no-store`.
+- Order of checks: auth → agent of an active agency → Master → dates; staff get `403 "Only an agency Master can view commissions"`
+  before any `422`.
+- The agent Reports page shows Masters a Commission report panel (filters, loading/empty/error states, CSV of the applied range).
+
+**User roles affected.** `agent` (Master: new figure, routes and panel; staff: refused, unchanged pages).
+
+**Frontend / backend / database / API / integration impact.** Backend: `api/workflows.py` (two routes, one guarded query helper),
+`schemas.py` (`CommissionReportOut` and rows), `services/portal.py` (one metric). Frontend: new `lib/agentCommissionReport.ts`,
+`AgentCommissionReportPanel.tsx`; `ReportDownloadButton.tsx` (optional `contentType`/`busyLabel`, PDF defaults); `WorkflowPanel.tsx`
+(mount). No migration, no dependency, no integration.
+
+**Authentication/Authorization impact.** Reuses `_require` + `_require_agent_master` and the `org_member_ids` scope; no new helper.
+
+**Security impact.** Spec §8: staff refused before any query; cross-agency rows excluded by scope; dates parsed after authorization;
+CSV cells through `_safe_cell`; `Cache-Control: private, no-store`. No audit row on reads/exports (R7); one structured
+`agent_commission_report` log line per request (actor, organisation, format, row count, range).
+
+**Acceptance criteria** (verbatim from `docs/superpowers/specs/2026-10-02-agn-014-commission-master-reports-design.md` §9).
+- **AGN-014-AC01** A Master created by the real `0046` backfill sees the old commission in the list, the dashboard Revenue, the report and the CSV.
+- **AGN-014-AC02** Staff → `403` on list, claim, report, report.csv and the portal `commissions` page; `403` (not `422`) with invalid dates.
+- **AGN-014-AC03** Same-admin payout rules unchanged (`test_agt_004_commission_payout.py` passes unedited).
+- **AGN-014-AC04** Master dashboard Revenue = paid total per currency; `INR 0` when nothing is paid; other agencies excluded; staff dashboard has no Revenue and no "commission" wording.
+- **AGN-014-AC05** Report breakdowns correct per currency; lifecycle status order; staff-created application's commission included; other agency excluded.
+- **AGN-014-AC06** Created-date filter inclusive at both UTC-day boundaries; optional bounds; `date_to < date_from` → `422`; malformed date → `422`.
+- **AGN-014-AC07** CSV: header + one row per commission, same filter, `_safe_cell` applied, `text/csv` attachment, `no-store`, header-only when empty.
+- **AGN-014-AC08** New routes: unauthenticated → `401`; non-agent → `403`; suspended organisation → `403`.
+- **AGN-014-AC09** Panel: loading, empty, error (401/403/5xx/network), data; client range error sends no request; stale response ignored; CSV URL follows applied filters; not mounted for staff.
+- **AGN-014-AC10** `ReportDownloadButton` PDF behavior unchanged; CSV accepted with `contentType="text/csv"`.
+- **AGN-014-AC11** End to end: Master sees Revenue, filters the report, downloads the CSV; staff get the 403 card on `/overseas/agent/commissions` and no Revenue.
+
+**Regression risks.** Commission wording leaking to staff pages (guarded by `test_agn_002_qa_messages.py`); PDF downloads (defaults
+kept); the payout rule (`admin.py` untouched).
+
+**Complexity:** Medium. **Risk:** Low–Medium.
+
+**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-014-commission-master-only` (evidence in `docs/quality/RTM.md`,
+AGN-014 row). Remaining: Playwright run against a live stack (AC11), browser validation, the independent Codex review, and the
+owner's full backend suite (their batch cadence).
+
 ## 2. Dependency graph
 
 **Must be sequential:**
