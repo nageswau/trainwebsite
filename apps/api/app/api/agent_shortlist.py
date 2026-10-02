@@ -5,7 +5,7 @@ agency, loads its rows FOR UPDATE, validates, writes, audits in the same transac
 check and in-use deletes hold under concurrency. Another agency's rows are 404 (or 422 when named inside a body), never 403.
 """
 
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.exc import IntegrityError
@@ -73,13 +73,10 @@ async def create_university(payload: AgentUniversityCreate, user: User = Depends
     await ensure_university_capacity(db, membership.org_id)
     await ensure_unique_university(db, membership.org_id, payload.name, payload.country)
     data = payload.model_dump()
-    row = AgentUniversity(org_id=membership.org_id, **data, created_by_user_id=user.id, updated_by_user_id=user.id)
+    # The id is set here (not at flush) so the audit row can name it before the single commit; the unique index can still
+    # disagree with the Python duplicate check (Unicode lower()), which _commit answers as a 409, never a 500.
+    row = AgentUniversity(id=uuid4(), org_id=membership.org_id, **data, created_by_user_id=user.id, updated_by_user_id=user.id)
     db.add(row)
-    try:
-        await db.flush()  # the unique index can disagree with the Python duplicate check (Unicode lower()): 409, never 500
-    except IntegrityError:
-        await db.rollback()
-        raise HTTPException(409, DUPLICATE_UNIVERSITY) from None
     _university_audit(db, user, "create", row.id, {"fields": sorted(k for k, v in data.items() if v is not None)})
     await _commit(db, DUPLICATE_UNIVERSITY)
     _log("agent_university_created", membership, user, "-", university_id=str(row.id))
@@ -153,13 +150,8 @@ async def add_entry(student_id: UUID, payload: ShortlistEntryCreate, user: User 
     values = payload.model_dump()
     await validate_entry(db, membership.org_id, values)
     await ensure_entry_capacity(db, student.id)
-    entry = AgentStudentShortlistEntry(agent_student_id=student.id, **values, created_by_user_id=user.id, updated_by_user_id=user.id)
+    entry = AgentStudentShortlistEntry(id=uuid4(), agent_student_id=student.id, **values, created_by_user_id=user.id, updated_by_user_id=user.id)
     db.add(entry)
-    try:
-        await db.flush()
-    except IntegrityError:
-        await db.rollback()
-        raise HTTPException(409, SHORTLIST_CHANGED) from None
     source = "catalogue" if values["university_id"] else "agency"
     _audit(db, user, "shortlist_add", student.id, {"entry_id": str(entry.id), "university_source": source, "fields": sorted(k for k, v in values.items() if v is not None)})
     await _commit(db, SHORTLIST_CHANGED)
