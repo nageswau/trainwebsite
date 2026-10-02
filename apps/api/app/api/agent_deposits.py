@@ -23,7 +23,6 @@ from app.models import ApplicationDeposit, AuditLog, Payment, Receipt, User
 from app.schemas import AgentDepositSave, DepositRefund, DepositRemit
 from app.services import agent_deposits as deposits
 from app.services.agent_applications import detail, load_scoped
-from app.services.agent_deposits import PAID_LOCKED, PAID_STATES, cancel_active, deposit_for
 from app.services.payment import payments
 from app.services.storage import storage
 
@@ -40,9 +39,9 @@ async def save_deposit(application_id: UUID, payload: AgentDepositSave, user: Us
     membership = _gate(user)
     item = await _locked(db, user, membership, application_id)
     record = await _refuse_closed(db, user, item)
-    deposit = await deposit_for(db, item.id, lock=True)
-    if deposit is not None and deposit.status in PAID_STATES:
-        raise HTTPException(409, PAID_LOCKED)
+    deposit = await deposits.deposit_for(db, item.id, lock=True)
+    if deposit is not None and deposit.status in deposits.PAID_STATES:
+        raise HTTPException(409, deposits.PAID_LOCKED)
     new = {"required": payload.required, "amount": payload.amount, "due_date": payload.due_date, "status": "pending" if payload.required else "not_required"}
     if deposit is None:
         deposit = ApplicationDeposit(application_id=item.id, currency="INR", created_by_user_id=user.id, updated_by_user_id=user.id)
@@ -53,7 +52,7 @@ async def save_deposit(application_id: UUID, payload: AgentDepositSave, user: Us
     if not changed:
         return {"application": await detail(db, user, item, record=record)}
     if {"required", "amount"} & set(changed):
-        await cancel_active(db, deposit)
+        await deposits.cancel_active(db, deposit)
     for key, value in new.items():
         setattr(deposit, key, value)
     deposit.updated_by_user_id = user.id
@@ -78,10 +77,10 @@ async def deposit_checkout(
     membership = _gate(user)
     item = await _locked(db, user, membership, application_id)
     await _refuse_closed(db, user, item)
-    deposit = await deposit_for(db, item.id, lock=True)
+    deposit = await deposits.deposit_for(db, item.id, lock=True)
     if deposit is None or deposit.status == "not_required":
         raise HTTPException(409, deposits.NOT_REQUIRED)
-    if deposit.status in PAID_STATES:
+    if deposit.status in deposits.PAID_STATES:
         raise HTTPException(409, deposits.ALREADY_PAID)
     if not deposits.payment_available():
         await db.rollback()
@@ -100,7 +99,7 @@ async def deposit_checkout(
     if wait:
         _log("agent_deposit_checkout_throttled", membership, user, item.id, level=logging.WARNING, wait_seconds=wait)
         raise HTTPException(429, deposits.CHECKOUT_THROTTLED, headers={"Retry-After": str(wait)})
-    await cancel_active(db, deposit)  # an abandoned or expired attempt: its order can no longer mark the deposit paid
+    await deposits.cancel_active(db, deposit)  # an abandoned or expired attempt: its order can no longer mark the deposit paid
     payment = Payment(
         user_id=user.id,
         division="overseas",
@@ -127,11 +126,7 @@ async def deposit_checkout(
 
     deposit = await db.get(ApplicationDeposit, deposit_id, with_for_update=True, populate_existing=True)
     payment = await deposits.locked_payment(db, payment_id)
-    if result.get("status") != "ready":  # the keys were removed while the order was opening
-        await _abandon(db, deposit_id, payment_id)
-        return {"status": "configuration_required"}
     if payment.status != deposits.OPEN_PAYMENT or deposit.active_payment_id != payment.id:
-        await db.commit()
         raise HTTPException(409, deposits.CHANGED)  # the amount changed meanwhile, which cancelled this attempt
     payment.checkout_provider_order_id = result["provider_order_id"]
     await _ensure_invoice(db, payment, user)
@@ -142,13 +137,25 @@ async def deposit_checkout(
     return deposits.checkout_result(payment)
 
 
+async def _abandon(db: AsyncSession, deposit_id, payment_id) -> None:
+    """A failed attempt: cancel the payment and free the deposit, in the deposit-then-payment lock order."""
+    await db.rollback()
+    deposit = await db.get(ApplicationDeposit, deposit_id, with_for_update=True, populate_existing=True)
+    payment = await deposits.locked_payment(db, payment_id)
+    if payment is not None and payment.status == deposits.OPEN_PAYMENT:
+        payment.status = deposits.CANCELLED
+    if deposit is not None and deposit.active_payment_id == payment_id:
+        deposit.active_payment_id = None
+    await db.commit()
+
+
 @router.get("/{application_id}/deposit/receipt")
 async def deposit_receipt(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """§4.6 (AC5): any Master or Staff with the application in scope, not only the payer -- reached through the application, never a raw
     payment id. Same signed-URL exchange as `GET /payments/{id}/receipt`."""
     _gate(user)
     item = await load_scoped(db, user, application_id)
-    deposit = await deposit_for(db, item.id)
+    deposit = await deposits.deposit_for(db, item.id)
     receipt = None
     if deposit is not None and deposit.paid_payment_id is not None:
         receipt = await db.scalar(select(Receipt).where(Receipt.payment_id == deposit.paid_payment_id))
@@ -230,15 +237,3 @@ async def refund_deposit(deposit_id: UUID, payload: DepositRefund, user: User = 
     await db.commit()
     logger.info("agent_deposit_refunded", extra={"extra_fields": {"deposit_id": str(deposit.id), "actor_id": str(user.id), "from_status": old}})
     return await _admin_item(db, deposit.id)
-
-
-async def _abandon(db: AsyncSession, deposit_id, payment_id) -> None:
-    """A failed attempt: cancel the payment and free the deposit, in the deposit-then-payment lock order."""
-    await db.rollback()
-    deposit = await db.get(ApplicationDeposit, deposit_id, with_for_update=True, populate_existing=True)
-    payment = await deposits.locked_payment(db, payment_id)
-    if payment is not None and payment.status == deposits.OPEN_PAYMENT:
-        payment.status = deposits.CANCELLED
-    if deposit is not None and deposit.active_payment_id == payment_id:
-        deposit.active_payment_id = None
-    await db.commit()

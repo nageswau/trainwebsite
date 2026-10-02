@@ -93,17 +93,6 @@ async def cancel_active(db: AsyncSession, deposit: ApplicationDeposit) -> None:
     deposit.active_payment_id = None
 
 
-async def student_name(db: AsyncSession, application_id) -> str | None:
-    """The application's student for the receipt (AC5): the account's name, else the agency record's (a student with no login)."""
-    return await db.scalar(
-        select(func.coalesce(User.full_name, AgentStudent.full_name))
-        .select_from(OverseasApplication)
-        .outerjoin(User, User.id == OverseasApplication.student_id)
-        .outerjoin(AgentStudent, AgentStudent.id == OverseasApplication.agent_student_id)
-        .where(OverseasApplication.id == application_id)
-    )
-
-
 async def on_payment_paid(db: AsyncSession, payment: Payment, *, source: str, provider_amount: int | None = None) -> None:
     """§4.5 (AC2): the paid hook's deposit step. The caller (`payments._mark_paid`) has just moved this payment into `paid` under
     `_lock_for_update`, which locked the deposit first, so this runs once per payment. The deposit is paid only by its open checkout
@@ -143,11 +132,18 @@ async def on_payment_paid(db: AsyncSession, payment: Payment, *, source: str, pr
 
 
 async def receipt_student(db: AsyncSession, payment: Payment) -> str | None:
-    """The receipt's student line (AC5): only for an agent-deposit payment, else None (every other receipt is unchanged)."""
+    """The receipt's student line (AC5): only for an agent-deposit payment, else None (every other receipt is unchanged). The account's
+    name, else the agency record's (a student with no login)."""
     if payment.reference_type != REFERENCE_TYPE or payment.reference_id is None:
         return None
-    application_id = await db.scalar(select(ApplicationDeposit.application_id).where(ApplicationDeposit.id == payment.reference_id))
-    return None if application_id is None else await student_name(db, application_id)
+    return await db.scalar(
+        select(func.coalesce(User.full_name, AgentStudent.full_name))
+        .select_from(ApplicationDeposit)
+        .join(OverseasApplication, OverseasApplication.id == ApplicationDeposit.application_id)
+        .outerjoin(User, User.id == OverseasApplication.student_id)
+        .outerjoin(AgentStudent, AgentStudent.id == OverseasApplication.agent_student_id)
+        .where(ApplicationDeposit.id == payment.reference_id)
+    )
 
 
 Student = aliased(User)

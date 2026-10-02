@@ -19,6 +19,7 @@ const EXPIRED = `${SESSION_EXPIRED} Your entry is kept; sign in again in a new t
 const SERVER_ERROR = "Something went wrong on our side. Please try again; your entry is kept.";
 const FIELDS = ["required", "amount", "due_date"] as const;
 type Field = (typeof FIELDS)[number];
+const FIELD_ID: Record<Field, string> = { required: "required-yes", amount: "amount", due_date: "due" }; // the control a 422 focuses
 
 // AGN-011 (DEC-SCOPE-057 §4.2): record or change the deposit while it is unpaid -- required yes/no, the amount in rupees (D1) and an
 // optional due date; the whole deposit is sent (PUT). A 422 lands on its field with the entry kept; a 409/404 goes to the detail,
@@ -51,8 +52,7 @@ export default function AgentApplicationDepositForm({ detail, onSaved, onFailed,
       const onFields = outcome.status === 422 ? fieldErrors(outcome.detail, FIELDS) : null;
       if (onFields) {
         setErrors(onFields);
-        const first = FIELDS.find((f) => onFields[f])!;
-        return focusAfter(first === "required" ? id("required-yes") : id(first === "amount" ? "amount" : "due"));
+        return focusAfter(id(FIELD_ID[FIELDS.find((f) => onFields[f])!]));
       }
       const status = outcome.status ?? 0;
       setFailure(status === 401 ? { text: EXPIRED, expired: true } : { text: status >= 500 ? SERVER_ERROR : outcome.message });

@@ -159,7 +159,10 @@ export default function AdminAgentDepositsPanel({ canAct }: { canAct: boolean })
                             type="button"
                             className={action === "remit" ? "btn small" : "btn secondary small"}
                             aria-label={`${ACTION_LABELS[action]} for ${d.student}`}
-                            onClick={() => (setNotice(null), setActing({ id: d.id, action }))}
+                            onClick={() => {
+                              setNotice(null);
+                              setActing({ id: d.id, action });
+                            }}
                           >
                             {ACTION_LABELS[action]}
                           </button>
