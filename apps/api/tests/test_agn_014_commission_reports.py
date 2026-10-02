@@ -263,7 +263,8 @@ async def test_master_dashboard_shows_paid_revenue(db_session):  # AC04
     async with client_for(ctx["master"].email) as c:
         payload = (await c.get(DASHBOARD)).json()
     assert _metric(payload, "Revenue") == "INR 12,000"
-    assert [m["label"] for m in payload["metrics"]][:5] == ["Students", "Applications", "Claimable commission", "Claims", "Revenue"]
+    # AGN-016 (DEC-SCOPE-053) put "Pending actions" right after "Applications" (API_CONTRACT); Revenue still follows the commission pair.
+    assert [m["label"] for m in payload["metrics"]][:6] == ["Students", "Applications", "Pending actions", "Claimable commission", "Claims", "Revenue"]
 
 
 @pytest.mark.asyncio

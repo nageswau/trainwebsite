@@ -3,27 +3,31 @@
 Masters see the agency's applications; staff only those of students assigned to them (G4); anything outside the caller's scope is
 404. Every write locks the organisation row first and the application row second (AGN-004's lock order), writes its history and
 audit rows in the same transaction and commits once, so the duplicate check, the throttle and the status rules hold under
-concurrency. Agents move an application forward up to status_tracking or withdraw it; `enrolled` stays with counselor, university
-and admin, so an agent never accrues their own commission (A4).
+concurrency. Agents move an application forward up to status_tracking or withdraw it; the status route never sets `enrolled` (A4).
+AGN-013 (DEC-SCOPE-054) amends A4 narrowly: only a Master confirms enrollment, through its own route, from an offer onwards.
 """
 
 import logging
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.agent_students import _gate
+from app.api.agent_students import _gate, _require_master_action
 from app.api.deps import get_current_user
-from app.api.workflows import _notify_user
+from app.api.workflows import _maybe_trigger_agent_commission, _notify_user
 from app.core.database import get_db
 from app.models import AgentOrgMember, AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, University, User
-from app.schemas import AgentApplicationCreate, AgentApplicationStatus, AgentApplicationUpdate
+from app.schemas import AgentApplicationCreate, AgentApplicationEnrollment, AgentApplicationStatus, AgentApplicationUpdate
 from app.services.agent_applications import (
     ARCHIVED,
     DEFAULT_NEXT_ACTION,
     DUPLICATE,
+    ENROLLABLE,
+    MASTER_ONLY_ENROLLMENT,
+    OFFER_NEEDED,
     STALE,
     THROTTLED,
     WITHDRAWN,
@@ -176,4 +180,40 @@ async def change_status(application_id: UUID, payload: AgentApplicationStatus, u
     _audit(db, user, "withdraw" if withdrawn else "advance", item.id, {"from_status": old, "to_status": item.status})
     await db.commit()
     _log("agent_application_withdrawn" if withdrawn else "agent_application_advanced", membership, user, item.id, from_status=old, to_status=item.status)
+    return {"application": await detail(db, user, item, record=record)}
+
+
+@router.put("/{application_id}/enrollment")
+async def save_enrollment(application_id: UUID, payload: AgentApplicationEnrollment, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-013 (DEC-SCOPE-054): a Master confirms enrollment from an offer onwards -- `enrolled`, one history row and the AGT-003
+    commission trigger, which creates at most one commission per application -- or, once enrolled, corrects the date and student
+    ID (no history row, no commission). Locks as every agency write: organisation, then the row; one commit."""
+    membership = _gate(user)
+    _require_master_action(user, MASTER_ONLY_ENROLLMENT)  # E1: refused before any load, so staff learn nothing about ids
+    item = await _locked(db, user, membership, application_id)
+    record = await _refuse_closed(db, user, item)
+    if payload.expected_status != item.status:
+        raise HTTPException(409, STALE)
+    old = item.status
+    confirming = old != "enrolled"
+    if confirming and old not in ENROLLABLE:
+        raise HTTPException(422, OFFER_NEEDED)
+    fields = {"enrollment_date": payload.enrollment_date, "university_student_id": payload.university_student_id}
+    changed = [key for key, value in fields.items() if getattr(item, key) != value]
+    for key in changed:
+        setattr(item, key, fields[key])
+    if confirming:
+        item.enrollment_confirmed_at = datetime.now(UTC)
+        item.status = "enrolled"
+        db.add(ApplicationStatusHistory(application_id=item.id, from_status=old, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id))
+        await _maybe_trigger_agent_commission(db, item, old, user)
+        _audit(db, user, "enroll", item.id, {"from_status": old, "to_status": item.status})
+    elif changed:  # a correction: no history row, no commission; an unchanged re-save writes nothing
+        item.enrollment_confirmed_at = item.enrollment_confirmed_at or datetime.now(UTC)
+        _audit(db, user, "enrollment_update", item.id, {"fields": changed})
+    await db.commit()
+    if confirming:
+        _log("agent_application_enrolled", membership, user, item.id, from_status=old)
+    elif changed:
+        _log("agent_application_enrollment_updated", membership, user, item.id, fields=changed)
     return {"application": await detail(db, user, item, record=record)}

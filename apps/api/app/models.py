@@ -445,6 +445,10 @@ class OverseasApplication(Base, TimestampMixin):
     submitted_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     application_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     offer_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # AGN-013 (DEC-SCOPE-054): recorded by an agency Master at enrollment (PUT .../enrollment); NULL until then.
+    enrollment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    university_student_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    enrollment_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ApplicationStatusHistory(Base, TimestampMixin):

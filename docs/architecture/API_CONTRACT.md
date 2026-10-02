@@ -287,6 +287,15 @@ same transaction. Responses use explicit allowlists (no `agent_id`, `counselor_i
 | `PATCH /workflows/overseas/applications/{id}` with `status`, `POST …/applications/{id}/advance` — **changed** | Authenticated | Counselor, admin (existing) | `409 "This application is withdrawn"` on a `withdrawn` application; non-status edits unchanged. |
 | `POST /workflows/overseas/applications` (old agent create) | Authenticated | Agent | Unchanged (A13); the agent UI uses `POST …/crm/applications`. |
 
+**`AGN-013` / `DEC-SCOPE-054` (built 2026-10-02) — enrollment confirmation.** Design spec
+`docs/superpowers/specs/2026-10-02-agn-013-enrollment-confirmation-design.md` §4. Additive: one route and four detail fields; no existing
+route, body or field changes. No `Idempotency-Key`: a repeated `PUT` converges (a second confirmation is a stale `409` or a correction).
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `PUT …/crm/applications/{id}/enrollment` (**new**) | Authenticated | Agency **Master** of an active organisation (staff → `403 "Only an agency Master can confirm enrollment"` before any load) | Body `AgentApplicationEnrollment`: `enrollment_date` (required, 2000–2100), `university_student_id` (≤ 60, optional, blank → `null`), `expected_status` (required, ≤ 50), `notes` (≤ 2000, first confirmation only); `extra="forbid"`. Order: gate `403` → Master `403` → scope `404` → archived/withdrawn `409` → stale `409` → pre-offer (or legacy free-text status) `422 "An offer is needed before enrollment"`. From `offer` / `visa_documentation` / `status_tracking`: `enrolled`, details and `enrollment_confirmed_at` set, one history row, the AGT-003 trigger (one `estimated` commission, Masters notified), audit `overseas.application.enroll`. When `enrolled`: changed details only, audit `overseas.application.enrollment_update` (field names); no history, no commission; no change → `200`, no write. `200 {"application": detail}`. |
+| `GET …/crm/applications/{id}` — **changed (additive)** | Authenticated | Same as before | Detail adds `enrollment_date`, `university_student_id`, `enrollment_confirmed_at`, `enrollment_check` (`after_intake` \| `intake_unrecognised` \| `null`; a warning computed on read). List items unchanged. |
+
 **`AGN-016` / `DEC-SCOPE-053` (built 2026-10-02) — agent tasks and follow-ups.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md` §3–§5. Errors are FastAPI `{"detail": ...}`. `POST` is not safe to
 retry (no `Idempotency-Key`; a duplicate task is harmless and can be cancelled). Gate `403` (agent role, overseas division, active
