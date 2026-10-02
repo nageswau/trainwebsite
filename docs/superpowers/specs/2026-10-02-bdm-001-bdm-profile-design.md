@@ -317,7 +317,7 @@ Mounted on the new static pages `/admin/bdms` (super_admin), `/it/admin/bdms` (i
 | BDM-001-AC04 | A reporting manager that is missing, inactive or not a `bdm_manager` → 422, on both create and edit. |
 | BDM-001-AC05 | After login, a `bdm` lands on `/bdm/my-day` and a `bdm_manager` on `/bdm/manager/dashboard`. A manager's password reset ends at `/admin/login`. |
 | BDM-001-AC06 | `GET /bdm/manager/team` returns exactly the BDMs whose `reporting_manager_user_id` is the caller (inactive ones included). `super_admin` gets all. A `bdm` gets 403. |
-| BDM-001-AC07 | Every create or edit of a BDM (user fields or profile) writes one `AuditLog` row, with the profile values in its metadata. |
+| BDM-001-AC07 | Every create or edit of a BDM (user fields or profile) writes one `AuditLog` row. A create's metadata holds the profile values. An edit's metadata holds the payload, plus `bdm_profile_before`/`bdm_profile_after` when the profile changed (§5.5). An edit of user fields only does not snapshot the profile (owner deferred to the recommendation, 2026-10-02). |
 | BDM-001-AC08 | Creator rules (D10): `it_admin` creates College BDMs only, `overseas_admin` Agent and School BDMs only, only `super_admin` creates `bdm_manager`. Anything else → 403. |
 | BDM-001-AC09 | `role=bdm` with no `bdm_profile` → 422. `bdm_profile` sent for a user who isn't a BDM → 422. Changing `bdm_type` → 422. |
 | BDM-001-AC10 | `GET /bdm/me` returns the caller's profile. A role other than `bdm`, or a BDM with no profile → 403. |
