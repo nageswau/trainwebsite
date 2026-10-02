@@ -2,17 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import AgentApplicationEditForm from "./AgentApplicationEditForm";
+import AgentApplicationEnrollment from "./AgentApplicationEnrollment";
 import AgentApplicationStatusForm from "./AgentApplicationStatusForm";
 import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { AgentApplicationDetail as Detail, APPLICATIONS_URL, deadlineText, READ_ONLY_TEXT, stageLabel, todayIso } from "@/lib/agentApplications";
 
-type Props = { id: string; onChanged: (d: Detail) => void; onClose: () => void };
+type Props = { id: string; isMaster?: boolean; onChanged: (d: Detail) => void; onClose: () => void };
 
 // AGN-008: one application -- fields, status history, edit and status change. A 409 (or a status 422) shows the server's words and
 // reloads, so the screen always ends on the real state (stale, withdrawn, archived); the reload also updates the list card (QA8-03).
-// A 422 from Save keeps the edit form open with the user's input (QA8-01).
-export default function AgentApplicationDetail({ id, onChanged, onClose }: Props) {
+// A 422 from Save keeps the edit form open with the user's input (QA8-01). AGN-013: the Enrollment section (Masters act, Staff read).
+export default function AgentApplicationDetail({ id, isMaster = false, onChanged, onClose }: Props) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "gone" | "error">("loading");
   const [editing, setEditing] = useState(false);
@@ -61,6 +62,10 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
       setEditing(false); // the reload shows the real state; stale input must not stay on screen
       load().then((reloaded) => reloaded && onChanged(reloaded));
     }
+  }
+  function enrollmentSaved(next: Detail, message: string) {
+    saved(next, message);
+    focusAfter(noticeId); // the form and its opener are gone: the announced notice takes focus
   }
   function editFailed(message: string, status?: number) {
     if (status !== 404) focusAfter(noticeId); // a 404 shows "no longer available" instead of the notice
@@ -131,6 +136,7 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
           )}
         </>
       )}
+      {!editing && <AgentApplicationEnrollment key={`enrollment-${detail.status}`}detail={detail} isMaster={isMaster} onSaved={enrollmentSaved} onFailed={editFailed} />}
       {!detail.read_only_reason && !editing && <AgentApplicationStatusForm key={detail.status} detail={detail} onSaved={saved} onFailed={failed} />}
       <h5>Status history</h5>
       <ol aria-label="Status history">

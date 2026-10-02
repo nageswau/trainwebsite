@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { canWithdraw, deadlineText, GROUP_LABELS, nextStages, parseGroup, stageLabel } from "@/lib/agentApplications";
+import { canConfirmEnrollment, canWithdraw, deadlineText, GROUP_LABELS, nextStages, parseGroup, stageLabel } from "@/lib/agentApplications";
 import { activityLabel } from "@/lib/agentStaff";
+
+describe("canConfirmEnrollment (AGN-013 E6)", () => {
+  it("allows offer, visa documentation and status tracking only", () => {
+    const all = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled", "withdrawn", "University review"];
+    expect(all.filter(canConfirmEnrollment)).toEqual(["offer", "visa_documentation", "status_tracking"]);
+  });
+});
 
 describe("agent application rules (AGN-008)", () => {
   it("offers only later stages, never past status_tracking", () => {
