@@ -286,6 +286,29 @@ describe("AgentShortlistPanel (AGN-007)", () => {
     expect(onStudentGone).not.toHaveBeenCalled();
   });
 
+  it("after an entry 404 on save the reload drops the entry and focus lands on Add, not the page body", async () => {
+    let gone = false;
+    const router = formRouter(
+      () => (gone ? [] : [entry()]),
+      () => {
+        gone = true;
+        return res({ detail: "Shortlist entry not found" }, 404);
+      },
+    );
+    // A real reload is slower than one animation frame: the stale Edit button is still on screen when focus moves.
+    const slowReload = (url: string, init?: RequestInit) =>
+      gone && String(url).includes("/shortlist?") && !init?.method
+        ? new Promise<Response>((resolve) => setTimeout(() => resolve(router(url, init) as unknown as Response), 60))
+        : router(url, init);
+    vi.stubGlobal("fetch", vi.fn(slowReload));
+    render(<AgentShortlistPanel {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Agency U" }));
+    fireEvent.change(await screen.findByLabelText("Intake"), { target: { value: "Jan 2028" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    expect(await screen.findByText("No universities shortlisted yet.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add university to shortlist" })).toHaveFocus());
+  });
+
   it("a Student not found 404 on remove tells the parent", async () => {
     const onStudentGone = vi.fn();
     vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => Promise.resolve(init?.method === "DELETE" ? res({ detail: "Student not found" }, 404) : res(page([entry()])))));

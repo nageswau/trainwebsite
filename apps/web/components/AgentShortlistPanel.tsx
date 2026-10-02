@@ -123,7 +123,9 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
             onCancel={closeForm}
             onGone={onStudentGone}
             onEntryGone={() => {
-              closeForm();
+              // The entry's Edit button disappears on reload, so focus goes to Add rather than the opener.
+              setEditing(null);
+              focusLater(ADD_ID);
               setNotice("This entry was removed by someone else.");
               load();
             }}
