@@ -3631,9 +3631,11 @@ kept); the payout rule (`admin.py` untouched).
 
 **Complexity:** Medium. **Risk:** Low–Medium.
 
-**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-014-commission-master-only` (evidence in `docs/quality/RTM.md`,
-AGN-014 row). Remaining: Playwright run against a live stack (AC11), browser validation, the independent Codex review, and the
-owner's full backend suite (their batch cadence).
+**Status (2026-10-02): COMPLETE** on `feature/agn-014-commission-master-only` (verified at `850a9f5`, after merging `main` with
+AGN-007; evidence in `docs/quality/RTM.md`, AGN-014 row): AC01–AC11 met; lite backend set 274 passed; web 148 files / 1599 passed;
+`tsc`, lint and the production build pass; Playwright 12/12; browser QA done with QA14-01…10 fixed and re-verified. The independent
+Codex review was waived by the owner; the full backend suite stays with the owner's batch cadence. Remaining: the merge (recheck
+`main` for `DEC-SCOPE-051` first — `050` is held by the unmerged `AGN-008`).
 
 ## 2. Dependency graph
 
