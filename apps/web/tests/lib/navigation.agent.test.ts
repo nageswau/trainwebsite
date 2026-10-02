@@ -13,6 +13,7 @@ describe("agentNavFor", () => {
       "/overseas/agent/universities",
       "/overseas/agent/applications",
       "/overseas/agent/documents",
+      "/overseas/agent/tasks",
       "/overseas/agent/reports",
     ]);
     expect(agentNavFor(nav, "staff").map((i) => i.href)).toEqual([
@@ -21,7 +22,15 @@ describe("agentNavFor", () => {
       "/overseas/agent/universities",
       "/overseas/agent/applications",
       "/overseas/agent/documents",
+      "/overseas/agent/tasks",
     ]);
+  });
+
+  it("shows Tasks to both roles, after Documents (AGN-016, EVID-015 §4 sidebar order)", () => {
+    const hrefs = nav.map((i) => i.href);
+    expect(hrefs.indexOf("/overseas/agent/tasks")).toBe(hrefs.indexOf("/overseas/agent/documents") + 1);
+    expect(nav.find((i) => i.href === "/overseas/agent/tasks")?.label).toBe("Tasks");
+    expect(agentNavFor(nav, "staff").map((i) => i.href)).toContain("/overseas/agent/tasks");
   });
 
   it("shows Universities to both roles (AGN-007)", () => {
