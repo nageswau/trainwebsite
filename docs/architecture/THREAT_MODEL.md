@@ -53,6 +53,19 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
   is audited in the same transaction with ids and field names only. **Residual, stated:** no rate limiting on the new routes
   (none exists for writes platform-wide except invites and link search); last write wins on concurrent edits; a create with
   neither email nor phone is not idempotent; students with no login have no erasure path yet (`PRD_OPEN_ITEMS.md` item 80).
+- **Threat (`AGN-008`, 2026-10-02):** a staff member opening or changing another staff member's (or another agency's) application or
+  student by id; an agent escalating a status to `enrolled` to self-accrue commission; mass assignment of `agent_id`, `status`,
+  `university_id` or `student_id` through a PATCH; create, withdraw and re-create loops used to spam the student of an application with
+  email; writes on an archived student's application; acting from a stale screen after a counselor or admin changed the application.
+- **Direction (built):** `_gate` plus `student_scope`/`application_scope` in every query's `WHERE` clause with a `404` existence mask;
+  `enrolled` refused to every agent (`403`); `extra="forbid"` request bodies; a 200-per-agency-per-24-hours create throttle (`429`,
+  `Retry-After`) counted from audit rows under the organisation lock; archived students read-only (`409`); an `expected_status`
+  precondition (`409`); the organisation lock then the row `FOR UPDATE` on every write, with audit in the same transaction (ids,
+  field names and from/to status only). Abuse cases are tests (spec §7, AC17).
+- **Residual, stated (not fixed in AGN-008):** the counselor/admin PATCH and `/advance` `withdrawn` guard is check-then-act on an
+  unlocked load, so a concurrent agent withdraw can be overwritten by that write; the legacy agent create path writes the same audit
+  action without the organisation lock, so the throttle can be exceeded by one; no idempotency key (a retry meets the duplicate or
+  forward-only rule); no throttle on reads, edits or status changes; documents for no-login students remain unbuilt.
 
 ### Employer domain (new, external-party access)
 - **Threat:** an Employer account viewing more of a Student's profile than GDPR-approved visibility
