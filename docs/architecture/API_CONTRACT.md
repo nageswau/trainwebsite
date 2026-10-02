@@ -287,6 +287,25 @@ same transaction. Responses use explicit allowlists (no `agent_id`, `counselor_i
 | `PATCH /workflows/overseas/applications/{id}` with `status`, `POST …/applications/{id}/advance` — **changed** | Authenticated | Counselor, admin (existing) | `409 "This application is withdrawn"` on a `withdrawn` application; non-status edits unchanged. |
 | `POST /workflows/overseas/applications` (old agent create) | Authenticated | Agent | Unchanged (A13); the agent UI uses `POST …/crm/applications`. |
 
+**`AGN-016` / `DEC-SCOPE-053` (built 2026-10-02) — agent tasks and follow-ups.** Design spec
+`docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md` §3–§5. Errors are FastAPI `{"detail": ...}`. `POST` is not safe to
+retry (no `Idempotency-Key`; a duplicate task is harmless and can be cancelled). Gate `403` (agent role, overseas division, active
+agency; **not** `super_admin`) → scope `404` (`"Task not found"` / `"Student not found"`) → archived student `409 "Unarchive this student
+first"` → closed task `409 "This task is closed"` → application `422 "Choose an application of this student"` → cap `409`. A task has no
+assignee: its scope is its student's (AGN-004 `student_scope`), so a reassigned student's tasks follow it. Every write locks the
+organisation, then the row `FOR UPDATE`, and audits (`agent_student.task_add|task_update|task_complete|task_cancel`, ids and field names
+only) in the same transaction. Responses are explicit allowlists: people are named, never identified by user id.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /workflows/overseas/agent/crm/tasks?view=open&student=&limit=20&offset=0` | Authenticated | Agent (Master or staff) of an active organisation | `view` = `open` (default) \| `overdue` \| `done` \| `cancelled` \| `all`; `limit` 1–100; `offset` 0–10000; `student` filters inside scope (out of scope → empty page). `open`/`overdue` leave archived students' tasks out unless `student` is given. Order: open by `due_at`; closed by `closed_at` desc; `all` open first. `200 {items, total, limit, offset}` |
+| `POST …/crm/tasks` | Authenticated | Same | Body `AgentTaskCreate`: `agent_student_id`, `title` (1–200), `due_at` (with offset; naive → 422), `notes` (≤ 2000), `application_id`; extra fields 422. Past `due_at` allowed. `201 {"task": item}` |
+| `GET …/crm/tasks/{id}` | Authenticated | Same | `200 {"task": item}`: `id, title, notes, due_at, status, overdue, student {id, full_name, status}, application {id, university} \| null, assigned_to {code, full_name, status} \| null, created_by, closed_by, closed_at, created_at, updated_at` |
+| `PATCH …/crm/tasks/{id}` | Authenticated | Same | Body `AgentTaskUpdate`: any of `title`, `due_at` (not clearable), `notes`, `application_id` (null clears) — **or** `status` (`done` \| `cancelled`) alone; the student is fixed. A no-op is `200` with no audit row. Closing stamps `closed_at`/`closed_by` |
+
+`GET /portal/overseas/agent/dashboard` gains `{"label": "Pending actions", "value": n}` after "Applications" (open tasks of active
+students in the caller's scope); `GET /portal/overseas/agent/tasks` is a header-only payload ("Tasks & follow-ups").
+
 **`AGN-003` / `DEC-SCOPE-044` (built 2026-10-01).** Design spec §6–§8. Two optional §6 rows (Verify Documents, Reports) are switched on per
 staff member by a Master; the flags are read from the database on every request, so a change applies on the next request.
 

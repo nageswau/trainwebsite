@@ -5,11 +5,10 @@ import { useEffect, useState } from "react";
 import AgentShortlistPanel from "./AgentShortlistPanel";
 import AgentStudentCounselingCard from "./AgentStudentCounselingCard";
 import AgentStudentForm from "./AgentStudentForm";
-import { AgentStudentDetail, AgentStudentItem } from "@/lib/agentStudents";
+import AgentTasksBlock from "./AgentTasksBlock";
+import { AgentStudentDetail, assignedText } from "@/lib/agentStudents";
 
-export function assignedText(a: AgentStudentItem["assigned_to"]): string {
-  return a ? `${a.code} · ${a.full_name}${a.status !== "active" ? " (deactivated)" : ""}` : "Unassigned";
-}
+export { assignedText }; // AGN-016: moved to lib/agentStudents (the task card shares it); re-exported for existing importers
 
 // AGN-004 (spec §6, F5): one student's full record beside the list -- no separate route. A student with a login shows the details
 // from their own account and is not edited here (F2); an archived student is read-only until a Master unarchives them.
@@ -99,6 +98,13 @@ export default function AgentStudentDetailPanel({
           {/* AGN-007 (DEC-SCOPE-049): the student's university shortlist; one form at a time (AGN-006), so hidden while counseling is edited. */}
           {editing === "none" && (
             <AgentShortlistPanel studentId={detail.id} archived={detail.status === "archived"} onStudentGone={onClose} onStudentChanged={onClose} />
+          )}
+          {/* AGN-016 (DEC-SCOPE-053): the student's tasks, open first; read-only when archived. */}
+          {editing === "none" && (
+            <section aria-labelledby={`tasks-${detail.id}`} style={{ marginTop: 16 }}>
+              <h5 id={`tasks-${detail.id}`} style={{ fontSize: "18px", margin: "0 0 8px" }}>Tasks</h5>
+              <AgentTasksBlock view="all" studentId={detail.id} archived={detail.status === "archived"} Heading="h6" />
+            </section>
           )}
           {editing === "none" && (
             <button type="button" className="btn secondary small" onClick={onClose} style={{ marginTop: 16 }}>

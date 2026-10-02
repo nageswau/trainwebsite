@@ -761,6 +761,61 @@ class AgentApplicationStatus(BaseModel):
         return clean_free_text(value, 2000)
 
 
+# --- AGN-016: agent tasks and follow-ups (DEC-SCOPE-053; docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md §3) ---
+
+
+def _task_title(value) -> str:
+    if value is not None and not isinstance(value, str):  # runs before type coercion: a number or list is a 422, never a 500
+        raise PydanticCustomError("task_title_text", "Title must be text")
+    value = clean_free_text(value, 200)
+    if not value:
+        raise PydanticCustomError("task_title_required", "Title is required")
+    return value
+
+
+TaskNotes = Annotated[str | None, AfterValidator(lambda value: clean_free_text(value, 2000))]
+
+
+class AgentTaskCreate(BaseModel):
+    """`due_at` must carry an offset (AwareDatetime): a browser's local time is never silently read as UTC. Status, owner and
+    closing fields are the server's -- `extra="forbid"` answers 422."""
+
+    model_config = {"extra": "forbid"}
+    agent_student_id: UUID
+    title: str
+    due_at: AwareDatetime
+    notes: TaskNotes = None
+    application_id: UUID | None = None
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _title(cls, value):
+        return _task_title(value)
+
+
+class AgentTaskUpdate(BaseModel):
+    """Omitted = unchanged; null clears `notes` or `application_id`; `title` and `due_at` cannot be cleared. Closing (T2, T6) is
+    `status` sent ALONE, so every audit event is either an edit or a close; the student is fixed after create."""
+
+    model_config = {"extra": "forbid"}
+    title: str | None = None
+    due_at: AwareDatetime | None = None
+    notes: TaskNotes = None
+    application_id: UUID | None = None
+    status: Literal["done", "cancelled"] | None = None
+
+    @model_validator(mode="after")
+    def _rules(self):
+        sent = self.model_fields_set
+        if "title" in sent:
+            self.title = _task_title(self.title)
+        if "due_at" in sent and self.due_at is None:
+            raise PydanticCustomError("task_due_required", "Due date and time is required")
+        if "status" in sent and (self.status is None or sent != {"status"}):
+            raise PydanticCustomError("task_status_alone", "Change the status on its own, without other fields")
+        return self
+
+
 class AgentStaffCreate(AgentMasterInvite):
     """AGN-002 (DEC-SCOPE-040 S4): a Master adding a staff login -- the same fields and rules as a Master invite."""
 

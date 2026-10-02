@@ -80,6 +80,9 @@ deadlines; Staff sidebar filters (§2, §4, §5)") is decided as `DEC-SCOPE-050`
 the then-unmerged `AGN-006`/`AGN-007` branches; both reached `main` first and `050` stayed free). It lifts `DEC-SCOPE-042` D8: agency students with no login can now have applications.
 See §AGN-008.
 
+**Revision 12 (2026-10-02):** the owner's `AGN-016` statement ("Tasks & Follow-ups" §4; "Pending Actions" KPI §2) is decided as
+`DEC-SCOPE-053` (T1–T8; drafted as `051`, renumbered on merging `main` @ `d371865`, where AGN-014 holds `051` and AGN-009 `052`). See §AGN-016.
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -168,6 +171,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-007 | Agent student university shortlist and agency-private university database (Master full / Staff view) | Large | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004, AGN-021 |
 | AGN-008 | Agent applications — Master/Staff create, edit, view, change status, Application ID, submission date and deadlines for agent students; Staff sidebar filters (Rev. 11) | Large | High | Yes | AGN-004, AGN-003, AGN-021, AGT-002, OVS-002/003/004, ENH-031, RPT-002 |
 | AGN-009 | Agent documents — upload, download, verify, reject (with a reason), request additional, history; §5 Step 4 types; Staff sidebar Pending/Uploaded/Additional (`DEC-SCOPE-052`) | Large | High | Yes | AGN-003, AGN-004, AGN-008, OVS-005, VISA-001 |
+| AGN-016 | Agent tasks and follow-ups — Master/Staff create, edit, complete and cancel tasks on agency students (task follows the student); "Pending actions" KPI (Rev. 12) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-021 |
 
 ---
 
@@ -3741,6 +3745,55 @@ history; a reason required when an agent rejects or asks for changes; Pending / 
 
 **Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-009-agent-documents`. Lite test sets pass (see `RTM.md` AGN-009 row).
 Pending, owner-side: browser validation, the independent Codex review, the full backend/web/E2E suites, the merge.
+## AGN-016 — Agent Tasks and Follow-ups, "Pending Actions" KPI
+
+**Title.** Let an agency Master, and Staff for their assigned students, record follow-up tasks on agency students and see what is open
+and overdue; add "Pending actions" to the agent dashboard.
+
+**Business requirement.** The owner's `AGN-016` statement (in-session, 2026-10-02): "Tasks & Follow-ups" (§4); "Pending Actions" KPI
+(§2). Source: `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`), which names the two items only. Decision record:
+`DEC-SCOPE-053` (T1–T8, `EXPLICIT_APPROVAL` in-session 2026-10-02; renumbered from `051` on merging `main` @ `d371865`).
+
+**Existing behavior.** Only `OverseasApplication.next_action` free text; no task entity, no pending-actions count.
+
+**Expected behavior.** Table `agent_tasks` owned only through the student (T1). Routes under `/workflows/overseas/agent/crm/tasks`:
+list (`view` open/overdue/done/cancelled/all, `student`), create, read, PATCH (edit, or `status` done/cancelled alone). A Tasks page
+(both roles), a Tasks section in the student detail, the dashboard metric, and task work in AGN-021 activity. Spec:
+`docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md`; plan `docs/superpowers/plans/2026-10-02-agn-016-tasks-followups.md`.
+
+**Roles.** Agency Master (whole agency), agency Staff (assigned students only). Not super_admin or other roles (403).
+
+**Acceptance criteria.** Spec §10 `AGN-016-AC01`…`AC13`: create per role and student type; scope (404 outside, 403 for other roles);
+reassignment moves tasks; overdue definition; edit and close; closed and archived read-only (409); application link (422); validation
+(422); concurrent closes (one 200, one 409); KPI per role; audit/log without free text; UI states, keyboard and 320 px; per-student cap.
+
+**Regression risks.** Spec §11: `portal._agent` dashboard (one metric added after "Applications"), `AgentStudentDetailPanel` (an extra
+fetch; two existing unit tests now answer the tasks URL like the shortlist's), `searchStudents`/`assignedText` moved to
+`lib/agentStudents.ts` (behaviour unchanged), `lib/navigation.ts` (Tasks after Documents), `STAFF_ACTIVITY_ACTIONS`, the alembic head
+(parallel `AGN-009`).
+
+**Complexity:** Medium. **Risk:** Medium.
+
+**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-016-tasks-followups`. Lite tests only, per the owner: 79 backend
+AGN-016 tests plus the four affected existing files (`test_agn_004_staff_scope`, `test_agn_001_team`, `test_agn_008_dashboard`,
+`test_agn_021_activity`), web typecheck, zero-warning lint, and 104 unit tests across 11 files. The e2e spec `agn-016-tasks.spec.ts` passed
+3/3 against the isolated stack (2026-10-02). Outstanding before COMPLETE: the full suites (owner, separate session).
+
+**Verification before completion (2026-10-02, fresh runs at the final commit).** Backend: every `test_agn_*`/`test_agt_*` file
+784 passed; AGN-016 files + AGN-007 shortlist 97 passed after the last (type-only) change. Web: `tsc` clean, `npm run lint` 0 errors
+(31 warnings, identical count on the base image), 32 agent-related unit-test files 348 passed, `next build` exit 0. mypy: 283 errors =
+the base commit's count, none in AGN-016 files (6 AGN-016 type errors were found here and fixed). `alembic heads` = `0059_agent_tasks`
+only; `alembic check` drift is the base's (two pre-existing indexes), none on `agent_tasks`. Playwright: AGN-016 + AGN-004 + AGN-008
+specs 12/12 on an idle machine; two neighbour tests failed intermittently in 2 of 4 loaded runs, not reproduced in 3 alternating
+base-vs-branch runs (9/9 each side). Browser: Master 31/31, Staff/roles 13/13, re-check 6/6, Super Admin note. Diff: 45 files, all
+AGN-016; no skipped/focused tests, debug code or secrets. **Status: VERIFIED — COMPLETE once the owner's full-suite run is green.**
+
+**Browser QA (2026-10-02, isolated `agn016qa` stack, headless Chromium).** Pass 1 covered the 20-point checklist for Master, both
+Staff, signed-out, wrong roles, Super Admin and another agency: no Critical/High issues. Findings, all fixed and re-verified in pass 2:
+QA16-01 (Super Admin saw "Workspace not found" — now the section's note, the AGN-008 QA8-09 precedent), QA16-02 (the Student picker's
+error was not on the picker — now its own linked `aria-invalid` message), QA16-03 (an archived student's open task now says why it is
+read-only), QA16-04 (the closing time now carries its zone), QA16-05 (the open form has a visible "New task" heading). Codex review
+waived by the owner (2026-10-02).
 
 ## 2. Dependency graph
 
@@ -3913,6 +3966,7 @@ item, only for the progress-view question).
 | AGN-005 | None — scope (tests + docs), Delete Student = archive/unarchive, test placement, and the QA5-01 phone rule / QA5-05 note set by the owner in-session 2026-10-01 | N/A |
 | AGN-006 | `DEC-SCOPE-048` — storage, budget, separate preferences, access, completed stamp, API, activity, leave prompt | **Resolved 2026-10-01** (C1–C9, `EXPLICIT_APPROVAL` in-session; number provisional) |
 | AGN-008 | `DEC-SCOPE-050` — statuses and withdrawn, Application ID, dates, agent status limits, link to the agency student, visibility, sidebar filters, throttle, archived read-only | **Resolved 2026-10-01/02** (A1–A15, `EXPLICIT_APPROVAL` in-session). `DEC-SCOPE-036` "submitted" stays `NEEDS_CONFIRMATION` |
+| AGN-016 | `DEC-SCOPE-053` — task owner on reassignment, delete, due time and overdue, linkage, KPI and nav, edit rules, cap, retry | **Resolved 2026-10-02** (T1–T8, `EXPLICIT_APPROVAL` in-session) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in

@@ -7,6 +7,12 @@ import type { LookupPage } from "./lookups";
 export const RECORDS_URL = "/api/v1/workflows/overseas/agent/crm/students";
 
 export type Assignee = { id: string; code: string; full_name: string; status: string };
+
+// A task's assignee (AGN-016) carries no member id, so only the shown fields are required.
+export function assignedText(a: Pick<Assignee, "code" | "full_name" | "status"> | null): string {
+  return a ? `${a.code} · ${a.full_name}${a.status !== "active" ? " (deactivated)" : ""}` : "Unassigned";
+}
+
 export type AgentStudentItem = {
   id: string;
   has_login: boolean;
@@ -236,7 +242,7 @@ export function formatBudget(amount: string | null, currency: string | null): st
 }
 
 // The agency's students -- with or without a login -- searched on the server (the records list), for SearchableSelect pickers
-// (AGN-008 applications, AGN-009 documents), so a large agency is never truncated.
+// (AGN-008 applications, AGN-009 documents, AGN-016 tasks), so a large agency is never truncated.
 export async function searchAgentStudents(q: string, signal: AbortSignal): Promise<LookupPage> {
   const params = new URLSearchParams({ limit: "20" });
   if (q) params.set("q", q);

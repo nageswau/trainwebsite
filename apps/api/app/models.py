@@ -1085,6 +1085,30 @@ class AgentStudentShortlistEntry(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+class AgentTask(Base, TimestampMixin):
+    """AGN-016 / DEC-SCOPE-053 (EVID-015 §4 "Tasks & Follow-ups"): a follow-up on an agency student. There is no assignee: the task
+    belongs to its student, so scope is the student's (AGN-004 `student_scope`) and a reassigned student's tasks follow it (T1).
+    `done` and `cancelled` are final (T2, T6); `closed_at`/`closed_by_user_id` are stamped by the server."""
+
+    __tablename__ = "agent_tasks"
+    __table_args__ = (
+        CheckConstraint("status IN ('open', 'done', 'cancelled')", name="ck_agent_tasks_status"),
+        CheckConstraint("(status = 'open') = (closed_at IS NULL) AND (closed_at IS NULL) = (closed_by_user_id IS NULL)", name="ck_agent_tasks_closed"),
+        Index("ix_agent_tasks_student_status_due", "agent_student_id", "status", "due_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agent_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id", ondelete="RESTRICT"))
+    application_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id", ondelete="RESTRICT"), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(20), default="open", server_default="open")
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
 class InboundUniversityEmail(Base, TimestampMixin):
     __tablename__ = "inbound_university_emails"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
