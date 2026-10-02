@@ -52,8 +52,9 @@ async def _subjects(db: AsyncSession, rows: list[AuditLog]) -> dict[tuple[str, u
             names[("agent_student", rid)] = _joined(own or linked)
     if wanted["overseas_application"]:
         query = (
-            select(OverseasApplication.id, User.full_name, University.name)
+            select(OverseasApplication.id, func.coalesce(User.full_name, AgentStudent.full_name), University.name)
             .outerjoin(User, User.id == OverseasApplication.student_id)
+            .outerjoin(AgentStudent, AgentStudent.id == OverseasApplication.agent_student_id)
             .outerjoin(University, University.id == OverseasApplication.university_id)
             .where(OverseasApplication.id.in_(wanted["overseas_application"]))
         )

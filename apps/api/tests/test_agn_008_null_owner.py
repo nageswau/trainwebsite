@@ -4,6 +4,9 @@ stay out exactly where they were out before (spec §5.6, A6, A12)."""
 import pytest
 import pytest_asyncio
 
+from app.api import inbound
+from app.models import AgentCommission, AuditLog, VisaCase
+from app.services.staff_activity import _subjects
 from tests.agn001_helpers import client_for, mk_user
 from tests.agn004_helpers import mk_record
 from tests.agn008_helpers import agency_world, mk_application, mk_school_student
@@ -66,3 +69,73 @@ async def test_school_bridged_rows_stay_out_of_the_lists(world):
         async with client_for(world[who].email) as c:
             ids = {str(r["id"]) for r in (await c.get("/api/v1/workflows/overseas/applications")).json()}
         assert str(world["school_app"].id) not in ids
+
+
+PORTAL = "/api/v1/portal/overseas"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("who", "path"),
+    [
+        ("master", "/agent/dashboard"),
+        ("master", "/agent/students"),
+        ("master", "/agent/applications"),
+        ("master", "/agent/documents"),
+        ("rep", "/university/dashboard"),
+        ("rep", "/university/applications"),
+        ("rep", "/university/offer-letters"),
+        ("admin", "/admin/dashboard"),
+        ("admin", "/admin/applications"),
+        ("admin", "/admin/visa"),
+        ("admin", "/admin/reports"),
+        ("admin", "/admin/commissions"),
+    ],
+)
+async def test_agent_portal_pages_render_with_a_no_login_application(db_session, world, who, path):
+    db_session.add(VisaCase(application_id=world["no_login_app"].id, status="checklist"))
+    db_session.add(AgentCommission(agent_id=world["master"].id, application_id=world["no_login_app"].id, amount=0, status="estimated"))
+    await db_session.commit()
+    async with client_for(world[who].email) as c:
+        response = await c.get(PORTAL + path)
+    assert response.status_code == 200, f"{path}: {response.text}"
+
+
+@pytest.mark.asyncio
+async def test_rep_and_admin_portal_rows_name_the_no_login_owner(world):
+    for who, path in (("rep", "/university/applications"), ("admin", "/admin/applications")):
+        async with client_for(world[who].email) as c:
+            rows = (await c.get(PORTAL + path)).json()["rows"]
+        names = {r.get("student") for r in rows}
+        assert world["record"].full_name in names, path
+
+
+@pytest.mark.asyncio
+async def test_commission_lists_name_the_no_login_owner(db_session, world):
+    db_session.add(AgentCommission(agent_id=world["master"].id, application_id=world["no_login_app"].id, amount=0, status="estimated"))
+    await db_session.commit()
+    async with client_for(world["master"].email) as c:
+        rows = (await c.get("/api/v1/workflows/overseas/agent/commissions")).json()
+    assert world["record"].full_name in {r["student"] for r in rows}
+    async with client_for(world["admin"].email) as c:
+        rows = (await c.get(PORTAL + "/admin/commissions")).json()["rows"]
+    assert world["record"].full_name in {r["student"] for r in rows}
+
+
+@pytest.mark.asyncio
+async def test_lookup_labels_the_no_login_owner(world):
+    async with client_for(world["master"].email) as c:
+        items = (await c.get("/api/v1/lookups/overseas-applications", params={"q": world["record"].full_name[:20]})).json()["items"]
+    assert world["record"].full_name in {i["label"] for i in items}
+
+
+@pytest.mark.asyncio
+async def test_inbound_notify_skips_an_application_with_no_login(db_session, world):
+    await inbound._notify_student(db_session, type("Email", (), {"subject": "x"})(), world["no_login_app"])  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_staff_activity_subject_names_the_no_login_owner(db_session, world):
+    row = AuditLog(user_id=world["staff"]["user"].id, action="overseas.application.create", entity_type="overseas_application", entity_id=str(world["no_login_app"].id))
+    names = await _subjects(db_session, [row])
+    assert names[("overseas_application", world["no_login_app"].id)].startswith(world["record"].full_name)

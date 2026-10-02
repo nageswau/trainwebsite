@@ -52,6 +52,7 @@ from app.models import (
     User,
     VisaCase,
 )
+from app.services.agent_applications import owned, with_owner
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
@@ -681,22 +682,23 @@ async def _agent(db: AsyncSession, user: User, section: str):
     # AGN-001 (D1): everything referred by any member of the caller's organisation; AGN-004 (G4): a staff member only their
     # assigned students; archived links leave the student list and KPI (D5) while their applications stay.
     students = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(*student_scope(user), AgentStudent.status == "active"))).all()
-    applications = (
-        await db.execute(
-            select(OverseasApplication, University, User)
-            .join(University, University.id == OverseasApplication.university_id)
-            .join(User, User.id == OverseasApplication.student_id)
-            .where(*application_scope(user))
-            .order_by(OverseasApplication.updated_at.desc())
-        )
-    ).all()
+    applications = owned(
+        (
+            await db.execute(
+                with_owner(select(OverseasApplication, University).join(University, University.id == OverseasApplication.university_id))
+                .where(*application_scope(user))
+                .order_by(OverseasApplication.updated_at.desc())
+            )
+        ).all()
+    )
     # AGT-002: the roster below needs each referred student's application status
     # alongside the referral link itself -- `applications` is already scoped to this
     # agent, so pick each student's most recent application (already ordered above)
     # rather than issuing a second query.
     latest_application_by_student = {}
     for a, u, s in applications:
-        latest_application_by_student.setdefault(s.id, (a, u))
+        if s.id is not None:  # an agency student with no login is not on the roster map (AGN-008)
+            latest_application_by_student.setdefault(s.id, (a, u))
     # AGN-002 (DEC-SCOPE-040 S1): commissions are Master-only; a staff member's pages never read or show them.
     staff = is_agent_staff(user)
     commissions = [] if staff else (await db.scalars(select(AgentCommission).where(AgentCommission.agent_id.in_(org_member_ids(user))))).all()
@@ -942,12 +944,12 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 ),
             )
     if user.role in {"counselor", "university_rep", "overseas_admin"}:
-        stmt = select(OverseasApplication, University, User).join(University, University.id == OverseasApplication.university_id).join(User, User.id == OverseasApplication.student_id)
+        stmt = with_owner(select(OverseasApplication, University).join(University, University.id == OverseasApplication.university_id))
         if user.role == "counselor":
             stmt = stmt.where(OverseasApplication.counselor_id == user.id)
         elif user.role == "university_rep":
             stmt = stmt.where(OverseasApplication.university_id == uuid_reference(user.profile.get("university_id"), "university reference", required=False))
-        applications = (await db.execute(stmt.order_by(OverseasApplication.updated_at.desc()).limit(500))).all()
+        applications = owned((await db.execute(stmt.order_by(OverseasApplication.updated_at.desc()).limit(500))).all())
         app_ids = [a.id for a, _, _ in applications]
         if section == "dashboard":
             return _payload(
@@ -1006,14 +1008,15 @@ async def _operations(db: AsyncSession, user: User, section: str):
             )
         if section == "visa":
             visas = (
-                (
-                    await db.execute(
-                        select(VisaCase, OverseasApplication, User)
-                        .join(OverseasApplication, OverseasApplication.id == VisaCase.application_id)
-                        .join(User, User.id == OverseasApplication.student_id)
-                        .where(VisaCase.application_id.in_(app_ids))
-                    )
-                ).all()
+                owned(
+                    (
+                        await db.execute(
+                            with_owner(select(VisaCase, OverseasApplication).join(OverseasApplication, OverseasApplication.id == VisaCase.application_id)).where(
+                                VisaCase.application_id.in_(app_ids)
+                            )
+                        )
+                    ).all()
+                )
                 if app_ids
                 else []
             )
@@ -1024,7 +1027,7 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 ({"id": v.id, "student": s.full_name, "status": v.status, "appointment": v.appointment_date, "reference": v.tracking_reference} for v, _, s in visas),
             )
         if section == "appointments":
-            student_ids = [a.student_id for a, _, _ in applications]
+            student_ids = [a.student_id for a, _, _ in applications if a.student_id]
             rows = (await db.scalars(select(Appointment).where(Appointment.student_id.in_(student_ids)).order_by(Appointment.scheduled_at.desc()))).all() if student_ids else []
             return _payload(
                 "Appointments",
@@ -1137,15 +1140,15 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 if a.status in funnel:
                     funnel[a.status] += 1
             visa_rows = (
-                (
-                    await db.execute(
-                        select(VisaCase, OverseasApplication, User)
-                        .join(OverseasApplication, OverseasApplication.id == VisaCase.application_id)
-                        .join(User, User.id == OverseasApplication.student_id)
-                        .where(VisaCase.application_id.in_(app_ids))
-                        .order_by(VisaCase.updated_at.asc())
-                    )
-                ).all()
+                owned(
+                    (
+                        await db.execute(
+                            with_owner(select(VisaCase, OverseasApplication).join(OverseasApplication, OverseasApplication.id == VisaCase.application_id))
+                            .where(VisaCase.application_id.in_(app_ids))
+                            .order_by(VisaCase.updated_at.asc())
+                        )
+                    ).all()
+                )
                 if app_ids
                 else []
             )
@@ -1415,15 +1418,17 @@ async def _operations(db: AsyncSession, user: User, section: str):
             # AGT-003-AC02: Overseas Admin needs to see every commission in the division
             # (including system-triggered "estimated" rows with no amount yet) to set/
             # adjust the amount -- no such view existed anywhere before this feature.
-            rows = (
-                await db.execute(
-                    select(AgentCommission, University, User)
-                    .join(OverseasApplication, OverseasApplication.id == AgentCommission.application_id)
-                    .join(University, University.id == OverseasApplication.university_id)
-                    .join(User, User.id == OverseasApplication.student_id)
-                    .order_by(AgentCommission.created_at.desc())
-                )
-            ).all()
+            rows = owned(
+                (
+                    await db.execute(
+                        with_owner(
+                            select(AgentCommission, University)
+                            .join(OverseasApplication, OverseasApplication.id == AgentCommission.application_id)
+                            .join(University, University.id == OverseasApplication.university_id)
+                        ).order_by(AgentCommission.created_at.desc())
+                    )
+                ).all()
+            )
             agent_ids = {c.agent_id for c, _, _ in rows}
             agents = {a.id: a.full_name for a in (await db.scalars(select(User).where(User.id.in_(agent_ids))))} if agent_ids else {}
             return _payload(
