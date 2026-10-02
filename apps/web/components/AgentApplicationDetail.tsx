@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import AgentApplicationDeposit from "./AgentApplicationDeposit";
 import AgentApplicationEditForm from "./AgentApplicationEditForm";
 import AgentApplicationEnrollment from "./AgentApplicationEnrollment";
 import AgentApplicationOffer from "./AgentApplicationOffer";
@@ -15,13 +16,15 @@ type Props = { id: string; isMaster?: boolean; onChanged: (d: Detail) => void; o
 // reloads, so the screen always ends on the real state (stale, withdrawn, archived); the reload also updates the list card (QA8-03).
 // A 422 from Save keeps the edit form open with the user's input (QA8-01). AGN-013: the Enrollment section (Masters act, Staff read).
 // AGN-010: the offer block sits between the fields and the enrollment/status forms, and its form follows the edit form's rules (a 422
-// keeps the input; 409 reloads). One form of the detail is open at a time.
+// keeps the input; 409 reloads). One form of the detail is open at a time. AGN-011: the deposit block follows the offer, under the same
+// rules; paying reloads the detail so the paid state (set by the server) shows.
 export default function AgentApplicationDetail({ id, isMaster = false, onChanged, onClose }: Props) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "gone" | "error">("loading");
   const [editing, setEditing] = useState(false);
   const [enrolling, setEnrolling] = useState(false); // AGN-013 QA13-06: the enrollment form is open, so no competing status action
   const [offering, setOffering] = useState(false); // AGN-010: the offer form is open
+  const [depositing, setDepositing] = useState(false); // AGN-011: the deposit form is open
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const focusAfter = useFocusAfterRender();
   const firstLoad = useRef(true); // the heading takes focus on the first successful load only
@@ -59,8 +62,12 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
     setEditing(false);
     setEnrolling(false);
     setOffering(false);
+    setDepositing(false);
     setNotice({ text: message, failed: false });
     onChanged(next);
+  }
+  function reload() {
+    load().then((reloaded) => reloaded && onChanged(reloaded));
   }
   function failed(message: string, status?: number) {
     setNotice({ text: message, failed: true });
@@ -69,7 +76,8 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
       setEditing(false); // the reload shows the real state; stale input must not stay on screen
       setEnrolling(false);
       setOffering(false);
-      load().then((reloaded) => reloaded && onChanged(reloaded));
+      setDepositing(false);
+      reload();
     }
   }
   function enrollmentSaved(next: Detail, message: string) {
@@ -138,7 +146,7 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
             <dt>Next action</dt>
             <dd>{detail.next_action ?? "—"}</dd>
           </dl>
-          {!detail.read_only_reason && !offering && (
+          {!detail.read_only_reason && !offering && !depositing && (
             <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(true)}>
               Edit
             </button>
@@ -148,13 +156,23 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
       <AgentApplicationOffer
         detail={detail}
         open={offering}
-        canOpen={!detail.read_only_reason && !editing && !enrolling}
+        canOpen={!detail.read_only_reason && !editing && !enrolling && !depositing}
         onOpen={() => setOffering(true)}
         onCancel={() => setOffering(false)}
         onSaved={saved}
         onFailed={editFailed}
       />
-      {!editing && !offering && (
+      <AgentApplicationDeposit
+        detail={detail}
+        open={depositing}
+        canOpen={!detail.read_only_reason && !editing && !enrolling && !offering}
+        onOpen={() => setDepositing(true)}
+        onCancel={() => setDepositing(false)}
+        onSaved={saved}
+        onFailed={editFailed}
+        onReload={reload}
+      />
+      {!editing && !offering && !depositing && (
         // A status change starts both action forms afresh.
         <Fragment key={detail.status}>
           <AgentApplicationEnrollment detail={detail} isMaster={isMaster} onSaved={enrollmentSaved} onFailed={editFailed} onOpenChange={setEnrolling} />

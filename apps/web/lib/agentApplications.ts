@@ -98,7 +98,42 @@ export type AgentApplicationDetail = AgentApplicationItem & {
   history: HistoryEntry[];
   offer: AgentOffer | null;
   offer_letters: OfferLetterOption[];
+  // AGN-011: optional so a detail from before the deposit existed (or a test fixture) still renders.
+  deposit?: AgentDeposit | null;
+  payment_available?: boolean;
 };
+
+// AGN-011 (DEC-SCOPE-057): the university deposit, paid through EduSphere Razorpay by a Master or Staff member. INR only (D1); amounts
+// arrive as 2-decimal strings. Only the server moves it to paid (webhook/verify) and only an Overseas Admin to remitted/refunded.
+export type DepositStatus = "not_required" | "pending" | "paid" | "remitted" | "refunded";
+export const DEPOSIT_STATUS_LABELS: Record<DepositStatus, string> = {
+  not_required: "Not required",
+  pending: "Awaiting payment",
+  paid: "Paid",
+  remitted: "Remitted to the university",
+  refunded: "Refunded",
+};
+export type AgentDeposit = {
+  id: string;
+  required: boolean;
+  amount: string | null;
+  currency: string;
+  due_date: string | null;
+  status: DepositStatus;
+  paid_at: string | null;
+  paid_by: string | null;
+  receipt_available: boolean;
+  remitted_at: string | null;
+  remittance_reference: string | null;
+  refunded_at: string | null;
+  refund_amount: string | null;
+  refund_reason: string | null;
+  checkout_in_progress: boolean;
+};
+export const depositUrl = (id: string) => `${APPLICATIONS_URL}/${id}/deposit`;
+export const PAYMENT_UNAVAILABLE = "Online payment is unavailable right now. Nothing has been charged.";
+const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" });
+export const formatInr = (amount: string) => INR.format(Number(amount));
 
 // AGN-010 (DEC-SCOPE-056): one current offer per application; its deadline is the application's `offer_deadline` (O2) and its letter
 // an AGN-009 document of type "Offer letter" attached to this application (O3). The server checks every rule again.
