@@ -153,6 +153,10 @@ def test_round_trip_keeps_users_identical_and_drops_the_sequence(isolated_db):
 
 def test_constraints_hold_and_downgrade_refuses_while_organizations_exist(isolated_db):
     cfg, url, user = isolated_db["cfg"], isolated_db["url"], isolated_db["user"]
+    # 0001 builds a fresh database from the current models, so the tables already exist at BASE; drop them and let 0064's own DDL
+    # create them, so the constraints below are the migration's, not create_all's.
+    command.upgrade(cfg, HEAD)
+    command.downgrade(cfg, BASE)
     command.upgrade(cfg, HEAD)
     insert = (
         "INSERT INTO bdm_organizations (id, code, org_type, bdm_type, name, name_key, city, city_key, assigned_bdm_user_id, created_by_user_id) "

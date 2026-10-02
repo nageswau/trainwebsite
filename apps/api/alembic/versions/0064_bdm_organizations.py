@@ -26,8 +26,8 @@ ORG_TYPES = "'college', 'university', 'agent', 'school', 'corporate', 'training_
 ROLES = "'principal', 'dean', 'hod', 'placement_officer', 'counselor', 'management', 'owner', 'other'"
 
 
-def _uuid(name: str, *args, nullable: bool = False) -> sa.Column:
-    return sa.Column(name, postgresql.UUID(as_uuid=True), *args, nullable=nullable)
+def _uuid(name: str, *args, **kwargs) -> sa.Column:
+    return sa.Column(name, postgresql.UUID(as_uuid=True), *args, nullable=False, **kwargs)
 
 
 def _timestamps() -> list[sa.Column]:
