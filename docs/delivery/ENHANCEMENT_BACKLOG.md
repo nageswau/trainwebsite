@@ -3769,8 +3769,9 @@ detail allowlist (additive only), the migration chain (`0058` may collide with p
 **Complexity:** Medium. **Risk:** High (financial trigger).
 
 **Status (2026-10-02): IMPLEMENTED, not complete** on `feature/agn-013-enrollment-confirmation` (evidence in `docs/quality/RTM.md`,
-AGN-013 row): lite backend set 200 passed; web lite set 52 passed; `tsc` and eslint clean. Pending: browser validation (including the
-Playwright spec `agn-013-enrollment.spec.ts`, written but not run), the independent Codex review, and the owner's full suites.
+AGN-013 row): lite backend set 200 passed; web lite set 52 passed; `tsc` and eslint clean. Browser QA first pass done
+(`docs/quality/AGN-013_BROWSER_QA_2026-10-02.md`; Playwright `agn-013` 2/2); QA13-01 (UX repetition) open for the owner. Pending:
+the independent Codex review and the owner's full suites.
 
 ## 2. Dependency graph
 

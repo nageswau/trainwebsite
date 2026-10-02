@@ -44,8 +44,10 @@ test("a Master confirms enrollment once; a correction adds no second commission 
   await form.getByRole("button", { name: "Confirm enrollment" }).click();
   await detail.getByRole("group", { name: "Confirm enrollment" }).getByRole("button", { name: "Yes, confirm enrollment" }).click();
   await expect(detail.getByRole("status")).toHaveText("Enrollment confirmed.");
-  await expect(detail.locator(".badge", { hasText: "Enrolled" })).toBeVisible();
-  await expect(detail.getByText("The enrollment date is in the future and after the intake month. Check the date.")).toBeVisible();
+  const enrollment = detail.getByRole("region", { name: "Enrollment" });
+  await expect(enrollment.locator(".badge", { hasText: "Enrolled" })).toBeVisible();
+  await expect(enrollment.getByText("UOM-123")).toBeVisible();
+  await expect(enrollment.getByText("The enrollment date is in the future and after the intake month. Check the date.")).toBeVisible();
 
   const commissionsFor = async () =>
     (await (await page.request.get("/api/v1/workflows/overseas/agent/commissions")).json()).filter((c: { student: string }) => c.student === name);
