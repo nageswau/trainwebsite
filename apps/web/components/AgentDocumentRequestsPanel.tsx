@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { detailMessage, isPage, Page } from "@/lib/apiErrors";
-import { documentName, DocumentRequestItem, formatDateTime, REQUESTS_URL, VIEW_LABELS } from "@/lib/agentDocuments";
+import { documentName, DocumentRequestItem, REQUESTS_URL, VIEW_LABELS } from "@/lib/agentDocuments";
+import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 const PAGE_SIZE = 20;
@@ -90,7 +91,7 @@ export default function AgentDocumentRequestsPanel({ reloadKey }: { reloadKey: n
                 <strong>{r.student}</strong> — {documentName(r)} <span className="status pending">Open</span>
                 {r.note && <div>{r.note}</div>}
                 <div className="muted">
-                  Requested{r.requested_by ? ` by ${r.requested_by}` : ""} · {formatDateTime(r.created_at)}
+                  Requested{r.requested_by ? ` by ${r.requested_by}` : ""} · {formatDateTimeIn(r.created_at, viewerTimeZone())}
                 </div>
                 <div className="actions" style={{ marginTop: 8 }}>
                   <button type="button" className="btn secondary small" aria-label={`Cancel request for ${label}`} disabled={cancelling === r.id} onClick={() => cancel(r, label)}>

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { detailMessage, isPage } from "@/lib/apiErrors";
-import { DOCUMENTS_URL, eventLabel, formatDateTime, HistoryEvent, statusLabel } from "@/lib/agentDocuments";
+import { DOCUMENTS_URL, eventLabel, HistoryEvent, statusLabel } from "@/lib/agentDocuments";
+import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 
 // AGN-009 (AC5): a document's history, oldest first, inline under its card (no dialog to trap focus in). Loaded when opened.
 export default function AgentDocumentHistory({ id, name }: { id: string; name: string }) {
@@ -44,7 +45,7 @@ export default function AgentDocumentHistory({ id, name }: { id: string; name: s
           {e.to_status && e.event !== "uploaded" && e.event !== e.to_status && <span className="muted"> → {statusLabel(e.to_status)}</span>}
           <span className="muted">
             {" "}
-            · {e.actor ?? "Unknown user"} · {formatDateTime(e.created_at)}
+            · {e.actor ?? "Unknown user"} · {formatDateTimeIn(e.created_at, viewerTimeZone())}
           </span>
           {e.notes && <div>{e.notes}</div>}
         </li>

@@ -4,7 +4,8 @@ import { FormEvent, useState } from "react";
 import AgentDocumentHistory from "./AgentDocumentHistory";
 import AgentDocumentReviewForm from "./AgentDocumentReviewForm";
 import { detailMessage, sendRequest } from "@/lib/apiErrors";
-import { AgentDocumentItem, documentName, DOCUMENTS_URL, downloadUrl, FILE_ACCEPT, formatDateTime, formatSize, reviewDecisions, statusLabel } from "@/lib/agentDocuments";
+import { AgentDocumentItem, documentName, DOCUMENTS_URL, downloadUrl, FILE_ACCEPT, formatSize, reviewDecisions, statusLabel } from "@/lib/agentDocuments";
+import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import type { User } from "@/lib/types";
 
 type Panel = "review" | "replace" | "history" | null;
@@ -62,7 +63,7 @@ export default function AgentDocumentCard({ doc, user, onChanged }: { doc: Agent
     }
   }
 
-  const details = [doc.university && `Application: ${doc.university}`, doc.uploaded_by && `Uploaded by ${doc.uploaded_by}`, formatDateTime(doc.created_at), formatSize(doc.file_size)].filter(Boolean).join(" · ");
+  const details = [doc.university && `Application: ${doc.university}`, doc.uploaded_by && `Uploaded by ${doc.uploaded_by}`, formatDateTimeIn(doc.created_at, viewerTimeZone()), formatSize(doc.file_size)].filter(Boolean).join(" · ");
   return (
     <li className="card" style={{ padding: 16 }}>
       <strong>{doc.student}</strong>

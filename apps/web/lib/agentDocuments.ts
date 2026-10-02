@@ -92,11 +92,6 @@ export function eventLabel(event: string): string {
   return EVENT_LABELS[event] ?? statusLabel(event);
 }
 
-export function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
-
 export function formatSize(bytes: number | null): string | null {
   if (bytes == null) return null;
   return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;

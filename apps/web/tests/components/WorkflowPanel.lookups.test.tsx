@@ -72,28 +72,16 @@ describe("WorkflowPanel reference fields (ENH-031)", () => {
     expect(mock.mock.calls.some(([url]) => String(url) === "/api/v1/lookups/overseas-students?limit=20&q=ash&purpose=link")).toBe(true);
   });
 
-  it("document upload narrows the application lookup to the chosen student", async () => {
-    const mock = stub({
-      "overseas-students": { items: [{ id: "s1", label: "Asha Rao", detail: "asha@example.local" }], truncated: false },
-      "overseas-applications": { items: [], truncated: false },
-    });
-    render(<WorkflowPanel user={user("agent")} section="documents" />);
-    const student = await screen.findByRole("combobox", { name: "Student reference" });
-    fireEvent.focus(student);
-    fireEvent.click(await screen.findByRole("option", { name: "Asha Rao — asha@example.local" }));
-    fireEvent.focus(screen.getByRole("combobox", { name: "Application reference (optional)" }));
-    await waitFor(() => expect(mock.mock.calls.some(([url]) => String(url) === "/api/v1/lookups/overseas-applications?limit=20&student_id=s1")).toBe(true));
-  });
-
-  it("document upload keeps the application picker disabled until a student is picked (final review)", async () => {
-    stub({ "overseas-students": { items: [{ id: "s1", label: "Asha Rao", detail: "asha@example.local" }], truncated: false }, "overseas-applications": { items: [], truncated: false } });
-    render(<WorkflowPanel user={user("agent")} section="documents" />);
-    const student = await screen.findByRole("combobox", { name: "Student reference" });
-    const application = () => screen.getByRole("combobox", { name: "Application reference (optional)" });
-    expect(application()).toBeDisabled();
-    fireEvent.focus(student);
-    fireEvent.click(await screen.findByRole("option", { name: "Asha Rao — asha@example.local" }));
-    expect(application()).toBeEnabled();
+  // AGN-009 (DEC-SCOPE-051): agents upload on AgentDocumentsSection (its own searchable student picker), so this form is the student's
+  // only: no student picker, and the application lookup is scoped to the signed-in student by the server.
+  it("a student's document upload searches their own applications, with no student picker", async () => {
+    const mock = stub({ "overseas-applications": { items: [], truncated: false } });
+    render(<WorkflowPanel user={user("overseas_student")} section="documents" />);
+    const application = await screen.findByRole("combobox", { name: "Application reference (optional)" });
+    expect(screen.queryByRole("combobox", { name: "Student reference" })).toBeNull();
+    expect(application).toBeEnabled();
+    fireEvent.focus(application);
+    await waitFor(() => expect(mock.mock.calls.some(([url]) => String(url) === "/api/v1/lookups/overseas-applications?limit=20")).toBe(true));
   });
 
   it("no student or application reference is a plain text box any more", async () => {
