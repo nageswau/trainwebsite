@@ -1,4 +1,4 @@
-import type { Page } from "@/lib/apiErrors";
+import { detailMessage, type Page } from "@/lib/apiErrors";
 
 // AGN-007 (DEC-SCOPE-049): an agency's own universities and a student's university shortlist. The server is the authority; the
 // checks here only spare a round trip (spec §6.3).
@@ -38,6 +38,15 @@ export function parseUniversityKey(key: string): { source: "catalogue" | "agency
 }
 
 const clean = (value: string) => (value.trim() === "" ? null : value.trim());
+
+// Browser QA-05: "Name — place", or just the name when there is no place (no dangling dash).
+export const optionLabel = (name: string, place: string | null | undefined) => (place?.trim() ? `${name} — ${place}` : name);
+
+// Browser QA-08: a server error (5xx) carries no useful detail, so it says to retry (the agency staff screens' wording, AGN-002/003).
+export const SERVER_FAILED = "The server couldn't complete this. Please try again in a moment.";
+export function failureText(status: number, detail: unknown, fallback: string): string {
+  return status >= 500 ? SERVER_FAILED : detailMessage(detail, fallback);
+}
 
 export const emptyEntryDraft = (): EntryDraft => ({ university: "", courseId: "", courseTitle: "", intake: "", tuitionFee: "", entryRequirements: "" });
 

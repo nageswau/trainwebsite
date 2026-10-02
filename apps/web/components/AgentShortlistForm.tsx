@@ -2,10 +2,11 @@
 
 import { type FormEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 
-import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
+import AgentShortlistUniversityPicker from "./AgentShortlistUniversityPicker";
+import { NOT_COMPLETED } from "@/lib/apiErrors";
 import {
   type AgentUniversity, buildEntryPayload, CATALOGUE_URL, type CatalogueCourse, changedOnly, COUNTRIES_URL, draftFromEntry, emptyEntryDraft,
-  type EntryDraft, LIMITS, parseUniversityKey, type ShortlistEntry, shortlistUrl, UNIVERSITIES_URL, validateEntryDraft,
+  type EntryDraft, failureText, LIMITS, parseUniversityKey, type ShortlistEntry, shortlistUrl, UNIVERSITIES_URL, validateEntryDraft,
 } from "@/lib/agentShortlist";
 import type { Country, University } from "@/lib/types";
 
@@ -60,6 +61,7 @@ export default function AgentShortlistForm(props: { studentId: string; mode: "ad
   const [courses, setCourses] = useState<CatalogueCourse[] | null>(null);
   const [typedCourse, setTypedCourse] = useState(Boolean(entry?.course && !entry.course.id));
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false); // browser QA-01: Save is aria-disabled (a disabled button drops keyboard focus), so guard here
   const [failure, setFailure] = useState<string | null>(null);
   const touched = useRef(new Set<Field>(entry ? ["intake", "tuitionFee", "entryRequirements"] : []));
   const prefilled = useRef(new Set<Field>());
@@ -115,11 +117,13 @@ export default function AgentShortlistForm(props: { studentId: string; mode: "ad
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (inFlight.current) return;
     const problem = validateEntryDraft(draft);
     if (problem) return setFailure(problem);
     const payload = buildEntryPayload(draft);
     const body = entry ? changedOnly(payload, buildEntryPayload(draftFromEntry(entry))) : payload;
     if (entry && Object.keys(body).length === 0) return onCancel(); // nothing changed: no request
+    inFlight.current = true;
     setBusy(true);
     setFailure(null);
     try {
@@ -132,10 +136,11 @@ export default function AgentShortlistForm(props: { studentId: string; mode: "ad
       if (response.ok && data?.entry) return onSaved(data.entry);
       if (response.status === 404) return data?.detail === ENTRY_NOT_FOUND ? onEntryGone() : onGone(); // only the entry is gone: the student stays
       if (response.status === 409) return onConflict();
-      setFailure(detailMessage(data?.detail, "Unable to save the shortlist entry."));
+      setFailure(failureText(response.status, data?.detail, "Unable to save the shortlist entry."));
     } catch {
       setFailure(NOT_COMPLETED);
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
@@ -160,23 +165,16 @@ export default function AgentShortlistForm(props: { studentId: string; mode: "ad
 
   return (
     <form className="form card" onSubmit={submit} onKeyDown={onKeyDown} aria-busy={busy} noValidate aria-label={mode === "add" ? "Add to shortlist" : "Edit shortlist entry"}>
-      <h6 id={`${idPrefix}-title`} tabIndex={-1}>{mode === "add" ? "Add a university" : `Edit ${entry?.university.name}`}</h6>
-      <div className="field">
-        <label htmlFor={`${idPrefix}-uni`}>University (required)</label>
-        <select id={`${idPrefix}-uni`} value={draft.university} disabled={!options} aria-required="true" onChange={(e) => chooseUniversity(e.target.value)}>
-          <option value="">{options ? "— Choose a university —" : "Loading universities…"}</option>
-          {options && (
-            <optgroup label="Catalogue">
-              {options.catalogue.map((u) => <option key={u.id} value={`c:${u.id}`}>{`${u.name} — ${u.city}`}</option>)}
-            </optgroup>
-          )}
-          {options && options.agency.length > 0 && (
-            <optgroup label="Your agency">
-              {options.agency.map((u) => <option key={u.id} value={`a:${u.id}`}>{`${u.name} — ${u.country}`}</option>)}
-            </optgroup>
-          )}
-        </select>
-      </div>
+      {/* Browser QA-07: the h6 level stays (inside the h5 section); the size is not smaller than body text. */}
+      <h6 id={`${idPrefix}-title`} tabIndex={-1} style={{ fontSize: "16px", margin: "0 0 8px" }}>{mode === "add" ? "Add a university" : `Edit ${entry?.university.name}`}</h6>
+      <AgentShortlistUniversityPicker
+        idPrefix={idPrefix}
+        catalogue={options?.catalogue ?? null}
+        countries={options?.countries ?? null}
+        agency={options?.agency ?? null}
+        value={draft.university}
+        onChoose={chooseUniversity}
+      />
       {optionsFailed && (
         <p className="form-error" role="alert">
           Unable to load universities.{" "}
@@ -204,7 +202,7 @@ export default function AgentShortlistForm(props: { studentId: string; mode: "ad
       {field("tuitionFee", "Tuition fee", LIMITS.tuition_fee)}
       {field("entryRequirements", "Entry requirements", LIMITS.entry_requirements, true)}
       {failure && <p className="form-error" role="alert">{failure}</p>}
-      <button type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : "Save to shortlist"}</button>{" "}
+      <button type="submit" className="btn small" aria-disabled={busy}>{busy ? "Saving…" : "Save to shortlist"}</button>{" "}
       <button type="button" className="btn secondary small" onClick={onCancel} disabled={busy}>Cancel</button>
     </form>
   );

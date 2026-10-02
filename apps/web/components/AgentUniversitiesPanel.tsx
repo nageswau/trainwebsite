@@ -3,21 +3,17 @@
 import Link from "next/link";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
+import AgentUniversityCard, { deleteId, editId } from "./AgentUniversityCard";
 import AgentUniversityForm from "./AgentUniversityForm";
-import { detailMessage, isPage, type Page } from "@/lib/apiErrors";
-import { type AgentUniversity, PAGE_SIZE, UNIVERSITIES_URL } from "@/lib/agentShortlist";
+import { isPage, type Page } from "@/lib/apiErrors";
+import { type AgentUniversity, failureText, PAGE_SIZE, UNIVERSITIES_URL } from "@/lib/agentShortlist";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // AGN-007 (DEC-SCOPE-049): the agency's own universities. §6 "University Database": Masters full, Staff view; "Add University" is
 // Master only. The server enforces both; the controls here only follow it. Paging and the inline confirm follow AgentStudentsPanel.
 const ADD_ID = "agent-uni-add";
-// Focus moves after the control has been re-rendered; fall back to the Add button when the target is gone.
-const focusLater = (...ids: string[]) =>
-  requestAnimationFrame(() => {
-    for (const id of ids) {
-      const el = document.getElementById(id);
-      if (el) return el.focus();
-    }
-  });
+// Browser QA-04: the global stylesheet makes links look like plain text; this one must read as a link.
+const LINK_STYLE = { color: "var(--blue)", textDecoration: "underline" } as const;
 type Editing = { mode: "add" } | { mode: "edit"; university: AgentUniversity } | null;
 
 export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "master" | "staff" | null | undefined }) {
@@ -34,6 +30,8 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
   const [rowError, setRowError] = useState<{ id: string; text: string } | null>(null);
   const [notice, setNotice] = useState("");
   const request = useRef<AbortController | null>(null);
+  // Focus falls back to the Add button when the target is gone (Staff have no Add button: nothing is focused).
+  const focusLater = useFocusAfterRender();
 
   const load = useCallback(() => {
     request.current?.abort();
@@ -47,7 +45,7 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
       .then(async (response) => {
         const body = await response.json().catch(() => null);
         if (controller.signal.aborted) return;
-        if (!response.ok || !isPage<AgentUniversity>(body)) return setLoadError(detailMessage(body?.detail, "Unable to load universities."));
+        if (!response.ok || !isPage<AgentUniversity>(body)) return setLoadError(failureText(response.status, body?.detail, "Unable to load universities."));
         if (body.items.length === 0 && body.offset > 0) return setOffset(Math.max(0, body.offset - PAGE_SIZE));
         setData(body);
       })
@@ -68,15 +66,22 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
     setOffset(0);
   }
 
+  function clearSearch() {
+    setDraftQuery("");
+    setQuery("");
+    setOffset(0);
+    focusLater("agent-universities-q");
+  }
+
   function closeForm() {
-    const opener = editing?.mode === "edit" ? `agent-uni-edit-${editing.university.id}` : ADD_ID;
+    const opener = editing?.mode === "edit" ? editId(editing.university.id) : ADD_ID;
     setEditing(null);
     focusLater(opener, ADD_ID);
   }
 
   function closeConfirm(id: string) {
     setConfirmId(null);
-    focusLater(`agent-uni-del-${id}`, ADD_ID);
+    focusLater(deleteId(id), ADD_ID);
   }
 
   function openForm(next: Editing) {
@@ -97,7 +102,7 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
         return load();
       }
       const body = await response.json().catch(() => null);
-      setRowError({ id: u.id, text: detailMessage(body?.detail, "Unable to delete the university.") });
+      setRowError({ id: u.id, text: failureText(response.status, body?.detail, "Unable to delete the university.") });
     } catch {
       setRowError({ id: u.id, text: "Network error. Check your connection and try again." });
     } finally {
@@ -111,7 +116,9 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
       <h2>Universities</h2>
       <p className="muted">
         Your agency&apos;s own universities. Masters add and edit them; everyone in your agency can use them on a student&apos;s shortlist.{" "}
-        <Link href="/overseas/universities">Browse the university catalogue</Link>
+        <Link href="/overseas/universities" style={LINK_STYLE}>
+          Browse the university catalogue
+        </Link>
       </p>
       <form role="search" onSubmit={search} className="field">
         <label htmlFor="agent-universities-q">Search universities</label>
@@ -149,55 +156,33 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
         ) : data === null ? (
           <p className="muted">Loading universities…</p>
         ) : data.items.length === 0 ? (
-          <p className="muted">Your agency hasn&apos;t added any universities yet.</p>
+          query ? (
+            // Browser QA-03: a filtered empty list is "no match", not "nothing added".
+            <p className="muted">
+              No universities match “{query}”.{" "}
+              <button type="button" className="btn secondary small" onClick={clearSearch}>
+                Clear search
+              </button>
+            </p>
+          ) : (
+            <p className="muted">Your agency hasn&apos;t added any universities yet.</p>
+          )
         ) : (
           <>
             <ul aria-label="Agency universities" className="grid two" style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {data.items.map((u) => (
-                <li key={u.id} className="card">
-                  <h3>{u.name}</h3>
-                  <p className="muted">{[u.country, u.city].filter(Boolean).join(" · ")}</p>
-                  {u.entry_requirements && (
-                    <details>
-                      <summary>Entry requirements</summary>
-                      <p style={{ whiteSpace: "pre-line" }}>{u.entry_requirements}</p>
-                    </details>
-                  )}
-                  {isMaster && !editing &&
-                    (confirmId === u.id ? (
-                      <span
-                        role="group"
-                        aria-label={`Confirm delete ${u.name}`}
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") {
-                            e.stopPropagation();
-                            closeConfirm(u.id);
-                          }
-                        }}
-                      >
-                        <button type="button" className="btn small" disabled={removing} onClick={() => void remove(u)}>
-                          Confirm delete
-                        </button>{" "}
-                        <button type="button" className="btn secondary small" autoFocus onClick={() => closeConfirm(u.id)}>
-                          Cancel
-                        </button>
-                      </span>
-                    ) : (
-                      <>
-                        <button type="button" id={`agent-uni-edit-${u.id}`} className="btn secondary small" aria-label={`Edit ${u.name}`} onClick={() => openForm({ mode: "edit", university: u })}>
-                          Edit
-                        </button>{" "}
-                        <button type="button" id={`agent-uni-del-${u.id}`} className="btn secondary small" aria-label={`Delete ${u.name}`} onClick={() => setConfirmId(u.id)}>
-                          Delete
-                        </button>
-                      </>
-                    ))}
-                  {rowError?.id === u.id && (
-                    <p className="form-error" role="alert">
-                      {rowError.text}
-                    </p>
-                  )}
-                </li>
+                <AgentUniversityCard
+                  key={u.id}
+                  u={u}
+                  actionable={isMaster && !editing}
+                  confirming={confirmId === u.id}
+                  removing={removing}
+                  error={rowError?.id === u.id ? rowError.text : null}
+                  onEdit={() => openForm({ mode: "edit", university: u })}
+                  onAskDelete={() => setConfirmId(u.id)}
+                  onCancelDelete={() => closeConfirm(u.id)}
+                  onDelete={() => void remove(u)}
+                />
               ))}
             </ul>
             <p className="muted">

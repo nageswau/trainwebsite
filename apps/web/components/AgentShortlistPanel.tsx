@@ -4,22 +4,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import ShortlistCard, { editId, removeId } from "./AgentShortlistCard";
 import AgentShortlistForm from "./AgentShortlistForm";
-import { detailMessage, isPage, type Page } from "@/lib/apiErrors";
-import { PAGE_SIZE, type ShortlistEntry, shortlistUrl } from "@/lib/agentShortlist";
+import { isPage, type Page } from "@/lib/apiErrors";
+import { failureText, PAGE_SIZE, type ShortlistEntry, shortlistUrl } from "@/lib/agentShortlist";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // AGN-007 (DEC-SCOPE-049 D2/D3/D5): a student's university shortlist inside the AGN-004 detail view. Masters and staff (in scope) add,
 // edit and remove; an archived student's shortlist is read-only. Paging and the inline confirm follow AgentStudentsPanel; the focus
 // handling follows AgentUniversitiesPanel (spec §6.4).
 type Editing = { mode: "add" } | { mode: "edit"; entry: ShortlistEntry } | null;
 const ADD_ID = "shortlist-add";
-// Focus moves after the control has been re-rendered; fall back to the next id when the target is gone.
-const focusLater = (...ids: string[]) =>
-  requestAnimationFrame(() => {
-    for (const id of ids) {
-      const el = document.getElementById(id);
-      if (el) return el.focus();
-    }
-  });
 
 export default function AgentShortlistPanel({ studentId, archived, onStudentGone, onStudentChanged }: { studentId: string; archived: boolean; onStudentGone: () => void; onStudentChanged: () => void }) {
   const [data, setData] = useState<Page<ShortlistEntry> | null>(null);
@@ -32,6 +25,7 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
   const [removing, setRemoving] = useState(false);
   const [notice, setNotice] = useState("");
   const request = useRef<AbortController | null>(null);
+  const focusLater = useFocusAfterRender(); // falls back to the next id when the target is gone
   // The parent's callbacks are re-created on each of its renders; refs keep them out of any dependency list (no refetch loop).
   const gone = useRef(onStudentGone);
   gone.current = onStudentGone;
@@ -49,7 +43,7 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
         const body = await response.json().catch(() => null);
         if (controller.signal.aborted) return;
         if (response.status === 404) return gone.current();
-        if (!response.ok || !isPage<ShortlistEntry>(body)) return setLoadError(detailMessage(body?.detail, "Unable to load the shortlist."));
+        if (!response.ok || !isPage<ShortlistEntry>(body)) return setLoadError(failureText(response.status, body?.detail, "Unable to load the shortlist."));
         if (body.items.length === 0 && body.offset > 0) return setOffset(Math.max(0, body.offset - PAGE_SIZE));
         setData(body);
       })
@@ -96,7 +90,7 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
         focusLater(ADD_ID);
         return load();
       }
-      setActionError(detailMessage(body?.detail, "Unable to remove the entry."));
+      setActionError(failureText(response.status, body?.detail, "Unable to remove the entry."));
     } catch {
       setActionError("Network error. Check your connection and try again.");
     } finally {
@@ -109,7 +103,10 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
   const formKey = editing?.mode === "edit" ? editing.entry.id : "add"; // a different target never inherits another row's draft
   return (
     <section aria-labelledby={`shortlist-${studentId}`} style={{ marginTop: 16 }}>
-      <h5 id={`shortlist-${studentId}`}>University shortlist</h5>
+      {/* Browser QA-07: the h5 level stays (under the detail's h4); the size reads as a section heading. */}
+      <h5 id={`shortlist-${studentId}`} style={{ fontSize: "18px", margin: "0 0 8px" }}>
+        University shortlist
+      </h5>
       {archived && <p className="muted">This student is archived; the shortlist is read-only.</p>}
       <p aria-live="polite">{notice}</p>
       {actionError && <p className="form-error" role="alert">{actionError}</p>}

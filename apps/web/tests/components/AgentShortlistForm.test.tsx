@@ -35,6 +35,81 @@ afterEach(() => {
 
 const props = { studentId: "s1", mode: "add" as const, onCancel: vi.fn(), onSaved: vi.fn(), onGone: vi.fn(), onEntryGone: vi.fn(), onConflict: vi.fn() };
 
+describe("AgentShortlistForm browser QA fixes (AGN-007)", () => {
+  const ready = async () => {
+    const select = await screen.findByLabelText("University (required)");
+    await waitFor(() => expect(select).not.toBeDisabled());
+    return select as HTMLSelectElement;
+  };
+
+  it("QA-05: a catalogue university without a city has no dangling dash", async () => {
+    const noCity = { ...uni2, id: "u3", slug: "uni-three", name: "Uni Three", city: "" };
+    catalogue.push(noCity);
+    try {
+      stubApi();
+      render(<AgentShortlistForm {...props} />);
+      const select = await ready();
+      expect(select.querySelector('option[value="c:u3"]')!.textContent).toBe("Uni Three");
+    } finally {
+      catalogue.pop();
+    }
+  });
+
+  it("QA-06: a filter box narrows both groups as you type and keeps the chosen university", async () => {
+    stubApi();
+    render(<AgentShortlistForm {...props} />);
+    const select = await ready();
+    fireEvent.change(select, { target: { value: "c:u1" } });
+    fireEvent.change(screen.getByLabelText("Filter universities"), { target: { value: "two" } });
+    const values = [...select.options].map((o) => o.value);
+    expect(values).toContain("c:u2");
+    expect(values).toContain("c:u1"); // the current choice never disappears
+    expect(values).not.toContain("a:a1");
+    fireEvent.change(screen.getByLabelText("Filter universities"), { target: { value: "malta" } });
+    expect([...select.options].map((o) => o.value)).toContain("a:a1");
+    expect(screen.getByText(/2 of 3 universities/)).toBeInTheDocument();
+  });
+
+  it("QA-01: Save stays focusable while saving (aria-disabled, never disabled) and a second submit is ignored", async () => {
+    let release: (r: Response) => void = () => {};
+    const fetchMock = stubApi(() => res({}));
+    fetchMock.mockImplementation(((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return new Promise<Response>((r) => (release = r));
+      if (url.endsWith("/public/universities")) return Promise.resolve(res(catalogue));
+      if (url.endsWith("/public/countries")) return Promise.resolve(res(countries));
+      if (url.includes("/crm/universities")) return Promise.resolve(res(agency));
+      return Promise.resolve(res({}, 404));
+    }) as typeof fetch);
+    render(<AgentShortlistForm {...props} />);
+    fireEvent.change(await ready(), { target: { value: "a:a1" } });
+    const save = screen.getByRole("button", { name: "Save to shortlist" });
+    save.focus();
+    fireEvent.click(save);
+    const saving = await screen.findByRole("button", { name: "Saving…" });
+    expect(saving).not.toBeDisabled();
+    expect(saving).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(saving);
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+    release(res({ detail: "Course does not belong to selected university" }, 422));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Course does not belong");
+    expect(screen.getByRole("button", { name: "Save to shortlist" })).toHaveFocus();
+  });
+
+  it("QA-08: a server error (5xx) on save is worded as a retry", async () => {
+    stubApi(() => res({ detail: "Internal Server Error" }, 500));
+    render(<AgentShortlistForm {...props} />);
+    fireEvent.change(await ready(), { target: { value: "a:a1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The server couldn't complete this. Please try again in a moment.");
+  });
+
+  it("QA-07: the form heading is readable (not smaller than body text)", async () => {
+    stubApi();
+    render(<AgentShortlistForm {...props} />);
+    expect(screen.getByRole("heading", { name: "Add a university" })).toHaveStyle({ fontSize: "16px" });
+  });
+});
+
 describe("AgentShortlistForm (AGN-007)", () => {
   it("offers catalogue and agency universities in two groups", async () => {
     stubApi();
@@ -185,7 +260,8 @@ describe("AgentShortlistForm (AGN-007)", () => {
     await waitFor(() => expect(select).not.toBeDisabled());
     fireEvent.change(select, { target: { value: "a:a1" } });
     fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
-    expect(await screen.findByRole("button", { name: "Saving…" })).toBeDisabled();
+    // Browser QA-01: aria-disabled (not disabled) while saving, so keyboard focus is not dropped.
+    expect(await screen.findByRole("button", { name: "Saving…" })).toHaveAttribute("aria-disabled", "true");
     fireEvent.keyDown(select, { key: "Escape" });
     expect(props.onCancel).not.toHaveBeenCalled();
     expect(outer).not.toHaveBeenCalled();

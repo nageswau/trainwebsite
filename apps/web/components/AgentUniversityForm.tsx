@@ -1,9 +1,9 @@
 "use client";
 
-import { type FormEvent, type KeyboardEvent, useEffect, useId, useState } from "react";
+import { type FormEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 
-import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
-import { type AgentUniversity, buildUniversityPayload, changedOnly, LIMITS, UNIVERSITIES_URL, type UniversityDraft, validateUniversityDraft } from "@/lib/agentShortlist";
+import { NOT_COMPLETED } from "@/lib/apiErrors";
+import { type AgentUniversity, buildUniversityPayload, changedOnly, failureText, LIMITS, UNIVERSITIES_URL, type UniversityDraft, validateUniversityDraft } from "@/lib/agentShortlist";
 
 // AGN-007 (DEC-SCOPE-049 D1): a Master adds or edits one of the agency's own universities. The server re-checks everything.
 const FIELDS: { key: keyof UniversityDraft; label: string; limit: number }[] = [
@@ -18,6 +18,7 @@ export default function AgentUniversityForm({ mode, university, onCancel, onSave
   const idPrefix = `uni-${useId().replace(/:/g, "")}`;
   const [draft, setDraft] = useState<UniversityDraft>(() => toDraft(university));
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false); // browser QA-01: Save is aria-disabled (a disabled button drops keyboard focus), so guard here
   const [failure, setFailure] = useState<string | null>(null);
   const title = mode === "add" ? "Add university" : `Edit ${university?.name}`;
 
@@ -27,10 +28,12 @@ export default function AgentUniversityForm({ mode, university, onCancel, onSave
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (inFlight.current) return;
     const problem = validateUniversityDraft(draft);
     if (problem) return setFailure(problem);
     const payload = buildUniversityPayload(draft);
     const body = mode === "add" ? payload : changedOnly(payload, buildUniversityPayload(toDraft(university)));
+    inFlight.current = true;
     setBusy(true);
     setFailure(null);
     try {
@@ -40,11 +43,12 @@ export default function AgentUniversityForm({ mode, university, onCancel, onSave
         body: JSON.stringify(body),
       });
       const data = await response.json().catch(() => null);
-      if (!response.ok || !data?.university) return setFailure(detailMessage(data?.detail, "Unable to save the university."));
+      if (!response.ok || !data?.university) return setFailure(failureText(response.status, data?.detail, "Unable to save the university."));
       onSaved(data.university);
     } catch {
       setFailure(NOT_COMPLETED);
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
@@ -76,7 +80,7 @@ export default function AgentUniversityForm({ mode, university, onCancel, onSave
           {failure}
         </p>
       )}
-      <button type="submit" className="btn small" disabled={busy}>
+      <button type="submit" className="btn small" aria-disabled={busy}>
         {busy ? "Saving…" : "Save university"}
       </button>{" "}
       <button type="button" className="btn secondary small" onClick={onCancel} disabled={busy}>

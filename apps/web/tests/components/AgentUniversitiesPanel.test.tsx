@@ -12,6 +12,83 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// Browser QA (2026-10-02): in a real browser the animation frame can fire before React commits a state change made after an await,
+// so focus asked for "on the next frame" can miss a control that is not rendered yet. These tests run frames immediately to model that.
+const frameBeforeCommit = () => vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => (cb(0), 0));
+
+describe("AgentUniversitiesPanel browser QA fixes (AGN-007)", () => {
+  it("QA-02: after a successful edit save focus returns to that university's Edit button", async () => {
+    frameBeforeCommit();
+    vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => Promise.resolve(init?.method === "PATCH" ? res({ university: uni({ city: "Cork" }) }) : res(page([uni()])))));
+    render(<AgentUniversitiesPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Trinity" }));
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Cork" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save university" }));
+    expect(await screen.findByText("Trinity saved.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Trinity" })).toHaveFocus());
+  });
+
+  it("QA-02: after an add is cancelled focus returns to Add university", async () => {
+    frameBeforeCommit();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([uni()])))));
+    render(<AgentUniversitiesPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Add university" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add university" })).toHaveFocus());
+  });
+
+  it("QA-01: Save stays focusable while saving (aria-disabled, never disabled) and a second submit is ignored", async () => {
+    let release: (r: Response) => void = () => {};
+    const fetchMock = vi.fn((url: string, init?: RequestInit) =>
+      init?.method === "POST" ? new Promise<Response>((r) => (release = r)) : Promise.resolve(res(page([]))),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentUniversitiesPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Add university" }));
+    fireEvent.change(screen.getByLabelText("Name (required)"), { target: { value: "UCD" } });
+    fireEvent.change(screen.getByLabelText("Country (required)"), { target: { value: "Ireland" } });
+    const save = screen.getByRole("button", { name: "Save university" });
+    save.focus();
+    fireEvent.click(save);
+    const saving = await screen.findByRole("button", { name: "Saving…" });
+    expect(saving).not.toBeDisabled();
+    expect(saving).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(saving);
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+    release(res({ detail: "This university is already in your agency's list" }, 409));
+    expect(await screen.findByRole("alert")).toHaveTextContent("already in your agency's list");
+    expect(screen.getByRole("button", { name: "Save university" })).toHaveFocus();
+  });
+
+  it("QA-03: a search with no matches says so and offers Clear search", async () => {
+    const fetchMock = vi.fn((url: string) => Promise.resolve(res(page(String(url).includes("q=zzz") ? [] : [uni()]))));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentUniversitiesPanel memberRole="master" />);
+    await screen.findByText("Trinity");
+    fireEvent.change(screen.getByLabelText("Search universities"), { target: { value: "zzz" } });
+    fireEvent.submit(screen.getByRole("search"));
+    expect(await screen.findByText("No universities match “zzz”.")).toBeInTheDocument();
+    expect(screen.queryByText("Your agency hasn't added any universities yet.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(await screen.findByText("Trinity")).toBeInTheDocument();
+    expect(screen.getByLabelText("Search universities")).toHaveValue("");
+  });
+
+  it("QA-04: the catalogue link looks like a link (brand colour, underlined)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([])))));
+    render(<AgentUniversitiesPanel memberRole="staff" />);
+    const link = screen.getByRole("link", { name: "Browse the university catalogue" });
+    expect(link).toHaveStyle({ textDecoration: "underline" });
+    expect(link.style.color).toBe("var(--blue)");
+  });
+
+  it("QA-08: a server error (5xx) is worded as a retry, not the raw server text", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Internal Server Error" }, 500))));
+    render(<AgentUniversitiesPanel memberRole="master" />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("The server couldn't complete this. Please try again in a moment.");
+  });
+});
+
 describe("AgentUniversitiesPanel (AGN-007)", () => {
   it("shows loading, then the agency's universities as a list", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([uni()])))));
@@ -46,7 +123,7 @@ describe("AgentUniversitiesPanel (AGN-007)", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(res({ detail: "boom" }, 500)).mockResolvedValueOnce(res(page([uni()])));
     vi.stubGlobal("fetch", fetchMock);
     render(<AgentUniversitiesPanel memberRole="master" />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("boom");
+    expect(await screen.findByRole("alert")).toHaveTextContent("The server couldn't complete this. Please try again in a moment."); // QA-08 wording for a 5xx
     fireEvent.click(screen.getByRole("button", { name: "Retry loading universities" }));
     expect(await screen.findByText("Trinity")).toBeInTheDocument();
   });

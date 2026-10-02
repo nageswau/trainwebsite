@@ -53,7 +53,7 @@ describe("AgentShortlistPanel (AGN-007)", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(res({ detail: "Nope" }, 500)).mockResolvedValueOnce(res(page([entry()])));
     vi.stubGlobal("fetch", fetchMock);
     render(<AgentShortlistPanel {...props} />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("Nope");
+    expect(await screen.findByRole("alert")).toHaveTextContent("The server couldn't complete this. Please try again in a moment."); // QA-08 wording for a 5xx
     fireEvent.click(screen.getByRole("button", { name: "Retry loading the shortlist" }));
     expect(await screen.findByText("Agency U")).toBeInTheDocument();
   });
@@ -142,7 +142,7 @@ describe("AgentShortlistPanel (AGN-007)", () => {
     render(<AgentShortlistPanel {...props} />);
     fireEvent.click(await screen.findByRole("button", { name: "Remove Agency U" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Cannot remove");
+    expect(await screen.findByRole("alert")).toHaveTextContent("The server couldn't complete this. Please try again in a moment."); // QA-08 wording for a 5xx
     await waitFor(() => expect(screen.getByRole("button", { name: "Remove Agency U" })).toHaveFocus());
   });
 
@@ -156,6 +156,46 @@ describe("AgentShortlistPanel (AGN-007)", () => {
       if (u.includes("crm/universities")) return Promise.resolve(res({ items: [{ id: "a1", name: "Agency U", country: "Malta", city: null, entry_requirements: null }] }));
       return Promise.resolve(res([]));
     });
+
+  // Browser QA (2026-10-02) QA-02: a real browser can run the next animation frame before React commits a state change made after an
+  // await, so "focus on the next frame" missed the control. Running frames immediately models that.
+  const frameBeforeCommit = () => vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => (cb(0), 0));
+
+  it("QA-02: after a successful add focus lands on Add even when the frame fires before the commit", async () => {
+    frameBeforeCommit();
+    vi.stubGlobal("fetch", formRouter(() => [], () => res({ entry: entry() }, 201)));
+    render(<AgentShortlistPanel {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Add university to shortlist" }));
+    const uni = await screen.findByLabelText("University (required)");
+    await waitFor(() => expect(uni).not.toBeDisabled());
+    fireEvent.change(uni, { target: { value: "a:a1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    expect(await screen.findByText("Saved to shortlist.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add university to shortlist" })).toHaveFocus());
+  });
+
+  it("QA-02: after a successful edit focus lands on that Edit button even when the frame fires before the commit", async () => {
+    frameBeforeCommit();
+    vi.stubGlobal("fetch", formRouter(() => [entry()], () => res({ entry: entry({ intake: "Jan 2028" }) })));
+    render(<AgentShortlistPanel {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Agency U" }));
+    fireEvent.change(await screen.findByLabelText("Intake"), { target: { value: "Jan 2028" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    expect(await screen.findByText("Saved to shortlist.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Agency U" })).toHaveFocus());
+  });
+
+  it("QA-08: a server error (5xx) loading the shortlist is worded as a retry", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Internal Server Error" }, 500))));
+    render(<AgentShortlistPanel {...props} />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("The server couldn't complete this. Please try again in a moment.");
+  });
+
+  it("QA-07: the section heading is readable (not smaller than body text)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([])))));
+    render(<AgentShortlistPanel {...props} />);
+    expect(screen.getByRole("heading", { name: "University shortlist" })).toHaveStyle({ fontSize: "18px" });
+  });
 
   it("returns focus to Add after a successful save from the Add form", async () => {
     vi.stubGlobal("fetch", formRouter(() => [], () => res({ entry: entry() }, 201)));
