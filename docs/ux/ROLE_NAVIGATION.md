@@ -248,6 +248,24 @@ distinct from the existing Trainer/"Teacher" role above)*
 entries — their duties are OPEN (`PRD_OPEN_ITEMS.md` item 75) and no screen has been designed for
 either yet.*
 
+## BDM *(net-new, added 2026-10-02, `DEC-SCOPE-052`, `bdm-001`)*
+
+Signs in at `/it/login` (College BDM, division `it`) or `/overseas/login` (Agent / School BDM, division `overseas`); lands on `/bdm/my-day`.
+
+- /bdm/my-day — My Day (minimal shell in bdm-001: welcome + profile summary; content arrives with bdm-014).
+- /bdm/profile — read-only §1 profile.
+
+## BDM Manager *(net-new, added 2026-10-02, `DEC-SCOPE-052`, `bdm-001`)*
+
+Division `global`; signs in at `/admin/login` (heading "Administration sign-in"); lands on `/bdm/manager/dashboard`. After a password reset (welcome link or forgot-password) the reset form routes to `/admin/login` via the API's `login_portal`.
+
+- /bdm/manager/dashboard — team counts (minimal shell; bdm-023 adds the management dashboard).
+- /bdm/manager/team — the BDMs who report to this manager (paged).
+
+**Signed-out `/bdm/*`:** `/bdm/manager/*` → `/admin/login?next=…`; any other `/bdm/*` → the public chooser `/bdm/sign-in?next=…` (College BDM / Agent-School BDM / Administration links; `next` kept only when same-origin).
+
+**Admin entry points:** a "BDMs" nav item for Super Admin (`/admin/bdms`), IT Admin (`/it/admin/bdms`, College) and Overseas Admin (`/overseas/admin/bdms`, Agent + School). BDM Managers are created by a Super Admin from Users (division Global).
+
 ## Division isolation (confirmed, `DEC-ARCH-001`)
 
 A user's nav never crosses `it` / `overseas` / `global` divisions except for **Super Admin**, the sole cross-division role. An `overseas_student` never sees `/it/*` nav items and vice versa, even though — per `DEC-ROLE-001` — both may be the *same person's* account. This is a navigation-visibility rule; the underlying identity-model question (one account, two role-assignments) is Architecture-phase work, tracked in `docs/features/FEATURE_QUESTIONS.md` item 3.

@@ -463,6 +463,19 @@ teacher deny, transfer, parent with children at two schools).
 
 ---
 
+### 2.13 BDM CRM *(net-new, added 2026-10-02 — `DEC-SCOPE-052`, `bdm-001`)*
+Authorization follows the inline pattern (`User.role` check → `services/bdm.py` scope helper → write); no `require_*` dependency.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `super_admin` | create `bdm` of **any** type and the only creator of `bdm_manager` (`POST /admin/users`); edit any BDM profile; list all BDMs (`GET /admin/bdms`); read the manager picker; read any manager's team view (`GET /bdm/manager/team` → all BDMs) | Not division-restricted (§1) | `bdm-001` |
+| `it_admin` | create / edit **College** BDMs only; list College BDMs; read the manager picker (id + name only) | Division `it`; any other type → `403` (D10) | `bdm-001` |
+| `overseas_admin` | create / edit **Agent and School** BDMs only; list them; read the manager picker | Division `overseas`; College → `403` (D10) | `bdm-001` |
+| `bdm` | read **own** profile (`GET /bdm/me`) | Own record only — no id parameter. A `bdm` with no profile row is denied every BDM route (`403` "BDM profile not set up"). Type/own scope for later items via `bdm_context` | `bdm-001` |
+| `bdm_manager` | read **own team** (`GET /bdm/manager/team`) | **Team scope:** exactly the BDMs whose `reporting_manager_user_id` is the caller (D4); no id parameter. Division `global`; no profile row (B6) | `bdm-001` |
+
+**Explicit denies:** a `bdm` or `bdm_manager` cannot write any profile (no route); `PATCH /admin/users` never writes `role` or `division`; a reporting manager must be an **active `bdm_manager`** (else `422`), so no one can assign themselves or another role a team; `bdm_type` cannot be changed (`422`, B7); `bdm` calling a manager route, or a manager calling `/bdm/me` → `403`; every other role on any BDM route → `403`. The picker never returns email. Every create or edit writes one `AuditLog` row (profile before/after on edit).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
