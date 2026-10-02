@@ -7,7 +7,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from app.models import Notification
-from tests.agn001_helpers import client_for
+from tests.agn001_helpers import client_for, mk_user
 from tests.agn008_helpers import agency_world
 
 BASE = "/api/v1/workflows/notifications"
@@ -56,6 +56,23 @@ async def test_the_list_contract_is_unchanged_and_never_shows_the_dedupe_key(db_
         items = (await c.get(BASE)).json()
     assert isinstance(items, list) and len(items) == 3
     assert all(set(item) == LIST_KEYS for item in items)
+
+
+@pytest.mark.parametrize("who", ["master", "staff"])
+@pytest.mark.asyncio
+async def test_the_agency_notifications_page_has_a_header_payload_for_masters_and_staff(db_session, world, who):
+    user = world["master"] if who == "master" else world["staff"]["user"]
+    async with client_for(user.email) as c:
+        response = await c.get("/api/v1/portal/overseas/agent/notifications")
+    assert response.status_code == 200, response.text
+    assert response.json()["title"] == "Notifications"
+
+
+@pytest.mark.asyncio
+async def test_the_agency_notifications_page_still_refuses_another_role(db_session, world):
+    counselor = await mk_user(db_session, role="counselor", full_name="Not An Agent")
+    async with client_for(counselor.email) as c:
+        assert (await c.get("/api/v1/portal/overseas/agent/notifications")).status_code == 403
 
 
 @pytest.mark.asyncio

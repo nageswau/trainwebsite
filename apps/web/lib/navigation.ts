@@ -1,7 +1,15 @@
 import type { AgentPermissions } from "@/lib/types";
 import { GROUP_LABELS, STATUS_GROUPS } from "./agentApplications";
 import { VIEW_NAV_LABELS, VIEWS } from "./agentDocuments";
-export type NavItem = { label:string; href:string; children?:NavItem[] };
+// `badge` (AGN-017): an unread count shown after the label; only the agency's Notifications item sets it.
+export type NavItem = { label:string; href:string; children?:NavItem[]; badge?:number };
+
+export const AGENT_NOTIFICATIONS_HREF = "/overseas/agent/notifications";
+
+// AGN-017 (DEC-SCOPE-055 N8): the unread count on one nav item; no count (null, 0) leaves the nav as it was.
+export function withBadge(nav: NavItem[], href: string, count: number | null): NavItem[] {
+  return count ? nav.map((item) => (item.href === href ? { ...item, badge: count } : item)) : nav;
+}
 
 // Single source of truth for "which dashboard does this role land on" -- used by
 // LoginForm (post-login redirect) and HeaderAuthActions (session-aware nav), so the
@@ -81,8 +89,8 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   "overseas/admin": ["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","school-applications","school-transfers","activity-feedback","school-analytics","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),
   // AGN-007 (DEC-SCOPE-049): Universities is the agency's own university list. AGN-008 (DEC-SCOPE-050 A7): Applications carries
   // the EVID-015 §4 sidebar filters as sub-links (same page, ?status=). AGN-016 (DEC-SCOPE-053 T5): Tasks, for Masters and staff,
-  // after Documents (the EVID-015 §4 sidebar order).
-  "overseas/agent": ["dashboard","students","universities","applications","documents","tasks","commissions","reports","team"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/agent/${x}`,...(x==="applications"?{children:AGENT_APPLICATION_FILTERS}:x==="documents"?{children:AGENT_DOCUMENT_VIEWS}:{})})),
+  // after Documents (the EVID-015 §4 sidebar order). AGN-017 (DEC-SCOPE-055 N8): Notifications, for Masters and staff, after Tasks.
+  "overseas/agent": ["dashboard","students","universities","applications","documents","tasks","notifications","commissions","reports","team"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/agent/${x}`,...(x==="applications"?{children:AGENT_APPLICATION_FILTERS}:x==="documents"?{children:AGENT_DOCUMENT_VIEWS}:{})})),
 };
 // AGN-002 (DEC-SCOPE-040 S1): an agency's staff work on students and applications; Team and Commissions stay Master-only (the
 // server refuses them regardless -- this only keeps dead links out of the sidebar).

@@ -753,6 +753,9 @@ async def _agent(db: AsyncSession, user: User, section: str):
     if section == "tasks":
         # AGN-016 (DEC-SCOPE-053): header only -- PortalPage mounts AgentTasksSection (the Universities precedent).
         return _payload("Tasks & follow-ups", "Follow-ups on your students, earliest due first.")
+    if section == "notifications":
+        # AGN-017 (DEC-SCOPE-055 N8): header only -- the page's role/approval gate; PortalPage mounts AgentNotificationsSection.
+        return _payload("Notifications", "Your own notifications.")
     if section == "universities":
         # AGN-007 (DEC-SCOPE-049): header only -- PortalPage mounts AgentUniversitiesPanel for this section (the Students precedent).
         return _payload("Universities", "Your agency's own universities. Browse the public catalogue for the rest.")

@@ -49,6 +49,12 @@ describe("SchoolNotificationList", () => {
     expect(within(item(/Title 1/)).getByText(/22 Sep\w* 2026, 01:30/)).toBeTruthy();
   });
 
+  // AGN-017: agency pages show times in the viewer's zone through LocalTime (hydration-safe); the default above stays the school zone.
+  it("renders a machine-readable viewer-zone time when asked for local time", () => {
+    const { container } = render(<SchoolNotificationList notifications={[n("1", { created_at: "2026-09-21T20:00:00Z" })]} emptyText="none" localTime />);
+    expect(container.querySelector("time")).toHaveAttribute("dateTime", "2026-09-21T20:00:00Z");
+  });
+
   // QA-023-06: every row said just "Open", so a screen reader's link list could not tell the notices apart.
   it("names each Open link after its notice while still showing Open", () => {
     render(<SchoolNotificationList notifications={[n("1", { action_url: "/a" }), n("2", { action_url: "/b" })]} emptyText="none" />);
