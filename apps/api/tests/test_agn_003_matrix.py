@@ -63,7 +63,7 @@ BOTH_ALLOWED = [
     ("Change Application Status", "post", "/api/v1/workflows/overseas/agent/crm/applications/{record_app}/status", {"to_status": "eligibility_evaluation"}, 200),
     # AGN-010 (DEC-SCOPE-056): recording an offer moves the stage to `offer`, so it is the status row's permission (D8).
     ("Change Application Status", "put", "/api/v1/workflows/overseas/agent/crm/applications/{record_app}/offer", {"offer_type": "unconditional", "offer_date": "2025-09-01"}, 200),
-    # AGN-011 (DEC-SCOPE-057 D7): Master and Staff both set (and pay) the deposit of an application in their scope.
+    # AGN-011 (DEC-SCOPE-058 D7): Master and Staff both set (and pay) the deposit of an application in their scope.
     ("Deposit", "put", "/api/v1/workflows/overseas/agent/crm/applications/{record_app}/deposit", {"required": True, "amount": "1000"}, 200),
     ("Dashboard", "get", PORTAL + "/dashboard", None, 200),
     ("Create Student", "post", "/api/v1/workflows/overseas/agent/students", {"student_id": "{unlinked_student}"}, 201),

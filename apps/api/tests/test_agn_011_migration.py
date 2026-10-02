@@ -1,4 +1,4 @@
-"""AGN-011 -- migration 0063_application_deposits (spec §3): one new table, its checks and the one-deposit-per-application rule.
+"""AGN-011 -- migration 0064_application_deposits (spec §3): one new table, its checks and the one-deposit-per-application rule.
 Lite: chain, model, shared database; the full round-trip pattern (AGN-013) is not repeated here."""
 
 import importlib.util
@@ -13,14 +13,14 @@ from app.models import ApplicationDeposit
 from tests.agn011_helpers import deposit_world, mk_deposit, mk_deposit_payment
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_agn_011_migration_0063", VERSIONS / "0063_application_deposits.py")
+_spec = importlib.util.spec_from_file_location("_agn_011_migration_0064", VERSIONS / "0064_application_deposits.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
 
-def test_migration_chains_after_0062_and_is_the_single_head():
-    assert _migration.revision == "0063_application_deposits"
-    assert _migration.down_revision == "0062_agent_offer_details"
+def test_migration_chains_after_0063_agent_visa_and_is_the_single_head():
+    assert _migration.revision == "0064_application_deposits"
+    assert _migration.down_revision == "0063_agent_visa_details"
     parents = {}
     for file in VERSIONS.glob("*.py"):
         lines = file.read_text(encoding="utf-8").splitlines()

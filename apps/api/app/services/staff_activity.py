@@ -35,7 +35,12 @@ STAFF_ACTIVITY_ACTIONS = (
     "overseas.application.advance",
     "overseas.application.withdraw",
     "overseas.application.offer",  # AGN-010 (DEC-SCOPE-056): ids and field names only, like the other application rows
-    # AGN-011 (DEC-SCOPE-057): setting and paying a deposit; ids, field names and statuses only (never the amount).
+    # AGN-012 (DEC-SCOPE-057): visa work on an application; the view shows field names only, never the decision.
+    "overseas.application.visa_start",
+    "overseas.application.visa_update",
+    "overseas.application.visa_advance",
+    "overseas.application.visa_decision",
+    # AGN-011 (DEC-SCOPE-058): setting and paying a deposit; ids, field names and statuses only (never the amount).
     "overseas.application.deposit",
     "overseas.application.deposit_checkout",
     "document.upload",

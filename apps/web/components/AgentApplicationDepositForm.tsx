@@ -21,7 +21,7 @@ const FIELDS = ["required", "amount", "due_date"] as const;
 type Field = (typeof FIELDS)[number];
 const FIELD_ID: Record<Field, string> = { required: "required-yes", amount: "amount", due_date: "due" }; // the control a 422 focuses
 
-// AGN-011 (DEC-SCOPE-057 §4.2): record or change the deposit while it is unpaid -- required yes/no, the amount in rupees (D1) and an
+// AGN-011 (DEC-SCOPE-058 §4.2): record or change the deposit while it is unpaid -- required yes/no, the amount in rupees (D1) and an
 // optional due date; the whole deposit is sent (PUT). A 422 lands on its field with the entry kept; a 409/404 goes to the detail,
 // which reloads to the real state. Escape cancels.
 export default function AgentApplicationDepositForm({ detail, onSaved, onFailed, onCancel }: Props) {

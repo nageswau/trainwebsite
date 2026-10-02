@@ -5,7 +5,7 @@ import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 
-// AGN-011 (DEC-SCOPE-057 §4.7): deposits agencies paid through EduSphere Razorpay, for Overseas Admin to record remittance and refunds.
+// AGN-011 (DEC-SCOPE-058 §4.7): deposits agencies paid through EduSphere Razorpay, for Overseas Admin to record remittance and refunds.
 // Readable by Overseas and Super Admins like the API; only an Overseas Admin records (D5), so `canAct` follows the role. The
 // unauthenticated redirect to sign-in is the middleware's, as for every other /overseas page.
 const ADMIN_ROLES = ["overseas_admin", "super_admin"];

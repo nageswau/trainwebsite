@@ -3159,11 +3159,32 @@ Reports "Offers" row counted only `offer_received`/`accepted` (the §0 defect).
 change to `rbac.py`, `/status`, counselor/university/admin routes or `offer_letter_url`. Several offers, removing an offer and
 notifications are out of scope.
 
-### DEC-SCOPE-057 — Agent deposit collection through EduSphere Razorpay; remittance and refunds recorded by Overseas Admin (`AGN-011`)
+### DEC-SCOPE-057 — Visa for agent-managed applications (`AGN-012`)
 
-**ID note (provisional):** the next free number on `main` @ `3c4a972` (2026-10-02), with migration `0063_application_deposits` on
-`0062_agent_offer_details`. AGN-012 is open in parallel and may claim the same numbers; whichever reaches `main` later renumbers and
-re-chains (precedent: `DEC-SCOPE-052`–`056`).
+**ID note:** drafted as `DEC-SCOPE-055` (free on `main` @ `e0395d6`); renumbered `DEC-SCOPE-057` on merging `main` @ `3c4a972`, where `055` is BDM-001 (PR #45) and `056` is AGN-010 (PR #46). Migration drafted as `0061_agent_visa_details`, re-chained as `0063_agent_visa_details` after `0062_agent_offer_details`.
+
+**Question:** the owner's `AGN-012` statement (in-session, 2026-10-02): "visa documents, application date, appointment, interview, status and decision", with acceptance criteria: a decision can be set only at stage `decision`; the interview date may not precede the application date; the existing checklist rule blocks advancing past `checklist` with unverified documents.
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 8; `AGENT_CRM_BACKLOG.md` ang-012 and Q-08/D14 (`DERIVED_BLUEPRINT`; D14 was never recorded in this register). Impact analysis, 2026-10-02 (graphify-led):
+- Agents have no visa access: `POST`/`PATCH /workflows/overseas/visa` are counselor/admin only.
+- `visa_cases` has no application date, interview date or decision; `workflows.py` notes approved/refused were "not modeled — no source confirms them". This decision is that confirmation, for agency cases only.
+- The counselor create accepts any initial stage, so the checklist gate can be bypassed at creation; checklist items match documents by exact type text.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — answers to structured questions and the two-section design review, not the source document's wording):
+- **V1** Master and Staff both start, edit, advance and decide a visa case (D8); Staff only for assigned students (G4).
+- **V2** Outcomes approved / refused / withdrawn, set only at stage `decision`, final once recorded (the case becomes read-only).
+- **V3** A case always starts at `checklist`; moves are forward-only, skips allowed; leaving `checklist` always runs the verification gate.
+- **V4** Appointment = existing `appointment_date`; new `visa_application_date` and `interview_date` are dates; interview on or after the application date.
+- **V5** Independent of the application stage; a case starts from `offer`, `visa_documentation` or `status_tracking`; writes refused on withdrawn/enrolled applications and archived students.
+- **V6** Checklist items are AGN-009 agency document types (not "Other"); satisfied by the latest document of that type attached to the application being verified.
+- **V7** One case per application; re-application after a final decision is out of scope. **V8** New fields agency-only; no notifications.
+- **V9** Approach A: `POST`/`PATCH …/crm/applications/{id}/visa` in the AGN-008 router; `workflows.py` visa routes untouched.
+
+**Consequences:** migration `0063_agent_visa_details` (four nullable `visa_cases` columns + a decision CHECK); two agency routes; a `visa` block on the agency application detail; four audit actions `overseas.application.visa_start|visa_update|visa_advance|visa_decision` join AGN-021's allowlist; a new `AgentApplicationVisa` component. Unchanged: every existing visa route and response, school/portal/report readers, the application status and enrollment routes, commission. Design: `docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md`. **New Feature ID authorized:** `AGN-012`.
+
+### DEC-SCOPE-058 — Agent deposit collection through EduSphere Razorpay; remittance and refunds recorded by Overseas Admin (`AGN-011`)
+
+**ID note:** drafted as `DEC-SCOPE-057` with migration `0063_application_deposits` (both free on `main` @ `3c4a972`); renumbered `DEC-SCOPE-058` on merging `main` @ `ff27fa4`, where `057` is `AGN-012` (PR #47) holding migration `0063_agent_visa_details`. The migration is now `0064_application_deposits`, after `0063_agent_visa_details` (one head). AGN-011 commits and docs from before this merge that say `DEC-SCOPE-057` or `0063_application_deposits` mean this decision.
 
 **Question:** backlog item ang-011 "Deposit collection through Razorpay (Step 7)": deposit required, amount, payment status, payment
 date and receipt; collected through EduSphere's Razorpay, paid by the agency (Master or Staff) on the student's behalf; finance remits to
@@ -3196,7 +3217,7 @@ questions; design spec `docs/superpowers/specs/2026-10-02-agn-011-deposit-collec
 - **D8 — One active checkout:** another member's open checkout younger than 15 minutes blocks a new one (`409`); at most 10 attempts per
   deposit per rolling hour (`429`).
 
-**Consequences:** migration `0063_application_deposits` (one new table; `payments` unchanged apart from the `cancelled` status value for
+**Consequences:** migration `0064_application_deposits` (one new table; `payments` unchanged apart from the `cancelled` status value for
 deposit payments); new `api/agent_deposits.py` (agent PUT, checkout, receipt; admin list, remit, refund) and `services/agent_deposits.py`;
 `payments.py` gains the row-locked paid-guard and the deposit hook, `/mine` filter and a generic-checkout guard; `admin.py` refuses to
 create or discount agent-deposit payments; receipts of agent deposits name the student (AC5); the detail gains `deposit` and

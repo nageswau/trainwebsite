@@ -1,8 +1,8 @@
 # AGN-011 — Deposit collection through Razorpay (Step 7) — Design
 
 **Status:** design approved in-session 2026-10-02 (owner: "Proceed with agn-011 using the approved Superpowers plan").
-**Decision:** `DEC-SCOPE-057` (provisional number — renumber on merge if another branch reaches `main` first; AGN-012 is open in
-parallel). **Migration:** `0063_application_deposits` on `0062_agent_offer_details` (provisional, same rule).
+**Decision:** `DEC-SCOPE-058` (provisional number — renumber on merge if another branch reaches `main` first; AGN-012 is open in
+parallel). **Migration:** `0064_application_deposits` on `0062_agent_offer_details` (provisional, same rule).
 **Backlog:** `docs/delivery/AGENT_CRM_BACKLOG.md` §4 ang-011 (`DERIVED_BLUEPRINT`).
 
 ## 1. Evidence and authority
@@ -17,7 +17,7 @@ parallel). **Migration:** `0063_application_deposits` on `0062_agent_offer_detai
 
 **Mis-citation recorded, not silently corrected:** the backlog cites the deposit answers as "`DEC-SCOPE-035` D11/D12". `DEC-SCOPE-035`
 is ENH-027's psychometric decision, and `DEC-SCOPE-038` D11/D12 are AGN-001's admin-created agents and notifications. The deposit
-answers had no register entry; `DEC-SCOPE-057` records them (the AGN-004 / AGN-007 precedent).
+answers had no register entry; `DEC-SCOPE-058` records them (the AGN-004 / AGN-007 precedent).
 
 **Not decided here (`NEEDS_CONFIRMATION`, unchanged):** `DEC-PAY-002` multi-currency coverage by Razorpay; D1 avoids it by being INR only.
 

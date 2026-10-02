@@ -21,6 +21,7 @@ from app.services import agent_documents as documents
 from app.services.agent_deposits import deposit_for, deposit_view, payment_available
 from app.services.agent_orgs import THROTTLE_WINDOW, org_member_ids, retry_after
 from app.services.agent_students import application_scope, student_scope
+from app.services.agent_visa import visa_block
 
 # DEC-WF-001 / OVS-003: the confirmed stage sequence (moved here from api/workflows.py, which imports it back -- one definition).
 OVERSEAS_APPLICATION_STAGES = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"]
@@ -180,9 +181,10 @@ async def detail(db: AsyncSession, user: User, app: OverseasApplication, *, reco
         "university_student_id": found.university_student_id,
         "enrollment_confirmed_at": found.enrollment_confirmed_at,
         "enrollment_check": enrollment_check(found, datetime.now(UTC).date()),
+        "visa": await visa_block(db, found.id),  # AGN-012 (DEC-SCOPE-057): agency-only, single-application detail only
         "history": [{"from_status": h.from_status, "to_status": h.to_status, "next_action": h.next_action, "notes": h.notes, "changed_by": name, "created_at": h.created_at} for h, name in history],
         **await _offer_parts(db, user, found),
-        # AGN-011 (DEC-SCOPE-057): the deposit, and whether online payment can be opened at all (AC6).
+        # AGN-011 (DEC-SCOPE-058): the deposit, and whether online payment can be opened at all (AC6).
         "deposit": await deposit_view(db, await deposit_for(db, found.id)),
         "payment_available": payment_available(),
     }

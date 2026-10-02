@@ -28,7 +28,7 @@ const NOT_LOADED = "The payment window could not be loaded. Nothing has been cha
 const CONFIRMING = "Payment received. Confirming…";
 const PENDING_AFTER_PAY = "If you were charged, the payment will appear here shortly.";
 
-// AGN-011 (DEC-SCOPE-057 §5): the application's deposit -- the recorded terms, the status in words, Pay deposit (Razorpay Checkout,
+// AGN-011 (DEC-SCOPE-058 §5): the application's deposit -- the recorded terms, the status in words, Pay deposit (Razorpay Checkout,
 // AC1), the receipt once paid (AC5), and the remittance/refund Overseas Admin recorded. When online payment is unavailable it says so
 // and offers no Pay button (AC6). Master and Staff both act (D7); a read-only application shows the record only. The Razorpay result is
 // verified by `/payments/{id}/verify`; the webhook is the durable source of truth, so a still-pending deposit after paying says so.

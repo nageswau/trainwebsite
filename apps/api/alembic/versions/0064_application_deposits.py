@@ -1,22 +1,25 @@
-"""AGN-011 -- application deposits collected through Razorpay (DEC-SCOPE-057).
+"""AGN-011 -- application deposits collected through Razorpay (DEC-SCOPE-058).
 
-Revision ID: 0063_application_deposits
-Revises: 0062_agent_offer_details
+Revision ID: 0064_application_deposits
+Revises: 0063_agent_visa_details
 
 docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md §3. Creates one table; no existing table or row changes (deposit
 payments are ordinary `payments` rows with `reference_type = 'agent_deposit'`). 0001/0003 run Base.metadata.create_all from the CURRENT
 models, so a database built from scratch already has the table when this runs: it is created only when missing (0059's idiom).
 downgrade() refuses while a deposit exists, then drops the table.
 
-Provisional number: AGN-012 is open in parallel; whichever reaches `main` later re-chains (the 0058/0059 precedent).
+Re-chained 2026-10-03 on merging `main` @ `ff27fa4`: drafted as `0063_application_deposits` on 0062, but AGN-012's `0063_agent_visa_details`
+(also on 0062) reached `main` first, so this revision is now `0064_application_deposits` after it (one head). A database stamped at
+0063_application_deposits is re-stamped with `alembic stamp --purge 0062_agent_offer_details` then `upgrade head` (create-if-missing makes
+the re-run harmless).
 """
 
 import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0063_application_deposits"
-down_revision = "0062_agent_offer_details"
+revision = "0064_application_deposits"
+down_revision = "0063_agent_visa_details"
 branch_labels = None
 depends_on = None
 
@@ -70,5 +73,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0063_application_deposits: deposits exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0064_application_deposits: deposits exist. Remove them deliberately first.")
     op.drop_table(TABLE)

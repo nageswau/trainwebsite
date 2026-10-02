@@ -38,7 +38,7 @@ docker compose -f docker-compose.yml -f docker-compose.ci.yml -p agn011 --profil
 ---
 
 ### Task 1: Model, constraints, migration 0063
-**Files:** `apps/api/app/models.py` (`ApplicationDeposit`), `apps/api/alembic/versions/0063_application_deposits.py`,
+**Files:** `apps/api/app/models.py` (`ApplicationDeposit`), `apps/api/alembic/versions/0064_application_deposits.py`,
 test `apps/api/tests/test_agn_011_migration.py`.
 - [ ] RED: chain/head (0063 on 0062, single head); table + unique application FK exist; CHECKs reject: status `maybe`, currency `USD`,
   required with null amount, amount 0, not_required with required=true, paid without `paid_payment_id`, partial refund columns.
@@ -128,7 +128,7 @@ test `tests/components/AdminAgentDepositsPanel.test.tsx`.
 - [ ] Commit (run by the owner / browser QA session).
 
 ### Task 12: Docs and traceability
-**Files:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-057`), `docs/architecture/API_CONTRACT.md`, `DATA_MODEL.md`,
+**Files:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-058`), `docs/architecture/API_CONTRACT.md`, `DATA_MODEL.md`,
 `RBAC_MATRIX.md`, `THREAT_MODEL.md`, `SECURITY_CONTROLS.md`, `INTEGRATION_CONTRACTS.md`, `docs/quality/RTM.md`,
 `docs/delivery/AGENT_CRM_BACKLOG.md` (status: implemented, pending browser QA + review — **not COMPLETE**).
 - [ ] Commit.

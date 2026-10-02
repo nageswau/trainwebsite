@@ -81,7 +81,7 @@ dependent (`API_CONTRACT.md` §10).
   rather than inventing an automated reconciliation job that was never asked for.
 - **Ownership:** Engineering (adapter code), Finance/Admin (reconciliation process, provider account).
 
-- **Agent deposits (`AGN-011`, `DEC-SCOPE-057`, 2026-10-02):** the same order/Checkout.js/verify/webhook path collects a university
+- **Agent deposits (`AGN-011`, `DEC-SCOPE-058`, 2026-10-02):** the same order/Checkout.js/verify/webhook path collects a university
   deposit an agency pays for its student. The order is opened by `POST …/agent/crm/applications/{id}/deposit/checkout` for the stored
   deposit amount in INR (receipt `PAY-<payment id>`); the webhook maps the payment back through `reference_type="agent_deposit"`. The
   provider call is made with no database row lock held; a provider error answers `502` and cancels the attempt (nothing charged on our

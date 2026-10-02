@@ -17,7 +17,7 @@ const TABS: { status: Tab; label: string }[] = [
 const PAGE_SIZE = 20;
 const DONE: Record<DepositAction, string> = { remit: "Remittance recorded", refund: "Refund recorded" };
 
-// AGN-011 (DEC-SCOPE-057 §4.7): Overseas Admin's Agent deposits. Deposits are collected through EduSphere Razorpay; finance remits them
+// AGN-011 (DEC-SCOPE-058 §4.7): Overseas Admin's Agent deposits. Deposits are collected through EduSphere Razorpay; finance remits them
 // to the university outside the system and refunds by hand (D12), and this screen records both. One status tab at a time, 20 per page,
 // tab and page in the URL (the AgentApprovalPanel pattern). `canAct` is false for super_admin, who reads only (D5).
 export default function AdminAgentDepositsPanel({ canAct }: { canAct: boolean }) {

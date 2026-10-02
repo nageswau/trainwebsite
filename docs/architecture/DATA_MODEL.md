@@ -354,7 +354,7 @@ covers the commission-specific piece).
   `offer_letter_url` is untouched (O4). Guarded adds; no existing row is read or rewritten. Downgrade refuses while any `offer_type` is
   set. Design: `docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md` §3.
 
-- **Addendum, 2026-10-02 (`AGN-011`, `DEC-SCOPE-057`; migration `0063_application_deposits`, after `0062_agent_offer_details`;
+- **Addendum, 2026-10-02 (`AGN-011`, `DEC-SCOPE-058`; migration `0064_application_deposits`, after `0062_agent_offer_details`;
   provisional number — AGN-012 is open in parallel).** New table `application_deposits`: `id` UUID PK; `application_id` UUID FK →
   `overseas_applications.id` `ON DELETE RESTRICT`, **unique** (one deposit per application); `required` BOOL; `amount` NUMERIC(12,2) null;
   `currency` VARCHAR(3) default `INR`; `due_date` DATE; `status` VARCHAR(20); `active_payment_id`, `paid_payment_id` UUID FK → `payments.id`;
@@ -431,7 +431,14 @@ should gate it further — carried forward as an open item for BRD/PRD follow-up
 - **Compliance constraint:** no field or copy anywhere represents EduSphere as the visa
   decision-maker (`VISA-003-AC02`, sourced from the reference implementation's own compliance
   language, carried forward as a real requirement).
-- **Feature IDs:** `VISA-001`, `VISA-002`, `VISA-003`.
+- **Feature IDs:** `VISA-001`, `VISA-002`, `VISA-003`, `AGN-012`.
+- **Addendum, 2026-10-02 (`AGN-012`, `DEC-SCOPE-057`; migration `0063_agent_visa_details`, chained after `0060_agent_app_enrollment`) —
+  agency visa details.** Additive nullable columns: `visa_application_date` Date, `interview_date` Date, `decision` VARCHAR(20) with
+  `ck_visa_cases_decision` (`approved`/`refused`/`withdrawn` or NULL), `decided_at` TIMESTAMPTZ. The outcome is confirmed by the owner
+  (V2) for agency cases and recorded as the authority's decision (the compliance constraint above still holds; the disclaimer is shown
+  with it). The stage list is unchanged; the outcome is not a stage. Written only by the agency routes; counselor/student routes neither
+  read nor write the new columns. No row is read or written by the upgrade; the downgrade refuses while any of the four holds data.
+  Still one case per application (enforced by the routes, not a unique index).
 
 ### 6.6 `Appointment`
 **Carries over.** **Ownership:** Counselor (schedule), Student (self, view).

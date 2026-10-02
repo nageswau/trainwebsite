@@ -91,7 +91,7 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
   input; middleware and the expired-session `ReturnToLoginLink` build `next` as path plus query and go through the same check
   (`safeNext.test.ts`, `LoginForm.next.test.tsx`). Page gate on `/overseas/agent/applications` kept for every role.
 
-### Agent deposits through Razorpay (`AGN-011`, `DEC-SCOPE-057`, 2026-10-02)
+### Agent deposits through Razorpay (`AGN-011`, `DEC-SCOPE-058`, 2026-10-02)
 
 - **Threats:** amount tampering at checkout; paying (or reading the receipt of) another agency's or an unassigned student's deposit;
   Staff or Master marking a deposit remitted/refunded; a replayed or late webhook regressing a paid payment or paying a deposit twice;

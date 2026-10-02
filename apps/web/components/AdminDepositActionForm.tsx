@@ -31,7 +31,7 @@ export const ACTION_LABELS: Record<DepositAction, string> = { remit: "Record rem
 
 type Props = { deposit: AdminDeposit; action: DepositAction; onDone: (next: AdminDeposit) => void; onCancel: () => void };
 
-// AGN-011 (DEC-SCOPE-057 D3/D12): record a remittance (date + reference) or the one refund (date, amount up to what was paid, reason).
+// AGN-011 (DEC-SCOPE-058 D3/D12): record a remittance (date + reference) or the one refund (date, amount up to what was paid, reason).
 // A refund asks for confirmation first -- it is final. The server checks every rule again; its message stays beside the form with the
 // entry kept. Escape cancels.
 export default function AdminDepositActionForm({ deposit, action, onDone, onCancel }: Props) {

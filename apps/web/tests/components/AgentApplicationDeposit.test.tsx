@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentApplicationDetail from "@/components/AgentApplicationDetail";
 
-// AGN-011 (DEC-SCOPE-057): the application's deposit -- record it, pay it through Razorpay Checkout (stubbed here), download the receipt,
+// AGN-011 (DEC-SCOPE-058): the application's deposit -- record it, pay it through Razorpay Checkout (stubbed here), download the receipt,
 // and say plainly when online payment is unavailable (AC6).
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AdminAgentDepositsPanel from "@/components/AdminAgentDepositsPanel";
 
-// AGN-011 (DEC-SCOPE-057 §4.7, D3, D5): Overseas Admin's Agent deposits -- one status tab at a time, remittance and the one refund
+// AGN-011 (DEC-SCOPE-058 §4.7, D3, D5): Overseas Admin's Agent deposits -- one status tab at a time, remittance and the one refund
 // recorded by hand; super_admin reads only.
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const ROW = {

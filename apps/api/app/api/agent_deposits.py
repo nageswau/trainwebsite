@@ -1,4 +1,4 @@
-"""AGN-011 -- an agency application's deposit, paid through EduSphere Razorpay (DEC-SCOPE-057; spec §4).
+"""AGN-011 -- an agency application's deposit, paid through EduSphere Razorpay (DEC-SCOPE-058; spec §4).
 
 Master, and Staff for students assigned to them, set the deposit and pay it (D7); anything outside the caller's scope is 404 (the AGN-008
 application scope). Writes lock the organisation, the application, the deposit and then any payment, and commit once. Only the payments
