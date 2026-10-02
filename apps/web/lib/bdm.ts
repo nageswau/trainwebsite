@@ -16,6 +16,10 @@ const CREATOR_TYPES: Record<string, BdmType[]> = { super_admin: ["agent", "schoo
 export const creatableTypes = (role: string): BdmType[] => CREATOR_TYPES[role] ?? [];
 export const statusLabel = (active: boolean) => (active ? "Active" : "Inactive");
 
+// Form readers shared by the create form and the row editor: trimmed text, and "" sent as null (clears an optional field).
+export const formText = (form: FormData, name: string) => String(form.get(name) ?? "").trim();
+export const formOptional = (form: FormData, name: string) => formText(form, name) || null;
+
 export const BDMS_URL = "/api/v1/admin/bdms";
 export const MANAGERS_URL = "/api/v1/admin/bdm-managers";
 export const USERS_URL = "/api/v1/admin/users";
