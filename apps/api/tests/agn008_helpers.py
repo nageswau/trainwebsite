@@ -1,7 +1,9 @@
 """AGN-008 test helpers: an agency with staff, a student with no login, a linked student, a university, and applications built
 directly (the API under test builds them in the feature tests)."""
 
-from app.models import AgentStudent, OverseasApplication, SchoolStudent
+from sqlalchemy import func, select
+
+from app.models import AgentStudent, AuditLog, OverseasApplication, SchoolStudent
 from tests.agn001_helpers import mk_active_org, mk_user, uniq
 from tests.agn003_helpers import mk_university
 from tests.agn004_helpers import mk_record, mk_staff
@@ -27,6 +29,12 @@ async def mk_application(db, *, agent, university, record: AgentStudent | None =
     db.add(row)
     await db.commit()
     return row
+
+
+async def count_rows(db, model, app_id) -> int:
+    """Rows of `model` for one application: audit rows by entity id, the rest (history, commission) by `application_id`."""
+    where = AuditLog.entity_id == str(app_id) if model is AuditLog else model.application_id == app_id
+    return await db.scalar(select(func.count()).select_from(model).where(where))
 
 
 async def mk_school_student(db) -> SchoolStudent:

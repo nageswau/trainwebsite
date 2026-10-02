@@ -17,6 +17,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// GET answers with `get`; PUT with a fresh `put()` Response (a body reads once), defaulting to `get` as well.
+const api = (get: unknown, put: () => Response = () => json({ application: get })) =>
+  vi.fn((_: string, init?: RequestInit) => Promise.resolve(init?.method === "PUT" ? put() : json({ application: get })));
+
 function mount(fetchMock: ReturnType<typeof vi.fn>, isMaster = true) {
   vi.stubGlobal("fetch", fetchMock);
   render(<AgentApplicationDetail id="a1" isMaster={isMaster} onChanged={vi.fn()} onClose={vi.fn()} />);
@@ -30,7 +34,7 @@ async function openAndFill(value = "2027-10-05") {
 
 describe("AgentApplicationEnrollment (AGN-013)", () => {
   it("a Master confirms after an explicit confirmation step, sending the displayed status", async () => {
-    const fetchMock = vi.fn((_: string, init?: RequestInit) => Promise.resolve(json({ application: init?.method === "PUT" ? enrolled : detail() })));
+    const fetchMock = api(detail(), () => json({ application: enrolled }));
     mount(fetchMock);
     fireEvent.click(await screen.findByRole("button", { name: "Enroll student" }));
     const form = screen.getByRole("form", { name: "Enrollment" });
@@ -71,7 +75,7 @@ describe("AgentApplicationEnrollment (AGN-013)", () => {
   });
 
   it("Escape on the confirmation goes back and returns focus to the submit button", async () => {
-    mount(vi.fn(() => Promise.resolve(json({ application: detail() }))));
+    mount(api(detail()));
     await openAndFill();
     fireEvent.keyDown(screen.getByRole("group", { name: "Confirm enrollment" }), { key: "Escape" });
     expect(screen.queryByRole("group", { name: "Confirm enrollment" })).toBeNull();
@@ -79,7 +83,7 @@ describe("AgentApplicationEnrollment (AGN-013)", () => {
   });
 
   it("a 422 keeps the form and the input, and announces the server's words", async () => {
-    const fetchMock = vi.fn((_: string, init?: RequestInit) => Promise.resolve(init?.method === "PUT" ? json({ detail: "An offer is needed before enrollment" }, 422) : json({ application: detail() })));
+    const fetchMock = api(detail(), () => json({ detail: "An offer is needed before enrollment" }, 422));
     mount(fetchMock);
     await openAndFill("2027-09-20");
     fireEvent.click(screen.getByRole("button", { name: "Yes, confirm enrollment" }));
@@ -104,13 +108,13 @@ describe("AgentApplicationEnrollment (AGN-013)", () => {
   });
 
   it("Staff see who confirms, not the action", async () => {
-    mount(vi.fn(() => Promise.resolve(json({ application: detail() }))), false);
+    mount(api(detail()), false);
     expect(await screen.findByText("An agency Master confirms enrollment.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Enroll student" })).toBeNull();
   });
 
   it("an enrolled application shows the final status and details; a Master corrects them without a confirmation step", async () => {
-    const fetchMock = vi.fn((_: string, init?: RequestInit) => Promise.resolve(json({ application: init?.method === "PUT" ? { ...enrolled, university_student_id: "S-2" } : enrolled })));
+    const fetchMock = api(enrolled, () => json({ application: { ...enrolled, university_student_id: "S-2" } }));
     mount(fetchMock);
     expect(await screen.findByText("S-1")).toBeInTheDocument();
     expect(screen.queryByLabelText("Move to")).toBeNull();
@@ -124,21 +128,21 @@ describe("AgentApplicationEnrollment (AGN-013)", () => {
   });
 
   it("Cancel closes the form and returns focus to its opener", async () => {
-    mount(vi.fn(() => Promise.resolve(json({ application: detail() }))));
+    mount(api(detail()));
     fireEvent.click(await screen.findByRole("button", { name: "Enroll student" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Enroll student" })).toHaveFocus());
   });
 
   it("Staff see enrolled details read-only", async () => {
-    mount(vi.fn(() => Promise.resolve(json({ application: enrolled }))), false);
+    mount(api(enrolled), false);
     expect(await screen.findByText("S-1")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit enrollment details" })).toBeNull();
   });
 
   it("before an offer, withdrawn or archived there is no enrollment section", async () => {
     for (const over of [{ status: "enquiry" }, { status: "withdrawn", read_only_reason: "withdrawn" }, { read_only_reason: "archived" }]) {
-      mount(vi.fn(() => Promise.resolve(json({ application: detail(over) }))));
+      mount(api(detail(over)));
       await screen.findByRole("heading", { name: "Asha Rao — Uni One" });
       expect(screen.queryByRole("heading", { name: "Enrollment" })).toBeNull();
       cleanup();

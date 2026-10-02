@@ -40,9 +40,9 @@ export function canWithdraw(current: string): boolean {
 }
 
 // AGN-013 E6: a Master confirms enrollment from an offer onwards (the server is the authority).
-export const ENROLLABLE_STAGES = ["offer", "visa_documentation", "status_tracking"] as const;
+const ENROLLABLE_STAGES: readonly string[] = STAGES.slice(STAGES.indexOf("offer"), STAGES.indexOf(AGENT_MAX_STAGE) + 1);
 export function canConfirmEnrollment(status: string): boolean {
-  return (ENROLLABLE_STAGES as readonly string[]).includes(status);
+  return ENROLLABLE_STAGES.includes(status);
 }
 export type EnrollmentCheck = "after_intake" | "intake_unrecognised" | null;
 export const ENROLLMENT_CHECK_TEXT: Record<Exclude<EnrollmentCheck, null>, string> = {

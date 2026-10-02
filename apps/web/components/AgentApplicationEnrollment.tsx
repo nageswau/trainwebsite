@@ -34,14 +34,10 @@ export default function AgentApplicationEnrollment({ detail, isMaster, onSaved, 
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
-    let outcome: Awaited<ReturnType<typeof sendJson>>;
-    try {
-      const body = { enrollment_date: date, university_student_id: studentId.trim() || null, expected_status: detail.status, ...(enrolled ? {} : { notes: notes.trim() || null }) };
-      outcome = await sendJson(`${APPLICATIONS_URL}/${detail.id}/enrollment`, "PUT", body);
-    } finally {
-      inFlight.current = false;
-      setBusy(false);
-    }
+    const body = { enrollment_date: date, university_student_id: studentId.trim() || null, expected_status: detail.status, ...(enrolled ? {} : { notes: notes.trim() || null }) };
+    const outcome = await sendJson(`${APPLICATIONS_URL}/${detail.id}/enrollment`, "PUT", body); // never throws: failures come back as an outcome
+    inFlight.current = false;
+    setBusy(false);
     setConfirming(false);
     if (!outcome.ok) return onFailed(outcome.message, outcome.status);
     const next = (outcome.data as { application?: AgentApplicationDetail }).application;

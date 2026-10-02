@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import AgentApplicationEditForm from "./AgentApplicationEditForm";
 import AgentApplicationEnrollment from "./AgentApplicationEnrollment";
 import AgentApplicationStatusForm from "./AgentApplicationStatusForm";
@@ -136,8 +136,13 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
           )}
         </>
       )}
-      {!editing && <AgentApplicationEnrollment key={`enrollment-${detail.status}`}detail={detail} isMaster={isMaster} onSaved={enrollmentSaved} onFailed={editFailed} />}
-      {!detail.read_only_reason && !editing && <AgentApplicationStatusForm key={detail.status} detail={detail} onSaved={saved} onFailed={failed} />}
+      {!editing && (
+        // A status change starts both action forms afresh.
+        <Fragment key={detail.status}>
+          <AgentApplicationEnrollment detail={detail} isMaster={isMaster} onSaved={enrollmentSaved} onFailed={editFailed} />
+          {!detail.read_only_reason && <AgentApplicationStatusForm detail={detail} onSaved={saved} onFailed={failed} />}
+        </Fragment>
+      )}
       <h5>Status history</h5>
       <ol aria-label="Status history">
         {detail.history.map((h, i) => (

@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 import sqlalchemy as sa
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import inspect
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -29,17 +30,17 @@ APP_COLUMNS = "SELECT id, student_id, university_id, status, intake, agent_id FR
 NEW = ("enrollment_date", "university_student_id", "enrollment_confirmed_at")
 
 
+def _config() -> Config:
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    return cfg
+
+
 def test_migration_chains_after_0057_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert len(HEAD) <= 32  # alembic_version.version_num is VARCHAR(32)
     assert tuple(name for name, _ in _migration.COLUMNS) == NEW
-    parents = {}
-    for file in VERSIONS.glob("*.py"):
-        lines = file.read_text(encoding="utf-8").splitlines()
-        rev = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("revision =")), None)
-        if rev:
-            parents[rev] = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("down_revision =")), None)
-    assert set(parents) - set(parents.values()) == {HEAD}
+    assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
 
 
 def test_model_declares_the_new_columns_nullable():
@@ -75,8 +76,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 @pytest.fixture
 def isolated_db():
     """A fresh database at 0057 with one application."""
-    cfg = Config(str(API_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    cfg = _config()
     original = settings.database_url
     name = f"agn013_migration_{uuid.uuid4().hex[:8]}"
     url = make_url(original).set(database=name).render_as_string(hide_password=False)

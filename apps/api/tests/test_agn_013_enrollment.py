@@ -4,11 +4,11 @@ import logging
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.models import AgentCommission, ApplicationStatusHistory, AuditLog, OverseasApplication
 from tests.agn001_helpers import client_for, mk_user
-from tests.agn008_helpers import APPS, agency_world, mk_application
+from tests.agn008_helpers import APPS, agency_world, count_rows, mk_application
 
 COMMISSIONS = "/api/v1/workflows/overseas/agent/commissions"
 
@@ -35,16 +35,11 @@ async def _set(db, world, **fields):
     await db.commit()
 
 
-async def _rows(db, model, app_id) -> int:
-    where = AuditLog.entity_id == str(app_id) if model is AuditLog else model.application_id == app_id
-    return await db.scalar(select(func.count()).select_from(model).where(where))
-
-
 async def _assert_untouched(db, world, status):
     row = await db.get(OverseasApplication, world["app"].id, populate_existing=True)
     assert (row.status, row.enrollment_date, row.university_student_id, row.enrollment_confirmed_at) == (status, None, None, None)
     for model in (ApplicationStatusHistory, AgentCommission, AuditLog):
-        assert await _rows(db, model, world["app"].id) == 0, model
+        assert await count_rows(db, model, world["app"].id) == 0, model
 
 
 @pytest.mark.asyncio
@@ -77,8 +72,8 @@ async def test_resaving_corrects_details_without_a_second_commission(db_session,
         assert (a["enrollment_date"], a["university_student_id"]) == ("2027-09-22", None)
         assert a["enrollment_confirmed_at"] == first.json()["application"]["enrollment_confirmed_at"]  # the first confirmation stays
         assert (await _put(c, world["app"].id, _body("enrolled", enrollment_date="2027-09-22", university_student_id=None))).status_code == 200
-    assert await _rows(db_session, AgentCommission, world["app"].id) == 1
-    assert await _rows(db_session, ApplicationStatusHistory, world["app"].id) == 1
+    assert await count_rows(db_session, AgentCommission, world["app"].id) == 1
+    assert await count_rows(db_session, ApplicationStatusHistory, world["app"].id) == 1
     updates = (await db_session.scalars(select(AuditLog).where(AuditLog.action == "overseas.application.enrollment_update", AuditLog.entity_id == str(world["app"].id)))).all()
     assert [u.metadata_json for u in updates] == [{"fields": ["enrollment_date", "university_student_id"]}]  # the no-op save wrote nothing
 
@@ -135,27 +130,22 @@ async def test_unauthenticated_is_401(client, db_session, world):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("setup", "code", "status"),
+    ("status", "expected", "archived", "code"),
     [
-        ("withdrawn", 409, "withdrawn"),
-        ("archived", 409, "offer"),
-        ("stale", 409, "offer"),
-        ("enquiry", 422, "enquiry"),
-        ("university_selection", 422, "university_selection"),
-        ("University review", 422, "University review"),
+        ("withdrawn", "withdrawn", False, 409),
+        ("offer", "offer", True, 409),  # the student is archived
+        ("offer", "status_tracking", False, 409),  # stale screen
+        ("enquiry", "enquiry", False, 422),
+        ("university_selection", "university_selection", False, 422),
+        ("University review", "University review", False, 422),  # legacy free-text status
     ],
 )
-async def test_refusals_write_nothing(db_session, world, setup, code, status):
-    expected = "offer"
-    if setup == "archived":
+async def test_refusals_write_nothing(db_session, world, status, expected, archived, code):
+    await _set(db_session, world, status=status)
+    if archived:
         world["record"].status = "archived"
         db_session.add(world["record"])
         await db_session.commit()
-    elif setup == "stale":
-        expected = "status_tracking"
-    else:
-        await _set(db_session, world, status=setup)
-        expected = setup
     async with client_for(world["master"].email) as c:
         r = await _put(c, world["app"].id, _body(expected))
     assert r.status_code == code, r.text
@@ -178,8 +168,8 @@ async def test_master_adds_details_to_a_counselor_enrolled_application(db_sessio
     async with client_for(world["master"].email) as c:
         r = await _put(c, world["app"].id, _body("enrolled"))
     assert r.status_code == 200 and r.json()["application"]["enrollment_confirmed_at"]
-    assert await _rows(db_session, AgentCommission, world["app"].id) == 0
-    assert await _rows(db_session, ApplicationStatusHistory, world["app"].id) == 0
+    assert await count_rows(db_session, AgentCommission, world["app"].id) == 0
+    assert await count_rows(db_session, ApplicationStatusHistory, world["app"].id) == 0
 
 
 @pytest.mark.asyncio

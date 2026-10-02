@@ -6,12 +6,12 @@ from contextlib import asynccontextmanager
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.models import AgentCommission, ApplicationStatusHistory, OverseasApplication
 from tests.agn001_helpers import client_for
-from tests.agn008_helpers import APPS, agency_world, mk_application
+from tests.agn008_helpers import APPS, agency_world, count_rows, mk_application
 
 BODY = {"enrollment_date": "2027-09-20", "expected_status": "status_tracking"}
 
@@ -23,18 +23,14 @@ async def world(db_session):
     return w
 
 
-async def _count(db, model, app_id) -> int:
-    return await db.scalar(select(func.count()).select_from(model).where(model.application_id == app_id))
-
-
 @pytest.mark.asyncio
 async def test_two_simultaneous_confirmations_create_one_commission(db_session, world):
     url = f"{APPS}/{world['app'].id}/enrollment"
     async with client_for(world["master"].email) as a, client_for(world["master"].email) as b:
         first, second = await asyncio.gather(a.put(url, json=BODY), b.put(url, json=BODY))
     assert sorted([first.status_code, second.status_code]) == [200, 409]  # the loser saw `enrolled`, not the status_tracking it expected
-    assert await _count(db_session, AgentCommission, world["app"].id) == 1
-    assert await _count(db_session, ApplicationStatusHistory, world["app"].id) == 1
+    assert await count_rows(db_session, AgentCommission, world["app"].id) == 1
+    assert await count_rows(db_session, ApplicationStatusHistory, world["app"].id) == 1
 
 
 @asynccontextmanager
@@ -60,6 +56,6 @@ async def test_counselor_enrolment_landing_first_turns_the_agency_call_into_a_st
             assert not task.done(), "the request did not wait for the application row lock"
         r = await asyncio.wait_for(task, timeout=20)
     assert r.status_code == 409, r.text  # the screen showed status_tracking: reload, then a re-save is a correction
-    assert await _count(db_session, AgentCommission, world["app"].id) == 0  # the agency call created none
+    assert await count_rows(db_session, AgentCommission, world["app"].id) == 0  # the agency call created none
     row = await db_session.get(OverseasApplication, world["app"].id, populate_existing=True)
     assert (row.status, row.enrollment_date) == ("enrolled", None)

@@ -15,11 +15,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.agent_students import _gate
+from app.api.agent_students import _gate, _require_master_action
 from app.api.deps import get_current_user
 from app.api.workflows import _maybe_trigger_agent_commission, _notify_user
 from app.core.database import get_db
-from app.core.rbac import is_agent_staff
 from app.models import AgentOrgMember, AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, University, User
 from app.schemas import AgentApplicationCreate, AgentApplicationEnrollment, AgentApplicationStatus, AgentApplicationUpdate
 from app.services.agent_applications import (
@@ -190,34 +189,31 @@ async def save_enrollment(application_id: UUID, payload: AgentApplicationEnrollm
     commission trigger, which creates at most one commission per application -- or, once enrolled, corrects the date and student
     ID (no history row, no commission). Locks as every agency write: organisation, then the row; one commit."""
     membership = _gate(user)
-    if is_agent_staff(user):  # E1: refused before any load, so staff learn nothing about ids
-        raise HTTPException(403, MASTER_ONLY_ENROLLMENT)
+    _require_master_action(user, MASTER_ONLY_ENROLLMENT)  # E1: refused before any load, so staff learn nothing about ids
     item = await _locked(db, user, membership, application_id)
     record = await _refuse_closed(db, user, item)
     if payload.expected_status != item.status:
         raise HTTPException(409, STALE)
-    fields = {"enrollment_date": payload.enrollment_date, "university_student_id": payload.university_student_id}
-    if item.status == "enrolled":
-        changed = sorted(k for k, v in fields.items() if getattr(item, k) != v)
-        for key in changed:
-            setattr(item, key, fields[key])
-        if changed:
-            item.enrollment_confirmed_at = item.enrollment_confirmed_at or datetime.now(UTC)
-            _audit(db, user, "enrollment_update", item.id, {"fields": changed})
-        await db.commit()
-        if changed:
-            _log("agent_application_enrollment_updated", membership, user, item.id, fields=changed)
-        return {"application": await detail(db, user, item, record=record)}
-    if item.status not in ENROLLABLE:
-        raise HTTPException(422, OFFER_NEEDED)
     old = item.status
-    for key, value in fields.items():
-        setattr(item, key, value)
-    item.enrollment_confirmed_at = datetime.now(UTC)
-    item.status = "enrolled"
-    db.add(ApplicationStatusHistory(application_id=item.id, from_status=old, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id))
-    await _maybe_trigger_agent_commission(db, item, old, user)
-    _audit(db, user, "enroll", item.id, {"from_status": old, "to_status": item.status})
+    confirming = old != "enrolled"
+    if confirming and old not in ENROLLABLE:
+        raise HTTPException(422, OFFER_NEEDED)
+    fields = {"enrollment_date": payload.enrollment_date, "university_student_id": payload.university_student_id}
+    changed = [key for key, value in fields.items() if getattr(item, key) != value]
+    for key in changed:
+        setattr(item, key, fields[key])
+    if confirming:
+        item.enrollment_confirmed_at = datetime.now(UTC)
+        item.status = "enrolled"
+        db.add(ApplicationStatusHistory(application_id=item.id, from_status=old, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id))
+        await _maybe_trigger_agent_commission(db, item, old, user)
+        _audit(db, user, "enroll", item.id, {"from_status": old, "to_status": item.status})
+    elif changed:  # a correction: no history row, no commission; an unchanged re-save writes nothing
+        item.enrollment_confirmed_at = item.enrollment_confirmed_at or datetime.now(UTC)
+        _audit(db, user, "enrollment_update", item.id, {"fields": changed})
     await db.commit()
-    _log("agent_application_enrolled", membership, user, item.id, from_status=old)
+    if confirming:
+        _log("agent_application_enrolled", membership, user, item.id, from_status=old)
+    elif changed:
+        _log("agent_application_enrollment_updated", membership, user, item.id, fields=changed)
     return {"application": await detail(db, user, item, record=record)}

@@ -260,7 +260,7 @@ def check_transition(current: str, target: str) -> None:
         raise HTTPException(422, f"Cannot move from '{current}' to '{target}' -- an agent can only move an application forward")
 
 
-ENROLLABLE = ("offer", "visa_documentation", "status_tracking")  # AGN-013 E6: an offer is needed before enrollment
+ENROLLABLE = OFFER_STAGES_ON  # AGN-013 E6: an offer is needed before enrollment
 OFFER_NEEDED = "An offer is needed before enrollment"
 MASTER_ONLY_ENROLLMENT = "Only an agency Master can confirm enrollment"
 _MONTHS = {
