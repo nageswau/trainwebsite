@@ -44,20 +44,51 @@ def test_models_match_the_migration():
 
     org = BdmOrganization.__table__
     assert {c.name for c in org.columns} == {
-        "id", "code", "org_type", "bdm_type", "name", "name_key", "city", "city_key", "state", "phone", "email", "website",
-        "existing_partner", "courses_interested", "student_count", "assigned_bdm_user_id", "created_by_user_id", "archived_at",
-        "created_at", "updated_at",
+        "id",
+        "code",
+        "org_type",
+        "bdm_type",
+        "name",
+        "name_key",
+        "city",
+        "city_key",
+        "state",
+        "phone",
+        "email",
+        "website",
+        "existing_partner",
+        "courses_interested",
+        "student_count",
+        "assigned_bdm_user_id",
+        "created_by_user_id",
+        "archived_at",
+        "created_at",
+        "updated_at",
     }
     for required in ("code", "org_type", "bdm_type", "name", "name_key", "city", "city_key", "existing_partner", "assigned_bdm_user_id", "created_by_user_id"):
         assert not org.c[required].nullable, required
     names = {i.name for i in org.indexes} | {c.name for c in org.constraints}
     assert {
-        "uq_bdm_organizations_code", "ck_bdm_organizations_org_type", "ck_bdm_organizations_bdm_type", "ck_bdm_organizations_student_count",
-        "ix_bdm_organizations_type_assignee", "ix_bdm_organizations_duplicate_key",
+        "uq_bdm_organizations_code",
+        "ck_bdm_organizations_org_type",
+        "ck_bdm_organizations_bdm_type",
+        "ck_bdm_organizations_student_count",
+        "ix_bdm_organizations_type_assignee",
+        "ix_bdm_organizations_duplicate_key",
     } <= names
     contact = BdmOrganizationContact.__table__
     assert {c.name for c in contact.columns} == {
-        "id", "organization_id", "position", "name", "designation", "role", "phone", "email", "is_primary", "created_at", "updated_at",
+        "id",
+        "organization_id",
+        "position",
+        "name",
+        "designation",
+        "role",
+        "phone",
+        "email",
+        "is_primary",
+        "created_at",
+        "updated_at",
     }
     names = {i.name for i in contact.indexes} | {c.name for c in contact.constraints}
     assert {"ck_bdm_organization_contacts_role", "ix_bdm_organization_contacts_org", "uq_bdm_organization_contacts_primary"} <= names
@@ -99,8 +130,7 @@ def isolated_db():
         user_id = uuid.uuid4()
         _sql(
             url,
-            "INSERT INTO users (id, email, password_hash, full_name, role, division, active, email_verified, locale, profile) "
-            "VALUES (:id, :email, 'x', 'bdm', 'bdm', 'it', true, true, 'en-GB', '{}')",
+            "INSERT INTO users (id, email, password_hash, full_name, role, division, active, email_verified, locale, profile) VALUES (:id, :email, 'x', 'bdm', 'bdm', 'it', true, true, 'en-GB', '{}')",
             {"id": user_id, "email": f"bdm-{name}@example.local"},
         )
         yield {"cfg": cfg, "url": url, "user": user_id}

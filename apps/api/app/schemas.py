@@ -2973,8 +2973,14 @@ class BdmManagerPage(BaseModel):
 BdmOrgType = Literal["college", "university", "agent", "school", "corporate", "training_institute", "other"]
 BdmContactRole = Literal["principal", "dean", "hod", "placement_officer", "counselor", "management", "owner", "other"]
 BDM_ORG_LABELS = {
-    "name": "Organization name", "city": "City", "state": "State", "phone": "Phone", "email": "Email", "website": "Website",
-    "courses_interested": "Courses interested", "designation": "Designation",
+    "name": "Organization name",
+    "city": "City",
+    "state": "State",
+    "phone": "Phone",
+    "email": "Email",
+    "website": "Website",
+    "courses_interested": "Courses interested",
+    "designation": "Designation",
 }
 BDM_ORG_FIELDS = ("org_type", "name", "city", "state", "phone", "email", "website", "existing_partner", "courses_interested", "student_count")
 _BDM_PHONE = re.compile(r"[0-9+()\- ]+")
