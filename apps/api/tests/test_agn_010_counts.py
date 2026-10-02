@@ -1,5 +1,6 @@
 """AGN-010 AC05 -- the agent Offers count (O5): stage `offer` or later (legacy values included) OR an offer recorded, on the
-dashboard (new KPI, after Pending actions) and the Reports row (the §0 defect: it counted only offer_received/accepted)."""
+dashboard and the Reports row (the §0 defect: it counted only offer_received/accepted). The new KPI follows the Master's commission
+metrics, so AGN-014's asserted order holds; for staff (no commission metrics) it follows Pending actions."""
 
 from datetime import date
 
@@ -49,12 +50,14 @@ def _report(payload) -> int:
 @pytest.mark.asyncio
 async def test_master_dashboard_and_reports_count_offers_by_stage_or_offer_record(world):
     dashboard = await _get(world["master"].email, DASHBOARD)
-    assert [m["label"] for m in dashboard["metrics"]][:4] == ["Students", "Applications", "Pending actions", "Offers"]
+    assert [m["label"] for m in dashboard["metrics"]][:7] == ["Students", "Applications", "Pending actions", "Claimable commission", "Claims", "Revenue", "Offers"]
     assert _metric(dashboard) == 5
     assert _report(await _get(world["master"].email, REPORTS)) == 5
 
 
 @pytest.mark.asyncio
 async def test_staff_count_only_their_students_offers(world):
-    assert _metric(await _get(world["staff"]["user"].email, DASHBOARD)) == 5
+    staff = (await _get(world["staff"]["user"].email, DASHBOARD))["metrics"]
+    assert [m["label"] for m in staff][:4] == ["Students", "Applications", "Pending actions", "Offers"]
+    assert {m["label"]: m["value"] for m in staff}["Offers"] == 5
     assert _metric(await _get(world["other_staff"]["user"].email, DASHBOARD)) == 0

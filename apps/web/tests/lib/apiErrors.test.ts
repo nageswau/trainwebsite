@@ -8,7 +8,13 @@ afterEach(() => vi.unstubAllGlobals());
 describe("sendJson", () => {
   it("returns the server's string detail on a 403", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 403, json: async () => ({ detail: "This school has no active partnership tier." }) }));
-    expect(await sendJson("/x", "POST", {})).toEqual({ ok: false, message: "This school has no active partnership tier.", status: 403 });
+    expect(await sendJson("/x", "POST", {})).toEqual({ ok: false, message: "This school has no active partnership tier.", status: 403, detail: "This school has no active partnership tier." });
+  });
+
+  it("passes a 422's raw detail through, so a form can put the error on its field (AGN-013 QA13-09)", async () => {
+    const detail = [{ loc: ["body", "university_student_id"], msg: "Value error, too long" }];
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 422, json: async () => ({ detail }) }));
+    expect(await sendJson("/x", "PUT", {})).toEqual({ ok: false, message: "Too long", status: 422, detail });
   });
 
   it("never throws on a network failure", async () => {
@@ -23,7 +29,7 @@ describe("sendJson", () => {
 
   it("reports the HTTP status of a failed response, and none for a network failure (QA27-03/-04)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({ detail: "Not authenticated" }) }));
-    expect(await sendJson("/x", "PATCH", {})).toEqual({ ok: false, message: "Not authenticated", status: 401 });
+    expect(await sendJson("/x", "PATCH", {})).toEqual({ ok: false, message: "Not authenticated", status: 401, detail: "Not authenticated" });
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
     const failed = await sendJson("/x", "PATCH", {});
     expect(failed.ok || failed.status).toBeUndefined();

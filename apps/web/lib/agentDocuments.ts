@@ -11,7 +11,7 @@ export const reviewUrl = (id: string) => `/api/v1/workflows/overseas/documents/$
 // EVID-015 §5 Step 4 (G3); "Other" needs a description. Mirrors the API's AgentDocumentType.
 export const DOCUMENT_TYPES = ["Passport", "Academic certificates", "Transcripts", "English test", "CV", "SOP", "LOR", "Financial documents", "Other"] as const;
 export const OTHER = "Other";
-// AGN-010 (DEC-SCOPE-054 O3): uploads also take an offer letter, which must name its application; requests keep DOCUMENT_TYPES.
+// AGN-010 (DEC-SCOPE-056 O3): uploads also take an offer letter, which must name its application; requests keep DOCUMENT_TYPES.
 export const OFFER_LETTER = "Offer letter";
 export const UPLOAD_DOCUMENT_TYPES = [...DOCUMENT_TYPES, OFFER_LETTER] as const;
 

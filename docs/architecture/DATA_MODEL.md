@@ -345,7 +345,7 @@ covers the commission-specific piece).
   change has been made; this note only records that the previously-safe assumption no longer holds
   universally.
 
-- **Addendum, 2026-10-02 (`AGN-010`, `DEC-SCOPE-054`; migration `0060_agent_offer_details`, after `0059_agent_tasks`).**
+- **Addendum, 2026-10-02 (`AGN-010`, `DEC-SCOPE-056`; migration `0062_agent_offer_details`, after `0061_bdm_profiles`).**
   Four nullable columns on `overseas_applications` (one current offer per application, O1): `offer_type` VARCHAR(20) with CHECK
   `ck_overseas_applications_offer_type` (`NULL` or `conditional`/`unconditional`); `offer_date` DATE with CHECK
   `ck_overseas_applications_offer_dated` (`(offer_type IS NULL) = (offer_date IS NULL)`); `offer_conditions` TEXT; `offer_document_id`
@@ -379,6 +379,11 @@ covers the commission-specific piece).
   has a login (A11). School-bridged rows stay excluded from every list that excludes them today (A12). Draft vs Submitted is
   `submitted_on IS NULL` vs `NOT NULL` for the stages before `offer` (A9). Downgrade drops the index and the four columns. No existing row
   changes and `agent_student_id` is not backfilled. Design: `docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md` §4.
+- **Addendum, 2026-10-02 (`AGN-013`, `DEC-SCOPE-054`; migration `0060_agent_app_enrollment`, chained after `0059_agent_tasks` (drafted as `0058`, re-chained on merging `main` @ `9adcbca`)) — enrollment confirmation.**
+  Additive nullable columns on `overseas_applications`: `enrollment_date` Date, `university_student_id` VARCHAR(60), `enrollment_confirmed_at`
+  TIMESTAMPTZ (first time the agency recorded details). No row is read or written by the upgrade; the downgrade refuses while any of the
+  three holds data. The revision id is ≤ 32 characters (`alembic_version.version_num` is `VARCHAR(32)`). `agent_commissions` is unchanged:
+  an agency Master's confirmation reaches `enrolled` through the same `ApplicationStatusHistory` write and §6.3 trigger (E3).
 
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an

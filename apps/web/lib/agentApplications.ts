@@ -39,6 +39,17 @@ export function canWithdraw(current: string): boolean {
   return current !== "withdrawn" && current !== "enrolled";
 }
 
+// AGN-013 E6: a Master confirms enrollment from an offer onwards (the server is the authority).
+const ENROLLABLE_STAGES: readonly string[] = STAGES.slice(STAGES.indexOf("offer"), STAGES.indexOf(AGENT_MAX_STAGE) + 1);
+export function canConfirmEnrollment(status: string): boolean {
+  return ENROLLABLE_STAGES.includes(status);
+}
+export type EnrollmentCheck = "after_intake" | "intake_unrecognised" | null;
+export const ENROLLMENT_CHECK_TEXT: Record<Exclude<EnrollmentCheck, null>, string> = {
+  after_intake: "The enrollment date is in the future and after the intake month. Check the date.",
+  intake_unrecognised: "The intake is not a month and year, so the enrollment date was not checked against it.",
+};
+
 export type NearestDeadline = { kind: "application" | "offer"; date: string } | null;
 
 export function deadlineText(nearest: NearestDeadline, today: string): string | null {
@@ -80,12 +91,16 @@ export type AgentApplicationDetail = AgentApplicationItem & {
   course_id: string | null;
   created_at: string;
   read_only_reason: "withdrawn" | "archived" | null;
+  enrollment_date: string | null;
+  university_student_id: string | null;
+  enrollment_confirmed_at: string | null;
+  enrollment_check: EnrollmentCheck;
   history: HistoryEntry[];
   offer: AgentOffer | null;
   offer_letters: OfferLetterOption[];
 };
 
-// AGN-010 (DEC-SCOPE-054): one current offer per application; its deadline is the application's `offer_deadline` (O2) and its letter
+// AGN-010 (DEC-SCOPE-056): one current offer per application; its deadline is the application's `offer_deadline` (O2) and its letter
 // an AGN-009 document of type "Offer letter" attached to this application (O3). The server checks every rule again.
 export type OfferType = "conditional" | "unconditional";
 export const OFFER_TYPE_LABELS: Record<OfferType, string> = { conditional: "Conditional", unconditional: "Unconditional" };

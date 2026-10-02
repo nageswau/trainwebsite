@@ -5,6 +5,8 @@ Functions only (the services/agent_students.py shape): nothing here commits -- t
 Spec: docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md.
 """
 
+import calendar
+import re
 from datetime import UTC, date, datetime
 from typing import NamedTuple
 from uuid import UUID
@@ -173,12 +175,16 @@ async def detail(db: AsyncSession, user: User, app: OverseasApplication, *, reco
         "course_id": found.course_id,
         "created_at": found.created_at,
         "read_only_reason": reason,
+        "enrollment_date": found.enrollment_date,
+        "university_student_id": found.university_student_id,
+        "enrollment_confirmed_at": found.enrollment_confirmed_at,
+        "enrollment_check": enrollment_check(found, datetime.now(UTC).date()),
         "history": [{"from_status": h.from_status, "to_status": h.to_status, "next_action": h.next_action, "notes": h.notes, "changed_by": name, "created_at": h.created_at} for h, name in history],
         **await _offer_parts(db, user, found),
     }
 
 
-# --- AGN-010: offer details (DEC-SCOPE-054; docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md) ---
+# --- AGN-010: offer details (DEC-SCOPE-056; docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md) ---
 
 # O5: an offer was received -- the stage reached `offer` (legacy free-text values included) or an offer is recorded, so an application
 # withdrawn after its offer still counts. The agent pages only; other roles' counts are ang-018's (RAID).
@@ -351,3 +357,40 @@ def check_transition(current: str, target: str) -> None:
     current_index = OVERSEAS_APPLICATION_STAGES.index(current) if current in OVERSEAS_APPLICATION_STAGES else -1
     if OVERSEAS_APPLICATION_STAGES.index(target) <= current_index:
         raise HTTPException(422, f"Cannot move from '{current}' to '{target}' -- an agent can only move an application forward")
+
+
+ENROLLABLE = OFFER_STAGES_ON  # AGN-013 E6: an offer is needed before enrollment
+OFFER_NEEDED = "An offer is needed before enrollment"
+MASTER_ONLY_ENROLLMENT = "Only an agency Master can confirm enrollment"
+_MONTHS = {
+    name: number
+    for number, names in enumerate(
+        ("jan january", "feb february", "mar march", "apr april", "may", "jun june", "jul july", "aug august", "sep sept september", "oct october", "nov november", "dec december"), 1
+    )
+    for name in names.split()
+}
+_NAMED_INTAKE = re.compile(r"\b([a-z]+)\.?\s*,?\s*(\d{4})\b")
+_NUMERIC_INTAKE = re.compile(r"\b(?:(\d{1,2})\s*[/-]\s*(\d{4})|(\d{4})\s*[/-]\s*(\d{1,2}))\b")
+
+
+def intake_end(text: str | None) -> date | None:
+    """AGN-013 E2: intake is free text, so this is best effort -- the last day of the month in "Sep 2027", "September 2027",
+    "09/2027" or "2027-09"; None when no month and year are found (the caller says so instead of guessing)."""
+    value = (text or "").lower()
+    found = next(((int(year), _MONTHS[word]) for word, year in _NAMED_INTAKE.findall(value) if word in _MONTHS), None)
+    if found is None and (match := _NUMERIC_INTAKE.search(value)):
+        found = (int(match[2]), int(match[1])) if match[1] else (int(match[3]), int(match[4]))
+    if found is None or not 1 <= found[1] <= 12 or not 2000 <= found[0] <= 2100:
+        return None
+    year, month = found
+    return date(year, month, calendar.monthrange(year, month)[1])
+
+
+def enrollment_check(app, today: date) -> str | None:
+    """AGN-013 E2: a warning, never a block -- a future enrollment date after the intake month, or an intake that cannot be read."""
+    if app.enrollment_date is None:
+        return None
+    end = intake_end(app.intake)
+    if end is None:
+        return "intake_unrecognised"
+    return "after_intake" if app.enrollment_date > end and app.enrollment_date > today else None

@@ -12,7 +12,7 @@ const LOAD_FAILED = "The applications could not be loaded.";
 
 // AGN-008: the agency's applications for one sidebar filter. Paging is local (a new filter remounts this panel at page one); the
 // previous page stays visible, dimmed, while the next loads; only the newest request may fill the list.
-export default function AgentApplicationsPanel({ group, reloadKey }: { group: StatusGroup; reloadKey: number }) {
+export default function AgentApplicationsPanel({ group, reloadKey, isMaster = false }: { group: StatusGroup; reloadKey: number; isMaster?: boolean }) {
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<Page<AgentApplicationItem> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,7 +98,7 @@ export default function AgentApplicationsPanel({ group, reloadKey }: { group: St
                 >
                   {openId === a.id ? "Hide" : "View"}
                 </button>
-                {openId === a.id && <AgentApplicationDetail id={a.id} onChanged={replace} onClose={() => close(a.id)} />}
+                {openId === a.id && <AgentApplicationDetail id={a.id} isMaster={isMaster} onChanged={replace} onClose={() => close(a.id)} />}
               </li>
             );
           })}

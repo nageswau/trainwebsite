@@ -13,7 +13,7 @@ type Props = {
   onCancel: () => void;
 };
 
-// AGN-010 (DEC-SCOPE-054): record or replace the offer -- the whole offer is sent (PUT). Conditions are asked for only for a
+// AGN-010 (DEC-SCOPE-056): record or replace the offer -- the whole offer is sent (PUT). Conditions are asked for only for a
 // conditional offer; the deadline is the application's offer deadline (O2), so it starts from that value. The offer letter is picked
 // from this application's uploaded offer letters (O3). The date limits are the inputs' own min/max; the server checks every rule.
 export default function AgentApplicationOfferForm({ detail, onSaved, onFailed, onCancel }: Props) {

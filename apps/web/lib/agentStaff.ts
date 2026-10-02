@@ -36,7 +36,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
   "overseas.application.update": "Edited an application",
   "overseas.application.advance": "Moved an application forward",
   "overseas.application.withdraw": "Withdrew an application",
-  "overseas.application.offer": "Recorded an offer", // AGN-010 (DEC-SCOPE-054)
+  "overseas.application.offer": "Recorded an offer", // AGN-010 (DEC-SCOPE-056)
   "document.upload": "Uploaded a document",
   "document.verify": "Verified a document",
 };

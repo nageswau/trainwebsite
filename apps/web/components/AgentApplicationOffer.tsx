@@ -16,7 +16,7 @@ type Props = {
   onFailed: (message: string, status?: number) => void;
 };
 
-// AGN-010 (DEC-SCOPE-054): the application's offer -- the recorded offer (type in words, dates, conditions as written, the offer letter
+// AGN-010 (DEC-SCOPE-056): the application's offer -- the recorded offer (type in words, dates, conditions as written, the offer letter
 // with its review status and a scoped download), or an empty state, plus the button that opens the form. Opening moves focus to the
 // offer type (the recorded one, else the first -- the button it was on is gone, QA-02); saving returns it to the heading, cancelling
 // to the button.

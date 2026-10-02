@@ -720,8 +720,6 @@ async def _agent(db: AsyncSession, user: User, section: str):
             {"label": "Students", "value": len(students)},
             {"label": "Applications", "value": len(open_applications)},
             {"label": "Pending actions", "value": await pending_count(db, user)},  # AGN-016 (DEC-SCOPE-053 T5): open tasks in scope
-            # AGN-010 (DEC-SCOPE-054 O5): offers received, withdrawn ones included -- the Reports row's rule.
-            {"label": "Offers", "value": sum(1 for a, _, _ in applications if counts_as_offer(a))},
         ]
         if not staff:
             metrics += [
@@ -730,6 +728,9 @@ async def _agent(db: AsyncSession, user: User, section: str):
             ]
             # AGN-014 (DEC-SCOPE-051 R1): Revenue = paid commissions, per currency (never summed across currencies).
             metrics.append({"label": "Revenue", "value": _paid_per_currency(commissions)})
+        # AGN-010 (DEC-SCOPE-056 O5): offers received, withdrawn ones included -- the Reports row's rule. After the commission metrics,
+        # so the order AGN-014 and AGN-016 fixed stays as it was.
+        metrics.append({"label": "Offers", "value": sum(1 for a, _, _ in applications if counts_as_offer(a))})
         if user.agent_membership:
             metrics.append({"label": "Your code", "value": user.agent_membership.code})
         return _payload(
@@ -811,7 +812,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
         rows = [
             {"metric": "Students", "value": len(students)},
             {"metric": "Applications", "value": len(applications)},
-            # AGN-010 (DEC-SCOPE-054 O5): was `status in {"offer_received", "accepted"}`, which missed the `offer` stage (§0 defect).
+            # AGN-010 (DEC-SCOPE-056 O5): was `status in {"offer_received", "accepted"}`, which missed the `offer` stage (§0 defect).
             {"metric": "Offers", "value": sum(1 for a, _, _ in applications if counts_as_offer(a))},
         ]
         if not staff:

@@ -1,24 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import AgentApplicationEditForm from "./AgentApplicationEditForm";
+import AgentApplicationEnrollment from "./AgentApplicationEnrollment";
 import AgentApplicationOffer from "./AgentApplicationOffer";
 import AgentApplicationStatusForm from "./AgentApplicationStatusForm";
 import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { AgentApplicationDetail as Detail, APPLICATIONS_URL, deadlineText, READ_ONLY_TEXT, stageLabel, todayIso } from "@/lib/agentApplications";
 
-type Props = { id: string; onChanged: (d: Detail) => void; onClose: () => void };
+type Props = { id: string; isMaster?: boolean; onChanged: (d: Detail) => void; onClose: () => void };
 
 // AGN-008: one application -- fields, status history, edit and status change. A 409 (or a status 422) shows the server's words and
 // reloads, so the screen always ends on the real state (stale, withdrawn, archived); the reload also updates the list card (QA8-03).
-// A 422 from Save keeps the edit form open with the user's input (QA8-01). AGN-010: the offer block sits between the fields and the
-// status form, and its form follows the edit form's rules (a 422 keeps the input; 409 reloads).
-export default function AgentApplicationDetail({ id, onChanged, onClose }: Props) {
+// A 422 from Save keeps the edit form open with the user's input (QA8-01). AGN-013: the Enrollment section (Masters act, Staff read).
+// AGN-010: the offer block sits between the fields and the enrollment/status forms, and its form follows the edit form's rules (a 422
+// keeps the input; 409 reloads). One form of the detail is open at a time.
+export default function AgentApplicationDetail({ id, isMaster = false, onChanged, onClose }: Props) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "gone" | "error">("loading");
   const [editing, setEditing] = useState(false);
-  const [offering, setOffering] = useState(false); // AGN-010: the offer form; one form of the detail is open at a time
+  const [enrolling, setEnrolling] = useState(false); // AGN-013 QA13-06: the enrollment form is open, so no competing status action
+  const [offering, setOffering] = useState(false); // AGN-010: the offer form is open
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const focusAfter = useFocusAfterRender();
   const firstLoad = useRef(true); // the heading takes focus on the first successful load only
@@ -54,6 +57,7 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
     if (next.read_only_reason === "withdrawn" && detail?.read_only_reason !== "withdrawn") focusAfter(readOnlyId);
     setDetail(next);
     setEditing(false);
+    setEnrolling(false);
     setOffering(false);
     setNotice({ text: message, failed: false });
     onChanged(next);
@@ -63,9 +67,14 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
     if (status === 404) return setState("gone");
     if (status === 409 || status === 422) {
       setEditing(false); // the reload shows the real state; stale input must not stay on screen
+      setEnrolling(false);
       setOffering(false);
       load().then((reloaded) => reloaded && onChanged(reloaded));
     }
+  }
+  function enrollmentSaved(next: Detail, message: string) {
+    saved(next, message);
+    focusAfter(noticeId); // the form and its opener are gone: the announced notice takes focus
   }
   function editFailed(message: string, status?: number) {
     if (status !== 404) focusAfter(noticeId); // a 404 shows "no longer available" instead of the notice
@@ -139,13 +148,19 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
       <AgentApplicationOffer
         detail={detail}
         open={offering}
-        canOpen={!detail.read_only_reason && !editing}
+        canOpen={!detail.read_only_reason && !editing && !enrolling}
         onOpen={() => setOffering(true)}
         onCancel={() => setOffering(false)}
         onSaved={saved}
         onFailed={editFailed}
       />
-      {!detail.read_only_reason && !editing && !offering && <AgentApplicationStatusForm key={detail.status} detail={detail} onSaved={saved} onFailed={failed} />}
+      {!editing && !offering && (
+        // A status change starts both action forms afresh.
+        <Fragment key={detail.status}>
+          <AgentApplicationEnrollment detail={detail} isMaster={isMaster} onSaved={enrollmentSaved} onFailed={editFailed} onOpenChange={setEnrolling} />
+          {!detail.read_only_reason && !enrolling && <AgentApplicationStatusForm detail={detail} onSaved={saved} onFailed={failed} />}
+        </Fragment>
+      )}
       <h5>Status history</h5>
       <ol aria-label="Status history">
         {detail.history.map((h, i) => (

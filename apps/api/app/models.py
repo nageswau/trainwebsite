@@ -445,7 +445,11 @@ class OverseasApplication(Base, TimestampMixin):
     submitted_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     application_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     offer_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
-    # AGN-010 (DEC-SCOPE-054): the current offer, recorded by the agency. `offer_deadline` above is its deadline (O2); the letter is an
+    # AGN-013 (DEC-SCOPE-054): recorded by an agency Master at enrollment (PUT .../enrollment); NULL until then.
+    enrollment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    university_student_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    enrollment_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # AGN-010 (DEC-SCOPE-056): the current offer, recorded by the agency. `offer_deadline` above is its deadline (O2); the letter is an
     # AGN-009 document (O3). `use_alter`: student_documents.application_id points back at this table.
     offer_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     offer_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -894,6 +898,27 @@ class AuditLog(Base):
     outcome: Mapped[str] = mapped_column(String(30), default="recorded")
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BdmProfile(Base, TimestampMixin):
+    """bdm-001 (DEC-SCOPE-055): a BDM's §1 profile, 1:1 with a `bdm` user. Name, email, mobile and active stay on `users`.
+    The reporting manager must be an active `bdm_manager` -- enforced in `services/bdm.py` under a row lock (no cross-table CHECK)."""
+
+    __tablename__ = "bdm_profiles"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_bdm_profiles_user"),
+        CheckConstraint("bdm_type IN ('agent', 'school', 'college')", name="ck_bdm_profiles_type"),
+        Index("uq_bdm_profiles_employee_id", text("lower(employee_id)"), unique=True),
+        Index("ix_bdm_profiles_reporting_manager", "reporting_manager_user_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    bdm_type: Mapped[str] = mapped_column(String(20))
+    employee_id: Mapped[str] = mapped_column(String(40))
+    designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    territory: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    reporting_manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 class LiveSession(Base, TimestampMixin):

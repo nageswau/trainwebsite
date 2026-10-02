@@ -1,6 +1,6 @@
 # AGN-010 — Offer details (Step 6) — design
 
-**Status:** design approved in-session 2026-10-02 (`EXPLICIT_APPROVAL`, recorded as `DEC-SCOPE-054`). Source item:
+**Status:** design approved in-session 2026-10-02 (`EXPLICIT_APPROVAL`, recorded as `DEC-SCOPE-056`; drafted as `054`, renumbered on merging `main` @ `aad6b7c`). Source item:
 `docs/delivery/AGENT_CRM_BACKLOG.md` ang-010. Depends on AGN-008 (`DEC-SCOPE-050`) and AGN-009 (`DEC-SCOPE-052`), both on `main`.
 
 ## 1. Requirement and acceptance
@@ -10,7 +10,7 @@ Business requirement (EVID-015 §5 Step 6): conditional/unconditional offer, off
 Backlog acceptance: an offer deadline before the offer date → 422; a conditional offer requires conditions; switching to
 unconditional is recorded in history; the offer counts in dashboards (fixes the §0 defect for this path).
 
-## 2. Decisions (`DEC-SCOPE-054`, answered by the owner 2026-10-02)
+## 2. Decisions (`DEC-SCOPE-056`, answered by the owner 2026-10-02)
 
 | ID | Decision |
 |---|---|
@@ -22,7 +22,7 @@ unconditional is recorded in history; the offer counts in dashboards (fixes the 
 | O6 | **Conditions are free text** (≤ 2000 characters). |
 | O7 | **Concurrent offer saves: last write wins**, both recorded in history (the row lock serialises them). No offer version token. |
 
-## 3. Data (migration `0060_agent_offer_details`)
+## 3. Data (migration `0062_agent_offer_details`)
 
 Four nullable columns on `overseas_applications`; no existing row is read or rewritten.
 
@@ -101,8 +101,9 @@ application (§0.1 exception).
 
 `services/agent_applications.py`: `OFFER_COUNTED_STATUSES = {"offer", "offer_received", "accepted", "visa_documentation",
 "status_tracking", "enrolled"}` and `counts_as_offer(app)`. `services/portal._agent`: the Reports "Offers" row uses it, and the
-dashboard adds `{"label": "Offers", "value": …}` after Pending actions for Master and Staff (staff scope already applies). It
-goes after Pending actions, not after Applications, so AGN-016's asserted order (`Students, Applications, Pending actions`) holds.
+dashboard adds `{"label": "Offers", "value": …}` for Master and Staff (staff scope already applies): after the Master's commission
+metrics ("Revenue") and, for Staff, after Pending actions, so the order AGN-014 and AGN-016 assert (`Students, Applications, Pending
+actions, Claimable commission, Claims, Revenue`) holds. (Placed after Pending actions before merging `main` @ `aad6b7c`.)
 
 ## 6. Web
 

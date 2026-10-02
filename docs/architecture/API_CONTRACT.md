@@ -287,6 +287,15 @@ same transaction. Responses use explicit allowlists (no `agent_id`, `counselor_i
 | `PATCH /workflows/overseas/applications/{id}` with `status`, `POST …/applications/{id}/advance` — **changed** | Authenticated | Counselor, admin (existing) | `409 "This application is withdrawn"` on a `withdrawn` application; non-status edits unchanged. |
 | `POST /workflows/overseas/applications` (old agent create) | Authenticated | Agent | Unchanged (A13); the agent UI uses `POST …/crm/applications`. |
 
+**`AGN-013` / `DEC-SCOPE-054` (built 2026-10-02) — enrollment confirmation.** Design spec
+`docs/superpowers/specs/2026-10-02-agn-013-enrollment-confirmation-design.md` §4. Additive: one route and four detail fields; no existing
+route, body or field changes. No `Idempotency-Key`: a repeated `PUT` converges (a second confirmation is a stale `409` or a correction).
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `PUT …/crm/applications/{id}/enrollment` (**new**) | Authenticated | Agency **Master** of an active organisation (staff → `403 "Only an agency Master can confirm enrollment"` before any load) | Body `AgentApplicationEnrollment`: `enrollment_date` (required, 2000–2100), `university_student_id` (≤ 60, optional, blank → `null`), `expected_status` (required, ≤ 50), `notes` (≤ 2000, first confirmation only); `extra="forbid"`. Order: gate `403` → Master `403` → scope `404` → archived/withdrawn `409` → stale `409` → pre-offer (or legacy free-text status) `422 "An offer is needed before enrollment"`. From `offer` / `visa_documentation` / `status_tracking`: `enrolled`, details and `enrollment_confirmed_at` set, one history row, the AGT-003 trigger (one `estimated` commission, Masters notified), audit `overseas.application.enroll`. When `enrolled`: changed details only, audit `overseas.application.enrollment_update` (field names); no history, no commission; no change → `200`, no write. `200 {"application": detail}`. |
+| `GET …/crm/applications/{id}` — **changed (additive)** | Authenticated | Same as before | Detail adds `enrollment_date`, `university_student_id`, `enrollment_confirmed_at`, `enrollment_check` (`after_intake` \| `intake_unrecognised` \| `null`; a warning computed on read). List items unchanged. |
+
 **`AGN-016` / `DEC-SCOPE-053` (built 2026-10-02) — agent tasks and follow-ups.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md` §3–§5. Errors are FastAPI `{"detail": ...}`. `POST` is not safe to
 retry (no `Idempotency-Key`; a duplicate task is harmless and can be cancelled). Gate `403` (agent role, overseas division, active
@@ -306,7 +315,7 @@ only) in the same transaction. Responses are explicit allowlists: people are nam
 `GET /portal/overseas/agent/dashboard` gains `{"label": "Pending actions", "value": n}` after "Applications" (open tasks of active
 students in the caller's scope); `GET /portal/overseas/agent/tasks` is a header-only payload ("Tasks & follow-ups").
 
-**`AGN-010` / `DEC-SCOPE-054` (built 2026-10-02) — agent offer details.** Design spec
+**`AGN-010` / `DEC-SCOPE-056` (built 2026-10-02) — agent offer details.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md` §4. Errors are FastAPI `{"detail": ...}`. The PUT is retry-safe
 without an `Idempotency-Key` (§0.2): an identical body returns `200` and writes nothing. Concurrent saves: last write wins, both in
 history (O7), serialised by the organisation lock and the application row `FOR UPDATE`. Order: gate `403` (`_gate`; `super_admin` and
@@ -321,8 +330,8 @@ application is withdrawn"` → stale `expected_status` `409` (the AGN-008 messag
 | `PATCH …/crm/applications/{id}` — **changed** | Authenticated | Same | Once an offer exists, a resulting `offer_deadline` before `offer_date` → `422 "Offer deadline cannot be before the offer date"`. |
 | `POST …/crm/documents` — **changed** | Authenticated | Same | `document_type` also accepts `Offer letter`, which requires `application_id` (else `422 "Choose the application this offer letter belongs to"`). `document-requests` keep the previous type list. |
 
-`GET /portal/overseas/agent/dashboard` gains `{"label": "Offers", "value": n}` after "Pending actions" (Master and Staff, staff scope
-applies), and the Reports "Offers" row now counts stage `offer` or later (incl. legacy `offer_received`/`accepted`) OR an offer recorded
+`GET /portal/overseas/agent/dashboard` gains `{"label": "Offers", "value": n}` after the commission metrics for a Master ("Revenue") and after "Pending actions" for
+Staff (staff scope applies; the order AGN-014/AGN-016 assert is kept), and the Reports "Offers" row now counts stage `offer` or later (incl. legacy `offer_received`/`accepted`) OR an offer recorded
 (O5). Other portals' offer counts are unchanged (`RAID.md` I-48).
 
 **`AGN-003` / `DEC-SCOPE-044` (built 2026-10-01).** Design spec §6–§8. Two optional §6 rows (Verify Documents, Reports) are switched on per

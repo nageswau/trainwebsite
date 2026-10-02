@@ -75,6 +75,14 @@ describe("AccessUnavailable", () => {
     expect(screen.getByRole("link", { name: "Return to login" }).getAttribute("href")).toBe("/it/login");
   });
 
+  it("a BDM without a profile gets guidance and Sign out, not a dashboard button that reloads the same page (bdm-001)", async () => {
+    me.mockResolvedValue({ id: "b", role: "bdm", full_name: "B", email: "b@x", division: "it", profile: {} });
+    render(await accessUnavailable(new ApiError("BDM profile not set up — contact your administrator", 403), "/bdm/sign-in"));
+    expect(screen.getByText("BDM profile not set up — contact your administrator")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Go to your dashboard" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+  });
+
   it("offers Sign out to a signed-in user, but not to a signed-out one (AGN-001 browser QA-02)", async () => {
     me.mockResolvedValue({ role: "counselor" });
     render(await accessUnavailable(new ApiError("Role/division mismatch", 403)));

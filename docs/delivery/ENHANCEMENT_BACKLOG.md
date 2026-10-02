@@ -83,7 +83,7 @@ See §AGN-008.
 **Revision 12 (2026-10-02):** the owner's `AGN-016` statement ("Tasks & Follow-ups" §4; "Pending Actions" KPI §2) is decided as
 `DEC-SCOPE-053` (T1–T8; drafted as `051`, renumbered on merging `main` @ `d371865`, where AGN-014 holds `051` and AGN-009 `052`). See §AGN-016.
 
-**Revision 13 (2026-10-02):** backlog item ang-010 "Offer details (Step 6)" (`EVID-015` §5 Step 6) is decided as `DEC-SCOPE-054`
+**Revision 13 (2026-10-02):** backlog item ang-010 "Offer details (Step 6)" (`EVID-015` §5 Step 6) is decided as `DEC-SCOPE-056`
 (O1–O7, owner in-session; `054` was the next free number on `main` @ `9adcbca`). See §AGN-010.
 
 ## 0. Scope and exclusions (read this before the backlog)
@@ -3799,21 +3799,80 @@ error was not on the picker — now its own linked `aria-invalid` message), QA16
 read-only), QA16-04 (the closing time now carries its zone), QA16-05 (the open form has a visible "New task" heading). Codex review
 waived by the owner (2026-10-02).
 
+## AGN-013 — Enrollment confirmation + commission trigger (Step 9)
+
+**Title.** An agency Master confirms an application's enrollment; the commission is estimated exactly once (EVID-015 §5 Step 9).
+
+**Business requirement.** The owner's `AGN-013` statement (in-session, 2026-10-02): "enrollment confirmed, university, course, intake,
+enrollment date, university student ID, final status ENROLLED"; acceptance: "enrolling creates exactly one estimated commission for the
+org; re-saving does not duplicate it; an enrollment date is required; a future date beyond intake is flagged (a warning, not blocked)."
+Source: `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 9; `AGENT_CRM_BACKLOG.md` ang-013. Decided as
+`DEC-SCOPE-054` (E1–E8; provisional number).
+
+**Existing behavior.** Only a counselor, admin or university rep could set `enrolled` (`DEC-SCOPE-050` A4); the AGT-003 trigger then
+created one `estimated` commission keyed to `application.agent_id`. No enrollment date, university student ID or confirmation was stored.
+
+**Expected behavior.**
+- `PUT /workflows/overseas/agent/crm/applications/{id}/enrollment` (Master only): from `offer`, `visa_documentation` or
+  `status_tracking` it sets `enrolled`, the date, the optional student ID and `enrollment_confirmed_at`, writes one history row and runs
+  the unchanged AGT-003 trigger; once `enrolled` it corrects the date and student ID (audited, no history, no commission).
+- `enrollment_check` on the detail: `after_intake` (future date after the intake month) or `intake_unrecognised` (free-text intake not
+  read as a month and year) — a warning, never a block.
+- The application detail gains an Enrollment section: Masters confirm (with an explicit confirmation step) or correct; Staff read.
+
+**User roles affected.** `agent` Master (new action), Staff (read-only section; `403` on the route); `overseas_admin` (sees the
+estimated commission as before).
+
+**Frontend / backend / database / API / integration impact.** Backend: `api/agent_applications.py` (one route), `services/agent_applications.py`
+(`intake_end`, `enrollment_check`, detail fields), `schemas.py` (`AgentApplicationEnrollment`), `models.py` + migration
+`0060_agent_app_enrollment` (three nullable columns). Frontend: `lib/agentApplications.ts`, new `AgentApplicationEnrollment.tsx`,
+`AgentApplicationDetail.tsx` / `AgentApplicationsPanel.tsx` / `AgentApplicationsSection.tsx` (`isMaster`). No dependency; the existing
+"Commission estimated" notification to the agency's Masters is reused.
+
+**Authentication/Authorization impact.** `_gate` + `is_agent_staff` (`403` before any load); scope in the `WHERE` (`404` across agencies).
+
+**Security impact.** Spec §6: no role escalation through the body (`extra="forbid"`); organisation then row lock; required
+`expected_status`; one transaction with history, commission and audit; the student ID and notes never logged or audited.
+
+**Acceptance criteria** (from `docs/superpowers/specs/2026-10-02-agn-013-enrollment-confirmation-design.md` §7).
+- **AGN-013-AC01** Master confirms from offer / visa documentation / status tracking → `enrolled`, details set, one history row, one `estimated` commission visible to the Masters.
+- **AGN-013-AC02** Re-saving → still one commission, no new history row; changes audited as `enrollment_update`.
+- **AGN-013-AC03** Missing `enrollment_date` → `422`, nothing written.
+- **AGN-013-AC04** `after_intake` / `intake_unrecognised` / `null` flags; the save succeeds.
+- **AGN-013-AC05** Staff `403`; other agency `404`; archived / withdrawn / stale `409`; pre-offer `422`; unknown field `422`; nothing written.
+- **AGN-013-AC06** Counselor-enrolled application: a Master adds details; no commission from that call.
+- **AGN-013-AC07** Concurrent confirmations → one `200`, one `409`, one commission; a counselor landing first → the agency call is `409`.
+- **AGN-013-AC08** `POST …/status` still refuses `enrolled` (A4 unchanged).
+- **AGN-013-AC09** UI: Master confirm with a confirmation step, Staff read-only, enrolled view with badge and warning, 422 keeps input, keyboard and labels.
+
+**Regression risks.** A4 (pinned by AC08 and `test_agn_008_status.py`), commission duplication (locks + trigger guard + `UNIQUE`), the
+detail allowlist (additive only), the migration chain (`0058` may collide with parallel AGN branches).
+
+**Complexity:** Medium. **Risk:** High (financial trigger).
+
+**Status (2026-10-02, final verification @ `d871cdd`): VERIFIED, NOT COMPLETE.** Requirement and AC01–AC09 met with fresh evidence
+(`docs/quality/RTM.md`, AGN-013 row); merged `main` @ `9adcbca` (migration now `0060_agent_app_enrollment`, decision `DEC-SCOPE-054`).
+QA13-03…09 fixed and re-verified (`194e564`); the AGN-014 dashboard-order test (failing on `main` after AGN-016) updated. Only open item,
+for the owner: the Browser Use gate (tool input fails after in-app navigation here; Playwright used instead). Earlier status: **IMPLEMENTED** on `feature/agn-013-enrollment-confirmation` (evidence in `docs/quality/RTM.md`,
+AGN-013 row): lite backend set 200 passed; web lite set 52 passed; `tsc` and eslint clean. Browser QA first pass done
+(`docs/quality/AGN-013_BROWSER_QA_2026-10-02.md`; Playwright `agn-013` 2/2); QA13-01 (UX repetition) and QA13-02 fixed. Pending:
+the independent Codex review and the owner's full suites.
+
 ## AGN-010 — Agent Offer Details (Step 6)
 
 **Title.** Let an agency Master, and Staff for their assigned students, record the offer on an agency application: conditional or
 unconditional, offer date, deadline, conditions and the offer letter; count offers correctly on the agent dashboard and Reports.
 
 **Business requirement.** Backlog item ang-010 (`AGENT_CRM_BACKLOG.md`), source `EVID-015` (`Agent CRM Functionalities.md`,
-`DERIVED_BLUEPRINT`) §5 Step 6. Decision record: `DEC-SCOPE-054` (O1–O7, `EXPLICIT_APPROVAL` in-session 2026-10-02).
+`DERIVED_BLUEPRINT`) §5 Step 6. Decision record: `DEC-SCOPE-056` (O1–O7, `EXPLICIT_APPROVAL` in-session 2026-10-02).
 
 **Existing behavior.** Only an `offer_deadline` date (AGN-008) and the `offer` stage; the agent Reports "Offers" row counted only
 `offer_received`/`accepted` (the §0 defect).
 
-**Expected behavior.** Migration `0060_agent_offer_details` (four nullable columns). `PUT …/agent/crm/applications/{id}/offer` records
+**Expected behavior.** Migration `0062_agent_offer_details` (four nullable columns). `PUT …/agent/crm/applications/{id}/offer` records
 or replaces the one current offer, moves a pre-offer stage to `offer`, writes history and audit; an identical PUT writes nothing. The
 detail gains `offer` and `offer_letters`; uploads accept "Offer letter" (bound to an application). An Offer block and form in the
-application detail; "Offers" KPI after "Pending actions"; AGN-021 activity "Recorded an offer". Spec:
+application detail; "Offers" KPI after the commission metrics (Staff: after "Pending actions"); AGN-021 activity "Recorded an offer". Spec:
 `docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md`; plan `docs/superpowers/plans/2026-10-02-agn-010-offer-details.md`.
 
 **Roles.** Agency Master (whole agency), agency Staff (assigned students only). Not super_admin or other roles (403).
@@ -3823,7 +3882,7 @@ unconditional has none; a type switch is one history row naming both types and t
 counts equal a hand count (incl. withdrawn-after-offer), staff scoped; scope/IDOR 404/422; identical PUT writes nothing;
 `offer_letter_url` and non-agent counts unchanged; UI states, keyboard, focus and 320 px.
 
-**Regression risks.** `portal._agent` (Reports row, one metric after "Pending actions"), the AGN-008 PATCH (new 422), the AGN-009 upload
+**Regression risks.** `portal._agent` (Reports row, one metric after the commission metrics), the AGN-008 PATCH (new 422), the AGN-009 upload
 types, `AgentApplicationDetail` (one form at a time), `STAFF_ACTIVITY_ACTIONS`, the alembic head. Non-agent stale counts carried to
 ang-018 (`RAID.md` I-48).
 
@@ -3831,7 +3890,8 @@ ang-018 (`RAID.md` I-48).
 
 **Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-010-offer-details`. Lite test sets green (see `RTM.md` AGN-010 row);
 e2e `agn-010-offer-details.spec.ts` written, not run. Pending: browser validation, the owner's full suites, an independent Codex review.
-Pre-existing failure found, not fixed: `test_agn_014_commission_reports.py::test_master_dashboard_shows_paid_revenue` (`RAID.md` I-49).
+The AGN-014 dashboard-order failure found earlier (`RAID.md` I-49) was fixed on `main` by AGN-013; after merging `main` @ `aad6b7c`
+the "Offers" KPI follows the commission metrics so that order holds.
 
 ## 2. Dependency graph
 
@@ -4005,7 +4065,7 @@ item, only for the progress-view question).
 | AGN-006 | `DEC-SCOPE-048` — storage, budget, separate preferences, access, completed stamp, API, activity, leave prompt | **Resolved 2026-10-01** (C1–C9, `EXPLICIT_APPROVAL` in-session; number provisional) |
 | AGN-008 | `DEC-SCOPE-050` — statuses and withdrawn, Application ID, dates, agent status limits, link to the agency student, visibility, sidebar filters, throttle, archived read-only | **Resolved 2026-10-01/02** (A1–A15, `EXPLICIT_APPROVAL` in-session). `DEC-SCOPE-036` "submitted" stays `NEEDS_CONFIRMATION` |
 | AGN-016 | `DEC-SCOPE-053` — task owner on reassignment, delete, due time and overdue, linkage, KPI and nav, edit rules, cap, retry | **Resolved 2026-10-02** (T1–T8, `EXPLICIT_APPROVAL` in-session) |
-| AGN-010 | `DEC-SCOPE-054` — one offer per application, deadline column, offer document, `offer_letter_url`, Offers count, conditions, concurrent saves | **Resolved 2026-10-02** (O1–O7, `EXPLICIT_APPROVAL` in-session) |
+| AGN-010 | `DEC-SCOPE-056` — one offer per application, deadline column, offer document, `offer_letter_url`, Offers count, conditions, concurrent saves | **Resolved 2026-10-02** (O1–O7, `EXPLICIT_APPROVAL` in-session) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in

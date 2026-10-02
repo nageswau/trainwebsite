@@ -42,7 +42,7 @@ Each is pinned by a test in Task 2 or Task 3.
 
 ### Task 1: Columns, constraints, migration
 
-**Files:** Modify `apps/api/app/models.py` (OverseasApplication); Create `apps/api/alembic/versions/0060_agent_offer_details.py`;
+**Files:** Modify `apps/api/app/models.py` (OverseasApplication); Create `apps/api/alembic/versions/0062_agent_offer_details.py`;
 Test `apps/api/tests/test_agn_010_migration.py`.
 
 **Produces:** `OverseasApplication.offer_type: str|None`, `offer_date: date|None`, `offer_conditions: str|None`,
@@ -121,7 +121,7 @@ Test `apps/web/tests/components/AgentApplicationOffer.test.tsx`, update `AgentDo
 ### Task 7: E2E spec and docs
 
 **Files:** Create `apps/web/tests/e2e/agn-010-offer-details.spec.ts` (written, run in the owner's full session / browser QA);
-Modify `docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-054`), `docs/architecture/API_CONTRACT.md`,
+Modify `docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-056`, drafted as `054`), `docs/architecture/API_CONTRACT.md`,
 `DATA_MODEL.md`, `RBAC_MATRIX.md`, `docs/quality/RTM.md`, `docs/ux/SCREEN_CATALOG.md`, `docs/delivery/RAID.md`
 (non-agent stale offer counts → ang-018), `docs/delivery/AGENT_CRM_BACKLOG.md` status, `docs/delivery/ENHANCEMENT_BACKLOG.md`.
 

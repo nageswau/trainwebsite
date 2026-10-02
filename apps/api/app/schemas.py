@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, StrictBool, StrictInt, ValidationError, field_validator, model_validator
+from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, StrictBool, StrictInt, StringConstraints, ValidationError, ValidationInfo, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.models import GENDERS
@@ -378,7 +378,7 @@ class AgentDocumentReview(BaseModel):
 # AGN-009 (DEC-SCOPE-052 G3): EVID-015 §5 Step 4, stored as written (the free-text style the visa checklist compares); the web mirrors
 # it in lib/agentDocuments.ts DOCUMENT_TYPES.
 AgentDocumentType = Literal["Passport", "Academic certificates", "Transcripts", "English test", "CV", "SOP", "LOR", "Financial documents", "Other"]
-# AGN-010 (DEC-SCOPE-054 O3): uploads also take an offer letter (against one application); requests keep the list above.
+# AGN-010 (DEC-SCOPE-056 O3): uploads also take an offer letter (against one application); requests keep the list above.
 AgentUploadDocumentType = Literal[AgentDocumentType, "Offer letter"]
 
 
@@ -766,7 +766,33 @@ class AgentApplicationStatus(BaseModel):
         return clean_free_text(value, 2000)
 
 
-# --- AGN-010: offer details (DEC-SCOPE-054; docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md §4.1) ---
+class AgentApplicationEnrollment(BaseModel):
+    """AGN-013 (DEC-SCOPE-054): confirm or correct an application's enrollment. `expected_status` is required: confirming is the
+    commission-triggering act, so a stale screen gets a 409 instead of acting."""
+
+    model_config = {"extra": "forbid"}
+    enrollment_date: date
+    university_student_id: str | None = None
+    expected_status: str = Field(max_length=50)
+    notes: str | None = None
+
+    @field_validator("enrollment_date")
+    @classmethod
+    def _enrollment_date(cls, value):
+        return _application_date(value)
+
+    @field_validator("university_student_id")
+    @classmethod
+    def _student_id(cls, value):
+        return clean_free_text(value, 60)
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, value):
+        return clean_free_text(value, 2000)
+
+
+# --- AGN-010: offer details (DEC-SCOPE-056; docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md §4.1) ---
 
 OFFER_DEADLINE_BEFORE = "Offer deadline cannot be before the offer date"  # also the AGN-008 PATCH's answer once an offer exists (O2)
 
@@ -2741,3 +2767,134 @@ class GlobalEducationPipelineOut(BaseModel):
     funnel: list[PipelineStage]
     not_tracked: list[PipelineUntracked]
     students: PipelineStudentPage
+
+
+# --- bdm-001 (DEC-SCOPE-055): BDM profile -------------------------------------------------------------------------------
+BdmType = Literal["agent", "school", "college"]
+_BDM_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _bdm_employee_id(value: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ValueError("Employee ID is required")
+    if len(value) > 40:
+        raise ValueError("Employee ID must be at most 40 characters")
+    if _BDM_CONTROL.search(value):
+        raise ValueError("Employee ID contains invalid characters")
+    return value
+
+
+BDM_FIELD_LABELS = {
+    "bdm_type": "Module", "employee_id": "Employee ID", "designation": "Designation", "department": "Department",
+    "territory": "Territory", "reporting_manager_user_id": "Reporting manager",
+}
+
+
+def _bdm_plain_text(value: str | None, info: ValidationInfo) -> str | None:
+    """The Employee ID's rule for every profile text (no control characters); blank becomes None, which clears the field."""
+    if value is not None and _BDM_CONTROL.search(value):
+        raise ValueError(f"{BDM_FIELD_LABELS.get(info.field_name, info.field_name)} contains invalid characters")
+    return value or None
+
+
+BdmEmployeeId = Annotated[str, AfterValidator(_bdm_employee_id)]
+# The string branch is trimmed BEFORE its length is checked (a padded value that fits once trimmed is accepted); None stays None.
+BdmText = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] | None, AfterValidator(_bdm_plain_text)]
+
+
+class BdmProfileCreate(BaseModel):
+    """spec §5.2: type, Employee ID and reporting manager are required (B8); the three texts are optional."""
+
+    model_config = ConfigDict(extra="forbid")
+    bdm_type: BdmType
+    employee_id: BdmEmployeeId
+    designation: BdmText = None
+    department: BdmText = None
+    territory: BdmText = None
+    reporting_manager_user_id: UUID
+
+
+class BdmProfileUpdate(BaseModel):
+    """Omitted = unchanged. The optional texts accept null/"" (clears). The three required keys reject an explicit null: the default
+    None is never validated, but a sent null is checked against the non-nullable type and fails."""
+
+    model_config = ConfigDict(extra="forbid")
+    bdm_type: BdmType = None
+    employee_id: BdmEmployeeId = None
+    designation: BdmText = None
+    department: BdmText = None
+    territory: BdmText = None
+    reporting_manager_user_id: UUID = None
+
+
+class BdmManagerRef(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
+class BdmProfileOut(BaseModel):
+    bdm_type: str
+    employee_id: str
+    designation: str | None
+    department: str | None
+    territory: str | None
+    reporting_manager: BdmManagerRef
+
+
+class BdmMeOut(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None
+    active: bool
+    division: str
+    bdm_profile: BdmProfileOut
+
+
+class BdmTeamRow(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None
+    active: bool
+    bdm_type: str
+    employee_id: str
+    designation: str | None
+    department: str | None
+    territory: str | None
+
+
+class BdmAdminRow(BdmTeamRow):
+    reporting_manager: BdmManagerRef
+    manager_active: bool
+
+
+class BdmManagerOption(BaseModel):
+    """QA-03 (owner, 2026-10-02): email is returned so the picker can tell same-name managers apart."""
+
+    id: UUID
+    full_name: str
+    email: str
+
+
+class BdmTeamPage(BaseModel):
+    items: list[BdmTeamRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmAdminPage(BaseModel):
+    items: list[BdmAdminRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmManagerPage(BaseModel):
+    items: list[BdmManagerOption]
+    total: int
+    limit: int
+    offset: int
