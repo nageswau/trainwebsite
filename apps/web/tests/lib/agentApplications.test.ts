@@ -42,5 +42,6 @@ describe("agent application rules (AGN-008)", () => {
     expect(activityLabel("overseas.application.update")).toBe("Edited an application");
     expect(activityLabel("overseas.application.advance")).toBe("Moved an application forward");
     expect(activityLabel("overseas.application.withdraw")).toBe("Withdrew an application");
+    expect(activityLabel("overseas.application.offer")).toBe("Recorded an offer"); // AGN-010
   });
 });

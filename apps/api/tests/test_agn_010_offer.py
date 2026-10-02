@@ -160,6 +160,12 @@ async def test_patch_refuses_a_deadline_before_the_recorded_offer_date(db_sessio
         assert (await c.patch(f"{APPS}/{world['app'].id}", json={"offer_deadline": OFFER_DATE.isoformat()})).status_code == 200
 
 
+def test_offer_audit_is_listed_in_staff_activity():  # AGN-021: a Master sees staff record offers
+    from app.services.staff_activity import STAFF_ACTIVITY_ACTIONS
+
+    assert "overseas.application.offer" in STAFF_ACTIVITY_ACTIONS
+
+
 @pytest.mark.asyncio
 async def test_patch_without_an_offer_keeps_todays_deadline_rules(db_session, world):
     async with client_for(world["master"].email) as c:

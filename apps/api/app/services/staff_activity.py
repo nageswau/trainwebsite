@@ -34,6 +34,7 @@ STAFF_ACTIVITY_ACTIONS = (
     "overseas.application.update",
     "overseas.application.advance",
     "overseas.application.withdraw",
+    "overseas.application.offer",  # AGN-010 (DEC-SCOPE-054): ids and field names only, like the other application rows
     "document.upload",
     "document.verify",
 )
