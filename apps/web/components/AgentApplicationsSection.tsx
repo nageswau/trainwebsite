@@ -9,9 +9,9 @@ import type { User } from "@/lib/types";
 
 // AGN-008: the agency Applications page -- create, then the list for the sidebar filter in the URL (?status=). Staff see only
 // their assigned students' applications (G4); a non-agency viewer (Super Admin) gets a note, as on the Students page.
-function Filtered({ reloadKey }: { reloadKey: number }) {
+function Filtered({ reloadKey, isMaster }: { reloadKey: number; isMaster: boolean }) {
   const group = parseGroup(useSearchParams().get("status"));
-  return <AgentApplicationsPanel key={group} group={group} reloadKey={reloadKey} />;
+  return <AgentApplicationsPanel key={group} group={group} reloadKey={reloadKey} isMaster={isMaster} />;
 }
 
 export default function AgentApplicationsSection({ user }: { user: User }) {
@@ -35,7 +35,7 @@ export default function AgentApplicationsSection({ user }: { user: User }) {
         <div className="action-grid">
           <AgentApplicationCreatePanel onCreated={() => setReloadKey((k) => k + 1)} />
           <Suspense fallback={<p className="muted">Loading applications…</p>}>
-            <Filtered reloadKey={reloadKey} />
+            <Filtered reloadKey={reloadKey} isMaster={user.agent_member_role !== "staff"} />
           </Suspense>
         </div>
       )}

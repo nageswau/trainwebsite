@@ -1,11 +1,18 @@
 // AGN-004 (DEC-SCOPE-042): the shape and helpers of an agency student (with or without a login), shared by the list, the detail
 // panel and the form so they read one definition. Validation mirrors the server's schemas; the server remains the authority.
 
-import { detailMessage } from "./apiErrors";
+import { detailMessage, isPage } from "./apiErrors";
+import type { LookupPage } from "./lookups";
 
 export const RECORDS_URL = "/api/v1/workflows/overseas/agent/crm/students";
 
 export type Assignee = { id: string; code: string; full_name: string; status: string };
+
+// A task's assignee (AGN-016) carries no member id, so only the shown fields are required.
+export function assignedText(a: Pick<Assignee, "code" | "full_name" | "status"> | null): string {
+  return a ? `${a.code} · ${a.full_name}${a.status !== "active" ? " (deactivated)" : ""}` : "Unassigned";
+}
+
 export type AgentStudentItem = {
   id: string;
   has_login: boolean;
@@ -232,4 +239,18 @@ export function formatBudget(amount: string | null, currency: string | null): st
   } catch {
     return `${currency} ${amount}`;
   }
+}
+
+// The agency's students -- with or without a login -- searched on the server (the records list), for SearchableSelect pickers
+// (AGN-008 applications, AGN-009 documents, AGN-016 tasks), so a large agency is never truncated.
+export async function searchAgentStudents(q: string, signal: AbortSignal): Promise<LookupPage> {
+  const params = new URLSearchParams({ limit: "20" });
+  if (q) params.set("q", q);
+  const response = await fetch(`${RECORDS_URL}?${params}`, { signal });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !isPage<AgentStudentItem>(data)) throw new Error(`Student search failed (${response.status})`);
+  return {
+    items: data.items.map((s) => ({ id: s.id, label: s.full_name, detail: s.has_login ? s.email : "no login" })),
+    truncated: data.total > data.items.length,
+  };
 }

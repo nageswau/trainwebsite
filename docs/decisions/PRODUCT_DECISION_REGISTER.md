@@ -3018,9 +3018,88 @@ Staff browser flows were verified and the named-staff Assign action built (2026-
 
 **Consequences:** no migration; two Master-only routes `GET /workflows/overseas/agent/commissions/report` and `…/report.csv`; one additive "Revenue" metric on the Master dashboard; a new `AgentCommissionReportPanel`; `ReportDownloadButton` gains two optional props with PDF defaults. Unchanged: commission creation, amount, claim, payout approval and the same-admin rule (`AGT-004`), `RPT-002`, the staff pages. Design: `docs/superpowers/specs/2026-10-02-agn-014-commission-master-reports-design.md`. **New Feature ID authorized:** `AGN-014`.
 
-### DEC-SCOPE-052 — BDM CRM scope and the BDM / BDM Manager roles, profile and provisioning (`bdm-001`)
+### DEC-SCOPE-052 — Agent documents: upload, download, verify, reject, request additional, history (`AGN-009`)
 
-**ID note:** the owner's BDM CRM answers of 2026-09-28 (D1–D32) were cited in `docs/delivery/BDM_CRM_BACKLOG.md` as `DEC-SCOPE-037`, but `037` is `ENH-015` Reports & Downloads in this register, and no BDM entry had been recorded. They are registered here, together with `bdm-001`'s own answers (B1–B9). `050` (`AGN-008`) and `051` (`AGN-014`) were on `main` at `268d132`; `052` was free. Renumber only if another branch reaches `main` with `052` first. Earlier documents that say `DEC-SCOPE-037` *for the BDM CRM* mean this decision.
+**ID note:** drafted as `DEC-SCOPE-051` (the next free number on `main` @ `b93a5e5`); renumbered `DEC-SCOPE-052` on merging `main` @ `268d132`, where `DEC-SCOPE-051` is `AGN-014` (PR #41).
+
+**Question:** the owner's `AGN-009` statement (in-session, 2026-10-02): "§2 Documents and §5 Step 4 document types; Staff sidebar Pending/Uploaded/Additional; §6: Staff verify is optional and Staff cannot reject." Acceptance: upload → pending; verify/reject per role matrix; reject without a reason → 422; a request shows under "Additional" until fulfilled; history lists every event in order; an out-of-scope download → 404/403; existing student/counselor document flows unchanged.
+
+**Evidence:** `EVID-015` (`DERIVED_BLUEPRINT`) §2, §4, §5 Step 4, §6. Graphify-led impact analysis, 2026-10-02: `student_documents.student_id` is NOT NULL → `users`, so a student with no login cannot own a document; the AGN-003 agent review exists (`DEC-SCOPE-044` P5/P6) but a reason is optional; there are no requests, no history and no fixed types; the agent download and review scope checks compare `AgentStudent.student_id` with the document's `student_id`, which is NULL for an agency-only document.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL`; structured answers; design spec `docs/superpowers/specs/2026-10-02-agn-009-agent-documents-design.md` §2):
+
+- **G1 — Reason required** on `rejected` and `changes_required` for **agents only** (422 when blank); the counselor/Overseas Admin path is unchanged.
+- **G2 — `changes_required` kept** for agent Masters (`DEC-SCOPE-044` P6 unchanged: staff verify only).
+- **G3 — Types:** a fixed list (§5 Step 4) plus "Other" with a label, for agent uploads only; other paths keep free text.
+- **G4 — Requests:** Master and Staff (within scope) create and cancel; no toggle.
+- **G5 — Fulfilment:** an upload made against an open request fulfils it at upload time.
+- **G6 — Replace:** a new file on the same document, status back to `pending`; the old file is kept and named in history. Refused for a document a counselor or Overseas Admin decided (`DEC-SCOPE-044` P5).
+- **G7 — File handling:** agent uploads are stored by the server under a server-generated key (no client-supplied path); agent lists never return `file_url`. The pre-existing `/files/download` and `/local-files` exposure is recorded in `RAID.md`, not changed here.
+- **G8 — File types:** PDF, JPEG, PNG, decided from the bytes; image metadata stripped.
+- **G9 — Views:** Pending = awaiting review; Uploaded = every in-scope document; Additional = open requests. History records downloads by every role.
+
+**Consequences:** migration `0058_agent_documents` (`student_documents.student_id` nullable + `agent_student_id`, `document_label`, `uploaded_by_user_id`, `fulfils_request_id`; new `document_requests`, `document_events`). New routes under `/workflows/overseas/agent/crm/documents` and `/document-requests`. The existing verify, download and upload routes keep their response shapes and gain event rows. The agent Documents page is replaced by the new section; the sidebar gains Pending / Uploaded / Additional.
+### DEC-SCOPE-053 — Agent tasks and follow-ups, "Pending actions" KPI (`AGN-016`)
+
+**ID note:** drafted as `DEC-SCOPE-051` with migration `0058_agent_tasks`, both provisional while `AGN-009` was open in parallel. On
+merging `main` @ `d371865` (2026-10-02) `DEC-SCOPE-051` is `AGN-014` and `DEC-SCOPE-052` / `0058_agent_documents` are `AGN-009`, so
+this entry is `DEC-SCOPE-053` and its migration `0059_agent_tasks` (after `0058_agent_documents`; `AGENT_CRM_BACKLOG.md` §6.2).
+
+**Question:** the owner's `AGN-016` statement (in-session, 2026-10-02): requirement "Tasks & Follow-ups" (§4); "Pending Actions" KPI
+(§2). Acceptance: "CRUD per scope; overdue = due before now and open; a reassigned student's open tasks follow the new owner (spec: or
+stay)."
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) names only "Tasks & Follow-ups" (Staff sidebar, §4) and
+"Pending Actions" (Master dashboard KPI, §2); it defines no task fields, rules or §6 matrix row. `AGENT_CRM_BACKLOG.md` ang-016
+(`DERIVED_BLUEPRINT`) proposed title, due date, assignee, status `open|done|cancelled` and an `agent_tasks` table — a proposal, not
+authority. Impact analysis 2026-10-02 (the graphify graph predated AGN-001…008, so the source was read directly): AGN-004
+`student_scope` is the single staff-scope rule; `assign_student` writes only `assigned_member_id`.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL`; design spec
+`docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md` §1):
+
+- **T1 — Owner follows the student.** No assignee column; a task's scope is its student's (`student_scope`), so a reassigned
+  student's tasks move with it and no task row is written on reassignment ("follow the new owner"; the "or stay" reading is rejected).
+- **T2 — Cancel only.** Status `open`, `done`, `cancelled`; no hard delete.
+- **T3 — Due time.** `due_at` timestamptz, required; overdue ⇔ open and `due_at` before now.
+- **T4 — Linkage.** A student is required (with or without a login); an application link is optional and must be the same student's,
+  not withdrawn; an archived student's tasks are read-only (409) and leave the open counts.
+- **T5 — KPI and navigation.** One "Pending actions" metric (open tasks of active students in scope) on the existing agent dashboard,
+  Master and Staff; "Tasks" in the nav for both roles. The rest of the dashboard stays with ang-018.
+- **T6 — Edit rules.** Anyone in scope creates, edits, completes and cancels; done/cancelled are final; a past due time is allowed on
+  create (the UI warns).
+- **T7 — Cap** (security review): at most 100 open tasks per student (409).
+- **T8 — Retry.** `POST` is documented as not safe to retry; no `Idempotency-Key`.
+
+**Consequences:** new table `agent_tasks` (migration `0059_agent_tasks`, provisional); routes `/workflows/overseas/agent/crm/tasks`
+(`API_CONTRACT.md`); four audit actions `agent_student.task_add|task_update|task_complete|task_cancel` join AGN-021's staff-activity
+allowlist; the agent dashboard gains one metric after "Applications". No change to `rbac.py`, `workflows.py`, `assign_student` or
+`OverseasApplication.next_action`. Notifications and reminders stay with ang-017.
+
+### DEC-SCOPE-054 — Enrollment confirmation by an agency Master, with the commission trigger (`AGN-013`)
+
+**ID note:** drafted as `DEC-SCOPE-052` (free on `main` @ `268d132`); renumbered `DEC-SCOPE-054` on merging `main` @ `9adcbca`, where `052` is `AGN-009` (PR #42) and `053` is `AGN-016` (PR #43).
+
+**Question:** the owner's `AGN-013` statement (in-session, 2026-10-02): "enrollment confirmed, university, course, intake, enrollment date, university student ID, final status ENROLLED", with acceptance criteria: enrolling creates exactly one estimated commission for the org; re-saving does not duplicate it; an enrollment date is required; a future date beyond intake is flagged (a warning, not blocked).
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 9; `AGENT_CRM_BACKLOG.md` ang-013 (`DERIVED_BLUEPRINT`). Impact analysis, 2026-10-02 (graphify-led):
+- `DEC-SCOPE-050` A4 forbade agents from setting `enrolled`, so an agent could never accrue their own commission; the status route returns `403`.
+- `overseas_applications.intake` is free text (`String(80)`, default "Next intake"); the structured intake of D16 was never built.
+- `AGN-014` kept `agent_commissions` keyed to a person (`agent_id`), scoped to the agency through `org_member_ids`.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — answers to structured questions and the Section 1 design review, not the source document's wording):
+- **E1** Only an agency **Master** confirms enrollment; Staff read the details and get `403`. Amends A4 for a dedicated route only: `POST …/status` still refuses `enrolled`.
+- **E2** Intake stays free text; a best-effort parser reads "Month YYYY" forms; the date check warns, never blocks, and says when the intake cannot be read.
+- **E3** The AGT-003 trigger is unchanged (`agent_id` = the application's `agent_id`; every Master of the agency sees it). No `agent_commissions` change.
+- **E4** Once enrolled, a Master corrects the date and student ID, also on an application a counselor/admin enrolled; neither creates a commission.
+- **E5** University, course and intake are shown read-only; changes go through the existing Edit. **E6** Enrollment from `offer`, `visa_documentation` or `status_tracking` only (else `422`).
+- **E7** The university student ID is optional and returned only on the agency's application detail. **E8** Approach A: a dedicated `PUT …/{id}/enrollment` in the AGN-008 router.
+
+**Consequences:** migration `0060_agent_app_enrollment` (drafted as `0058`; re-chained after `0059_agent_tasks`) (three nullable columns on `overseas_applications`); one Master-only route; four additive detail fields; a new `AgentApplicationEnrollment` component. Unchanged: the status route, counselor/admin/university-rep routes, commission amount/claim/payout (`AGT-004`), `AGN-014` reports. Design: `docs/superpowers/specs/2026-10-02-agn-013-enrollment-confirmation-design.md`. **New Feature ID authorized:** `AGN-013`.
+
+### DEC-SCOPE-055 — BDM CRM scope and the BDM / BDM Manager roles, profile and provisioning (`bdm-001`)
+
+**ID note:** recorded on the branch as `DEC-SCOPE-052`; `AGN-009` (052), `AGN-016` (053) and `AGN-013` (054) reached `main` first (#42–#44), so this entry was renumbered to `DEC-SCOPE-055` when `main` (`e0395d6`) was merged into `feature/bdm-001-bdm-profile` (2026-10-02). It records the BDM CRM answers of 2026-09-28 (D1–D32), which `BDM_CRM_BACKLOG.md` first mis-cited as `DEC-SCOPE-037` (that number is `ENH-015`), and `bdm-001`'s own B1–B11. bdm-001 commits and docs from before this merge that say `DEC-SCOPE-052` mean this decision.
 
 **Question:** is the BDM CRM in scope, what is the role model, and how are BDM and BDM Manager accounts provisioned, scoped and landed?
 
@@ -3037,7 +3116,7 @@ Staff browser flows were verified and the named-staff Assign action built (2026-
   - **B6** managers have no profile row. **B7** `bdm_type` cannot be changed (422; transfers are bdm-025). **B8** required: type, Employee ID, reporting manager; designation, department, territory, mobile optional.
   - **B9** a signed-out `/bdm/manager/*` visit → `/admin/login`; any other `/bdm/*` → a public `/bdm/sign-in` chooser (College BDM → `/it`, Agent/School BDM → `/overseas`).
 
-**Consequences:** migration `0058_bdm_profiles` (new table only; downgrade refuses while profiles exist); roles `bdm` (`bdm:self`) and `bdm_manager` (`bdm:team`) in `core/rbac.py`; `POST /admin/users` accepts `role: bdm` with a required nested `bdm_profile` and `role: bdm_manager` (super_admin, division `global`), and always returns `bdm_profile` (null for other roles); `PATCH /admin/users/{id}` edits the profile (type fixed, manager re-checked only when changed, Employee ID unique ignoring case → 409), audited before/after; `POST /auth/reset-password` always returns `login_portal` (`"admin"` for a manager, else null); new read routes `GET /bdm/me`, `GET /bdm/manager/team`, `GET /admin/bdms`, `GET /admin/bdm-managers` (paged `{items,total,limit,offset}`, the picker without emails). Unchanged: `auth.login`, token claims, `users` columns, set-password URLs, `GET /admin/users`, `School.edusphere_bdm` (bdm-018). Design: `docs/superpowers/specs/2026-10-02-bdm-001-bdm-profile-design.md`; plan: `docs/superpowers/plans/2026-10-02-bdm-001-bdm-profile.md`. **New Feature ID authorized:** `bdm-001` (bdm-002…025 remain behind GATE-09 individually).
+**Consequences:** migration `0061_bdm_profiles` (new table only; downgrade refuses while profiles exist); roles `bdm` (`bdm:self`) and `bdm_manager` (`bdm:team`) in `core/rbac.py`; `POST /admin/users` accepts `role: bdm` with a required nested `bdm_profile` and `role: bdm_manager` (super_admin, division `global`), and always returns `bdm_profile` (null for other roles); `PATCH /admin/users/{id}` edits the profile (type fixed, manager re-checked only when changed, Employee ID unique ignoring case → 409), audited before/after; `POST /auth/reset-password` always returns `login_portal` (`"admin"` for a manager, else null); new read routes `GET /bdm/me`, `GET /bdm/manager/team`, `GET /admin/bdms`, `GET /admin/bdm-managers` (paged `{items,total,limit,offset}`, the picker without emails). Unchanged: `auth.login`, token claims, `users` columns, set-password URLs, `GET /admin/users`, `School.edusphere_bdm` (bdm-018). Design: `docs/superpowers/specs/2026-10-02-bdm-001-bdm-profile-design.md`; plan: `docs/superpowers/plans/2026-10-02-bdm-001-bdm-profile.md`. **New Feature ID authorized:** `bdm-001` (bdm-002…025 remain behind GATE-09 individually).
 
 **Addendum — browser QA, 2026-10-02 (owner, in-session, `EXPLICIT_APPROVAL`):**
 - **B10 (QA-03)** the reporting-manager picker shows each manager's **email** as a detail line, so same-name managers can be told apart. `GET /admin/bdm-managers` now returns `{id, full_name, email}` to the three admin roles (this supersedes the earlier "no email in the picker" choice in §12.3 of the design).

@@ -4,14 +4,14 @@ NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was wri
 
 - **Source:** `functionalities/edusphere_markdown/BDM Functionalities.md` = `EVID-016` (`DERIVED_BLUEPRINT`).
   I read it end to end (1,424 lines). The section-by-section coverage audit is in §1.
-- **Scope authority:** `DEC-SCOPE-052` (2026-09-28, `EXPLICIT_APPROVAL`, D1–D9, asked in-session). Related decisions:
+- **Scope authority:** `DEC-SCOPE-055` (2026-09-28, `EXPLICIT_APPROVAL`, D1–D9, asked in-session). Related decisions:
   - `DEC-SCOPE-035`: the Agent CRM, `ang-NNN`.
   - `DEC-SCOPE-036`: the Telecaller CRM. It reserves `tel-NNN` and says leads extend `enquiries` (D3).
   - `DEC-SCOPE-012`: Overseas Admin creates Schools.
   - `DEC-SCOPE-019`: no admin-known credential.
 - **ID prefix:** `bdm-NNN`. The user asked for `tel-NNN`, but that prefix is reserved for the Telecaller CRM (`DEC-SCOPE-036`), so the user chose `bdm-NNN` (D2).
 - **Method:** I queried the graphify graph first, then checked each finding against source. The architecture context is in `docs/architecture/ARCHITECTURE_BASELINE.md`.
-- **Gates:** every item is behind `APPROVAL_GATES.md` GATE-09 (Coding). All 23 questions in §3.2–§3.3 were answered on 2026-09-28 (`DEC-SCOPE-052` D10–D32). Every source line is traced to an item in Appendix A, and every counted figure is defined in Appendix B.
+- **Gates:** every item is behind `APPROVAL_GATES.md` GATE-09 (Coding). All 23 questions in §3.2–§3.3 were answered on 2026-09-28 (`DEC-SCOPE-055` D10–D32). Every source line is traced to an item in Appendix A, and every counted figure is defined in Appendix B.
 - **Authorization convention (user, 2026-09-28):** new routes follow the existing inline pattern: a `User.role` check, then scope helpers, then the write. They do not use the `require_*` dependencies.
 
 ---
@@ -121,7 +121,7 @@ NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was wri
 
 ## 3. Decisions and questions
 
-### 3.1 Answered in-session 2026-09-28 (`EXPLICIT_APPROVAL`, recorded as `DEC-SCOPE-052`)
+### 3.1 Answered in-session 2026-09-28 (`EXPLICIT_APPROVAL`, recorded as `DEC-SCOPE-055`)
 
 | # | Question | Answer | Items |
 |---|---|---|---|
@@ -136,7 +136,7 @@ NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was wri
 | D8 | School onboarding | **The same handover pattern:** Overseas Admin creates the School through `SCH-003` and links it. Later stages and activity tracking are read live. `schools.edusphere_bdm` becomes the linked BDM | 018, 020 |
 | D9 | Daily activity report | **Derived + activity log:** BDMs log individual activities, the report is computed from those and the other records, and the BDM adds an end-of-day note and submits | 009, 015 |
 
-### 3.2 Item questions — all answered 2026-09-28 (`DEC-SCOPE-052` D10–D29)
+### 3.2 Item questions — all answered 2026-09-28 (`DEC-SCOPE-055` D10–D29)
 
 Every question below was put to the user directly, one at a time, and answered in-session (`EXPLICIT_APPROVAL`). No item is blocked on an open scope question. The "spec decision" notes inside items are design details for each item's spec.
 
@@ -163,7 +163,7 @@ Every question below was put to the user directly, one at a time, and answered i
 | Q-19 | MoU → pipeline | **"Signed" advances the pipeline to MoU/Agreement Signed, forward only**; other MoU statuses don't touch the pipeline | D28 | 004, 005 |
 | Q-20 | Communication to organization contacts | **Nothing.** Contacts are data only; BDMs communicate outside the system | D29 | 006, 012 |
 
-### 3.3 Definition questions from the field-level trace — answered 2026-09-28 (`DEC-SCOPE-052` D30–D32)
+### 3.3 Definition questions from the field-level trace — answered 2026-09-28 (`DEC-SCOPE-055` D30–D32)
 
 | Q | Question | Answer | Decision | Items |
 |---|---|---|---|---|
@@ -200,7 +200,7 @@ Conventions used below:
 > - browser verification: 26/26;
 > - browser QA-01..16 fixed.
 >
-> **Open before merge:** the full backend suite (run by the owner), and the owner's ruling on the spec's BDM-001-AC07 wording (whether an edit of user fields only must also snapshot the profile; the code follows spec §5.5 and snapshots only when the profile changes). Decisions B1–B11 are in `DEC-SCOPE-052`. Deviations from this entry, settled in the design: routes live in a flat `app/api/bdm.py` + `app/services/bdm.py` (the codebase has no route packages); the BDM create form is a new admin "BDMs" page (`AdminBdmPanel`), not `AdminUserManagementPanel`; managers have no profile row (B6); a manager's reset ends at `/admin/login` via `login_portal` (B1). Spec: `docs/superpowers/specs/2026-10-02-bdm-001-bdm-profile-design.md`.
+> **Open before merge:** the full backend suite (run by the owner), and the owner's ruling on the spec's BDM-001-AC07 wording (whether an edit of user fields only must also snapshot the profile; the code follows spec §5.5 and snapshots only when the profile changes). Decisions B1–B11 are in `DEC-SCOPE-055`. Deviations from this entry, settled in the design: routes live in a flat `app/api/bdm.py` + `app/services/bdm.py` (the codebase has no route packages); the BDM create form is a new admin "BDMs" page (`AdminBdmPanel`), not `AdminUserManagementPanel`; managers have no profile row (B6); a manager's reset ends at `/admin/login` via `login_portal` (B1). Spec: `docs/superpowers/specs/2026-10-02-bdm-001-bdm-profile-design.md`.
 
 - **Business requirement:** every BDM has a profile (Name, Employee ID, Designation, Department, Territory, Mobile, Email, Reporting Manager, Active/Inactive; §1). BDMs work in one of three modules, Agent, School or College (Part 2), and report to management.
 - **Existing behavior:** there are no `bdm` or `bdm_manager` roles, and `admin.create_user` rejects any role outside the fixed per-division sets. BDM names exist only as free text on `schools.edusphere_bdm`.
@@ -1273,7 +1273,7 @@ Everything else creates new tables only. Every migration is additive with an exa
 
 ### 5.5 Implement first
 
-1. ~~Record the scope decision and answer the item questions~~: **done 2026-09-28** (`DEC-SCOPE-052` D1–D29). Next, each item needs a design spec (`docs/superpowers/specs/`) before coding.
+1. ~~Record the scope decision and answer the item questions~~: **done 2026-09-28** (`DEC-SCOPE-055` D1–D29). Next, each item needs a design spec (`docs/superpowers/specs/`) before coding.
 2. **bdm-001** alone: new roles, `scope.py` and the `admin.create_user` change. That change touches every admin user flow, so run a full backend regression after it.
 3. **bdm-002 → bdm-003 → bdm-004** (the organization spine), with **bdm-010** in a parallel lane.
 4. **bdm-006 → bdm-007 → bdm-008**, with **bdm-005 / bdm-009** in a parallel lane.

@@ -10,7 +10,9 @@
 
 **Source:** `functionalities/edusphere_markdown/BDM Functionalities.md` (`EVID-016`, `DERIVED_BLUEPRINT`), §1 and the Part 2 intro.
 
-**Decision record:** **`DEC-SCOPE-052`**, written in this change. It contains:
+**ID note (2026-10-02, merge of `main` @ `e0395d6`):** this design was written with decision `DEC-SCOPE-052` and migration `0058_bdm_profiles`. AGN-009/016/013 took `DEC-SCOPE-052..054` and migrations `0058..0060` on `main` first, so bdm-001 is now **`DEC-SCOPE-055`** and **`0061_bdm_profiles`**. Commits from before the merge use the old numbers.
+
+**Decision record:** **`DEC-SCOPE-055`**, written in this change. It contains:
 - the BDM CRM answers from 2026-09-28 (D1–D32), which the backlog mis-cites as `DEC-SCOPE-037` (that number belongs to ENH-015);
 - this item's answers from 2026-10-02 (B1–B9, §3).
 
@@ -65,14 +67,14 @@
 
 ## 3. Decisions
 
-`EXPLICIT_APPROVAL`, owner, in-session, 2026-10-02. They are recorded in `DEC-SCOPE-052` and build on D3, D4, D10 (Q-01) and D26 (Q-17).
+`EXPLICIT_APPROVAL`, owner, in-session, 2026-10-02. They are recorded in `DEC-SCOPE-055` and build on D3, D4, D10 (Q-01) and D26 (Q-17).
 
 | # | Question | Answer |
 |---|---|---|
 | B1 | How does a `bdm_manager` (division `global`) sign in? | At `/admin/login`. After resetting a password, the user is sent to the portal named in the response (§5.6). The login rule is unchanged. |
 | B2 | Landing pages for AC5 | **Minimal shells**: My Day shows a profile summary, and the manager dashboard shows the team count and a link to the team page. bdm-014 and bdm-023 fill them in. |
 | B3 | Scope of this item | All of: `/bdm/me` + `/bdm/profile`, `/bdm/manager/team` + page, `/admin/bdms` (and the manager picker), and the scope helpers. |
-| B4 | Decision record | Register under the next free number, **`DEC-SCOPE-052`**, and correct the backlog's references to 037. |
+| B4 | Decision record | Register under the next free number, **`DEC-SCOPE-055`**, and correct the backlog's references to 037. |
 | B5 | Approach | **A** (§2). |
 | B6 | Does a manager have a profile row? | **No.** `bdm_profiles` rows exist only for role `bdm`. |
 | B7 | Can a BDM's type change? | **No, it's fixed in bdm-001.** A PATCH with a different `bdm_type` → 422. bdm-025 owns transfers. |
@@ -85,9 +87,9 @@
 - D10: `super_admin` creates both roles and any type, `it_admin` creates College BDMs, `overseas_admin` creates Agent and School BDMs, and only `super_admin` creates managers.
 - D26: a manager's division is `global`, and managers own no appointments or trips.
 
-## 4. Data model — migration `0058_bdm_profiles`
+## 4. Data model — migration `0061_bdm_profiles`
 
-There is a single head after `0057_agent_applications`. I re-checked on `main` `268d132`: AGN-014 added no migration.
+It follows `0060_agent_app_enrollment` (one head). Re-chained 2026-10-02 on merging `main` @ `e0395d6`: cut as `0058_bdm_profiles` after `0057_agent_applications`, but AGN-009 (`0058`), AGN-016 (`0059`) and AGN-013 (`0060`) reached `main` first.
 
 New table `bdm_profiles` (model `BdmProfile` with `TimestampMixin`):
 
@@ -397,11 +399,11 @@ Tests are written first, and every result comes from a real run.
 
 ## 10. Documentation (updated in the same change)
 
-- `PRODUCT_DECISION_REGISTER.md`: **`DEC-SCOPE-052`**, containing D1–D32 from 2026-09-28 and B1–B9.
-- `BDM_CRM_BACKLOG.md`: replace "`DEC-SCOPE-037`" with "`DEC-SCOPE-052`" and mark bdm-001 status.
+- `PRODUCT_DECISION_REGISTER.md`: **`DEC-SCOPE-055`**, containing D1–D32 from 2026-09-28 and B1–B9.
+- `BDM_CRM_BACKLOG.md`: replace "`DEC-SCOPE-037`" with "`DEC-SCOPE-055`" and mark bdm-001 status.
 - `docs/architecture/RBAC_MATRIX.md`: the two roles and their scope rules.
 - `docs/ux/ROLE_NAVIGATION.md`: the BDM and manager navigation, landing pages and `/bdm/sign-in`.
-- Traceability: `EVID-016` §1 → `DEC-SCOPE-052` → bdm-001 → BDM-001-AC01…14 → tests → code.
+- Traceability: `EVID-016` §1 → `DEC-SCOPE-055` → bdm-001 → BDM-001-AC01…14 → tests → code.
 
 ## 11. Completion gates
 
@@ -469,7 +471,7 @@ Each finding is applied in the section named. Nothing here changes an approved d
 
 ## 13. Addendum — browser QA fixes (2026-10-02)
 
-The first exploratory browser QA pass raised six Medium issues; the owner approved two decision changes (`DEC-SCOPE-052` B10, B11). Each fix was written test-first and re-verified in the browser.
+The first exploratory browser QA pass raised six Medium issues; the owner approved two decision changes (`DEC-SCOPE-055` B10, B11). Each fix was written test-first and re-verified in the browser.
 
 | QA | Problem | Fix |
 |---|---|---|

@@ -1,4 +1,4 @@
-"""bdm-001 (DEC-SCOPE-052, spec §5.7): BDM and BDM-manager reads, plus the admin BDM list and manager picker.
+"""bdm-001 (DEC-SCOPE-055, spec §5.7): BDM and BDM-manager reads, plus the admin BDM list and manager picker.
 
 Read-only. Scope always comes from the session -- no route takes a user id -- so there is no IDOR surface; the admin list is
 narrowed by type in SQL (D10). Lists are {items, total, limit, offset} (the AGN-008 convention), stably ordered by name then id."""

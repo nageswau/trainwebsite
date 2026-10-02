@@ -246,6 +246,26 @@ in `RBAC_MATRIX.md` §2.8 as §0.3 requires. Every write locks the organisation 
 | `POST /workflows/overseas/agent/students` (link) — **changed** | Authenticated | Master or staff | A staff member's link is assigned to them. Relinking an archived link → `409 "This student is archived — unarchive them first"`. |
 | `/workflows/overseas/applications`, `/workflows/overseas/documents*`, `/lookups/overseas-students`, `/lookups/overseas-applications`, `/portal/overseas/agent/*` — **changed for staff** | Authenticated | Staff: assigned students only | Existing out-of-scope status codes (`403 "Application is outside your assigned scope"`, `403 "Student is outside your assigned scope"`, `403 "Student is not assigned to this agent"`). Masters unchanged. `GET /auth/me` adds `agent_member_role` (`master`/`staff`/`null`). Staff on `/workflows/overseas/agent/team*`, `/workflows/overseas/agent/commissions*` and portal `team`/`commissions` → `403` (AGN-002's messages). |
 
+**`AGN-009` / `DEC-SCOPE-052` (built 2026-10-02) — agent documents.** Design spec
+`docs/superpowers/specs/2026-10-02-agn-009-agent-documents-design.md` §4. Errors are FastAPI `{"detail": ...}`; no `Idempotency-Key`
+(a retried upload stores a second document; a retried fulfilment meets `409`, a retried cancel `409`). New routes: gate `403` (agent
+of an active organisation; not `super_admin`) → label/file checks `422`/`413`/`415` → throttle `429` → scope `404` → archived `409` →
+state `409`. Out-of-scope rows answer `404` (existence mask). Writes lock organisation → student → request → document, store the file
+first and delete it again if the commit fails. Items never carry `file_url`.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /workflows/overseas/agent/crm/documents?view=pending\|uploaded&student=&limit=20&offset=0` | Authenticated | Agent (Master or staff) | Master: the agency; staff: assigned students only (`document_scope`: an attached document follows its application, an unattached one its agency record, or the account when no agency owns it). `200 {items,total,limit,offset}`; item: `id, agent_student_id, student, has_login, document_type, document_label, verification_status, reviewer_notes, application_id, university, original_filename, content_type, file_size, uploaded_by, fulfils_request_id, created_at, updated_at, replaceable`. `student` outside scope → `404`. |
+| `POST …/crm/documents` (multipart) | Authenticated | Same | `agent_student_id`, `document_type` ∈ Passport, Academic certificates, Transcripts, English test, CV, SOP, LOR, Financial documents, Other; `document_label` (Other only, 2–80); `application_id?` (in scope `404`; another student's `422`); `request_id?` (open request of this student; closed `409`, other student `422`); `file` (PDF/JPEG/PNG by bytes `415`; empty `422`; > `MAX_UPLOAD_BYTES` `413`; image metadata stripped). `201 {"document": item}`, status `pending`. Throttle 500 uploads+replaces / agency / 24 h → `429` + `Retry-After`. |
+| `PUT …/crm/documents/{id}/file` (multipart `file`) | Authenticated | Same | New file, status → `pending`, reviewer fields cleared; old object kept and named in history. `409`: not an agency upload, archived student, or decided by a counselor/admin (`DEC-SCOPE-044` P5). |
+| `GET …/crm/documents/{id}/history?limit=50&offset=0` | Authenticated | Same | Events by `seq`: `uploaded`, `replaced`, `verified`, `rejected`, `changes_required`, `requested`, `fulfilled`, `cancelled`, `downloaded`; item `id, event, actor, from_status, to_status, notes, created_at` (no file key). |
+| `GET …/crm/document-requests?status=open\|all&student=&limit=20&offset=0` | Authenticated | Same | The "Additional" list. Item `id, agent_student_id, student, document_type, document_label, note, status, requested_by, fulfilled_by_document_id, created_at, closed_at`. |
+| `POST …/crm/document-requests` | Authenticated | Same | Body `AgentDocumentRequestCreate` `{agent_student_id, document_type, document_label?, note? ≤ 1000}`, `extra=forbid`. `201 {"request": item}`; an open request of the same type+label → `409`; archived → `409`. Throttle 200 / agency / 24 h. |
+| `POST …/crm/document-requests/{id}/cancel` | Authenticated | Same | `open → cancelled`; otherwise `409`. |
+| `PATCH /workflows/overseas/documents/{id}/verify` — **changed (agent branch)** | Authenticated | Agent | After the AGN-003 checks: `rejected`/`changes_required` with blank `notes` → `422 "Give a reason when you reject a document or ask for changes"` (staff still get `403` first). Notes are trimmed. Agency-only documents are scope-checked by `document_scope`. Counselor/admin branch unchanged (reason optional). All branches write a history event. |
+| `GET /workflows/overseas/documents/{id}/download` — **changed** | Authenticated | Existing per-role scope | Same response. The agent check uses `document_scope` (`403` outside). Every call writes a `downloaded` event and a `document.download` audit row, committed before the URL is returned. |
+| `POST /workflows/overseas/documents` — **changed** | Authenticated | Existing | Same request and response; also records `uploaded_by_user_id` and an `uploaded` event. |
+
 **`AGN-008` / `DEC-SCOPE-050` (built 2026-10-02) — agent applications.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md` §5.3–§5.6. Errors are FastAPI `{"detail": ...}`; no
 `Idempotency-Key` (a retried create meets the duplicate rule, a retried status change the forward-only rule or the terminal state).
@@ -266,6 +286,34 @@ same transaction. Responses use explicit allowlists (no `agent_id`, `counselor_i
 | `GET /workflows/overseas/applications` — **changed** | Authenticated | Existing per-role scope | `student_id` may now be `null` (agent student with no login); the owner name is `coalesce(users.full_name, agent_students.full_name)`; school-bridged rows stay excluded. Same shape otherwise. |
 | `PATCH /workflows/overseas/applications/{id}` with `status`, `POST …/applications/{id}/advance` — **changed** | Authenticated | Counselor, admin (existing) | `409 "This application is withdrawn"` on a `withdrawn` application; non-status edits unchanged. |
 | `POST /workflows/overseas/applications` (old agent create) | Authenticated | Agent | Unchanged (A13); the agent UI uses `POST …/crm/applications`. |
+
+**`AGN-013` / `DEC-SCOPE-054` (built 2026-10-02) — enrollment confirmation.** Design spec
+`docs/superpowers/specs/2026-10-02-agn-013-enrollment-confirmation-design.md` §4. Additive: one route and four detail fields; no existing
+route, body or field changes. No `Idempotency-Key`: a repeated `PUT` converges (a second confirmation is a stale `409` or a correction).
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `PUT …/crm/applications/{id}/enrollment` (**new**) | Authenticated | Agency **Master** of an active organisation (staff → `403 "Only an agency Master can confirm enrollment"` before any load) | Body `AgentApplicationEnrollment`: `enrollment_date` (required, 2000–2100), `university_student_id` (≤ 60, optional, blank → `null`), `expected_status` (required, ≤ 50), `notes` (≤ 2000, first confirmation only); `extra="forbid"`. Order: gate `403` → Master `403` → scope `404` → archived/withdrawn `409` → stale `409` → pre-offer (or legacy free-text status) `422 "An offer is needed before enrollment"`. From `offer` / `visa_documentation` / `status_tracking`: `enrolled`, details and `enrollment_confirmed_at` set, one history row, the AGT-003 trigger (one `estimated` commission, Masters notified), audit `overseas.application.enroll`. When `enrolled`: changed details only, audit `overseas.application.enrollment_update` (field names); no history, no commission; no change → `200`, no write. `200 {"application": detail}`. |
+| `GET …/crm/applications/{id}` — **changed (additive)** | Authenticated | Same as before | Detail adds `enrollment_date`, `university_student_id`, `enrollment_confirmed_at`, `enrollment_check` (`after_intake` \| `intake_unrecognised` \| `null`; a warning computed on read). List items unchanged. |
+
+**`AGN-016` / `DEC-SCOPE-053` (built 2026-10-02) — agent tasks and follow-ups.** Design spec
+`docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md` §3–§5. Errors are FastAPI `{"detail": ...}`. `POST` is not safe to
+retry (no `Idempotency-Key`; a duplicate task is harmless and can be cancelled). Gate `403` (agent role, overseas division, active
+agency; **not** `super_admin`) → scope `404` (`"Task not found"` / `"Student not found"`) → archived student `409 "Unarchive this student
+first"` → closed task `409 "This task is closed"` → application `422 "Choose an application of this student"` → cap `409`. A task has no
+assignee: its scope is its student's (AGN-004 `student_scope`), so a reassigned student's tasks follow it. Every write locks the
+organisation, then the row `FOR UPDATE`, and audits (`agent_student.task_add|task_update|task_complete|task_cancel`, ids and field names
+only) in the same transaction. Responses are explicit allowlists: people are named, never identified by user id.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /workflows/overseas/agent/crm/tasks?view=open&student=&limit=20&offset=0` | Authenticated | Agent (Master or staff) of an active organisation | `view` = `open` (default) \| `overdue` \| `done` \| `cancelled` \| `all`; `limit` 1–100; `offset` 0–10000; `student` filters inside scope (out of scope → empty page). `open`/`overdue` leave archived students' tasks out unless `student` is given. Order: open by `due_at`; closed by `closed_at` desc; `all` open first. `200 {items, total, limit, offset}` |
+| `POST …/crm/tasks` | Authenticated | Same | Body `AgentTaskCreate`: `agent_student_id`, `title` (1–200), `due_at` (with offset; naive → 422), `notes` (≤ 2000), `application_id`; extra fields 422. Past `due_at` allowed. `201 {"task": item}` |
+| `GET …/crm/tasks/{id}` | Authenticated | Same | `200 {"task": item}`: `id, title, notes, due_at, status, overdue, student {id, full_name, status}, application {id, university} \| null, assigned_to {code, full_name, status} \| null, created_by, closed_by, closed_at, created_at, updated_at` |
+| `PATCH …/crm/tasks/{id}` | Authenticated | Same | Body `AgentTaskUpdate`: any of `title`, `due_at` (not clearable), `notes`, `application_id` (null clears) — **or** `status` (`done` \| `cancelled`) alone; the student is fixed. A no-op is `200` with no audit row. Closing stamps `closed_at`/`closed_by` |
+
+`GET /portal/overseas/agent/dashboard` gains `{"label": "Pending actions", "value": n}` after "Applications" (open tasks of active
+students in the caller's scope); `GET /portal/overseas/agent/tasks` is a header-only payload ("Tasks & follow-ups").
 
 **`AGN-003` / `DEC-SCOPE-044` (built 2026-10-01).** Design spec §6–§8. Two optional §6 rows (Verify Documents, Reports) are switched on per
 staff member by a Master; the flags are read from the database on every request, so a change applies on the next request.

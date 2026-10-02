@@ -375,6 +375,21 @@ class AgentDocumentReview(BaseModel):
     notes: str | None = Field(default=None, max_length=10000)
 
 
+# AGN-009 (DEC-SCOPE-052 G3): EVID-015 §5 Step 4, stored as written (the free-text style the visa checklist compares); the web mirrors
+# it in lib/agentDocuments.ts DOCUMENT_TYPES.
+AgentDocumentType = Literal["Passport", "Academic certificates", "Transcripts", "English test", "CV", "SOP", "LOR", "Financial documents", "Other"]
+
+
+class AgentDocumentRequestCreate(BaseModel):
+    """AGN-009 (G4): ask one of the agency's students for an additional document. "Other" needs a label (checked by the service)."""
+
+    model_config = {"extra": "forbid"}
+    agent_student_id: UUID
+    document_type: AgentDocumentType
+    document_label: str | None = Field(default=None, max_length=200)
+    note: str | None = Field(default=None, max_length=1000)
+
+
 class AppointmentCreate(BaseModel):
     student_id: UUID | None = None
     staff_id: UUID | None = None
@@ -744,6 +759,87 @@ class AgentApplicationStatus(BaseModel):
     @classmethod
     def _notes(cls, value):
         return clean_free_text(value, 2000)
+
+
+class AgentApplicationEnrollment(BaseModel):
+    """AGN-013 (DEC-SCOPE-054): confirm or correct an application's enrollment. `expected_status` is required: confirming is the
+    commission-triggering act, so a stale screen gets a 409 instead of acting."""
+
+    model_config = {"extra": "forbid"}
+    enrollment_date: date
+    university_student_id: str | None = None
+    expected_status: str = Field(max_length=50)
+    notes: str | None = None
+
+    @field_validator("enrollment_date")
+    @classmethod
+    def _enrollment_date(cls, value):
+        return _application_date(value)
+
+    @field_validator("university_student_id")
+    @classmethod
+    def _student_id(cls, value):
+        return clean_free_text(value, 60)
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, value):
+        return clean_free_text(value, 2000)
+
+
+# --- AGN-016: agent tasks and follow-ups (DEC-SCOPE-053; docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md §3) ---
+
+
+def _task_title(value) -> str:
+    if value is not None and not isinstance(value, str):  # runs before type coercion: a number or list is a 422, never a 500
+        raise PydanticCustomError("task_title_text", "Title must be text")
+    value = clean_free_text(value, 200)
+    if not value:
+        raise PydanticCustomError("task_title_required", "Title is required")
+    return value
+
+
+TaskNotes = Annotated[str | None, AfterValidator(lambda value: clean_free_text(value, 2000))]
+
+
+class AgentTaskCreate(BaseModel):
+    """`due_at` must carry an offset (AwareDatetime): a browser's local time is never silently read as UTC. Status, owner and
+    closing fields are the server's -- `extra="forbid"` answers 422."""
+
+    model_config = {"extra": "forbid"}
+    agent_student_id: UUID
+    title: str
+    due_at: AwareDatetime
+    notes: TaskNotes = None
+    application_id: UUID | None = None
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _title(cls, value):
+        return _task_title(value)
+
+
+class AgentTaskUpdate(BaseModel):
+    """Omitted = unchanged; null clears `notes` or `application_id`; `title` and `due_at` cannot be cleared. Closing (T2, T6) is
+    `status` sent ALONE, so every audit event is either an edit or a close; the student is fixed after create."""
+
+    model_config = {"extra": "forbid"}
+    title: str | None = None
+    due_at: AwareDatetime | None = None
+    notes: TaskNotes = None
+    application_id: UUID | None = None
+    status: Literal["done", "cancelled"] | None = None
+
+    @model_validator(mode="after")
+    def _rules(self):
+        sent = self.model_fields_set
+        if "title" in sent:
+            self.title = _task_title(self.title)
+        if "due_at" in sent and self.due_at is None:
+            raise PydanticCustomError("task_due_required", "Due date and time is required")
+        if "status" in sent and (self.status is None or sent != {"status"}):
+            raise PydanticCustomError("task_status_alone", "Change the status on its own, without other fields")
+        return self
 
 
 class AgentStaffCreate(AgentMasterInvite):
@@ -2625,7 +2721,7 @@ class GlobalEducationPipelineOut(BaseModel):
     students: PipelineStudentPage
 
 
-# --- bdm-001 (DEC-SCOPE-052): BDM profile -------------------------------------------------------------------------------
+# --- bdm-001 (DEC-SCOPE-055): BDM profile -------------------------------------------------------------------------------
 BdmType = Literal["agent", "school", "college"]
 _BDM_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 

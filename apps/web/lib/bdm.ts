@@ -1,4 +1,4 @@
-// bdm-001 (DEC-SCOPE-052): BDM types, labels and endpoints shared by the BDM pages and the admin BDM page.
+// bdm-001 (DEC-SCOPE-055): BDM types, labels and endpoints shared by the BDM pages and the admin BDM page.
 import type { LookupPage } from "@/lib/lookups";
 
 export type BdmType = "agent" | "school" | "college";

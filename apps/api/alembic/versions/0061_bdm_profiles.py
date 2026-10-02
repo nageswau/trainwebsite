@@ -1,11 +1,16 @@
 """bdm-001 -- bdm_profiles (1:1 with a `bdm` user).
 
-Revision ID: 0058_bdm_profiles
-Revises: 0057_agent_applications
+Revision ID: 0061_bdm_profiles
+Revises: 0060_agent_app_enrollment
 
-docs/superpowers/specs/2026-10-02-bdm-001-bdm-profile-design.md §4 (DEC-SCOPE-052). Adds one table; no existing row is read or
+docs/superpowers/specs/2026-10-02-bdm-001-bdm-profile-design.md §4 (DEC-SCOPE-055). Adds one table; no existing row is read or
 written. 0001 builds a fresh database from the current models, which already carry this table, so creation is guarded (0055's
 idiom). downgrade() refuses while profiles exist: they are the only record of each BDM's type and reporting manager.
+
+Re-chained 2026-10-02 on merging `main` @ `e0395d6`: cut as `0058_bdm_profiles` on `0057_agent_applications`, but AGN-009's
+`0058_agent_documents`, AGN-016's `0059_agent_tasks` and AGN-013's `0060_agent_app_enrollment` reached `main` first, so this
+revision is now `0061_bdm_profiles` after 0060 (one head). A database stamped at `0058_bdm_profiles` is re-stamped with
+`alembic stamp --purge 0057_agent_applications` then `upgrade head` (the guarded create makes the re-run harmless).
 """
 
 import sqlalchemy as sa
@@ -13,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0058_bdm_profiles"
-down_revision = "0057_agent_applications"
+revision = "0061_bdm_profiles"
+down_revision = "0060_agent_app_enrollment"
 branch_labels = None
 depends_on = None
 
@@ -45,5 +50,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0058_bdm_profiles: BDM profiles exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0061_bdm_profiles: BDM profiles exist. Remove them deliberately first.")
     op.drop_table(TABLE)

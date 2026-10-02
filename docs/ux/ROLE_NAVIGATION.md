@@ -248,14 +248,14 @@ distinct from the existing Trainer/"Teacher" role above)*
 entries — their duties are OPEN (`PRD_OPEN_ITEMS.md` item 75) and no screen has been designed for
 either yet.*
 
-## BDM *(net-new, added 2026-10-02, `DEC-SCOPE-052`, `bdm-001`)*
+## BDM *(net-new, added 2026-10-02, `DEC-SCOPE-055`, `bdm-001`)*
 
 Signs in at `/it/login` (College BDM, division `it`) or `/overseas/login` (Agent / School BDM, division `overseas`); lands on `/bdm/my-day`.
 
 - /bdm/my-day — My Day (minimal shell in bdm-001: welcome + profile summary; content arrives with bdm-014).
 - /bdm/profile — read-only §1 profile.
 
-## BDM Manager *(net-new, added 2026-10-02, `DEC-SCOPE-052`, `bdm-001`)*
+## BDM Manager *(net-new, added 2026-10-02, `DEC-SCOPE-055`, `bdm-001`)*
 
 Division `global`; signs in at `/admin/login` (heading "Administration sign-in"); lands on `/bdm/manager/dashboard`. Password recovery stays in the admin portal (QA-05, B11): "Forgot your password?" on `/admin/login` → public `/admin/forgot-password`; the welcome/reset link opens public `/admin/reset-password`, whose links point to `/admin/login`; after a reset the form also follows the API's `login_portal`.
 

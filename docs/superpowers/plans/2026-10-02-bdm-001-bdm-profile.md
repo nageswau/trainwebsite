@@ -6,7 +6,7 @@
 
 **Architecture:**
 - `POST/PATCH /admin/users` gains a role-gated branch, following the existing `role == "agent"` branch.
-- A new `bdm_profiles` table, from migration `0058_bdm_profiles`.
+- A new `bdm_profiles` table, from migration `0061_bdm_profiles`.
 - New code follows the flat module convention: `app/api/bdm.py` for routes, `app/services/bdm.py` for rules and scope, Pydantic models in `schemas.py`.
 - Web: `ROLE_DASHBOARD_PATH` and middleware entries, server-rendered `/bdm/*` pages, and an `AdminBdm*` component set that follows the AGN-002 `AgentStaff*` split.
 
@@ -17,7 +17,7 @@
 ## Global constraints
 
 - Branch `feature/bdm-001-bdm-profile`, worktree `.claude/worktrees/bdm-001`. Cut from `main` `268d132`.
-- Decision ID: **`DEC-SCOPE-052`**. Migration: **`0058_bdm_profiles`**, down_revision `0057_agent_applications`.
+- Decision ID: **`DEC-SCOPE-055`**. Migration: **`0061_bdm_profiles`**, down_revision `0057_agent_applications`.
 - `BDM_DIVISION = {"college": "it", "agent": "overseas", "school": "overseas"}`.
 - `CREATOR_TYPES = {super_admin: all, it_admin: {college}, overseas_admin: {agent, school}}`. Only `super_admin` creates `bdm_manager`.
 - Managers have **no** profile row. `bdm_type` can't be changed (PATCH with a different value → 422).
@@ -66,7 +66,7 @@ Inputs the spec implies but the acceptance criteria don't name directly. Each li
 | File | Responsibility | Task |
 |---|---|---|
 | `apps/api/app/models.py` | + `BdmProfile` | 1 |
-| `apps/api/alembic/versions/0058_bdm_profiles.py` | new table, guarded, refusing downgrade | 1 |
+| `apps/api/alembic/versions/0061_bdm_profiles.py` | new table, guarded, refusing downgrade | 1 |
 | `apps/api/tests/test_bdm_001_migration.py` | chain, round trip, refusal | 1 |
 | `apps/api/app/core/rbac.py` | + 2 roles | 2 |
 | `apps/api/app/schemas.py` | + input and output models | 2 |
@@ -87,11 +87,11 @@ Inputs the spec implies but the acceptance criteria don't name directly. Each li
 
 ---
 
-### Task 1: `BdmProfile` model and migration `0058_bdm_profiles`
+### Task 1: `BdmProfile` model and migration `0061_bdm_profiles`
 
 **Files:**
 - Modify: `apps/api/app/models.py` (add the class after `AuditLog`, about line 828)
-- Create: `apps/api/alembic/versions/0058_bdm_profiles.py`
+- Create: `apps/api/alembic/versions/0061_bdm_profiles.py`
 - Test: `apps/api/tests/test_bdm_001_migration.py`
 
 **Interfaces:**
@@ -100,7 +100,7 @@ Inputs the spec implies but the acceptance criteria don't name directly. Each li
 - [ ] **Step 1: Write the failing migration test.** Copy the `isolated_db` / `_sql` scaffolding from `test_agn_008_migration.py`.
 
 ```python
-"""bdm-001 -- migration 0058_bdm_profiles (spec §4). Round trip and refusal run in a throwaway database (AGN-008 pattern)."""
+"""bdm-001 -- migration 0061_bdm_profiles (spec §4). Round trip and refusal run in a throwaway database (AGN-008 pattern)."""
 
 import asyncio
 import importlib.util
@@ -119,7 +119,7 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_bdm_001_migration_0058", VERSIONS / "0058_bdm_profiles.py")
+_spec = importlib.util.spec_from_file_location("_bdm_001_migration_0061", VERSIONS / "0061_bdm_profiles.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 BASE = "0057_agent_applications"
@@ -127,7 +127,7 @@ USERS = "SELECT id, email, role, division FROM users ORDER BY id"
 
 
 def test_migration_chains_after_0057_and_is_the_single_head():
-    assert _migration.revision == "0058_bdm_profiles"
+    assert _migration.revision == "0061_bdm_profiles"
     assert _migration.down_revision == BASE
     parents = {}
     for file in VERSIONS.glob("*.py"):
@@ -194,18 +194,18 @@ def isolated_db():
 def test_round_trip_keeps_users_identical(isolated_db):
     cfg, url = isolated_db["cfg"], isolated_db["url"]
     before = _sql(url, USERS)
-    command.upgrade(cfg, "0058_bdm_profiles")
-    command.upgrade(cfg, "0058_bdm_profiles")  # idempotent re-run
+    command.upgrade(cfg, "0061_bdm_profiles")
+    command.upgrade(cfg, "0061_bdm_profiles")  # idempotent re-run
     assert _sql(url, USERS) == before
     command.downgrade(cfg, BASE)
     assert _sql(url, USERS) == before
-    command.upgrade(cfg, "0058_bdm_profiles")
+    command.upgrade(cfg, "0061_bdm_profiles")
     assert _sql(url, USERS) == before
 
 
 def test_constraints_hold_and_downgrade_refuses_while_profiles_exist(isolated_db):
     cfg, url, ids = isolated_db["cfg"], isolated_db["url"], isolated_db["ids"]
-    command.upgrade(cfg, "0058_bdm_profiles")
+    command.upgrade(cfg, "0061_bdm_profiles")
     insert = ("INSERT INTO bdm_profiles (id, user_id, bdm_type, employee_id, reporting_manager_user_id) "
               "VALUES (:id, :user, :type, :emp, :mgr)")
     with pytest.raises(Exception, match="ck_bdm_profiles_type"):
@@ -219,13 +219,13 @@ def test_constraints_hold_and_downgrade_refuses_while_profiles_exist(isolated_db
 
 - [ ] **Step 2: Run it and confirm the RED state.**
 Run: API tests with `<PATHS>` = `tests/test_bdm_001_migration.py`.
-Expected: FAIL with `FileNotFoundError` for `0058_bdm_profiles.py`, or `ImportError: cannot import name 'BdmProfile'`.
+Expected: FAIL with `FileNotFoundError` for `0061_bdm_profiles.py`, or `ImportError: cannot import name 'BdmProfile'`.
 
 - [ ] **Step 3: Add the model** to `models.py`, after `AuditLog`.
 
 ```python
 class BdmProfile(Base, TimestampMixin):
-    """bdm-001 (DEC-SCOPE-052): a BDM's §1 profile, 1:1 with a `bdm` user. Name, email, mobile and active stay on `users`.
+    """bdm-001 (DEC-SCOPE-055): a BDM's §1 profile, 1:1 with a `bdm` user. Name, email, mobile and active stay on `users`.
     The reporting manager must be an active `bdm_manager` -- enforced in `services/bdm.py` under a row lock (no cross-table CHECK)."""
 
     __tablename__ = "bdm_profiles"
@@ -245,15 +245,15 @@ class BdmProfile(Base, TimestampMixin):
     reporting_manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 ```
 
-- [ ] **Step 4: Add the migration**, `0058_bdm_profiles.py`.
+- [ ] **Step 4: Add the migration**, `0061_bdm_profiles.py`.
 
 ```python
 """bdm-001 -- bdm_profiles (1:1 with a `bdm` user).
 
-Revision ID: 0058_bdm_profiles
+Revision ID: 0061_bdm_profiles
 Revises: 0057_agent_applications
 
-docs/superpowers/specs/2026-10-02-bdm-001-bdm-profile-design.md §4 (DEC-SCOPE-052). Adds one table; no existing row is read or
+docs/superpowers/specs/2026-10-02-bdm-001-bdm-profile-design.md §4 (DEC-SCOPE-055). Adds one table; no existing row is read or
 written. 0001 builds a fresh database from the current models, so creation is guarded (0055's idiom). downgrade() refuses while
 profiles exist: they are the only record of each BDM's type and reporting manager.
 """
@@ -263,7 +263,7 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0058_bdm_profiles"
+revision = "0061_bdm_profiles"
 down_revision = "0057_agent_applications"
 branch_labels = None
 depends_on = None
@@ -295,7 +295,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0058_bdm_profiles: BDM profiles exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0061_bdm_profiles: BDM profiles exist. Remove them deliberately first.")
     op.drop_table(TABLE)
 ```
 
@@ -436,7 +436,7 @@ def test_scope_helpers():
 - [ ] **Step 3: Implement.** First, the `rbac.py` entries:
 
 ```python
-    # bdm-001 (DEC-SCOPE-052): BDM CRM. Type/own/team scope is enforced in services/bdm.py, not by these bundles alone.
+    # bdm-001 (DEC-SCOPE-055): BDM CRM. Type/own/team scope is enforced in services/bdm.py, not by these bundles alone.
     "bdm": {"bdm:self"},
     "bdm_manager": {"bdm:team"},
 ```
@@ -444,7 +444,7 @@ def test_scope_helpers():
 Then the block appended to `schemas.py`. It needs `import re` at the top, if that isn't already imported.
 
 ```python
-# --- bdm-001 (DEC-SCOPE-052): BDM profile -------------------------------------------------------------------------------
+# --- bdm-001 (DEC-SCOPE-055): BDM profile -------------------------------------------------------------------------------
 BdmType = Literal["agent", "school", "college"]
 _BDM_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 
@@ -563,7 +563,7 @@ class BdmManagerPage(BaseModel):
 Then `services/bdm.py`:
 
 ```python
-"""bdm-001 (DEC-SCOPE-052, spec §5.3): BDM provisioning rules and the type/own/team scope every later bdm item calls.
+"""bdm-001 (DEC-SCOPE-055, spec §5.3): BDM provisioning rules and the type/own/team scope every later bdm item calls.
 Functions only; nothing here commits -- the route owns the transaction. Logs carry ids, route and type, never email/phone/Employee ID."""
 
 import logging
@@ -1271,7 +1271,7 @@ async def test_list_bounds_are_422(client, db_session, params):
 - [ ] **Step 3: Implement `app/api/bdm.py`.**
 
 ```python
-"""bdm-001 (DEC-SCOPE-052, spec §5.7): BDM and BDM-manager reads, and the admin BDM list and manager picker.
+"""bdm-001 (DEC-SCOPE-055, spec §5.7): BDM and BDM-manager reads, and the admin BDM list and manager picker.
 Read-only. Scope always comes from the session (no user id in any path), so there is no IDOR surface."""
 
 from typing import Literal
@@ -1537,7 +1537,7 @@ describe("lib/bdm", () => {
 In `navigation.ts`, inside `ROLE_DASHBOARD_PATH`:
 
 ```ts
-  // bdm-001 (DEC-SCOPE-052): the BDM CRM roles.
+  // bdm-001 (DEC-SCOPE-055): the BDM CRM roles.
   bdm: "/bdm/my-day",
   bdm_manager: "/bdm/manager/dashboard",
 ```
@@ -1589,7 +1589,7 @@ export const config={matcher:["/it/:path*","/overseas/:path*","/admin/:path*","/
 `lib/bdm.ts`:
 
 ```ts
-// bdm-001 (DEC-SCOPE-052): BDM types, labels and endpoints shared by the BDM pages and the admin BDM page.
+// bdm-001 (DEC-SCOPE-055): BDM types, labels and endpoints shared by the BDM pages and the admin BDM page.
 export type BdmType = "agent" | "school" | "college";
 export type BdmManagerRef = { id: string; full_name: string; active: boolean };
 export type BdmProfile = { bdm_type: BdmType; employee_id: string; designation: string | null; department: string | null; territory: string | null; reporting_manager: BdmManagerRef };
@@ -2508,12 +2508,12 @@ Before writing, check the selectors (`#login-email`, `#new-password`, the button
 ### Task 11: Documentation, traceability and the lite verification run
 
 **Files:**
-- Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append `### DEC-SCOPE-052`)
-- Modify: `docs/delivery/BDM_CRM_BACKLOG.md` (replace `DEC-SCOPE-037` with `DEC-SCOPE-052`; set the bdm-001 status to "Implemented on branch — pending browser QA and independent review")
+- Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append `### DEC-SCOPE-055`)
+- Modify: `docs/delivery/BDM_CRM_BACKLOG.md` (replace `DEC-SCOPE-037` with `DEC-SCOPE-055`; set the bdm-001 status to "Implemented on branch — pending browser QA and independent review")
 - Modify: `docs/architecture/RBAC_MATRIX.md` (the `bdm` and `bdm_manager` rows with their scope rules)
 - Modify: `docs/ux/ROLE_NAVIGATION.md` (landing pages, navs, `/bdm/sign-in`, the `/admin/login` text)
 
-- [ ] **Step 1: Write `DEC-SCOPE-052`.** Use the layout of the `DEC-SCOPE-050` entry. Include: classification `EXPLICIT_APPROVAL` (owner, in-session); D1–D32 dated 2026-09-28, copied from `BDM_CRM_BACKLOG.md` §3.1–3.3 with a note that they were previously mis-cited as 037; B1–B9 dated 2026-10-02 from spec §3; and the evidence (`EVID-016`).
+- [ ] **Step 1: Write `DEC-SCOPE-055`.** Use the layout of the `DEC-SCOPE-050` entry. Include: classification `EXPLICIT_APPROVAL` (owner, in-session); D1–D32 dated 2026-09-28, copied from `BDM_CRM_BACKLOG.md` §3.1–3.3 with a note that they were previously mis-cited as 037; B1–B9 dated 2026-10-02 from spec §3; and the evidence (`EVID-016`).
 - [ ] **Step 2: Update the backlog, RBAC matrix and role navigation docs.** Then confirm: `grep -rn "DEC-SCOPE-037" docs/delivery/BDM_CRM_BACKLOG.md` → no hits.
 - [ ] **Step 3: Run the lite backend set:**
   - `tests/test_bdm_001_migration.py tests/test_bdm_001_service.py tests/test_bdm_001_profiles.py tests/test_bdm_001_reads.py tests/test_bdm_001_reset_portal.py`
@@ -2524,7 +2524,7 @@ Before writing, check the selectors (`#login-email`, `#new-password`, the button
   Expected: all pass. Record the counts.
 - [ ] **Step 4: Run the lite web set:** every `tests/**/*bdm*`, `AdminBdm*`, `BdmPages`, `BdmTeamTable`, `middleware`, `navigation*`, `ResetPasswordForm`, `HeaderAuthActions`, `LoginForm.next`, `AdminUserManagementPanel` and `WorkflowPanel*` test, then `npx tsc --noEmit`, `npx eslint .` and `npx next build`. Expected: pass.
 - [ ] **Step 5: Check before committing:** `git diff --cached | grep -iE "password|secret|api_key|token"` should match only test fixtures and existing names, never real values.
-- [ ] **Step 6: Commit** — `docs(bdm-001): DEC-SCOPE-052, backlog, RBAC matrix, role navigation`.
+- [ ] **Step 6: Commit** — `docs(bdm-001): DEC-SCOPE-055, backlog, RBAC matrix, role navigation`.
 - [ ] **Step 7: Report the status. Do NOT claim completion.** List the AC01–AC16 evidence (the test names that passed), the lite files run with their counts, and a plain statement that **the full backend suite was not run (by the user's standing choice)**. Pending: browser validation (spec §11 responsive and accessibility gates) and the independent Codex review.
 
 ---

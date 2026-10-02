@@ -1,4 +1,4 @@
-"""bdm-001 -- migration 0058_bdm_profiles (spec §4). Round trip and the downgrade refusal run in a throwaway database built from
+"""bdm-001 -- migration 0061_bdm_profiles (spec §4). Round trip and the downgrade refusal run in a throwaway database built from
 scratch (the AGN-008 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls
 asyncio.run() itself."""
 
@@ -19,16 +19,16 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_bdm_001_migration_0058", VERSIONS / "0058_bdm_profiles.py")
+_spec = importlib.util.spec_from_file_location("_bdm_001_migration_0061", VERSIONS / "0061_bdm_profiles.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE = "0057_agent_applications"
+BASE = "0060_agent_app_enrollment"
 USERS = "SELECT id, email, role, division FROM users ORDER BY id"
 
 
-def test_migration_chains_after_0057_and_is_the_single_head():
-    assert _migration.revision == "0058_bdm_profiles"
+def test_migration_chains_after_0060_and_is_the_single_head():
+    assert _migration.revision == "0061_bdm_profiles"
     assert _migration.down_revision == BASE
     parents = {}
     for file in VERSIONS.glob("*.py"):
@@ -74,7 +74,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0057 with one bdm_manager and one other user."""
+    """A fresh database at 0060 with one bdm_manager and one other user."""
     cfg = Config(str(API_ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
     original = settings.database_url
@@ -101,17 +101,17 @@ def isolated_db():
 def test_round_trip_keeps_users_identical(isolated_db):
     cfg, url = isolated_db["cfg"], isolated_db["url"]
     before = _sql(url, USERS)
-    command.upgrade(cfg, "0058_bdm_profiles")
+    command.upgrade(cfg, "0061_bdm_profiles")
     assert _sql(url, USERS) == before
     command.downgrade(cfg, BASE)
     assert _sql(url, USERS) == before
-    command.upgrade(cfg, "0058_bdm_profiles")
+    command.upgrade(cfg, "0061_bdm_profiles")
     assert _sql(url, USERS) == before
 
 
 def test_constraints_hold_and_downgrade_refuses_while_profiles_exist(isolated_db):
     cfg, url, ids = isolated_db["cfg"], isolated_db["url"], isolated_db["ids"]
-    command.upgrade(cfg, "0058_bdm_profiles")
+    command.upgrade(cfg, "0061_bdm_profiles")
     insert = (
         "INSERT INTO bdm_profiles (id, user_id, bdm_type, employee_id, reporting_manager_user_id) "
         "VALUES (:id, :user, :type, :emp, :mgr)"

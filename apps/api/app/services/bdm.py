@@ -1,4 +1,4 @@
-"""bdm-001 (DEC-SCOPE-052, spec §5.3): BDM provisioning rules and the type/own/team scope every later bdm item calls.
+"""bdm-001 (DEC-SCOPE-055, spec §5.3): BDM provisioning rules and the type/own/team scope every later bdm item calls.
 
 Functions only; nothing here commits -- the route owns the transaction. Logs carry ids, route and type, never email, phone or
 Employee ID."""
