@@ -10,6 +10,7 @@ from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, Email
 from pydantic_core import PydanticCustomError
 
 from app.models import GENDERS
+from app.services.agent_visa import VISA_CASE_STAGES
 
 
 class LoginRequest(BaseModel):
@@ -785,6 +786,74 @@ class AgentApplicationEnrollment(BaseModel):
     @classmethod
     def _notes(cls, value):
         return clean_free_text(value, 2000)
+
+
+# --- AGN-012: the visa case of an agency's application (DEC-SCOPE-055; docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md §4) ---
+
+
+def _visa_checklist(value: list[str] | None) -> list[str]:
+    """V6: named agency document types only (an "Other" document has no fixed type to match), each once."""
+    if value is None:
+        raise PydanticCustomError("not_clearable", "The checklist cannot be cleared; send an empty list")
+    if "Other" in value:
+        raise PydanticCustomError("visa_checklist_other", "Choose a named document type for the checklist")
+    if len(set(value)) != len(value):
+        raise PydanticCustomError("visa_checklist_duplicate", "Each document type can appear once")
+    return value
+
+
+class _AgentVisaDates(BaseModel):
+    model_config = {"extra": "forbid"}
+    visa_application_date: date | None = None
+    appointment_date: date | None = None
+    interview_date: date | None = None
+
+    @field_validator("visa_application_date", "appointment_date", "interview_date")
+    @classmethod
+    def _dates(cls, value):
+        return _application_date(value)
+
+
+class AgentVisaStart(_AgentVisaDates):
+    """Start a case. There is no stage field: a case always starts at `checklist` (V3), so the checklist gate cannot be skipped at
+    creation. `expected_status` is the application stage the screen shows (stale screen -> 409)."""
+
+    expected_status: str = Field(max_length=50)
+    checklist: list[AgentDocumentType] = Field(default_factory=list, max_length=8)
+
+    @field_validator("checklist")
+    @classmethod
+    def _checklist(cls, value):
+        return _visa_checklist(value)
+
+
+class AgentVisaUpdate(_AgentVisaDates):
+    """A partial update: an absent key is unchanged, an explicit null clears a date. The checklist, the target stage and the decision
+    cannot be cleared. `expected_stage` is the visa stage the screen shows."""
+
+    expected_stage: str = Field(max_length=50)
+    checklist: list[AgentDocumentType] | None = Field(default=None, max_length=8)
+    to_stage: str | None = None
+    decision: Literal["approved", "refused", "withdrawn"] | None = None
+
+    @field_validator("checklist")
+    @classmethod
+    def _checklist(cls, value):
+        return _visa_checklist(value)
+
+    @field_validator("to_stage")
+    @classmethod
+    def _to_stage(cls, value):
+        if value not in VISA_CASE_STAGES:
+            raise PydanticCustomError("visa_stage", "Choose a visa stage: {stages}", {"stages": ", ".join(VISA_CASE_STAGES)})
+        return value
+
+    @field_validator("decision")
+    @classmethod
+    def _decision(cls, value):
+        if value is None:
+            raise PydanticCustomError("not_clearable", "A recorded decision cannot be cleared")
+        return value
 
 
 # --- AGN-016: agent tasks and follow-ups (DEC-SCOPE-053; docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md §3) ---

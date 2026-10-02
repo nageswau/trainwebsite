@@ -106,6 +106,7 @@ from app.services.agent_applications import DEFAULT_NEXT_ACTION, OVERSEAS_APPLIC
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
+from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECISION_DISCLAIMER
 from app.services.certificates import generate_certificate_pdf
 from app.services.storage import storage
 
@@ -2160,10 +2161,7 @@ async def download_student_document(document_id: UUID, user: User = Depends(get_
     return {"url": storage.presign_download(key), "expires_in": 900 if storage.bucket else None}
 
 
-# DATA_MODEL.md #6.5, DEC-SCOPE-006: the four confirmed category names plus a terminal
-# `decision` state. Exact decision outcomes (approved/refused) are not modeled as
-# separate values -- no source confirms them.
-VISA_CASE_STAGES = ["checklist", "documentation", "interview_prep", "tracking", "decision"]
+# VISA_CASE_STAGES and VISA_DECISION_DISCLAIMER live in services/agent_visa.py (AGN-012 moved them unchanged; imported above).
 
 
 async def _checklist_verification(db: AsyncSession, application_id: UUID, checklist: list[str]) -> dict[str, str]:
@@ -2222,12 +2220,6 @@ async def get_interview_prep(user: User = Depends(get_current_user), db: AsyncSe
         }
         for case, application, university, country in rows
     ]
-
-
-# VISA-003-AC02: a fixed compliance sentence, sourced from the reference
-# implementation's own compliance language (DATA_MODEL.md #6.5) -- never invented, and
-# never varied per case, so no response can ever imply EduSphere decides visa outcomes.
-VISA_DECISION_DISCLAIMER = "Visa decisions are made by the relevant government or immigration authority. EduSphere does not decide visa outcomes."
 
 
 @router.get("/overseas/applications/{application_id}/visa-status")
