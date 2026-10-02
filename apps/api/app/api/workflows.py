@@ -95,6 +95,7 @@ from app.schemas import (
     VisaCaseCreate,
 )
 from app.services.agent_applications import DEFAULT_NEXT_ACTION, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, owned, with_owner
+from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
 from app.services.certificates import generate_certificate_pdf
@@ -2028,9 +2029,11 @@ async def add_document(payload: StudentDocumentCreate, user: User = Depends(get_
         original_filename=payload.original_filename,
         content_type=payload.content_type,
         file_size=payload.file_size,
+        uploaded_by_user_id=user.id,
     )
     db.add(item)
     await db.flush()
+    add_event(db, event="uploaded", actor=user, document=item, to_status="pending")  # AGN-009: additive history row
     await _audit(db, user, "document.upload", "student_document", item.id)
     await db.commit()
     await db.refresh(item)
@@ -2060,14 +2063,16 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
     if item.application_id:
         await _assigned_application(db, user, item.application_id)
     # AGN-004 G4 (adopted by AGN-003 on merging `main`): a staff member only their assigned students; a Master the agency's.
-    elif not await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == item.student_id, *student_scope(user))):
+    # AGN-009: an unattached document follows its owner -- the agency record or the linked account (`document_scope`).
+    elif not await in_scope(db, user, item.id):
         raise HTTPException(403, "Document is outside your assigned scope")
     if item.verification_status != "pending":
         raise HTTPException(409, "This document has already been reviewed")
     item.verification_status = review.verification_status
     item.verified_by_id = user.id
     item.reviewer_notes = review.notes
-    student = await db.get(User, item.student_id)
+    add_event(db, event=item.verification_status, actor=user, document=item, from_status="pending", to_status=item.verification_status, notes=review.notes)
+    student = await db.get(User, item.student_id) if item.student_id else None  # AGN-009: an agency-only document has no account
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
     member_role = user.agent_membership.role
@@ -2094,10 +2099,13 @@ async def verify_document(document_id: UUID, payload: dict, user: User = Depends
         assigned = await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == item.student_id, OverseasApplication.counselor_id == user.id))
         if not assigned:
             raise HTTPException(403, "Document is outside your assigned scope")
+    from_status = item.verification_status
     item.verification_status = payload.get("verification_status", "verified")
     item.verified_by_id = user.id
     item.reviewer_notes = payload.get("notes")
-    student = await db.get(User, item.student_id)
+    if item.verification_status in {"verified", "rejected", "changes_required"}:  # AGN-009: history names known outcomes only
+        add_event(db, event=item.verification_status, actor=user, document=item, from_status=from_status, to_status=item.verification_status, notes=item.reviewer_notes)
+    student = await db.get(User, item.student_id) if item.student_id else None
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
     await _audit(db, user, "document.verify", "student_document", item.id, payload)
@@ -2126,15 +2134,17 @@ async def download_student_document(document_id: UUID, user: User = Depends(get_
             assigned = await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == item.student_id, OverseasApplication.counselor_id == user.id))
             if not assigned:
                 raise HTTPException(403, "Document is outside your assigned scope")
-    elif user.role == "agent":
-        assigned = await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == item.student_id, *student_scope(user)))
-        if not assigned:
-            raise HTTPException(403, "Document is outside your assigned scope")
+    elif user.role == "agent" and not await in_scope(db, user, item.id):  # AGN-009: safe for an agency-only document
+        raise HTTPException(403, "Document is outside your assigned scope")
     # `file_url` is stored in two shapes depending on which upload path a client used
     # (local-upload returns an already browser-servable "/local-files/..." path; the
     # S3 presign path returns a bare object key) -- normalize to a bare key so this
     # always calls `presign_download` uniformly, never trusting either shape blindly.
     key = item.file_url[len("/local-files/"):] if item.file_url.startswith("/local-files/") else item.file_url.lstrip("/")
+    # AGN-009 (G9): every download is in the document's history and the audit log, committed before the link is handed out.
+    add_event(db, event="downloaded", actor=user, document=item)
+    await _audit(db, user, "document.download", "student_document", item.id, {"role": user.role})
+    await db.commit()
     return {"url": storage.presign_download(key), "expires_in": 900 if storage.bucket else None}
 
 
