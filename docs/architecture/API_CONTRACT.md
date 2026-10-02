@@ -349,7 +349,7 @@ reminders.** Design spec `docs/superpowers/specs/2026-10-02-agn-017-notification
 notification list and read routes are **unchanged** (newest 100 as a plain array; `{ok: true}`; `404` for another user's id; `dedupe_key`
 is never returned). Agency notices are written by existing routes in their own transaction, after their locks — no new write endpoint:
 `POST …/crm/students/{id}/assign` (the new assignee), `POST …/crm/document-requests`, `PATCH /workflows/overseas/documents/{id}/verify`
-(agency or counselor/admin; `rejected`/`changes_required` only), `POST …/crm/applications/{id}/status`, `PUT …/crm/applications/{id}/enrollment`,
+(agency or counselor/admin; `rejected`/`changes_required` only), `POST …/crm/applications/{id}/status`, `PUT …/crm/applications/{id}/enrollment`, `PUT …/crm/applications/{id}/offer` (AGN-010; when it moves the stage to `offer`),
 `PATCH /workflows/overseas/applications/{id}` and `POST …/applications/{id}/advance` (status actually changed; agency record present),
 `POST …/crm/tasks`. Recipient: the student's active assigned staff member, else the organisation's active Masters; never the actor; never
 a student (D19). Channels: in-app plus email (ENH-014 queue, email only). Bodies carry no names and no user-typed text; `action_url` is one

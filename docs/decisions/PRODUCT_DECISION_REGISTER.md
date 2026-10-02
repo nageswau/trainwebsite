@@ -3193,7 +3193,7 @@ notifications are out of scope.
 
 - **N1 — Task event.** A task created by someone else notifies the student's recipient; a reassignment sends one "student assigned" notice that states the moved open-task count; task edits/close notify nobody.
 - **N2 — Recipients.** The student's active assigned staff member, else every active Master of the org; never the actor; inactive org → nobody.
-- **N3 — Status changes.** Agency (CRM status, enrollment) and EduSphere (counselor/admin/university-rep `PATCH`/`advance`) changes to applications with an agency record; students' existing notices unchanged.
+- **N3 — Status changes.** Agency (CRM status, enrollment, and — after merging AGN-010 — the offer route when it moves the stage to `offer`) and EduSphere (counselor/admin/university-rep `PATCH`/`advance`) changes to applications with an agency record; students' existing notices unchanged.
 - **N4 — Reminders.** Application/offer deadlines at 3, 1 and 0 days; overdue open tasks as **one digest per recipient per IST day** (revised from one per task after the security review — email volume; owner-approved 2026-10-02); `Asia/Kolkata` day; daily at 08:00 IST; no catch-up.
 - **N4a — Content (security review).** Bodies carry no user-typed free text (task titles, document labels, notes) and no names; only fixed strings, known document types, stage labels, university name (control characters stripped, capped) and dates.
 - **N5 — Email.** Existing ENH-014 queue, email channel only.

@@ -252,6 +252,34 @@ async def test_confirming_enrollment_tells_the_assignee_once_and_the_master_only
     assert [n.title for n in await notices(db_session, world["master"])] == [COMMISSION]
 
 
+def _offer(**over):
+    return {"offer_type": "unconditional", "offer_date": "2026-09-20", **over}
+
+
+@pytest.mark.asyncio
+async def test_an_offer_that_moves_the_stage_tells_the_assignee(db_session, world):
+    """N3 after merging AGN-010: recording an offer before the offer stage moves the application to `offer`."""
+    app = await _agency_app(db_session, world, status="university_selection")
+    async with client_for(world["master"].email) as c:
+        response = await c.put(f"{APPS}/{app.id}/offer", json=_offer(expected_status="university_selection"))
+    assert response.status_code == 200, response.text
+    [item] = await notices(db_session, world["staff"]["user"])
+    assert (item.title, item.action_url) == (STATUS, "/overseas/agent/applications")
+    assert item.body.endswith(": University selection → Offer.")
+
+
+@pytest.mark.asyncio
+async def test_an_offer_correction_at_the_offer_stage_or_by_the_assignee_notifies_nobody(db_session, world):
+    app = await _agency_app(db_session, world, status="offer")
+    async with client_for(world["master"].email) as c:
+        assert (await c.put(f"{APPS}/{app.id}/offer", json=_offer())).status_code == 200  # the stage stays `offer`
+    other = await _agency_app(db_session, world, status="university_selection")
+    async with client_for(world["staff"]["user"].email) as c:
+        assert (await c.put(f"{APPS}/{other.id}/offer", json=_offer())).status_code == 200  # the assignee's own change
+    for user in (world["staff"]["user"], world["master"]):
+        assert await titled(db_session, user, STATUS) == []
+
+
 @pytest.mark.asyncio
 async def test_enrolling_an_unassigned_students_application_gives_each_master_one_notice(db_session, world):
     record = await mk_record(db_session, agent=world["master"], full_name="Unassigned")

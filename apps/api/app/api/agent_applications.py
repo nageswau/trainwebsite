@@ -276,6 +276,8 @@ async def record_offer(application_id: UUID, payload: AgentApplicationOffer, use
     fields = sorted(k for k in new if old[k] != new[k])
     db.add(ApplicationStatusHistory(application_id=item.id, from_status=old_status, to_status=item.status, next_action=item.next_action, notes=notes, changed_by_id=user.id))
     _audit(db, user, "offer", item.id, {"fields": fields, "offer_type": item.offer_type, "from_status": old_status, "to_status": item.status})
+    # AGN-017 (DEC-SCOPE-058 N3): a stage move to `offer` is a status change; `offer` is never `enrolled`, so no commission was created.
+    await notices.status_changed(db, item, old_status, user, had_commission=True)
     await db.commit()
     _log("agent_application_offer_recorded", membership, user, item.id, fields=fields, stage_moved=old_status != item.status)
     return {"application": await detail(db, user, item, record=record)}
