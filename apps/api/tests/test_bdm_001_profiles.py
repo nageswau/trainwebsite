@@ -187,3 +187,128 @@ async def test_create_writes_one_audit_row_with_the_profile(client, db_session):
     assert meta["role"] == "bdm"
     assert meta["bdm_profile"]["employee_id"] == body["bdm_profile"]["employee_id"]
     assert meta["bdm_profile"]["reporting_manager_user_id"] == str(manager.id)
+
+
+# --- PATCH /admin/users/{id} (spec §5.5) ----------------------------------------------------------------------------------
+async def _bdm(client, db_session, **overrides):
+    manager = await make_manager(db_session)
+    await _super(client, db_session)
+    body = (await create_bdm(client, manager.id, **overrides)).json()
+    return body, manager
+
+
+def _patch(client, user_id, payload):
+    return client.patch(f"{USERS}/{user_id}", json=payload)
+
+
+async def _profile(db_session, user_id):
+    db_session.expire_all()
+    return await db_session.scalar(select(BdmProfile).where(BdmProfile.user_id == uuid.UUID(str(user_id))))
+
+
+async def _update_audits(db_session, user_id):
+    return (await db_session.scalars(select(AuditLog).where(AuditLog.action == "user.update", AuditLog.entity_id == str(user_id)))).all()
+
+
+@pytest.mark.asyncio
+async def test_patch_profile_fields_and_audit_before_after(client, db_session):
+    body, _ = await _bdm(client, db_session)
+    other_id = (await make_manager(db_session)).id  # read before _profile() expires the session's objects
+    response = await _patch(client, body["id"], {"bdm_profile": {"territory": "Kollam", "designation": None, "reporting_manager_user_id": str(other_id)}})
+    assert response.status_code == 200 and response.json() == {"ok": True}
+    profile = await _profile(db_session, body["id"])
+    assert (profile.territory, profile.designation, profile.reporting_manager_user_id) == ("Kollam", None, other_id)
+    meta = (await _update_audits(db_session, body["id"]))[-1].metadata_json
+    assert meta["bdm_profile_before"]["territory"] == "Kochi" and meta["bdm_profile_after"]["territory"] == "Kollam"
+    assert meta["bdm_profile_after"]["reporting_manager_user_id"] == str(other_id)
+
+
+@pytest.mark.asyncio
+async def test_patch_user_fields_only_is_audited_without_profile_snapshots(client, db_session):
+    body, _ = await _bdm(client, db_session)
+    assert (await _patch(client, body["id"], {"full_name": "Renamed"})).status_code == 200
+    meta = (await _update_audits(db_session, body["id"]))[-1].metadata_json
+    assert meta == {"full_name": "Renamed"}
+
+
+@pytest.mark.asyncio
+async def test_patch_type_change_is_422_and_same_type_is_a_noop(client, db_session):
+    body, _ = await _bdm(client, db_session)
+    response = await _patch(client, body["id"], {"bdm_profile": {"bdm_type": "agent"}})
+    assert response.status_code == 422 and response.json()["detail"] == "BDM type cannot be changed"
+    assert (await _patch(client, body["id"], {"bdm_profile": {"bdm_type": "college"}})).status_code == 200
+    assert (await _profile(db_session, body["id"])).bdm_type == "college"
+
+
+@pytest.mark.asyncio
+async def test_patch_duplicate_employee_id_is_409_and_nothing_changes(client, db_session):
+    first, _ = await _bdm(client, db_session)
+    second, _ = await _bdm(client, db_session)
+    response = await _patch(client, second["id"], {"full_name": "Changed", "bdm_profile": {"employee_id": first["bdm_profile"]["employee_id"].upper()}})
+    assert response.status_code == 409
+    db_session.expire_all()
+    assert (await db_session.get(User, uuid.UUID(second["id"]))).full_name == "Asha BDM"
+    assert (await _profile(db_session, second["id"])).employee_id == second["bdm_profile"]["employee_id"]
+
+
+@pytest.mark.asyncio
+async def test_patch_invalid_manager_is_422(client, db_session):
+    body, _ = await _bdm(client, db_session)
+    inactive = await make_manager(db_session, active=False)
+    response = await _patch(client, body["id"], {"bdm_profile": {"reporting_manager_user_id": str(inactive.id)}})
+    assert response.status_code == 422 and response.json()["detail"] == "Reporting manager must be an active BDM manager"
+
+
+@pytest.mark.asyncio
+async def test_patch_other_fields_when_manager_inactive_succeeds(client, db_session):
+    body, manager = await _bdm(client, db_session)
+    assert (await _patch(client, manager.id, {"active": False})).status_code == 200
+    payload = {"bdm_profile": {"territory": "Thrissur", "reporting_manager_user_id": str(manager.id)}}
+    assert (await _patch(client, body["id"], payload)).status_code == 200
+    assert (await _profile(db_session, body["id"])).territory == "Thrissur"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("profile", [{"employee_id": None}, {"reporting_manager_user_id": None}, {"user_id": "x"}, "x", None])
+async def test_patch_bad_profile_is_422(client, db_session, profile):
+    body, _ = await _bdm(client, db_session)
+    assert (await _patch(client, body["id"], {"bdm_profile": profile})).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_patch_profile_on_non_bdm_is_422(client, db_session):
+    await _super(client, db_session)
+    target = await make_user(db_session, "counselor", "overseas")
+    response = await _patch(client, target.id, {"bdm_profile": {"territory": "X"}})
+    assert response.status_code == 422 and response.json()["detail"] == "Only a BDM has a BDM profile"
+
+
+@pytest.mark.asyncio
+async def test_patch_ignores_role_and_division_escalation(client, db_session):
+    body, _ = await _bdm(client, db_session)
+    assert (await _patch(client, body["id"], {"role": "super_admin", "division": "global"})).status_code == 200
+    db_session.expire_all()
+    user = await db_session.get(User, uuid.UUID(body["id"]))
+    assert (user.role, user.division) == ("bdm", "it")
+
+
+@pytest.mark.asyncio
+async def test_division_admin_patches_only_types_it_manages(client, db_session):
+    agent_bdm, _ = await _bdm(client, db_session, bdm_type="agent")
+    college_bdm, _ = await _bdm(client, db_session)
+    await login(client, await make_user(db_session, "overseas_admin", "overseas"))
+    assert (await _patch(client, agent_bdm["id"], {"bdm_profile": {"territory": "Ok"}})).status_code == 200
+    await login(client, await make_user(db_session, "it_admin", "it"))
+    assert (await _patch(client, agent_bdm["id"], {"bdm_profile": {"territory": "X"}})).status_code == 403
+    assert (await _patch(client, college_bdm["id"], {"bdm_profile": {"territory": "Ok"}})).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_concurrent_patches_both_audited_and_chain(client, db_session):
+    body, _ = await _bdm(client, db_session)
+    results = await asyncio.gather(_patch(client, body["id"], {"bdm_profile": {"territory": "A"}}), _patch(client, body["id"], {"bdm_profile": {"territory": "B"}}))
+    assert [r.status_code for r in results] == [200, 200]
+    first, second = [row.metadata_json for row in (await _update_audits(db_session, body["id"]))[-2:]]
+    # The profile row lock serialises the writes, so one's "before" is exactly the other's "after" (whichever order ran); without
+    # the lock both would read "Kochi" as their before. created_at is now() = transaction start, so row order is not run order.
+    assert first["bdm_profile_before"]["territory"] == second["bdm_profile_after"]["territory"] or second["bdm_profile_before"]["territory"] == first["bdm_profile_after"]["territory"]

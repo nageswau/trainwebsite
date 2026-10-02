@@ -492,6 +492,19 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         raise HTTPException(404, "User not found")
     if user.role != "super_admin" and item.division != user.division:
         raise HTTPException(403, "Cannot edit another division")
+    # bdm-001 (spec §5.5): every refusal happens before any write. The profile row is locked so concurrent edits serialise and
+    # each audit row's before/after is exact. A manager is re-checked only when it changes, so a BDM whose manager has since been
+    # deactivated stays editable (the reassignment itself is bdm-025).
+    profile = None
+    if item.role == "bdm":
+        profile = await db.scalar(select(BdmProfile).where(BdmProfile.user_id == item.id).with_for_update())
+        if profile is not None:
+            bdm_rules.require_creator_may(user, profile.bdm_type, f"{USERS_ROUTE}/{{id}}")
+    profile_before = profile_after = None
+    if "bdm_profile" in payload:
+        if profile is None:
+            raise HTTPException(422, "Only a BDM has a BDM profile")
+        profile_before, profile_after = await bdm_rules.apply_profile_update(db, profile, payload["bdm_profile"])
     # ADM-001-AC02: deactivating a trainer with active/upcoming assigned batches is
     # blocked unless explicitly confirmed -- never a silent operation that would strand
     # those batches without a trainer.
@@ -508,7 +521,10 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
     for k in ("full_name", "phone", "active", "email_verified", "profile"):
         if k in payload:
             setattr(item, k, payload[k])
-    db.add(AuditLog(user_id=user.id, action="user.update", entity_type="user", entity_id=str(item.id), metadata_json={k: v for k, v in payload.items() if k != "password"}))
+    metadata = {k: v for k, v in payload.items() if k != "password"}
+    if profile_before is not None:
+        metadata.update(bdm_profile_before=profile_before, bdm_profile_after=profile_after)
+    db.add(AuditLog(user_id=user.id, action="user.update", entity_type="user", entity_id=str(item.id), metadata_json=metadata))
     await db.commit()
     return {"ok": True}
 

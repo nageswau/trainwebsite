@@ -91,6 +91,22 @@ def profile_out(profile: BdmProfile, manager: User) -> dict:
     }
 
 
+async def apply_profile_update(db: AsyncSession, profile: BdmProfile, raw) -> tuple[dict, dict]:
+    """PATCH semantics (spec §5.5) on a profile the caller has already locked: type is fixed (B7); a manager is re-checked only when
+    it changes; a duplicate Employee ID is the 409 from `flush_profile`. Returns the audit (before, after) snapshots."""
+    changes = parse_profile_update(raw).model_dump(exclude_unset=True)
+    if "bdm_type" in changes and changes.pop("bdm_type") != profile.bdm_type:
+        raise HTTPException(422, "BDM type cannot be changed")
+    new_manager = changes.get("reporting_manager_user_id")
+    if new_manager is not None and new_manager != profile.reporting_manager_user_id:
+        await locked_active_manager(db, new_manager)
+    before = profile_snapshot(profile)
+    for key, value in changes.items():
+        setattr(profile, key, value)
+    await flush_profile(db)
+    return before, profile_snapshot(profile)
+
+
 async def bdm_context(db: AsyncSession, user: User) -> BdmProfile:
     """Every BDM route's gate: the caller is a `bdm` with a profile row; otherwise 403."""
     if user.role != "bdm":
