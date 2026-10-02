@@ -191,9 +191,9 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | Delete Student | `POST …/crm/students/{id}/archive`, `POST …/crm/students/{id}/unarchive` (no delete route; `DEC-SCOPE-042` D5) | ✅ | ❌ |
 | Assign Student / Assign Students | `POST …/crm/students/{id}/assign` | ✅ | ❌ |
 | Create Application | `POST /workflows/overseas/applications` | ✅ | ✅ |
-| Edit Application | — (counselor/rep/admin only) | N/A | N/A |
+| Edit Application | `PATCH /workflows/overseas/agent/crm/applications/{id}` (**AGN-008**, `DEC-SCOPE-050`; now enforced) | ✅ | ✅ assigned only |
 | View Applications | `GET /workflows/overseas/applications`, `GET /portal/overseas/agent/applications`, `GET /lookups/overseas-applications` | ✅ | ✅ |
-| Change Application Status | — (counselor/admin only) | N/A | N/A |
+| Change Application Status | `POST /workflows/overseas/agent/crm/applications/{id}/status` (**AGN-008**; forward only up to `status_tracking`, withdraw; never `enrolled`) | ✅ | ✅ assigned only |
 | Upload Documents | `POST /workflows/overseas/documents`; `GET /portal/overseas/agent/documents` | ✅ | ✅ |
 | Verify Documents | `PATCH /workflows/overseas/documents/{id}/verify` with `verified` (**new for agents**) | ✅ | **T** |
 | Reject Documents | same route with `rejected` or `changes_required` | ✅ | ❌ (even with Verify on) |
@@ -216,7 +216,7 @@ The Master-team routes (`POST …/team/masters`, `POST …/team/masters/{id}/dea
   the staff member's next request with no session bump. On a Master's row the flags are stored but never read.
 - **Verify gives `verified` only (P6):** staff with Verify who send `rejected` or `changes_required` get `403`; Reject and Request
   changes are Master-only. Agents decide only `pending` documents (P5); a counselor or Overseas Admin can still re-review.
-- **N/A rows** (Edit Application, Change Application Status, Staff Performance, CRM Settings) have no route for any agent, so no test
+- **N/A rows** (Staff Performance, CRM Settings; Edit Application and Change Application Status stopped being N/A with `AGN-008`, below) have no route for any agent, so no test
   is possible; they stay parked under `C-10` (spec §2). **Add University** was
   a deliberate departure from the source's ✅ for Masters in `AGN-003` (admin-only route, P3); **superseded 2026-10-01 by `DEC-SCOPE-049`
   (`AGN-007`)**: Masters now add universities to an agency-private list (never the shared catalogue), Staff are refused (`403`), and the
@@ -231,6 +231,31 @@ and `test_agn_001_tenancy.py` (`test_a_second_master_sees_and_claims_what_the_fi
 The student rows: `test_agn_003_matrix.py` (**AGN-005**, 2026-10-01 — they were N/A in AGN-003's draft because AGN-004's `/crm/students`
 routes reached `main` later; staff act on a student assigned to them, so each `403` comes from the Master-only check, not the `404`
 existence mask). The staff UI hides Archive, Unarchive and Assign (`AgentStudentsPanel.test.tsx`, including AGN-005-AC06).
+
+**`AGN-008` / `DEC-SCOPE-050` (2026-10-02) — agent applications, BUILT 2026-10-02.** The AGN-003 matrix rows
+"Edit Application" and "Change Application Status" are enforced for Master and Staff on `/workflows/overseas/agent/crm/applications`
+(`test_agn_003_matrix.py`). Authorization is the inline pattern (never `require_role`/`require_permission`): `agent_students._gate`
+(agent, overseas division, `agent_denial_reason`; `super_admin`, counselor and university_rep get `403`), then `student_scope` /
+`application_scope` in the `WHERE` clause.
+
+| Action | Master | Staff |
+|---|---|---|
+| List, open applications | Whole agency | Assigned students' applications only (`application_scope` ORs the assigned `agent_students`) |
+| Create (A15: not for an archived student) | ✓ | ✓ (assigned students only; another's student `404`) |
+| Edit (A10: the university is fixed) | ✓ | ✓ (assigned only) |
+| Change status (A4): forward to `status_tracking`, or withdraw | ✓ | ✓ (assigned only) |
+| Set `enrolled` | ✗ `403` | ✗ `403` (counselor, admin, university_rep only, so an agent never triggers commission accrual) |
+| Withdraw an `enrolled` application | ✗ `409` | ✗ `409` |
+| Sidebar filters (A7) | ✓ | ✓ (assigned only) |
+
+**Existence mask:** an application outside the caller's scope (another agency's, another staff member's student) answers
+`404 "Application not found"`, never `403`. A14 throttle: 200 creates per agency per rolling 24 hours (`429`, `Retry-After`).
+
+**Addendum, 2026-10-02 (browser QA pass 1):** no permission changed. Page gate kept: `/overseas/agent/applications` still fetches the portal payload for every caller, so a wrong role and a pending/rejected agent are refused as before; only a Super Admin's 404 renders the section's note instead of the panel. Login `next` redirects are same-origin relative paths only (`SECURITY_CONTROLS.md`).
+Counselor, admin and university_rep keep their existing endpoints and now see agent-student applications with the owner's name (A6);
+they get `409` when they try to move a `withdrawn` application. Staff-activity actions `overseas.application.update`, `.advance` and
+`.withdraw` are readable by the Master through `AGN-021`. Proved by `test_agn_008_security.py`, `test_agn_008_create.py`,
+`test_agn_008_edit.py`, `test_agn_008_status.py`, `test_agn_008_read.py`, `test_agn_003_matrix.py`, `test_agn_021_activity.py`.
 
 **`DEC-ROLE-004` (2026-09-14) — Agent on-behalf-of a referred student, NOT YET BUILT:** the
 approved Agent row above is read-only (view roster/commissions, claim). Since an Agent-referred

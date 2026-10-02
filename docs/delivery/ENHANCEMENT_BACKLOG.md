@@ -75,6 +75,11 @@ and CRM settings stay parked.
 still read N/A). Tests and docs only, no new decision; the owner later had four browser-QA findings fixed on the same branch
 (QA5-01/02/03/05, see §AGN-005).
 
+**Revision 11 (2026-10-02):** the owner's `AGN-008` statement ("create, edit, view, change status, application ID, submission date and
+deadlines; Staff sidebar filters (§2, §4, §5)") is decided as `DEC-SCOPE-050` (A1–A15; `048`/`049` were held by
+the then-unmerged `AGN-006`/`AGN-007` branches; both reached `main` first and `050` stayed free). It lifts `DEC-SCOPE-042` D8: agency students with no login can now have applications.
+See §AGN-008.
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -161,6 +166,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-005 | Close the §6 staff matrix gap for agency student records — tests and docs, plus four browser-QA fixes (Rev. 10) | Small | Low | No | AGN-003, AGN-004 |
 | AGN-006 | Agent student counseling record — completed, career interest, course/country preference, budget, remarks (§5 Step 2) | Medium | Medium | Yes | AGN-004 (student detail), AGN-021 (activity) |
 | AGN-007 | Agent student university shortlist and agency-private university database (Master full / Staff view) | Large | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004, AGN-021 |
+| AGN-008 | Agent applications — Master/Staff create, edit, view, change status, Application ID, submission date and deadlines for agent students; Staff sidebar filters (Rev. 11) | Large | High | Yes | AGN-004, AGN-003, AGN-021, AGT-002, OVS-002/003/004, ENH-031, RPT-002 |
 
 ---
 
@@ -3576,6 +3582,80 @@ owner's full backend suite is deferred to their batch run after the next few enh
 Remaining: the merge (recheck `main` for migration `0055` / `DEC-SCOPE-048` first). Deferred minors and open questions:
 `PRD_OPEN_ITEMS.md` rows 81–83 and the review minors listed in `docs/quality/RTM.md`.
 
+## AGN-008 — Agent Applications: Create, Edit, View and Change Status, With Application ID, Submission Date and Deadlines
+
+**Title.** Let an agency Master, and Staff for their assigned students, manage overseas applications for agent students, including
+students with no login, with a Staff sidebar filter group.
+
+**Business requirement.** The owner's `AGN-008` statement (in-session, 2026-10-01): "create, edit, view, change status, application ID,
+submission date and deadlines; Staff sidebar filters (§2, §4, §5)." Sources: `EVID-015` (`Agent CRM Functionalities.md`,
+`DERIVED_BLUEPRINT`) §2 Applications, §4 Staff Sidebar, §5 Steps 5-6. Decision record: `DEC-SCOPE-050` (A1–A15, `EXPLICIT_APPROVAL`
+in-session 2026-10-01/02).
+
+**Existing behavior.** An agent can only create an application through the old `POST /workflows/overseas/applications` for a student with
+a login; there is no agent edit, status change, Application ID, submission date or deadline, and about ten list/report/portal sites
+inner-join `users` on `student_id`, so an application for a student with no login is invisible.
+
+**Expected behavior.** New routes under `/workflows/overseas/agent/crm/applications` (create, list, detail, edit, forward-only status
+change and withdraw); an agent Applications page with filters (Draft, Submitted, Offer received, Visa, Enrolled, Withdrawn) in the
+sidebar for Master and Staff; the owner name is NULL-safe in every shared list. Agents never set `enrolled`.
+
+**User roles affected.** `agent` (Master and Staff); `admin` and `university_rep` lists gain the agent-student applications; counselor
+and admin endpoints refuse to revive a `withdrawn` application.
+
+**Frontend / backend / database / API / integration impact.** Frontend: `AgentApplicationsSection`, `AgentApplicationsPanel`,
+`AgentApplicationDetail`, edit and status forms, an extended create panel, sidebar `children` in `navigation.ts` and `PortalShell`.
+Backend: `app/api/agent_applications.py`, `app/services/agent_applications.py`, schemas, `application_scope` widened for Staff, outer
+joins in the shared lists. Database: migration `0057_agent_applications` (four nullable columns and one index). API: see
+`API_CONTRACT.md` AGN-008. Integration: none new (no notification added).
+
+**Authentication/Authorization impact.** Inline pattern (`agent_students._gate`, then `student_scope`/`application_scope` in the
+`WHERE` clause); out-of-scope ids `404`; `super_admin`, counselor and university_rep `403`. AGN-003 matrix rows "Edit Application" and
+"Change Application Status" are now enforced.
+
+**Security impact.** Create throttle (A14), archived read-only (A15), `expected_status` precondition, `extra="forbid"` on every body,
+response allowlists, audit in the same transaction with ids and field names only. Known limitations in `THREAT_MODEL.md` and
+`SECURITY_CONTROLS.md`.
+
+**Reusable existing modules.** `agent_students._gate`, `student_scope`, `application_scope`, `lock_active_org`, the `DEC-SCOPE-038` R1
+audit-count throttle, `application_status_history`, the commission trigger, `SearchableSelect`, `lib/apiErrors`.
+
+**Dependencies.** AGN-004, AGN-003, AGN-021, AGT-002, OVS-002/003/004, ENH-031, RPT-002.
+
+**Acceptance criteria** (verbatim from `docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md` §8).
+- **AGN-008-AC01** A Master creates an application for a student with no login and one with a login. The response is 201, `status = enquiry`, with one history row (`None → enquiry`), and the student's own portal shows it only when the student has a login.
+- **AGN-008-AC02** Staff can create, edit and change status for an assigned student. For an unassigned student, or another org's student or application, the response is 404.
+- **AGN-008-AC03** A duplicate (same student, university and course; status not withdrawn) returns 409. This includes an application made before this feature for a student with a login. After a withdrawal, the same combination can be created again (201).
+- **AGN-008-AC04** Edit updates Application ID, the three dates, intake, course and next action. A course from another university returns 422. Changing the university returns 422. Editing a withdrawn application returns 409.
+- **AGN-008-AC05** Forward status changes, including skips up to `status_tracking`, return 200 and write one history row each. Backward or same-stage changes return 422. An unknown status returns 422. `enrolled` returns 403. No commission row is ever created by an agent's status change.
+- **AGN-008-AC06** Withdraw from any stage before `enrolled` returns 200 with a history row. After that, any edit or status change returns 409. Counselor `/advance` and the existing PATCH with `status` also return 409 on a withdrawn application.
+- **AGN-008-AC07** Each filter (`draft`, `submitted`, `offer`, `visa`, `enrolled`, `withdrawn`, `all`) returns exactly the matching subset, within scope. Pagination totals are correct.
+- **AGN-008-AC08** `/admin/applications`, the university_rep's `GET /workflows/overseas/applications`, and the rep and admin portal application sections list an application for a student with no login, with that student's name as owner.
+- **AGN-008-AC09** No response crashes on a NULL `student_id`. This covers every endpoint and portal section listed in spec §5.6, plus inbound email matching. School-bridged rows stay excluded exactly where they are today.
+- **AGN-008-AC10** When a counselor or admin later sets `enrolled`, the commission is accrued as today, and it appears in the agent and admin commission lists with the owner's name.
+- **AGN-008-AC11** Each sidebar filter link shows the matching subset with `aria-current` on the active link. Staff and Masters both have the links. The mobile menu includes them.
+- **AGN-008-AC12** The page shows correct loading, empty (unfiltered and filtered), error-with-retry, and write-error states. It has no horizontal scroll at 320px, and keyboard focus returns to the opener after actions.
+- **AGN-008-AC13** Agent edit, advance and withdraw actions appear in AGN-021 staff activity with the student's name.
+- **AGN-008-AC14** The 201st create by one agency within a rolling 24 hours returns 429 with `Retry-After`. Another agency is unaffected.
+- **AGN-008-AC15** For an archived student's applications, create, edit, status change and withdraw return 409. Reads and listing still work.
+- **AGN-008-AC16** A status change whose `expected_status` differs from the current status returns 409, and nothing changes.
+- **AGN-008-AC17** The nine spec §7 abuse cases each return the stated code and leave no partial write: no history, audit or commission row.
+- **AGN-008-AC18** Existing behaviour is preserved: OVS-002/003/004, AGT-002/003/004, SCH-010, UNI-001, RPT-002, ENH-031 and AGN-001/002/003/004/005/021 tests pass unchanged except the documented updates (spec §9); the old agent create path still works.
+
+**Out of scope** (accepted by the owner, 2026-10-01): documents for no-login students; converting an AGN-007 shortlist entry; offer
+details beyond the offer deadline; deadline reminders; new notifications on agent status change; agents setting `enrolled`; rejected,
+waitlisted and deferred outcomes (`DEC-WF-001` stays open); backfilling `agent_student_id`.
+
+**Regression risks.** Spec §10 (R1–R8): shared-list counts when rows are no longer dropped, wider Staff `application_scope`, shared
+`PortalShell`/`navigation.ts`, ENH-031 picker ids, withdrawn guard on counselor/admin endpoints, nullable `student_id` in a list
+response, merge anchors with AGN-006/007, the commission trigger.
+
+**Complexity:** Large. **Risk:** High.
+
+**Status (2026-10-02): COMPLETE** on `feature/agn-008-agent-applications` — completion verification in `docs/quality/RTM.md` (AGN-008
+row). Codex review waived by the owner (2026-10-02). Outside COMPLETE, owner-side: the full backend suite (standing 4–5-story
+cadence) and the merge to `main`. Browser QA pass 1 (QA8-01..13) is fixed, with owner rulings in `DEC-SCOPE-050` A16–A19 (reports: `.superpowers/sdd/2026-10-02-agn-008-agent-applications/qa-fix-*.md`, git-ignored, local only). Merge note (2026-10-02): `main` @ `3e06381` (`AGN-006`, `AGN-007`) merged in; `DEC-SCOPE-050` kept (free), `0057` re-chained after `0056_agent_shortlist`, the screen renumbered `SCR-AGT-010` (spec §12).
+
 ## 2. Dependency graph
 
 **Must be sequential:**
@@ -3746,6 +3826,7 @@ item, only for the progress-view question).
 | AGN-021 | `DEC-SCOPE-046` — what counts as activity, viewers, detail, freshness, source | **Resolved 2026-10-01** (A1–A5, `EXPLICIT_APPROVAL` in-session) |
 | AGN-005 | None — scope (tests + docs), Delete Student = archive/unarchive, test placement, and the QA5-01 phone rule / QA5-05 note set by the owner in-session 2026-10-01 | N/A |
 | AGN-006 | `DEC-SCOPE-048` — storage, budget, separate preferences, access, completed stamp, API, activity, leave prompt | **Resolved 2026-10-01** (C1–C9, `EXPLICIT_APPROVAL` in-session; number provisional) |
+| AGN-008 | `DEC-SCOPE-050` — statuses and withdrawn, Application ID, dates, agent status limits, link to the agency student, visibility, sidebar filters, throttle, archived read-only | **Resolved 2026-10-01/02** (A1–A15, `EXPLICIT_APPROVAL` in-session). `DEC-SCOPE-036` "submitted" stays `NEEDS_CONFIRMATION` |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in

@@ -190,3 +190,9 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
    button row, where it would otherwise widen the row (QA15-11). */
 .report-download .field-hint { margin-top: 6px; }
 .child-page-actions .report-download .field-hint { max-width: 42ch; }
+.portal-subnav{list-style:none;margin:0 0 4px;padding:0 0 0 12px;display:grid;gap:2px}.portal-subnav a{font-size:13px}
+/* AGN-008 QA8-04 (owner: every portal): the current page is visible, not only announced. White on the navy sidebar tinted 14% is
+   ~11:1; blue (#0755b9) on the mobile panel's soft background is ~6.5:1 -- both above 4.5:1. */
+.portal-nav a[aria-current="page"]{background:rgba(255,255,255,.14);color:#fff;font-weight:800;border-left:3px solid #7fb2ff;padding-left:9px}
+#portal-mobile-nav-panel a[aria-current="page"]{background:var(--soft);color:var(--blue);font-weight:800;border-left:3px solid var(--blue);padding-left:17px}
+.nav-loading{font-weight:500;opacity:.8;font-size:12px}

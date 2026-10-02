@@ -1,8 +1,8 @@
 """AGN-003-AC01/AC02 and AGN-005-AC01..AC03 -- the EVID-015 §6 matrix as built (AGN-003 spec §3, AGN-005 spec §3). Staff have both
 optional toggles OFF here; the toggles' ON side is tested in test_agn_003_permissions.py and test_agn_003_verify.py. The student rows
 (Create/View/Edit/Delete/Assign Student) use AGN-004's /crm/students routes on a student assigned to the caller, so a refusal comes
-from the Master-only check and not from the 404 existence mask. Rows with no route for any agent (Edit Application, Change
-Application Status, Staff Performance, CRM Settings) are N/A and have nothing to call.
+from the Master-only check and not from the 404 existence mask. Rows with no route for any agent (Staff Performance, CRM
+Settings) are N/A and have nothing to call; Edit Application and Change Application Status became enforced rows with AGN-008 (DEC-SCOPE-050).
 Two Master cells are proven elsewhere: a Master deactivating another Master (tests/test_agn_001_team.py::
 test_a_pending_invitee_can_still_be_deactivated_by_an_accepted_master, plus test_a_master_may_deactivate_themselves_once_another_master_has_accepted)
 and a Master claiming a commission (tests/test_agn_001_tenancy.py::test_a_second_master_sees_and_claims_what_the_first_created).
@@ -16,6 +16,7 @@ from tests.agn001_helpers import client_for, mk_active_org, mk_user, uniq
 from tests.agn002_helpers import STAFF, mk_staff
 from tests.agn003_helpers import agency_document, mk_university
 from tests.agn004_helpers import RECORDS, mk_record
+from tests.agn008_helpers import mk_application
 
 TEAM = "/api/v1/workflows/overseas/agent/team"
 AGENCY_UNIS = "/api/v1/workflows/overseas/agent/crm/universities"
@@ -52,6 +53,11 @@ STAFF_REFUSED = [
 
 # (§6 row, method, path, json body, expected status) -- succeeds for staff AND for a Master.
 BOTH_ALLOWED = [
+    ("Create Application", "post", "/api/v1/workflows/overseas/agent/crm/applications", {"agent_student_id": "{record}", "university_id": "{university}", "intake": "Fall 2027"}, 201),
+    ("View Applications", "get", "/api/v1/workflows/overseas/agent/crm/applications", None, 200),
+    ("View Applications", "get", "/api/v1/workflows/overseas/agent/crm/applications/{record_app}", None, 200),
+    ("Edit Application", "patch", "/api/v1/workflows/overseas/agent/crm/applications/{record_app}", {"intake": "Spring 2028"}, 200),
+    ("Change Application Status", "post", "/api/v1/workflows/overseas/agent/crm/applications/{record_app}/status", {"to_status": "eligibility_evaluation"}, 200),
     ("Dashboard", "get", PORTAL + "/dashboard", None, 200),
     ("Create Student", "post", "/api/v1/workflows/overseas/agent/students", {"student_id": "{unlinked_student}"}, 201),
     ("View Students", "get", "/api/v1/workflows/overseas/agent/students", None, 200),
@@ -120,8 +126,9 @@ async def _world(db_session) -> tuple[dict, dict, dict]:
     # AGN-005: agency students with no login, assigned to the caller (staff reach only their assigned students, DEC-SCOPE-042 G4).
     record = await mk_record(db_session, agent=ctx["master"], full_name="Matrix Record", assigned_member=caller["member"])
     archived = await mk_record(db_session, agent=ctx["master"], full_name="Matrix Archived", assigned_member=caller["member"], status="archived")
+    record_app = await mk_application(db_session, agent=ctx["master"], university=other_university, record=record)
     ids = {
-        "record": record.id, "archived_record": archived.id,
+        "record": record.id, "archived_record": archived.id, "record_app": record_app.id,
         "other_staff": other["member"].id, "master_member": ctx["member"].id, "document": world["document"].id,
         "student": world["student"].id, "application": world["application"].id, "university": world["university"].id,
         "other_university": other_university.id, "university_slug": world["university"].slug, "deactivated_staff": away["member"].id,

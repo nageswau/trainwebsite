@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AgentOrgMember, AgentStudent, AuditLog, OverseasApplication, StudentDocument, University, User
+from app.services.agent_applications import OWNER_NAME
 
 # A1: student-journey work only. Every action is written today with the staff user as `user_id` (spec §4 table).
 STAFF_ACTIVITY_ACTIONS = (
@@ -25,6 +26,9 @@ STAFF_ACTIVITY_ACTIONS = (
     "agent_student.shortlist_remove",
     "agent.student_link",
     "overseas.application.create",
+    "overseas.application.update",
+    "overseas.application.advance",
+    "overseas.application.withdraw",
     "document.upload",
     "document.verify",
 )
@@ -57,8 +61,9 @@ async def _subjects(db: AsyncSession, rows: list[AuditLog]) -> dict[tuple[str, u
             names[("agent_student", rid)] = _joined(own or linked)
     if wanted["overseas_application"]:
         query = (
-            select(OverseasApplication.id, User.full_name, University.name)
+            select(OverseasApplication.id, OWNER_NAME, University.name)
             .outerjoin(User, User.id == OverseasApplication.student_id)
+            .outerjoin(AgentStudent, AgentStudent.id == OverseasApplication.agent_student_id)
             .outerjoin(University, University.id == OverseasApplication.university_id)
             .where(OverseasApplication.id.in_(wanted["overseas_application"]))
         )

@@ -2130,6 +2130,30 @@
     "evidence": "AGN-007-AC06, AC09, AC11, AC13: test_agn_007_universities.py; AgentUniversitiesPanel.test.tsx; navigation.agent.test.ts; agn-007-shortlist.spec.ts (to be added); browser validation pending."
   },
   {
+    "id": "SCR-AGT-010",
+    "roles": [
+      "Agent (Master)",
+      "Agent (Staff)"
+    ],
+    "route": "/overseas/agent/applications (Applications header, create panel, filtered list; ?status=all|draft|submitted|offer|visa|enrolled|withdrawn; sidebar child links)",
+    "purpose": "Create, edit, view and change the status of applications for the agency's students, including students who never log in, with Application ID, submission date and deadlines (AGN-008 / DEC-SCOPE-050, added 2026-10-02; numbered SCR-AGT-010 on the 2026-10-02 merge -- AGN-007 took SCR-AGT-009).",
+    "features": [
+      "AGN-008"
+    ],
+    "entry": "Agent portal navigation, \"Applications\" and its filter links; mobile menu lists them flattened.",
+    "data": "Per row: student (no-login tag), university, course, intake, status, Application ID, submitted on, nearest deadline, next action; on View all fields and the status history. (2026-10-02: nearest deadline by stage; none for withdrawn/enrolled; legacy stage labels capitalised.)",
+    "actions": "Create application, filter by status group, View/Hide, Edit (university read-only), Change status (later stages up to status_tracking only), Withdraw (inline confirmation). No enrolled option for agents.",
+    "empty": "\"No applications yet\" unfiltered; \"No applications match this filter.\" with a link to All applications.",
+    "loading": "\"Loading applications…\" with aria-busy; later loads keep the previous rows dimmed.",
+    "error": "role=alert with Retry; detail 404 \"This application is no longer available.\"; write errors (409, 422, 429) shown verbatim with input kept; network error message.",
+    "perms": "Own agency; staff assigned-only (others 404); enrolled refused to agents (403); archived students and withdrawn applications read-only (409).",
+    "responsive": "Cards on narrow screens; the detail expands under its card at every width; no horizontal scroll at 320px.",
+    "a11y": "Labelled inputs, aria-describedby hints, aria-current on the active sidebar link, aria-expanded View button, polite status region, focus moves to heading/message/status line/notice, status as text. (2026-10-02 QA pass 1: current sidebar link highlighted in every portal; mobile menu marks the active filter; 422 on Save keeps the form open and focuses the alert; focus to the read-only notice after withdraw; filter click shows Loading with aria-busy; in-flight guards; expired-session Return to login keeps page and filter.)",
+    "dtm": "Create panel above the list; detail inline under its row; sidebar children indented on desktop and flattened in the mobile menu.",
+    "visual": "None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "AGN-008-AC01–AC18: test_agn_008_*.py; test_agn_003_matrix.py; test_agn_021_activity.py; agentApplications.test.ts; AgentApplicationCreatePanel.test.tsx; AgentApplicationDetail.test.tsx; AgentApplicationsPanel.test.tsx; PortalShell.children.test.tsx; agn-008-agent-applications.spec.ts; browser validation pending.; added 2026-10-02: test_agn_008_dashboard.py; test_agn_008_concurrency.py; safeNext.test.ts; LoginForm.next.test.tsx; AccessUnavailable.test.tsx; PortalPage.agentApplications.test.tsx; NavGroup.test.tsx; browser QA pass 1 fixed, re-check pending."
+  },
+  {
     "id": "SCR-CNS-001",
     "roles": [
       "Counselor"

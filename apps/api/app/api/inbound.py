@@ -67,6 +67,10 @@ async def _match_application(db: AsyncSession, payload: InboundUniversityEmailIn
 
 
 async def _notify_student(db: AsyncSession, email: InboundUniversityEmail, application: OverseasApplication) -> None:
+    # A School-bridged row or an agency student with no login has no account to notify (DEC-SCOPE-018, AGN-008); db.get(User, None)
+    # is a documented SAWarning / future error, so return before it.
+    if application.student_id is None:
+        return
     student = await db.get(User, application.student_id)
     if not student:
         return

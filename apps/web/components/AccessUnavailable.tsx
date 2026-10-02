@@ -2,6 +2,7 @@ import { ApiError, serverApi } from "@/lib/api";
 import { ROLE_DASHBOARD_PATH } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
+import ReturnToLoginLink from "./ReturnToLoginLink";
 import SignOutButton from "./SignOutButton";
 
 // The card a portal page shows when its data cannot be read. It used to offer "Return to login" to everyone, including a signed-in
@@ -21,7 +22,7 @@ function AccessUnavailableCard({ message, home, loginHref }: { message: string; 
         <p>{message}</p>
         {agentAccountState && <p className="muted">Contact EduSphere Overseas Admin if you think this is a mistake.</p>}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {home ? !agentAccountState && <a className="btn" href={home}>Go to your dashboard</a> : <a className="btn" href={loginHref}>Return to login</a>}
+          {home ? !agentAccountState && <a className="btn" href={home}>Go to your dashboard</a> : <ReturnToLoginLink loginHref={loginHref} />}
           {home && <SignOutButton redirectTo={loginHref} />}
         </div>
       </div>

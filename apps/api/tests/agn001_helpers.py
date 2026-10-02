@@ -58,8 +58,8 @@ async def mk_active_org(db, *, name: str = "AGN Agency") -> dict:
 
 
 @asynccontextmanager
-async def client_for(email: str):
+async def client_for(email: str, division: str = "overseas"):
     """A separate ASGI client with its own cookie jar, so two users can be in flight at once."""
     async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        await login(c, email)
+        await login(c, email, division)
         yield c

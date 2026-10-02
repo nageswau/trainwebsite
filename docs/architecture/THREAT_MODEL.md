@@ -69,6 +69,27 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
   `test_agn_007_universities.py::test_staff_view_but_cannot_write`, `::test_other_agency_cannot_see_or_touch`.
   **Residual, stated:** no new rate limiter; POST is not idempotent and last write wins on concurrent PATCH (D10); an entry's
   free-text course, intake, fee and requirements follow the `AGN-004` record lifecycle (no erasure path yet).
+- **Threat (`AGN-008`, 2026-10-02):** a staff member opening or changing another staff member's (or another agency's) application or
+  student by id; an agent escalating a status to `enrolled` to self-accrue commission; mass assignment of `agent_id`, `status`,
+  `university_id` or `student_id` through a PATCH; create, withdraw and re-create loops used to spam the student of an application with
+  email; writes on an archived student's application; acting from a stale screen after a counselor or admin changed the application.
+- **Direction (built):** `_gate` plus `student_scope`/`application_scope` in every query's `WHERE` clause with a `404` existence mask;
+  `enrolled` refused to every agent (`403`); `extra="forbid"` request bodies; a 200-per-agency-per-24-hours create throttle (`429`,
+  `Retry-After`) counted from audit rows under the organisation lock; archived students read-only (`409`); an `expected_status`
+  precondition (`409`); the organisation lock then the row `FOR UPDATE` on every write, with audit in the same transaction (ids,
+  field names and from/to status only). Abuse cases are tests (spec §7, AC17).
+- **Fixed (final review, 2026-10-02):** the counselor/admin PATCH and `/advance` re-read the application `FOR UPDATE` (row lock only)
+  before the `withdrawn` guard, so a concurrent agent withdraw is seen and the write is refused (`409`), not overwritten
+  (`test_agn_008_concurrency.py`).
+- **Residual, stated (not fixed in AGN-008):** the legacy agent create path writes the same audit
+  action without the organisation lock, so the throttle can be exceeded by one; no idempotency key (a retry meets the duplicate or
+  forward-only rule); no throttle on reads, edits or status changes; documents for no-login students remain unbuilt.
+- **Threat (found in browser QA, 2026-10-02; pre-existing, not AGN-008-specific):** open redirect through the login form's `next`
+  parameter, used to send a freshly signed-in user to an attacker's site (`//evil.com`, `/\evil.com`, an absolute URL, or a
+  dot-segment form such as `/.//evil.com` that normalises to `//evil.com`).
+- **Fixed:** `apps/web/lib/safeNext.ts` accepts same-origin relative paths only and checks the normalised output, not just the raw
+  input; middleware and the expired-session `ReturnToLoginLink` build `next` as path plus query and go through the same check
+  (`safeNext.test.ts`, `LoginForm.next.test.tsx`). Page gate on `/overseas/agent/applications` kept for every role.
 
 ### Employer domain (new, external-party access)
 - **Threat:** an Employer account viewing more of a Student's profile than GDPR-approved visibility
