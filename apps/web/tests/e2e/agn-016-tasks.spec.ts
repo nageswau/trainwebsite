@@ -4,7 +4,7 @@ import { adminActivate, registerApprovedAgency, signIn } from "./helpers/agency"
 import { pickFromList } from "./helpers/pick";
 import { E2E_PASSWORD } from "./helpers/welcome";
 
-// AGN-016 (DEC-SCOPE-051) AC12 -- tasks and follow-ups: a Master adds tasks on the Tasks page (one already overdue), the assigned
+// AGN-016 (DEC-SCOPE-053) AC12 -- tasks and follow-ups: a Master adds tasks on the Tasks page (one already overdue), the assigned
 // staff member sees and completes theirs, reassignment moves the task, keyboard-only add, the student card, 320 px. Unique names
 // per run (shared E2E DB).
 const stamp = () => `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;

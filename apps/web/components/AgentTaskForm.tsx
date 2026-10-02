@@ -6,14 +6,14 @@ import SearchableSelect from "./SearchableSelect";
 import { isPage, NOT_COMPLETED, sendJson } from "@/lib/apiErrors";
 import { APPLICATIONS_URL, type AgentApplicationItem } from "@/lib/agentApplications";
 import { failureText } from "@/lib/agentShortlist";
-import { searchStudents } from "@/lib/agentStudents";
+import { searchAgentStudents } from "@/lib/agentStudents";
 import { type AgentTask, buildCreatePayload, buildUpdatePayload, type DraftField, draftFromTask, emptyDraft, isPastLocal, NOTES_MAX, TASKS_URL, taskUrl, TITLE_MAX, validateDraft } from "@/lib/agentTasks";
 
 type Props =
   | { mode: "create"; studentId?: string; task?: undefined; onCancel: () => void; onSaved: (t: AgentTask) => void; onGone?: () => void }
   | { mode: "edit"; task: AgentTask; studentId?: undefined; onCancel: () => void; onSaved: (t: AgentTask) => void; onGone?: () => void };
 
-// AGN-016 (DEC-SCOPE-051): create or edit a task. The student is picked (Tasks page) or fixed (student card, edit); its applications
+// AGN-016 (DEC-SCOPE-053): create or edit a task. The student is picked (Tasks page) or fixed (student card, edit); its applications
 // load once it is known. A 422 keeps the form and the entry; a 404 (the task or student left the caller's scope) is the host's to handle.
 export default function AgentTaskForm({ mode, task, studentId, onCancel, onSaved, onGone }: Props) {
   const id = useId().replaceAll(":", "");
@@ -83,7 +83,7 @@ export default function AgentTaskForm({ mode, task, studentId, onCancel, onSaved
       {error && <p ref={errorRef} tabIndex={-1} className="form-error" role="alert">{error}</p>}
       {!fixedStudent && (
         <div className="field">
-          <SearchableSelect id={fieldId("studentId")} label="Student" noun="student" required search={searchStudents} onChange={(o) => set("studentId")(o?.id ?? "")} />
+          <SearchableSelect id={fieldId("studentId")} label="Student" noun="student" required search={searchAgentStudents} onChange={(o) => set("studentId")(o?.id ?? "")} />
         </div>
       )}
       <div className="field">

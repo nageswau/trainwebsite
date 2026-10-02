@@ -81,7 +81,7 @@ the then-unmerged `AGN-006`/`AGN-007` branches; both reached `main` first and `0
 See §AGN-008.
 
 **Revision 12 (2026-10-02):** the owner's `AGN-016` statement ("Tasks & Follow-ups" §4; "Pending Actions" KPI §2) is decided as
-`DEC-SCOPE-051` (T1–T8; number provisional while `AGN-009` is open in parallel). See §AGN-016.
+`DEC-SCOPE-053` (T1–T8; drafted as `051`, renumbered on merging `main` @ `d371865`, where AGN-014 holds `051` and AGN-009 `052`). See §AGN-016.
 
 ## 0. Scope and exclusions (read this before the backlog)
 
@@ -170,6 +170,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-006 | Agent student counseling record — completed, career interest, course/country preference, budget, remarks (§5 Step 2) | Medium | Medium | Yes | AGN-004 (student detail), AGN-021 (activity) |
 | AGN-007 | Agent student university shortlist and agency-private university database (Master full / Staff view) | Large | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004, AGN-021 |
 | AGN-008 | Agent applications — Master/Staff create, edit, view, change status, Application ID, submission date and deadlines for agent students; Staff sidebar filters (Rev. 11) | Large | High | Yes | AGN-004, AGN-003, AGN-021, AGT-002, OVS-002/003/004, ENH-031, RPT-002 |
+| AGN-009 | Agent documents — upload, download, verify, reject (with a reason), request additional, history; §5 Step 4 types; Staff sidebar Pending/Uploaded/Additional (`DEC-SCOPE-052`) | Large | High | Yes | AGN-003, AGN-004, AGN-008, OVS-005, VISA-001 |
 | AGN-016 | Agent tasks and follow-ups — Master/Staff create, edit, complete and cancel tasks on agency students (task follows the student); "Pending actions" KPI (Rev. 12) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-021 |
 
 ---
@@ -3660,6 +3661,90 @@ response, merge anchors with AGN-006/007, the commission trigger.
 row). Codex review waived by the owner (2026-10-02). Outside COMPLETE, owner-side: the full backend suite (standing 4–5-story
 cadence) and the merge to `main`. Browser QA pass 1 (QA8-01..13) is fixed, with owner rulings in `DEC-SCOPE-050` A16–A19 (reports: `.superpowers/sdd/2026-10-02-agn-008-agent-applications/qa-fix-*.md`, git-ignored, local only). Merge note (2026-10-02): `main` @ `3e06381` (`AGN-006`, `AGN-007`) merged in; `DEC-SCOPE-050` kept (free), `0057` re-chained after `0056_agent_shortlist`, the screen renumbered `SCR-AGT-010` (spec §12).
 
+## AGN-014 — Commission is Master-only: Revenue on the Master dashboard and commission reports
+
+**Title.** Agency commission Revenue and a filterable, exportable commission report for Masters (EVID-015 §2, §6).
+
+**Business requirement.** The owner's `AGN-014` statement (in-session, 2026-10-02): "Commission is Master only (§6);
+Commission/Revenue on the Master dashboard; commission reports"; acceptance: "existing commissions are visible to the migrated Master;
+Staff → 403 on every commission route; the same-admin payout rules are unchanged." Source: `EVID-015` (`Agent CRM
+Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Dashboard "Commission / Revenue", §2 Reports "Commission reports", §6 "Commission ✅/❌".
+Decided as `DEC-SCOPE-051` (R1–R7; provisional number).
+
+**Existing behavior.** Commissions were already Master-only (`DEC-SCOPE-040` S1; AGN-003 matrix tests) and the `0046` backfill's
+Masters already saw their older commissions. The Master dashboard showed "Claimable commission" and "Claims"; the Master reports page
+one "Paid commission" row. There was no Revenue figure and no agent commission report.
+
+**Expected behavior.**
+- Master dashboard metric "Revenue" = total of `paid` commissions per currency (`INR 12,000`, `INR 12,000 · USD 500`, `INR 0`).
+- `GET /workflows/overseas/agent/commissions/report?date_from&date_to` → totals and breakdowns by status (lifecycle order),
+  university/country, country and intake, per currency; inclusive UTC days on the created date.
+- `GET /workflows/overseas/agent/commissions/report.csv?date_from&date_to` → one row per commission, formula-safe cells,
+  `attachment`, `no-store`.
+- Order of checks: auth → agent of an active agency → Master → dates; staff get `403 "Only an agency Master can view commissions"`
+  before any `422`.
+- The agent Reports page shows Masters a Commission report panel (filters, loading/empty/error states, CSV of the applied range).
+
+**User roles affected.** `agent` (Master: new figure, routes and panel; staff: refused, unchanged pages).
+
+**Frontend / backend / database / API / integration impact.** Backend: `api/workflows.py` (two routes, one guarded query helper),
+`schemas.py` (`CommissionReportOut` and rows), `services/portal.py` (one metric). Frontend: new `lib/agentCommissionReport.ts`,
+`AgentCommissionReportPanel.tsx`; `ReportDownloadButton.tsx` (optional `contentType`/`busyLabel`, PDF defaults); `WorkflowPanel.tsx`
+(mount). No migration, no dependency, no integration.
+
+**Authentication/Authorization impact.** Reuses `_require` + `_require_agent_master` and the `org_member_ids` scope; no new helper.
+
+**Security impact.** Spec §8: staff refused before any query; cross-agency rows excluded by scope; dates parsed after authorization;
+CSV cells through `_safe_cell`; `Cache-Control: private, no-store`. No audit row on reads/exports (R7); one structured
+`agent_commission_report` log line per request (actor, organisation, format, row count, range).
+
+**Acceptance criteria** (verbatim from `docs/superpowers/specs/2026-10-02-agn-014-commission-master-reports-design.md` §9).
+- **AGN-014-AC01** A Master created by the real `0046` backfill sees the old commission in the list, the dashboard Revenue, the report and the CSV.
+- **AGN-014-AC02** Staff → `403` on list, claim, report, report.csv and the portal `commissions` page; `403` (not `422`) with invalid dates.
+- **AGN-014-AC03** Same-admin payout rules unchanged (`test_agt_004_commission_payout.py` passes unedited).
+- **AGN-014-AC04** Master dashboard Revenue = paid total per currency; `INR 0` when nothing is paid; other agencies excluded; staff dashboard has no Revenue and no "commission" wording.
+- **AGN-014-AC05** Report breakdowns correct per currency; lifecycle status order; staff-created application's commission included; other agency excluded.
+- **AGN-014-AC06** Created-date filter inclusive at both UTC-day boundaries; optional bounds; `date_to < date_from` → `422`; malformed date → `422`.
+- **AGN-014-AC07** CSV: header + one row per commission, same filter, `_safe_cell` applied, `text/csv` attachment, `no-store`, header-only when empty.
+- **AGN-014-AC08** New routes: unauthenticated → `401`; non-agent → `403`; suspended organisation → `403`.
+- **AGN-014-AC09** Panel: loading, empty, error (401/403/5xx/network), data; client range error sends no request; stale response ignored; CSV URL follows applied filters; not mounted for staff.
+- **AGN-014-AC10** `ReportDownloadButton` PDF behavior unchanged; CSV accepted with `contentType="text/csv"`.
+- **AGN-014-AC11** End to end: Master sees Revenue, filters the report, downloads the CSV; staff get the 403 card on `/overseas/agent/commissions` and no Revenue.
+
+**Regression risks.** Commission wording leaking to staff pages (guarded by `test_agn_002_qa_messages.py`); PDF downloads (defaults
+kept); the payout rule (`admin.py` untouched).
+
+**Complexity:** Medium. **Risk:** Low–Medium.
+
+**Status (2026-10-02): COMPLETE** on `feature/agn-014-commission-master-only` (verified at `850a9f5`, after merging `main` with
+AGN-007; evidence in `docs/quality/RTM.md`, AGN-014 row): AC01–AC11 met; lite backend set 274 passed; web 148 files / 1599 passed;
+`tsc`, lint and the production build pass; Playwright 12/12; browser QA done with QA14-01…10 fixed and re-verified. The independent
+Codex review was waived by the owner; the full backend suite stays with the owner's batch cadence. Remaining: the merge into `main`
+(`main` with `AGN-007` and `AGN-008` merged in 2026-10-02; `DEC-SCOPE-051` was still free there).
+
+## AGN-009 — Agent Documents: Upload, Download, Verify, Reject, Request Additional, History
+
+**Business requirement.** The owner's `AGN-009` statement (in-session, 2026-10-02): "§2 Documents and §5 Step 4 document types; Staff
+sidebar Pending/Uploaded/Additional; §6: Staff verify is optional and Staff cannot reject." Decision `DEC-SCOPE-052` (G1–G9). Source
+`EVID-015` (`DERIVED_BLUEPRINT`) §2, §4, §5 Step 4, §6. Design spec `docs/superpowers/specs/2026-10-02-agn-009-agent-documents-design.md`;
+plan `docs/superpowers/plans/2026-10-02-agn-009-agent-documents.md`.
+
+**Scope.** Documents owned by an agency record (students with or without a login); fixed types + Other; server-stored files (PDF, JPEG,
+PNG by bytes); replace (back to pending, old file kept); requests ("Additional") fulfilled by an upload made against them; per-document
+history; a reason required when an agent rejects or asks for changes; Pending / Uploaded / Additional sidebar views. Migration
+`0058_agent_documents`. Dependencies: AGN-003, AGN-004, AGN-008.
+
+**Acceptance criteria** (owner's statement):
+- **AGN-009-AC01** Upload → `pending`.
+- **AGN-009-AC02** Verify/reject per the §6 matrix: Master verified/rejected/changes required; Staff verified only, with the Verify toggle.
+- **AGN-009-AC03** Reject (or changes required) without a reason → `422` (agents; Staff get `403` first).
+- **AGN-009-AC04** A request shows under "Additional" until an upload fulfils it.
+- **AGN-009-AC05** History lists every event in order.
+- **AGN-009-AC06** An out-of-scope download → `404`/`403`.
+- **AGN-009-AC07** Existing student/counselor document flows unchanged.
+
+**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-009-agent-documents`. Lite test sets pass (see `RTM.md` AGN-009 row).
+Pending, owner-side: browser validation, the independent Codex review, the full backend/web/E2E suites, the merge.
 ## AGN-016 — Agent Tasks and Follow-ups, "Pending Actions" KPI
 
 **Title.** Let an agency Master, and Staff for their assigned students, record follow-up tasks on agency students and see what is open
@@ -3667,7 +3752,7 @@ and overdue; add "Pending actions" to the agent dashboard.
 
 **Business requirement.** The owner's `AGN-016` statement (in-session, 2026-10-02): "Tasks & Follow-ups" (§4); "Pending Actions" KPI
 (§2). Source: `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`), which names the two items only. Decision record:
-`DEC-SCOPE-051` (T1–T8, `EXPLICIT_APPROVAL` in-session 2026-10-02; number provisional).
+`DEC-SCOPE-053` (T1–T8, `EXPLICIT_APPROVAL` in-session 2026-10-02; renumbered from `051` on merging `main` @ `d371865`).
 
 **Existing behavior.** Only `OverseasApplication.next_action` free text; no task entity, no pending-actions count.
 
@@ -3697,7 +3782,7 @@ AGN-016 tests plus the four affected existing files (`test_agn_004_staff_scope`,
 **Verification before completion (2026-10-02, fresh runs at the final commit).** Backend: every `test_agn_*`/`test_agt_*` file
 784 passed; AGN-016 files + AGN-007 shortlist 97 passed after the last (type-only) change. Web: `tsc` clean, `npm run lint` 0 errors
 (31 warnings, identical count on the base image), 32 agent-related unit-test files 348 passed, `next build` exit 0. mypy: 283 errors =
-the base commit's count, none in AGN-016 files (6 AGN-016 type errors were found here and fixed). `alembic heads` = `0058_agent_tasks`
+the base commit's count, none in AGN-016 files (6 AGN-016 type errors were found here and fixed). `alembic heads` = `0059_agent_tasks`
 only; `alembic check` drift is the base's (two pre-existing indexes), none on `agent_tasks`. Playwright: AGN-016 + AGN-004 + AGN-008
 specs 12/12 on an idle machine; two neighbour tests failed intermittently in 2 of 4 loaded runs, not reproduced in 3 alternating
 base-vs-branch runs (9/9 each side). Browser: Master 31/31, Staff/roles 13/13, re-check 6/6, Super Admin note. Diff: 45 files, all
@@ -3881,7 +3966,7 @@ item, only for the progress-view question).
 | AGN-005 | None — scope (tests + docs), Delete Student = archive/unarchive, test placement, and the QA5-01 phone rule / QA5-05 note set by the owner in-session 2026-10-01 | N/A |
 | AGN-006 | `DEC-SCOPE-048` — storage, budget, separate preferences, access, completed stamp, API, activity, leave prompt | **Resolved 2026-10-01** (C1–C9, `EXPLICIT_APPROVAL` in-session; number provisional) |
 | AGN-008 | `DEC-SCOPE-050` — statuses and withdrawn, Application ID, dates, agent status limits, link to the agency student, visibility, sidebar filters, throttle, archived read-only | **Resolved 2026-10-01/02** (A1–A15, `EXPLICIT_APPROVAL` in-session). `DEC-SCOPE-036` "submitted" stays `NEEDS_CONFIRMATION` |
-| AGN-016 | `DEC-SCOPE-051` (provisional number) — task owner on reassignment, delete, due time and overdue, linkage, KPI and nav, edit rules, cap, retry | **Resolved 2026-10-02** (T1–T8, `EXPLICIT_APPROVAL` in-session) |
+| AGN-016 | `DEC-SCOPE-053` — task owner on reassignment, delete, due time and overdue, linkage, KPI and nav, edit rules, cap, retry | **Resolved 2026-10-02** (T1–T8, `EXPLICIT_APPROVAL` in-session) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in

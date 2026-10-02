@@ -13,19 +13,6 @@ export function assignedText(a: Pick<Assignee, "code" | "full_name" | "status"> 
   return a ? `${a.code} · ${a.full_name}${a.status !== "active" ? " (deactivated)" : ""}` : "Unassigned";
 }
 
-// AGN-008: the agency's students (with or without a login) searched on the server, so a large agency is never truncated. Shared by
-// the application and task forms (AGN-016).
-export async function searchStudents(q: string, signal: AbortSignal): Promise<LookupPage> {
-  const params = new URLSearchParams({ limit: "20" });
-  if (q) params.set("q", q);
-  const response = await fetch(`${RECORDS_URL}?${params}`, { signal });
-  const data = await response.json().catch(() => null);
-  if (!response.ok || !isPage<AgentStudentItem>(data)) throw new Error(`Student search failed (${response.status})`);
-  return {
-    items: data.items.map((s) => ({ id: s.id, label: s.full_name, detail: s.has_login ? s.email : "no login" })),
-    truncated: data.total > data.items.length,
-  };
-}
 export type AgentStudentItem = {
   id: string;
   has_login: boolean;
@@ -252,4 +239,18 @@ export function formatBudget(amount: string | null, currency: string | null): st
   } catch {
     return `${currency} ${amount}`;
   }
+}
+
+// The agency's students -- with or without a login -- searched on the server (the records list), for SearchableSelect pickers
+// (AGN-008 applications, AGN-009 documents, AGN-016 tasks), so a large agency is never truncated.
+export async function searchAgentStudents(q: string, signal: AbortSignal): Promise<LookupPage> {
+  const params = new URLSearchParams({ limit: "20" });
+  if (q) params.set("q", q);
+  const response = await fetch(`${RECORDS_URL}?${params}`, { signal });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !isPage<AgentStudentItem>(data)) throw new Error(`Student search failed (${response.status})`);
+  return {
+    items: data.items.map((s) => ({ id: s.id, label: s.full_name, detail: s.has_login ? s.email : "no login" })),
+    truncated: data.total > data.items.length,
+  };
 }

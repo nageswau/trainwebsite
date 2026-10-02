@@ -99,7 +99,7 @@ export default function AgentStudentDetailPanel({
           {editing === "none" && (
             <AgentShortlistPanel studentId={detail.id} archived={detail.status === "archived"} onStudentGone={onClose} onStudentChanged={onClose} />
           )}
-          {/* AGN-016 (DEC-SCOPE-051): the student's tasks, open first; read-only when archived. */}
+          {/* AGN-016 (DEC-SCOPE-053): the student's tasks, open first; read-only when archived. */}
           {editing === "none" && (
             <section aria-labelledby={`tasks-${detail.id}`} style={{ marginTop: 16 }}>
               <h5 id={`tasks-${detail.id}`} style={{ fontSize: "18px", margin: "0 0 8px" }}>Tasks</h5>

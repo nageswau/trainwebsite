@@ -1,4 +1,4 @@
-"""AGN-016 -- migration 0058_agent_tasks (spec §2). The round trip and the downgrade refusal run in a throwaway database built from
+"""AGN-016 -- migration 0059_agent_tasks (spec §2). The round trip and the downgrade refusal run in a throwaway database built from
 scratch (the AGN-008 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls
 asyncio.run() itself."""
 
@@ -21,15 +21,15 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_agn_016_migration_0058", VERSIONS / "0058_agent_tasks.py")
+_spec = importlib.util.spec_from_file_location("_agn_016_migration_0059", VERSIONS / "0059_agent_tasks.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE = "0057_agent_applications"
-HEAD = "0058_agent_tasks"
+BASE = "0058_agent_documents"
+HEAD = "0059_agent_tasks"
 
 
-def test_migration_chains_after_0057_and_is_the_single_head():
+def test_migration_chains_after_0058_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     parents = {}
     for file in VERSIONS.glob("*.py"):
@@ -73,7 +73,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0057 with one agent and one agency student with no login."""
+    """A fresh database at 0058 with one agent and one agency student with no login."""
     cfg = Config(str(API_ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
     original = settings.database_url

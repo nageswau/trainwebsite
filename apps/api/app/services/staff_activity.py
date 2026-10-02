@@ -24,7 +24,7 @@ STAFF_ACTIVITY_ACTIONS = (
     "agent_student.shortlist_add",
     "agent_student.shortlist_update",
     "agent_student.shortlist_remove",
-    # AGN-016 (DEC-SCOPE-051): task work on a student; the subject is the student, never the task's title.
+    # AGN-016 (DEC-SCOPE-053): task work on a student; the subject is the student, never the task's title.
     "agent_student.task_add",
     "agent_student.task_update",
     "agent_student.task_complete",

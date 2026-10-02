@@ -219,6 +219,8 @@ is never returned. Member shape: `{id, code, full_name, email, phone, status: ac
 | `POST …/staff/{member_id}/reset` | Authenticated | Active Master | `200 {member, email_status, expires_at}`; password unusable, sessions ended, new link emailed; `409 "Reactivate this staff member first"`; `429` staff budget or `"A link was just sent; wait N seconds before resetting again"`. |
 | Any `…/staff/{member_id}…` for another agency's member or a Master | Authenticated | — | `404 "Staff member not found"` (no disclosure). |
 | `GET/POST /workflows/overseas/agent/commissions*` (list, claim) | Authenticated | Master | Staff → `403 "Only an agency Master can view commissions"`. |
+| `GET /workflows/overseas/agent/commissions/report?date_from&date_to` (**new**, `AGN-014` / `DEC-SCOPE-051`) | Authenticated | Master (own agency) | `200 CommissionReportOut {date_from, date_to, totals, by_status, by_university, by_country, by_intake}` — counts and amounts per currency, never summed across currencies; dates optional, exactly `YYYY-MM-DD` (no compact or week forms), inclusive UTC days on the created date. Staff → `403` (checked before the dates); bad date → `422 "date_from must be a date (YYYY-MM-DD)"` / `"date_to must be on or after date_from"` / `"date_to must be before 9999-12-31"`. Read-only, no audit row. |
+| `GET /workflows/overseas/agent/commissions/report.csv?date_from&date_to` (**new**, `AGN-014`) | Authenticated | Master (own agency) | `200 text/csv` attachment `agency-commissions-<from\|all>-to-<to\|all>.csv`, `Cache-Control: private, no-store`; one row per commission (`Student, University, Country, Intake, Status, Amount, Currency, Created, Claimed, Paid, Claim reference`), formula-safe cells; header only when empty. Same refusals as the JSON report. |
 | `GET /portal/overseas/agent/{team,commissions}` | Authenticated | Master | Staff → `403 "Only an agency Master can open this page"`; staff dashboard/reports omit commission figures. |
 | `GET /overseas-admin/agent-orgs` | Authenticated | Overseas Admin | `masters` and the `q` member match cover Masters only. |
 | `GET /overseas-admin/agents`; `POST …/agents/{id}/approve\|reject` | Authenticated | Overseas Admin | Staff excluded from the list; approve/reject of a staff id → `422 "Staff accounts are managed by their agency"`. |
@@ -244,6 +246,26 @@ in `RBAC_MATRIX.md` §2.8 as §0.3 requires. Every write locks the organisation 
 | `POST /workflows/overseas/agent/students` (link) — **changed** | Authenticated | Master or staff | A staff member's link is assigned to them. Relinking an archived link → `409 "This student is archived — unarchive them first"`. |
 | `/workflows/overseas/applications`, `/workflows/overseas/documents*`, `/lookups/overseas-students`, `/lookups/overseas-applications`, `/portal/overseas/agent/*` — **changed for staff** | Authenticated | Staff: assigned students only | Existing out-of-scope status codes (`403 "Application is outside your assigned scope"`, `403 "Student is outside your assigned scope"`, `403 "Student is not assigned to this agent"`). Masters unchanged. `GET /auth/me` adds `agent_member_role` (`master`/`staff`/`null`). Staff on `/workflows/overseas/agent/team*`, `/workflows/overseas/agent/commissions*` and portal `team`/`commissions` → `403` (AGN-002's messages). |
 
+**`AGN-009` / `DEC-SCOPE-052` (built 2026-10-02) — agent documents.** Design spec
+`docs/superpowers/specs/2026-10-02-agn-009-agent-documents-design.md` §4. Errors are FastAPI `{"detail": ...}`; no `Idempotency-Key`
+(a retried upload stores a second document; a retried fulfilment meets `409`, a retried cancel `409`). New routes: gate `403` (agent
+of an active organisation; not `super_admin`) → label/file checks `422`/`413`/`415` → throttle `429` → scope `404` → archived `409` →
+state `409`. Out-of-scope rows answer `404` (existence mask). Writes lock organisation → student → request → document, store the file
+first and delete it again if the commit fails. Items never carry `file_url`.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /workflows/overseas/agent/crm/documents?view=pending\|uploaded&student=&limit=20&offset=0` | Authenticated | Agent (Master or staff) | Master: the agency; staff: assigned students only (`document_scope`: an attached document follows its application, an unattached one its agency record, or the account when no agency owns it). `200 {items,total,limit,offset}`; item: `id, agent_student_id, student, has_login, document_type, document_label, verification_status, reviewer_notes, application_id, university, original_filename, content_type, file_size, uploaded_by, fulfils_request_id, created_at, updated_at, replaceable`. `student` outside scope → `404`. |
+| `POST …/crm/documents` (multipart) | Authenticated | Same | `agent_student_id`, `document_type` ∈ Passport, Academic certificates, Transcripts, English test, CV, SOP, LOR, Financial documents, Other; `document_label` (Other only, 2–80); `application_id?` (in scope `404`; another student's `422`); `request_id?` (open request of this student; closed `409`, other student `422`); `file` (PDF/JPEG/PNG by bytes `415`; empty `422`; > `MAX_UPLOAD_BYTES` `413`; image metadata stripped). `201 {"document": item}`, status `pending`. Throttle 500 uploads+replaces / agency / 24 h → `429` + `Retry-After`. |
+| `PUT …/crm/documents/{id}/file` (multipart `file`) | Authenticated | Same | New file, status → `pending`, reviewer fields cleared; old object kept and named in history. `409`: not an agency upload, archived student, or decided by a counselor/admin (`DEC-SCOPE-044` P5). |
+| `GET …/crm/documents/{id}/history?limit=50&offset=0` | Authenticated | Same | Events by `seq`: `uploaded`, `replaced`, `verified`, `rejected`, `changes_required`, `requested`, `fulfilled`, `cancelled`, `downloaded`; item `id, event, actor, from_status, to_status, notes, created_at` (no file key). |
+| `GET …/crm/document-requests?status=open\|all&student=&limit=20&offset=0` | Authenticated | Same | The "Additional" list. Item `id, agent_student_id, student, document_type, document_label, note, status, requested_by, fulfilled_by_document_id, created_at, closed_at`. |
+| `POST …/crm/document-requests` | Authenticated | Same | Body `AgentDocumentRequestCreate` `{agent_student_id, document_type, document_label?, note? ≤ 1000}`, `extra=forbid`. `201 {"request": item}`; an open request of the same type+label → `409`; archived → `409`. Throttle 200 / agency / 24 h. |
+| `POST …/crm/document-requests/{id}/cancel` | Authenticated | Same | `open → cancelled`; otherwise `409`. |
+| `PATCH /workflows/overseas/documents/{id}/verify` — **changed (agent branch)** | Authenticated | Agent | After the AGN-003 checks: `rejected`/`changes_required` with blank `notes` → `422 "Give a reason when you reject a document or ask for changes"` (staff still get `403` first). Notes are trimmed. Agency-only documents are scope-checked by `document_scope`. Counselor/admin branch unchanged (reason optional). All branches write a history event. |
+| `GET /workflows/overseas/documents/{id}/download` — **changed** | Authenticated | Existing per-role scope | Same response. The agent check uses `document_scope` (`403` outside). Every call writes a `downloaded` event and a `document.download` audit row, committed before the URL is returned. |
+| `POST /workflows/overseas/documents` — **changed** | Authenticated | Existing | Same request and response; also records `uploaded_by_user_id` and an `uploaded` event. |
+
 **`AGN-008` / `DEC-SCOPE-050` (built 2026-10-02) — agent applications.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md` §5.3–§5.6. Errors are FastAPI `{"detail": ...}`; no
 `Idempotency-Key` (a retried create meets the duplicate rule, a retried status change the forward-only rule or the terminal state).
@@ -265,7 +287,7 @@ same transaction. Responses use explicit allowlists (no `agent_id`, `counselor_i
 | `PATCH /workflows/overseas/applications/{id}` with `status`, `POST …/applications/{id}/advance` — **changed** | Authenticated | Counselor, admin (existing) | `409 "This application is withdrawn"` on a `withdrawn` application; non-status edits unchanged. |
 | `POST /workflows/overseas/applications` (old agent create) | Authenticated | Agent | Unchanged (A13); the agent UI uses `POST …/crm/applications`. |
 
-**`AGN-016` / `DEC-SCOPE-051` (built 2026-10-02) — agent tasks and follow-ups.** Design spec
+**`AGN-016` / `DEC-SCOPE-053` (built 2026-10-02) — agent tasks and follow-ups.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md` §3–§5. Errors are FastAPI `{"detail": ...}`. `POST` is not safe to
 retry (no `Idempotency-Key`; a duplicate task is harmless and can be cancelled). Gate `403` (agent role, overseas division, active
 agency; **not** `super_admin`) → scope `404` (`"Task not found"` / `"Student not found"`) → archived student `409 "Unarchive this student

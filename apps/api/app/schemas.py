@@ -375,6 +375,21 @@ class AgentDocumentReview(BaseModel):
     notes: str | None = Field(default=None, max_length=10000)
 
 
+# AGN-009 (DEC-SCOPE-052 G3): EVID-015 §5 Step 4, stored as written (the free-text style the visa checklist compares); the web mirrors
+# it in lib/agentDocuments.ts DOCUMENT_TYPES.
+AgentDocumentType = Literal["Passport", "Academic certificates", "Transcripts", "English test", "CV", "SOP", "LOR", "Financial documents", "Other"]
+
+
+class AgentDocumentRequestCreate(BaseModel):
+    """AGN-009 (G4): ask one of the agency's students for an additional document. "Other" needs a label (checked by the service)."""
+
+    model_config = {"extra": "forbid"}
+    agent_student_id: UUID
+    document_type: AgentDocumentType
+    document_label: str | None = Field(default=None, max_length=200)
+    note: str | None = Field(default=None, max_length=1000)
+
+
 class AppointmentCreate(BaseModel):
     student_id: UUID | None = None
     staff_id: UUID | None = None
@@ -746,7 +761,7 @@ class AgentApplicationStatus(BaseModel):
         return clean_free_text(value, 2000)
 
 
-# --- AGN-016: agent tasks and follow-ups (DEC-SCOPE-051; docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md §3) ---
+# --- AGN-016: agent tasks and follow-ups (DEC-SCOPE-053; docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md §3) ---
 
 
 def _task_title(value) -> str:
@@ -849,6 +864,40 @@ class CommissionCreate(BaseModel):
 class CommissionAmountUpdate(BaseModel):
     amount: float = Field(ge=0)
     currency: str | None = Field(default=None, min_length=3, max_length=10)
+
+
+# AGN-014 (DEC-SCOPE-051): the agency's commission report -- every amount is per currency, never summed across currencies.
+class CommissionReportTotal(BaseModel):
+    currency: str
+    count: int
+    amount: float
+
+
+class CommissionReportStatusRow(CommissionReportTotal):
+    status: str
+
+
+class CommissionReportUniversityRow(CommissionReportTotal):
+    university: str
+    country: str
+
+
+class CommissionReportCountryRow(CommissionReportTotal):
+    country: str
+
+
+class CommissionReportIntakeRow(CommissionReportTotal):
+    intake: str
+
+
+class CommissionReportOut(BaseModel):
+    date_from: date | None
+    date_to: date | None
+    totals: list[CommissionReportTotal]
+    by_status: list[CommissionReportStatusRow]
+    by_university: list[CommissionReportUniversityRow]
+    by_country: list[CommissionReportCountryRow]
+    by_intake: list[CommissionReportIntakeRow]
 
 
 class InboundUniversityEmailIn(BaseModel):

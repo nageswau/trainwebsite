@@ -1769,6 +1769,16 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
   applies to the counselor queue); per-row server errors (`403`/`409`/`422` text). Success "Document reviewed -- the student has been
   notified." Staff without Verify see the upload form only. Evidence: AGN-003-AC04, AC07 (`test_agn_003_verify.py`;
   `CounselorDocumentReviewPanel.test.tsx`, `WorkflowPanel.agentDocuments.test.tsx`; e2e `agn-003-staff-permissions.spec.ts`).
+- **AGN-014 update (2026-10-02, `DEC-SCOPE-051`) — agent dashboard and Reports page (`/overseas/agent/dashboard`,
+  `/overseas/agent/reports`; no separate catalog entries, so recorded on this agent screen, as AGN-003 did):** the Master dashboard gains a
+  **Revenue** metric (paid commissions per currency, e.g. "INR 12,000"; "INR 0" when nothing is paid). The Master Reports page gains a
+  **Commission report** panel (`AgentCommissionReportPanel`): From / To date inputs and **Apply** (To before From → inline error, no
+  request); loading "Loading commission report…" (`role="status"`); empty "No commissions in this period."; errors as an alert (expired
+  session "Your session has expired. Sign in again.", server refusals verbatim, otherwise "Something went wrong on our side. Please try
+  again."); data = a per-currency total line and four tables (By status, By university, By country, By intake); **Download CSV** of
+  the applied range ("Preparing CSV…", "Report downloaded."). Staff never see the metric or the panel (their Reports page, when their
+  Master switches it on, is unchanged). Evidence: AGN-014-AC04, AC09–AC11 (`test_agn_014_commission_reports.py`,
+  `AgentCommissionReportPanel.test.tsx`, `WorkflowPanel.agentCommissionReport.test.tsx`, e2e `agn-014-commission-master.spec.ts`).
 
 ### `SCR-AGT-006`
 - **Route:** `/overseas/admin/commissions`  

@@ -48,7 +48,7 @@ Each line has a test in the owning task below.
 ### Task 1: Model and migration
 
 **Files:** Modify `apps/api/app/models.py` (after `AgentStudentShortlistEntry`); Create
-`apps/api/alembic/versions/0058_agent_tasks.py`; Test `apps/api/tests/test_agn_016_migration.py`.
+`apps/api/alembic/versions/0059_agent_tasks.py`; Test `apps/api/tests/test_agn_016_migration.py`.
 
 **Produces:** `AgentTask` (columns per spec §2); `TASK_STATUSES = ("open", "done", "cancelled")`.
 
@@ -132,7 +132,7 @@ Test `apps/api/tests/test_agn_016_dashboard.py`.
 
 ### Task 8: Documentation
 
-**Files:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-051`), `docs/delivery/ENHANCEMENT_BACKLOG.md` (AGN-016
+**Files:** `docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-053`), `docs/delivery/ENHANCEMENT_BACKLOG.md` (AGN-016
 row + section, status IN PROGRESS — not COMPLETE until browser QA and Codex review), `docs/quality/RTM.md`,
 `docs/architecture/API_CONTRACT.md` (wherever AGN-008 is recorded).
 

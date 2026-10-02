@@ -194,9 +194,9 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | Edit Application | `PATCH /workflows/overseas/agent/crm/applications/{id}` (**AGN-008**, `DEC-SCOPE-050`; now enforced) | ✅ | ✅ assigned only |
 | View Applications | `GET /workflows/overseas/applications`, `GET /portal/overseas/agent/applications`, `GET /lookups/overseas-applications` | ✅ | ✅ |
 | Change Application Status | `POST /workflows/overseas/agent/crm/applications/{id}/status` (**AGN-008**; forward only up to `status_tracking`, withdraw; never `enrolled`) | ✅ | ✅ assigned only |
-| Upload Documents | `POST /workflows/overseas/documents`; `GET /portal/overseas/agent/documents` | ✅ | ✅ |
+| Upload Documents | `POST /workflows/overseas/documents`; `GET /portal/overseas/agent/documents`; **AGN-009:** `GET`/`POST /workflows/overseas/agent/crm/documents`, `PUT …/documents/{id}/file`, `GET …/documents/{id}/history`, `GET`/`POST …/crm/document-requests`, `POST …/document-requests/{id}/cancel` (`DEC-SCOPE-052` G4: requests are Master and Staff) | ✅ | ✅ assigned only |
 | Verify Documents | `PATCH /workflows/overseas/documents/{id}/verify` with `verified` (**new for agents**) | ✅ | **T** |
-| Reject Documents | same route with `rejected` or `changes_required` | ✅ | ❌ (even with Verify on) |
+| Reject Documents | same route with `rejected` or `changes_required` (**AGN-009:** a reason is required, `422` when blank) | ✅ | ❌ (even with Verify on) |
 | University Database | `GET /public/universities`, `GET /public/universities/{slug}` (shared catalogue, view); `GET /workflows/overseas/agent/crm/universities`, `PATCH`/`DELETE …/crm/universities/{id}` (agency list, **new**, `AGN-007` / `DEC-SCOPE-049`) | ✅ full on the agency list (list, add, edit, delete) + view of the catalogue | 👁 view (list the agency list and the catalogue; `PATCH`/`DELETE` → `403` "Only an agency Master can edit universities" / "…delete universities") |
 | Add University | `POST /workflows/overseas/agent/crm/universities` (**new**, `AGN-007` / `DEC-SCOPE-049`; creates an agency-private university). The shared catalogue's `POST /admin/universities` stays admin-only. | ✅ (agency list only) | ❌ `403` "Only an agency Master can add universities" |
 | Shortlist (student university shortlist) | `GET`/`POST …/crm/students/{id}/shortlist`, `PATCH`/`DELETE …/shortlist/{entry_id}` (**new**, `AGN-007`) | ✅ any agency student | ✅ assigned students only (out of scope → `404`, before any role check) |
@@ -207,6 +207,7 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | View staff activity | `GET /workflows/overseas/agent/team/staff/{member_id}/activity` (**new**, `AGN-021` / `DEC-SCOPE-046`) | ✅ (own agency's staff; deactivated staff too) | ❌ `403` "Only an agency Master can manage the team"; another agency's user and any non-staff or unknown member id → `404` "Staff member not found" |
 | Reports | `GET /portal/overseas/agent/reports` | ✅ full | **T** (when on: today's staff report, no commission row) |
 | Commission | `GET /workflows/overseas/agent/commissions`, `POST …/commissions/{id}/claim`, `GET /portal/overseas/agent/commissions` | ✅ | ❌ |
+| Commission reports / Revenue (AGN-014, `DEC-SCOPE-051`) | `GET /workflows/overseas/agent/commissions/report`, `GET …/commissions/report.csv` (**new**); dashboard "Revenue" metric | ✅ own agency (`org_member_ids`) | ❌ `403` "Only an agency Master can view commissions" (before any date `422`); no Revenue metric |
 | CRM Settings | — | N/A | N/A |
 
 The Master-team routes (`POST …/team/masters`, `POST …/team/masters/{id}/deactivate`) sit under Staff Management and are ❌ for Staff.

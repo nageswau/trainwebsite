@@ -1,7 +1,7 @@
 # AGN-016 — Agent Tasks & Follow-ups — Design
 
 - **Feature:** `AGN-016` (backlog item `ang-016`, `docs/delivery/AGENT_CRM_BACKLOG.md`).
-- **Decision:** `DEC-SCOPE-051` (provisional number — see §9), answers T1–T8 below (`EXPLICIT_APPROVAL`, owner in-session 2026-10-02).
+- **Decision:** `DEC-SCOPE-053` (renumbered from `051` — see §9), answers T1–T8 below (`EXPLICIT_APPROVAL`, owner in-session 2026-10-02).
 - **Evidence:** `EVID-015` (`functionalities/edusphere_markdown/Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) names only
   "Tasks & Follow-ups" (Staff sidebar, §4, line 229) and "Pending Actions" (Master dashboard KPI, §2, line 43). Every rule below
   comes from the owner's answers, not from the source.
@@ -26,7 +26,7 @@
 Out of scope: notifications and reminders (ang-017), journey page (ang-015), dashboard redesign (ang-018), assignee other than the
 student's owner, reopening, hard delete, bulk actions, any change to `OverseasApplication.next_action`.
 
-## 2. Data model — table `agent_tasks` (migration `0058_agent_tasks`, provisional number)
+## 2. Data model — table `agent_tasks` (migration `0059_agent_tasks`)
 
 | Column | Type | Rule |
 |---|---|---|
@@ -130,8 +130,9 @@ names only. DoS: length caps, page cap, offset cap, open-task cap (T7). Audit: e
 
 ## 9. Numbering and parallel lanes
 
-`DEC-SCOPE-051` and `0058_agent_tasks` are provisional: `feature/agn-009-agent-documents` is open in parallel from the same base.
-The lane that merges second renumbers its decision and migration (`AGENT_CRM_BACKLOG.md` §6.2).
+Drafted as `DEC-SCOPE-051` / `0058_agent_tasks` while `feature/agn-009-agent-documents` was open in parallel from the same base. On
+merging `main` @ `d371865`, AGN-014 holds `051` and AGN-009 holds `052` / `0058_agent_documents`, so AGN-016 is `DEC-SCOPE-053` with
+migration `0059_agent_tasks` after `0058_agent_documents` (the lane that merges second renumbers; `AGENT_CRM_BACKLOG.md` §6.2).
 
 ## 10. Acceptance criteria
 

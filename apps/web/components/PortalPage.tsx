@@ -1,12 +1,14 @@
-import {notFound} from "next/navigation";import { accessUnavailable } from "./AccessUnavailable";import AgentApplicationsSection from "./AgentApplicationsSection";import AgentStudentsSection from "./AgentStudentsSection";import AgentTasksSection from "./AgentTasksSection";import AgentUniversitiesPanel from "./AgentUniversitiesPanel";import PortalShell from "./PortalShell";import PortalSection from "./PortalSection";import RefreshOnHistoryNav from "./RefreshOnHistoryNav";import TeacherWorkspaceActions from "./TeacherWorkspaceActions";import WorkflowPanel from "./WorkflowPanel";import {ApiError,serverApi} from "@/lib/api";import {agentNavFor,PORTAL_NAV} from "@/lib/navigation";import type {PortalPayload,User} from "@/lib/types";
+import {notFound} from "next/navigation";import { accessUnavailable } from "./AccessUnavailable";import AgentApplicationsSection from "./AgentApplicationsSection";import AgentDocumentsSection from "./AgentDocumentsSection";import AgentStudentsSection from "./AgentStudentsSection";import AgentTasksSection from "./AgentTasksSection";import AgentUniversitiesPanel from "./AgentUniversitiesPanel";import PortalShell from "./PortalShell";import PortalSection from "./PortalSection";import RefreshOnHistoryNav from "./RefreshOnHistoryNav";import TeacherWorkspaceActions from "./TeacherWorkspaceActions";import WorkflowPanel from "./WorkflowPanel";import {ApiError,serverApi} from "@/lib/api";import {agentNavFor,PORTAL_NAV} from "@/lib/navigation";import type {PortalPayload,User} from "@/lib/types";
 const labels:Record<string,string>={"it/student":"IT Student","it/trainer":"Trainer","it/placement":"Placement Team","it/hr":"HR / Employer","it/admin":"IT Administrator","overseas/student":"Overseas Student","overseas/counselor":"Counselor","overseas/university":"University Representative","overseas/agent":"Education Agent","overseas/admin":"Overseas Administrator"};
 export default async function PortalPage({division,role,section}:{division:"it"|"overseas";role:string;section:string}){const key=`${division}/${role}`;const nav=PORTAL_NAV[key]||[];if(!nav.some(item=>item.href===`/${division}/${role}/${section}`))notFound();// AGN-008 QA8-09: the agency Applications page reads its own API (AgentApplicationsSection). The portal payload is still fetched
 // as the page's role/approval gate (403 for a wrong role or a pending/rejected agent); only its 404 "Workspace not found" is held
 // back there, and only a Super Admin then gets the section (its note) -- anyone else still gets the access-unavailable card.
 const agentApplications=key==="overseas/agent"&&section==="applications";
+// AGN-009: the agency Documents page reads its own API too (AgentDocumentsSection), behind the same portal-payload gate.
+const agentDocuments=key==="overseas/agent"&&section==="documents";
 // AGN-016 browser QA16-01: the agency Tasks page also reads its own API, so a Super Admin gets its note the same way.
 const agentTasks=key==="overseas/agent"&&section==="tasks";
-let user:User;let data:PortalPayload|null;try{[user,data]=await Promise.all([serverApi<User>("/api/v1/auth/me"),serverApi<PortalPayload>(`/api/v1/portal/${division}/${role}/${section}`).catch((e)=>{if((agentApplications||agentTasks)&&e instanceof ApiError&&e.status===404)return null;throw e})])}catch(e){return accessUnavailable(e, `/${division}/login`)}
+let user:User;let data:PortalPayload|null;try{[user,data]=await Promise.all([serverApi<User>("/api/v1/auth/me"),serverApi<PortalPayload>(`/api/v1/portal/${division}/${role}/${section}`).catch((e)=>{if((agentApplications||agentDocuments||agentTasks)&&e instanceof ApiError&&e.status===404)return null;throw e})])}catch(e){return accessUnavailable(e, `/${division}/login`)}
 if(!data&&user.role!=="super_admin")return accessUnavailable(new ApiError("Workspace not found",404), `/${division}/login`);const teacherWorkspace=division==="it"&&role==="trainer";
 // AGN-002: an agency's staff see no Team/Commissions links; the full `nav` above still admits a typed URL, so the server's 403 card shows.
 const agent=key==="overseas/agent";
@@ -14,8 +16,8 @@ const agent=key==="overseas/agent";
 // AGT-002 roster below is retitled as what it is -- application status of the students who have a login.
 // AGN-007 (DEC-SCOPE-049): the agency's own universities -- the panel is the page (the payload is header-only).
 // AGN-008: the agency Applications page is the applications panel (list, detail, filters); the generic table is replaced there only.
-// AGN-016 (DEC-SCOPE-051): the agency Tasks page -- the payload is header-only (the Universities precedent) and still gates the page.
-const main=agentApplications?<AgentApplicationsSection user={user}/>:agentTasks?<AgentTasksSection user={user}/>:!data?null:agent&&section==="students"?<>
+// AGN-016 (DEC-SCOPE-053): the agency Tasks page -- the payload is header-only (the Universities precedent) and still gates the page.
+const main=agentApplications?<AgentApplicationsSection user={user}/>:agentDocuments?<AgentDocumentsSection user={user}/>:agentTasks?<AgentTasksSection user={user}/>:!data?null:agent&&section==="students"?<>
 <AgentStudentsSection user={user}/>
 <PortalSection data={{...data,title:"Application status",subtitle:"Students who have a login, with each one's current application (AGT-002)."}}/>
 </>:agent&&section==="universities"?<AgentUniversitiesPanel memberRole={user.agent_member_role}/>:<PortalSection data={data}/>;

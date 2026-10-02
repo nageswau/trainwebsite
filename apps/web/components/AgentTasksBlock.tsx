@@ -7,7 +7,7 @@ import AgentTasksPanel from "./AgentTasksPanel";
 import type { TaskView } from "@/lib/agentTasks";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-// AGN-016 (DEC-SCOPE-051): "New task" + the list, shared by the Tasks page (student picked in the form) and a student's card (student
+// AGN-016 (DEC-SCOPE-053): "New task" + the list, shared by the Tasks page (student picked in the form) and a student's card (student
 // fixed; read-only when archived). After a save the list reloads and focus returns to the New task button.
 export default function AgentTasksBlock({ view, studentId, archived = false, Heading = "h3" }: { view: TaskView; studentId?: string; archived?: boolean; Heading?: "h3" | "h6" }) {
   const [adding, setAdding] = useState(false);

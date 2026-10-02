@@ -44,6 +44,9 @@ STAFF_REFUSED = [
     ("Commission", "get", "/api/v1/workflows/overseas/agent/commissions", None, "Only an agency Master can view commissions"),
     ("Commission", "post", "/api/v1/workflows/overseas/agent/commissions/{zero}/claim", None, "Only an agency Master can view commissions"),
     ("Commission", "get", PORTAL + "/commissions", None, "Only an agency Master can open this page"),
+    # AGN-014 (DEC-SCOPE-051): the commission report and its CSV are Master-only too.
+    ("Commission", "get", "/api/v1/workflows/overseas/agent/commissions/report", None, "Only an agency Master can view commissions"),
+    ("Commission", "get", "/api/v1/workflows/overseas/agent/commissions/report.csv", None, "Only an agency Master can view commissions"),
     ("Add University", "post", "/api/v1/admin/universities", {}, "Admin role required"),
     ("Delete Student", "post", RECORDS + "/{record}/archive", None, "Only an agency Master can archive students"),
     ("Delete Student", "post", RECORDS + "/{archived_record}/unarchive", None, "Only an agency Master can archive students"),
@@ -91,15 +94,17 @@ MASTER_ALLOWED = [
     ("Create Staff Login", "post", STAFF, {"full_name": "New Staff", "email": "{fresh_email}"}, 201),
     ("Deactivate Staff", "post", STAFF + "/{other_staff}/deactivate", None, 200),
     ("Verify Documents", "patch", VERIFY, {"verification_status": "verified"}, 200),
-    ("Reject Documents", "patch", VERIFY, {"verification_status": "rejected"}, 200),
+    ("Reject Documents", "patch", VERIFY, {"verification_status": "rejected", "notes": "Blurred scan"}, 200),  # AGN-009 G1: an agent gives a reason
     ("Reports", "get", PORTAL + "/reports", None, 200),
     ("Commission", "get", "/api/v1/workflows/overseas/agent/commissions", None, 200),
     ("Commission", "get", PORTAL + "/commissions", None, 200),
+    ("Commission", "get", "/api/v1/workflows/overseas/agent/commissions/report", None, 200),  # AGN-014
+    ("Commission", "get", "/api/v1/workflows/overseas/agent/commissions/report.csv", None, 200),  # AGN-014
     ("Staff Management", "patch", STAFF + "/{other_staff}", {"full_name": "Renamed"}, 200),
     ("Staff Management", "post", TEAM + "/masters", {"full_name": "New Master", "email": "{fresh_email}"}, 201),
     ("Create Staff Login", "post", STAFF + "/{other_staff}/reset", None, 200),
     ("Deactivate Staff", "post", STAFF + "/{deactivated_staff}/reactivate", None, 200),
-    ("Reject Documents", "patch", VERIFY, {"verification_status": "changes_required"}, 200),
+    ("Reject Documents", "patch", VERIFY, {"verification_status": "changes_required", "notes": "Blurred scan"}, 200),  # AGN-009 G1
     ("Delete Student", "post", RECORDS + "/{record}/archive", None, 200),
     ("Delete Student", "post", RECORDS + "/{archived_record}/unarchive", None, 200),
     ("Assign Student", "post", RECORDS + "/{record}/assign", {"member_id": "{other_staff}"}, 200),

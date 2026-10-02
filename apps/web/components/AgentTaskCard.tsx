@@ -4,7 +4,7 @@ import LocalTime from "./LocalTime";
 import { assignedText } from "@/lib/agentStudents";
 import type { AgentTask } from "@/lib/agentTasks";
 
-// AGN-016 (DEC-SCOPE-051): one task. State is always a word (Overdue / Open / Done / Cancelled), never colour alone. The cancel
+// AGN-016 (DEC-SCOPE-053): one task. State is always a word (Overdue / Open / Done / Cancelled), never colour alone. The cancel
 // confirm puts focus on the safe choice; Escape closes only the confirm (the student detail panel closes on Escape too).
 export const doneId = (id: string) => `task-done-${id}`;
 export const editId = (id: string) => `task-edit-${id}`;

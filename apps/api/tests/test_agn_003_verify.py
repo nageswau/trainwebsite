@@ -85,10 +85,10 @@ async def test_a_second_review_is_refused_and_the_first_stands(db_session):  # R
     staff = await mk_staff(db_session, ctx["org"], can_verify_documents=True)
     world = await agency_document(db_session, ctx, assigned_to=staff["member"])
     async with client_for(ctx["master"].email) as m, client_for(staff["user"].email) as s:
-        assert (await m.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "rejected"})).status_code == 200
+        assert (await m.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "rejected", "notes": "Blurred scan"})).status_code == 200
         again = await s.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "verified"})
         assert again.status_code == 409 and again.json()["detail"] == "This document has already been reviewed"
-        repeat = await m.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "rejected"})
+        repeat = await m.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "rejected", "notes": "Blurred scan"})
         assert repeat.status_code == 409
     assert (await _doc(db_session, world["document"].id)).verification_status == "rejected"
     assert len(await _notifications(db_session, world["student"].id)) == 1
@@ -99,7 +99,7 @@ async def test_a_document_already_decided_by_a_counselor_is_not_overwritten(db_s
     ctx = await mk_active_org(db_session, name=f"Counselor First {uniq()}")
     world = await agency_document(db_session, ctx, status="verified")
     async with client_for(ctx["master"].email) as m:
-        response = await m.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "rejected"})
+        response = await m.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "rejected", "notes": "Blurred scan"})
     assert response.status_code == 409
     assert (await _doc(db_session, world["document"].id)).verification_status == "verified"
 

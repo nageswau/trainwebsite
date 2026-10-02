@@ -26,7 +26,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
   "agent_student.shortlist_add": "Added a university to a shortlist",
   "agent_student.shortlist_update": "Edited a shortlist entry",
   "agent_student.shortlist_remove": "Removed a university from a shortlist",
-  // AGN-016 (DEC-SCOPE-051): task work on a student.
+  // AGN-016 (DEC-SCOPE-053): task work on a student.
   "agent_student.task_add": "Added a task",
   "agent_student.task_update": "Edited a task",
   "agent_student.task_complete": "Completed a task",

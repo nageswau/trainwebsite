@@ -679,6 +679,16 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
         return _payload("Downloads", "Verified documents and offer letters.", (("name", "Document"), ("url", "Download")), rows)
 
 
+def _paid_per_currency(commissions) -> str:
+    """AGN-014: paid commissions per currency ("INR 20,000 · USD 500"; "INR 0" when none). A no-break space follows the
+    separator, so a narrow metric card wraps between currencies rather than leaving "·" at a line end (browser QA14-01)."""
+    paid: dict[str, float] = {}
+    for c in commissions:
+        if c.status == "paid":
+            paid[c.currency] = paid.get(c.currency, 0.0) + float(c.amount)
+    return " · ".join(f"{currency} {amount:,.0f}" for currency, amount in sorted(paid.items())) or "INR 0"
+
+
 async def _agent(db: AsyncSession, user: User, section: str):
     # AGN-001 (D1): everything referred by any member of the caller's organisation; AGN-004 (G4): a staff member only their
     # assigned students; archived links leave the student list and KPI (D5) while their applications stay.
@@ -709,13 +719,15 @@ async def _agent(db: AsyncSession, user: User, section: str):
         metrics = [
             {"label": "Students", "value": len(students)},
             {"label": "Applications", "value": len(open_applications)},
-            {"label": "Pending actions", "value": await pending_count(db, user)},  # AGN-016 (DEC-SCOPE-051 T5): open tasks in scope
+            {"label": "Pending actions", "value": await pending_count(db, user)},  # AGN-016 (DEC-SCOPE-053 T5): open tasks in scope
         ]
         if not staff:
             metrics += [
                 {"label": "Claimable commission", "value": f"INR {sum(float(c.amount) for c in commissions if c.status in {'eligible', 'estimated'}):,.0f}"},
                 {"label": "Claims", "value": sum(1 for c in commissions if c.status == "claimed")},
             ]
+            # AGN-014 (DEC-SCOPE-051 R1): Revenue = paid commissions, per currency (never summed across currencies).
+            metrics.append({"label": "Revenue", "value": _paid_per_currency(commissions)})
         if user.agent_membership:
             metrics.append({"label": "Your code", "value": user.agent_membership.code})
         return _payload(
@@ -739,7 +751,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
             ({"code": m.code, "name": u.full_name, "email": u.email, "status": "invite pending" if m.status == "active" and u.id in pending else m.status} for m, u in rows),
         )
     if section == "tasks":
-        # AGN-016 (DEC-SCOPE-051): header only -- PortalPage mounts AgentTasksSection (the Universities precedent).
+        # AGN-016 (DEC-SCOPE-053): header only -- PortalPage mounts AgentTasksSection (the Universities precedent).
         return _payload("Tasks & follow-ups", "Follow-ups on your students, earliest due first.")
     if section == "universities":
         # AGN-007 (DEC-SCOPE-049): header only -- PortalPage mounts AgentUniversitiesPanel for this section (the Students precedent).
@@ -800,7 +812,8 @@ async def _agent(db: AsyncSession, user: User, section: str):
             {"metric": "Offers", "value": sum(1 for a, _, _ in applications if a.status in {"offer_received", "accepted"})},
         ]
         if not staff:
-            rows.append({"metric": "Paid commission", "value": sum(float(c.amount) for c in commissions if c.status == "paid")})
+            # AGN-014 browser QA14-04: per currency, like Revenue and the commission report beside it (was one cross-currency sum).
+            rows.append({"metric": "Paid commission", "value": _paid_per_currency(commissions)})
         return _payload("Agent Reports", "Application summary." if staff else "Application and commission summary.", (("metric", "Metric"), ("value", "Value")), rows)
 
 

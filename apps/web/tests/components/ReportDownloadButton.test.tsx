@@ -128,3 +128,27 @@ describe("ReportDownloadButton (ENH-015)", () => {
     expect(clicked).toEqual([]);
   });
 });
+
+describe("ReportDownloadButton CSV (AGN-014)", () => {
+  function csvResponse() {
+    return { ok: true, status: 200, headers: new Headers({ "content-type": "text/csv; charset=utf-8" }), blob: async () => new Blob(["a,b"]), json: async () => ({}) };
+  }
+
+  it("saves a CSV when told to expect one, with its own busy label", async () => {
+    let finish: (value: unknown) => void = () => {};
+    vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { finish = resolve; })));
+    render(<ReportDownloadButton url="/x.csv" label="Download CSV" filename="x.csv" contentType="text/csv" busyLabel="Preparing CSV…" />);
+    fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
+    expect(screen.getByRole("button", { name: "Preparing CSV…" })).toBeInTheDocument();
+    finish(csvResponse());
+    expect(await screen.findByRole("status")).toHaveTextContent("Report downloaded.");
+    expect(clicked).toEqual([{ href: "blob:report", download: "x.csv" }]);
+  });
+
+  it("still refuses a CSV when expecting the default PDF", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(csvResponse()));
+    fireEvent.click(renderButton());
+    expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong on our side. Please try again.");
+    expect(clicked).toEqual([]);
+  });
+});

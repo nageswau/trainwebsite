@@ -9,7 +9,7 @@ import { failureText } from "@/lib/agentShortlist";
 import { type AgentTask, EMPTY_TEXT, PAGE_SIZE, TASKS_URL, type TaskView, taskUrl } from "@/lib/agentTasks";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-// AGN-016 (DEC-SCOPE-051): a page of tasks -- the Tasks page (a view) or one student's card (`studentId`, view "all"). Masters and
+// AGN-016 (DEC-SCOPE-053): a page of tasks -- the Tasks page (a view) or one student's card (`studentId`, view "all"). Masters and
 // the student's assigned staff complete, edit and cancel open tasks; the server refuses everything else (409/404), and the list
 // reloads so the screen shows what is true. Loading, paging, Retry and the inline confirm follow AgentShortlistPanel.
 export default function AgentTasksPanel({ view, studentId, readOnly = false, reloadKey = 0, Heading = "h3" }: {

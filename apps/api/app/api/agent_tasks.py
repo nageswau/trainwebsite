@@ -1,4 +1,4 @@
-"""AGN-016 -- an agency's tasks and follow-ups on its students (DEC-SCOPE-051; spec §3-§5).
+"""AGN-016 -- an agency's tasks and follow-ups on its students (DEC-SCOPE-053; spec §3-§5).
 
 Reuses AGN-004's gate, lock order and scoped student load unchanged (api/agent_students.py is imported, not edited). Masters see
 the agency's tasks; staff only those of students assigned to them (G4), so a reassigned student's tasks follow it (T1); anything
