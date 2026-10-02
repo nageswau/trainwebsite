@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import AgentApplicationEditForm from "./AgentApplicationEditForm";
 import AgentApplicationEnrollment from "./AgentApplicationEnrollment";
 import AgentApplicationStatusForm from "./AgentApplicationStatusForm";
+import AgentApplicationVisa from "./AgentApplicationVisa";
 import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { AgentApplicationDetail as Detail, APPLICATIONS_URL, deadlineText, READ_ONLY_TEXT, stageLabel, todayIso } from "@/lib/agentApplications";
@@ -13,11 +14,12 @@ type Props = { id: string; isMaster?: boolean; onChanged: (d: Detail) => void; o
 // AGN-008: one application -- fields, status history, edit and status change. A 409 (or a status 422) shows the server's words and
 // reloads, so the screen always ends on the real state (stale, withdrawn, archived); the reload also updates the list card (QA8-03).
 // A 422 from Save keeps the edit form open with the user's input (QA8-01). AGN-013: the Enrollment section (Masters act, Staff read).
+// AGN-012: the Visa section (Master and Staff); one section form (Visa or Enrollment) is open at a time.
 export default function AgentApplicationDetail({ id, isMaster = false, onChanged, onClose }: Props) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "gone" | "error">("loading");
   const [editing, setEditing] = useState(false);
-  const [enrolling, setEnrolling] = useState(false); // AGN-013 QA13-06: the enrollment form is open, so no competing status action
+  const [openForm, setOpenForm] = useState<"enrollment" | "visa" | null>(null); // QA13-06, AGN-012: one section form, no competing status action
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const focusAfter = useFocusAfterRender();
   const firstLoad = useRef(true); // the heading takes focus on the first successful load only
@@ -53,7 +55,7 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
     if (next.read_only_reason === "withdrawn" && detail?.read_only_reason !== "withdrawn") focusAfter(readOnlyId);
     setDetail(next);
     setEditing(false);
-    setEnrolling(false);
+    setOpenForm(null);
     setNotice({ text: message, failed: false });
     onChanged(next);
   }
@@ -62,11 +64,11 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
     if (status === 404) return setState("gone");
     if (status === 409 || status === 422) {
       setEditing(false); // the reload shows the real state; stale input must not stay on screen
-      setEnrolling(false);
+      setOpenForm(null);
       load().then((reloaded) => reloaded && onChanged(reloaded));
     }
   }
-  function enrollmentSaved(next: Detail, message: string) {
+  function sectionSaved(next: Detail, message: string) {
     saved(next, message);
     focusAfter(noticeId); // the form and its opener are gone: the announced notice takes focus
   }
@@ -140,10 +142,21 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
         </>
       )}
       {!editing && (
-        // A status change starts both action forms afresh.
-        <Fragment key={detail.status}>
-          <AgentApplicationEnrollment detail={detail} isMaster={isMaster} onSaved={enrollmentSaved} onFailed={editFailed} onOpenChange={setEnrolling} />
-          {!detail.read_only_reason && !enrolling && <AgentApplicationStatusForm detail={detail} onSaved={saved} onFailed={failed} />}
+        // A status, visa stage or decision change starts the section forms afresh.
+        <Fragment key={`${detail.status}|${detail.visa?.stage ?? ""}|${detail.visa?.decision ?? ""}`}>
+          {openForm !== "enrollment" && (
+            <AgentApplicationVisa detail={detail} onSaved={sectionSaved} onFailed={editFailed} onOpenChange={(open) => setOpenForm(open ? "visa" : null)} />
+          )}
+          {openForm !== "visa" && (
+            <AgentApplicationEnrollment
+              detail={detail}
+              isMaster={isMaster}
+              onSaved={sectionSaved}
+              onFailed={editFailed}
+              onOpenChange={(open) => setOpenForm(open ? "enrollment" : null)}
+            />
+          )}
+          {!detail.read_only_reason && !openForm && <AgentApplicationStatusForm detail={detail} onSaved={saved} onFailed={failed} />}
         </Fragment>
       )}
       <h5>Status history</h5>
