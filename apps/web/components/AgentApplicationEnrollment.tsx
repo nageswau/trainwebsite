@@ -13,20 +13,6 @@ type Props = {
   onFailed: (message: string, status?: number) => void;
 };
 
-// The application's university, course and intake -- read-only here; changes go through Edit (DEC-SCOPE-052 E5).
-function Placement({ detail }: { detail: AgentApplicationDetail }) {
-  return (
-    <>
-      <dt>University</dt>
-      <dd>{detail.university}</dd>
-      <dt>Course</dt>
-      <dd>{detail.course ?? "Undecided"}</dd>
-      <dt>Intake</dt>
-      <dd>{detail.intake}</dd>
-    </>
-  );
-}
-
 // AGN-013 (DEC-SCOPE-052): Step 9. A Master confirms enrollment from an offer onwards, after an explicit confirmation (it estimates a
 // commission and ends withdrawal); once enrolled, a Master corrects the date and student ID. Staff read. The server decides; the
 // displayed status travels as `expected_status`, so a stale screen gets a 409 and the detail reloads.
@@ -82,20 +68,15 @@ export default function AgentApplicationEnrollment({ detail, isMaster, onSaved, 
     <section aria-labelledby={id("heading")}>
       <h5 id={id("heading")}>Enrollment</h5>
       {enrolled && (
-        <>
-          <p>
-            <span className="badge badge-done">Enrolled</span> <span className="muted">Final status</span>
-          </p>
-          <dl className="card-stack">
-            <Placement detail={detail} />
-            <dt>Enrollment date</dt>
-            <dd>{detail.enrollment_date ?? "Not recorded"}</dd>
-            <dt>University student ID</dt>
-            <dd>{detail.university_student_id ?? "Not recorded"}</dd>
-            <dt>Confirmed by the agency</dt>
-            <dd>{detail.enrollment_confirmed_at ? formatDateTimeIn(detail.enrollment_confirmed_at, viewerTimeZone(), true) : "—"}</dd>
-          </dl>
-        </>
+        // QA13-01: the header badge is the final status and the fields above carry university, course and intake.
+        <dl className="card-stack">
+          <dt>Enrollment date</dt>
+          <dd>{detail.enrollment_date ?? "Not recorded"}</dd>
+          <dt>University student ID</dt>
+          <dd>{detail.university_student_id ?? "Not recorded"}</dd>
+          <dt>Confirmed by the agency</dt>
+          <dd>{detail.enrollment_confirmed_at ? formatDateTimeIn(detail.enrollment_confirmed_at, viewerTimeZone(), true) : "—"}</dd>
+        </dl>
       )}
       {detail.enrollment_check && <p className="form-warning">{ENROLLMENT_CHECK_TEXT[detail.enrollment_check]}</p>}
       {!enrolled && !isMaster && <p className="muted">An agency Master confirms enrollment.</p>}
@@ -107,8 +88,14 @@ export default function AgentApplicationEnrollment({ detail, isMaster, onSaved, 
       {canAct && open && (
         <form className="form" aria-label="Enrollment" onSubmit={submit}>
           {!enrolled && (
+            // What is being confirmed -- read-only here; changes go through Edit (DEC-SCOPE-052 E5).
             <dl className="card-stack">
-              <Placement detail={detail} />
+              <dt>University</dt>
+              <dd>{detail.university}</dd>
+              <dt>Course</dt>
+              <dd>{detail.course ?? "Undecided"}</dd>
+              <dt>Intake</dt>
+              <dd>{detail.intake}</dd>
             </dl>
           )}
           <div className="field">

@@ -104,8 +104,9 @@ never stored, never blocks.
   (the AGN-004/007 `memberRole` pattern; the server stays the authority).
 - New `AgentApplicationEnrollment.tsx`, rendered in the detail between the fields and `AgentApplicationStatusForm` (unchanged:
   `nextStages` still stops at `status_tracking`):
-  - **Enrolled:** heading "Enrollment", a final-status badge (`badge badge-done`, text "Enrolled" — not colour alone), a `<dl>`
-    with University, Course, Intake, Enrollment date, University student ID ("Not recorded"), Confirmed on. `enrollment_check`
+  - **Enrolled:** heading "Enrollment" and a `<dl>` with Enrollment date, University student ID ("Not recorded"), Confirmed by the
+    agency. The detail header badge ("Enrolled", text) is the final status; university, course and intake are in the fields above
+    (browser QA13-01, 2026-10-02: the earlier repeated badge and placement list were removed). `enrollment_check`
     shows a `.form-warning` line. Master and not read-only: "Edit enrollment details" opens the form prefilled.
   - **Offer / visa / status tracking:** Master — "Confirm enrollment" opens the form (read-only University/Course/Intake summary,
     date `type="date"` required, university student ID optional `maxLength=60`, note optional); submit shows an inline confirmation

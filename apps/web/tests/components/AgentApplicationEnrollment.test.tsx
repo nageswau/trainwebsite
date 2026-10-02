@@ -47,8 +47,12 @@ describe("AgentApplicationEnrollment (AGN-013)", () => {
     const put = fetchMock.mock.calls.find(([, i]) => i?.method === "PUT")!;
     expect(put[0]).toBe("/api/v1/workflows/overseas/agent/crm/applications/a1/enrollment");
     expect(JSON.parse(String(put[1]!.body))).toEqual({ enrollment_date: "2027-10-05", university_student_id: "S-1", expected_status: "offer", notes: null });
+    // QA13-01: the header badge is the final status; the section lists only what enrollment added (no repeated badge, course or intake).
+    expect(screen.getAllByText("Enrolled", { selector: ".badge" })).toHaveLength(1);
     const section = screen.getByRole("region", { name: "Enrollment" });
-    expect(within(section).getByText("Enrolled", { selector: ".badge" })).toBeInTheDocument();
+    expect(within(section).queryByText("Course")).toBeNull();
+    expect(within(section).queryByText("Sep 2027")).toBeNull();
+    expect(within(section).getByText("2027-10-05")).toBeInTheDocument();
     expect(within(section).getByText(/after the intake month/)).toHaveClass("form-warning");
   });
 
