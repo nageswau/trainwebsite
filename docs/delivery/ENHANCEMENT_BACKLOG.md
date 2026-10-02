@@ -3951,9 +3951,10 @@ migration chain (0061 may collide with AGN-010).
 
 **Complexity:** Medium. **Risk:** Medium.
 
-**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-012-agent-visa` (evidence in `docs/quality/RTM.md`, AGN-012 row).
-Pending: browser validation (the Playwright spec `agn-012-visa.spec.ts` is written, not yet run), the independent Codex review and the
-owner's full suites.
+**Status (2026-10-03): VERIFIED, NOT COMPLETE** on `feature/agn-012-agent-visa` (evidence in `docs/quality/RTM.md`, AGN-012 row).
+`main` merged (BDM-001, AGN-010): migration now `0063_agent_visa_details`, decision `DEC-SCOPE-057`. Browser QA done
+(`docs/quality/AGN-012_BROWSER_QA_2026-10-02.md`; Playwright `agn-012` 2/2). Only open item, for the owner: the Browser Use gate (the
+tool is not available here; Playwright Chromium used). Codex review waived by the owner; full suites are the owner's.
 
 ## 2. Dependency graph
 
