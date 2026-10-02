@@ -18,10 +18,11 @@ from app.api.agent_shortlist import _commit
 from app.api.agent_students import _gate, _locked_row
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import AgentOrgMember, AgentTask, AuditLog, User
-from app.schemas import AgentTaskCreate
+from app.models import AgentOrgMember, AgentStudent, AgentTask, AuditLog, User
+from app.schemas import AgentTaskCreate, AgentTaskUpdate
 from app.services.agent_applications import ARCHIVED
-from app.services.agent_tasks import check_application, ensure_capacity, list_page, new_task, task_detail
+from app.services.agent_orgs import lock_active_org
+from app.services.agent_tasks import CLOSED, apply_changes, check_application, close_task, ensure_capacity, list_page, load_scoped_task, new_task, task_detail
 
 logger = logging.getLogger("app.agent_tasks")
 
@@ -81,4 +82,35 @@ async def create_task(payload: AgentTaskCreate, user: User = Depends(get_current
     _audit(db, user, "task_add", task, {"fields": sorted(k for k, v in data.items() if v is not None)})
     await _commit(db, CHANGED)
     _log("agent_task_created", membership, user, student.id, task.id)
+    return {"task": await task_detail(db, user, task.id, datetime.now(UTC))}
+
+
+@router.patch("/{task_id}")
+async def update_task(task_id: UUID, payload: AgentTaskUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Field edits, or `status` alone to close (T2, T6). The agency lock comes first (it also serialises with assign and archive), so
+    the scoped load sees the current owner: a staff member reassigned away gets 404, and a second close waits, then gets 409."""
+    membership = _gate(user)
+    await lock_active_org(db, membership.org_id)
+    task = await load_scoped_task(db, user, task_id, lock=True)
+    student = await db.get(AgentStudent, task.agent_student_id, populate_existing=True)  # in scope: the task's scope is its student's
+    if student.status == "archived":
+        raise _refuse(409, ARCHIVED, membership, user, student.id, task.id)
+    if task.status != "open":
+        raise _refuse(409, CLOSED, membership, user, student.id, task.id)
+    changes = payload.model_dump(exclude_unset=True)
+    if "status" in changes:
+        close_task(task, user, changes["status"])
+        action, event = ("task_complete", "agent_task_completed") if task.status == "done" else ("task_cancel", "agent_task_cancelled")
+        _audit(db, user, action, task)
+        changed = ["status"]
+    else:
+        if changes.get("application_id") not in (None, task.application_id):
+            await check_application(db, user, student, changes["application_id"])
+        changed = apply_changes(task, user, changes)
+        event = "agent_task_updated"
+        if changed:
+            _audit(db, user, "task_update", task, {"fields": changed})
+    await _commit(db, CHANGED)
+    if changed:
+        _log(event, membership, user, student.id, task.id, fields=changed)
     return {"task": await task_detail(db, user, task.id, datetime.now(UTC))}

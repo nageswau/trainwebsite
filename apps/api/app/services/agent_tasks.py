@@ -6,7 +6,7 @@ student's tasks follow it with no write to the task (T1).
 Spec: docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -20,6 +20,7 @@ from app.services.agent_students import application_scope, student_scope
 
 OPEN_TASK_CAP = 100  # T7: per student, checked under the agency lock
 NOT_FOUND = "Task not found"
+CLOSED = "This task is closed"
 CAP_REACHED = f"This student already has {OPEN_TASK_CAP} open tasks. Complete or cancel some first."
 APPLICATION_REFUSED = "Choose an application of this student"
 
@@ -142,6 +143,21 @@ async def ensure_capacity(db: AsyncSession, student_id) -> None:
     count = await db.scalar(select(func.count()).select_from(AgentTask).where(AgentTask.agent_student_id == student_id, AgentTask.status == "open"))
     if count >= OPEN_TASK_CAP:
         raise HTTPException(409, CAP_REACHED)
+
+
+def apply_changes(task: AgentTask, user: User, changes: dict) -> list[str]:
+    """Returns the sorted names of the fields whose value actually changed (a no-op PATCH audits nothing)."""
+    changed = sorted(field for field, value in changes.items() if getattr(task, field) != value)
+    for field in changed:
+        setattr(task, field, changes[field])
+    if changed:
+        task.updated_by_user_id = user.id
+    return changed
+
+
+def close_task(task: AgentTask, user: User, status: str) -> None:
+    """T2/T6: `done` or `cancelled`, final; who and when are the server's."""
+    task.status, task.closed_at, task.closed_by_user_id, task.updated_by_user_id = status, datetime.now(UTC), user.id, user.id
 
 
 def new_task(db: AsyncSession, user: User, student: AgentStudent, data: dict) -> AgentTask:
