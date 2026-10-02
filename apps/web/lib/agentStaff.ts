@@ -23,6 +23,9 @@ const ACTIVITY_LABELS: Record<string, string> = {
   "agent_student.duplicate_override": "Saved a student record despite a duplicate warning",
   "agent.student_link": "Linked a student account",
   "overseas.application.create": "Created an application",
+  "overseas.application.update": "Edited an application",
+  "overseas.application.advance": "Moved an application forward",
+  "overseas.application.withdraw": "Withdrew an application",
   "document.upload": "Uploaded a document",
   "document.verify": "Verified a document",
 };
