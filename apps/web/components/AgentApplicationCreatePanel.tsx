@@ -83,15 +83,19 @@ export default function AgentApplicationCreatePanel({ onCreated }: { onCreated?:
     const optional = Object.fromEntries(OPTIONAL.map(([key]) => [key, String(form.get(key) ?? "").trim() || null]));
     setBusy(true);
     setMessage(null);
-    const outcome = await sendJson(APPLICATIONS_URL, "POST", {
-      agent_student_id: studentId,
-      university_id: universityId,
-      course_id: courseId || null,
-      intake: String(form.get("intake") ?? "").trim(),
-      ...optional,
-    });
-    inFlight.current = false;
-    setBusy(false);
+    let outcome: Awaited<ReturnType<typeof sendJson>>;
+    try {
+      outcome = await sendJson(APPLICATIONS_URL, "POST", {
+        agent_student_id: studentId,
+        university_id: universityId,
+        course_id: courseId || null,
+        intake: String(form.get("intake") ?? "").trim(),
+        ...optional,
+      });
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
     if (!outcome.ok) return setMessage({ text: outcome.message, failed: true });
     setMessage({ text: "Application created.", failed: false });
     formElement.reset();

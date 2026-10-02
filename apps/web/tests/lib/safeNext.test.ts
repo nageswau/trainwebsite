@@ -38,6 +38,12 @@ describe("login next (QA8-07)", () => {
     "javascript:alert(1)",
     "evil.com",
     "/\t/evil.com",
+    // Fix round 1: dot-segment removal must not turn these into "//evil.com".
+    "/.//evil.com",
+    "/x/..//evil.com",
+    "/..//evil.com",
+    "/%2e//evil.com",
+    "/%2E%2E//evil.com",
     "",
     null,
   ])("rejects %s", (value) => {

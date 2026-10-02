@@ -11,5 +11,8 @@ export function safeNextPath(value: string | null | undefined): string | null {
     return null;
   }
   if (url.origin !== BASE) return null;
-  return `${url.pathname}${url.search}${url.hash}`;
+  // Validate the OUTPUT too: dot-segment removal turns "/.//evil.com" or "/%2e//evil.com" into "//evil.com" (protocol-relative).
+  const out = `${url.pathname}${url.search}${url.hash}`;
+  if (out.startsWith("//") || out.includes("\\")) return null;
+  return out;
 }

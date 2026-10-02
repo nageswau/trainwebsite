@@ -29,12 +29,42 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+// Fix round 1: the portal payload stays the page's role/approval gate for everyone; only a Super Admin's 404 renders the section.
+function refuse(me: Record<string, unknown>, message: string) {
+  api.mockImplementation((path: string) => (path === "/api/v1/auth/me" ? Promise.resolve(me) : Promise.reject(new ApiError(message, 403))));
+}
+
 describe("PortalPage agent applications (QA8-09)", () => {
-  it("reads only the session for the agent applications section, so a Super Admin sees the section's note", async () => {
+  it("shows a Super Admin the section's note instead of the payload's Workspace not found", async () => {
     render(await PortalPage({ division: "overseas", role: "agent", section: "applications" }));
-    expect(api.mock.calls.map(([path]) => path)).toEqual(["/api/v1/auth/me"]);
+    expect(api.mock.calls.map(([path]) => path)).toEqual(["/api/v1/auth/me", "/api/v1/portal/overseas/agent/applications"]);
     expect(screen.getByText("Agency applications are managed by the agency's own Masters and Staff.")).toBeInTheDocument();
     expect(screen.queryByText("Workspace not found")).toBeNull();
+  });
+
+  it("still refuses a non-agent role with the access-unavailable card", async () => {
+    refuse({ id: "u1", role: "overseas_student", full_name: "Stu", email: "s@example.local" }, "Role/division mismatch");
+    render(await PortalPage({ division: "overseas", role: "agent", section: "applications" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Access unavailable" })).toBeInTheDocument();
+    expect(screen.getByText("Role/division mismatch")).toBeInTheDocument();
+    expect(screen.queryByText(/Agency applications are managed/)).toBeNull();
+    expect(screen.queryByRole("form", { name: "Create application" })).toBeNull();
+  });
+
+  it("still refuses a pending agent with the access-unavailable card", async () => {
+    refuse({ id: "u2", role: "agent", full_name: "Pending", email: "p@example.local", agent_member_role: "master" }, "Agent registration is pending approval");
+    render(await PortalPage({ division: "overseas", role: "agent", section: "applications" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Access unavailable" })).toBeInTheDocument();
+    expect(screen.getByText("Agent registration is pending approval")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Applications" })).toBeNull();
+  });
+
+  it("still refuses a non-Super-Admin whose payload is not found", async () => {
+    api.mockImplementation((path: string) =>
+      path === "/api/v1/auth/me" ? Promise.resolve({ id: "u3", role: "counselor", full_name: "C", email: "c@example.local" }) : Promise.reject(new ApiError("Workspace not found", 404)),
+    );
+    render(await PortalPage({ division: "overseas", role: "agent", section: "applications" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Access unavailable" })).toBeInTheDocument();
   });
 
   it("still reads the portal payload for the other agent sections", async () => {

@@ -30,9 +30,13 @@ export default function AgentApplicationStatusForm({ detail, onSaved, onFailed }
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
-    const outcome = await sendJson(`${APPLICATIONS_URL}/${detail.id}/status`, "POST", { to_status: to, expected_status: detail.status, notes: notes.trim() || null });
-    inFlight.current = false;
-    setBusy(false);
+    let outcome: Awaited<ReturnType<typeof sendJson>>;
+    try {
+      outcome = await sendJson(`${APPLICATIONS_URL}/${detail.id}/status`, "POST", { to_status: to, expected_status: detail.status, notes: notes.trim() || null });
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
     if (!outcome.ok && to === "withdrawn") returnFocus.current = true; // a failed withdraw: back to the button, if it still renders
     setConfirming(false);
     if (!outcome.ok) return onFailed(outcome.message, outcome.status);

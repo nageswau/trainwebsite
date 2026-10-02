@@ -49,9 +49,13 @@ export default function AgentApplicationEditForm({ detail, onSaved, onFailed, on
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
-    const outcome = await sendJson(`${APPLICATIONS_URL}/${detail.id}`, "PATCH", changed);
-    inFlight.current = false;
-    setBusy(false);
+    let outcome: Awaited<ReturnType<typeof sendJson>>;
+    try {
+      outcome = await sendJson(`${APPLICATIONS_URL}/${detail.id}`, "PATCH", changed);
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
     if (!outcome.ok) return onFailed(outcome.message, outcome.status);
     const next = (outcome.data as { application?: AgentApplicationDetail }).application;
     if (!next) return onFailed("The change could not be confirmed. Reload to see the application.");

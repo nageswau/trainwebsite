@@ -33,7 +33,7 @@ describe("LoginForm next (QA8-07)", () => {
     expect(await signIn()).toBe("/overseas/agent/applications?status=enrolled");
   });
 
-  it.each(["//evil.com", "https://evil.com/overseas/agent/dashboard", "/\\evil.com"])("ignores an off-site next %s and goes to the dashboard", async (next) => {
+  it.each(["//evil.com", "https://evil.com/overseas/agent/dashboard", "/\\evil.com", "/.//evil.com"])("ignores an off-site next %s and goes to the dashboard", async (next) => {
     search = `next=${encodeURIComponent(next)}`;
     expect(await signIn()).toBe("/overseas/agent/dashboard");
   });

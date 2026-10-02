@@ -84,7 +84,7 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
     }
   }
   function editFailed(message: string, status?: number) {
-    focusNotice.current = true;
+    focusNotice.current = status !== 404; // a 404 shows "no longer available" instead of the notice
     if (status === 422) return setNotice({ text: message, failed: true }); // the input stays for the user to correct
     failed(message, status);
   }
