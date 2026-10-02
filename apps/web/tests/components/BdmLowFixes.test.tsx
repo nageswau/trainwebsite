@@ -57,7 +57,7 @@ describe("QA-10: /admin for a signed-in non-Super-Admin", () => {
 describe("QA-12: a Super Admin on a division's BDM page is labelled as Super Admin", () => {
   it("uses the Super Admin label and nav on /it/admin/bdms", async () => {
     vi.mocked(serverApi).mockResolvedValue({ id: "s", role: "super_admin", full_name: "Sam", division: "global", email: "s@x", profile: {} } as never);
-    const tree = elements(await AdminBdmPage({ roles: ["it_admin", "super_admin"], nav: PORTAL_NAV["it/admin"], roleLabel: "IT Administrator" }));
+    const tree = elements(await AdminBdmPage({ roles: ["it_admin", "super_admin"], nav: PORTAL_NAV["it/admin"], roleLabel: "IT Administrator", loginHref: "/it/login" }));
     const shell = tree.find((el) => el.type === PortalShell)!;
     expect(shell.props.roleLabel).toBe("Super Administrator");
     expect(shell.props.nav).toBe(SUPER_ADMIN_NAV);
@@ -65,7 +65,7 @@ describe("QA-12: a Super Admin on a division's BDM page is labelled as Super Adm
 
   it("keeps the division label for the division admin", async () => {
     vi.mocked(serverApi).mockResolvedValue({ id: "i", role: "it_admin", full_name: "Ira", division: "it", email: "i@x", profile: {} } as never);
-    const tree = elements(await AdminBdmPage({ roles: ["it_admin", "super_admin"], nav: PORTAL_NAV["it/admin"], roleLabel: "IT Administrator" }));
+    const tree = elements(await AdminBdmPage({ roles: ["it_admin", "super_admin"], nav: PORTAL_NAV["it/admin"], roleLabel: "IT Administrator", loginHref: "/it/login" }));
     expect(tree.find((el) => el.type === PortalShell)!.props.roleLabel).toBe("IT Administrator");
   });
 });
