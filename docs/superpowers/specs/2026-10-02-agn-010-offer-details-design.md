@@ -101,7 +101,8 @@ application (§0.1 exception).
 
 `services/agent_applications.py`: `OFFER_COUNTED_STATUSES = {"offer", "offer_received", "accepted", "visa_documentation",
 "status_tracking", "enrolled"}` and `counts_as_offer(app)`. `services/portal._agent`: the Reports "Offers" row uses it, and the
-dashboard adds `{"label": "Offers", "value": …}` after Applications for Master and Staff (staff scope already applies).
+dashboard adds `{"label": "Offers", "value": …}` after Pending actions for Master and Staff (staff scope already applies). It
+goes after Pending actions, not after Applications, so AGN-016's asserted order (`Students, Applications, Pending actions`) holds.
 
 ## 6. Web
 

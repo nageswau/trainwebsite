@@ -52,7 +52,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services.agent_applications import WITHDRAWN, owned, stage_label, with_owner
+from app.services.agent_applications import WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
 from app.services.agent_tasks import pending_count
@@ -720,6 +720,8 @@ async def _agent(db: AsyncSession, user: User, section: str):
             {"label": "Students", "value": len(students)},
             {"label": "Applications", "value": len(open_applications)},
             {"label": "Pending actions", "value": await pending_count(db, user)},  # AGN-016 (DEC-SCOPE-053 T5): open tasks in scope
+            # AGN-010 (DEC-SCOPE-054 O5): offers received, withdrawn ones included -- the Reports row's rule.
+            {"label": "Offers", "value": sum(1 for a, _, _ in applications if counts_as_offer(a))},
         ]
         if not staff:
             metrics += [
@@ -809,7 +811,8 @@ async def _agent(db: AsyncSession, user: User, section: str):
         rows = [
             {"metric": "Students", "value": len(students)},
             {"metric": "Applications", "value": len(applications)},
-            {"metric": "Offers", "value": sum(1 for a, _, _ in applications if a.status in {"offer_received", "accepted"})},
+            # AGN-010 (DEC-SCOPE-054 O5): was `status in {"offer_received", "accepted"}`, which missed the `offer` stage (§0 defect).
+            {"metric": "Offers", "value": sum(1 for a, _, _ in applications if counts_as_offer(a))},
         ]
         if not staff:
             # AGN-014 browser QA14-04: per currency, like Revenue and the commission report beside it (was one cross-currency sum).
