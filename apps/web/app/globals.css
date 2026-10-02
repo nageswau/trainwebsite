@@ -125,6 +125,11 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
    (browser QA-07); the panel spans the full width of the action grid (browser QA-01). ENH-020: the funding panel too.
    AGN-014: the commission report likewise (its four tables have five columns). */
 .action-grid > .agent-students, .action-grid > .commission-report { grid-column: 1 / -1; }
+/* AGN-014 browser QA14-09: the breakdowns are 3-4 short columns; without the data-table 650px minimum they fit a phone. */
+.commission-report .table { min-width: 0; }
+@media (max-width: 640px) {
+  .commission-report .table th, .commission-report .table td { padding: 10px 8px; }
+}
 @media (max-width: 640px) {
   .agent-students .btn, .funding-panel .btn, .commission-report .btn { min-height: 44px; }
 }

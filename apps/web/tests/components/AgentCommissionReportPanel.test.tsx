@@ -173,8 +173,12 @@ describe("AgentCommissionReportPanel (AGN-014)", () => {
     for (const name of ["By university", "By country", "By intake"]) expect(screen.getByRole("table", { name })).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("Search all columns...")).toBeNull();
     expect(screen.queryByText("Rows per page")).toBeNull();
-    expect(within(table).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Status", "Amount", "Commissions"]);
+    expect(within(table).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Status", "Amount", "Count"]);
     expect(within(table).getAllByRole("row")[1]).toHaveTextContent("Payout pendingINR 2,0001");
+    // Every breakdown is three columns so it fits a 320 px phone; the university's country rides in its cell.
+    const universities = screen.getByRole("table", { name: "By university" });
+    expect(within(universities).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["University", "Amount", "Count"]);
+    expect(within(universities).getAllByRole("row")[1]).toHaveTextContent("Alpha U (Aland)INR 3,5002");
     const csv = screen.getByRole("button", { name: "Download CSV" });
     expect(csv.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });

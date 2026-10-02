@@ -23,13 +23,13 @@ const FIELD_LABEL: Record<Field, string> = { from: "'From'", to: "'To'" };
 // Lakh/crore grouping is right for rupees only; other currencies use the international 1,000s grouping.
 const money = (amount: number, currency: string) => `${currency} ${amount.toLocaleString(currency === "INR" ? "en-IN" : "en-US", { maximumFractionDigits: 2 })}`;
 
-// QA14-02/09: small fixed tables, the amount (with its currency) right after the label so it stays on screen on a phone.
+// QA14-02/09: small fixed three-column tables -- label, amount (with its currency), count -- so each fits a 320 px phone.
 function tablesFor(report: CommissionReport): Table[] {
-  const tail = [{ key: "amount", label: "Amount" }, { key: "count", label: "Commissions" }];
+  const tail = [{ key: "amount", label: "Amount" }, { key: "count", label: "Count" }];
   const cells = <T extends { amount: number; currency: string; count: number }>(row: T) => ({ amount: money(row.amount, row.currency), count: row.count });
   return [
     { title: "By status", columns: [{ key: "status", label: "Status" }, ...tail], rows: report.by_status.map((r) => ({ status: STATUS_LABELS[r.status] ?? r.status, ...cells(r) })) },
-    { title: "By university", columns: [{ key: "university", label: "University" }, { key: "country", label: "Country" }, ...tail], rows: report.by_university.map((r) => ({ university: r.university, country: r.country, ...cells(r) })) },
+    { title: "By university", columns: [{ key: "university", label: "University" }, ...tail], rows: report.by_university.map((r) => ({ university: `${r.university} (${r.country})`, ...cells(r) })) },
     { title: "By country", columns: [{ key: "country", label: "Country" }, ...tail], rows: report.by_country.map((r) => ({ country: r.country, ...cells(r) })) },
     { title: "By intake", columns: [{ key: "intake", label: "Intake" }, ...tail], rows: report.by_intake.map((r) => ({ intake: r.intake, ...cells(r) })) },
   ];
