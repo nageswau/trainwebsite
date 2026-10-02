@@ -53,8 +53,11 @@ test("Master adds a university; Staff shortlist catalogue and agency entries (AG
   // A catalogue university that has a course: the seed adds courses only to an empty table, so look one up instead of assuming.
   const courses: { title: string; university: string }[] = await (await page.request.get("/api/v1/public/overseas-courses")).json();
   const unis: { name: string; city: string }[] = await (await page.request.get("/api/v1/public/universities")).json();
-  const first = courses.find((c) => unis.some((u) => u.name === c.university))!;
-  const catalogue = { label: `${first.university} — ${unis.find((u) => u.name === first.university)!.city}`, course: first.title };
+  const first = courses.find((c) => unis.some((u) => u.name === c.university));
+  expect(first, "the catalogue has a university with a course").toBeTruthy();
+  const city = unis.find((u) => u.name === first!.university)?.city;
+  expect(city, "the catalogue university has a city").toBeTruthy();
+  const catalogue = { name: first!.university, label: `${first!.university} — ${city}`, course: first!.title };
 
   // Staff: view-only Universities; shortlist a catalogue entry and the agency entry from the student detail view.
   const staffPage = await (await browser.newContext()).newPage();
@@ -74,15 +77,30 @@ test("Master adds a university; Staff shortlist catalogue and agency entries (AG
   await staffPage.getByLabel("University (required)").selectOption({ label: `${uniName} — Atlantis` });
   await staffPage.getByLabel("Course").fill("BA Typed E2E");
   await staffPage.keyboard.press("Enter");
-  await expect(staffPage.getByRole("list", { name: "Shortlist" }).getByText(uniName)).toBeVisible();
+  const shortlist = staffPage.getByRole("list", { name: "Shortlist" });
+  await expect(shortlist.getByRole("listitem")).toHaveCount(2);
+  await expect(shortlist.getByText(catalogue.name)).toBeVisible();
+  await expect(shortlist.getByText(catalogue.course)).toBeVisible();
+  await expect(shortlist.getByText(uniName)).toBeVisible();
+  await expect(shortlist.getByText("BA Typed E2E")).toBeVisible();
 
-  // /public never shows it.
-  const anon = await (await browser.newContext()).newPage();
+  // /public never shows it. Positive control first: the catalogue renders and its search finds a catalogue university, so the
+  // absence check below cannot pass on an empty or not-yet-rendered page.
+  const anonContext = await browser.newContext();
+  const anon = await anonContext.newPage();
   await anon.goto("/overseas/universities");
+  const search = anon.getByPlaceholder("Search university, city, or eligibility…");
+  await search.fill(catalogue.name);
+  await expect(anon.getByRole("heading", { name: catalogue.name, exact: true }).first()).toBeVisible();
+  await search.fill(uniName);
+  await expect(anon.getByRole("heading", { name: catalogue.name, exact: true })).toHaveCount(0);
   await expect(anon.getByText(uniName)).toHaveCount(0);
+  await anonContext.close();
 
   // 375 px: no horizontal scroll on the detail view.
   await staffPage.setViewportSize({ width: 375, height: 800 });
+  await expect(shortlist).toBeVisible();
   const overflow = await staffPage.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+  await staffPage.context().close();
 });
