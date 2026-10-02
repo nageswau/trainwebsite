@@ -3,8 +3,8 @@
 import { FormEvent, useState } from "react";
 import AgentDocumentHistory from "./AgentDocumentHistory";
 import AgentDocumentReviewForm from "./AgentDocumentReviewForm";
-import { detailMessage, sendRequest } from "@/lib/apiErrors";
-import { AgentDocumentItem, documentName, DOCUMENTS_URL, downloadUrl, FILE_ACCEPT, formatSize, reviewDecisions, statusLabel } from "@/lib/agentDocuments";
+import { sendRequest } from "@/lib/apiErrors";
+import { AgentDocumentItem, documentName, DOCUMENTS_URL, FILE_ACCEPT, formatSize, openDocument, reviewDecisions, statusLabel } from "@/lib/agentDocuments";
 import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import type { User } from "@/lib/types";
 
@@ -12,7 +12,7 @@ type Panel = "review" | "replace" | "history" | null;
 type Note = { text: string; failed: boolean } | null; // this card's own errors
 const STATUS_CLASS: Record<string, string> = { pending: "status pending", verified: "status", rejected: "status error", changes_required: "status error" };
 
-// AGN-009: one document and its actions. Download uses the scoped OVS-005 route (the link is fetched on demand and never stored);
+// AGN-009: one document and its actions. Download uses the scoped OVS-005 route (`openDocument`: fetched on demand, never stored);
 // review follows the §6 matrix; replace is offered only where the server allows it (`replaceable`). After any change the list
 // reloads (`onChanged`) and shows the success message itself, because the document may leave the Pending view; errors stay here.
 export default function AgentDocumentCard({ doc, user, onChanged }: { doc: AgentDocumentItem; user: User; onChanged: (message?: string) => void }) {
@@ -26,16 +26,9 @@ export default function AgentDocumentCard({ doc, user, onChanged }: { doc: Agent
   async function download() {
     setBusy("download");
     setNote(null);
-    try {
-      const response = await fetch(downloadUrl(doc.id));
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || typeof data.url !== "string") return setNote({ text: detailMessage(data.detail, "The document could not be opened."), failed: true });
-      window.open(data.url, "_blank", "noreferrer");
-    } catch {
-      setNote({ text: "Couldn't reach the server. Check your connection and try again.", failed: true });
-    } finally {
-      setBusy(null);
-    }
+    const error = await openDocument(doc.id);
+    setBusy(null);
+    if (error) setNote({ text: error, failed: true });
   }
 
   async function replace(event: FormEvent<HTMLFormElement>) {

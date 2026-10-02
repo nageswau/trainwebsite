@@ -5,7 +5,7 @@ import SearchableSelect from "@/components/SearchableSelect";
 import { isPage, sendRequest } from "@/lib/apiErrors";
 import { APPLICATIONS_URL, AgentApplicationItem } from "@/lib/agentApplications";
 import AgentDocumentTypeField from "./AgentDocumentTypeField";
-import { DOCUMENT_TYPES, documentName, DOCUMENTS_URL, DocumentRequestItem, FILE_ACCEPT, REQUESTS_URL } from "@/lib/agentDocuments";
+import { DOCUMENT_TYPES, documentName, DOCUMENTS_URL, DocumentRequestItem, FILE_ACCEPT, OFFER_LETTER, REQUESTS_URL, UPLOAD_DOCUMENT_TYPES } from "@/lib/agentDocuments";
 import { searchAgentStudents } from "@/lib/agentStudents";
 
 type Choices = { applications: AgentApplicationItem[]; requests: DocumentRequestItem[] };
@@ -70,10 +70,11 @@ export default function AgentDocumentUploadForm({ onUploaded }: { onUploaded: ()
       <form className="form" onSubmit={submit} aria-label="Upload document">
         <SearchableSelect key={formVersion} id="agent-doc-student" label="Student" required noun="student" search={searchAgentStudents} onChange={(option) => setStudentId(option?.id ?? "")} />
         <div className="form-grid">
-          <AgentDocumentTypeField idPrefix="agent-doc" value={type} onChange={setType} />
+          <AgentDocumentTypeField idPrefix="agent-doc" value={type} onChange={setType} types={UPLOAD_DOCUMENT_TYPES} />
           <div className="field">
-            <label htmlFor="agent-doc-application">Application (optional)</label>
-            <select id="agent-doc-application" name="application_id" disabled={!choices.applications.length} defaultValue="">
+            {/* AGN-010 O3: an offer letter belongs to one application (the server answers 422 without it). */}
+            <label htmlFor="agent-doc-application">{type === OFFER_LETTER ? "Application (required for an offer letter)" : "Application (optional)"}</label>
+            <select id="agent-doc-application" name="application_id" required={type === OFFER_LETTER} disabled={!choices.applications.length} defaultValue="">
               <option value="">{studentId ? (choices.applications.length ? "None" : "No applications") : "Choose a student first"}</option>
               {choices.applications.map((a) => (
                 <option key={a.id} value={a.id}>

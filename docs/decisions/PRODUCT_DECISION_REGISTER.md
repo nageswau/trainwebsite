@@ -3122,3 +3122,39 @@ allowlist; the agent dashboard gains one metric after "Applications". No change 
 - **B10 (QA-03)** the reporting-manager picker shows each manager's **email** as a detail line, so same-name managers can be told apart. `GET /admin/bdm-managers` now returns `{id, full_name, email}` to the three admin roles (this supersedes the earlier "no email in the picker" choice in §12.3 of the design).
 - **B11 (QA-05)** BDM managers recover their password **inside the admin portal**: public `/admin/forgot-password` and `/admin/reset-password` pages, a "Forgot your password?" link on `/admin/login`, and a `bdm_manager`'s set-password link now opens `/admin/reset-password`. Every other role's link is unchanged (Super Admin stays on `/it`).
 - Fixes without a new decision: the BDM list spans the full row on desktop (QA-01); the picker is a server-searched combobox, so no manager is unreachable (QA-02, `q` on `/admin/bdm-managers`); the admin list is searchable by name, email or Employee ID and filters to a newly created BDM (QA-04, `q` on `/admin/bdms`, ANDed with the type scope); keyboard focus returns to the row after save/status changes and to the message after an error (QA-06).
+
+### DEC-SCOPE-056 — Agent offer details: type, date, deadline, conditions, offer letter (`AGN-010`)
+
+**ID note:** drafted as `DEC-SCOPE-054` with migration `0060_agent_offer_details` (both free on `main` @ `9adcbca`); renumbered
+`DEC-SCOPE-056` on merging `main` @ `aad6b7c`, where `054` is `AGN-013` (PR #44) and `055` is `bdm-001` (PR #45). The migration
+is now `0062_agent_offer_details`, after `0061_bdm_profiles` (one head). AGN-010 commits from before this merge that say
+`DEC-SCOPE-054` mean this decision.
+
+**Question:** backlog item ang-010 "Offer details (Step 6)": conditional/unconditional offer, offer date, deadline, conditions and
+offer document. Acceptance: an offer deadline before the offer date → 422; a conditional offer requires conditions; switching to
+unconditional is recorded in history; the offer counts in dashboards (fixes the §0 defect for this path).
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 6 names the fields only; no rules, counts or
+§6 row. Existing: AGN-008 `offer_deadline` (A3) and the stage list; AGN-009 documents; `offer_letter_url` used by other roles; the agent
+Reports "Offers" row counted only `offer_received`/`accepted` (the §0 defect).
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL`; design spec
+`docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md` §2):
+
+- **O1 — One current offer per application**, as columns on `overseas_applications`; recording again replaces it and the previous
+  values survive in the status-history notes.
+- **O2 — The deadline is the existing `offer_deadline`** (AGN-008 A3); `offer_deadline < offer_date` → 422 on the offer PUT and the
+  AGN-008 PATCH; the nearest-deadline rule (QA8-13) is unchanged.
+- **O3 — Offer document optional**, picked from AGN-009 documents of type "Offer letter" attached to this application, in scope;
+  download stays on the AGN-009 route.
+- **O4 — `offer_letter_url` untouched**; other roles' views and counts of it are unchanged.
+- **O5 — Offers count** = stage `offer` or later (plus legacy `offer_received`/`accepted`) OR an offer recorded, so withdrawn-after-offer
+  counts. Agent pages only (Reports row, new dashboard KPI); the other stale counts stay for ang-018 (`RAID.md`).
+- **O6 — Conditions are free text**, ≤ 2000 characters.
+- **O7 — Concurrent saves: last write wins**, both in history (row lock); no offer version token.
+
+**Consequences:** migration `0062_agent_offer_details` (four nullable columns); new `PUT …/agent/crm/applications/{id}/offer`
+(`API_CONTRACT.md`); detail gains `offer` and `offer_letters`; upload accepts "Offer letter" (requires an application); audit action
+`overseas.application.offer` joins AGN-021's staff-activity allowlist; the agent dashboard gains "Offers" after the commission metrics (Staff: after "Pending actions"). No
+change to `rbac.py`, `/status`, counselor/university/admin routes or `offer_letter_url`. Several offers, removing an offer and
+notifications are out of scope.

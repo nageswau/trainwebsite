@@ -96,7 +96,17 @@ export type AgentApplicationDetail = AgentApplicationItem & {
   enrollment_confirmed_at: string | null;
   enrollment_check: EnrollmentCheck;
   history: HistoryEntry[];
+  offer: AgentOffer | null;
+  offer_letters: OfferLetterOption[];
 };
+
+// AGN-010 (DEC-SCOPE-056): one current offer per application; its deadline is the application's `offer_deadline` (O2) and its letter
+// an AGN-009 document of type "Offer letter" attached to this application (O3). The server checks every rule again.
+export type OfferType = "conditional" | "unconditional";
+export const OFFER_TYPE_LABELS: Record<OfferType, string> = { conditional: "Conditional", unconditional: "Unconditional" };
+export type OfferLetterOption = { id: string; name: string; verification_status: string };
+export type AgentOffer = { type: OfferType; date: string; deadline: string | null; conditions: string | null; document: OfferLetterOption | null };
+export const offerUrl = (id: string) => `${APPLICATIONS_URL}/${id}/offer`;
 
 export const READ_ONLY_TEXT: Record<"withdrawn" | "archived", string> = {
   withdrawn: "This application is withdrawn, so it can no longer be changed.",

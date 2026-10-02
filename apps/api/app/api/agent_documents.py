@@ -18,7 +18,7 @@ from app.api.agent_students import _gate
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import AgentOrgMember, AgentStudent, AuditLog, DocumentRequest, StudentDocument, User
-from app.schemas import AgentDocumentRequestCreate, AgentDocumentType
+from app.schemas import AgentDocumentRequestCreate, AgentUploadDocumentType
 from app.services import agent_documents as svc
 from app.services.agent_applications import load_scoped as load_scoped_application
 from app.services.agent_orgs import lock_active_org
@@ -31,6 +31,7 @@ router = APIRouter(prefix="/workflows/overseas/agent/crm", tags=["agent-document
 NOT_AGENCY_DOCUMENT = "Only documents your agency uploaded can be replaced"
 DECIDED_BY_STAFF = "A counselor or administrator has reviewed this document, so it can't be replaced"
 APPLICATION_MISMATCH = "Document student does not match the application"
+OFFER_LETTER_NEEDS_APPLICATION = "Choose the application this offer letter belongs to"  # AGN-010 O3
 
 
 def _audit(db: AsyncSession, user: User, action: str, entity_type: str, entity_id, metadata: dict | None = None) -> None:
@@ -87,7 +88,7 @@ async def list_documents(
 @router.post("/documents", status_code=201)
 async def upload_document(
     agent_student_id: UUID = Form(...),
-    document_type: AgentDocumentType = Form(...),
+    document_type: AgentUploadDocumentType = Form(...),
     document_label: str | None = Form(None, max_length=200),
     application_id: UUID | None = Form(None),
     request_id: UUID | None = Form(None),
@@ -97,6 +98,8 @@ async def upload_document(
 ):
     membership = _gate(user)
     label = svc.clean_label(document_type, document_label)
+    if document_type == svc.OFFER_LETTER and application_id is None:
+        raise HTTPException(422, OFFER_LETTER_NEEDS_APPLICATION)
     data, content_type, filename = await svc.read_upload(file)
     await lock_active_org(db, membership.org_id)  # serialises the throttle count for the agency
     await _throttle(db, user, membership, svc.UPLOAD_ACTIONS, svc.UPLOAD_LIMIT, svc.UPLOAD_THROTTLED)

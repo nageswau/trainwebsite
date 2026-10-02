@@ -20,7 +20,7 @@ from app.api.deps import get_current_user
 from app.api.workflows import _maybe_trigger_agent_commission, _notify_user
 from app.core.database import get_db
 from app.models import AgentOrgMember, AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, University, User
-from app.schemas import AgentApplicationCreate, AgentApplicationEnrollment, AgentApplicationStatus, AgentApplicationUpdate
+from app.schemas import OFFER_DEADLINE_BEFORE, AgentApplicationCreate, AgentApplicationEnrollment, AgentApplicationOffer, AgentApplicationStatus, AgentApplicationUpdate
 from app.services.agent_applications import (
     ARCHIVED,
     DEFAULT_NEXT_ACTION,
@@ -32,13 +32,17 @@ from app.services.agent_applications import (
     THROTTLED,
     WITHDRAWN,
     WITHDRAWN_REFUSED,
+    before_offer,
     check_course,
+    check_offer_document,
     check_transition,
     create_wait_seconds,
     detail,
     duplicate_exists,
     list_page,
     load_scoped,
+    offer_change_notes,
+    offer_values,
     owner_record,
 )
 from app.services.agent_orgs import lock_active_org
@@ -147,6 +151,9 @@ async def update_application(application_id: UUID, payload: AgentApplicationUpda
     record = await _refuse_closed(db, user, item)
     changes = payload.model_dump(exclude_unset=True)
     changed = sorted(k for k, v in changes.items() if getattr(item, k) != v)
+    # AGN-010 O2: once an offer is recorded, its deadline (this column) cannot move before the offer date.
+    if "offer_deadline" in changed and item.offer_date is not None and changes["offer_deadline"] is not None and changes["offer_deadline"] < item.offer_date:
+        raise HTTPException(422, OFFER_DEADLINE_BEFORE)
     if "course_id" in changed:
         await check_course(db, item.university_id, changes["course_id"])
         if await duplicate_exists(db, agent_student_id=item.agent_student_id, student_id=item.student_id, university_id=item.university_id, course_id=changes["course_id"], exclude_id=item.id):
@@ -216,4 +223,41 @@ async def save_enrollment(application_id: UUID, payload: AgentApplicationEnrollm
         _log("agent_application_enrolled", membership, user, item.id, from_status=old)
     elif changed:
         _log("agent_application_enrollment_updated", membership, user, item.id, fields=changed)
+    return {"application": await detail(db, user, item, record=record)}
+
+
+@router.put("/{application_id}/offer")
+async def record_offer(application_id: UUID, payload: AgentApplicationOffer, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-010 (DEC-SCOPE-056): record or replace the application's offer. Before `offer` the stage moves to `offer` (D8, forward
+    only); from `offer` on it stays. One history row (its note keeps the earlier values) and one audit row per real change; an
+    identical request writes nothing, so a retry is safe. Concurrent saves queue on the row lock and the last one wins (O7)."""
+    membership = _gate(user)
+    item = await _locked(db, user, membership, application_id)
+    record = await _refuse_closed(db, user, item)
+    if payload.expected_status is not None and payload.expected_status != item.status:
+        raise HTTPException(409, STALE)
+    if payload.offer_document_id is not None:
+        await check_offer_document(db, user, item, payload.offer_document_id)
+    old = offer_values(item)
+    new = {
+        "offer_type": payload.offer_type,
+        "offer_date": payload.offer_date,
+        "offer_deadline": payload.offer_deadline,
+        "offer_conditions": payload.conditions if payload.offer_type == "conditional" else None,
+        "offer_document_id": payload.offer_document_id,
+    }
+    notes = offer_change_notes(old, new)
+    if notes is None:
+        return {"application": await detail(db, user, item, record=record)}
+    old_status = item.status
+    if before_offer(item.status):
+        check_transition(item.status, "offer")
+        item.status = "offer"
+    for key, value in new.items():
+        setattr(item, key, value)
+    fields = sorted(k for k in new if old[k] != new[k])
+    db.add(ApplicationStatusHistory(application_id=item.id, from_status=old_status, to_status=item.status, next_action=item.next_action, notes=notes, changed_by_id=user.id))
+    _audit(db, user, "offer", item.id, {"fields": fields, "offer_type": item.offer_type, "from_status": old_status, "to_status": item.status})
+    await db.commit()
+    _log("agent_application_offer_recorded", membership, user, item.id, fields=fields, stage_moved=old_status != item.status)
     return {"application": await detail(db, user, item, record=record)}
