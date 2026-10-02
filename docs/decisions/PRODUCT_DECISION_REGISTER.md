@@ -3181,3 +3181,47 @@ notifications are out of scope.
 - **V9** Approach A: `POST`/`PATCH …/crm/applications/{id}/visa` in the AGN-008 router; `workflows.py` visa routes untouched.
 
 **Consequences:** migration `0063_agent_visa_details` (four nullable `visa_cases` columns + a decision CHECK); two agency routes; a `visa` block on the agency application detail; four audit actions `overseas.application.visa_start|visa_update|visa_advance|visa_decision` join AGN-021's allowlist; a new `AgentApplicationVisa` component. Unchanged: every existing visa route and response, school/portal/report readers, the application status and enrollment routes, commission. Design: `docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md`. **New Feature ID authorized:** `AGN-012`.
+
+### DEC-SCOPE-058 — Agent deposit collection through EduSphere Razorpay; remittance and refunds recorded by Overseas Admin (`AGN-011`)
+
+**ID note:** drafted as `DEC-SCOPE-057` with migration `0063_application_deposits` (both free on `main` @ `3c4a972`); renumbered `DEC-SCOPE-058` on merging `main` @ `ff27fa4`, where `057` is `AGN-012` (PR #47) holding migration `0063_agent_visa_details`. The migration is now `0064_application_deposits`, after `0063_agent_visa_details` (one head). AGN-011 commits and docs from before this merge that say `DEC-SCOPE-057` or `0063_application_deposits` mean this decision.
+
+**Question:** backlog item ang-011 "Deposit collection through Razorpay (Step 7)": deposit required, amount, payment status, payment
+date and receipt; collected through EduSphere's Razorpay, paid by the agency (Master or Staff) on the student's behalf; finance remits to
+the university outside the system and Overseas Admin records remittance and refunds. How is a deposit stored and paid, who may do what,
+and what may change in the shared payment path?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 7 names the fields only. Backlog Q-06/Q-06b
+("D11/D12") give the money flow and cite "`DEC-SCOPE-035` D5–D21" — **a mis-citation, recorded and not silently corrected:**
+`DEC-SCOPE-035` is ENH-027's psychometric decision and `DEC-SCOPE-038` D11/D12 are AGN-001's admin-created agents and notifications; the
+deposit answers had no register entry until this one. Graphify-led impact analysis, 2026-10-02: `Payment.user_id` is NOT NULL → users
+(cannot hold a no-login student) and the checkout/verify are self-only (STU-010-AC04); the webhook overwrote `status` unconditionally, so
+a later `payment.failed` (distinct event id) could regress a paid payment; receipts carried the payer only; `/payments/mine`, admin
+revenue totals and admin payment lists read every `Payment`.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — the owner's AGN-011 statement and AC1–AC6, and answers to the design
+questions; design spec `docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md` §2):
+
+- **Money flow (backlog D11/D12, restated by the owner):** collected through EduSphere Razorpay; a Master or Staff member pays at checkout
+  for the student (no link to the student); finance remits outside the system; Overseas Admin records remittance and refunds by hand; no
+  Razorpay refund API.
+- **D1 — INR only.** `DEC-PAY-002` (Razorpay multi-currency) stays `NEEDS_CONFIRMATION` and is not decided here.
+- **D2 — Paid-guard for every payment:** a `paid`/`succeeded` payment never changes status again; paid side effects run once, on the move
+  into `paid`, under a row lock. Student-fee behaviour changes only in refusing paid → other.
+- **D3 — One refund**, from `paid` or `remitted`, amount ≤ the paid amount, with date and reason; `refunded` is final.
+- **D4 — `GET /payments/mine` excludes agent deposits;** admin revenue totals and payment lists are unchanged.
+- **D5 — Remit/refund: `overseas_admin` only** (AC4's wording); `super_admin` reads the list.
+- **D6 — New `application_deposits` table;** each pay attempt is a payer-owned `Payment` (`reference_type="agent_deposit"`,
+  `reference_id` = deposit id), so the self-only checkout/verify, signature check, dedup, invoice and receipt are reused.
+- **D7 — Master, and Staff for assigned students,** set and pay the deposit (AGN-003 matrix: both allowed); no new permission flag.
+- **D8 — One active checkout:** another member's open checkout younger than 15 minutes blocks a new one (`409`); at most 10 attempts per
+  deposit per rolling hour (`429`).
+
+**Consequences:** migration `0064_application_deposits` (one new table; `payments` unchanged apart from the `cancelled` status value for
+deposit payments); new `api/agent_deposits.py` (agent PUT, checkout, receipt; admin list, remit, refund) and `services/agent_deposits.py`;
+`payments.py` gains the row-locked paid-guard and the deposit hook, `/mine` filter and a generic-checkout guard; `admin.py` refuses to
+create or discount agent-deposit payments; receipts of agent deposits name the student (AC5); the detail gains `deposit` and
+`payment_available`; deposit set/checkout join the AGN-021 activity allowlist; web: Deposit block, Agent deposits admin page, shared
+`lib/razorpayCheckout.ts`. Out of scope: partial payments, several refunds, notifications (ang-017), network deposit totals (ang-022),
+revenue reclassification, multi-currency. **Status:** implemented on `feature/agn-011-deposit-payment`; **not COMPLETE** — browser
+validation, the owner's full suites and an independent Codex review are pending.

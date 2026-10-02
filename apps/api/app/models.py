@@ -1154,6 +1154,47 @@ class AgentTask(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+DEPOSIT_STATUSES = ("not_required", "pending", "paid", "remitted", "refunded")
+
+
+class ApplicationDeposit(Base, TimestampMixin):
+    """AGN-011 / DEC-SCOPE-058 (EVID-015 §5 Step 7): the university deposit on an agency application, one per application. The agency
+    sets it (`not_required` / `pending`) and pays it through EduSphere Razorpay; every pay attempt is a payer-owned `Payment`
+    (`reference_type="agent_deposit"`, `reference_id` = this id) and `active_payment_id` is the open one. Only the paid hook moves it to
+    `paid`; only an Overseas Admin records `remitted` / `refunded` (D3, D5). INR only (D1)."""
+
+    __tablename__ = "application_deposits"
+    __table_args__ = (
+        CheckConstraint("status IN ('not_required', 'pending', 'paid', 'remitted', 'refunded')", name="ck_application_deposits_status"),
+        CheckConstraint("currency = 'INR'", name="ck_application_deposits_currency"),
+        CheckConstraint("(status = 'not_required') = (NOT required)", name="ck_application_deposits_required"),
+        CheckConstraint("(required AND amount IS NOT NULL AND amount > 0) OR (NOT required AND amount IS NULL AND due_date IS NULL)", name="ck_application_deposits_amount"),
+        CheckConstraint("(paid_payment_id IS NULL) = (status IN ('not_required', 'pending')) AND (paid_payment_id IS NULL) = (paid_at IS NULL)", name="ck_application_deposits_paid"),
+        CheckConstraint("(remitted_at IS NULL) = (remittance_reference IS NULL)", name="ck_application_deposits_remitted"),
+        CheckConstraint(
+            "(refunded_at IS NULL) = (refund_amount IS NULL) AND (refunded_at IS NULL) = (refund_reason IS NULL) AND (refunded_at IS NULL) = (status <> 'refunded') AND (refund_amount IS NULL OR refund_amount > 0)",
+            name="ck_application_deposits_refund",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id", ondelete="RESTRICT"), unique=True)
+    required: Mapped[bool] = mapped_column(Boolean)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    currency: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR")
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(20))
+    active_payment_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("payments.id"), nullable=True)
+    paid_payment_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("payments.id"), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    remitted_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    remittance_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    refunded_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    refund_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    refund_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
 class InboundUniversityEmail(Base, TimestampMixin):
     __tablename__ = "inbound_university_emails"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

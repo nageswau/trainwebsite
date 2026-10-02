@@ -5,45 +5,7 @@ import Script from "next/script";
 
 import { formatCalendarDate } from "@/lib/formatDate";
 import { newIdempotencyKey } from "@/lib/idempotencyKey";
-
-type RazorpaySuccessResponse = {
-  razorpay_payment_id: string;
-  razorpay_order_id: string;
-  razorpay_signature: string;
-};
-
-type RazorpayCheckoutOptions = {
-  key: string;
-  order_id: string;
-  amount: number;
-  currency: string;
-  name: string;
-  description: string;
-  handler: (response: RazorpaySuccessResponse) => void;
-  modal?: { ondismiss?: () => void };
-};
-
-type RazorpayCheckoutInstance = { open: () => void };
-
-declare global {
-  interface Window {
-    Razorpay?: new (options: RazorpayCheckoutOptions) => RazorpayCheckoutInstance;
-  }
-}
-
-// Loaded on demand rather than only trusting the <Script> tag's own timing -- a slow
-// network could still have a user click "Pay Now" before it finishes.
-function loadRazorpayCheckout(): Promise<boolean> {
-  if (typeof window === "undefined") return Promise.resolve(false);
-  if (window.Razorpay) return Promise.resolve(true);
-  return new Promise((resolve) => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-}
+import { openRazorpayCheckout } from "@/lib/razorpayCheckout";
 
 type PaymentRow = {
   id: string;
@@ -128,25 +90,14 @@ export default function FeePaymentPanel() {
       load();
       return;
     }
-    const ready = await loadRazorpayCheckout();
-    setBusyId(null);
-    if (!ready || !window.Razorpay) {
-      setMessage({ id: row.id, text: "Unable to load the payment provider. Please try again.", failed: true });
-      return;
-    }
-    const checkout = new window.Razorpay({
-      key: data.key_id,
-      order_id: data.provider_order_id,
-      amount: Math.round(data.amount * 100),
-      currency: data.currency,
-      name: "EduSphere",
+    const opened = await openRazorpayCheckout(data, {
       description: row.reference_type,
       // Razorpay's own documented client-side confirmation step: the checkout widget
       // calls this the instant a payment succeeds in the browser, with a signature
       // this app can verify itself -- not just a hope that the webhook (which can
       // never reach a local dev server at all) eventually arrives. Without this, "Pay
       // Now" and no receipt option stayed forever after a real successful payment.
-      handler: async (response) => {
+      onPaid: async (response) => {
         setMessage({ id: row.id, text: "Confirming payment…", failed: false });
         const verifyResponse = await fetch(`/api/v1/payments/${row.id}/verify`, {
           method: "POST",
@@ -161,11 +112,10 @@ export default function FeePaymentPanel() {
         setMessage({ id: row.id, text: "Payment confirmed. Your receipt is ready to download.", failed: false });
         load();
       },
-      modal: {
-        ondismiss: () => setMessage({ id: row.id, text: "Checkout closed before completing payment.", failed: false }),
-      },
+      onDismiss: () => setMessage({ id: row.id, text: "Checkout closed before completing payment.", failed: false }),
     });
-    checkout.open();
+    setBusyId(null);
+    if (!opened) setMessage({ id: row.id, text: "Unable to load the payment provider. Please try again.", failed: true });
   }
 
   async function downloadDocument(row: PaymentRow, kind: "invoice" | "receipt") {
