@@ -94,7 +94,7 @@ from app.schemas import (
     SupportTicketUpdate,
     VisaCaseCreate,
 )
-from app.services.agent_applications import DEFAULT_NEXT_ACTION, OVERSEAS_APPLICATION_STAGES, owned, with_owner
+from app.services.agent_applications import DEFAULT_NEXT_ACTION, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, owned, with_owner
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
 from app.services.certificates import generate_certificate_pdf
@@ -1877,6 +1877,9 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     _require(user, {"counselor", "university_rep", "overseas_admin"}, "overseas")
     item = await _assigned_application(db, user, application_id)
     changes = payload.model_dump(exclude_unset=True)
+    # AGN-008 (A1): `withdrawn` is terminal -- no generic status write revives it (nothing set it before AGN-008).
+    if "status" in changes and item.status == WITHDRAWN:
+        raise HTTPException(409, "This application is withdrawn")
     channels = changes.pop("notify_channels", ["email"])
     notes = changes.pop("notes", None)
     if user.role == "university_rep":
@@ -1944,6 +1947,8 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
     # (they retain the generic PATCH above for their own broader corrections).
     _require(user, {"counselor"}, "overseas")
     item = await _assigned_application(db, user, application_id)
+    if item.status == WITHDRAWN:  # AGN-008 (A1): otherwise index -1 would let any target revive it
+        raise HTTPException(409, "This application is withdrawn")
     if payload.to_status not in OVERSEAS_APPLICATION_STAGES:
         raise HTTPException(422, f"'{payload.to_status}' is not a supported application stage yet -- rejection/waitlist/deferral outcomes are an open item (see docs/product/PRD_OPEN_ITEMS.md), not a status this endpoint can set.")
     current_index = OVERSEAS_APPLICATION_STAGES.index(item.status) if item.status in OVERSEAS_APPLICATION_STAGES else -1

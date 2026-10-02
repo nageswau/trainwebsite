@@ -19,18 +19,23 @@ from app.api.deps import get_current_user
 from app.api.workflows import _notify_user
 from app.core.database import get_db
 from app.models import AgentOrgMember, ApplicationStatusHistory, AuditLog, OverseasApplication, University, User
-from app.schemas import AgentApplicationCreate
+from app.schemas import AgentApplicationCreate, AgentApplicationStatus, AgentApplicationUpdate
 from app.services.agent_applications import (
     ARCHIVED,
     DEFAULT_NEXT_ACTION,
     DUPLICATE,
+    STALE,
     THROTTLED,
+    WITHDRAWN,
+    WITHDRAWN_REFUSED,
     check_course,
+    check_transition,
     create_wait_seconds,
     detail,
     duplicate_exists,
     list_page,
     load_scoped,
+    owner_record,
 )
 from app.services.agent_orgs import lock_active_org
 from app.services.agent_students import load_scoped as load_scoped_student
@@ -118,4 +123,56 @@ async def create_application(payload: AgentApplicationCreate, user: User = Depen
             await _notify_user(db, student, "Application created", f"Your application to {university.name} has been created.", "/overseas/student/applications")
     await db.commit()
     _log("agent_application_created", membership, user, item.id)
+    return {"application": await detail(db, user, item)}
+
+
+async def _refuse_closed(db: AsyncSession, user: User, item) -> None:
+    """A15 then A1: an archived student's applications and a withdrawn application are read-only."""
+    record = await owner_record(db, user, item)
+    if record is not None and record.status == "archived":
+        raise HTTPException(409, ARCHIVED)
+    if item.status == WITHDRAWN:
+        raise HTTPException(409, WITHDRAWN_REFUSED)
+
+
+@router.patch("/{application_id}")
+async def update_application(application_id: UUID, payload: AgentApplicationUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    membership = _gate(user)
+    item = await _locked(db, user, membership, application_id)
+    await _refuse_closed(db, user, item)
+    changes = payload.model_dump(exclude_unset=True)
+    changed = sorted(k for k, v in changes.items() if getattr(item, k) != v)
+    if "course_id" in changed:
+        await check_course(db, item.university_id, changes["course_id"])
+        if await duplicate_exists(db, agent_student_id=item.agent_student_id, student_id=item.student_id, university_id=item.university_id, course_id=changes["course_id"], exclude_id=item.id):
+            raise HTTPException(409, DUPLICATE)
+    for key in changed:
+        setattr(item, key, changes[key])
+    if changed:
+        if "next_action" in changed:  # the existing PATCH's rule: a next-action change is part of the status timeline
+            db.add(ApplicationStatusHistory(application_id=item.id, from_status=item.status, to_status=item.status, next_action=item.next_action, changed_by_id=user.id))
+        _audit(db, user, "update", item.id, {"fields": changed})
+    await db.commit()
+    if changed:
+        _log("agent_application_updated", membership, user, item.id, fields=changed)
+    return {"application": await detail(db, user, item)}
+
+
+@router.post("/{application_id}/status")
+async def change_status(application_id: UUID, payload: AgentApplicationStatus, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    membership = _gate(user)
+    item = await _locked(db, user, membership, application_id)
+    await _refuse_closed(db, user, item)
+    if payload.expected_status is not None and payload.expected_status != item.status:
+        raise HTTPException(409, STALE)
+    check_transition(item.status, payload.to_status)
+    old = item.status
+    item.status = payload.to_status
+    if payload.next_action is not None:
+        item.next_action = payload.next_action
+    db.add(ApplicationStatusHistory(application_id=item.id, from_status=old, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id))
+    withdrawn = item.status == WITHDRAWN
+    _audit(db, user, "withdraw" if withdrawn else "advance", item.id, {"from_status": old, "to_status": item.status})
+    await db.commit()
+    _log("agent_application_withdrawn" if withdrawn else "agent_application_advanced", membership, user, item.id, from_status=old, to_status=item.status)
     return {"application": await detail(db, user, item)}

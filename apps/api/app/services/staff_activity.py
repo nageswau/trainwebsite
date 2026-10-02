@@ -20,6 +20,9 @@ STAFF_ACTIVITY_ACTIONS = (
     "agent_student.duplicate_override",
     "agent.student_link",
     "overseas.application.create",
+    "overseas.application.update",
+    "overseas.application.advance",
+    "overseas.application.withdraw",
     "document.upload",
     "document.verify",
 )

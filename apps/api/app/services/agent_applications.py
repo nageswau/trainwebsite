@@ -214,3 +214,25 @@ async def duplicate_exists(db: AsyncSession, *, agent_student_id, student_id, un
     if exclude_id is not None:
         clauses.append(OverseasApplication.id != exclude_id)
     return (await db.scalar(select(OverseasApplication.id).where(*clauses).limit(1))) is not None
+
+
+WITHDRAWN_REFUSED = "This application is withdrawn"
+STALE = "This application changed since you opened it -- reload to see its current status"
+ENROLLED_REFUSED = "Only a counselor, university representative or admin can mark an application enrolled"
+ENROLLED_NOT_WITHDRAWABLE = "An enrolled application cannot be withdrawn"
+
+
+def check_transition(current: str, target: str) -> None:
+    """A4: withdraw from any stage but enrolled; otherwise strictly forward, at most to status_tracking. A current value outside the
+    stages (legacy free text) counts as before the first stage, as counselor /advance treats it."""
+    if target == WITHDRAWN:
+        if current == "enrolled":
+            raise HTTPException(409, ENROLLED_NOT_WITHDRAWABLE)
+        return
+    if target == "enrolled":
+        raise HTTPException(403, ENROLLED_REFUSED)
+    if target not in OVERSEAS_APPLICATION_STAGES:
+        raise HTTPException(422, f"'{target}' is not a supported application stage")
+    current_index = OVERSEAS_APPLICATION_STAGES.index(current) if current in OVERSEAS_APPLICATION_STAGES else -1
+    if OVERSEAS_APPLICATION_STAGES.index(target) <= current_index:
+        raise HTTPException(422, f"Cannot move from '{current}' to '{target}' -- an agent can only move an application forward")
