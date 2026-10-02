@@ -194,25 +194,29 @@ def _deadlines(app: OverseasApplication) -> tuple:
     return (("application", app.application_deadline), ("offer", app.offer_deadline))
 
 
+def deadline_query(today: date, last):
+    """One chunk of agency applications with a deadline in a reminder window, after `last` (keyset paging)."""
+    days = [today + timedelta(days=d) for d in WINDOWS]
+    query = (
+        select(OverseasApplication, AgentStudent, University.name)
+        .join(AgentStudent, AgentStudent.id == OverseasApplication.agent_student_id)
+        .join(University, University.id == OverseasApplication.university_id)
+        .where(
+            AgentStudent.status == "active",
+            OverseasApplication.status.notin_([WITHDRAWN, "enrolled"]),
+            or_(OverseasApplication.application_deadline.in_(days), OverseasApplication.offer_deadline.in_(days)),
+        )
+        .order_by(OverseasApplication.id)
+        .limit(CHUNK)
+    )
+    return query if last is None else query.where(OverseasApplication.id > last)
+
+
 async def _deadline_reminders(db: AsyncSession, today: date, counts: dict, cache: dict) -> None:
     days = {today + timedelta(days=d): d for d in WINDOWS}
     last = None
     while True:
-        query = (
-            select(OverseasApplication, AgentStudent, University.name)
-            .join(AgentStudent, AgentStudent.id == OverseasApplication.agent_student_id)
-            .join(University, University.id == OverseasApplication.university_id)
-            .where(
-                AgentStudent.status == "active",
-                OverseasApplication.status.notin_([WITHDRAWN, "enrolled"]),
-                or_(OverseasApplication.application_deadline.in_(list(days)), OverseasApplication.offer_deadline.in_(list(days))),
-            )
-            .order_by(OverseasApplication.id)
-            .limit(CHUNK)
-        )
-        if last is not None:
-            query = query.where(OverseasApplication.id > last)
-        rows = (await db.execute(query)).all()
+        rows = (await db.execute(deadline_query(today, last))).all()
         if not rows:
             return
         for app, record, university in rows:

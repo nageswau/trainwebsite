@@ -46,6 +46,21 @@ def test_beat_runs_the_reminders_daily_at_0800_ist_and_keeps_the_sweeper():
     assert "app.worker.send_daily_reminders_task" in celery.tasks
 
 
+@pytest.mark.asyncio
+async def test_the_partial_deadline_indexes_are_usable_by_the_deadline_query(db_session):
+    """Final review M1 (refuted by this plan): the inner join on agent_student_id is enough for Postgres to prove the indexes'
+    `agent_student_id IS NOT NULL` predicate, so no extra WHERE clause is needed. Whether the deadline columns become index conditions is
+    the planner's choice from table statistics (on this small database it filters instead)."""
+    from sqlalchemy import text
+
+    query = notices_svc.deadline_query(D, None)
+    sql = str(query.compile(dialect=db_session.bind.dialect, compile_kwargs={"literal_binds": True}))
+    await db_session.execute(text("SET LOCAL enable_seqscan = off"))
+    plan = "\n".join(row[0] for row in (await db_session.execute(text(f"EXPLAIN {sql}"))).all())
+    await db_session.rollback()
+    assert "ix_overseas_applications_agent_application_deadline" in plan or "ix_overseas_applications_agent_offer_deadline" in plan, plan
+
+
 @pytest.mark.parametrize(("days", "title"), [(3, "Deadline in 3 days"), (1, "Deadline tomorrow"), (0, "Deadline today")])
 @pytest.mark.asyncio
 async def test_an_application_deadline_in_a_window_reminds_the_assignee(db_session, world, days, title):
