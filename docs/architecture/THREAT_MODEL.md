@@ -62,8 +62,10 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
   `Retry-After`) counted from audit rows under the organisation lock; archived students read-only (`409`); an `expected_status`
   precondition (`409`); the organisation lock then the row `FOR UPDATE` on every write, with audit in the same transaction (ids,
   field names and from/to status only). Abuse cases are tests (spec §7, AC17).
-- **Residual, stated (not fixed in AGN-008):** the counselor/admin PATCH and `/advance` `withdrawn` guard is check-then-act on an
-  unlocked load, so a concurrent agent withdraw can be overwritten by that write; the legacy agent create path writes the same audit
+- **Fixed (final review, 2026-10-02):** the counselor/admin PATCH and `/advance` re-read the application `FOR UPDATE` (row lock only)
+  before the `withdrawn` guard, so a concurrent agent withdraw is seen and the write is refused (`409`), not overwritten
+  (`test_agn_008_concurrency.py`).
+- **Residual, stated (not fixed in AGN-008):** the legacy agent create path writes the same audit
   action without the organisation lock, so the throttle can be exceeded by one; no idempotency key (a retry meets the duplicate or
   forward-only rule); no throttle on reads, edits or status changes; documents for no-login students remain unbuilt.
 

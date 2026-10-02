@@ -310,7 +310,7 @@ Sites that filter by `student_id == user.id` are unaffected and are not touched.
 ### 5.7 Transactions, races and authorization summary
 
 - **Duplicate race.** Each agent student belongs to exactly one organisation, and only this router writes `agent_student_id`. Creates and course edits run under `lock_active_org`, so two concurrent requests cannot both pass the duplicate check. No new DB index is needed. The old cross-agency race on `student_id` through the old path is unchanged and out of scope.
-- **Status race.** The organisation lock plus the row `FOR UPDATE` serialise agent changes on one application. A concurrent counselor PATCH blocks on the row lock until the agent commits. Its stale `from_status` in history is an existing limitation of that endpoint and is recorded, not fixed.
+- **Status race.** The organisation lock plus the row `FOR UPDATE` serialise agent changes on one application. The counselor/admin `PATCH /workflows/overseas/applications/{id}` and `…/advance` re-read the row `FOR UPDATE` (row lock only, no organisation lock, so no lock-order cycle with the agent path's organisation → row) before the `withdrawn` guard, so a write that was waiting on an agent's withdraw sees the committed `withdrawn` and returns `409 "This application is withdrawn"` instead of overwriting it (and cannot reach `enrolled` or accrue a commission). Test: `apps/api/tests/test_agn_008_concurrency.py`. (final review, 2026-10-02)
 - **Authorization:**
   - Agents of an active org only.
   - Masters see the whole org; Staff see only assigned students (`student_scope` / `application_scope`).
