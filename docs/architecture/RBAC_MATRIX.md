@@ -250,6 +250,8 @@ existence mask). The staff UI hides Archive, Unarchive and Assign (`AgentStudent
 
 **Existence mask:** an application outside the caller's scope (another agency's, another staff member's student) answers
 `404 "Application not found"`, never `403`. A14 throttle: 200 creates per agency per rolling 24 hours (`429`, `Retry-After`).
+
+**Addendum, 2026-10-02 (browser QA pass 1):** no permission changed. Page gate kept: `/overseas/agent/applications` still fetches the portal payload for every caller, so a wrong role and a pending/rejected agent are refused as before; only a Super Admin's 404 renders the section's note instead of the panel. Login `next` redirects are same-origin relative paths only (`SECURITY_CONTROLS.md`).
 Counselor, admin and university_rep keep their existing endpoints and now see agent-student applications with the owner's name (A6);
 they get `409` when they try to move a `withdrawn` application. Staff-activity actions `overseas.application.update`, `.advance` and
 `.withdraw` are readable by the Master through `AGN-021`. Proved by `test_agn_008_security.py`, `test_agn_008_create.py`,

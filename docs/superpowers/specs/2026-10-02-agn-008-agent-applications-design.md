@@ -596,7 +596,7 @@ Helpers: `agn004_helpers.mk_record` / `mk_staff`, `agn001_helpers`, `agn003_help
 
 ## 12. Merge notes
 
-- AGN-006 (`0055`, `DEC-SCOPE-048`) and AGN-007 (`0056`, `DEC-SCOPE-049`) are unmerged.
+- AGN-006 (`0055`, `DEC-SCOPE-048`) and AGN-007 (`0056`, `DEC-SCOPE-049`) were unmerged when this was written. **Update 2026-10-02:** both reached `main`; `main` @ `3e06381` is merged in, `0057` is re-chained after `0056_agent_shortlist` (one head), `DEC-SCOPE-050` is kept, and the screen is renumbered `SCR-AGT-010`.
 - If either reaches `main` first, re-chain `0057`'s `down_revision` onto the latest head and keep `DEC-SCOPE-050`. If AGN-008 merges first, they renumber.
 - Shared anchors:
   - `models.py`: AGN-008 edits `OverseasApplication` only.
@@ -621,3 +621,17 @@ AGN-008 is complete only when all of these pass:
 - Documentation (§11)
 
 Browser QA and independent review are done by the owner.
+
+## 14. Addendum, 2026-10-02 — browser QA pass 1 (QA8-01..13) and owner rulings
+
+Owner decisions (`EXPLICIT_APPROVAL`, in-session; recorded as `DEC-SCOPE-050` A16–A19):
+- **QA8-04:** the current sidebar link is highlighted in every portal (global CSS on `aria-current="page"`, desktop and mobile panel).
+- **QA8-10:** the agent dashboard "Applications" KPI and table exclude withdrawn applications and show readable status labels (`stage_label`). Other sections and roles unchanged.
+- **QA8-13:** nearest deadline by stage. Before the offer: the earliest upcoming of the application and offer deadlines, else the most recent past one. `offer`, `visa_documentation`, `status_tracking`: the offer deadline only. `withdrawn`, `enrolled`: none. (Supersedes the stage-independent rule in §5.)
+- **QA8-07 follow-up:** the expired-session "Return to login" keeps the page and filter through a client `ReturnToLoginLink` (owner chose option A); the middleware redirect keeps the query string.
+
+Other fixes (no decision needed): a 422 on Save keeps the edit form open (409 closes and reloads, `onChanged` syncs the list card); focus to the alert and to the read-only notice after a withdraw; in-flight guards on Create, Save and status sends; "Loading…" on a clicked filter link; mobile menu marks the active filter; capitalised legacy stage labels; stale create message cleared.
+
+Security: a pre-existing open redirect in the login form's `next` is fixed (`apps/web/lib/safeNext.ts`: same-origin relative paths only, validated on the normalised output, dot-segment bypass closed; `SECURITY_CONTROLS.md`, `THREAT_MODEL.md`). The page gate on `/overseas/agent/applications` is kept for every role; only a Super Admin's 404 renders the section note.
+
+Reports: `.superpowers/sdd/2026-10-02-agn-008-agent-applications/qa-fix-*.md` (git-ignored, local only).

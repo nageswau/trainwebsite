@@ -83,7 +83,7 @@ test("the admin and university_rep lists name a no-login owner (AC08)", async ({
   }
 });
 
-test("staff see only their assigned students' applications through the filters (AC02/AC11)", async ({ page, browser, request }) => {
+test("staff see only their assigned students' applications through the filters (AC02/AC11)", async ({ page, browser }) => {
   test.setTimeout(120_000);
   const unique = Date.now();
   const masterEmail = await registerApprovedAgency(page, unique, "agn008");

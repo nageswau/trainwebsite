@@ -3,6 +3,7 @@ stay out exactly where they were out before (spec §5.6, A6, A12)."""
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
 
 from app.api import inbound
 from app.models import AgentCommission, AuditLog, VisaCase
@@ -120,6 +121,18 @@ async def test_commission_lists_name_the_no_login_owner(db_session, world):
     async with client_for(world["admin"].email) as c:
         rows = (await c.get(PORTAL + "/admin/commissions")).json()["rows"]
     assert world["record"].full_name in {r["student"] for r in rows}
+
+
+@pytest.mark.asyncio
+async def test_admin_enrolment_accrues_the_commission_of_a_no_login_application(db_session, world):  # AC10
+    async with client_for(world["admin"].email) as c:
+        response = await c.patch(f"/api/v1/workflows/overseas/applications/{world['no_login_app'].id}", json={"status": "enrolled"})
+    assert response.status_code == 200, response.text
+    commission = await db_session.scalar(select(AgentCommission).where(AgentCommission.application_id == world["no_login_app"].id))
+    assert commission is not None and commission.agent_id == world["master"].id and commission.status == "estimated"
+    async with client_for(world["master"].email) as c:
+        rows = (await c.get("/api/v1/workflows/overseas/agent/commissions")).json()
+    assert {(r["application_id"], r["student"]) for r in rows} >= {(str(world["no_login_app"].id), world["record"].full_name)}
 
 
 @pytest.mark.asyncio

@@ -84,6 +84,12 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
 - **Residual, stated (not fixed in AGN-008):** the legacy agent create path writes the same audit
   action without the organisation lock, so the throttle can be exceeded by one; no idempotency key (a retry meets the duplicate or
   forward-only rule); no throttle on reads, edits or status changes; documents for no-login students remain unbuilt.
+- **Threat (found in browser QA, 2026-10-02; pre-existing, not AGN-008-specific):** open redirect through the login form's `next`
+  parameter, used to send a freshly signed-in user to an attacker's site (`//evil.com`, `/\evil.com`, an absolute URL, or a
+  dot-segment form such as `/.//evil.com` that normalises to `//evil.com`).
+- **Fixed:** `apps/web/lib/safeNext.ts` accepts same-origin relative paths only and checks the normalised output, not just the raw
+  input; middleware and the expired-session `ReturnToLoginLink` build `next` as path plus query and go through the same check
+  (`safeNext.test.ts`, `LoginForm.next.test.tsx`). Page gate on `/overseas/agent/applications` kept for every role.
 
 ### Employer domain (new, external-party access)
 - **Threat:** an Employer account viewing more of a Student's profile than GDPR-approved visibility

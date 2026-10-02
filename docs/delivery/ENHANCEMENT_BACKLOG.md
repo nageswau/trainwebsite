@@ -3652,9 +3652,9 @@ response, merge anchors with AGN-006/007, the commission trigger.
 
 **Complexity:** Large. **Risk:** High.
 
-**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-008-agent-applications` — evidence in `docs/quality/RTM.md` (AGN-008
-row). Remaining before COMPLETE: browser QA, the independent Codex review, and the owner's full backend suite run (standing 4–5-story
-cadence). Merge note (2026-10-02): `main` @ `3e06381` (`AGN-006`, `AGN-007`) merged in; `DEC-SCOPE-050` kept (free), `0057` re-chained after `0056_agent_shortlist`, the screen renumbered `SCR-AGT-010` (spec §12).
+**Status (2026-10-02): COMPLETE** on `feature/agn-008-agent-applications` — completion verification in `docs/quality/RTM.md` (AGN-008
+row). Codex review waived by the owner (2026-10-02). Outside COMPLETE, owner-side: the full backend suite (standing 4–5-story
+cadence) and the merge to `main`. Browser QA pass 1 (QA8-01..13) is fixed, with owner rulings in `DEC-SCOPE-050` A16–A19 (reports: `.superpowers/sdd/2026-10-02-agn-008-agent-applications/qa-fix-*.md`, git-ignored, local only). Merge note (2026-10-02): `main` @ `3e06381` (`AGN-006`, `AGN-007`) merged in; `DEC-SCOPE-050` kept (free), `0057` re-chained after `0056_agent_shortlist`, the screen renumbered `SCR-AGT-010` (spec §12).
 
 ## 2. Dependency graph
 

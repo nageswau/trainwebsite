@@ -352,6 +352,7 @@ covers the commission-specific piece).
   terminal value alongside the `DEC-WF-001` stages (no DDL; the rejected/waitlisted/deferred gap above is unchanged), and the
   "Application ID" is the existing `application_reference` (A2). `student_id` may be `NULL` in an application's API response for an
   agent student with no login.
+  **Addendum, 2026-10-02 (browser QA pass 1):** no schema change. The 2026-10-02 merge with `main` @ `3e06381` (`AGN-006`, `AGN-007`) re-chained `0057_agent_applications` after `0056_agent_shortlist` (one head); `nearest_deadline` and the agent dashboard filter are computed in the service layer from the existing columns (`DEC-SCOPE-050` A17/A18).
   **Owner invariant**, enforced at every write site and not as a DB CHECK (the `DEC-SCOPE-018` style): `school_student_id` excludes
   `student_id` and `agent_student_id`; an agent-created application always has `agent_student_id`, plus `student_id` when the agent student
   has a login (A11). School-bridged rows stay excluded from every list that excludes them today (A12). Draft vs Submitted is
