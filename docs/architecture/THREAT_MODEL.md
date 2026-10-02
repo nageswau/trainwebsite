@@ -53,7 +53,7 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
   is audited in the same transaction with ids and field names only. **Residual, stated:** no rate limiting on the new routes
   (none exists for writes platform-wide except invites and link search); last write wins on concurrent edits; a create with
   neither email nor phone is not idempotent; students with no login have no erasure path yet (`PRD_OPEN_ITEMS.md` item 80).
-- **Threat (`AGN-007`, 2026-10-01):** an agency-private university (or a shortlist entry that names one) leaking to another
+- **Threat (`AGN-007`, `DEC-SCOPE-049`, 2026-10-01):** an agency-private university (or a shortlist entry that names one) leaking to another
   agency or to `/public`; a staff member reading or writing the shortlist of a student outside their assignment, or creating,
   editing or deleting an agency university (Master-only); another agency's university or entry id used to probe existence or to
   attach a foreign row; mass assignment of `org_id` / `agent_student_id`; exhausting an agency's lists.

@@ -508,7 +508,9 @@ Design: `docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md` 
   enforced in the service under the agency lock.
 - **Migration `0056`** (`down_revision = "0055_agent_student_counseling"` since merging `main` @ `8f0000d` on 2026-10-02, when AGN-006's `0055` (also on `0054`) landed first; previously `"0054_school_onboarding_bulk"`; drafted as `0053`, then `0055` and re-chained to `0056` when `main` was merged,
   2026-10-01; whichever of `AGN-006` (`0055`) / `AGN-007` / `AGN-008` (`0057`) merges later re-chains): creates the two tables only; no existing table,
-  column or row changes. `downgrade()` drops only the two new tables, entries first.
+  column or row changes. `downgrade()` refuses while either table holds a row ("Cannot downgrade 0056_agent_shortlist: shortlist
+  entries / agency universities exist", as `0047`/`0049`/`0055` do; added 2026-10-02 at verification, `test_agn_007_schema.py::test_downgrade_guard_refuses_while_universities_or_entries_exist`),
+  then drops only the two new tables, entries first.
 - **Feature IDs:** `AGN-007`.
 
 ### 6.9 `InboundUniversityEmail`

@@ -92,6 +92,29 @@ async def test_agency_university_name_and_country_are_unique_per_agency_case_ins
     await db_session.rollback()
 
 
+@pytest.mark.asyncio
+async def test_downgrade_guard_refuses_while_universities_or_entries_exist(db_session):  # preserve database data
+    ctx, student = await _student(db_session)
+    try:
+        # The shared test database holds other tests' rows: empty both tables inside this transaction only (rolled back below).
+        await db_session.execute(sa.text("DELETE FROM agent_student_shortlist_entries"))
+        await db_session.execute(sa.text("DELETE FROM agent_universities"))
+        conn = await db_session.connection()
+        await conn.run_sync(_migration.assert_no_rows)  # empty: the downgrade may proceed
+        agency_uni = AgentUniversity(org_id=ctx["org"].id, name=f"G {uuid.uuid4().hex[:6]}", country="Ireland")
+        db_session.add(agency_uni)
+        await db_session.flush()
+        with pytest.raises(RuntimeError, match="Cannot downgrade 0056_agent_shortlist: agency universities exist"):
+            await conn.run_sync(_migration.assert_no_rows)
+        db_session.add(AgentStudentShortlistEntry(agent_student_id=student.id, agent_university_id=agency_uni.id))
+        await db_session.flush()
+        with pytest.raises(RuntimeError, match="Cannot downgrade 0056_agent_shortlist: shortlist entries exist"):
+            await conn.run_sync(_migration.assert_no_rows)
+        assert await db_session.scalar(sa.text("SELECT count(*) FROM agent_student_shortlist_entries")) == 1
+    finally:
+        await db_session.rollback()
+
+
 def test_text_is_cleaned_and_controls_rejected():  # Review Focus 5
     assert AgentUniversityCreate(name="  Trinity  ", country="Ireland", city="   ").model_dump() == {"name": "Trinity", "country": "Ireland", "city": None, "entry_requirements": None}
     for bad in ({"name": "   ", "country": "Ireland"}, {"name": "A\x00B", "country": "Ireland"}, {"name": "x" * 201, "country": "Ireland"}):

@@ -3447,7 +3447,7 @@ is superseded for those two §6 rows only.
 
 **Complexity:** Large. **Risk:** Medium.
 
-**Status (2026-10-01): IMPLEMENTED, NOT COMPLETE** on `feature/agn-007-student-shortlist` — evidence in `docs/quality/RTM.md` (AGN-007 row). The Playwright e2e and the lite verification run passed (evidence in the RTM AGN-007 row, including the final-review fix wave). Remaining before COMPLETE: the owner's browser QA, the owner's decision on the independent review, the owner's full backend suite (standing 4–5-story cadence) and the merge (renumber/re-chain against `AGN-006` / `AGN-008`).
+**Status (2026-10-02): COMPLETE** on `feature/agn-007-student-shortlist` — evidence in `docs/quality/RTM.md` (AGN-007 row, "Completion verification") and `docs/quality/AGN-007_BROWSER_QA_2026-10-02.md` (all acceptance criteria PASS in the browser; AC03 DB CHECKs and AC10's 500-university cap and concurrency covered by backend tests). Independent review waived by the owner. Owner-side, outside COMPLETE: the full backend suite (standing 4–5-story cadence), an `ovs-001-discovery` e2e re-run on a clean database, and the merge (re-chain against `AGN-008` `0057` if it lands first).
 
 ---
 

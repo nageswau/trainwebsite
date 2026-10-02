@@ -5,7 +5,8 @@ Revises: 0055_agent_student_counseling
 
 docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md §4. Creates two tables only; no existing table or row changes.
 0001/0003 run Base.metadata.create_all from the CURRENT models, so a database built from scratch already has both tables when this
-runs: each table is created only when missing. downgrade() drops the two new tables (entries first) -- it touches nothing else.
+runs: each table is created only when missing. downgrade() refuses while either table holds a row (as 0047/0049/0055 do), then drops
+the two new tables (entries first) -- it touches nothing else.
 
 Re-chained 2026-10-02 on merging `main` @ `8f0000d`: cut on `0054_school_onboarding_bulk`, but AGN-006's
 `0055_agent_student_counseling` (also on 0054) reached `main` first, so this revision now follows 0055 (one head). A database stamped
@@ -74,6 +75,13 @@ def upgrade() -> None:
         op.create_index("ix_agent_student_shortlist_entries_agent_university_id", "agent_student_shortlist_entries", ["agent_university_id"])
 
 
+def assert_no_rows(bind) -> None:
+    for table, what in (("agent_student_shortlist_entries", "shortlist entries"), ("agent_universities", "agency universities")):
+        if bind.execute(sa.text(f"SELECT 1 FROM {table} LIMIT 1")).first():
+            raise RuntimeError(f"Cannot downgrade 0056_agent_shortlist: {what} exist. Remove them deliberately first.")
+
+
 def downgrade() -> None:
+    assert_no_rows(op.get_bind())
     op.drop_table("agent_student_shortlist_entries")
     op.drop_table("agent_universities")
