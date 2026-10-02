@@ -2920,3 +2920,23 @@ Staff browser flows were verified and the named-staff Assign action built (2026-
 - **C9 — Leave prompt** on unsaved counseling changes.
 
 **Consequences:** migration `0055_agent_student_counseling` (create-table only; no existing row read or written; downgrade refuses while records exist); one new route; an additive `counseling` key on every student-detail response; Staff Activity allowlist +1 action; no rate limit added (as for the AGN-004 writes — residual in `PRD_OPEN_ITEMS.md`). §5 Step 2 leaves `EVID-015`'s parked list.
+
+### DEC-SCOPE-051 — Commission is Master-only: Revenue on the Master dashboard and agency commission reports (`AGN-014`)
+
+**ID note:** provisional. `DEC-SCOPE-049` is held by `AGN-007` and `DEC-SCOPE-050` by `AGN-008` on their unmerged branches; renumber on merge if `main` takes `051` first.
+
+**Question:** the owner's `AGN-014` statement (in-session, 2026-10-02): "Commission is Master only (§6); Commission/Revenue on the Master dashboard; commission reports", with acceptance criteria: existing commissions are visible to the migrated Master; Staff → `403` on every commission route; the same-admin payout rules are unchanged. What is "Revenue", what do the reports contain, and how are they filtered and exported?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Dashboard "Commission / Revenue", §2 Reports "Commission reports", §6 "Commission ✅ / ❌". Impact analysis, 2026-10-02 (graphify-led):
+- Every agent commission route is already Master-only (`DEC-SCOPE-040` S1: `workflows._require_agent_master`, `api/portal.py` `{team, commissions}`), covered by `AGN-003`'s matrix tests.
+- Migration `0046` made each legacy agent Master M001 of its own organisation without touching `agent_commissions`; commissions are scoped by `org_member_ids`, so the migrated Master already sees them. No test runs the real backfill.
+- No Revenue figure and no agent commission report exist; the Master reports page has one "Paid commission" row.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — answers to structured questions and section-by-section design approval, not the source document's wording):
+- **R1 — Revenue** = total of `paid` commissions, per currency, on the Master dashboard.
+- **R2 — Reports** = breakdowns by status and by university / country / intake, date-range filter, CSV export. No per-staff breakdown (stays parked under `C-10`).
+- **R3 — Date basis** = the commission's created date. **R4 — CSV** = one row per commission.
+- **R5** — existing inline Master checks reused; no shared-helper refactor. **R6** — approach A (two read-only routes in `workflows.py`, a client panel on the agent Reports page).
+- **R7** — date bounds are inclusive UTC calendar days; reading or exporting the report writes no audit row.
+
+**Consequences:** no migration; two Master-only routes `GET /workflows/overseas/agent/commissions/report` and `…/report.csv`; one additive "Revenue" metric on the Master dashboard; a new `AgentCommissionReportPanel`; `ReportDownloadButton` gains two optional props with PDF defaults. Unchanged: commission creation, amount, claim, payout approval and the same-admin rule (`AGT-004`), `RPT-002`, the staff pages. Design: `docs/superpowers/specs/2026-10-02-agn-014-commission-master-reports-design.md`. **New Feature ID authorized:** `AGN-014`.
