@@ -6,16 +6,15 @@ import FormMessage from "@/components/FormMessage";
 import ReportDownloadButton from "@/components/ReportDownloadButton";
 import { SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
 import { detailMessage } from "@/lib/apiErrors";
-import { CSV_URL, REPORT_URL, STATUS_LABELS, type CommissionReport, csvFilename, isReport, readRange, reportQuery, writeRange } from "@/lib/agentCommissionReport";
+import { CSV_URL, REPORT_URL, STATUS_LABELS, type CommissionReport, type DateRange, csvFilename, isReport, readRange, reportQuery, writeRange } from "@/lib/agentCommissionReport";
 
 // AGN-014 (DEC-SCOPE-051): a Master's commission report on the agent Reports page -- breakdowns per currency, a created-date
 // filter and a CSV of the applied range. WorkflowPanel mounts it for Masters only; the server refuses staff (403) regardless.
-type Range = { from: string; to: string };
 type Field = "from" | "to";
 type Failure = { text: string; retry?: boolean; expired?: boolean };
 type Table = { title: string; columns: { key: string; label: string }[]; rows: Record<string, string | number>[] };
 
-const NONE: Range = { from: "", to: "" };
+const NONE: DateRange = { from: "", to: "" };
 const FAILED = "Something went wrong on our side. Please try again.";
 const OFFLINE = "The report could not load. Check your connection and try again."; // QA14-07: not "on our side"
 const FIELD_LABEL: Record<Field, string> = { from: "'From'", to: "'To'" };
@@ -58,18 +57,18 @@ function Breakdown({ table }: { table: Table }) {
 }
 
 export default function AgentCommissionReportPanel() {
-  const [draft, setDraft] = useState<Range>(NONE);
-  const [applied, setApplied] = useState<Range>(NONE);
+  const [draft, setDraft] = useState<DateRange>(NONE);
+  const [applied, setApplied] = useState<DateRange>(NONE);
   const [report, setReport] = useState<CommissionReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [fieldError, setFieldError] = useState<{ field: Field; text: string } | null>(null);
   const latest = useRef(0);
-  const requested = useRef<Range>(NONE); // what "Try again" reloads
+  const requested = useRef<DateRange>(NONE); // what "Try again" reloads
   const inputs = { from: useRef<HTMLInputElement>(null), to: useRef<HTMLInputElement>(null) };
   const fieldErrorId = useId();
 
-  async function load(range: Range) {
+  async function load(range: DateRange) {
     const id = ++latest.current; // a response for an older request is dropped
     requested.current = range;
     setLoading(true);
@@ -123,7 +122,7 @@ export default function AgentCommissionReportPanel() {
     void load(draft);
   }
 
-  function edit(change: Partial<Range>) {
+  function edit(change: Partial<DateRange>) {
     setDraft({ ...draft, ...change });
     setFieldError(null); // the error described the old values
   }

@@ -4,6 +4,8 @@
 export const REPORT_URL = "/api/v1/workflows/overseas/agent/commissions/report";
 export const CSV_URL = `${REPORT_URL}.csv`;
 
+// A filter range as the date inputs hold it: "" means no bound.
+export type DateRange = { from: string; to: string };
 export type ReportGroup = { currency: string; count: number; amount: number };
 export type CommissionReport = {
   date_from: string | null;
@@ -35,7 +37,7 @@ export function reportQuery(from: string, to: string): string {
 // well-formed YYYY-MM-DD values are read back; anything else means "no bound".
 const YYYY_MM_DD = /^\d{4}-\d{2}-\d{2}$/;
 
-export function readRange(search: string): { from: string; to: string } {
+export function readRange(search: string): DateRange {
   const params = new URLSearchParams(search);
   const pick = (key: string) => {
     const value = params.get(key) ?? "";
@@ -44,7 +46,7 @@ export function readRange(search: string): { from: string; to: string } {
   return { from: pick("from"), to: pick("to") };
 }
 
-export function writeRange(range: { from: string; to: string }): void {
+export function writeRange(range: DateRange): void {
   const params = new URLSearchParams(window.location.search);
   for (const key of ["from", "to"] as const) {
     if (range[key]) params.set(key, range[key]);
