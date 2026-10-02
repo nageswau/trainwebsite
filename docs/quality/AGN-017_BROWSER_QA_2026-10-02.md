@@ -56,3 +56,21 @@ The committed e2e spec `tests/e2e/agn-017-notifications.spec.ts` was also run ag
 | QA17-10 | Info (other feature) | Master | Document requests (AGN-009) | Request "Other" with a label containing HTML and CR/LF | Same control-character rule as tasks | 201, label stored with CR/LF (tasks refuse them: 422) | Not AGN-017; the notice never shows the label. |
 
 Screenshots: `.superpowers/sdd/2026-10-02-agn-017-notifications/qa-shots/` (git-ignored). No code was changed.
+
+## Fix pass (2026-10-03)
+
+Each fix was test-first (the test seen failing for the expected reason, then passing); the stack `agn017qa` was rebuilt from the fixed
+tree and every fix re-checked with Browser Use on the same isolated Chromium. No console errors, HTTP ≥ 400 or failed requests.
+
+| ID | Fix | Test (RED → GREEN) | Browser re-check |
+|---|---|---|---|
+| QA17-01 | The agency list waits for the read (at most 1.5 s, failure or not) before navigating on a plain click; modified clicks are left to the browser | `SchoolNotificationList.test.tsx` › readBeforeOpen ×4 | Open from "8 unread" → Applications shows **7** |
+| QA17-03 | Each Open link is `aria-describedby` its notice text (names unchanged) | › "describes each Open link by its notice's text" | AX tree: `Open: New task` ×4, each with its own description |
+| QA17-04 | A task created past due: "was due {date} and is overdue." | `test_agn_017_events.py::test_a_task_created_already_past_due_says_it_was_due` | "A new task on one of your students was due 30 Sep 2026 and is overdue." |
+| QA17-05 | Below 980 px the top bar links the unread count (`.topbar-unread`) | `PortalShell.badge.test.tsx` ×2 | Hidden at 1280; shown at 768 and 375 (0 px overflow); tap → Notifications (screenshot `12-recheck-mobile-topbar`) |
+| QA17-06 | No generic WorkflowPanel on the agency Notifications page | `PortalPage.agentNotifications.test.tsx` (Super Admin case) | Super Admin: 0 forms, no "Send notification" |
+
+Not changed: QA17-02 (`NEEDS_CONFIRMATION` — a product decision on naming the record in a notice), QA17-07 (spec §9 ruling), QA17-08
+(pre-existing shared card), QA17-09 (by design), QA17-10 (AGN-009). Evidence: backend events + AGN-016 create/read 38 passed; web 8 files /
+53 passed plus 12 neighbouring files (school pages that render the list or the shell) 75 passed; `tsc` 0; eslint 0 on the changed files;
+Playwright on the rebuilt stack: `agn-017` 2, `enh-005` 2, `enh-023` 1 — 5 passed.
