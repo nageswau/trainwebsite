@@ -2094,7 +2094,7 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
     student = await db.get(User, item.student_id) if item.student_id else None  # AGN-009: an agency-only document has no account
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
-    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-058 N9): rejected / changes required only
+    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): rejected / changes required only
     member_role = user.agent_membership.role
     await _audit(db, user, "document.verify", "student_document", item.id, {**review.model_dump(), "member_role": member_role})
     await db.commit()
@@ -2128,7 +2128,7 @@ async def verify_document(document_id: UUID, payload: dict, user: User = Depends
     student = await db.get(User, item.student_id) if item.student_id else None
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
-    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-058 N9): an agency document's assignee
+    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): an agency document's assignee
     await _audit(db, user, "document.verify", "student_document", item.id, payload)
     await db.commit()
     return {"id": item.id, "verification_status": item.verification_status}
@@ -2631,7 +2631,7 @@ async def notifications(user: User = Depends(get_current_user), db: AsyncSession
 
 @router.get("/notifications/unread-count", response_model=NotificationUnreadCount)
 async def unread_notification_count(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AGN-017 (DEC-SCOPE-058 N7): the caller's own unread count (it may exceed the newest-100 list above)."""
+    """AGN-017 (DEC-SCOPE-059 N7): the caller's own unread count (it may exceed the newest-100 list above)."""
     count = await db.scalar(select(func.count()).select_from(Notification).where(Notification.user_id == user.id, Notification.read.is_(False)))
     return {"unread": count or 0}
 

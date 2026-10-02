@@ -1,7 +1,7 @@
 # AGN-017 — Agent Notifications + Deadline Reminders — Design
 
 - **Feature:** `AGN-017` (backlog item `ang-017`, `docs/delivery/AGENT_CRM_BACKLOG.md` §4).
-- **Decision:** `DEC-SCOPE-058` (provisional number — next free on `main` @ `e0395d6`), answers N1–N10 below (`EXPLICIT_APPROVAL`,
+- **Decision:** `DEC-SCOPE-059` (provisional number — next free on `main` @ `e0395d6`), answers N1–N10 below (`EXPLICIT_APPROVAL`,
   owner in-session 2026-10-02). Channels were already settled by `DEC-SCOPE-035` **D19** (in-app + email to agency Masters/Staff;
   students get nothing).
 - **Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) names only "Notifications" (§4) and "Monitor
@@ -100,7 +100,7 @@ notified `notification_recipients(agent)`, and those users are removed from the 
   index_where=Notification.dedupe_key.isnot(None)).returning(Notification.id)`, then `queue_deliveries(db, row, user,
   channels=["email"])` for a returned row only.
 
-## 5. Data — migration `0064_agent_notifications` (after `0063_agent_visa_details`; drafted as `0061`)
+## 5. Data — migration `0065_agent_notifications` (after `0064_application_deposits`; drafted as `0061`, then `0064`)
 
 Additive only; no row is read or rewritten; downgrade drops exactly what it added.
 
@@ -199,7 +199,7 @@ migration so `create_all` (0001) and the migration agree.
 | AC7 | Only the email channel is queued; bodies carry no name, email, phone, passport data or user-typed free text (task title, document label, notes); stored text (university name) is stripped of control characters and capped; `action_url` is one of four fixed paths. |
 | AC8 | `unread-count` returns the caller's unread count only; list/read contracts unchanged (including 404 for another user's id). |
 | AC9 | Agent Notifications page in the nav for Master and Staff with list/empty/error/session-expired states; badge only when count > 0; keyboard and screen-reader accessible; usable at 375 px. |
-| AC10 | `0064` upgrades and downgrades cleanly with one head; existing notification rows unchanged. |
+| AC10 | `0065` upgrades and downgrades cleanly with one head; existing notification rows unchanged. |
 
 ## 11. Tests (written first)
 
@@ -224,7 +224,7 @@ migration so `create_all` (0001) and the migration agree.
 | Enrollment commission notice | AC3; `_maybe_trigger_agent_commission` output unchanged |
 | First crontab job / multiple beat processes | Idempotent by unique key; one beat entry |
 | `PortalShell` / `NavItem` used by every portal | Optional field; vitest proves other portals' markup unchanged |
-| Migration chain | `0064` after `0063`; single-head tests updated |
+| Migration chain | `0065` after `0064_application_deposits`; single-head tests updated |
 | Existing tests counting `Notification` rows (`test_agn_001_tenancy`, `test_agn_003_verify`, `test_agn_008_create`) | Re-run; update only where the new agency notice is the legitimate cause, noted per test |
 
 ## 13. Engineering reviews (2026-10-02, before the plan)
@@ -277,5 +277,6 @@ fetched in parallel with the page payload; failure hides the badge, never the pa
 ## 14. Numbering and parallel lanes
 
 Drafted as `DEC-SCOPE-055` and `0061_agent_notifications` (next free on `main` @ `e0395d6`). On merging `main` @ `ff27fa4` (bdm-001,
-AGN-010, AGN-012 hold `055`–`057` and `0061`–`0063`) they became `DEC-SCOPE-058` and `0064_agent_notifications` after
-`0063_agent_visa_details` (precedent: `DEC-SCOPE-051`…`054`).
+AGN-010, AGN-012 hold `055`–`057` and `0061`–`0063`) they became `DEC-SCOPE-058` and `0064_agent_notifications`; on merging
+`main` @ `3d9244f` (AGN-011 holds `058` and `0064_application_deposits`) they became `DEC-SCOPE-059` and
+`0065_agent_notifications` after `0064_application_deposits` (precedent: `DEC-SCOPE-051`…`054`).

@@ -2,11 +2,26 @@ import math
 import re
 import unicodedata
 from datetime import UTC, date, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, StrictBool, StrictInt, StringConstraints, ValidationError, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    EmailStr,
+    Field,
+    StrictBool,
+    StrictInt,
+    StringConstraints,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 from pydantic_core import PydanticCustomError
 
 from app.models import GENDERS
@@ -127,7 +142,7 @@ class NotificationPreferencesOut(BaseModel):
 
 
 class NotificationUnreadCount(BaseModel):
-    """AGN-017 (DEC-SCOPE-058 N7): the caller's own unread notifications, for the nav badge."""
+    """AGN-017 (DEC-SCOPE-059 N7): the caller's own unread notifications, for the nav badge."""
 
     unread: int
 
@@ -908,6 +923,98 @@ class AgentApplicationOffer(BaseModel):
         if self.offer_type == "unconditional" and self.conditions:
             raise PydanticCustomError("offer_conditions_unconditional", "An unconditional offer has no conditions")
         return self
+
+
+# --- AGN-011: deposit collection (DEC-SCOPE-058; docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md §4) ---
+
+DEPOSIT_AMOUNT_FORMAT = "Enter an amount in rupees with up to 2 decimals, for example 50000.50"
+
+
+def _deposit_amount(value):
+    """QA11-07: every amount error in plain words (the agency's deposit and the admin's refund): rupees, more than 0, at most
+    99,999,999.99 (Numeric(12, 2) with headroom), at most 2 decimals."""
+    try:
+        amount = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        raise PydanticCustomError("deposit_amount_format", DEPOSIT_AMOUNT_FORMAT) from None
+    if not amount.is_finite() or amount.as_tuple().exponent < -2:
+        raise PydanticCustomError("deposit_amount_format", DEPOSIT_AMOUNT_FORMAT)
+    if amount <= 0:
+        raise PydanticCustomError("deposit_amount_positive", "The amount must be more than ₹0")
+    if amount > Decimal("99999999.99"):
+        raise PydanticCustomError("deposit_amount_max", "The amount can be at most ₹99,999,999.99")
+    return amount
+
+
+DepositAmount = Annotated[Decimal, BeforeValidator(_deposit_amount)]
+
+
+class AgentDepositSave(BaseModel):
+    """The agency's deposit on an application (§4.2). Currency (INR, D1) and status are server-owned: `extra="forbid"` answers 422."""
+
+    model_config = {"extra": "forbid"}
+    required: bool
+    amount: DepositAmount | None = None
+    due_date: date | None = None
+
+    @field_validator("due_date")
+    @classmethod
+    def _due_date(cls, value):
+        return _application_date(value)
+
+    @model_validator(mode="after")
+    def _deposit_rules(self):
+        if not self.required and (self.amount is not None or self.due_date is not None):
+            raise PydanticCustomError("deposit_not_required", "A deposit that is not required has no amount or due date")
+        if self.required and self.amount is None:
+            raise PydanticCustomError("deposit_amount_required", "Enter the deposit amount")
+        return self
+
+
+DEPOSIT_DATE_FUTURE = "The date cannot be in the future"
+
+
+class DepositRemit(BaseModel):
+    """Overseas Admin records that EduSphere finance remitted the deposit to the university (D12/§4.7)."""
+
+    model_config = {"extra": "forbid"}
+    remitted_on: date
+    reference: str
+
+    @field_validator("remitted_on")
+    @classmethod
+    def _date(cls, value):
+        return _not_future(_application_date(value), "future_remitted_on", DEPOSIT_DATE_FUTURE)  # QA11-01: UTC + 1 day, like AGN-008/010
+
+    @field_validator("reference")
+    @classmethod
+    def _reference(cls, value):
+        value = clean_free_text(value, 100)
+        if not value:
+            raise PydanticCustomError("blank_reference", "Enter the remittance reference")
+        return value
+
+
+class DepositRefund(BaseModel):
+    """Overseas Admin records the one refund (D3). The paid-amount ceiling is checked against the payment in the route."""
+
+    model_config = {"extra": "forbid"}
+    refunded_on: date
+    amount: DepositAmount
+    reason: str
+
+    @field_validator("refunded_on")
+    @classmethod
+    def _date(cls, value):
+        return _not_future(_application_date(value), "future_refunded_on", DEPOSIT_DATE_FUTURE)
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, value):
+        value = clean_free_text(value, 500)
+        if not value:
+            raise PydanticCustomError("blank_reason", "Enter the refund reason")
+        return value
 
 
 # --- AGN-016: agent tasks and follow-ups (DEC-SCOPE-053; docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md §3) ---

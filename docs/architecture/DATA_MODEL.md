@@ -354,6 +354,19 @@ covers the commission-specific piece).
   `offer_letter_url` is untouched (O4). Guarded adds; no existing row is read or rewritten. Downgrade refuses while any `offer_type` is
   set. Design: `docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md` §3.
 
+- **Addendum, 2026-10-02 (`AGN-011`, `DEC-SCOPE-058`; migration `0064_application_deposits`, after `0062_agent_offer_details`;
+  provisional number — AGN-012 is open in parallel).** New table `application_deposits`: `id` UUID PK; `application_id` UUID FK →
+  `overseas_applications.id` `ON DELETE RESTRICT`, **unique** (one deposit per application); `required` BOOL; `amount` NUMERIC(12,2) null;
+  `currency` VARCHAR(3) default `INR`; `due_date` DATE; `status` VARCHAR(20); `active_payment_id`, `paid_payment_id` UUID FK → `payments.id`;
+  `paid_at` TIMESTAMPTZ; `remitted_at` DATE, `remittance_reference` VARCHAR(100); `refunded_at` DATE, `refund_amount` NUMERIC(12,2),
+  `refund_reason` TEXT; `created_by_user_id`, `updated_by_user_id` FK → users; timestamps. CHECKs: status in
+  `not_required|pending|paid|remitted|refunded`; `currency = 'INR'` (D1); `(status = 'not_required') = (NOT required)`; amount > 0 when
+  required, amount and due date null when not; `paid_payment_id`/`paid_at` set exactly when paid/remitted/refunded; remittance pair
+  all-or-nothing; refund triple all-or-nothing, set exactly when `refunded`, amount > 0. **`payments`: no schema change** — deposit
+  payments are `reference_type = 'agent_deposit'`, `reference_id` = the deposit id, owned by the paying member; one new status value
+  `cancelled` (agent deposits only: a superseded or failed checkout). Create-if-missing; downgrade refuses while a deposit exists. Design:
+  `docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md` §3.
+
 - **Addendum, 2026-10-02 (`AGN-009`, `DEC-SCOPE-052`; migration `0058_agent_documents`, after `0057_agent_applications`).**
   `student_documents.student_id` becomes nullable; new nullable columns `agent_student_id` (FK → `agent_students.id`, index
   `ix_student_documents_agent_student_id`), `document_label` String(80), `uploaded_by_user_id` (FK → `users.id`), `fulfils_request_id`
@@ -384,7 +397,7 @@ covers the commission-specific piece).
   TIMESTAMPTZ (first time the agency recorded details). No row is read or written by the upgrade; the downgrade refuses while any of the
   three holds data. The revision id is ≤ 32 characters (`alembic_version.version_num` is `VARCHAR(32)`). `agent_commissions` is unchanged:
   an agency Master's confirmation reaches `enrolled` through the same `ApplicationStatusHistory` write and §6.3 trigger (E3).
-- **Addendum, 2026-10-02 (`AGN-017`, `DEC-SCOPE-058`; migration `0064_agent_notifications`, chained after `0063_agent_visa_details` — drafted as `0061` after `0060`, re-chained on merging `main` @ `ff27fa4`) —
+- **Addendum, 2026-10-02 (`AGN-017`, `DEC-SCOPE-059`; migration `0065_agent_notifications`, chained after `0064_application_deposits` — drafted as `0061`, re-chained as `0064` on merging `main` @ `ff27fa4` and as `0065` @ `3d9244f`) —
   agency notifications and deadline reminders.** `notifications.dedupe_key` VARCHAR(200) NULL with the partial unique index
   `ux_notifications_dedupe_key` (`WHERE dedupe_key IS NOT NULL`): only the daily reminder job sets it
   (`agn017:deadline:{application}:{kind}:{date}:{days_left}:{user}`, `agn017:overdue:{india_date}:{user}`), inserting with

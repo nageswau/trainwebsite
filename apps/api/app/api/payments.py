@@ -13,7 +13,8 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
-from app.models import AuditLog, EMISchedule, Invoice, Payment, PaymentWebhookEvent, Receipt, User
+from app.models import ApplicationDeposit, AuditLog, EMISchedule, Invoice, Payment, PaymentWebhookEvent, Receipt, User
+from app.services import agent_deposits
 from app.services.billing_documents import generate_invoice_pdf, generate_receipt_pdf
 from app.services.payment import payments
 from app.services.storage import storage
@@ -21,6 +22,7 @@ from app.services.storage import storage
 router = APIRouter(prefix="/payments", tags=["payments"])
 
 ADMIN_ROLES = {"super_admin", "it_admin", "overseas_admin"}
+PAID_STATUSES = {"paid", "succeeded"}
 
 
 async def _ensure_invoice(db: AsyncSession, item: Payment, payer: User) -> Invoice:
@@ -46,16 +48,37 @@ async def _ensure_receipt(db: AsyncSession, item: Payment, payer: User) -> Recei
     if existing:
         return existing
     receipt_no = f"RCPT-{date.today():%Y}-{secrets.token_hex(4).upper()}"
-    file_url = generate_receipt_pdf(receipt_no=receipt_no, payer_name=payer.full_name, amount=float(item.amount), currency=item.currency, issued_on=date.today(), reference_type=item.reference_type)
+    student = await agent_deposits.receipt_student(db, item)  # AGN-011 AC5: None for every other payment, so their receipt is unchanged
+    file_url = generate_receipt_pdf(
+        receipt_no=receipt_no, payer_name=payer.full_name, amount=float(item.amount), currency=item.currency, issued_on=date.today(), reference_type=item.reference_type, student_name=student
+    )
     receipt = Receipt(payment_id=item.id, user_id=item.user_id, division=item.division, receipt_no=receipt_no, amount=item.amount, currency=item.currency, file_url=file_url)
     db.add(receipt)
     await db.flush()
     return receipt
 
 
+async def _lock_for_update(db: AsyncSession, item: Payment) -> Payment:
+    """AGN-011 D2: verify and the webhook decide on a locked, freshly read payment, so they cannot both apply the paid side effects. An
+    agent deposit's row is locked first -- the order its checkout and its PUT use (deposit, then payment) -- so they cannot deadlock."""
+    if item.reference_type == agent_deposits.REFERENCE_TYPE and item.reference_id is not None:
+        await db.scalar(select(ApplicationDeposit.id).where(ApplicationDeposit.id == item.reference_id).with_for_update())
+    return await agent_deposits.locked_payment(db, item.id)
+
+
+async def _mark_paid(db: AsyncSession, item: Payment, payer: User, *, source: str, provider_amount: int | None = None) -> None:
+    """The one move into `paid` (D2): the caller has checked the payment is not paid yet, under `_lock_for_update`. An agent deposit's
+    payment then pays its deposit (AC2) -- `provider_amount` (paise, from the webhook) is cross-checked against the stored amount."""
+    item.status = "paid"
+    await _ensure_receipt(db, item, payer)
+    if item.reference_type == agent_deposits.REFERENCE_TYPE:
+        await agent_deposits.on_payment_paid(db, item, source=source, provider_amount=provider_amount)
+
+
 @router.get("/mine")
 async def mine(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    rows = (await db.scalars(select(Payment).where(Payment.user_id == user.id).order_by(Payment.created_at.desc()))).all()
+    # AGN-011 D4: a deposit an agent paid for a student is shown on that application, not in the agent's own fees.
+    rows = (await db.scalars(select(Payment).where(Payment.user_id == user.id, Payment.reference_type != agent_deposits.REFERENCE_TYPE).order_by(Payment.created_at.desc()))).all()
     return [
         {
             "id": x.id,
@@ -157,6 +180,9 @@ async def checkout(
         # (found while adding the idempotency-key gate) let any admin role trigger checkout on
         # another user's payment; fixed here rather than carried forward.
         raise HTTPException(403, "Payment belongs to another user")
+    if item.reference_type == agent_deposits.REFERENCE_TYPE:
+        # AGN-011: a deposit's checkout locks the deposit and reads its amount; this generic route would bypass both.
+        raise HTTPException(409, "Pay this deposit from its application")
     if item.checkout_idempotency_key == idempotency_key and item.checkout_provider_order_id:
         return {"status": "ready", "provider": item.provider, "amount": float(item.amount), "currency": item.currency, "reference": f"PAY-{item.id}", "provider_order_id": item.checkout_provider_order_id, "replayed": True}
     provider = payload.get("provider", "razorpay")
@@ -202,10 +228,10 @@ async def verify_checkout(payment_id: UUID, payload: dict, user: User = Depends(
     expected = hmac.new(settings.razorpay_key_secret.encode(), f"{razorpay_order_id}|{razorpay_payment_id}".encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, razorpay_signature):
         raise HTTPException(400, "Invalid payment signature")
-    if item.status not in {"paid", "succeeded"}:
-        item.status = "paid"
+    item = await _lock_for_update(db, item)
+    if item.status not in PAID_STATUSES:
         item.provider_reference = razorpay_payment_id
-        await _ensure_receipt(db, item, user)
+        await _mark_paid(db, item, user, source="verify")
         db.add(AuditLog(user_id=user.id, action="payment.verify", entity_type="payment", entity_id=str(item.id), metadata_json={"razorpay_payment_id": razorpay_payment_id}))
         await db.commit()
         await db.refresh(item)
@@ -282,15 +308,19 @@ async def webhook(provider: str, request: Request, db: AsyncSession = Depends(ge
         await db.commit()
         return {"received": True, "matched": False}
 
+    item = await _lock_for_update(db, item)
     item.provider = provider
-    item.provider_reference = str(provider_reference) if provider_reference else item.provider_reference
-    item.status = status or item.status
     event_row.payment_id = item.id
     event_row.processed_at = datetime.now(UTC)
-    if item.status in {"paid", "succeeded"}:
-        payer = await db.get(User, item.user_id)
-        if payer:
-            await _ensure_receipt(db, item, payer)
+    # AGN-011 D2: a paid payment never moves again -- a late `payment.failed`, or `order.paid` after `payment.captured` (each with its
+    # own event id, so the dedup above does not catch it), is recorded as processed and changes nothing.
+    if item.status not in PAID_STATUSES:
+        item.provider_reference = str(provider_reference) if provider_reference else item.provider_reference
+        if status in PAID_STATUSES:
+            paise = entity.get("amount")
+            await _mark_paid(db, item, await db.get(User, item.user_id), source="webhook", provider_amount=paise if isinstance(paise, int) else None)  # the FK guarantees the payer
+        else:
+            item.status = status or item.status
     db.add(AuditLog(user_id=None, action="payment.webhook", entity_type="payment", entity_id=str(item.id), metadata_json={"provider": provider, "status": item.status, "event_id": event_id}))
     await db.commit()
     return {"received": True, "matched": True, "status": item.status}

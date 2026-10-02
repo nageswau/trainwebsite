@@ -1,7 +1,8 @@
 # AGN-017 — Agent Notifications + Deadline Reminders Implementation Plan
 
-> **Renumbered after this plan was executed:** on merging `main` @ `ff27fa4` the migration became `0064_agent_notifications` (after
-> `0063_agent_visa_details`) and the decision `DEC-SCOPE-058`. The `0061`/`0060` numbers below are the plan as written.
+> **Renumbered after this plan was executed:** on merging `main` @ `ff27fa4` and then `3d9244f` the migration became
+> `0065_agent_notifications` (after `0064_application_deposits`) and the decision `DEC-SCOPE-059`. The `0061`/`0060` numbers below are
+> the plan as written.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -16,7 +17,7 @@ routes call it before their existing commit. Reminders are made idempotent by a 
 **Tech Stack:** FastAPI, SQLAlchemy 2 async, Pydantic 2, Alembic, PostgreSQL 16, Celery beat; Next.js App Router + TypeScript;
 pytest; vitest; Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md` (`DEC-SCOPE-058`).
+**Spec:** `docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md` (`DEC-SCOPE-059`).
 
 ## Global Constraints
 
@@ -102,7 +103,7 @@ async def test_dedupe_column_and_partial_indexes_exist(db_session):
 
 `models.py` — `Notification`:
 ```python
-    # AGN-017 (DEC-SCOPE-058 N6): set only on scheduled reminders; the partial unique index makes a second run a no-op.
+    # AGN-017 (DEC-SCOPE-059 N6): set only on scheduled reminders; the partial unique index makes a second run a no-op.
     dedupe_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
     __table_args__ = (Index("ux_notifications_dedupe_key", "dedupe_key", unique=True, postgresql_where=text("dedupe_key IS NOT NULL")),)
 ```
@@ -179,7 +180,7 @@ def downgrade() -> None:
 - [ ] **Step 3: Implement**
 
 ```python
-"""AGN-017 (DEC-SCOPE-058): agency notifications and daily reminders. Recipients are the student's active assigned staff member,
+"""AGN-017 (DEC-SCOPE-059): agency notifications and daily reminders. Recipients are the student's active assigned staff member,
 else the organisation's active Masters, never the actor (N2). In-app + email only (D19, N5). Bodies carry no names and no
 user-typed text (spec §8). Nothing here commits except the daily job; event notices ride the caller's transaction."""
 
@@ -285,7 +286,7 @@ async def student_assigned(db: AsyncSession, record: AgentStudent, member_id, ac
 Route (inside `if changed:` before commit):
 ```python
         if new_id:
-            await notices.student_assigned(db, row, new_id, user)  # AGN-017 (DEC-SCOPE-058 N1): in this transaction
+            await notices.student_assigned(db, row, new_id, user)  # AGN-017 (DEC-SCOPE-059 N1): in this transaction
 ```
 (import `from app.services import agent_notifications as notices`.)
 - [ ] **Step 4: Run** `test_agn_017_events.py -k assign` + `test_agn_004_assign*.py` (or the AGN-004 assign file) — PASS.
@@ -570,7 +571,7 @@ def test_beat_runs_the_reminders_daily_at_0800_ist():
 ```python
 @celery.task
 def send_daily_reminders_task():
-    """AGN-017 (DEC-SCOPE-058 N4): daily at 08:00 IST via beat; idempotent per day (notifications.dedupe_key)."""
+    """AGN-017 (DEC-SCOPE-059 N4): daily at 08:00 IST via beat; idempotent per day (notifications.dedupe_key)."""
     from app.services.agent_notifications import run_daily_reminders
 
     return _run_with_fresh_pool(run_daily_reminders)
@@ -603,7 +604,7 @@ class NotificationUnreadCount(BaseModel):
 
 @router.get("/notifications/unread-count", response_model=NotificationUnreadCount)
 async def unread_notification_count(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AGN-017 (DEC-SCOPE-058 N7): the caller's own unread count, for the nav badge."""
+    """AGN-017 (DEC-SCOPE-059 N7): the caller's own unread count, for the nav badge."""
     count = await db.scalar(select(func.count()).select_from(Notification).where(Notification.user_id == user.id, Notification.read.is_(False)))
     return {"unread": count or 0}
 ```
@@ -644,7 +645,7 @@ async def unread_notification_count(user: User = Depends(get_current_user), db: 
 `lib/navigation.ts`:
 ```ts
 export type NavItem = { label:string; href:string; children?:NavItem[]; badge?:number };
-// AGN-017 (DEC-SCOPE-058 N8): Notifications for Masters and staff, after Tasks.
+// AGN-017 (DEC-SCOPE-059 N8): Notifications for Masters and staff, after Tasks.
 //   ["dashboard","students","universities","applications","documents","tasks","notifications","commissions","reports","team"]
 export function withBadge(nav: NavItem[], href: string, count: number | null): NavItem[] {
   return count ? nav.map((item) => (item.href === href ? { ...item, badge: count } : item)) : nav;

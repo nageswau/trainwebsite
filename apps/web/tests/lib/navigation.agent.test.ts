@@ -14,7 +14,7 @@ describe("agentNavFor", () => {
       "/overseas/agent/applications",
       "/overseas/agent/documents",
       "/overseas/agent/tasks",
-      "/overseas/agent/notifications", // AGN-017 (DEC-SCOPE-058 N8): Masters and staff, after Tasks
+      "/overseas/agent/notifications", // AGN-017 (DEC-SCOPE-059 N8): Masters and staff, after Tasks
       "/overseas/agent/reports",
     ]);
     expect(agentNavFor(nav, "staff").map((i) => i.href)).toEqual([

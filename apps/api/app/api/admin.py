@@ -816,6 +816,8 @@ async def create_payment(payload: dict, user: User = Depends(ensure_admin), db: 
     from app.api.payments import _ensure_invoice, _ensure_receipt
     from app.models import AuditLog, Payment
 
+    if payload.get("reference_type") == "agent_deposit":  # AGN-011: only the application's deposit checkout creates these
+        raise HTTPException(422, "Agent deposits are created from the application")
     target = await db.get(User, uuid_reference(payload.get("user_id"), "user reference"))
     if not target:
         raise HTTPException(404, "User not found")
@@ -868,6 +870,8 @@ async def discount_payment(payment_id: UUID, payload: dict, user: User = Depends
         raise HTTPException(404, "Payment not found")
     if user.role != "super_admin" and item.division != user.division:
         raise HTTPException(403, "Wrong division")
+    if item.reference_type == "agent_deposit":  # AGN-011: the deposit's amount is the agency's, read at its checkout
+        raise HTTPException(409, "An agent deposit's amount is set on its application")
     if item.status not in {"pending", "overdue"}:
         raise HTTPException(409, "Only a pending or overdue payment can be discounted")
     reason = str(payload.get("reason") or "").strip()

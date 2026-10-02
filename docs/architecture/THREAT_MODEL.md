@@ -91,6 +91,19 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
   input; middleware and the expired-session `ReturnToLoginLink` build `next` as path plus query and go through the same check
   (`safeNext.test.ts`, `LoginForm.next.test.tsx`). Page gate on `/overseas/agent/applications` kept for every role.
 
+### Agent deposits through Razorpay (`AGN-011`, `DEC-SCOPE-058`, 2026-10-02)
+
+- **Threats:** amount tampering at checkout; paying (or reading the receipt of) another agency's or an unassigned student's deposit;
+  Staff or Master marking a deposit remitted/refunded; a replayed or late webhook regressing a paid payment or paying a deposit twice;
+  two members paying at once; a stale order (amount since edited) paying the deposit; refund above the amount paid; order spam.
+- **Controls:** the checkout reads no body (amount from the deposit row); AGN-008 scope in the `WHERE` clause (`404`); remit/refund on the
+  admin router, `overseas_admin` only; event-id dedup plus a paid-guard on every payment under a row lock; a deposit is paid only by its
+  open checkout at the stored amount; deposit row lock + 15-minute rule; amount edits cancel the open checkout; refund ≤ paid amount;
+  10 attempts per deposit per hour; audit of every step.
+- **Residual, stated:** a payer who completes an already-replaced Razorpay order is charged; the capture is recorded and flagged for a
+  manual refund (no order-cancel API). Webhook delivery failure leaves a paid order pending until verify or a later delivery (existing
+  reconciliation gap, `INTEGRATION_CONTRACTS.md` §2).
+
 ### Employer domain (new, external-party access)
 - **Threat:** an Employer account viewing more of a Student's profile than GDPR-approved visibility
   permits (`EMP-003`).

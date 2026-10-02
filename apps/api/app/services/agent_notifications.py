@@ -1,4 +1,4 @@
-"""AGN-017 (DEC-SCOPE-058): agency notifications and daily reminders.
+"""AGN-017 (DEC-SCOPE-059): agency notifications and daily reminders.
 
 Recipients are the student's active assigned staff member, else the organisation's active Masters, never the actor (N2). In-app plus
 email only (D19, N5). Bodies carry no names and no user-typed text -- the email leaves through the webhook (spec §8). Event notices ride

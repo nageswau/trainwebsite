@@ -212,7 +212,7 @@ async def create_request(payload: AgentDocumentRequestCreate, user: User = Depen
     db.add(request)
     await db.flush()
     svc.add_event(db, event="requested", actor=user, request=request, to_status="open", notes=note)
-    await notices.document_requested(db, record, payload.document_type, user)  # AGN-017 (DEC-SCOPE-058): never the label or note
+    await notices.document_requested(db, record, payload.document_type, user)  # AGN-017 (DEC-SCOPE-059): never the label or note
     _audit(db, user, "document_request.create", "document_request", request.id, {"agent_student_id": str(record.id), "document_type": payload.document_type})
     await db.commit()
     _log("agent_document_requested", membership, user, request_id=request.id, agent_student_id=record.id)

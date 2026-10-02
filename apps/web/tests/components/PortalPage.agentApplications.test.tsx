@@ -19,7 +19,7 @@ vi.mock("@/components/AgentStudentsSection", () => ({ default: () => <p>students
 vi.mock("@/components/PortalSection", () => ({ default: ({ data }: { data: { title: string } }) => <p>portal section: {data.title}</p> }));
 
 const api = vi.mocked(serverApi);
-// AGN-017 (DEC-SCOPE-058 N8): every agency page also reads the unread count for the Notifications badge (a failure only drops it).
+// AGN-017 (DEC-SCOPE-059 N8): every agency page also reads the unread count for the Notifications badge (a failure only drops it).
 const UNREAD = "/api/v1/workflows/notifications/unread-count";
 const superAdmin ={ id: "s1", role: "super_admin", full_name: "Root", email: "root@example.local" };
 

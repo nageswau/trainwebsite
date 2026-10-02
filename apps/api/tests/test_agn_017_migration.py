@@ -1,4 +1,4 @@
-"""AGN-017 AC10 -- migration 0064_agent_notifications (spec §5): one nullable column and four partial indexes, additive only. The
+"""AGN-017 AC10 -- migration 0065_agent_notifications (spec §5): one nullable column and four partial indexes, additive only. The
 round trip runs in a throwaway database built from scratch (the AGN-013 pattern); a downgrade never runs against the shared test
 database. Plain tests: alembic/env.py calls asyncio.run() itself."""
 
@@ -19,12 +19,12 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_agn_017_migration_0064", VERSIONS / "0064_agent_notifications.py")
+_spec = importlib.util.spec_from_file_location("_agn_017_migration_0065", VERSIONS / "0065_agent_notifications.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE = "0063_agent_visa_details"
-HEAD = "0064_agent_notifications"
+BASE = "0064_application_deposits"
+HEAD = "0065_agent_notifications"
 INDEXES = {
     "ux_notifications_dedupe_key": ("notifications", "dedupe_key IS NOT NULL"),
     "ix_overseas_applications_agent_application_deadline": ("overseas_applications", "agent_student_id IS NOT NULL"),
@@ -40,7 +40,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0063_and_is_the_single_head():
+def test_migration_chains_after_0064_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert len(HEAD) <= 32  # alembic_version.version_num is VARCHAR(32)
     assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
@@ -87,7 +87,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0063 with one notification."""
+    """A fresh database at 0064 with one notification."""
     cfg = _config()
     original = settings.database_url
     name = f"agn017_migration_{uuid.uuid4().hex[:8]}"

@@ -85,8 +85,8 @@ See §AGN-008.
 
 **Revision 13 (2026-10-02):** backlog item ang-010 "Offer details (Step 6)" (`EVID-015` §5 Step 6) is decided as `DEC-SCOPE-056`
 (O1–O7, owner in-session; `054` was the next free number on `main` @ `9adcbca`). See §AGN-010.
-**Revision 14 (2026-10-02):** the owner's `AGN-017` statement ("Notifications" §4; "Monitor deadlines" §2) is decided as `DEC-SCOPE-058`
-(N1–N11; drafted as `055` / Revision 13, renumbered on merging `main` @ `ff27fa4`, where bdm-001, AGN-010 and AGN-012 hold `055`–`057`).
+**Revision 14 (2026-10-02):** the owner's `AGN-017` statement ("Notifications" §4; "Monitor deadlines" §2) is decided as `DEC-SCOPE-059`
+(N1–N11; drafted as `055` / Revision 13, renumbered `058` on merging `main` @ `ff27fa4` and `059` @ `3d9244f`, where bdm-001, AGN-010, AGN-012 and AGN-011 hold `055`–`058`).
 See §AGN-017.
 
 ## 0. Scope and exclusions (read this before the backlog)
@@ -3761,7 +3761,7 @@ upcoming deadlines and overdue tasks.
 **Business requirement.** The owner's `AGN-017` statement (in-session, 2026-10-02): "Notifications" (§4); "Monitor deadlines" (§2).
 Acceptance: "each event produces exactly one notification to the right person; reminders are not sent twice for the same deadline/day; a
 failed email is recorded, never raised." Source: `EVID-015` (`DERIVED_BLUEPRINT`); channels `DEC-SCOPE-035` D19. Decision record:
-`DEC-SCOPE-058` (N1–N10, `EXPLICIT_APPROVAL` in-session 2026-10-02).
+`DEC-SCOPE-059` (N1–N10, `EXPLICIT_APPROVAL` in-session 2026-10-02).
 
 **Existing behavior.** No agency member was notified of assignments, document requests/rejections, status changes or new tasks; no
 scheduled job besides the ENH-014 delivery sweeper.
@@ -3778,13 +3778,13 @@ recipient per day, idempotent by `notifications.dedupe_key`. A Notifications pag
 
 **Regression risks.** Spec §12: shared `workflows.py` verify/PATCH/advance (additive hooks; students' notices unchanged), the enrollment
 commission notice, the first crontab beat entry, `PortalShell`/`NavItem` (optional `badge`), every agency page now also reads the unread
-count, the alembic head (`0064`).
+count, the alembic head (`0065`).
 
 **Complexity:** Medium. **Risk:** Medium.
 
 **Status (2026-10-03): COMPLETE (AGN-017 scope; evidence below)** on `feature/agn-017-notifications`. Lite tests only, per the owner (the AGN-017 files
 plus the touched features' files). Browser QA done (`docs/quality/AGN-017_BROWSER_QA_2026-10-02.md`: QA17-01/03/04/05/06 fixed and
-re-verified; QA17-02 kept as designed, `DEC-SCOPE-058` N11); e2e `agn-017-notifications.spec.ts` 2/2. Codex review waived by the owner.
+re-verified; QA17-02 kept as designed, `DEC-SCOPE-059` N11); e2e `agn-017-notifications.spec.ts` 2/2. Codex review waived by the owner.
 
 **Verification before completion (2026-10-03, fresh runs; final code `2a49676`).** Backend: 90 files (`test_agn_*`, `test_agt_*`,
 `test_enh_014_*`, NOT-001, SCH-007, OVS-003/004/005, ENH-005 approve, ENH-023) 1229 passed / 1 failed — the failure,

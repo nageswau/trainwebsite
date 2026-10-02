@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import AgentApplicationDeposit from "./AgentApplicationDeposit";
 import AgentApplicationEditForm from "./AgentApplicationEditForm";
 import AgentApplicationEnrollment from "./AgentApplicationEnrollment";
 import AgentApplicationOffer from "./AgentApplicationOffer";
@@ -16,13 +17,14 @@ type Props = { id: string; isMaster?: boolean; onChanged: (d: Detail) => void; o
 // reloads, so the screen always ends on the real state (stale, withdrawn, archived); the reload also updates the list card (QA8-03).
 // A 422 from Save keeps the edit form open with the user's input (QA8-01). AGN-013: the Enrollment section (Masters act, Staff read).
 // AGN-010: the offer block sits between the fields and the enrollment/status forms, and its form follows the edit form's rules (a 422
-// keeps the input; 409 reloads). AGN-012: the Visa section (Master and Staff). One form of the detail is open at a time.
+// keeps the input; 409 reloads). AGN-012: the Visa section (Master and Staff). AGN-011: the deposit block follows the offer under the
+// same rules; paying reloads the detail so the paid state (set by the server) shows. One form of the detail is open at a time.
 export default function AgentApplicationDetail({ id, isMaster = false, onChanged, onClose }: Props) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "gone" | "error">("loading");
   const [editing, setEditing] = useState(false);
-  // QA13-06, AGN-010, AGN-012: the one section form that is open, so no competing form or status action shows.
-  const [openForm, setOpenForm] = useState<"offer" | "enrollment" | "visa" | null>(null);
+  // QA13-06, AGN-010, AGN-011, AGN-012: the one section form that is open, so no competing form or status action shows.
+  const [openForm, setOpenForm] = useState<"offer" | "deposit" | "enrollment" | "visa" | null>(null);
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const focusAfter = useFocusAfterRender();
   const firstLoad = useRef(true); // the heading takes focus on the first successful load only
@@ -62,13 +64,16 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
     setNotice({ text: message, failed: false });
     onChanged(next);
   }
+  function reload() {
+    load().then((reloaded) => reloaded && onChanged(reloaded));
+  }
   function failed(message: string, status?: number) {
     setNotice({ text: message, failed: true });
     if (status === 404) return setState("gone");
     if (status === 409 || status === 422) {
       setEditing(false); // the reload shows the real state; stale input must not stay on screen
       setOpenForm(null);
-      load().then((reloaded) => reloaded && onChanged(reloaded));
+      reload();
     }
   }
   function sectionSaved(next: Detail, message: string) {
@@ -137,7 +142,7 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
             <dt>Next action</dt>
             <dd>{detail.next_action ?? "—"}</dd>
           </dl>
-          {!detail.read_only_reason && openForm !== "offer" && (
+          {!detail.read_only_reason && openForm !== "offer" && openForm !== "deposit" && (
             <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(true)}>
               Edit
             </button>
@@ -153,7 +158,17 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
         onSaved={saved}
         onFailed={editFailed}
       />
-      {!editing && openForm !== "offer" && (
+      <AgentApplicationDeposit
+        detail={detail}
+        open={openForm === "deposit"}
+        canOpen={!detail.read_only_reason && !editing && (openForm === null || openForm === "deposit")}
+        onOpen={() => setOpenForm("deposit")}
+        onCancel={() => setOpenForm(null)}
+        onSaved={saved}
+        onFailed={editFailed}
+        onReload={reload}
+      />
+      {!editing && openForm !== "offer" && openForm !== "deposit" && (
         // A status, visa stage or decision change starts the section forms afresh.
         <Fragment key={`${detail.status}|${detail.visa?.stage ?? ""}|${detail.visa?.decision ?? ""}`}>
           {openForm !== "enrollment" && (
