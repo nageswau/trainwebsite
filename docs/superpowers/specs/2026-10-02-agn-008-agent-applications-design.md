@@ -488,7 +488,7 @@ It follows `AgentStudentsPanel`: 20 per page, the latest request wins (`AbortCon
 | **SQL injection** | SQLAlchemy expressions only, with no raw SQL or string concatenation. No free-text search is added. |
 | **XSS** | React escaping only, with no `dangerouslySetInnerHTML` (§6.6). Notification text uses the university name inside a template string, which is already escaped by the email renderer as today. |
 | **CSRF** | Cookie `SameSite=Lax` blocks cross-site POST, PATCH and PUT with cookies. The routes need `Content-Type: application/json`, which a cross-site form cannot send without a CORS preflight. CORS allows only `settings.frontend_url`. No new control is needed, and none is added (no speculative change). |
-| **Token/session** | No new tokens. Nothing is stored in `localStorage`; the panel keeps only UI state in the URL (`status`, `offset`). |
+| **Token/session** | No new tokens. Nothing is stored in `localStorage`; the panel keeps only UI state in the URL (`status` only). (plan, 2026-10-02) |
 | **Secret exposure** | No new secrets or config. |
 | **Sensitive data in responses** | Explicit allowlists in `item()` / `detail()`: no `agent_id`, `counselor_id`, `student_id` or internal user ids. Owner email and phone are **not** returned by the application routes; the student's own record carries them. |
 | **Sensitive logs** | Audit metadata holds ids, field names and from/to status only, never notes, next-action text, Application ID or names. Structured logs (`app.agent_applications`) hold org, actor and application ids plus the event name. |
