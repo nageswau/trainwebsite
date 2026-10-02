@@ -79,3 +79,18 @@ portal shell).
 
 **Status:** first pass complete — 1 Medium, 2 Minor; nothing fixed (as instructed). Screenshots are in the session scratchpad
 (`shots/`), not committed.
+
+## Fix pass (owner: "fix 3 issues", 2026-10-02) — commit `d05fc15`
+
+Tests first: five new cases (`AgentStudentCounselingForm.test.tsx` ×3, `AgentStudentCounselingCard.test.tsx` ×2) failed before the
+fix for the reported reasons ("Not authenticated" / "Unarchive this student first" shown raw; heading `0.83em`) and pass after. One
+existing case gained the extra mock response the 409 re-read now consumes (its assertions unchanged).
+
+| ID | Fix | Re-verified in the browser (web rebuilt from `d05fc15`) |
+|---|---|---|
+| QA6-02 | A 401 keeps the entry and shows "Your session has expired. Your entry is kept; sign in again in a new tab, then save." + **Sign in again** (`/overseas/login`, new tab) — the `ActivityFeedbackForm` wording and the shared `SESSION_EXPIRED` / `SIGN_IN_PATH` | ✅ exact text, link `href=/overseas/login target=_blank`, remarks kept |
+| QA6-03 | A 409 re-reads the student; when archived meanwhile the panel receives the fresh record (list notice "{name} has been archived."), the form keeps the entry and says "This student has been archived. Counseling can be recorded again once an agency Master unarchives them." Cancel → read-only | ✅ alert + notice as above, entry kept; after Cancel the section is read-only with no counseling button |
+| QA6-01 | Section heading and form title at the panel heading size (15 px, `margin 0 0 8px`), inline like the panel's other styles (no new CSS rule) | ✅ heading / form title / labels all 15 px at 1424 and 320 px; no overflow; gap removed |
+
+After the fix: web `npx vitest run` 142 files / 1479 passed; `tsc --noEmit` exit 0; eslint on the changed files exit 0; Playwright
+`agn-006-counseling` + `agn-004-agent-students` 7/7 passed (55.3s). **All three findings closed.**
