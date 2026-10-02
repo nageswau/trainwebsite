@@ -5,13 +5,16 @@ audit and commit. Lock order everywhere: organisation, application, deposit, the
 Spec: docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md.
 """
 
+import logging
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import AgentStudent, ApplicationDeposit, OverseasApplication, Payment, Receipt, User
+from app.models import AgentStudent, ApplicationDeposit, AuditLog, OverseasApplication, Payment, Receipt, User
+
+logger = logging.getLogger("app.agent_deposits")
 
 REFERENCE_TYPE = "agent_deposit"
 PAID_STATES = ("paid", "remitted", "refunded")
@@ -89,6 +92,32 @@ async def student_name(db: AsyncSession, application_id) -> str | None:
         .outerjoin(AgentStudent, AgentStudent.id == OverseasApplication.agent_student_id)
         .where(OverseasApplication.id == application_id)
     )
+
+
+async def on_payment_paid(db: AsyncSession, payment: Payment, *, source: str, provider_amount: int | None = None) -> None:
+    """§4.5 (AC2): the paid hook's deposit step. The caller (`payments._mark_paid`) has just moved this payment into `paid` under
+    `_lock_for_update`, which locked the deposit first, so this runs once per payment. The deposit is paid only by its open checkout
+    for the stored amount; any other captured payment (a superseded order, a second payment, a mismatched amount) stays a paid
+    payment and is flagged for a manual refund."""
+    deposit = await db.get(ApplicationDeposit, payment.reference_id, populate_existing=True)
+    if deposit is None:
+        logger.warning("agent_deposit_payment_without_deposit", extra={"extra_fields": {"payment_id": str(payment.id)}})
+        return
+    reason = None
+    if deposit.status != "pending" or deposit.active_payment_id != payment.id:
+        reason = "not_the_open_checkout"
+    elif provider_amount is not None and provider_amount != int(round(deposit.amount * 100)):
+        reason = "amount_mismatch"
+    if reason:
+        db.add(AuditLog(user_id=None, action="overseas.deposit.unlinked_payment", entity_type="application_deposit", entity_id=str(deposit.id), metadata_json={"payment_id": str(payment.id), "reason": reason}))
+        logger.warning("agent_deposit_unlinked_payment", extra={"extra_fields": {"deposit_id": str(deposit.id), "payment_id": str(payment.id), "reason": reason, "source": source}})
+        return
+    deposit.status = "paid"
+    deposit.paid_payment_id = payment.id
+    deposit.paid_at = datetime.now(UTC)
+    deposit.active_payment_id = None
+    db.add(AuditLog(user_id=payment.user_id, action="overseas.application.deposit_paid", entity_type="overseas_application", entity_id=str(deposit.application_id), metadata_json={"payment_id": str(payment.id), "source": source}))
+    logger.info("agent_deposit_paid", extra={"extra_fields": {"deposit_id": str(deposit.id), "payment_id": str(payment.id), "application_id": str(deposit.application_id), "source": source}})
 
 
 async def receipt_student(db: AsyncSession, payment: Payment) -> str | None:

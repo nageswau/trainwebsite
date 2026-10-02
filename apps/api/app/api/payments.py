@@ -64,10 +64,13 @@ async def _lock_for_update(db: AsyncSession, item: Payment) -> Payment:
     return await agent_deposits.locked_payment(db, item.id)
 
 
-async def _mark_paid(db: AsyncSession, item: Payment, payer: User) -> None:
-    """The one move into `paid` (D2): the caller has checked the payment is not paid yet, under `_lock_for_update`."""
+async def _mark_paid(db: AsyncSession, item: Payment, payer: User, *, source: str, provider_amount: int | None = None) -> None:
+    """The one move into `paid` (D2): the caller has checked the payment is not paid yet, under `_lock_for_update`. An agent deposit's
+    payment then pays its deposit (AC2) -- `provider_amount` (paise, from the webhook) is cross-checked against the stored amount."""
     item.status = "paid"
     await _ensure_receipt(db, item, payer)
+    if item.reference_type == agent_deposits.REFERENCE_TYPE:
+        await agent_deposits.on_payment_paid(db, item, source=source, provider_amount=provider_amount)
 
 
 @router.get("/mine")
@@ -226,7 +229,7 @@ async def verify_checkout(payment_id: UUID, payload: dict, user: User = Depends(
     item = await _lock_for_update(db, item)
     if item.status not in PAID_STATUSES:
         item.provider_reference = razorpay_payment_id
-        await _mark_paid(db, item, user)
+        await _mark_paid(db, item, user, source="verify")
         db.add(AuditLog(user_id=user.id, action="payment.verify", entity_type="payment", entity_id=str(item.id), metadata_json={"razorpay_payment_id": razorpay_payment_id}))
         await db.commit()
         await db.refresh(item)
@@ -312,7 +315,8 @@ async def webhook(provider: str, request: Request, db: AsyncSession = Depends(ge
     if item.status not in PAID_STATUSES:
         item.provider_reference = str(provider_reference) if provider_reference else item.provider_reference
         if status in PAID_STATUSES:
-            await _mark_paid(db, item, await db.get(User, item.user_id))  # the foreign key guarantees the payer exists
+            paise = entity.get("amount")
+            await _mark_paid(db, item, await db.get(User, item.user_id), source="webhook", provider_amount=paise if isinstance(paise, int) else None)  # the FK guarantees the payer
         else:
             item.status = status or item.status
     db.add(AuditLog(user_id=None, action="payment.webhook", entity_type="payment", entity_id=str(item.id), metadata_json={"provider": provider, "status": item.status, "event_id": event_id}))

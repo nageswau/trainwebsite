@@ -10,18 +10,20 @@ from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_applications import _audit, _gate, _locked, _log, _refuse_closed
 from app.api.deps import get_current_user
 from app.api.payments import _ensure_invoice
 from app.core.database import get_db
-from app.models import ApplicationDeposit, AuditLog, Payment, User
+from app.models import ApplicationDeposit, AuditLog, Payment, Receipt, User
 from app.schemas import AgentDepositSave
 from app.services import agent_deposits as deposits
-from app.services.agent_applications import detail
+from app.services.agent_applications import detail, load_scoped
 from app.services.agent_deposits import PAID_LOCKED, PAID_STATES, cancel_active, deposit_for
 from app.services.payment import payments
+from app.services.storage import storage
 
 router = APIRouter(prefix="/workflows/overseas/agent/crm/applications", tags=["agent-deposits"])
 admin_router = APIRouter(prefix="/overseas-admin/deposits", tags=["overseas-admin"])
@@ -134,6 +136,21 @@ async def deposit_checkout(
     await db.commit()
     _log("agent_deposit_checkout_opened", membership, user, item.id, payment_id=str(payment.id))
     return deposits.checkout_result(payment)
+
+
+@router.get("/{application_id}/deposit/receipt")
+async def deposit_receipt(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """§4.6 (AC5): any Master or Staff with the application in scope, not only the payer -- reached through the application, never a raw
+    payment id. Same signed-URL exchange as `GET /payments/{id}/receipt`."""
+    _gate(user)
+    item = await load_scoped(db, user, application_id)
+    deposit = await deposit_for(db, item.id)
+    receipt = None
+    if deposit is not None and deposit.paid_payment_id is not None:
+        receipt = await db.scalar(select(Receipt).where(Receipt.payment_id == deposit.paid_payment_id))
+    if receipt is None:
+        raise HTTPException(404, "Receipt not available")
+    return {"url": storage.presign_download(f"receipts/{receipt.receipt_no}.pdf"), "expires_in": 900 if storage.bucket else None}
 
 
 async def _abandon(db: AsyncSession, deposit_id, payment_id) -> None:
