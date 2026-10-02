@@ -40,8 +40,10 @@ def clean_text(value: str | None, limit: int = 120) -> str:
     return " ".join("".join(ch if ch.isprintable() else " " for ch in value or "").split())[:limit]
 
 
-async def _org(db: AsyncSession, record: AgentStudent) -> AgentOrg | None:
-    return await db.scalar(select(AgentOrg).join(AgentOrgMember, AgentOrgMember.org_id == AgentOrg.id).where(AgentOrgMember.user_id == record.agent_id))
+async def _active_org(db: AsyncSession, record: AgentStudent) -> AgentOrg | None:
+    """The record's organisation, only while it is active: a pending, rejected or suspended agency is never notified."""
+    org = await db.scalar(select(AgentOrg).join(AgentOrgMember, AgentOrgMember.org_id == AgentOrg.id).where(AgentOrgMember.user_id == record.agent_id))
+    return org if org is not None and org.status == "active" else None
 
 
 async def _active_masters(db: AsyncSession, org_id) -> list[User]:
@@ -54,8 +56,10 @@ async def _active_masters(db: AsyncSession, org_id) -> list[User]:
     return list(rows)
 
 
-async def active_member_user(db: AsyncSession, member_id, org_id) -> User | None:
+async def _active_member_user(db: AsyncSession, member_id, org_id) -> User | None:
     """The member's login, only while both the membership and the login are active and it belongs to `org_id`."""
+    if member_id is None:
+        return None
     row = (await db.execute(select(AgentOrgMember, User).join(User, User.id == AgentOrgMember.user_id).where(AgentOrgMember.id == member_id))).first()
     if row is None:
         return None
@@ -64,10 +68,10 @@ async def active_member_user(db: AsyncSession, member_id, org_id) -> User | None
 
 
 async def recipients(db: AsyncSession, record: AgentStudent, actor: User | None) -> list[User]:
-    org = await _org(db, record)
-    if org is None or org.status != "active":
+    org = await _active_org(db, record)
+    if org is None:
         return []
-    assignee = await active_member_user(db, record.assigned_member_id, org.id) if record.assigned_member_id else None
+    assignee = await _active_member_user(db, record.assigned_member_id, org.id)
     users = [assignee] if assignee else await _active_masters(db, org.id)
     return [u for u in users if actor is None or u.id != actor.id]
 
@@ -84,20 +88,20 @@ def _plural(count: int, noun: str) -> str:
     return f"{count} {noun}{'' if count == 1 else 's'}"
 
 
-async def student_assigned(db: AsyncSession, record: AgentStudent, member_id, actor: User) -> int:
+async def student_assigned(db: AsyncSession, record: AgentStudent, member_id, actor: User) -> None:
     """N1/N9: only the new assignee hears about it, with the number of open tasks that moved with the student (AGN-016 T1)."""
-    org = await _org(db, record)
-    user = await active_member_user(db, member_id, org.id) if org is not None and org.status == "active" and member_id else None
+    org = await _active_org(db, record)
+    user = await _active_member_user(db, member_id, org.id) if org else None
     if user is None or user.id == actor.id:
-        return 0
+        return
     open_tasks = await db.scalar(select(func.count()).select_from(AgentTask).where(AgentTask.agent_student_id == record.id, AgentTask.status == "open"))
     moved = f" {_plural(open_tasks, 'open task')} moved with them." if open_tasks else ""
-    return await notify(db, [user], "Student assigned to you", f"A student is now assigned to you.{moved}", STUDENTS_URL)
+    await notify(db, [user], "Student assigned to you", f"A student is now assigned to you.{moved}", STUDENTS_URL)
 
 
-async def document_requested(db: AsyncSession, record: AgentStudent, document_type: str, actor: User) -> int:
+async def document_requested(db: AsyncSession, record: AgentStudent, document_type: str, actor: User) -> None:
     body = f"{document_label(document_type)} was requested for one of your students."
-    return await notify(db, await recipients(db, record, actor), "Document requested", body, DOCUMENTS_URL)
+    await notify(db, await recipients(db, record, actor), "Document requested", body, DOCUMENTS_URL)
 
 
 OUTCOME_TEXT = {"rejected": "rejected", "changes_required": "changes required"}  # N9: both need the agency to act
@@ -111,25 +115,25 @@ async def _document_record(db: AsyncSession, document: StudentDocument) -> Agent
     return await db.get(AgentStudent, record_id) if record_id else None
 
 
-async def document_needs_attention(db: AsyncSession, document: StudentDocument, actor: User) -> int:
+async def document_needs_attention(db: AsyncSession, document: StudentDocument, actor: User) -> None:
     outcome = OUTCOME_TEXT.get(document.verification_status)
     record = await _document_record(db, document) if outcome else None
     if record is None:
-        return 0
+        return
     body = f"{document_label(document.document_type)}: {outcome}."
-    return await notify(db, await recipients(db, record, actor), "Document needs attention", body, DOCUMENTS_URL)
+    await notify(db, await recipients(db, record, actor), "Document needs attention", body, DOCUMENTS_URL)
 
 
 async def has_commission(db: AsyncSession, application_id) -> bool:
     return await db.scalar(select(AgentCommission.id).where(AgentCommission.application_id == application_id)) is not None
 
 
-async def status_changed(db: AsyncSession, application: OverseasApplication, old_status: str, actor: User, *, had_commission: bool) -> int:
+async def status_changed(db: AsyncSession, application: OverseasApplication, old_status: str, actor: User, *, had_commission: bool) -> None:
     """N3: any status change to an agency application, by the agency or by EduSphere. AC3: when this change has just created the
     commission (`had_commission` is read before the AGT-003 trigger), the users the trigger told ("Commission estimated") are left out,
     so nobody gets two notices for one change."""
     if application.status == old_status or application.agent_student_id is None:
-        return 0
+        return
     record = await db.get(AgentStudent, application.agent_student_id)
     users = await recipients(db, record, actor) if record else []
     if users and not had_commission and application.agent_id and await has_commission(db, application.id):
@@ -138,17 +142,17 @@ async def status_changed(db: AsyncSession, application: OverseasApplication, old
         users = [u for u in users if u.id not in told]
     university = clean_text(await db.scalar(select(University.name).where(University.id == application.university_id)))
     body = f"{university}: {stage_label(old_status)} → {stage_label(application.status)}."
-    return await notify(db, users, "Application status changed", body, APPLICATIONS_URL)
+    await notify(db, users, "Application status changed", body, APPLICATIONS_URL)
 
 
 def ist_date(value: date | datetime) -> str:
     return (value.astimezone(INDIA) if isinstance(value, datetime) else value).strftime("%d %b %Y")
 
 
-async def task_created(db: AsyncSession, record: AgentStudent, task: AgentTask, actor: User) -> int:
+async def task_created(db: AsyncSession, record: AgentStudent, task: AgentTask, actor: User) -> None:
     """N1: the student's recipient, unless they created it. The title is user-typed, so only the due date is shown (§8)."""
     body = f"A new task on one of your students is due {ist_date(task.due_at)}."
-    return await notify(db, await recipients(db, record, actor), "New task", body, TASKS_URL)
+    await notify(db, await recipients(db, record, actor), "New task", body, TASKS_URL)
 
 
 # --- daily reminders (N4, N6, N10) ------------------------------------------------------------------------------------------------
