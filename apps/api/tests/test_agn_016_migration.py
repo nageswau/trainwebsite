@@ -37,7 +37,9 @@ def test_migration_chains_after_0058_and_is_the_single_head():
         rev = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("revision =")), None)
         if rev:
             parents[rev] = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("down_revision =")), None)
-    assert set(parents) - set(parents.values()) == {HEAD}
+    # One head, without pinning it to this revision: later migrations chain after 0059 (AGN-013's 0060; the AGN-008 test's form).
+    assert len(set(parents) - set(parents.values())) == 1
+    assert HEAD in parents
 
 
 def test_model_declares_the_table():
