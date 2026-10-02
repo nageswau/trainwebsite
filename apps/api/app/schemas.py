@@ -931,6 +931,9 @@ class AgentDepositSave(BaseModel):
         return self
 
 
+DEPOSIT_DATE_FUTURE = "The date cannot be in the future"
+
+
 class DepositRemit(BaseModel):
     """Overseas Admin records that EduSphere finance remitted the deposit to the university (D12/§4.7)."""
 
@@ -941,7 +944,7 @@ class DepositRemit(BaseModel):
     @field_validator("remitted_on")
     @classmethod
     def _date(cls, value):
-        return _application_date(value)
+        return _not_future(_application_date(value), "future_remitted_on", DEPOSIT_DATE_FUTURE)  # QA11-01: UTC + 1 day, like AGN-008/010
 
     @field_validator("reference")
     @classmethod
@@ -963,7 +966,7 @@ class DepositRefund(BaseModel):
     @field_validator("refunded_on")
     @classmethod
     def _date(cls, value):
-        return _application_date(value)
+        return _not_future(_application_date(value), "future_refunded_on", DEPOSIT_DATE_FUTURE)
 
     @field_validator("reason")
     @classmethod

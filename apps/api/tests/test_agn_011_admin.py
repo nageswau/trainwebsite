@@ -88,7 +88,8 @@ async def test_a_refund_cannot_exceed_the_paid_amount(db_session, world):
 @pytest.mark.parametrize(
     ("path", "body", "message"),
     [
-        ("remit", _remit(remitted_on=(date.today() + timedelta(days=1)).isoformat()), "The date cannot be in the future"),
+        ("remit", _remit(remitted_on=(datetime.now(UTC).date() + timedelta(days=2)).isoformat()), "The date cannot be in the future"),
+        ("refund", _refund(refunded_on=(datetime.now(UTC).date() + timedelta(days=2)).isoformat()), "The date cannot be in the future"),
         ("remit", _remit(remitted_on=(date.today() - timedelta(days=10)).isoformat()), "The date cannot be before the deposit was paid"),
         ("refund", _refund(refunded_on=(date.today() - timedelta(days=10)).isoformat()), "The date cannot be before the deposit was paid"),
     ],
@@ -96,7 +97,18 @@ async def test_a_refund_cannot_exceed_the_paid_amount(db_session, world):
 async def test_dates_must_fall_between_payment_and_today(world, path, body, message):
     async with client_for(world["admin"].email) as c:
         r = await c.post(f"{ADMIN}/{world['deposit'].id}/{path}", json=body)
-    assert r.status_code == 422 and r.json()["detail"] == message
+    assert r.status_code == 422 and message in str(r.json()["detail"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("path", ["remit", "refund"])
+async def test_today_east_of_utc_is_accepted(db_session, world, path):
+    """QA11-01: just after midnight IST the admin's "today" is the next UTC day; the browser's default date must not be refused."""
+    tomorrow_utc = (datetime.now(UTC).date() + timedelta(days=1)).isoformat()
+    body = _remit(remitted_on=tomorrow_utc) if path == "remit" else _refund(refunded_on=tomorrow_utc)
+    async with client_for(world["admin"].email) as c:
+        r = await c.post(f"{ADMIN}/{world['deposit'].id}/{path}", json=body)
+    assert r.status_code == 200, r.text
 
 
 @pytest.mark.asyncio

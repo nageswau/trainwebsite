@@ -170,8 +170,7 @@ ADMIN_ONLY = "Only an Overseas Admin can record remittances and refunds"
 
 
 def _recorded_on(value: date, deposit: ApplicationDeposit) -> None:
-    if value > date.today():
-        raise HTTPException(422, "The date cannot be in the future")
+    """The schema refuses future dates (UTC + 1 day, QA11-01); here, a date before the payment."""
     if value < deposit.paid_at.date():
         raise HTTPException(422, "The date cannot be before the deposit was paid")
 

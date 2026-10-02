@@ -83,7 +83,7 @@ test("a Master edits the deposit to not required, keyboard only", async ({ page 
 });
 
 test("Overseas Admin opens Agent deposits from the sidebar", async ({ page }) => {
-  await signIn(page, "overseasadmin@edusphere.local", "Demo@123");
+  await signIn(page, "overseasadmin@edusphere.local", "Demo@123", "/overseas/admin/dashboard");
   await page.goto("/overseas/admin/dashboard");
   await page.getByRole("link", { name: "Agent deposits" }).first().click();
   await expect(page.getByRole("heading", { name: "Agent deposits", level: 2 })).toBeVisible();
