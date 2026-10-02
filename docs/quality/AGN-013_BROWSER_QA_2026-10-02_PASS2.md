@@ -102,6 +102,26 @@ applications at offer, visa documentation, status tracking ("Next intake"), enqu
 ### QA13-11 — Info — "--" in the stale message
 - The 409 text "This application changed since you opened it -- reload to see its current status" shows a double hyphen to the user (existing AGN-008 copy, shared).
 
+## Fix pass (2026-10-02, owner: "fix the issues") — commit `194e564`
+
+Test first: 7 new component tests (`AgentApplicationEnrollment.test.tsx`, QA13-03…09) failed against the old behaviour, then passed;
+`apiErrors.test.ts` updated for the additive `detail` on a failed `sendJson` outcome (+1 test).
+
+| ID | Fix | Re-verified in the browser (rebuilt web container, headless Chromium, trusted input) |
+|---|---|---|
+| QA13-03 | 401 → "Your session has expired. Your entry is kept; sign in again in a new tab, then save." + "Sign in again" (new tab), the AGN-006 QA6-02 pattern | message + link `/overseas/login` `target=_blank`, date kept; after signing in in another tab, Save → "Enrollment confirmed.", one commission |
+| QA13-04 | opening Enroll / Edit / Add focuses the date field | focus on `enrollment-date-…` after opening, also in correction mode |
+| QA13-05 | Cancel restores the stored values and clears errors | reopening after Cancel shows an empty date |
+| QA13-06 | the status form and Withdraw are hidden while the enrollment form is open | 0 Withdraw / Move to while open; back after Cancel |
+| QA13-07 | correction mode shows the inputs in place of the read-only values | "Confirmed by the agency" absent while editing |
+| QA13-08 | 5xx → "Something went wrong on our side. Please try again; your entry is kept." | injected 500 → that message, date kept |
+| QA13-09 | a 422 on a field is shown on that field (`aria-invalid`, described by the message, focused) | bidi character in the student ID → field invalid, described, focused |
+| QA13-10 | not fixed — pre-existing Commissions table (outside AGN-013) | — |
+| QA13-11 | not fixed — shared AGN-008 stale message (outside AGN-013) | — |
+
+Also: 0 px overflow at 320 with the form open; no console errors apart from the provoked 401/500. Playwright on the same build:
+`agn-013` 2/2, `agn-008` 4/4, `agt-003` 2/2, `agn-014` 1/1, `agn-009` 2/2, `agn-016` 3/3, `agn-006` 2/2 — 16 passed.
+
 ## Screenshots
 
 Session scratchpad `qx/`: `q01-offer-detail`, `q02-confirm`, `q03-enrolled`, `q04-422`, `q05-admin-enrolled-empty`, `q06-500`,
