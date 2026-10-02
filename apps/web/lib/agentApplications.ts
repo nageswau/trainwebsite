@@ -17,7 +17,9 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 export function stageLabel(status: string): string {
-  return STAGE_LABELS[status] ?? status.replaceAll("_", " ");
+  if (STAGE_LABELS[status]) return STAGE_LABELS[status];
+  const words = status.replaceAll("_", " "); // QA8-11: a legacy value, e.g. "University review"
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 export const STATUS_GROUPS = ["all", "draft", "submitted", "offer", "visa", "enrolled", "withdrawn"] as const;

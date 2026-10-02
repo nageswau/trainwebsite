@@ -37,6 +37,8 @@ describe("agent application rules (AGN-008)", () => {
   it("labels stages and the new activity actions", () => {
     expect(stageLabel("visa_documentation")).toBe("Visa documentation");
     expect(stageLabel("withdrawn")).toBe("Withdrawn");
+    // QA8-11: a legacy value reads as a sentence-case label.
+    expect(stageLabel("university_review")).toBe("University review");
     expect(activityLabel("overseas.application.update")).toBe("Edited an application");
     expect(activityLabel("overseas.application.advance")).toBe("Moved an application forward");
     expect(activityLabel("overseas.application.withdraw")).toBe("Withdrew an application");
