@@ -55,6 +55,7 @@ from app.models import (
 from app.services.agent_applications import WITHDRAWN, owned, stage_label, with_owner
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
+from app.services.agent_tasks import pending_count
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")
@@ -715,7 +716,11 @@ async def _agent(db: AsyncSession, user: User, section: str):
     if section == "dashboard":
         # AGN-008 browser QA8-10: a withdrawn application is closed, so it leaves the count and the table; status reads as a label.
         open_applications = [(a, u, s) for a, u, s in applications if a.status != WITHDRAWN]
-        metrics = [{"label": "Students", "value": len(students)}, {"label": "Applications", "value": len(open_applications)}]
+        metrics = [
+            {"label": "Students", "value": len(students)},
+            {"label": "Applications", "value": len(open_applications)},
+            {"label": "Pending actions", "value": await pending_count(db, user)},  # AGN-016 (DEC-SCOPE-053 T5): open tasks in scope
+        ]
         if not staff:
             metrics += [
                 {"label": "Claimable commission", "value": f"INR {sum(float(c.amount) for c in commissions if c.status in {'eligible', 'estimated'}):,.0f}"},
@@ -745,6 +750,9 @@ async def _agent(db: AsyncSession, user: User, section: str):
             (("code", "Code"), ("name", "Name"), ("email", "Email"), ("status", "Status")),
             ({"code": m.code, "name": u.full_name, "email": u.email, "status": "invite pending" if m.status == "active" and u.id in pending else m.status} for m, u in rows),
         )
+    if section == "tasks":
+        # AGN-016 (DEC-SCOPE-053): header only -- PortalPage mounts AgentTasksSection (the Universities precedent).
+        return _payload("Tasks & follow-ups", "Follow-ups on your students, earliest due first.")
     if section == "universities":
         # AGN-007 (DEC-SCOPE-049): header only -- PortalPage mounts AgentUniversitiesPanel for this section (the Students precedent).
         return _payload("Universities", "Your agency's own universities. Browse the public catalogue for the rest.")

@@ -67,6 +67,17 @@ describe("PortalPage agent applications (QA8-09)", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Access unavailable" })).toBeInTheDocument();
   });
 
+  it("renders the agency Documents section behind the same gate (AGN-009)", async () => {
+    render(await PortalPage({ division: "overseas", role: "agent", section: "documents" }));
+    expect(api.mock.calls.map(([path]) => path)).toEqual(["/api/v1/auth/me", "/api/v1/portal/overseas/agent/documents"]);
+    expect(screen.getByText("Agency documents are managed by the agency's own Masters and Staff.")).toBeInTheDocument();
+    refuse({ id: "u4", role: "agent", full_name: "Pending", email: "p2@example.local", agent_member_role: "master" }, "Agent registration is pending approval");
+    cleanup();
+    render(await PortalPage({ division: "overseas", role: "agent", section: "documents" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Access unavailable" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Documents" })).toBeNull();
+  });
+
   it("still reads the portal payload for the other agent sections", async () => {
     api.mockImplementation((path: string) =>
       Promise.resolve(path === "/api/v1/auth/me" ? { ...superAdmin, role: "agent", agent_member_role: "master", agent_permissions: [] } : { title: "Dashboard" }),

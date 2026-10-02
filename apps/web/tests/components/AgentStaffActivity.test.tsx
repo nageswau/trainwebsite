@@ -25,10 +25,18 @@ describe("activityLabel (AGN-021)", () => {
     expect(activityLabel("agent_student.shortlist_remove")).toBe("Removed a university from a shortlist");
   });
 
+  it("labels the task actions (AGN-016)", () => {
+    expect(activityLabel("agent_student.task_add")).toBe("Added a task");
+    expect(activityLabel("agent_student.task_update")).toBe("Edited a task");
+    expect(activityLabel("agent_student.task_complete")).toBe("Completed a task");
+    expect(activityLabel("agent_student.task_cancel")).toBe("Cancelled a task");
+  });
+
   it("labels every action the server allow-lists (services/staff_activity.py STAFF_ACTIVITY_ACTIONS)", () => {
     const allowListed = [
       "agent_student.create", "agent_student.update", "agent_student.duplicate_override", "agent_student.counseling",
       "agent_student.shortlist_add", "agent_student.shortlist_update", "agent_student.shortlist_remove",
+      "agent_student.task_add", "agent_student.task_update", "agent_student.task_complete", "agent_student.task_cancel",
       "agent.student_link", "overseas.application.create", "document.upload", "document.verify",
     ];
     expect(allowListed.filter((action) => activityLabel(action) === "Other activity")).toEqual([]);

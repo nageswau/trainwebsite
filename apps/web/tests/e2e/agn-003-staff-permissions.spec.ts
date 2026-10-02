@@ -70,8 +70,9 @@ test("a Master switches a staff member's Reports and Verify permissions (AGN-003
   await card.getByRole("button", { name: "Review" }).click();
   await expect(card.getByLabel("Decision")).toHaveCount(0);
   await card.getByRole("button", { name: "Mark verified" }).click();
-  await expect(card.getByText("Document reviewed -- the student has been notified.")).toBeVisible();
-  await expect(card.getByRole("button", { name: "Review" })).toHaveCount(0);
+  // AGN-009: the Documents page lists Pending by default; a verified document leaves it and the list announces the decision.
+  await expect(staff.getByRole("status").filter({ hasText: "AGN003 Passport for" })).toContainText("verified.");
+  await expect(card).toHaveCount(0);
 
   // The Master switches both off; the staff member's next request is refused.
   await page.getByRole("button", { name: "Permissions for Tau Staff" }).click();

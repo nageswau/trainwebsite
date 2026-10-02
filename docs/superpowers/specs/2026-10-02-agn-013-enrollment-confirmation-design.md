@@ -2,7 +2,7 @@
 
 **Status:** Section 1 (data, API, backend, security) reviewed by the owner in-session 2026-10-02; Sections 2–3 (frontend, tests)
 recorded here for the owner's review. **Branch:** `feature/agn-013-enrollment-confirmation` (from `origin/main` `268d132`).
-**Decision:** `DEC-SCOPE-052` (provisional: `050` is AGN-008, `051` is AGN-014; renumber if another branch merges a `052` first).
+**Decision:** `DEC-SCOPE-054` (drafted as `052`; renumbered on merging `main` @ `9adcbca`, where `052` is AGN-009 and `053` is AGN-016).
 **Builds on:** AGN-008 (`DEC-SCOPE-050`, agency applications, migration `0057`), AGN-014 (`DEC-SCOPE-051`, Master-only commission),
 AGT-003 (`_maybe_trigger_agent_commission`, `DATA_MODEL.md` §6.3 / `ADR-012`), `DEC-SCOPE-005` (commission on the student joining).
 **Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 9; `docs/delivery/AGENT_CRM_BACKLOG.md`
@@ -36,7 +36,7 @@ enrollment date is required; a future date beyond intake is flagged (a warning, 
 - Notifications to the student (D19: students get nothing) and any change to the counselor/admin/university-rep paths.
 - A new rate limiter, a shared Master-check helper, or any dependency.
 
-## 3. Data (migration `0058_agent_app_enrollment`)
+## 3. Data (migration `0060_agent_app_enrollment`)
 
 `overseas_applications` gains three nullable columns; no existing row is read or written:
 
@@ -175,5 +175,5 @@ Logging: `agent_application_enrolled` (org, actor, application, from_status) and
 | A4 (agents never enrol) | the status route is untouched; AC08 pins it. |
 | Commission duplication | locks + trigger guard + `UNIQUE`; AC02, AC07. |
 | `detail()` allowlist | additive fields only; the AGN-008 security allowlist test still forbids `agent_id`, `student_id`, email, phone. |
-| Migration chain | `0058` after `0057`; AGN-009/016 branches may also claim `0058` → re-chain on merge. |
+| Migration chain | `0060` after `0059_agent_tasks` (drafted as `0058`; re-chained on merging `main` @ `9adcbca`). |
 | Shared `workflows.py` | not edited; the trigger is imported, as `_notify_user` already is. |

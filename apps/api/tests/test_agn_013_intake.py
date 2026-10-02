@@ -1,4 +1,4 @@
-"""AGN-013 (DEC-SCOPE-052 E2) -- the best-effort intake parser and the enrollment date check; pure functions."""
+"""AGN-013 (DEC-SCOPE-054 E2) -- the best-effort intake parser and the enrollment date check; pure functions."""
 
 from datetime import date
 from types import SimpleNamespace

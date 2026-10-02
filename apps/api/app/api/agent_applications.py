@@ -4,7 +4,7 @@ Masters see the agency's applications; staff only those of students assigned to 
 404. Every write locks the organisation row first and the application row second (AGN-004's lock order), writes its history and
 audit rows in the same transaction and commits once, so the duplicate check, the throttle and the status rules hold under
 concurrency. Agents move an application forward up to status_tracking or withdraw it; the status route never sets `enrolled` (A4).
-AGN-013 (DEC-SCOPE-052) amends A4 narrowly: only a Master confirms enrollment, through its own route, from an offer onwards.
+AGN-013 (DEC-SCOPE-054) amends A4 narrowly: only a Master confirms enrollment, through its own route, from an offer onwards.
 """
 
 import logging
@@ -185,7 +185,7 @@ async def change_status(application_id: UUID, payload: AgentApplicationStatus, u
 
 @router.put("/{application_id}/enrollment")
 async def save_enrollment(application_id: UUID, payload: AgentApplicationEnrollment, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AGN-013 (DEC-SCOPE-052): a Master confirms enrollment from an offer onwards -- `enrolled`, one history row and the AGT-003
+    """AGN-013 (DEC-SCOPE-054): a Master confirms enrollment from an offer onwards -- `enrolled`, one history row and the AGT-003
     commission trigger, which creates at most one commission per application -- or, once enrolled, corrects the date and student
     ID (no history row, no commission). Locks as every agency write: organisation, then the row; one commit."""
     membership = _gate(user)

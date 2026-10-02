@@ -1,4 +1,4 @@
-"""AGN-013 -- migration 0058_agent_app_enrollment (spec §3). Round trip and downgrade refusals run in a throwaway database
+"""AGN-013 -- migration 0060_agent_app_enrollment (spec §3). Round trip and downgrade refusals run in a throwaway database
 built from scratch (the AGN-008 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls
 asyncio.run() itself."""
 
@@ -20,12 +20,12 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_agn_013_migration_0058", VERSIONS / "0058_agent_app_enrollment.py")
+_spec = importlib.util.spec_from_file_location("_agn_013_migration_0060", VERSIONS / "0060_agent_app_enrollment.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE = "0057_agent_applications"
-HEAD = "0058_agent_app_enrollment"
+BASE = "0059_agent_tasks"
+HEAD = "0060_agent_app_enrollment"
 APP_COLUMNS = "SELECT id, student_id, university_id, status, intake, agent_id FROM overseas_applications ORDER BY id"
 NEW = ("enrollment_date", "university_student_id", "enrollment_confirmed_at")
 
@@ -36,7 +36,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0057_and_is_the_single_head():
+def test_migration_chains_after_0059_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert len(HEAD) <= 32  # alembic_version.version_num is VARCHAR(32)
     assert tuple(name for name, _ in _migration.COLUMNS) == NEW
@@ -75,7 +75,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0057 with one application."""
+    """A fresh database at 0059 with one application."""
     cfg = _config()
     original = settings.database_url
     name = f"agn013_migration_{uuid.uuid4().hex[:8]}"

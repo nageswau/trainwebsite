@@ -13,6 +13,7 @@ describe("agentNavFor", () => {
       "/overseas/agent/universities",
       "/overseas/agent/applications",
       "/overseas/agent/documents",
+      "/overseas/agent/tasks",
       "/overseas/agent/reports",
     ]);
     expect(agentNavFor(nav, "staff").map((i) => i.href)).toEqual([
@@ -21,7 +22,15 @@ describe("agentNavFor", () => {
       "/overseas/agent/universities",
       "/overseas/agent/applications",
       "/overseas/agent/documents",
+      "/overseas/agent/tasks",
     ]);
+  });
+
+  it("shows Tasks to both roles, after Documents (AGN-016, EVID-015 §4 sidebar order)", () => {
+    const hrefs = nav.map((i) => i.href);
+    expect(hrefs.indexOf("/overseas/agent/tasks")).toBe(hrefs.indexOf("/overseas/agent/documents") + 1);
+    expect(nav.find((i) => i.href === "/overseas/agent/tasks")?.label).toBe("Tasks");
+    expect(agentNavFor(nav, "staff").map((i) => i.href)).toContain("/overseas/agent/tasks");
   });
 
   it("shows Universities to both roles (AGN-007)", () => {
@@ -33,6 +42,17 @@ describe("agentNavFor", () => {
     expect(agentNavFor(nav, "master")).toEqual(nav);
     expect(agentNavFor(nav, null)).toEqual(nav);
     expect(agentNavFor(nav)).toEqual(nav);
+  });
+
+  it("gives Documents the Pending / Uploaded / Additional views for Masters and staff (AGN-009)", () => {
+    const children = (items: ReturnType<typeof agentNavFor>) => items.find((i) => i.href === "/overseas/agent/documents")?.children?.map((c) => [c.label, c.href]);
+    const expected = [
+      ["Pending", "/overseas/agent/documents?view=pending"],
+      ["Uploaded", "/overseas/agent/documents?view=uploaded"],
+      ["Additional", "/overseas/agent/documents?view=additional"],
+    ];
+    expect(children(agentNavFor(nav, "master"))).toEqual(expected);
+    expect(children(agentNavFor(nav, "staff"))).toEqual(expected);
   });
 
   it("gives Applications the status filters for Masters and staff (AGN-008)", () => {

@@ -1,5 +1,8 @@
 # AGN-013 Enrollment Confirmation Implementation Plan
 
+> **Historical plan.** Written before merging `main` @ `9adcbca`. Since then the migration is `0060_agent_app_enrollment` (after
+> `0059_agent_tasks`; it was `0058` here) and the decision is `DEC-SCOPE-054` (it was `052` here). The code is the authority.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** An agency Master confirms an application's enrollment (date, optional university student ID) through a dedicated route

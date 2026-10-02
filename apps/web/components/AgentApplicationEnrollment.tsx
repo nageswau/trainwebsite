@@ -13,7 +13,7 @@ type Props = {
   onFailed: (message: string, status?: number) => void;
 };
 
-// AGN-013 (DEC-SCOPE-052): Step 9. A Master confirms enrollment from an offer onwards, after an explicit confirmation (it estimates a
+// AGN-013 (DEC-SCOPE-054): Step 9. A Master confirms enrollment from an offer onwards, after an explicit confirmation (it estimates a
 // commission and ends withdrawal); once enrolled, a Master corrects the date and student ID. Staff read. The server decides; the
 // displayed status travels as `expected_status`, so a stale screen gets a 409 and the detail reloads.
 export default function AgentApplicationEnrollment({ detail, isMaster, onSaved, onFailed }: Props) {
@@ -84,7 +84,7 @@ export default function AgentApplicationEnrollment({ detail, isMaster, onSaved, 
       {canAct && open && (
         <form className="form" aria-label="Enrollment" onSubmit={submit}>
           {!enrolled && (
-            // What is being confirmed -- read-only here; changes go through Edit (DEC-SCOPE-052 E5).
+            // What is being confirmed -- read-only here; changes go through Edit (DEC-SCOPE-054 E5).
             <dl className="card-stack">
               <dt>University</dt>
               <dd>{detail.university}</dd>

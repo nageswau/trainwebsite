@@ -18,8 +18,10 @@ NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was wri
 > | `AGN-006` | ang-006 (counseling record) | `DEC-SCOPE-048` | PR #38 (merged) |
 > | `AGN-007` | ang-007 (university shortlist, agency university database) | `DEC-SCOPE-049` | PR #39 (merged) |
 > | `AGN-008` | ang-008 (applications for no-login students, sidebar filters) | `DEC-SCOPE-050` | branch `feature/agn-008-agent-applications` (PR pending; browser QA done, Codex review pending) |
+> | `AGN-009` | ang-009 (documents: upload, download, verify, reject with a reason, requests, history; Pending/Uploaded/Additional) | `DEC-SCOPE-052` | branch `feature/agn-009-agent-documents` (implemented; browser validation and Codex review pending) |
+> | `AGN-016` | ang-016 (tasks and follow-ups; "Pending actions" KPI only — the rest of ang-018 stays open) | `DEC-SCOPE-053` | branch `feature/agn-016-tasks-followups` (implemented; browser QA, full suites and Codex review pending) |
 >
-> Not started: ang-009 … ang-020 and ang-022. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
+> Not started: ang-010 … ang-020 and ang-022. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
 > student to a staff member; staff see assigned students only) — check its remaining acceptance criteria before planning it.
 > **Citation note:** the "`DEC-SCOPE-035`" this file cites as its scope decision was renumbered before merge;
 > `DEC-SCOPE-035` on `main` is `ENH-027` (psychometric). AGN-004 and AGN-007 recorded this mis-citation; each shipped
@@ -524,7 +526,7 @@ table and column names are placeholders for the design spec, not decisions.
 - **Positive / Negative / Edge:** enroll → commission estimated / missing date → 422 / enrolled then withdrawn (commission reversal: not modeled; confirm).
 - **Regression risks:** `test_agt_003_commission_accrual`.
 - **Complexity:** medium · **Risk:** high
-- **Status (2026-10-02):** implemented as `AGN-013` (`DEC-SCOPE-052`: Master only, best-effort intake check, trigger unchanged,
+- **Status (2026-10-02):** implemented as `AGN-013` (`DEC-SCOPE-054`: Master only, best-effort intake check, trigger unchanged,
   `PUT …/crm/applications/{id}/enrollment`); browser validation and Codex review pending. See `ENHANCEMENT_BACKLOG.md` §AGN-013.
 
 ---
