@@ -1,12 +1,15 @@
 """AGN-014 (DEC-SCOPE-051) -- Master-only commission report, CSV export and dashboard Revenue (spec §5-§6, AC01-AC08)."""
 
 import csv
+import importlib.util
 import io
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
+from sqlalchemy import select
 
-from app.models import AgentOrg
+from app.models import AgentOrg, AgentOrgMember, UserRoleAssignment
 from tests.agn001_helpers import client_for, mk_active_org, mk_user, uniq
 from tests.agn002_helpers import mk_staff
 from tests.agn014_helpers import CSV, REPORT, mk_commission
@@ -249,3 +252,40 @@ async def test_staff_dashboard_has_no_revenue(db_session):  # AC04
     async with client_for(staff["user"].email) as c:
         payload = (await c.get(DASHBOARD)).json()
     assert _metric(payload, "Revenue") is None and "commission" not in str(payload).lower()
+
+
+# --- The migrated Master (AC01): the real 0046 backfill, not an imitation of it -----------------------------------------------
+
+
+def _migration_0046():
+    path = Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0046_agent_orgs.py"
+    spec = importlib.util.spec_from_file_location("migration_0046_agent_orgs", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.asyncio
+async def test_a_master_created_by_the_0046_backfill_sees_older_commissions(db_session):  # AC01
+    # A pre-AGN-001 agent: approved, with a paid commission, and no organisation membership yet.
+    legacy = await mk_user(db_session, role="agent", full_name="Legacy Agent", profile={"agency_name": f"Legacy {uniq()}"})
+    db_session.add(UserRoleAssignment(user_id=legacy.id, division="overseas", role="agent", approval_status="approved"))
+    await db_session.commit()
+    commission = await mk_commission(db_session, {"master": legacy}, status="paid", amount=4321, university_name="Legacy U")
+    assert await db_session.scalar(select(AgentOrgMember).where(AgentOrgMember.user_id == legacy.id)) is None
+    # The real upgrade code. Like a real upgrade it also backfills any other membership-less agent left in the shared test
+    # database; this test asserts only on its own agent.
+    connection = await db_session.connection()
+    await connection.run_sync(_migration_0046()._backfill)
+    await db_session.commit()
+    member = await db_session.scalar(select(AgentOrgMember).where(AgentOrgMember.user_id == legacy.id))
+    assert member is not None and member.role == "master" and member.code.endswith("-M001")
+    async with client_for(legacy.email) as c:
+        listed = (await c.get("/api/v1/workflows/overseas/agent/commissions")).json()
+        dashboard = (await c.get(DASHBOARD)).json()
+        report = (await c.get(REPORT)).json()
+        csv_text = (await c.get(CSV)).text
+    assert str(commission.id) in {row["id"] for row in listed}
+    assert _metric(dashboard, "Revenue") == "INR 4,321"
+    assert [row["university"] for row in report["by_university"]] == ["Legacy U"]
+    assert "Legacy U" in csv_text

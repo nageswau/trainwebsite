@@ -41,6 +41,9 @@ STAFF_REFUSED = [
     ("Commission", "get", "/api/v1/workflows/overseas/agent/commissions", None, "Only an agency Master can view commissions"),
     ("Commission", "post", "/api/v1/workflows/overseas/agent/commissions/{zero}/claim", None, "Only an agency Master can view commissions"),
     ("Commission", "get", PORTAL + "/commissions", None, "Only an agency Master can open this page"),
+    # AGN-014 (DEC-SCOPE-051): the commission report and its CSV are Master-only too.
+    ("Commission", "get", "/api/v1/workflows/overseas/agent/commissions/report", None, "Only an agency Master can view commissions"),
+    ("Commission", "get", "/api/v1/workflows/overseas/agent/commissions/report.csv", None, "Only an agency Master can view commissions"),
     ("Add University", "post", "/api/v1/admin/universities", {}, "Admin role required"),
     ("Delete Student", "post", RECORDS + "/{record}/archive", None, "Only an agency Master can archive students"),
     ("Delete Student", "post", RECORDS + "/{archived_record}/unarchive", None, "Only an agency Master can archive students"),
@@ -84,6 +87,8 @@ MASTER_ALLOWED = [
     ("Reports", "get", PORTAL + "/reports", None, 200),
     ("Commission", "get", "/api/v1/workflows/overseas/agent/commissions", None, 200),
     ("Commission", "get", PORTAL + "/commissions", None, 200),
+    ("Commission", "get", "/api/v1/workflows/overseas/agent/commissions/report", None, 200),  # AGN-014
+    ("Commission", "get", "/api/v1/workflows/overseas/agent/commissions/report.csv", None, 200),  # AGN-014
     ("Staff Management", "patch", STAFF + "/{other_staff}", {"full_name": "Renamed"}, 200),
     ("Staff Management", "post", TEAM + "/masters", {"full_name": "New Master", "email": "{fresh_email}"}, 201),
     ("Create Staff Login", "post", STAFF + "/{other_staff}/reset", None, 200),
