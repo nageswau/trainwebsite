@@ -445,6 +445,19 @@ class OverseasApplication(Base, TimestampMixin):
     submitted_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     application_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     offer_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # AGN-010 (DEC-SCOPE-054): the current offer, recorded by the agency. `offer_deadline` above is its deadline (O2); the letter is an
+    # AGN-009 document (O3). `use_alter`: student_documents.application_id points back at this table.
+    offer_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    offer_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    offer_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    offer_document_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL", use_alter=True, name="fk_overseas_applications_offer_document_id"), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint("offer_type IS NULL OR offer_type IN ('conditional', 'unconditional')", name="ck_overseas_applications_offer_type"),
+        CheckConstraint("(offer_type IS NULL) = (offer_date IS NULL)", name="ck_overseas_applications_offer_dated"),
+    )
 
 
 class ApplicationStatusHistory(Base, TimestampMixin):
