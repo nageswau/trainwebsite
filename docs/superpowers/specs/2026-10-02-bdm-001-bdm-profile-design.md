@@ -481,3 +481,20 @@ The first exploratory browser QA pass raised six Medium issues; the owner approv
 | QA-06 | Keyboard focus fell to `<body>` after save, an error, or a status change | Focus returns to the row's own controls after success and moves to the message after an error (so Esc keeps working) |
 
 The ten Low issues from the same pass are not addressed here.
+
+## 14. Addendum — browser QA, Low issues (2026-10-02)
+
+Each fix was written test-first and re-checked in the browser. No new owner decision was needed.
+
+| QA | Fix |
+|---|---|
+| QA-07 | A sign-in at the wrong portal names the right one: `403 "Use the correct EduSphere portal for this account: sign in at /it/login"` (or `/overseas/login`, `/admin/login`). The password is checked first, so only a holder of valid credentials learns their own portal. |
+| QA-08 | BDM profile validation errors read as sentences ("Employee ID is required", "Module: …", "Reporting manager: choose a manager from the list", "Unknown field: …"); no pydantic path or "Value error," prefix. |
+| QA-09 | `/bdm` redirects to `/bdm/my-day`; `/bdm/manager` redirects to `/bdm/manager/dashboard`. |
+| QA-10 | `/admin` shows the shared access card (own dashboard; sign-in at `/admin/login`) to any signed-in non-Super-Admin, instead of a Login button to `/it/login`. |
+| QA-11 | Resolved by the QA-02 picker rewrite (no "Loading managers…" option exists); pinned by a test. |
+| QA-12 | A Super Admin on `/it/admin/bdms` or `/overseas/admin/bdms` keeps the "Super Administrator" label and nav. |
+| QA-13 | The admin BDM list keeps `offset` and `q` in the URL: refresh keeps the page, Back returns to the previous page. |
+| QA-14 | A page past the last row (team page or admin list) says so and offers "Go to the first page". |
+| QA-15 | Once the admin grid is one column (≤ 980px), the BDM list comes before the create form (CSS `order`, `.bdm-list`). |
+| QA-16 | "1 BDM reports to you"; the team table caption is screen-reader only. Found while verifying: `.sr-only` is not a defined class here, so the caption and the list's "Actions" header now use the project's `.visually-hidden`. |
