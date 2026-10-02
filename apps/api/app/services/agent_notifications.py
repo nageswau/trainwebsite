@@ -151,7 +151,9 @@ def ist_date(value: date | datetime) -> str:
 
 async def task_created(db: AsyncSession, record: AgentStudent, task: AgentTask, actor: User) -> None:
     """N1: the student's recipient, unless they created it. The title is user-typed, so only the due date is shown (§8)."""
-    body = f"A new task on one of your students is due {ist_date(task.due_at)}."
+    due = ist_date(task.due_at)
+    # QA17-04: a task may be created already past due (AGN-016 T6); "is due 01 Oct" on 2 Oct read as a future date.
+    body = f"A new task on one of your students was due {due} and is overdue." if task.due_at < datetime.now(UTC) else f"A new task on one of your students is due {due}."
     await notify(db, await recipients(db, record, actor), "New task", body, TASKS_URL)
 
 

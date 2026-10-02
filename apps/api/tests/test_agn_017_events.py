@@ -268,7 +268,7 @@ NEW_TASK = "New task"
 
 
 def _task_body(record, **over):
-    return {"agent_student_id": str(record.id), "title": "Call rahul@example.com about the CAS", "due_at": "2026-10-05T20:00:00+00:00", **over}
+    return {"agent_student_id": str(record.id), "title": "Call rahul@example.com about the CAS", "due_at": "2031-10-05T20:00:00+00:00", **over}
 
 
 @pytest.mark.asyncio
@@ -278,9 +278,18 @@ async def test_a_task_created_by_the_master_tells_the_assignee_with_the_ist_due_
     assert response.status_code == 201, response.text
     [item] = await notices(db_session, world["staff"]["user"])
     # 20:00 UTC on 5 Oct is 01:30 IST on 6 Oct.
-    assert (item.title, item.body, item.action_url) == (NEW_TASK, "A new task on one of your students is due 06 Oct 2026.", "/overseas/agent/tasks")
+    assert (item.title, item.body, item.action_url) == (NEW_TASK, "A new task on one of your students is due 06 Oct 2031.", "/overseas/agent/tasks")
     text = await all_text(db_session)
     assert "rahul@example.com" not in text and "P1234567" not in text
+
+
+@pytest.mark.asyncio
+async def test_a_task_created_already_past_due_says_it_was_due(db_session, world):
+    """Browser QA QA17-04: "is due 01 Oct" on 2 Oct read as a future date."""
+    async with client_for(world["master"].email) as c:
+        assert (await c.post(TASKS, json=_task_body(world["record"], due_at="2020-01-01T09:00:00+00:00"))).status_code == 201
+    [item] = await notices(db_session, world["staff"]["user"])
+    assert (item.title, item.body) == (NEW_TASK, "A new task on one of your students was due 01 Jan 2020 and is overdue.")
 
 
 @pytest.mark.asyncio
