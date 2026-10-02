@@ -1,4 +1,5 @@
 import type { AgentPermissions } from "@/lib/types";
+import { GROUP_LABELS, STATUS_GROUPS } from "./agentApplications";
 export type NavItem = { label:string; href:string; children?:NavItem[] };
 
 // Single source of truth for "which dashboard does this role land on" -- used by
@@ -63,6 +64,8 @@ export const OVERSEAS_PUBLIC:NavItem[] = [
   {label:"Scholarships",href:"/overseas/scholarships"},{label:"Events",href:"/overseas/events"},{label:"Contact",href:"/overseas/contact"}
 ];
 
+const AGENT_APPLICATION_FILTERS: NavItem[] = STATUS_GROUPS.filter((g) => g !== "all").map((g) => ({ label: GROUP_LABELS[g], href: `/overseas/agent/applications?status=${g}` }));
+
 export const PORTAL_NAV:Record<string,NavItem[]> = {
   "it/student": ["dashboard","profile","course","attendance","assignments","projects","examinations","certificates","feedback","questions","fees","interview-schedule","placement-status","job-applications","downloads","support"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/student/${x}`})),
   "it/trainer": ["dashboard","attendance","assignments","assessments","materials","live-sessions","student-progress","questions","support"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/trainer/${x}`})),
@@ -73,7 +76,8 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   "overseas/counselor": ["dashboard","students","leads","documents","applications","school-applications","visa","appointments","counselor-chat","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/counselor/${x}`})),
   "overseas/university": ["dashboard","applications","offer-letters","admission-updates","student-communication","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/university/${x}`})),
   "overseas/admin": ["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","school-applications","school-transfers","activity-feedback","school-analytics","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),
-  "overseas/agent": ["dashboard","students","applications","documents","commissions","reports","team"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/agent/${x}`})),
+  // AGN-008 (DEC-SCOPE-050 A7): Applications carries the EVID-015 §4 sidebar filters as sub-links (same page, ?status=).
+  "overseas/agent": ["dashboard","students","applications","documents","commissions","reports","team"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/agent/${x}`,...(x==="applications"?{children:AGENT_APPLICATION_FILTERS}:{})})),
 };
 // AGN-002 (DEC-SCOPE-040 S1): an agency's staff work on students and applications; Team and Commissions stay Master-only (the
 // server refuses them regardless -- this only keeps dead links out of the sidebar).

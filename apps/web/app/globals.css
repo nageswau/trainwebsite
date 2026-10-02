@@ -190,3 +190,4 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
    button row, where it would otherwise widen the row (QA15-11). */
 .report-download .field-hint { margin-top: 6px; }
 .child-page-actions .report-download .field-hint { max-width: 42ch; }
+.portal-subnav{list-style:none;margin:0 0 4px;padding:0 0 0 12px;display:grid;gap:2px}.portal-subnav a{font-size:13px}
