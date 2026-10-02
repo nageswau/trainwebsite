@@ -485,10 +485,6 @@ class StudentDocument(Base, TimestampMixin):
     )
 
 
-DOCUMENT_REQUEST_STATUSES = ("open", "fulfilled", "cancelled")
-DOCUMENT_EVENTS = ("uploaded", "replaced", "verified", "rejected", "changes_required", "requested", "fulfilled", "cancelled", "downloaded")
-
-
 class DocumentRequest(Base, TimestampMixin):
     """AGN-009 (DEC-SCOPE-051 G4/G5): an agency's request for an additional document from one of its students. Open until an upload
     made against it fulfils it, or a member cancels it."""

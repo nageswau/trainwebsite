@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { detailMessage, isPage, Page } from "@/lib/apiErrors";
 import { documentName, DocumentRequestItem, formatDateTime, REQUESTS_URL, VIEW_LABELS } from "@/lib/agentDocuments";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -17,13 +17,10 @@ export default function AgentDocumentRequestsPanel({ reloadKey }: { reloadKey: n
   const [attempt, setAttempt] = useState(0);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [note, setNote] = useState<{ text: string; failed: boolean } | null>(null);
-  const request = useRef<AbortController | null>(null);
   const focusAfter = useFocusAfterRender();
 
   useEffect(() => {
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
+    const controller = new AbortController(); // aborted by the cleanup when the view, page or reload key changes
     setLoading(true);
     setLoadError(null);
     const params = new URLSearchParams({ status: "open", limit: String(PAGE_SIZE), offset: String(offset) });

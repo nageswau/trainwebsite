@@ -2,9 +2,10 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import SearchableSelect from "@/components/SearchableSelect";
-import { isPage } from "@/lib/apiErrors";
+import { isPage, sendRequest } from "@/lib/apiErrors";
 import { APPLICATIONS_URL, AgentApplicationItem } from "@/lib/agentApplications";
-import { DOCUMENT_TYPES, documentName, DOCUMENTS_URL, DocumentRequestItem, FILE_ACCEPT, OTHER, REQUESTS_URL, sendForm } from "@/lib/agentDocuments";
+import AgentDocumentTypeField from "./AgentDocumentTypeField";
+import { DOCUMENT_TYPES, documentName, DOCUMENTS_URL, DocumentRequestItem, FILE_ACCEPT, REQUESTS_URL } from "@/lib/agentDocuments";
 import { searchAgentStudents } from "@/lib/agentStudents";
 
 type Choices = { applications: AgentApplicationItem[]; requests: DocumentRequestItem[] };
@@ -52,7 +53,7 @@ export default function AgentDocumentUploadForm({ onUploaded }: { onUploaded: ()
     body.set("file", file);
     setBusy(true);
     setMessage(null);
-    const outcome = await sendForm(DOCUMENTS_URL, "POST", body);
+    const outcome = await sendRequest(DOCUMENTS_URL, { method: "POST", body });
     setBusy(false);
     if (!outcome.ok) return setMessage({ text: outcome.message, failed: true });
     setMessage({ text: "Document uploaded. It is waiting for review.", failed: false });
@@ -69,22 +70,7 @@ export default function AgentDocumentUploadForm({ onUploaded }: { onUploaded: ()
       <form className="form" onSubmit={submit} aria-label="Upload document">
         <SearchableSelect key={formVersion} id="agent-doc-student" label="Student" required noun="student" search={searchAgentStudents} onChange={(option) => setStudentId(option?.id ?? "")} />
         <div className="form-grid">
-          <div className="field">
-            <label htmlFor="agent-doc-type">Document type</label>
-            <select id="agent-doc-type" value={type} onChange={(e) => setType(e.target.value)}>
-              {DOCUMENT_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-          {type === OTHER && (
-            <div className="field">
-              <label htmlFor="agent-doc-label">Description</label>
-              <input id="agent-doc-label" name="document_label" required minLength={2} maxLength={80} />
-            </div>
-          )}
+          <AgentDocumentTypeField idPrefix="agent-doc" value={type} onChange={setType} />
           <div className="field">
             <label htmlFor="agent-doc-application">Application (optional)</label>
             <select id="agent-doc-application" name="application_id" disabled={!choices.applications.length} defaultValue="">

@@ -3,7 +3,8 @@
 import { FormEvent, useState } from "react";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
-import { DOCUMENT_TYPES, OTHER, REQUESTS_URL } from "@/lib/agentDocuments";
+import AgentDocumentTypeField from "./AgentDocumentTypeField";
+import { DOCUMENT_TYPES, REQUESTS_URL } from "@/lib/agentDocuments";
 import { searchAgentStudents } from "@/lib/agentStudents";
 
 // AGN-009 (G4, AC4): Masters and staff ask one of their students for an additional document. The request stays under "Additional"
@@ -41,22 +42,7 @@ export default function AgentDocumentRequestForm({ onCreated }: { onCreated: () 
       <form className="form" onSubmit={submit} aria-label="Request a document">
         <SearchableSelect key={formVersion} id="agent-request-student" label="Student" required noun="student" search={searchAgentStudents} onChange={(option) => setStudentId(option?.id ?? "")} />
         <div className="form-grid">
-          <div className="field">
-            <label htmlFor="agent-request-type">Document type</label>
-            <select id="agent-request-type" value={type} onChange={(e) => setType(e.target.value)}>
-              {DOCUMENT_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-          {type === OTHER && (
-            <div className="field">
-              <label htmlFor="agent-request-label">Description</label>
-              <input id="agent-request-label" name="document_label" required minLength={2} maxLength={80} />
-            </div>
-          )}
+          <AgentDocumentTypeField idPrefix="agent-request" value={type} onChange={setType} />
         </div>
         <div className="field">
           <label htmlFor="agent-request-note">Note for the file (optional)</label>

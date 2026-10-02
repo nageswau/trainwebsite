@@ -375,7 +375,8 @@ class AgentDocumentReview(BaseModel):
     notes: str | None = Field(default=None, max_length=10000)
 
 
-# AGN-009 (DEC-SCOPE-051 G3): EVID-015 §5 Step 4, stored as written; mirrors services.agent_documents.DOCUMENT_TYPES.
+# AGN-009 (DEC-SCOPE-051 G3): EVID-015 §5 Step 4, stored as written (the free-text style the visa checklist compares); the web mirrors
+# it in lib/agentDocuments.ts DOCUMENT_TYPES.
 AgentDocumentType = Literal["Passport", "Academic certificates", "Transcripts", "English test", "CV", "SOP", "LOR", "Financial documents", "Other"]
 
 

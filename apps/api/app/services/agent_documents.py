@@ -24,8 +24,7 @@ from app.services.storage import storage
 
 logger = logging.getLogger("app.agent_documents")
 
-# EVID-015 §5 Step 4 (G3), stored as written -- the free-text style the visa checklist compares. "Other" needs a label.
-DOCUMENT_TYPES = ("Passport", "Academic certificates", "Transcripts", "English test", "CV", "SOP", "LOR", "Financial documents", "Other")
+# The type list itself is `schemas.AgentDocumentType` (G3); "Other" needs a label.
 OTHER = "Other"
 PDF = "application/pdf"
 STORAGE_PREFIX = "agent-documents"

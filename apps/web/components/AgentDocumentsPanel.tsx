@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import AgentDocumentCard from "./AgentDocumentCard";
 import { detailMessage, isPage, Page } from "@/lib/apiErrors";
 import { AgentDocumentItem, DOCUMENTS_URL, VIEW_LABELS } from "@/lib/agentDocuments";
@@ -14,7 +14,7 @@ const EMPTY = {
 };
 
 // AGN-009 (G9): the Pending or Uploaded view (AGN-008's list pattern). Paging is local (a new view remounts this panel at page one);
-// the previous page stays visible, dimmed, while the next loads; only the newest request may fill the list. A change made on a card
+// the previous page stays visible, dimmed, while the next loads; a stale request is aborted, so only the newest fills the list. A change made on a card
 // reloads the page and is announced here, since the card may have left the view.
 export default function AgentDocumentsPanel({ view, reloadKey, user }: { view: "pending" | "uploaded"; reloadKey: number; user: User }) {
   const [offset, setOffset] = useState(0);
@@ -23,12 +23,9 @@ export default function AgentDocumentsPanel({ view, reloadKey, user }: { view: "
   const [loadError, setLoadError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
-  const request = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
+    const controller = new AbortController(); // aborted by the cleanup when the view, page or reload key changes
     setLoading(true);
     setLoadError(null);
     const params = new URLSearchParams({ view, limit: String(PAGE_SIZE), offset: String(offset) });

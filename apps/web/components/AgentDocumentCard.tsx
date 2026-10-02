@@ -3,8 +3,8 @@
 import { FormEvent, useState } from "react";
 import AgentDocumentHistory from "./AgentDocumentHistory";
 import AgentDocumentReviewForm from "./AgentDocumentReviewForm";
-import { detailMessage } from "@/lib/apiErrors";
-import { AgentDocumentItem, documentName, DOCUMENTS_URL, downloadUrl, FILE_ACCEPT, formatDateTime, formatSize, reviewDecisions, sendForm, statusLabel } from "@/lib/agentDocuments";
+import { detailMessage, sendRequest } from "@/lib/apiErrors";
+import { AgentDocumentItem, documentName, DOCUMENTS_URL, downloadUrl, FILE_ACCEPT, formatDateTime, formatSize, reviewDecisions, statusLabel } from "@/lib/agentDocuments";
 import type { User } from "@/lib/types";
 
 type Panel = "review" | "replace" | "history" | null;
@@ -43,7 +43,7 @@ export default function AgentDocumentCard({ doc, user, onChanged }: { doc: Agent
     const file = form.get("file");
     if (!(file instanceof File) || !file.size) return;
     setBusy("replace");
-    const outcome = await sendForm(`${DOCUMENTS_URL}/${doc.id}/file`, "PUT", form);
+    const outcome = await sendRequest(`${DOCUMENTS_URL}/${doc.id}/file`, { method: "PUT", body: form });
     setBusy(null);
     if (!outcome.ok) {
       setNote({ text: outcome.message, failed: true });

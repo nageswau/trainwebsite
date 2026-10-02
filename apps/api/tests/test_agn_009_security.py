@@ -78,7 +78,10 @@ async def test_other_agency_sees_nothing_of_a_shared_student(db_session, w):
 
 
 @pytest.mark.asyncio
-async def test_logs_carry_no_file_name_or_reason(db_session, w, caplog):
+async def test_logs_carry_no_file_name_or_reason(db_session, w, caplog, monkeypatch):
+    # alembic/env.py's fileConfig() disables loggers that already exist when a migration test runs earlier in the same session.
+    for name in ("app.agent_documents", "app.workflows"):
+        monkeypatch.setattr(logging.getLogger(name), "disabled", False)
     caplog.set_level(logging.DEBUG)
     async with client_for(w["master"].email) as c:
         doc_id = (await c.post(DOCS, data={"agent_student_id": str(w["record"].id), "document_type": "CV"}, files=upload_files(name="SECRET-cv-name.pdf"))).json()["document"]["id"]

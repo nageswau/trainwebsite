@@ -1,6 +1,5 @@
 // AGN-009 (DEC-SCOPE-051): an agency's documents and document requests -- the shapes, labels and §6 review rules the Documents
 // page shares. The server is the authority (scope, matrix, reasons, states); these only keep the screens from offering a refused action.
-import { detailMessage, NOT_COMPLETED, type SendOutcome } from "@/lib/apiErrors";
 import type { User } from "@/lib/types";
 
 export const DOCUMENTS_URL = "/api/v1/workflows/overseas/agent/crm/documents";
@@ -101,18 +100,4 @@ export function formatDateTime(iso: string): string {
 export function formatSize(bytes: number | null): string | null {
   if (bytes == null) return null;
   return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-// sendJson's contract for a multipart write (upload, replace): never throws; a dropped network is NOT_COMPLETED (the entry is kept),
-// an error response carries the server's `detail`. The browser sets the multipart boundary itself.
-export async function sendForm(url: string, method: "POST" | "PUT", body: FormData): Promise<SendOutcome> {
-  let response: Response;
-  try {
-    response = await fetch(url, { method, body });
-  } catch {
-    return { ok: false, message: NOT_COMPLETED };
-  }
-  const data = await response.json().catch(() => null);
-  if (!response.ok) return { ok: false, message: detailMessage(data?.detail), status: response.status };
-  return { ok: true, data: data && typeof data === "object" ? data : {} };
 }
