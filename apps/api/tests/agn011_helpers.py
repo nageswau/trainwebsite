@@ -109,7 +109,13 @@ async def audits(db, action: str, entity_id) -> list[AuditLog]:
 
 
 async def deposit_payments(db, deposit_id) -> list[Payment]:
-    return list((await db.scalars(select(Payment).where(Payment.reference_type == "agent_deposit", Payment.reference_id == deposit_id).order_by(Payment.created_at).execution_options(populate_existing=True))).all())
+    return list(
+        (
+            await db.scalars(
+                select(Payment).where(Payment.reference_type == "agent_deposit", Payment.reference_id == deposit_id).order_by(Payment.created_at).execution_options(populate_existing=True)
+            )
+        ).all()
+    )
 
 
 async def count_deposit_payments(db, deposit_id) -> int:

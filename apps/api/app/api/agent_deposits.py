@@ -224,7 +224,9 @@ async def refund_deposit(deposit_id: UUID, payload: DepositRefund, user: User = 
         raise HTTPException(422, "A refund cannot exceed the paid amount")
     old = deposit.status
     deposit.status, deposit.refunded_at, deposit.refund_amount, deposit.refund_reason, deposit.updated_by_user_id = "refunded", payload.refunded_on, payload.amount, payload.reason, user.id
-    db.add(AuditLog(user_id=user.id, action="overseas.deposit.refund", entity_type="application_deposit", entity_id=str(deposit.id), metadata_json={"amount": f"{payload.amount:.2f}", "from_status": old}))
+    db.add(
+        AuditLog(user_id=user.id, action="overseas.deposit.refund", entity_type="application_deposit", entity_id=str(deposit.id), metadata_json={"amount": f"{payload.amount:.2f}", "from_status": old})
+    )
     await db.commit()
     logger.info("agent_deposit_refunded", extra={"extra_fields": {"deposit_id": str(deposit.id), "actor_id": str(user.id), "from_status": old}})
     return await _admin_item(db, deposit.id)

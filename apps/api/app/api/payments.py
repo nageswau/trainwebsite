@@ -49,7 +49,9 @@ async def _ensure_receipt(db: AsyncSession, item: Payment, payer: User) -> Recei
         return existing
     receipt_no = f"RCPT-{date.today():%Y}-{secrets.token_hex(4).upper()}"
     student = await agent_deposits.receipt_student(db, item)  # AGN-011 AC5: None for every other payment, so their receipt is unchanged
-    file_url = generate_receipt_pdf(receipt_no=receipt_no, payer_name=payer.full_name, amount=float(item.amount), currency=item.currency, issued_on=date.today(), reference_type=item.reference_type, student_name=student)
+    file_url = generate_receipt_pdf(
+        receipt_no=receipt_no, payer_name=payer.full_name, amount=float(item.amount), currency=item.currency, issued_on=date.today(), reference_type=item.reference_type, student_name=student
+    )
     receipt = Receipt(payment_id=item.id, user_id=item.user_id, division=item.division, receipt_no=receipt_no, amount=item.amount, currency=item.currency, file_url=file_url)
     db.add(receipt)
     await db.flush()

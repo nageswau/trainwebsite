@@ -43,7 +43,15 @@ def test_remit_cleans_its_reference():
     assert DepositRemit(remitted_on=date(2026, 10, 1), reference="  UTR 1234  ").reference == "UTR 1234"
 
 
-@pytest.mark.parametrize("body", [{"remitted_on": "2026-10-01", "reference": "   "}, {"remitted_on": "2026-10-01", "reference": "x" * 101}, {"remitted_on": "2026-10-01"}, {"remitted_on": "2026-10-01", "reference": "R", "extra": 1}])
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"remitted_on": "2026-10-01", "reference": "   "},
+        {"remitted_on": "2026-10-01", "reference": "x" * 101},
+        {"remitted_on": "2026-10-01"},
+        {"remitted_on": "2026-10-01", "reference": "R", "extra": 1},
+    ],
+)
 def test_invalid_remit_bodies(body):
     with pytest.raises(ValidationError):
         DepositRemit(**body)

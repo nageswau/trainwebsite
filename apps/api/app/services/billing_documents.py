@@ -55,4 +55,6 @@ def generate_invoice_pdf(*, invoice_no: str, payer_name: str, amount: float, cur
 
 
 def generate_receipt_pdf(*, receipt_no: str, payer_name: str, amount: float, currency: str, issued_on: date, reference_type: str, student_name: str | None = None) -> str:
-    return _generate_billing_pdf(kind="Receipt", doc_no=receipt_no, payer_name=payer_name, amount=amount, currency=currency, issued_on=issued_on, reference_type=reference_type, student_name=student_name)
+    return _generate_billing_pdf(
+        kind="Receipt", doc_no=receipt_no, payer_name=payer_name, amount=amount, currency=currency, issued_on=issued_on, reference_type=reference_type, student_name=student_name
+    )

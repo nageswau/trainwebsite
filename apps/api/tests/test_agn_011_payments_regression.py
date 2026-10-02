@@ -22,7 +22,9 @@ WEBHOOK = "/api/v1/payments/webhooks/razorpay"
 
 
 async def _fee(db, user, **fields) -> Payment:
-    payment = Payment(user_id=user.id, division="overseas", reference_type="course_fee", amount=1000, currency="INR", status="pending", checkout_provider_order_id=f"order_{uuid.uuid4().hex[:14]}", **fields)
+    payment = Payment(
+        user_id=user.id, division="overseas", reference_type="course_fee", amount=1000, currency="INR", status="pending", checkout_provider_order_id=f"order_{uuid.uuid4().hex[:14]}", **fields
+    )
     db.add(payment)
     await db.commit()
     return payment

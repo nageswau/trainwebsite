@@ -60,7 +60,9 @@ async def checkout_wait_seconds(db: AsyncSession, deposit_id) -> int:
     the caller holds the deposit lock, so two requests cannot both squeeze under it."""
     now = datetime.now(UTC)
     recent = (
-        await db.scalars(select(Payment.created_at).where(Payment.reference_type == REFERENCE_TYPE, Payment.reference_id == deposit_id, Payment.created_at > now - CHECKOUT_WINDOW).order_by(Payment.created_at))
+        await db.scalars(
+            select(Payment.created_at).where(Payment.reference_type == REFERENCE_TYPE, Payment.reference_id == deposit_id, Payment.created_at > now - CHECKOUT_WINDOW).order_by(Payment.created_at)
+        )
     ).all()
     if len(recent) < CHECKOUT_LIMIT:
         return 0
@@ -69,7 +71,14 @@ async def checkout_wait_seconds(db: AsyncSession, deposit_id) -> int:
 
 def checkout_result(payment: Payment, *, replayed: bool = False) -> dict:
     """What the browser needs to open Razorpay Checkout: the public key id only, never a secret."""
-    body = {"status": "ready", "payment_id": str(payment.id), "key_id": settings.razorpay_key_id, "provider_order_id": payment.checkout_provider_order_id, "amount": float(payment.amount), "currency": payment.currency}
+    body = {
+        "status": "ready",
+        "payment_id": str(payment.id),
+        "key_id": settings.razorpay_key_id,
+        "provider_order_id": payment.checkout_provider_order_id,
+        "amount": float(payment.amount),
+        "currency": payment.currency,
+    }
     return body | {"replayed": True} if replayed else body
 
 
@@ -110,14 +119,26 @@ async def on_payment_paid(db: AsyncSession, payment: Payment, *, source: str, pr
     elif provider_amount is not None and provider_amount != int(round(deposit.amount * 100)):
         reason = "amount_mismatch"
     if reason:
-        db.add(AuditLog(user_id=None, action="overseas.deposit.unlinked_payment", entity_type="application_deposit", entity_id=str(deposit.id), metadata_json={"payment_id": str(payment.id), "reason": reason}))
+        db.add(
+            AuditLog(
+                user_id=None, action="overseas.deposit.unlinked_payment", entity_type="application_deposit", entity_id=str(deposit.id), metadata_json={"payment_id": str(payment.id), "reason": reason}
+            )
+        )
         logger.warning("agent_deposit_unlinked_payment", extra={"extra_fields": {"deposit_id": str(deposit.id), "payment_id": str(payment.id), "reason": reason, "source": source}})
         return
     deposit.status = "paid"
     deposit.paid_payment_id = payment.id
     deposit.paid_at = datetime.now(UTC)
     deposit.active_payment_id = None
-    db.add(AuditLog(user_id=payment.user_id, action="overseas.application.deposit_paid", entity_type="overseas_application", entity_id=str(deposit.application_id), metadata_json={"payment_id": str(payment.id), "source": source}))
+    db.add(
+        AuditLog(
+            user_id=payment.user_id,
+            action="overseas.application.deposit_paid",
+            entity_type="overseas_application",
+            entity_id=str(deposit.application_id),
+            metadata_json={"payment_id": str(payment.id), "source": source},
+        )
+    )
     logger.info("agent_deposit_paid", extra={"extra_fields": {"deposit_id": str(deposit.id), "payment_id": str(payment.id), "application_id": str(deposit.application_id), "source": source}})
 
 
@@ -162,7 +183,12 @@ async def admin_rows(db: AsyncSession, *filters, limit: int, offset: int) -> lis
                 await db.execute(
                     select(Payment.reference_id, func.count())
                     .join(ApplicationDeposit, ApplicationDeposit.id == Payment.reference_id)
-                    .where(Payment.reference_type == REFERENCE_TYPE, Payment.reference_id.in_(ids), Payment.status.in_(("paid", "succeeded")), Payment.id.is_distinct_from(ApplicationDeposit.paid_payment_id))
+                    .where(
+                        Payment.reference_type == REFERENCE_TYPE,
+                        Payment.reference_id.in_(ids),
+                        Payment.status.in_(("paid", "succeeded")),
+                        Payment.id.is_distinct_from(ApplicationDeposit.paid_payment_id),
+                    )
                     .group_by(Payment.reference_id)
                 )
             ).all()
