@@ -12,7 +12,7 @@ from typing import get_args
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,7 +32,7 @@ KNOWN_DOCUMENT_TYPES = frozenset(get_args(AgentDocumentType)) - {"Other"}  # "Ot
 
 def document_label(value: str | None) -> str:
     """Only a known type is named: an uploaded document's type is free text and may carry personal data."""
-    return value if value in KNOWN_DOCUMENT_TYPES else "A document"
+    return value if value is not None and value in KNOWN_DOCUMENT_TYPES else "A document"
 
 
 def clean_text(value: str | None, limit: int = 120) -> str:
@@ -174,7 +174,7 @@ async def _insert_reminder(db: AsyncSession, user: User, title: str, body: str, 
     new_id = await db.scalar(stmt)
     if new_id is None:
         return False
-    await queue_deliveries(db, await db.get(Notification, new_id), user, channels=CHANNELS)
+    await queue_deliveries(db, await db.get_one(Notification, new_id), user, channels=CHANNELS)
     return True
 
 
@@ -206,7 +206,7 @@ def _window_days(today: date) -> dict[date, int]:
     return {today + timedelta(days=d): d for d in WINDOWS}
 
 
-def deadline_query(today: date, last):
+def deadline_query(today: date, last) -> Select[OverseasApplication, AgentStudent, str]:
     """One chunk of agency applications with a deadline in a reminder window, after `last` (keyset paging)."""
     days = list(_window_days(today))
     query = (
@@ -257,7 +257,7 @@ async def _overdue_digests(db: AsyncSession, now: datetime, today: date, counts:
     users: dict = {}
     overdue: Counter = Counter()
     for record_id, count in per_record:
-        for user in await _cached_recipients(db, await db.get(AgentStudent, record_id), cache):
+        for user in await _cached_recipients(db, await db.get_one(AgentStudent, record_id), cache):
             users[user.id] = user
             overdue[user.id] += count
     for user_id, count in overdue.items():
