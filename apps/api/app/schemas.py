@@ -1,7 +1,7 @@
 import math
 import re
 import unicodedata
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
@@ -556,6 +556,104 @@ class AgentStudentAssign(BaseModel):
 
     model_config = {"extra": "forbid"}
     member_id: UUID | None
+
+
+# --- AGN-008: agent applications (DEC-SCOPE-050; docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md §5.4) ---
+
+_APPLICATION_DATE_MIN, _APPLICATION_DATE_MAX = date(2000, 1, 1), date(2100, 12, 31)
+
+
+def _application_date(value: date | None) -> date | None:
+    """Catches typed-year slips (0202, 20226) before they reach a deadline list."""
+    if value is not None and not (_APPLICATION_DATE_MIN <= value <= _APPLICATION_DATE_MAX):
+        raise PydanticCustomError("invalid_application_date", "Dates must be between 2000 and 2100")
+    return value
+
+
+def _intake(value: str | None) -> str:
+    value = clean_free_text(value, 80)
+    if not value:
+        raise PydanticCustomError("blank_intake", "Intake is required")
+    return value
+
+
+class _AgentApplicationFields(BaseModel):
+    """Server-owned fields (agent, student, status, university on edit) are not accepted -- `extra="forbid"` answers 422."""
+
+    model_config = {"extra": "forbid"}
+    course_id: UUID | None = None
+    application_reference: str | None = None
+    submitted_on: date | None = None
+    application_deadline: date | None = None
+    offer_deadline: date | None = None
+    next_action: str | None = None
+
+    @field_validator("application_reference")
+    @classmethod
+    def _reference(cls, value):
+        return clean_free_text(value, 140)
+
+    @field_validator("next_action")
+    @classmethod
+    def _next_action(cls, value):
+        return clean_free_text(value, 500)
+
+    @field_validator("application_deadline", "offer_deadline")
+    @classmethod
+    def _deadline(cls, value):
+        return _application_date(value)
+
+    @field_validator("submitted_on")
+    @classmethod
+    def _submitted(cls, value):
+        value = _application_date(value)
+        # One day ahead of UTC is allowed: a user east of UTC (IST after midnight) is already on tomorrow's date.
+        if value is not None and value > datetime.now(UTC).date() + timedelta(days=1):
+            raise PydanticCustomError("future_submission_date", "Submission date cannot be in the future")
+        return value
+
+
+class AgentApplicationCreate(_AgentApplicationFields):
+    agent_student_id: UUID
+    university_id: UUID
+    intake: str
+
+    @field_validator("intake")
+    @classmethod
+    def _intake_required(cls, value):
+        return _intake(value)
+
+
+class AgentApplicationUpdate(_AgentApplicationFields):
+    """Omitted = unchanged; null clears an optional field; intake cannot be cleared; the university is fixed (A10)."""
+
+    intake: str | None = None
+
+    @model_validator(mode="after")
+    def _intake_when_sent(self):
+        if "intake" in self.model_fields_set:
+            self.intake = _intake(self.intake)
+        return self
+
+
+class AgentApplicationStatus(BaseModel):
+    """`expected_status`: the status the caller saw; a mismatch is a 409, so a stale screen cannot act on a changed application."""
+
+    model_config = {"extra": "forbid"}
+    to_status: str = Field(max_length=50)
+    expected_status: str | None = Field(default=None, max_length=50)
+    notes: str | None = None
+    next_action: str | None = None
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, value):
+        return clean_free_text(value, 2000)
+
+    @field_validator("next_action")
+    @classmethod
+    def _next_action(cls, value):
+        return clean_free_text(value, 500)
 
 
 class AgentStaffCreate(AgentMasterInvite):
