@@ -36,7 +36,7 @@ enrollment date is required; a future date beyond intake is flagged (a warning, 
 - Notifications to the student (D19: students get nothing) and any change to the counselor/admin/university-rep paths.
 - A new rate limiter, a shared Master-check helper, or any dependency.
 
-## 3. Data (migration `0058_agent_application_enrollment`)
+## 3. Data (migration `0058_agent_app_enrollment`)
 
 `overseas_applications` gains three nullable columns; no existing row is read or written:
 

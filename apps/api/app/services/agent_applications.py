@@ -174,6 +174,10 @@ async def detail(db: AsyncSession, user: User, app: OverseasApplication, *, reco
         "course_id": found.course_id,
         "created_at": found.created_at,
         "read_only_reason": reason,
+        "enrollment_date": found.enrollment_date,
+        "university_student_id": found.university_student_id,
+        "enrollment_confirmed_at": found.enrollment_confirmed_at,
+        "enrollment_check": enrollment_check(found, datetime.now(UTC).date()),
         "history": [{"from_status": h.from_status, "to_status": h.to_status, "next_action": h.next_action, "notes": h.notes, "changed_by": name, "created_at": h.created_at} for h, name in history],
     }
 

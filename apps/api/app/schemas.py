@@ -746,6 +746,32 @@ class AgentApplicationStatus(BaseModel):
         return clean_free_text(value, 2000)
 
 
+class AgentApplicationEnrollment(BaseModel):
+    """AGN-013 (DEC-SCOPE-052): confirm or correct an application's enrollment. `expected_status` is required: confirming is the
+    commission-triggering act, so a stale screen gets a 409 instead of acting."""
+
+    model_config = {"extra": "forbid"}
+    enrollment_date: date
+    university_student_id: str | None = None
+    expected_status: str = Field(max_length=50)
+    notes: str | None = None
+
+    @field_validator("enrollment_date")
+    @classmethod
+    def _enrollment_date(cls, value):
+        return _application_date(value)
+
+    @field_validator("university_student_id")
+    @classmethod
+    def _student_id(cls, value):
+        return clean_free_text(value, 60)
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, value):
+        return clean_free_text(value, 2000)
+
+
 class AgentStaffCreate(AgentMasterInvite):
     """AGN-002 (DEC-SCOPE-040 S4): a Master adding a staff login -- the same fields and rules as a Master invite."""
 

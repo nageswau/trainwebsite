@@ -167,7 +167,7 @@ def enrollment_check(app, today: date) -> str | None:
 
 **Files:**
 - Modify: `apps/api/app/models.py` (`OverseasApplication`), `apps/api/app/schemas.py`, `apps/api/app/services/agent_applications.py` (`detail`)
-- Create: `apps/api/alembic/versions/0058_agent_application_enrollment.py`
+- Create: `apps/api/alembic/versions/0058_agent_app_enrollment.py`
 - Test: `apps/api/tests/test_agn_013_migration.py`, `apps/api/tests/test_agn_013_schemas.py`
 
 **Interfaces:**
@@ -248,12 +248,12 @@ isolated database built at `BASE`.)
     enrollment_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 ```
 
-`0058_agent_application_enrollment.py`:
+`0058_agent_app_enrollment.py`:
 
 ```python
 """AGN-013 -- overseas_applications.enrollment_date, university_student_id, enrollment_confirmed_at.
 
-Revision ID: 0058_agent_application_enrollment
+Revision ID: 0058_agent_app_enrollment
 Revises: 0057_agent_applications
 
 docs/superpowers/specs/2026-10-02-agn-013-enrollment-confirmation-design.md §3 (DEC-SCOPE-052). Three nullable columns; no
@@ -265,7 +265,7 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0058_agent_application_enrollment"
+revision = "0058_agent_app_enrollment"
 down_revision = "0057_agent_applications"
 branch_labels = None
 depends_on = None
@@ -285,7 +285,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         recorded = " OR ".join(f"{name} IS NOT NULL" for name, _ in COLUMNS)
         if op.get_bind().execute(sa.text(f"SELECT count(*) FROM {TABLE} WHERE {recorded}")).scalar():
-            raise RuntimeError("Refusing to downgrade 0058_agent_application_enrollment: enrollment details exist")
+            raise RuntimeError("Refusing to downgrade 0058_agent_app_enrollment: enrollment details exist")
     for name, _ in reversed(COLUMNS):
         op.drop_column(TABLE, name)
 ```
