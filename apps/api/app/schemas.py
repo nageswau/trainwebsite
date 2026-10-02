@@ -796,6 +796,40 @@ class CommissionAmountUpdate(BaseModel):
     currency: str | None = Field(default=None, min_length=3, max_length=10)
 
 
+# AGN-014 (DEC-SCOPE-051): the agency's commission report -- every amount is per currency, never summed across currencies.
+class CommissionReportTotal(BaseModel):
+    currency: str
+    count: int
+    amount: float
+
+
+class CommissionReportStatusRow(CommissionReportTotal):
+    status: str
+
+
+class CommissionReportUniversityRow(CommissionReportTotal):
+    university: str
+    country: str
+
+
+class CommissionReportCountryRow(CommissionReportTotal):
+    country: str
+
+
+class CommissionReportIntakeRow(CommissionReportTotal):
+    intake: str
+
+
+class CommissionReportOut(BaseModel):
+    date_from: date | None
+    date_to: date | None
+    totals: list[CommissionReportTotal]
+    by_status: list[CommissionReportStatusRow]
+    by_university: list[CommissionReportUniversityRow]
+    by_country: list[CommissionReportCountryRow]
+    by_intake: list[CommissionReportIntakeRow]
+
+
 class InboundUniversityEmailIn(BaseModel):
     external_message_id: str = Field(min_length=1, max_length=255)
     sender: EmailStr

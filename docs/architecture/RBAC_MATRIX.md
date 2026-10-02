@@ -207,6 +207,7 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | View staff activity | `GET /workflows/overseas/agent/team/staff/{member_id}/activity` (**new**, `AGN-021` / `DEC-SCOPE-046`) | ✅ (own agency's staff; deactivated staff too) | ❌ `403` "Only an agency Master can manage the team"; another agency's user and any non-staff or unknown member id → `404` "Staff member not found" |
 | Reports | `GET /portal/overseas/agent/reports` | ✅ full | **T** (when on: today's staff report, no commission row) |
 | Commission | `GET /workflows/overseas/agent/commissions`, `POST …/commissions/{id}/claim`, `GET /portal/overseas/agent/commissions` | ✅ | ❌ |
+| Commission reports / Revenue (AGN-014, `DEC-SCOPE-051`) | `GET /workflows/overseas/agent/commissions/report`, `GET …/commissions/report.csv` (**new**); dashboard "Revenue" metric | ✅ own agency (`org_member_ids`) | ❌ `403` "Only an agency Master can view commissions" (before any date `422`); no Revenue metric |
 | CRM Settings | — | N/A | N/A |
 
 The Master-team routes (`POST …/team/masters`, `POST …/team/masters/{id}/deactivate`) sit under Staff Management and are ❌ for Staff.
