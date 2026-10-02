@@ -17,6 +17,14 @@ function urlOffset(raw: string | null): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+/** A `{items, total, limit, offset}` page, or a rejection for any failure (HTTP error, unreadable or non-page body). */
+async function fetchPage<T>(url: string): Promise<Page<T>> {
+  const response = await fetch(url);
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !isPage<T>(body)) throw new Error("not a page");
+  return body;
+}
+
 export default function AdminBdmPanel({ role }: { role: string }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -27,6 +35,10 @@ export default function AdminBdmPanel({ role }: { role: string }) {
   const [offset, setOffset] = useState(fromUrl.offset);
   const [query, setQuery] = useState(fromUrl.query);
   const [draft, setDraft] = useState(fromUrl.query);
+  const [version, setVersion] = useState(0);
+  const [managersAvailable, setManagersAvailable] = useState<boolean | null>(null);
+  const [managersFailed, setManagersFailed] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Back/Forward change the URL without remounting: follow it.
   useEffect(() => {
@@ -43,22 +55,12 @@ export default function AdminBdmPanel({ role }: { role: string }) {
     if (nextQuery) next.set("q", nextQuery);
     router.push(next.size ? `${pathname}?${next}` : pathname, { scroll: false });
   }
-  const [version, setVersion] = useState(0);
-  const [managersAvailable, setManagersAvailable] = useState<boolean | null>(null);
-  const [managersFailed, setManagersFailed] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     setLoadFailed(false);
-    const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
-    if (query) params.set("q", query);
-    fetch(`${BDMS_URL}?${params}`)
-      .then(async (response) => {
-        const body = await response.json().catch(() => null);
-        if (!response.ok || !isPage<BdmAdminRow>(body)) throw new Error("not a page");
-        setData(body);
-      })
-      .catch(() => setLoadFailed(true));
+    const request = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
+    if (query) request.set("q", query);
+    fetchPage<BdmAdminRow>(`${BDMS_URL}?${request}`).then(setData).catch(() => setLoadFailed(true));
   }, [offset, query, version]);
 
   // Only "is there any active manager?" -- the picker itself searches the server (QA-02). A failed check is NOT "no managers"
@@ -66,12 +68,8 @@ export default function AdminBdmPanel({ role }: { role: string }) {
   const checkManagers = useCallback(() => {
     setManagersFailed(false);
     setManagersAvailable(null);
-    fetch(`${MANAGERS_URL}?limit=1`)
-      .then(async (response) => {
-        const body = await response.json().catch(() => null);
-        if (!response.ok || !isPage(body)) throw new Error("not a page");
-        setManagersAvailable(body.total > 0);
-      })
+    fetchPage(`${MANAGERS_URL}?limit=1`)
+      .then((page) => setManagersAvailable(page.total > 0))
       .catch(() => setManagersFailed(true));
   }, []);
 

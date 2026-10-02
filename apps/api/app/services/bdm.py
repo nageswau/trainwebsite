@@ -31,10 +31,14 @@ def creatable_types(actor: User) -> frozenset[str]:
     return CREATOR_TYPES.get(actor.role, frozenset())
 
 
+def _cannot_manage(bdm_type: str) -> HTTPException:
+    return HTTPException(403, f"Your role cannot manage {bdm_type} BDMs")
+
+
 def require_creator_may(actor: User, bdm_type: str, route: str) -> None:
     if bdm_type not in creatable_types(actor):
         logger.warning("bdm_creator_type_refused", extra={"extra_fields": {"actor_id": str(actor.id), "route": route, "bdm_type": bdm_type}})
-        raise HTTPException(403, f"Your role cannot manage {bdm_type} BDMs")
+        raise _cannot_manage(bdm_type)
 
 
 FIELD_LABELS = BDM_FIELD_LABELS  # the schemas name fields in their own messages too
@@ -46,7 +50,8 @@ def _readable(error: dict) -> str:
     label = FIELD_LABELS.get(field, field)
     if error["type"] == "extra_forbidden":
         return f"Unknown field: {field}"
-    if error["type"] == "missing" or (error.get("input", ...) is None and field in FIELD_LABELS):
+    explicit_null = "input" in error and error["input"] is None
+    if error["type"] == "missing" or (explicit_null and field in FIELD_LABELS):
         return f"{label} is required"
     if error["type"] == "value_error":
         return error["msg"].removeprefix("Value error, ")
@@ -96,16 +101,17 @@ async def flush_profile(db: AsyncSession) -> None:
         raise
 
 
+def _profile_fields(profile: BdmProfile) -> dict:
+    return {k: getattr(profile, k) for k in PROFILE_FIELDS}
+
+
 def profile_snapshot(profile: BdmProfile) -> dict:
     """The audit form (JSON-safe): every profile field plus the manager id as a string."""
-    return {**{k: getattr(profile, k) for k in PROFILE_FIELDS}, "reporting_manager_user_id": str(profile.reporting_manager_user_id)}
+    return {**_profile_fields(profile), "reporting_manager_user_id": str(profile.reporting_manager_user_id)}
 
 
 def profile_out(profile: BdmProfile, manager: User) -> dict:
-    return {
-        **{k: getattr(profile, k) for k in PROFILE_FIELDS},
-        "reporting_manager": {"id": manager.id, "full_name": manager.full_name, "active": manager.active},
-    }
+    return {**_profile_fields(profile), "reporting_manager": {"id": manager.id, "full_name": manager.full_name, "active": manager.active}}
 
 
 async def apply_profile_update(db: AsyncSession, profile: BdmProfile, raw) -> tuple[dict, dict]:
@@ -148,6 +154,6 @@ def admin_type_filter(actor: User, bdm_type: str | None) -> list:
     allowed = creatable_types(actor)
     if bdm_type is not None:
         if bdm_type not in allowed:
-            raise HTTPException(403, f"Your role cannot manage {bdm_type} BDMs")
+            raise _cannot_manage(bdm_type)
         return [BdmProfile.bdm_type == bdm_type]
     return [BdmProfile.bdm_type.in_(sorted(allowed))]
