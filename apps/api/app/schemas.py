@@ -375,6 +375,20 @@ class AgentDocumentReview(BaseModel):
     notes: str | None = Field(default=None, max_length=10000)
 
 
+# AGN-009 (DEC-SCOPE-051 G3): EVID-015 §5 Step 4, stored as written; mirrors services.agent_documents.DOCUMENT_TYPES.
+AgentDocumentType = Literal["Passport", "Academic certificates", "Transcripts", "English test", "CV", "SOP", "LOR", "Financial documents", "Other"]
+
+
+class AgentDocumentRequestCreate(BaseModel):
+    """AGN-009 (G4): ask one of the agency's students for an additional document. "Other" needs a label (checked by the service)."""
+
+    model_config = {"extra": "forbid"}
+    agent_student_id: UUID
+    document_type: AgentDocumentType
+    document_label: str | None = Field(default=None, max_length=200)
+    note: str | None = Field(default=None, max_length=1000)
+
+
 class AppointmentCreate(BaseModel):
     student_id: UUID | None = None
     staff_id: UUID | None = None

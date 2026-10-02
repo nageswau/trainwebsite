@@ -11,13 +11,14 @@ import logging
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_students import _gate
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import AgentOrgMember, AgentStudent, AuditLog, StudentDocument, User
+from app.models import AgentOrgMember, AgentStudent, AuditLog, DocumentRequest, StudentDocument, User
+from app.schemas import AgentDocumentRequestCreate, AgentDocumentType
 from app.services import agent_documents as svc
 from app.services.agent_applications import load_scoped as load_scoped_application
 from app.services.agent_orgs import lock_active_org
@@ -27,7 +28,6 @@ logger = logging.getLogger("app.agent_documents")
 
 router = APIRouter(prefix="/workflows/overseas/agent/crm", tags=["agent-documents"])
 
-DocumentType = Literal["Passport", "Academic certificates", "Transcripts", "English test", "CV", "SOP", "LOR", "Financial documents", "Other"]
 NOT_AGENCY_DOCUMENT = "Only documents your agency uploaded can be replaced"
 DECIDED_BY_STAFF = "A counselor or administrator has reviewed this document, so it can't be replaced"
 APPLICATION_MISMATCH = "Document student does not match the application"
@@ -49,6 +49,16 @@ async def _throttle(db: AsyncSession, user: User, membership: AgentOrgMember, ac
         raise HTTPException(429, message, headers={"Retry-After": str(wait)})
 
 
+async def _open_request_of(db: AsyncSession, user: User, request_id, record: AgentStudent) -> DocumentRequest:
+    """The caller's open request for this student, locked (after the student: the lock order), or 404/422/409."""
+    request = await svc.load_request(db, user, request_id, lock=True)
+    if request.agent_student_id != record.id:
+        raise HTTPException(422, svc.REQUEST_OTHER_STUDENT)
+    if request.status != "open":
+        raise HTTPException(409, svc.REQUEST_CLOSED)
+    return request
+
+
 async def _writable_record(db: AsyncSession, user: User, agent_student_id) -> AgentStudent:
     """The caller's student, locked, or 404; an archived student's documents are read-only (AGN-008 A15)."""
     record = await load_scoped_student(db, user, agent_student_id, lock=True)
@@ -57,12 +67,30 @@ async def _writable_record(db: AsyncSession, user: User, agent_student_id) -> Ag
     return record
 
 
+async def _filter_record(db: AsyncSession, user: User, student: UUID | None) -> AgentStudent | None:
+    return None if student is None else await load_scoped_student(db, user, student)  # 404 outside scope
+
+
+@router.get("/documents")
+async def list_documents(
+    view: Literal["pending", "uploaded"] = "uploaded",
+    student: UUID | None = None,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _gate(user)
+    return await svc.list_page(db, user, view=view, record=await _filter_record(db, user, student), limit=limit, offset=offset)
+
+
 @router.post("/documents", status_code=201)
 async def upload_document(
     agent_student_id: UUID = Form(...),
-    document_type: DocumentType = Form(...),
+    document_type: AgentDocumentType = Form(...),
     document_label: str | None = Form(None, max_length=200),
     application_id: UUID | None = Form(None),
+    request_id: UUID | None = Form(None),
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -77,6 +105,7 @@ async def upload_document(
         application = await load_scoped_application(db, user, application_id)  # 404 outside scope
         if application.agent_student_id != record.id and (record.student_id is None or application.student_id != record.student_id):
             raise HTTPException(422, APPLICATION_MISMATCH)
+    request = await _open_request_of(db, user, request_id, record) if request_id is not None else None
     key = svc.store(data, content_type)
     try:
         item = StudentDocument(
@@ -91,10 +120,14 @@ async def upload_document(
             content_type=content_type,
             file_size=len(data),
             uploaded_by_user_id=user.id,
+            fulfils_request_id=request.id if request else None,
         )
         db.add(item)
         await db.flush()
         svc.add_event(db, event="uploaded", actor=user, document=item, to_status="pending")
+        if request is not None:  # G5: fulfilled at upload time, whatever type was uploaded (the uploader's explicit choice)
+            svc.close_request(request, "fulfilled", user)
+            svc.add_event(db, event="fulfilled", actor=user, document=item, request=request, to_status="fulfilled")
         _audit(db, user, "document.upload", "student_document", item.id, {"agent_student_id": str(record.id), "document_type": document_type})
         await db.commit()
     except Exception:  # nothing was written: the stored object goes too
@@ -133,3 +166,54 @@ async def replace_document_file(document_id: UUID, file: UploadFile = File(...),
         raise
     _log("agent_document_replaced", membership, user, document_id=item.id, from_status=old_status)
     return {"document": await svc.item_by_id(db, user, item.id)}
+
+
+@router.get("/document-requests")
+async def list_requests(
+    status: Literal["open", "all"] = "open",
+    student: UUID | None = None,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _gate(user)
+    return await svc.request_page(db, user, status=status, record=await _filter_record(db, user, student), limit=limit, offset=offset)
+
+
+@router.post("/document-requests", status_code=201)
+async def create_request(payload: AgentDocumentRequestCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """G4: Master or Staff (within scope) ask for an additional document; one open request per type and label."""
+    membership = _gate(user)
+    label = svc.clean_label(payload.document_type, payload.document_label)
+    note = (payload.note or "").strip() or None
+    await lock_active_org(db, membership.org_id)  # serialises the throttle and the duplicate check for the agency
+    await _throttle(db, user, membership, svc.REQUEST_ACTIONS, svc.REQUEST_LIMIT, svc.REQUEST_THROTTLED)
+    record = await _writable_record(db, user, payload.agent_student_id)
+    if await svc.open_request_exists(db, record, payload.document_type, label):
+        raise HTTPException(409, svc.REQUEST_EXISTS)
+    request = DocumentRequest(agent_student_id=record.id, document_type=payload.document_type, document_label=label, note=note, status="open", requested_by_user_id=user.id)
+    db.add(request)
+    await db.flush()
+    svc.add_event(db, event="requested", actor=user, request=request, to_status="open", notes=note)
+    _audit(db, user, "document_request.create", "document_request", request.id, {"agent_student_id": str(record.id), "document_type": payload.document_type})
+    await db.commit()
+    _log("agent_document_requested", membership, user, request_id=request.id, agent_student_id=record.id)
+    return {"request": await svc.request_by_id(db, user, request.id)}
+
+
+@router.post("/document-requests/{request_id}/cancel")
+async def cancel_request(request_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    membership = _gate(user)
+    await lock_active_org(db, membership.org_id)
+    owner = (await svc.load_request(db, user, request_id)).agent_student_id  # 404 outside scope, before any lock on the student
+    await _writable_record(db, user, owner)
+    request = await svc.load_request(db, user, request_id, lock=True)
+    if request.status != "open":
+        raise HTTPException(409, svc.REQUEST_CLOSED)
+    svc.close_request(request, "cancelled", user)
+    svc.add_event(db, event="cancelled", actor=user, request=request, from_status="open", to_status="cancelled")
+    _audit(db, user, "document_request.cancel", "document_request", request.id)
+    await db.commit()
+    _log("agent_document_request_cancelled", membership, user, request_id=request.id)
+    return {"request": await svc.request_by_id(db, user, request.id)}

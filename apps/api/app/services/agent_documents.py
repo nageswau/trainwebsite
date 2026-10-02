@@ -11,7 +11,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile
-from sqlalchemy import ColumnElement, Select, and_, or_, select
+from sqlalchemy import ColumnElement, Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -235,3 +235,99 @@ async def load_scoped(db: AsyncSession, user: User, document_id, *, lock: bool =
 
 async def reviewer_role(db: AsyncSession, document: StudentDocument) -> str | None:
     return await db.scalar(select(User.role).where(User.id == document.verified_by_id)) if document.verified_by_id else None
+
+
+def student_clause(record: AgentStudent) -> ColumnElement:
+    """One student's documents: those of the agency record, plus (for a student with a login) those on the account."""
+    if record.student_id is None:
+        return StudentDocument.agent_student_id == record.id
+    return or_(StudentDocument.agent_student_id == record.id, StudentDocument.student_id == record.student_id)
+
+
+async def list_page(db: AsyncSession, user: User, *, view: str, record: AgentStudent | None, limit: int, offset: int) -> dict:
+    """G9: Pending = awaiting review; Uploaded = every in-scope document. Newest first."""
+    clauses = [*document_scope(user)]
+    if view == "pending":
+        clauses.append(StudentDocument.verification_status == "pending")
+    if record is not None:
+        clauses.append(student_clause(record))
+    total = await db.scalar(select(func.count()).select_from(StudentDocument).where(*clauses))
+    rows = (await db.execute(items_stmt().where(*clauses).order_by(StudentDocument.created_at.desc(), StudentDocument.id).limit(limit).offset(offset))).all()
+    return {"items": [item(tuple(r)) for r in rows], "total": total or 0, "limit": limit, "offset": offset}
+
+
+# --- requests (G4/G5) -----------------------------------------------------------------------------------------------------------
+
+REQUEST_EXISTS = "An open request for this document already exists"
+REQUEST_CLOSED = "This request has already been fulfilled or cancelled"
+REQUEST_OTHER_STUDENT = "This request is for another student"
+
+_Requester = aliased(User)
+
+
+def request_scope(user: User) -> list[ColumnElement]:
+    return [DocumentRequest.agent_student_id.in_(select(AgentStudent.id).where(*student_scope(user)))]
+
+
+def requests_stmt() -> Select:
+    return (
+        select(DocumentRequest, AgentStudent.full_name, _Account.full_name, _Requester.full_name, StudentDocument.id)
+        .join(AgentStudent, AgentStudent.id == DocumentRequest.agent_student_id)
+        .outerjoin(_Account, _Account.id == AgentStudent.student_id)
+        .outerjoin(_Requester, _Requester.id == DocumentRequest.requested_by_user_id)
+        .outerjoin(StudentDocument, StudentDocument.fulfils_request_id == DocumentRequest.id)
+    )
+
+
+def request_item(row: tuple) -> dict:
+    request, record_name, account_name, requester, document_id = row
+    return {
+        "id": request.id,
+        "agent_student_id": request.agent_student_id,
+        "student": record_name or account_name or "Student",
+        "document_type": request.document_type,
+        "document_label": request.document_label,
+        "note": request.note,
+        "status": request.status,
+        "requested_by": requester,
+        "fulfilled_by_document_id": document_id,
+        "created_at": request.created_at,
+        "closed_at": request.closed_at,
+    }
+
+
+async def request_by_id(db: AsyncSession, user: User, request_id) -> dict:
+    row = (await db.execute(requests_stmt().where(DocumentRequest.id == request_id, *request_scope(user)).execution_options(populate_existing=True))).first()
+    if row is None:
+        raise HTTPException(404, "Request not found")
+    return request_item(tuple(row))
+
+
+async def request_page(db: AsyncSession, user: User, *, status: str, record: AgentStudent | None, limit: int, offset: int) -> dict:
+    clauses = [*request_scope(user)]
+    if status == "open":
+        clauses.append(DocumentRequest.status == "open")
+    if record is not None:
+        clauses.append(DocumentRequest.agent_student_id == record.id)
+    total = await db.scalar(select(func.count()).select_from(DocumentRequest).where(*clauses))
+    rows = (await db.execute(requests_stmt().where(*clauses).order_by(DocumentRequest.created_at.desc(), DocumentRequest.id).limit(limit).offset(offset))).all()
+    return {"items": [request_item(tuple(r)) for r in rows], "total": total or 0, "limit": limit, "offset": offset}
+
+
+async def load_request(db: AsyncSession, user: User, request_id, *, lock: bool = False) -> DocumentRequest:
+    stmt = select(DocumentRequest).where(DocumentRequest.id == request_id, *request_scope(user)).execution_options(populate_existing=True)
+    row = await db.scalar(stmt.with_for_update(of=DocumentRequest) if lock else stmt)
+    if row is None:
+        raise HTTPException(404, "Request not found")
+    return row
+
+
+async def open_request_exists(db: AsyncSession, record: AgentStudent, document_type: str, label: str | None) -> bool:
+    label_clause = DocumentRequest.document_label.is_(None) if label is None else func.lower(DocumentRequest.document_label) == label.lower()
+    return bool(
+        await db.scalar(select(DocumentRequest.id).where(DocumentRequest.agent_student_id == record.id, DocumentRequest.status == "open", DocumentRequest.document_type == document_type, label_clause))
+    )
+
+
+def close_request(request: DocumentRequest, status: str, actor: User) -> None:
+    request.status, request.closed_by_user_id, request.closed_at = status, actor.id, datetime.now(UTC)
