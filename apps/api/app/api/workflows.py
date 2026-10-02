@@ -94,6 +94,7 @@ from app.schemas import (
     SupportTicketUpdate,
     VisaCaseCreate,
 )
+from app.services.agent_applications import DEFAULT_NEXT_ACTION, OVERSEAS_APPLICATION_STAGES, owned, with_owner
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
 from app.services.certificates import generate_certificate_pdf
@@ -1719,7 +1720,6 @@ async def update_job_offer(offer_id: UUID, payload: dict, user: User = Depends(g
 # Exception-path values (rejected/waitlisted/deferred) are deliberately NOT included --
 # DEC-WF-001 leaves those open (PRD_OPEN_ITEMS.md), so a status outside this list is
 # rejected rather than guessed (OVS-003-AC02).
-OVERSEAS_APPLICATION_STAGES = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"]
 
 
 async def _maybe_trigger_agent_commission(db: AsyncSession, application: OverseasApplication, old_status: str, changed_by: User) -> None:
@@ -1796,7 +1796,7 @@ async def create_overseas_application(payload: OverseasApplicationCreate, user: 
         # base codebase's own free-text "profile_evaluation" predates this contract.
         status="enquiry",
         application_reference=payload.application_reference,
-        next_action=payload.next_action or "Complete profile and required document checklist",
+        next_action=payload.next_action or DEFAULT_NEXT_ACTION,
     )
     db.add(item)
     await db.flush()
@@ -1842,7 +1842,7 @@ async def send_counselor_message(payload: dict, user: User = Depends(get_current
 @router.get("/overseas/applications")
 async def list_overseas_applications(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"overseas_student", "counselor", "overseas_admin", "university_rep", "agent"}, "overseas")
-    stmt = select(OverseasApplication, University, User).join(University).join(User, User.id == OverseasApplication.student_id)
+    stmt = with_owner(select(OverseasApplication, University).join(University))
     if user.role == "overseas_student":
         stmt = stmt.where(OverseasApplication.student_id == user.id)
     elif user.role == "counselor":
@@ -1851,7 +1851,7 @@ async def list_overseas_applications(user: User = Depends(get_current_user), db:
         stmt = stmt.where(*application_scope(user))
     elif user.role == "university_rep":
         stmt = stmt.where(OverseasApplication.university_id == uuid_reference(user.profile.get("university_id"), "university reference", required=False))
-    rows = (await db.execute(stmt.order_by(OverseasApplication.updated_at.desc()).limit(500))).all()
+    rows = owned((await db.execute(stmt.order_by(OverseasApplication.updated_at.desc()).limit(500))).all())
     return [
         {
             "id": a.id,
@@ -2369,17 +2369,20 @@ async def add_agent_student(payload: AgentStudentCreate, user: User = Depends(ge
 async def agent_commissions(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"agent"}, "overseas")
     _require_agent_master(user)
-    rows = (
-        await db.execute(
-            select(AgentCommission, OverseasApplication, University, User)
-            .select_from(AgentCommission)
-            .join(OverseasApplication, OverseasApplication.id == AgentCommission.application_id)
-            .join(University, University.id == OverseasApplication.university_id)
-            .join(User, User.id == OverseasApplication.student_id)
-            .where(AgentCommission.agent_id.in_(org_member_ids(user)))
-            .order_by(AgentCommission.created_at.desc())
-        )
-    ).all()
+    rows = owned(
+        (
+            await db.execute(
+                with_owner(
+                    select(AgentCommission, OverseasApplication, University)
+                    .select_from(AgentCommission)
+                    .join(OverseasApplication, OverseasApplication.id == AgentCommission.application_id)
+                    .join(University, University.id == OverseasApplication.university_id)
+                )
+                .where(AgentCommission.agent_id.in_(org_member_ids(user)))
+                .order_by(AgentCommission.created_at.desc())
+            )
+        ).all()
+    )
     return [
         {
             "id": commission.id,

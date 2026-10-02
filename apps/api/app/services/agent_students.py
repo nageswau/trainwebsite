@@ -34,10 +34,16 @@ def visible_student_user_ids(user: User) -> Select:
 
 
 def application_scope(user: User) -> list[ColumnElement]:
-    """The organisation's applications; a staff member only those of their assigned students (G4)."""
+    """The organisation's applications; a staff member only those of their assigned students (G4) -- by the student's account, or,
+    for a student with no login, by the agency record the application belongs to (AGN-008)."""
     clauses = [OverseasApplication.agent_id.in_(org_member_ids(user))]
     if is_agent_staff(user):
-        clauses.append(OverseasApplication.student_id.in_(visible_student_user_ids(user)))
+        clauses.append(
+            or_(
+                OverseasApplication.student_id.in_(visible_student_user_ids(user)),
+                OverseasApplication.agent_student_id.in_(select(AgentStudent.id).where(*student_scope(user))),
+            )
+        )
     return clauses
 
 
