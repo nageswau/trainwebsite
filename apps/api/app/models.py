@@ -984,6 +984,49 @@ class AgentOrgMember(Base, TimestampMixin):
     org: Mapped["AgentOrg"] = relationship(lazy="raise")
 
 
+class AgentUniversity(Base, TimestampMixin):
+    """AGN-007 / DEC-SCOPE-049 D1: an agency's private university ("Add University", Master only). Never part of the shared
+    catalogue (`universities`) and never on /public; `org_id` is the tenant key every read filters on."""
+
+    __tablename__ = "agent_universities"
+    __table_args__ = (
+        Index("uq_agent_universities_org_name_country", "org_id", text("lower(name)"), text("lower(country)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    org_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id", ondelete="RESTRICT"), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    country: Mapped[str] = mapped_column(String(120))
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    entry_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class AgentStudentShortlistEntry(Base, TimestampMixin):
+    """AGN-007 / DEC-SCOPE-049: one university on an agency student's shortlist. The university is exactly one of a catalogue
+    university or the agency's own (D6); a catalogue course needs a catalogue university (D4). Country is read from the university,
+    never stored (D7). Scope is the parent student's (AGN-004 `load_scoped`)."""
+
+    __tablename__ = "agent_student_shortlist_entries"
+    __table_args__ = (
+        CheckConstraint("(university_id IS NULL) <> (agent_university_id IS NULL)", name="ck_shortlist_one_university"),
+        CheckConstraint("course_id IS NULL OR university_id IS NOT NULL", name="ck_shortlist_catalogue_course"),
+        CheckConstraint("course_id IS NULL OR course_title IS NULL", name="ck_shortlist_one_course_form"),
+        Index("ix_shortlist_student_created", "agent_student_id", "created_at", "id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agent_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id", ondelete="RESTRICT"))
+    university_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"), nullable=True)
+    agent_university_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_universities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    course_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_courses.id", ondelete="RESTRICT"), nullable=True)
+    course_title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    intake: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    tuition_fee: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    entry_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 class InboundUniversityEmail(Base, TimestampMixin):
     __tablename__ = "inbound_university_emails"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

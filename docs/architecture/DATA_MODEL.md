@@ -488,6 +488,31 @@ Design: `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md` 
   `false` (existing staff lose the Reports page until a Master switches it on, P1). `downgrade()` drops both columns.
 - **Feature IDs:** `AGN-003`.
 
+### 6.8d `AgentUniversity`, `AgentStudentShortlistEntry` (AGN-007, migration `0056_agent_shortlist`)
+Design: `docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md` §4. `DEC-SCOPE-049`.
+- **`agent_universities`** (the agency-private university list; never part of the shared `universities` catalogue): `id` UUID PK; `org_id` UUID FK
+  `agent_orgs.id` NOT NULL, indexed (`ix_agent_universities_org_id`, the tenant key every read filters on); `name` String(200) NOT NULL;
+  `country` String(120) NOT NULL (free text); `city` String(120) NULL; `entry_requirements` Text NULL (≤ 2000 in the schema);
+  `created_by_user_id`, `updated_by_user_id` UUID FK `users.id`; `created_at`, `updated_at` (`TimestampMixin`). Unique index
+  `uq_agent_universities_org_name_country` on `(org_id, lower(name), lower(country))`.
+- **`agent_student_shortlist_entries`**: `id` UUID PK; `agent_student_id` UUID FK `agent_students.id` NOT NULL (scope is inherited from the student);
+  `university_id` UUID FK `universities.id` NULL (catalogue); `agent_university_id` UUID FK `agent_universities.id` NULL, indexed (agency);
+  `course_id` UUID FK `overseas_courses.id` NULL (catalogue course); `course_title` String(200) NULL (free-text course); `intake` String(120) NULL;
+  `tuition_fee` String(120) NULL (free text, matching `OverseasCourse.tuition_fee`); `entry_requirements` Text NULL (≤ 2000);
+  `created_by_user_id`, `updated_by_user_id` UUID FK `users.id`; `created_at`, `updated_at`. Country is derived from the university, never stored.
+- **CHECK constraints:** `ck_shortlist_one_university` `(university_id IS NULL) <> (agent_university_id IS NULL)`; `ck_shortlist_catalogue_course`
+  `course_id IS NULL OR university_id IS NOT NULL`; `ck_shortlist_one_course_form` `course_id IS NULL OR course_title IS NULL`.
+  Index `ix_shortlist_student_created` on `(agent_student_id, created_at, id)` serves paging.
+- **All foreign keys `ON DELETE RESTRICT`** (nothing is cascade-deleted). "The course belongs to *that* university" needs a cross-table lookup, so the
+  service enforces it (`API_CONTRACT.md` §8 validation order), not a constraint. Caps (50 entries per student, 500 universities per agency) are
+  enforced in the service under the agency lock.
+- **Migration `0056`** (`down_revision = "0055_agent_student_counseling"` since merging `main` @ `8f0000d` on 2026-10-02, when AGN-006's `0055` (also on `0054`) landed first; previously `"0054_school_onboarding_bulk"`; drafted as `0053`, then `0055` and re-chained to `0056` when `main` was merged,
+  2026-10-01; whichever of `AGN-006` (`0055`) / `AGN-007` / `AGN-008` (`0057`) merges later re-chains): creates the two tables only; no existing table,
+  column or row changes. `downgrade()` refuses while either table holds a row ("Cannot downgrade 0056_agent_shortlist: shortlist
+  entries / agency universities exist", as `0047`/`0049`/`0055` do; added 2026-10-02 at verification, `test_agn_007_schema.py::test_downgrade_guard_refuses_while_universities_or_entries_exist`),
+  then drops only the two new tables, entries first.
+- **Feature IDs:** `AGN-007`.
+
 ### 6.9 `InboundUniversityEmail`
 **Carries over.** Supports `UNI-001`'s university-communication surface.
 - **Feature IDs:** `UNI-001`.

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import AgentShortlistPanel from "./AgentShortlistPanel";
 import AgentStudentCounselingCard from "./AgentStudentCounselingCard";
 import AgentStudentForm from "./AgentStudentForm";
 import { AgentStudentDetail, AgentStudentItem } from "@/lib/agentStudents";
@@ -95,6 +96,10 @@ export default function AgentStudentDetailPanel({
             onDirtyChange={onDirtyChange}
             onStale={(s) => onSaved(s, `${s.full_name} has been archived.`)}
           />
+          {/* AGN-007 (DEC-SCOPE-049): the student's university shortlist; one form at a time (AGN-006), so hidden while counseling is edited. */}
+          {editing === "none" && (
+            <AgentShortlistPanel studentId={detail.id} archived={detail.status === "archived"} onStudentGone={onClose} onStudentChanged={onClose} />
+          )}
           {editing === "none" && (
             <button type="button" className="btn secondary small" onClick={onClose} style={{ marginTop: 16 }}>
               Close

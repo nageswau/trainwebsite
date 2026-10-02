@@ -5,7 +5,8 @@ from the Master-only check and not from the 404 existence mask. Rows with no rou
 Application Status, Staff Performance, CRM Settings) are N/A and have nothing to call.
 Two Master cells are proven elsewhere: a Master deactivating another Master (tests/test_agn_001_team.py::
 test_a_pending_invitee_can_still_be_deactivated_by_an_accepted_master, plus test_a_master_may_deactivate_themselves_once_another_master_has_accepted)
-and a Master claiming a commission (tests/test_agn_001_tenancy.py::test_a_second_master_sees_and_claims_what_the_first_created)."""
+and a Master claiming a commission (tests/test_agn_001_tenancy.py::test_a_second_master_sees_and_claims_what_the_first_created).
+AGN-007 (DEC-SCOPE-049): "University Database" adds the agency list for both roles and "Add University" is now Master-only on the agency list."""
 
 import pytest
 from sqlalchemy import select
@@ -17,6 +18,7 @@ from tests.agn003_helpers import agency_document, mk_university
 from tests.agn004_helpers import RECORDS, mk_record
 
 TEAM = "/api/v1/workflows/overseas/agent/team"
+AGENCY_UNIS = "/api/v1/workflows/overseas/agent/crm/universities"
 VERIFY = "/api/v1/workflows/overseas/documents/{document}/verify"
 PORTAL = "/api/v1/portal/overseas/agent"
 ALL_ON = {"can_verify_documents": True, "can_view_reports": True}
@@ -48,6 +50,7 @@ STAFF_REFUSED = [
     ("Delete Student", "post", RECORDS + "/{record}/archive", None, "Only an agency Master can archive students"),
     ("Delete Student", "post", RECORDS + "/{archived_record}/unarchive", None, "Only an agency Master can archive students"),
     ("Assign Student", "post", RECORDS + "/{record}/assign", {"member_id": "{other_staff}"}, "Only an agency Master can assign students"),
+    ("Add University", "post", AGENCY_UNIS, {"name": "Matrix Uni", "country": "Testland"}, "Only an agency Master can add universities"),
 ]
 
 # (§6 row, method, path, json body, expected status) -- succeeds for staff AND for a Master.
@@ -72,6 +75,8 @@ BOTH_ALLOWED = [
     ("Edit Student", "patch", RECORDS + "/{record}", {"full_name": "Edited Student"}, 200),
     # AGN-006: §5 Step 2 counseling on an assigned student with no login -- Master and staff alike.
     ("Counseling", "put", RECORDS + "/{record}/counseling", {"counseling_completed": True}, 200),
+    ("University Database", "get", AGENCY_UNIS, None, 200),
+    ("University Database", "get", PORTAL + "/universities", None, 200),
 ]
 
 # Master-only cells that succeed for a Master.
@@ -97,6 +102,7 @@ MASTER_ALLOWED = [
     ("Delete Student", "post", RECORDS + "/{record}/archive", None, 200),
     ("Delete Student", "post", RECORDS + "/{archived_record}/unarchive", None, 200),
     ("Assign Student", "post", RECORDS + "/{record}/assign", {"member_id": "{other_staff}"}, 200),
+    ("Add University", "post", AGENCY_UNIS, {"name": "{fresh_email}", "country": "Testland"}, 201),
 ]
 
 
@@ -177,7 +183,8 @@ async def test_master_allowed(db_session, row, method, path, body, status):  # A
 
 
 @pytest.mark.asyncio
-async def test_add_university_is_refused_to_masters_too(db_session):  # spec §3: deliberate departure from §6's Master ✅ (P3)
+async def test_the_shared_catalogue_stays_admin_only_for_masters(db_session):
+    # DEC-SCOPE-049 supersedes DEC-SCOPE-044 P3 for "Add University": a Master adds to their agency's own list (AGENCY_UNIS, MASTER_ALLOWED); the shared catalogue route stays admin-only.
     ctx, _, ids = await _world(db_session)
     async with client_for(ctx["master"].email) as m:
         response = await _call(m, "post", "/api/v1/admin/universities", {}, ids)

@@ -16,6 +16,12 @@ const recorded: Counseling = {
 };
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const counselingRegion = () => screen.getByRole("region", { name: "Counseling" });
+// AGN-007 merge (2026-10-02): the detail panel also mounts the university shortlist, which loads on its own; answer its URL with an
+// empty page so the queued counseling responses below stay in order (test-only, the AgentStudentsPanel.test.tsx precedent).
+const withShortlist = (inner: (url: string, init?: RequestInit) => Promise<Response>) =>
+  vi.fn((url: string, init?: RequestInit) =>
+    String(url).includes("/shortlist") ? Promise.resolve(res({ items: [], total: 0, limit: 20, offset: 0 })) : inner(url, init),
+  );
 
 afterEach(() => {
   cleanup();
@@ -75,7 +81,7 @@ describe("Counseling in the student detail panel (AGN-006)", () => {
 
   it("shows a student archived while the form was open as archived, keeping the form and entry until Cancel (browser QA6-03)", async () => {
     const archived = { ...base, status: "archived" as const };
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res({ detail: "Unarchive this student first" }, 409)).mockResolvedValueOnce(res({ student: archived })));
+    vi.stubGlobal("fetch", withShortlist(vi.fn().mockResolvedValueOnce(res({ detail: "Unarchive this student first" }, 409)).mockResolvedValueOnce(res({ student: archived }))));
     const onSaved = vi.fn();
     const { rerender } = render(<AgentStudentDetailPanel detail={base} onClose={vi.fn()} onSaved={onSaved} />);
     fireEvent.click(screen.getByRole("button", { name: "Record counseling" }));
@@ -91,7 +97,7 @@ describe("Counseling in the student detail panel (AGN-006)", () => {
 
   it("after a save shows the new record, reports it through the list notice and focuses the Counseling heading", async () => {
     const saved = { ...base, counseling: recorded };
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ student: saved })));
+    vi.stubGlobal("fetch", withShortlist(vi.fn().mockResolvedValue(res({ student: saved }))));
     const onSaved = vi.fn();
     const { rerender } = render(<AgentStudentDetailPanel detail={base} onClose={vi.fn()} onSaved={onSaved} />);
     fireEvent.click(screen.getByRole("button", { name: "Record counseling" }));

@@ -185,7 +185,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
   });
 
   it("opens the detail panel, and Escape closes it", async () => {
-    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.endsWith("/s1") ? res({ student: detail({ notes: "Line one\nLine two" }) }) : res(page([item()])))));
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.includes("/shortlist") ? res(page([])) : url.endsWith("/s1") ? res({ student: detail({ notes: "Line one\nLine two" }) }) : res(page([item()])))));
     render(<AgentStudentsPanel memberRole="master" />);
     fireEvent.click(await screen.findByRole("button", { name: "View Asha Rao" }));
     const panel = await screen.findByRole("region", { name: "Asha Rao" });
@@ -196,7 +196,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
   });
 
   it("shows the detail above the list, so list refreshes never move it", async () => {
-    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.endsWith("/s1") ? res({ student: detail() }) : res(page([item()])))));
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.includes("/shortlist") ? res(page([])) : url.endsWith("/s1") ? res({ student: detail() }) : res(page([item()])))));
     render(<AgentStudentsPanel memberRole="master" />);
     fireEvent.click(await screen.findByRole("button", { name: "View Asha Rao" }));
     const panel = await screen.findByRole("region", { name: "Asha Rao" });
@@ -212,7 +212,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
   });
 
   it("does not offer Edit for a student with a login", async () => {
-    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.endsWith("/s1") ? res({ student: detail({ has_login: true }) }) : res(page([item({ has_login: true })])))));
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.includes("/shortlist") ? res(page([])) : url.endsWith("/s1") ? res({ student: detail({ has_login: true }) }) : res(page([item({ has_login: true })])))));
     render(<AgentStudentsPanel memberRole="master" />);
     fireEvent.click(await screen.findByRole("button", { name: "View Asha Rao" }));
     const panel = await screen.findByRole("region", { name: "Asha Rao" });
@@ -308,6 +308,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string) => {
+        if (url.includes("/shortlist")) return Promise.resolve(res(page([])));
         if (url.endsWith("/a")) return new Promise<Response>((r) => { releaseA = () => r(res({ student: detail({ id: "a", full_name: "Alpha" }) })); });
         if (url.endsWith("/b")) return Promise.resolve(res({ student: detail({ id: "b", full_name: "Bravo" }) }));
         return Promise.resolve(res(page([item({ id: "a", full_name: "Alpha" }), item({ id: "b", full_name: "Bravo" })])));
@@ -361,6 +362,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string, init?: RequestInit) => {
+        if (url.includes("/shortlist")) return Promise.resolve(res(page([])));
         if (init?.method === "PATCH") return Promise.resolve(res({ student: detail({ preferred_country: "Ireland" }) }));
         if (url.endsWith("/s1")) return Promise.resolve(res({ student: detail() }));
         return Promise.resolve(res(page([item()])));
@@ -406,6 +408,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string) => {
+        if (url.includes("/shortlist")) return Promise.resolve(res(page([])));
         if (url.endsWith("/s1")) return Promise.resolve(++detailCalls === 1 ? res({ detail: "Internal Server Error" }, 500) : res({ student: detail() }));
         return Promise.resolve(res(page([item()])));
       }),

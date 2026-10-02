@@ -741,6 +741,9 @@ async def _agent(db: AsyncSession, user: User, section: str):
             (("code", "Code"), ("name", "Name"), ("email", "Email"), ("status", "Status")),
             ({"code": m.code, "name": u.full_name, "email": u.email, "status": "invite pending" if m.status == "active" and u.id in pending else m.status} for m, u in rows),
         )
+    if section == "universities":
+        # AGN-007 (DEC-SCOPE-049): header only -- PortalPage mounts AgentUniversitiesPanel for this section (the Students precedent).
+        return _payload("Universities", "Your agency's own universities. Browse the public catalogue for the rest.")
     if section == "students":
         return _payload(
             "Students",
