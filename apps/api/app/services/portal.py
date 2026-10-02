@@ -52,7 +52,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services.agent_applications import owned, with_owner
+from app.services.agent_applications import WITHDRAWN, owned, stage_label, with_owner
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
@@ -703,7 +703,9 @@ async def _agent(db: AsyncSession, user: User, section: str):
     staff = is_agent_staff(user)
     commissions = [] if staff else (await db.scalars(select(AgentCommission).where(AgentCommission.agent_id.in_(org_member_ids(user))))).all()
     if section == "dashboard":
-        metrics = [{"label": "Students", "value": len(students)}, {"label": "Applications", "value": len(applications)}]
+        # AGN-008 browser QA8-10: a withdrawn application is closed, so it leaves the count and the table; status reads as a label.
+        open_applications = [(a, u, s) for a, u, s in applications if a.status != WITHDRAWN]
+        metrics = [{"label": "Students", "value": len(students)}, {"label": "Applications", "value": len(open_applications)}]
         if not staff:
             metrics += [
                 {"label": "Claimable commission", "value": f"INR {sum(float(c.amount) for c in commissions if c.status in {'eligible', 'estimated'}):,.0f}"},
@@ -716,7 +718,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
             # AGN-002 browser QA-07: staff have no commissions page, so their pages never mention commissions.
             "Your agency's students, applications and next actions." if staff else "Your students, applications, next actions, and commissions.",
             (("student", "Student"), ("university", "University"), ("status", "Status"), ("next_action", "Next action")),
-            ({"student": s.full_name, "university": u.name, "status": a.status, "next_action": a.next_action} for a, u, s in applications),
+            ({"student": s.full_name, "university": u.name, "status": stage_label(a.status), "next_action": a.next_action} for a, u, s in open_applications),
             metrics,
         )
     if section == "team":

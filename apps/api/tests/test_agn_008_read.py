@@ -111,6 +111,42 @@ async def test_nearest_deadline_prefers_the_next_upcoming_then_the_latest_past(d
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status", "app_days", "offer_days", "expected"),
+    [
+        ("withdrawn", 3, 30, None),  # QA8-13: a closed application has no deadline to chase
+        ("enrolled", 3, 30, None),
+        ("offer", 3, 30, ("offer", 30)),  # after the offer only the offer deadline counts
+        ("visa_documentation", 3, 30, ("offer", 30)),
+        ("status_tracking", -9, -2, ("offer", -2)),
+        ("offer", 3, None, None),
+        ("university_selection", 3, 30, ("application", 3)),  # before the offer both count
+    ],
+)
+async def test_nearest_deadline_depends_on_the_stage(db_session, world, status, app_days, offer_days, expected):
+    today = date.today()
+    row = await mk_application(
+        db_session,
+        agent=world["master"],
+        university=world["university"],
+        record=world["record"],
+        status=status,
+        intake=f"QA13 {status} {offer_days}",
+        application_deadline=today + timedelta(days=app_days),
+        offer_deadline=None if offer_days is None else today + timedelta(days=offer_days),
+    )
+    async with client_for(world["master"].email) as c:
+        detail = (await c.get(f"{APPS}/{row.id}")).json()["application"]
+        items = (await c.get(APPS, params={"limit": 100, "status": "all"})).json()["items"]
+    want = None if expected is None else {"kind": expected[0], "date": str(today + timedelta(days=expected[1]))}
+    assert detail["nearest_deadline"] == want
+    assert detail["application_deadline"] == str(today + timedelta(days=app_days))  # the dates stay in the detail fields
+    listed = [i for i in items if i["id"] == str(row.id)]
+    if status != "withdrawn":  # the default "all" group leaves withdrawn out
+        assert listed[0]["nearest_deadline"] == want
+
+
+@pytest.mark.asyncio
 async def test_staff_list_only_assigned_and_other_org_sees_nothing(db_session, world):
     stranger = await mk_record(db_session, agent=world["master"], full_name="Unassigned")
     hidden = await mk_application(db_session, agent=world["master"], university=world["university"], record=stranger)

@@ -23,6 +23,13 @@ OVERSEAS_APPLICATION_STAGES = ["enquiry", "eligibility_evaluation", "university_
 WITHDRAWN = "withdrawn"  # A1: terminal; only an agent sets it (spec §5.3)
 AGENT_MAX_STAGE = "status_tracking"  # A4: `enrolled` stays with counselor, university and admin
 DEFAULT_NEXT_ACTION = "Complete profile and required document checklist"
+OFFER_STAGES_ON = ("offer", "visa_documentation", "status_tracking")  # QA8-13: only the offer deadline matters from here
+
+
+def stage_label(status: str) -> str:
+    """QA8-10: a readable status -- underscores to spaces, first letter capital (covers every stage, `withdrawn` and legacy values)."""
+    text = status.replace("_", " ")
+    return text[:1].upper() + text[1:]
 
 
 class Owner(NamedTuple):
@@ -81,8 +88,14 @@ def _rows_stmt() -> Select:
 
 
 def nearest_deadline(app: OverseasApplication, today: date) -> dict | None:
-    """The earliest deadline that is today or later; if none is upcoming, the most recent past one (the UI marks it past)."""
-    dates = [(d, kind) for kind, d in (("application", app.application_deadline), ("offer", app.offer_deadline)) if d]
+    """The earliest deadline that is today or later; if none is upcoming, the most recent past one (the UI marks it past).
+    QA8-13: it depends on the stage -- none once withdrawn or enrolled; from the offer stage on only the offer deadline counts."""
+    if app.status in (WITHDRAWN, "enrolled"):
+        return None
+    candidates = (("application", app.application_deadline), ("offer", app.offer_deadline))
+    if app.status in OFFER_STAGES_ON:
+        candidates = (("offer", app.offer_deadline),)
+    dates = [(d, kind) for kind, d in candidates if d]
     if not dates:
         return None
     upcoming = [x for x in dates if x[0] >= today]
