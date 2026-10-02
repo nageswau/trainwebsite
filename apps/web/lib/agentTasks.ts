@@ -27,7 +27,7 @@ export type AgentTask = {
   title: string;
   notes: string | null;
   due_at: string;
-  status: "open" | "done" | "cancelled" | string;
+  status: "open" | "done" | "cancelled";
   overdue: boolean;
   student: { id: string; full_name: string; status: string };
   application: { id: string; university: string | null } | null;

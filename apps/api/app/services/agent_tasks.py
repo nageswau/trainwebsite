@@ -151,16 +151,6 @@ async def ensure_capacity(db: AsyncSession, student_id) -> None:
         raise HTTPException(409, CAP_REACHED)
 
 
-def apply_changes(task: AgentTask, user: User, changes: dict) -> list[str]:
-    """Returns the sorted names of the fields whose value actually changed (a no-op PATCH audits nothing)."""
-    changed = sorted(field for field, value in changes.items() if getattr(task, field) != value)
-    for field in changed:
-        setattr(task, field, changes[field])
-    if changed:
-        task.updated_by_user_id = user.id
-    return changed
-
-
 def close_task(task: AgentTask, user: User, status: str) -> None:
     """T2/T6: `done` or `cancelled`, final; who and when are the server's."""
     task.status, task.closed_at, task.closed_by_user_id, task.updated_by_user_id = status, datetime.now(UTC), user.id, user.id

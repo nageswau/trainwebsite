@@ -5,14 +5,15 @@ import pytest_asyncio
 
 from tests.agn001_helpers import client_for
 from tests.agn004_helpers import mk_record
-from tests.agn016_helpers import TASKS, due, mk_task, task_world
+from tests.agn008_helpers import agency_world
+from tests.agn016_helpers import TASKS, due, mk_task
 
 DASHBOARD = "/api/v1/portal/overseas/agent/dashboard"
 
 
 @pytest_asyncio.fixture
 async def world(db_session):
-    w = await task_world(db_session)
+    w = await agency_world(db_session)
     m = w["master"]
     unassigned = await mk_record(db_session, agent=m, full_name="Unassigned")
     archived = await mk_record(db_session, agent=m, full_name="Archived", status="archived", assigned_member=w["staff"]["member"])

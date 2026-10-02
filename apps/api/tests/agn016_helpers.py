@@ -1,10 +1,9 @@
-"""AGN-016 test helpers: AGN-008's agency world (Master, two staff, a student with no login and a linked one, both assigned to
-`staff`; another agency) plus tasks built directly (the API under test builds them in the feature tests)."""
+"""AGN-016 test helpers: tasks built directly (the API under test builds them in the feature tests). The tests' world is AGN-008's
+`agency_world` (Master, two staff, a student with no login and a linked one, both assigned to `staff`; another agency)."""
 
 from datetime import UTC, datetime, timedelta
 
 from app.models import AgentTask
-from tests.agn008_helpers import agency_world
 
 TASKS = "/api/v1/workflows/overseas/agent/crm/tasks"
 TASK_KEYS = {"id", "title", "notes", "due_at", "status", "overdue", "student", "application", "assigned_to", "created_by", "closed_by", "closed_at", "created_at", "updated_at"}
@@ -32,7 +31,3 @@ async def mk_task(db, *, record, author, title: str = "Follow up", due_at: datet
     db.add(row)
     await db.commit()
     return row
-
-
-async def task_world(db) -> dict:
-    return await agency_world(db)

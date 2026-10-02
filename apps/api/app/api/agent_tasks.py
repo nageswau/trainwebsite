@@ -22,7 +22,8 @@ from app.models import AgentOrgMember, AgentStudent, AgentTask, AuditLog, User
 from app.schemas import AgentTaskCreate, AgentTaskUpdate
 from app.services.agent_applications import ARCHIVED
 from app.services.agent_orgs import lock_active_org
-from app.services.agent_tasks import CLOSED, apply_changes, check_application, close_task, ensure_capacity, list_page, load_scoped_task, new_task, task_detail
+from app.services.agent_shortlist import apply_changes  # AGN-007's "set only what differs, stamp the editor" -- one definition
+from app.services.agent_tasks import CLOSED, check_application, close_task, ensure_capacity, list_page, load_scoped_task, new_task, task_detail
 
 logger = logging.getLogger("app.agent_tasks")
 
@@ -106,7 +107,7 @@ async def update_task(task_id: UUID, payload: AgentTaskUpdate, user: User = Depe
     else:
         if changes.get("application_id") not in (None, task.application_id):
             await check_application(db, user, student, changes["application_id"])
-        changed = apply_changes(task, user, changes)
+        changed = apply_changes(task, changes, user)
         event = "agent_task_updated"
         if changed:
             _audit(db, user, "task_update", task, {"fields": changed})

@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentTaskForm from "@/components/AgentTaskForm";
+import type { AgentTask } from "@/lib/agentTasks";
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const apps = { items: [{ id: "a1", university: "Leeds", course: null, intake: "Sep 2027", status: "enquiry" }], total: 1, limit: 100, offset: 0 };
@@ -82,7 +83,7 @@ describe("AgentTaskForm (AGN-016)", () => {
   it("edits: sends only changed fields and cancels with Escape", async () => {
     const fetchMock = stub(() => res(saved));
     const onCancel = vi.fn();
-    const task = {
+    const task: AgentTask = {
       id: "t1", title: "Call", notes: "Old", due_at: new Date(2031, 9, 5, 9, 30).toISOString(), status: "open", overdue: false,
       student: { id: "s1", full_name: "Asha", status: "active" }, application: null, assigned_to: null,
       created_by: "M", closed_by: null, closed_at: null, created_at: "", updated_at: "",

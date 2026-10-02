@@ -10,13 +10,13 @@ from app.models import AgentTask, AuditLog
 from app.services import agent_tasks as service
 from tests.agn001_helpers import client_for, mk_user
 from tests.agn004_helpers import mk_record
-from tests.agn008_helpers import mk_application, mk_school_student
-from tests.agn016_helpers import TASK_KEYS, TASKS, due, mk_task, task_world
+from tests.agn008_helpers import agency_world, mk_application, mk_school_student
+from tests.agn016_helpers import TASK_KEYS, TASKS, due, mk_task
 
 
 @pytest_asyncio.fixture
 async def world(db_session):
-    return await task_world(db_session)
+    return await agency_world(db_session)
 
 
 def _body(record, **over):

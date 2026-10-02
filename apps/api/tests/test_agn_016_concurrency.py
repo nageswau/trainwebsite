@@ -14,12 +14,13 @@ from app.core.database import SessionLocal
 from app.models import AgentTask, AuditLog
 from app.services import agent_tasks as service
 from tests.agn001_helpers import client_for
-from tests.agn016_helpers import TASKS, mk_task, task_world
+from tests.agn008_helpers import agency_world
+from tests.agn016_helpers import TASKS, mk_task
 
 
 @pytest_asyncio.fixture
 async def world(db_session):
-    w = await task_world(db_session)
+    w = await agency_world(db_session)
     w["task"] = await mk_task(db_session, record=w["record"], author=w["master"])
     return w
 
@@ -48,5 +49,7 @@ async def test_second_complete_waits_then_is_refused(db_session, world):
     assert (response.status_code, response.json()["detail"]) == (409, service.CLOSED)
     row = await db_session.get(AgentTask, world["task"].id, populate_existing=True)
     assert (row.status, row.closed_by_user_id) == ("done", world["master"].id)
-    closes = await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action.in_(("agent_student.task_complete", "agent_student.task_cancel")), AuditLog.entity_id == str(world["record"].id)))
+    closes = await db_session.scalar(
+        select(func.count()).select_from(AuditLog).where(AuditLog.action.in_(("agent_student.task_complete", "agent_student.task_cancel")), AuditLog.entity_id == str(world["record"].id))
+    )
     assert closes == 0

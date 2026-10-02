@@ -8,13 +8,13 @@ from app.models import AgentTask, AuditLog
 from app.services import agent_tasks as service
 from tests.agn001_helpers import client_for, mk_user
 from tests.agn004_helpers import RECORDS, mk_record
-from tests.agn008_helpers import mk_application
-from tests.agn016_helpers import TASKS, due, mk_task, task_world
+from tests.agn008_helpers import agency_world, mk_application
+from tests.agn016_helpers import TASKS, due, mk_task
 
 
 @pytest_asyncio.fixture
 async def world(db_session):
-    w = await task_world(db_session)
+    w = await agency_world(db_session)
     w["task"] = await mk_task(db_session, record=w["record"], author=w["master"], title="Call", notes="Old notes")
     return w
 
