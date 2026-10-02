@@ -1,4 +1,4 @@
-import { detailMessage, type Page } from "@/lib/apiErrors";
+import { detailMessage } from "@/lib/apiErrors";
 
 // AGN-007 (DEC-SCOPE-049): an agency's own universities and a student's university shortlist. The server is the authority; the
 // checks here only spare a round trip (spec §6.3).
@@ -21,7 +21,6 @@ export type ShortlistEntry = {
   updated_at: string;
 };
 export type CatalogueCourse = { id: string; title: string; level: string; tuition_fee: string; intake: string };
-export type { Page };
 
 // A university choice travels as "c:<id>" (catalogue) or "a:<id>" (agency) so one <select> holds both groups.
 export type EntryDraft = { university: string; courseId: string; courseTitle: string; intake: string; tuitionFee: string; entryRequirements: string };
@@ -30,7 +29,7 @@ type Payload = Record<string, string | null>;
 
 export const LIMITS = { name: 200, country: 120, city: 120, course_title: 200, intake: 120, tuition_fee: 120, entry_requirements: 2000 } as const;
 
-export const universityKey = (source: "catalogue" | "agency", id: string) => `${source === "catalogue" ? "c" : "a"}:${id}`;
+const universityKey = (source: "catalogue" | "agency", id: string) => `${source === "catalogue" ? "c" : "a"}:${id}`;
 export function parseUniversityKey(key: string): { source: "catalogue" | "agency"; id: string } | null {
   const [kind, id] = key.split(":");
   if (!id || (kind !== "c" && kind !== "a")) return null;
@@ -43,7 +42,7 @@ const clean = (value: string) => (value.trim() === "" ? null : value.trim());
 export const optionLabel = (name: string, place: string | null | undefined) => (place?.trim() ? `${name} — ${place}` : name);
 
 // Browser QA-08: a server error (5xx) carries no useful detail, so it says to retry (the agency staff screens' wording, AGN-002/003).
-export const SERVER_FAILED = "The server couldn't complete this. Please try again in a moment.";
+const SERVER_FAILED = "The server couldn't complete this. Please try again in a moment.";
 export function failureText(status: number, detail: unknown, fallback: string): string {
   return status >= 500 ? SERVER_FAILED : detailMessage(detail, fallback);
 }

@@ -26,11 +26,9 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
   const [notice, setNotice] = useState("");
   const request = useRef<AbortController | null>(null);
   const focusLater = useFocusAfterRender(); // falls back to the next id when the target is gone
-  // The parent's callbacks are re-created on each of its renders; refs keep them out of any dependency list (no refetch loop).
+  // The parent's callbacks are re-created on each of its renders; a ref keeps onStudentGone out of load's dependencies (no refetch loop).
   const gone = useRef(onStudentGone);
   gone.current = onStudentGone;
-  const changed = useRef(onStudentChanged);
-  changed.current = onStudentChanged;
 
   const load = useCallback(() => {
     request.current?.abort();
@@ -80,9 +78,9 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
     setActionError(null);
     try {
       const response = await fetch(`${shortlistUrl(studentId)}/${e.id}`, { method: "DELETE" });
-      if (response.status === 409) return changed.current();
+      if (response.status === 409) return onStudentChanged();
       const body = response.status === 204 ? null : await response.json().catch(() => null);
-      if (response.status === 404 && body?.detail === "Student not found") return gone.current();
+      if (response.status === 404 && body?.detail === "Student not found") return onStudentGone();
       if (response.ok || response.status === 404) {
         // an entry 404 after our own delete = done
         setConfirmId(null);
