@@ -420,7 +420,8 @@ async def _pending_user(db_session, *, active=True, **token_kwargs):
 async def test_a_welcome_link_sets_the_password_verifies_the_email_and_allows_login(client, db_session):
     user, raw, token = await _pending_user(db_session)
     response = await client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD})
-    assert response.status_code == 200 and response.json() == {"ok": True}
+    # bdm-001 (spec §5.6, AC15) added the always-present `login_portal` key (null for every role but bdm_manager).
+    assert response.status_code == 200 and response.json() == {"ok": True, "login_portal": None}
     await db_session.refresh(user)
     await db_session.refresh(token)
     assert user.email_verified is True and token.used_at is not None

@@ -284,7 +284,9 @@ async def reset_password(payload: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     if welcome:
         logger.info("welcome_password_set", extra={"extra_fields": {"user_id": str(user.id)}})
-    return {"ok": True}
+    # bdm-001 (spec §5.6): a BDM manager (division `global`) signs in at /admin/login, and the reset form follows this. The key is
+    # always present (null for everyone else), so the response shape never varies by role.
+    return {"ok": True, "login_portal": "admin" if user.role == "bdm_manager" else None}
 
 
 @router.post("/change-password")
