@@ -5,6 +5,8 @@ Masters see the agency's applications; staff only those of students assigned to 
 audit rows in the same transaction and commits once, so the duplicate check, the throttle and the status rules hold under
 concurrency. Agents move an application forward up to status_tracking or withdraw it; the status route never sets `enrolled` (A4).
 AGN-013 (DEC-SCOPE-054) amends A4 narrowly: only a Master confirms enrollment, through its own route, from an offer onwards.
+AGN-012 (DEC-SCOPE-055): Master and Staff run the visa case of an application from an offer onwards, through its own two routes; the
+case never moves the application stage.
 """
 
 import logging
@@ -19,8 +21,8 @@ from app.api.agent_students import _gate, _require_master_action
 from app.api.deps import get_current_user
 from app.api.workflows import _maybe_trigger_agent_commission, _notify_user
 from app.core.database import get_db
-from app.models import AgentOrgMember, AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, University, User
-from app.schemas import AgentApplicationCreate, AgentApplicationEnrollment, AgentApplicationStatus, AgentApplicationUpdate
+from app.models import AgentOrgMember, AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, University, User, VisaCase
+from app.schemas import AgentApplicationCreate, AgentApplicationEnrollment, AgentApplicationStatus, AgentApplicationUpdate, AgentVisaStart, AgentVisaUpdate
 from app.services.agent_applications import (
     ARCHIVED,
     DEFAULT_NEXT_ACTION,
@@ -28,6 +30,7 @@ from app.services.agent_applications import (
     ENROLLABLE,
     MASTER_ONLY_ENROLLMENT,
     OFFER_NEEDED,
+    OFFER_STAGES_ON,
     STALE,
     THROTTLED,
     WITHDRAWN,
@@ -43,6 +46,7 @@ from app.services.agent_applications import (
 )
 from app.services.agent_orgs import lock_active_org
 from app.services.agent_students import load_scoped as load_scoped_student
+from app.services.agent_visa import VISA_ENROLLED, VISA_EXISTS, VISA_OFFER_NEEDED, VISA_STALE, ChecklistGateRefused, check_dates, load_case, update_case
 
 logger = logging.getLogger("app.agent_applications")
 
@@ -216,4 +220,67 @@ async def save_enrollment(application_id: UUID, payload: AgentApplicationEnrollm
         _log("agent_application_enrolled", membership, user, item.id, from_status=old)
     elif changed:
         _log("agent_application_enrollment_updated", membership, user, item.id, fields=changed)
+    return {"application": await detail(db, user, item, record=record)}
+
+
+async def _visa_entry(db: AsyncSession, user: User, membership: AgentOrgMember, application_id: UUID):
+    """AGN-012: the enrollment route's entry (organisation lock, scoped row lock, archived/withdrawn 409) plus enrolled 409 (V5). The
+    case is read after the application lock, so every agency visa write for one application is serialised."""
+    item = await _locked(db, user, membership, application_id)
+    record = await _refuse_closed(db, user, item)
+    if item.status == "enrolled":
+        raise HTTPException(409, VISA_ENROLLED)
+    return item, record
+
+
+_VISA_EVENTS = {"visa_decision": "agent_visa_decided", "visa_advance": "agent_visa_advanced", "visa_update": "agent_visa_updated"}
+
+
+@router.post("/{application_id}/visa", status_code=201)
+async def start_visa(application_id: UUID, payload: AgentVisaStart, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-012 (DEC-SCOPE-055) §4.1: start the application's visa case at `checklist`, from an offer onwards; one case per application."""
+    membership = _gate(user)
+    item, record = await _visa_entry(db, user, membership, application_id)
+    if payload.expected_status != item.status:
+        raise HTTPException(409, STALE)
+    if item.status not in OFFER_STAGES_ON:
+        raise HTTPException(422, VISA_OFFER_NEEDED)
+    if await load_case(db, item.id) is not None:
+        raise HTTPException(409, VISA_EXISTS)
+    check_dates(payload.visa_application_date, payload.interview_date)
+    db.add(
+        VisaCase(
+            application_id=item.id,
+            status="checklist",
+            checklist=payload.checklist,
+            visa_application_date=payload.visa_application_date,
+            appointment_date=payload.appointment_date,
+            interview_date=payload.interview_date,
+        )
+    )
+    _audit(db, user, "visa_start", item.id, {"checklist_items": len(payload.checklist)})
+    await db.commit()
+    _log("agent_visa_started", membership, user, item.id, checklist_items=len(payload.checklist))
+    return {"application": await detail(db, user, item, record=record)}
+
+
+@router.patch("/{application_id}/visa")
+async def update_visa_case(application_id: UUID, payload: AgentVisaUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-012 §4.2: dates, the checklist (at `checklist` only), a forward move through the checklist gate, or the final decision."""
+    membership = _gate(user)
+    item, record = await _visa_entry(db, user, membership, application_id)
+    case = await load_case(db, item.id)
+    if case is None:  # the screen believed a case exists; a 404 would read as "the application is gone"
+        raise HTTPException(409, VISA_STALE)
+    try:
+        outcome = await update_case(db, case, payload.model_dump(exclude_unset=True))
+    except ChecklistGateRefused as refused:
+        _log("agent_visa_gate_blocked", membership, user, item.id, level=logging.WARNING, from_stage=case.status, unverified_items=len(refused.unverified))
+        raise
+    if outcome is not None:
+        _audit(db, user, outcome[0], item.id, outcome[1])
+    await db.commit()
+    if outcome is not None:
+        action, metadata = outcome
+        _log(_VISA_EVENTS[action], membership, user, item.id, **{k: v for k, v in metadata.items() if k != "decision"})  # never the outcome (§10.3)
     return {"application": await detail(db, user, item, record=record)}
