@@ -12,6 +12,7 @@ import {
   CounselingField,
   CounselingValues,
   CURRENCIES,
+  fieldErrors,
   Currency,
   NOTES_MAX,
   validateCounseling,
@@ -26,19 +27,6 @@ const TEXT_FIELDS: { key: "career_interest" | "course_preference" | "country_pre
 ];
 const FOCUS_ORDER: CounselingField[] = ["counseling_completed", "career_interest", "course_preference", "country_preference", "budget_amount", "budget_currency", "remarks"];
 export const LEAVE_PROMPT = "You have unsaved counseling changes. Leave without saving?";
-
-// FastAPI's 422 list -> {field: message} for this form's fields, or null when any error is not one of them (then the whole detail is
-// shown as one message, so nothing is hidden) -- the AgentStudentForm rule.
-function fieldErrors(detail: unknown): Partial<Record<CounselingField, string>> | null {
-  if (!Array.isArray(detail) || detail.length === 0) return null;
-  const out: Partial<Record<CounselingField, string>> = {};
-  for (const item of detail as { loc?: unknown[] }[]) {
-    const field = item?.loc?.[item.loc.length - 1];
-    if (typeof field !== "string" || !FOCUS_ORDER.includes(field as CounselingField)) return null;
-    out[field as CounselingField] = detailMessage([item]);
-  }
-  return out;
-}
 
 export default function AgentStudentCounselingForm({
   detail,
@@ -135,7 +123,7 @@ export default function AgentStudentCounselingForm({
         onSaved(body.student as AgentStudentDetail);
         return;
       }
-      const onFields = response.status === 422 ? fieldErrors(body?.detail) : null;
+      const onFields = response.status === 422 ? fieldErrors(body?.detail, FOCUS_ORDER) : null;
       if (onFields) {
         setErrors(onFields);
         requestAnimationFrame(() => focusFirst(onFields));

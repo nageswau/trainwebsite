@@ -1,6 +1,8 @@
 // AGN-004 (DEC-SCOPE-042): the shape and helpers of an agency student (with or without a login), shared by the list, the detail
 // panel and the form so they read one definition. Validation mirrors the server's schemas; the server remains the authority.
 
+import { detailMessage } from "./apiErrors";
+
 export const RECORDS_URL = "/api/v1/workflows/overseas/agent/crm/students";
 
 export type Assignee = { id: string; code: string; full_name: string; status: string };
@@ -126,6 +128,19 @@ export function duplicateDetail(detail: unknown): DuplicateDetail | null {
   const d = detail as (Partial<DuplicateDetail> & { code?: string }) | null;
   if (!d || typeof d !== "object" || d.code !== "possible_duplicate" || !Array.isArray(d.matches)) return null;
   return { message: String(d.message ?? ""), matches: d.matches, hidden_matches: Number(d.hidden_matches ?? 0) };
+}
+
+// FastAPI's 422 list -> {field: message} for the fields a form shows, or null when any error is not one of them (the form then shows
+// the whole detail as one message, so nothing is hidden). Shared by the student form (AGN-004) and the counseling form (AGN-006).
+export function fieldErrors<K extends string>(detail: unknown, fields: readonly K[]): Partial<Record<K, string>> | null {
+  if (!Array.isArray(detail) || detail.length === 0) return null;
+  const out: Partial<Record<K, string>> = {};
+  for (const item of detail as { loc?: unknown[] }[]) {
+    const field = item?.loc?.[item.loc.length - 1];
+    if (typeof field !== "string" || !fields.includes(field as K)) return null;
+    out[field as K] = detailMessage([item]);
+  }
+  return out;
 }
 
 // AGN-006 (DEC-SCOPE-048): the counseling record (EVID-015 §5 Step 2), replaced whole by PUT …/counseling. Mirrors
