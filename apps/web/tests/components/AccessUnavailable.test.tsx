@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
@@ -41,6 +41,33 @@ describe("AccessUnavailable", () => {
     me.mockResolvedValue({ role: "someone_new" });
     render(await accessUnavailable(new Error("boom")));
     expect(screen.getByRole("link", { name: "Go to your dashboard" }).getAttribute("href")).toBe("/");
+  });
+
+  // AGN-008 QA8-07 follow-up (owner, 2026-10-02): a cookie the server no longer accepts (expired, revoked) passes the middleware,
+  // so this card is what the user sees -- its login link must bring them back to the page (and filter) they were on.
+  it("returns an expired session to the page it was on, filter included", async () => {
+    window.history.replaceState(null, "", "/overseas/agent/applications?status=offer");
+    try {
+      render(await accessUnavailable(new ApiError("Not authenticated", 401)));
+      await waitFor(() =>
+        expect(screen.getByRole("link", { name: "Return to login" }).getAttribute("href")).toBe(
+          "/overseas/login?next=%2Foverseas%2Fagent%2Fapplications%3Fstatus%3Doffer",
+        ),
+      );
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("adds no return address on the home page or the login page itself", async () => {
+    for (const path of ["/", "/overseas/login?next=%2Fx"]) {
+      window.history.replaceState(null, "", path);
+      render(await accessUnavailable(new ApiError("Not authenticated", 401)));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(screen.getByRole("link", { name: "Return to login" }).getAttribute("href")).toBe("/overseas/login");
+      cleanup();
+    }
+    window.history.replaceState(null, "", "/");
   });
 
   it("uses the division's own login page when given one", async () => {
