@@ -2,6 +2,8 @@
 
 **Status:** design approved in-session on 2026-10-02, in three sections: (1) data and backend, (2) frontend, (3) tests and regression. No code has been written.
 
+**Revision 2 (2026-10-02):** reviewed against the `api-and-interface-design`, `frontend-ui-engineering` and `security-and-hardening` skills. The findings are applied inline below and listed in §12. No approved decision changed.
+
 **Branch:** `feature/bdm-001-bdm-profile`, cut from `main` (`268d132`, after AGN-014 #41).
 
 **Backlog:** `docs/delivery/BDM_CRM_BACKLOG.md` §4 bdm-001.
@@ -113,10 +115,14 @@ Add `"bdm": {"bdm:self"}` and `"bdm_manager": {"bdm:team"}`. These are coarse bu
 
 - **`BdmProfileCreate`** (`extra="forbid"`):
   - `bdm_type: Literal["agent","school","college"]`
-  - `employee_id: str`: trimmed, 1–40 characters, not whitespace-only
+  - `employee_id: str`: trimmed, 1–40 characters, not whitespace-only, and no control characters (`\x00–\x1f`, `\x7f`)
   - `designation`, `department`, `territory: str | None`: max 120, `""` becomes `None`
   - `reporting_manager_user_id: UUID`
-- **`BdmProfileUpdate`** (`extra="forbid"`): the same fields, all optional; omitted means unchanged. `bdm_type` is accepted only so that a value equal to the current one is a harmless no-op; a different value → 422 (B7).
+- **`BdmProfileUpdate`** (`extra="forbid"`): the same fields, all optional; omitted means unchanged.
+  - `bdm_type` is accepted only so that a value equal to the current one is a harmless no-op; a different value → 422 (B7).
+  - **Null rules:** `designation`, `department` or `territory` sent as `null` or `""` clears the field. `employee_id` or `reporting_manager_user_id` sent as `null` → 422, because both are required.
+  - `user_id` is not a field, so a profile can never be moved to another user (`extra="forbid"` rejects it).
+- **Response models** (new): `BdmProfileOut`, `BdmManagerRef` (`id`, `full_name`, `active`), `BdmMeOut`, `BdmTeamRow`, `BdmAdminRow`, `BdmManagerOption` (`id`, `full_name`). Lists use a `Page`-shaped dict, `{items, total, limit, offset}`, the AGN-008 list convention that the web's `lib/apiErrors.Page<T>` already types. The new read routes declare `response_model`, so no field reaches a client unless it is listed.
 - **Errors:** a validation failure raises `HTTPException(422)` with a message naming the field, wrapped by the service. This matches the existing `_fit` and `_valid_email` style, since the `/admin/users` payload stays an untyped `dict` to preserve its contract.
 
 ### 5.3 Service — new `app/services/bdm.py`
@@ -125,7 +131,7 @@ Functions only. Nothing here commits; callers own the transaction.
 
 - **`BDM_DIVISION`** = `{"college": "it", "agent": "overseas", "school": "overseas"}`.
 - **`CREATOR_TYPES`** = `{"super_admin": {all}, "it_admin": {"college"}, "overseas_admin": {"agent","school"}}`.
-- **`require_creator_may(actor, bdm_type)`**: 403 "Your role cannot manage {type} BDMs" (D10).
+- **`require_creator_may(actor, bdm_type)`**: 403 "Your role cannot manage {type} BDMs" (D10). A refusal is logged as a WARNING with `actor_id`, `route` and `bdm_type` only, never email, phone or Employee ID, following `_reject_supplied_password`.
 - **`parse_profile_create(raw)` / `parse_profile_update(raw)`**: turn the nested dict into the §5.2 models; a `ValidationError` becomes a 422.
 - **`locked_active_manager(db, manager_id)`**: `SELECT users … FOR UPDATE`. Returns 422 "Reporting manager must be an active BDM manager" when the user is missing, inactive, or has a role other than `bdm_manager` (AC4).
 - **`flush_profile(db)`**: an `IntegrityError` on `uq_bdm_profiles_employee_id` becomes 409 "Employee ID already exists" (AC3), following `provisioning.flush_unique_email`. Like that helper, it rolls back the whole transaction (user, profile and token) before raising, so nothing is half-written.
@@ -153,7 +159,8 @@ Every role other than `bdm` and `bdm_manager` takes exactly the same code path a
    - Add a `BdmProfile` and run `flush_profile` → 409 (AC3).
 6. The existing steps: `issue_welcome_token`, then the `AuditLog` row `user.create`. Its metadata gains `bdm_profile` (type, employee_id, designation, department, territory, reporting_manager_user_id) when present (AC7).
 7. One `commit`. Then `deliver_welcome_link` runs **after** the commit, as today, so the email can never announce an account that was rolled back.
-8. **Response:** unchanged keys. When the user is a BDM it also includes `"bdm_profile": profile_out(...)`, which is backward-compatible.
+8. **Response:** the existing keys are unchanged. One key is added for **every** role, so the response shape is the same whatever the role: `"bdm_profile"` is `profile_out(...)` for a BDM and `null` for anyone else. Adding a field is backward-compatible.
+9. **Retrying:** POST is not idempotent. A retry after a lost response gets 409 "Email already exists", the existing natural guard, and no second account or email is created. No `Idempotency-Key` header is added; the existing contract has none.
 
 ### 5.5 `PATCH /admin/users/{id}` — the new branch (`admin.py:update_user`)
 
@@ -163,6 +170,7 @@ Every role other than `bdm` and `bdm_manager` takes exactly the same code path a
 3. **If `"bdm_profile"` is in the payload:**
    - The target isn't a BDM → 422 "Only a BDM has a BDM profile".
    - `parse_profile_update` → 422.
+   - The profile row is read `FOR UPDATE`, so two admins editing the same BDM are serialized and each audit row's before/after is exact. The last write wins, and both are audited.
    - A `bdm_type` different from the current one → 422 "BDM type cannot be changed" (B7).
    - A new `reporting_manager_user_id` → `locked_active_manager` → 422.
    - Apply the changed fields, then `flush_profile` → 409.
@@ -174,7 +182,7 @@ Every role other than `bdm` and `bdm_manager` takes exactly the same code path a
 
 ### 5.6 `POST /auth/reset-password` — one extra response field
 
-- The response is `{"ok": true}` today. It becomes `{"ok": true, "login_portal": "admin"}` **only** when the user whose password was reset has role `bdm_manager`; for everyone else it stays exactly `{"ok": true}`.
+- The response is `{"ok": true}` today. It becomes `{"ok": true, "login_portal": "admin" | null}`. The key is **always present**, so the shape doesn't vary: it is `"admin"` when the user whose password was reset has role `bdm_manager`, and `null` for everyone else. The value is computed on the server from the user's role, never from the request, and appears only after a successful reset; the 400 for an invalid link is unchanged.
 - This fixes two broken journeys, both of which today end at `/it/login` and get a 403 from `auth.login`'s division rule:
   - a manager following their welcome link (`/it/reset-password`, from `_set_password_url`);
   - a manager using forgot-password.
@@ -187,12 +195,14 @@ Two routers, both registered in `main.py`'s router tuple:
 | Route | Who | Returns / errors |
 |---|---|---|
 | `GET /bdm/me` | `bdm` | `{id, full_name, email, phone, active, division, bdm_profile: {bdm_type, employee_id, designation, department, territory, reporting_manager: {id, full_name, active}}}`. 403 for other roles, or a BDM with no profile. |
-| `GET /bdm/manager/team` | `bdm_manager` (own team), `super_admin` (all) | `{rows: [{id, full_name, email, phone, active, bdm_type, employee_id, designation, department, territory}], total}`, sorted by name. Includes inactive BDMs, with their status (AC6). 403 for other roles. |
-| `GET /admin/bdms` | `super_admin`, `it_admin` (college), `overseas_admin` (agent, school) | Rows as above, plus `reporting_manager: {id, full_name, active}` and `manager_active`. Optional filters `bdm_type` and `active`; a `bdm_type` outside what the caller may see → 403. |
-| `GET /admin/bdm-managers` | the three admin roles | `{rows: [{id, full_name, email}]}` for **active** `bdm_manager` users only (the picker). |
+| `GET /bdm/manager/team` | `bdm_manager` (own team), `super_admin` (all) | `{items: [{id, full_name, email, phone, active, bdm_type, employee_id, designation, department, territory}], total, limit, offset}`. Includes inactive BDMs, with their status (AC6). 403 for other roles. |
+| `GET /admin/bdms` | `super_admin`, `it_admin` (college), `overseas_admin` (agent, school) | Same page shape. Items as above, plus `reporting_manager: {id, full_name, active}` and `manager_active`. Optional filters `bdm_type` (`agent\|school\|college`; any other value → 422; a valid type the caller may not see → 403) and `active` (bool). |
+| `GET /admin/bdm-managers` | the three admin roles | `{items: [{id, full_name}], total, limit, offset}`: **active** `bdm_manager` users only, for the picker. **No email**, because division admins only need a name to pick from (data minimization). |
 
-- **No list caps:** the BDM count is bounded by the organization's headcount. A cap can be added later in the same style as `USER_LIST_CAP` if it's ever needed.
-- **No N+1 queries:** profiles join to the user and the manager, with `aliased(User)` for the manager, in one query.
+- **Pagination:** every list takes `limit` (default 50, max 100) and `offset` (≥ 0). Rows are sorted by `full_name, id`, so pages are stable. `total` is computed from the same filters.
+- **No N+1 queries:** profiles join to the user and the manager, with `aliased(User)` for the manager, in one query, plus one `count()`.
+- **No request parameter selects another user:** `/bdm/me` and `/bdm/manager/team` take no user ID, so the scope always comes from the session (no IDOR). `/admin/bdms` filtering by type happens in SQL, so rows outside the caller's types are never loaded.
+- **GETs change nothing:** all four routes are read-only.
 
 ### 5.8 Transactions, races and authorization
 
@@ -218,7 +228,8 @@ Two routers, both registered in `main.py`'s router tuple:
   - Signed-out visitors: `/bdm/manager/*` → `/admin/login?next=…`; any other `/bdm/*` → `/bdm/sign-in?next=…`.
   - `next` keeps the query string, as it does today.
 - **`/bdm/sign-in`** (new, public): two buttons that link to `/it/login?next=…` and `/overseas/login?next=…`. `next` is passed through as-is; `LoginForm`'s `safeNextPath` already refuses anything that isn't a same-site path.
-- **`ResetPasswordForm`:** after success, `router.push(\`/${data.login_portal ?? division}/login\`)` (§5.6).
+- **`ResetPasswordForm`:** after success, `router.push(\`/${data.login_portal ?? division}/login\`)` (§5.6). Only the literal `"admin"` is honored; any other value falls back to `division`, so a response can never steer the redirect elsewhere.
+- **`/admin/login` heading (B1):** the h2 "Super Admin Login" becomes "Administration sign-in", with the subtitle "For Super Admins and BDM Managers." This is a text-only change: the layout, the `LoginForm division="global"` and the demo box are untouched.
 - **`WorkflowPanel`:** `ROLES_BY_DIVISION.global` gains `bdm_manager`; only `super_admin` is offered `global`. `bdm` is deliberately **not** added, because it can't be created without a profile.
 
 ### 6.2 BDM pages
@@ -234,9 +245,31 @@ All are server components that follow the `overseas/admin/school-transfers` patt
 
 These pages are server-rendered, so there is no client-side loading state. The error state is the existing `AccessUnavailableCard`.
 
+- **Hierarchy:** the existing `portal-title` block gives the eyebrow, an h2 with the page name, and a muted line of context. The profile is a `<dl>` in one `.card` (label/value pairs, so screen readers announce them as pairs). The team uses a `<table>` with a `<caption>` inside a labelled, focusable `.table-wrap` region. The heading order is never skipped.
+- **Status is never shown by color alone:** the `.badge` contains the word ("Active" / "Inactive").
+- **Mobile:** at 390px, `PortalShell` already collapses its navigation. The `.table-wrap` scrolls inside its own region, so the page itself never scrolls sideways. The `<dl>` stacks.
+- **Perceived performance:** each page makes one server fetch (`/bdm/me` or `/bdm/manager/team?limit=50`) and has no client-side request chain. The manager dashboard reads only the first page; its counts come from `total` and the returned items. `/bdm/manager/team` pages with the same Previous/Next `nav` as `AgentStaffPanel`, kept in `?offset=` in the URL so a page can be linked.
+- **`/bdm/sign-in`:** the `auth-page` layout; two full-width `.btn` links stacked on phones and side by side from 640px; an h1; one line explaining which to choose.
+
 ### 6.3 Admin page — `AdminBdmPanel`
 
-A new client component, mounted on the new static pages `/admin/bdms` (super_admin), `/it/admin/bdms` (it_admin, super_admin) and `/overseas/admin/bdms` (overseas_admin, super_admin). A static route takes precedence over `[module]`/`[section]`.
+**Component structure.** This follows the AGN-002 `AgentStaff*` split, keeping each file under about 160 lines:
+- **`lib/bdm.ts`:** types, `BDM_TYPE_LABEL`, `creatableTypes(role)` (a copy of the server's `CREATOR_TYPES`, used only for display, since the server decides) and URL constants.
+- **`AdminBdmPanel`:** the container. It loads the list, shows the loading/error/empty states and pages through results.
+- **`AdminBdmCreateForm`:** the create form.
+- **`AdminBdmRow`:** one row, with inline edit and activate/deactivate.
+
+**Reused, nothing new invented:**
+- `lib/apiErrors` (`sendJson`, `detailMessage`, `NOT_COMPLETED`, `Page<T>`);
+- `lib/welcomeLink` (`welcomeLinkFeedback`, `toneClass`);
+- `lib/useFocusAfterRender`;
+- `lib/usersChanged.announceUsersChanged()`, so the generic user directory refreshes after a BDM is created;
+- CSS: `.action-card`, `.form`, `.field`, `.table-wrap`, `.badge`, `.empty`, `.form-error`, `.form-message`, `.btn secondary small`;
+- the pager markup from `AgentStaffPanel`.
+
+**No new dependencies.** The manager picker is a native `<select>`. `SearchableSelect` is built for search-backed lookups, and the number of managers is small.
+
+Mounted on the new static pages `/admin/bdms` (super_admin), `/it/admin/bdms` (it_admin, super_admin) and `/overseas/admin/bdms` (overseas_admin, super_admin). A static route takes precedence over `[module]`/`[section]`.
 
 - **List** (`GET /admin/bdms`):
   - Loading: "Loading BDMs…" (`role="status"`).
@@ -254,7 +287,21 @@ A new client component, mounted on the new static pages `/admin/bdms` (super_adm
   - Editable: name, mobile, Employee ID, designation, department, territory and manager. Type is displayed read-only (B7).
   - Activate/deactivate uses the existing `PATCH active`.
   - The list refreshes only after the server succeeds; it is never updated in advance of the reply.
-- **Responsive and accessible:** existing `.form`, `.field` and `.table-wrap` styles, a label on every input, and no new dependencies.
+- **List loading:** an `action-card` with `aria-busy="true"` and the text "Loading BDMs…", following the existing `AgentStaffPanel` pattern. Previous rows stay visible while the next page loads, so the list never flashes empty.
+- **List empty:** an `.empty` block, `role="status"`, reading "No BDMs yet. Use Create BDM above to add the first one."
+- **Error states:** a load failure shows `.form-error role="alert"` with a Retry `<button>`. A network failure on save shows `NOT_COMPLETED` ("…your entry is kept"), and the form keeps what was typed.
+- **Forms:**
+  - Every input has a `<label htmlFor>`, and required fields are marked in the label text, not by color.
+  - Native constraints match the server: `required`, `maxLength` 160/40/120, `type="email" autoComplete="off"`, `type="tel" inputMode="tel"`.
+  - A server error goes into a message region linked by `aria-describedby` and `aria-live="polite"`, and focus moves there with `useFocusAfterRender`.
+  - The submit label changes to "Creating…" / "Saving…" and the button is disabled while busy.
+  - When an admin may create only one type (`it_admin` → College), the type shows as fixed text with a hidden input rather than a one-option `<select>`.
+- **Keyboard:** only native `<button>`, `<select>` and `<input>` are used, with no `div` click handlers.
+  - Edit opens inline in the row and moves focus to its first field.
+  - Esc or Cancel closes it, and focus returns to that row's Edit button. Save also returns focus there.
+  - Deactivating asks for confirmation inline: a second button, "Confirm deactivate", with the reason text "Their reporting line and data stay; they can no longer sign in." No modal is needed.
+- **Mobile:** the create form uses `.form` (one column at 390px) and the list scrolls inside `.table-wrap`. Touch targets are the existing `.btn small` buttons, which are at least 36px tall. The page itself never scrolls sideways.
+- **XSS:** every value renders as React text. There is no `dangerouslySetInnerHTML`.
 
 **Unchanged:** `AdminUserManagementPanel`, `LoginForm`, `PortalShell`. BDMs and managers still appear in the generic user directory under their role names.
 
@@ -276,6 +323,8 @@ A new client component, mounted on the new static pages `/admin/bdms` (super_adm
 | BDM-001-AC12 | A signed-out visitor to `/bdm/manager/*` is redirected to `/admin/login?next=…`; any other `/bdm/*` goes to `/bdm/sign-in?next=…`. `/bdm/sign-in` is public. |
 | BDM-001-AC13 | `AdminBdmPanel` shows loading, empty, error with Retry, and a "no managers" state that disables submit. Server errors appear inline. Type is read-only on edit. |
 | BDM-001-AC14 | Every non-BDM create, edit, login or reset behaves exactly as before. The existing ADM, ENH-003, ENH-006, ENH-029 and AGN-001 tests pass unchanged. |
+| BDM-001-AC15 | Response shapes don't vary. `POST /admin/users` always has `bdm_profile` (null for roles other than BDM), `reset-password` always has `login_portal` (null except for a manager), and every list is `{items, total, limit, offset}` with `limit` ≤ 100 and a stable order. |
+| BDM-001-AC16 | Nothing can be escalated or reached outside the caller's scope: `PATCH` ignores `role`/`division`; a `bdm_profile` with an unknown key (for example `user_id`) → 422; a manager must be an active `bdm_manager`; `/bdm/*` reads only the caller's own data; the picker returns no emails; logs contain IDs and type only, never email, phone or Employee ID. |
 
 ## 8. Tests
 
@@ -293,13 +342,30 @@ Tests are written first, and every result comes from a real run.
 - **AC06:** M1 sees its 2 BDMs (one inactive) and not M2's; super_admin sees all; a `bdm` → 403.
 - **AC07:** the audit row and its metadata for a create, a profile edit, a user-field edit, and deactivation.
 - **AC08–AC11:** each negative path in their rows.
-- **Validation:** over-length fields and whitespace-only Employee IDs → 422.
+- **Validation:** over-length fields, whitespace-only Employee IDs and control characters → 422; `null` for `employee_id` or manager on PATCH → 422; `null` for designation clears it.
+- **AC15:** key presence for a BDM and a counselor create; `login_portal` is `null` for a student reset; list paging (`limit=1`, `offset`), `limit=101` → 422, and the order is stable.
+- **AC16:**
+  - PATCH with `role: "super_admin"` or `division` → ignored, and the role is unchanged;
+  - `bdm_profile.user_id` → 422;
+  - an admin PATCHing a type it doesn't manage → 403;
+  - the picker items have no `email`;
+  - `caplog` shows no email, phone or Employee ID on a creator 403.
+- **Concurrency:** two concurrent PATCHes of the same profile both write audit rows, and their before/after values chain correctly.
 
 **Migration:** `upgrade` → `downgrade` (refused while a profile row exists; succeeds on an empty table) → `upgrade`. `alembic heads` shows exactly one head.
 
 **Web (vitest):**
-- `AdminBdmPanel.test.tsx`: AC13 states, type options per admin role, an inline 409/422, edit with read-only type, no update before the server replies.
-- `ResetPasswordForm.test.tsx`: follows `login_portal`, otherwise uses the `division` prop.
+- `AdminBdmPanel.test.tsx`, `AdminBdmCreateForm.test.tsx`, `AdminBdmRow.test.tsx`:
+  - AC13 states;
+  - type options per admin role, shown as fixed text when there is only one;
+  - an inline 409/422 with focus on the message;
+  - the entry is kept after a network failure;
+  - edit with read-only type;
+  - Esc returns focus to Edit;
+  - the deactivate confirmation step;
+  - no update before the server replies;
+  - `announceUsersChanged` is called after a create.
+- `ResetPasswordForm.test.tsx`: follows `login_portal: "admin"`; falls back to the `division` prop for `null`, a missing key or any other value (for example `"//evil"`).
 - `navigation.test.ts`: the two new dashboard paths.
 - `middleware.test.ts`: AC12.
 - Page tests for `/bdm/my-day` (the no-profile message) and `/bdm/manager/team` (empty state, role gate).
@@ -348,3 +414,55 @@ bdm-001 is COMPLETE only when all of the following pass:
 - the accessibility check (labels, focus, live regions);
 - the regression set;
 - the documentation in §10.
+
+## 12. Revision 2 — skill reviews (2026-10-02)
+
+Each finding is applied in the section named. Nothing here changes an approved decision (B1–B9) or adds anything beyond bdm-001.
+
+### 12.1 API and interface design
+
+| # | Finding | Applied |
+|---|---|---|
+| A1 | The lists had a custom `{rows, total}` shape with no paging | `{items, total, limit, offset}` with `limit` ≤ 100 and a stable order, the AGN-008 convention (§5.7) |
+| A2 | Some response keys appeared only for certain roles | `bdm_profile` and `login_portal` are always present, null when they don't apply (§5.4, §5.6) |
+| A3 | The new reads had no typed output | `response_model` on every new route (§5.2) |
+| A4 | PATCH didn't say what `null` means | Clears the optional fields, 422 for the required ones (§5.2) |
+| A5 | It wasn't stated whether retrying a create is safe | Not idempotent; a retry gets the existing 409 for a duplicate email, and no header is added (§5.4) |
+| A6 | An invalid filter and a forbidden filter weren't told apart | Unknown `bdm_type` → 422; valid but forbidden → 403 (§5.7) |
+| — | Kept as the existing code does it, for compatibility | The `/admin/users` payload stays an untyped `dict`; errors stay FastAPI `{"detail": "…"}`; fields stay snake_case; `PATCH /admin/users` still returns `{"ok": true}` |
+
+### 12.2 Frontend UI engineering
+
+| # | Finding | Applied |
+|---|---|---|
+| F1 | One large panel would grow past 200 lines | Split into a container, create form, row and `lib/bdm.ts`, following AGN-002 `AgentStaff*` (§6.3) |
+| F2 | Possible reinvention | Reuse `sendJson`, `detailMessage`, `Page<T>`, `welcomeLink`, `useFocusAfterRender`, `announceUsersChanged`, the pager markup and the existing CSS classes (§6.3) |
+| F3 | The form error and focus behavior wasn't specified | `aria-describedby` with a live region, focus moves to the error, the entry is kept on network failure, busy labels (§6.3) |
+| F4 | Keyboard behavior for edit and deactivate | Inline edit, Esc to cancel, focus returns to Edit, an inline confirmation step (§6.3) |
+| F5 | A select with only one option | Shown as fixed text when the admin has one creatable type (§6.3) |
+| F6 | Status shown by color | Badges contain the words (§6.2, §6.3) |
+| F7 | Mobile and perceived performance | One server fetch per page, the table scrolls inside its own region, the old page stays visible while the next loads (§6.2, §6.3) |
+| F8 | B1's login heading had been left out of §6 | `/admin/login` text change (§6.1) |
+
+### 12.3 Security and hardening — threat model
+
+**Trust boundaries:** the admin's JSON body (`POST/PATCH /admin/users`), query parameters (`bdm_type`, `active`, `limit`, `offset`), the `next` parameter on `/bdm/sign-in`, the reset-password response read by the browser, and the session cookie.
+
+**Assets:** BDM contact details (PII), the reporting line (which decides what a manager can see), the right to create accounts, and set-password tokens.
+
+| Threat (STRIDE) | Check | Result |
+|---|---|---|
+| Authentication / spoofing | Cookies unchanged (`httponly`, `secure` from settings, `samesite=lax`); the token carries `sv`; `get_current_user` re-checks `active` on every request | A deactivated BDM or manager loses access on their next request. No change to authentication. |
+| Session handling | Does deactivation need a `session_version` bump? | No: the per-request `active` check already refuses. A profile edit doesn't change what a session may do. |
+| Authorization / elevation (role escalation) | Can a BDM or manager gain rights? | PATCH never writes `role` or `division` (the existing allowlist); only `super_admin` creates managers; the manager must be an active `bdm_manager`; no route lets a BDM or manager write their own profile; `extra="forbid"` blocks `user_id`. |
+| IDOR | Can a caller name another user's data? | `/bdm/me` and `/bdm/manager/team` take no ID; `/admin/bdms` filters by type in SQL; `PATCH /admin/users/{id}` keeps the division check and adds `CREATOR_TYPES`. |
+| Input validation | Every input field | Pydantic `extra="forbid"`, lengths, a type enum, a UUID manager ID, no control characters in the Employee ID, bounded `limit`/`offset`. The client-side limits are only a convenience. |
+| SQL injection | Query construction | SQLAlchemy ORM with bound parameters only. The `lower(employee_id)` index is DDL, not user input. There is no raw SQL. |
+| XSS | Rendering | React text only. `next` is URL-encoded and still checked by `safeNextPath`. `login_portal` is honored only for the literal `"admin"`. |
+| CSRF | State-changing calls | Every write is a JSON `POST`/`PATCH` with SameSite=Lax cookies and CORS limited to `frontend_url`, the existing posture. No GET changes state. |
+| Token handling | Set-password token | Unchanged (hashed at rest, 72 h, single use). `login_portal` appears only after a successful reset and says nothing about an invalid link. |
+| Information disclosure | Responses, errors, logs | The picker returns id and name only; a 409 says "Employee ID already exists" and doesn't name the holder; logs contain IDs, route and type only; the development token stays development-only (existing). |
+| Audit / repudiation | Who changed what | Each create and edit writes one `AuditLog` row with before/after profile values; a creator 403 is logged as a WARNING. |
+| Rate limiting / denial of service | Account and email creation | Admin-only routes. The existing 429 throttle on re-sending links already covers repeated link mail. **No new limiter is added**: changing rate limits needs approval first, and nothing in bdm-001 asks for one. Bounded `limit` keeps list queries cheap. |
+| Secrets | Code and config | No new secrets or settings. Before each commit, `git diff --cached` is checked for secrets. |
+| Personal data | Purpose and retention | The fields are exactly the ones §1 requires, with no extras. Retention follows the user account; deletion is outside bdm-001 and unchanged. |
