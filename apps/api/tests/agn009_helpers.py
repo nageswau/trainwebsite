@@ -11,6 +11,7 @@ from tests.agn001_helpers import mk_active_org, mk_user, uniq
 from tests.agn002_helpers import mk_staff
 from tests.agn003_helpers import mk_university
 from tests.agn004_helpers import mk_record
+from tests.enh025_helpers import png_bytes
 
 DOCS = "/api/v1/workflows/overseas/agent/crm/documents"
 REQUESTS = "/api/v1/workflows/overseas/agent/crm/document-requests"
@@ -19,10 +20,7 @@ VERIFY = "/api/v1/workflows/overseas/documents/{}/verify"
 OLD_UPLOAD = "/api/v1/workflows/overseas/documents"
 
 PDF = b"%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n"
-PNG = (
-    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
-    b"\x00\x00\x00\rIDATx\x9cc\xf8\xff\xff?\x00\x05\xfe\x02\xfe\xa75\x81\x84\x00\x00\x00\x00IEND\xaeB`\x82"
-)
+PNG = png_bytes()  # ENH-025's structurally valid PNG, with a tEXt chunk the upload must strip
 
 
 async def world(db) -> dict:
@@ -38,12 +36,20 @@ async def world(db) -> dict:
     await db.commit()
     university = await mk_university(db)
     return ctx | {
-        "staff": staff, "plain": plain, "other": other, "record": record, "unassigned": unassigned,
-        "linked_user": linked_user, "linked_record": linked_record, "university": university,
+        "staff": staff,
+        "plain": plain,
+        "other": other,
+        "record": record,
+        "unassigned": unassigned,
+        "linked_user": linked_user,
+        "linked_record": linked_record,
+        "university": university,
     }
 
 
-async def mk_doc(db, *, record: AgentStudent | None = None, student=None, status: str = "pending", application=None, verified_by=None, document_type: str = "Passport", key: str | None = None) -> StudentDocument:
+async def mk_doc(
+    db, *, record: AgentStudent | None = None, student=None, status: str = "pending", application=None, verified_by=None, document_type: str = "Passport", key: str | None = None
+) -> StudentDocument:
     """`record` -> an AGN-009 row (agent_student_id, plus student_id when the record has a login); `student` alone -> a row made
     before AGN-009."""
     row = StudentDocument(
