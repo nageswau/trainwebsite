@@ -50,4 +50,23 @@ describe("PortalShell sidebar filters (AGN-008)", () => {
     const names = within(mobile).getAllByRole("link").map((a) => a.textContent);
     expect(names.slice(-3)).toEqual(["Applications", "Applications: Draft", "Applications: Offer received"]);
   });
+  // QA8-08: the mobile menu marks the active filter child as current, not the parent; the parent only when no filter matches.
+  it("marks the active filter, not the parent, in the mobile menu", () => {
+    search = "status=offer";
+    const { container } = render(<PortalShell nav={nav} roleLabel="Agent" userName="A"><p>x</p></PortalShell>);
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const mobile = container.querySelector("#portal-mobile-nav-panel") as HTMLElement;
+    expect(within(mobile).getByRole("link", { name: "Applications: Offer received" })).toHaveAttribute("aria-current", "page");
+    expect(within(mobile).getByRole("link", { name: "Applications: Draft" })).not.toHaveAttribute("aria-current");
+    expect(within(mobile).getByRole("link", { name: "Applications" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("marks the parent in the mobile menu when no filter is set", () => {
+    search = "";
+    const { container } = render(<PortalShell nav={nav} roleLabel="Agent" userName="A"><p>x</p></PortalShell>);
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const mobile = container.querySelector("#portal-mobile-nav-panel") as HTMLElement;
+    expect(within(mobile).getByRole("link", { name: "Applications" })).toHaveAttribute("aria-current", "page");
+    expect(within(mobile).getByRole("link", { name: "Applications: Offer received" })).not.toHaveAttribute("aria-current");
+  });
 });
