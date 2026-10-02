@@ -99,6 +99,8 @@ async def update_university(university_id: UUID, payload: AgentUniversityUpdate,
     if changed:
         _university_audit(db, user, "update", row.id, {"fields": changed})
     await _commit(db, DUPLICATE_UNIVERSITY)
+    if changed:
+        _log("agent_university_updated", membership, user, "-", university_id=str(row.id), fields=changed)
     await db.refresh(row)  # updated_at is set by the database on UPDATE; reload it in the async session
     return {"university": university_item(row)}
 
@@ -111,10 +113,12 @@ async def delete_university(university_id: UUID, user: User = Depends(get_curren
     _require_master_action(user, "Only an agency Master can delete universities")
     used = await university_usage(db, row.id)
     if used:
+        _log("agent_university_delete_refused", membership, user, "-", university_id=str(row.id), entry_count=used)
         raise HTTPException(409, in_use_message(used))
     _university_audit(db, user, "delete", row.id)
     await db.delete(row)
     await _commit(db, in_use_message(1))
+    _log("agent_university_deleted", membership, user, "-", university_id=str(university_id))
     return Response(status_code=204)
 
 

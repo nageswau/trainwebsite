@@ -1,5 +1,6 @@
 """AGN-007 -- the agency's own universities (spec §5.1; AC06, AC09, AC10 universities cap, AC11)."""
 
+import logging
 import uuid
 
 import pytest
@@ -23,6 +24,32 @@ async def agency(db_session):
 
 async def _add(client, name: str, country: str = "Ireland", **extra):
     return await client.post(UNIVERSITIES, json={"name": name, "country": country, **extra})
+
+
+@pytest.fixture(autouse=True)
+def _app_loggers_enabled():
+    # alembic's fileConfig (run by the migration tests) disables existing loggers; re-enable ours (test_agn_004_students.py precedent).
+    logging.getLogger("app.agent_students").disabled = False
+    yield
+
+
+@pytest.mark.asyncio
+async def test_every_university_write_is_logged_without_free_text(db_session, agency, caplog):  # operational logging, spec §5.6
+    caplog.set_level(logging.INFO, logger="app.agent_students")
+    name, city = f"Logged Uni {agency['tag']}", f"Secret City {agency['tag']}"
+    async with client_for(agency["master"].email) as m:
+        uid = (await _add(m, name, city=city)).json()["university"]["id"]
+        await m.patch(f"{UNIVERSITIES}/{uid}", json={"city": f"Other {city}"})
+        in_use = (await _add(m, f"Used {name}")).json()["university"]["id"]
+        student = await mk_record(db_session, agent=agency["master"], full_name="Log Student")
+        db_session.add(AgentStudentShortlistEntry(agent_student_id=student.id, agent_university_id=uuid.UUID(in_use)))
+        await db_session.commit()
+        assert (await m.delete(f"{UNIVERSITIES}/{in_use}")).status_code == 409
+        assert (await m.delete(f"{UNIVERSITIES}/{uid}")).status_code == 204
+    events = [r.getMessage() for r in caplog.records if r.name == "app.agent_students"]
+    for event in ("agent_university_created", "agent_university_updated", "agent_university_delete_refused", "agent_university_deleted"):
+        assert event in events, f"{event} not logged: {events}"
+    assert name not in caplog.text and city not in caplog.text
 
 
 @pytest.mark.asyncio
