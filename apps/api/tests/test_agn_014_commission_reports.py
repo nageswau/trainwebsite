@@ -1,5 +1,7 @@
 """AGN-014 (DEC-SCOPE-051) -- Master-only commission report, CSV export and dashboard Revenue (spec §5-§6, AC01-AC08)."""
 
+import csv
+import io
 from datetime import UTC, datetime
 
 import pytest
@@ -142,3 +144,59 @@ async def test_a_suspended_agency_is_refused(db_session, path):  # AC08
         org.status = "suspended"
         await db_session.commit()
         assert (await c.get(path)).status_code == 403
+
+
+# --- CSV export (AC07) ---------------------------------------------------------------------------------------------------------
+
+HEADER = ["Student", "University", "Country", "Intake", "Status", "Amount", "Currency", "Created", "Claimed", "Paid", "Claim reference"]
+
+
+def _csv_rows(response):
+    return list(csv.reader(io.StringIO(response.text)))
+
+
+@pytest.mark.asyncio
+async def test_csv_has_one_row_per_commission_with_the_filter(db_session):  # AC07
+    ctx = await mk_active_org(db_session, name=f"Csv {uniq()}")
+    reference = uniq("CLM")
+    await mk_commission(
+        db_session, ctx, amount=1234.5, student_name="Asha Rao", university_name="Gamma U", country_name="Gland", intake="Sep 2027",
+        created_at=_day(2026, 9, 15), claim_reference=reference,
+    )
+    await mk_commission(db_session, ctx, amount=5, created_at=_day(2026, 10, 15))
+    async with client_for(ctx["master"].email) as c:
+        response = await c.get(CSV, params={"date_from": "2026-09-01", "date_to": "2026-09-30"})
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"].startswith("text/csv")
+    assert response.headers["content-disposition"] == "attachment; filename=agency-commissions-2026-09-01-to-2026-09-30.csv"
+    assert response.headers["cache-control"] == "private, no-store"
+    rows = _csv_rows(response)
+    assert rows[0] == HEADER
+    assert rows[1:] == [["Asha Rao", "Gamma U", "Gland", "Sep 2027", "paid", "1234.50", "INR", "2026-09-15", "", "", reference]]
+
+
+@pytest.mark.asyncio
+async def test_empty_csv_is_header_only_and_named_all(db_session):  # AC07
+    ctx = await mk_active_org(db_session, name=f"CsvEmpty {uniq()}")
+    async with client_for(ctx["master"].email) as c:
+        response = await c.get(CSV)
+    assert response.status_code == 200 and _csv_rows(response) == [HEADER]
+    assert response.headers["content-disposition"] == "attachment; filename=agency-commissions-all-to-all.csv"
+
+
+@pytest.mark.asyncio
+async def test_csv_neutralises_formulas(db_session):  # AC07, Review Focus 4
+    ctx = await mk_active_org(db_session, name=f"CsvFormula {uniq()}")
+    reference = "-" + uniq("CLM")
+    await mk_commission(db_session, ctx, student_name="=HYPERLINK(1)", university_name="+U", intake="@Sep", claim_reference=reference)
+    async with client_for(ctx["master"].email) as c:
+        row = _csv_rows(await c.get(CSV))[1]
+    assert row[0] == "'=HYPERLINK(1)" and row[1] == "'+U" and row[3] == "'@Sep" and row[10] == "'" + reference
+
+
+@pytest.mark.asyncio
+async def test_csv_names_a_student_without_a_login(db_session):  # Review Focus 1
+    ctx = await mk_active_org(db_session, name=f"CsvNologin {uniq()}")
+    await mk_commission(db_session, ctx, student=False)
+    async with client_for(ctx["master"].email) as c:
+        assert _csv_rows(await c.get(CSV))[1][0] == "—"

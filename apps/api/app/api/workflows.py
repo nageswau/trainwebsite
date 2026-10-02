@@ -1,10 +1,12 @@
+import csv
+import io
 import logging
 import secrets
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from sqlalchemy import func, or_, select
@@ -12,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.api.files import _allowed
+from app.api.school_bulk import _safe_cell
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
@@ -2488,6 +2491,34 @@ async def agent_commission_report(date_from: str | None = None, date_to: str | N
         "by_country": _ranked(_commission_groups(items, ("country",)), ("country",)),
         "by_intake": _ranked(_commission_groups(items, ("intake",)), ("intake",)),
     }
+
+
+COMMISSION_CSV_COLUMNS = ("Student", "University", "Country", "Intake", "Status", "Amount", "Currency", "Created", "Claimed", "Paid", "Claim reference")
+
+
+def _csv_day(value: datetime | None) -> str:
+    return value.astimezone(UTC).date().isoformat() if value else ""
+
+
+@router.get("/overseas/agent/commissions/report.csv")
+async def agent_commission_report_csv(date_from: str | None = None, date_to: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-014 R4: one row per commission. Every text cell goes through `_safe_cell` -- names and references are user-entered."""
+    items, start, end = await _commission_report_items(user, db, date_from, date_to)
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(COMMISSION_CSV_COLUMNS)
+    for item in items:
+        writer.writerow([
+            _safe_cell(item["student"]), _safe_cell(item["university"]), _safe_cell(item["country"]), _safe_cell(item["intake"]),
+            item["status"], f"{item['amount']:.2f}", _safe_cell(item["currency"]), _csv_day(item["created_at"]),
+            _csv_day(item["claimed_at"]), _csv_day(item["paid_at"]), _safe_cell(item["claim_reference"] or ""),
+        ])
+    _report_logged(user, "csv", len(items), start, end)
+    filename = f"agency-commissions-{start.isoformat() if start else 'all'}-to-{end.isoformat() if end else 'all'}.csv"
+    return Response(
+        content=buffer.getvalue(), media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}", "Cache-Control": "private, no-store"},
+    )
 
 
 @router.post("/overseas/agent/commissions/{commission_id}/claim")
