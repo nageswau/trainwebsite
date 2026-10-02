@@ -80,6 +80,9 @@ deadlines; Staff sidebar filters (§2, §4, §5)") is decided as `DEC-SCOPE-050`
 the then-unmerged `AGN-006`/`AGN-007` branches; both reached `main` first and `050` stayed free). It lifts `DEC-SCOPE-042` D8: agency students with no login can now have applications.
 See §AGN-008.
 
+**Revision 12 (2026-10-02):** the owner's `AGN-016` statement ("Tasks & Follow-ups" §4; "Pending Actions" KPI §2) is decided as
+`DEC-SCOPE-051` (T1–T8; number provisional while `AGN-009` is open in parallel). See §AGN-016.
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -167,6 +170,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-006 | Agent student counseling record — completed, career interest, course/country preference, budget, remarks (§5 Step 2) | Medium | Medium | Yes | AGN-004 (student detail), AGN-021 (activity) |
 | AGN-007 | Agent student university shortlist and agency-private university database (Master full / Staff view) | Large | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004, AGN-021 |
 | AGN-008 | Agent applications — Master/Staff create, edit, view, change status, Application ID, submission date and deadlines for agent students; Staff sidebar filters (Rev. 11) | Large | High | Yes | AGN-004, AGN-003, AGN-021, AGT-002, OVS-002/003/004, ENH-031, RPT-002 |
+| AGN-016 | Agent tasks and follow-ups — Master/Staff create, edit, complete and cancel tasks on agency students (task follows the student); "Pending actions" KPI (Rev. 12) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-021 |
 
 ---
 
@@ -3656,6 +3660,40 @@ response, merge anchors with AGN-006/007, the commission trigger.
 row). Codex review waived by the owner (2026-10-02). Outside COMPLETE, owner-side: the full backend suite (standing 4–5-story
 cadence) and the merge to `main`. Browser QA pass 1 (QA8-01..13) is fixed, with owner rulings in `DEC-SCOPE-050` A16–A19 (reports: `.superpowers/sdd/2026-10-02-agn-008-agent-applications/qa-fix-*.md`, git-ignored, local only). Merge note (2026-10-02): `main` @ `3e06381` (`AGN-006`, `AGN-007`) merged in; `DEC-SCOPE-050` kept (free), `0057` re-chained after `0056_agent_shortlist`, the screen renumbered `SCR-AGT-010` (spec §12).
 
+## AGN-016 — Agent Tasks and Follow-ups, "Pending Actions" KPI
+
+**Title.** Let an agency Master, and Staff for their assigned students, record follow-up tasks on agency students and see what is open
+and overdue; add "Pending actions" to the agent dashboard.
+
+**Business requirement.** The owner's `AGN-016` statement (in-session, 2026-10-02): "Tasks & Follow-ups" (§4); "Pending Actions" KPI
+(§2). Source: `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`), which names the two items only. Decision record:
+`DEC-SCOPE-051` (T1–T8, `EXPLICIT_APPROVAL` in-session 2026-10-02; number provisional).
+
+**Existing behavior.** Only `OverseasApplication.next_action` free text; no task entity, no pending-actions count.
+
+**Expected behavior.** Table `agent_tasks` owned only through the student (T1). Routes under `/workflows/overseas/agent/crm/tasks`:
+list (`view` open/overdue/done/cancelled/all, `student`), create, read, PATCH (edit, or `status` done/cancelled alone). A Tasks page
+(both roles), a Tasks section in the student detail, the dashboard metric, and task work in AGN-021 activity. Spec:
+`docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md`; plan `docs/superpowers/plans/2026-10-02-agn-016-tasks-followups.md`.
+
+**Roles.** Agency Master (whole agency), agency Staff (assigned students only). Not super_admin or other roles (403).
+
+**Acceptance criteria.** Spec §10 `AGN-016-AC01`…`AC13`: create per role and student type; scope (404 outside, 403 for other roles);
+reassignment moves tasks; overdue definition; edit and close; closed and archived read-only (409); application link (422); validation
+(422); concurrent closes (one 200, one 409); KPI per role; audit/log without free text; UI states, keyboard and 320 px; per-student cap.
+
+**Regression risks.** Spec §11: `portal._agent` dashboard (one metric added after "Applications"), `AgentStudentDetailPanel` (an extra
+fetch; two existing unit tests now answer the tasks URL like the shortlist's), `searchStudents`/`assignedText` moved to
+`lib/agentStudents.ts` (behaviour unchanged), `lib/navigation.ts` (Tasks after Documents), `STAFF_ACTIVITY_ACTIONS`, the alembic head
+(parallel `AGN-009`).
+
+**Complexity:** Medium. **Risk:** Medium.
+
+**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-016-tasks-followups`. Lite tests only, per the owner: 79 backend
+AGN-016 tests plus the four affected existing files (`test_agn_004_staff_scope`, `test_agn_001_team`, `test_agn_008_dashboard`,
+`test_agn_021_activity`), web typecheck, zero-warning lint, and 104 unit tests across 11 files. Outstanding before COMPLETE: browser
+validation, the e2e spec `agn-016-tasks.spec.ts` (written, not run), the full suites (owner, separate session), and an independent Codex review.
+
 ## 2. Dependency graph
 
 **Must be sequential:**
@@ -3827,6 +3865,7 @@ item, only for the progress-view question).
 | AGN-005 | None — scope (tests + docs), Delete Student = archive/unarchive, test placement, and the QA5-01 phone rule / QA5-05 note set by the owner in-session 2026-10-01 | N/A |
 | AGN-006 | `DEC-SCOPE-048` — storage, budget, separate preferences, access, completed stamp, API, activity, leave prompt | **Resolved 2026-10-01** (C1–C9, `EXPLICIT_APPROVAL` in-session; number provisional) |
 | AGN-008 | `DEC-SCOPE-050` — statuses and withdrawn, Application ID, dates, agent status limits, link to the agency student, visibility, sidebar filters, throttle, archived read-only | **Resolved 2026-10-01/02** (A1–A15, `EXPLICIT_APPROVAL` in-session). `DEC-SCOPE-036` "submitted" stays `NEEDS_CONFIRMATION` |
+| AGN-016 | `DEC-SCOPE-051` (provisional number) — task owner on reassignment, delete, due time and overdue, linkage, KPI and nav, edit rules, cap, retry | **Resolved 2026-10-02** (T1–T8, `EXPLICIT_APPROVAL` in-session) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in

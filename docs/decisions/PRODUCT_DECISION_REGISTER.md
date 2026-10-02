@@ -2997,3 +2997,39 @@ Staff browser flows were verified and the named-staff Assign action built (2026-
 - **Other QA fixes (no decision needed; bug fixes to the stated behaviour):** a 422 on Save keeps the edit form open (409 closes and reloads); focus moves to the alert and, after a withdraw, to the read-only notice; the list card follows the reloaded detail; Create, Save and status sends have an in-flight guard; a filter click shows "Loading…"; the mobile menu marks the active filter; legacy stage labels are capitalised; a stale create message clears. Details: `.superpowers/sdd/2026-10-02-agn-008-agent-applications/qa-fix-*.md`.
 - **Security finding (pre-existing, fixed):** the login form followed any `next` value (open redirect). It now accepts only a same-origin relative path (`apps/web/lib/safeNext.ts`, validated on the normalised output; dot-segment forms such as `/.//evil.com` are rejected). See `SECURITY_CONTROLS.md` and `THREAT_MODEL.md`.
 - **Page gate kept:** `/overseas/agent/applications` still fetches the portal payload for everyone, so a wrong role or a pending/rejected agent is refused as before; only a Super Admin's 404 renders the section's note.
+
+### DEC-SCOPE-051 — Agent tasks and follow-ups, "Pending actions" KPI (`AGN-016`)
+
+**ID note:** provisional. `feature/agn-009-agent-documents` was cut from the same `main` (`b93a5e5`) and may also claim `051` and
+migration `0058`; the lane that merges second renumbers its decision and re-chains its migration (`AGENT_CRM_BACKLOG.md` §6.2).
+
+**Question:** the owner's `AGN-016` statement (in-session, 2026-10-02): requirement "Tasks & Follow-ups" (§4); "Pending Actions" KPI
+(§2). Acceptance: "CRUD per scope; overdue = due before now and open; a reassigned student's open tasks follow the new owner (spec: or
+stay)."
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) names only "Tasks & Follow-ups" (Staff sidebar, §4) and
+"Pending Actions" (Master dashboard KPI, §2); it defines no task fields, rules or §6 matrix row. `AGENT_CRM_BACKLOG.md` ang-016
+(`DERIVED_BLUEPRINT`) proposed title, due date, assignee, status `open|done|cancelled` and an `agent_tasks` table — a proposal, not
+authority. Impact analysis 2026-10-02 (the graphify graph predated AGN-001…008, so the source was read directly): AGN-004
+`student_scope` is the single staff-scope rule; `assign_student` writes only `assigned_member_id`.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL`; design spec
+`docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md` §1):
+
+- **T1 — Owner follows the student.** No assignee column; a task's scope is its student's (`student_scope`), so a reassigned
+  student's tasks move with it and no task row is written on reassignment ("follow the new owner"; the "or stay" reading is rejected).
+- **T2 — Cancel only.** Status `open`, `done`, `cancelled`; no hard delete.
+- **T3 — Due time.** `due_at` timestamptz, required; overdue ⇔ open and `due_at` before now.
+- **T4 — Linkage.** A student is required (with or without a login); an application link is optional and must be the same student's,
+  not withdrawn; an archived student's tasks are read-only (409) and leave the open counts.
+- **T5 — KPI and navigation.** One "Pending actions" metric (open tasks of active students in scope) on the existing agent dashboard,
+  Master and Staff; "Tasks" in the nav for both roles. The rest of the dashboard stays with ang-018.
+- **T6 — Edit rules.** Anyone in scope creates, edits, completes and cancels; done/cancelled are final; a past due time is allowed on
+  create (the UI warns).
+- **T7 — Cap** (security review): at most 100 open tasks per student (409).
+- **T8 — Retry.** `POST` is documented as not safe to retry; no `Idempotency-Key`.
+
+**Consequences:** new table `agent_tasks` (migration `0058_agent_tasks`, provisional); routes `/workflows/overseas/agent/crm/tasks`
+(`API_CONTRACT.md`); four audit actions `agent_student.task_add|task_update|task_complete|task_cancel` join AGN-021's staff-activity
+allowlist; the agent dashboard gains one metric after "Applications". No change to `rbac.py`, `workflows.py`, `assign_student` or
+`OverseasApplication.next_action`. Notifications and reminders stay with ang-017.
