@@ -84,6 +84,48 @@ def test_create_rejects_bad_fields_with_a_readable_422(patch, detail):
     assert exc.value.detail == detail
 
 
+def test_optional_texts_are_trimmed_before_the_length_check():
+    """Deferred minor: a padded value that fits after trimming is accepted (it used to be measured with its padding)."""
+    padded = "  " + "d" * 120 + "  "
+    assert bdm.parse_profile_create(_valid(designation=padded)).designation == "d" * 120
+    with pytest.raises(HTTPException) as exc:
+        bdm.parse_profile_create(_valid(territory="t" * 121))
+    assert exc.value.detail == "Territory: String should have at most 120 characters"
+
+
+@pytest.mark.parametrize("field", ["designation", "department", "territory"])
+def test_optional_texts_reject_control_characters_like_the_employee_id(field):
+    """Deferred minor: the same rule as the Employee ID -- no control characters in any profile text."""
+    with pytest.raises(HTTPException) as exc:
+        bdm.parse_profile_create(_valid(**{field: "Sales\x07"}))
+    assert exc.value.detail == f"{bdm.FIELD_LABELS[field]} contains invalid characters"
+    with pytest.raises(HTTPException):
+        bdm.parse_profile_update({field: "line\nbreak"})
+
+
+@pytest.mark.asyncio
+async def test_manager_lock_is_shared_not_exclusive(db_session):
+    """Deferred minor: FOR SHARE still blocks a concurrent deactivation (an UPDATE of the manager row) but no longer makes two
+    BDM creates under the same manager wait for each other, as FOR UPDATE did."""
+    from sqlalchemy import event
+
+    from tests.bdm001_helpers import make_manager
+
+    manager = await make_manager(db_session)
+    manager_id = manager.id
+    seen: list[str] = []
+    engine = db_session.bind.sync_engine
+    listener = lambda conn, cursor, statement, *rest: seen.append(statement)  # noqa: E731
+    event.listen(engine, "before_cursor_execute", listener)
+    try:
+        assert (await bdm.locked_active_manager(db_session, manager_id)).id == manager_id
+    finally:
+        event.remove(engine, "before_cursor_execute", listener)
+        await db_session.rollback()
+    locking = [s for s in seen if "FROM users" in s and "FOR " in s]
+    assert locking and all("FOR SHARE" in s for s in locking), locking
+
+
 def test_missing_and_null_required_fields_read_plainly():
     raw = _valid()
     del raw["employee_id"]

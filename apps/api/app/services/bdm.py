@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import BdmProfile, User
-from app.schemas import BdmProfileCreate, BdmProfileUpdate
+from app.schemas import BDM_FIELD_LABELS, BdmProfileCreate, BdmProfileUpdate
 
 logger = logging.getLogger("app.bdm")
 
@@ -37,10 +37,7 @@ def require_creator_may(actor: User, bdm_type: str, route: str) -> None:
         raise HTTPException(403, f"Your role cannot manage {bdm_type} BDMs")
 
 
-FIELD_LABELS = {
-    "bdm_type": "Module", "employee_id": "Employee ID", "designation": "Designation", "department": "Department",
-    "territory": "Territory", "reporting_manager_user_id": "Reporting manager",
-}
+FIELD_LABELS = BDM_FIELD_LABELS  # the schemas name fields in their own messages too
 
 
 def _readable(error: dict) -> str:
@@ -78,9 +75,10 @@ def parse_profile_update(raw) -> BdmProfileUpdate:
 
 
 async def locked_active_manager(db: AsyncSession, manager_id) -> User:
-    """FOR UPDATE: a concurrent deactivation of this manager (an UPDATE of the same row) is serialised with the assignment, so a
-    BDM is never committed against a manager deactivated in the same instant (spec §5.8)."""
-    manager = await db.scalar(select(User).where(User.id == manager_id).with_for_update())
+    """FOR SHARE: a concurrent deactivation of this manager (an UPDATE of the same row) still waits for the assignment's commit, so a
+    BDM is never committed against a manager deactivated in the same instant (spec §5.8) -- but two BDM creates or reassignments
+    under the same manager no longer queue behind each other, as they did with FOR UPDATE (review deferred minor)."""
+    manager = await db.scalar(select(User).where(User.id == manager_id).with_for_update(read=True))
     if not manager or not manager.active or manager.role != "bdm_manager":
         raise HTTPException(422, "Reporting manager must be an active BDM manager")
     return manager

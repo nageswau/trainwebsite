@@ -30,7 +30,7 @@ def _matching(pattern: str | None, *columns) -> list:
     return [or_(*(column.ilike(pattern, escape="\\") for column in columns))] if pattern else []
 
 
-def _team_row(profile: BdmProfile, user: User, manager: User) -> dict:
+def _team_row(profile: BdmProfile, user: User) -> dict:
     return {
         "id": user.id, "full_name": user.full_name, "email": user.email, "phone": user.phone, "active": user.active,
         "bdm_type": profile.bdm_type, "employee_id": profile.employee_id, "designation": profile.designation,
@@ -40,7 +40,7 @@ def _team_row(profile: BdmProfile, user: User, manager: User) -> dict:
 
 def _admin_row(profile: BdmProfile, user: User, manager: User) -> dict:
     ref = {"id": manager.id, "full_name": manager.full_name, "active": manager.active}
-    return {**_team_row(profile, user, manager), "reporting_manager": ref, "manager_active": manager.active}
+    return {**_team_row(profile, user), "reporting_manager": ref, "manager_active": manager.active}
 
 
 async def _paged(db: AsyncSession, stmt, limit: int, offset: int, shape) -> dict:
@@ -72,7 +72,7 @@ async def me(user: User = Depends(get_current_user), db: AsyncSession = Depends(
 @router.get("/manager/team", response_model=BdmTeamPage)
 async def team(limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     require_manager(user)
-    return await _paged(db, _profiles(team_filter(user)), limit, offset, _team_row)
+    return await _paged(db, _profiles(team_filter(user)), limit, offset, lambda profile, member, _manager: _team_row(profile, member))
 
 
 @admin_router.get("/bdms", response_model=BdmAdminPage)
