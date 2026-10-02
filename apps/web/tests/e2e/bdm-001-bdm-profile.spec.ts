@@ -86,6 +86,27 @@ test("the admin sign-in offers password recovery on the admin portal (QA-05)", a
   await expect(page.getByRole("link", { name: "← Back to sign in" })).toHaveAttribute("href", "/admin/login");
 });
 
+test("admin BDM list keeps its page across refresh and Back (QA-13)", async ({ page }) => {
+  await superAdmin(page);
+  await page.goto("/admin/bdms");
+  await expect(page.getByRole("region", { name: "BDMs" })).toBeVisible();
+  const pager = page.getByRole("navigation", { name: "BDM pages" });
+  test.skip(!(await pager.isVisible()), "needs more than one page of BDMs");
+  await pager.getByRole("button", { name: "Next page" }).click();
+  await page.waitForURL("**/admin/bdms?offset=50");
+  await page.reload();
+  await expect(page.getByRole("navigation", { name: "BDM pages" }).getByText(/^Showing 51–/)).toBeVisible();
+  await page.goBack();
+  await page.waitForURL(/\/admin\/bdms$/);
+  await expect(page.getByRole("navigation", { name: "BDM pages" }).getByText(/^Showing 1–/)).toBeVisible();
+});
+
+test("/bdm and /bdm/manager redirect to real pages (QA-09)", async ({ page }) => {
+  await superAdmin(page);
+  await page.goto("/bdm/manager");
+  await page.waitForURL("**/bdm/manager/dashboard");
+});
+
 test("admin BDM page works at phone width without horizontal scroll", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await superAdmin(page);
@@ -93,4 +114,8 @@ test("admin BDM page works at phone width without horizontal scroll", async ({ p
   await expect(page.getByRole("heading", { name: "Create BDM" })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+  // QA-15: on a phone the BDM list comes before the long create form.
+  const listTop = (await page.getByRole("heading", { name: "BDMs", exact: true, level: 3 }).boundingBox())!.y;
+  const formTop = (await page.getByRole("heading", { name: "Create BDM" }).boundingBox())!.y;
+  expect(listTop).toBeLessThan(formTop);
 });
