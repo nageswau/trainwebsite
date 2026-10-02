@@ -31,6 +31,30 @@ export function reportQuery(from: string, to: string): string {
   return query ? `?${query}` : "";
 }
 
+// Browser QA14-06: the applied range lives in the page address (?from=&to=), so refresh, Back and a shared link keep it. Only
+// well-formed YYYY-MM-DD values are read back; anything else means "no bound".
+const YYYY_MM_DD = /^\d{4}-\d{2}-\d{2}$/;
+
+export function readRange(search: string): { from: string; to: string } {
+  const params = new URLSearchParams(search);
+  const pick = (key: string) => {
+    const value = params.get(key) ?? "";
+    return YYYY_MM_DD.test(value) ? value : "";
+  };
+  return { from: pick("from"), to: pick("to") };
+}
+
+export function writeRange(range: { from: string; to: string }): void {
+  const params = new URLSearchParams(window.location.search);
+  for (const key of ["from", "to"] as const) {
+    if (range[key]) params.set(key, range[key]);
+    else params.delete(key);
+  }
+  const query = params.toString();
+  // replaceState keeps Next's history entry state; no new entry, no navigation.
+  window.history.replaceState(window.history.state, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+}
+
 export function csvFilename(from: string, to: string): string {
   return `agency-commissions-${from || "all"}-to-${to || "all"}.csv`;
 }

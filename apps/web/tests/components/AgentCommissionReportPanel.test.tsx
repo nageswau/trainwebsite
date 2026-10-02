@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentCommissionReportPanel from "@/components/AgentCommissionReportPanel";
@@ -24,6 +24,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  window.history.replaceState(null, "", "/"); // QA14-06 tests put the range in the address
 });
 
 describe("AgentCommissionReportPanel (AGN-014)", () => {
@@ -47,7 +48,7 @@ describe("AgentCommissionReportPanel (AGN-014)", () => {
   });
 
   it.each([
-    [401, { detail: "Not authenticated" }, "Your session has expired. Sign in again."],
+    [401, { detail: "Not authenticated" }, "Your session has expired."],
     [403, { detail: "Only an agency Master can view commissions" }, "Only an agency Master can view commissions"],
     [500, { detail: "boom" }, "Something went wrong on our side. Please try again."],
   ])("shows a %s as an alert", async (status, body, text) => {
@@ -60,7 +61,8 @@ describe("AgentCommissionReportPanel (AGN-014)", () => {
   it("shows a network failure as an alert", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
     render(<AgentCommissionReportPanel />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong on our side. Please try again.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("The report could not load. Check your connection and try again."); // QA14-07
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
   it("refuses a To before From without a request", async () => {
@@ -160,6 +162,71 @@ describe("AgentCommissionReportPanel (AGN-014)", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(report)));
     render(<AgentCommissionReportPanel />);
     expect(await screen.findByText(/INR 1,00,000 \(1 commission\) · USD 100,000 \(1 commission\)/)).toBeInTheDocument();
+  });
+
+  // --- Browser QA (2026-10-02), QA14-02/03/05/06/08/09/10 ---
+
+  it("shows compact, named tables with the amount next to the label, and the CSV action before them (QA14-02/03/09)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(FULL)));
+    render(<AgentCommissionReportPanel />);
+    const table = await screen.findByRole("table", { name: "By status" });
+    for (const name of ["By university", "By country", "By intake"]) expect(screen.getByRole("table", { name })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search all columns...")).toBeNull();
+    expect(screen.queryByText("Rows per page")).toBeNull();
+    expect(within(table).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Status", "Amount", "Commissions"]);
+    expect(within(table).getAllByRole("row")[1]).toHaveTextContent("Payout pendingINR 2,0001");
+    const csv = screen.getByRole("button", { name: "Download CSV" });
+    expect(csv.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("keeps the figures and offers no retry when the server rejects the range (QA14-05)", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(json(FULL)).mockResolvedValueOnce(json({ detail: "date_to must be before 9999-12-31" }, 422));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentCommissionReportPanel />);
+    await screen.findByRole("table", { name: "By status" });
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "9999-12-31" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("'To' must be before 9999-12-31");
+    expect(screen.getByRole("table", { name: "By status" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  it("offers a sign-in link back to this page, not a retry, when the session has expired (QA14-08)", async () => {
+    window.history.replaceState(null, "", "/overseas/agent/reports?from=2026-09-01");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ detail: "Not authenticated" }, 401)));
+    render(<AgentCommissionReportPanel />);
+    const link = await screen.findByRole("link", { name: "Sign in again" });
+    expect(link).toHaveAttribute("href", `/overseas/login?next=${encodeURIComponent("/overseas/agent/reports?from=2026-09-01")}`);
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  it("restores the range from the address and records an applied range there (QA14-06)", async () => {
+    window.history.replaceState(null, "", "/overseas/agent/reports?from=2026-09-01&to=2026-09-30");
+    const fetchMock = vi.fn(() => Promise.resolve(json(FULL)));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentCommissionReportPanel />);
+    await screen.findByRole("table", { name: "By status" });
+    expect(fetchMock).toHaveBeenCalledWith(`${REPORT_URL}?date_from=2026-09-01&date_to=2026-09-30`, { credentials: "same-origin" });
+    expect(screen.getByLabelText("From")).toHaveValue("2026-09-01");
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await vi.waitFor(() => expect(window.location.search).toBe("?from=2026-09-01"));
+  });
+
+  it("ignores a malformed range in the address (QA14-06)", async () => {
+    window.history.replaceState(null, "", "/overseas/agent/reports?from=yesterday&to=2026-9-1");
+    const fetchMock = vi.fn(() => Promise.resolve(json(EMPTY)));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentCommissionReportPanel />);
+    await screen.findByText("Your agency has no commissions yet.");
+    expect(fetchMock).toHaveBeenCalledWith(REPORT_URL, { credentials: "same-origin" });
+  });
+
+  it("offers no CSV when there is nothing to export (QA14-10)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(EMPTY)));
+    render(<AgentCommissionReportPanel />);
+    await screen.findByText("Your agency has no commissions yet.");
+    expect(screen.queryByRole("button", { name: "Download CSV" })).toBeNull();
   });
 
   it("ignores a response that arrives after a newer one", async () => {
