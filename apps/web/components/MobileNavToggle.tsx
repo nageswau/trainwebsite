@@ -18,14 +18,18 @@ export default function MobileNavToggle({
   buttonClassName = "mobile-menu",
   panelClassName = "mobile-nav-panel",
   panelId = "mobile-nav-panel",
+  currentHref,
 }: {
   nav: NavItem[];
   buttonClassName?: string;
   panelClassName?: string;
   panelId?: string;
+  /** AGN-008 QA8-08: the href to mark current when it differs from the path (a query-string filter); defaults to the path. */
+  currentHref?: string;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const current = currentHref ?? pathname;
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -57,13 +61,13 @@ export default function MobileNavToggle({
       <nav id={panelId} className={panelClassName} aria-label="Primary" hidden={!open}>
         {nav.map((item) => (
           <div key={item.href} className="mobile-nav-group">
-            <Link href={item.href} onClick={() => setOpen(false)} aria-current={pathname === item.href ? "page" : undefined}>
+            <Link href={item.href} onClick={() => setOpen(false)} aria-current={current === item.href ? "page" : undefined}>
               {item.label}
             </Link>
             {item.children?.length ? (
               <div className="mobile-nav-subgroup">
                 {item.children.map((child) => (
-                  <Link key={child.href} href={child.href} onClick={() => setOpen(false)} aria-current={pathname === child.href ? "page" : undefined}>
+                  <Link key={child.href} href={child.href} onClick={() => setOpen(false)} aria-current={current === child.href ? "page" : undefined}>
                     {child.label}
                   </Link>
                 ))}

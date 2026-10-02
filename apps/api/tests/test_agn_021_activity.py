@@ -168,3 +168,20 @@ async def test_deactivated_staff_stay_viewable(db_session):  # AC06
     async with client_for(a["master"].email) as m:
         response = await m.get(activity(gone["member"].id))
     assert response.status_code == 200 and response.json()["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_agent_application_actions_appear_with_the_no_login_student(db_session):
+    from tests.agn008_helpers import APPS, agency_world, mk_application  # noqa: PLC0415
+
+    w = await agency_world(db_session)
+    app = await mk_application(db_session, agent=w["master"], university=w["university"], record=w["record"])
+    async with client_for(w["staff"]["user"].email) as s:
+        await s.patch(f"{APPS}/{app.id}", json={"intake": "Spring 2028"})
+        await s.post(f"{APPS}/{app.id}/status", json={"to_status": "offer"})
+        await s.post(f"{APPS}/{app.id}/status", json={"to_status": "withdrawn"})
+    async with client_for(w["master"].email) as m:
+        items = (await m.get(f"/api/v1/workflows/overseas/agent/team/staff/{w['staff']['member'].id}/activity")).json()["items"]
+    got = [(i["action"], i["subject"]) for i in items[:3]]
+    subject = f"{w['record'].full_name} — {w['university'].name}"
+    assert got == [("overseas.application.withdraw", subject), ("overseas.application.advance", subject), ("overseas.application.update", subject)]

@@ -36,7 +36,11 @@ def test_migration_is_the_single_head():
         rev = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("revision =")), None)
         if rev:
             parents[rev] = next((line.split("=", 1)[1].strip().strip("\"'") for line in lines if line.startswith("down_revision =")), None)
-    assert set(parents) - set(parents.values()) == {"0056_agent_shortlist"}
+    # AGN-008 chained 0057_agent_applications after this migration on merging main (2026-10-02), so the intent is kept without
+    # pinning the head -- the relaxation AGN-004's 0049 test received on earlier merges: one head, and 0056 is a parent in the chain.
+    heads = set(parents) - set(parents.values())
+    assert len(heads) == 1
+    assert "0056_agent_shortlist" in parents.values()
 
 
 @pytest.mark.asyncio

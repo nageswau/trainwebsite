@@ -1668,6 +1668,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 | `SCR-AGT-007` | `/overseas/agent/team` | Agent (Master) | `AGN-001` |
 | `SCR-AGT-008` | `/overseas/agent/students` (Students panel) | Agent (Master, Staff) | `AGN-004`, `AGT-002`, `AGN-007` (shortlist panel) |
 | `SCR-AGT-009` | `/overseas/agent/universities` | Agent (Master full, Staff view) | `AGN-007` |
+| `SCR-AGT-010` | `/overseas/agent/applications` (Applications page, `?status=` filters) | Agent (Master, Staff) | `AGN-008` |
 
 ### `SCR-AGT-001`
 - **Route:** `/overseas/agent/register`  
@@ -1880,6 +1881,26 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** Two card columns wide, one on phones.  
 - **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** AGN-007-AC06, AC09, AC11, AC13 (`test_agn_007_universities.py`; `AgentUniversitiesPanel.test.tsx`, `navigation.agent.test.ts`; e2e `agn-007-shortlist.spec.ts`, to be added); browser validation pending.  
+
+
+### `SCR-AGT-010`
+- **ID note:** `SCR-AGT-009` on the `AGN-008` branch; renumbered `SCR-AGT-010` when `main` was merged in (2026-10-02) because `AGN-007` took `SCR-AGT-009` (Universities).  
+- **Route:** `/overseas/agent/applications` — an "Applications" header, the create panel, then the filtered list; `?status=all|draft|submitted|offer|visa|enrolled|withdrawn` (an unknown value falls back to `all`). The agent sidebar's Applications item gains child links (Draft, Submitted, Offer received, Visa, Enrolled, Withdrawn) that open this page with `?status=<group>`; the parent link is "All" *(net-new, added 2026-10-02, `AGN-008` / `DEC-SCOPE-050`)*.
+- **Role(s):** Agent — a Master (whole agency) or a staff member (applications of assigned students only) of an active agency; a Super Admin sees a note instead of the panel
+- **Purpose:** Create, edit, view and change the status of applications for the agency's students, including students who never log in; record the Application ID (the university's reference), submission date and the application and offer deadlines *(`AGN-008`)*.
+- **Linked Feature ID(s):** `AGN-008` (builds on `AGN-004`, `AGT-002`)
+- **Entry points:** Agent portal navigation, "Applications" and its filter links; the mobile menu lists them flattened ("Applications: Draft", …).
+- **Required data:** Per row: student (with a "no login" tag), university, course, intake, status label, Application ID, submitted on, nearest deadline (text "past" / "within 7 days"), next action. On View: all fields, the status history (oldest first) and the read-only reason. *(2026-10-02, QA8-13/QA8-10: the nearest deadline depends on the stage — before the offer the earliest upcoming of the two, else the latest past; offer to status tracking the offer deadline only; none for withdrawn or enrolled. Legacy stages show a capitalised label.)*
+- **Key actions:** Create application (student picker with server search, university and course, intake, Application ID, submitted on, deadlines), filter by status group, View/Hide, Edit (the university is read-only: "To change university, withdraw and create a new application."), Change status (only later stages up to `status_tracking`), Withdraw (inline confirmation, Escape cancels). No `enrolled` option for agents.
+- **Empty state:** unfiltered "No applications yet. Use Create application to add the first one."; filtered "No applications match this filter." with a link to All applications.
+- **Loading state:** "Loading applications…" with `aria-busy` first; later loads keep the previous rows dimmed with `aria-busy`.
+- **Error state:** list error `role="alert"` with Retry; detail 404 "This application is no longer available." (the list refreshes); write errors (`409` duplicate, withdrawn, stale; `422` backward; `429` throttle) shown verbatim inline with the input kept; "Network error. Check your connection and try again."
+- **Permissions/resource scope:** Own agency; staff assigned-only (others `404`); `enrolled` refused to agents (`403`); archived students' and withdrawn applications are read-only (`409`); pending/suspended agencies `403`.
+- **Responsive behavior:** Cards on narrow screens, the detail expands under its card at every width; no horizontal scroll at 320px (E2E); long names wrap.
+- **Accessibility requirements:** Labelled inputs ("(required)" in text), hints by `aria-describedby`; `aria-current="page"` on the active sidebar link; View button `aria-expanded` with the name "View <title>"; a polite `role="status"` region announces create, save, status and withdraw; focus moves to the detail heading on open and back to View on close, to the success message after create, to the status line after a status change, to the read-only notice after withdraw; status and "no login" shown as text, never colour alone. *(2026-10-02, QA pass 1: the current sidebar link is highlighted in every portal (global rule on `aria-current`); the mobile menu marks the active filter, not the parent; a 422 on Save keeps the form open with the input and focuses the alert; focus moves to the read-only notice after a withdraw; a filter click shows "Loading…" with `aria-busy`; a stale create message clears on invalid or edit; Create, Save and status sends ignore a second same-tick submit; the expired-session "Return to login" keeps the page and filter.)*
+- **Desktop/tablet/mobile behavior:** The create panel sits above the list; the detail opens inline under its row; sidebar children are indented on desktop and flattened in the mobile menu.
+- **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.
+- **Acceptance evidence needed:** AGN-008-AC01–AC18 (`test_agn_008_*.py`, `test_agn_003_matrix.py`, `test_agn_021_activity.py`; `agentApplications.test.ts`, `AgentApplicationCreatePanel.test.tsx`, `AgentApplicationDetail.test.tsx`, `AgentApplicationsPanel.test.tsx`, `PortalShell.children.test.tsx`; e2e `agn-008-agent-applications.spec.ts`); browser validation pending. Added 2026-10-02: `test_agn_008_dashboard.py`, `test_agn_008_concurrency.py`, `safeNext.test.ts`, `LoginForm.next.test.tsx`, `AccessUnavailable.test.tsx`, `PortalPage.agentApplications.test.tsx`, `NavGroup.test.tsx`; browser QA pass 1 fixed, re-check pending.
 
 
 ## CNS

@@ -149,15 +149,17 @@ async def overseas_applications(
     db: AsyncSession = Depends(get_db),
 ):
     """workflows._assigned_application's rule: student own; counselor own; university_rep own university; agent own agency;
-    admin all. Bridged (School) applications have no student_id and are labelled with the school student's name."""
+    admin all. Bridged (School) applications have no student_id and are labelled with the school student's name. Agency students
+    with no login (AGN-008) are labelled with the agency record's name."""
     _allow(user, {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin"})
-    student_name = func.coalesce(User.full_name, SchoolStudent.full_name)
+    student_name = func.coalesce(User.full_name, AgentStudent.full_name, SchoolStudent.full_name)
     stmt = (
         select(OverseasApplication, student_name, University.name, OverseasCourse.title)
         .join(University, University.id == OverseasApplication.university_id)
         .outerjoin(OverseasCourse, OverseasCourse.id == OverseasApplication.course_id)
         .outerjoin(User, User.id == OverseasApplication.student_id)
         .outerjoin(SchoolStudent, SchoolStudent.id == OverseasApplication.school_student_id)
+        .outerjoin(AgentStudent, AgentStudent.id == OverseasApplication.agent_student_id)
     )
     if user.role == "overseas_student":
         stmt = stmt.where(OverseasApplication.student_id == user.id)

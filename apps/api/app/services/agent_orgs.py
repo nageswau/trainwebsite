@@ -201,6 +201,14 @@ STAFF_ACTIONS = ("agent_org.staff_create", "agent_org.staff_create_rejected", "a
 THROTTLE_WINDOW = timedelta(hours=24)
 
 
+def retry_after(recent: list[datetime], limit: int, now: datetime) -> int:
+    """Seconds until the oldest of the last `limit` actions leaves THROTTLE_WINDOW; 0 while under the limit. `recent` is newest
+    first and holds at most `limit` timestamps."""
+    if len(recent) < limit:
+        return 0
+    return max(1, math.ceil((recent[-1] + THROTTLE_WINDOW - now).total_seconds()))
+
+
 async def _wait_seconds(db: AsyncSession, org_id, actions: tuple[str, ...], limit: int) -> int:
     """Seconds before this agency may perform another of `actions`; 0 means allowed. Counted from the audit rows (the
     change-password throttle's no-new-table pattern), so the count is shared by every API instance and invite -> deactivate ->
@@ -216,9 +224,7 @@ async def _wait_seconds(db: AsyncSession, org_id, actions: tuple[str, ...], limi
             .limit(limit)
         )
     ).all()
-    if len(recent) < limit:
-        return 0
-    return max(1, math.ceil((recent[-1] + THROTTLE_WINDOW - now).total_seconds()))
+    return retry_after(recent, limit, now)
 
 
 async def _enforce_budget(db: AsyncSession, org_id, actor_id, *, actions: tuple[str, ...], limit: int, event: str, message: str) -> None:

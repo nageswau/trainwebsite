@@ -38,7 +38,7 @@ test("University Rep's Reports page loads with a real aggregate instead of 404in
 });
 
 test("University Rep posts an admission update through the real UI action (UNI-001-AC01/AC02)", async ({ page }) => {
-  const { applicationId } = await createApplicationForDemoRepsUniversity(page);
+  const { applicationId, studentName } = await createApplicationForDemoRepsUniversity(page);
 
   await page.goto("/overseas/login");
   await page.fill("#login-email", "university.rep@edusphere.local");
@@ -49,7 +49,11 @@ test("University Rep posts an admission update through the real UI action (UNI-0
   await page.goto("/overseas/university/student-communication");
   await expect(page.getByRole("heading", { name: "Post admission update" })).toBeVisible();
   const card = page.locator(".action-card", { has: page.getByRole("heading", { name: "Post admission update" }) });
-  await pickByValue(card.getByRole("combobox", { name: "Application reference" }), applicationId);
+  // Search first, as a rep would: the picker shows 20 rows, and a long-lived database holds more of this university's applications
+  // (AGN-008 / DEC-SCOPE-050 A6 also lists agency students' applications here). The exact application is still picked by its id.
+  const picker = card.getByRole("combobox", { name: "Application reference" });
+  await picker.fill(studentName);
+  await pickByValue(picker, applicationId);
   await card.locator("textarea[name='message']").fill("Your application has moved to offer review.");
   await card.getByRole("button", { name: "Post admission update" }).click();
   await expect(card.getByText("Update posted to the student and counselor.")).toBeVisible();

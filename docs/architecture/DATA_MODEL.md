@@ -345,6 +345,20 @@ covers the commission-specific piece).
   change has been made; this note only records that the previously-safe assumption no longer holds
   universally.
 
+- **Addendum, 2026-10-02 (`AGN-008`, `DEC-SCOPE-050`; migration `0057_agent_applications`, chained after `0056_agent_shortlist` since the 2026-10-02 merge of `main`; cut on `0054_school_onboarding_bulk`) — agent-student applications.**
+  Lifts `DEC-SCOPE-042` D8. Additive nullable columns on `overseas_applications`: `agent_student_id` UUID FK → `agent_students.id`
+  (index `ix_overseas_applications_agent_student_id`; no cascade, agent students are archived, never deleted), `submitted_on` Date,
+  `application_deadline` Date, `offer_deadline` Date. `status` stays a `String(50)` with no DB enum or CHECK: **`withdrawn`** is added as a
+  terminal value alongside the `DEC-WF-001` stages (no DDL; the rejected/waitlisted/deferred gap above is unchanged), and the
+  "Application ID" is the existing `application_reference` (A2). `student_id` may be `NULL` in an application's API response for an
+  agent student with no login.
+  **Addendum, 2026-10-02 (browser QA pass 1):** no schema change. The 2026-10-02 merge with `main` @ `3e06381` (`AGN-006`, `AGN-007`) re-chained `0057_agent_applications` after `0056_agent_shortlist` (one head); `nearest_deadline` and the agent dashboard filter are computed in the service layer from the existing columns (`DEC-SCOPE-050` A17/A18).
+  **Owner invariant**, enforced at every write site and not as a DB CHECK (the `DEC-SCOPE-018` style): `school_student_id` excludes
+  `student_id` and `agent_student_id`; an agent-created application always has `agent_student_id`, plus `student_id` when the agent student
+  has a login (A11). School-bridged rows stay excluded from every list that excludes them today (A12). Draft vs Submitted is
+  `submitted_on IS NULL` vs `NOT NULL` for the stages before `offer` (A9). Downgrade drops the index and the four columns. No existing row
+  changes and `agent_student_id` is not backfilled. Design: `docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md` §4.
+
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an
 `ApplicationStatusHistory` row is written with `to_status='enrolled'` **for an application that has

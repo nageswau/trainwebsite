@@ -43,6 +43,7 @@ from app.models import (
     UserRoleAssignment,
 )
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
+from app.services.agent_applications import owned, with_owner
 from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
 from app.services.provisioning import (
     IssuedWelcome,
@@ -307,15 +308,15 @@ async def notification_records(user: User = Depends(ensure_admin), db: AsyncSess
 async def applications(user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
     output = []
     if user.role in {"super_admin", "overseas_admin"}:
-        rows = (
-            await db.execute(
-                select(OverseasApplication, University, User)
-                .join(University, University.id == OverseasApplication.university_id)
-                .join(User, User.id == OverseasApplication.student_id)
-                .order_by(OverseasApplication.updated_at.desc())
-                .limit(500)
-            )
-        ).all()
+        rows = owned(
+            (
+                await db.execute(
+                    with_owner(select(OverseasApplication, University).join(University, University.id == OverseasApplication.university_id))
+                    .order_by(OverseasApplication.updated_at.desc())
+                    .limit(500)
+                )
+            ).all()
+        )
         output.extend(
             {
                 "id": item.id,

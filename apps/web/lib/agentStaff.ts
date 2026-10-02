@@ -28,6 +28,9 @@ const ACTIVITY_LABELS: Record<string, string> = {
   "agent_student.shortlist_remove": "Removed a university from a shortlist",
   "agent.student_link": "Linked a student account",
   "overseas.application.create": "Created an application",
+  "overseas.application.update": "Edited an application",
+  "overseas.application.advance": "Moved an application forward",
+  "overseas.application.withdraw": "Withdrew an application",
   "document.upload": "Uploaded a document",
   "document.verify": "Verified a document",
 };

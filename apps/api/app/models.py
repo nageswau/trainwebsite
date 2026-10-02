@@ -424,14 +424,11 @@ class OverseasCourse(Base, TimestampMixin):
 class OverseasApplication(Base, TimestampMixin):
     __tablename__ = "overseas_applications"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
-    # Nullable as of `DEC-SCOPE-018` (2026-09-15): a bridged application created on behalf
-    # of a School-affiliated student (`DEC-ROLE-004` -- no login, no `users` row) has
-    # school_student_id set instead. Application code enforces "exactly one of the two is
-    # set" at every write site; this is not a DB CHECK constraint, matching this table's
-    # existing style of app-level invariants over DB-level ones. Every pre-existing query
-    # that inner-joins `User` on this column is unaffected -- a bridged row (student_id
-    # NULL) simply never matches those joins, which is correct: those views are for real
-    # logged-in overseas students/agents, not bridged School students.
+    # Owner (DEC-SCOPE-018, AGN-008 DEC-SCOPE-050). Exactly one of `school_student_id` or the agent pair is set, enforced at every
+    # write site (app-level, this table's style). A School-bridged row has `school_student_id` only. An agency's application has
+    # `agent_student_id` (its record, AGN-004), plus `student_id` when that student has a login. Rows made before AGN-008 have
+    # `student_id` only. Shared lists join the owner with `services.agent_applications.with_owner` (outer joins), so a student with
+    # no login is listed rather than dropped; School-bridged rows stay out of them, as before.
     student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     school_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), nullable=True, index=True)
     university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id"), index=True)
@@ -444,6 +441,10 @@ class OverseasApplication(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     application_reference: Mapped[str | None] = mapped_column(String(140), nullable=True)
     offer_letter_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    agent_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id"), nullable=True, index=True)
+    submitted_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    application_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    offer_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
 class ApplicationStatusHistory(Base, TimestampMixin):
