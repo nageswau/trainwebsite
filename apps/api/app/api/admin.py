@@ -44,8 +44,8 @@ from app.models import (
     UserRoleAssignment,
 )
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
-from app.services.agent_applications import owned, with_owner
 from app.services import bdm as bdm_rules
+from app.services.agent_applications import owned, with_owner
 from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
 from app.services.provisioning import (
     IssuedWelcome,
