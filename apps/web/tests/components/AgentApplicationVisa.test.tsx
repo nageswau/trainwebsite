@@ -76,7 +76,7 @@ describe("AgentApplicationVisa (AGN-012)", () => {
     fireEvent.change(screen.getByLabelText("Move to"), { target: { value: "documentation" } });
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(message));
-    expect(screen.getByRole("alert")).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveFocus()); // focus moves in an effect after the alert renders
     expect(JSON.parse(String(writes(fetchMock)[0][1]!.body))).toEqual({ expected_stage: "checklist", to_stage: "documentation" });
   });
 
