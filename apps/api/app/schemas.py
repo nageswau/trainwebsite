@@ -673,6 +673,10 @@ def _intake(value: str | None) -> str:
     return value
 
 
+# One rule for both the edit and the status change; the lambda defers the lookup of `clean_free_text` (defined further down).
+ApplicationNextAction = Annotated[str | None, AfterValidator(lambda value: clean_free_text(value, 500))]
+
+
 class _AgentApplicationFields(BaseModel):
     """Server-owned fields (agent, student, status, university on edit) are not accepted -- `extra="forbid"` answers 422."""
 
@@ -682,17 +686,12 @@ class _AgentApplicationFields(BaseModel):
     submitted_on: date | None = None
     application_deadline: date | None = None
     offer_deadline: date | None = None
-    next_action: str | None = None
+    next_action: ApplicationNextAction = None
 
     @field_validator("application_reference")
     @classmethod
     def _reference(cls, value):
         return clean_free_text(value, 140)
-
-    @field_validator("next_action")
-    @classmethod
-    def _next_action(cls, value):
-        return clean_free_text(value, 500)
 
     @field_validator("application_deadline", "offer_deadline")
     @classmethod
@@ -739,17 +738,12 @@ class AgentApplicationStatus(BaseModel):
     to_status: str = Field(max_length=50)
     expected_status: str | None = Field(default=None, max_length=50)
     notes: str | None = None
-    next_action: str | None = None
+    next_action: ApplicationNextAction = None
 
     @field_validator("notes")
     @classmethod
     def _notes(cls, value):
         return clean_free_text(value, 2000)
-
-    @field_validator("next_action")
-    @classmethod
-    def _next_action(cls, value):
-        return clean_free_text(value, 500)
 
 
 class AgentStaffCreate(AgentMasterInvite):

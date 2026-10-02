@@ -18,7 +18,7 @@ from app.api.agent_students import _gate
 from app.api.deps import get_current_user
 from app.api.workflows import _notify_user
 from app.core.database import get_db
-from app.models import AgentOrgMember, ApplicationStatusHistory, AuditLog, OverseasApplication, University, User
+from app.models import AgentOrgMember, AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, University, User
 from app.schemas import AgentApplicationCreate, AgentApplicationStatus, AgentApplicationUpdate
 from app.services.agent_applications import (
     ARCHIVED,
@@ -118,28 +118,29 @@ async def create_application(payload: AgentApplicationCreate, user: User = Depen
     db.add(ApplicationStatusHistory(application_id=item.id, from_status=None, to_status=item.status, next_action=item.next_action, changed_by_id=user.id))
     _audit(db, user, "create", item.id, {"agent_student_id": str(record.id), "university_id": str(university.id)})
     if record.student_id is not None:  # A8: a student with a login keeps today's notification
-        student = await db.get(User, record.student_id)
-        if student is not None:
-            await _notify_user(db, student, "Application created", f"Your application to {university.name} has been created.", "/overseas/student/applications")
+        student = await db.get(User, record.student_id)  # the foreign key guarantees the account exists
+        await _notify_user(db, student, "Application created", f"Your application to {university.name} has been created.", "/overseas/student/applications")
     await db.commit()
     _log("agent_application_created", membership, user, item.id)
-    return {"application": await detail(db, user, item)}
+    return {"application": await detail(db, user, item, record=record)}
 
 
-async def _refuse_closed(db: AsyncSession, user: User, item) -> None:
-    """A15 then A1: an archived student's applications and a withdrawn application are read-only."""
+async def _refuse_closed(db: AsyncSession, user: User, item) -> AgentStudent | None:
+    """A15 then A1: an archived student's applications and a withdrawn application are read-only. Returns the owner record so the
+    write can hand it to `detail` instead of fetching it again."""
     record = await owner_record(db, user, item)
     if record is not None and record.status == "archived":
         raise HTTPException(409, ARCHIVED)
     if item.status == WITHDRAWN:
         raise HTTPException(409, WITHDRAWN_REFUSED)
+    return record
 
 
 @router.patch("/{application_id}")
 async def update_application(application_id: UUID, payload: AgentApplicationUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     membership = _gate(user)
     item = await _locked(db, user, membership, application_id)
-    await _refuse_closed(db, user, item)
+    record = await _refuse_closed(db, user, item)
     changes = payload.model_dump(exclude_unset=True)
     changed = sorted(k for k, v in changes.items() if getattr(item, k) != v)
     if "course_id" in changed:
@@ -155,14 +156,14 @@ async def update_application(application_id: UUID, payload: AgentApplicationUpda
     await db.commit()
     if changed:
         _log("agent_application_updated", membership, user, item.id, fields=changed)
-    return {"application": await detail(db, user, item)}
+    return {"application": await detail(db, user, item, record=record)}
 
 
 @router.post("/{application_id}/status")
 async def change_status(application_id: UUID, payload: AgentApplicationStatus, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     membership = _gate(user)
     item = await _locked(db, user, membership, application_id)
-    await _refuse_closed(db, user, item)
+    record = await _refuse_closed(db, user, item)
     if payload.expected_status is not None and payload.expected_status != item.status:
         raise HTTPException(409, STALE)
     check_transition(item.status, payload.to_status)
@@ -175,4 +176,4 @@ async def change_status(application_id: UUID, payload: AgentApplicationStatus, u
     _audit(db, user, "withdraw" if withdrawn else "advance", item.id, {"from_status": old, "to_status": item.status})
     await db.commit()
     _log("agent_application_withdrawn" if withdrawn else "agent_application_advanced", membership, user, item.id, from_status=old, to_status=item.status)
-    return {"application": await detail(db, user, item)}
+    return {"application": await detail(db, user, item, record=record)}

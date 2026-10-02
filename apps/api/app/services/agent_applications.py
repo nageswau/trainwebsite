@@ -63,7 +63,6 @@ def owned(rows) -> list[tuple]:
 
 NOT_FOUND = "Application not found"
 PRE_OFFER = ("enquiry", "eligibility_evaluation", "university_selection")
-STATUS_GROUPS = ("all", "draft", "submitted", "offer", "visa", "enrolled", "withdrawn")
 
 
 def group_clause(group: str):
@@ -147,11 +146,14 @@ async def owner_record(db: AsyncSession, user: User, app: OverseasApplication) -
 
 
 Changer = aliased(User)
+MISSING = object()  # `detail`'s "record not given" -- None is a real value (no agency record)
 
 
-async def detail(db: AsyncSession, user: User, app: OverseasApplication) -> dict:
+async def detail(db: AsyncSession, user: User, app: OverseasApplication, *, record: AgentStudent | None | object = MISSING) -> dict:
+    """The detail shape. A write passes the owner `record` it already loaded (its archived status cannot change inside the request);
+    otherwise it is looked up here."""
     row = owned([(await db.execute(_rows_stmt().where(OverseasApplication.id == app.id).execution_options(populate_existing=True))).one()])[0]
-    found = row[0]
+    found, _university, slug, _course, _owner = row
     history = (
         await db.execute(
             select(ApplicationStatusHistory, Changer.full_name)
@@ -160,12 +162,13 @@ async def detail(db: AsyncSession, user: User, app: OverseasApplication) -> dict
             .order_by(ApplicationStatusHistory.created_at, ApplicationStatusHistory.id)
         )
     ).all()
-    record = await owner_record(db, user, found)
+    if record is MISSING:
+        record = await owner_record(db, user, found)
     reason = WITHDRAWN if found.status == WITHDRAWN else "archived" if record is not None and record.status == "archived" else None
     return {
         **item(row, date.today()),
         "university_id": found.university_id,
-        "university_slug": row[2],
+        "university_slug": slug,
         "course_id": found.course_id,
         "created_at": found.created_at,
         "read_only_reason": reason,
