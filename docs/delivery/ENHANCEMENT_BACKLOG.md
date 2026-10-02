@@ -3694,6 +3694,13 @@ AGN-016 tests plus the four affected existing files (`test_agn_004_staff_scope`,
 `test_agn_021_activity`), web typecheck, zero-warning lint, and 104 unit tests across 11 files. Outstanding before COMPLETE: browser
 validation, the e2e spec `agn-016-tasks.spec.ts` (written, not run), the full suites (owner, separate session), and an independent Codex review.
 
+**Browser QA (2026-10-02, isolated `agn016qa` stack, headless Chromium).** Pass 1 covered the 20-point checklist for Master, both
+Staff, signed-out, wrong roles, Super Admin and another agency: no Critical/High issues. Findings, all fixed and re-verified in pass 2:
+QA16-01 (Super Admin saw "Workspace not found" — now the section's note, the AGN-008 QA8-09 precedent), QA16-02 (the Student picker's
+error was not on the picker — now its own linked `aria-invalid` message), QA16-03 (an archived student's open task now says why it is
+read-only), QA16-04 (the closing time now carries its zone), QA16-05 (the open form has a visible "New task" heading). Codex review
+waived by the owner (2026-10-02).
+
 ## 2. Dependency graph
 
 **Must be sequential:**
