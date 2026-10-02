@@ -59,7 +59,12 @@ def document_scope(user: User) -> list[ColumnElement]:
             and_(StudentDocument.application_id.is_not(None), StudentDocument.application_id.in_(scoped_applications)),
             and_(
                 StudentDocument.application_id.is_(None),
-                or_(StudentDocument.agent_student_id.in_(scoped_records), StudentDocument.student_id.in_(visible_student_user_ids(user))),
+                or_(
+                    StudentDocument.agent_student_id.in_(scoped_records),
+                    # The account path is for documents no agency owns (the student's own, or made before AGN-009): a student
+                    # linked to two agencies must not open one agency's records to the other.
+                    and_(StudentDocument.agent_student_id.is_(None), StudentDocument.student_id.in_(visible_student_user_ids(user))),
+                ),
             ),
         )
     ]
