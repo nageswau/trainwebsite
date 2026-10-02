@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { AgentApplicationDetail, APPLICATIONS_URL, todayIso } from "@/lib/agentApplications";
 
@@ -27,6 +27,7 @@ export default function AgentApplicationEditForm({ detail, onSaved, onFailed, on
   const [values, setValues] = useState(initial);
   const [courses, setCourses] = useState<Course[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false); // QA8-06: a same-tick second submit sends nothing
 
   useEffect(() => {
     let cancelled = false;
@@ -45,8 +46,11 @@ export default function AgentApplicationEditForm({ detail, onSaved, onFailed, on
       (Object.keys(values) as Key[]).filter((k) => values[k].trim() !== initial[k]).map((k) => [k, values[k].trim() || null]),
     );
     if (!Object.keys(changed).length) return onCancel();
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     const outcome = await sendJson(`${APPLICATIONS_URL}/${detail.id}`, "PATCH", changed);
+    inFlight.current = false;
     setBusy(false);
     if (!outcome.ok) return onFailed(outcome.message, outcome.status);
     const next = (outcome.data as { application?: AgentApplicationDetail }).application;

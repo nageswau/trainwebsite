@@ -8,8 +8,9 @@ import { AgentApplicationDetail as Detail, APPLICATIONS_URL, deadlineText, READ_
 
 type Props = { id: string; onChanged: (d: Detail) => void; onClose: () => void };
 
-// AGN-008: one application -- fields, status history, edit and status change. A 409/422 from a write shows the server's words and
-// reloads, so the screen always ends on the real state (stale, withdrawn, archived).
+// AGN-008: one application -- fields, status history, edit and status change. A 409 (or a status 422) shows the server's words and
+// reloads, so the screen always ends on the real state (stale, withdrawn, archived); the reload also updates the list card (QA8-03).
+// A 422 from Save keeps the edit form open with the user's input (QA8-01).
 export default function AgentApplicationDetail({ id, onChanged, onClose }: Props) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "gone" | "error">("loading");
@@ -17,19 +18,25 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const editRef = useRef<HTMLButtonElement>(null);
+  const noticeRef = useRef<HTMLParagraphElement>(null);
+  const readOnlyRef = useRef<HTMLParagraphElement>(null);
   const focusHeading = useRef(true);
   const returnToEdit = useRef(false);
+  const focusNotice = useRef(false);
+  const focusReadOnly = useRef(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<Detail | null> => {
     try {
       const response = await fetch(`${APPLICATIONS_URL}/${id}`);
       const body = await response.json().catch(() => null);
-      if (response.status === 404) return setState("gone");
-      if (!response.ok || !body?.application) return setState("error");
+      if (response.status === 404) return (setState("gone"), null);
+      if (!response.ok || !body?.application) return (setState("error"), null);
       setDetail(body.application);
       setState("ready");
+      return body.application;
     } catch {
       setState("error");
+      return null;
     }
   }, [id]);
 
@@ -48,8 +55,21 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
       editRef.current?.focus();
     }
   }, [editing]);
+  useEffect(() => {
+    if (notice?.failed && focusNotice.current) {
+      focusNotice.current = false;
+      noticeRef.current?.focus();
+    }
+  }, [notice]);
+  useEffect(() => {
+    if (detail?.read_only_reason === "withdrawn" && focusReadOnly.current) {
+      focusReadOnly.current = false;
+      readOnlyRef.current?.focus();
+    }
+  }, [detail?.read_only_reason]);
 
   function saved(next: Detail, message: string) {
+    focusReadOnly.current = next.read_only_reason === "withdrawn" && detail?.read_only_reason !== "withdrawn";
     setDetail(next);
     setEditing(false);
     setNotice({ text: message, failed: false });
@@ -60,8 +80,13 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
     if (status === 404) return setState("gone");
     if (status === 409 || status === 422) {
       setEditing(false); // the reload shows the real state; stale input must not stay on screen
-      load();
+      load().then((reloaded) => reloaded && onChanged(reloaded));
     }
+  }
+  function editFailed(message: string, status?: number) {
+    focusNotice.current = true;
+    if (status === 422) return setNotice({ text: message, failed: true }); // the input stays for the user to correct
+    failed(message, status);
   }
 
   if (state === "loading") return <p className="muted" aria-busy="true">Loading application…</p>;
@@ -88,13 +113,17 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
         {deadline && <span className="muted"> · {deadline}</span>}
       </p>
       {notice && (
-        <p className={notice.failed ? "form-error" : "form-message"} role={notice.failed ? "alert" : "status"} aria-live="polite">
+        <p ref={noticeRef} tabIndex={-1} className={notice.failed ? "form-error" : "form-message"} role={notice.failed ? "alert" : "status"} aria-live="polite">
           {notice.text}
         </p>
       )}
-      {detail.read_only_reason && <p className="muted">{READ_ONLY_TEXT[detail.read_only_reason]}</p>}
+      {detail.read_only_reason && (
+        <p ref={readOnlyRef} tabIndex={-1} className="muted">
+          {READ_ONLY_TEXT[detail.read_only_reason]}
+        </p>
+      )}
       {editing ? (
-        <AgentApplicationEditForm detail={detail} onSaved={saved} onFailed={failed} onCancel={() => {
+        <AgentApplicationEditForm detail={detail} onSaved={saved} onFailed={editFailed} onCancel={() => {
             returnToEdit.current = true;
             setEditing(false);
           }} />

@@ -135,4 +135,114 @@ describe("AgentApplicationDetail (AGN-008)", () => {
     expect(screen.queryByLabelText("Move to")).toBeNull();
     expect(screen.queryByRole("button", { name: "Withdraw application" })).toBeNull();
   });
+  // QA8-01: a 422 from Save keeps the form open with the user's input, shows the server's words and focuses the alert (no reload).
+  it("on a 422 from Save keeps the edit form open with the input and focuses the alert", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.startsWith("/api/v1/public/universities/")) return Promise.resolve(json({ courses: [] }));
+      if (init?.method === "PATCH") return Promise.resolve(json({ detail: "Course does not belong to selected university" }, 422));
+      return Promise.resolve(json({ application: detail() }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Intake (required)"), { target: { value: "Spring 2028" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Course does not belong to selected university");
+    await waitFor(() => expect(alert).toHaveFocus());
+    expect(screen.getByLabelText("Intake (required)")).toHaveValue("Spring 2028");
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([u, i]) => u === "/api/v1/workflows/overseas/agent/crm/applications/a1" && !i?.method)).toHaveLength(1);
+  });
+
+  // QA8-01: a 409 from Save closes the form, reloads, and focuses the alert.
+  it("on a 409 from Save focuses the alert after the reload", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.startsWith("/api/v1/public/universities/")) return Promise.resolve(json({ courses: [] }));
+      if (init?.method === "PATCH") return Promise.resolve(json({ detail: "Unarchive this student first" }, 409));
+      return Promise.resolve(json({ application: detail() }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Intake (required)"), { target: { value: "Spring 2028" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Save" })).toBeNull());
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([u, i]) => u === "/api/v1/workflows/overseas/agent/crm/applications/a1" && !i?.method)).toHaveLength(2));
+    expect(alert).toHaveFocus();
+  });
+
+  // QA8-02: after a successful withdraw, focus lands on the read-only notice.
+  it("moves focus to the read-only notice after a withdraw", async () => {
+    const fetchMock = vi.fn((_: string, init?: RequestInit) =>
+      Promise.resolve(json({ application: init?.method === "POST" ? detail({ status: "withdrawn", read_only_reason: "withdrawn" }) : detail() })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Withdraw application" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, withdraw" }));
+    const notice = await screen.findByText("This application is withdrawn, so it can no longer be changed.");
+    await waitFor(() => expect(notice).toHaveFocus());
+  });
+
+  it("does not move focus to the read-only notice on the first load", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json({ application: detail({ status: "withdrawn", read_only_reason: "withdrawn" }) }))));
+    render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);
+    const heading = await screen.findByRole("heading", { name: "Asha Rao — Uni One" });
+    await waitFor(() => expect(heading).toHaveFocus());
+  });
+
+  // QA8-03: the reload after a 409 updates the list card too.
+  it("calls onChanged with the reloaded application after a 409", async () => {
+    const onChanged = vi.fn();
+    let posted = false;
+    vi.stubGlobal("fetch", vi.fn((_: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posted = true;
+        return Promise.resolve(json({ detail: "This application changed since you opened it -- reload to see its current status" }, 409));
+      }
+      return Promise.resolve(json({ application: posted ? detail({ status: "visa_documentation" }) : detail() }));
+    }));
+    render(<AgentApplicationDetail id="a1" onChanged={onChanged} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Update status" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith(expect.objectContaining({ status: "visa_documentation" })));
+    expect(onChanged).toHaveBeenCalledTimes(1);
+  });
+
+  // QA8-06: a same-tick second submit sends nothing.
+  it("sends one PATCH for two same-tick Save submits", async () => {
+    let resolvePatch: (r: Response) => void = () => {};
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.startsWith("/api/v1/public/universities/")) return Promise.resolve(json({ courses: [] }));
+      if (init?.method === "PATCH") return new Promise<Response>((r) => (resolvePatch = r));
+      return Promise.resolve(json({ application: detail() }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Intake (required)"), { target: { value: "Spring 2028" } });
+    const form = screen.getByRole("form", { name: "Edit application" });
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    expect(fetchMock.mock.calls.filter(([, i]) => i?.method === "PATCH")).toHaveLength(1);
+    resolvePatch(json({ application: detail({ intake: "Spring 2028" }) }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
+  });
+
+  it("sends one status POST for two same-tick Update status submits", async () => {
+    let resolvePost: (r: Response) => void = () => {};
+    const fetchMock = vi.fn((_: string, init?: RequestInit) =>
+      init?.method === "POST" ? new Promise<Response>((r) => (resolvePost = r)) : Promise.resolve(json({ application: detail() })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);
+    const button = await screen.findByRole("button", { name: "Update status" });
+    const form = button.closest("form")!;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    expect(fetchMock.mock.calls.filter(([, i]) => i?.method === "POST")).toHaveLength(1);
+    resolvePost(json({ application: detail({ status: "visa_documentation" }) }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Status updated to Visa documentation.");
+  });
 });

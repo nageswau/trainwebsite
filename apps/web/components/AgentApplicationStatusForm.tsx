@@ -16,6 +16,7 @@ export default function AgentApplicationStatusForm({ detail, onSaved, onFailed }
   const [confirming, setConfirming] = useState(false);
   const withdrawRef = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef(false);
+  const inFlight = useRef(false); // QA8-06: a same-tick second click / submit sends nothing
 
   // Keep keyboard users where they were once the confirmation closes by Escape / Keep / a failed withdraw (not after a success).
   useEffect(() => {
@@ -26,8 +27,11 @@ export default function AgentApplicationStatusForm({ detail, onSaved, onFailed }
   }, [confirming]);
 
   async function send(to: string) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     const outcome = await sendJson(`${APPLICATIONS_URL}/${detail.id}/status`, "POST", { to_status: to, expected_status: detail.status, notes: notes.trim() || null });
+    inFlight.current = false;
     setBusy(false);
     if (!outcome.ok && to === "withdrawn") returnFocus.current = true; // a failed withdraw: back to the button, if it still renders
     setConfirming(false);

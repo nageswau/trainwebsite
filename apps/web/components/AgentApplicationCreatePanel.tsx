@@ -42,6 +42,7 @@ export default function AgentApplicationCreatePanel({ onCreated }: { onCreated?:
   const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
   const [formVersion, setFormVersion] = useState(0); // ENH-031: bumped after a create so the picker remounts empty
   const messageRef = useRef<HTMLDivElement>(null);
+  const inFlight = useRef(false); // QA8-06: a same-tick second submit sends nothing
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +76,8 @@ export default function AgentApplicationCreatePanel({ onCreated }: { onCreated?:
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (inFlight.current) return;
+    inFlight.current = true;
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const optional = Object.fromEntries(OPTIONAL.map(([key]) => [key, String(form.get(key) ?? "").trim() || null]));
@@ -87,6 +90,7 @@ export default function AgentApplicationCreatePanel({ onCreated }: { onCreated?:
       intake: String(form.get("intake") ?? "").trim(),
       ...optional,
     });
+    inFlight.current = false;
     setBusy(false);
     if (!outcome.ok) return setMessage({ text: outcome.message, failed: true });
     setMessage({ text: "Application created.", failed: false });
@@ -110,7 +114,8 @@ export default function AgentApplicationCreatePanel({ onCreated }: { onCreated?:
   return (
     <div className="action-card">
       <h3>Create application</h3>
-      <form className="form" onSubmit={submit} aria-label="Create application">
+      {/* QA8-12: a blocked submit or an edit after an error drops the stale server message. */}
+      <form className="form" onSubmit={submit} aria-label="Create application" onInvalidCapture={() => setMessage(null)} onChange={() => message?.failed && setMessage(null)}>
         <SearchableSelect key={formVersion} id="agent-app-student" label="Linked student" required noun="student" search={searchStudents} onChange={(option) => setStudentId(option?.id ?? "")} />
         <div className="field">
           <label htmlFor="agent-app-university">University (required)</label>
