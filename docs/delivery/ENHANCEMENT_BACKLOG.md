@@ -3694,6 +3694,15 @@ AGN-016 tests plus the four affected existing files (`test_agn_004_staff_scope`,
 `test_agn_021_activity`), web typecheck, zero-warning lint, and 104 unit tests across 11 files. The e2e spec `agn-016-tasks.spec.ts` passed
 3/3 against the isolated stack (2026-10-02). Outstanding before COMPLETE: the full suites (owner, separate session).
 
+**Verification before completion (2026-10-02, fresh runs at the final commit).** Backend: every `test_agn_*`/`test_agt_*` file
+784 passed; AGN-016 files + AGN-007 shortlist 97 passed after the last (type-only) change. Web: `tsc` clean, `npm run lint` 0 errors
+(31 warnings, identical count on the base image), 32 agent-related unit-test files 348 passed, `next build` exit 0. mypy: 283 errors =
+the base commit's count, none in AGN-016 files (6 AGN-016 type errors were found here and fixed). `alembic heads` = `0058_agent_tasks`
+only; `alembic check` drift is the base's (two pre-existing indexes), none on `agent_tasks`. Playwright: AGN-016 + AGN-004 + AGN-008
+specs 12/12 on an idle machine; two neighbour tests failed intermittently in 2 of 4 loaded runs, not reproduced in 3 alternating
+base-vs-branch runs (9/9 each side). Browser: Master 31/31, Staff/roles 13/13, re-check 6/6, Super Admin note. Diff: 45 files, all
+AGN-016; no skipped/focused tests, debug code or secrets. **Status: VERIFIED — COMPLETE once the owner's full-suite run is green.**
+
 **Browser QA (2026-10-02, isolated `agn016qa` stack, headless Chromium).** Pass 1 covered the 20-point checklist for Master, both
 Staff, signed-out, wrong roles, Super Admin and another agency: no Critical/High issues. Findings, all fixed and re-verified in pass 2:
 QA16-01 (Super Admin saw "Workspace not found" — now the section's note, the AGN-008 QA8-09 precedent), QA16-02 (the Student picker's
