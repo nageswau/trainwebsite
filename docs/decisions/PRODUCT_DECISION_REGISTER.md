@@ -3017,3 +3017,25 @@ Staff browser flows were verified and the named-staff Assign action built (2026-
 - **R7** — date bounds are inclusive UTC calendar days; reading or exporting the report writes no audit row.
 
 **Consequences:** no migration; two Master-only routes `GET /workflows/overseas/agent/commissions/report` and `…/report.csv`; one additive "Revenue" metric on the Master dashboard; a new `AgentCommissionReportPanel`; `ReportDownloadButton` gains two optional props with PDF defaults. Unchanged: commission creation, amount, claim, payout approval and the same-admin rule (`AGT-004`), `RPT-002`, the staff pages. Design: `docs/superpowers/specs/2026-10-02-agn-014-commission-master-reports-design.md`. **New Feature ID authorized:** `AGN-014`.
+
+### DEC-SCOPE-052 — Agent documents: upload, download, verify, reject, request additional, history (`AGN-009`)
+
+**ID note:** drafted as `DEC-SCOPE-051` (the next free number on `main` @ `b93a5e5`); renumbered `DEC-SCOPE-052` on merging `main` @ `268d132`, where `DEC-SCOPE-051` is `AGN-014` (PR #41).
+
+**Question:** the owner's `AGN-009` statement (in-session, 2026-10-02): "§2 Documents and §5 Step 4 document types; Staff sidebar Pending/Uploaded/Additional; §6: Staff verify is optional and Staff cannot reject." Acceptance: upload → pending; verify/reject per role matrix; reject without a reason → 422; a request shows under "Additional" until fulfilled; history lists every event in order; an out-of-scope download → 404/403; existing student/counselor document flows unchanged.
+
+**Evidence:** `EVID-015` (`DERIVED_BLUEPRINT`) §2, §4, §5 Step 4, §6. Graphify-led impact analysis, 2026-10-02: `student_documents.student_id` is NOT NULL → `users`, so a student with no login cannot own a document; the AGN-003 agent review exists (`DEC-SCOPE-044` P5/P6) but a reason is optional; there are no requests, no history and no fixed types; the agent download and review scope checks compare `AgentStudent.student_id` with the document's `student_id`, which is NULL for an agency-only document.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL`; structured answers; design spec `docs/superpowers/specs/2026-10-02-agn-009-agent-documents-design.md` §2):
+
+- **G1 — Reason required** on `rejected` and `changes_required` for **agents only** (422 when blank); the counselor/Overseas Admin path is unchanged.
+- **G2 — `changes_required` kept** for agent Masters (`DEC-SCOPE-044` P6 unchanged: staff verify only).
+- **G3 — Types:** a fixed list (§5 Step 4) plus "Other" with a label, for agent uploads only; other paths keep free text.
+- **G4 — Requests:** Master and Staff (within scope) create and cancel; no toggle.
+- **G5 — Fulfilment:** an upload made against an open request fulfils it at upload time.
+- **G6 — Replace:** a new file on the same document, status back to `pending`; the old file is kept and named in history. Refused for a document a counselor or Overseas Admin decided (`DEC-SCOPE-044` P5).
+- **G7 — File handling:** agent uploads are stored by the server under a server-generated key (no client-supplied path); agent lists never return `file_url`. The pre-existing `/files/download` and `/local-files` exposure is recorded in `RAID.md`, not changed here.
+- **G8 — File types:** PDF, JPEG, PNG, decided from the bytes; image metadata stripped.
+- **G9 — Views:** Pending = awaiting review; Uploaded = every in-scope document; Additional = open requests. History records downloads by every role.
+
+**Consequences:** migration `0058_agent_documents` (`student_documents.student_id` nullable + `agent_student_id`, `document_label`, `uploaded_by_user_id`, `fulfils_request_id`; new `document_requests`, `document_events`). New routes under `/workflows/overseas/agent/crm/documents` and `/document-requests`. The existing verify, download and upload routes keep their response shapes and gain event rows. The agent Documents page is replaced by the new section; the sidebar gains Pending / Uploaded / Additional.

@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint, Uuid, false, text
+from sqlalchemy import JSON, BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Identity, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint, Uuid, false, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -459,9 +459,13 @@ class ApplicationStatusHistory(Base, TimestampMixin):
 
 
 class StudentDocument(Base, TimestampMixin):
+    # Owner (AGN-009, DEC-SCOPE-052): a student's account (`student_id`), an agency record (`agent_student_id`, AGN-004), or both
+    # -- an agency upload for a student with a login sets both (the AGN-008 pattern). Rows made before AGN-009 have `student_id`
+    # only. `file_url` is a server-generated key (`agent-documents/...`) for agency uploads; agent lists never return it.
     __tablename__ = "student_documents"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
-    student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True, nullable=True)
+    agent_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id"), index=True, nullable=True)
     application_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id"), nullable=True)
     document_type: Mapped[str] = mapped_column(String(80))
     file_url: Mapped[str] = mapped_column(String(500))
@@ -471,6 +475,59 @@ class StudentDocument(Base, TimestampMixin):
     original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     content_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    document_label: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    uploaded_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # One document fulfils a request (G5); the unique constraint is the database-level guard against two concurrent uploads.
+    fulfils_request_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("document_requests.id"), nullable=True)
+    __table_args__ = (
+        CheckConstraint("student_id IS NOT NULL OR agent_student_id IS NOT NULL", name="ck_student_documents_owner"),
+        UniqueConstraint("fulfils_request_id", name="uq_student_documents_fulfils_request_id"),
+    )
+
+
+class DocumentRequest(Base, TimestampMixin):
+    """AGN-009 (DEC-SCOPE-052 G4/G5): an agency's request for an additional document from one of its students. Open until an upload
+    made against it fulfils it, or a member cancels it."""
+
+    __tablename__ = "document_requests"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agent_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id"))
+    document_type: Mapped[str] = mapped_column(String(80))
+    document_label: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="open")
+    requested_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    closed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    __table_args__ = (
+        CheckConstraint("status IN ('open', 'fulfilled', 'cancelled')", name="ck_document_requests_status"),
+        Index("ix_document_requests_student_status", "agent_student_id", "status"),
+    )
+
+
+class DocumentEvent(Base):
+    """AGN-009 (DEC-SCOPE-052): a document's history, one row per event, append-only. `seq` orders events written in one
+    transaction (they share `now()`). `file_key` is the replaced object's key; it is never returned by the API."""
+
+    __tablename__ = "document_events"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(), unique=True)
+    document_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_documents.id"), nullable=True, index=True)
+    request_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("document_requests.id"), nullable=True, index=True)
+    event: Mapped[str] = mapped_column(String(30))
+    actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    from_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    to_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (
+        CheckConstraint("document_id IS NOT NULL OR request_id IS NOT NULL", name="ck_document_events_subject"),
+        CheckConstraint(
+            "event IN ('uploaded', 'replaced', 'verified', 'rejected', 'changes_required', 'requested', 'fulfilled', 'cancelled', 'downloaded')",
+            name="ck_document_events_event",
+        ),
+    )
 
 
 class ProfileDocument(Base, TimestampMixin):
