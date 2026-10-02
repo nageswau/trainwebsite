@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AgentOrg, AgentOrgMember, AgentStudent, AgentTask, Notification, User
+from app.models import AgentOrg, AgentOrgMember, AgentStudent, AgentTask, Notification, OverseasApplication, StudentDocument, User
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import AgentDocumentType
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 INDIA = ZoneInfo("Asia/Kolkata")  # N4: the reminder "day" (a service does not import app.api.schools; reporting/pdf.py keeps its own)
 CHANNELS = ["email"]
 STUDENTS_URL, DOCUMENTS_URL, APPLICATIONS_URL, TASKS_URL = (f"/overseas/agent/{s}" for s in ("students", "documents", "applications", "tasks"))
-KNOWN_DOCUMENT_TYPES = frozenset(get_args(AgentDocumentType))
+KNOWN_DOCUMENT_TYPES = frozenset(get_args(AgentDocumentType)) - {"Other"}  # "Other" names nothing; its label is user-typed
 
 
 def document_label(value: str | None) -> str:
@@ -87,3 +87,28 @@ async def student_assigned(db: AsyncSession, record: AgentStudent, member_id, ac
     open_tasks = await db.scalar(select(func.count()).select_from(AgentTask).where(AgentTask.agent_student_id == record.id, AgentTask.status == "open"))
     moved = f" {_plural(open_tasks, 'open task')} moved with them." if open_tasks else ""
     return await notify(db, [user], "Student assigned to you", f"A student is now assigned to you.{moved}", STUDENTS_URL)
+
+
+async def document_requested(db: AsyncSession, record: AgentStudent, document_type: str, actor: User) -> int:
+    body = f"{document_label(document_type)} was requested for one of your students."
+    return await notify(db, await recipients(db, record, actor), "Document requested", body, DOCUMENTS_URL)
+
+
+OUTCOME_TEXT = {"rejected": "rejected", "changes_required": "changes required"}  # N9: both need the agency to act
+
+
+async def _document_record(db: AsyncSession, document: StudentDocument) -> AgentStudent | None:
+    """The agency record that owns a document: its own, else its application's (a pre-AGN-009 row has neither)."""
+    record_id = document.agent_student_id
+    if record_id is None and document.application_id:
+        record_id = await db.scalar(select(OverseasApplication.agent_student_id).where(OverseasApplication.id == document.application_id))
+    return await db.get(AgentStudent, record_id) if record_id else None
+
+
+async def document_needs_attention(db: AsyncSession, document: StudentDocument, actor: User) -> int:
+    outcome = OUTCOME_TEXT.get(document.verification_status)
+    record = await _document_record(db, document) if outcome else None
+    if record is None:
+        return 0
+    body = f"{document_label(document.document_type)}: {outcome}."
+    return await notify(db, await recipients(db, record, actor), "Document needs attention", body, DOCUMENTS_URL)

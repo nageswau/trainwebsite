@@ -62,6 +62,7 @@ def test_only_known_document_types_are_named():
     assert notices_svc.document_label("Passport") == "Passport"
     assert notices_svc.document_label("rahul's passport scan") == "A document"
     assert notices_svc.document_label(None) == "A document"
+    assert notices_svc.document_label("Other") == "A document"  # "Other" names nothing; its label is user-typed and never shown
 
 
 def test_stored_text_loses_control_characters_and_is_capped():

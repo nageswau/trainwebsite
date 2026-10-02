@@ -102,6 +102,7 @@ from app.schemas import (
     SupportTicketUpdate,
     VisaCaseCreate,
 )
+from app.services import agent_notifications as agency_notices
 from app.services.agent_applications import DEFAULT_NEXT_ACTION, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, owned, with_owner
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
@@ -2087,6 +2088,7 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
     student = await db.get(User, item.student_id) if item.student_id else None  # AGN-009: an agency-only document has no account
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
+    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-055 N9): rejected / changes required only
     member_role = user.agent_membership.role
     await _audit(db, user, "document.verify", "student_document", item.id, {**review.model_dump(), "member_role": member_role})
     await db.commit()
@@ -2120,6 +2122,7 @@ async def verify_document(document_id: UUID, payload: dict, user: User = Depends
     student = await db.get(User, item.student_id) if item.student_id else None
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
+    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-055 N9): an agency document's assignee
     await _audit(db, user, "document.verify", "student_document", item.id, payload)
     await db.commit()
     return {"id": item.id, "verification_status": item.verification_status}

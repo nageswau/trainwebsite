@@ -4,11 +4,14 @@ writes create none; bodies carry no names or user-typed text."""
 import pytest
 import pytest_asyncio
 
-from tests.agn001_helpers import client_for
+from app.models import OverseasApplication
+from tests.agn001_helpers import client_for, mk_user
 from tests.agn004_helpers import RECORDS
 from tests.agn008_helpers import agency_world
+from tests.agn009_helpers import REQUESTS, VERIFY, mk_doc
+from tests.agn009_helpers import world as docs_world
 from tests.agn016_helpers import mk_task
-from tests.agn017_helpers import channels_of, notices, titled
+from tests.agn017_helpers import all_text, channels_of, notices, titled
 
 ASSIGNED = "Student assigned to you"
 
@@ -54,3 +57,94 @@ async def test_reassigning_the_current_assignee_or_unassigning_notifies_nobody(d
     assert (await _assign(world, None)).status_code == 200
     for user in (world["staff"]["user"], world["other_staff"]["user"], world["master"]):
         assert await titled(db_session, user, ASSIGNED) == []
+
+
+# --- documents (N9, §8) -----------------------------------------------------------------------------------------------------------
+
+REQUESTED, ATTENTION = "Document requested", "Document needs attention"
+
+
+@pytest_asyncio.fixture
+async def dw(db_session):
+    return await docs_world(db_session)
+
+
+@pytest.mark.asyncio
+async def test_a_master_request_tells_the_assignee_without_the_label_or_note(db_session, dw):
+    body = {"agent_student_id": str(dw["record"].id), "document_type": "Other", "document_label": "rahul@example.com\r\nBcc: x", "note": "call +91 98765 43210"}
+    async with client_for(dw["master"].email) as c:
+        response = await c.post(REQUESTS, json=body)
+    assert response.status_code == 201, response.text
+    [item] = await notices(db_session, dw["staff"]["user"])
+    assert (item.title, item.body, item.action_url) == (REQUESTED, "A document was requested for one of your students.", "/overseas/agent/documents")
+    text = await all_text(db_session)
+    for leaked in ("rahul@example.com", "Bcc", "98765", "\r"):
+        assert leaked not in text
+
+
+@pytest.mark.asyncio
+async def test_a_known_type_is_named_and_the_requesting_assignee_is_not_told(db_session, dw):
+    async with client_for(dw["master"].email) as c:
+        await c.post(REQUESTS, json={"agent_student_id": str(dw["record"].id), "document_type": "Passport"})
+    [item] = await notices(db_session, dw["staff"]["user"])
+    assert item.body == "Passport was requested for one of your students."
+    async with client_for(dw["staff"]["user"].email) as c:
+        assert (await c.post(REQUESTS, json={"agent_student_id": str(dw["record"].id), "document_type": "CV"})).status_code == 201
+    assert len(await titled(db_session, dw["staff"]["user"], REQUESTED)) == 1  # their own request: nobody
+    assert await titled(db_session, dw["master"], REQUESTED) == []
+
+
+@pytest.mark.asyncio
+async def test_a_duplicate_open_request_is_refused_and_notifies_nobody(db_session, dw):
+    body = {"agent_student_id": str(dw["record"].id), "document_type": "Passport"}
+    async with client_for(dw["master"].email) as c:
+        assert (await c.post(REQUESTS, json=body)).status_code == 201
+        assert (await c.post(REQUESTS, json=body)).status_code == 409
+    assert len(await titled(db_session, dw["staff"]["user"], REQUESTED)) == 1
+
+
+@pytest.mark.parametrize(("outcome", "text"), [("rejected", "rejected"), ("changes_required", "changes required")])
+@pytest.mark.asyncio
+async def test_a_master_rejection_tells_the_assignee(db_session, dw, outcome, text):
+    doc = await mk_doc(db_session, record=dw["record"], document_type="Transcripts")
+    async with client_for(dw["master"].email) as c:
+        response = await c.patch(VERIFY.format(doc.id), json={"verification_status": outcome, "notes": "blurred -- see rahul@example.com"})
+    assert response.status_code == 200, response.text
+    [item] = await notices(db_session, dw["staff"]["user"])
+    assert (item.title, item.body, item.action_url) == (ATTENTION, f"Transcripts: {text}.", "/overseas/agent/documents")
+    assert "rahul@example.com" not in await all_text(db_session)
+
+
+@pytest.mark.asyncio
+async def test_verifying_or_a_second_review_notifies_no_agency_member(db_session, dw):
+    doc = await mk_doc(db_session, record=dw["record"])
+    async with client_for(dw["master"].email) as c:
+        assert (await c.patch(VERIFY.format(doc.id), json={"verification_status": "verified"})).status_code == 200
+        assert (await c.patch(VERIFY.format(doc.id), json={"verification_status": "rejected", "notes": "late"})).status_code == 409
+    assert await titled(db_session, dw["staff"]["user"], ATTENTION) == []
+
+
+@pytest.mark.asyncio
+async def test_a_counselor_rejection_of_an_agency_document_tells_the_assignee_and_still_the_student(db_session, dw):
+    counselor = await mk_user(db_session, role="counselor", full_name="Docs Counselor")
+    app = OverseasApplication(agent_id=dw["master"].id, agent_student_id=dw["linked_record"].id, student_id=dw["linked_user"].id, university_id=dw["university"].id, counselor_id=counselor.id, intake="Fall 2027", status="enquiry")
+    db_session.add(app)
+    await db_session.commit()
+    doc = await mk_doc(db_session, student=dw["linked_user"], application=app, document_type="rahul scan 2")
+    async with client_for(counselor.email) as c:
+        assert (await c.patch(VERIFY.format(doc.id), json={"verification_status": "rejected"})).status_code == 200
+    [item] = await notices(db_session, dw["staff"]["user"])
+    assert (item.title, item.body) == (ATTENTION, "A document: rejected.")  # a free-text type is never named
+    assert [n.title for n in await notices(db_session, dw["linked_user"])] == ["Document reviewed"]  # unchanged
+
+
+@pytest.mark.asyncio
+async def test_a_document_without_an_agency_record_notifies_no_agency_member(db_session, dw):
+    counselor = await mk_user(db_session, role="counselor", full_name="Docs Counselor")
+    app = OverseasApplication(student_id=dw["linked_user"].id, university_id=dw["university"].id, counselor_id=counselor.id, intake="Fall 2027", status="enquiry")
+    db_session.add(app)
+    await db_session.commit()
+    doc = await mk_doc(db_session, student=dw["linked_user"], application=app)
+    async with client_for(counselor.email) as c:
+        assert (await c.patch(VERIFY.format(doc.id), json={"verification_status": "rejected"})).status_code == 200
+    assert await notices(db_session, dw["staff"]["user"]) == []
