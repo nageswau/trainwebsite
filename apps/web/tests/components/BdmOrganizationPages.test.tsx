@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import BdmOrganizationDetail from "@/components/BdmOrganizationDetail";
 import BdmOrganizationsPanel from "@/components/BdmOrganizationsPanel";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
+import ManagerOrganization from "@/app/bdm/manager/organizations/[id]/page";
 import ManagerOrganizations from "@/app/bdm/manager/organizations/page";
+import BdmOrganization from "@/app/bdm/organizations/[id]/page";
 import BdmOrganizations from "@/app/bdm/organizations/page";
 import { elements, text } from "@/tests/helpers/elementTree";
 
@@ -55,6 +58,44 @@ describe("bdm-002 organization list pages", () => {
     vi.mocked(serverApi).mockReset();
     vi.mocked(serverApi).mockRejectedValueOnce(new ApiError("Not authenticated", 401));
     tree = elements(await ManagerOrganizations());
+    expect(card(tree)!.props.loginHref).toBe("/admin/login");
+  });
+});
+
+describe("bdm-002 organization detail pages", () => {
+  const organization = { id: "o1", code: "ORG-000001", name: "St Mary" };
+  const params = (id = "o1") => Promise.resolve({ id });
+  const noQuery = Promise.resolve({});
+
+  it("the BDM detail page renders the organization, and announces a just-created one", async () => {
+    vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/bdm/me" ? me : { organization }) as never);
+    const tree = elements(await BdmOrganization({ params: params(), searchParams: Promise.resolve({ created: "1" }) }));
+    expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/organizations/o1");
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/organizations", created: true });
+  });
+
+  it("an unknown or out-of-scope organization is a plain not-found with a way back", async () => {
+    vi.mocked(serverApi).mockImplementation(async (path: string) => {
+      if (path === "/api/v1/bdm/me") return me as never;
+      throw new ApiError("Organization not found", 404);
+    });
+    const tree = elements(await BdmOrganization({ params: params("zzz"), searchParams: noQuery }));
+    expect(allText(tree)).toContain("Organization not found");
+    expect(tree.some((el) => el.props.href === "/bdm/organizations")).toBe(true);
+    expect(tree.some((el) => el.type === BdmOrganizationDetail)).toBe(false);
+  });
+
+  it("a refused BDM detail page goes to the chooser; the manager detail page uses the manager list and /admin/login", async () => {
+    vi.mocked(serverApi).mockRejectedValueOnce(new ApiError("BDM role required", 403)).mockRejectedValueOnce(new ApiError("x", 401));
+    let tree = elements(await BdmOrganization({ params: params(), searchParams: noQuery }));
+    expect(card(tree)!.props.loginHref).toBe("/bdm/sign-in");
+    vi.mocked(serverApi).mockReset();
+    vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/auth/me" ? { id: "m1", full_name: "Meera", role: "bdm_manager" } : { organization }) as never);
+    tree = elements(await ManagerOrganization({ params: params() }));
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/manager/organizations" });
+    vi.mocked(serverApi).mockReset();
+    vi.mocked(serverApi).mockRejectedValueOnce(new ApiError("Not authenticated", 401));
+    tree = elements(await ManagerOrganization({ params: params() }));
     expect(card(tree)!.props.loginHref).toBe("/admin/login");
   });
 });

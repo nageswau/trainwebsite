@@ -6,7 +6,7 @@ import BdmOrganizationForm from "@/components/BdmOrganizationForm";
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const ORG = { id: "o1", code: "ORG-000001", name: "St Mary", city: "Kochi" };
 function serve(...responses: Response[]) {
-  const mock = vi.fn(() => Promise.resolve(responses.shift()!));
+  const mock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() => Promise.resolve(responses.shift()!));
   vi.stubGlobal("fetch", mock);
   return mock;
 }

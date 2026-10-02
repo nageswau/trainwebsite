@@ -36,7 +36,7 @@ describe("bdm-002 lib", () => {
   });
 
   it("searches active team BDMs of one type", async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ items: [{ id: "b1", full_name: "Asha", email: "a@x", active: true, employee_id: "E1" }, { id: "b2", full_name: "Old", email: "o@x", active: false, employee_id: "E2" }], total: 2, limit: 20, offset: 0 }))));
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() => Promise.resolve(new Response(JSON.stringify({ items: [{ id: "b1", full_name: "Asha", email: "a@x", active: true, employee_id: "E1" }, { id: "b2", full_name: "Old", email: "o@x", active: false, employee_id: "E2" }], total: 2, limit: 20, offset: 0 }))));
     vi.stubGlobal("fetch", fetchMock);
     const page = await teamSearch("college")("as ha", new AbortController().signal);
     expect(String(fetchMock.mock.calls[0][0])).toBe("/api/v1/bdm/manager/team?limit=20&bdm_type=college&q=as+ha");

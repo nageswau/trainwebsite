@@ -18,7 +18,7 @@ const row = (n: number, archived = false) => ({
   archived, last_meeting_at: null, next_meeting_at: null, permissions: { can_edit: true, can_archive: true, can_restore: false, can_reassign: false },
 });
 function serve(...responses: Response[]) {
-  const mock = vi.fn(() => Promise.resolve(responses.shift()!));
+  const mock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() => Promise.resolve(responses.shift()!));
   vi.stubGlobal("fetch", mock);
   return mock;
 }
