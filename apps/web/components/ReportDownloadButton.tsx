@@ -11,7 +11,22 @@ const FAILED = "Something went wrong on our side. Please try again.";
 // server error is shown as a message instead of being saved as a file; only a real application/pdf response is saved.
 // The button stays in place and keeps focus; the outcome is announced under it (FormMessage). `hint` (QA15-10): the PDF is
 // untagged, so the page says where the same information can be read with a screen reader; it is the button's description.
-export default function ReportDownloadButton({ url, label, filename, hint }: { url: string; label: string; filename: string; hint?: string }) {
+// AGN-014: `contentType`/`busyLabel` let the same button save a CSV; the defaults keep every PDF caller unchanged.
+export default function ReportDownloadButton({
+  url,
+  label,
+  filename,
+  hint,
+  contentType = "application/pdf",
+  busyLabel = "Preparing PDF…",
+}: {
+  url: string;
+  label: string;
+  filename: string;
+  hint?: string;
+  contentType?: string;
+  busyLabel?: string;
+}) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
   const downloading = useRef(false);
@@ -24,7 +39,7 @@ export default function ReportDownloadButton({ url, label, filename, hint }: { u
     setMessage(null);
     try {
       const response = await fetch(url, { credentials: "same-origin" });
-      if (response.ok && response.headers.get("content-type")?.startsWith("application/pdf")) {
+      if (response.ok && response.headers.get("content-type")?.startsWith(contentType)) {
         save(await response.blob(), filename);
         setMessage({ text: "Report downloaded.", failed: false });
       } else {
@@ -44,7 +59,7 @@ export default function ReportDownloadButton({ url, label, filename, hint }: { u
         {/* aria-disabled, not `disabled`: a disabled button drops keyboard focus to <body> (QA15-01). The `downloading`
             guard is what stops a second request; globals.css dims `.btn[aria-disabled="true"]` like `.btn:disabled`. */}
         <button type="button" className="btn" onClick={download} aria-disabled={busy} aria-busy={busy} aria-describedby={hint ? hintId : undefined}>
-          {busy ? "Preparing PDF…" : label}
+          {busy ? busyLabel : label}
         </button>
       </div>
       {hint && <p id={hintId} className="field-hint">{hint}</p>}
