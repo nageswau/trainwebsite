@@ -5,12 +5,17 @@ Functions only (the services/agent_students.py shape): nothing here commits -- t
 Spec: docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md.
 """
 
+from datetime import date
 from typing import NamedTuple
 from uuid import UUID
 
-from sqlalchemy import Select, func
+from fastapi import HTTPException
+from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
-from app.models import AgentStudent, OverseasApplication, User
+from app.models import AgentStudent, ApplicationStatusHistory, OverseasApplication, OverseasCourse, University, User
+from app.services.agent_students import application_scope, student_scope
 
 # DEC-WF-001 / OVS-003: the confirmed stage sequence (moved here from api/workflows.py, which imports it back -- one definition).
 OVERSEAS_APPLICATION_STAGES = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"]
@@ -46,3 +51,121 @@ def owned(rows) -> list[tuple]:
     """`with_owner` rows with the trailing (account, name) pair folded into one `Owner`, so `for a, u, s in rows: s.full_name`
     keeps working; `s.id` is None for a student with no login."""
     return [(*row[:-2], Owner(row[-2].id if row[-2] is not None else None, row[-1])) for row in rows]
+
+
+NOT_FOUND = "Application not found"
+PRE_OFFER = ("enquiry", "eligibility_evaluation", "university_selection")
+STATUS_GROUPS = ("all", "draft", "submitted", "offer", "visa", "enrolled", "withdrawn")
+
+
+def group_clause(group: str):
+    """A7/A9: the sidebar filters. Draft and Submitted split the pre-offer stages by `submitted_on`; All hides withdrawn."""
+    status = OverseasApplication.status
+    return {
+        "draft": and_(status.in_(PRE_OFFER), OverseasApplication.submitted_on.is_(None)),
+        "submitted": and_(status.in_(PRE_OFFER), OverseasApplication.submitted_on.is_not(None)),
+        "offer": status == "offer",
+        "visa": status.in_(("visa_documentation", "status_tracking")),
+        "enrolled": status == "enrolled",
+        "withdrawn": status == WITHDRAWN,
+    }.get(group, status != WITHDRAWN)
+
+
+def _rows_stmt() -> Select:
+    return with_owner(
+        select(OverseasApplication, University.name, University.slug, OverseasCourse.title)
+        .join(University, University.id == OverseasApplication.university_id)
+        .outerjoin(OverseasCourse, OverseasCourse.id == OverseasApplication.course_id)
+    )
+
+
+def nearest_deadline(app: OverseasApplication, today: date) -> dict | None:
+    """The earliest deadline that is today or later; if none is upcoming, the most recent past one (the UI marks it past)."""
+    dates = [(d, kind) for kind, d in (("application", app.application_deadline), ("offer", app.offer_deadline)) if d]
+    if not dates:
+        return None
+    upcoming = [x for x in dates if x[0] >= today]
+    when, kind = min(upcoming) if upcoming else max(dates)
+    return {"kind": kind, "date": when}
+
+
+def item(row: tuple, today: date) -> dict:
+    """List shape -- an explicit allowlist: no agent, counselor or account ids, no email or phone."""
+    app, university, _slug, course, owner = row
+    return {
+        "id": app.id,
+        "agent_student_id": app.agent_student_id,
+        "student": owner.full_name or "Unnamed student",
+        "has_login": owner.id is not None,
+        "university": university,
+        "course": course,
+        "intake": app.intake,
+        "status": app.status,
+        "application_reference": app.application_reference,
+        "submitted_on": app.submitted_on,
+        "application_deadline": app.application_deadline,
+        "offer_deadline": app.offer_deadline,
+        "nearest_deadline": nearest_deadline(app, today),
+        "next_action": app.next_action,
+        "updated_at": app.updated_at,
+    }
+
+
+async def load_scoped(db: AsyncSession, user: User, application_id, *, lock: bool = False) -> OverseasApplication:
+    """The caller's application or 404 -- scope is in the WHERE clause, never checked after loading."""
+    stmt = (
+        select(OverseasApplication).where(OverseasApplication.id == application_id, OverseasApplication.school_student_id.is_(None), *application_scope(user)).execution_options(populate_existing=True)
+    )
+    row = await db.scalar(stmt.with_for_update(of=OverseasApplication) if lock else stmt)
+    if row is None:
+        raise HTTPException(404, NOT_FOUND)
+    return row
+
+
+async def owner_record(db: AsyncSession, user: User, app: OverseasApplication) -> AgentStudent | None:
+    """The agency record the application belongs to: its own link (AGN-008), else -- an application made before AGN-008 -- the
+    caller's record of the same logged-in student."""
+    if app.agent_student_id is not None:
+        return await db.get(AgentStudent, app.agent_student_id, populate_existing=True)
+    if app.student_id is None:
+        return None
+    return await db.scalar(select(AgentStudent).where(AgentStudent.student_id == app.student_id, *student_scope(user)).order_by(AgentStudent.created_at).limit(1))
+
+
+Changer = aliased(User)
+
+
+async def detail(db: AsyncSession, user: User, app: OverseasApplication) -> dict:
+    row = owned([(await db.execute(_rows_stmt().where(OverseasApplication.id == app.id).execution_options(populate_existing=True))).one()])[0]
+    found = row[0]
+    history = (
+        await db.execute(
+            select(ApplicationStatusHistory, Changer.full_name)
+            .outerjoin(Changer, Changer.id == ApplicationStatusHistory.changed_by_id)
+            .where(ApplicationStatusHistory.application_id == found.id)
+            .order_by(ApplicationStatusHistory.created_at, ApplicationStatusHistory.id)
+        )
+    ).all()
+    record = await owner_record(db, user, found)
+    reason = WITHDRAWN if found.status == WITHDRAWN else "archived" if record is not None and record.status == "archived" else None
+    return {
+        **item(row, date.today()),
+        "university_id": found.university_id,
+        "university_slug": row[2],
+        "course_id": found.course_id,
+        "created_at": found.created_at,
+        "read_only_reason": reason,
+        "history": [{"from_status": h.from_status, "to_status": h.to_status, "next_action": h.next_action, "notes": h.notes, "changed_by": name, "created_at": h.created_at} for h, name in history],
+    }
+
+
+async def list_page(db: AsyncSession, user: User, *, group: str, agent_student_id, limit: int, offset: int) -> dict:
+    filters = [*application_scope(user), group_clause(group)]
+    if agent_student_id is not None:
+        login = select(AgentStudent.student_id).where(AgentStudent.id == agent_student_id).scalar_subquery()
+        filters.append(or_(OverseasApplication.agent_student_id == agent_student_id, and_(OverseasApplication.student_id.is_not(None), OverseasApplication.student_id == login)))
+    base = _rows_stmt().where(*filters)
+    total = await db.scalar(select(func.count()).select_from(base.subquery()))
+    rows = owned((await db.execute(base.order_by(OverseasApplication.updated_at.desc(), OverseasApplication.id).limit(limit).offset(offset))).all())
+    today = date.today()
+    return {"items": [item(r, today) for r in rows], "total": total or 0, "limit": limit, "offset": offset}
