@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { signIn } from "./helpers/agency";
 import { pickFromList } from "./helpers/pick";
 
-// AGN-012 (DEC-SCOPE-055) -- a Master starts a visa case from an offer, the date-order error lands on the interview field, a skip is
+// AGN-012 (DEC-SCOPE-057) -- a Master starts a visa case from an offer, the date-order error lands on the interview field, a skip is
 // confirmed, the decision is recorded once and the case turns read-only; 320 px. Unique names per run (shared E2E DB); the set-up is
 // agn-013-enrollment.spec.ts's.
 const stamp = () => `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;

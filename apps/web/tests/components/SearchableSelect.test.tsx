@@ -194,3 +194,21 @@ describe("SearchableSelect server mode", () => {
     expect(screen.getByText("Keep typing to narrow the list.")).toBeInTheDocument();
   });
 });
+
+describe("SearchableSelect initial value (bdm-001 QA-02, the BDM row editor)", () => {
+  const none = async (): Promise<LookupPage> => ({ items: [], truncated: false });
+
+  it("starts with the initial pick: shown, submitted and valid without any typing", () => {
+    const { form, input } = inForm(<SearchableSelect label="Manager" name="manager" noun="manager" required initial={{ id: "m1", label: "Meera" }} search={none} />);
+    expect(input.value).toBe("Meera");
+    expect(hidden(form, "manager")).toBe("m1");
+    expect(form.checkValidity()).toBe(true);
+  });
+
+  it("clearing the initial pick makes a required field invalid with a manager-worded message", () => {
+    const { form, input } = inForm(<SearchableSelect label="Manager" name="manager" noun="manager" required initial={{ id: "m1", label: "Meera" }} search={none} />);
+    fireEvent.change(input, { target: { value: "" } });
+    expect(hidden(form, "manager")).toBe("");
+    expect(input.validationMessage).toBe("Choose a manager from the list.");
+  });
+});

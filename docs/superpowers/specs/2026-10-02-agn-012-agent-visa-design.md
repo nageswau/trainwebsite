@@ -2,7 +2,7 @@
 
 **Status:** Sections 1 (data, API, rules) and 2 (frontend, errors, tests) reviewed by the owner in-session 2026-10-02; this written
 spec awaits the owner's review. **Branch:** `feature/agn-012-agent-visa` (from `origin/main` `e0395d6`).
-**Decision:** `DEC-SCOPE-055` (next free on `main` @ `e0395d6`; the open `feature/agn-010-offer-details` branch may claim it too —
+**Decision:** `DEC-SCOPE-057` (next free on `main` @ `e0395d6`; the open `feature/agn-010-offer-details` branch may claim it too —
 whichever merges second renumbers).
 **Builds on:** AGN-008 (`DEC-SCOPE-050`, agency applications, D8 forward-only), AGN-009 (`DEC-SCOPE-052`, agency documents and
 verification), AGN-013 (`DEC-SCOPE-054`, the route/panel pattern), VISA-001/002/003 (`DEC-SCOPE-006`, `VisaCase`, checklist gate,
@@ -41,7 +41,7 @@ date; the existing checklist rule blocks advancing past `checklist` with unverif
 - A unique index on `visa_cases.application_id` (it would change the counselor route's failure mode).
 - Fixing `seed.py`'s `status="not_started"` (pre-existing; the agency rules tolerate it, §4.1).
 
-## 3. Data (migration `0061_agent_visa_details`)
+## 3. Data (migration `0063_agent_visa_details`)
 
 Four nullable columns on `visa_cases`; no existing row is read or written:
 

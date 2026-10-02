@@ -3097,9 +3097,71 @@ allowlist; the agent dashboard gains one metric after "Applications". No change 
 
 **Consequences:** migration `0060_agent_app_enrollment` (drafted as `0058`; re-chained after `0059_agent_tasks`) (three nullable columns on `overseas_applications`); one Master-only route; four additive detail fields; a new `AgentApplicationEnrollment` component. Unchanged: the status route, counselor/admin/university-rep routes, commission amount/claim/payout (`AGT-004`), `AGN-014` reports. Design: `docs/superpowers/specs/2026-10-02-agn-013-enrollment-confirmation-design.md`. **New Feature ID authorized:** `AGN-013`.
 
-### DEC-SCOPE-055 — Visa for agent-managed applications (`AGN-012`)
+### DEC-SCOPE-055 — BDM CRM scope and the BDM / BDM Manager roles, profile and provisioning (`bdm-001`)
 
-**ID note:** next free on `main` @ `e0395d6`. The open `feature/agn-010-offer-details` branch may also claim `055`; whichever merges second renumbers.
+**ID note:** recorded on the branch as `DEC-SCOPE-052`; `AGN-009` (052), `AGN-016` (053) and `AGN-013` (054) reached `main` first (#42–#44), so this entry was renumbered to `DEC-SCOPE-055` when `main` (`e0395d6`) was merged into `feature/bdm-001-bdm-profile` (2026-10-02). It records the BDM CRM answers of 2026-09-28 (D1–D32), which `BDM_CRM_BACKLOG.md` first mis-cited as `DEC-SCOPE-037` (that number is `ENH-015`), and `bdm-001`'s own B1–B11. bdm-001 commits and docs from before this merge that say `DEC-SCOPE-052` mean this decision.
+
+**Question:** is the BDM CRM in scope, what is the role model, and how are BDM and BDM Manager accounts provisioned, scoped and landed?
+
+**Evidence:** `EVID-016` (`functionalities/edusphere_markdown/BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §1 BDM Management (Name, Employee ID, Designation, Department, Territory, Mobile, Email, Reporting Manager, Active/Inactive) and the Part 2 introduction (Agent / School / College modules). Backlog: `docs/delivery/BDM_CRM_BACKLOG.md` (bdm-001…025). bdm-001 impact analysis, 2026-10-02 (graphify-led): no `bdm`/`bdm_manager` role existed; `admin.create_user` accepted only fixed per-division role sets; `auth.login` requires `payload.division == user.division` except for `super_admin`, so a `global` manager following the existing `/it` set-password redirect got a 403.
+
+**Resolution:** owner, in-session (`EXPLICIT_APPROVAL` — answers to questions put one at a time, and section-by-section design approval; not the source document's own wording):
+- **2026-09-28, D1–D32** — as tabled in `BDM_CRM_BACKLOG.md` §3.1–§3.3. Key to bdm-001: **D1** the whole BDM CRM is in scope (each item behind GATE-09); **D2** prefix `bdm-NNN`; **D3** one `bdm` role + `bdm_type` (agent / school / college), division derived (college → `it`, agent/school → `overseas`); **D4** a new `bdm_manager` role sees and approves only the BDMs who report to them, `super_admin` sees all; **D10 (Q-01)** `super_admin` creates both roles and any type, `it_admin` creates College BDMs, `overseas_admin` creates Agent and School BDMs, only `super_admin` creates managers; **D26 (Q-17)** a manager's division is `global`, any mix of types, managers own no appointments or trips.
+- **2026-10-02, B1–B9 (bdm-001):**
+  - **B1** a `bdm_manager` signs in at `/admin/login`; after a password reset the form follows the server's `login_portal`; the login rule is unchanged.
+  - **B2** `/bdm/my-day` and `/bdm/manager/dashboard` ship as minimal shells (bdm-014 / bdm-023 fill them).
+  - **B3** scope includes `/bdm/me` + `/bdm/profile`, `/bdm/manager/team` + page, `/admin/bdms` + the manager picker, and the scope helpers later items call.
+  - **B4** register these decisions under the next free number (this entry).
+  - **B5** approach A: extend `POST/PATCH /admin/users` (one provisioning path) + a `bdm_profiles` table.
+  - **B6** managers have no profile row. **B7** `bdm_type` cannot be changed (422; transfers are bdm-025). **B8** required: type, Employee ID, reporting manager; designation, department, territory, mobile optional.
+  - **B9** a signed-out `/bdm/manager/*` visit → `/admin/login`; any other `/bdm/*` → a public `/bdm/sign-in` chooser (College BDM → `/it`, Agent/School BDM → `/overseas`).
+
+**Consequences:** migration `0061_bdm_profiles` (new table only; downgrade refuses while profiles exist); roles `bdm` (`bdm:self`) and `bdm_manager` (`bdm:team`) in `core/rbac.py`; `POST /admin/users` accepts `role: bdm` with a required nested `bdm_profile` and `role: bdm_manager` (super_admin, division `global`), and always returns `bdm_profile` (null for other roles); `PATCH /admin/users/{id}` edits the profile (type fixed, manager re-checked only when changed, Employee ID unique ignoring case → 409), audited before/after; `POST /auth/reset-password` always returns `login_portal` (`"admin"` for a manager, else null); new read routes `GET /bdm/me`, `GET /bdm/manager/team`, `GET /admin/bdms`, `GET /admin/bdm-managers` (paged `{items,total,limit,offset}`, the picker without emails). Unchanged: `auth.login`, token claims, `users` columns, set-password URLs, `GET /admin/users`, `School.edusphere_bdm` (bdm-018). Design: `docs/superpowers/specs/2026-10-02-bdm-001-bdm-profile-design.md`; plan: `docs/superpowers/plans/2026-10-02-bdm-001-bdm-profile.md`. **New Feature ID authorized:** `bdm-001` (bdm-002…025 remain behind GATE-09 individually).
+
+**Addendum — browser QA, 2026-10-02 (owner, in-session, `EXPLICIT_APPROVAL`):**
+- **B10 (QA-03)** the reporting-manager picker shows each manager's **email** as a detail line, so same-name managers can be told apart. `GET /admin/bdm-managers` now returns `{id, full_name, email}` to the three admin roles (this supersedes the earlier "no email in the picker" choice in §12.3 of the design).
+- **B11 (QA-05)** BDM managers recover their password **inside the admin portal**: public `/admin/forgot-password` and `/admin/reset-password` pages, a "Forgot your password?" link on `/admin/login`, and a `bdm_manager`'s set-password link now opens `/admin/reset-password`. Every other role's link is unchanged (Super Admin stays on `/it`).
+- Fixes without a new decision: the BDM list spans the full row on desktop (QA-01); the picker is a server-searched combobox, so no manager is unreachable (QA-02, `q` on `/admin/bdm-managers`); the admin list is searchable by name, email or Employee ID and filters to a newly created BDM (QA-04, `q` on `/admin/bdms`, ANDed with the type scope); keyboard focus returns to the row after save/status changes and to the message after an error (QA-06).
+
+### DEC-SCOPE-056 — Agent offer details: type, date, deadline, conditions, offer letter (`AGN-010`)
+
+**ID note:** drafted as `DEC-SCOPE-054` with migration `0060_agent_offer_details` (both free on `main` @ `9adcbca`); renumbered
+`DEC-SCOPE-056` on merging `main` @ `aad6b7c`, where `054` is `AGN-013` (PR #44) and `055` is `bdm-001` (PR #45). The migration
+is now `0062_agent_offer_details`, after `0061_bdm_profiles` (one head). AGN-010 commits from before this merge that say
+`DEC-SCOPE-054` mean this decision.
+
+**Question:** backlog item ang-010 "Offer details (Step 6)": conditional/unconditional offer, offer date, deadline, conditions and
+offer document. Acceptance: an offer deadline before the offer date → 422; a conditional offer requires conditions; switching to
+unconditional is recorded in history; the offer counts in dashboards (fixes the §0 defect for this path).
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 6 names the fields only; no rules, counts or
+§6 row. Existing: AGN-008 `offer_deadline` (A3) and the stage list; AGN-009 documents; `offer_letter_url` used by other roles; the agent
+Reports "Offers" row counted only `offer_received`/`accepted` (the §0 defect).
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL`; design spec
+`docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md` §2):
+
+- **O1 — One current offer per application**, as columns on `overseas_applications`; recording again replaces it and the previous
+  values survive in the status-history notes.
+- **O2 — The deadline is the existing `offer_deadline`** (AGN-008 A3); `offer_deadline < offer_date` → 422 on the offer PUT and the
+  AGN-008 PATCH; the nearest-deadline rule (QA8-13) is unchanged.
+- **O3 — Offer document optional**, picked from AGN-009 documents of type "Offer letter" attached to this application, in scope;
+  download stays on the AGN-009 route.
+- **O4 — `offer_letter_url` untouched**; other roles' views and counts of it are unchanged.
+- **O5 — Offers count** = stage `offer` or later (plus legacy `offer_received`/`accepted`) OR an offer recorded, so withdrawn-after-offer
+  counts. Agent pages only (Reports row, new dashboard KPI); the other stale counts stay for ang-018 (`RAID.md`).
+- **O6 — Conditions are free text**, ≤ 2000 characters.
+- **O7 — Concurrent saves: last write wins**, both in history (row lock); no offer version token.
+
+**Consequences:** migration `0062_agent_offer_details` (four nullable columns); new `PUT …/agent/crm/applications/{id}/offer`
+(`API_CONTRACT.md`); detail gains `offer` and `offer_letters`; upload accepts "Offer letter" (requires an application); audit action
+`overseas.application.offer` joins AGN-021's staff-activity allowlist; the agent dashboard gains "Offers" after the commission metrics (Staff: after "Pending actions"). No
+change to `rbac.py`, `/status`, counselor/university/admin routes or `offer_letter_url`. Several offers, removing an offer and
+notifications are out of scope.
+
+### DEC-SCOPE-057 — Visa for agent-managed applications (`AGN-012`)
+
+**ID note:** drafted as `DEC-SCOPE-055` (free on `main` @ `e0395d6`); renumbered `DEC-SCOPE-057` on merging `main` @ `3c4a972`, where `055` is BDM-001 (PR #45) and `056` is AGN-010 (PR #46). Migration drafted as `0061_agent_visa_details`, re-chained as `0063_agent_visa_details` after `0062_agent_offer_details`.
 
 **Question:** the owner's `AGN-012` statement (in-session, 2026-10-02): "visa documents, application date, appointment, interview, status and decision", with acceptance criteria: a decision can be set only at stage `decision`; the interview date may not precede the application date; the existing checklist rule blocks advancing past `checklist` with unverified documents.
 
@@ -3118,4 +3180,4 @@ allowlist; the agent dashboard gains one metric after "Applications". No change 
 - **V7** One case per application; re-application after a final decision is out of scope. **V8** New fields agency-only; no notifications.
 - **V9** Approach A: `POST`/`PATCH …/crm/applications/{id}/visa` in the AGN-008 router; `workflows.py` visa routes untouched.
 
-**Consequences:** migration `0061_agent_visa_details` (four nullable `visa_cases` columns + a decision CHECK); two agency routes; a `visa` block on the agency application detail; four audit actions `overseas.application.visa_start|visa_update|visa_advance|visa_decision` join AGN-021's allowlist; a new `AgentApplicationVisa` component. Unchanged: every existing visa route and response, school/portal/report readers, the application status and enrollment routes, commission. Design: `docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md`. **New Feature ID authorized:** `AGN-012`.
+**Consequences:** migration `0063_agent_visa_details` (four nullable `visa_cases` columns + a decision CHECK); two agency routes; a `visa` block on the agency application detail; four audit actions `overseas.application.visa_start|visa_update|visa_advance|visa_decision` join AGN-021's allowlist; a new `AgentApplicationVisa` component. Unchanged: every existing visa route and response, school/portal/report readers, the application status and enrollment routes, commission. Design: `docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md`. **New Feature ID authorized:** `AGN-012`.

@@ -34,7 +34,7 @@ type Mode = "details" | "move" | "decide" | null;
 const FIELDS = [...DETAIL_FIELDS, "to_stage", "decision"] as const;
 type Field = (typeof FIELDS)[number];
 
-// AGN-012 (DEC-SCOPE-055): Step 8. Master and Staff start the visa case from an offer onwards, keep its dates and document checklist,
+// AGN-012 (DEC-SCOPE-057): Step 8. Master and Staff start the visa case from an offer onwards, keep its dates and document checklist,
 // move it forward (a skip is confirmed) and record the authority's decision once (confirmed; final). The displayed stage travels as
 // `expected_stage`, so a stale screen gets a 409 and the detail reloads. Read-only for a withdrawn/archived/enrolled application.
 export default function AgentApplicationVisa({ detail, onSaved, onFailed, onOpenChange }: Props) {

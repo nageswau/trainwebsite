@@ -296,7 +296,7 @@ route, body or field changes. No `Idempotency-Key`: a repeated `PUT` converges (
 | `PUT …/crm/applications/{id}/enrollment` (**new**) | Authenticated | Agency **Master** of an active organisation (staff → `403 "Only an agency Master can confirm enrollment"` before any load) | Body `AgentApplicationEnrollment`: `enrollment_date` (required, 2000–2100), `university_student_id` (≤ 60, optional, blank → `null`), `expected_status` (required, ≤ 50), `notes` (≤ 2000, first confirmation only); `extra="forbid"`. Order: gate `403` → Master `403` → scope `404` → archived/withdrawn `409` → stale `409` → pre-offer (or legacy free-text status) `422 "An offer is needed before enrollment"`. From `offer` / `visa_documentation` / `status_tracking`: `enrolled`, details and `enrollment_confirmed_at` set, one history row, the AGT-003 trigger (one `estimated` commission, Masters notified), audit `overseas.application.enroll`. When `enrolled`: changed details only, audit `overseas.application.enrollment_update` (field names); no history, no commission; no change → `200`, no write. `200 {"application": detail}`. |
 | `GET …/crm/applications/{id}` — **changed (additive)** | Authenticated | Same as before | Detail adds `enrollment_date`, `university_student_id`, `enrollment_confirmed_at`, `enrollment_check` (`after_intake` \| `intake_unrecognised` \| `null`; a warning computed on read). List items unchanged. |
 
-**`AGN-012` / `DEC-SCOPE-055` (built 2026-10-02) — visa for agent-managed applications.** Design spec
+**`AGN-012` / `DEC-SCOPE-057` (built 2026-10-02) — visa for agent-managed applications.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md` §4, §10. Additive: two routes and one detail key; no existing route,
 body or field changes (`/workflows/overseas/visa`, `…/visa-checklist`, `…/visa-status`, `…/visa/interview-prep` unchanged). No
 `Idempotency-Key`: a retried start is `409` (exists), a retried move or decision is a stale `409`; the UI reloads on `409`.
@@ -325,6 +325,25 @@ only) in the same transaction. Responses are explicit allowlists: people are nam
 
 `GET /portal/overseas/agent/dashboard` gains `{"label": "Pending actions", "value": n}` after "Applications" (open tasks of active
 students in the caller's scope); `GET /portal/overseas/agent/tasks` is a header-only payload ("Tasks & follow-ups").
+
+**`AGN-010` / `DEC-SCOPE-056` (built 2026-10-02) — agent offer details.** Design spec
+`docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md` §4. Errors are FastAPI `{"detail": ...}`. The PUT is retry-safe
+without an `Idempotency-Key` (§0.2): an identical body returns `200` and writes nothing. Concurrent saves: last write wins, both in
+history (O7), serialised by the organisation lock and the application row `FOR UPDATE`. Order: gate `403` (`_gate`; `super_admin` and
+other roles refused) → scope `404 "Application not found"` → archived `409 "Unarchive this student first"` → withdrawn `409 "This
+application is withdrawn"` → stale `expected_status` `409` (the AGN-008 message) → document `404 "Document not found"` / `422`; schema
+`422`s come first. `offer_letter_url` is never read or written (O4).
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `PUT /workflows/overseas/agent/crm/applications/{id}/offer` (**new**) | Authenticated | Agent (Master or staff), AGN-008 scope | Body `AgentApplicationOffer` (`extra="forbid"`): `offer_type` `conditional` \| `unconditional` (required); `offer_date` (required, 2000–2100, not after today UTC + 1 day → `422 "Offer date cannot be in the future"`); `offer_deadline` (nullable; before `offer_date` → `422 "Offer deadline cannot be before the offer date"`); `conditions` (`clean_free_text`, ≤ 2000; conditional and blank → `422 "A conditional offer needs its conditions"`; unconditional and present → `422 "An unconditional offer has no conditions"`); `offer_document_id` (scoped load `404`; must be this application's `Offer letter` document, else `422 "Choose an offer letter uploaded for this application"`); `expected_status?`. A stage before `offer` (or a legacy value) moves to `offer` via `check_transition`; `offer` or later unchanged. One history row per real change (notes describe it and keep the earlier values), one `overseas.application.offer` audit row (`fields`, `offer_type`, `from_status`, `to_status`; never the conditions), one commit, log `agent_application_offer_recorded`. `200 {"application": detail}`. |
+| `GET …/crm/applications/{id}` and every write response — **changed** | Authenticated | Same | Additive: `offer`: `null` \| `{type, date, deadline, conditions, document: null \| {id, name, verification_status}}`; `offer_letters`: ≤ 20 newest `{id, name, verification_status, created_at}` of this application in scope (not paginated: bounded per application, §0.1 exception; never `file_url`). |
+| `PATCH …/crm/applications/{id}` — **changed** | Authenticated | Same | Once an offer exists, a resulting `offer_deadline` before `offer_date` → `422 "Offer deadline cannot be before the offer date"`. |
+| `POST …/crm/documents` — **changed** | Authenticated | Same | `document_type` also accepts `Offer letter`, which requires `application_id` (else `422 "Choose the application this offer letter belongs to"`). `document-requests` keep the previous type list. |
+
+`GET /portal/overseas/agent/dashboard` gains `{"label": "Offers", "value": n}` after the commission metrics for a Master ("Revenue") and after "Pending actions" for
+Staff (staff scope applies; the order AGN-014/AGN-016 assert is kept), and the Reports "Offers" row now counts stage `offer` or later (incl. legacy `offer_received`/`accepted`) OR an offer recorded
+(O5). Other portals' offer counts are unchanged (`RAID.md` I-48).
 
 **`AGN-003` / `DEC-SCOPE-044` (built 2026-10-01).** Design spec §6–§8. Two optional §6 rows (Verify Documents, Reports) are switched on per
 staff member by a Master; the flags are read from the database on every request, so a change applies on the next request.

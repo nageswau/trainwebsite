@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, StrictBool, StrictInt, ValidationError, field_validator, model_validator
+from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, StrictBool, StrictInt, StringConstraints, ValidationError, ValidationInfo, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.models import GENDERS
@@ -379,6 +379,8 @@ class AgentDocumentReview(BaseModel):
 # AGN-009 (DEC-SCOPE-052 G3): EVID-015 §5 Step 4, stored as written (the free-text style the visa checklist compares); the web mirrors
 # it in lib/agentDocuments.ts DOCUMENT_TYPES.
 AgentDocumentType = Literal["Passport", "Academic certificates", "Transcripts", "English test", "CV", "SOP", "LOR", "Financial documents", "Other"]
+# AGN-010 (DEC-SCOPE-056 O3): uploads also take an offer letter (against one application); requests keep the list above.
+AgentUploadDocumentType = Literal[AgentDocumentType, "Offer letter"]
 
 
 class AgentDocumentRequestCreate(BaseModel):
@@ -689,6 +691,13 @@ def _intake(value: str | None) -> str:
     return value
 
 
+def _not_future(value: date | None, code: str, message: str) -> date | None:
+    # One day ahead of UTC is allowed: a user east of UTC (IST after midnight) is already on tomorrow's date.
+    if value is not None and value > datetime.now(UTC).date() + timedelta(days=1):
+        raise PydanticCustomError(code, message)
+    return value
+
+
 # One rule for both the edit and the status change; the lambda defers the lookup of `clean_free_text` (defined further down).
 ApplicationNextAction = Annotated[str | None, AfterValidator(lambda value: clean_free_text(value, 500))]
 
@@ -717,11 +726,7 @@ class _AgentApplicationFields(BaseModel):
     @field_validator("submitted_on")
     @classmethod
     def _submitted(cls, value):
-        value = _application_date(value)
-        # One day ahead of UTC is allowed: a user east of UTC (IST after midnight) is already on tomorrow's date.
-        if value is not None and value > datetime.now(UTC).date() + timedelta(days=1):
-            raise PydanticCustomError("future_submission_date", "Submission date cannot be in the future")
-        return value
+        return _not_future(_application_date(value), "future_submission_date", "Submission date cannot be in the future")
 
 
 class AgentApplicationCreate(_AgentApplicationFields):
@@ -788,7 +793,7 @@ class AgentApplicationEnrollment(BaseModel):
         return clean_free_text(value, 2000)
 
 
-# --- AGN-012: the visa case of an agency's application (DEC-SCOPE-055; docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md §4) ---
+# --- AGN-012: the visa case of an agency's application (DEC-SCOPE-057; docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md §4) ---
 
 
 def _visa_checklist(value: list[str] | None) -> list[str]:
@@ -854,6 +859,49 @@ class AgentVisaUpdate(_AgentVisaDates):
         if value is None:
             raise PydanticCustomError("not_clearable", "A recorded decision cannot be cleared")
         return value
+
+
+# --- AGN-010: offer details (DEC-SCOPE-056; docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md §4.1) ---
+
+OFFER_DEADLINE_BEFORE = "Offer deadline cannot be before the offer date"  # also the AGN-008 PATCH's answer once an offer exists (O2)
+
+
+class AgentApplicationOffer(BaseModel):
+    """The whole current offer (PUT replaces it, O1). `offer_deadline` is the application's existing column (O2); null clears it.
+    `expected_status`: as on the status change, a mismatch is a 409."""
+
+    model_config = {"extra": "forbid"}
+    offer_type: Literal["conditional", "unconditional"]
+    offer_date: date
+    offer_deadline: date | None = None
+    conditions: str | None = None
+    offer_document_id: UUID | None = None
+    expected_status: str | None = Field(default=None, max_length=50)
+
+    @field_validator("offer_date")
+    @classmethod
+    def _offer_date(cls, value):
+        return _not_future(_application_date(value), "future_offer_date", "Offer date cannot be in the future")
+
+    @field_validator("offer_deadline")
+    @classmethod
+    def _offer_deadline(cls, value):
+        return _application_date(value)
+
+    @field_validator("conditions")
+    @classmethod
+    def _conditions(cls, value):
+        return clean_free_text(value, 2000)
+
+    @model_validator(mode="after")
+    def _offer_rules(self):
+        if self.offer_deadline is not None and self.offer_deadline < self.offer_date:
+            raise PydanticCustomError("offer_deadline_before_date", OFFER_DEADLINE_BEFORE)
+        if self.offer_type == "conditional" and not self.conditions:
+            raise PydanticCustomError("offer_conditions_required", "A conditional offer needs its conditions")
+        if self.offer_type == "unconditional" and self.conditions:
+            raise PydanticCustomError("offer_conditions_unconditional", "An unconditional offer has no conditions")
+        return self
 
 
 # --- AGN-016: agent tasks and follow-ups (DEC-SCOPE-053; docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md §3) ---
@@ -2788,3 +2836,134 @@ class GlobalEducationPipelineOut(BaseModel):
     funnel: list[PipelineStage]
     not_tracked: list[PipelineUntracked]
     students: PipelineStudentPage
+
+
+# --- bdm-001 (DEC-SCOPE-055): BDM profile -------------------------------------------------------------------------------
+BdmType = Literal["agent", "school", "college"]
+_BDM_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _bdm_employee_id(value: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ValueError("Employee ID is required")
+    if len(value) > 40:
+        raise ValueError("Employee ID must be at most 40 characters")
+    if _BDM_CONTROL.search(value):
+        raise ValueError("Employee ID contains invalid characters")
+    return value
+
+
+BDM_FIELD_LABELS = {
+    "bdm_type": "Module", "employee_id": "Employee ID", "designation": "Designation", "department": "Department",
+    "territory": "Territory", "reporting_manager_user_id": "Reporting manager",
+}
+
+
+def _bdm_plain_text(value: str | None, info: ValidationInfo) -> str | None:
+    """The Employee ID's rule for every profile text (no control characters); blank becomes None, which clears the field."""
+    if value is not None and _BDM_CONTROL.search(value):
+        raise ValueError(f"{BDM_FIELD_LABELS.get(info.field_name, info.field_name)} contains invalid characters")
+    return value or None
+
+
+BdmEmployeeId = Annotated[str, AfterValidator(_bdm_employee_id)]
+# The string branch is trimmed BEFORE its length is checked (a padded value that fits once trimmed is accepted); None stays None.
+BdmText = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] | None, AfterValidator(_bdm_plain_text)]
+
+
+class BdmProfileCreate(BaseModel):
+    """spec §5.2: type, Employee ID and reporting manager are required (B8); the three texts are optional."""
+
+    model_config = ConfigDict(extra="forbid")
+    bdm_type: BdmType
+    employee_id: BdmEmployeeId
+    designation: BdmText = None
+    department: BdmText = None
+    territory: BdmText = None
+    reporting_manager_user_id: UUID
+
+
+class BdmProfileUpdate(BaseModel):
+    """Omitted = unchanged. The optional texts accept null/"" (clears). The three required keys reject an explicit null: the default
+    None is never validated, but a sent null is checked against the non-nullable type and fails."""
+
+    model_config = ConfigDict(extra="forbid")
+    bdm_type: BdmType = None
+    employee_id: BdmEmployeeId = None
+    designation: BdmText = None
+    department: BdmText = None
+    territory: BdmText = None
+    reporting_manager_user_id: UUID = None
+
+
+class BdmManagerRef(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
+class BdmProfileOut(BaseModel):
+    bdm_type: str
+    employee_id: str
+    designation: str | None
+    department: str | None
+    territory: str | None
+    reporting_manager: BdmManagerRef
+
+
+class BdmMeOut(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None
+    active: bool
+    division: str
+    bdm_profile: BdmProfileOut
+
+
+class BdmTeamRow(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None
+    active: bool
+    bdm_type: str
+    employee_id: str
+    designation: str | None
+    department: str | None
+    territory: str | None
+
+
+class BdmAdminRow(BdmTeamRow):
+    reporting_manager: BdmManagerRef
+    manager_active: bool
+
+
+class BdmManagerOption(BaseModel):
+    """QA-03 (owner, 2026-10-02): email is returned so the picker can tell same-name managers apart."""
+
+    id: UUID
+    full_name: str
+    email: str
+
+
+class BdmTeamPage(BaseModel):
+    items: list[BdmTeamRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmAdminPage(BaseModel):
+    items: list[BdmAdminRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmManagerPage(BaseModel):
+    items: list[BdmManagerOption]
+    total: int
+    limit: int
+    offset: int

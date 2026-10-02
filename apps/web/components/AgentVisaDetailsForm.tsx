@@ -25,7 +25,7 @@ const DATES: { field: DateField; label: string }[] = [
   { field: "interview_date", label: "Interview date (optional)" },
 ];
 
-// AGN-012 (DEC-SCOPE-055): the dates and document checklist of a visa case, shared by Start and Edit. An emptied date is sent as null
+// AGN-012 (DEC-SCOPE-057): the dates and document checklist of a visa case, shared by Start and Edit. An emptied date is sent as null
 // (it clears the stored one). The server checks the date order and the checklist; its field errors arrive in `errors`.
 // A stored item that is not an agency document type (a case an overseas admin opened, e.g. "Visa form") has no checkbox: it is listed,
 // kept while the checklist is untouched, and replaced once the agency changes the checklist (review I-2).

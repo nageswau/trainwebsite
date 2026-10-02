@@ -65,7 +65,8 @@ async def flush_unique_email(db: AsyncSession) -> None:
 
 def _set_password_url(user: User, raw: str) -> str:
     # Built from configuration, never from the request's Host header (no host-header poisoning).
-    segment = "overseas" if user.division == "overseas" else "it"  # super_admin logs in via /it
+    # super_admin logs in via /it. bdm-001 QA-05 (owner, 2026-10-02): a BDM manager's link opens the admin portal's own reset page.
+    segment = "admin" if user.role == "bdm_manager" else ("overseas" if user.division == "overseas" else "it")
     return f"{settings.frontend_url}/{segment}/reset-password?token={raw}"
 
 

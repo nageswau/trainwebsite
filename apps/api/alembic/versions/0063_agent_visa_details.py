@@ -1,9 +1,12 @@
 """AGN-012 -- visa_cases.visa_application_date, interview_date, decision, decided_at.
 
-Revision ID: 0061_agent_visa_details
-Revises: 0060_agent_app_enrollment
+Revision ID: 0063_agent_visa_details
+Revises: 0062_agent_offer_details
 
-docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md §3 (DEC-SCOPE-055). Four nullable columns and a CHECK on the decision;
+Drafted as 0061 after 0060_agent_app_enrollment; re-chained after main's 0061_bdm_profiles (BDM-001) and 0062_agent_offer_details
+(AGN-010) when merging main.
+
+docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md §3 (DEC-SCOPE-057). Four nullable columns and a CHECK on the decision;
 no existing row is read or written. 0001 builds a fresh database from the current models, which already carry these columns and the
 constraint, so every add is guarded (0057's and 0041's idioms). downgrade() refuses while visa details exist rather than silently
 dropping them.
@@ -13,8 +16,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0061_agent_visa_details"
-down_revision = "0060_agent_app_enrollment"
+revision = "0063_agent_visa_details"
+down_revision = "0062_agent_offer_details"
 branch_labels = None
 depends_on = None
 
@@ -40,7 +43,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         recorded = " OR ".join(f"{name} IS NOT NULL" for name, _ in COLUMNS)
         if op.get_bind().execute(sa.text(f"SELECT count(*) FROM {TABLE} WHERE {recorded}")).scalar():
-            raise RuntimeError("Refusing to downgrade 0061_agent_visa_details: visa details exist")
+            raise RuntimeError("Refusing to downgrade 0063_agent_visa_details: visa details exist")
     op.drop_constraint(CHECK_NAME, TABLE, type_="check")
     for name, _ in reversed(COLUMNS):
         op.drop_column(TABLE, name)

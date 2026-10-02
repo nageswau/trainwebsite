@@ -53,7 +53,7 @@ export const ENROLLMENT_CHECK_TEXT: Record<Exclude<EnrollmentCheck, null>, strin
   intake_unrecognised: "The intake is not a month and year, so the enrollment date was not checked against it.",
 };
 
-// AGN-012 (DEC-SCOPE-055): the visa case of an application (EVID-015 §5 Step 8). Mirrors services/agent_visa.py; the server is the
+// AGN-012 (DEC-SCOPE-057): the visa case of an application (EVID-015 §5 Step 8). Mirrors services/agent_visa.py; the server is the
 // authority (forward-only, the checklist gate, a decision only at `decision`, final once recorded).
 export const VISA_STAGES = ["checklist", "documentation", "interview_prep", "tracking", "decision"] as const;
 export const VISA_DECISIONS = ["approved", "refused", "withdrawn"] as const;
@@ -140,7 +140,17 @@ export type AgentApplicationDetail = AgentApplicationItem & {
   enrollment_check: EnrollmentCheck;
   visa?: Visa | null; // AGN-012: null until a case is started; absent in fixtures written before it
   history: HistoryEntry[];
+  offer: AgentOffer | null;
+  offer_letters: OfferLetterOption[];
 };
+
+// AGN-010 (DEC-SCOPE-056): one current offer per application; its deadline is the application's `offer_deadline` (O2) and its letter
+// an AGN-009 document of type "Offer letter" attached to this application (O3). The server checks every rule again.
+export type OfferType = "conditional" | "unconditional";
+export const OFFER_TYPE_LABELS: Record<OfferType, string> = { conditional: "Conditional", unconditional: "Unconditional" };
+export type OfferLetterOption = { id: string; name: string; verification_status: string };
+export type AgentOffer = { type: OfferType; date: string; deadline: string | null; conditions: string | null; document: OfferLetterOption | null };
+export const offerUrl = (id: string) => `${APPLICATIONS_URL}/${id}/offer`;
 
 export const READ_ONLY_TEXT: Record<"withdrawn" | "archived", string> = {
   withdrawn: "This application is withdrawn, so it can no longer be changed.",

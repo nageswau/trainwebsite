@@ -10,8 +10,8 @@ import { type LookupPage, optionText, type PickOption } from "@/lib/lookups";
 // Validity uses the constraint API: an unpicked required field, or text that is not a pick, blocks the form's submit and
 // shows a field error. Status text uses aria-live (not role="status"): host pages already query their own status region.
 
-export type Noun = "student" | "application" | "school" | "candidate";
-const PLURAL: Record<Noun, string> = { student: "students", application: "applications", school: "schools", candidate: "candidates" };
+export type Noun = "student" | "application" | "school" | "candidate" | "manager";
+const PLURAL: Record<Noun, string> = { student: "students", application: "applications", school: "schools", candidate: "candidates", manager: "managers" };
 export const MAX_RENDERED = 50;
 export const DEBOUNCE_MS = 250;
 
@@ -26,6 +26,8 @@ type Props = {
   search?: (q: string, signal: AbortSignal) => Promise<LookupPage>;
   minChars?: number;
   onChange?: (option: PickOption | null) => void;
+  /** bdm-001 QA-02: an editor's current value, already picked (shown, submitted and valid without typing). */
+  initial?: PickOption | null;
 };
 
 export function filterOptions(options: PickOption[], text: string): LookupPage {
@@ -34,7 +36,7 @@ export function filterOptions(options: PickOption[], text: string): LookupPage {
   return { items: matches.slice(0, MAX_RENDERED), truncated: matches.length > MAX_RENDERED };
 }
 
-export default function SearchableSelect({ label, noun, id, name, required = false, disabled = false, options, search, minChars = 0, onChange }: Props) {
+export default function SearchableSelect({ label, noun, id, name, required = false, disabled = false, options, search, minChars = 0, onChange, initial = null }: Props) {
   const autoId = useId();
   const inputId = id ?? `combo-${autoId}`;
   // aria-controls/aria-describedby are space-separated id lists, so the ids they point at must not contain spaces
@@ -51,8 +53,8 @@ export default function SearchableSelect({ label, noun, id, name, required = fal
   onChangeRef.current = onChange;
   const serverMode = search !== undefined;
 
-  const [text, setText] = useState("");
-  const [selected, setSelected] = useState<PickOption | null>(null);
+  const [text, setText] = useState(() => (initial ? optionText(initial) : ""));
+  const [selected, setSelected] = useState<PickOption | null>(initial);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [remote, setRemote] = useState<LookupPage | null>(null);

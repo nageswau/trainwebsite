@@ -34,7 +34,8 @@ STAFF_ACTIVITY_ACTIONS = (
     "overseas.application.update",
     "overseas.application.advance",
     "overseas.application.withdraw",
-    # AGN-012 (DEC-SCOPE-055): visa work on an application; the view shows field names only, never the decision.
+    "overseas.application.offer",  # AGN-010 (DEC-SCOPE-056): ids and field names only, like the other application rows
+    # AGN-012 (DEC-SCOPE-057): visa work on an application; the view shows field names only, never the decision.
     "overseas.application.visa_start",
     "overseas.application.visa_update",
     "overseas.application.visa_advance",

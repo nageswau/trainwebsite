@@ -13,7 +13,7 @@ block; a new `AgentApplicationVisa` panel (plus a shared `AgentVisaDetailsForm`)
 **Tech Stack:** FastAPI, SQLAlchemy 2 async, Alembic, PostgreSQL, Pydantic 2, pytest + pytest-asyncio + httpx; Next.js 15, React,
 TypeScript, vitest + Testing Library, Playwright. No new dependency.
 
-**Spec:** `docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md` (`DEC-SCOPE-055`).
+**Spec:** `docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md` (`DEC-SCOPE-057`).
 
 ## Global Constraints
 
@@ -85,7 +85,7 @@ docker compose -p agn012 -f docker-compose.yml -f docker-compose.ci.yml --profil
 - [ ] **Step 1: Write the failing test** — `apps/api/tests/test_agn_012_schemas.py`
 
 ```python
-"""AGN-012 (DEC-SCOPE-055) -- request schemas and the pure rules of services/agent_visa.py (spec §4, §10.1)."""
+"""AGN-012 (DEC-SCOPE-057) -- request schemas and the pure rules of services/agent_visa.py (spec §4, §10.1)."""
 
 from datetime import date
 
@@ -176,7 +176,7 @@ def test_interview_before_application_is_a_field_error():
 - [ ] **Step 3: Implement** — create `apps/api/app/services/agent_visa.py`:
 
 ```python
-"""AGN-012 -- the visa case of an agency's application (DEC-SCOPE-055; docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md §4).
+"""AGN-012 -- the visa case of an agency's application (DEC-SCOPE-057; docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md §4).
 
 Also the home of the visa stage list and the compliance sentence the counselor/student routes in `api/workflows.py` use: they moved
 here unchanged because `workflows.py` imports `services.agent_applications`, which needs them, so this module cannot import the API
@@ -187,7 +187,7 @@ from datetime import date
 from fastapi.exceptions import RequestValidationError
 
 # DATA_MODEL.md #6.5, DEC-SCOPE-006: the four confirmed category names plus a terminal `decision` state. The outcomes are not stages:
-# DEC-SCOPE-055 V2 records them for agency cases in their own column, so this list is unchanged.
+# DEC-SCOPE-057 V2 records them for agency cases in their own column, so this list is unchanged.
 VISA_CASE_STAGES = ["checklist", "documentation", "interview_prep", "tracking", "decision"]
 VISA_DECISIONS = ("approved", "refused", "withdrawn")
 
@@ -228,7 +228,7 @@ from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECISION_DISCLAIMER
 In `apps/api/app/schemas.py`, add the import `from app.services.agent_visa import VISA_CASE_STAGES` at the top (after `from app.models import GENDERS`) and after `AgentApplicationEnrollment`:
 
 ```python
-# --- AGN-012: the visa case of an agency's application (DEC-SCOPE-055; docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md §4) ---
+# --- AGN-012: the visa case of an agency's application (DEC-SCOPE-057; docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md §4) ---
 
 
 def _visa_checklist(value: list[str] | None) -> list[str]:
@@ -311,10 +311,10 @@ git commit -m "feat(agn-012): visa rules module and request schemas"
 
 ---
 
-### Task 2: Migration `0061_agent_visa_details` and model columns
+### Task 2: Migration `0063_agent_visa_details` and model columns
 
 **Files:**
-- Create: `apps/api/alembic/versions/0061_agent_visa_details.py`
+- Create: `apps/api/alembic/versions/0063_agent_visa_details.py`
 - Modify: `apps/api/app/models.py:552-559` (`VisaCase`), `apps/api/tests/test_agn_013_migration.py:39-43` (head pin)
 - Test: `apps/api/tests/test_agn_012_migration.py`
 
@@ -325,7 +325,7 @@ git commit -m "feat(agn-012): visa rules module and request schemas"
 - [ ] **Step 1: Write the failing test** — `apps/api/tests/test_agn_012_migration.py` (the AGN-013 throwaway-database pattern):
 
 ```python
-"""AGN-012 -- migration 0061_agent_visa_details (spec §3). Round trip and downgrade refusals run in a throwaway database built from
+"""AGN-012 -- migration 0063_agent_visa_details (spec §3). Round trip and downgrade refusals run in a throwaway database built from
 scratch; a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run() itself."""
 
 import asyncio
@@ -347,12 +347,12 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_agn_012_migration_0061", VERSIONS / "0061_agent_visa_details.py")
+_spec = importlib.util.spec_from_file_location("_agn_012_migration_0061", VERSIONS / "0063_agent_visa_details.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
 BASE = "0060_agent_app_enrollment"
-HEAD = "0061_agent_visa_details"
+HEAD = "0063_agent_visa_details"
 CASE_COLUMNS = "SELECT id, application_id, status, appointment_date, checklist::text, tracking_reference FROM visa_cases ORDER BY id"
 NEW = ("visa_application_date", "interview_date", "decision", "decided_at")
 
@@ -489,18 +489,18 @@ def test_migration_chains_after_0059_and_there_is_one_head():
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1  # AGN-012 chains 0061 after this one
 ```
 
-- [ ] **Step 2: Run it — expect FAIL** (`FileNotFoundError` for `0061_agent_visa_details.py`). Run with plain pytest (no `alembic upgrade head` in the
+- [ ] **Step 2: Run it — expect FAIL** (`FileNotFoundError` for `0063_agent_visa_details.py`). Run with plain pytest (no `alembic upgrade head` in the
   container command, since the revision does not exist yet): `… api-test sh -c "python -m pytest -q tests/test_agn_012_migration.py"`
 
-- [ ] **Step 3: Implement** — `apps/api/alembic/versions/0061_agent_visa_details.py`:
+- [ ] **Step 3: Implement** — `apps/api/alembic/versions/0063_agent_visa_details.py`:
 
 ```python
 """AGN-012 -- visa_cases.visa_application_date, interview_date, decision, decided_at.
 
-Revision ID: 0061_agent_visa_details
+Revision ID: 0063_agent_visa_details
 Revises: 0060_agent_app_enrollment
 
-docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md §3 (DEC-SCOPE-055). Four nullable columns and a CHECK on the decision;
+docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md §3 (DEC-SCOPE-057). Four nullable columns and a CHECK on the decision;
 no existing row is read or written. 0001 builds a fresh database from the current models, which already carry these columns and the
 constraint, so every add is guarded (0057's and 0041's idioms). downgrade() refuses while visa details exist rather than silently
 dropping them.
@@ -510,7 +510,7 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0061_agent_visa_details"
+revision = "0063_agent_visa_details"
 down_revision = "0060_agent_app_enrollment"
 branch_labels = None
 depends_on = None
@@ -537,7 +537,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         recorded = " OR ".join(f"{name} IS NOT NULL" for name, _ in COLUMNS)
         if op.get_bind().execute(sa.text(f"SELECT count(*) FROM {TABLE} WHERE {recorded}")).scalar():
-            raise RuntimeError("Refusing to downgrade 0061_agent_visa_details: visa details exist")
+            raise RuntimeError("Refusing to downgrade 0063_agent_visa_details: visa details exist")
     op.drop_constraint(CHECK_NAME, TABLE, type_="check")
     for name, _ in reversed(COLUMNS):
         op.drop_column(TABLE, name)
@@ -555,7 +555,7 @@ class VisaCase(Base, TimestampMixin):
     appointment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     checklist: Mapped[list] = mapped_column(JSON, default=list)
     tracking_reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    # AGN-012 (DEC-SCOPE-055; migration 0061): written only by the agency visa routes; the counselor/student routes neither read nor
+    # AGN-012 (DEC-SCOPE-057; migration 0063): written only by the agency visa routes; the counselor/student routes neither read nor
     # write them (V8). `decision` is the authority's outcome as the agency records it, final once set (V2).
     visa_application_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     interview_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -565,7 +565,7 @@ class VisaCase(Base, TimestampMixin):
 
 - [ ] **Step 4: Run — expect PASS** `API_TEST tests/test_agn_012_migration.py tests/test_agn_013_migration.py`
 
-- [ ] **Step 5: Commit** `git commit -m "feat(agn-012): migration 0061 -- visa application date, interview date and decision"`
+- [ ] **Step 5: Commit** `git commit -m "feat(agn-012): migration 0063 -- visa application date, interview date and decision"`
 
 ---
 
@@ -1004,10 +1004,10 @@ async def update_case(db: AsyncSession, case: VisaCase, changes: dict) -> tuple[
 from app.services.agent_visa import visa_block
 ...
         "enrollment_check": enrollment_check(found, datetime.now(UTC).date()),
-        "visa": await visa_block(db, found.id),  # AGN-012 (DEC-SCOPE-055): agency-only, single-application detail only
+        "visa": await visa_block(db, found.id),  # AGN-012 (DEC-SCOPE-057): agency-only, single-application detail only
 ```
 
-`apps/api/app/api/agent_applications.py` — docstring gains one sentence (`AGN-012 (DEC-SCOPE-055): Master and Staff run the visa case of an
+`apps/api/app/api/agent_applications.py` — docstring gains one sentence (`AGN-012 (DEC-SCOPE-057): Master and Staff run the visa case of an
 application from an offer onwards, through its own two routes; the case never moves the application stage.`); imports:
 
 ```python
@@ -1032,7 +1032,7 @@ async def _visa_entry(db: AsyncSession, user: User, membership: AgentOrgMember, 
 
 @router.post("/{application_id}/visa", status_code=201)
 async def start_visa(application_id: UUID, payload: AgentVisaStart, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AGN-012 (DEC-SCOPE-055) §4.1: start the application's visa case at `checklist`, from an offer onwards; one case per application."""
+    """AGN-012 (DEC-SCOPE-057) §4.1: start the application's visa case at `checklist`, from an offer onwards; one case per application."""
     membership = _gate(user)
     item, record = await _visa_entry(db, user, membership, application_id)
     if payload.expected_status != item.status:
@@ -1076,7 +1076,7 @@ async def update_visa_case(application_id: UUID, payload: AgentVisaUpdate, user:
 `apps/api/app/services/staff_activity.py` — after `"overseas.application.withdraw",`:
 
 ```python
-    # AGN-012 (DEC-SCOPE-055): visa work on an application; the view shows field names only, never the decision.
+    # AGN-012 (DEC-SCOPE-057): visa work on an application; the view shows field names only, never the decision.
     "overseas.application.visa_start",
     "overseas.application.visa_update",
     "overseas.application.visa_advance",
@@ -1320,7 +1320,7 @@ describe("visa helpers (AGN-012)", () => {
   at the top, `visa?: Visa | null;` in `AgentApplicationDetail` (after `enrollment_check`), and after the enrollment block:
 
 ```ts
-// AGN-012 (DEC-SCOPE-055): the visa case of an application (EVID-015 §5 Step 8). Mirrors services/agent_visa.py; the server is the
+// AGN-012 (DEC-SCOPE-057): the visa case of an application (EVID-015 §5 Step 8). Mirrors services/agent_visa.py; the server is the
 // authority (forward-only, the checklist gate, a decision only at `decision`, final once recorded).
 export const VISA_STAGES = ["checklist", "documentation", "interview_prep", "tracking", "decision"] as const;
 export const VISA_DECISIONS = ["approved", "refused", "withdrawn"] as const;
@@ -1572,7 +1572,7 @@ const DATES: { field: DateField; label: string }[] = [
   { field: "interview_date", label: "Interview date (optional)" },
 ];
 
-// AGN-012 (DEC-SCOPE-055): the dates and document checklist of a visa case, shared by Start and Edit. An emptied date is sent as null
+// AGN-012 (DEC-SCOPE-057): the dates and document checklist of a visa case, shared by Start and Edit. An emptied date is sent as null
 // (it clears the stored one). The server checks the date order and the checklist; its field errors arrive in `errors`.
 export default function AgentVisaDetailsForm({ appId, visa, checklistEditable, busy, errors, failure, onSubmit, onCancel }: Props) {
   const [checklist, setChecklist] = useState<string[]>(visa ? visa.checklist.map((c) => c.item) : []);
@@ -1670,7 +1670,7 @@ const SERVER_ERROR = "Something went wrong on our side. Please try again; your e
 const FIELDS = [...DETAIL_FIELDS, "to_stage", "decision"] as const;
 type Field = (typeof FIELDS)[number];
 
-// AGN-012 (DEC-SCOPE-055): Step 8. Master and Staff start the visa case from an offer onwards, keep its dates and document checklist,
+// AGN-012 (DEC-SCOPE-057): Step 8. Master and Staff start the visa case from an offer onwards, keep its dates and document checklist,
 // move it forward (a skip is confirmed) and record the authority's decision once (confirmed; final). The displayed stage travels as
 // `expected_stage`, so a stale screen gets a 409 and the detail reloads. Read-only for a withdrawn/archived/enrolled application.
 export default function AgentApplicationVisa({ detail, onSaved, onFailed, onOpenChange }: Props) {
@@ -1957,7 +1957,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { signIn } from "./helpers/agency";
 import { pickFromList } from "./helpers/pick";
 
-// AGN-012 (DEC-SCOPE-055) -- a Master starts a visa case from an offer, the date-order error lands on the interview field, a skip is
+// AGN-012 (DEC-SCOPE-057) -- a Master starts a visa case from an offer, the date-order error lands on the interview field, a skip is
 // confirmed, the decision is recorded once and the case turns read-only; 320 px. Unique names per run (shared E2E DB); the set-up is
 // agn-013-enrollment.spec.ts's.
 const stamp = () => `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
@@ -2035,7 +2035,7 @@ test("the visa section fits a 320 px screen (AC11)", async ({ page }) => {
 `## 2. Dependency graph`), `docs/quality/RTM.md` (AGN-012 row: AC1–AC12 → tests), `docs/delivery/AGENT_CRM_BACKLOG.md` (status table row
 and ang-012 status line), spec §11 "Implementation notes" (the three deviations above), plan checkboxes.
 
-- [ ] **Step 1:** write each entry in the style of its AGN-013 neighbour, citing `DEC-SCOPE-055`, the routes, migration `0061`, the tests;
+- [ ] **Step 1:** write each entry in the style of its AGN-013 neighbour, citing `DEC-SCOPE-057`, the routes, migration `0063`, the tests;
   status "implemented; browser validation and Codex review pending" — never "complete".
 - [ ] **Step 2:** `git diff --stat` to confirm only docs changed; commit `docs(agn-012): contract, data model, RBAC, backlog and RTM`.
 
