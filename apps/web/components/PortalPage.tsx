@@ -4,7 +4,9 @@ export default async function PortalPage({division,role,section}:{division:"it"|
 // as the page's role/approval gate (403 for a wrong role or a pending/rejected agent); only its 404 "Workspace not found" is held
 // back there, and only a Super Admin then gets the section (its note) -- anyone else still gets the access-unavailable card.
 const agentApplications=key==="overseas/agent"&&section==="applications";
-let user:User;let data:PortalPayload|null;try{[user,data]=await Promise.all([serverApi<User>("/api/v1/auth/me"),serverApi<PortalPayload>(`/api/v1/portal/${division}/${role}/${section}`).catch((e)=>{if(agentApplications&&e instanceof ApiError&&e.status===404)return null;throw e})])}catch(e){return accessUnavailable(e, `/${division}/login`)}
+// AGN-016 browser QA16-01: the agency Tasks page also reads its own API, so a Super Admin gets its note the same way.
+const agentTasks=key==="overseas/agent"&&section==="tasks";
+let user:User;let data:PortalPayload|null;try{[user,data]=await Promise.all([serverApi<User>("/api/v1/auth/me"),serverApi<PortalPayload>(`/api/v1/portal/${division}/${role}/${section}`).catch((e)=>{if((agentApplications||agentTasks)&&e instanceof ApiError&&e.status===404)return null;throw e})])}catch(e){return accessUnavailable(e, `/${division}/login`)}
 if(!data&&user.role!=="super_admin")return accessUnavailable(new ApiError("Workspace not found",404), `/${division}/login`);const teacherWorkspace=division==="it"&&role==="trainer";
 // AGN-002: an agency's staff see no Team/Commissions links; the full `nav` above still admits a typed URL, so the server's 403 card shows.
 const agent=key==="overseas/agent";
@@ -13,8 +15,8 @@ const agent=key==="overseas/agent";
 // AGN-007 (DEC-SCOPE-049): the agency's own universities -- the panel is the page (the payload is header-only).
 // AGN-008: the agency Applications page is the applications panel (list, detail, filters); the generic table is replaced there only.
 // AGN-016 (DEC-SCOPE-051): the agency Tasks page -- the payload is header-only (the Universities precedent) and still gates the page.
-const main=agentApplications?<AgentApplicationsSection user={user}/>:!data?null:agent&&section==="students"?<>
+const main=agentApplications?<AgentApplicationsSection user={user}/>:agentTasks?<AgentTasksSection user={user}/>:!data?null:agent&&section==="students"?<>
 <AgentStudentsSection user={user}/>
 <PortalSection data={{...data,title:"Application status",subtitle:"Students who have a login, with each one's current application (AGT-002)."}}/>
-</>:agent&&section==="tasks"?<AgentTasksSection user={user}/>:agent&&section==="universities"?<AgentUniversitiesPanel memberRole={user.agent_member_role}/>:<PortalSection data={data}/>;
+</>:agent&&section==="universities"?<AgentUniversitiesPanel memberRole={user.agent_member_role}/>:<PortalSection data={data}/>;
 return <PortalShell nav={agent?agentNavFor(nav,user.agent_member_role,user.agent_permissions):nav} roleLabel={agent&&user.agent_member_role==="staff"?"Agency Staff":labels[key]||role} userName={user.full_name} studentCode={role==="student"?user.student_code:null}>{/* AGN-003 browser QA-07: Back/Forward re-asks the server, so revoked permissions apply. */}{agent&&<RefreshOnHistoryNav/>}{main}{teacherWorkspace?<TeacherWorkspaceActions section={section}/>:<WorkflowPanel user={user} section={section}/>}</PortalShell>}

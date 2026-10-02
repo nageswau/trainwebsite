@@ -53,6 +53,12 @@ export default function AgentTaskForm({ mode, task, studentId, onCancel, onSaved
     const found = validateDraft(draft);
     setErrors(found);
     const first = (["studentId", "title", "dueLocal", "notes"] as const).find((f) => found[f]);
+    if (first === "studentId") {
+      // QA16-02: the picker words, marks (aria-invalid) and links its own error and takes focus (ENH-031); ask it rather than
+      // printing a second, unlinked message. The form is noValidate, so its constraint check never runs on its own.
+      (document.getElementById(fieldId("studentId")) as HTMLInputElement | null)?.checkValidity();
+      return;
+    }
     if (first) return document.getElementById(fieldId(first))?.focus();
     const payload = task ? buildUpdatePayload(draft, task) : buildCreatePayload(draft);
     if (task && Object.keys(payload).length === 0) return onCancel(); // nothing changed: nothing to send or audit
@@ -78,7 +84,6 @@ export default function AgentTaskForm({ mode, task, studentId, onCancel, onSaved
       {!fixedStudent && (
         <div className="field">
           <SearchableSelect id={fieldId("studentId")} label="Student" noun="student" required search={searchStudents} onChange={(o) => set("studentId")(o?.id ?? "")} />
-          {fieldError("studentId")}
         </div>
       )}
       <div className="field">

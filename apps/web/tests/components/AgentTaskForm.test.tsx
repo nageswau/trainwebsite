@@ -44,6 +44,20 @@ describe("AgentTaskForm (AGN-016)", () => {
     expect(fetchMock.mock.calls.some(([, init]) => init?.method)).toBe(false);
   });
 
+  it("marks an unpicked student invalid on the picker itself, with its linked message (QA16-02)", async () => {
+    stub(() => res(saved, 201));
+    render(<AgentTaskForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+    const combo = screen.getByRole("combobox", { name: "Student" });
+    await waitFor(() => expect(combo).toHaveAttribute("aria-invalid", "true"));
+    const message = document.getElementById(combo.getAttribute("aria-describedby")!.split(" ")[0])!;
+    expect(message).toHaveTextContent("Choose a student from the list.");
+    // one message, not the picker's and the form's
+    expect(screen.getAllByText("Choose a student from the list.")).toHaveLength(1);
+    expect(screen.queryByText("Choose a student.")).toBeNull();
+    expect(combo).toHaveFocus();
+  });
+
   it("warns, without blocking, when the due time has passed", async () => {
     stub(() => res(saved, 201));
     render(<AgentTaskForm mode="create" studentId="s1" onCancel={vi.fn()} onSaved={vi.fn()} />);

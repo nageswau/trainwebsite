@@ -43,8 +43,10 @@ export default function AgentTaskCard({ t, Heading, actionable, busy, confirming
         <dd>{assignedText(t.assigned_to)}</dd>
         {t.application && (<><dt>Application</dt><dd>{t.application.university ?? "—"}</dd></>)}
         {t.notes && (<><dt>Notes</dt><dd style={{ whiteSpace: "pre-wrap" }}>{t.notes}</dd></>)}
-        {t.closed_at && (<><dt>{t.status === "done" ? "Completed" : "Cancelled"}</dt><dd>{t.closed_by ?? "—"}, <LocalTime value={t.closed_at} time /></dd></>)}
+        {t.closed_at && (<><dt>{t.status === "done" ? "Completed" : "Cancelled"}</dt><dd>{t.closed_by ?? "—"}, <LocalTime value={t.closed_at} time label /></dd></>)}
       </dl>
+      {/* QA16-03: an archived student's open task has no actions -- say why, as the student card does. */}
+      {t.status === "open" && t.student.status === "archived" && <p className="muted" style={{ margin: "8px 0 0" }}>The student is archived, so this task is read-only.</p>}
       {actionable && t.status === "open" && (
         <div className="actions" style={{ marginTop: 12, gap: 8 }}>
           {confirming ? (

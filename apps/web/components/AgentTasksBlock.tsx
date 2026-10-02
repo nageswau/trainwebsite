@@ -31,7 +31,9 @@ export default function AgentTasksBlock({ view, studentId, archived = false, Hea
       <p aria-live="polite" className={notice ? "form-message" : undefined} style={notice ? undefined : { margin: 0 }}>{notice}</p>
       {!archived &&
         (adding ? (
-          <div className="card" style={{ padding: 16 }} role="group" aria-label="New task">
+          <div className="card" style={{ padding: 16 }} role="group" aria-labelledby={`${addId}-heading`}>
+            {/* QA16-05: a visible title for the open form, one level below the page's or the student card's heading. */}
+            <Heading id={`${addId}-heading`} style={{ fontSize: 17, margin: 0 }}>New task</Heading>
             <AgentTaskForm mode="create" studentId={studentId} onCancel={() => finish()} onSaved={(t) => finish(`“${t.title}” added.`)} onGone={() => finish("This student is no longer available to you.")} />
           </div>
         ) : (

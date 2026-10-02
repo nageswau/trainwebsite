@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentTasksPanel from "@/components/AgentTasksPanel";
+import { viewerTimeZone, zoneLabel } from "@/lib/formatDate";
 
 const task = (over: Record<string, unknown> = {}) => ({
   id: "t1", title: "Call Asha", notes: "Ask for the\nCAS letter", due_at: "2026-10-05T04:00:00Z", status: "open", overdue: false,
@@ -93,6 +94,26 @@ describe("AgentTasksPanel (AGN-016)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Mark “Call Asha” done" }));
     expect(await screen.findByText("This task is closed")).toBeInTheDocument();
     await waitFor(() => expect(fetchMock.mock.calls.filter(([, init]) => !init?.method).length).toBe(2));
+  });
+
+  it("says why an archived student's open task has no actions (QA16-03)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([task({ student: { id: "s1", full_name: "Asha Rao", status: "archived" } })])))));
+    render(<AgentTasksPanel view="all" />);
+    const card = await screen.findByRole("listitem");
+    expect(within(card).getByText("The student is archived, so this task is read-only.")).toBeInTheDocument();
+    expect(within(card).queryByRole("button")).toBeNull();
+  });
+
+  it("labels the closing time with its zone, like the due time (QA16-04)", async () => {
+    const closedAt = "2026-10-04T10:00:00Z";
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([task({ status: "done", closed_by: "Priya", closed_at: closedAt })])))));
+    render(<AgentTasksPanel view="done" />);
+    const card = await screen.findByRole("listitem");
+    await waitFor(() => {
+      const [due, closed] = [...card.querySelectorAll("time")].map((t) => t.textContent ?? "");
+      expect(closed.endsWith(zoneLabel(closedAt, viewerTimeZone()))).toBe(true);
+      expect(due.endsWith(zoneLabel("2026-10-05T04:00:00Z", viewerTimeZone()))).toBe(true);
+    });
   });
 
   it("offers no actions on a closed task or when read-only", async () => {
