@@ -4,6 +4,7 @@ import { useState } from "react";
 import AgentApplicationOfferForm from "./AgentApplicationOfferForm";
 import { AgentApplicationDetail, OFFER_TYPE_LABELS } from "@/lib/agentApplications";
 import { openDocument, statusLabel } from "@/lib/agentDocuments";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type Props = {
   detail: AgentApplicationDetail;
@@ -16,9 +17,13 @@ type Props = {
 };
 
 // AGN-010 (DEC-SCOPE-054): the application's offer -- the recorded offer (type in words, dates, conditions as written, the offer letter
-// with its review status and a scoped download), or an empty state, plus the button that opens the form.
+// with its review status and a scoped download), or an empty state, plus the button that opens the form. Saving returns focus to the
+// heading, cancelling to the button.
 export default function AgentApplicationOffer({ detail, open, canOpen, onOpen, onCancel, onSaved, onFailed }: Props) {
-  const offer = detail.offer ?? null;
+  const offer = detail.offer;
+  const focusAfter = useFocusAfterRender();
+  const headingId = `offer-heading-${detail.id}`;
+  const openId = `offer-open-${detail.id}`;
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
 
@@ -30,12 +35,23 @@ export default function AgentApplicationOffer({ detail, open, canOpen, onOpen, o
   }
 
   return (
-    <section aria-labelledby={`offer-heading-${detail.id}`}>
-      <h5 id={`offer-heading-${detail.id}`} tabIndex={-1}>
+    <section aria-labelledby={headingId}>
+      <h5 id={headingId} tabIndex={-1}>
         Offer
       </h5>
       {open ? (
-        <AgentApplicationOfferForm detail={detail} onSaved={onSaved} onFailed={onFailed} onCancel={onCancel} />
+        <AgentApplicationOfferForm
+          detail={detail}
+          onSaved={(next, message) => {
+            focusAfter(headingId);
+            onSaved(next, message);
+          }}
+          onFailed={onFailed}
+          onCancel={() => {
+            focusAfter(openId);
+            onCancel();
+          }}
+        />
       ) : (
         <>
           {offer ? (
@@ -75,7 +91,7 @@ export default function AgentApplicationOffer({ detail, open, canOpen, onOpen, o
             </p>
           )}
           {canOpen && (
-            <button id={`offer-open-${detail.id}`} type="button" className="btn secondary small" onClick={onOpen}>
+            <button id={openId} type="button" className="btn secondary small" onClick={onOpen}>
               {offer ? "Edit offer" : "Record offer"}
             </button>
           )}

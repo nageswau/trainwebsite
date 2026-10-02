@@ -26,8 +26,6 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
   const editId = `detail-edit-${id}`;
   const noticeId = `detail-notice-${id}`;
   const readOnlyId = `detail-read-only-${id}`;
-  const offerHeadingId = `offer-heading-${id}`; // AgentApplicationOffer's ids
-  const offerOpenId = `offer-open-${id}`;
 
   const load = useCallback(async (): Promise<Detail | null> => {
     try {
@@ -54,7 +52,6 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
 
   function saved(next: Detail, message: string) {
     if (next.read_only_reason === "withdrawn" && detail?.read_only_reason !== "withdrawn") focusAfter(readOnlyId);
-    else if (offering) focusAfter(offerHeadingId);
     setDetail(next);
     setEditing(false);
     setOffering(false);
@@ -144,10 +141,7 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
         open={offering}
         canOpen={!detail.read_only_reason && !editing}
         onOpen={() => setOffering(true)}
-        onCancel={() => {
-          focusAfter(offerOpenId);
-          setOffering(false);
-        }}
+        onCancel={() => setOffering(false)}
         onSaved={saved}
         onFailed={editFailed}
       />

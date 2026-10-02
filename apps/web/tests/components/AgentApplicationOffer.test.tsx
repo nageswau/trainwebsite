@@ -54,17 +54,17 @@ describe("AgentApplicationOffer (AGN-010)", () => {
     expect(within(form).getByLabelText(/Conditions/)).toBeRequired();
   });
 
-  it("refuses a deadline before the offer date without calling the server", async () => {
-    const fetchMock = serve({});
+  it("limits the deadline to the offer date and shows the server's refusal of an earlier one", async () => {
+    serve({}, () => json({ detail: [{ msg: "Value error, Offer deadline cannot be before the offer date" }] }, 422));
     const form = await openForm();
     fireEvent.click(within(form).getByLabelText("Unconditional"));
     fireEvent.change(within(form).getByLabelText("Offer date"), { target: { value: "2026-09-20" } });
     const deadline = within(form).getByLabelText("Offer deadline (optional)");
     fireEvent.change(deadline, { target: { value: "2026-09-19" } });
-    expect(deadline).toHaveAttribute("min", "2026-09-20"); // the browser's own check blocks the click; the code checks again on submit
+    expect(deadline).toHaveAttribute("min", "2026-09-20"); // the browser refuses the click; a submit that gets past it meets the server
     fireEvent.submit(form);
     expect(await screen.findByRole("alert")).toHaveTextContent("Offer deadline cannot be before the offer date");
-    expect(fetchMock.mock.calls.some(([, i]) => i?.method === "PUT")).toBe(false);
+    expect(deadline).toHaveValue("2026-09-19");
   });
 
   it("sends the whole offer with expected_status and shows the saved offer", async () => {

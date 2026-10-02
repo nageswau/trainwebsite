@@ -91,7 +91,6 @@ export type OfferType = "conditional" | "unconditional";
 export const OFFER_TYPE_LABELS: Record<OfferType, string> = { conditional: "Conditional", unconditional: "Unconditional" };
 export type OfferLetterOption = { id: string; name: string; verification_status: string };
 export type AgentOffer = { type: OfferType; date: string; deadline: string | null; conditions: string | null; document: OfferLetterOption | null };
-export const OFFER_DEADLINE_BEFORE = "Offer deadline cannot be before the offer date";
 export const offerUrl = (id: string) => `${APPLICATIONS_URL}/${id}/offer`;
 
 export const READ_ONLY_TEXT: Record<"withdrawn" | "archived", string> = {

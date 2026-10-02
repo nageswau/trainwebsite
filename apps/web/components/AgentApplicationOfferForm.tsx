@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useRef, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
-import { AgentApplicationDetail, OFFER_DEADLINE_BEFORE, OFFER_TYPE_LABELS, offerUrl, OfferType, todayIso } from "@/lib/agentApplications";
+import { AgentApplicationDetail, OFFER_TYPE_LABELS, offerUrl, OfferType, todayIso } from "@/lib/agentApplications";
 import { statusLabel } from "@/lib/agentDocuments";
 
 type Props = {
@@ -15,9 +15,9 @@ type Props = {
 
 // AGN-010 (DEC-SCOPE-054): record or replace the offer -- the whole offer is sent (PUT). Conditions are asked for only for a
 // conditional offer; the deadline is the application's offer deadline (O2), so it starts from that value. The offer letter is picked
-// from this application's uploaded offer letters (O3). The server checks every rule again; this only saves a round trip.
+// from this application's uploaded offer letters (O3). The date limits are the inputs' own min/max; the server checks every rule.
 export default function AgentApplicationOfferForm({ detail, onSaved, onFailed, onCancel }: Props) {
-  const current = detail.offer ?? null;
+  const current = detail.offer;
   const id = detail.id;
   const [type, setType] = useState<OfferType | "">(current?.type ?? "");
   const [date, setDate] = useState(current?.date ?? "");
@@ -32,7 +32,6 @@ export default function AgentApplicationOfferForm({ detail, onSaved, onFailed, o
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (deadline && date && deadline < date) return onFailed(OFFER_DEADLINE_BEFORE, 422);
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
