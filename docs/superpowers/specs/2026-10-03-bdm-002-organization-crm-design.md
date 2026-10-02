@@ -2,6 +2,8 @@
 
 **Status:** design approved in-session on 2026-10-03, in four rounds: (1) approach, (2) data model + authorization, (3) API, transactions, races and errors, (4) frontend + tests. No code has been written.
 
+**Revision 2 (2026-10-03):** reviewed against the `api-and-interface-design`, `frontend-ui-engineering` and `security-and-hardening` skills; findings applied inline and listed in §12. No approved decision changed.
+
 **Branch:** `feature/bdm-002-organization-crm`, cut from `main` (`aad6b7c`, after bdm-001 #45).
 
 **Backlog:** `docs/delivery/BDM_CRM_BACKLOG.md` §4 bdm-002.
@@ -89,7 +91,7 @@ Also approved with the design: `POST /{id}/restore` (follows from C5), `org_type
 | `org_type` | String(30) NOT NULL | `ck_bdm_organizations_org_type`: `college, university, agent, school, corporate, training_institute, other` |
 | `bdm_type` | String(20) NOT NULL | `ck_bdm_organizations_bdm_type`: `agent, school, college`. Copied from the creator's profile; never changed. |
 | `name` | String(200) NOT NULL | |
-| `name_key` | String(200) NOT NULL | Server-set: `" ".join(name.split()).casefold()` |
+| `name_key` | String(200) NOT NULL | Server-set: `" ".join(unicodedata.normalize("NFKC", name).split()).casefold()` (stdlib; NFKC folds full-width and compatibility characters, §12.3) |
 | `city` | String(120) NOT NULL | |
 | `city_key` | String(120) NOT NULL | Server-set, same normalization |
 | `state` | String(120) NULL | |
@@ -156,7 +158,7 @@ At most 20 contacts per organization (service rule).
   - `bdm_manager`: join `BdmProfile` on `BdmProfile.user_id == assigned_bdm_user_id`, require `reporting_manager_user_id == user.id`.
   - `super_admin`: no filter.
   - any other role: 403 "BDM role required".
-  - not found or out of scope → 404 "Organization not found". With `lock=True`: `SELECT … FOR UPDATE` on the organization row.
+  - not found or out of scope → 404 "Organization not found". With `lock=True`: `SELECT … FOR UPDATE OF bdm_organizations` (`with_for_update(of=BdmOrganization)`), so the manager-scope join never locks the BDM's `bdm_profiles` row (which bdm-001's profile PATCH also locks) — §12.1.
 - `scope_filters(db, user) -> list` — the same rules as SQL filters for the list.
 - `permissions(user, org) -> dict`:
   - `can_edit` = not archived and (`user.id == assigned_bdm_user_id` or super_admin)
@@ -178,14 +180,14 @@ At most 20 contacts per organization (service rule).
 | `POST ""` | bdm | Validate → duplicate check → `next_code` → insert organization + contacts → audit → commit. | 201 `{organization}` |
 | `GET /{id}` | in scope | Detail with all contacts (primary first, then `created_at`), creator name, timestamps, permissions. | 200 `{organization}` |
 | `PATCH /{id}` | `can_edit` | Lock → re-check duplicates only if `name` or `city` changed → apply → audit → commit. | 200 `{organization}` |
-| `POST /{id}/archive` | `can_archive` | Lock → set `archived_at` → audit → commit. Already archived → 409 "Already archived". | 200 |
-| `POST /{id}/restore` | `can_restore` | Lock → clear `archived_at` → audit → commit. Not archived → 409 "Already active". | 200 |
-| `POST /{id}/assign` | `can_reassign` | Body `{bdm_user_id}`. Lock org → `locked_reassign_target` → set → audit `{from, to}` → commit. | 200 |
+| `POST /{id}/archive` | `can_archive` | Lock → set `archived_at` → audit → commit. Already archived → 409 "Already archived". | 200 `{organization}` |
+| `POST /{id}/restore` | `can_restore` | Lock → clear `archived_at` → audit → commit. Not archived → 409 "Already active". | 200 `{organization}` |
+| `POST /{id}/assign` | `can_reassign` | Body `BdmOrganizationAssign {bdm_user_id: UUID}` (`extra="forbid"`). Lock org → `locked_reassign_target` → set → audit `{from, to}` → commit. | 200 `{organization}` |
 | `POST /{id}/contacts` | `can_edit` | Lock → count < 20 else 409 "An organization can have at most 20 contacts" → insert (primary handling) → audit → commit. | 201 `{organization}` |
 | `PATCH /{id}/contacts/{cid}` | `can_edit` | Lock org → contact must belong to it (else 404 "Contact not found") → apply (`is_primary: true` moves the flag; `false` on the primary → 422 "Choose another primary contact instead") → audit → commit. | 200 `{organization}` |
 | `DELETE /{id}/contacts/{cid}` | `can_edit` | Lock org → belongs check → last contact → 409 "An organization needs at least one contact" → delete (promote if primary) → audit → commit. | 200 `{organization}` |
 
-Contact writes return the whole organization so the UI re-renders from one source of truth.
+Every write returns the whole organization (`{organization: BdmOrganizationOut}`, permissions included), so the UI re-renders from one source of truth with no refetch. Every route declares a `response_model`, so `name_key`, `city_key` and `created_by_user_id` are never serialized. A `PATCH` whose values equal the stored ones (or an empty body) is 200 with no audit row and no `updated_at` change.
 
 Rows and detail always include `last_meeting_at: null` and `next_meeting_at: null` (bdm-006 fills them; the field names are the contract bdm-006 implements).
 
@@ -252,7 +254,7 @@ A detail 404 renders "Organization not found" with a link back to the list (no e
 ### 6.2 Components (client; shared by both portals)
 
 - `BdmOrganizationsPanel` — the `AdminBdmPanel` pattern: URL state (`offset`, `q`, `org_type`, `city`, `assigned=me` for a BDM, `archived=1`), Back/Forward sync, `fetchPage` with the `isPage` guard. States: loading; error with Retry; empty ("No organizations yet" + "Add organization" for a BDM); no matches for the filters (+ "Clear filters"); past the end (+ "Go to the first page"); table. Columns: Code, Name (link), Type, City, Primary contact, Assigned BDM, Last meeting ("—"), Next meeting ("—"), plus an "Archived" badge. `BdmTeamTable`-style pager ("Showing a–b of n", Previous/Next).
-- `BdmOrganizationForm` — create and edit. §9 fields with labels, hints (website must start with http:// or https://), the type select; on create a contacts repeater (add / remove, minimum 1, maximum 20, one "Primary" radio). Submit uses `sendJson`; button disabled with "Saving…" while busy; errors via `FormMessage` with focus moved to the message. On a `possible_duplicate` 409: an alert listing the matches (code, name, city, assigned BDM, "Archived" label; each links to its detail), "Save anyway" (resends with `confirm_duplicate: true`) and "Cancel"; Save stays disabled while the warning is open (the `AgentStudentForm` pattern).
+- `BdmOrganizationForm` — create and edit. §9 fields with labels, hints (website must start with http:// or https://), the type select; on create a contacts repeater (add / remove, minimum 1, maximum 20, one "Primary" radio). Submit uses `sendJson`; button disabled with "Saving…" while busy; errors via `FormMessage` with focus moved to the message. On a `possible_duplicate` 409: an alert (focus moves to its heading) listing the matches as plain text (code, name, city, assigned BDM, "Archived" label — no links, so following one can't lose the unsaved entry; §12.2), "Save anyway" (resends with `confirm_duplicate: true`) and "Cancel"; Save stays disabled while the warning is open (the `AgentStudentForm` pattern).
 - `BdmOrganizationDetail` — profile `<dl>` with "—" for blanks (Contact Person / Designation from the primary contact; Last / Next Meeting "—"); actions rendered from `permissions` only: Edit (toggles the form), Archive (inline confirm group, `AdminBdmRow` pattern), Restore, Reassign.
 - `BdmOrganizationContacts` — list with "Primary" marker; add / edit inline; delete with inline confirm, disabled for the last contact with the reason shown; "Make primary".
 - `BdmOrganizationReassign` — `SearchableSelect` in server mode over `/api/v1/bdm/manager/team?bdm_type=…&q=…` (inactive BDMs excluded); `Noun` union gains `"BDM"`; a confirm step ("Reassign ORG-000123 to …?"); focus via `useFocusAfterRender`.
@@ -299,6 +301,7 @@ No horizontal page scroll at phone width (the table scrolls in its own labelled 
 - `test_bdm_002_scope.py` — every route × {assigned BDM, same-type other BDM, other-type BDM, team manager, other manager, super_admin, it_admin, student, BDM without profile} with the exact status code (AC3, IDOR).
 - `test_bdm_002_assign.py` — AC4; same assignee 409; archived 409; concurrent reassigns of one organization serialize (both complete, final state = the later commit, two audit rows); reassign vs deactivation of the target.
 - `test_bdm_002_contacts.py` — add/edit/delete; another organization's contact id → 404; last contact 409; two concurrent deletes of the last two contacts → exactly one succeeds; primary move; delete-primary promotion; 20-contact cap.
+- Revision-2 cases (§12): a `javascript:` / `data:` website → 422; NFKC duplicate (full-width name matches); no-op PATCH writes no audit row; `assigned` garbage or `me` for a non-BDM → 422; every write response has the full `{organization}` shape; the reassign 422 text is identical for unknown id / wrong role / other type / other team / inactive; a manager-scope write does not block a concurrent bdm-001 profile PATCH of the assignee (lock `of`); refused writes log a WARNING with ids only (caplog asserts no email/phone).
 - `test_bdm_001_reads.py` — new tests for `bdm_type` / `q` on the team route; existing tests unchanged.
 
 ### 8.2 Web unit (vitest)
@@ -340,3 +343,67 @@ No existing table, column, route contract, page or component behaviour changes.
 ## 11. Completion gates
 
 COMPLETE only when: AC1–AC9 verified with fresh evidence; backend new + bdm-001 + lite set pass; web unit suite, `tsc`, `eslint`, `next build` pass; Playwright bdm-002 + regression specs pass; migration round trip verified; phone-width and accessibility checks pass; documentation updated.
+
+---
+
+## 12. Revision 2 — skill reviews (2026-10-03)
+
+Reviewed against `api-and-interface-design`, `frontend-ui-engineering` and `security-and-hardening`. Findings are applied inline above and listed here. No approved decision (C1–C16) changed; nothing outside bdm-002 is touched.
+
+### 12.1 API and interface design
+
+| # | Finding | Resolution |
+|---|---|---|
+| A1 | Archive / restore / assign returned a bare 200 — the write responses had three shapes | Every write returns `{organization}` (§5.3). One shape for every organization response. |
+| A2 | `FOR UPDATE` on a joined manager-scope query would also lock the `bdm_profiles` row; bdm-001's profile PATCH locks the same row → needless contention and a lock-order risk | `with_for_update(of=BdmOrganization)` (§5.2). Global lock order for every bdm-002 write: organization row → its contacts → target user (`FOR SHARE`). bdm-001's paths lock user/profile only, never an organization, so no cycle exists. |
+| A3 | Error format | Kept the existing contract: string `detail` for 403/404/409, FastAPI's list for 422, and the structured `{message, code, matches, total}` only for `possible_duplicate` (the AGN-004 precedent). A new error envelope would fork the convention the web's `detailMessage` already reads. |
+| A4 | Naming | snake_case fields and query params, as every existing route. Booleans `existing_partner`, `include_archived`, `confirm_duplicate`, `can_*`. |
+| A5 | Retry safety of `POST` (create) | Not idempotent and documented so; **no idempotency key** (none is contracted anywhere — CLAUDE.md warns against uncontracted idempotency assumptions). A retry after a lost response returns the `possible_duplicate` 409 naming the organization just created, so the BDM sees it rather than silently getting two. Archive / restore repeated → 409 "Already archived / active" (AGN-004 convention). Contact `POST` is not retry-safe; the 20-contact cap bounds it. |
+| A6 | No-op PATCH | 200, no audit row, no `updated_at` bump (§5.3), matching AGN-004's "audit only if changed". |
+| A7 | Response field allowlist | `response_model` on every route; `name_key` / `city_key` / `created_by_user_id` are never returned (the creator is returned as a name only). |
+| A8 | `assigned` mixes `me` and a UUID | Same convention as `agent_students._assigned_filter`; anything else → 422 "assigned must be me or a BDM id". `me` for a non-BDM → 422. Always ANDed with scope, so it can only narrow. |
+| A9 | Team route change is additive | New params optional; default response identical; tested by the unchanged bdm-001 tests plus new ones (AC8). |
+| A10 | Typed contracts on the web | `lib/bdmOrganizations.ts` types mirror the response models; `isPage` / an `isOrganization` id guard reject non-JSON success bodies (the browser QA N2 rule). |
+
+### 12.2 Frontend UI engineering
+
+Design language preserved: the existing global classes (`action-card`, `btn secondary small`, `table-wrap`, `form-error`, `form-message`, `empty`, `muted`, `visually-hidden`), `PortalShell`, `FormMessage`, `SearchableSelect`, the inline confirm-group pattern. No new CSS framework, tokens or dependency; any new rule goes in `globals.css` only if an existing class can't express it.
+
+| # | Area | Resolution |
+|---|---|---|
+| F1 | Visual hierarchy | One `h1` per page ("Organizations", "Add organization", the organization's name). Detail: a header with name, code, type and an "Archived" text badge (not colour alone); `h2` sections "Details", "Contacts", "Assignment". |
+| F2 | Loading | List: `aria-busy` + "Loading organizations…" status (the AdminBdmPanel pattern, not a new skeleton). Detail and form pages are server-rendered, so no client loading waterfall. Buttons show "Saving…" / "Archiving…" and are disabled while busy (no double submit). |
+| F3 | Empty / no-match / past-end | Distinct messages: "No organizations yet" (+ "Add organization" for a BDM; managers: "Your team has no organizations yet"); "No organizations match these filters" (+ "Clear filters"); past the end (+ "Go to the first page"). |
+| F4 | Errors | List load failure: alert + Retry. Form: `FormMessage` alert, focus moved to it; network drop uses the existing `NOT_COMPLETED` text and keeps the entry. Detail 404: "Organization not found" + back link. A 409 "Restore this organization first" (state changed under the user) re-renders from the returned/refetched organization. |
+| F5 | Forms | `<fieldset>`/`<legend>` for "Organization" and each contact; visible labels; "(required)" in the label text and `aria-required`; `type="email"`, `type="tel"`, `type="url"`, `type="number" inputMode="numeric" min=0`; `autoComplete="organization"`, `address-level2` (city), `address-level1` (state), contact `name` / `tel` / `email`; client checks set `aria-invalid` + `aria-describedby` on the field; the entry is never cleared on error. |
+| F6 | Keyboard | All actions are `<button>`/`<a>`; inline confirm groups take focus on open, Escape cancels, focus returns to the trigger (`useFocusAfterRender`); "Add contact" moves focus to the new contact's name; removing a contact moves focus to the previous contact's legend or the Add button. |
+| F7 | Mobile | Filters wrap (`flex-wrap`, the existing pattern); the list table scrolls inside its labelled `table-wrap` region (bdm-001 behaviour, no page scroll at 320 px); contacts render as a list of blocks, not a table; action buttons wrap below the header on narrow widths. |
+| F8 | Perceived performance | Writes re-render from the returned organization (no refetch); filters push URL state with `scroll:false`; search submits on Enter/button (no per-keystroke requests), the reassign picker uses `SearchableSelect`'s existing debounce/`minChars`. |
+| F9 | After create | Navigate to the new detail page with a `role="status"` notice "Organization ORG-000123 created". |
+| F10 | Component size | `BdmOrganizationForm` is split into `BdmOrganizationFields` + `BdmContactFields` to stay under ~200 lines each. |
+| F11 | Website display | Rendered as a link only when it starts with `http://`/`https://` (`target="_blank" rel="noopener noreferrer"`, "(opens in a new tab)" visually hidden); otherwise plain text. Phones and emails are plain text (D29: no communication from the system). |
+
+### 12.3 Security and hardening — threat model
+
+**Trust boundaries:** JSON bodies of the 9 write routes; path ids (`{id}`, `{cid}`); query params (`q`, `org_type`, `city`, `assigned`, `include_archived`, `limit`, `offset`, team `bdm_type`/`q`); the session cookie; organization text rendered back to other BDMs of the type (stored-XSS vector).
+
+**Assets:** contact PII (names, phones, emails), the assignment (who may edit), the team relationship (what a manager sees), the audit trail.
+
+| Threat | Check | Result |
+|---|---|---|
+| Authentication / spoofing | Session handling | Unchanged: `get_current_user` (cookie `httponly`, `secure` from settings, `samesite=lax`), re-checks `active` per request, so a deactivated BDM/manager loses access on the next call. No new auth flow. |
+| Token / session | New tokens? | None. No session or token change. |
+| Authorization | Every route | Role gate first (`bdm` → `bdm_context`; `bdm_manager`/`super_admin`), then `load_scoped`, then the action permission. Server-side only; the UI's `permissions` flags are hints. |
+| IDOR | Path ids | `{id}` only via `load_scoped` (out of scope → the same 404 as nonexistent: no existence oracle); `{cid}` must belong to that `{id}` (else 404). Covered by the 9-actor matrix on every route. |
+| Role escalation / mass assignment | Can a caller widen their rights? | `extra="forbid"` rejects `bdm_type`, `assigned_bdm_user_id`, `code`, `archived_at`, `created_by_user_id`; assignment changes only via `/assign`, which requires manager-in-scope or super_admin and a target that reports to that manager; a manager cannot target another team's BDM; the reassign 422 is one message for every invalid target (no user/role enumeration). |
+| Cross-type leakage via duplicates | Does the warning reveal another module's data? | Matches are limited to the organization's own `bdm_type`, which the caller can already read. |
+| Input validation | Every field | Typed models; lengths; enums (`org_type`, `role`); email shape; website `http(s)` only (blocks `javascript:`/`data:`); phone character set; `student_count` bounds; control characters rejected; `contacts` 1–20; `q` ≤ 200, `city` ≤ 120; bounded `limit`/`offset`. Client checks are convenience only. |
+| SQL injection | Query construction | SQLAlchemy ORM, bound parameters only; `ILIKE` through `lookups._pattern` (escapes `%`, `_`, `\`); the sequence name is a constant. No raw SQL with input. |
+| XSS | Rendering stored text | React text nodes only; no `dangerouslySetInnerHTML`; website rendered as `href` only after the scheme check, on top of the server's `http(s)` rule. |
+| CSRF | State-changing calls | JSON `POST`/`PATCH`/`DELETE` under the SameSite=Lax cookie and CORS limited to `frontend_url` — the existing posture (bdm-001 §12.3, `account.py`). No GET changes state. |
+| SSRF | Is the website fetched? | Never fetched server-side (no preview, no validation request). |
+| Secrets | Code/config | No new secret or setting. `git diff --cached` checked before each commit. |
+| Sensitive logs | Logs and audit | Logs (`app.bdm`): ids, route, counts, refusal reason codes; never names, phones, emails or free text. Audit metadata: ids, field names, `from`/`to` user ids. Write refusals (403) are logged at WARNING with actor id, organization id and route (bdm-001 precedent). |
+| Rate limiting / DoS | Abuse by an authenticated BDM | **No new limiter** (changing throttling needs approval; nothing in bdm-002 asks for one). Bounded by authentication, payload caps (20 contacts, field lengths), `limit ≤ 100`, indexed filters. |
+| Audit / repudiation | Who did what | One action row per write, same transaction (fail closed); `duplicate_override` records an acknowledged warning; reassign records `from`/`to`. |
+| Personal data | Purpose, retention, deletion | Fields are exactly §9's; contacts are business contacts. Contact delete is a hard delete (real erasure). Organizations are archived, not deleted (C5), so their PII is retained with the organization — a retention/erasure policy for BDM data is **NEEDS_CONFIRMATION** and out of bdm-002 scope (same as bdm-001's "retention follows the account"). |
