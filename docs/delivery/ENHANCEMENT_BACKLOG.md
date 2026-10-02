@@ -3496,9 +3496,12 @@ Escape/focus behaviour (component tests green); migration numbering against para
 
 **Complexity:** Medium. **Risk:** Medium.
 
-**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-006-counseling-record` — lite backend set and the full web unit suite
-green (evidence in `docs/quality/RTM.md`, AGN-006 row). Remaining before COMPLETE: the Playwright run (AC11), browser QA, the
-independent Codex review, the owner's full backend suite run and the merge.
+**Status (2026-10-02): COMPLETE** on `feature/agn-006-counseling-record` (verified at `d05fc15`; evidence in `docs/quality/RTM.md`,
+AGN-006 row): AC01–AC12 met; lite backend set 286 passed; web 142 files / 1479 passed; `tsc`, lint, production build pass;
+Playwright 7/7; browser QA done with QA6-01/02/03 fixed and re-verified. The independent Codex review was waived by the owner; the
+owner's full backend suite is deferred to their batch run after the next few enhancements (2026-10-02, the AGN-021 precedent).
+Remaining: the merge (recheck `main` for migration `0055` / `DEC-SCOPE-048` first). Deferred minors and open questions:
+`PRD_OPEN_ITEMS.md` rows 81–83 and the review minors listed in `docs/quality/RTM.md`.
 
 ## 2. Dependency graph
 
