@@ -3096,3 +3096,26 @@ allowlist; the agent dashboard gains one metric after "Applications". No change 
 - **E7** The university student ID is optional and returned only on the agency's application detail. **E8** Approach A: a dedicated `PUT …/{id}/enrollment` in the AGN-008 router.
 
 **Consequences:** migration `0060_agent_app_enrollment` (drafted as `0058`; re-chained after `0059_agent_tasks`) (three nullable columns on `overseas_applications`); one Master-only route; four additive detail fields; a new `AgentApplicationEnrollment` component. Unchanged: the status route, counselor/admin/university-rep routes, commission amount/claim/payout (`AGT-004`), `AGN-014` reports. Design: `docs/superpowers/specs/2026-10-02-agn-013-enrollment-confirmation-design.md`. **New Feature ID authorized:** `AGN-013`.
+
+### DEC-SCOPE-055 — Visa for agent-managed applications (`AGN-012`)
+
+**ID note:** next free on `main` @ `e0395d6`. The open `feature/agn-010-offer-details` branch may also claim `055`; whichever merges second renumbers.
+
+**Question:** the owner's `AGN-012` statement (in-session, 2026-10-02): "visa documents, application date, appointment, interview, status and decision", with acceptance criteria: a decision can be set only at stage `decision`; the interview date may not precede the application date; the existing checklist rule blocks advancing past `checklist` with unverified documents.
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 8; `AGENT_CRM_BACKLOG.md` ang-012 and Q-08/D14 (`DERIVED_BLUEPRINT`; D14 was never recorded in this register). Impact analysis, 2026-10-02 (graphify-led):
+- Agents have no visa access: `POST`/`PATCH /workflows/overseas/visa` are counselor/admin only.
+- `visa_cases` has no application date, interview date or decision; `workflows.py` notes approved/refused were "not modeled — no source confirms them". This decision is that confirmation, for agency cases only.
+- The counselor create accepts any initial stage, so the checklist gate can be bypassed at creation; checklist items match documents by exact type text.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — answers to structured questions and the two-section design review, not the source document's wording):
+- **V1** Master and Staff both start, edit, advance and decide a visa case (D8); Staff only for assigned students (G4).
+- **V2** Outcomes approved / refused / withdrawn, set only at stage `decision`, final once recorded (the case becomes read-only).
+- **V3** A case always starts at `checklist`; moves are forward-only, skips allowed; leaving `checklist` always runs the verification gate.
+- **V4** Appointment = existing `appointment_date`; new `visa_application_date` and `interview_date` are dates; interview on or after the application date.
+- **V5** Independent of the application stage; a case starts from `offer`, `visa_documentation` or `status_tracking`; writes refused on withdrawn/enrolled applications and archived students.
+- **V6** Checklist items are AGN-009 agency document types (not "Other"); satisfied by the latest document of that type attached to the application being verified.
+- **V7** One case per application; re-application after a final decision is out of scope. **V8** New fields agency-only; no notifications.
+- **V9** Approach A: `POST`/`PATCH …/crm/applications/{id}/visa` in the AGN-008 router; `workflows.py` visa routes untouched.
+
+**Consequences:** migration `0061_agent_visa_details` (four nullable `visa_cases` columns + a decision CHECK); two agency routes; a `visa` block on the agency application detail; four audit actions `overseas.application.visa_start|visa_update|visa_advance|visa_decision` join AGN-021's allowlist; a new `AgentApplicationVisa` component. Unchanged: every existing visa route and response, school/portal/report readers, the application status and enrollment routes, commission. Design: `docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md`. **New Feature ID authorized:** `AGN-012`.
