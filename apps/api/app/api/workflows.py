@@ -1913,7 +1913,9 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     if item.status != old_status or item.next_action != old_next_action:
         db.add(ApplicationStatusHistory(application_id=item.id, from_status=old_status, to_status=item.status, next_action=item.next_action, notes=notes, changed_by_id=user.id))
     if item.status != old_status:
+        had_commission = await agency_notices.has_commission(db, item.id)
         await _maybe_trigger_agent_commission(db, item, old_status, user)
+        await agency_notices.status_changed(db, item, old_status, user, had_commission=had_commission)  # AGN-017 (N3, AC3)
     # DEC-SCOPE-018: a bridged (School-origin) application has `student_id IS NULL` --
     # guarded the same way as `advance_overseas_application` below.
     student = await db.get(User, item.student_id) if item.student_id else None
@@ -1973,7 +1975,9 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
     if payload.next_action is not None:
         item.next_action = payload.next_action
     db.add(ApplicationStatusHistory(application_id=item.id, from_status=old_status, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id))
+    had_commission = await agency_notices.has_commission(db, item.id)
     await _maybe_trigger_agent_commission(db, item, old_status, user)
+    await agency_notices.status_changed(db, item, old_status, user, had_commission=had_commission)  # AGN-017 (N3, AC3)
     # DEC-SCOPE-018: a bridged (School-origin) application has `student_id IS NULL` --
     # `db.get(User, None)` triggers a SAWarning ("fully NULL primary key identity") and
     # is documented as a future error, so it's guarded here rather than relied on to

@@ -4,14 +4,14 @@ writes create none; bodies carry no names or user-typed text."""
 import pytest
 import pytest_asyncio
 
-from app.models import OverseasApplication
+from app.models import OverseasApplication, University
 from tests.agn001_helpers import client_for, mk_user
-from tests.agn004_helpers import RECORDS
-from tests.agn008_helpers import agency_world
+from tests.agn004_helpers import RECORDS, mk_record
+from tests.agn008_helpers import APPS, agency_world, mk_application
 from tests.agn009_helpers import REQUESTS, VERIFY, mk_doc
 from tests.agn009_helpers import world as docs_world
 from tests.agn016_helpers import mk_task
-from tests.agn017_helpers import all_text, channels_of, notices, titled
+from tests.agn017_helpers import all_text, channels_of, deactivate, notices, titled
 
 ASSIGNED = "Student assigned to you"
 
@@ -148,3 +148,107 @@ async def test_a_document_without_an_agency_record_notifies_no_agency_member(db_
     async with client_for(counselor.email) as c:
         assert (await c.patch(VERIFY.format(doc.id), json={"verification_status": "rejected"})).status_code == 200
     assert await notices(db_session, dw["staff"]["user"]) == []
+
+
+# --- status changes (N3, AC3) -----------------------------------------------------------------------------------------------------
+
+STATUS, COMMISSION = "Application status changed", "Commission estimated"
+LEGACY = "/api/v1/workflows/overseas/applications"
+
+
+async def _agency_app(db, world, *, record=None, status="enquiry", counselor=None):
+    return await mk_application(db, agent=world["master"], university=world["university"], record=record or world["record"], status=status, counselor_id=counselor.id if counselor else None)
+
+
+@pytest.mark.asyncio
+async def test_a_master_status_change_tells_the_assignee(db_session, world):
+    university = await db_session.get(University, world["university"].id)
+    university.name = "Uni of\r\nTest"
+    await db_session.commit()
+    app = await _agency_app(db_session, world)
+    async with client_for(world["master"].email) as c:
+        response = await c.post(f"{APPS}/{app.id}/status", json={"to_status": "eligibility_evaluation", "expected_status": "enquiry"})
+    assert response.status_code == 200, response.text
+    [item] = await notices(db_session, world["staff"]["user"])
+    assert (item.title, item.body, item.action_url) == (STATUS, "Uni of Test: Enquiry → Eligibility evaluation.", "/overseas/agent/applications")
+    assert await channels_of(db_session, item) == ["email"]
+
+
+@pytest.mark.asyncio
+async def test_the_assignee_changing_their_own_students_status_notifies_nobody(db_session, world):
+    app = await _agency_app(db_session, world)
+    async with client_for(world["staff"]["user"].email) as c:
+        assert (await c.post(f"{APPS}/{app.id}/status", json={"to_status": "eligibility_evaluation"})).status_code == 200
+    for user in (world["staff"]["user"], world["master"], world["other_staff"]["user"]):
+        assert await titled(db_session, user, STATUS) == []
+
+
+@pytest.mark.asyncio
+async def test_a_stale_status_change_is_refused_and_notifies_nobody(db_session, world):
+    app = await _agency_app(db_session, world)
+    async with client_for(world["master"].email) as c:
+        response = await c.post(f"{APPS}/{app.id}/status", json={"to_status": "offer", "expected_status": "university_selection"})
+    assert response.status_code == 409
+    assert await notices(db_session, world["staff"]["user"]) == []
+
+
+@pytest.mark.asyncio
+async def test_a_deactivated_assignee_sends_the_status_notice_to_the_masters(db_session, world):
+    app = await _agency_app(db_session, world)
+    await deactivate(db_session, world["staff"]["member"])
+    counselor = await mk_user(db_session, role="counselor", full_name="Apps Counselor")
+    app.counselor_id = counselor.id
+    await db_session.commit()
+    async with client_for(counselor.email) as c:
+        assert (await c.post(f"{LEGACY}/{app.id}/advance", json={"to_status": "eligibility_evaluation"})).status_code == 200
+    assert [n.title for n in await notices(db_session, world["master"])] == [STATUS]
+
+
+@pytest.mark.asyncio
+async def test_a_counselor_advance_tells_the_assignee_and_still_the_student(db_session, world):
+    counselor = await mk_user(db_session, role="counselor", full_name="Apps Counselor")
+    app = await _agency_app(db_session, world, record=world["linked_record"], counselor=counselor)
+    async with client_for(counselor.email) as c:
+        assert (await c.post(f"{LEGACY}/{app.id}/advance", json={"to_status": "university_selection"})).status_code == 200
+    assert [n.title for n in await notices(db_session, world["staff"]["user"])] == [STATUS]
+    assert [n.title for n in await notices(db_session, world["linked_user"])] == ["Application status updated"]  # unchanged
+
+
+@pytest.mark.asyncio
+async def test_a_counselor_patch_of_only_the_next_action_notifies_no_agency_member(db_session, world):
+    counselor = await mk_user(db_session, role="counselor", full_name="Apps Counselor")
+    app = await _agency_app(db_session, world, counselor=counselor)
+    async with client_for(counselor.email) as c:
+        assert (await c.patch(f"{LEGACY}/{app.id}", json={"next_action": "Send the transcript"})).status_code == 200
+        assert (await c.patch(f"{LEGACY}/{app.id}", json={"status": "offer"})).status_code == 200
+    assert [n.title for n in await notices(db_session, world["staff"]["user"])] == [STATUS]
+
+
+@pytest.mark.asyncio
+async def test_an_application_without_an_agency_record_notifies_no_agency_member(db_session, world):
+    counselor = await mk_user(db_session, role="counselor", full_name="Apps Counselor")
+    app = await mk_application(db_session, agent=world["master"], university=world["university"], student=world["linked_user"], counselor_id=counselor.id)
+    async with client_for(counselor.email) as c:
+        assert (await c.post(f"{LEGACY}/{app.id}/advance", json={"to_status": "eligibility_evaluation"})).status_code == 200
+    for user in (world["staff"]["user"], world["master"]):
+        assert await titled(db_session, user, STATUS) == []
+
+
+@pytest.mark.asyncio
+async def test_confirming_enrollment_tells_the_assignee_once_and_the_master_only_about_the_commission(db_session, world):
+    app = await _agency_app(db_session, world, status="offer")
+    async with client_for(world["master"].email) as c:
+        response = await c.put(f"{APPS}/{app.id}/enrollment", json={"enrollment_date": "2027-09-01", "expected_status": "offer"})
+    assert response.status_code == 200, response.text
+    assert [n.title for n in await notices(db_session, world["staff"]["user"])] == [STATUS]
+    assert [n.title for n in await notices(db_session, world["master"])] == [COMMISSION]
+
+
+@pytest.mark.asyncio
+async def test_enrolling_an_unassigned_students_application_gives_each_master_one_notice(db_session, world):
+    record = await mk_record(db_session, agent=world["master"], full_name="Unassigned")
+    counselor = await mk_user(db_session, role="counselor", full_name="Apps Counselor")
+    app = await _agency_app(db_session, world, record=record, status="status_tracking", counselor=counselor)
+    async with client_for(counselor.email) as c:
+        assert (await c.post(f"{LEGACY}/{app.id}/advance", json={"to_status": "enrolled"})).status_code == 200
+    assert [n.title for n in await notices(db_session, world["master"])] == [COMMISSION]  # not also the status notice (AC3)

@@ -12,9 +12,11 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AgentOrg, AgentOrgMember, AgentStudent, AgentTask, Notification, OverseasApplication, StudentDocument, User
+from app.models import AgentCommission, AgentOrg, AgentOrgMember, AgentStudent, AgentTask, Notification, OverseasApplication, StudentDocument, University, User
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import AgentDocumentType
+from app.services.agent_applications import stage_label
+from app.services.agent_orgs import notification_recipients
 
 logger = logging.getLogger(__name__)
 
@@ -112,3 +114,24 @@ async def document_needs_attention(db: AsyncSession, document: StudentDocument, 
         return 0
     body = f"{document_label(document.document_type)}: {outcome}."
     return await notify(db, await recipients(db, record, actor), "Document needs attention", body, DOCUMENTS_URL)
+
+
+async def has_commission(db: AsyncSession, application_id) -> bool:
+    return await db.scalar(select(AgentCommission.id).where(AgentCommission.application_id == application_id)) is not None
+
+
+async def status_changed(db: AsyncSession, application: OverseasApplication, old_status: str, actor: User, *, had_commission: bool) -> int:
+    """N3: any status change to an agency application, by the agency or by EduSphere. AC3: when this change has just created the
+    commission (`had_commission` is read before the AGT-003 trigger), the users the trigger told ("Commission estimated") are left out,
+    so nobody gets two notices for one change."""
+    if application.status == old_status or application.agent_student_id is None:
+        return 0
+    record = await db.get(AgentStudent, application.agent_student_id)
+    users = await recipients(db, record, actor) if record else []
+    if users and not had_commission and application.agent_id and await has_commission(db, application.id):
+        agent = await db.get(User, application.agent_id)
+        told = {u.id for u in await notification_recipients(db, agent)} if agent else set()
+        users = [u for u in users if u.id not in told]
+    university = clean_text(await db.scalar(select(University.name).where(University.id == application.university_id)))
+    body = f"{university}: {stage_label(old_status)} → {stage_label(application.status)}."
+    return await notify(db, users, "Application status changed", body, APPLICATIONS_URL)
