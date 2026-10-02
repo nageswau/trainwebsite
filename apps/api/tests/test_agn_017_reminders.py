@@ -34,6 +34,18 @@ def _titles(items) -> list[str]:
     return sorted(n.title for n in items)
 
 
+def test_beat_runs_the_reminders_daily_at_0800_ist_and_keeps_the_sweeper():
+    from celery.schedules import crontab
+
+    from app.worker import celery
+
+    entry = celery.conf.beat_schedule["agn017-daily-reminders"]
+    assert entry["task"] == "app.worker.send_daily_reminders_task"
+    assert entry["schedule"] == crontab(hour=2, minute=30)  # the worker runs in UTC: 02:30 UTC is 08:00 IST
+    assert celery.conf.beat_schedule["enh014-sweep-stale-deliveries"]["schedule"] == 300.0
+    assert "app.worker.send_daily_reminders_task" in celery.tasks
+
+
 @pytest.mark.parametrize(("days", "title"), [(3, "Deadline in 3 days"), (1, "Deadline tomorrow"), (0, "Deadline today")])
 @pytest.mark.asyncio
 async def test_an_application_deadline_in_a_window_reminds_the_assignee(db_session, world, days, title):

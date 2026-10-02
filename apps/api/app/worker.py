@@ -2,6 +2,7 @@ import asyncio
 from uuid import UUID
 
 from celery import Celery
+from celery.schedules import crontab
 from celery.signals import setup_logging
 
 from app.core.config import settings
@@ -101,4 +102,16 @@ def sweep_stale_deliveries_task():
     return _run_with_fresh_pool(sweep_stale_deliveries)
 
 
-celery.conf.beat_schedule = {"enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0}}
+@celery.task
+def send_daily_reminders_task():
+    """AGN-017 (DEC-SCOPE-055 N4): daily via beat. Idempotent per India day (notifications.dedupe_key), so a rerun or a second beat
+    process creates nothing new."""
+    from app.services.agent_notifications import run_daily_reminders
+
+    return _run_with_fresh_pool(run_daily_reminders)
+
+
+celery.conf.beat_schedule = {
+    "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
+    "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
+}
