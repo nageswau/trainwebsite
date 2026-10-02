@@ -345,6 +345,15 @@ covers the commission-specific piece).
   change has been made; this note only records that the previously-safe assumption no longer holds
   universally.
 
+- **Addendum, 2026-10-02 (`AGN-010`, `DEC-SCOPE-054`; migration `0060_agent_offer_details`, after `0059_agent_tasks`).**
+  Four nullable columns on `overseas_applications` (one current offer per application, O1): `offer_type` VARCHAR(20) with CHECK
+  `ck_overseas_applications_offer_type` (`NULL` or `conditional`/`unconditional`); `offer_date` DATE with CHECK
+  `ck_overseas_applications_offer_dated` (`(offer_type IS NULL) = (offer_date IS NULL)`); `offer_conditions` TEXT; `offer_document_id`
+  UUID FK → `student_documents.id` `ON DELETE SET NULL` (`fk_overseas_applications_offer_document_id`, `use_alter` because
+  `student_documents.application_id` points back). The offer's deadline is the existing AGN-008 `offer_deadline` (O2);
+  `offer_letter_url` is untouched (O4). Guarded adds; no existing row is read or rewritten. Downgrade refuses while any `offer_type` is
+  set. Design: `docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md` §3.
+
 - **Addendum, 2026-10-02 (`AGN-009`, `DEC-SCOPE-052`; migration `0058_agent_documents`, after `0057_agent_applications`).**
   `student_documents.student_id` becomes nullable; new nullable columns `agent_student_id` (FK → `agent_students.id`, index
   `ix_student_documents_agent_student_id`), `document_label` String(80), `uploaded_by_user_id` (FK → `users.id`), `fulfils_request_id`

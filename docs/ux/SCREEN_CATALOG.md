@@ -1668,7 +1668,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 | `SCR-AGT-007` | `/overseas/agent/team` | Agent (Master) | `AGN-001` |
 | `SCR-AGT-008` | `/overseas/agent/students` (Students panel) | Agent (Master, Staff) | `AGN-004`, `AGT-002`, `AGN-007` (shortlist panel) |
 | `SCR-AGT-009` | `/overseas/agent/universities` | Agent (Master full, Staff view) | `AGN-007` |
-| `SCR-AGT-010` | `/overseas/agent/applications` (Applications page, `?status=` filters) | Agent (Master, Staff) | `AGN-008` |
+| `SCR-AGT-010` | `/overseas/agent/applications` (Applications page, `?status=` filters) | Agent (Master, Staff) | `AGN-008`, `AGN-010` |
 
 ### `SCR-AGT-001`
 - **Route:** `/overseas/agent/register`  
@@ -1901,6 +1901,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** The create panel sits above the list; the detail opens inline under its row; sidebar children are indented on desktop and flattened in the mobile menu.
 - **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.
 - **Acceptance evidence needed:** AGN-008-AC01–AC18 (`test_agn_008_*.py`, `test_agn_003_matrix.py`, `test_agn_021_activity.py`; `agentApplications.test.ts`, `AgentApplicationCreatePanel.test.tsx`, `AgentApplicationDetail.test.tsx`, `AgentApplicationsPanel.test.tsx`, `PortalShell.children.test.tsx`; e2e `agn-008-agent-applications.spec.ts`); browser validation pending. Added 2026-10-02: `test_agn_008_dashboard.py`, `test_agn_008_concurrency.py`, `safeNext.test.ts`, `LoginForm.next.test.tsx`, `AccessUnavailable.test.tsx`, `PortalPage.agentApplications.test.tsx`, `NavGroup.test.tsx`; browser QA pass 1 fixed, re-check pending.
+- **AGN-010 update (2026-10-02, `DEC-SCOPE-054`) — Offer block in the application detail.** Under the detail, an "Offer" heading: empty state "No offer recorded yet." with **Record offer**; a recorded offer shows the type in words, offer date, deadline, conditions (line breaks kept) and the offer letter (name, status, Download via the AGN-009 route, else "Not attached") with **Edit offer**; no buttons when read-only. The form: a radio group Conditional/Unconditional, offer date (`max` today), deadline (`min` the offer date), a conditions textarea only for conditional (required, ≤ 2000, hint by `aria-describedby`), an offer-letter select from the application's "Offer letter" documents with an empty-state link to Documents; "Saving…", a 422 keeps the input and focuses the notice, success "Offer saved". One form of the detail is open at a time. The Documents upload form offers "Offer letter" and then requires the application. Evidence: AGN-010-AC01–AC09 (`test_agn_010_*.py`; `AgentApplicationOffer.test.tsx`, `AgentDocumentTypes.offer.test.tsx`; e2e `agn-010-offer-details.spec.ts`, not yet run); browser validation pending.
 
 
 ## CNS

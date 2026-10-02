@@ -3075,3 +3075,37 @@ authority. Impact analysis 2026-10-02 (the graphify graph predated AGN-001…008
 (`API_CONTRACT.md`); four audit actions `agent_student.task_add|task_update|task_complete|task_cancel` join AGN-021's staff-activity
 allowlist; the agent dashboard gains one metric after "Applications". No change to `rbac.py`, `workflows.py`, `assign_student` or
 `OverseasApplication.next_action`. Notifications and reminders stay with ang-017.
+
+### DEC-SCOPE-054 — Agent offer details: type, date, deadline, conditions, offer letter (`AGN-010`)
+
+**ID note:** `DEC-SCOPE-054` was the next free number on `main` @ `9adcbca` (`DEC-SCOPE-053` is `AGN-016`); migration
+`0060_agent_offer_details` follows `0059_agent_tasks`.
+
+**Question:** backlog item ang-010 "Offer details (Step 6)": conditional/unconditional offer, offer date, deadline, conditions and
+offer document. Acceptance: an offer deadline before the offer date → 422; a conditional offer requires conditions; switching to
+unconditional is recorded in history; the offer counts in dashboards (fixes the §0 defect for this path).
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 6 names the fields only; no rules, counts or
+§6 row. Existing: AGN-008 `offer_deadline` (A3) and the stage list; AGN-009 documents; `offer_letter_url` used by other roles; the agent
+Reports "Offers" row counted only `offer_received`/`accepted` (the §0 defect).
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL`; design spec
+`docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md` §2):
+
+- **O1 — One current offer per application**, as columns on `overseas_applications`; recording again replaces it and the previous
+  values survive in the status-history notes.
+- **O2 — The deadline is the existing `offer_deadline`** (AGN-008 A3); `offer_deadline < offer_date` → 422 on the offer PUT and the
+  AGN-008 PATCH; the nearest-deadline rule (QA8-13) is unchanged.
+- **O3 — Offer document optional**, picked from AGN-009 documents of type "Offer letter" attached to this application, in scope;
+  download stays on the AGN-009 route.
+- **O4 — `offer_letter_url` untouched**; other roles' views and counts of it are unchanged.
+- **O5 — Offers count** = stage `offer` or later (plus legacy `offer_received`/`accepted`) OR an offer recorded, so withdrawn-after-offer
+  counts. Agent pages only (Reports row, new dashboard KPI); the other stale counts stay for ang-018 (`RAID.md`).
+- **O6 — Conditions are free text**, ≤ 2000 characters.
+- **O7 — Concurrent saves: last write wins**, both in history (row lock); no offer version token.
+
+**Consequences:** migration `0060_agent_offer_details` (four nullable columns); new `PUT …/agent/crm/applications/{id}/offer`
+(`API_CONTRACT.md`); detail gains `offer` and `offer_letters`; upload accepts "Offer letter" (requires an application); audit action
+`overseas.application.offer` joins AGN-021's staff-activity allowlist; the agent dashboard gains "Offers" after "Pending actions". No
+change to `rbac.py`, `/status`, counselor/university/admin routes or `offer_letter_url`. Several offers, removing an offer and
+notifications are out of scope.

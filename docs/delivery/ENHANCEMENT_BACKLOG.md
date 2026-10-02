@@ -83,6 +83,9 @@ See §AGN-008.
 **Revision 12 (2026-10-02):** the owner's `AGN-016` statement ("Tasks & Follow-ups" §4; "Pending Actions" KPI §2) is decided as
 `DEC-SCOPE-053` (T1–T8; drafted as `051`, renumbered on merging `main` @ `d371865`, where AGN-014 holds `051` and AGN-009 `052`). See §AGN-016.
 
+**Revision 13 (2026-10-02):** backlog item ang-010 "Offer details (Step 6)" (`EVID-015` §5 Step 6) is decided as `DEC-SCOPE-054`
+(O1–O7, owner in-session; `054` was the next free number on `main` @ `9adcbca`). See §AGN-010.
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -172,6 +175,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-008 | Agent applications — Master/Staff create, edit, view, change status, Application ID, submission date and deadlines for agent students; Staff sidebar filters (Rev. 11) | Large | High | Yes | AGN-004, AGN-003, AGN-021, AGT-002, OVS-002/003/004, ENH-031, RPT-002 |
 | AGN-009 | Agent documents — upload, download, verify, reject (with a reason), request additional, history; §5 Step 4 types; Staff sidebar Pending/Uploaded/Additional (`DEC-SCOPE-052`) | Large | High | Yes | AGN-003, AGN-004, AGN-008, OVS-005, VISA-001 |
 | AGN-016 | Agent tasks and follow-ups — Master/Staff create, edit, complete and cancel tasks on agency students (task follows the student); "Pending actions" KPI (Rev. 12) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-021 |
+| AGN-010 | Agent offer details — conditional/unconditional, offer date, deadline, conditions, offer letter on an agency application; agent "Offers" count (Rev. 13) | Medium | Medium | Yes | AGN-008, AGN-009, AGN-021 |
 
 ---
 
@@ -3795,6 +3799,40 @@ error was not on the picker — now its own linked `aria-invalid` message), QA16
 read-only), QA16-04 (the closing time now carries its zone), QA16-05 (the open form has a visible "New task" heading). Codex review
 waived by the owner (2026-10-02).
 
+## AGN-010 — Agent Offer Details (Step 6)
+
+**Title.** Let an agency Master, and Staff for their assigned students, record the offer on an agency application: conditional or
+unconditional, offer date, deadline, conditions and the offer letter; count offers correctly on the agent dashboard and Reports.
+
+**Business requirement.** Backlog item ang-010 (`AGENT_CRM_BACKLOG.md`), source `EVID-015` (`Agent CRM Functionalities.md`,
+`DERIVED_BLUEPRINT`) §5 Step 6. Decision record: `DEC-SCOPE-054` (O1–O7, `EXPLICIT_APPROVAL` in-session 2026-10-02).
+
+**Existing behavior.** Only an `offer_deadline` date (AGN-008) and the `offer` stage; the agent Reports "Offers" row counted only
+`offer_received`/`accepted` (the §0 defect).
+
+**Expected behavior.** Migration `0060_agent_offer_details` (four nullable columns). `PUT …/agent/crm/applications/{id}/offer` records
+or replaces the one current offer, moves a pre-offer stage to `offer`, writes history and audit; an identical PUT writes nothing. The
+detail gains `offer` and `offer_letters`; uploads accept "Offer letter" (bound to an application). An Offer block and form in the
+application detail; "Offers" KPI after "Pending actions"; AGN-021 activity "Recorded an offer". Spec:
+`docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md`; plan `docs/superpowers/plans/2026-10-02-agn-010-offer-details.md`.
+
+**Roles.** Agency Master (whole agency), agency Staff (assigned students only). Not super_admin or other roles (403).
+
+**Acceptance criteria.** Spec §8 `AGN-010-AC01`…`AC09`: deadline before offer date → 422 (PUT and PATCH); conditional needs conditions,
+unconditional has none; a type switch is one history row naming both types and the removed conditions; stage sync and 409s; Offers
+counts equal a hand count (incl. withdrawn-after-offer), staff scoped; scope/IDOR 404/422; identical PUT writes nothing;
+`offer_letter_url` and non-agent counts unchanged; UI states, keyboard, focus and 320 px.
+
+**Regression risks.** `portal._agent` (Reports row, one metric after "Pending actions"), the AGN-008 PATCH (new 422), the AGN-009 upload
+types, `AgentApplicationDetail` (one form at a time), `STAFF_ACTIVITY_ACTIONS`, the alembic head. Non-agent stale counts carried to
+ang-018 (`RAID.md` I-48).
+
+**Complexity:** Medium. **Risk:** Medium.
+
+**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-010-offer-details`. Lite test sets green (see `RTM.md` AGN-010 row);
+e2e `agn-010-offer-details.spec.ts` written, not run. Pending: browser validation, the owner's full suites, an independent Codex review.
+Pre-existing failure found, not fixed: `test_agn_014_commission_reports.py::test_master_dashboard_shows_paid_revenue` (`RAID.md` I-49).
+
 ## 2. Dependency graph
 
 **Must be sequential:**
@@ -3967,6 +4005,7 @@ item, only for the progress-view question).
 | AGN-006 | `DEC-SCOPE-048` — storage, budget, separate preferences, access, completed stamp, API, activity, leave prompt | **Resolved 2026-10-01** (C1–C9, `EXPLICIT_APPROVAL` in-session; number provisional) |
 | AGN-008 | `DEC-SCOPE-050` — statuses and withdrawn, Application ID, dates, agent status limits, link to the agency student, visibility, sidebar filters, throttle, archived read-only | **Resolved 2026-10-01/02** (A1–A15, `EXPLICIT_APPROVAL` in-session). `DEC-SCOPE-036` "submitted" stays `NEEDS_CONFIRMATION` |
 | AGN-016 | `DEC-SCOPE-053` — task owner on reassignment, delete, due time and overdue, linkage, KPI and nav, edit rules, cap, retry | **Resolved 2026-10-02** (T1–T8, `EXPLICIT_APPROVAL` in-session) |
+| AGN-010 | `DEC-SCOPE-054` — one offer per application, deadline column, offer document, `offer_letter_url`, Offers count, conditions, concurrent saves | **Resolved 2026-10-02** (O1–O7, `EXPLICIT_APPROVAL` in-session) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
