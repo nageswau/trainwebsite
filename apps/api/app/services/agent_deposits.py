@@ -5,6 +5,8 @@ audit and commit. Lock order everywhere: organisation, application, deposit, the
 Spec: docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md.
 """
 
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +19,17 @@ OPEN_PAYMENT = "pending"
 CANCELLED = "cancelled"
 
 PAID_LOCKED = "This deposit is already paid and can no longer be changed"
+NOT_REQUIRED = "No deposit is required for this application"
+ALREADY_PAID = "This deposit is already paid"
+OPENING = "A checkout is already being opened for this deposit"
+OTHER_PAYING = "Another team member is paying this deposit -- try again in a few minutes"
+CHECKOUT_THROTTLED = "Too many payment attempts for this deposit -- try again later"
+PROVIDER_DOWN = "The payment provider is unavailable -- nothing was charged. Try again shortly"
+CHANGED = "This deposit changed while the checkout was opening -- reload and try again"
+
+OTHER_MEMBER_WINDOW = timedelta(minutes=15)  # D8: another member's open checkout blocks a new one this long
+CHECKOUT_WINDOW = timedelta(hours=1)
+CHECKOUT_LIMIT = 10  # D8: pay attempts per deposit per rolling hour (each one opens a Razorpay order)
 
 
 def payment_available() -> bool:
@@ -31,6 +44,29 @@ async def deposit_for(db: AsyncSession, application_id, *, lock: bool = False) -
 
 async def locked_payment(db: AsyncSession, payment_id) -> Payment | None:
     return await db.scalar(select(Payment).where(Payment.id == payment_id).with_for_update().execution_options(populate_existing=True))
+
+
+def blocked_by_other(active: Payment, user_id) -> bool:
+    """D8: a different member's open checkout younger than 15 minutes (they may be in the Razorpay window right now)."""
+    return active.user_id != user_id and active.created_at > datetime.now(UTC) - OTHER_MEMBER_WINDOW
+
+
+async def checkout_wait_seconds(db: AsyncSession, deposit_id) -> int:
+    """D8: seconds until another pay attempt is allowed, 0 when under the limit. Counted in PostgreSQL, so it holds across instances;
+    the caller holds the deposit lock, so two requests cannot both squeeze under it."""
+    now = datetime.now(UTC)
+    recent = (
+        await db.scalars(select(Payment.created_at).where(Payment.reference_type == REFERENCE_TYPE, Payment.reference_id == deposit_id, Payment.created_at > now - CHECKOUT_WINDOW).order_by(Payment.created_at))
+    ).all()
+    if len(recent) < CHECKOUT_LIMIT:
+        return 0
+    return max(1, int((recent[-CHECKOUT_LIMIT] + CHECKOUT_WINDOW - now).total_seconds()) + 1)
+
+
+def checkout_result(payment: Payment, *, replayed: bool = False) -> dict:
+    """What the browser needs to open Razorpay Checkout: the public key id only, never a secret."""
+    body = {"status": "ready", "payment_id": str(payment.id), "key_id": settings.razorpay_key_id, "provider_order_id": payment.checkout_provider_order_id, "amount": float(payment.amount), "currency": payment.currency}
+    return body | {"replayed": True} if replayed else body
 
 
 async def cancel_active(db: AsyncSession, deposit: ApplicationDeposit) -> None:
