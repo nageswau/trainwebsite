@@ -1876,6 +1876,8 @@ async def list_overseas_applications(user: User = Depends(get_current_user), db:
 async def update_overseas_application(application_id: UUID, payload: OverseasApplicationUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"counselor", "university_rep", "overseas_admin"}, "overseas")
     item = await _assigned_application(db, user, application_id)
+    # AGN-008 (final review): re-read under the row lock so the guard below sees an agent's committed withdraw.
+    await db.refresh(item, with_for_update=True)
     changes = payload.model_dump(exclude_unset=True)
     # AGN-008 (A1): `withdrawn` is terminal -- no generic status write revives it (nothing set it before AGN-008).
     if "status" in changes and item.status == WITHDRAWN:
@@ -1947,6 +1949,7 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
     # (they retain the generic PATCH above for their own broader corrections).
     _require(user, {"counselor"}, "overseas")
     item = await _assigned_application(db, user, application_id)
+    await db.refresh(item, with_for_update=True)  # AGN-008 (final review): the guard must see a committed withdraw
     if item.status == WITHDRAWN:  # AGN-008 (A1): otherwise index -1 would let any target revive it
         raise HTTPException(409, "This application is withdrawn")
     if payload.to_status not in OVERSEAS_APPLICATION_STAGES:
