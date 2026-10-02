@@ -16,7 +16,7 @@ from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import BdmOrganization, BdmOrganizationContact, User
-from app.schemas import BDM_ORG_FIELDS, BdmOrganizationCreate, BdmOrganizationEnvelope, BdmOrganizationPage, BdmOrganizationUpdate, BdmOrgType
+from app.schemas import BDM_ORG_FIELDS, BdmOrganizationAssign, BdmOrganizationCreate, BdmOrganizationEnvelope, BdmOrganizationPage, BdmOrganizationUpdate, BdmOrgType
 from app.services import bdm_organizations as svc
 from app.services.bdm import bdm_context
 
@@ -173,3 +173,17 @@ async def archive_organization(org_id: UUID, user: User = Depends(get_current_us
 async def restore_organization(org_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """C5: the team manager or super_admin."""
     return await _set_archived(org_id, user, db, False)
+
+
+@router.post("/{org_id}/assign", response_model=BdmOrganizationEnvelope)
+async def assign_organization(org_id: UUID, payload: BdmOrganizationAssign, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AC4: lock order organization -> target user (FOR SHARE), the same for every bdm-002 write."""
+    org = await svc.load_scoped(db, user, org_id, lock=True)
+    svc.require(user, org, "can_reassign", "assign")
+    target = await svc.locked_reassign_target(db, user, org, payload.bdm_user_id)
+    before = org.assigned_bdm_user_id
+    org.assigned_bdm_user_id = target.id
+    svc.audit(db, user, "assign", org.id, {"from": str(before), "to": str(target.id)})
+    await db.commit()
+    svc.log("bdm_org_reassigned", user, org.id, from_user=str(before), to_user=str(target.id))
+    return {"organization": await svc.organization_out(db, user, org)}
