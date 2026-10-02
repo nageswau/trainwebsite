@@ -69,7 +69,8 @@ is loaded **after** the application lock, so every agency visa write for one app
 
 Body (`AgentVisaStart`, `extra="forbid"`):
 - `expected_status: str` (required; the application stage the screen shows)
-- `checklist: list[VisaDocumentType]` (unique; may be empty — today's rule passes an empty checklist)
+- `checklist: list[VisaDocumentType]` (unique, at most 8 — the eight non-"Other" types; may be empty, as today's rule passes an
+  empty checklist)
 - `visa_application_date`, `appointment_date`, `interview_date`: optional dates (2000–2100, `_application_date`)
 
 Order of checks after entry:
@@ -87,7 +88,8 @@ Body (`AgentVisaUpdate`, `extra="forbid"`):
   `decision: Literal["approved","refused","withdrawn"]`
 
 Order of checks after entry:
-1. No case → `404 VISA_NOT_FOUND`.
+1. No case → `409 VISA_STALE` (the screen believed a case exists; a `404` would make the UI treat the whole application as
+   gone, §10.1).
 2. `case.decision` is set → `409 VISA_DECIDED` (V2).
 3. `expected_stage != case.status` → `409 VISA_STALE`.
 4. `checklist` sent while the case is past `checklist` → `422`. (Allowed at `checklist` and at a legacy stage outside
@@ -99,7 +101,7 @@ Order of checks after entry:
 7. Gate (VISA-001-AC02): when the current stage is at or before `checklist` and `to_stage` is after it, every item of the
    **resulting** checklist must be `verified` (§4.4) → else `422 "Cannot advance past the checklist stage -- not yet verified: X, Y."`
    (the existing wording).
-8. Date order on the resulting values (§4.3) → `422`.
+8. Date order on the resulting values (§4.3) → `422` (field-level, §10.1).
 9. Apply. Nothing changed → no write, no audit. Otherwise one audit row:
    `visa_decision` (`{"decision": …}`) > `visa_advance` (`{"from_stage", "to_stage"}`) > `visa_update` (`{"fields": [...]}`);
    a request that both advances and edits writes `visa_advance` with `fields`. Recording a decision sets `decided_at = now()`.
@@ -108,7 +110,10 @@ Order of checks after entry:
 
 After merging the request with stored values: if `visa_application_date` and `interview_date` are both set,
 `interview_date < visa_application_date` → `422` with `loc` on `interview_date` ("The interview date cannot be before the visa
-application date"). Same day is accepted. No other date rule (an appointment may fall anywhere).
+application date"). Same day is accepted. No other date rule (an appointment may fall anywhere). On `POST` the rule is a schema
+`model_validator`; on `PATCH` it needs the stored values, so the route raises `RequestValidationError` with
+`loc = ("body", "interview_date")` (the `_agent_document_review` idiom, `workflows.py:2061`), giving the same FastAPI 422 list shape
+either way.
 
 ### 4.4 Checklist verification (V6)
 
@@ -141,8 +146,10 @@ stages and the decision only — never dates' values or document names beyond th
 `nextVisaStages(stage)` (forward-only, legacy stage = before `checklist`), `canStartVisa(status)`, `VISA_DOCUMENT_TYPES`
 (`DOCUMENT_TYPES` minus "Other"), `VISA_DECISIONS`.
 
-**`components/AgentApplicationVisa.tsx`** (the `AgentApplicationEnrollment` pattern), mounted in `AgentApplicationDetail` next to
-Enrollment inside its own `Fragment key={visa?.stage ?? "none"}` so a stage change resets its forms.
+**`components/AgentApplicationVisa.tsx`** (the `AgentApplicationEnrollment` pattern: case view, Move to, Record decision) and
+**`components/AgentVisaDetailsForm.tsx`** (the dates + checklist form shared by Start and Edit, so neither file passes ~200 lines),
+mounted in `AgentApplicationDetail` next to Enrollment inside its own `Fragment key={visa?.stage ?? "none"}` so a stage change
+resets its forms.
 
 | State | Shown |
 |---|---|
@@ -184,7 +191,8 @@ Works at 320 px without horizontal scroll. No new dependencies.
 | AC4 | A new case is created at `checklist` (the start body has no stage field; sending one is an extra field → `422`); stage moves are forward-only; skips allowed; backward/same → `422`. |
 | AC5 | A recorded decision is final: every later PATCH → `409`. |
 | AC6 | Start requires the application at `offer`, `visa_documentation` or `status_tracking` (`422`) and no existing case (`409`). |
-| AC7 | Withdrawn or enrolled application, or archived student → `409`; stale `expected_status` / `expected_stage` → `409`. |
+| AC7 | Withdrawn or enrolled application, or archived student → `409`; stale `expected_status` / `expected_stage`, or a PATCH with no case → `409`. |
+| AC12 | Application log lines never contain the decision or any date; audit rows carry field names, stages, item count and decision only. |
 | AC8 | Master: whole organisation; Staff: assigned students only; other org / unassigned → `404`; non-agent → `403`; anonymous → `401`. |
 | AC9 | Concurrent starts create exactly one case; concurrent advances from the same stage → one `200`, one `409`. |
 | AC10 | Existing visa routes and responses, the application list, status and enrollment routes behave exactly as before. |
@@ -212,3 +220,57 @@ Works at 320 px without horizontal scroll. No new dependencies.
 | `AgentApplicationDetail` competing-form logic | AGN-008/013 component tests unchanged and passing; new hiding tests |
 | `AgentApplicationDetail` type change | fixtures updated in the same task |
 | Agency status/enrollment routes | `test_agn_008_*`, `test_agn_013_*` unchanged |
+
+## 10. Engineering reviews (owner request 2026-10-02: api-and-interface-design, frontend-ui-engineering, security-and-hardening)
+
+Changes these reviews made are folded into §4–§5 above; this section records the reasoning and what was checked.
+
+### 10.1 API and interface design
+
+| Check | Result |
+|---|---|
+| Resource shape | `…/applications/{id}/visa` is a singular sub-resource (one case per application, V7): `POST` creates (`201`), `PATCH` partially updates (`200`). No verbs in URLs. The visa case id is returned for display only; no route takes it, so it cannot be used for IDOR. |
+| Contract first | Pydantic bodies `AgentVisaStart` / `AgentVisaUpdate` (`extra="forbid"`); the response is the existing `{"application": detail}` envelope; the TS `Visa` type mirrors §4.5. Every write returns the full detail, so the UI never refetches. |
+| Backward compatibility | Additive only: one new optional key `visa` on the detail. List items, every existing route and response, and the `VisaCase` columns already read are unchanged. Nullable columns, no backfill. |
+| Error semantics | The codebase's single format, FastAPI `{"detail": …}`: `401` anonymous; `403` role/organisation (`_gate`); `404` application out of scope (no existence leak); `409` state conflicts (stale screen, existing case, decided case, closed application, **missing case on PATCH**); `422` validation (schema, stage order, decision stage, checklist gate, date order). Field errors use FastAPI's list with `loc` ending in the field name, which `fieldErrors` (`lib/agentStudents.ts`) maps; rule refusals are string messages shown as a form-level alert. |
+| Validation at the boundary | Enum-typed `to_stage` (`VISA_CASE_STAGES`), `decision` (three values) and checklist items (`AgentDocumentType` minus "Other", unique, at most 8); dates through `_application_date` (2000–2100); `expected_status`/`expected_stage` `max_length=50`. Cross-field rules that need stored state run in the route, once. |
+| PATCH semantics | Absent key = unchanged; explicit `null` clears a date (`model_fields_set`); `decision: null` and `to_stage: null` are `422` (neither can be cleared). |
+| Retries / idempotency | No `Idempotency-Key` (none exists in this API; inventing one would be an uncontracted assumption). A retried `POST` after success gets `409 VISA_EXISTS`; a retried advance or decision gets `409 VISA_STALE`/`VISA_DECIDED`; the UI reloads on `409`. So a retry never duplicates or double-applies. Documented as "not blind-retry safe; stale checks make a retry harmless". |
+| Concurrency / transactions | Organisation lock → application row lock (`_locked`) → read case → checks → write case + audit → one commit. Every agency visa write for one application is serialised, so the check-then-insert for "one case" is not a race. Same-stage detail edits by two people are last-write-wins (as AGN-008's `PATCH`); stage and decision moves are guarded by `expected_stage`. The old counselor/admin route does not take the application lock; a simultaneous admin edit is an accepted, documented edge (no agency path depends on it). |
+| Database usage | ORM only (bound parameters). Checklist verification is one query per request (`document_type IN (:items)` for the application, newest per type picked in Python); the detail adds one indexed `visa_cases.application_id` lookup plus that query. No N+1; the list endpoint is untouched. |
+
+### 10.2 Frontend UI engineering
+
+| Concern | Design |
+|---|---|
+| Reuse | Existing classes and helpers only: `card-stack` `<dl>`, `field`, `form`, `actions`, `btn secondary small`, `form-error`, `form-warning`, `muted`, `badge`; `useFocusAfterRender`, `fieldErrors`, `sendJson`, `SESSION_EXPIRED`/`SIGN_IN_PATH`, `formatDateTimeIn`. No new dependency, no new CSS. |
+| Visual hierarchy | `h5` "Visa" heading (the detail's `h4` is the application) with the stage badge, then facts (`<dl>`), then the checklist, then actions. The state's main action (Start / Move to / Record decision) is the only primary button; Edit is secondary. |
+| Status not by colour alone | Each checklist item shows a text status (Verified, Pending, Changes required, Rejected, Not uploaded); the decision is text. |
+| Forms | `<input type="date">` with `min`/`max` 2000–2100 and visible labels; the checklist is a `<fieldset>` + `<legend>` of checkboxes; the decision a `<fieldset>` radio group; Move to a labelled `<select>` of forward stages only. Optional fields say so in the label. |
+| Keyboard and focus | Native controls only. Opening a form focuses its first field; cancel restores values and focuses the opener; Escape leaves a confirm step; a 422 focuses the first invalid field (`aria-invalid`, `aria-describedby`); other failures focus the `role=alert` message; success focuses the detail notice (`role=status`). |
+| Loading | The visa block arrives with the detail (no extra fetch or spinner). While saving, the submit is disabled with "Saving…" and `aria-busy`; the `inFlight` ref drops a same-tick second click. |
+| Empty | Eligible with no case: "No visa case yet" plus Start. Before an offer: not rendered. Empty checklist: "No documents are required on this checklist". |
+| Error | `422` field / form-level; `409`/`404` reload through `onFailed`; `401` session-expired text with a sign-in link (new tab); `5xx` generic text. Server text is rendered as React text (escaped). |
+| Permission / read-only | Read-only application (withdrawn, archived), enrolled application, or decided case: facts and checklist without actions; the decided state shows the outcome, when it was recorded and the disclaimer. |
+| Responsive / mobile | Single column; the `<dl>` stacks; actions wrap; no fixed widths; checked at 320, 768, 1024 and 1440 px (E2E asserts 320 px has no horizontal scroll). |
+| Perceived performance | The response replaces the detail in place (`onSaved(next)`), so the badge, checklist and facts update without a reload. |
+
+### 10.3 Security and hardening
+
+Threat model: the trust boundary is the HTTP request from an authenticated agency member. Assets: visa outcomes and dates (sensitive
+personal data about a student), the integrity of the checklist gate, cross-agency isolation.
+
+| Check | Result |
+|---|---|
+| Authentication | Unchanged `get_current_user` (httpOnly, `SameSite=Lax`, secure-per-config session cookie, `auth.py:91`); `401` anonymous. No token or session change. |
+| Authorization / role escalation | `_gate`: agent role, overseas division, active approved organisation (suspended → `403`); super admin and overseas admin get `403` here (they keep the old routes). Staff get the visa rights V1 grants on assigned students only; Staff cannot verify documents without `can_verify_documents` (AGN-003), so passing the gate still needs a permitted verifier. No new permission flag. |
+| IDOR | The only id in the URL is the application's, resolved through `load_scoped` (`application_scope`: organisation for Masters, assigned students for Staff); out of scope is `404` before any visa read. The case is read by `application_id` afterwards, never by a client-supplied case id. Verification reads only documents attached to that application. |
+| Input validation | `extra="forbid"`; enums for stage, decision and checklist; date range; string caps; checklist ≤ 8 unique items. |
+| XSS | No HTML rendering; React escapes all text, including legacy free-text checklist items from admin-created cases. No `dangerouslySetInnerHTML`. |
+| CSRF | Existing posture: `SameSite=Lax` cookie plus JSON bodies (`application/json` `POST`/`PATCH` cannot be sent by a cross-site form). No change. |
+| SQL injection | ORM with bound parameters only. |
+| Secrets / sensitive logs | No secrets involved. Application log lines (`_log`) carry ids and stages only, **never the decision or any date**. Audit metadata carries field names, stages, the checklist item count and the decision (the accountability record of who recorded an outcome); the AGN-021 activity view shows field names only (`staff_activity.py:89`), so the outcome is not exposed there. |
+| Information disclosure | The `visa` block exists only on the agency's detail (V8); no student, counselor, school or report response changes. Errors carry no internals. |
+| Rate limiting | No new limiter (changing throttling needs owner approval, and no comparable route has one: AGN-008 status, AGN-013 enrollment). Writes are bounded per application (five stages, one final decision, row-locked). Accepted and documented. |
+| Audit | One `overseas.application.visa_*` row per effective write, in the same transaction (fail closed); refusals and no-op `PATCH`es write nothing. |
+| Privacy | New personal data: visa application, interview and decision fields. Purpose: agency case tracking; retained with the visa case (no separate store); covered by the existing student/application lifecycle. No third-party sharing. |
