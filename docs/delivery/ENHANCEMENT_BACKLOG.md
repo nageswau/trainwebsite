@@ -159,7 +159,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-004 | Agent students — Master/Staff create, edit, view and (Master) archive students who never log in; staff assigned-only | Large | High | Yes | AGT-002, AGN-001, ENH-031 (scope change); AGN-002 (merge) |
 | AGN-021 | Agent staff activity — a Master views a staff member's student-journey activity (Rev. 9) | Small | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004 |
 | AGN-005 | Close the §6 staff matrix gap for agency student records — tests and docs, plus four browser-QA fixes (Rev. 10) | Small | Low | No | AGN-003, AGN-004 |
-| AGN-007 | Agent student university shortlist and agency-private university database (Master full / Staff view) | Large | Medium | Yes | AGN-001, AGN-003, AGN-004, AGN-021 |
+| AGN-007 | Agent student university shortlist and agency-private university database (Master full / Staff view) | Large | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004, AGN-021 |
 
 ---
 
