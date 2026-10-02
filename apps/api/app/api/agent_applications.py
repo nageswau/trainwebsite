@@ -277,10 +277,10 @@ async def update_visa_case(application_id: UUID, payload: AgentVisaUpdate, user:
     except ChecklistGateRefused as refused:
         _log("agent_visa_gate_blocked", membership, user, item.id, level=logging.WARNING, from_stage=case.status, unverified_items=len(refused.unverified))
         raise
-    if outcome is not None:
-        _audit(db, user, outcome[0], item.id, outcome[1])
+    if outcome is None:  # nothing changed: no write, no audit
+        return {"application": await detail(db, user, item, record=record)}
+    action, metadata = outcome
+    _audit(db, user, action, item.id, metadata)
     await db.commit()
-    if outcome is not None:
-        action, metadata = outcome
-        _log(_VISA_EVENTS[action], membership, user, item.id, **{k: v for k, v in metadata.items() if k != "decision"})  # never the outcome (§10.3)
+    _log(_VISA_EVENTS[action], membership, user, item.id, **{k: v for k, v in metadata.items() if k != "decision"})  # never the outcome (§10.3)
     return {"application": await detail(db, user, item, record=record)}

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, ReactNode, useState } from "react";
-import { Visa, VISA_DOCUMENT_TYPES } from "@/lib/agentApplications";
+import { Visa, VISA_DOCUMENT_TYPES, visaChecklistEditable } from "@/lib/agentApplications";
 
 export const DETAIL_FIELDS = ["visa_application_date", "appointment_date", "interview_date", "checklist"] as const;
 export type DetailField = (typeof DETAIL_FIELDS)[number];
@@ -12,7 +12,6 @@ export type VisaDetails = { checklist?: string[] } & Record<DateField, string | 
 type Props = {
   appId: string;
   visa: Visa | null; // null: starting a case
-  checklistEditable: boolean;
   busy: boolean;
   errors: Partial<Record<DetailField, string>>;
   failure: ReactNode;
@@ -30,7 +29,8 @@ const DATES: { field: DateField; label: string }[] = [
 // (it clears the stored one). The server checks the date order and the checklist; its field errors arrive in `errors`.
 // A stored item that is not an agency document type (a case an overseas admin opened, e.g. "Visa form") has no checkbox: it is listed,
 // kept while the checklist is untouched, and replaced once the agency changes the checklist (review I-2).
-export default function AgentVisaDetailsForm({ appId, visa, checklistEditable, busy, errors, failure, onSubmit, onCancel }: Props) {
+export default function AgentVisaDetailsForm({ appId, visa, busy, errors, failure, onSubmit, onCancel }: Props) {
+  const checklistEditable = !visa || visaChecklistEditable(visa.stage); // the server refuses checklist changes past `checklist`
   const stored = visa ? visa.checklist.map((c) => c.item) : [];
   const legacy = stored.filter((item) => !VISA_DOCUMENT_TYPES.includes(item));
   const [checklist, setChecklist] = useState<string[]>(stored.filter((item) => VISA_DOCUMENT_TYPES.includes(item)));

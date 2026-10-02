@@ -1,6 +1,7 @@
 // AGN-008 (DEC-SCOPE-050): an agency's applications -- the shapes, labels and stage rules the list, detail and forms share. The
 // server is the authority (forward-only, enrolled, stale, archived); these only keep the screens from offering a refused action.
 
+import { SESSION_EXPIRED } from "@/lib/activityFeedback";
 import { DOCUMENT_TYPES, OTHER, statusLabel } from "@/lib/agentDocuments";
 
 export const APPLICATIONS_URL = "/api/v1/workflows/overseas/agent/crm/applications";
@@ -86,6 +87,11 @@ export function visaChecklistEditable(stage: string): boolean {
 export function checklistStatusLabel(status: string): string {
   return status === "not_uploaded" ? "Not uploaded" : statusLabel(status);
 }
+
+// AGN-013 browser QA pass 2, shared by the detail's section forms (Enrollment, AGN-012 Visa): a form words its own 401 and 5xx and
+// keeps the entry; a 409/404 goes to the detail, which reloads to the real state.
+export const SECTION_EXPIRED = `${SESSION_EXPIRED} Your entry is kept; sign in again in a new tab, then save.`;
+export const SECTION_SERVER_ERROR = "Something went wrong on our side. Please try again; your entry is kept.";
 
 export type NearestDeadline = { kind: "application" | "offer"; date: string } | null;
 

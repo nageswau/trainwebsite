@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, KeyboardEvent, useRef, useState } from "react";
 import AgentVisaDetailsForm, { DETAIL_FIELDS, VisaDetails } from "./AgentVisaDetailsForm";
-import { SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
+import { SIGN_IN_PATH } from "@/lib/activityFeedback";
 import { sendJson } from "@/lib/apiErrors";
 import {
   AgentApplicationDetail,
@@ -11,6 +11,8 @@ import {
   canStartVisa,
   checklistStatusLabel,
   nextVisaStages,
+  SECTION_EXPIRED as EXPIRED,
+  SECTION_SERVER_ERROR as SERVER_ERROR,
   stageLabel,
   VISA_DECISION_LABELS,
   VISA_DECISIONS,
@@ -29,10 +31,6 @@ type Props = {
 };
 type Mode = "details" | "move" | "decide" | null;
 
-// The enrollment form's wording (AGN-013 browser QA): the form words its own failures and keeps the entry; a 409/404 goes to the
-// detail, which reloads to the real state.
-const EXPIRED = `${SESSION_EXPIRED} Your entry is kept; sign in again in a new tab, then save.`;
-const SERVER_ERROR = "Something went wrong on our side. Please try again; your entry is kept.";
 const FIELDS = [...DETAIL_FIELDS, "to_stage", "decision"] as const;
 type Field = (typeof FIELDS)[number];
 
@@ -62,13 +60,16 @@ export default function AgentApplicationVisa({ detail, onSaved, onFailed, onOpen
     onOpenChange?.(true); // the detail hides Enrollment and the status form while this form is open
     focusAfter(id(focus));
   }
-  function close(opener: string) {
+  function reset() {
     setMode(null);
     setTarget("");
     setDecision("");
     setConfirming(false);
     setFailure(null);
     setErrors({});
+  }
+  function close(opener: string) {
+    reset();
     onOpenChange?.(false);
     focusAfter(id(opener));
   }
@@ -98,10 +99,7 @@ export default function AgentApplicationVisa({ detail, onSaved, onFailed, onOpen
     }
     const next = (outcome.data as { application?: AgentApplicationDetail }).application;
     if (!next) return onFailed("The change could not be confirmed. Reload to see the current visa case.");
-    // A save that keeps the stage does not remount this section (its key is stage-based): close the form here (review I-1).
-    setMode(null);
-    setTarget("");
-    setDecision("");
+    reset(); // a save that keeps the stage does not remount this section (its key is stage-based), so close the form here (review I-1)
     onSaved(next, message);
   }
   function saveDetails({ checklist, ...dates }: VisaDetails) {
@@ -232,7 +230,6 @@ export default function AgentApplicationVisa({ detail, onSaved, onFailed, onOpen
         <AgentVisaDetailsForm
           appId={detail.id}
           visa={visa}
-          checklistEditable={!visa || visaChecklistEditable(visa.stage)}
           busy={busy}
           errors={errors}
           failure={failureNode}

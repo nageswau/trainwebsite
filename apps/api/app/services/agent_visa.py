@@ -17,7 +17,6 @@ from app.models import StudentDocument, VisaCase
 # DATA_MODEL.md #6.5, DEC-SCOPE-006: the four confirmed category names plus a terminal `decision` state. The outcomes are not stages:
 # DEC-SCOPE-055 V2 records them for agency cases in their own column, so this list is unchanged.
 VISA_CASE_STAGES = ["checklist", "documentation", "interview_prep", "tracking", "decision"]
-VISA_DECISIONS = ("approved", "refused", "withdrawn")
 
 # VISA-003-AC02: a fixed compliance sentence, sourced from the reference implementation's own compliance language (DATA_MODEL.md
 # #6.5) -- never invented, and never varied per case, so no response can ever imply EduSphere decides visa outcomes.
