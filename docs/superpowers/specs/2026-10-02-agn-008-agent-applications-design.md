@@ -2,6 +2,22 @@
 
 **Status:** design approved in-session, 2026-10-02, in two sections: approach plus data/backend, then frontend/sidebar/states/tests. No code has been written.
 
+**Revision 2 (2026-10-02):** reviewed against the `api-and-interface-design`, `frontend-ui-engineering` and `security-and-hardening` skills.
+- The owner approved two decisions in-session:
+  - A14: a create throttle, 200 per agency per 24 hours.
+  - A15: archived students' applications are read-only.
+- Added without changing the approved design:
+  - `expected_status` precondition
+  - null semantics for PATCH
+  - date bounds
+  - check order and retry semantics
+  - component split and reuse list
+  - accessibility, responsive and perceived-performance rules (§6.6)
+  - STRIDE/OWASP security table with abuse cases (§7)
+  - AC14–AC17
+
+No code has been written.
+
 **Source requirement.** The owner's `AGN-008` statement (in-session, 2026-10-01):
 
 > "create, edit, view, change status, application ID, submission date and deadlines; Staff sidebar filters (§2, §4, §5)."
@@ -92,6 +108,8 @@ Source sections are in `functionalities/edusphere_markdown/Agent CRM Functionali
 | **A11** | For a student with a login, the application also stores `student_id`. The student still sees it in their own portal, and the existing student-level duplicate rule still covers applications made before this feature. |
 | **A12** | School-bridged applications (`school_student_id` set) stay excluded from every list that excludes them today. Switching inner joins to outer joins must not make them appear. |
 | **A13** | The old `POST /workflows/overseas/applications` stays unchanged for agents (backward compatible). The agent UI moves to the new routes. |
+| **A14** | **Create throttle** (security review, 2026-10-02). At most **200 application creates per agency per rolling 24 hours**. The count comes from `overseas.application.create` audit rows by the agency's members, read under the organisation lock, using the `DEC-SCOPE-038` R1 mechanism. Over the limit returns `429` with `Retry-After`. Reason: each create can email a student who has a login, so create → withdraw → create loops could otherwise spam that student. |
+| **A15** | **Archived students' applications are read-only** (2026-10-02). For an archived agent student, create, edit, status change and withdraw return `409 "Unarchive this student first"`. This is AGN-004's rule for editing the student. Reads still work, and the applications stay listed (AGN-004 D5). |
 
 **Conflicts recorded, not resolved silently**
 
@@ -179,10 +197,10 @@ Every existing caller still gets the same rows for applications made before this
 | POST | `""` | `AgentApplicationCreate` | 201 `{"application": detail}`. See the create sequence below. |
 | GET | `/{id}` | — | 200 `{"application": detail}`; out of scope returns 404. |
 | PATCH | `/{id}` | `AgentApplicationUpdate` (all optional): `course_id`, `intake`, `application_reference`, `submitted_on`, `application_deadline`, `offer_deadline`, `next_action` | See the edit rules below. |
-| POST | `/{id}/status` | `AgentApplicationStatus`: `to_status`, `notes?` (≤ 2000), `next_action?` | See the status-change rules below. |
+| POST | `/{id}/status` | `AgentApplicationStatus`: `to_status`, `expected_status?`, `notes?` (≤ 2000), `next_action?` | See the status-change rules below. |
 
 **Create sequence (POST `""`):**
-1. Lock the organisation.
+1. Lock the organisation, then check the A14 throttle: `429 "Too many applications created today -- try again later"` with a `Retry-After` header in seconds.
 2. `load_scoped` the agent student: out of scope returns 404 `"Student not found"`; archived returns 409 `"Unarchive this student first"`.
 3. Check the university exists (404).
 4. Check the course belongs to the university (422 `"Course does not belong to selected university"`).
@@ -200,7 +218,9 @@ Every existing caller still gets the same rows for applications made before this
 
 **Edit rules (PATCH `/{id}`):**
 - Lock the organisation, then the row.
+- The agent student is archived: 409 `"Unarchive this student first"` (A15).
 - A withdrawn application returns 409 `"This application is withdrawn"`.
+- Null semantics: a field that is absent is unchanged. An explicit `null` clears `course_id`, `application_reference`, the three dates and `next_action`. `intake` cannot be null or empty (422).
 - `university_id` is not accepted: `extra="forbid"` returns 422.
 - A course change re-checks the course belongs to the university (422) and re-runs the duplicate check (409), excluding this application.
 - No changes means 200 and no audit row.
@@ -209,7 +229,9 @@ Every existing caller still gets the same rows for applications made before this
 
 **Status-change rules (POST `/{id}/status`):**
 - Lock the organisation, then the row.
+- The agent student is archived: 409 `"Unarchive this student first"` (A15).
 - Already withdrawn returns 409.
+- `expected_status` is optional; the UI always sends the status it displayed. If it does not match the current status, the response is 409 `"This application changed since you opened it -- reload to see its current status"`. This prevents a stale screen from withdrawing or moving an application someone else has just changed. It is a precondition on one field, not ETags; no ETag contract is introduced.
 - `to_status == "withdrawn"`: allowed unless the current status is `enrolled` (409 `"An enrolled application cannot be withdrawn"`). Audit `overseas.application.withdraw`.
 - `to_status == "enrolled"` returns 403 `"Only a counselor, university representative or admin can mark an application enrolled"`.
 - `to_status` not in the stages returns 422.
@@ -220,7 +242,26 @@ Every existing caller still gets the same rows for applications made before this
 
 Register the router in `main.py` after `agent_students.router`.
 
-**Error body:** `{"detail": "…"}` throughout. Whether `422` or `409` wins is fixed by the order of checks above: scope (404), then terminal state (409), then role (403), then validation (422), then duplicate (409).
+**Error body.** Every error uses the codebase's single shape: `{"detail": "<message>"}`, or for schema failures FastAPI's `{"detail": [{loc, msg, type}]}` 422 list. The frontend's existing `detailMessage` already handles both.
+
+**Order of checks** (fixed, so one request always gets the same answer):
+1. Gate (403)
+2. Throttle (429, create only)
+3. Scope (404)
+4. Archived (409)
+5. Terminal state (409)
+6. Stale `expected_status` (409)
+7. Role limit (403)
+8. Validation (422)
+9. Duplicate (409)
+
+Schema 422s from FastAPI come before all of these.
+
+**Retry semantics.** The write routes are not idempotent, and no idempotency key is introduced (none is contracted in this codebase). A retried create is caught by the duplicate rule (409). A retried status change or withdraw is caught by the forward-only rule or the terminal state (422/409). The UI disables the control while a write is in flight. On a 409 or 422 it reloads the detail, so the user sees the real state.
+
+**Reference errors.** On create, a university that does not exist returns 404 `"University not found"`, which matches the existing create path (consistency over purity). A course that does not match the university returns 422.
+
+**Conventions kept.** Snake_case fields, paging as `{items,total,limit,offset}`, `limit` ≤ 100, and singular wrapper keys (`{"application": …}`), all as AGN-004. Action sub-routes (`/status`) follow AGN-004's `/archive` and `/assign`.
 
 ### 5.4 Schemas — `schemas.py`, after `AgentStudentAssign`
 
@@ -232,8 +273,12 @@ Register the router in `main.py` after `agent_students.router`.
   - `next_action: str | None` (≤ 500)
   - `extra="forbid"`
 - `AgentApplicationUpdate`: the editable fields only, all optional, `extra="forbid"`.
-- `AgentApplicationStatus`: `to_status: str` (≤ 50), `notes: str | None` (≤ 2000), `next_action: str | None` (≤ 500), `extra="forbid"`.
-- Date sanity: `submitted_on` must not be in the future (422). Deadlines may be any date. The UI flags a past deadline instead of refusing it.
+- `AgentApplicationStatus`: `to_status: str` (≤ 50), `expected_status: str | None` (≤ 50), `notes: str | None` (≤ 2000, trimmed), `next_action: str | None` (≤ 500, trimmed), `extra="forbid"`.
+- Strings are trimmed. An empty optional string becomes `None`. Control characters other than newline and tab are refused (422).
+- **Date sanity:**
+  - All dates must fall between `2000-01-01` and `2100-12-31` (422). This catches typos such as year `0202`.
+  - `submitted_on` must be no later than the server's UTC date plus one day (422 `"Submission date cannot be in the future"`). The one-day tolerance covers users ahead of UTC, such as IST after midnight.
+  - Deadlines may be in the past. The UI flags a past deadline instead of refusing it.
 
 ### 5.5 Withdrawn guard on existing endpoints (A1 terminal, minimal)
 
@@ -361,6 +406,62 @@ It follows `AgentStudentsPanel`: 20 per page, the latest request wins (`AbortCon
   - It uses `useSearchParams`, as `LoginForm` does.
 - `MobileNavToggle` receives the nav with children flattened after their parent, labelled "Applications: Draft" and so on.
 
+### 6.6 Component structure, reuse and accessibility (frontend-ui-engineering review, 2026-10-02)
+
+**Split by job.** Each component stays under about 200 lines; `AgentStudentsPanel` is 435 lines, which is the cautionary example.
+
+| File | Responsibility |
+|---|---|
+| `lib/agentApplications.ts` | `APPLICATIONS_URL`, types (`AgentApplicationItem`, `AgentApplicationDetail`, `StatusGroup`), `STAGE_LABELS`, `GROUP_LABELS`, `nextStages(current)` (the stages after `current`, up to `status_tracking`), `deadlineText(nearest, today)` |
+| `AgentApplicationsSection.tsx` | Intro and role wording; mounts the create panel and the list panel; passes `onCreated` |
+| `AgentApplicationsPanel.tsx` | Filter from the URL, paging, list and cards, empty/loading/error, opening the detail |
+| `AgentApplicationDetail.tsx` | `<dl>` of fields, status history `<ol>`, the read-only reason |
+| `AgentApplicationEditForm.tsx` | Edit form |
+| `AgentApplicationStatusForm.tsx` | Next-stage `<select>`, Update status, Withdraw with inline confirmation |
+
+**Reused, not rebuilt:**
+- `SearchableSelect`, already used by the create panel.
+- From `lib/apiErrors`: `sendJson`, `detailMessage`, `isPage`, `Page` and `NOT_COMPLETED`. The create panel drops its private copy of `detailMessage` for the shared one; the wording is kept.
+- Existing classes: `.action-card`, `.card`, `.btn` / `.secondary` / `.ghost` / `.small`, `.form-error`, `.muted`, `.eyebrow`, `.badge`, `.status` / `.status.pending` / `.status.error`, `.state-badge`.
+- Status uses `.badge` plus a text label. Withdrawn uses `.status.error` with the word "Withdrawn", so colour is never the only signal.
+- No new CSS framework, no new dependency. Any new rules (sidebar sub-link indent, list card grid) go in `globals.css`, using the existing spacing (8/12/16/24 px) and colour variables.
+
+**Visual hierarchy:**
+- Page `h2` "Applications"; detail `h3` "<student> — <university>"; `h4` "Status history" and "Change status".
+- Status badge and nearest deadline sit next to the detail heading. The less important fields go in the `<dl>`.
+- In the list, each card shows student and university as the title line, then a status badge, then a deadline line, then the next action as muted text.
+
+**Forms:**
+- Every input has a `<label htmlFor>`. Required fields (student, university, intake) are marked "(required)" in text.
+- Hints use `aria-describedby`. For example, `submitted_on` uses `max` = today and the hint "Leave empty until submitted".
+- Server errors appear in a `role="alert"` block above the buttons, and the form keeps the user's input.
+- Edit has Save and Cancel; Cancel restores the values and returns focus to Edit.
+- Enter submits; Escape cancels the inline withdraw confirmation.
+
+**Focus and keyboard:**
+- Opening a detail moves focus to its heading (`tabIndex=-1`); closing it returns focus to the row's View button.
+- After create, focus moves to the `role="status"` success message.
+- After a status change, focus moves to the updated status line.
+- After withdrawing, focus moves to the read-only notice.
+- Everything is reachable by Tab, and native `<button>`/`<select>`/`<a>` are used throughout.
+
+**Live regions:** one polite `role="status"` region per panel announces "Application created.", "Saved.", "Status updated to Offer." and "Application withdrawn.".
+
+**Responsive:**
+- At 640px and below, list rows are a single-column card stack and the detail sits below the list.
+- At 1024px and above, the list and the detail sit side by side, following the existing `action-grid`.
+- No horizontal scroll at 320px. Long names and emails wrap, using `breakable()` from `AgentStudentsPanel`, moved to `lib/agentStudents.ts` if needed.
+- The sidebar sub-links reuse `.portal-nav` styling, indented by 12px. On mobile they appear flattened in the existing toggle menu.
+
+**Perceived performance:**
+- On filter or page change, the previous rows stay visible but dimmed (`opacity .6`, `aria-busy`) instead of blanking.
+- The first load shows three skeleton cards using the existing `.card` class.
+- A write response updates the open detail and its list row in place, so no full refetch is needed.
+- There are no optimistic status changes, because the server decides (forward-only, enrolled, stale).
+- On 409 or 422 the detail reloads.
+
+**XSS:** every user-entered value (notes, next action, Application ID, names) is rendered as React text. There is no `dangerouslySetInnerHTML`.
+
 ### 6.5 Activity labels
 
 `lib/agentStaff.ts` `ACTIVITY_LABELS` gains:
@@ -371,17 +472,42 @@ It follows `AgentStudentsPanel`: 20 per page, the latest request wins (`AbortCon
 | `overseas.application.advance` | "moved an application forward" |
 | `overseas.application.withdraw` | "withdrew an application" |
 
-## 7. Security
+## 7. Security (security-and-hardening review, 2026-10-02)
 
-- Authorization is server-side only. UI controls only follow it: the status options shown and the edit button hidden for withdrawn applications.
-- IDOR: every by-id route resolves the row through scope in the WHERE clause, and the response does not reveal whether a row exists.
-- Mass assignment: `extra="forbid"` schemas; `university_id`, `agent_id`, `student_id` and `status` cannot be set through PATCH.
-- Commission self-dealing is prevented by A4 (agents cannot reach `enrolled`).
-- Output allowlist: no internal user ids. `agent_student_id` is the agency's own record id.
-- Input bounds: lengths as in §5.4; `limit` ≤ 100; `status` is a `Literal`.
-- Audit and log metadata never contain notes text or personal data.
+**Trust boundaries.** Two untrusted inputs enter here: the agent's HTTP requests (JSON bodies, path ids, query params) and data stored by other roles that this feature displays (university names, the reference typed by a university_rep).
 
-## 8. Acceptance criteria (AGN-008-AC01…AC14)
+**Assets.** Student PII (name, email, phone of agent students), application state, and commission eligibility.
+
+| Concern | Finding and control |
+|---|---|
+| **Authentication** | Unchanged. The existing httpOnly cookie session (`SameSite=Lax`, `Secure` per `settings.cookie_secure`) and `get_current_user`, which checks the session version. A deactivated Staff member or Master, or a suspended agency, is refused by the session check and by `agent_denial_reason` on every route. |
+| **Authorization** | Server-side on every route: `_gate`, then `student_scope` / `application_scope` in the WHERE clause. UI controls only follow the server. The AGN-003 matrix rows "Edit Application" and "Change Application Status" are enforced in `test_agn_003_matrix.py`. |
+| **IDOR** | Path ids (`application_id`) and body ids (`agent_student_id`) resolve only inside scope, so another org's id or another staff member's student returns the same 404 as a missing row. `university_id` and `course_id` are public catalogue ids, validated for existence and consistency. The `student` query filter is ANDed with scope, so it cannot widen it. |
+| **Role escalation** | Agents cannot set `enrolled` (403), so they cannot self-accrue commission. PATCH cannot set `agent_id`, `counselor_id`, `student_id`, `school_student_id`, `university_id` or `status` (`extra="forbid"`, 422). `agent_id` always comes from the session user. Staff get no Master-only power: both roles are allowed by the §6 matrix, and scope narrows Staff. |
+| **Input validation** | Pydantic at the boundary: lengths, date bounds, trimming, control characters, the `Literal` status group, UUID path/query types, `limit` ≤ 100. Business rules (stage order, duplicate, course/university match) are checked in the router before any write. |
+| **SQL injection** | SQLAlchemy expressions only, with no raw SQL or string concatenation. No free-text search is added. |
+| **XSS** | React escaping only, with no `dangerouslySetInnerHTML` (§6.6). Notification text uses the university name inside a template string, which is already escaped by the email renderer as today. |
+| **CSRF** | Cookie `SameSite=Lax` blocks cross-site POST, PATCH and PUT with cookies. The routes need `Content-Type: application/json`, which a cross-site form cannot send without a CORS preflight. CORS allows only `settings.frontend_url`. No new control is needed, and none is added (no speculative change). |
+| **Token/session** | No new tokens. Nothing is stored in `localStorage`; the panel keeps only UI state in the URL (`status`, `offset`). |
+| **Secret exposure** | No new secrets or config. |
+| **Sensitive data in responses** | Explicit allowlists in `item()` / `detail()`: no `agent_id`, `counselor_id`, `student_id` or internal user ids. Owner email and phone are **not** returned by the application routes; the student's own record carries them. |
+| **Sensitive logs** | Audit metadata holds ids, field names and from/to status only, never notes, next-action text, Application ID or names. Structured logs (`app.agent_applications`) hold org, actor and application ids plus the event name. |
+| **Rate limiting** | A14: 200 creates per agency per rolling 24 hours, giving 429 with `Retry-After`. Reads, edits and status changes stay unthrottled, matching AGN-004 (no email is sent, and they are bounded by forward-only progress and the terminal state). |
+| **Audit** | Every write adds its `AuditLog` row in the same transaction (fail closed). Actions: `overseas.application.create`, `.update`, `.advance`, `.withdraw`. The throttle reads the audit table, so both share one record. |
+| **Data privacy** | No new categories of personal data. Dates and the reference are application metadata. Agent-student PII stays on `agent_students` and is covered by AGN-ERASE when that is decided. |
+
+**Abuse cases**, each written as a test first:
+1. A Staff member opens another staff member's application by id: 404.
+2. Org A posts org B's `agent_student_id`: 404.
+3. An agent sets `enrolled`: 403, and no commission row is created.
+4. PATCH with `agent_id`, `status` or `university_id`: 422.
+5. Withdraw from a stale screen after a counselor enrolled the application: 409 (`expected_status` or the enrolled rule).
+6. The 201st create in 24 hours: 429.
+7. Writes on an archived student's application: 409.
+8. A deactivated Staff member calls any route: 403/401.
+9. `super_admin`, counselor or university_rep calls the agent routes: 403.
+
+## 8. Acceptance criteria (AGN-008-AC01…AC18)
 
 1. **AC01** — A Master creates an application for a student with no login and one with a login. The response is 201, `status = enquiry`, with one history row (`None → enquiry`), and the student's own portal shows it only when the student has a login.
 2. **AC02** — Staff can create, edit and change status for an assigned student. For an unassigned student, or another org's student or application, the response is 404.
@@ -396,7 +522,11 @@ It follows `AgentStudentsPanel`: 20 per page, the latest request wins (`AbortCon
 11. **AC11** — Each sidebar filter link shows the matching subset with `aria-current` on the active link. Staff and Masters both have the links. The mobile menu includes them.
 12. **AC12** — The page shows correct loading, empty (unfiltered and filtered), error-with-retry, and write-error states. It has no horizontal scroll at 320px, and keyboard focus returns to the opener after actions.
 13. **AC13** — Agent edit, advance and withdraw actions appear in AGN-021 staff activity with the student's name.
-14. **AC14** — Existing behaviour is preserved:
+14. **AC14** — The 201st create by one agency within a rolling 24 hours returns 429 with `Retry-After`. Another agency is unaffected.
+15. **AC15** — For an archived student's applications, create, edit, status change and withdraw return 409. Reads and listing still work.
+16. **AC16** — A status change whose `expected_status` differs from the current status returns 409, and nothing changes.
+17. **AC17** — The nine §7 abuse cases each return the stated code and leave no partial write: no history, audit or commission row.
+18. **AC18** — Existing behaviour is preserved:
     - OVS-002/003/004, AGT-002/003/004, SCH-010, UNI-001, RPT-002, ENH-031 and AGN-001/002/003/004/005/021 tests pass unchanged, except the documented updates in §9.
     - The old agent create path still works.
 
@@ -414,6 +544,7 @@ It follows `AgentStudentsPanel`: 20 per page, the latest request wins (`AbortCon
 | `test_agn_008_filters.py` | AC07 |
 | `test_agn_008_null_owner.py` | AC08, AC09, AC10: every §5.6 site, with a no-login application, a linked application and a school-bridged application present together |
 | `test_agn_008_withdrawn_guard.py` | AC06 (counselor `/advance` and PATCH) |
+| `test_agn_008_security.py` | AC14 (throttle and `Retry-After`; other org unaffected), AC15 (archived), AC16 (stale `expected_status`), AC17 (the nine abuse cases, each asserting no history, audit or commission row), schema bounds (dates, lengths, control characters, `extra="forbid"`), and the response allowlist (no `agent_id`, `student_id`, `counselor_id`, email or phone) |
 
 Helpers: `agn004_helpers.mk_record` / `mk_staff`, `agn001_helpers`, `agn003_helpers.mk_university`.
 
@@ -454,7 +585,7 @@ Helpers: `agn004_helpers.mk_record` / `mk_staff`, `agn001_helpers`, `agn003_help
 ## 11. Documentation (updated with the build)
 
 - `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-050`.
-- `ENHANCEMENT_BACKLOG.md`: an AGN-008 summary row and a section with AC01–AC14.
+- `ENHANCEMENT_BACKLOG.md`: an AGN-008 summary row and a section with AC01–AC18.
 - `RTM.md`: an AGN-008 row.
 - `DATA_MODEL.md` §6.2: new columns, `withdrawn`, owner invariant.
 - `API_CONTRACT.md`: the agent applications table; nullable `student_id` in the list response.
