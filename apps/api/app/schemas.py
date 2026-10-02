@@ -2,11 +2,11 @@ import math
 import re
 import unicodedata
 from datetime import UTC, date, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, StrictBool, StrictInt, StringConstraints, ValidationError, ValidationInfo, field_validator, model_validator
+from pydantic import AfterValidator, AwareDatetime, BeforeValidator, BaseModel, ConfigDict, EmailStr, Field, StrictBool, StrictInt, StringConstraints, ValidationError, ValidationInfo, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.models import GENDERS
@@ -906,7 +906,26 @@ class AgentApplicationOffer(BaseModel):
 
 # --- AGN-011: deposit collection (DEC-SCOPE-058; docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md §4) ---
 
-DepositAmount = Annotated[Decimal, Field(gt=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)]
+DEPOSIT_AMOUNT_FORMAT = "Enter an amount in rupees with up to 2 decimals, for example 50000.50"
+
+
+def _deposit_amount(value):
+    """QA11-07: every amount error in plain words (the agency's deposit and the admin's refund): rupees, more than 0, at most
+    99,999,999.99 (Numeric(12, 2) with headroom), at most 2 decimals."""
+    try:
+        amount = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        raise PydanticCustomError("deposit_amount_format", DEPOSIT_AMOUNT_FORMAT) from None
+    if not amount.is_finite() or amount.as_tuple().exponent < -2:
+        raise PydanticCustomError("deposit_amount_format", DEPOSIT_AMOUNT_FORMAT)
+    if amount <= 0:
+        raise PydanticCustomError("deposit_amount_positive", "The amount must be more than ₹0")
+    if amount > Decimal("99999999.99"):
+        raise PydanticCustomError("deposit_amount_max", "The amount can be at most ₹99,999,999.99")
+    return amount
+
+
+DepositAmount = Annotated[Decimal, BeforeValidator(_deposit_amount)]
 
 
 class AgentDepositSave(BaseModel):

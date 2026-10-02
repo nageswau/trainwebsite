@@ -159,6 +159,18 @@ async def test_more_than_ten_checkouts_an_hour_is_429(db_session, world):
 
 
 @pytest.mark.asyncio
+async def test_failed_provider_attempts_do_not_use_up_the_limit(db_session, world):
+    """QA11-04: an attempt the provider refused opened no order (nothing could be charged), so it does not count toward the hourly limit."""
+    for _ in range(10):
+        failed = await mk_deposit_payment(db_session, world["deposit"], world["master"], status="cancelled", active=False)
+        failed.checkout_provider_order_id = None
+    await db_session.commit()
+    async with client_for(world["master"].email) as c:
+        r = await c.post(checkout_url(world["app"].id), headers=key())
+    assert r.status_code == 200, r.text
+
+
+@pytest.mark.asyncio
 async def test_a_provider_error_is_502_and_cancels_the_attempt(db_session, world, monkeypatch):
     from app.services.payment import payments
 

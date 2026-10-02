@@ -24,9 +24,10 @@ def test_not_required_needs_no_amount():
         ({"required": True}, "Enter the deposit amount"),
         ({"required": False, "amount": "10"}, "A deposit that is not required has no amount or due date"),
         ({"required": False, "due_date": "2026-11-01"}, "A deposit that is not required has no amount or due date"),
-        ({"required": True, "amount": "0"}, None),
-        ({"required": True, "amount": "10.005"}, None),
-        ({"required": True, "amount": "100000000"}, None),
+        ({"required": True, "amount": "0"}, "The amount must be more than ₹0"),
+        ({"required": True, "amount": "10.005"}, "Enter an amount in rupees with up to 2 decimals, for example 50000.50"),
+        ({"required": True, "amount": "abc"}, "Enter an amount in rupees with up to 2 decimals, for example 50000.50"),
+        ({"required": True, "amount": "100000000"}, "The amount can be at most ₹99,999,999.99"),
         ({"required": True, "amount": "10", "currency": "USD"}, None),  # D1: the server owns the currency
         ({"required": True, "amount": "10", "status": "paid"}, None),  # only the paid hook sets paid
         ({"required": True, "amount": "10", "due_date": "1999-01-01"}, "Dates must be between 2000 and 2100"),
@@ -69,3 +70,10 @@ def test_invalid_remit_bodies(body):
 def test_invalid_refund_bodies(body):
     with pytest.raises(ValidationError):
         DepositRefund(**body)
+
+
+def test_refund_amount_errors_are_plain_words():
+    """QA11-07: the admin sees the same plain wording as the agency, not the validator's."""
+    with pytest.raises(ValidationError) as err:
+        DepositRefund(refunded_on="2026-10-01", amount="abc", reason="Visa refused")
+    assert "Enter an amount in rupees with up to 2 decimals, for example 50000.50" in str(err.value)

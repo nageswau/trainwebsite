@@ -57,11 +57,14 @@ def blocked_by_other(active: Payment, user_id) -> bool:
 
 async def checkout_wait_seconds(db: AsyncSession, deposit_id) -> int:
     """D8: seconds until another pay attempt is allowed, 0 when under the limit. Counted in PostgreSQL, so it holds across instances;
-    the caller holds the deposit lock, so two requests cannot both squeeze under it."""
+    the caller holds the deposit lock, so two requests cannot both squeeze under it. Only attempts that opened a Razorpay order count
+    (QA11-04): one the provider refused created nothing, so a provider outage does not lock the agency out."""
     now = datetime.now(UTC)
     recent = (
         await db.scalars(
-            select(Payment.created_at).where(Payment.reference_type == REFERENCE_TYPE, Payment.reference_id == deposit_id, Payment.created_at > now - CHECKOUT_WINDOW).order_by(Payment.created_at)
+            select(Payment.created_at)
+            .where(Payment.reference_type == REFERENCE_TYPE, Payment.reference_id == deposit_id, Payment.checkout_provider_order_id.is_not(None), Payment.created_at > now - CHECKOUT_WINDOW)
+            .order_by(Payment.created_at)
         )
     ).all()
     if len(recent) < CHECKOUT_LIMIT:
