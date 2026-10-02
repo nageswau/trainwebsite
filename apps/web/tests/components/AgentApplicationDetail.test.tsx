@@ -93,6 +93,35 @@ describe("AgentApplicationDetail (AGN-008)", () => {
     expect(JSON.parse(String(patch[1]!.body))).toEqual({ intake: "Spring 2028" });
   });
 
+  it("on a 409 from Save shows the server's words and closes the edit form", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.startsWith("/api/v1/public/universities/")) return Promise.resolve(json({ courses: [] }));
+      if (init?.method === "PATCH") return Promise.resolve(json({ detail: "Unarchive this student first" }, 409));
+      return Promise.resolve(json({ application: detail() }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Intake (required)"), { target: { value: "Spring 2028" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unarchive this student first");
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Save" })).toBeNull());
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+    expect(screen.getByText("Fall 2027")).toBeInTheDocument();
+  });
+
+  it("returns focus to Withdraw application after a failed withdraw", async () => {
+    const fetchMock = vi.fn((_: string, init?: RequestInit) =>
+      Promise.resolve(init?.method === "POST" ? json({ detail: "This application changed since you opened it -- reload to see its current status" }, 409) : json({ application: detail() })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Withdraw application" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, withdraw" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("changed since you opened it");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw application" })).toHaveFocus());
+  });
+
   it("says when the application is gone", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json({ detail: "Application not found" }, 404))));
     render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);

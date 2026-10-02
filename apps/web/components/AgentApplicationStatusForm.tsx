@@ -17,7 +17,7 @@ export default function AgentApplicationStatusForm({ detail, onSaved, onFailed }
   const withdrawRef = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef(false);
 
-  // Keep keyboard users where they were once the confirmation closes by Escape / Keep (not after a send).
+  // Keep keyboard users where they were once the confirmation closes by Escape / Keep / a failed withdraw (not after a success).
   useEffect(() => {
     if (!confirming && returnFocus.current) {
       returnFocus.current = false;
@@ -29,6 +29,7 @@ export default function AgentApplicationStatusForm({ detail, onSaved, onFailed }
     setBusy(true);
     const outcome = await sendJson(`${APPLICATIONS_URL}/${detail.id}/status`, "POST", { to_status: to, expected_status: detail.status, notes: notes.trim() || null });
     setBusy(false);
+    if (!outcome.ok && to === "withdrawn") returnFocus.current = true; // a failed withdraw: back to the button, if it still renders
     setConfirming(false);
     if (!outcome.ok) return onFailed(outcome.message, outcome.status);
     const next = (outcome.data as { application?: AgentApplicationDetail }).application;

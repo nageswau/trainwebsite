@@ -58,7 +58,10 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
   function failed(message: string, status?: number) {
     setNotice({ text: message, failed: true });
     if (status === 404) return setState("gone");
-    if (status === 409 || status === 422) load();
+    if (status === 409 || status === 422) {
+      setEditing(false); // the reload shows the real state; stale input must not stay on screen
+      load();
+    }
   }
 
   if (state === "loading") return <p className="muted" aria-busy="true">Loading application…</p>;
