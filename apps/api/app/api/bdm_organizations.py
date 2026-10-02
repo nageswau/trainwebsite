@@ -3,6 +3,7 @@
 Every `{org_id}` resolves through `services.bdm_organizations.load_scoped` (out of scope = 404); every write is one transaction --
 scope, row lock, change, audit, one commit here. Lists are {items, total, limit, offset}, ordered by name then id."""
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -15,7 +16,7 @@ from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import BdmOrganization, BdmOrganizationContact, User
-from app.schemas import BDM_ORG_FIELDS, BdmOrganizationCreate, BdmOrganizationEnvelope, BdmOrganizationPage, BdmOrgType
+from app.schemas import BDM_ORG_FIELDS, BdmOrganizationCreate, BdmOrganizationEnvelope, BdmOrganizationPage, BdmOrganizationUpdate, BdmOrgType
 from app.services import bdm_organizations as svc
 from app.services.bdm import bdm_context
 
@@ -120,3 +121,55 @@ async def create_organization(payload: BdmOrganizationCreate, user: User = Depen
 async def get_organization(org_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     org = await svc.load_scoped(db, user, org_id)
     return {"organization": await svc.organization_out(db, user, org)}
+
+
+@router.patch("/{org_id}", response_model=BdmOrganizationEnvelope)
+async def update_organization(org_id: UUID, payload: BdmOrganizationUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """PATCH: only the fields sent; values equal to the stored ones are not changes (no audit, no updated_at bump, §12.1 A6). A
+    changed name or city re-runs the duplicate check (AC2)."""
+    org = await svc.load_scoped(db, user, org_id, lock=True)
+    svc.require(user, org, "can_edit", "update")
+    changes = payload.model_dump(exclude_unset=True, exclude={"confirm_duplicate"})
+    changed = sorted(k for k, v in changes.items() if getattr(org, k) != v)
+    total = 0
+    if {"name", "city"} & set(changed):
+        name_key = svc.normalize_key(changes.get("name", org.name))
+        city_key = svc.normalize_key(changes.get("city", org.city))
+        matches, total = await svc.find_duplicates(db, org.bdm_type, name_key, city_key, exclude_id=org.id)
+        if total and not payload.confirm_duplicate:
+            svc.log("bdm_org_duplicate_warned", user, org.id, match_count=total)
+            raise svc.duplicate_conflict(matches, total)
+        org.name_key, org.city_key = name_key, city_key
+    if changed:
+        for key in changed:
+            setattr(org, key, changes[key])
+        svc.audit(db, user, "update", org.id, {"fields": changed})
+        if total:
+            svc.audit(db, user, "duplicate_override", org.id, {"match_count": total})
+    await db.commit()
+    if changed:
+        svc.log("bdm_org_updated", user, org.id, fields=changed)
+    return {"organization": await svc.organization_out(db, user, org)}
+
+
+async def _set_archived(org_id: UUID, user: User, db: AsyncSession, archive: bool) -> dict:
+    org = await svc.load_scoped(db, user, org_id, lock=True)
+    action = "archive" if archive else "restore"
+    svc.require(user, org, "can_archive" if archive else "can_restore", action)
+    org.archived_at = datetime.now(UTC) if archive else None
+    svc.audit(db, user, action, org.id)
+    await db.commit()
+    svc.log(f"bdm_org_{action}d", user, org.id)
+    return {"organization": await svc.organization_out(db, user, org)}
+
+
+@router.post("/{org_id}/archive", response_model=BdmOrganizationEnvelope)
+async def archive_organization(org_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """C5: the assigned BDM or super_admin. Archived = hidden by default and read-only (C15)."""
+    return await _set_archived(org_id, user, db, True)
+
+
+@router.post("/{org_id}/restore", response_model=BdmOrganizationEnvelope)
+async def restore_organization(org_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """C5: the team manager or super_admin."""
+    return await _set_archived(org_id, user, db, False)

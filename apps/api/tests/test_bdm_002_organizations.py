@@ -152,3 +152,63 @@ async def test_get_unknown_is_404(client, db_session):
     await login(client, await make_bdm(db_session, await make_manager(db_session)))
     response = await client.get(f"{ORGS}/{uuid.uuid4()}")
     assert response.status_code == 404 and response.json()["detail"] == "Organization not found"
+
+
+@pytest.mark.asyncio
+async def test_assigned_bdm_edits_and_a_no_op_writes_no_audit(client, db_session):
+    await login(client, await make_bdm(db_session, await make_manager(db_session)))
+    org = await create_org(client)
+    url = f"{ORGS}/{org['id']}"
+    edited = await client.patch(url, json={"existing_partner": True, "state": "", "student_count": 1200, "org_type": "university"})
+    assert edited.status_code == 200
+    body = edited.json()["organization"]
+    assert body["existing_partner"] is True and body["state"] is None and body["student_count"] == 1200 and body["org_type"] == "university"
+    assert (await client.patch(url, json={"existing_partner": True})).status_code == 200
+    assert (await client.patch(url, json={})).status_code == 200
+    assert await _audits(db_session, org["id"]) == ["bdm_organization.create", "bdm_organization.update"]
+    for bad in ({"bdm_type": "agent"}, {"code": "x"}, {"assigned_bdm_user_id": str(uuid.uuid4())}, {"name": None}, {"contacts": []}):
+        assert (await client.patch(url, json=bad)).status_code == 422, bad
+
+
+@pytest.mark.asyncio
+async def test_rename_into_a_duplicate_warns(client, db_session):
+    await login(client, await make_bdm(db_session, await make_manager(db_session)))
+    taken = await create_org(client)
+    mine = await create_org(client)
+    url = f"{ORGS}/{mine['id']}"
+    warned = await client.patch(url, json={"name": taken["name"]})
+    assert warned.status_code == 409 and warned.json()["detail"]["matches"][0]["id"] == taken["id"]
+    assert (await client.patch(url, json={"name": taken["name"], "confirm_duplicate": True})).status_code == 200
+    assert (await client.patch(url, json={"state": "Goa"})).status_code == 200  # name/city untouched: no re-check
+    assert await _audits(db_session, mine["id"]) == ["bdm_organization.create", "bdm_organization.update", "bdm_organization.duplicate_override", "bdm_organization.update"]
+
+
+@pytest.mark.asyncio
+async def test_archive_hides_blocks_edits_and_manager_restores(client, db_session):
+    manager = await make_manager(db_session)
+    await login(client, await make_bdm(db_session, manager))
+    org = await create_org(client, city=unique_name("Town"))
+    url = f"{ORGS}/{org['id']}"
+    archived = await client.post(f"{url}/archive")
+    assert archived.status_code == 200 and archived.json()["organization"]["archived"] is True
+    assert archived.json()["organization"]["permissions"] == {"can_edit": False, "can_archive": False, "can_restore": False, "can_reassign": False}
+    assert org["id"] not in {r["id"] for r in (await client.get(ORGS, params={"city": org["city"]})).json()["items"]}
+    shown = (await client.get(ORGS, params={"city": org["city"], "include_archived": True})).json()["items"]
+    assert [r["archived"] for r in shown if r["id"] == org["id"]] == [True]
+    assert (await client.patch(url, json={"state": "Goa"})).json()["detail"] == "Restore this organization first"
+    assert (await client.post(f"{url}/archive")).json()["detail"] == "Already archived"
+    assert (await client.post(f"{url}/restore")).status_code == 403
+    await login(client, manager)
+    restored = await client.post(f"{url}/restore")
+    assert restored.status_code == 200 and restored.json()["organization"]["archived"] is False
+    assert (await client.post(f"{url}/restore")).json()["detail"] == "Already active"
+    assert await _audits(db_session, org["id"]) == ["bdm_organization.create", "bdm_organization.archive", "bdm_organization.restore"]
+
+
+@pytest.mark.asyncio
+async def test_archived_match_is_labelled_in_the_warning(client, db_session):
+    await login(client, await make_bdm(db_session, await make_manager(db_session)))
+    org = await create_org(client)
+    await client.post(f"{ORGS}/{org['id']}/archive")
+    warned = await client.post(ORGS, json=org_payload(name=org["name"], city=org["city"]))
+    assert warned.status_code == 409 and warned.json()["detail"]["matches"][0]["archived"] is True
