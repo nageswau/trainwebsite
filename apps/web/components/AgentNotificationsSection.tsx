@@ -28,7 +28,7 @@ export default function AgentNotificationsSection({ user, items }: { user: User;
           <SectionUnavailable title="Notifications" />
         ) : (
           <div className="card">
-            <SchoolNotificationList notifications={items} emptyText={EMPTY} localTime />
+            <SchoolNotificationList notifications={items} emptyText={EMPTY} localTime readBeforeOpen />
             {items.length >= WINDOW && <p className="muted">Showing your latest {WINDOW} notifications.</p>}
           </div>
         ))}

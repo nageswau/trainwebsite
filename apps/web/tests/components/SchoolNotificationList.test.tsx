@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import SchoolNotificationList, { type NotificationItem } from "@/components/SchoolNotificationList";
@@ -85,6 +85,64 @@ describe("SchoolNotificationList", () => {
       render(<SchoolNotificationList notifications={[n("abc", { read: true, action_url: "/a" })]} emptyText="none" />);
       fireEvent.click(screen.getByRole("link", { name: "Open: Title abc" }));
       expect(mock).not.toHaveBeenCalled();
+    });
+  });
+
+  // AGN-017 browser QA QA17-03: two notices with the same title had identical link names; each link is now described by its notice.
+  it("describes each Open link by its notice's text", () => {
+    render(<SchoolNotificationList notifications={[n("1", { title: "New task", body: "Due 04 Oct", action_url: "/a" }), n("2", { title: "New task", body: "Due 09 Oct", action_url: "/a" })]} emptyText="none" />);
+    const [first, second] = screen.getAllByRole("link", { name: "Open: New task" });
+    expect(first).toHaveAccessibleDescription("Due 04 Oct");
+    expect(second).toHaveAccessibleDescription("Due 09 Oct");
+  });
+
+  // AGN-017 browser QA QA17-01: the agency page opened the link while the read was in flight, so the next page still counted the
+  // notice as unread. With readBeforeOpen the read is awaited (bounded) before navigating, so the destination's badge is current.
+  describe("readBeforeOpen (agency page)", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    });
+
+    function setup(fetchImpl: () => Promise<Response>) {
+      const assign = vi.fn();
+      const fetchMock = vi.fn(fetchImpl);
+      vi.stubGlobal("location", { ...window.location, assign });
+      vi.stubGlobal("fetch", fetchMock);
+      render(<SchoolNotificationList notifications={[n("abc", { read: false, action_url: "/overseas/agent/tasks" })]} emptyText="none" readBeforeOpen />);
+      return { assign, fetchMock, link: screen.getByRole("link", { name: "Open: Title abc" }) };
+    }
+
+    it("navigates only after the read has been saved", async () => {
+      let finish: (r: Response) => void = () => undefined;
+      const { assign, fetchMock, link } = setup(() => new Promise<Response>((resolve) => (finish = resolve)));
+      fireEvent.click(link);
+      expect(fetchMock).toHaveBeenCalledWith("/api/v1/workflows/notifications/abc/read", expect.objectContaining({ method: "PATCH" }));
+      expect(assign).not.toHaveBeenCalled();
+      finish(new Response("{}", { status: 200 }));
+      await waitFor(() => expect(assign).toHaveBeenCalledWith("/overseas/agent/tasks"));
+    });
+
+    it("still navigates when the read fails", async () => {
+      const { assign, link } = setup(() => Promise.reject(new TypeError("offline")));
+      fireEvent.click(link);
+      await waitFor(() => expect(assign).toHaveBeenCalledWith("/overseas/agent/tasks"));
+    });
+
+    it("never waits more than a moment for a slow read", async () => {
+      vi.useFakeTimers();
+      const { assign, link } = setup(() => new Promise<Response>(() => undefined));
+      fireEvent.click(link);
+      await vi.advanceTimersByTimeAsync(1600);
+      expect(assign).toHaveBeenCalledWith("/overseas/agent/tasks");
+    });
+
+    it("leaves a modified click (new tab) to the browser", () => {
+      const { assign, fetchMock, link } = setup(() => Promise.resolve(new Response("{}")));
+      const notPrevented = fireEvent.click(link, { ctrlKey: true });
+      expect(notPrevented).toBe(true);
+      expect(assign).not.toHaveBeenCalled();
+      expect(fetchMock).toHaveBeenCalledWith("/api/v1/workflows/notifications/abc/read", expect.objectContaining({ keepalive: true }));
     });
   });
 });

@@ -49,6 +49,20 @@ describe("PortalShell unread badge (AGN-017)", () => {
     }
   });
 
+  // Browser QA QA17-05: below 980 px the sidebar is hidden, so the count was only inside the menu. The top bar links to the page with it.
+  it("links the unread count from the top bar (shown when the sidebar is collapsed)", () => {
+    const { container } = renderShell(4);
+    const top = container.querySelector(".portal-topbar") as HTMLElement;
+    const link = within(top).getByRole("link", { name: "4 unread notifications" });
+    expect(link).toHaveAttribute("href", "/overseas/agent/notifications");
+    expect(link).toHaveClass("topbar-unread");
+  });
+
+  it("has no top-bar count without unread notifications", () => {
+    const { container } = renderShell(0);
+    expect(container.querySelector(".topbar-unread")).toBeNull();
+  });
+
   it("says the count in words in the mobile menu", () => {
     const { container } = renderShell(3);
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));

@@ -20,7 +20,7 @@ vi.mock("@/components/PortalShell", () => ({
     </div>
   ),
 }));
-vi.mock("@/components/WorkflowPanel", () => ({ default: () => null }));
+vi.mock("@/components/WorkflowPanel", () => ({ default: ({ section }: { section: string }) => <p>workflow panel: {section}</p> }));
 vi.mock("@/components/RefreshOnHistoryNav", () => ({ default: () => null }));
 vi.mock("@/components/PortalSection", () => ({ default: () => <p>generic section</p> }));
 vi.mock("@/components/AgentTasksSection", () => ({ default: () => <p>tasks section</p> }));
@@ -87,6 +87,14 @@ describe("PortalPage agent notifications (AGN-017)", () => {
     render(await PortalPage({ division: "overseas", role: "agent", section: "notifications" }));
     expect(screen.getByText("Agency notifications go to the agency's own Masters and Staff.")).toBeInTheDocument();
     expect(screen.getByText("Notifications:0")).toBeInTheDocument();
+    // Browser QA QA17-06: the generic admin "Send notification" form is not this page's; other sections keep their panel.
+    expect(screen.queryByText(/workflow panel/)).toBeNull();
+  });
+
+  it("keeps the workflow panel on the other agency sections", async () => {
+    answer({ payload: { title: "Tasks", rows: [] } });
+    render(await PortalPage({ division: "overseas", role: "agent", section: "tasks" }));
+    expect(screen.getByText("workflow panel: tasks")).toBeInTheDocument();
   });
 
   it("still refuses a non-agent role with the access-unavailable card", async () => {
