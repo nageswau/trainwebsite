@@ -15,6 +15,25 @@ afterEach(() => {
 });
 
 describe("activityLabel (AGN-021)", () => {
+  it("labels a counseling save (AGN-006)", () => {
+    expect(activityLabel("agent_student.counseling")).toBe("Recorded counseling");
+  });
+
+  it("labels the shortlist actions (AGN-007 browser QA-09)", () => {
+    expect(activityLabel("agent_student.shortlist_add")).toBe("Added a university to a shortlist");
+    expect(activityLabel("agent_student.shortlist_update")).toBe("Edited a shortlist entry");
+    expect(activityLabel("agent_student.shortlist_remove")).toBe("Removed a university from a shortlist");
+  });
+
+  it("labels every action the server allow-lists (services/staff_activity.py STAFF_ACTIVITY_ACTIONS)", () => {
+    const allowListed = [
+      "agent_student.create", "agent_student.update", "agent_student.duplicate_override", "agent_student.counseling",
+      "agent_student.shortlist_add", "agent_student.shortlist_update", "agent_student.shortlist_remove",
+      "agent.student_link", "overseas.application.create", "document.upload", "document.verify",
+    ];
+    expect(allowListed.filter((action) => activityLabel(action) === "Other activity")).toEqual([]);
+  });
+
   it("labels every allow-listed action and falls back for others", () => {
     expect(activityLabel("agent_student.create")).toBe("Created a student record");
     expect(activityLabel("document.verify")).toBe("Verified a document");

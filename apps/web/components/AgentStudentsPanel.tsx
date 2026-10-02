@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import AgentStudentAssign from "./AgentStudentAssign";
+import { LEAVE_PROMPT as COUNSELING_LEAVE_PROMPT } from "./AgentStudentCounselingForm";
 import AgentStudentDetailPanel, { assignedText } from "./AgentStudentDetailPanel";
 import AgentStudentForm from "./AgentStudentForm";
 import { detailMessage, isPage, Page } from "@/lib/apiErrors";
@@ -48,6 +49,11 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
   const request = useRef<AbortController | null>(null);
   const detailRequest = useRef(0); // only the latest View may fill the detail panel
   const lastDetailId = useRef<string | null>(null);
+  // AGN-006 review #2: an open counseling form with unsaved input -- opening another student asks first.
+  const unsavedCounseling = useRef(false);
+  const trackCounseling = useCallback((dirty: boolean) => {
+    unsavedCounseling.current = dirty;
+  }, []);
   // Browser QA-06: search, Show archived and page live in the URL (the AgentApprovalPanel pattern), so refresh and Back keep
   // them. Read once on mount (the server has no URL state to match) and hold the first fetch until then.
   const [ready, setReady] = useState(false);
@@ -155,6 +161,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
   }
 
   async function openDetail(id: string) {
+    if (unsavedCounseling.current && !window.confirm(COUNSELING_LEAVE_PROMPT)) return;
     const ticket = ++detailRequest.current;
     const current = () => ticket === detailRequest.current; // a slower, earlier View must not replace a later one
     lastDetailId.current = id;
@@ -295,8 +302,9 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
           key={detail.id}
           detail={detail}
           onClose={closeDetail}
-          onSaved={(s) => {
-            setNotice(`${s.full_name} saved.`);
+          onDirtyChange={trackCounseling}
+          onSaved={(s, notice) => {
+            setNotice(notice ?? `${s.full_name} saved.`);
             applyUpdate(s);
           }}
         />

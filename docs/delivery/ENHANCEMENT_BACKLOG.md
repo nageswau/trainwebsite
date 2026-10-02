@@ -76,8 +76,8 @@ still read N/A). Tests and docs only, no new decision; the owner later had four 
 (QA5-01/02/03/05, see §AGN-005).
 
 **Revision 11 (2026-10-02):** the owner's `AGN-008` statement ("create, edit, view, change status, application ID, submission date and
-deadlines; Staff sidebar filters (§2, §4, §5)") is decided as `DEC-SCOPE-050` (A1–A15; provisional number, `048`/`049` are claimed by
-the unmerged `AGN-006`/`AGN-007` branches). It lifts `DEC-SCOPE-042` D8: agency students with no login can now have applications.
+deadlines; Staff sidebar filters (§2, §4, §5)") is decided as `DEC-SCOPE-050` (A1–A15; `048`/`049` were held by
+the then-unmerged `AGN-006`/`AGN-007` branches; both reached `main` first and `050` stayed free). It lifts `DEC-SCOPE-042` D8: agency students with no login can now have applications.
 See §AGN-008.
 
 ## 0. Scope and exclusions (read this before the backlog)
@@ -164,6 +164,8 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-004 | Agent students — Master/Staff create, edit, view and (Master) archive students who never log in; staff assigned-only | Large | High | Yes | AGT-002, AGN-001, ENH-031 (scope change); AGN-002 (merge) |
 | AGN-021 | Agent staff activity — a Master views a staff member's student-journey activity (Rev. 9) | Small | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004 |
 | AGN-005 | Close the §6 staff matrix gap for agency student records — tests and docs, plus four browser-QA fixes (Rev. 10) | Small | Low | No | AGN-003, AGN-004 |
+| AGN-006 | Agent student counseling record — completed, career interest, course/country preference, budget, remarks (§5 Step 2) | Medium | Medium | Yes | AGN-004 (student detail), AGN-021 (activity) |
+| AGN-007 | Agent student university shortlist and agency-private university database (Master full / Staff view) | Large | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004, AGN-021 |
 | AGN-008 | Agent applications — Master/Staff create, edit, view, change status, Application ID, submission date and deadlines for agent students; Staff sidebar filters (Rev. 11) | Large | High | Yes | AGN-004, AGN-003, AGN-021, AGT-002, OVS-002/003/004, ENH-031, RPT-002 |
 
 ---
@@ -3383,6 +3385,78 @@ acceptance criteria: **a Staff member's actions appear within one page load; oth
 
 ---
 
+## AGN-007 — Agent Student University Shortlist and Agency University Database
+
+**Title.** Agents shortlist universities for a student, from the shared catalogue or from their own agency's private list.
+
+**Business requirement.** The owner's `AGN-007` statement (in-session, 2026-10-01): "add university, course, country, intake, tuition fee and
+entry requirements to a student's shortlist. University DB: Master 'Full', Staff 'View'; 'Add University' is Master only (§6; DEC-SCOPE-035 D4)."
+Referring to `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 "STEP 3 — University Shortlisting" and §6 rows "University Database" and
+"Add University". Decided as `DEC-SCOPE-049` (D1–D10). The `DEC-SCOPE-035 D4` citation is a recorded mis-citation (see the decision); `DEC-SCOPE-044` P3
+is superseded for those two §6 rows only.
+
+**Existing behavior.**
+- No agent-owned university or shortlist exists. Universities, courses and countries are an admin-managed, public catalogue (`GET /public/universities`).
+- `RBAC_MATRIX.md` §2.8 recorded both §6 rows as N/A (`DEC-SCOPE-044` P3).
+- `create_bridged_application` stores a `course_id` without the course-belongs-to-university check (out of scope; `RAID.md`).
+
+**Expected behavior.** Per `DEC-SCOPE-049`:
+- A Master adds, edits and deletes **agency-private** universities (never in the shared catalogue, never on `/public`); Master and Staff list them.
+- Master and Staff add, edit and remove shortlist entries for students in their scope; each entry has one university (catalogue or agency) and an optional course, intake, tuition fee and entry requirements. Country comes from the university.
+- A catalogue course must belong to the chosen catalogue university; a typed course is allowed with either kind. Caps: 50 entries per student, 500 universities per agency.
+- An archived student's shortlist is read-only (`409`).
+
+**User roles affected.** `agent` (Master: full; Staff: view the University Database, write the shortlist of assigned students).
+
+**Frontend impact.** `AgentUniversitiesPanel`, `AgentUniversityForm` (new; `/overseas/agent/universities`, mounted by `PortalPage`), `AgentShortlistPanel`, `AgentShortlistForm`, `AgentShortlistCard` (new), one mount line in `AgentStudentDetailPanel`, `lib/agentShortlist.ts`, `lib/navigation.ts` (Universities item). Screens `SCR-AGT-008` (updated) and `SCR-AGT-009`.
+
+**Backend impact.** New `api/agent_shortlist.py` and `services/agent_shortlist.py`; `schemas.py` (four request models); `models.py` (two models); `main.py` (router); `services/portal.py` (`universities` section); `services/staff_activity.py` (three whitelist actions). `api/agent_students.py` is imported, not edited.
+
+**Database impact.** Migration `0056_agent_shortlist` (two new tables; additive; no existing row changes).
+
+**API impact.** New `/workflows/overseas/agent/crm/universities` (GET, POST, PATCH, DELETE) and `/crm/students/{student_id}/shortlist` (GET, POST, PATCH, DELETE); `API_CONTRACT.md` §8.
+
+**Integration impact.** None.
+
+**Authentication/Authorization impact.** Medium. Master-only writes on universities; scope via `load_scoped` for shortlist routes; agency isolation via `org_id` in every WHERE clause.
+
+**Security impact.**
+- Medium: cross-agency IDOR (an agency university id in a body, an entry id on another student), staff writing outside their scope, leakage of agency-private universities to `/public`, mass assignment.
+- Mitigations: spec §7 (scoped loads, identical `422`/`404` answers, `extra="forbid"`, role check after the scoped load, caps under the agency lock, audit with ids and field names only). `THREAT_MODEL.md`, `SECURITY_CONTROLS.md`.
+
+**Performance impact.** Indexed paging (`ix_shortlist_student_created`, `agent_universities.org_id`); caps bound the lists.
+
+**Reusable existing modules.** `agent_students._gate` / `_audit` / `_log` / `_locked_row`, `services/agent_students.load_scoped`, `services/agent_orgs.lock_active_org`, `is_agent_staff`, `clean_free_text`, the `AgentStudentsPanel` card, paging and confirm patterns, the `GET /public/universities` reads.
+
+**Dependencies.** `AGN-001`, `AGN-002`, `AGN-003`, `AGN-004`, `AGN-021` (staff-activity whitelist).
+
+**Acceptance criteria** (verbatim from `docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md` §8).
+- **AGN-007-AC01** A catalogue-backed entry (catalogue university, its catalogue course, intake, fee, requirements) saves: 201; GET shows `source:"catalogue"` and the catalogue country.
+- **AGN-007-AC02** A free-text entry (agency university, typed course) saves: 201; `source:"agency"`; the country comes from the agency university.
+- **AGN-007-AC03** A course from another university returns 422 "Course does not belong to selected university". A catalogue course with an agency university, both or neither university, or both course forms each return 422. Nothing is written in any of these cases. The migration test proves the CHECK constraints at database level.
+- **AGN-007-AC04** Invisible to other agencies: another agency's university id in a body returns 422; its university by id returns 404, and it is absent from the list; another agency's student shortlist returns 404.
+- **AGN-007-AC05** Invisible to `/public`: `/public/universities`, `/public/universities/{slug}`, `/public/countries/{slug}` and `/public/overseas-courses` are unchanged after agency universities and entries are created.
+- **AGN-007-AC06** University DB: Master and Staff can GET the list. Staff POST, PATCH and DELETE return 403, with no row and no audit row. Masters succeed, and each write is audited.
+- **AGN-007-AC07** Shortlist scope: Staff can do all four operations for assigned students; any other student returns 404 (before any role check). Masters can do so for any agency student.
+- **AGN-007-AC08** An archived student's shortlist is readable, and writes return 409. A linked (login) student is writable.
+- **AGN-007-AC09** Deleting an agency university that is in use returns 409, and nothing is lost. A duplicate name and country in the same agency returns 409; the same name in another agency is allowed.
+- **AGN-007-AC10** Caps: the 51st entry and the 501st university return 422. Two concurrent adds at 49 entries end at exactly 50.
+- **AGN-007-AC11** Pagination: the envelope; stable order; 422 for out-of-range values; an offset past the end returns empty items with the true total.
+- **AGN-007-AC12** Each write produces exactly one audit row in the same transaction, with no free-text values. Shortlist actions appear in AGN-021 staff activity; agency-university actions do not.
+- **AGN-007-AC13** UI: Master and Staff add a catalogue entry and an agency entry from the detail view. Staff see no write controls in the University Database. Loading, empty and error-with-Retry states render. Keyboard-only use works, and the layout works at 375 px.
+- **AGN-007-AC14** Regression: the AGN-001/003/004/005/021, OVS-001/002 and public catalogue suites pass. The only existing test edited is the AGN-003 matrix rows for University DB and Add University.
+
+**Regression risks.**
+- Merge collision with `AGN-006` / `AGN-008` (DEC number, migration number, `STAFF_ACTIVITY_ACTIONS`, `AgentStudentDetailPanel`): `agent_students.py` untouched, one mount line; renumber and re-chain at merge.
+- A leak into the public catalogue: catalogue tables and `public.py` untouched; AC05 asserts it.
+- The AGN-003 matrix rows change deliberately (recorded as the partial supersession of `DEC-SCOPE-044` P3).
+
+**Complexity:** Large. **Risk:** Medium.
+
+**Status (2026-10-02): COMPLETE** on `feature/agn-007-student-shortlist` — evidence in `docs/quality/RTM.md` (AGN-007 row, "Completion verification") and `docs/quality/AGN-007_BROWSER_QA_2026-10-02.md` (all acceptance criteria PASS in the browser; AC03 DB CHECKs and AC10's 500-university cap and concurrency covered by backend tests). Independent review waived by the owner. Owner-side, outside COMPLETE: the full backend suite (standing 4–5-story cadence), an `ovs-001-discovery` e2e re-run on a clean database, and the merge (re-chain against `AGN-008` `0057` if it lands first).
+
+---
+
 ## AGN-005 — Close the §6 Staff Matrix Gap for Agency Student Records
 
 **Title.** Put AGN-004's student routes into the §6 Master-vs-Staff matrix tests and docs.
@@ -3448,6 +3522,66 @@ which widens AGN-005 beyond tests and docs for these four only:
 AC06 PASS; AC04, AC05 not browser-testable). The owner waived the independent Codex review (2026-10-01). Remaining before COMPLETE:
 the owner's full backend suite run (standing 4–5-story cadence) and the merge.
 
+## AGN-006 — Agent Student Counseling Record
+
+**Title.** Record and read back a student's counseling outcome (EVID-015 §5 Step 2).
+
+**Business requirement.** The owner's `AGN-006` statement (in-session, 2026-10-01): "record counseling completed, career interest,
+course preference, country preference, budget and remarks"; acceptance: "save and read back the record; a negative budget → 422;
+out-of-scope → 404." Source: `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 "Staff Student Journey" STEP 2.
+Decided as `DEC-SCOPE-048` (C1–C9).
+
+**Existing behavior.** AGN-004 stores Step 1 (personal, academic, contact, preferred country/course/intake) for agency students; there
+was no counseling record.
+
+**Expected behavior.**
+- One counseling record per agency student with no login, in a new table `agent_student_counseling` (migration
+  `0055_agent_student_counseling`, create-table only; downgrade refuses while records exist).
+- `PUT /workflows/overseas/agent/crm/students/{id}/counseling` replaces the record (idempotent; an unchanged save writes no audit row);
+  the student detail carries `counseling` (null until the first save). Budget is an amount (0–99,999,999.99, 2 dp) + currency.
+- The Master and the assigned staff member may save; out of scope → `404`; a student with a login or an archived student → `409`;
+  invalid input → `422`. Completion is stamped (when, by whom) by the server.
+- Audit `agent_student.counseling` with field names only; shown in AGN-021 Staff Activity as "Recorded counseling" (names, no values).
+- The student detail panel shows a Counseling section (empty / record / form; one form open at a time; leave prompt; 320 px).
+
+**User roles affected.** `agent` (Master and staff).
+
+**Frontend / backend / database / API / integration impact.** Backend: `models.py`, `schemas.py`, `services/agent_students.py`,
+`api/agent_students.py`, `services/staff_activity.py`, migration 0055. Frontend: `lib/agentStudents.ts`, `lib/agentStaff.ts`, new
+`AgentStudentCounselingCard.tsx` / `AgentStudentCounselingForm.tsx`, `AgentStudentDetailPanel.tsx`, `AgentStudentsPanel.tsx` (notice).
+No integration.
+
+**Authentication/Authorization impact.** Reuses the AGN-004 gate, organisation-then-row lock and scope (404 before any other check).
+
+**Security impact.** Reviewed with security-and-hardening (spec §8): no new auth path; IDOR closed by the scoped `WHERE`; `extra="forbid"`;
+budget/remarks never in logs, audit or Staff Activity; no rate limit added (residual, `PRD_OPEN_ITEMS.md`).
+
+**Acceptance criteria** (verbatim from `docs/superpowers/specs/2026-10-01-agn-006-counseling-record-design.md` §7).
+- **AGN-006-AC01** A Master saves all six fields; `GET /students/{id}` returns them exactly (`budget_amount` "2500000.00", currency).
+- **AGN-006-AC02** The assigned staff member can save; staff on another staff member's / an unassigned student, another agency's student, an unknown id → 404 and nothing written.
+- **AGN-006-AC03** 422 for: negative budget, > 99,999,999.99, 3 decimals, NaN, unknown currency, currency without amount, unknown key, missing `counseling_completed`, text over its limit, NUL byte; amount without currency stores INR.
+- **AGN-006-AC04** Student with a login → 409; archived student → 409; nothing written.
+- **AGN-006-AC05** Completed stamp: no→yes sets `completed_at`/`completed_by`; yes→yes keeps them; →no clears them.
+- **AGN-006-AC06** One `agent_student.counseling` audit row with `{fields}` names only (no values); a no-op save writes none; Staff Activity lists it with field names and no budget/remarks.
+- **AGN-006-AC07** Non-agent, `super_admin`, pending / suspended organisation → 403.
+- **AGN-006-AC08** PUT replaces: an omitted optional field becomes null; `counseling` is null before the first save; the list item shape is unchanged; the PATCH contract is unchanged.
+- **AGN-006-AC09** Migration upgrade → downgrade → upgrade keeps existing rows, single head; downgrade refuses while a counseling record exists; the DB rejects a negative budget, a currency without an amount and an unknown currency written directly.
+- **AGN-006-AC10** UI: empty / view / form states; buttons hidden for a login or archived student and while the student form is open; client errors send nothing and focus the field; currency not sent without an amount; unchanged Save sends nothing; 422 → field, 409 → alert, network → alert; success shows the record, the status message and focuses the heading; remarks `<script>` text renders literally; Escape does not close the panel while a form is open.
+- **AGN-006-AC11** Browser: a Master records counseling, reloads and sees it; a negative budget shows the field error.
+- **AGN-006-AC12** Security: a numeric-string budget is accepted; the response never contains the counseling row id or user ids; a staff member cannot write by guessing another student's id (404, nothing written, no audit).
+
+**Regression risks.** The additive `counseling` key on every student-detail response (AGN-004/005 tests green); the detail panel's
+Escape/focus behaviour (component tests green); migration numbering against parallel branches.
+
+**Complexity:** Medium. **Risk:** Medium.
+
+**Status (2026-10-02): COMPLETE** on `feature/agn-006-counseling-record` (verified at `d05fc15`; evidence in `docs/quality/RTM.md`,
+AGN-006 row): AC01–AC12 met; lite backend set 286 passed; web 142 files / 1479 passed; `tsc`, lint, production build pass;
+Playwright 7/7; browser QA done with QA6-01/02/03 fixed and re-verified. The independent Codex review was waived by the owner; the
+owner's full backend suite is deferred to their batch run after the next few enhancements (2026-10-02, the AGN-021 precedent).
+Remaining: the merge (recheck `main` for migration `0055` / `DEC-SCOPE-048` first). Deferred minors and open questions:
+`PRD_OPEN_ITEMS.md` rows 81–83 and the review minors listed in `docs/quality/RTM.md`.
+
 ## AGN-008 — Agent Applications: Create, Edit, View and Change Status, With Application ID, Submission Date and Deadlines
 
 **Title.** Let an agency Master, and Staff for their assigned students, manage overseas applications for agent students, including
@@ -3456,7 +3590,7 @@ students with no login, with a Staff sidebar filter group.
 **Business requirement.** The owner's `AGN-008` statement (in-session, 2026-10-01): "create, edit, view, change status, application ID,
 submission date and deadlines; Staff sidebar filters (§2, §4, §5)." Sources: `EVID-015` (`Agent CRM Functionalities.md`,
 `DERIVED_BLUEPRINT`) §2 Applications, §4 Staff Sidebar, §5 Steps 5-6. Decision record: `DEC-SCOPE-050` (A1–A15, `EXPLICIT_APPROVAL`
-in-session 2026-10-01/02; provisional number).
+in-session 2026-10-01/02).
 
 **Existing behavior.** An agent can only create an application through the old `POST /workflows/overseas/applications` for a student with
 a login; there is no agent edit, status change, Application ID, submission date or deadline, and about ten list/report/portal sites
@@ -3520,7 +3654,7 @@ response, merge anchors with AGN-006/007, the commission trigger.
 
 **Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-008-agent-applications` — evidence in `docs/quality/RTM.md` (AGN-008
 row). Remaining before COMPLETE: browser QA, the independent Codex review, and the owner's full backend suite run (standing 4–5-story
-cadence). Merge note: renumber `DEC-SCOPE-050` and re-chain `0057` if `AGN-006`/`AGN-007` reach `main` first (spec §12).
+cadence). Merge note (2026-10-02): `main` @ `3e06381` (`AGN-006`, `AGN-007`) merged in; `DEC-SCOPE-050` kept (free), `0057` re-chained after `0056_agent_shortlist`, the screen renumbered `SCR-AGT-010` (spec §12).
 
 ## 2. Dependency graph
 
@@ -3691,7 +3825,8 @@ item, only for the progress-view question).
 | AGN-003 | `DEC-SCOPE-044` — optional rows, toggle granularity, matrix reach, student scope, agent review, staff outcome | **Resolved 2026-10-01** (P1–P6 `EXPLICIT_APPROVAL` in-session; P7–P9 design assumptions) |
 | AGN-021 | `DEC-SCOPE-046` — what counts as activity, viewers, detail, freshness, source | **Resolved 2026-10-01** (A1–A5, `EXPLICIT_APPROVAL` in-session) |
 | AGN-005 | None — scope (tests + docs), Delete Student = archive/unarchive, test placement, and the QA5-01 phone rule / QA5-05 note set by the owner in-session 2026-10-01 | N/A |
-| AGN-008 | `DEC-SCOPE-050` — statuses and withdrawn, Application ID, dates, agent status limits, link to the agency student, visibility, sidebar filters, throttle, archived read-only | **Resolved 2026-10-01/02** (A1–A15, `EXPLICIT_APPROVAL` in-session; number provisional). `DEC-SCOPE-036` "submitted" stays `NEEDS_CONFIRMATION` |
+| AGN-006 | `DEC-SCOPE-048` — storage, budget, separate preferences, access, completed stamp, API, activity, leave prompt | **Resolved 2026-10-01** (C1–C9, `EXPLICIT_APPROVAL` in-session; number provisional) |
+| AGN-008 | `DEC-SCOPE-050` — statuses and withdrawn, Application ID, dates, agent status limits, link to the agency student, visibility, sidebar filters, throttle, archived read-only | **Resolved 2026-10-01/02** (A1–A15, `EXPLICIT_APPROVAL` in-session). `DEC-SCOPE-036` "submitted" stays `NEEDS_CONFIRMATION` |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in
@@ -3728,7 +3863,7 @@ have not earned per GATE-02.
 
 | Source | Evidence ID | Blocker | Decision ID needed |
 |---|---|---|---|
-| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30); the §6 permission matrix moved out to AGN-003 (`DEC-SCOPE-044`, Rev. 8); staff activity moved out to AGN-021 (`DEC-SCOPE-046`, Rev. 9).** Still parked: staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004, `DEC-SCOPE-044` covers AGN-003, `DEC-SCOPE-046` covers AGN-021; none yet for the rest |
+| Agent CRM Functionalities.md | EVID-015 | `DERIVED_BLUEPRINT`, no `EXPLICIT_APPROVAL` for the rest. **Tenant + Master slice moved out to AGN-001 (Rev. 6); Staff logins moved out to AGN-002 (Rev. 7); staff assignment/ownership of students moved out to AGN-004 (`DEC-SCOPE-042`, 2026-09-30); the §6 permission matrix moved out to AGN-003 (`DEC-SCOPE-044`, Rev. 8); staff activity moved out to AGN-021 (`DEC-SCOPE-046`, Rev. 9); §5 Step 2 counseling moved out to AGN-006 (`DEC-SCOPE-048`).** Still parked: staff performance, CRM settings | `DEC-SCOPE-038` covers AGN-001, `DEC-SCOPE-040` covers AGN-002, `DEC-SCOPE-042` covers AGN-004, `DEC-SCOPE-044` covers AGN-003, `DEC-SCOPE-046` covers AGN-021, `DEC-SCOPE-048` covers AGN-006; none yet for the rest |
 | BDM Functionalities.md | EVID-016 | Proposes a "BDM" role with zero supporting evidence; inside `PRD_OPEN_ITEMS.md` item-61 hard blocker | none yet |
 | Management Functionalities.md | EVID-017 | "Partner" login with full P&L/capital visibility, zero evidentiary basis, highest-sensitivity `NEEDS_CONFIRMATION` | none yet |
 | Recruiter Functionalities.md | EVID-018 | Duplicates already-shipped `placement_team`/`hr_team` scope — unclear if extension or duplicate | none yet |

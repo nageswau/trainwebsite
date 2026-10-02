@@ -558,6 +558,102 @@ class AgentStudentAssign(BaseModel):
     member_id: UUID | None
 
 
+CounselingCurrency = Literal["INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD"]  # models.COUNSELING_CURRENCIES; test_agn_006_schemas
+_COUNSELING_LIMITS = {"career_interest": 200, "course_preference": 200, "country_preference": 120, "remarks": 2000}
+
+
+class AgentStudentCounselingSave(BaseModel):
+    """AGN-006 (DEC-SCOPE-048 C1-C5, EVID-015 §5 Step 2): the whole counseling record, replaced on every save -- an omitted optional
+    field is stored as null. Server-owned fields (completed at/by, updated by) are not accepted: `extra="forbid"` answers 422."""
+
+    model_config = {"extra": "forbid"}
+    counseling_completed: bool
+    career_interest: str | None = None
+    course_preference: str | None = None
+    country_preference: str | None = None
+    budget_amount: Annotated[Decimal, Field(ge=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)] | None = None
+    budget_currency: CounselingCurrency | None = None
+    remarks: str | None = None
+
+    @field_validator("career_interest", "course_preference", "country_preference", "remarks")
+    @classmethod
+    def _text(cls, value, info):
+        return clean_free_text(value, _COUNSELING_LIMITS[info.field_name])
+
+    @model_validator(mode="after")
+    def _budget_pair(self):
+        if self.budget_amount is None and self.budget_currency is not None:
+            raise PydanticCustomError("currency_without_amount", "Enter a budget amount, or leave the currency empty")
+        if self.budget_amount is not None and self.budget_currency is None:
+            self.budget_currency = "INR"
+        return self
+
+
+# AGN-007 (DEC-SCOPE-049, spec §5.3): agency universities and shortlist entries. Server-owned fields (agency, student, authors) are
+# never accepted -- `extra="forbid"` answers 422 (mass assignment). Text goes through clean_free_text (NUL/bidi refused, blank -> None).
+UNIVERSITY_LIMITS = {"name": 200, "country": 120, "city": 120, "entry_requirements": 2000}
+ENTRY_LIMITS = {"course_title": 200, "intake": 120, "tuition_fee": 120, "entry_requirements": 2000}
+
+
+class _AgentUniversityFields(BaseModel):
+    model_config = {"extra": "forbid"}
+    name: str | None = None
+    country: str | None = None
+    city: str | None = None
+    entry_requirements: str | None = None
+
+    @field_validator("name", "country", "city", "entry_requirements")
+    @classmethod
+    def _text(cls, value, info):
+        return clean_free_text(value, UNIVERSITY_LIMITS[info.field_name])
+
+
+class AgentUniversityCreate(_AgentUniversityFields):
+    name: str
+    country: str
+
+    @model_validator(mode="after")
+    def _required(self):
+        if not self.name or not self.country:
+            raise PydanticCustomError("required", "Name and country are required")
+        return self
+
+
+class AgentUniversityUpdate(_AgentUniversityFields):
+    """Omitted = unchanged; null clears city / entry requirements; name and country cannot be cleared."""
+
+    @model_validator(mode="after")
+    def _not_cleared(self):
+        for field in ("name", "country"):
+            if field in self.model_fields_set and not getattr(self, field):
+                raise PydanticCustomError("required", "Name and country cannot be empty")
+        return self
+
+
+class _ShortlistEntryFields(BaseModel):
+    model_config = {"extra": "forbid"}
+    university_id: UUID | None = None
+    agent_university_id: UUID | None = None
+    course_id: UUID | None = None
+    course_title: str | None = None
+    intake: str | None = None
+    tuition_fee: str | None = None
+    entry_requirements: str | None = None
+
+    @field_validator("course_title", "intake", "tuition_fee", "entry_requirements")
+    @classmethod
+    def _text(cls, value, info):
+        return clean_free_text(value, ENTRY_LIMITS[info.field_name])
+
+
+class ShortlistEntryCreate(_ShortlistEntryFields):
+    """The university rules (exactly one source, course belongs) need the database: services/agent_shortlist.validate_entry."""
+
+
+class ShortlistEntryUpdate(_ShortlistEntryFields):
+    """Omitted = unchanged; null clears. The merged row is validated as a whole (spec §5.4)."""
+
+
 # --- AGN-008: agent applications (DEC-SCOPE-050; docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md §5.4) ---
 
 _APPLICATION_DATE_MIN, _APPLICATION_DATE_MAX = date(2000, 1, 1), date(2100, 12, 31)

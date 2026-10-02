@@ -23,12 +23,12 @@ _spec = importlib.util.spec_from_file_location("_agn_008_migration_0057", VERSIO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE = "0054_school_onboarding_bulk"
+BASE = "0056_agent_shortlist"
 APP_COLUMNS = "SELECT id, student_id, university_id, status, intake, agent_id FROM overseas_applications ORDER BY id"
 NEW = ("agent_student_id", *_migration.DATES)
 
 
-def test_migration_chains_after_0054_and_is_the_single_head():
+def test_migration_chains_after_0056_and_is_the_single_head():
     assert _migration.revision == "0057_agent_applications"
     assert _migration.down_revision == BASE
     parents = {}
@@ -75,7 +75,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0054 with one agency student and one application for a student with an account."""
+    """A fresh database at 0056 with one agency student and one application for a student with an account."""
     cfg = Config(str(API_ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
     original = settings.database_url

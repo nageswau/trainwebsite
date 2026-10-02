@@ -185,7 +185,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
   });
 
   it("opens the detail panel, and Escape closes it", async () => {
-    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.endsWith("/s1") ? res({ student: detail({ notes: "Line one\nLine two" }) }) : res(page([item()])))));
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.includes("/shortlist") ? res(page([])) : url.endsWith("/s1") ? res({ student: detail({ notes: "Line one\nLine two" }) }) : res(page([item()])))));
     render(<AgentStudentsPanel memberRole="master" />);
     fireEvent.click(await screen.findByRole("button", { name: "View Asha Rao" }));
     const panel = await screen.findByRole("region", { name: "Asha Rao" });
@@ -196,7 +196,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
   });
 
   it("shows the detail above the list, so list refreshes never move it", async () => {
-    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.endsWith("/s1") ? res({ student: detail() }) : res(page([item()])))));
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.includes("/shortlist") ? res(page([])) : url.endsWith("/s1") ? res({ student: detail() }) : res(page([item()])))));
     render(<AgentStudentsPanel memberRole="master" />);
     fireEvent.click(await screen.findByRole("button", { name: "View Asha Rao" }));
     const panel = await screen.findByRole("region", { name: "Asha Rao" });
@@ -212,7 +212,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
   });
 
   it("does not offer Edit for a student with a login", async () => {
-    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.endsWith("/s1") ? res({ student: detail({ has_login: true }) }) : res(page([item({ has_login: true })])))));
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.includes("/shortlist") ? res(page([])) : url.endsWith("/s1") ? res({ student: detail({ has_login: true }) }) : res(page([item({ has_login: true })])))));
     render(<AgentStudentsPanel memberRole="master" />);
     fireEvent.click(await screen.findByRole("button", { name: "View Asha Rao" }));
     const panel = await screen.findByRole("region", { name: "Asha Rao" });
@@ -308,6 +308,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string) => {
+        if (url.includes("/shortlist")) return Promise.resolve(res(page([])));
         if (url.endsWith("/a")) return new Promise<Response>((r) => { releaseA = () => r(res({ student: detail({ id: "a", full_name: "Alpha" }) })); });
         if (url.endsWith("/b")) return Promise.resolve(res({ student: detail({ id: "b", full_name: "Bravo" }) }));
         return Promise.resolve(res(page([item({ id: "a", full_name: "Alpha" }), item({ id: "b", full_name: "Bravo" })])));
@@ -361,6 +362,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string, init?: RequestInit) => {
+        if (url.includes("/shortlist")) return Promise.resolve(res(page([])));
         if (init?.method === "PATCH") return Promise.resolve(res({ student: detail({ preferred_country: "Ireland" }) }));
         if (url.endsWith("/s1")) return Promise.resolve(res({ student: detail() }));
         return Promise.resolve(res(page([item()])));
@@ -406,6 +408,7 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string) => {
+        if (url.includes("/shortlist")) return Promise.resolve(res(page([])));
         if (url.endsWith("/s1")) return Promise.resolve(++detailCalls === 1 ? res({ detail: "Internal Server Error" }, 500) : res({ student: detail() }));
         return Promise.resolve(res(page([item()])));
       }),
@@ -442,5 +445,36 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     const row = (await screen.findByText("Asha Rao")).closest("li")!;
     expect(within(row).getByText("Has login")).toBeInTheDocument();
     expect(within(row).getByText("ABC-S001 · Rahul (deactivated)")).toBeInTheDocument();
+  });
+});
+
+describe("AgentStudentsPanel with an unsaved counseling form (AGN-006 review #2)", () => {
+  it("asks before another student replaces unsaved counseling input, and keeps it when the user stays", async () => {
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(
+        url.endsWith("/s1")
+          ? res({ student: detail() })
+          : url.endsWith("/s2")
+            ? res({ student: detail({ id: "s2", full_name: "Ravi Iyer" }) })
+            : res(page([item(), item({ id: "s2", full_name: "Ravi Iyer" })])),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<AgentStudentsPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "View Asha Rao" }));
+    const panel = await screen.findByRole("region", { name: "Asha Rao" });
+    fireEvent.click(within(panel).getByRole("button", { name: "Record counseling" }));
+    fireEvent.change(within(panel).getByLabelText("Remarks"), { target: { value: "Long unsaved note" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "View Ravi Iyer" }));
+    expect(confirm).toHaveBeenCalledWith("You have unsaved counseling changes. Leave without saving?");
+    expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith("/s2"))).toBe(false);
+    expect(within(screen.getByRole("region", { name: "Asha Rao" })).getByLabelText("Remarks")).toHaveValue("Long unsaved note");
+
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "View Ravi Iyer" }));
+    expect(await screen.findByRole("region", { name: "Ravi Iyer" })).toBeInTheDocument();
+    confirm.mockRestore();
   });
 });

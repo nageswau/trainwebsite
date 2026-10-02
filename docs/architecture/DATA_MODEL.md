@@ -345,7 +345,7 @@ covers the commission-specific piece).
   change has been made; this note only records that the previously-safe assumption no longer holds
   universally.
 
-- **Addendum, 2026-10-02 (`AGN-008`, `DEC-SCOPE-050`, provisional; migration `0057_agent_applications`, chained after `0054_school_onboarding_bulk`) — agent-student applications.**
+- **Addendum, 2026-10-02 (`AGN-008`, `DEC-SCOPE-050`; migration `0057_agent_applications`, chained after `0056_agent_shortlist` since the 2026-10-02 merge of `main`; cut on `0054_school_onboarding_bulk`) — agent-student applications.**
   Lifts `DEC-SCOPE-042` D8. Additive nullable columns on `overseas_applications`: `agent_student_id` UUID FK → `agent_students.id`
   (index `ix_overseas_applications_agent_student_id`; no cascade, agent students are archived, never deleted), `submitted_on` Date,
   `application_deadline` Date, `offer_deadline` Date. `status` stays a `String(50)` with no DB enum or CHECK: **`withdrawn`** is added as a
@@ -438,6 +438,17 @@ predate an application record).
   agency (F1 — no `org_id` column). Linked rows read name/email/phone from `users`; their identity columns stay `NULL`.
   Upgrade changes no existing row; `downgrade()` refuses while a student with no login, an assignment or a staff member
   exists. Round trip and refusals verified in a throwaway database (`tests/test_agn_004_migration.py`).
+- **Addendum, 2026-10-01 (`AGN-006`, `DEC-SCOPE-048`, migration `0055_agent_student_counseling`, drafted as `0054`) — counseling record.**
+  New table `agent_student_counseling`, one row per agency student (`UNIQUE agent_student_id` → `agent_students.id`):
+  `counseling_completed` Boolean NOT NULL, `completed_at` timestamptz, `completed_by_user_id` → `users.id`, `career_interest`
+  String(200), `course_preference` String(200), `country_preference` String(120), `budget_amount` Numeric(10,2),
+  `budget_currency` String(3), `remarks` Text (≤ 2000 at the API), `updated_by_user_id` → `users.id` NOT NULL, timestamps.
+  CHECKs: `ck_agent_student_counseling_completed` (completed ⇔ `completed_at` set ⇔ `completed_by_user_id` set),
+  `ck_agent_student_counseling_budget` (`budget_amount >= 0`), `ck_agent_student_counseling_currency` (the 7 codes),
+  `ck_agent_student_counseling_budget_pair` (amount and currency both set or both null). Create-table only: no existing row read
+  or written; `downgrade()` refuses while any counseling record exists. Round trip and refusal verified in a throwaway database
+  (`tests/test_agn_006_migration.py`). Course/country preference are separate from the Step 1 `agent_students.preferred_*`
+  columns (C3). **Retention:** lives and dies with the student row (no hard delete, `DEC-SCOPE-042` D5).
   `overseas_applications`, `student_documents` and `agent_commissions` are unchanged (D8: applications for students with no
   login are a later feature).
 
@@ -489,6 +500,31 @@ Design: `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md` 
 - **Migration `0052`** (`down_revision = "0051_school_bulk_uploads"`; drafted as `0048` after `0047`, re-chained to `0051` after `0050` and then to `0052` after ENH-028's `0051` when `main` was merged, 2026-10-01): additive; no constraint, index or backfill. Every existing row reads
   `false` (existing staff lose the Reports page until a Master switches it on, P1). `downgrade()` drops both columns.
 - **Feature IDs:** `AGN-003`.
+
+### 6.8d `AgentUniversity`, `AgentStudentShortlistEntry` (AGN-007, migration `0056_agent_shortlist`)
+Design: `docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md` §4. `DEC-SCOPE-049`.
+- **`agent_universities`** (the agency-private university list; never part of the shared `universities` catalogue): `id` UUID PK; `org_id` UUID FK
+  `agent_orgs.id` NOT NULL, indexed (`ix_agent_universities_org_id`, the tenant key every read filters on); `name` String(200) NOT NULL;
+  `country` String(120) NOT NULL (free text); `city` String(120) NULL; `entry_requirements` Text NULL (≤ 2000 in the schema);
+  `created_by_user_id`, `updated_by_user_id` UUID FK `users.id`; `created_at`, `updated_at` (`TimestampMixin`). Unique index
+  `uq_agent_universities_org_name_country` on `(org_id, lower(name), lower(country))`.
+- **`agent_student_shortlist_entries`**: `id` UUID PK; `agent_student_id` UUID FK `agent_students.id` NOT NULL (scope is inherited from the student);
+  `university_id` UUID FK `universities.id` NULL (catalogue); `agent_university_id` UUID FK `agent_universities.id` NULL, indexed (agency);
+  `course_id` UUID FK `overseas_courses.id` NULL (catalogue course); `course_title` String(200) NULL (free-text course); `intake` String(120) NULL;
+  `tuition_fee` String(120) NULL (free text, matching `OverseasCourse.tuition_fee`); `entry_requirements` Text NULL (≤ 2000);
+  `created_by_user_id`, `updated_by_user_id` UUID FK `users.id`; `created_at`, `updated_at`. Country is derived from the university, never stored.
+- **CHECK constraints:** `ck_shortlist_one_university` `(university_id IS NULL) <> (agent_university_id IS NULL)`; `ck_shortlist_catalogue_course`
+  `course_id IS NULL OR university_id IS NOT NULL`; `ck_shortlist_one_course_form` `course_id IS NULL OR course_title IS NULL`.
+  Index `ix_shortlist_student_created` on `(agent_student_id, created_at, id)` serves paging.
+- **All foreign keys `ON DELETE RESTRICT`** (nothing is cascade-deleted). "The course belongs to *that* university" needs a cross-table lookup, so the
+  service enforces it (`API_CONTRACT.md` §8 validation order), not a constraint. Caps (50 entries per student, 500 universities per agency) are
+  enforced in the service under the agency lock.
+- **Migration `0056`** (`down_revision = "0055_agent_student_counseling"` since merging `main` @ `8f0000d` on 2026-10-02, when AGN-006's `0055` (also on `0054`) landed first; previously `"0054_school_onboarding_bulk"`; drafted as `0053`, then `0055` and re-chained to `0056` when `main` was merged,
+  2026-10-01; whichever of `AGN-006` (`0055`) / `AGN-007` / `AGN-008` (`0057`) merges later re-chains): creates the two tables only; no existing table,
+  column or row changes. `downgrade()` refuses while either table holds a row ("Cannot downgrade 0056_agent_shortlist: shortlist
+  entries / agency universities exist", as `0047`/`0049`/`0055` do; added 2026-10-02 at verification, `test_agn_007_schema.py::test_downgrade_guard_refuses_while_universities_or_entries_exist`),
+  then drops only the two new tables, entries first.
+- **Feature IDs:** `AGN-007`.
 
 ### 6.9 `InboundUniversityEmail`
 **Carries over.** Supports `UNI-001`'s university-communication surface.

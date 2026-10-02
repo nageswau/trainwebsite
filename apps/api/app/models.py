@@ -882,6 +882,41 @@ class AgentStudent(Base, TimestampMixin):
     )
 
 
+COUNSELING_CURRENCIES = ("INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD")  # AGN-006 C2; schemas.CounselingCurrency mirrors it
+
+
+class AgentStudentCounseling(Base, TimestampMixin):
+    """AGN-006 (DEC-SCOPE-048, EVID-015 §5 Step 2): one counseling record per agency student with no login. Replaced whole on every
+    save (C1); its history is the audit log. `completed_at`/`completed_by_user_id` are stamped by the server (C5)."""
+
+    __tablename__ = "agent_student_counseling"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agent_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id"))
+    counseling_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    career_interest: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    course_preference: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    country_preference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    budget_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    budget_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    __table_args__ = (
+        UniqueConstraint("agent_student_id", name="uq_agent_student_counseling_student"),
+        CheckConstraint(
+            "counseling_completed = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL)",
+            name="ck_agent_student_counseling_completed",
+        ),
+        CheckConstraint("budget_amount IS NULL OR budget_amount >= 0", name="ck_agent_student_counseling_budget"),
+        CheckConstraint(
+            "budget_currency IS NULL OR budget_currency IN (" + ", ".join(f"'{c}'" for c in COUNSELING_CURRENCIES) + ")",
+            name="ck_agent_student_counseling_currency",
+        ),
+        CheckConstraint("(budget_amount IS NULL) = (budget_currency IS NULL)", name="ck_agent_student_counseling_budget_pair"),
+    )
+
+
 class AgentCommission(Base, TimestampMixin):
     __tablename__ = "agent_commissions"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -948,6 +983,49 @@ class AgentOrgMember(Base, TimestampMixin):
     can_verify_documents: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     can_view_reports: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     org: Mapped["AgentOrg"] = relationship(lazy="raise")
+
+
+class AgentUniversity(Base, TimestampMixin):
+    """AGN-007 / DEC-SCOPE-049 D1: an agency's private university ("Add University", Master only). Never part of the shared
+    catalogue (`universities`) and never on /public; `org_id` is the tenant key every read filters on."""
+
+    __tablename__ = "agent_universities"
+    __table_args__ = (
+        Index("uq_agent_universities_org_name_country", "org_id", text("lower(name)"), text("lower(country)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    org_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id", ondelete="RESTRICT"), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    country: Mapped[str] = mapped_column(String(120))
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    entry_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class AgentStudentShortlistEntry(Base, TimestampMixin):
+    """AGN-007 / DEC-SCOPE-049: one university on an agency student's shortlist. The university is exactly one of a catalogue
+    university or the agency's own (D6); a catalogue course needs a catalogue university (D4). Country is read from the university,
+    never stored (D7). Scope is the parent student's (AGN-004 `load_scoped`)."""
+
+    __tablename__ = "agent_student_shortlist_entries"
+    __table_args__ = (
+        CheckConstraint("(university_id IS NULL) <> (agent_university_id IS NULL)", name="ck_shortlist_one_university"),
+        CheckConstraint("course_id IS NULL OR university_id IS NOT NULL", name="ck_shortlist_catalogue_course"),
+        CheckConstraint("course_id IS NULL OR course_title IS NULL", name="ck_shortlist_one_course_form"),
+        Index("ix_shortlist_student_created", "agent_student_id", "created_at", "id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agent_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id", ondelete="RESTRICT"))
+    university_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"), nullable=True)
+    agent_university_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_universities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    course_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_courses.id", ondelete="RESTRICT"), nullable=True)
+    course_title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    intake: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    tuition_fee: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    entry_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class InboundUniversityEmail(Base, TimestampMixin):

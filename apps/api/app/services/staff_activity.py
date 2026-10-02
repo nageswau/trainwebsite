@@ -18,6 +18,11 @@ STAFF_ACTIVITY_ACTIONS = (
     "agent_student.create",
     "agent_student.update",
     "agent_student.duplicate_override",
+    "agent_student.counseling",  # AGN-006 (DEC-SCOPE-048 C7): field names only, like an edit
+    # AGN-007 (DEC-SCOPE-049): shortlist work on a student; the agent_student subject resolver already names the student.
+    "agent_student.shortlist_add",
+    "agent_student.shortlist_update",
+    "agent_student.shortlist_remove",
     "agent.student_link",
     "overseas.application.create",
     "overseas.application.update",
@@ -71,8 +76,8 @@ async def _subjects(db: AsyncSession, rows: list[AuditLog]) -> dict[tuple[str, u
 
 
 def _fields(row: AuditLog) -> list[str] | None:
-    """Edited field NAMES for an edit only (A3); anything that is not a list of strings is dropped."""
-    if row.action != "agent_student.update":
+    """Edited field NAMES for an edit or a counseling save only (A3; AGN-006 C7); anything that is not a list of strings is dropped."""
+    if row.action not in ("agent_student.update", "agent_student.counseling"):
         return None
     value = (row.metadata_json or {}).get("fields")
     return [f for f in value if isinstance(f, str)] if isinstance(value, list) else None
