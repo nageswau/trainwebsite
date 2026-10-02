@@ -167,6 +167,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-006 | Agent student counseling record — completed, career interest, course/country preference, budget, remarks (§5 Step 2) | Medium | Medium | Yes | AGN-004 (student detail), AGN-021 (activity) |
 | AGN-007 | Agent student university shortlist and agency-private university database (Master full / Staff view) | Large | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004, AGN-021 |
 | AGN-008 | Agent applications — Master/Staff create, edit, view, change status, Application ID, submission date and deadlines for agent students; Staff sidebar filters (Rev. 11) | Large | High | Yes | AGN-004, AGN-003, AGN-021, AGT-002, OVS-002/003/004, ENH-031, RPT-002 |
+| AGN-009 | Agent documents — upload, download, verify, reject (with a reason), request additional, history; §5 Step 4 types; Staff sidebar Pending/Uploaded/Additional (`DEC-SCOPE-051`) | Large | High | Yes | AGN-003, AGN-004, AGN-008, OVS-005, VISA-001 |
 
 ---
 
@@ -3655,6 +3656,30 @@ response, merge anchors with AGN-006/007, the commission trigger.
 **Status (2026-10-02): COMPLETE** on `feature/agn-008-agent-applications` — completion verification in `docs/quality/RTM.md` (AGN-008
 row). Codex review waived by the owner (2026-10-02). Outside COMPLETE, owner-side: the full backend suite (standing 4–5-story
 cadence) and the merge to `main`. Browser QA pass 1 (QA8-01..13) is fixed, with owner rulings in `DEC-SCOPE-050` A16–A19 (reports: `.superpowers/sdd/2026-10-02-agn-008-agent-applications/qa-fix-*.md`, git-ignored, local only). Merge note (2026-10-02): `main` @ `3e06381` (`AGN-006`, `AGN-007`) merged in; `DEC-SCOPE-050` kept (free), `0057` re-chained after `0056_agent_shortlist`, the screen renumbered `SCR-AGT-010` (spec §12).
+
+## AGN-009 — Agent Documents: Upload, Download, Verify, Reject, Request Additional, History
+
+**Business requirement.** The owner's `AGN-009` statement (in-session, 2026-10-02): "§2 Documents and §5 Step 4 document types; Staff
+sidebar Pending/Uploaded/Additional; §6: Staff verify is optional and Staff cannot reject." Decision `DEC-SCOPE-051` (G1–G9). Source
+`EVID-015` (`DERIVED_BLUEPRINT`) §2, §4, §5 Step 4, §6. Design spec `docs/superpowers/specs/2026-10-02-agn-009-agent-documents-design.md`;
+plan `docs/superpowers/plans/2026-10-02-agn-009-agent-documents.md`.
+
+**Scope.** Documents owned by an agency record (students with or without a login); fixed types + Other; server-stored files (PDF, JPEG,
+PNG by bytes); replace (back to pending, old file kept); requests ("Additional") fulfilled by an upload made against them; per-document
+history; a reason required when an agent rejects or asks for changes; Pending / Uploaded / Additional sidebar views. Migration
+`0058_agent_documents`. Dependencies: AGN-003, AGN-004, AGN-008.
+
+**Acceptance criteria** (owner's statement):
+- **AGN-009-AC01** Upload → `pending`.
+- **AGN-009-AC02** Verify/reject per the §6 matrix: Master verified/rejected/changes required; Staff verified only, with the Verify toggle.
+- **AGN-009-AC03** Reject (or changes required) without a reason → `422` (agents; Staff get `403` first).
+- **AGN-009-AC04** A request shows under "Additional" until an upload fulfils it.
+- **AGN-009-AC05** History lists every event in order.
+- **AGN-009-AC06** An out-of-scope download → `404`/`403`.
+- **AGN-009-AC07** Existing student/counselor document flows unchanged.
+
+**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-009-agent-documents`. Lite test sets pass (see `RTM.md` AGN-009 row).
+Pending, owner-side: browser validation, the independent Codex review, the full backend/web/E2E suites, the merge.
 
 ## 2. Dependency graph
 

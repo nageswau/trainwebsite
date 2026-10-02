@@ -27,7 +27,7 @@ Testing Library, Playwright. No new dependency.
 - Logs carry ids only. Audit metadata: ids, types, statuses.
 - Document types exactly: `Passport`, `Academic certificates`, `Transcripts`, `English test`, `CV`, `SOP`, `LOR`,
   `Financial documents`, `Other`.
-- Throttles: 60 uploads+replaces and 60 requests per agency per 10 minutes.
+- Throttles: 500 uploads+replaces and 200 requests per agency per rolling 24 hours (the existing `THROTTLE_WINDOW`; changed from 60 / 10 min during implementation).
 - No completion claim.
 
 ## Review Focus

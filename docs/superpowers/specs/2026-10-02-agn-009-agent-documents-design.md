@@ -116,7 +116,7 @@ the new object. Results: two reviews → second 409 (kept); two uploads fulfilli
 | Upload validation | bytes: `%PDF-`, JPEG, PNG; images through `strip_metadata`; empty 422, > `settings.max_upload_bytes` 413, else 415; filename = base name ≤ 255, display only |
 | XSS | React text rendering only |
 | CSRF | SameSite=Lax: not sent on cross-site POST/PUT/PATCH (incl. multipart) |
-| Rate limiting | uploads+replaces 60 / agency / 10 min; requests 60 / agency / 10 min; counted from audit rows under the org lock (AGN-008 `retry_after`) → 429 `Retry-After` |
+| Rate limiting | uploads+replaces 500 / agency / rolling 24 h; requests 200 / agency / rolling 24 h (changed during implementation from 60 / 10 min, to reuse the existing `THROTTLE_WINDOW` + `retry_after` rather than add a second window); counted from audit rows under the org lock (AGN-008 `retry_after`) → 429 `Retry-After` |
 | Audit | `document.upload`, `document.replace`, `document.verify` (existing), `document.download`, `document_request.create`, `document_request.cancel` — ids/types/statuses only |
 | Logs | ids only; no filenames, labels, notes or names |
 

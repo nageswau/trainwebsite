@@ -345,6 +345,18 @@ covers the commission-specific piece).
   change has been made; this note only records that the previously-safe assumption no longer holds
   universally.
 
+- **Addendum, 2026-10-02 (`AGN-009`, `DEC-SCOPE-051`; migration `0058_agent_documents`, after `0057_agent_applications`).**
+  `student_documents.student_id` becomes nullable; new nullable columns `agent_student_id` (FK → `agent_students.id`, index
+  `ix_student_documents_agent_student_id`), `document_label` String(80), `uploaded_by_user_id` (FK → `users.id`), `fulfils_request_id`
+  (FK → `document_requests.id`, unique `uq_student_documents_fulfils_request_id`); CHECK `ck_student_documents_owner`
+  (`student_id` or `agent_student_id` set). An agency upload sets `agent_student_id`, plus `student_id` for a student with a login.
+  New `document_requests` (`agent_student_id` NOT NULL, `document_type`, `document_label`, `note`, `status` CHECK
+  `open|fulfilled|cancelled`, `requested_by_user_id`, `closed_by_user_id`, `closed_at`, timestamps; index
+  (`agent_student_id`, `status`)). New append-only `document_events` (`seq` BIGINT identity for ordering, `document_id`/`request_id`
+  with CHECK at least one, `event` CHECK in the nine event names, `actor_user_id`, `from_status`, `to_status`, `notes`, `file_key`,
+  `created_at`). No existing row is written; history starts at deployment. Downgrade refuses while agency documents, requests or
+  events exist.
+
 - **Addendum, 2026-10-02 (`AGN-008`, `DEC-SCOPE-050`; migration `0057_agent_applications`, chained after `0056_agent_shortlist` since the 2026-10-02 merge of `main`; cut on `0054_school_onboarding_bulk`) — agent-student applications.**
   Lifts `DEC-SCOPE-042` D8. Additive nullable columns on `overseas_applications`: `agent_student_id` UUID FK → `agent_students.id`
   (index `ix_overseas_applications_agent_student_id`; no cascade, agent students are archived, never deleted), `submitted_on` Date,
