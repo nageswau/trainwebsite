@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import DataTable from "@/components/DataTable";
 import FormMessage from "@/components/FormMessage";
 import ReportDownloadButton from "@/components/ReportDownloadButton";
@@ -21,10 +21,11 @@ const GROUP_COLUMNS = [
   { key: "currency", label: "Currency" },
 ];
 
-const money = (amount: number) => amount.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+// Lakh/crore grouping is right for rupees only; other currencies use the international 1,000s grouping.
+const money = (amount: number, currency: string) => amount.toLocaleString(currency === "INR" ? "en-IN" : "en-US", { maximumFractionDigits: 2 });
 
 function tablesFor(report: CommissionReport): Table[] {
-  const withMoney = <T extends { amount: number }>(rows: T[]) => rows.map((row) => ({ ...row, amount: money(row.amount) }));
+  const withMoney = <T extends { amount: number; currency: string }>(rows: T[]) => rows.map((row) => ({ ...row, amount: money(row.amount, row.currency) }));
   return [
     { title: "By status", columns: [{ key: "status", label: "Status" }, ...GROUP_COLUMNS], rows: withMoney(report.by_status).map((row) => ({ ...row, status: STATUS_LABELS[row.status] ?? row.status })) },
     { title: "By university", columns: [{ key: "university", label: "University" }, { key: "country", label: "Country" }, ...GROUP_COLUMNS], rows: withMoney(report.by_university) },
@@ -41,9 +42,13 @@ export default function AgentCommissionReportPanel() {
   const [error, setError] = useState<string | null>(null);
   const [rangeError, setRangeError] = useState<string | null>(null);
   const latest = useRef(0);
+  const requested = useRef<Range>(NONE); // what "Try again" reloads
+  const toInput = useRef<HTMLInputElement>(null);
+  const rangeErrorId = useId();
 
   async function load(range: Range) {
     const id = ++latest.current; // a response for an older request is dropped
+    requested.current = range;
     setLoading(true);
     setError(null);
     try {
@@ -76,37 +81,67 @@ export default function AgentCommissionReportPanel() {
     if (loading) return;
     if (draft.from && draft.to && draft.to < draft.from) {
       setRangeError("'To' must be on or after 'From'.");
+      toInput.current?.focus(); // the field to correct, described by the error below
       return;
     }
     setRangeError(null);
     void load(draft);
   }
 
+  function edit(change: Partial<Range>) {
+    setDraft({ ...draft, ...change });
+    setRangeError(null); // the error described the old values
+  }
+
+  const filtered = Boolean(applied.from || applied.to);
+
   return (
-    <div className="action-card" aria-busy={loading}>
+    <div className="action-card commission-report" aria-busy={loading}>
       <h3>Commission report</h3>
       <p className="muted">Your agency&apos;s commissions by the date they were created (UTC). Amounts are totalled per currency.</p>
       <form aria-label="Commission report filters" onSubmit={apply} className="actions" style={{ alignItems: "flex-end" }}>
         <div className="field" style={{ margin: 0 }}>
           <label htmlFor="commission-report-from">From</label>
-          <input id="commission-report-from" type="date" value={draft.from} onChange={(e) => setDraft({ ...draft, from: e.target.value })} />
+          <input id="commission-report-from" type="date" value={draft.from} onChange={(e) => edit({ from: e.target.value })} />
         </div>
         <div className="field" style={{ margin: 0 }}>
           <label htmlFor="commission-report-to">To</label>
-          <input id="commission-report-to" type="date" value={draft.to} onChange={(e) => setDraft({ ...draft, to: e.target.value })} />
+          <input
+            id="commission-report-to"
+            ref={toInput}
+            type="date"
+            value={draft.to}
+            onChange={(e) => edit({ to: e.target.value })}
+            aria-invalid={rangeError ? true : undefined}
+            aria-describedby={rangeError ? rangeErrorId : undefined}
+          />
         </div>
         <button className="btn" type="submit" aria-disabled={loading}>
           Apply
         </button>
       </form>
-      {rangeError && <FormMessage message={{ text: rangeError, failed: true }} />}
-      {loading && <p role="status">Loading commission report…</p>}
-      {error && <FormMessage message={{ text: error, failed: true }} />}
-      {!loading && report && report.totals.length === 0 && <p>No commissions in this period.</p>}
-      {!loading && report && report.totals.length > 0 && (
+      {rangeError && (
+        <div id={rangeErrorId}>
+          <FormMessage message={{ text: rangeError, failed: true }} />
+        </div>
+      )}
+      {/* The current figures stay on screen while a new range loads; only the first load has nothing to show. */}
+      {loading && <p role="status">{report ? "Updating commission report…" : "Loading commission report…"}</p>}
+      {error && (
+        <>
+          <FormMessage message={{ text: error, failed: true }} />
+          <div className="actions">
+            <button type="button" className="btn secondary" onClick={() => void load(requested.current)}>
+              Try again
+            </button>
+          </div>
+        </>
+      )}
+      {report && report.totals.length === 0 && <p>{filtered ? "No commissions in this period." : "Your agency has no commissions yet."}</p>}
+      {report && report.totals.length > 0 && (
         <>
           <p>
-            <strong>Total:</strong> {report.totals.map((t) => `${t.currency} ${money(t.amount)} (${t.count} commission${t.count === 1 ? "" : "s"})`).join(" · ")}
+            <strong>Total:</strong> {report.totals.map((t) => `${t.currency} ${money(t.amount, t.currency)} (${t.count} commission${t.count === 1 ? "" : "s"})`).join(" · ")}
           </p>
           {tablesFor(report).map((table) => (
             <section key={table.title}>
@@ -116,7 +151,7 @@ export default function AgentCommissionReportPanel() {
           ))}
         </>
       )}
-      {!loading && report && (
+      {report && (
         <ReportDownloadButton url={`${CSV_URL}${reportQuery(applied.from, applied.to)}`} label="Download CSV" filename={csvFilename(applied.from, applied.to)} contentType="text/csv" busyLabel="Preparing CSV…" />
       )}
     </div>

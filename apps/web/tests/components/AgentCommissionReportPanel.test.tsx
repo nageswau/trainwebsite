@@ -42,7 +42,7 @@ describe("AgentCommissionReportPanel (AGN-014)", () => {
   it("says so when there are no commissions", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(EMPTY)));
     render(<AgentCommissionReportPanel />);
-    expect(await screen.findByText("No commissions in this period.")).toBeInTheDocument();
+    expect(await screen.findByText("Your agency has no commissions yet.")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "By status" })).toBeNull();
   });
 
@@ -67,7 +67,7 @@ describe("AgentCommissionReportPanel (AGN-014)", () => {
     const fetchMock = vi.fn().mockResolvedValue(json(EMPTY));
     vi.stubGlobal("fetch", fetchMock);
     render(<AgentCommissionReportPanel />);
-    await screen.findByText("No commissions in this period.");
+    await screen.findByText("Your agency has no commissions yet.");
     fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-30" } });
     fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-01" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
@@ -95,6 +95,73 @@ describe("AgentCommissionReportPanel (AGN-014)", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Report downloaded.");
   });
 
+  // --- Frontend review (frontend-ui-engineering), F1-F6 ---
+
+  it("spans the action grid so its tables are not squeezed (F1)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(FULL)));
+    const { container } = render(<AgentCommissionReportPanel />);
+    await screen.findByRole("heading", { name: "By status" });
+    expect(container.firstElementChild).toHaveClass("action-card", "commission-report");
+  });
+
+  it("offers Try again after a load error, which reloads the same range (F2)", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(json({ detail: "boom" }, 500)).mockResolvedValueOnce(json(FULL));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentCommissionReportPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { name: "By status" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenNthCalledWith(2, REPORT_URL, { credentials: "same-origin" });
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  it("keeps the current figures on screen while a new range loads (F3)", async () => {
+    let finish: (r: Response) => void = () => {};
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json(FULL))
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => { finish = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentCommissionReportPanel />);
+    await screen.findByRole("heading", { name: "By status" });
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(await screen.findByText("Updating commission report…")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "By status" })).toBeInTheDocument();
+    finish(json(EMPTY));
+    expect(await screen.findByText("No commissions in this period.")).toBeInTheDocument();
+  });
+
+  it("ties the range error to the To field and moves focus there (F4)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(EMPTY)));
+    render(<AgentCommissionReportPanel />);
+    await screen.findByText("Your agency has no commissions yet.");
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-30" } });
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    const to = screen.getByLabelText("To");
+    expect(to).toHaveAttribute("aria-invalid", "true");
+    expect(to).toHaveAccessibleDescription("'To' must be on or after 'From'.");
+    expect(to).toHaveFocus();
+    fireEvent.change(to, { target: { value: "2026-10-01" } });
+    expect(to).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("words the empty state for a filtered range (F5)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json(EMPTY)))); // a fresh Response per call: a body reads once
+    render(<AgentCommissionReportPanel />);
+    await screen.findByText("Your agency has no commissions yet.");
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(await screen.findByText("No commissions in this period.")).toBeInTheDocument();
+  });
+
+  it("groups digits Indian-style for INR only (F6)", async () => {
+    const report: CommissionReport = { ...EMPTY, totals: [{ currency: "INR", count: 1, amount: 100000 }, { currency: "USD", count: 1, amount: 100000 }] };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(report)));
+    render(<AgentCommissionReportPanel />);
+    expect(await screen.findByText(/INR 1,00,000 \(1 commission\) · USD 100,000 \(1 commission\)/)).toBeInTheDocument();
+  });
+
   it("ignores a response that arrives after a newer one", async () => {
     const resolvers: ((r: Response) => void)[] = [];
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => resolvers.push(resolve))));
@@ -105,7 +172,7 @@ describe("AgentCommissionReportPanel (AGN-014)", () => {
     ); // StrictMode runs the mount effect twice: two requests in flight
     await vi.waitFor(() => expect(resolvers.length).toBe(2));
     resolvers[1](json(EMPTY));
-    expect(await screen.findByText("No commissions in this period.")).toBeInTheDocument();
+    expect(await screen.findByText("Your agency has no commissions yet.")).toBeInTheDocument();
     resolvers[0](json(FULL));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByRole("heading", { name: "By status" })).toBeNull();
