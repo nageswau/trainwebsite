@@ -1,3 +1,4 @@
+import contextlib
 import csv
 import io
 import logging
@@ -2404,8 +2405,8 @@ async def agent_commissions(user: User = Depends(get_current_user), db: AsyncSes
     ]
 
 
-# AGN-014 (DEC-SCOPE-051): the agency's commission report, Master-only like the list above. Lifecycle order for `by_status`.
-COMMISSION_STATUS_ORDER = ("estimated", "eligible", "claimed", "payout_pending", "paid")
+# AGN-014 (DEC-SCOPE-051): the agency's commission report, Master-only like the list above. `by_status` is in lifecycle order.
+COMMISSION_STATUS_RANK = {status: rank for rank, status in enumerate(("estimated", "eligible", "claimed", "payout_pending", "paid"))}
 # Strings, not `date`: FastAPI would answer a bad date with 422 before the Master check (spec §5.1). Documented for OpenAPI here.
 REPORT_DATE_FROM = Query(None, description="Optional. YYYY-MM-DD: the first UTC day (inclusive) of the commissions' created date.")
 REPORT_DATE_TO = Query(None, description="Optional. YYYY-MM-DD: the last UTC day (inclusive) of the commissions' created date; before 9999-12-31.")
@@ -2415,19 +2416,16 @@ _YYYY_MM_DD = re.compile(r"\d{4}-\d{2}-\d{2}")
 def _report_date(value: str | None, name: str) -> date | None:
     if not value:
         return None
-    try:
-        # fullmatch first: `date.fromisoformat` also takes "20260930" and ISO week dates, which the contract does not offer.
-        if not _YYYY_MM_DD.fullmatch(value):
-            raise ValueError(value)
-        return date.fromisoformat(value)
-    except ValueError:
-        raise HTTPException(422, f"{name} must be a date (YYYY-MM-DD)") from None
+    # fullmatch first: `date.fromisoformat` also takes "20260930" and ISO week dates, which the contract does not offer.
+    if _YYYY_MM_DD.fullmatch(value):
+        with contextlib.suppress(ValueError):  # e.g. 2026-02-30
+            return date.fromisoformat(value)
+    raise HTTPException(422, f"{name} must be a date (YYYY-MM-DD)")
 
 
 async def _commission_report_items(user: User, db: AsyncSession, date_from: str | None, date_to: str | None) -> tuple[list[dict], date | None, date | None]:
     """Guards first, then the dates (a refused caller never sees a 422), then one scoped read: a single snapshot for every
-    breakdown. Days are inclusive UTC calendar days on the commission's created date (R3/R7). The dates arrive as strings so
-    FastAPI's own query validation cannot answer before the Master check."""
+    breakdown. Days are inclusive UTC calendar days on the commission's created date (R3/R7)."""
     _require(user, {"agent"}, "overseas")
     _require_agent_master(user)
     start, end = _report_date(date_from, "date_from"), _report_date(date_to, "date_to")
@@ -2491,12 +2489,12 @@ def _report_logged(user: User, fmt: str, rows: int, start: date | None, end: dat
 @router.get("/overseas/agent/commissions/report", response_model=CommissionReportOut)
 async def agent_commission_report(date_from: str | None = REPORT_DATE_FROM, date_to: str | None = REPORT_DATE_TO, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     items, start, end = await _commission_report_items(user, db, date_from, date_to)
-    order = {status: index for index, status in enumerate(COMMISSION_STATUS_ORDER)}
     _report_logged(user, "json", len(items), start, end)
+    unknown_last = len(COMMISSION_STATUS_RANK)
     return {
         "date_from": start, "date_to": end,
         "totals": sorted(_commission_groups(items, ()), key=lambda g: g["currency"]),
-        "by_status": sorted(_commission_groups(items, ("status",)), key=lambda g: (order.get(g["status"], len(order)), g["status"], g["currency"])),
+        "by_status": sorted(_commission_groups(items, ("status",)), key=lambda g: (COMMISSION_STATUS_RANK.get(g["status"], unknown_last), g["status"], g["currency"])),
         "by_university": _ranked(_commission_groups(items, ("university", "country")), ("university", "country")),
         "by_country": _ranked(_commission_groups(items, ("country",)), ("country",)),
         "by_intake": _ranked(_commission_groups(items, ("intake",)), ("intake",)),
