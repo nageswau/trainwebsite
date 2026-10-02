@@ -3096,3 +3096,26 @@ allowlist; the agent dashboard gains one metric after "Applications". No change 
 - **E7** The university student ID is optional and returned only on the agency's application detail. **E8** Approach A: a dedicated `PUT …/{id}/enrollment` in the AGN-008 router.
 
 **Consequences:** migration `0060_agent_app_enrollment` (drafted as `0058`; re-chained after `0059_agent_tasks`) (three nullable columns on `overseas_applications`); one Master-only route; four additive detail fields; a new `AgentApplicationEnrollment` component. Unchanged: the status route, counselor/admin/university-rep routes, commission amount/claim/payout (`AGT-004`), `AGN-014` reports. Design: `docs/superpowers/specs/2026-10-02-agn-013-enrollment-confirmation-design.md`. **New Feature ID authorized:** `AGN-013`.
+
+### DEC-SCOPE-055 — Agent notifications and daily deadline reminders (`AGN-017`)
+
+**ID note:** provisional — the next free number on `main` @ `e0395d6`, with migration `0061_agent_notifications` after `0060_agent_app_enrollment`. Renumber and re-chain if another branch reaches `main` first.
+
+**Question:** the owner's `AGN-017` statement (in-session, 2026-10-02): requirement "Notifications" (§4); "Monitor deadlines" (§2). Acceptance: "each event produces exactly one notification to the right person; reminders are not sent twice for the same deadline/day; a failed email is recorded, never raised."
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) names only "Notifications" (§4) and "Monitor deadlines" (§2); `AGENT_CRM_BACKLOG.md` ang-017 (`DERIVED_BLUEPRINT`) proposed the events and a daily job. Channels were already settled by `DEC-SCOPE-035` D19 (in-app + email to agency Masters/Staff; students get nothing). Impact analysis 2026-10-02 (the graphify snapshot predates AGN-001…016, so the agency source was read directly): no path notifies agency staff; `Notification` has no dedupe column; deadline columns are unindexed; beat runs only the ENH-014 sweeper; AGN-016 tasks have no assignee (T1).
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — answers to structured questions and four design-section reviews):
+
+- **N1 — Task event.** A task created by someone else notifies the student's recipient; a reassignment sends one "student assigned" notice that states the moved open-task count; task edits/close notify nobody.
+- **N2 — Recipients.** The student's active assigned staff member, else every active Master of the org; never the actor; inactive org → nobody.
+- **N3 — Status changes.** Agency (CRM status, enrollment) and EduSphere (counselor/admin/university-rep `PATCH`/`advance`) changes to applications with an agency record; students' existing notices unchanged.
+- **N4 — Reminders.** Application/offer deadlines at 3, 1 and 0 days; overdue open tasks once per IST day; `Asia/Kolkata` day; daily at 08:00 IST; no catch-up.
+- **N5 — Email.** Existing ENH-014 queue, email channel only.
+- **N6 — Exactly once.** Nullable `notifications.dedupe_key` with a partial unique index; reminders insert `ON CONFLICT DO NOTHING`.
+- **N7 — API.** Existing list/read unchanged; new `GET /workflows/notifications/unread-count`.
+- **N8 — Frontend.** Agent "Notifications" section (Master and Staff) with an unread nav badge; no "mark all read".
+- **N9 — Documents.** `rejected` and `changes_required` both notify; the previous assignee is not told on reassignment.
+- **N10 — Stage rules.** As `nearest_deadline`: none once withdrawn/enrolled; from `offer` on, only the offer deadline.
+
+**Consequences:** migration `0061_agent_notifications` (one nullable column, four partial indexes); a new `services/agent_notifications.py`; additive hooks in `agent_students`, `agent_documents`, `agent_applications`, `agent_tasks` and three `workflows.py` routes; the first crontab beat entry; one new read endpoint; an agent nav item and optional `NavItem.badge`. Unchanged: ENH-014 dispatch/delivery, existing list/read contracts, students' and counselors' notices, `_maybe_trigger_agent_commission`. Design: `docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md`. **New Feature ID authorized:** `AGN-017`.
