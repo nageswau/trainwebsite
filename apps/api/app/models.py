@@ -826,6 +826,27 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class BdmProfile(Base, TimestampMixin):
+    """bdm-001 (DEC-SCOPE-052): a BDM's §1 profile, 1:1 with a `bdm` user. Name, email, mobile and active stay on `users`.
+    The reporting manager must be an active `bdm_manager` -- enforced in `services/bdm.py` under a row lock (no cross-table CHECK)."""
+
+    __tablename__ = "bdm_profiles"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_bdm_profiles_user"),
+        CheckConstraint("bdm_type IN ('agent', 'school', 'college')", name="ck_bdm_profiles_type"),
+        Index("uq_bdm_profiles_employee_id", text("lower(employee_id)"), unique=True),
+        Index("ix_bdm_profiles_reporting_manager", "reporting_manager_user_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    bdm_type: Mapped[str] = mapped_column(String(20))
+    employee_id: Mapped[str] = mapped_column(String(40))
+    designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    territory: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    reporting_manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
 class LiveSession(Base, TimestampMixin):
     __tablename__ = "live_sessions"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
