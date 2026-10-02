@@ -5,6 +5,7 @@ import AdminDepositActionForm, { ACTION_LABELS, AdminDeposit, DEPOSIT_ACTIONS_FO
 import { isPage, Page } from "@/lib/apiErrors";
 import { DEPOSIT_STATUS_LABELS, formatInr } from "@/lib/agentApplications";
 import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type Tab = "paid" | "remitted" | "refunded" | "pending" | "all";
 const TABS: { status: Tab; label: string }[] = [
@@ -16,6 +17,8 @@ const TABS: { status: Tab; label: string }[] = [
 ];
 const PAGE_SIZE = 20;
 const DONE: Record<DepositAction, string> = { remit: "Remittance recorded", refund: "Refund recorded" };
+const NOTICE_ID = "agent-deposits-notice";
+const openerId = (depositId: string, action: DepositAction) => `deposit-${action}-open-${depositId}`;
 
 // AGN-011 (DEC-SCOPE-058 §4.7): Overseas Admin's Agent deposits. Deposits are collected through EduSphere Razorpay; finance remits them
 // to the university outside the system and refunds by hand (D12), and this screen records both. One status tab at a time, 20 per page,
@@ -28,6 +31,7 @@ export default function AdminAgentDepositsPanel({ canAct }: { canAct: boolean })
   const [loadFailed, setLoadFailed] = useState(false);
   const [acting, setActing] = useState<{ id: string; action: DepositAction } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const focusAfter = useFocusAfterRender(); // QA11-02: after a save or a cancel, focus lands on the result or the opener
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -54,7 +58,12 @@ export default function AdminAgentDepositsPanel({ canAct }: { canAct: boolean })
     setData(null);
     fetch(`${DEPOSITS_URL}?status=${status}&limit=${PAGE_SIZE}&offset=${offset}`)
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-      .then((body: unknown) => (isPage<AdminDeposit>(body) ? setData(body) : setLoadFailed(true)))
+      .then((body: unknown) => {
+        if (!isPage<AdminDeposit>(body)) return setLoadFailed(true);
+        // QA11-06: a page past the end (a stale link, or deposits that moved tab) goes to the last page instead of an empty one.
+        if (body.items.length === 0 && body.offset > 0 && body.total > 0) return setOffset(Math.floor((body.total - 1) / PAGE_SIZE) * PAGE_SIZE);
+        setData(body);
+      })
       .catch(() => setLoadFailed(true));
   }, [ready, status, offset]);
 
@@ -69,6 +78,7 @@ export default function AdminAgentDepositsPanel({ canAct }: { canAct: boolean })
   function done(deposit: AdminDeposit, action: DepositAction) {
     setActing(null);
     setNotice(`${DONE[action]} for ${deposit.student}.`);
+    focusAfter(NOTICE_ID);
     load(); // the deposit may have left this tab
   }
 
@@ -77,7 +87,7 @@ export default function AdminAgentDepositsPanel({ canAct }: { canAct: boolean })
     <div className="action-card">
       <h3>Agent deposits</h3>
       {/* Always mounted so screen readers announce the text when it arrives. */}
-      <div className={notice ? "form-message" : undefined} role="status" aria-live="polite" style={notice ? { marginTop: 8 } : undefined}>
+      <div id={NOTICE_ID} tabIndex={-1} className={notice ? "form-message" : undefined} role="status" aria-live="polite" style={notice ? { marginTop: 8 } : undefined}>
         {notice}
       </div>
       <div role="group" aria-label="Deposit status" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
@@ -149,7 +159,11 @@ export default function AdminAgentDepositsPanel({ canAct }: { canAct: boolean })
                     </p>
                   )}
                   {canAct && acting?.id === d.id ? (
-                    <AdminDepositActionForm deposit={d} action={acting.action} onDone={(next) => done(next, acting.action)} onCancel={() => setActing(null)} />
+                    <AdminDepositActionForm deposit={d} action={acting.action} onDone={(next) => done(next, acting.action)} onCancel={() => {
+                        focusAfter(openerId(d.id, acting.action));
+                        setActing(null);
+                      }}
+                    />
                   ) : (
                     canAct && (
                       <div className="actions">
@@ -158,6 +172,7 @@ export default function AdminAgentDepositsPanel({ canAct }: { canAct: boolean })
                             key={action}
                             type="button"
                             className={action === "remit" ? "btn small" : "btn secondary small"}
+                            id={openerId(d.id, action)}
                             aria-label={`${ACTION_LABELS[action]} for ${d.student}`}
                             onClick={() => {
                               setNotice(null);

@@ -93,6 +93,59 @@ describe("AdminAgentDepositsPanel (AGN-011)", () => {
     expect(await screen.findByText("1 other captured payment for this deposit needs a manual refund.")).toBeTruthy();
   });
 
+  it("QA11-02: focus follows the result -- the error, the announced success, Save after Escape, the opener after Cancel", async () => {
+    let fail = true;
+    serve((url, init) => {
+      if (init?.method !== "POST") return undefined;
+      return fail ? json({ detail: "A refund cannot exceed the paid amount" }, 422) : json({ ...ROW, status: "refunded" });
+    });
+    render(<AdminAgentDepositsPanel canAct />);
+    fireEvent.click(await screen.findByRole("button", { name: "Record refund for Asha Rao" }));
+    const form = screen.getByRole("form", { name: "Record refund for Asha Rao" });
+    fireEvent.change(within(form).getByLabelText(/Refund amount/), { target: { value: "60000" } });
+    fireEvent.change(within(form).getByLabelText("Reason"), { target: { value: "Visa refused" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save refund" }));
+    fireEvent.keyDown(screen.getByRole("group", { name: "Confirm refund" }), { key: "Escape" });
+    await waitFor(() => expect(document.activeElement?.textContent).toBe("Save refund"));
+    fireEvent.click(within(form).getByRole("button", { name: "Save refund" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, record refund" }));
+    await waitFor(() => expect(document.activeElement?.getAttribute("role")).toBe("alert"));
+    fail = false;
+    fireEvent.change(within(form).getByLabelText(/Refund amount/), { target: { value: "20000" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save refund" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, record refund" }));
+    await waitFor(() => expect(document.activeElement?.textContent).toBe("Refund recorded for Asha Rao."));
+  });
+
+  it("QA11-02: Cancel returns focus to the button that opened the form", async () => {
+    serve();
+    render(<AdminAgentDepositsPanel canAct />);
+    fireEvent.click(await screen.findByRole("button", { name: "Record remittance for Asha Rao" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(document.activeElement?.getAttribute("aria-label")).toBe("Record remittance for Asha Rao"));
+  });
+
+  it("QA11-03: a refund amount that is not a number never reaches the confirmation", async () => {
+    const fetchMock = serve();
+    render(<AdminAgentDepositsPanel canAct />);
+    fireEvent.click(await screen.findByRole("button", { name: "Record refund for Asha Rao" }));
+    const form = screen.getByRole("form", { name: "Record refund for Asha Rao" });
+    fireEvent.change(within(form).getByLabelText(/Refund amount/), { target: { value: "abc" } });
+    fireEvent.change(within(form).getByLabelText("Reason"), { target: { value: "Visa refused" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save refund" }));
+    expect(screen.queryByRole("group", { name: "Confirm refund" })).toBeNull();
+    expect(posts(fetchMock)).toHaveLength(0);
+  });
+
+  it("QA11-06: a page past the end falls back to the last page", async () => {
+    window.history.replaceState(null, "", "/overseas/admin/agent-deposits?page=99");
+    const fetchMock = serve((url) => (String(url).includes("offset=1960") ? json({ items: [], total: 1, limit: 20, offset: 1960 }) : undefined));
+    render(<AdminAgentDepositsPanel canAct />);
+    expect(await screen.findByText("Asha Rao")).toBeTruthy();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("offset=0"))).toBe(true);
+    expect(window.location.search).toBe("");
+  });
+
   it("offers no actions to a reader (super_admin)", async () => {
     serve();
     render(<AdminAgentDepositsPanel canAct={false} />);

@@ -3,6 +3,7 @@
 import { FormEvent, KeyboardEvent, useRef, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { formatInr, todayIso } from "@/lib/agentApplications";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 export type AdminDeposit = {
   id: string;
@@ -33,7 +34,7 @@ type Props = { deposit: AdminDeposit; action: DepositAction; onDone: (next: Admi
 
 // AGN-011 (DEC-SCOPE-058 D3/D12): record a remittance (date + reference) or the one refund (date, amount up to what was paid, reason).
 // A refund asks for confirmation first -- it is final. The server checks every rule again; its message stays beside the form with the
-// entry kept. Escape cancels.
+// entry kept and focus on it. Escape cancels (from the confirmation it returns to Save). QA11-02: focus is never left on <body>.
 export default function AdminDepositActionForm({ deposit, action, onDone, onCancel }: Props) {
   const refund = action === "refund";
   const id = (part: string) => `deposit-${action}-${part}-${deposit.id}`;
@@ -45,6 +46,7 @@ export default function AdminDepositActionForm({ deposit, action, onDone, onCanc
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const inFlight = useRef(false);
+  const focusAfter = useFocusAfterRender();
   const name = `${ACTION_LABELS[action]} for ${deposit.student}`;
 
   async function save() {
@@ -57,8 +59,15 @@ export default function AdminDepositActionForm({ deposit, action, onDone, onCanc
     inFlight.current = false;
     setBusy(false);
     setConfirming(false);
-    if (!outcome.ok) return setFailure(outcome.message);
+    if (!outcome.ok) {
+      setFailure(outcome.message);
+      return focusAfter(id("failure"));
+    }
     onDone(outcome.data as AdminDeposit);
+  }
+  function back() {
+    setConfirming(false);
+    focusAfter(id("save"));
   }
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -67,7 +76,7 @@ export default function AdminDepositActionForm({ deposit, action, onDone, onCanc
   }
 
   return (
-    <form className="form" aria-label={name} onSubmit={submit} onKeyDown={(event: KeyboardEvent) => event.key === "Escape" && (confirming ? setConfirming(false) : onCancel())}>
+    <form className="form" aria-label={name} onSubmit={submit} onKeyDown={(event: KeyboardEvent) => event.key === "Escape" && (confirming ? back() : onCancel())}>
       <div className="field">
         <label htmlFor={id("on")}>{refund ? "Refunded on" : "Remitted on"}</label>
         <input id={id("on")} type="date" required max={todayIso()} value={on} onChange={(event) => setOn(event.target.value)} autoFocus />
@@ -76,7 +85,13 @@ export default function AdminDepositActionForm({ deposit, action, onDone, onCanc
         <>
           <div className="field">
             <label htmlFor={id("amount")}>Refund amount in ₹ (INR)</label>
-            <input id={id("amount")} inputMode="decimal" required autoComplete="off" aria-describedby={id("max")} value={amount} onChange={(event) => setAmount(event.target.value)} />
+            <input
+              id={id("amount")}
+              inputMode="decimal"
+              required
+              autoComplete="off"
+              pattern="[0-9]+(\.[0-9]{1,2})?"
+              title="A rupee amount with up to 2 decimals, for example 20000 or 20000.50" aria-describedby={id("max")} value={amount} onChange={(event) => setAmount(event.target.value)} />
             {deposit.amount && (
               <small id={id("max")} className="muted">
                 At most {formatInr(deposit.amount)}
@@ -95,27 +110,27 @@ export default function AdminDepositActionForm({ deposit, action, onDone, onCanc
         </div>
       )}
       {failure && (
-        <p className="form-error" role="alert">
+        <p id={id("failure")} tabIndex={-1} className="form-error" role="alert">
           {failure}
         </p>
       )}
       {confirming ? (
         <div role="group" aria-label="Confirm refund">
           <p>
-            Record a refund of {amount.trim() ? formatInr(amount.trim()) : "this amount"} for {deposit.student}? It cannot be changed afterwards.
+            Record a refund of {formatInr(amount.trim())} for {deposit.student}? It cannot be changed afterwards.
           </p>
           <div className="actions">
             <button type="button" className="btn small" disabled={busy} onClick={save} autoFocus>
               {busy ? "Saving…" : "Yes, record refund"}
             </button>
-            <button type="button" className="btn ghost small" onClick={() => setConfirming(false)}>
+            <button type="button" className="btn ghost small" onClick={back}>
               Go back
             </button>
           </div>
         </div>
       ) : (
         <div className="actions">
-          <button className="btn small" disabled={busy}>
+          <button id={id("save")} className="btn small" disabled={busy}>
             {busy ? "Saving…" : refund ? "Save refund" : "Save remittance"}
           </button>
           <button type="button" className="btn ghost small" onClick={onCancel}>
