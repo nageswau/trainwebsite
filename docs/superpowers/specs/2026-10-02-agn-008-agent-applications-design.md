@@ -175,7 +175,7 @@ Every existing caller still gets the same rows for applications made before this
   - Returns `{items, total, limit, offset}`.
 - `item()` / `detail()`: explicit allowlists. Detail adds the history (oldest first: `from_status`, `to_status`, `next_action`, `notes`, `changed_by` name, `created_at`) and the editable fields.
   - Never returns `agent_id`, `counselor_id` or `student_id`.
-  - Returns `has_login` and `agent_student_id`.
+  - Returns `has_login`, `agent_student_id`, `university_slug` (the edit form's course list), and `read_only_reason` (`"withdrawn" | "archived" | null`). (plan, 2026-10-02)
   - Shows `nearest_deadline` as `{kind: "application"|"offer", date}`. It is the earliest of the two deadlines that is today or later. If neither is upcoming, it is the most recent past one, which the UI marks "past". With no deadlines it is `null`.
 - `load_scoped(db, user, application_id, *, lock=False)`: the scope is in the WHERE clause. Out of scope returns `404 "Application not found"`. With `lock=True`, it uses `SELECT … FOR UPDATE`.
 - `duplicate_exists(db, *, agent_student, university_id, course_id, exclude_id=None) -> bool`:
@@ -237,7 +237,7 @@ Every existing caller still gets the same rows for applications made before this
 - `to_status` not in the stages returns 422.
 - A target index at or below the current one returns **422** `"Cannot move from '<a>' to '<b>' -- an agent can only move an application forward"`.
 - A target past `status_tracking` returns 403. This is already covered by the enrolled rule.
-- On success: write the history row, call `_maybe_trigger_agent_commission` (a no-op because the target is never `enrolled`, but this keeps one code path), then audit `overseas.application.advance`.
+- On success: write the history row, no commission call: an agent can never reach `enrolled`, and AC05 asserts no commission row, then audit `overseas.application.advance`. (plan, 2026-10-02)
 - No notification (A8).
 
 Register the router in `main.py` after `agent_students.router`.
@@ -335,7 +335,7 @@ Sites that filter by `student_id == user.id` are unaffected and are not touched.
 
 It follows `AgentStudentsPanel`: 20 per page, the latest request wins (`AbortController`), focus returns to the opener, and URL state is read once on mount.
 
-**Filter.** `status` comes from `useSearchParams`. An unknown value falls back to `all`. Changing a sidebar link re-renders and refetches; `offset` resets.
+**Filter.** `status` only (paging is local and resets on a filter change); comes from `useSearchParams`. An unknown value falls back to `all`. Changing a sidebar link re-renders and refetches. (plan, 2026-10-02)
 
 **List rows (cards on narrow screens):**
 - Student, with a "no login" tag when `has_login` is false
@@ -353,7 +353,7 @@ It follows `AgentStudentsPanel`: 20 per page, the latest request wins (`AbortCon
 - **Edit** opens an inline form with the editable fields. University is shown read-only with the hint "To change university, withdraw and create a new application."
 - **Change status:** a `<select>` lists only the stages after the current one, up to `status_tracking`, plus an "Update status" button.
 - **Withdraw:** an inline confirmation, then focus returns to the opener.
-- Withdrawn and enrolled applications are read-only, with the reason as text.
+- A withdrawn application, or one whose student is archived, is read-only (`read_only_reason`). An enrolled application keeps Edit but shows no status control. (plan, 2026-10-02)
 
 **States:**
 
@@ -373,9 +373,9 @@ It follows `AgentStudentsPanel`: 20 per page, the latest request wins (`AbortCon
 ### 6.3 `AgentApplicationCreatePanel` (reused and extended)
 
 - **Students:**
-  - Source: `RECORDS_URL` (`/workflows/overseas/agent/crm/students`, active, in scope), paged up to 100. It replaces `/workflows/overseas/agent/students`.
+  - Source: `RECORDS_URL` (`/workflows/overseas/agent/crm/students`, active, in scope). It replaces `/workflows/overseas/agent/students`.
   - Each option carries `agent_student_id`.
-  - Option text: `"<name> — <masked email>"` for students with a login (unchanged format), and `"<name> — no login"` otherwise.
+  - Option text: `<name> — <email>` when the student has a login, `<name> — no login` otherwise. The picker uses SearchableSelect **server mode** against `RECORDS_URL?q=&limit=20`, so agencies with more than 100 students still work. (plan, 2026-10-02)
 - **University and course:** unchanged (public universities, with courses cascading from the chosen university).
 - **New fields:** Application ID, Submitted on, Application deadline, Offer deadline (optional, `type="date"`).
 - **Submit:** POSTs to the new route. On success it shows "Application created.", resets the form and calls `onCreated()` so the list refetches.
@@ -448,8 +448,7 @@ It follows `AgentStudentsPanel`: 20 per page, the latest request wins (`AbortCon
 **Live regions:** one polite `role="status"` region per panel announces "Application created.", "Saved.", "Status updated to Offer." and "Application withdrawn.".
 
 **Responsive:**
-- At 640px and below, list rows are a single-column card stack and the detail sits below the list.
-- At 1024px and above, the list and the detail sit side by side, following the existing `action-grid`.
+- The detail expands under its card, at every width (an `aria-expanded` View/Close button). (plan, 2026-10-02)
 - No horizontal scroll at 320px. Long names and emails wrap, using `breakable()` from `AgentStudentsPanel`, moved to `lib/agentStudents.ts` if needed.
 - The sidebar sub-links reuse `.portal-nav` styling, indented by 12px. On mobile they appear flattened in the existing toggle menu.
 
@@ -468,9 +467,10 @@ It follows `AgentStudentsPanel`: 20 per page, the latest request wins (`AbortCon
 
 | Action | Label |
 |---|---|
-| `overseas.application.update` | "edited an application" |
-| `overseas.application.advance` | "moved an application forward" |
-| `overseas.application.withdraw` | "withdrew an application" |
+| `overseas.application.update` | "Edited an application" |
+| `overseas.application.advance` | "Moved an application forward" |
+| `overseas.application.withdraw` | "Withdrew an application" |
+(plan, 2026-10-02)
 
 ## 7. Security (security-and-hardening review, 2026-10-02)
 
