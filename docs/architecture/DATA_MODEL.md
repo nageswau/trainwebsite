@@ -418,7 +418,14 @@ should gate it further — carried forward as an open item for BRD/PRD follow-up
 - **Compliance constraint:** no field or copy anywhere represents EduSphere as the visa
   decision-maker (`VISA-003-AC02`, sourced from the reference implementation's own compliance
   language, carried forward as a real requirement).
-- **Feature IDs:** `VISA-001`, `VISA-002`, `VISA-003`.
+- **Feature IDs:** `VISA-001`, `VISA-002`, `VISA-003`, `AGN-012`.
+- **Addendum, 2026-10-02 (`AGN-012`, `DEC-SCOPE-057`; migration `0063_agent_visa_details`, chained after `0060_agent_app_enrollment`) —
+  agency visa details.** Additive nullable columns: `visa_application_date` Date, `interview_date` Date, `decision` VARCHAR(20) with
+  `ck_visa_cases_decision` (`approved`/`refused`/`withdrawn` or NULL), `decided_at` TIMESTAMPTZ. The outcome is confirmed by the owner
+  (V2) for agency cases and recorded as the authority's decision (the compliance constraint above still holds; the disclaimer is shown
+  with it). The stage list is unchanged; the outcome is not a stage. Written only by the agency routes; counselor/student routes neither
+  read nor write the new columns. No row is read or written by the upgrade; the downgrade refuses while any of the four holds data.
+  Still one case per application (enforced by the routes, not a unique index).
 
 ### 6.6 `Appointment`
 **Carries over.** **Ownership:** Counselor (schedule), Student (self, view).

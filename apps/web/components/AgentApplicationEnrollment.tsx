@@ -2,9 +2,16 @@
 
 import Link from "next/link";
 import { FormEvent, KeyboardEvent, useRef, useState } from "react";
-import { SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
+import { SIGN_IN_PATH } from "@/lib/activityFeedback";
 import { sendJson } from "@/lib/apiErrors";
-import { AgentApplicationDetail, APPLICATIONS_URL, canConfirmEnrollment, ENROLLMENT_CHECK_TEXT } from "@/lib/agentApplications";
+import {
+  AgentApplicationDetail,
+  APPLICATIONS_URL,
+  canConfirmEnrollment,
+  ENROLLMENT_CHECK_TEXT,
+  SECTION_EXPIRED as EXPIRED,
+  SECTION_SERVER_ERROR as SERVER_ERROR,
+} from "@/lib/agentApplications";
 import { fieldErrors } from "@/lib/agentStudents";
 import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -18,9 +25,7 @@ type Props = {
 };
 
 // Browser QA pass 2: the form words its own failures, keeping the entry (QA13-03 the AGN-006 QA6-02 wording, QA13-08 the "on our side"
-// wording); a 409/404 goes to the detail, which reloads to the real state.
-const EXPIRED = `${SESSION_EXPIRED} Your entry is kept; sign in again in a new tab, then save.`;
-const SERVER_ERROR = "Something went wrong on our side. Please try again; your entry is kept.";
+// wording; both now in lib/agentApplications.ts, shared with the Visa section); a 409/404 goes to the detail, which reloads.
 const FIELDS = ["enrollment_date", "university_student_id", "notes"] as const;
 type Field = (typeof FIELDS)[number];
 const FIELD_ID: Record<Field, string> = { enrollment_date: "date", university_student_id: "student", notes: "notes" };

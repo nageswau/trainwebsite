@@ -21,8 +21,9 @@ NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was wri
 > | `AGN-009` | ang-009 (documents: upload, download, verify, reject with a reason, requests, history; Pending/Uploaded/Additional) | `DEC-SCOPE-052` | branch `feature/agn-009-agent-documents` (implemented; browser validation and Codex review pending) |
 > | `AGN-016` | ang-016 (tasks and follow-ups; "Pending actions" KPI only — the rest of ang-018 stays open) | `DEC-SCOPE-053` | branch `feature/agn-016-tasks-followups` (implemented; browser QA, full suites and Codex review pending) |
 > | `AGN-010` | ang-010 (offer details, Step 6: type, offer date, deadline, conditions, offer letter; agent Offers count) | `DEC-SCOPE-056` | branch `feature/agn-010-offer-details` (implemented; browser QA, full suites and Codex review pending) |
+> | `AGN-012` | ang-012 (visa for agent-managed applications: documents checklist, application date, appointment, interview, stage, decision) | `DEC-SCOPE-057` | branch `feature/agn-012-agent-visa` (verified; main merged as 0063 / DEC-SCOPE-057; Browser Use gate open) |
 >
-> Not started: ang-011 … ang-015, ang-017 … ang-020 and ang-022. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
+> Not started: ang-011, ang-013 … ang-015, ang-017 … ang-020 and ang-022. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
 > student to a staff member; staff see assigned students only) — check its remaining acceptance criteria before planning it.
 > **Citation note:** the "`DEC-SCOPE-035`" this file cites as its scope decision was renumbered before merge;
 > `DEC-SCOPE-035` on `main` is `ENH-027` (psychometric). AGN-004 and AGN-007 recorded this mis-citation; each shipped
@@ -503,6 +504,9 @@ table and column names are placeholders for the design spec, not decisions.
 - **Positive / Negative / Edge:** full visa flow to approved / decision without stage → 422 / a refused visa then re-application (new case vs reopen: spec).
 - **Regression risks:** `test_visa_001/002/003`.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-02):** implemented as `AGN-012` (`DEC-SCOPE-057` V1–V9: Master and Staff, outcomes final at `decision`, forward-only
+  from `checklist`, agency document types on the checklist, one case per application, `POST`/`PATCH …/crm/applications/{id}/visa`);
+  browser validation and Codex review pending. See `ENHANCEMENT_BACKLOG.md` §AGN-012.
 
 ---
 

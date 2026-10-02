@@ -564,12 +564,19 @@ class ProfileDocument(Base, TimestampMixin):
 
 class VisaCase(Base, TimestampMixin):
     __tablename__ = "visa_cases"
+    __table_args__ = (CheckConstraint("decision IN ('approved', 'refused', 'withdrawn')", name="ck_visa_cases_decision"),)
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id"), index=True)
     status: Mapped[str] = mapped_column(String(50), default="checklist")
     appointment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     checklist: Mapped[list] = mapped_column(JSON, default=list)
     tracking_reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # AGN-012 (DEC-SCOPE-057; migration 0063): written only by the agency visa routes; the counselor/student routes neither read nor
+    # write them (V8). `decision` is the authority's outcome as the agency records it, final once set (V2).
+    visa_application_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    interview_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    decision: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Scholarship(Base, TimestampMixin):
