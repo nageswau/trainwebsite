@@ -6,17 +6,19 @@ the caller's transaction (they never commit here), so a refused or rolled-back w
 """
 
 import logging
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import get_args
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AgentCommission, AgentOrg, AgentOrgMember, AgentStudent, AgentTask, Notification, OverseasApplication, StudentDocument, University, User
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import AgentDocumentType
-from app.services.agent_applications import stage_label
+from app.services.agent_applications import OFFER_STAGES_ON, WITHDRAWN, stage_label
 from app.services.agent_orgs import notification_recipients
 
 logger = logging.getLogger(__name__)
@@ -146,3 +148,120 @@ async def task_created(db: AsyncSession, record: AgentStudent, task: AgentTask, 
     """N1: the student's recipient, unless they created it. The title is user-typed, so only the due date is shown (§8)."""
     body = f"A new task on one of your students is due {ist_date(task.due_at)}."
     return await notify(db, await recipients(db, record, actor), "New task", body, TASKS_URL)
+
+
+# --- daily reminders (N4, N6, N10) ------------------------------------------------------------------------------------------------
+
+WINDOWS = {3: "Deadline in 3 days", 1: "Deadline tomorrow", 0: "Deadline today"}
+CHUNK = 200
+
+
+async def _remind(db: AsyncSession, user: User, title: str, body: str, url: str, key: str) -> bool:
+    """One reminder, claimed by the partial unique index: a second insert of the same key is a no-op, never a read-then-write race."""
+    stmt = (
+        pg_insert(Notification)
+        .values(id=uuid4(), user_id=user.id, title=title, body=body, read=False, action_url=url, dedupe_key=key)
+        .on_conflict_do_nothing(index_elements=["dedupe_key"], index_where=Notification.dedupe_key.isnot(None))
+        .returning(Notification.id)
+    )
+    new_id = await db.scalar(stmt)
+    if new_id is None:
+        return False
+    await queue_deliveries(db, await db.get(Notification, new_id), user, channels=CHANNELS)
+    return True
+
+
+async def _guarded(db: AsyncSession, counts: dict, ids: dict, make) -> None:
+    """One reminder in a savepoint: a failure is counted and logged with ids only, never raised (AC6)."""
+    try:
+        async with db.begin_nested():
+            counts["created" if await make() else "duplicate"] += 1
+    except Exception:
+        counts["failed"] += 1
+        logger.exception("agn017_reminder_failed", extra={"extra_fields": {k: str(v) for k, v in ids.items()}})
+
+
+async def _cached_recipients(db: AsyncSession, record: AgentStudent, cache: dict) -> list[User]:
+    if record.id not in cache:
+        cache[record.id] = await recipients(db, record, None)
+    return cache[record.id]
+
+
+def _deadlines(app: OverseasApplication) -> tuple:
+    """`nearest_deadline`'s stage rule (N10): from the offer stage on, only the offer deadline counts."""
+    if app.status in OFFER_STAGES_ON:
+        return (("offer", app.offer_deadline),)
+    return (("application", app.application_deadline), ("offer", app.offer_deadline))
+
+
+async def _deadline_reminders(db: AsyncSession, today: date, counts: dict, cache: dict) -> None:
+    days = {today + timedelta(days=d): d for d in WINDOWS}
+    last = None
+    while True:
+        query = (
+            select(OverseasApplication, AgentStudent, University.name)
+            .join(AgentStudent, AgentStudent.id == OverseasApplication.agent_student_id)
+            .join(University, University.id == OverseasApplication.university_id)
+            .where(
+                AgentStudent.status == "active",
+                OverseasApplication.status.notin_([WITHDRAWN, "enrolled"]),
+                or_(OverseasApplication.application_deadline.in_(list(days)), OverseasApplication.offer_deadline.in_(list(days))),
+            )
+            .order_by(OverseasApplication.id)
+            .limit(CHUNK)
+        )
+        if last is not None:
+            query = query.where(OverseasApplication.id > last)
+        rows = (await db.execute(query)).all()
+        if not rows:
+            return
+        for app, record, university in rows:
+            for kind, when in _deadlines(app):
+                if when not in days:
+                    continue
+                left = days[when]
+                body = f"{clean_text(university)}: {kind} deadline {ist_date(when)}."
+                for user in await _cached_recipients(db, record, cache):
+                    key = f"agn017:deadline:{app.id}:{kind}:{when.isoformat()}:{left}:{user.id}"
+                    await _guarded(db, counts, {"application_id": app.id, "user_id": user.id}, lambda u=user, k=key, t=WINDOWS[left], b=body: _remind(db, u, t, b, APPLICATIONS_URL, k))
+        last = rows[-1][0].id
+        await db.commit()
+
+
+async def _overdue_digests(db: AsyncSession, now: datetime, today: date, counts: dict, cache: dict) -> None:
+    """N4: one "Overdue tasks" notice per recipient per India day, counting open overdue tasks of active students."""
+    per_record = (
+        await db.execute(
+            select(AgentTask.agent_student_id, func.count())
+            .join(AgentStudent, AgentStudent.id == AgentTask.agent_student_id)
+            .where(AgentTask.status == "open", AgentTask.due_at < now, AgentStudent.status == "active")
+            .group_by(AgentTask.agent_student_id)
+        )
+    ).all()
+    totals: dict = {}
+    for record_id, count in per_record:
+        for user in await _cached_recipients(db, await db.get(AgentStudent, record_id), cache):
+            totals[user.id] = (user, totals.get(user.id, (user, 0))[1] + count)
+    for user, count in totals.values():
+        body = f"You have {_plural(count, 'overdue task')}."
+        key = f"agn017:overdue:{today.isoformat()}:{user.id}"
+        await _guarded(db, counts, {"user_id": user.id}, lambda u=user, b=body, k=key: _remind(db, u, "Overdue tasks", b, TASKS_URL, k))
+    await db.commit()
+
+
+async def send_daily_reminders(db: AsyncSession, *, now: datetime) -> dict[str, int]:
+    today = now.astimezone(INDIA).date()
+    counts = {"created": 0, "duplicate": 0, "failed": 0}
+    cache: dict = {}
+    await _deadline_reminders(db, today, counts, cache)
+    await _overdue_digests(db, now, today, counts, cache)
+    logger.info("agn017_reminders_done", extra={"extra_fields": {"day": today.isoformat(), **counts}})
+    return counts
+
+
+async def run_daily_reminders() -> dict[str, int]:
+    """The beat task's entry point: its own session, the current time."""
+    from app.core.database import SessionLocal
+
+    async with SessionLocal() as db:
+        return await send_daily_reminders(db, now=datetime.now(UTC))
