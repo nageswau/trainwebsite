@@ -3118,5 +3118,6 @@ allowlist; the agent dashboard gains one metric after "Applications". No change 
 - **N8 — Frontend.** Agent "Notifications" section (Master and Staff) with an unread nav badge; no "mark all read".
 - **N9 — Documents.** `rejected` and `changes_required` both notify; the previous assignee is not told on reassignment.
 - **N10 — Stage rules.** As `nearest_deadline`: none once withdrawn/enrolled; from `offer` on, only the offer deadline.
+- **N11 — Record context (browser QA QA17-02, owner 2026-10-03).** Kept as designed: notices name no student and Open goes to the section list; revisit with ang-018 dashboards.
 
 **Consequences:** migration `0061_agent_notifications` (one nullable column, four partial indexes); a new `services/agent_notifications.py`; additive hooks in `agent_students`, `agent_documents`, `agent_applications`, `agent_tasks` and three `workflows.py` routes; the first crontab beat entry; one new read endpoint; an agent nav item and optional `NavItem.badge`. Unchanged: ENH-014 dispatch/delivery, existing list/read contracts, students' and counselors' notices, `_maybe_trigger_agent_commission`. Design: `docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md`. **New Feature ID authorized:** `AGN-017`.

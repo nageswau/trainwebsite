@@ -3778,9 +3778,10 @@ count, the alembic head (`0061`).
 
 **Complexity:** Medium. **Risk:** Medium.
 
-**Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-017-notifications`. Lite tests only, per the owner (the AGN-017 files
-plus the touched features' files). Outstanding: browser validation (with the e2e spec `agn-017-notifications.spec.ts`), independent Codex
-review, the owner's full suites.
+**Status (2026-10-03): VERIFIED, NOT COMPLETE** on `feature/agn-017-notifications`. Lite tests only, per the owner (the AGN-017 files
+plus the touched features' files). Browser QA done (`docs/quality/AGN-017_BROWSER_QA_2026-10-02.md`: QA17-01/03/04/05/06 fixed and
+re-verified; QA17-02 kept as designed, `DEC-SCOPE-055` N11); e2e `agn-017-notifications.spec.ts` 2/2. Codex review waived by the owner.
+Outstanding: the owner's full suites.
 
 ## AGN-016 — Agent Tasks and Follow-ups, "Pending Actions" KPI
 

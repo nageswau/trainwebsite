@@ -70,7 +70,7 @@ tree and every fix re-checked with Browser Use on the same isolated Chromium. No
 | QA17-05 | Below 980 px the top bar links the unread count (`.topbar-unread`) | `PortalShell.badge.test.tsx` ×2 | Hidden at 1280; shown at 768 and 375 (0 px overflow); tap → Notifications (screenshot `12-recheck-mobile-topbar`) |
 | QA17-06 | No generic WorkflowPanel on the agency Notifications page | `PortalPage.agentNotifications.test.tsx` (Super Admin case) | Super Admin: 0 forms, no "Send notification" |
 
-Not changed: QA17-02 (`NEEDS_CONFIRMATION` — a product decision on naming the record in a notice), QA17-07 (spec §9 ruling), QA17-08
+Not changed: QA17-02 (owner decision 2026-10-03: keep as designed — no names, section links; `DEC-SCOPE-055` N11), QA17-07 (spec §9 ruling), QA17-08
 (pre-existing shared card), QA17-09 (by design), QA17-10 (AGN-009). Evidence: backend events + AGN-016 create/read 38 passed; web 8 files /
 53 passed plus 12 neighbouring files (school pages that render the list or the shell) 75 passed; `tsc` 0; eslint 0 on the changed files;
 Playwright on the rebuilt stack: `agn-017` 2, `enh-005` 2, `enh-023` 1 — 5 passed.
