@@ -93,6 +93,7 @@ export default function AgentStudentDetailPanel({
             onEditingChange={(open) => setEditing(open ? "counseling" : "none")}
             onSaved={(s) => onSaved(s, `Counseling saved for ${s.full_name}.`)}
             onDirtyChange={onDirtyChange}
+            onStale={(s) => onSaved(s, `${s.full_name} has been archived.`)}
           />
           {editing === "none" && (
             <button type="button" className="btn secondary small" onClick={onClose} style={{ marginTop: 16 }}>

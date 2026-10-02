@@ -68,6 +68,27 @@ describe("Counseling in the student detail panel (AGN-006)", () => {
     expect(screen.queryByRole("button", { name: "Record counseling" })).toBeNull();
   });
 
+  it("reads the Counseling heading as a section title at the panel heading size (browser QA6-01)", () => {
+    render(<AgentStudentDetailPanel detail={base} onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect(getComputedStyle(screen.getByRole("heading", { name: "Counseling" })).fontSize).toBe("15px");
+  });
+
+  it("shows a student archived while the form was open as archived, keeping the form and entry until Cancel (browser QA6-03)", async () => {
+    const archived = { ...base, status: "archived" as const };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res({ detail: "Unarchive this student first" }, 409)).mockResolvedValueOnce(res({ student: archived })));
+    const onSaved = vi.fn();
+    const { rerender } = render(<AgentStudentDetailPanel detail={base} onClose={vi.fn()} onSaved={onSaved} />);
+    fireEvent.click(screen.getByRole("button", { name: "Record counseling" }));
+    fireEvent.change(screen.getByLabelText("Career interest"), { target: { value: "Law" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save counseling" }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(archived, "Asha has been archived."));
+    rerender(<AgentStudentDetailPanel detail={archived} onClose={vi.fn()} onSaved={onSaved} />);
+    expect(screen.getByLabelText("Career interest")).toHaveValue("Law");
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(within(counselingRegion()).queryByRole("button")).toBeNull(); // archived: read-only, no Record counseling
+  });
+
   it("after a save shows the new record, reports it through the list notice and focuses the Counseling heading", async () => {
     const saved = { ...base, counseling: recorded };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ student: saved })));

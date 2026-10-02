@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
+import { SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { refocus } from "@/lib/focus";
 import {
@@ -15,6 +17,7 @@ import {
   fieldErrors,
   Currency,
   NOTES_MAX,
+  RECORDS_URL,
   validateCounseling,
 } from "@/lib/agentStudents";
 
@@ -27,23 +30,32 @@ const TEXT_FIELDS: { key: "career_interest" | "course_preference" | "country_pre
 ];
 const FOCUS_ORDER: CounselingField[] = ["counseling_completed", "career_interest", "course_preference", "country_preference", "budget_amount", "budget_currency", "remarks"];
 export const LEAVE_PROMPT = "You have unsaved counseling changes. Leave without saving?";
+// Browser QA6-02: a 401 is not retryable here -- the entry stays, the user signs in again elsewhere (the ActivityFeedbackForm wording).
+const EXPIRED = `${SESSION_EXPIRED} Your entry is kept; sign in again in a new tab, then save.`;
+// Browser QA6-03: archived while the form was open (staff cannot unarchive, so the message names who can).
+const ARCHIVED_MEANWHILE = "This student has been archived. Counseling can be recorded again once an agency Master unarchives them.";
+// Browser QA6-01: section and form titles at the panel heading size (an unstyled h5 renders at 0.83em, below the 15 px labels).
+export const TITLE_STYLE = { fontSize: 15, margin: "0 0 8px" } as const;
 
 export default function AgentStudentCounselingForm({
   detail,
   onSaved,
   onCancel,
   onDirtyChange,
+  onStale,
 }: {
   detail: AgentStudentDetail;
   onSaved: (s: AgentStudentDetail) => void;
   onCancel: () => void;
   // Review #2: the list asks before another student replaces unsaved input (opening a student is leaving the form too).
   onDirtyChange?: (dirty: boolean) => void;
+  // QA6-03: the student changed under the form (archived); the panel shows the fresh record while the form keeps the entry.
+  onStale?: (s: AgentStudentDetail) => void;
 }) {
   const original = useRef<CounselingValues>(counselingValues(detail.counseling));
   const [values, setValues] = useState<CounselingValues>(original.current);
   const [errors, setErrors] = useState<Partial<Record<CounselingField, string>>>({});
-  const [failure, setFailure] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{ text: string; expired?: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const idPrefix = `counseling-${detail.id}`;
@@ -99,6 +111,16 @@ export default function AgentStudentCounselingForm({
     return Boolean(first);
   }
 
+  // After a 409, re-read the student: when they were archived meanwhile, hand the fresh record to the panel (QA6-03).
+  async function archivedMeanwhile(): Promise<boolean> {
+    const fresh = await fetch(`${RECORDS_URL}/${detail.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+    if (fresh?.student?.status !== "archived") return false;
+    onStale?.(fresh.student as AgentStudentDetail);
+    return true;
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (inFlight.current) return;
@@ -127,12 +149,18 @@ export default function AgentStudentCounselingForm({
       if (onFields) {
         setErrors(onFields);
         requestAnimationFrame(() => focusFirst(onFields));
-      } else {
-        setFailure(detailMessage(body?.detail, "Unable to save counseling."));
-        refocus(`${idPrefix}-save`);
+        return;
       }
+      if (response.status === 401) {
+        setFailure({ text: EXPIRED, expired: true });
+      } else if (response.status === 409 && (await archivedMeanwhile())) {
+        setFailure({ text: ARCHIVED_MEANWHILE });
+      } else {
+        setFailure({ text: detailMessage(body?.detail, "Unable to save counseling.") });
+      }
+      refocus(`${idPrefix}-save`);
     } catch {
-      setFailure(NOT_COMPLETED);
+      setFailure({ text: NOT_COMPLETED });
       refocus(`${idPrefix}-save`);
     } finally {
       inFlight.current = false;
@@ -150,7 +178,7 @@ export default function AgentStudentCounselingForm({
 
   return (
     <form className="form" onSubmit={submit} aria-busy={busy} noValidate aria-labelledby={`${idPrefix}-title`}>
-      <h5 id={`${idPrefix}-title`}>
+      <h5 id={`${idPrefix}-title`} style={TITLE_STYLE}>
         {detail.counseling ? "Edit counseling" : "Record counseling"} for {detail.full_name}
       </h5>
       <fieldset className="form-busy-wrap" disabled={busy}>
@@ -233,7 +261,15 @@ export default function AgentStudentCounselingForm({
         </div>
         {failure && (
           <p className="form-error" role="alert">
-            {failure}
+            {failure.text}
+            {failure.expired && (
+              <>
+                {" "}
+                <Link href={SIGN_IN_PATH} target="_blank" rel="noopener">
+                  Sign in again
+                </Link>
+              </>
+            )}
           </p>
         )}
         <div>

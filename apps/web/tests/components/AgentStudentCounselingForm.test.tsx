@@ -77,6 +77,7 @@ describe("AgentStudentCounselingForm (AGN-006)", () => {
       .fn()
       .mockResolvedValueOnce(res({ detail: [{ loc: ["body", "career_interest"], msg: "Value error, must be 200 characters or fewer" }] }, 422))
       .mockResolvedValueOnce(res({ detail: "Unarchive this student first" }, 409))
+      .mockResolvedValueOnce(res({ student })) // QA6-03: a 409 re-reads the student; still active -> the server's message stands
       .mockResolvedValueOnce(res({ detail: "Student not found" }, 404));
     vi.stubGlobal("fetch", fetchMock);
     render(<AgentStudentCounselingForm detail={student} onSaved={vi.fn()} onCancel={vi.fn()} />);
@@ -123,6 +124,42 @@ describe("AgentStudentCounselingForm (AGN-006)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(confirm).toHaveBeenCalled();
     expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("offers sign-in again when the session has expired, keeping the entry (browser QA6-02)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ detail: "Not authenticated" }, 401)));
+    render(<AgentStudentCounselingForm detail={student} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    type("Career interest", "Law");
+    save();
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Your session has expired. Your entry is kept; sign in again in a new tab, then save.");
+    expect(alert).not.toHaveTextContent("Not authenticated");
+    const link = screen.getByRole("link", { name: "Sign in again" });
+    expect(link).toHaveAttribute("href", "/overseas/login");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(screen.getByLabelText("Career interest")).toHaveValue("Law");
+  });
+
+  it("re-reads the student after a 409 and says plainly that they were archived, keeping the entry (browser QA6-03)", async () => {
+    const archived = { ...student, status: "archived" as const };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(res({ detail: "Unarchive this student first" }, 409))
+      .mockResolvedValueOnce(res({ student: archived }));
+    const onStale = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentStudentCounselingForm detail={student} onSaved={vi.fn()} onCancel={vi.fn()} onStale={onStale} />);
+    type("Career interest", "Law");
+    save();
+    expect(await screen.findByRole("alert")).toHaveTextContent("This student has been archived. Counseling can be recorded again once an agency Master unarchives them.");
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/v1/workflows/overseas/agent/crm/students/s1");
+    expect(onStale).toHaveBeenCalledWith(archived);
+    expect(screen.getByLabelText("Career interest")).toHaveValue("Law");
+  });
+
+  it("titles the form at the panel heading size, not as fine print (browser QA6-01)", () => {
+    render(<AgentStudentCounselingForm detail={student} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    expect(getComputedStyle(screen.getByRole("heading", { name: "Record counseling for Asha" })).fontSize).toBe("15px");
   });
 
   it("counts remarks characters", () => {

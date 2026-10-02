@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import AgentStudentCounselingForm from "./AgentStudentCounselingForm";
+import AgentStudentCounselingForm, { TITLE_STYLE } from "./AgentStudentCounselingForm";
 import LocalTime from "./LocalTime";
 import { refocus } from "@/lib/focus";
 import { AgentStudentDetail, formatBudget } from "@/lib/agentStudents";
@@ -26,12 +26,14 @@ export default function AgentStudentCounselingCard({
   onEditingChange,
   onSaved,
   onDirtyChange,
+  onStale,
 }: {
   detail: AgentStudentDetail;
   editing: boolean;
   onEditingChange: (open: boolean) => void;
   onSaved: (s: AgentStudentDetail) => void;
   onDirtyChange?: (dirty: boolean) => void;
+  onStale?: (s: AgentStudentDetail) => void;
 }) {
   const c = detail.counseling ?? null;
   const headingId = `counseling-heading-${detail.id}`;
@@ -52,13 +54,14 @@ export default function AgentStudentCounselingCard({
 
   return (
     <section aria-labelledby={headingId} style={{ marginTop: 16 }}>
-      <h5 id={headingId} tabIndex={-1}>
+      <h5 id={headingId} tabIndex={-1} style={TITLE_STYLE}>
         Counseling
       </h5>
       {editing ? (
         <AgentStudentCounselingForm
           detail={detail}
           onDirtyChange={onDirtyChange}
+          onStale={onStale}
           onCancel={() => {
             onEditingChange(false);
             refocus(openerId);
