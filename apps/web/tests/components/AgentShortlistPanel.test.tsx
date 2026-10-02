@@ -245,4 +245,54 @@ describe("AgentShortlistPanel (AGN-007)", () => {
     release();
     await waitFor(() => expect(screen.getByText("Agency U removed from the shortlist.")).toBeInTheDocument());
   });
+
+  // --- final review fixes ---------------------------------------------------------------------------------------------------
+  const two = () => [entry(), entry({ id: "e2", university: { source: "agency", id: "a1", name: "Agency V", slug: null, country: "Malta" }, intake: "Jan 2029" })];
+
+  it("with a form open the other rows' Edit/Remove are not actionable; a different Edit reinitialises the draft and PATCHes only B", async () => {
+    const fetchMock = formRouter(two, () => res({ entry: entry({ id: "e2", intake: "May 2029" }) }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentShortlistPanel {...props} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Agency U" }));
+    fireEvent.change(await screen.findByLabelText("Intake"), { target: { value: "A draft" } });
+    expect(screen.queryByRole("button", { name: "Edit Agency V" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove Agency V" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove Agency U" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Agency V" }));
+    expect(await screen.findByLabelText("Intake")).toHaveValue("Jan 2029");
+    fireEvent.change(screen.getByLabelText("Intake"), { target: { value: "May 2029" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    await screen.findByText("Saved to shortlist.");
+    const patches = fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH");
+    expect(patches).toHaveLength(1);
+    expect(String(patches[0][0])).toMatch(/\/shortlist\/e2$/);
+    expect(JSON.parse(String(patches[0][1]!.body))).toEqual({ intake: "May 2029" });
+  });
+
+  it("an entry 404 on save closes the form, reloads and tells the user; the parent is not told the student is gone", async () => {
+    const onStudentGone = vi.fn();
+    const fetchMock = formRouter(() => [entry()], () => res({ detail: "Shortlist entry not found" }, 404));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentShortlistPanel {...props} onStudentGone={onStudentGone} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Agency U" }));
+    fireEvent.change(await screen.findByLabelText("Intake"), { target: { value: "Jan 2028" } });
+    const lists = () => fetchMock.mock.calls.filter(([u, init]) => String(u).includes("/shortlist?") && !init?.method).length;
+    const before = lists();
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    expect(await screen.findByText("This entry was removed by someone else.")).toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: "Edit shortlist entry" })).toBeNull();
+    expect(lists()).toBeGreaterThan(before);
+    expect(onStudentGone).not.toHaveBeenCalled();
+  });
+
+  it("a Student not found 404 on remove tells the parent", async () => {
+    const onStudentGone = vi.fn();
+    vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => Promise.resolve(init?.method === "DELETE" ? res({ detail: "Student not found" }, 404) : res(page([entry()])))));
+    render(<AgentShortlistPanel {...props} onStudentGone={onStudentGone} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Agency U" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
+    await waitFor(() => expect(onStudentGone).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText("Agency U removed from the shortlist.")).toBeNull();
+  });
 });

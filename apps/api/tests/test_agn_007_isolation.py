@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from app.main import app
 from app.models import AgentStudentShortlistEntry, AgentUniversity
 from app.services import agent_shortlist as service
+from app.services.staff_activity import STAFF_ACTIVITY_ACTIONS
 from tests.agn001_helpers import client_for, mk_active_org
 from tests.agn004_helpers import mk_record, mk_staff
 from tests.agn007_helpers import UNIVERSITIES, mk_catalogue, shortlist
@@ -116,4 +117,5 @@ async def test_shortlist_work_shows_in_staff_activity(db_session):  # AGN-007-AC
         items = (await m.get(ACTIVITY.format(member=staff["member"].id))).json()["items"]
     actions = [i["action"] for i in items]
     assert {"agent_student.shortlist_add", "agent_student.shortlist_update", "agent_student.shortlist_remove"} <= set(actions)
+    assert not any(a.startswith("agent_university.") for a in STAFF_ACTIVITY_ACTIONS)  # university admin is Master-only, never a staff action
     assert not any(a.startswith("agent_university.") for a in actions)

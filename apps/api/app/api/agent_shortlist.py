@@ -75,7 +75,11 @@ async def create_university(payload: AgentUniversityCreate, user: User = Depends
     data = payload.model_dump()
     row = AgentUniversity(org_id=membership.org_id, **data, created_by_user_id=user.id, updated_by_user_id=user.id)
     db.add(row)
-    await db.flush()
+    try:
+        await db.flush()  # the unique index can disagree with the Python duplicate check (Unicode lower()): 409, never 500
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, DUPLICATE_UNIVERSITY) from None
     _university_audit(db, user, "create", row.id, {"fields": sorted(k for k, v in data.items() if v is not None)})
     await _commit(db, DUPLICATE_UNIVERSITY)
     _log("agent_university_created", membership, user, "-", university_id=str(row.id))
@@ -114,6 +118,7 @@ async def delete_university(university_id: UUID, user: User = Depends(get_curren
     return Response(status_code=204)
 
 
+SHORTLIST_CHANGED = "The shortlist changed; reload and try again"
 SHORTLIST = "/students/{student_id}/shortlist"
 ENTRY = SHORTLIST + "/{entry_id}"
 
@@ -146,10 +151,14 @@ async def add_entry(student_id: UUID, payload: ShortlistEntryCreate, user: User 
     await ensure_entry_capacity(db, student.id)
     entry = AgentStudentShortlistEntry(agent_student_id=student.id, **values, created_by_user_id=user.id, updated_by_user_id=user.id)
     db.add(entry)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, SHORTLIST_CHANGED) from None
     source = "catalogue" if values["university_id"] else "agency"
     _audit(db, user, "shortlist_add", student.id, {"entry_id": str(entry.id), "university_source": source, "fields": sorted(k for k, v in values.items() if v is not None)})
-    await db.commit()
+    await _commit(db, SHORTLIST_CHANGED)
     _log("agent_shortlist_added", membership, user, student.id, entry_id=str(entry.id))
     return {"entry": await entry_detail(db, entry.id)}
 
@@ -165,7 +174,7 @@ async def update_entry(student_id: UUID, entry_id: UUID, payload: ShortlistEntry
     changed = apply_changes(entry, changes, user)
     if changed:
         _audit(db, user, "shortlist_update", student.id, {"entry_id": str(entry.id), "fields": changed})
-    await db.commit()
+    await _commit(db, SHORTLIST_CHANGED)
     if changed:
         _log("agent_shortlist_updated", membership, user, student.id, entry_id=str(entry.id), fields=changed)
     return {"entry": await entry_detail(db, entry.id)}
@@ -179,6 +188,6 @@ async def remove_entry(student_id: UUID, entry_id: UUID, user: User = Depends(ge
     entry = await load_entry(db, student.id, entry_id, lock=True)
     _audit(db, user, "shortlist_remove", student.id, {"entry_id": str(entry.id)})
     await db.delete(entry)
-    await db.commit()
+    await _commit(db, SHORTLIST_CHANGED)
     _log("agent_shortlist_removed", membership, user, student.id, entry_id=str(entry.id))
     return Response(status_code=204)

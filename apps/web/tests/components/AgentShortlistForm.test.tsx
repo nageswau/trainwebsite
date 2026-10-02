@@ -33,7 +33,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const props = { studentId: "s1", mode: "add" as const, onCancel: vi.fn(), onSaved: vi.fn(), onGone: vi.fn(), onConflict: vi.fn() };
+const props = { studentId: "s1", mode: "add" as const, onCancel: vi.fn(), onSaved: vi.fn(), onGone: vi.fn(), onEntryGone: vi.fn(), onConflict: vi.fn() };
 
 describe("AgentShortlistForm (AGN-007)", () => {
   it("offers catalogue and agency universities in two groups", async () => {
@@ -241,5 +241,43 @@ describe("AgentShortlistForm (AGN-007)", () => {
     const patch = fetchMock.mock.calls.find(([, init]) => init?.method === "PATCH")!;
     expect(String(patch[0])).toMatch(/\/students\/s1\/shortlist\/e1$/);
     expect(JSON.parse(String(patch[1]!.body))).toEqual({ intake: "Jan 2028" });
+  });
+
+  it("offers agency universities beyond the first 100 (pages by offset until total)", async () => {
+    const mk = (from: number, n: number) => Array.from({ length: n }, (_, i) => ({ id: `x${from + i}`, name: `Agency ${from + i}`, country: "Malta", city: null, entry_requirements: null, created_at: "", updated_at: "" }));
+    const fetchMock = stubApi();
+    const base = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/crm/universities")) {
+        const offset = Number(new URL(url, "http://x").searchParams.get("offset") ?? 0);
+        return Promise.resolve(res({ items: offset === 0 ? mk(0, 100) : mk(100, 20), total: 120, limit: 100, offset }));
+      }
+      return base(url, init);
+    });
+    render(<AgentShortlistForm {...props} />);
+    const select = await screen.findByLabelText("University (required)");
+    await waitFor(() => expect(select).not.toBeDisabled());
+    expect(select.querySelector('option[value="a:x119"]')).toHaveTextContent("Agency 119 — Malta");
+    expect(select.querySelectorAll('optgroup[label="Your agency"] option')).toHaveLength(120);
+  });
+
+  it("a Shortlist entry not found 404 calls onEntryGone, not onGone; Student not found still calls onGone", async () => {
+    props.onGone.mockClear();
+    props.onEntryGone.mockClear();
+    stubApi(() => res({ detail: "Shortlist entry not found" }, 404));
+    render(<AgentShortlistForm {...props} mode="edit" entry={saved as never} />);
+    await waitFor(() => expect(screen.getByLabelText("University (required)")).not.toBeDisabled());
+    fireEvent.change(screen.getByLabelText("Intake"), { target: { value: "Jan 2028" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    await waitFor(() => expect(props.onEntryGone).toHaveBeenCalledTimes(1));
+    expect(props.onGone).not.toHaveBeenCalled();
+    cleanup();
+    stubApi(() => res({ detail: "Student not found" }, 404));
+    render(<AgentShortlistForm {...props} mode="edit" entry={saved as never} />);
+    await waitFor(() => expect(screen.getByLabelText("University (required)")).not.toBeDisabled());
+    fireEvent.change(screen.getByLabelText("Intake"), { target: { value: "Jan 2028" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to shortlist" }));
+    await waitFor(() => expect(props.onGone).toHaveBeenCalledTimes(1));
+    expect(props.onEntryGone).toHaveBeenCalledTimes(1);
   });
 });

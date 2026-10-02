@@ -30,6 +30,7 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Editing>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
   const [rowError, setRowError] = useState<{ id: string; text: string } | null>(null);
   const [notice, setNotice] = useState("");
   const request = useRef<AbortController | null>(null);
@@ -78,7 +79,14 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
     focusLater(`agent-uni-del-${id}`, ADD_ID);
   }
 
+  function openForm(next: Editing) {
+    setConfirmId(null);
+    setEditing(next);
+  }
+
   async function remove(u: AgentUniversity) {
+    if (removing) return;
+    setRemoving(true);
     setRowError(null);
     try {
       const response = await fetch(`${UNIVERSITIES_URL}/${u.id}`, { method: "DELETE" });
@@ -92,6 +100,8 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
       setRowError({ id: u.id, text: detailMessage(body?.detail, "Unable to delete the university.") });
     } catch {
       setRowError({ id: u.id, text: "Network error. Check your connection and try again." });
+    } finally {
+      setRemoving(false);
     }
     closeConfirm(u.id);
   }
@@ -111,6 +121,7 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
       {isMaster &&
         (editing ? (
           <AgentUniversityForm
+            key={editing.mode === "edit" ? editing.university.id : "add"}
             mode={editing.mode}
             university={editing.mode === "edit" ? editing.university : undefined}
             onCancel={closeForm}
@@ -121,7 +132,7 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
             }}
           />
         ) : (
-          <button type="button" id={ADD_ID} className="btn small" onClick={() => setEditing({ mode: "add" })}>
+          <button type="button" id={ADD_ID} className="btn small" onClick={() => openForm({ mode: "add" })}>
             Add university
           </button>
         ))}
@@ -152,7 +163,7 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
                       <p style={{ whiteSpace: "pre-line" }}>{u.entry_requirements}</p>
                     </details>
                   )}
-                  {isMaster &&
+                  {isMaster && !editing &&
                     (confirmId === u.id ? (
                       <span
                         role="group"
@@ -164,7 +175,7 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
                           }
                         }}
                       >
-                        <button type="button" className="btn small" onClick={() => void remove(u)}>
+                        <button type="button" className="btn small" disabled={removing} onClick={() => void remove(u)}>
                           Confirm delete
                         </button>{" "}
                         <button type="button" className="btn secondary small" autoFocus onClick={() => closeConfirm(u.id)}>
@@ -173,7 +184,7 @@ export default function AgentUniversitiesPanel({ memberRole }: { memberRole: "ma
                       </span>
                     ) : (
                       <>
-                        <button type="button" id={`agent-uni-edit-${u.id}`} className="btn secondary small" aria-label={`Edit ${u.name}`} onClick={() => setEditing({ mode: "edit", university: u })}>
+                        <button type="button" id={`agent-uni-edit-${u.id}`} className="btn secondary small" aria-label={`Edit ${u.name}`} onClick={() => openForm({ mode: "edit", university: u })}>
                           Edit
                         </button>{" "}
                         <button type="button" id={`agent-uni-del-${u.id}`} className="btn secondary small" aria-label={`Delete ${u.name}`} onClick={() => setConfirmId(u.id)}>

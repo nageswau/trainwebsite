@@ -115,4 +115,49 @@ describe("AgentUniversitiesPanel (AGN-007)", () => {
       await waitFor(() => expect(screen.getByRole("button", { name: "Delete Trinity" })).toHaveFocus());
     });
   });
+
+  it("with a form open the other rows' Edit/Delete are not actionable; a different Edit starts from that row and PATCHes only it", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) =>
+      Promise.resolve(init?.method === "PATCH" ? res({ university: uni({ id: "u2", name: "UCD", city: "Cork" }) }) : res(page([uni(), uni({ id: "u2", name: "UCD", city: "Galway" })]))),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentUniversitiesPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Trinity" }));
+    fireEvent.change(within(screen.getByRole("form", { name: "Edit university" })).getByLabelText("City"), { target: { value: "A draft" } });
+    expect(screen.queryByRole("button", { name: "Edit UCD" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete UCD" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete Trinity" })).toBeNull();
+    fireEvent.click(within(screen.getByRole("form", { name: "Edit university" })).getByRole("button", { name: "Cancel" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit UCD" }));
+    const form = screen.getByRole("form", { name: "Edit university" });
+    expect(within(form).getByLabelText("City")).toHaveValue("Galway");
+    fireEvent.change(within(form).getByLabelText("City"), { target: { value: "Cork" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save university" }));
+    await screen.findByText("UCD saved.");
+    const patches = fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH");
+    expect(patches).toHaveLength(1);
+    expect(String(patches[0][0])).toMatch(/\/universities\/u2$/);
+    expect(JSON.parse(String(patches[0][1]!.body))).toEqual({ city: "Cork" });
+  });
+
+  it("disables Confirm delete while the DELETE is in flight (no double DELETE)", async () => {
+    let release: () => void = () => {};
+    const deletes = vi.fn();
+    vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "DELETE") {
+        deletes();
+        return new Promise<Response>((r) => { release = () => r(res(null, 204)); });
+      }
+      return Promise.resolve(res(page([uni()])));
+    }));
+    render(<AgentUniversitiesPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Delete Trinity" }));
+    const confirm = screen.getByRole("button", { name: "Confirm delete" });
+    fireEvent.click(confirm);
+    await waitFor(() => expect(confirm).toBeDisabled());
+    fireEvent.click(confirm);
+    expect(deletes).toHaveBeenCalledTimes(1);
+    release();
+    await screen.findByText("Trinity deleted.");
+  });
 });

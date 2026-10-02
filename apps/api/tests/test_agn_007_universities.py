@@ -86,6 +86,20 @@ async def test_duplicate_name_and_country_is_409(agency):  # AGN-007-AC09
 
 
 @pytest.mark.asyncio
+async def test_unique_index_violation_is_409_not_500(agency, monkeypatch):  # AGN-007-AC09 (index backs the check)
+    from app.api import agent_shortlist as routes
+
+    async def _skip(*args, **kwargs):
+        return None
+
+    async with client_for(agency["master"].email) as m:
+        assert (await _add(m, f"Idx {agency['tag']}")).status_code == 201
+        monkeypatch.setattr(routes, "ensure_unique_university", _skip)  # the Python check misses it; the unique index must answer
+        twin = await _add(m, f"IDX {agency['tag']}", "IRELAND")
+        assert twin.status_code == 409 and twin.json()["detail"] == "This university is already in your agency's list"
+
+
+@pytest.mark.asyncio
 async def test_delete_in_use_is_409_and_keeps_everything(db_session, agency):  # AGN-007-AC09
     async with client_for(agency["master"].email) as m:
         uid = (await _add(m, f"In Use {agency['tag']}")).json()["university"]["id"]

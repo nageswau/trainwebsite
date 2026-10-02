@@ -33,15 +33,26 @@ function loadStatic(): Promise<Static> {
     });
   return staticCache;
 }
+// The approved cap is 500 agency universities (spec §5): page by offset, 100 at a time, until total (at most 5 requests).
+async function loadAgency(): Promise<AgentUniversity[]> {
+  const items: AgentUniversity[] = [];
+  for (let page = 0; page < 5; page++) {
+    const body = await json<{ items: AgentUniversity[]; total?: number }>(`${UNIVERSITIES_URL}?limit=100&offset=${items.length}`);
+    items.push(...body.items);
+    if (body.items.length === 0 || items.length >= (body.total ?? 0)) break;
+  }
+  return items;
+}
 async function loadOptions(): Promise<Options> {
-  const [stat, agency] = await Promise.all([loadStatic(), json<{ items: AgentUniversity[] }>(`${UNIVERSITIES_URL}?limit=100`)]);
-  return { ...stat, agency: agency.items };
+  const [stat, agency] = await Promise.all([loadStatic(), loadAgency()]);
+  return { ...stat, agency };
 }
 const OTHER = "__other__";
+const ENTRY_NOT_FOUND = "Shortlist entry not found";
 type Field = "intake" | "tuitionFee" | "entryRequirements";
 
-export default function AgentShortlistForm(props: { studentId: string; mode: "add" | "edit"; entry?: ShortlistEntry; onCancel: () => void; onSaved: (e: ShortlistEntry) => void; onGone: () => void; onConflict: () => void }) {
-  const { studentId, mode, entry, onCancel, onSaved, onGone, onConflict } = props;
+export default function AgentShortlistForm(props: { studentId: string; mode: "add" | "edit"; entry?: ShortlistEntry; onCancel: () => void; onSaved: (e: ShortlistEntry) => void; onGone: () => void; onEntryGone: () => void; onConflict: () => void }) {
+  const { studentId, mode, entry, onCancel, onSaved, onGone, onEntryGone, onConflict } = props;
   const idPrefix = `sl-${useId().replace(/:/g, "")}`;
   const [options, setOptions] = useState<Options | null>(null);
   const [optionsFailed, setOptionsFailed] = useState(false);
@@ -119,7 +130,7 @@ export default function AgentShortlistForm(props: { studentId: string; mode: "ad
       });
       const data = await response.json().catch(() => null);
       if (response.ok && data?.entry) return onSaved(data.entry);
-      if (response.status === 404) return onGone();
+      if (response.status === 404) return data?.detail === ENTRY_NOT_FOUND ? onEntryGone() : onGone(); // only the entry is gone: the student stays
       if (response.status === 409) return onConflict();
       setFailure(detailMessage(data?.detail, "Unable to save the shortlist entry."));
     } catch {

@@ -3401,7 +3401,7 @@ is superseded for those two §6 rows only.
 
 **User roles affected.** `agent` (Master: full; Staff: view the University Database, write the shortlist of assigned students).
 
-**Frontend impact.** `AgentUniversitiesPanel`, `AgentUniversityForm` (new; `/overseas/agent/universities`, mounted by `PortalPage`), `AgentShortlistPanel`, `AgentShortlistForm`, `AgentShortlistRow` (new), one mount line in `AgentStudentDetailPanel`, `lib/agentShortlist.ts`, `lib/navigation.ts` (Universities item). Screens `SCR-AGT-008` (updated) and `SCR-AGT-009`.
+**Frontend impact.** `AgentUniversitiesPanel`, `AgentUniversityForm` (new; `/overseas/agent/universities`, mounted by `PortalPage`), `AgentShortlistPanel`, `AgentShortlistForm`, `AgentShortlistCard` (new), one mount line in `AgentStudentDetailPanel`, `lib/agentShortlist.ts`, `lib/navigation.ts` (Universities item). Screens `SCR-AGT-008` (updated) and `SCR-AGT-009`.
 
 **Backend impact.** New `api/agent_shortlist.py` and `services/agent_shortlist.py`; `schemas.py` (four request models); `models.py` (two models); `main.py` (router); `services/portal.py` (`universities` section); `services/staff_activity.py` (three whitelist actions). `api/agent_students.py` is imported, not edited.
 
@@ -3446,7 +3446,7 @@ is superseded for those two §6 rows only.
 
 **Complexity:** Large. **Risk:** Medium.
 
-**Status (2026-10-01): IMPLEMENTED, NOT COMPLETE** on `feature/agn-007-student-shortlist` — evidence in `docs/quality/RTM.md` (AGN-007 row). Remaining before COMPLETE: the Playwright e2e, the lite verification run, browser QA, the owner's full backend suite (standing 4–5-story cadence) and the merge (renumber/re-chain against `AGN-006` / `AGN-008`).
+**Status (2026-10-01): IMPLEMENTED, NOT COMPLETE** on `feature/agn-007-student-shortlist` — evidence in `docs/quality/RTM.md` (AGN-007 row). The Playwright e2e and the lite verification run passed (evidence in the RTM AGN-007 row, including the final-review fix wave). Remaining before COMPLETE: the owner's browser QA, the owner's decision on the independent review, the owner's full backend suite (standing 4–5-story cadence) and the merge (renumber/re-chain against `AGN-006` / `AGN-008`).
 
 ---
 

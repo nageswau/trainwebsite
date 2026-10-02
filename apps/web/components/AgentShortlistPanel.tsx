@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import ShortlistCard, { editId, removeId } from "./AgentShortlistCard";
 import AgentShortlistForm from "./AgentShortlistForm";
 import { detailMessage, isPage, type Page } from "@/lib/apiErrors";
 import { PAGE_SIZE, type ShortlistEntry, shortlistUrl } from "@/lib/agentShortlist";
@@ -11,8 +12,6 @@ import { PAGE_SIZE, type ShortlistEntry, shortlistUrl } from "@/lib/agentShortli
 // handling follows AgentUniversitiesPanel (spec §6.4).
 type Editing = { mode: "add" } | { mode: "edit"; entry: ShortlistEntry } | null;
 const ADD_ID = "shortlist-add";
-const editId = (id: string) => `shortlist-edit-${id}`;
-const removeId = (id: string) => `shortlist-remove-${id}`;
 // Focus moves after the control has been re-rendered; fall back to the next id when the target is gone.
 const focusLater = (...ids: string[]) =>
   requestAnimationFrame(() => {
@@ -21,50 +20,6 @@ const focusLater = (...ids: string[]) =>
       if (el) return el.focus();
     }
   });
-
-function ShortlistCard({ e, writable, confirming, removing, onEdit, onAskRemove, onCancelRemove, onRemove }: {
-  e: ShortlistEntry; writable: boolean; confirming: boolean; removing: boolean; onEdit: () => void; onAskRemove: () => void; onCancelRemove: () => void; onRemove: () => void;
-}) {
-  const name = e.university.name;
-  return (
-    <li className="card">
-      <strong>{name}</strong> {e.university.source === "agency" && <span className="badge">Agency</span>}
-      <p className="muted">
-        <span>{e.university.country ?? "—"}</span>
-        {e.course && <> · <span>{e.course.title}</span></>}
-      </p>
-      {e.intake && <p>Intake: {e.intake}</p>}
-      {e.tuition_fee && <p>Tuition fee: {e.tuition_fee}</p>}
-      {e.entry_requirements && (
-        <details>
-          <summary>Entry requirements</summary>
-          <p style={{ whiteSpace: "pre-line" }}>{e.entry_requirements}</p>
-        </details>
-      )}
-      {writable &&
-        (confirming ? (
-          <span
-            role="group"
-            aria-label={`Confirm remove ${name}`}
-            onKeyDown={(k) => {
-              if (k.key === "Escape") {
-                k.stopPropagation(); // the detail panel closes on Escape too; only the confirm closes here
-                onCancelRemove();
-              }
-            }}
-          >
-            <button type="button" className="btn small" disabled={removing} onClick={onRemove}>Confirm remove</button>{" "}
-            <button type="button" className="btn secondary small" autoFocus onClick={onCancelRemove}>Cancel</button>
-          </span>
-        ) : (
-          <>
-            <button id={editId(e.id)} type="button" className="btn secondary small" aria-label={`Edit ${name}`} onClick={onEdit}>Edit</button>{" "}
-            <button id={removeId(e.id)} type="button" className="btn secondary small" aria-label={`Remove ${name}`} onClick={onAskRemove}>Remove</button>
-          </>
-        ))}
-    </li>
-  );
-}
 
 export default function AgentShortlistPanel({ studentId, archived, onStudentGone, onStudentChanged }: { studentId: string; archived: boolean; onStudentGone: () => void; onStudentChanged: () => void }) {
   const [data, setData] = useState<Page<ShortlistEntry> | null>(null);
@@ -115,6 +70,11 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
     focusLater(opener, ADD_ID);
   }
 
+  function openForm(next: Editing) {
+    setConfirmId(null);
+    setEditing(next);
+  }
+
   function closeConfirm(id: string) {
     setConfirmId(null);
     focusLater(removeId(id), ADD_ID);
@@ -127,14 +87,16 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
     try {
       const response = await fetch(`${shortlistUrl(studentId)}/${e.id}`, { method: "DELETE" });
       if (response.status === 409) return changed.current();
+      const body = response.status === 204 ? null : await response.json().catch(() => null);
+      if (response.status === 404 && body?.detail === "Student not found") return gone.current();
       if (response.ok || response.status === 404) {
-        // 404 after our own delete = done
+        // an entry 404 after our own delete = done
         setConfirmId(null);
         setNotice(`${e.university.name} removed from the shortlist.`);
         focusLater(ADD_ID);
         return load();
       }
-      setActionError(detailMessage((await response.json().catch(() => null))?.detail, "Unable to remove the entry."));
+      setActionError(detailMessage(body?.detail, "Unable to remove the entry."));
     } catch {
       setActionError("Network error. Check your connection and try again.");
     } finally {
@@ -144,6 +106,7 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
   }
 
   const writable = !archived;
+  const formKey = editing?.mode === "edit" ? editing.entry.id : "add"; // a different target never inherits another row's draft
   return (
     <section aria-labelledby={`shortlist-${studentId}`} style={{ marginTop: 16 }}>
       <h5 id={`shortlist-${studentId}`}>University shortlist</h5>
@@ -153,11 +116,17 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
       {writable &&
         (editing ? (
           <AgentShortlistForm
+            key={formKey}
             studentId={studentId}
             mode={editing.mode}
             entry={editing.mode === "edit" ? editing.entry : undefined}
             onCancel={closeForm}
             onGone={onStudentGone}
+            onEntryGone={() => {
+              closeForm();
+              setNotice("This entry was removed by someone else.");
+              load();
+            }}
             onConflict={onStudentChanged}
             onSaved={() => {
               setNotice("Saved to shortlist.");
@@ -166,7 +135,7 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
             }}
           />
         ) : (
-          <button id={ADD_ID} type="button" className="btn small" onClick={() => setEditing({ mode: "add" })}>
+          <button id={ADD_ID} type="button" className="btn small" onClick={() => openForm({ mode: "add" })}>
             Add university to shortlist
           </button>
         ))}
@@ -187,10 +156,10 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
                 <ShortlistCard
                   key={e.id}
                   e={e}
-                  writable={writable}
+                  writable={writable && !editing}
                   confirming={confirmId === e.id}
                   removing={removing}
-                  onEdit={() => setEditing({ mode: "edit", entry: e })}
+                  onEdit={() => openForm({ mode: "edit", entry: e })}
                   onAskRemove={() => setConfirmId(e.id)}
                   onCancelRemove={() => closeConfirm(e.id)}
                   onRemove={() => void remove(e)}
