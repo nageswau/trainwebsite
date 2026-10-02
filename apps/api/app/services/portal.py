@@ -707,6 +707,12 @@ async def _agent(db: AsyncSession, user: User, section: str):
                 {"label": "Claimable commission", "value": f"INR {sum(float(c.amount) for c in commissions if c.status in {'eligible', 'estimated'}):,.0f}"},
                 {"label": "Claims", "value": sum(1 for c in commissions if c.status == "claimed")},
             ]
+            # AGN-014 (DEC-SCOPE-051 R1): Revenue = paid commissions, per currency (never summed across currencies).
+            paid: dict[str, float] = {}
+            for c in commissions:
+                if c.status == "paid":
+                    paid[c.currency] = paid.get(c.currency, 0.0) + float(c.amount)
+            metrics.append({"label": "Revenue", "value": " · ".join(f"{currency} {amount:,.0f}" for currency, amount in sorted(paid.items())) or "INR 0"})
         if user.agent_membership:
             metrics.append({"label": "Your code", "value": user.agent_membership.code})
         return _payload(

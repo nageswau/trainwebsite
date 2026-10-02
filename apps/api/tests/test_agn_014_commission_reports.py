@@ -200,3 +200,52 @@ async def test_csv_names_a_student_without_a_login(db_session):  # Review Focus 
     await mk_commission(db_session, ctx, student=False)
     async with client_for(ctx["master"].email) as c:
         assert _csv_rows(await c.get(CSV))[1][0] == "—"
+
+
+# --- Dashboard Revenue (AC04) --------------------------------------------------------------------------------------------------
+
+DASHBOARD = "/api/v1/portal/overseas/agent/dashboard"
+
+
+def _metric(payload, label):
+    return next((m["value"] for m in payload["metrics"] if m["label"] == label), None)
+
+
+@pytest.mark.asyncio
+async def test_master_dashboard_shows_paid_revenue(db_session):  # AC04
+    ctx = await mk_active_org(db_session, name=f"Revenue {uniq()}")
+    await mk_commission(db_session, ctx, status="paid", amount=12000)
+    await mk_commission(db_session, ctx, status="claimed", amount=999)
+    other = await mk_active_org(db_session, name=f"RevOther {uniq()}")
+    await mk_commission(db_session, other, status="paid", amount=5)
+    async with client_for(ctx["master"].email) as c:
+        payload = (await c.get(DASHBOARD)).json()
+    assert _metric(payload, "Revenue") == "INR 12,000"
+    assert [m["label"] for m in payload["metrics"]][:5] == ["Students", "Applications", "Claimable commission", "Claims", "Revenue"]
+
+
+@pytest.mark.asyncio
+async def test_revenue_is_inr_0_when_nothing_is_paid(db_session):  # AC04
+    ctx = await mk_active_org(db_session, name=f"RevZero {uniq()}")
+    await mk_commission(db_session, ctx, status="eligible", amount=700)
+    async with client_for(ctx["master"].email) as c:
+        assert _metric((await c.get(DASHBOARD)).json(), "Revenue") == "INR 0"
+
+
+@pytest.mark.asyncio
+async def test_revenue_is_per_currency(db_session):  # Review Focus 2
+    ctx = await mk_active_org(db_session, name=f"RevCur {uniq()}")
+    await mk_commission(db_session, ctx, status="paid", amount=12000, currency="INR")
+    await mk_commission(db_session, ctx, status="paid", amount=500, currency="USD")
+    async with client_for(ctx["master"].email) as c:
+        assert _metric((await c.get(DASHBOARD)).json(), "Revenue") == "INR 12,000 · USD 500"
+
+
+@pytest.mark.asyncio
+async def test_staff_dashboard_has_no_revenue(db_session):  # AC04
+    ctx = await mk_active_org(db_session, name=f"RevStaff {uniq()}")
+    await mk_commission(db_session, ctx, status="paid", amount=12000)
+    staff = await mk_staff(db_session, ctx["org"])
+    async with client_for(staff["user"].email) as c:
+        payload = (await c.get(DASHBOARD)).json()
+    assert _metric(payload, "Revenue") is None and "commission" not in str(payload).lower()
