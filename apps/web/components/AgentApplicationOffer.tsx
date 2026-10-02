@@ -17,8 +17,9 @@ type Props = {
 };
 
 // AGN-010 (DEC-SCOPE-054): the application's offer -- the recorded offer (type in words, dates, conditions as written, the offer letter
-// with its review status and a scoped download), or an empty state, plus the button that opens the form. Saving returns focus to the
-// heading, cancelling to the button.
+// with its review status and a scoped download), or an empty state, plus the button that opens the form. Opening moves focus to the
+// offer type (the recorded one, else the first -- the button it was on is gone, QA-02); saving returns it to the heading, cancelling
+// to the button.
 export default function AgentApplicationOffer({ detail, open, canOpen, onOpen, onCancel, onSaved, onFailed }: Props) {
   const offer = detail.offer;
   const focusAfter = useFocusAfterRender();
@@ -91,7 +92,15 @@ export default function AgentApplicationOffer({ detail, open, canOpen, onOpen, o
             </p>
           )}
           {canOpen && (
-            <button id={openId} type="button" className="btn secondary small" onClick={onOpen}>
+            <button
+              id={openId}
+              type="button"
+              className="btn secondary small"
+              onClick={() => {
+                focusAfter(`offer-type-${detail.id}-${offer?.type ?? "conditional"}`);
+                onOpen();
+              }}
+            >
               {offer ? "Edit offer" : "Record offer"}
             </button>
           )}

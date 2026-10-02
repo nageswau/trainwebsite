@@ -153,7 +153,7 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
             {h.from_status ? `${stageLabel(h.from_status)} → ` : ""}
             {stageLabel(h.to_status)}
             {h.changed_by && ` · ${h.changed_by}`} · {formatDateTimeIn(h.created_at, viewerTimeZone(), true)}
-            {h.notes && <div className="muted">{h.notes}</div>}
+            {h.notes && <div className="muted history-note">{h.notes}</div>}
           </li>
         ))}
       </ol>

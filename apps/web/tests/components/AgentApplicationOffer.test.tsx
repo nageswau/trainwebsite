@@ -115,6 +115,24 @@ describe("AgentApplicationOffer (AGN-010)", () => {
     expect(within(offer).queryByRole("button", { name: /offer$/ })).toBeNull();
   });
 
+  it("moves focus into the form when it opens: the first type, or the recorded one (QA-02)", async () => {
+    serve({});
+    const form = await openForm();
+    await waitFor(() => expect(within(form).getByRole("radio", { name: "Conditional" })).toHaveFocus());
+    cleanup();
+    serve({ status: "offer", offer: { ...OFFER, type: "unconditional", conditions: null } });
+    render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit offer" }));
+    await waitFor(() => expect(screen.getByRole("radio", { name: "Unconditional" })).toHaveFocus());
+  });
+
+  it("keeps line breaks and wraps long words in the history note (QA-03/QA-04)", async () => {
+    serve({ history: [{ from_status: "enquiry", to_status: "offer", next_action: null, notes: "Conditions: one\ntwo", changed_by: "M", created_at: "2026-09-20T10:00:00Z" }] });
+    render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);
+    const history = await screen.findByRole("list", { name: "Status history" });
+    expect(within(history).getByText(/Conditions: one/)).toHaveClass("history-note");
+  });
+
   it("prefills Edit offer and Cancel returns focus to it", async () => {
     serve({ status: "offer", offer: OFFER });
     render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);

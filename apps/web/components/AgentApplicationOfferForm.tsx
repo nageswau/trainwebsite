@@ -61,7 +61,7 @@ export default function AgentApplicationOfferForm({ detail, onSaved, onFailed, o
         <legend>Offer type</legend>
         {(Object.keys(OFFER_TYPE_LABELS) as OfferType[]).map((value) => (
           <label key={value}>
-            <input type="radio" name={`offer-type-${id}`} value={value} required checked={type === value} onChange={() => setType(value)} /> {OFFER_TYPE_LABELS[value]}
+            <input id={`offer-type-${id}-${value}`} type="radio" name={`offer-type-${id}`} value={value} required checked={type === value} onChange={() => setType(value)} /> {OFFER_TYPE_LABELS[value]}
           </label>
         ))}
       </fieldset>

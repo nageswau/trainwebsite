@@ -56,11 +56,11 @@ test("a Master records a conditional offer with its letter, then switches it to 
   await expect(upload.getByRole("status")).toHaveText("Document uploaded. It is waiting for review.");
 
   const detail = await openDetail(page, name);
-  const offer = detail.getByRole("region", { name: "Offer" });
+  const offer = detail.getByRole("region", { name: "Offer", exact: true });
   await expect(offer.getByText("No offer recorded yet.")).toBeVisible();
   await offer.getByRole("button", { name: "Record offer" }).click();
   const form = offer.getByRole("form", { name: "Record offer" });
-  await form.getByLabel("Conditional").check();
+  await form.getByRole("radio", { name: "Conditional", exact: true }).check();
   await form.getByLabel("Offer date").fill(isoDaysAgo(2));
   await form.getByLabel(/Conditions/).fill("IELTS 6.5 overall\nFinal transcript");
   await form.getByLabel("Offer letter (optional)").selectOption({ label: "offer.pdf (Pending review)" });
@@ -73,7 +73,7 @@ test("a Master records a conditional offer with its letter, then switches it to 
 
   await offer.getByRole("button", { name: "Edit offer" }).click();
   const edit = offer.getByRole("form", { name: "Edit offer" });
-  await edit.getByLabel("Unconditional").check();
+  await edit.getByRole("radio", { name: "Unconditional", exact: true }).check();
   await expect(edit.getByLabel(/Conditions/)).toHaveCount(0);
   await edit.getByRole("button", { name: "Save offer" }).click();
   await expect(detail.getByRole("status")).toHaveText("Offer saved.");
@@ -93,7 +93,7 @@ test("a deadline before the offer date is refused and the input is kept (AC01)",
   });
   expect(response.status()).toBe(422);
   expect(JSON.stringify(await response.json())).toContain("Offer deadline cannot be before the offer date");
-  await expect(detail.getByRole("region", { name: "Offer" }).getByText("No offer recorded yet.")).toBeVisible();
+  await expect(detail.getByRole("region", { name: "Offer", exact: true }).getByText("No offer recorded yet.")).toBeVisible();
 });
 
 test("the offer form can be completed with the keyboard and fits 320 px", async ({ page }) => {
@@ -102,13 +102,13 @@ test("the offer form can be completed with the keyboard and fits 320 px", async 
   await studentWithApplication(page, name);
   await page.setViewportSize({ width: 320, height: 800 });
   const detail = await openDetail(page, name);
-  const offer = detail.getByRole("region", { name: "Offer" });
+  const offer = detail.getByRole("region", { name: "Offer", exact: true });
   await offer.getByRole("button", { name: "Record offer" }).focus();
   await page.keyboard.press("Enter");
   const form = offer.getByRole("form", { name: "Record offer" });
-  await form.getByLabel("Conditional").focus();
+  await expect(form.getByRole("radio", { name: "Conditional", exact: true })).toBeFocused(); // QA-02: opening the form moves focus here
   await page.keyboard.press("ArrowDown"); // radio group: arrows move and select
-  await expect(form.getByLabel("Unconditional")).toBeChecked();
+  await expect(form.getByRole("radio", { name: "Unconditional", exact: true })).toBeChecked();
   await form.getByLabel("Offer date").fill(isoDaysAgo(1));
   await form.getByLabel("Offer date").press("Enter");
   await expect(detail.getByRole("status")).toHaveText("Offer saved.");
