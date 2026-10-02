@@ -22,6 +22,10 @@ const ACTIVITY_LABELS: Record<string, string> = {
   "agent_student.update": "Edited a student record",
   "agent_student.duplicate_override": "Saved a student record despite a duplicate warning",
   "agent_student.counseling": "Recorded counseling",
+  // AGN-007 (DEC-SCOPE-049, browser QA-09): shortlist work on a student.
+  "agent_student.shortlist_add": "Added a university to a shortlist",
+  "agent_student.shortlist_update": "Edited a shortlist entry",
+  "agent_student.shortlist_remove": "Removed a university from a shortlist",
   "agent.student_link": "Linked a student account",
   "overseas.application.create": "Created an application",
   "document.upload": "Uploaded a document",
