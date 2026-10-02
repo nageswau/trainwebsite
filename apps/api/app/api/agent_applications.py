@@ -21,6 +21,7 @@ from app.api.workflows import _maybe_trigger_agent_commission, _notify_user
 from app.core.database import get_db
 from app.models import AgentOrgMember, AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, University, User
 from app.schemas import AgentApplicationCreate, AgentApplicationEnrollment, AgentApplicationStatus, AgentApplicationUpdate
+from app.services import agent_notifications as notices
 from app.services.agent_applications import (
     ARCHIVED,
     DEFAULT_NEXT_ACTION,
@@ -41,7 +42,6 @@ from app.services.agent_applications import (
     load_scoped,
     owner_record,
 )
-from app.services import agent_notifications as notices
 from app.services.agent_orgs import lock_active_org
 from app.services.agent_students import load_scoped as load_scoped_student
 

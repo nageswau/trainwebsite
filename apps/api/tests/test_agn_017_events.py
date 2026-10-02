@@ -127,7 +127,15 @@ async def test_verifying_or_a_second_review_notifies_no_agency_member(db_session
 @pytest.mark.asyncio
 async def test_a_counselor_rejection_of_an_agency_document_tells_the_assignee_and_still_the_student(db_session, dw):
     counselor = await mk_user(db_session, role="counselor", full_name="Docs Counselor")
-    app = OverseasApplication(agent_id=dw["master"].id, agent_student_id=dw["linked_record"].id, student_id=dw["linked_user"].id, university_id=dw["university"].id, counselor_id=counselor.id, intake="Fall 2027", status="enquiry")
+    app = OverseasApplication(
+        agent_id=dw["master"].id,
+        agent_student_id=dw["linked_record"].id,
+        student_id=dw["linked_user"].id,
+        university_id=dw["university"].id,
+        counselor_id=counselor.id,
+        intake="Fall 2027",
+        status="enquiry",
+    )
     db_session.add(app)
     await db_session.commit()
     doc = await mk_doc(db_session, student=dw["linked_user"], application=app, document_type="rahul scan 2")
