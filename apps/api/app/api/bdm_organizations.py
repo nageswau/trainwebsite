@@ -16,7 +16,18 @@ from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import BdmOrganization, BdmOrganizationContact, User
-from app.schemas import BDM_ORG_FIELDS, BdmOrganizationAssign, BdmOrganizationCreate, BdmOrganizationEnvelope, BdmOrganizationPage, BdmOrganizationUpdate, BdmOrgType
+from app.schemas import (
+    BDM_MAX_CONTACTS,
+    BDM_ORG_FIELDS,
+    BdmContactIn,
+    BdmContactUpdate,
+    BdmOrganizationAssign,
+    BdmOrganizationCreate,
+    BdmOrganizationEnvelope,
+    BdmOrganizationPage,
+    BdmOrganizationUpdate,
+    BdmOrgType,
+)
 from app.services import bdm_organizations as svc
 from app.services.bdm import bdm_context
 
@@ -186,4 +197,73 @@ async def assign_organization(org_id: UUID, payload: BdmOrganizationAssign, user
     svc.audit(db, user, "assign", org.id, {"from": str(before), "to": str(target.id)})
     await db.commit()
     svc.log("bdm_org_reassigned", user, org.id, from_user=str(before), to_user=str(target.id))
+    return {"organization": await svc.organization_out(db, user, org)}
+
+
+async def _editable(org_id: UUID, user: User, db: AsyncSession, route: str) -> BdmOrganization:
+    org = await svc.load_scoped(db, user, org_id, lock=True)
+    svc.require(user, org, "can_edit", route)
+    return org
+
+
+@router.post("/{org_id}/contacts", status_code=201, response_model=BdmOrganizationEnvelope)
+async def add_contact(org_id: UUID, payload: BdmContactIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    org = await _editable(org_id, user, db, "contact_create")
+    contacts = await svc.contacts_of(db, org.id)
+    if len(contacts) >= BDM_MAX_CONTACTS:
+        raise HTTPException(409, f"An organization can have at most {BDM_MAX_CONTACTS} contacts")
+    contact = BdmOrganizationContact(organization_id=org.id, **payload.model_dump(exclude={"is_primary"}), is_primary=False)
+    db.add(contact)
+    await db.flush()
+    if payload.is_primary:
+        await svc.make_primary(db, contacts, contact)
+    fields = sorted(k for k, v in payload.model_dump().items() if v not in (None, False))
+    svc.audit(db, user, "contact_create", org.id, {"contact_id": str(contact.id), "fields": fields})
+    await db.commit()
+    svc.log("bdm_org_contact_created", user, org.id, contact_id=str(contact.id))
+    return {"organization": await svc.organization_out(db, user, org)}
+
+
+@router.patch("/{org_id}/contacts/{contact_id}", response_model=BdmOrganizationEnvelope)
+async def update_contact(org_id: UUID, contact_id: UUID, payload: BdmContactUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    org = await _editable(org_id, user, db, "contact_update")
+    contact = await svc.load_contact(db, org, contact_id)
+    changes = payload.model_dump(exclude_unset=True)
+    primary = changes.pop("is_primary", None)
+    if primary is False and contact.is_primary:
+        raise HTTPException(422, "Choose another primary contact instead")
+    changed = sorted(k for k, v in changes.items() if getattr(contact, k) != v)
+    for key in changed:
+        setattr(contact, key, changes[key])
+    if primary and not contact.is_primary:
+        await svc.make_primary(db, await svc.contacts_of(db, org.id), contact)
+        changed.append("is_primary")
+    if changed:
+        svc.audit(db, user, "contact_update", org.id, {"contact_id": str(contact.id), "fields": changed})
+    await db.commit()
+    if changed:
+        svc.log("bdm_org_contact_updated", user, org.id, contact_id=str(contact.id), fields=changed)
+    return {"organization": await svc.organization_out(db, user, org)}
+
+
+@router.delete("/{org_id}/contacts/{contact_id}", response_model=BdmOrganizationEnvelope)
+async def delete_contact(org_id: UUID, contact_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """C1: never the last contact. Deleting the primary promotes the oldest remaining one (insertion order). A hard delete: real
+    erasure of that person's details (§12.3 personal data)."""
+    org = await _editable(org_id, user, db, "contact_delete")
+    contact = await svc.load_contact(db, org, contact_id)
+    contacts = await svc.contacts_of(db, org.id)
+    if len(contacts) <= 1:
+        raise HTTPException(409, "An organization needs at least one contact")
+    was_primary = contact.is_primary
+    await db.delete(contact)
+    await db.flush()
+    promoted = None
+    if was_primary:
+        promoted = next(c for c in contacts if c is not contact)
+        promoted.is_primary = True
+        await db.flush()
+    svc.audit(db, user, "contact_delete", org.id, {"contact_id": str(contact_id), "promoted_contact_id": str(promoted.id) if promoted else None})
+    await db.commit()
+    svc.log("bdm_org_contact_deleted", user, org.id, contact_id=str(contact_id))
     return {"organization": await svc.organization_out(db, user, org)}
