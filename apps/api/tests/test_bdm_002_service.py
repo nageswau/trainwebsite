@@ -1,5 +1,6 @@
 """bdm-002 -- pure service rules (spec §5.2)."""
 
+import logging
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -56,13 +57,18 @@ def test_permissions_table():
     ],
 )
 def test_require_checks_the_role_before_the_state(role, own, archived, action, status, detail, caplog):
+    # alembic's fileConfig (the migration tests) disables existing loggers; re-enable, as test_bdm_001_service does.
+    logging.getLogger("app.bdm").disabled = False
     user = _user(role)
     org = _org(user.id if own else uuid.uuid4(), archived)
-    with pytest.raises(HTTPException) as exc:
+    with caplog.at_level(logging.WARNING, logger="app.bdm"), pytest.raises(HTTPException) as exc:
         svc.require(user, org, action, "test")
     assert (exc.value.status_code, exc.value.detail) == (status, detail)
+    refused = [r for r in caplog.records if r.getMessage() == "bdm_org_write_refused"]
     if status == 403:
-        assert "bdm_org_write_refused" in caplog.text
+        assert set(refused[0].extra_fields) == {"actor_id", "org_id", "route", "action"}  # ids only, no PII (spec §12.3)
+    else:
+        assert not refused
 
 
 def test_duplicate_conflict_shape():

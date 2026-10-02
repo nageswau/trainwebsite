@@ -250,7 +250,7 @@ Conventions used below:
 
 ### bdm-002 — Organization CRM core (common fields, contacts, assignment, scope)
 
-> **Status (2026-10-03):** in implementation on `feature/bdm-002-organization-crm` (`DEC-SCOPE-058`, migration `0064_bdm_organizations`). **C1** supersedes the edge case below "an organization with no contacts yet (allowed, flagged)": create needs at least one contact and the last contact cannot be deleted. Spec: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`.
+> **Status (2026-10-03):** implemented, **not complete**, on `feature/bdm-002-organization-crm` — lite evidence: backend 180 passed (all `test_bdm_002_*` + `test_bdm_001_*`), web BDM set 125 passed, `tsc`/`eslint`/`next build` clean; pending: Playwright, browser validation, independent Codex review (see `RTM.md` bdm-002). Recorded (`DEC-SCOPE-058`, migration `0064_bdm_organizations`). **C1** supersedes the edge case below "an organization with no contacts yet (allowed, flagged)": create needs at least one contact and the last contact cannot be deleted. Spec: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`.
 
 - **Business requirement:** an Organization CRM for the institutions BDMs meet: Organization Name, Type, City, State, Contact Person, Designation, Phone, Email, Website, Existing Partner?, Courses Interested, Number of Students, Last Meeting, Next Meeting, Assigned BDM (§9). The types are College, University, Agent, School, Corporate, Training Institute and Other.
 - **Existing behavior:** there is no prospect or organization store. `schools` holds onboarded partner schools only, and `universities` is the global catalogue.

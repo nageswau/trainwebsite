@@ -116,6 +116,7 @@ The keys are stored, not a functional index, so the Python normalization and the
 |---|---|---|
 | `id` | UUID PK | |
 | `organization_id` | UUID NOT NULL | FK `bdm_organizations.id`, `ON DELETE RESTRICT`; `ix_bdm_organization_contacts_org` |
+| `position` | BIGINT identity | Insertion order — contacts created in one request share `created_at`, so display order and "promote the oldest remaining contact" use this. Added in implementation (plan, Global Constraints). |
 | `name` | String(200) NOT NULL | |
 | `designation` | String(120) NULL | |
 | `role` | String(30) NULL | `ck_bdm_organization_contacts_role`: `principal, dean, hod, placement_officer, counselor, management, owner, other` |

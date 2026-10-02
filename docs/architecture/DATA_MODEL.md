@@ -1107,3 +1107,20 @@ together with `API_CONTRACT.md`, `RBAC_MATRIX.md`, `INTEGRATION_CONTRACTS.md`, a
 `SECURITY_CONTROLS.md`. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now proceed. The open
 items listed throughout this document remain open — approval of the contract does not resolve them,
 it only clears the gate to design against them as documented.
+
+## BDM Organization CRM (`bdm-002`, `DEC-SCOPE-058`; migration `0064_bdm_organizations`, after `0063_agent_visa_details`)
+
+Additive only: two tables and one sequence; no existing table, column or row changes. `downgrade()` refuses while organizations exist.
+
+- **`bdm_organizations`** — an institution a BDM meets (`EVID-016` §9). `code` VARCHAR(20) unique (`ORG-%06d` from
+  `bdm_organization_code_seq`, server-generated); `org_type` CHECK (college, university, agent, school, corporate,
+  training_institute, other); `bdm_type` CHECK (agent, school, college) = the owning module, copied from the creator (Q-03); `name`,
+  `city` NOT NULL with server-normalized `name_key` / `city_key` (NFKC, whitespace collapsed, casefold) for the Q-18 duplicate warning;
+  `state`, `phone`, `email`, `website`, `courses_interested` (free text, C6), `student_count` (CHECK `>= 0`); `existing_partner`
+  BOOLEAN NOT NULL; `assigned_bdm_user_id`, `created_by_user_id` FK `users` `ON DELETE RESTRICT`; `archived_at` (archive, never hard
+  delete). Indexes `(bdm_type, assigned_bdm_user_id)` and `(bdm_type, name_key, city_key)`.
+- **`bdm_organization_contacts`** — named people (C10: the primary contact is §9's Contact Person / Designation). `organization_id` FK
+  `ON DELETE RESTRICT`; `position` BIGINT identity (insertion order); `name` NOT NULL; `designation`, `role` (CHECK: principal, dean,
+  hod, placement_officer, counselor, management, owner, other), `phone`, `email`; `is_primary` with a partial unique index (one primary
+  per organization). At least one contact (C1) and at most 20 are service rules.
+- Last Meeting / Next Meeting are **not stored**: computed from bdm-006 appointments (null until then).
