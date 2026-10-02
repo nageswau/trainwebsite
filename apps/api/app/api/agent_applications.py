@@ -11,15 +11,29 @@ import logging
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_students import _gate
 from app.api.deps import get_current_user
+from app.api.workflows import _notify_user
 from app.core.database import get_db
-from app.models import AgentOrgMember, AuditLog, User
-from app.services.agent_applications import detail, list_page, load_scoped
+from app.models import AgentOrgMember, ApplicationStatusHistory, AuditLog, OverseasApplication, University, User
+from app.schemas import AgentApplicationCreate
+from app.services.agent_applications import (
+    ARCHIVED,
+    DEFAULT_NEXT_ACTION,
+    DUPLICATE,
+    THROTTLED,
+    check_course,
+    create_wait_seconds,
+    detail,
+    duplicate_exists,
+    list_page,
+    load_scoped,
+)
 from app.services.agent_orgs import lock_active_org
+from app.services.agent_students import load_scoped as load_scoped_student
 
 logger = logging.getLogger("app.agent_applications")
 
@@ -61,3 +75,47 @@ async def list_applications(
 async def get_application(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _gate(user)
     return {"application": await detail(db, user, await load_scoped(db, user, application_id))}
+
+
+@router.post("", status_code=201)
+async def create_application(payload: AgentApplicationCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    membership = _gate(user)
+    await lock_active_org(db, membership.org_id)  # serialises the throttle count and the duplicate check for the agency
+    wait = await create_wait_seconds(db, user)
+    if wait:
+        _log("agent_application_create_throttled", membership, user, "-", level=logging.WARNING, wait_seconds=wait)
+        raise HTTPException(429, THROTTLED, headers={"Retry-After": str(wait)})
+    record = await load_scoped_student(db, user, payload.agent_student_id)  # 404 "Student not found" outside scope
+    if record.status == "archived":
+        raise HTTPException(409, ARCHIVED)
+    university = await db.get(University, payload.university_id)
+    if university is None:
+        raise HTTPException(404, "University not found")
+    await check_course(db, university.id, payload.course_id)
+    if await duplicate_exists(db, agent_student_id=record.id, student_id=record.student_id, university_id=university.id, course_id=payload.course_id):
+        raise HTTPException(409, DUPLICATE)
+    item = OverseasApplication(
+        agent_id=user.id,
+        agent_student_id=record.id,
+        student_id=record.student_id,
+        university_id=university.id,
+        course_id=payload.course_id,
+        intake=payload.intake,
+        status="enquiry",
+        application_reference=payload.application_reference,
+        submitted_on=payload.submitted_on,
+        application_deadline=payload.application_deadline,
+        offer_deadline=payload.offer_deadline,
+        next_action=payload.next_action or DEFAULT_NEXT_ACTION,
+    )
+    db.add(item)
+    await db.flush()
+    db.add(ApplicationStatusHistory(application_id=item.id, from_status=None, to_status=item.status, next_action=item.next_action, changed_by_id=user.id))
+    _audit(db, user, "create", item.id, {"agent_student_id": str(record.id), "university_id": str(university.id)})
+    if record.student_id is not None:  # A8: a student with a login keeps today's notification
+        student = await db.get(User, record.student_id)
+        if student is not None:
+            await _notify_user(db, student, "Application created", f"Your application to {university.name} has been created.", "/overseas/student/applications")
+    await db.commit()
+    _log("agent_application_created", membership, user, item.id)
+    return {"application": await detail(db, user, item)}

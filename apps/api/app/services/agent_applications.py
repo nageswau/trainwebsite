@@ -5,7 +5,7 @@ Functions only (the services/agent_students.py shape): nothing here commits -- t
 Spec: docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md.
 """
 
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import NamedTuple
 from uuid import UUID
 
@@ -14,7 +14,8 @@ from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import AgentStudent, ApplicationStatusHistory, OverseasApplication, OverseasCourse, University, User
+from app.models import AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, OverseasCourse, University, User
+from app.services.agent_orgs import THROTTLE_WINDOW, org_member_ids, retry_after
 from app.services.agent_students import application_scope, student_scope
 
 # DEC-WF-001 / OVS-003: the confirmed stage sequence (moved here from api/workflows.py, which imports it back -- one definition).
@@ -169,3 +170,47 @@ async def list_page(db: AsyncSession, user: User, *, group: str, agent_student_i
     rows = owned((await db.execute(base.order_by(OverseasApplication.updated_at.desc(), OverseasApplication.id).limit(limit).offset(offset))).all())
     today = date.today()
     return {"items": [item(r, today) for r in rows], "total": total or 0, "limit": limit, "offset": offset}
+
+
+CREATE_LIMIT = 200  # A14: per agency per rolling 24 hours
+ARCHIVED = "Unarchive this student first"
+DUPLICATE = "An application for this university/course already exists"
+THROTTLED = "Too many applications created today -- try again later"
+
+
+async def create_wait_seconds(db: AsyncSession, user: User) -> int:
+    """A14: counted from the agency's `overseas.application.create` audit rows (every path that creates one), the
+    DEC-SCOPE-038 R1 no-new-table pattern; runs under the organisation lock, so it is race-free."""
+    now = datetime.now(UTC)
+    recent = (
+        await db.scalars(
+            select(AuditLog.created_at)
+            .where(AuditLog.action == "overseas.application.create", AuditLog.user_id.in_(org_member_ids(user)), AuditLog.created_at > now - THROTTLE_WINDOW)
+            .order_by(AuditLog.created_at.desc())
+            .limit(CREATE_LIMIT)
+        )
+    ).all()
+    return retry_after(list(recent), CREATE_LIMIT, now)
+
+
+async def check_course(db: AsyncSession, university_id, course_id) -> None:
+    if course_id is None:
+        return
+    course = await db.get(OverseasCourse, course_id)
+    if course is None or course.university_id != university_id:
+        raise HTTPException(422, "Course does not belong to selected university")
+
+
+async def duplicate_exists(db: AsyncSession, *, agent_student_id, student_id, university_id, course_id, exclude_id=None) -> bool:
+    """OVS-002's rule for an agency student: same student, university and course (both NULL counts as the same), not withdrawn. The
+    student is the agency record or -- when it has a login -- that account, so a row made before AGN-008 still counts."""
+    owners = [OverseasApplication.agent_student_id == agent_student_id] if agent_student_id is not None else []
+    if student_id is not None:
+        owners.append(OverseasApplication.student_id == student_id)
+    if not owners:
+        return False
+    course = OverseasApplication.course_id.is_(None) if course_id is None else OverseasApplication.course_id == course_id
+    clauses = [or_(*owners), OverseasApplication.university_id == university_id, course, OverseasApplication.status != WITHDRAWN]
+    if exclude_id is not None:
+        clauses.append(OverseasApplication.id != exclude_id)
+    return (await db.scalar(select(OverseasApplication.id).where(*clauses).limit(1))) is not None
