@@ -32,6 +32,29 @@ describe("AdminBdmPanel (bdm-001 AC13)", () => {
     expect(screen.getByRole("region", { name: "BDMs" })).toHaveAttribute("tabindex", "0");
   });
 
+  it("announces loading as a status", () => {
+    route([res(pg([row(1)]))]);
+    render(<AdminBdmPanel role="super_admin" />);
+    expect(screen.getByText("Loading BDMs…")).toHaveAttribute("role", "status");
+  });
+
+  it("tells a failed manager load apart from 'no managers', with Retry", async () => {
+    let managersOk = false;
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(
+      url.startsWith("/api/v1/admin/bdm-managers")
+        ? (managersOk ? res(pg([{ id: "m1", full_name: "Meera" }])) : res({ detail: "boom" }, 500))
+        : res(pg([row(1)])),
+    )));
+    render(<AdminBdmPanel role="super_admin" />);
+    expect(await screen.findByText("Unable to load BDM managers.")).toBeInTheDocument();
+    expect(screen.queryByText(/No active BDM manager/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Create BDM" })).toBeDisabled();
+    managersOk = true;
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading managers" }));
+    expect(await screen.findByRole("option", { name: "Meera" })).toBeInTheDocument();
+    expect(screen.queryByText("Unable to load BDM managers.")).toBeNull();
+  });
+
   it("shows the empty state", async () => {
     route([res(pg([]))]);
     render(<AdminBdmPanel role="it_admin" />);

@@ -72,6 +72,35 @@ describe("AdminBdmRow (bdm-001 AC13)", () => {
     expect(screen.getByRole("option", { name: "Old Boss (inactive)" })).toBeInTheDocument();
   });
 
+  it.each([
+    ["the picker failed or is loading", null],
+    ["the picker lacks the current (active) manager", [{ id: "m2", full_name: "Ravi" }]],
+  ])("keeps the current manager selected when %s, so an unrelated save never reassigns", async (_label, list) => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<table><tbody><AdminBdmRow row={row} managers={list} onChanged={vi.fn()} /></tbody></table>);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
+    expect(screen.getByLabelText("Reporting manager (required)")).toHaveValue("m1");
+    fireEvent.change(screen.getByLabelText("Territory"), { target: { value: "Kollam" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).bdm_profile.reporting_manager_user_id).toBe("m1");
+  });
+
+  it("lists the current manager once, not twice, when the picker includes it", () => {
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
+    expect(screen.getAllByRole("option", { name: "Meera" })).toHaveLength(1);
+  });
+
+  it("moves keyboard focus into the deactivate confirmation and back out of it", async () => {
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Deactivate Asha" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Confirm deactivate" })).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Keep active" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Deactivate Asha" })).toHaveFocus());
+  });
+
   it("deactivation needs a second, explicit confirm", async () => {
     const fetchMock = vi.fn().mockResolvedValue(res({ ok: true }));
     vi.stubGlobal("fetch", fetchMock);

@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
 import { BDM_TYPE_LABEL, USERS_URL, formOptional, formText, statusLabel, type BdmAdminRow, type BdmManagerOption } from "@/lib/bdm";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-001 (spec §6.3): one BDM -- view, inline edit (type read-only, B7; Esc cancels, focus returns to Edit), and
 // activate/deactivate with an inline confirm. The list refreshes only after the server says yes.
@@ -12,9 +13,12 @@ export default function AdminBdmRow({ row, managers, onChanged }: { row: BdmAdmi
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editButton = useRef<HTMLButtonElement>(null);
+  const focus = useFocusAfterRender();
   const id = (name: string) => `bdm-${name}-${row.id}`;
-  // A manager deactivated since assignment is not in the active picker; keep it selectable so an unrelated edit leaves it as is.
-  const options = row.manager_active ? managers ?? [] : [{ id: row.reporting_manager.id, full_name: `${row.reporting_manager.full_name} (inactive)` }, ...(managers ?? [])];
+  // The current manager is ALWAYS an option -- whether inactive, missing from a failed/loading picker, or beyond its first page --
+  // so the select keeps it and an unrelated edit can never silently reassign the reporting line (review Important #1).
+  const current = { id: row.reporting_manager.id, full_name: `${row.reporting_manager.full_name}${row.manager_active ? "" : " (inactive)"}` };
+  const options = [current, ...(managers ?? []).filter((m) => m.id !== current.id)];
 
   function close() {
     setEditing(false);
@@ -44,8 +48,21 @@ export default function AdminBdmRow({ row, managers, onChanged }: { row: BdmAdmi
     const outcome = await sendJson(`${USERS_URL}/${row.id}`, "PATCH", { active });
     setBusy(false);
     setConfirming(false);
-    if (!outcome.ok) return setError(outcome.message);
+    if (!outcome.ok) {
+      setError(outcome.message);
+      return focus(id("deactivate"), id("edit"));
+    }
     onChanged(`${active ? "Reactivated" : "Deactivated"} ${row.full_name}.`);
+  }
+
+  function askToDeactivate() {
+    setConfirming(true);
+    focus(id("confirm"));
+  }
+
+  function keepActive() {
+    setConfirming(false);
+    focus(id("deactivate"));
   }
 
   if (editing) {
@@ -87,15 +104,15 @@ export default function AdminBdmRow({ row, managers, onChanged }: { row: BdmAdmi
       <td><span className="badge">{statusLabel(row.active)}</span></td>
       <td>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <button ref={editButton} type="button" className="btn secondary small" aria-label={`Edit ${row.full_name}`} onClick={() => setEditing(true)} disabled={busy}>Edit</button>
-          {row.active && !confirming && <button type="button" className="btn secondary small" aria-label={`Deactivate ${row.full_name}`} onClick={() => setConfirming(true)} disabled={busy}>Deactivate</button>}
+          <button ref={editButton} id={id("edit")} type="button" className="btn secondary small" aria-label={`Edit ${row.full_name}`} onClick={() => setEditing(true)} disabled={busy}>Edit</button>
+          {row.active && !confirming && <button id={id("deactivate")} type="button" className="btn secondary small" aria-label={`Deactivate ${row.full_name}`} onClick={askToDeactivate} disabled={busy}>Deactivate</button>}
           {!row.active && <button type="button" className="btn secondary small" aria-label={`Reactivate ${row.full_name}`} onClick={() => setActive(true)} disabled={busy}>Reactivate</button>}
         </div>
         {confirming && (
           <div role="group" aria-label={`Confirm deactivating ${row.full_name}`} style={{ marginTop: 6 }}>
             <p className="muted" style={{ fontSize: 13 }}>Their reporting line and data stay; they can no longer sign in.</p>
-            <button type="button" className="btn small" onClick={() => setActive(false)} disabled={busy}>Confirm deactivate</button>{" "}
-            <button type="button" className="btn secondary small" onClick={() => setConfirming(false)} disabled={busy}>Keep active</button>
+            <button id={id("confirm")} type="button" className="btn small" onClick={() => setActive(false)} disabled={busy}>Confirm deactivate</button>{" "}
+            <button type="button" className="btn secondary small" onClick={keepActive} disabled={busy}>Keep active</button>
           </div>
         )}
         {error && <p className="form-error" role="alert">{error}</p>}

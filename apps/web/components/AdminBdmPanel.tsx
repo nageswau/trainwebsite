@@ -13,6 +13,7 @@ export default function AdminBdmPanel({ role }: { role: string }) {
   const [loadFailed, setLoadFailed] = useState(false);
   const [offset, setOffset] = useState(0);
   const [managers, setManagers] = useState<BdmManagerOption[] | null>(null);
+  const [managersFailed, setManagersFailed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback((at: number) => {
@@ -30,17 +31,33 @@ export default function AdminBdmPanel({ role }: { role: string }) {
     load(offset);
   }, [load, offset]);
 
-  useEffect(() => {
+  // A failed picker load is NOT "no managers" (review Important #1): it stays null (create disabled) with its own alert and Retry.
+  const loadManagers = useCallback(() => {
+    setManagersFailed(false);
+    setManagers(null);
     fetch(`${MANAGERS_URL}?limit=100`)
-      .then((response) => response.json())
-      .then((body) => setManagers(isPage<BdmManagerOption>(body) ? body.items : []))
-      .catch(() => setManagers([]));
+      .then(async (response) => {
+        const body = await response.json().catch(() => null);
+        if (!response.ok || !isPage<BdmManagerOption>(body)) throw new Error("not a page");
+        setManagers(body.items);
+      })
+      .catch(() => setManagersFailed(true));
   }, []);
+
+  useEffect(() => {
+    loadManagers();
+  }, [loadManagers]);
 
   const reload = () => load(offset);
 
   return (
     <>
+      {managersFailed && (
+        <div className="action-card">
+          <p className="form-error" role="alert">Unable to load BDM managers.</p>
+          <button type="button" className="btn secondary small" onClick={loadManagers}>Retry loading managers</button>
+        </div>
+      )}
       <AdminBdmCreateForm role={role} managers={managers} onCreated={reload} />
       <div className="action-card" aria-busy={data === null && !loadFailed}>
         <h3>BDMs</h3>
@@ -51,7 +68,7 @@ export default function AdminBdmPanel({ role }: { role: string }) {
             <button type="button" className="btn secondary small" onClick={reload}>Retry</button>
           </>
         ) : data === null ? (
-          <p className="muted">Loading BDMs…</p>
+          <p className="muted" role="status">Loading BDMs…</p>
         ) : data.total === 0 ? (
           <p className="empty" role="status">No BDMs yet. Use Create BDM above to add the first one.</p>
         ) : (
