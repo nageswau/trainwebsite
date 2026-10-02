@@ -136,10 +136,10 @@ async def test_a_failure_before_commit_leaves_nothing(db_session, world, monkeyp
 
 
 @pytest.mark.asyncio
-async def test_create_is_logged_without_personal_data(world, caplog):
+async def test_create_is_logged_without_personal_data(world, caplog, monkeypatch):
     import logging
 
-    logging.getLogger("app.agent_applications").disabled = False
+    monkeypatch.setattr(logging.getLogger("app.agent_applications"), "disabled", False)
     caplog.set_level(logging.INFO, logger="app.agent_applications")
     async with client_for(world["master"].email) as c:
         await c.post(APPS, json=_body(world, application_reference="SECRET-REF"))

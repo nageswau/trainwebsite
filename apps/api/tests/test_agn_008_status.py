@@ -106,8 +106,8 @@ async def test_counselor_cannot_revive_a_withdrawn_application(db_session, world
 
 
 @pytest.mark.asyncio
-async def test_status_change_is_logged(world, caplog):
-    logging.getLogger("app.agent_applications").disabled = False
+async def test_status_change_is_logged(world, caplog, monkeypatch):
+    monkeypatch.setattr(logging.getLogger("app.agent_applications"), "disabled", False)
     caplog.set_level(logging.INFO, logger="app.agent_applications")
     async with client_for(world["master"].email) as c:
         await _status(c, world["app"].id, "offer")
