@@ -688,6 +688,13 @@ def _intake(value: str | None) -> str:
     return value
 
 
+def _not_future(value: date | None, code: str, message: str) -> date | None:
+    # One day ahead of UTC is allowed: a user east of UTC (IST after midnight) is already on tomorrow's date.
+    if value is not None and value > datetime.now(UTC).date() + timedelta(days=1):
+        raise PydanticCustomError(code, message)
+    return value
+
+
 # One rule for both the edit and the status change; the lambda defers the lookup of `clean_free_text` (defined further down).
 ApplicationNextAction = Annotated[str | None, AfterValidator(lambda value: clean_free_text(value, 500))]
 
@@ -716,11 +723,7 @@ class _AgentApplicationFields(BaseModel):
     @field_validator("submitted_on")
     @classmethod
     def _submitted(cls, value):
-        value = _application_date(value)
-        # One day ahead of UTC is allowed: a user east of UTC (IST after midnight) is already on tomorrow's date.
-        if value is not None and value > datetime.now(UTC).date() + timedelta(days=1):
-            raise PydanticCustomError("future_submission_date", "Submission date cannot be in the future")
-        return value
+        return _not_future(_application_date(value), "future_submission_date", "Submission date cannot be in the future")
 
 
 class AgentApplicationCreate(_AgentApplicationFields):
@@ -759,6 +762,49 @@ class AgentApplicationStatus(BaseModel):
     @classmethod
     def _notes(cls, value):
         return clean_free_text(value, 2000)
+
+
+# --- AGN-010: offer details (DEC-SCOPE-054; docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md §4.1) ---
+
+OFFER_DEADLINE_BEFORE = "Offer deadline cannot be before the offer date"  # also the AGN-008 PATCH's answer once an offer exists (O2)
+
+
+class AgentApplicationOffer(BaseModel):
+    """The whole current offer (PUT replaces it, O1). `offer_deadline` is the application's existing column (O2); null clears it.
+    `expected_status`: as on the status change, a mismatch is a 409."""
+
+    model_config = {"extra": "forbid"}
+    offer_type: Literal["conditional", "unconditional"]
+    offer_date: date
+    offer_deadline: date | None = None
+    conditions: str | None = None
+    offer_document_id: UUID | None = None
+    expected_status: str | None = Field(default=None, max_length=50)
+
+    @field_validator("offer_date")
+    @classmethod
+    def _offer_date(cls, value):
+        return _not_future(_application_date(value), "future_offer_date", "Offer date cannot be in the future")
+
+    @field_validator("offer_deadline")
+    @classmethod
+    def _offer_deadline(cls, value):
+        return _application_date(value)
+
+    @field_validator("conditions")
+    @classmethod
+    def _conditions(cls, value):
+        return clean_free_text(value, 2000)
+
+    @model_validator(mode="after")
+    def _offer_rules(self):
+        if self.offer_deadline is not None and self.offer_deadline < self.offer_date:
+            raise PydanticCustomError("offer_deadline_before_date", OFFER_DEADLINE_BEFORE)
+        if self.offer_type == "conditional" and not self.conditions:
+            raise PydanticCustomError("offer_conditions_required", "A conditional offer needs its conditions")
+        if self.offer_type == "unconditional" and self.conditions:
+            raise PydanticCustomError("offer_conditions_unconditional", "An unconditional offer has no conditions")
+        return self
 
 
 # --- AGN-016: agent tasks and follow-ups (DEC-SCOPE-053; docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md §3) ---

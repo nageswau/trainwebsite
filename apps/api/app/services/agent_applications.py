@@ -14,7 +14,8 @@ from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, OverseasCourse, University, User
+from app.models import AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, OverseasCourse, StudentDocument, University, User
+from app.services import agent_documents as documents
 from app.services.agent_orgs import THROTTLE_WINDOW, org_member_ids, retry_after
 from app.services.agent_students import application_scope, student_scope
 
@@ -173,7 +174,105 @@ async def detail(db: AsyncSession, user: User, app: OverseasApplication, *, reco
         "created_at": found.created_at,
         "read_only_reason": reason,
         "history": [{"from_status": h.from_status, "to_status": h.to_status, "next_action": h.next_action, "notes": h.notes, "changed_by": name, "created_at": h.created_at} for h, name in history],
+        **await _offer_parts(db, user, found),
     }
+
+
+# --- AGN-010: offer details (DEC-SCOPE-054; docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md) ---
+
+# O5: an offer was received -- the stage reached `offer` (legacy free-text values included) or an offer is recorded, so an application
+# withdrawn after its offer still counts. The agent pages only; other roles' counts are ang-018's (RAID).
+OFFER_COUNTED_STATUSES = frozenset({"offer", "offer_received", "accepted", "visa_documentation", "status_tracking", "enrolled"})
+OFFER_FIELDS = ("offer_type", "offer_date", "offer_deadline", "offer_conditions", "offer_document_id")
+OFFER_DOCUMENT_MISMATCH = "Choose an offer letter uploaded for this application"
+OFFER_LETTERS_SHOWN = 20  # bounded per application (§4.2): a picker, not a document list
+
+
+def counts_as_offer(app: OverseasApplication) -> bool:
+    return app.status in OFFER_COUNTED_STATUSES or app.offer_type is not None
+
+
+def before_offer(status: str) -> bool:
+    """A stage before `offer`, or a legacy value outside the stage list (index -1, as `check_transition` treats it)."""
+    offer = OVERSEAS_APPLICATION_STAGES.index("offer")
+    return status not in OVERSEAS_APPLICATION_STAGES or OVERSEAS_APPLICATION_STAGES.index(status) < offer
+
+
+def offer_values(app: OverseasApplication) -> dict:
+    return {field: getattr(app, field) for field in OFFER_FIELDS}
+
+
+async def check_offer_document(db: AsyncSession, user: User, app: OverseasApplication, document_id: UUID) -> None:
+    """O3: the caller's document (404 outside scope, checked first so another agency's ids cannot be probed), attached to this
+    application and of the offer-letter type (422)."""
+    document = await documents.load_scoped(db, user, document_id)
+    if document.application_id != app.id or document.document_type != documents.OFFER_LETTER:
+        raise HTTPException(422, OFFER_DOCUMENT_MISMATCH)
+
+
+def _when(value: date | None) -> str:
+    return value.isoformat() if value else "none"
+
+
+def offer_change_notes(old: dict, new: dict) -> str | None:
+    """§4.3: the history note for an offer change, or None when nothing changed (the PUT is then a no-op). Earlier values are kept in
+    the note, so replacing the offer (O1) loses nothing."""
+    if old == new:
+        return None
+    kind = new["offer_type"].capitalize()
+    if old["offer_type"] is None:
+        text = f"Offer recorded: {kind}, offer date {_when(new['offer_date'])}"
+        if new["offer_deadline"]:
+            text += f", deadline {_when(new['offer_deadline'])}"
+        if new["offer_document_id"]:
+            text += ", offer letter attached"
+        return text + (f". Conditions: {new['offer_conditions']}" if new["offer_conditions"] else ".")
+    parts = []
+    if old["offer_type"] != new["offer_type"]:
+        parts.append(f"{old['offer_type'].capitalize()} → {kind}")
+    for field, label in (("offer_date", "offer date"), ("offer_deadline", "deadline")):
+        if old[field] != new[field]:
+            parts.append(f"{label} {_when(old[field])} → {_when(new[field])}")
+    if old["offer_conditions"] != new["offer_conditions"]:
+        if new["offer_conditions"] is None:
+            parts.append(f"conditions removed (were: {old['offer_conditions']})")
+        elif old["offer_conditions"] is None:
+            parts.append(f"conditions: {new['offer_conditions']}")
+        else:
+            parts.append(f"conditions: {new['offer_conditions']} (were: {old['offer_conditions']})")
+    if old["offer_document_id"] != new["offer_document_id"]:
+        parts.append("offer letter removed" if new["offer_document_id"] is None else "offer letter attached" if old["offer_document_id"] is None else "offer letter replaced")
+    return "Offer updated: " + "; ".join(parts)
+
+
+def _document_view(document: StudentDocument) -> dict:
+    """Name and status only -- never `file_url` (the AGN-009 download route presigns the file)."""
+    return {"id": document.id, "name": document.document_label or document.original_filename or documents.OFFER_LETTER, "verification_status": document.verification_status}
+
+
+async def _offer_parts(db: AsyncSession, user: User, app: OverseasApplication) -> dict:
+    """The detail's `offer` and `offer_letters` (§4.2), both inside the caller's document scope."""
+    letters = (
+        await db.scalars(
+            select(StudentDocument)
+            .where(StudentDocument.application_id == app.id, StudentDocument.document_type == documents.OFFER_LETTER, *documents.document_scope(user))
+            .order_by(StudentDocument.created_at.desc(), StudentDocument.id)
+            .limit(OFFER_LETTERS_SHOWN)
+        )
+    ).all()
+    offer = None
+    if app.offer_type is not None:
+        linked = None
+        if app.offer_document_id is not None:
+            linked = await db.scalar(select(StudentDocument).where(StudentDocument.id == app.offer_document_id, *documents.document_scope(user)))
+        offer = {
+            "type": app.offer_type,
+            "date": app.offer_date,
+            "deadline": app.offer_deadline,
+            "conditions": app.offer_conditions,
+            "document": _document_view(linked) if linked else None,
+        }
+    return {"offer": offer, "offer_letters": [_document_view(d) | {"created_at": d.created_at} for d in letters]}
 
 
 async def list_page(db: AsyncSession, user: User, *, group: str, agent_student_id, limit: int, offset: int) -> dict:

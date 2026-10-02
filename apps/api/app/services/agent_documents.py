@@ -26,6 +26,8 @@ logger = logging.getLogger("app.agent_documents")
 
 # The type list itself is `schemas.AgentDocumentType` (G3); "Other" needs a label.
 OTHER = "Other"
+# AGN-010 (DEC-SCOPE-054 O3): uploaded by the agency against one application, never requested from a student.
+OFFER_LETTER = "Offer letter"
 PDF = "application/pdf"
 STORAGE_PREFIX = "agent-documents"
 # Per agency per rolling 24 hours (THROTTLE_WINDOW), counted from audit rows under the organisation lock (AGN-008 A14 pattern).
