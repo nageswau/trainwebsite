@@ -18,6 +18,7 @@ from sqlalchemy.orm import aliased
 
 from app.models import AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, OverseasCourse, StudentDocument, University, User
 from app.services import agent_documents as documents
+from app.services.agent_deposits import deposit_for, deposit_view, payment_available
 from app.services.agent_orgs import THROTTLE_WINDOW, org_member_ids, retry_after
 from app.services.agent_students import application_scope, student_scope
 
@@ -181,6 +182,9 @@ async def detail(db: AsyncSession, user: User, app: OverseasApplication, *, reco
         "enrollment_check": enrollment_check(found, datetime.now(UTC).date()),
         "history": [{"from_status": h.from_status, "to_status": h.to_status, "next_action": h.next_action, "notes": h.notes, "changed_by": name, "created_at": h.created_at} for h, name in history],
         **await _offer_parts(db, user, found),
+        # AGN-011 (DEC-SCOPE-057): the deposit, and whether online payment can be opened at all (AC6).
+        "deposit": await deposit_view(db, await deposit_for(db, found.id)),
+        "payment_available": payment_available(),
     }
 
 

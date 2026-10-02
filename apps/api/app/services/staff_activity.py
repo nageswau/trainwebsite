@@ -35,6 +35,9 @@ STAFF_ACTIVITY_ACTIONS = (
     "overseas.application.advance",
     "overseas.application.withdraw",
     "overseas.application.offer",  # AGN-010 (DEC-SCOPE-056): ids and field names only, like the other application rows
+    # AGN-011 (DEC-SCOPE-057): setting and paying a deposit; ids, field names and statuses only (never the amount).
+    "overseas.application.deposit",
+    "overseas.application.deposit_checkout",
     "document.upload",
     "document.verify",
 )
