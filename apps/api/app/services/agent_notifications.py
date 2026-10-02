@@ -6,6 +6,7 @@ the caller's transaction (they never commit here), so a refused or rolled-back w
 """
 
 import logging
+from collections import Counter
 from datetime import UTC, date, datetime, timedelta
 from typing import get_args
 from uuid import uuid4
@@ -156,7 +157,7 @@ WINDOWS = {3: "Deadline in 3 days", 1: "Deadline tomorrow", 0: "Deadline today"}
 CHUNK = 200
 
 
-async def _remind(db: AsyncSession, user: User, title: str, body: str, url: str, key: str) -> bool:
+async def _insert_reminder(db: AsyncSession, user: User, title: str, body: str, url: str, key: str) -> bool:
     """One reminder, claimed by the partial unique index: a second insert of the same key is a no-op, never a read-then-write race."""
     stmt = (
         pg_insert(Notification)
@@ -171,14 +172,14 @@ async def _remind(db: AsyncSession, user: User, title: str, body: str, url: str,
     return True
 
 
-async def _guarded(db: AsyncSession, counts: dict, ids: dict, make) -> None:
+async def _remind(db: AsyncSession, counts: dict, user: User, title: str, body: str, url: str, key: str, **log_ids) -> None:
     """One reminder in a savepoint: a failure is counted and logged with ids only, never raised (AC6)."""
     try:
         async with db.begin_nested():
-            counts["created" if await make() else "duplicate"] += 1
+            counts["created" if await _insert_reminder(db, user, title, body, url, key) else "duplicate"] += 1
     except Exception:
         counts["failed"] += 1
-        logger.exception("agn017_reminder_failed", extra={"extra_fields": {k: str(v) for k, v in ids.items()}})
+        logger.exception("agn017_reminder_failed", extra={"extra_fields": {k: str(v) for k, v in {**log_ids, "user_id": user.id}.items()}})
 
 
 async def _cached_recipients(db: AsyncSession, record: AgentStudent, cache: dict) -> list[User]:
@@ -194,9 +195,14 @@ def _deadlines(app: OverseasApplication) -> tuple:
     return (("application", app.application_deadline), ("offer", app.offer_deadline))
 
 
+def _window_days(today: date) -> dict[date, int]:
+    """Each reminder date, mapped to how many days ahead of `today` it is."""
+    return {today + timedelta(days=d): d for d in WINDOWS}
+
+
 def deadline_query(today: date, last):
     """One chunk of agency applications with a deadline in a reminder window, after `last` (keyset paging)."""
-    days = [today + timedelta(days=d) for d in WINDOWS]
+    days = list(_window_days(today))
     query = (
         select(OverseasApplication, AgentStudent, University.name)
         .join(AgentStudent, AgentStudent.id == OverseasApplication.agent_student_id)
@@ -213,7 +219,7 @@ def deadline_query(today: date, last):
 
 
 async def _deadline_reminders(db: AsyncSession, today: date, counts: dict, cache: dict) -> None:
-    days = {today + timedelta(days=d): d for d in WINDOWS}
+    days = _window_days(today)
     last = None
     while True:
         rows = (await db.execute(deadline_query(today, last))).all()
@@ -227,7 +233,7 @@ async def _deadline_reminders(db: AsyncSession, today: date, counts: dict, cache
                 body = f"{clean_text(university)}: {kind} deadline {ist_date(when)}."
                 for user in await _cached_recipients(db, record, cache):
                     key = f"agn017:deadline:{app.id}:{kind}:{when.isoformat()}:{left}:{user.id}"
-                    await _guarded(db, counts, {"application_id": app.id, "user_id": user.id}, lambda u=user, k=key, t=WINDOWS[left], b=body: _remind(db, u, t, b, APPLICATIONS_URL, k))
+                    await _remind(db, counts, user, WINDOWS[left], body, APPLICATIONS_URL, key, application_id=app.id)
         last = rows[-1][0].id
         await db.commit()
 
@@ -242,14 +248,15 @@ async def _overdue_digests(db: AsyncSession, now: datetime, today: date, counts:
             .group_by(AgentTask.agent_student_id)
         )
     ).all()
-    totals: dict = {}
+    users: dict = {}
+    overdue: Counter = Counter()
     for record_id, count in per_record:
         for user in await _cached_recipients(db, await db.get(AgentStudent, record_id), cache):
-            totals[user.id] = (user, totals.get(user.id, (user, 0))[1] + count)
-    for user, count in totals.values():
+            users[user.id] = user
+            overdue[user.id] += count
+    for user_id, count in overdue.items():
         body = f"You have {_plural(count, 'overdue task')}."
-        key = f"agn017:overdue:{today.isoformat()}:{user.id}"
-        await _guarded(db, counts, {"user_id": user.id}, lambda u=user, b=body, k=key: _remind(db, u, "Overdue tasks", b, TASKS_URL, k))
+        await _remind(db, counts, users[user_id], "Overdue tasks", body, TASKS_URL, f"agn017:overdue:{today.isoformat()}:{user_id}")
     await db.commit()
 
 
