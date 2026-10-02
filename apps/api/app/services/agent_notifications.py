@@ -9,10 +9,10 @@ import logging
 from typing import get_args
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AgentOrg, AgentOrgMember, AgentStudent, Notification, User
+from app.models import AgentOrg, AgentOrgMember, AgentStudent, AgentTask, Notification, User
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import AgentDocumentType
 
@@ -72,3 +72,18 @@ async def notify(db: AsyncSession, users: list[User], title: str, body: str, act
         db.add(item)
         await queue_deliveries(db, item, user, channels=CHANNELS)
     return len(users)
+
+
+def _plural(count: int, noun: str) -> str:
+    return f"{count} {noun}{'' if count == 1 else 's'}"
+
+
+async def student_assigned(db: AsyncSession, record: AgentStudent, member_id, actor: User) -> int:
+    """N1/N9: only the new assignee hears about it, with the number of open tasks that moved with the student (AGN-016 T1)."""
+    org = await _org(db, record)
+    user = await active_member_user(db, member_id, org.id) if org is not None and org.status == "active" and member_id else None
+    if user is None or user.id == actor.id:
+        return 0
+    open_tasks = await db.scalar(select(func.count()).select_from(AgentTask).where(AgentTask.agent_student_id == record.id, AgentTask.status == "open"))
+    moved = f" {_plural(open_tasks, 'open task')} moved with them." if open_tasks else ""
+    return await notify(db, [user], "Student assigned to you", f"A student is now assigned to you.{moved}", STUDENTS_URL)

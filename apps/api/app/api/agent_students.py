@@ -16,6 +16,7 @@ from app.core.database import get_db
 from app.core.rbac import agent_denial_reason, is_agent_staff
 from app.models import AgentOrgMember, AuditLog, User
 from app.schemas import AgentStudentAssign, AgentStudentCounselingSave, AgentStudentRecordCreate, AgentStudentRecordUpdate
+from app.services import agent_notifications as notices
 from app.services.agent_orgs import lock_active_org
 from app.services.agent_students import (
     active_staff_member,
@@ -189,6 +190,8 @@ async def assign_student(student_id: UUID, payload: AgentStudentAssign, user: Us
         previous = row.assigned_member_id
         row.assigned_member_id, row.updated_by_user_id = new_id, user.id
         _audit(db, user, "assign", row.id, {"from": str(previous) if previous else None, "to": str(new_id) if new_id else None})
+        if new_id:  # AGN-017 (DEC-SCOPE-055 N1): the new assignee, in this transaction
+            await notices.student_assigned(db, row, new_id, user)
     await db.commit()
     if changed:
         _log("agent_student_assigned", membership, user, row.id, member_id=str(new_id) if new_id else None)
