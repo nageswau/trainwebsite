@@ -90,7 +90,8 @@ Order of checks after entry:
 1. No case → `404 VISA_NOT_FOUND`.
 2. `case.decision` is set → `409 VISA_DECIDED` (V2).
 3. `expected_stage != case.status` → `409 VISA_STALE`.
-4. `checklist` sent and the case is not at `checklist` (or a stage outside `VISA_CASE_STAGES`) → `422`.
+4. `checklist` sent while the case is past `checklist` → `422`. (Allowed at `checklist` and at a legacy stage outside
+   `VISA_CASE_STAGES`, which counts as before `checklist`.)
 5. `decision` sent and the case was not **already** at `decision` before this request → `422 VISA_DECISION_STAGE`.
    (`decision` together with `to_stage` in one request is therefore refused.)
 6. `to_stage`: must be after the current stage (`422` otherwise). A stage outside `VISA_CASE_STAGES` (legacy `not_started`) counts
@@ -180,7 +181,7 @@ Works at 320 px without horizontal scroll. No new dependencies.
 | AC1 | A decision is accepted only when the case is already at `decision`; otherwise `422`, nothing written. |
 | AC2 | `interview_date` before `visa_application_date` → `422` on `interview_date`; same day accepted; either alone accepted. |
 | AC3 | Moving past `checklist` with any checklist item whose latest attached document is not `verified` → `422` naming the items; once all are verified the move succeeds. |
-| AC4 | A new case starts at `checklist` regardless of input; stage moves are forward-only; skips allowed; backward/same → `422`. |
+| AC4 | A new case is created at `checklist` (the start body has no stage field; sending one is an extra field → `422`); stage moves are forward-only; skips allowed; backward/same → `422`. |
 | AC5 | A recorded decision is final: every later PATCH → `409`. |
 | AC6 | Start requires the application at `offer`, `visa_documentation` or `status_tracking` (`422`) and no existing case (`409`). |
 | AC7 | Withdrawn or enrolled application, or archived student → `409`; stale `expected_status` / `expected_stage` → `409`. |
