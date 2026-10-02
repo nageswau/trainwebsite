@@ -3691,8 +3691,8 @@ fetch; two existing unit tests now answer the tasks URL like the shortlist's), `
 
 **Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-016-tasks-followups`. Lite tests only, per the owner: 79 backend
 AGN-016 tests plus the four affected existing files (`test_agn_004_staff_scope`, `test_agn_001_team`, `test_agn_008_dashboard`,
-`test_agn_021_activity`), web typecheck, zero-warning lint, and 104 unit tests across 11 files. Outstanding before COMPLETE: browser
-validation, the e2e spec `agn-016-tasks.spec.ts` (written, not run), the full suites (owner, separate session), and an independent Codex review.
+`test_agn_021_activity`), web typecheck, zero-warning lint, and 104 unit tests across 11 files. The e2e spec `agn-016-tasks.spec.ts` passed
+3/3 against the isolated stack (2026-10-02). Outstanding before COMPLETE: the full suites (owner, separate session).
 
 **Browser QA (2026-10-02, isolated `agn016qa` stack, headless Chromium).** Pass 1 covered the 20-point checklist for Master, both
 Staff, signed-out, wrong roles, Super Admin and another agency: no Critical/High issues. Findings, all fixed and re-verified in pass 2:
