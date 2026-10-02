@@ -2623,3 +2623,121 @@ class GlobalEducationPipelineOut(BaseModel):
     funnel: list[PipelineStage]
     not_tracked: list[PipelineUntracked]
     students: PipelineStudentPage
+
+
+# --- bdm-001 (DEC-SCOPE-052): BDM profile -------------------------------------------------------------------------------
+BdmType = Literal["agent", "school", "college"]
+_BDM_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _bdm_employee_id(value: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ValueError("Employee ID is required")
+    if len(value) > 40:
+        raise ValueError("Employee ID must be at most 40 characters")
+    if _BDM_CONTROL.search(value):
+        raise ValueError("Employee ID contains invalid characters")
+    return value
+
+
+def _bdm_optional(value: str | None) -> str | None:
+    return (value.strip() or None) if value is not None else None
+
+
+BdmEmployeeId = Annotated[str, AfterValidator(_bdm_employee_id)]
+BdmText = Annotated[str | None, Field(max_length=120), AfterValidator(_bdm_optional)]
+
+
+class BdmProfileCreate(BaseModel):
+    """spec §5.2: type, Employee ID and reporting manager are required (B8); the three texts are optional."""
+
+    model_config = ConfigDict(extra="forbid")
+    bdm_type: BdmType
+    employee_id: BdmEmployeeId
+    designation: BdmText = None
+    department: BdmText = None
+    territory: BdmText = None
+    reporting_manager_user_id: UUID
+
+
+class BdmProfileUpdate(BaseModel):
+    """Omitted = unchanged. The optional texts accept null/"" (clears). The three required keys reject an explicit null: the default
+    None is never validated, but a sent null is checked against the non-nullable type and fails."""
+
+    model_config = ConfigDict(extra="forbid")
+    bdm_type: BdmType = None
+    employee_id: BdmEmployeeId = None
+    designation: BdmText = None
+    department: BdmText = None
+    territory: BdmText = None
+    reporting_manager_user_id: UUID = None
+
+
+class BdmManagerRef(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
+class BdmProfileOut(BaseModel):
+    bdm_type: str
+    employee_id: str
+    designation: str | None
+    department: str | None
+    territory: str | None
+    reporting_manager: BdmManagerRef
+
+
+class BdmMeOut(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None
+    active: bool
+    division: str
+    bdm_profile: BdmProfileOut
+
+
+class BdmTeamRow(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None
+    active: bool
+    bdm_type: str
+    employee_id: str
+    designation: str | None
+    department: str | None
+    territory: str | None
+
+
+class BdmAdminRow(BdmTeamRow):
+    reporting_manager: BdmManagerRef
+    manager_active: bool
+
+
+class BdmManagerOption(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class BdmTeamPage(BaseModel):
+    items: list[BdmTeamRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmAdminPage(BaseModel):
+    items: list[BdmAdminRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmManagerPage(BaseModel):
+    items: list[BdmManagerOption]
+    total: int
+    limit: int
+    offset: int

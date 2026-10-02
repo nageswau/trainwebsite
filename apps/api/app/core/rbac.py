@@ -47,6 +47,9 @@ PERMISSIONS: dict[str, set[str]] = {
     "academic_team": {"school:academic_team:portfolio"},
     "career_counselor": {"school:career_counselor:portfolio"},
     "psychometric_team": {"school:psychometric_team:portfolio"},
+    # bdm-001 (DEC-SCOPE-052): BDM CRM. Type/own/team scope is enforced in services/bdm.py, not by these bundles alone.
+    "bdm": {"bdm:self"},
+    "bdm_manager": {"bdm:team"},
 }
 
 

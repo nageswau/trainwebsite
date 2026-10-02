@@ -1,0 +1,119 @@
+"""bdm-001 -- services/bdm.py and the profile schemas (spec §5.2, §5.3). Pure units; no HTTP."""
+
+import logging
+import uuid
+from types import SimpleNamespace
+
+import pytest
+from fastapi import HTTPException
+
+from app.core.rbac import PERMISSIONS
+from app.services import bdm
+
+MGR = str(uuid.uuid4())
+
+
+def _actor(role):
+    return SimpleNamespace(id=uuid.uuid4(), role=role)
+
+
+def _valid(**patch):
+    return {"bdm_type": "college", "employee_id": "E-1", "reporting_manager_user_id": MGR, **patch}
+
+
+def test_roles_registered():
+    assert PERMISSIONS["bdm"] == {"bdm:self"}
+    assert PERMISSIONS["bdm_manager"] == {"bdm:team"}
+
+
+def test_division_map_and_creator_matrix():
+    assert bdm.BDM_DIVISION == {"college": "it", "agent": "overseas", "school": "overseas"}
+    assert bdm.creatable_types(_actor("super_admin")) == {"agent", "school", "college"}
+    assert bdm.creatable_types(_actor("it_admin")) == {"college"}
+    assert bdm.creatable_types(_actor("overseas_admin")) == {"agent", "school"}
+    assert bdm.creatable_types(_actor("counselor")) == frozenset()
+
+
+@pytest.mark.parametrize(("role", "bdm_type"), [("it_admin", "agent"), ("overseas_admin", "college"), ("counselor", "school")])
+def test_creator_refusal_is_403_and_logged_without_pii(role, bdm_type, caplog):
+    logging.getLogger("app.bdm").disabled = False
+    with caplog.at_level(logging.WARNING, logger="app.bdm"), pytest.raises(HTTPException) as exc:
+        bdm.require_creator_may(_actor(role), bdm_type, "/api/v1/admin/users")
+    assert exc.value.status_code == 403
+    record = next(r for r in caplog.records if r.getMessage() == "bdm_creator_type_refused")
+    assert set(record.extra_fields) == {"actor_id", "route", "bdm_type"}
+
+
+def test_permitted_creator_passes():
+    bdm.require_creator_may(_actor("it_admin"), "college", "/x")
+
+
+def test_parse_create_trims_and_clears_blank_optionals():
+    profile = bdm.parse_profile_create(_valid(employee_id="  E-1 ", designation=" "))
+    assert profile.employee_id == "E-1"
+    assert profile.designation is None
+    assert str(profile.reporting_manager_user_id) == MGR
+
+
+@pytest.mark.parametrize("raw", [None, "x", [], 5])
+def test_profile_not_an_object_is_422(raw):
+    for parse in (bdm.parse_profile_create, bdm.parse_profile_update):
+        with pytest.raises(HTTPException) as exc:
+            parse(raw)
+        assert exc.value.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "patch",
+    [
+        {"bdm_type": "it"},
+        {"employee_id": "   "},
+        {"employee_id": "x" * 41},
+        {"employee_id": "E\x07"},
+        {"designation": "d" * 121},
+        {"reporting_manager_user_id": "not-a-uuid"},
+        {"user_id": MGR},
+        {"surprise": 1},
+    ],
+)
+def test_create_rejects_bad_fields_with_a_named_422(patch):
+    with pytest.raises(HTTPException) as exc:
+        bdm.parse_profile_create(_valid(**patch))
+    assert exc.value.status_code == 422
+    assert exc.value.detail.startswith("bdm_profile.")
+
+
+def test_create_requires_type_employee_id_and_manager():
+    for key in ("bdm_type", "employee_id", "reporting_manager_user_id"):
+        raw = _valid()
+        del raw[key]
+        with pytest.raises(HTTPException) as exc:
+            bdm.parse_profile_create(raw)
+        assert exc.value.status_code == 422
+
+
+def test_update_null_semantics():
+    assert bdm.parse_profile_update({"territory": None}).model_dump(exclude_unset=True) == {"territory": None}
+    assert bdm.parse_profile_update({"territory": ""}).territory is None
+    for key in ("employee_id", "reporting_manager_user_id", "bdm_type"):
+        with pytest.raises(HTTPException) as exc:
+            bdm.parse_profile_update({key: None})
+        assert exc.value.status_code == 422
+    assert bdm.parse_profile_update({}).model_dump(exclude_unset=True) == {}
+
+
+def test_scope_helpers():
+    manager, super_admin = _actor("bdm_manager"), _actor("super_admin")
+    assert bdm.team_filter(super_admin) == []
+    assert len(bdm.team_filter(manager)) == 1
+    bdm.require_manager(manager)
+    bdm.require_manager(super_admin)
+    for role in ("bdm", "counselor", "it_admin"):
+        with pytest.raises(HTTPException) as exc:
+            bdm.require_manager(_actor(role))
+        assert exc.value.status_code == 403
+    with pytest.raises(HTTPException) as exc:
+        bdm.admin_type_filter(_actor("it_admin"), "agent")
+    assert exc.value.status_code == 403
+    assert len(bdm.admin_type_filter(_actor("it_admin"), None)) == 1
+    assert len(bdm.admin_type_filter(_actor("overseas_admin"), "school")) == 1
