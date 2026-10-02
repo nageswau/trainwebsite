@@ -197,8 +197,9 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | Upload Documents | `POST /workflows/overseas/documents`; `GET /portal/overseas/agent/documents` | ✅ | ✅ |
 | Verify Documents | `PATCH /workflows/overseas/documents/{id}/verify` with `verified` (**new for agents**) | ✅ | **T** |
 | Reject Documents | same route with `rejected` or `changes_required` | ✅ | ❌ (even with Verify on) |
-| University Database | `GET /public/universities`, `GET /public/universities/{slug}` | ✅ view | ✅ view |
-| Add University | `POST /admin/universities` (admin only) | ❌ | ❌ |
+| University Database | `GET /public/universities`, `GET /public/universities/{slug}` (shared catalogue, view); `GET /workflows/overseas/agent/crm/universities`, `PATCH`/`DELETE …/crm/universities/{id}` (agency list, **new**, `AGN-007` / `DEC-SCOPE-049`) | ✅ full on the agency list (list, add, edit, delete) + view of the catalogue | 👁 view (list the agency list and the catalogue; `PATCH`/`DELETE` → `403` "Only an agency Master can edit universities" / "…delete universities") |
+| Add University | `POST /workflows/overseas/agent/crm/universities` (**new**, `AGN-007` / `DEC-SCOPE-049`; creates an agency-private university). The shared catalogue's `POST /admin/universities` stays admin-only. | ✅ (agency list only) | ❌ `403` "Only an agency Master can add universities" |
+| Shortlist (student university shortlist) | `GET`/`POST …/crm/students/{id}/shortlist`, `PATCH`/`DELETE …/shortlist/{entry_id}` (**new**, `AGN-007`) | ✅ any agency student | ✅ assigned students only (out of scope → `404`, before any role check) |
 | Staff Management | `GET /workflows/overseas/agent/team/staff`, `PATCH …/staff/{id}`, `PUT …/staff/{id}/permissions` (**new**), `GET /workflows/overseas/agent/team`, `GET /portal/overseas/agent/team` | ✅ | ❌ |
 | Create Staff Login | `POST /workflows/overseas/agent/team/staff`, `POST …/staff/{id}/reset` | ✅ | ❌ |
 | Deactivate Staff | `POST …/staff/{id}/deactivate`, `POST …/staff/{id}/reactivate` | ✅ | ❌ |
@@ -216,9 +217,13 @@ The Master-team routes (`POST …/team/masters`, `POST …/team/masters/{id}/dea
 - **Verify gives `verified` only (P6):** staff with Verify who send `rejected` or `changes_required` get `403`; Reject and Request
   changes are Master-only. Agents decide only `pending` documents (P5); a counselor or Overseas Admin can still re-review.
 - **N/A rows** (Edit Application, Change Application Status, Staff Performance, CRM Settings) have no route for any agent, so no test
-  is possible; they stay parked under `C-10` (spec §2). **Add University** is a
-  deliberate departure from the source's ✅ for Masters: the route is admin-only, no agent has ever had it (P3), and it is tested as
-  `403` for both member roles so the gap stays visible.
+  is possible; they stay parked under `C-10` (spec §2). **Add University** was
+  a deliberate departure from the source's ✅ for Masters in `AGN-003` (admin-only route, P3); **superseded 2026-10-01 by `DEC-SCOPE-049`
+  (`AGN-007`)**: Masters now add universities to an agency-private list (never the shared catalogue), Staff are refused (`403`), and the
+  shared catalogue's `POST /admin/universities` stays admin-only (still tested as `403` for both member roles). The same decision changes the
+  University Database row for the agency list. Every other P3 row is unchanged. The matrix rows for these two cells in
+  `test_agn_003_matrix.py` were changed deliberately; the AGN-007 behaviour is proved by `test_agn_007_universities.py` and
+  `test_agn_007_shortlist.py`.
 
 Proved by `tests/test_agn_003_matrix.py` (every ❌ and every cheap ✅ cell; two Master ✅ cells are cited from `test_agn_001_team.py`
 (`test_a_pending_invitee_can_still_be_deactivated_by_an_accepted_master`, `test_a_master_may_deactivate_themselves_once_another_master_has_accepted`)

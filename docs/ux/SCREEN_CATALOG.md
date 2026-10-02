@@ -1666,7 +1666,8 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 | `SCR-AGT-005` | `/overseas/agent/commissions/[id]/claim` | Agent | `AGT-004` |
 | `SCR-AGT-006` | `/overseas/admin/commissions` | Overseas Admin | `AGT-004` |
 | `SCR-AGT-007` | `/overseas/agent/team` | Agent (Master) | `AGN-001` |
-| `SCR-AGT-008` | `/overseas/agent/students` (Students panel) | Agent (Master, Staff) | `AGN-004`, `AGT-002` |
+| `SCR-AGT-008` | `/overseas/agent/students` (Students panel) | Agent (Master, Staff) | `AGN-004`, `AGT-002`, `AGN-007` (shortlist panel) |
+| `SCR-AGT-009` | `/overseas/agent/universities` | Agent (Master full, Staff view) | `AGN-007` |
 
 ### `SCR-AGT-001`
 - **Route:** `/overseas/agent/register`  
@@ -1850,6 +1851,25 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** Two card columns on wide screens, one on phones; the detail and form sit above the list so list refreshes never move them.  
 - **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** AGN-004-AC01–AC13 (`test_agn_004_*.py`; `AgentStudentsPanel.test.tsx`, `AgentStudentForm.test.tsx`; e2e `agn-004-agent-students.spec.ts`); browser validation pending.  
+- **AGN-007 update (2026-10-01, `DEC-SCOPE-049`):** the student detail view gains a **University shortlist** panel (`AgentShortlistPanel`, `h5`, below the facts, hidden while editing; mounted with `studentId` and `archived`). A paged list of cards (not a table, matching `AgentStudentsPanel`): university with an "Agency" text badge for agency universities, country, course, intake, tuition fee, entry requirements in `<details>`, and Edit / Remove (neither shown for an archived student; Remove asks for inline confirmation with focus on Cancel). Add / Edit opens `AgentShortlistForm`: a native `<select>` with "Catalogue" / "Your agency" `<optgroup>`s picks the university (catalogue from `GET /public/universities`, agency list fetched fresh on every open, `limit=100`), a course select (plus "Other (type a course)") for a catalogue university or a text input for an agency university, intake, tuition fee and entry requirements (a catalogue course pre-fills them; a pre-fill never overwrites a typed value and is cleared when the university changes), read-only country. States: `aria-busy` loading with the previous page kept, empty "No universities shortlisted yet." + Add, error `role="alert"` + Retry, "Saving…" with controls disabled; 422 inline, 409 closes the form and refreshes the student, 404 "This student is no longer available", a 404 after the user's own delete counts as success. Focus moves to the form heading on open and returns to Add / Edit / Remove on close; Escape closes the innermost form or confirm first. Evidence: AGN-007-AC13 (`AgentShortlistPanel.test.tsx`, `AgentShortlistForm.test.tsx`; e2e `agn-007-shortlist.spec.ts`, to be added); browser validation pending.  
+
+### `SCR-AGT-009`
+- **Route:** `/overseas/agent/universities` — the agency's University Database *(net-new, added 2026-10-01, `AGN-007` / `DEC-SCOPE-049`; provisional number, whichever of `AGN-006`/`AGN-008` also claims `SCR-AGT-009` renumbers on merge)*  
+- **Role(s):** Agent — a Master (full) or a staff member (view) of an active agency  
+- **Purpose:** The agency's own, private university list (name, country, city, entry requirements) used when shortlisting for students; separate from the shared public catalogue.  
+- **Linked Feature ID(s):** `AGN-007`  
+- **Entry points:** Agent portal navigation, "Universities" (both roles); a link "Browse the university catalogue" goes to `/overseas/universities`.  
+- **Required data:** Agency universities (`{id, name, country, city, entry_requirements}`), paged.  
+- **Key actions:** Search (name, country, city), page, and for Masters only Add university, Edit, Delete (inline confirmation); Staff see the same list read-only with no buttons and no permission notice.  
+- **Empty state:** "Your agency hasn't added any universities yet." (Masters also get Add university).  
+- **Loading state:** `aria-busy` placeholder; the previous page stays visible while paging.  
+- **Error state:** `role="alert"` with Retry; the duplicate (409) and in-use (409) messages show inline at the form or card; 422 detail inline.  
+- **Permissions/resource scope:** Own agency only (another agency's id `404`); writes Master-only (`403` for staff); pending/suspended agencies `403`; mounted by `PortalPage` for `role === "agent"`.  
+- **Responsive behavior:** Cards in the `.grid.two` layout (one column on phones); form inputs full width in a single column below 640 px; verified at 320, 375, 768 and 1024 px (browser QA pending).  
+- **Accessibility requirements:** Every input labelled; native controls; focus to the form heading on open and back to Add / Edit on close; Delete confirm focuses Cancel; Escape closes the innermost open form or confirm; status messages `aria-live`.  
+- **Desktop/tablet/mobile behavior:** Two card columns wide, one on phones.  
+- **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
+- **Acceptance evidence needed:** AGN-007-AC06, AC09, AC11, AC13 (`test_agn_007_universities.py`; `AgentUniversitiesPanel.test.tsx`, `navigation.agent.test.ts`; e2e `agn-007-shortlist.spec.ts`, to be added); browser validation pending.  
 
 
 ## CNS

@@ -160,6 +160,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-021 | Agent staff activity — a Master views a staff member's student-journey activity (Rev. 9) | Small | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004 |
 | AGN-005 | Close the §6 staff matrix gap for agency student records — tests and docs, plus four browser-QA fixes (Rev. 10) | Small | Low | No | AGN-003, AGN-004 |
 | AGN-006 | Agent student counseling record — completed, career interest, course/country preference, budget, remarks (§5 Step 2) | Medium | Medium | Yes | AGN-004 (student detail), AGN-021 (activity) |
+| AGN-007 | Agent student university shortlist and agency-private university database (Master full / Staff view) | Large | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004, AGN-021 |
 
 ---
 
@@ -3375,6 +3376,78 @@ acceptance criteria: **a Staff member's actions appear within one page load; oth
 - Audit row shape changes in future: allow-list plus defensive parsing; a missing subject reads "No longer available".
 
 **Status (2026-10-01) — COMPLETE on `feature/agn-021-staff-activity` (verified at `7b2b085`; evidence in `RTM.md`, AGN-021 row; not yet merged to `main`).** The independent Codex review was waived by the owner in-session 2026-10-01. Earlier status line, kept for history: IMPLEMENTED, NOT complete. Backend and web unit tests pass (evidence in `RTM.md`). Playwright e2e recorded as passed (see `RTM.md`, AGN-021 row). Browser QA done 2026-10-01: QA-01…QA-04 found, fixed (`aa11adc`) and re-verified in the browser (`docs/quality/AGN-021_BROWSER_QA_2026-10-01.md`). Independent Codex review: waived by the owner (2026-10-01). Full backend suite not run (owner cadence).
+
+---
+
+## AGN-007 — Agent Student University Shortlist and Agency University Database
+
+**Title.** Agents shortlist universities for a student, from the shared catalogue or from their own agency's private list.
+
+**Business requirement.** The owner's `AGN-007` statement (in-session, 2026-10-01): "add university, course, country, intake, tuition fee and
+entry requirements to a student's shortlist. University DB: Master 'Full', Staff 'View'; 'Add University' is Master only (§6; DEC-SCOPE-035 D4)."
+Referring to `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 "STEP 3 — University Shortlisting" and §6 rows "University Database" and
+"Add University". Decided as `DEC-SCOPE-049` (D1–D10). The `DEC-SCOPE-035 D4` citation is a recorded mis-citation (see the decision); `DEC-SCOPE-044` P3
+is superseded for those two §6 rows only.
+
+**Existing behavior.**
+- No agent-owned university or shortlist exists. Universities, courses and countries are an admin-managed, public catalogue (`GET /public/universities`).
+- `RBAC_MATRIX.md` §2.8 recorded both §6 rows as N/A (`DEC-SCOPE-044` P3).
+- `create_bridged_application` stores a `course_id` without the course-belongs-to-university check (out of scope; `RAID.md`).
+
+**Expected behavior.** Per `DEC-SCOPE-049`:
+- A Master adds, edits and deletes **agency-private** universities (never in the shared catalogue, never on `/public`); Master and Staff list them.
+- Master and Staff add, edit and remove shortlist entries for students in their scope; each entry has one university (catalogue or agency) and an optional course, intake, tuition fee and entry requirements. Country comes from the university.
+- A catalogue course must belong to the chosen catalogue university; a typed course is allowed with either kind. Caps: 50 entries per student, 500 universities per agency.
+- An archived student's shortlist is read-only (`409`).
+
+**User roles affected.** `agent` (Master: full; Staff: view the University Database, write the shortlist of assigned students).
+
+**Frontend impact.** `AgentUniversitiesPanel`, `AgentUniversityForm` (new; `/overseas/agent/universities`, mounted by `PortalPage`), `AgentShortlistPanel`, `AgentShortlistForm`, `AgentShortlistCard` (new), one mount line in `AgentStudentDetailPanel`, `lib/agentShortlist.ts`, `lib/navigation.ts` (Universities item). Screens `SCR-AGT-008` (updated) and `SCR-AGT-009`.
+
+**Backend impact.** New `api/agent_shortlist.py` and `services/agent_shortlist.py`; `schemas.py` (four request models); `models.py` (two models); `main.py` (router); `services/portal.py` (`universities` section); `services/staff_activity.py` (three whitelist actions). `api/agent_students.py` is imported, not edited.
+
+**Database impact.** Migration `0056_agent_shortlist` (two new tables; additive; no existing row changes).
+
+**API impact.** New `/workflows/overseas/agent/crm/universities` (GET, POST, PATCH, DELETE) and `/crm/students/{student_id}/shortlist` (GET, POST, PATCH, DELETE); `API_CONTRACT.md` §8.
+
+**Integration impact.** None.
+
+**Authentication/Authorization impact.** Medium. Master-only writes on universities; scope via `load_scoped` for shortlist routes; agency isolation via `org_id` in every WHERE clause.
+
+**Security impact.**
+- Medium: cross-agency IDOR (an agency university id in a body, an entry id on another student), staff writing outside their scope, leakage of agency-private universities to `/public`, mass assignment.
+- Mitigations: spec §7 (scoped loads, identical `422`/`404` answers, `extra="forbid"`, role check after the scoped load, caps under the agency lock, audit with ids and field names only). `THREAT_MODEL.md`, `SECURITY_CONTROLS.md`.
+
+**Performance impact.** Indexed paging (`ix_shortlist_student_created`, `agent_universities.org_id`); caps bound the lists.
+
+**Reusable existing modules.** `agent_students._gate` / `_audit` / `_log` / `_locked_row`, `services/agent_students.load_scoped`, `services/agent_orgs.lock_active_org`, `is_agent_staff`, `clean_free_text`, the `AgentStudentsPanel` card, paging and confirm patterns, the `GET /public/universities` reads.
+
+**Dependencies.** `AGN-001`, `AGN-002`, `AGN-003`, `AGN-004`, `AGN-021` (staff-activity whitelist).
+
+**Acceptance criteria** (verbatim from `docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md` §8).
+- **AGN-007-AC01** A catalogue-backed entry (catalogue university, its catalogue course, intake, fee, requirements) saves: 201; GET shows `source:"catalogue"` and the catalogue country.
+- **AGN-007-AC02** A free-text entry (agency university, typed course) saves: 201; `source:"agency"`; the country comes from the agency university.
+- **AGN-007-AC03** A course from another university returns 422 "Course does not belong to selected university". A catalogue course with an agency university, both or neither university, or both course forms each return 422. Nothing is written in any of these cases. The migration test proves the CHECK constraints at database level.
+- **AGN-007-AC04** Invisible to other agencies: another agency's university id in a body returns 422; its university by id returns 404, and it is absent from the list; another agency's student shortlist returns 404.
+- **AGN-007-AC05** Invisible to `/public`: `/public/universities`, `/public/universities/{slug}`, `/public/countries/{slug}` and `/public/overseas-courses` are unchanged after agency universities and entries are created.
+- **AGN-007-AC06** University DB: Master and Staff can GET the list. Staff POST, PATCH and DELETE return 403, with no row and no audit row. Masters succeed, and each write is audited.
+- **AGN-007-AC07** Shortlist scope: Staff can do all four operations for assigned students; any other student returns 404 (before any role check). Masters can do so for any agency student.
+- **AGN-007-AC08** An archived student's shortlist is readable, and writes return 409. A linked (login) student is writable.
+- **AGN-007-AC09** Deleting an agency university that is in use returns 409, and nothing is lost. A duplicate name and country in the same agency returns 409; the same name in another agency is allowed.
+- **AGN-007-AC10** Caps: the 51st entry and the 501st university return 422. Two concurrent adds at 49 entries end at exactly 50.
+- **AGN-007-AC11** Pagination: the envelope; stable order; 422 for out-of-range values; an offset past the end returns empty items with the true total.
+- **AGN-007-AC12** Each write produces exactly one audit row in the same transaction, with no free-text values. Shortlist actions appear in AGN-021 staff activity; agency-university actions do not.
+- **AGN-007-AC13** UI: Master and Staff add a catalogue entry and an agency entry from the detail view. Staff see no write controls in the University Database. Loading, empty and error-with-Retry states render. Keyboard-only use works, and the layout works at 375 px.
+- **AGN-007-AC14** Regression: the AGN-001/003/004/005/021, OVS-001/002 and public catalogue suites pass. The only existing test edited is the AGN-003 matrix rows for University DB and Add University.
+
+**Regression risks.**
+- Merge collision with `AGN-006` / `AGN-008` (DEC number, migration number, `STAFF_ACTIVITY_ACTIONS`, `AgentStudentDetailPanel`): `agent_students.py` untouched, one mount line; renumber and re-chain at merge.
+- A leak into the public catalogue: catalogue tables and `public.py` untouched; AC05 asserts it.
+- The AGN-003 matrix rows change deliberately (recorded as the partial supersession of `DEC-SCOPE-044` P3).
+
+**Complexity:** Large. **Risk:** Medium.
+
+**Status (2026-10-02): COMPLETE** on `feature/agn-007-student-shortlist` — evidence in `docs/quality/RTM.md` (AGN-007 row, "Completion verification") and `docs/quality/AGN-007_BROWSER_QA_2026-10-02.md` (all acceptance criteria PASS in the browser; AC03 DB CHECKs and AC10's 500-university cap and concurrency covered by backend tests). Independent review waived by the owner. Owner-side, outside COMPLETE: the full backend suite (standing 4–5-story cadence), an `ovs-001-discovery` e2e re-run on a clean database, and the merge (re-chain against `AGN-008` `0057` if it lands first).
 
 ---
 

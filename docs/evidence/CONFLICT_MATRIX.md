@@ -223,3 +223,5 @@ against any of `EVID-015`–`EVID-020` until each is individually put through a 
 arrives, whichever is relevant to the specific point.
 
 *Update 2026-10-01 (`AGN-021`):* staff activity ("View staff activity", `EVID-015` §2 Staff) is lifted out of this blocker by `DEC-SCOPE-046` (A1–A5, `EXPLICIT_APPROVAL` in-session). Staff performance, CRM settings and the rest of `EVID-015` remain parked here.
+
+*Update 2026-10-01 (`AGN-007`):* `EVID-015` §5 Step 3 "University Shortlisting" and the §6 rows "University Database" and "Add University" are decided by `DEC-SCOPE-049` (D1–D10, `EXPLICIT_APPROVAL` in-session): an agency-private university list (Master full / Staff view; Add University Master-only) and a per-student shortlist. This supersedes `DEC-SCOPE-044` P3 for those two rows only, and records the requirement's `DEC-SCOPE-035 D4` citation as a mis-citation (no such decision on universities). The rest of `EVID-015`, still parked here, is unchanged.

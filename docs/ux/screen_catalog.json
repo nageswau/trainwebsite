@@ -2103,7 +2103,31 @@
     "a11y": "Labelled controls, fieldsets, aria-describedby errors, focus to first invalid field, named buttons, focus return, Escape closes detail, announced results.",
     "dtm": "Two card columns wide, one on phones; detail and form above the list.",
     "visual": "None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
-    "evidence": "AGN-004-AC01–AC13: test_agn_004_*.py; AgentStudentsPanel.test.tsx; AgentStudentForm.test.tsx; agn-004-agent-students.spec.ts; browser validation pending."
+    "evidence": "AGN-004-AC01–AC13: test_agn_004_*.py; AgentStudentsPanel.test.tsx; AgentStudentForm.test.tsx; agn-004-agent-students.spec.ts; browser validation pending. AGN-007 update (DEC-SCOPE-049, 2026-10-01): the student detail view gains a University shortlist panel (AgentShortlistPanel / AgentShortlistForm; paged cards, Add/Edit/Remove, none for an archived student; loading, empty, error + Retry, saving states; focus return and Escape handling) — AGN-007-AC13: AgentShortlistPanel.test.tsx; AgentShortlistForm.test.tsx; agn-007-shortlist.spec.ts (to be added); browser validation pending."
+  },
+  {
+    "id": "SCR-AGT-009",
+    "roles": [
+      "Agent (Master)",
+      "Agent (Staff)"
+    ],
+    "route": "/overseas/agent/universities",
+    "purpose": "The agency's own, private university list (name, country, city, entry requirements) used when shortlisting for students; separate from the shared public catalogue (AGN-007 / DEC-SCOPE-049, added 2026-10-01; provisional number).",
+    "features": [
+      "AGN-007"
+    ],
+    "entry": "Agent portal navigation, \"Universities\" (both roles); link \"Browse the university catalogue\" to /overseas/universities.",
+    "data": "Agency universities {id, name, country, city, entry_requirements}, paged.",
+    "actions": "Search; page; Master only: Add university, Edit, Delete (inline confirmation). Staff see the list read-only with no buttons.",
+    "empty": "\"Your agency hasn't added any universities yet.\" (Masters also get Add university).",
+    "loading": "aria-busy placeholder; the previous page stays visible while paging.",
+    "error": "role=alert with Retry; duplicate and in-use 409 messages and 422 detail shown inline.",
+    "perms": "Own agency only (another agency's id 404); writes Master-only (403 for staff); pending/suspended agencies 403.",
+    "responsive": "Cards in .grid.two (one column on phones); form inputs full width below 640px; verified at 320/375/768/1024 pending browser QA.",
+    "a11y": "Labelled inputs, native controls, focus to the form heading on open and back on close, Delete confirm focuses Cancel, Escape closes the innermost open thing, aria-live status.",
+    "dtm": "Two card columns wide, one on phones.",
+    "visual": "None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "AGN-007-AC06, AC09, AC11, AC13: test_agn_007_universities.py; AgentUniversitiesPanel.test.tsx; navigation.agent.test.ts; agn-007-shortlist.spec.ts (to be added); browser validation pending."
   },
   {
     "id": "SCR-CNS-001",
