@@ -150,6 +150,39 @@ describe("AgentApplicationVisa (AGN-012)", () => {
     expect(screen.queryByRole("region", { name: "Visa" })).toBeNull();
   });
 
+  it("a save that keeps the stage closes the form and brings the other sections back (review I-1)", async () => {
+    const saved = detail({ visa: visa({ stage: "documentation", interview_date: "2027-05-20" }) });
+    mount(api(detail({ visa: visa({ stage: "documentation" }) }), () => json({ application: saved })));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit visa details" }));
+    fireEvent.change(screen.getByLabelText("Interview date (optional)"), { target: { value: "2027-05-20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save visa details" }));
+    await waitFor(() => expect(screen.getByText("Visa details saved.")).toHaveFocus());
+    expect(screen.queryByRole("form", { name: "Edit visa details" })).toBeNull();
+    expect(within(region()).getByText("2027-05-20")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit visa details" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Enroll student" })).toBeInTheDocument();
+  });
+
+  it("a legacy checklist item is shown, never sent back, and replaced only when the checklist is changed (review I-2)", async () => {
+    const legacy = visa({ stage: "not_started", checklist: [{ item: "Passport", verification_status: "verified" }, { item: "Visa form", verification_status: "not_uploaded" }] });
+    const fetchMock = api(detail({ visa: legacy }));
+    mount(fetchMock);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit visa details" }));
+    const form = screen.getByRole("form", { name: "Edit visa details" });
+    expect(within(form).getByText(/Visa form/)).toBeInTheDocument(); // named, so the agency knows what changing the checklist replaces
+    expect(within(form).getByRole("checkbox", { name: "Passport" })).toBeChecked();
+    fireEvent.change(screen.getByLabelText("Appointment date (optional)"), { target: { value: "2027-05-03" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save visa details" }));
+    await waitFor(() => expect(writes(fetchMock)).toHaveLength(1));
+    expect(JSON.parse(String(writes(fetchMock)[0][1]!.body))).toEqual({ expected_stage: "not_started", visa_application_date: null, appointment_date: "2027-05-03", interview_date: null });
+    await screen.findByText("Visa details saved.");
+    fireEvent.click(screen.getByRole("button", { name: "Edit visa details" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "SOP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save visa details" }));
+    await waitFor(() => expect(writes(fetchMock)).toHaveLength(2));
+    expect(JSON.parse(String(writes(fetchMock)[1][1]!.body)).checklist).toEqual(["Passport", "SOP"]);
+  });
+
   it.each([
     ["withdrawn", { status: "withdrawn", read_only_reason: "withdrawn" }],
     ["enrolled", { status: "enrolled" }],

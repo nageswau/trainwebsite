@@ -98,11 +98,15 @@ export default function AgentApplicationVisa({ detail, onSaved, onFailed, onOpen
     }
     const next = (outcome.data as { application?: AgentApplicationDetail }).application;
     if (!next) return onFailed("The change could not be confirmed. Reload to see the current visa case.");
+    // A save that keeps the stage does not remount this section (its key is stage-based): close the form here (review I-1).
+    setMode(null);
+    setTarget("");
+    setDecision("");
     onSaved(next, message);
   }
   function saveDetails({ checklist, ...dates }: VisaDetails) {
-    if (!visa) return send({ expected_status: detail.status, checklist, ...dates }, "Visa case started.");
-    send({ expected_stage: visa.stage, ...dates, ...(visaChecklistEditable(visa.stage) ? { checklist } : {}) }, "Visa details saved.");
+    if (!visa) return send({ expected_status: detail.status, checklist: checklist ?? [], ...dates }, "Visa case started.");
+    send({ expected_stage: visa.stage, ...dates, ...(checklist ? { checklist } : {}) }, "Visa details saved.");
   }
   const move = () => send({ expected_stage: visa!.stage, to_stage: target }, `Visa case moved to ${stageLabel(target)}.`);
   const decide = () => send({ expected_stage: visa!.stage, decision }, "Visa decision recorded.");
