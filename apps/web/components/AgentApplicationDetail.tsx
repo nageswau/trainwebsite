@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AgentApplicationEditForm from "./AgentApplicationEditForm";
 import AgentApplicationStatusForm from "./AgentApplicationStatusForm";
 import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { AgentApplicationDetail as Detail, APPLICATIONS_URL, deadlineText, READ_ONLY_TEXT, stageLabel, todayIso } from "@/lib/agentApplications";
 
 type Props = { id: string; onChanged: (d: Detail) => void; onClose: () => void };
@@ -16,14 +17,12 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
   const [state, setState] = useState<"loading" | "ready" | "gone" | "error">("loading");
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const editRef = useRef<HTMLButtonElement>(null);
-  const noticeRef = useRef<HTMLParagraphElement>(null);
-  const readOnlyRef = useRef<HTMLParagraphElement>(null);
-  const focusHeading = useRef(true);
-  const returnToEdit = useRef(false);
-  const focusNotice = useRef(false);
-  const focusReadOnly = useRef(false);
+  const focusAfter = useFocusAfterRender();
+  const firstLoad = useRef(true); // the heading takes focus on the first successful load only
+  const headingId = `detail-${id}`;
+  const editId = `detail-edit-${id}`;
+  const noticeId = `detail-notice-${id}`;
+  const readOnlyId = `detail-read-only-${id}`;
 
   const load = useCallback(async (): Promise<Detail | null> => {
     try {
@@ -33,43 +32,23 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
       if (!response.ok || !body?.application) return (setState("error"), null);
       setDetail(body.application);
       setState("ready");
+      if (firstLoad.current) {
+        firstLoad.current = false;
+        focusAfter(`detail-${id}`);
+      }
       return body.application;
     } catch {
       setState("error");
       return null;
     }
-  }, [id]);
+  }, [id, focusAfter]);
 
   useEffect(() => {
     load();
   }, [load]);
-  useEffect(() => {
-    if (state === "ready" && focusHeading.current) {
-      focusHeading.current = false;
-      headingRef.current?.focus();
-    }
-  }, [state]);
-  useEffect(() => {
-    if (!editing && returnToEdit.current) {
-      returnToEdit.current = false;
-      editRef.current?.focus();
-    }
-  }, [editing]);
-  useEffect(() => {
-    if (notice?.failed && focusNotice.current) {
-      focusNotice.current = false;
-      noticeRef.current?.focus();
-    }
-  }, [notice]);
-  useEffect(() => {
-    if (detail?.read_only_reason === "withdrawn" && focusReadOnly.current) {
-      focusReadOnly.current = false;
-      readOnlyRef.current?.focus();
-    }
-  }, [detail?.read_only_reason]);
 
   function saved(next: Detail, message: string) {
-    focusReadOnly.current = next.read_only_reason === "withdrawn" && detail?.read_only_reason !== "withdrawn";
+    if (next.read_only_reason === "withdrawn" && detail?.read_only_reason !== "withdrawn") focusAfter(readOnlyId);
     setDetail(next);
     setEditing(false);
     setNotice({ text: message, failed: false });
@@ -84,7 +63,7 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
     }
   }
   function editFailed(message: string, status?: number) {
-    focusNotice.current = status !== 404; // a 404 shows "no longer available" instead of the notice
+    if (status !== 404) focusAfter(noticeId); // a 404 shows "no longer available" instead of the notice
     if (status === 422) return setNotice({ text: message, failed: true }); // the input stays for the user to correct
     failed(message, status);
   }
@@ -104,8 +83,8 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
   const title = `${detail.student} — ${detail.university}`;
   const deadline = deadlineText(detail.nearest_deadline, todayIso());
   return (
-    <section aria-labelledby={`detail-${id}`} style={{ marginTop: 12 }}>
-      <h4 id={`detail-${id}`} ref={headingRef} tabIndex={-1}>
+    <section aria-labelledby={headingId} style={{ marginTop: 12 }}>
+      <h4 id={headingId} tabIndex={-1}>
         {title}
       </h4>
       <p>
@@ -113,18 +92,18 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
         {deadline && <span className="muted"> · {deadline}</span>}
       </p>
       {notice && (
-        <p ref={noticeRef} tabIndex={-1} className={notice.failed ? "form-error" : "form-message"} role={notice.failed ? "alert" : "status"} aria-live="polite">
+        <p id={noticeId} tabIndex={-1} className={notice.failed ? "form-error" : "form-message"} role={notice.failed ? "alert" : "status"} aria-live="polite">
           {notice.text}
         </p>
       )}
       {detail.read_only_reason && (
-        <p ref={readOnlyRef} tabIndex={-1} className="muted">
+        <p id={readOnlyId} tabIndex={-1} className="muted">
           {READ_ONLY_TEXT[detail.read_only_reason]}
         </p>
       )}
       {editing ? (
         <AgentApplicationEditForm detail={detail} onSaved={saved} onFailed={editFailed} onCancel={() => {
-            returnToEdit.current = true;
+            focusAfter(editId);
             setEditing(false);
           }} />
       ) : (
@@ -146,7 +125,7 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
             <dd>{detail.next_action ?? "—"}</dd>
           </dl>
           {!detail.read_only_reason && (
-            <button ref={editRef} type="button" className="btn secondary small" onClick={() => setEditing(true)}>
+            <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(true)}>
               Edit
             </button>
           )}

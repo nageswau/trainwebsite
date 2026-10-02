@@ -7,8 +7,7 @@ import { APPLICATIONS_URL, todayIso } from "@/lib/agentApplications";
 import { AgentStudentItem, RECORDS_URL } from "@/lib/agentStudents";
 import type { LookupPage } from "@/lib/lookups";
 import type { University } from "@/lib/types";
-
-type Course = { id: string; title: string; level: string };
+import { useUniversityCourses } from "@/lib/universityCourses";
 
 // AGN-008 (DEC-SCOPE-050): create an application for any of the agency's students -- with or without a login -- searched on the
 // server (AGN-004's records list), so a large agency is never truncated. University/course reuse OVS-002's cascading picker. Ids,
@@ -36,7 +35,7 @@ export default function AgentApplicationCreatePanel({ onCreated }: { onCreated?:
   const [universities, setUniversities] = useState<University[] | null>(null);
   const [studentId, setStudentId] = useState("");
   const [universityId, setUniversityId] = useState("");
-  const [courses, setCourses] = useState<Course[] | null>(null);
+  const courses = useUniversityCourses(universities?.find((u) => u.id === universityId)?.slug ?? null);
   const [courseId, setCourseId] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
@@ -55,20 +54,7 @@ export default function AgentApplicationCreatePanel({ onCreated }: { onCreated?:
     };
   }, []);
 
-  useEffect(() => {
-    setCourseId("");
-    if (!universityId) return setCourses(null);
-    const university = universities?.find((u) => u.id === universityId);
-    if (!university) return;
-    let cancelled = false;
-    fetch(`/api/v1/public/universities/${university.slug}`)
-      .then((res) => (res.ok ? res.json() : { courses: [] }))
-      .then((data) => !cancelled && setCourses(data.courses || []))
-      .catch(() => !cancelled && setCourses([]));
-    return () => {
-      cancelled = true;
-    };
-  }, [universityId, universities]);
+  useEffect(() => setCourseId(""), [universityId, universities]);
 
   useEffect(() => {
     if (message) messageRef.current?.focus();
@@ -102,7 +88,6 @@ export default function AgentApplicationCreatePanel({ onCreated }: { onCreated?:
     setStudentId("");
     setFormVersion((v) => v + 1);
     setUniversityId("");
-    setCourses(null);
     onCreated?.();
   }
 

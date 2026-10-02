@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import AgentApplicationDetail from "./AgentApplicationDetail";
 import { detailMessage, isPage, Page } from "@/lib/apiErrors";
 import { AgentApplicationDetail as Detail, AgentApplicationItem, APPLICATIONS_URL, deadlineText, GROUP_LABELS, StatusGroup, stageLabel, todayIso } from "@/lib/agentApplications";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 const PAGE_SIZE = 20;
 const LOAD_FAILED = "The applications could not be loaded.";
@@ -19,7 +20,7 @@ export default function AgentApplicationsPanel({ group, reloadKey }: { group: St
   const [attempt, setAttempt] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
   const request = useRef<AbortController | null>(null);
-  const closedId = useRef<string | null>(null);
+  const focusAfter = useFocusAfterRender();
 
   useEffect(() => {
     request.current?.abort();
@@ -40,19 +41,11 @@ export default function AgentApplicationsPanel({ group, reloadKey }: { group: St
     return () => controller.abort();
   }, [group, offset, reloadKey, attempt]);
 
-  // Focus returns to the card's View button once the detail has closed.
-  useEffect(() => {
-    if (openId === null && closedId.current) {
-      document.getElementById(`view-${closedId.current}`)?.focus();
-      closedId.current = null;
-    }
-  }, [openId]);
-
   function replace(next: Detail) {
     setData((current) => current && { ...current, items: current.items.map((a) => (a.id === next.id ? { ...a, ...next } : a)) });
   }
   function close(id: string) {
-    closedId.current = id;
+    focusAfter(`view-${id}`); // focus returns to the card's View button once the detail has closed
     setOpenId(null);
   }
 

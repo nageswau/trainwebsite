@@ -3,22 +3,12 @@
 
 export const APPLICATIONS_URL = "/api/v1/workflows/overseas/agent/crm/applications";
 
-export const STAGES = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"] as const;
-export const AGENT_MAX_STAGE = "status_tracking";
-const STAGE_LABELS: Record<string, string> = {
-  enquiry: "Enquiry",
-  eligibility_evaluation: "Eligibility evaluation",
-  university_selection: "University selection",
-  offer: "Offer",
-  visa_documentation: "Visa documentation",
-  status_tracking: "Status tracking",
-  enrolled: "Enrolled",
-  withdrawn: "Withdrawn",
-};
+const STAGES = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"] as const;
+const AGENT_MAX_STAGE = "status_tracking";
 
+// Every stage, `withdrawn` and a legacy value (QA8-11, e.g. "University review"): underscores to spaces, first letter capital.
 export function stageLabel(status: string): string {
-  if (STAGE_LABELS[status]) return STAGE_LABELS[status];
-  const words = status.replaceAll("_", " "); // QA8-11: a legacy value, e.g. "University review"
+  const words = status.replaceAll("_", " ");
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 

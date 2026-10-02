@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { AgentApplicationDetail, APPLICATIONS_URL, todayIso } from "@/lib/agentApplications";
+import { useUniversityCourses } from "@/lib/universityCourses";
 
 type Props = {
   detail: AgentApplicationDetail;
@@ -10,7 +11,6 @@ type Props = {
   onFailed: (message: string, status?: number) => void;
   onCancel: () => void;
 };
-type Course = { id: string; title: string; level: string };
 const FIELDS = [
   ["application_reference", "Application ID", "text", 140],
   ["intake", "Intake (required)", "text", 80],
@@ -25,20 +25,9 @@ type Key = (typeof FIELDS)[number][0] | "course_id";
 export default function AgentApplicationEditForm({ detail, onSaved, onFailed, onCancel }: Props) {
   const initial = Object.fromEntries([...FIELDS.map(([k]) => [k, (detail[k] as string | null) ?? ""]), ["course_id", detail.course_id ?? ""]]) as Record<Key, string>;
   const [values, setValues] = useState(initial);
-  const [courses, setCourses] = useState<Course[] | null>(null);
+  const courses = useUniversityCourses(detail.university_slug);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false); // QA8-06: a same-tick second submit sends nothing
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`/api/v1/public/universities/${detail.university_slug}`)
-      .then((res) => (res.ok ? res.json() : { courses: [] }))
-      .then((data) => !cancelled && setCourses(data.courses || []))
-      .catch(() => !cancelled && setCourses([]));
-    return () => {
-      cancelled = true;
-    };
-  }, [detail.university_slug]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();

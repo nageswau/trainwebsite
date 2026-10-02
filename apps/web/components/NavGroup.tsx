@@ -6,15 +6,16 @@ import { MouseEvent, useState, useTransition } from "react";
 import type { NavItem } from "@/lib/navigation";
 
 // AGN-008: a parent link with indented sub-links that differ only in their query string (the agency Applications filters). Only
-// rendered for an item that has `children`, so every other portal's sidebar is unchanged. Exported for the mobile menu (QA8-08).
-export function matches(href: string, pathname: string, params: URLSearchParams): boolean {
+// rendered for an item that has `children`, so every other portal's sidebar is unchanged.
+function matches(href: string, pathname: string, params: URLSearchParams): boolean {
   const target = new URL(href, "http://nav.local");
   if (target.pathname !== pathname) return false;
   for (const [key, value] of target.searchParams) if (params.get(key) !== value) return false;
   return true;
 }
 
-/** The href the menu marks as current: the matching child (path plus query), else the plain path (QA8-08, same rule as below). */
+/** The href the menu marks as current: the matching child (path plus query), else the plain path (QA8-08, same rule as below).
+ * Exported for the mobile menu. */
 export function currentHref(hrefs: string[], pathname: string, params: URLSearchParams): string {
   return hrefs.find((href) => href.includes("?") && matches(href, pathname, params)) ?? pathname;
 }

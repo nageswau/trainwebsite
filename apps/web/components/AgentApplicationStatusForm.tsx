@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useRef, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { AgentApplicationDetail, APPLICATIONS_URL, canWithdraw, nextStages, stageLabel } from "@/lib/agentApplications";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type Props = { detail: AgentApplicationDetail; onSaved: (d: AgentApplicationDetail, message: string) => void; onFailed: (message: string, status?: number) => void };
 
@@ -14,17 +15,10 @@ export default function AgentApplicationStatusForm({ detail, onSaved, onFailed }
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const withdrawRef = useRef<HTMLButtonElement>(null);
-  const returnFocus = useRef(false);
   const inFlight = useRef(false); // QA8-06: a same-tick second click / submit sends nothing
-
   // Keep keyboard users where they were once the confirmation closes by Escape / Keep / a failed withdraw (not after a success).
-  useEffect(() => {
-    if (!confirming && returnFocus.current) {
-      returnFocus.current = false;
-      withdrawRef.current?.focus();
-    }
-  }, [confirming]);
+  const focusAfter = useFocusAfterRender();
+  const withdrawId = `withdraw-${detail.id}`;
 
   async function send(to: string) {
     if (inFlight.current) return;
@@ -37,7 +31,7 @@ export default function AgentApplicationStatusForm({ detail, onSaved, onFailed }
       inFlight.current = false;
       setBusy(false);
     }
-    if (!outcome.ok && to === "withdrawn") returnFocus.current = true; // a failed withdraw: back to the button, if it still renders
+    if (!outcome.ok && to === "withdrawn") focusAfter(withdrawId); // a failed withdraw: back to the button, if it still renders
     setConfirming(false);
     if (!outcome.ok) return onFailed(outcome.message, outcome.status);
     const next = (outcome.data as { application?: AgentApplicationDetail }).application;
@@ -47,7 +41,7 @@ export default function AgentApplicationStatusForm({ detail, onSaved, onFailed }
   }
 
   function cancelConfirm() {
-    returnFocus.current = true;
+    focusAfter(withdrawId);
     setConfirming(false);
   }
 
@@ -90,7 +84,7 @@ export default function AgentApplicationStatusForm({ detail, onSaved, onFailed }
             </div>
           </div>
         ) : (
-          <button ref={withdrawRef} type="button" className="btn ghost small" style={{ marginTop: 12 }} onClick={() => setConfirming(true)}>
+          <button id={withdrawId} type="button" className="btn ghost small" style={{ marginTop: 12 }} onClick={() => setConfirming(true)}>
             Withdraw application
           </button>
         ))}
