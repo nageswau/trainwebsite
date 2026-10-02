@@ -123,7 +123,7 @@ export default function AdminBdmPanel({ role }: { role: string }) {
                 <thead>
                   <tr>
                     <th scope="col">Name</th><th scope="col">Employee ID</th><th scope="col">Module</th><th scope="col">Territory</th>
-                    <th scope="col">Manager</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Actions</span></th>
+                    <th scope="col">Manager</th><th scope="col">Status</th><th scope="col"><span className="visually-hidden">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>

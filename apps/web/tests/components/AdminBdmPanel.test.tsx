@@ -50,6 +50,8 @@ describe("AdminBdmPanel (bdm-001 AC13)", () => {
     const region = await screen.findByRole("region", { name: "BDMs" });
     expect(region.closest(".action-card")).toHaveClass("wide");
     expect(region.closest(".action-card")).toHaveClass("bdm-list"); // QA-15: CSS moves it above the form on small screens
+    // The actions column is named for screen readers only, with the project's real class (.visually-hidden, not .sr-only).
+    expect(within(region).getByText("Actions")).toHaveClass("visually-hidden");
   });
 
   it("checks for managers once, without loading the whole picker list", async () => {

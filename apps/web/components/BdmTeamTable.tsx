@@ -13,7 +13,7 @@ export default function BdmTeamTable({ page }: { page: Page<BdmTeamRow> }) {
       <div className="table-wrap" role="region" aria-label="Team" tabIndex={0}>
         <table>
           {/* QA-16: the page heading already says this; the caption stays for screen readers only. */}
-          <caption className="sr-only">BDMs who report to you</caption>
+          <caption className="visually-hidden">BDMs who report to you</caption>
           <thead>
             <tr><th scope="col">Name</th><th scope="col">Employee ID</th><th scope="col">Module</th><th scope="col">Territory</th><th scope="col">Mobile</th><th scope="col">Status</th></tr>
           </thead>

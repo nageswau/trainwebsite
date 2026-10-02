@@ -88,6 +88,7 @@ describe("QA-16: copy", () => {
 
   it("keeps the table caption for screen readers only, so the heading is not shown twice", () => {
     render(<BdmTeamTable page={{ items: [{ ...row("a"), bdm_type: "agent" as const }], total: 1, limit: 50, offset: 0 }} />);
-    expect(screen.getByText("BDMs who report to you", { selector: "caption" })).toHaveClass("sr-only");
+    // The project's screen-reader-only class is .visually-hidden (globals.css); there is no .sr-only rule.
+    expect(screen.getByText("BDMs who report to you", { selector: "caption" })).toHaveClass("visually-hidden");
   });
 });
