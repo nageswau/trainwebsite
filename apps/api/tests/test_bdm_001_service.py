@@ -64,23 +64,35 @@ def test_profile_not_an_object_is_422(raw):
 
 
 @pytest.mark.parametrize(
-    "patch",
+    ("patch", "detail"),
     [
-        {"bdm_type": "it"},
-        {"employee_id": "   "},
-        {"employee_id": "x" * 41},
-        {"employee_id": "E\x07"},
-        {"designation": "d" * 121},
-        {"reporting_manager_user_id": "not-a-uuid"},
-        {"user_id": MGR},
-        {"surprise": 1},
+        # QA-08: readable messages for admins -- no "bdm_profile.<field>:" path and no pydantic "Value error, " prefix.
+        ({"bdm_type": "it"}, "Module: Input should be 'agent', 'school' or 'college'"),
+        ({"employee_id": "   "}, "Employee ID is required"),
+        ({"employee_id": "x" * 41}, "Employee ID must be at most 40 characters"),
+        ({"employee_id": "E\x07"}, "Employee ID contains invalid characters"),
+        ({"designation": "d" * 121}, "Designation: String should have at most 120 characters"),
+        ({"reporting_manager_user_id": "not-a-uuid"}, "Reporting manager: choose a manager from the list"),
+        ({"user_id": MGR}, "Unknown field: user_id"),
+        ({"surprise": 1}, "Unknown field: surprise"),
     ],
 )
-def test_create_rejects_bad_fields_with_a_named_422(patch):
+def test_create_rejects_bad_fields_with_a_readable_422(patch, detail):
     with pytest.raises(HTTPException) as exc:
         bdm.parse_profile_create(_valid(**patch))
     assert exc.value.status_code == 422
-    assert exc.value.detail.startswith("bdm_profile.")
+    assert exc.value.detail == detail
+
+
+def test_missing_and_null_required_fields_read_plainly():
+    raw = _valid()
+    del raw["employee_id"]
+    with pytest.raises(HTTPException) as exc:
+        bdm.parse_profile_create(raw)
+    assert exc.value.detail == "Employee ID is required"
+    with pytest.raises(HTTPException) as exc:
+        bdm.parse_profile_update({"reporting_manager_user_id": None})
+    assert exc.value.detail == "Reporting manager is required"
 
 
 def test_create_requires_type_employee_id_and_manager():

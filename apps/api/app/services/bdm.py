@@ -37,17 +37,36 @@ def require_creator_may(actor: User, bdm_type: str, route: str) -> None:
         raise HTTPException(403, f"Your role cannot manage {bdm_type} BDMs")
 
 
+FIELD_LABELS = {
+    "bdm_type": "Module", "employee_id": "Employee ID", "designation": "Designation", "department": "Department",
+    "territory": "Territory", "reporting_manager_user_id": "Reporting manager",
+}
+
+
+def _readable(error: dict) -> str:
+    """QA-08: the admin sees a sentence, not a pydantic path ("bdm_profile.employee_id: Value error, ...")."""
+    field = str(error["loc"][0]) if error["loc"] else ""
+    label = FIELD_LABELS.get(field, field)
+    if error["type"] == "extra_forbidden":
+        return f"Unknown field: {field}"
+    if error["type"] == "missing" or (error.get("input", ...) is None and field in FIELD_LABELS):
+        return f"{label} is required"
+    if error["type"] == "value_error":
+        return error["msg"].removeprefix("Value error, ")
+    if error["type"] == "uuid_parsing":
+        return f"{label}: choose a manager from the list"
+    return f"{label}: {error['msg']}"
+
+
 def _parse(model: type[BaseModel], raw, not_an_object: str):
     """The /admin/users payload is an untyped dict (existing contract), so the nested profile is validated here; the first error
-    becomes a 422 that names the field."""
+    becomes a readable 422 that names the field."""
     if not isinstance(raw, dict):
         raise HTTPException(422, not_an_object)
     try:
         return model.model_validate(raw)
     except ValidationError as exc:
-        error = exc.errors()[0]
-        field = ".".join(str(part) for part in error["loc"])
-        raise HTTPException(422, f"bdm_profile.{field}: {error['msg']}" if field else f"bdm_profile: {error['msg']}") from None
+        raise HTTPException(422, _readable(exc.errors()[0])) from None
 
 
 def parse_profile_create(raw) -> BdmProfileCreate:
