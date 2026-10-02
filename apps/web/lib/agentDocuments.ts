@@ -1,5 +1,6 @@
 // AGN-009 (DEC-SCOPE-052): an agency's documents and document requests -- the shapes, labels and §6 review rules the Documents
 // page shares. The server is the authority (scope, matrix, reasons, states); these only keep the screens from offering a refused action.
+import { detailMessage } from "@/lib/apiErrors";
 import type { User } from "@/lib/types";
 
 export const DOCUMENTS_URL = "/api/v1/workflows/overseas/agent/crm/documents";
@@ -10,6 +11,23 @@ export const reviewUrl = (id: string) => `/api/v1/workflows/overseas/documents/$
 // EVID-015 §5 Step 4 (G3); "Other" needs a description. Mirrors the API's AgentDocumentType.
 export const DOCUMENT_TYPES = ["Passport", "Academic certificates", "Transcripts", "English test", "CV", "SOP", "LOR", "Financial documents", "Other"] as const;
 export const OTHER = "Other";
+// AGN-010 (DEC-SCOPE-054 O3): uploads also take an offer letter, which must name its application; requests keep DOCUMENT_TYPES.
+export const OFFER_LETTER = "Offer letter";
+export const UPLOAD_DOCUMENT_TYPES = [...DOCUMENT_TYPES, OFFER_LETTER] as const;
+
+// Download uses the scoped OVS-005 route: the presigned link is fetched on demand and never stored. Returns an error message, or null
+// once the file has been opened in a new tab.
+export async function openDocument(id: string): Promise<string | null> {
+  try {
+    const response = await fetch(downloadUrl(id));
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || typeof data.url !== "string") return detailMessage(data.detail, "The document could not be opened.");
+    window.open(data.url, "_blank", "noreferrer");
+    return null;
+  } catch {
+    return "Couldn't reach the server. Check your connection and try again.";
+  }
+}
 export const FILE_ACCEPT = "application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png";
 
 export const VIEWS = ["pending", "uploaded", "additional"] as const;

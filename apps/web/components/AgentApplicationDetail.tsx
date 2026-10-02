@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import AgentApplicationEditForm from "./AgentApplicationEditForm";
+import AgentApplicationOffer from "./AgentApplicationOffer";
 import AgentApplicationStatusForm from "./AgentApplicationStatusForm";
 import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -11,11 +12,13 @@ type Props = { id: string; onChanged: (d: Detail) => void; onClose: () => void }
 
 // AGN-008: one application -- fields, status history, edit and status change. A 409 (or a status 422) shows the server's words and
 // reloads, so the screen always ends on the real state (stale, withdrawn, archived); the reload also updates the list card (QA8-03).
-// A 422 from Save keeps the edit form open with the user's input (QA8-01).
+// A 422 from Save keeps the edit form open with the user's input (QA8-01). AGN-010: the offer block sits between the fields and the
+// status form, and its form follows the edit form's rules (a 422 keeps the input; 409 reloads).
 export default function AgentApplicationDetail({ id, onChanged, onClose }: Props) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "gone" | "error">("loading");
   const [editing, setEditing] = useState(false);
+  const [offering, setOffering] = useState(false); // AGN-010: the offer form; one form of the detail is open at a time
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const focusAfter = useFocusAfterRender();
   const firstLoad = useRef(true); // the heading takes focus on the first successful load only
@@ -23,6 +26,8 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
   const editId = `detail-edit-${id}`;
   const noticeId = `detail-notice-${id}`;
   const readOnlyId = `detail-read-only-${id}`;
+  const offerHeadingId = `offer-heading-${id}`; // AgentApplicationOffer's ids
+  const offerOpenId = `offer-open-${id}`;
 
   const load = useCallback(async (): Promise<Detail | null> => {
     try {
@@ -49,8 +54,10 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
 
   function saved(next: Detail, message: string) {
     if (next.read_only_reason === "withdrawn" && detail?.read_only_reason !== "withdrawn") focusAfter(readOnlyId);
+    else if (offering) focusAfter(offerHeadingId);
     setDetail(next);
     setEditing(false);
+    setOffering(false);
     setNotice({ text: message, failed: false });
     onChanged(next);
   }
@@ -59,6 +66,7 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
     if (status === 404) return setState("gone");
     if (status === 409 || status === 422) {
       setEditing(false); // the reload shows the real state; stale input must not stay on screen
+      setOffering(false);
       load().then((reloaded) => reloaded && onChanged(reloaded));
     }
   }
@@ -124,14 +132,26 @@ export default function AgentApplicationDetail({ id, onChanged, onClose }: Props
             <dt>Next action</dt>
             <dd>{detail.next_action ?? "—"}</dd>
           </dl>
-          {!detail.read_only_reason && (
+          {!detail.read_only_reason && !offering && (
             <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(true)}>
               Edit
             </button>
           )}
         </>
       )}
-      {!detail.read_only_reason && !editing && <AgentApplicationStatusForm key={detail.status} detail={detail} onSaved={saved} onFailed={failed} />}
+      <AgentApplicationOffer
+        detail={detail}
+        open={offering}
+        canOpen={!detail.read_only_reason && !editing}
+        onOpen={() => setOffering(true)}
+        onCancel={() => {
+          focusAfter(offerOpenId);
+          setOffering(false);
+        }}
+        onSaved={saved}
+        onFailed={editFailed}
+      />
+      {!detail.read_only_reason && !editing && !offering && <AgentApplicationStatusForm key={detail.status} detail={detail} onSaved={saved} onFailed={failed} />}
       <h5>Status history</h5>
       <ol aria-label="Status history">
         {detail.history.map((h, i) => (

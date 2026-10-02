@@ -137,6 +137,7 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .funding-finished summary { cursor: pointer; font-weight: 800; }
 .funding-finished .record-details, .funding-card .record-details + .record-details { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
 .funding-notes { white-space: pre-wrap; }
+.offer-conditions { white-space: pre-wrap; overflow-wrap: anywhere; } /* AGN-010: conditions as written, one per line; long words wrap at 320px */
 /* QA-06: real heading levels (h1 page, h2 sections) at the sizes the page already had -- the site-wide h1/h2 are marketing sizes. */
 .funding-panel h1 { font-size: clamp(28px, 3.5vw, 44px); }
 .funding-panel h2 { font-size: 20px; }
