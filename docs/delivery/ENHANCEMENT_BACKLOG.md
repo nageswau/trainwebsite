@@ -3846,7 +3846,10 @@ detail allowlist (additive only), the migration chain (`0058` may collide with p
 
 **Complexity:** Medium. **Risk:** High (financial trigger).
 
-**Status (2026-10-02): IMPLEMENTED, not complete** on `feature/agn-013-enrollment-confirmation` (evidence in `docs/quality/RTM.md`,
+**Status (2026-10-02, final verification @ `d871cdd`): VERIFIED, NOT COMPLETE.** Requirement and AC01–AC09 met with fresh evidence
+(`docs/quality/RTM.md`, AGN-013 row); merged `main` @ `9adcbca` (migration now `0060_agent_app_enrollment`, decision `DEC-SCOPE-054`).
+Open for the owner: the Browser Use gate (tool input fails after in-app navigation here; Playwright used instead), QA13-03 (Medium) and
+QA13-04…09 (Low); `main` carries an AGN-014 dashboard test failure caused by AGN-016 (not AGN-013). Earlier status: **IMPLEMENTED** on `feature/agn-013-enrollment-confirmation` (evidence in `docs/quality/RTM.md`,
 AGN-013 row): lite backend set 200 passed; web lite set 52 passed; `tsc` and eslint clean. Browser QA first pass done
 (`docs/quality/AGN-013_BROWSER_QA_2026-10-02.md`; Playwright `agn-013` 2/2); QA13-01 (UX repetition) and QA13-02 fixed. Pending:
 the independent Codex review and the owner's full suites.
