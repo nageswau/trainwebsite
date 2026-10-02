@@ -345,7 +345,7 @@ covers the commission-specific piece).
   change has been made; this note only records that the previously-safe assumption no longer holds
   universally.
 
-- **Addendum, 2026-10-02 (`AGN-009`, `DEC-SCOPE-051`; migration `0058_agent_documents`, after `0057_agent_applications`).**
+- **Addendum, 2026-10-02 (`AGN-009`, `DEC-SCOPE-052`; migration `0058_agent_documents`, after `0057_agent_applications`).**
   `student_documents.student_id` becomes nullable; new nullable columns `agent_student_id` (FK → `agent_students.id`, index
   `ix_student_documents_agent_student_id`), `document_label` String(80), `uploaded_by_user_id` (FK → `users.id`), `fulfils_request_id`
   (FK → `document_requests.id`, unique `uq_student_documents_fulfils_request_id`); CHECK `ck_student_documents_owner`

@@ -3,7 +3,7 @@
 - **Feature:** `AGN-009` = backlog `ang-009` (`docs/delivery/AGENT_CRM_BACKLOG.md` §ang-009).
 - **Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Documents, §4 Staff sidebar (Documents →
   Pending / Uploaded / Additional Documents), §5 Step 4 document types, §6 (Upload ✅/✅, Verify ✅/⚠️ Optional, Reject ✅/❌).
-- **Decision:** `DEC-SCOPE-051` (provisional number; owner answers in-session 2026-10-02, recorded in
+- **Decision:** `DEC-SCOPE-052` (drafted as `051`, renumbered on merging `main` @ `268d132` where `051` is AGN-014; owner answers in-session 2026-10-02, recorded in
   `PRODUCT_DECISION_REGISTER.md`). Builds on `DEC-SCOPE-042` G4 (staff: assigned students only), `DEC-SCOPE-044` P1/P5/P6
   (Verify toggle; agents decide `pending` only; staff verify only), `DEC-SCOPE-050` (agency record ownership pattern).
 - **Method:** graphify (graph refreshed 2026-10-02) then source reading; impact analysis in the session that cut this branch.

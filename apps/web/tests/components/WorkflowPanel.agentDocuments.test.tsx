@@ -16,7 +16,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// AGN-009 (DEC-SCOPE-051): the agent Documents page is AgentDocumentsSection (PortalPage). The generic upload form and the AGN-003
+// AGN-009 (DEC-SCOPE-052): the agent Documents page is AgentDocumentsSection (PortalPage). The generic upload form and the AGN-003
 // review queue it replaces are no longer rendered for agents; a student's Documents page is unchanged.
 describe("WorkflowPanel Documents", () => {
   it.each([

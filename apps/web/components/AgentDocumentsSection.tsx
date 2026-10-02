@@ -9,7 +9,7 @@ import AgentDocumentUploadForm from "./AgentDocumentUploadForm";
 import { parseView } from "@/lib/agentDocuments";
 import type { User } from "@/lib/types";
 
-// AGN-009 (DEC-SCOPE-051): the agency Documents page -- upload and request forms, then the sidebar view in the URL (?view=pending |
+// AGN-009 (DEC-SCOPE-052): the agency Documents page -- upload and request forms, then the sidebar view in the URL (?view=pending |
 // uploaded | additional). Staff see only their assigned students' documents (G4); a non-agency viewer (Super Admin) gets a note, as
 // on the Applications page.
 function Viewed({ reloadKey, user }: { reloadKey: number; user: User }) {

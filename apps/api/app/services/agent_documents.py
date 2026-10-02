@@ -1,4 +1,4 @@
-"""AGN-009 / DEC-SCOPE-051 -- agency documents: scope, history events, stored files, list items.
+"""AGN-009 / DEC-SCOPE-052 -- agency documents: scope, history events, stored files, list items.
 
 Functions only (the shape of services/agent_applications.py); write functions never commit -- the router locks, writes, audits and
 commits once. Spec: docs/superpowers/specs/2026-10-02-agn-009-agent-documents-design.md.

@@ -459,7 +459,7 @@ class ApplicationStatusHistory(Base, TimestampMixin):
 
 
 class StudentDocument(Base, TimestampMixin):
-    # Owner (AGN-009, DEC-SCOPE-051): a student's account (`student_id`), an agency record (`agent_student_id`, AGN-004), or both
+    # Owner (AGN-009, DEC-SCOPE-052): a student's account (`student_id`), an agency record (`agent_student_id`, AGN-004), or both
     # -- an agency upload for a student with a login sets both (the AGN-008 pattern). Rows made before AGN-009 have `student_id`
     # only. `file_url` is a server-generated key (`agent-documents/...`) for agency uploads; agent lists never return it.
     __tablename__ = "student_documents"
@@ -486,7 +486,7 @@ class StudentDocument(Base, TimestampMixin):
 
 
 class DocumentRequest(Base, TimestampMixin):
-    """AGN-009 (DEC-SCOPE-051 G4/G5): an agency's request for an additional document from one of its students. Open until an upload
+    """AGN-009 (DEC-SCOPE-052 G4/G5): an agency's request for an additional document from one of its students. Open until an upload
     made against it fulfils it, or a member cancels it."""
 
     __tablename__ = "document_requests"
@@ -506,7 +506,7 @@ class DocumentRequest(Base, TimestampMixin):
 
 
 class DocumentEvent(Base):
-    """AGN-009 (DEC-SCOPE-051): a document's history, one row per event, append-only. `seq` orders events written in one
+    """AGN-009 (DEC-SCOPE-052): a document's history, one row per event, append-only. `seq` orders events written in one
     transaction (they share `now()`). `file_key` is the replaced object's key; it is never returned by the API."""
 
     __tablename__ = "document_events"

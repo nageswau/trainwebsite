@@ -1,4 +1,4 @@
-"""AGN-009 -- an agency's documents for its students, with or without a login (DEC-SCOPE-051; spec §4).
+"""AGN-009 -- an agency's documents for its students, with or without a login (DEC-SCOPE-052; spec §4).
 
 Masters see the agency's documents; staff only those of students assigned to them (G4); anything outside the caller's scope is 404.
 Every write locks the organisation row first, then the student, the request and the document (AGN-004's lock order), writes its

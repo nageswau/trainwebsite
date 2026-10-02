@@ -375,7 +375,7 @@ class AgentDocumentReview(BaseModel):
     notes: str | None = Field(default=None, max_length=10000)
 
 
-# AGN-009 (DEC-SCOPE-051 G3): EVID-015 §5 Step 4, stored as written (the free-text style the visa checklist compares); the web mirrors
+# AGN-009 (DEC-SCOPE-052 G3): EVID-015 §5 Step 4, stored as written (the free-text style the visa checklist compares); the web mirrors
 # it in lib/agentDocuments.ts DOCUMENT_TYPES.
 AgentDocumentType = Literal["Passport", "Academic certificates", "Transcripts", "English test", "CV", "SOP", "LOR", "Financial documents", "Other"]
 
@@ -809,6 +809,40 @@ class CommissionCreate(BaseModel):
 class CommissionAmountUpdate(BaseModel):
     amount: float = Field(ge=0)
     currency: str | None = Field(default=None, min_length=3, max_length=10)
+
+
+# AGN-014 (DEC-SCOPE-051): the agency's commission report -- every amount is per currency, never summed across currencies.
+class CommissionReportTotal(BaseModel):
+    currency: str
+    count: int
+    amount: float
+
+
+class CommissionReportStatusRow(CommissionReportTotal):
+    status: str
+
+
+class CommissionReportUniversityRow(CommissionReportTotal):
+    university: str
+    country: str
+
+
+class CommissionReportCountryRow(CommissionReportTotal):
+    country: str
+
+
+class CommissionReportIntakeRow(CommissionReportTotal):
+    intake: str
+
+
+class CommissionReportOut(BaseModel):
+    date_from: date | None
+    date_to: date | None
+    totals: list[CommissionReportTotal]
+    by_status: list[CommissionReportStatusRow]
+    by_university: list[CommissionReportUniversityRow]
+    by_country: list[CommissionReportCountryRow]
+    by_intake: list[CommissionReportIntakeRow]
 
 
 class InboundUniversityEmailIn(BaseModel):

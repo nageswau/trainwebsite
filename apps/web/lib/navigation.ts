@@ -66,7 +66,7 @@ export const OVERSEAS_PUBLIC:NavItem[] = [
 ];
 
 const AGENT_APPLICATION_FILTERS: NavItem[] = STATUS_GROUPS.filter((g) => g !== "all").map((g) => ({ label: GROUP_LABELS[g], href: `/overseas/agent/applications?status=${g}` }));
-// AGN-009 (DEC-SCOPE-051 G9): EVID-015 §4 Documents -> Pending / Uploaded / Additional Documents, for Masters and staff.
+// AGN-009 (DEC-SCOPE-052 G9): EVID-015 §4 Documents -> Pending / Uploaded / Additional Documents, for Masters and staff.
 const AGENT_DOCUMENT_VIEWS: NavItem[] = VIEWS.map((v) => ({ label: VIEW_NAV_LABELS[v], href: `/overseas/agent/documents?view=${v}` }));
 
 export const PORTAL_NAV:Record<string,NavItem[]> = {

@@ -72,7 +72,7 @@ describe("WorkflowPanel reference fields (ENH-031)", () => {
     expect(mock.mock.calls.some(([url]) => String(url) === "/api/v1/lookups/overseas-students?limit=20&q=ash&purpose=link")).toBe(true);
   });
 
-  // AGN-009 (DEC-SCOPE-051): agents upload on AgentDocumentsSection (its own searchable student picker), so this form is the student's
+  // AGN-009 (DEC-SCOPE-052): agents upload on AgentDocumentsSection (its own searchable student picker), so this form is the student's
   // only: no student picker, and the application lookup is scoped to the signed-in student by the server.
   it("a student's document upload searches their own applications, with no student picker", async () => {
     const mock = stub({ "overseas-applications": { items: [], truncated: false } });

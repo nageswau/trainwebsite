@@ -1,4 +1,4 @@
-// AGN-009 (DEC-SCOPE-051): an agency's documents and document requests -- the shapes, labels and §6 review rules the Documents
+// AGN-009 (DEC-SCOPE-052): an agency's documents and document requests -- the shapes, labels and §6 review rules the Documents
 // page shares. The server is the authority (scope, matrix, reasons, states); these only keep the screens from offering a refused action.
 import type { User } from "@/lib/types";
 

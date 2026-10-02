@@ -6,7 +6,7 @@ import { ReviewDecision, reviewUrl } from "@/lib/agentDocuments";
 
 const LABELS: Record<ReviewDecision, string> = { verified: "Verified", rejected: "Rejected", changes_required: "Changes required" };
 
-// AGN-009 (DEC-SCOPE-051 G1/G2 on DEC-SCOPE-044 P1/P6): a Master picks one of three decisions and gives a reason to reject or ask for
+// AGN-009 (DEC-SCOPE-052 G1/G2 on DEC-SCOPE-044 P1/P6): a Master picks one of three decisions and gives a reason to reject or ask for
 // changes; staff with Verify get one "Mark verified" button. The server enforces both; `required` only saves a round trip.
 export default function AgentDocumentReviewForm({ id, name, decisions, onDone }: { id: string; name: string; decisions: ReviewDecision[]; onDone: (message: string, failed: boolean, status?: number) => void }) {
   const [decision, setDecision] = useState<ReviewDecision>(decisions[0]);

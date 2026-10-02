@@ -14,7 +14,7 @@ existing verify/download/upload routes keep their contracts and gain events. Web
 **Tech Stack:** FastAPI, SQLAlchemy 2 async, Alembic, PostgreSQL, Pydantic 2, pytest + httpx; Next.js 15, React 19, vitest +
 Testing Library, Playwright. No new dependency.
 
-**Spec:** `docs/superpowers/specs/2026-10-02-agn-009-agent-documents-design.md` (decision `DEC-SCOPE-051`).
+**Spec:** `docs/superpowers/specs/2026-10-02-agn-009-agent-documents-design.md` (decision `DEC-SCOPE-052`).
 
 ## Global Constraints
 

@@ -3,7 +3,7 @@
 Revision ID: 0058_agent_documents
 Revises: 0057_agent_applications
 
-docs/superpowers/specs/2026-10-02-agn-009-agent-documents-design.md §3 (DEC-SCOPE-051). Additive: `student_id` becomes nullable,
+docs/superpowers/specs/2026-10-02-agn-009-agent-documents-design.md §3 (DEC-SCOPE-052). Additive: `student_id` becomes nullable,
 four nullable columns, one CHECK (every existing row already has `student_id`), two new tables. No existing row is read or written.
 0001 builds a fresh database from the current models, which already carry all of this, so every add is guarded (0054's idiom).
 downgrade() refuses while AGN-009 data exists rather than silently dropping it: an agency-only document would lose its only owner.

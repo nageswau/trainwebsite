@@ -1,9 +1,14 @@
+import contextlib
+import csv
+import io
 import logging
+import re
 import secrets
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from sqlalchemy import func, or_, select
@@ -11,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.api.files import _allowed
+from app.api.school_bulk import _safe_cell
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
@@ -54,6 +60,7 @@ from app.models import (
     QuestionThread,
     Scholarship,
     ScholarshipApplication,
+    SchoolStudent,
     StudentDocument,
     Submission,
     SupportTicket,
@@ -78,6 +85,7 @@ from app.schemas import (
     AttendanceCorrectionIn,
     CommissionAmountUpdate,
     CommissionCreate,
+    CommissionReportOut,
     CourseFeedbackCreate,
     EnrollmentCreate,
     EnrollmentProgressUpdate,
@@ -2057,7 +2065,7 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
             extra={"extra_fields": {"document_id": str(document_id), "actor_id": str(user.id), "verification_status": review.verification_status}},
         )
         raise HTTPException(403, REVIEW_MASTER_ONLY)
-    # AGN-009 (DEC-SCOPE-051 G1/G2): an agent rejecting or asking for changes says why -- after the role rule, so staff still get 403.
+    # AGN-009 (DEC-SCOPE-052 G1/G2): an agent rejecting or asking for changes says why -- after the role rule, so staff still get 403.
     notes = (review.notes or "").strip() or None
     if review.verification_status != "verified" and notes is None:
         raise HTTPException(422, REVIEW_REASON_REQUIRED)
@@ -2420,6 +2428,130 @@ async def agent_commissions(user: User = Depends(get_current_user), db: AsyncSes
         }
         for commission, application, university, student in rows
     ]
+
+
+# AGN-014 (DEC-SCOPE-051): the agency's commission report, Master-only like the list above. `by_status` is in lifecycle order.
+COMMISSION_STATUS_RANK = {status: rank for rank, status in enumerate(("estimated", "eligible", "claimed", "payout_pending", "paid"))}
+# Strings, not `date`: FastAPI would answer a bad date with 422 before the Master check (spec §5.1). Documented for OpenAPI here.
+REPORT_DATE_FROM = Query(None, description="Optional. YYYY-MM-DD: the first UTC day (inclusive) of the commissions' created date.")
+REPORT_DATE_TO = Query(None, description="Optional. YYYY-MM-DD: the last UTC day (inclusive) of the commissions' created date; before 9999-12-31.")
+_YYYY_MM_DD = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _report_date(value: str | None, name: str) -> date | None:
+    if not value:
+        return None
+    # fullmatch first: `date.fromisoformat` also takes "20260930" and ISO week dates, which the contract does not offer.
+    if _YYYY_MM_DD.fullmatch(value):
+        with contextlib.suppress(ValueError):  # e.g. 2026-02-30
+            return date.fromisoformat(value)
+    raise HTTPException(422, f"{name} must be a date (YYYY-MM-DD)")
+
+
+async def _commission_report_items(user: User, db: AsyncSession, date_from: str | None, date_to: str | None) -> tuple[list[dict], date | None, date | None]:
+    """Guards first, then the dates (a refused caller never sees a 422), then one scoped read: a single snapshot for every
+    breakdown. Days are inclusive UTC calendar days on the commission's created date (R3/R7)."""
+    _require(user, {"agent"}, "overseas")
+    _require_agent_master(user)
+    start, end = _report_date(date_from, "date_from"), _report_date(date_to, "date_to")
+    if start and end and end < start:
+        raise HTTPException(422, "date_to must be on or after date_from")
+    if end == date.max:  # the exclusive bound below is the next day, which does not exist (a date input accepts 9999-12-31)
+        raise HTTPException(422, "date_to must be before 9999-12-31")
+    query = (
+        select(AgentCommission, OverseasApplication.intake, University.name, Country.name, func.coalesce(User.full_name, SchoolStudent.full_name))
+        .select_from(AgentCommission)
+        .join(OverseasApplication, OverseasApplication.id == AgentCommission.application_id)
+        .join(University, University.id == OverseasApplication.university_id)
+        .join(Country, Country.id == University.country_id)
+        # A bridged school-student application has no login (`student_id` NULL): outer joins, never an inner join on User.
+        .outerjoin(User, User.id == OverseasApplication.student_id)
+        .outerjoin(SchoolStudent, SchoolStudent.id == OverseasApplication.school_student_id)
+        .where(AgentCommission.agent_id.in_(org_member_ids(user)))
+        .order_by(AgentCommission.created_at, AgentCommission.id)
+    )
+    if start:
+        query = query.where(AgentCommission.created_at >= datetime.combine(start, time.min, tzinfo=UTC))
+    if end:
+        query = query.where(AgentCommission.created_at < datetime.combine(end + timedelta(days=1), time.min, tzinfo=UTC))
+    items = [
+        {
+            "student": student or "—", "university": university, "country": country, "intake": intake,
+            "status": commission.status, "amount": Decimal(commission.amount), "currency": commission.currency,
+            "created_at": commission.created_at, "claimed_at": commission.claimed_at, "paid_at": commission.paid_at,
+            "claim_reference": commission.claim_reference,
+        }
+        for commission, intake, university, country, student in (await db.execute(query)).all()
+    ]
+    return items, start, end
+
+
+def _commission_groups(items: list[dict], keys: tuple[str, ...]) -> list[dict]:
+    """Count and amount per (keys..., currency) -- currencies are never added together."""
+    groups: dict[tuple, dict] = {}
+    for item in items:
+        group = groups.setdefault(
+            tuple(item[k] for k in keys) + (item["currency"],),
+            {**{k: item[k] for k in keys}, "currency": item["currency"], "count": 0, "amount": Decimal(0)},
+        )
+        group["count"] += 1
+        group["amount"] += item["amount"]
+    return [{**group, "amount": float(round(group["amount"], 2))} for group in groups.values()]
+
+
+def _ranked(groups: list[dict], keys: tuple[str, ...]) -> list[dict]:
+    return sorted(groups, key=lambda g: (-g["amount"], *(g[k] for k in keys), g["currency"]))
+
+
+def _report_logged(user: User, fmt: str, rows: int, start: date | None, end: date | None) -> None:
+    membership = user.agent_membership
+    logger.info("agent_commission_report", extra={"extra_fields": {
+        "actor_id": str(user.id), "org_id": str(membership.org_id) if membership else None, "format": fmt, "rows": rows,
+        "date_from": start.isoformat() if start else None, "date_to": end.isoformat() if end else None,
+    }})
+
+
+@router.get("/overseas/agent/commissions/report", response_model=CommissionReportOut)
+async def agent_commission_report(date_from: str | None = REPORT_DATE_FROM, date_to: str | None = REPORT_DATE_TO, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    items, start, end = await _commission_report_items(user, db, date_from, date_to)
+    _report_logged(user, "json", len(items), start, end)
+    unknown_last = len(COMMISSION_STATUS_RANK)
+    return {
+        "date_from": start, "date_to": end,
+        "totals": sorted(_commission_groups(items, ()), key=lambda g: g["currency"]),
+        "by_status": sorted(_commission_groups(items, ("status",)), key=lambda g: (COMMISSION_STATUS_RANK.get(g["status"], unknown_last), g["status"], g["currency"])),
+        "by_university": _ranked(_commission_groups(items, ("university", "country")), ("university", "country")),
+        "by_country": _ranked(_commission_groups(items, ("country",)), ("country",)),
+        "by_intake": _ranked(_commission_groups(items, ("intake",)), ("intake",)),
+    }
+
+
+COMMISSION_CSV_COLUMNS = ("Student", "University", "Country", "Intake", "Status", "Amount", "Currency", "Created", "Claimed", "Paid", "Claim reference")
+
+
+def _csv_day(value: datetime | None) -> str:
+    return value.astimezone(UTC).date().isoformat() if value else ""
+
+
+@router.get("/overseas/agent/commissions/report.csv")
+async def agent_commission_report_csv(date_from: str | None = REPORT_DATE_FROM, date_to: str | None = REPORT_DATE_TO, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-014 R4: one row per commission. Every text cell goes through `_safe_cell` -- names and references are user-entered."""
+    items, start, end = await _commission_report_items(user, db, date_from, date_to)
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(COMMISSION_CSV_COLUMNS)
+    for item in items:
+        writer.writerow([
+            _safe_cell(item["student"]), _safe_cell(item["university"]), _safe_cell(item["country"]), _safe_cell(item["intake"]),
+            item["status"], f"{item['amount']:.2f}", _safe_cell(item["currency"]), _csv_day(item["created_at"]),
+            _csv_day(item["claimed_at"]), _csv_day(item["paid_at"]), _safe_cell(item["claim_reference"] or ""),
+        ])
+    _report_logged(user, "csv", len(items), start, end)
+    filename = f"agency-commissions-{start.isoformat() if start else 'all'}-to-{end.isoformat() if end else 'all'}.csv"
+    return Response(
+        content=buffer.getvalue(), media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}", "Cache-Control": "private, no-store"},
+    )
 
 
 @router.post("/overseas/agent/commissions/{commission_id}/claim")
