@@ -94,6 +94,7 @@ async def update_task(task_id: UUID, payload: AgentTaskUpdate, user: User = Depe
     await lock_active_org(db, membership.org_id)
     task = await load_scoped_task(db, user, task_id, lock=True)
     student = await db.get(AgentStudent, task.agent_student_id, populate_existing=True)  # in scope: the task's scope is its student's
+    assert student is not None  # the task's foreign key (ON DELETE RESTRICT) guarantees the row
     if student.status == "archived":
         raise _refuse(409, ARCHIVED, membership, user, student.id, task.id)
     if task.status != "open":

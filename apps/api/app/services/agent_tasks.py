@@ -146,7 +146,7 @@ async def check_application(db: AsyncSession, user: User, student: AgentStudent,
 
 async def ensure_capacity(db: AsyncSession, student_id) -> None:
     """T7: runs under the agency lock, so two creates cannot both pass the count."""
-    count = await db.scalar(select(func.count()).select_from(AgentTask).where(AgentTask.agent_student_id == student_id, AgentTask.status == "open"))
+    count = await db.scalar(select(func.count()).select_from(AgentTask).where(AgentTask.agent_student_id == student_id, AgentTask.status == "open")) or 0
     if count >= OPEN_TASK_CAP:
         raise HTTPException(409, CAP_REACHED)
 
