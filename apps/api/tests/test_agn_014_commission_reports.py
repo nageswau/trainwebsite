@@ -280,7 +280,24 @@ async def test_revenue_is_per_currency(db_session):  # Review Focus 2
     await mk_commission(db_session, ctx, status="paid", amount=12000, currency="INR")
     await mk_commission(db_session, ctx, status="paid", amount=500, currency="USD")
     async with client_for(ctx["master"].email) as c:
-        assert _metric((await c.get(DASHBOARD)).json(), "Revenue") == "INR 12,000 · USD 500"
+        # Browser QA14-01: a no-break space after the separator, so a narrow card wraps between currencies, not after "·".
+        assert _metric((await c.get(DASHBOARD)).json(), "Revenue") == "INR 12,000 · USD 500"
+
+
+@pytest.mark.asyncio
+async def test_master_reports_paid_commission_row_is_per_currency(db_session):  # browser QA14-04
+    ctx = await mk_active_org(db_session, name=f"PaidRow {uniq()}")
+    reports = "/api/v1/portal/overseas/agent/reports"
+
+    def paid(payload):
+        return next(r["value"] for r in payload["rows"] if r["metric"] == "Paid commission")
+
+    async with client_for(ctx["master"].email) as c:
+        assert paid((await c.get(reports)).json()) == "INR 0"
+        await mk_commission(db_session, ctx, status="paid", amount=20000, currency="INR")
+        await mk_commission(db_session, ctx, status="paid", amount=500, currency="USD")
+        await mk_commission(db_session, ctx, status="claimed", amount=7500, currency="INR")
+        assert paid((await c.get(reports)).json()) == "INR 20,000 · USD 500"
 
 
 @pytest.mark.asyncio
