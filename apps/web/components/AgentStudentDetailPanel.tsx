@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import AgentStudentCounselingCard from "./AgentStudentCounselingCard";
 import AgentStudentForm from "./AgentStudentForm";
 import { AgentStudentDetail, AgentStudentItem } from "@/lib/agentStudents";
 
@@ -15,12 +16,15 @@ export default function AgentStudentDetailPanel({
   detail,
   onClose,
   onSaved,
+  onDirtyChange,
 }: {
   detail: AgentStudentDetail;
   onClose: () => void;
-  onSaved: (s: AgentStudentDetail) => void;
+  onSaved: (s: AgentStudentDetail, notice?: string) => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  // One form at a time (AGN-006): the Step 1 edit replaces the details; counseling edits inside its own section.
+  const [editing, setEditing] = useState<"none" | "student" | "counseling">("none");
   const headingId = `agent-student-detail-${detail.id}`;
 
   useEffect(() => {
@@ -50,19 +54,19 @@ export default function AgentStudentDetailPanel({
       aria-labelledby={headingId}
       style={{ marginTop: 16 }}
       onKeyDown={(e) => {
-        if (e.key === "Escape" && !editing) onClose();
+        if (e.key === "Escape" && editing === "none") onClose();
       }}
     >
       <h4 id={headingId} tabIndex={-1}>
         {detail.full_name}
       </h4>
-      {editing ? (
+      {editing === "student" ? (
         <AgentStudentForm
           mode="edit"
           student={detail}
-          onCancel={() => setEditing(false)}
+          onCancel={() => setEditing("none")}
           onSaved={(s) => {
-            setEditing(false);
+            setEditing("none");
             onSaved(s);
             // The form (and its focused Save button) unmounts: put keyboard focus back on this record.
             requestAnimationFrame(() => document.getElementById(headingId)?.focus());
@@ -78,14 +82,24 @@ export default function AgentStudentDetailPanel({
               </div>
             ))}
           </dl>
-          {!detail.has_login && detail.status === "active" && (
-            <button type="button" className="btn small" onClick={() => setEditing(true)}>
+          {editing === "none" && !detail.has_login && detail.status === "active" && (
+            <button type="button" className="btn small" onClick={() => setEditing("student")}>
               Edit
             </button>
-          )}{" "}
-          <button type="button" className="btn secondary small" onClick={onClose}>
-            Close
-          </button>
+          )}
+          <AgentStudentCounselingCard
+            detail={detail}
+            editing={editing === "counseling"}
+            onEditingChange={(open) => setEditing(open ? "counseling" : "none")}
+            onSaved={(s) => onSaved(s, `Counseling saved for ${s.full_name}.`)}
+            onDirtyChange={onDirtyChange}
+            onStale={(s) => onSaved(s, `${s.full_name} has been archived.`)}
+          />
+          {editing === "none" && (
+            <button type="button" className="btn secondary small" onClick={onClose} style={{ marginTop: 16 }}>
+              Close
+            </button>
+          )}
         </>
       )}
     </section>

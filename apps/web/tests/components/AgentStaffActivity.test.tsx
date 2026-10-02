@@ -15,6 +15,10 @@ afterEach(() => {
 });
 
 describe("activityLabel (AGN-021)", () => {
+  it("labels a counseling save (AGN-006)", () => {
+    expect(activityLabel("agent_student.counseling")).toBe("Recorded counseling");
+  });
+
   it("labels every allow-listed action and falls back for others", () => {
     expect(activityLabel("agent_student.create")).toBe("Created a student record");
     expect(activityLabel("document.verify")).toBe("Verified a document");

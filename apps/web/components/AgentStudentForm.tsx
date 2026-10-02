@@ -11,6 +11,7 @@ import {
   duplicateDetail,
   emptyValues,
   FieldKey,
+  fieldErrors,
   FormValues,
   NOTES_MAX,
   RECORDS_URL,
@@ -35,19 +36,6 @@ const GROUPS: { legend: string; fields: Field[] }[] = [
 ];
 const FOCUS_ORDER: FieldKey[] = [...GROUPS.flatMap((g) => g.fields.map((f) => f.key)), "notes"];
 const LEAVE_PROMPT = "You have unsaved changes to this student. Leave without saving?";
-
-// FastAPI's 422 list -> {field: message} for the fields this form shows, or null when any error is not one of them (then the
-// whole detail is shown as one message instead, so nothing is hidden).
-function fieldErrors(detail: unknown): Partial<Record<FieldKey, string>> | null {
-  if (!Array.isArray(detail) || detail.length === 0) return null;
-  const out: Partial<Record<FieldKey, string>> = {};
-  for (const item of detail as { loc?: unknown[] }[]) {
-    const field = item?.loc?.[item.loc.length - 1];
-    if (typeof field !== "string" || !FOCUS_ORDER.includes(field as FieldKey)) return null;
-    out[field as FieldKey] = detailMessage([item]);
-  }
-  return out;
-}
 
 export default function AgentStudentForm({
   mode,
@@ -139,7 +127,7 @@ export default function AgentStudentForm({
         return;
       }
       const dup = response.status === 409 ? duplicateDetail(body?.detail) : null;
-      const onFields = response.status === 422 ? fieldErrors(body?.detail) : null;
+      const onFields = response.status === 422 ? fieldErrors(body?.detail, FOCUS_ORDER) : null;
       if (dup) setDuplicate(dup);
       else if (onFields) {
         // Browser QA-05: a server validation error belongs on its field, like the client-side ones.

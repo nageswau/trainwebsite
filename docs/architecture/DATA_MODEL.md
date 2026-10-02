@@ -425,6 +425,17 @@ predate an application record).
   agency (F1 — no `org_id` column). Linked rows read name/email/phone from `users`; their identity columns stay `NULL`.
   Upgrade changes no existing row; `downgrade()` refuses while a student with no login, an assignment or a staff member
   exists. Round trip and refusals verified in a throwaway database (`tests/test_agn_004_migration.py`).
+- **Addendum, 2026-10-01 (`AGN-006`, `DEC-SCOPE-048`, migration `0055_agent_student_counseling`, drafted as `0054`) — counseling record.**
+  New table `agent_student_counseling`, one row per agency student (`UNIQUE agent_student_id` → `agent_students.id`):
+  `counseling_completed` Boolean NOT NULL, `completed_at` timestamptz, `completed_by_user_id` → `users.id`, `career_interest`
+  String(200), `course_preference` String(200), `country_preference` String(120), `budget_amount` Numeric(10,2),
+  `budget_currency` String(3), `remarks` Text (≤ 2000 at the API), `updated_by_user_id` → `users.id` NOT NULL, timestamps.
+  CHECKs: `ck_agent_student_counseling_completed` (completed ⇔ `completed_at` set ⇔ `completed_by_user_id` set),
+  `ck_agent_student_counseling_budget` (`budget_amount >= 0`), `ck_agent_student_counseling_currency` (the 7 codes),
+  `ck_agent_student_counseling_budget_pair` (amount and currency both set or both null). Create-table only: no existing row read
+  or written; `downgrade()` refuses while any counseling record exists. Round trip and refusal verified in a throwaway database
+  (`tests/test_agn_006_migration.py`). Course/country preference are separate from the Step 1 `agent_students.preferred_*`
+  columns (C3). **Retention:** lives and dies with the student row (no hard delete, `DEC-SCOPE-042` D5).
   `overseas_applications`, `student_documents` and `agent_commissions` are unchanged (D8: applications for students with no
   login are a later feature).
 
