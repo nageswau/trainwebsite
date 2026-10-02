@@ -22,6 +22,7 @@ from app.models import (
     AgentOrgMember,
     AuditLog,
     Batch,
+    BdmProfile,
     Company,
     Country,
     DataSubjectRequest,
@@ -43,6 +44,7 @@ from app.models import (
     UserRoleAssignment,
 )
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
+from app.services import bdm as bdm_rules
 from app.services.agent_applications import owned, with_owner
 from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
 from app.services.provisioning import (
@@ -80,6 +82,7 @@ def _reject_supplied_password(payload: dict, actor: User, route: str, field: str
 # Cap on the unfiltered directory list; named so tests can lower it. A `provisioning_status` filter is NOT capped:
 # it is the exact set of accounts that still need an admin's action.
 USER_LIST_CAP = 500
+USERS_ROUTE = "/api/v1/admin/users"
 
 # The same email shape the registration schemas already use (no whitespace, so a CR/LF header-injection
 # attempt cannot pass). The address is the only delivery channel for a credential-setting link, so these
@@ -414,13 +417,28 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
 
     division = payload.get("division", user.division)
     role = payload["role"]
+    # bdm-001 (spec §5.4): the BDM type rules run BEFORE the cross-division gate, so a super_admin's mismatched division is the
+    # AC2 422 and a division admin's wrong type is the D10 403. Every other role skips this block (bar a stray bdm_profile).
+    bdm_input = None
+    if role == "bdm":
+        bdm_input = bdm_rules.parse_profile_create(payload.get("bdm_profile"))
+        bdm_rules.require_creator_may(user, bdm_input.bdm_type, USERS_ROUTE)
+        mapped = bdm_rules.BDM_DIVISION[bdm_input.bdm_type]
+        if "division" not in payload:
+            division = mapped
+        elif division != mapped:
+            raise HTTPException(422, f"Division must be {mapped} for a {bdm_input.bdm_type} BDM")
+    elif "bdm_profile" in payload:
+        raise HTTPException(422, "Only a BDM has a BDM profile")
+    elif role == "bdm_manager" and user.role != "super_admin":
+        raise HTTPException(403, "Only a Super Admin can create BDM managers")
     if user.role != "super_admin" and division != user.division:
         raise HTTPException(403, "Cannot create users in another division")
-    _reject_supplied_password(payload, user, "/api/v1/admin/users", "password")
+    _reject_supplied_password(payload, user, USERS_ROUTE, "password")
     allowed_by_division = {
-        "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin"},
-        "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin"},
-        "global": {"super_admin"},
+        "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin", "bdm"},
+        "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin", "bdm"},
+        "global": {"super_admin", "bdm_manager"},
     }
     if role not in allowed_by_division.get(division, set()):
         raise HTTPException(422, "Role is not valid for the selected division")
@@ -445,11 +463,24 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         # `payload` is an untyped dict: only a string agency name is used; anything else falls back to the full name.
         agency_name = item.profile.get("agency_name") if isinstance(item.profile, dict) else None
         await ensure_agent_org(db, item, agency_name=agency_name if isinstance(agency_name, str) else None, status="pending")
+    profile = manager = None
+    if bdm_input is not None:
+        # Same transaction as the user, token and audit row; the manager row is locked against a concurrent deactivation.
+        manager = await bdm_rules.locked_active_manager(db, bdm_input.reporting_manager_user_id)
+        profile = BdmProfile(user_id=item.id, **bdm_input.model_dump())
+        db.add(profile)
+        await bdm_rules.flush_profile(db)
     issued = await issue_welcome_token(db, user=item, issued_by=user)
-    db.add(AuditLog(user_id=user.id, action="user.create", entity_type="user", entity_id=str(item.id), metadata_json={"role": role, "division": division}))
+    metadata = {"role": role, "division": division}
+    if profile is not None:
+        metadata["bdm_profile"] = bdm_rules.profile_snapshot(profile)
+    db.add(AuditLog(user_id=user.id, action="user.create", entity_type="user", entity_id=str(item.id), metadata_json=metadata))
     await db.commit()
     delivery = await deliver_welcome_link(user=item, issued=issued, issued_by=user)
-    return {"id": item.id, "email": item.email, "role": item.role, "division": item.division, **delivery}
+    return {
+        "id": item.id, "email": item.email, "role": item.role, "division": item.division, **delivery,
+        "bdm_profile": bdm_rules.profile_out(profile, manager) if profile is not None else None,
+    }
 
 
 @router.patch("/users/{user_id}")
@@ -461,6 +492,19 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         raise HTTPException(404, "User not found")
     if user.role != "super_admin" and item.division != user.division:
         raise HTTPException(403, "Cannot edit another division")
+    # bdm-001 (spec §5.5): every refusal happens before any write. The profile row is locked so concurrent edits serialise and
+    # each audit row's before/after is exact. A manager is re-checked only when it changes, so a BDM whose manager has since been
+    # deactivated stays editable (the reassignment itself is bdm-025).
+    profile = None
+    if item.role == "bdm":
+        profile = await db.scalar(select(BdmProfile).where(BdmProfile.user_id == item.id).with_for_update())
+        if profile is not None:
+            bdm_rules.require_creator_may(user, profile.bdm_type, f"{USERS_ROUTE}/{{id}}")
+    profile_before = profile_after = None
+    if "bdm_profile" in payload:
+        if profile is None:
+            raise HTTPException(422, "Only a BDM has a BDM profile")
+        profile_before, profile_after = await bdm_rules.apply_profile_update(db, profile, payload["bdm_profile"])
     # ADM-001-AC02: deactivating a trainer with active/upcoming assigned batches is
     # blocked unless explicitly confirmed -- never a silent operation that would strand
     # those batches without a trainer.
@@ -477,7 +521,10 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
     for k in ("full_name", "phone", "active", "email_verified", "profile"):
         if k in payload:
             setattr(item, k, payload[k])
-    db.add(AuditLog(user_id=user.id, action="user.update", entity_type="user", entity_id=str(item.id), metadata_json={k: v for k, v in payload.items() if k != "password"}))
+    metadata = {k: v for k, v in payload.items() if k != "password"}
+    if profile_before is not None:
+        metadata.update(bdm_profile_before=profile_before, bdm_profile_after=profile_after)
+    db.add(AuditLog(user_id=user.id, action="user.update", entity_type="user", entity_id=str(item.id), metadata_json=metadata))
     await db.commit()
     return {"ok": True}
 
