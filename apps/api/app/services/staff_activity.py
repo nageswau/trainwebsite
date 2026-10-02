@@ -24,6 +24,11 @@ STAFF_ACTIVITY_ACTIONS = (
     "agent_student.shortlist_add",
     "agent_student.shortlist_update",
     "agent_student.shortlist_remove",
+    # AGN-016 (DEC-SCOPE-051): task work on a student; the subject is the student, never the task's title.
+    "agent_student.task_add",
+    "agent_student.task_update",
+    "agent_student.task_complete",
+    "agent_student.task_cancel",
     "agent.student_link",
     "overseas.application.create",
     "overseas.application.update",
@@ -77,8 +82,9 @@ async def _subjects(db: AsyncSession, rows: list[AuditLog]) -> dict[tuple[str, u
 
 
 def _fields(row: AuditLog) -> list[str] | None:
-    """Edited field NAMES for an edit or a counseling save only (A3; AGN-006 C7); anything that is not a list of strings is dropped."""
-    if row.action not in ("agent_student.update", "agent_student.counseling"):
+    """Edited field NAMES for an edit, a counseling save or a task edit only (A3; AGN-006 C7; AGN-016); anything that is not a list of
+    strings is dropped."""
+    if row.action not in ("agent_student.update", "agent_student.counseling", "agent_student.task_update"):
         return None
     value = (row.metadata_json or {}).get("fields")
     return [f for f in value if isinstance(f, str)] if isinstance(value, list) else None
