@@ -10,7 +10,7 @@ from tests.agn004_helpers import RECORDS, mk_record
 from tests.agn008_helpers import APPS, agency_world, mk_application
 from tests.agn009_helpers import REQUESTS, VERIFY, mk_doc
 from tests.agn009_helpers import world as docs_world
-from tests.agn016_helpers import mk_task
+from tests.agn016_helpers import TASKS, mk_task
 from tests.agn017_helpers import all_text, channels_of, deactivate, notices, titled
 
 ASSIGNED = "Student assigned to you"
@@ -252,3 +252,40 @@ async def test_enrolling_an_unassigned_students_application_gives_each_master_on
     async with client_for(counselor.email) as c:
         assert (await c.post(f"{LEGACY}/{app.id}/advance", json={"to_status": "enrolled"})).status_code == 200
     assert [n.title for n in await notices(db_session, world["master"])] == [COMMISSION]  # not also the status notice (AC3)
+
+
+# --- tasks (N1) ---------------------------------------------------------------------------------------------------------------------
+
+NEW_TASK = "New task"
+
+
+def _task_body(record, **over):
+    return {"agent_student_id": str(record.id), "title": "Call rahul@example.com about the CAS", "due_at": "2026-10-05T20:00:00+00:00", **over}
+
+
+@pytest.mark.asyncio
+async def test_a_task_created_by_the_master_tells_the_assignee_with_the_ist_due_date_only(db_session, world):
+    async with client_for(world["master"].email) as c:
+        response = await c.post(TASKS, json=_task_body(world["record"], notes="passport P1234567"))
+    assert response.status_code == 201, response.text
+    [item] = await notices(db_session, world["staff"]["user"])
+    # 20:00 UTC on 5 Oct is 01:30 IST on 6 Oct.
+    assert (item.title, item.body, item.action_url) == (NEW_TASK, "A new task on one of your students is due 06 Oct 2026.", "/overseas/agent/tasks")
+    text = await all_text(db_session)
+    assert "rahul@example.com" not in text and "P1234567" not in text
+
+
+@pytest.mark.asyncio
+async def test_the_assignee_creating_their_own_task_notifies_nobody(db_session, world):
+    async with client_for(world["staff"]["user"].email) as c:
+        assert (await c.post(TASKS, json=_task_body(world["record"]))).status_code == 201
+    for user in (world["staff"]["user"], world["master"]):
+        assert await titled(db_session, user, NEW_TASK) == []
+
+
+@pytest.mark.asyncio
+async def test_a_task_refused_for_an_archived_student_notifies_nobody(db_session, world):
+    record = await mk_record(db_session, agent=world["master"], full_name="Archived", assigned_member=world["staff"]["member"], status="archived")
+    async with client_for(world["master"].email) as c:
+        assert (await c.post(TASKS, json=_task_body(record))).status_code == 409
+    assert await notices(db_session, world["staff"]["user"]) == []

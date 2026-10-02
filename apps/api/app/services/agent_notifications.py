@@ -6,6 +6,7 @@ the caller's transaction (they never commit here), so a refused or rolled-back w
 """
 
 import logging
+from datetime import date, datetime
 from typing import get_args
 from zoneinfo import ZoneInfo
 
@@ -135,3 +136,13 @@ async def status_changed(db: AsyncSession, application: OverseasApplication, old
     university = clean_text(await db.scalar(select(University.name).where(University.id == application.university_id)))
     body = f"{university}: {stage_label(old_status)} → {stage_label(application.status)}."
     return await notify(db, users, "Application status changed", body, APPLICATIONS_URL)
+
+
+def ist_date(value: date | datetime) -> str:
+    return (value.astimezone(INDIA) if isinstance(value, datetime) else value).strftime("%d %b %Y")
+
+
+async def task_created(db: AsyncSession, record: AgentStudent, task: AgentTask, actor: User) -> int:
+    """N1: the student's recipient, unless they created it. The title is user-typed, so only the due date is shown (§8)."""
+    body = f"A new task on one of your students is due {ist_date(task.due_at)}."
+    return await notify(db, await recipients(db, record, actor), "New task", body, TASKS_URL)

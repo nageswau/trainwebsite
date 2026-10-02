@@ -20,6 +20,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import AgentOrgMember, AgentStudent, AgentTask, AuditLog, User
 from app.schemas import AgentTaskCreate, AgentTaskUpdate
+from app.services import agent_notifications as notices
 from app.services.agent_applications import ARCHIVED
 from app.services.agent_orgs import lock_active_org
 from app.services.agent_shortlist import apply_changes  # AGN-007's "set only what differs, stamp the editor" -- one definition
@@ -81,6 +82,7 @@ async def create_task(payload: AgentTaskCreate, user: User = Depends(get_current
     data = payload.model_dump(exclude={"agent_student_id"})
     task = new_task(db, user, student, data)
     _audit(db, user, "task_add", task, {"fields": sorted(k for k, v in data.items() if v is not None)})
+    await notices.task_created(db, student, task, user)  # AGN-017 (DEC-SCOPE-055 N1): in this transaction
     await _commit(db, CHANGED)
     _log("agent_task_created", membership, user, student.id, task.id)
     return {"task": await task_detail(db, user, task.id, datetime.now(UTC))}
