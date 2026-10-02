@@ -232,3 +232,42 @@ commissions default to INR, so it is correct today; a non-INR commission would m
 `RBAC_MATRIX.md` (agent commission report rows), `CONFLICT_MATRIX.md` `C-10` (commission reports leave the
 parked list; per-staff breakdown stays), `docs/quality/RTM.md`, `SCREEN_CATALOG.md` (agent Reports panel),
 `ROLE_NAVIGATION.md` (no nav change; note the panel).
+
+## 13. Review log (2026-10-02, after implementation)
+
+**Whole-branch review (fresh reviewer):** "with fixes". Fixed test-first: a `date_to` of `9999-12-31` (offered by a date input)
+overflowed to a 500 — now `422 "date_to must be before 9999-12-31"`; the bridged school-student name gained a test (proved by
+mutation). Minors deferred (RTM row).
+
+**api-and-interface-design:**
+- **A1 (fixed)** — `date.fromisoformat` also accepted `20260930` and ISO week dates; the contract is `YYYY-MM-DD` only, now enforced
+  by a full match before parsing (same 422 message).
+- **A2 (fixed)** — both date parameters carry OpenAPI descriptions (format, inclusive UTC day, the `9999-12-31` bound).
+- Kept as built: GET (safe, idempotent); the codebase's `{"detail": "…"}` error shape; 401 → 403 → 422 order; additive contracts
+  only; one read-only parameterised SELECT per request (one snapshot, no transaction to manage); no pagination — an aggregate report
+  and a file export, not a list endpoint. The JSON report sets no `Cache-Control` (consistent with every other JSON route; it has no
+  validators, so browsers do not cache it heuristically); the CSV keeps `private, no-store`.
+
+**frontend-ui-engineering:**
+- **F1 (fixed)** — the panel spans the action grid (`.commission-report`, the AGN-004 pattern) so its five-column tables are not
+  half width; 44 px buttons on phones.
+- **F2 (fixed)** — a load error offers **Try again**, which reloads the requested range.
+- **F3 (fixed)** — Apply keeps the current figures (and their CSV) on screen with "Updating commission report…" instead of blanking.
+- **F4 (fixed)** — the range error marks "To" `aria-invalid`, describes it, moves focus to it, and clears when either date changes.
+- **F5 (fixed)** — empty state: "Your agency has no commissions yet." unfiltered, "No commissions in this period." filtered.
+- **F6 (fixed)** — lakh/crore digit grouping for INR only; other currencies use 1,000s.
+- For browser validation: a multi-currency Revenue value on the metric card at 390 / 820 / 1440 px.
+
+**security-and-hardening (threat model: one trust boundary — the authenticated request; assets — the agency's commission amounts
+and student names):**
+- Authentication: the existing httpOnly, `SameSite=Lax` cookie session (`get_current_user`, session version, deactivation).
+- Authorization / IDOR / escalation: Master check before any read; scope from the session (`org_member_ids`), no id in the path;
+  nothing written, no role reachable. Tested: staff, other agency, non-agents, suspended agency, unauthenticated.
+- Input validation: dates only (strict format, bounds); unknown parameters ignored. SQL injection: ORM-parameterised.
+- XSS: React escaping; the CSV is a download, never rendered; its filename is built from parsed dates. CSV formula injection:
+  `_safe_cell` on every text cell.
+- CSRF: read-only GETs; a cross-site link can make a Master's browser download their own CSV but cannot read it.
+- Secrets / sensitive logs: none added; the log line carries ids, format, row count and range — no names or amounts.
+- **Residuals (recorded, not changed):** no rate limit on the two reads (project-wide residual; changing throttling is an
+  owner decision); no audit row on report reads/exports (owner decision R7); `_safe_cell` does not treat leading whitespace before
+  `=` (existing helper shared with ENH-028).
