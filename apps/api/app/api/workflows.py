@@ -90,6 +90,7 @@ from app.schemas import (
     EnrollmentCreate,
     EnrollmentProgressUpdate,
     LearningResourceCreate,
+    NotificationUnreadCount,
     OverseasApplicationAdvance,
     OverseasApplicationCreate,
     OverseasApplicationUpdate,
@@ -2634,6 +2635,13 @@ async def update_commission_amount(commission_id: UUID, payload: CommissionAmoun
 async def notifications(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     rows = (await db.scalars(select(Notification).where(Notification.user_id == user.id).order_by(Notification.created_at.desc()).limit(100))).all()
     return [{"id": x.id, "title": x.title, "body": x.body, "read": x.read, "action_url": x.action_url, "created_at": x.created_at} for x in rows]
+
+
+@router.get("/notifications/unread-count", response_model=NotificationUnreadCount)
+async def unread_notification_count(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-017 (DEC-SCOPE-055 N7): the caller's own unread count (it may exceed the newest-100 list above)."""
+    count = await db.scalar(select(func.count()).select_from(Notification).where(Notification.user_id == user.id, Notification.read.is_(False)))
+    return {"unread": count or 0}
 
 
 @router.patch("/notifications/{notification_id}/read")

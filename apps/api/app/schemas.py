@@ -125,6 +125,12 @@ class NotificationPreferencesOut(BaseModel):
     phone_valid: bool
 
 
+class NotificationUnreadCount(BaseModel):
+    """AGN-017 (DEC-SCOPE-055 N7): the caller's own unread notifications, for the nav badge."""
+
+    unread: int
+
+
 class ChangePasswordRequest(BaseModel):
     # ENH-006. Passwords are never stripped or normalised. current_password is bounded (not at 128) so a legacy
     # long password still works while the input stays finite; new_password follows the registration/reset rule.
