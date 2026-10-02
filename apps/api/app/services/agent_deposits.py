@@ -55,6 +55,14 @@ async def student_name(db: AsyncSession, application_id) -> str | None:
     )
 
 
+async def receipt_student(db: AsyncSession, payment: Payment) -> str | None:
+    """The receipt's student line (AC5): only for an agent-deposit payment, else None (every other receipt is unchanged)."""
+    if payment.reference_type != REFERENCE_TYPE or payment.reference_id is None:
+        return None
+    application_id = await db.scalar(select(ApplicationDeposit.application_id).where(ApplicationDeposit.id == payment.reference_id))
+    return None if application_id is None else await student_name(db, application_id)
+
+
 async def deposit_view(db: AsyncSession, deposit: ApplicationDeposit | None) -> dict | None:
     """The detail's `deposit` (§4.3): no payment, order or key ids."""
     if deposit is None:

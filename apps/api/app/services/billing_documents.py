@@ -10,7 +10,7 @@ from reportlab.pdfgen import canvas
 from app.core.config import settings
 
 
-def _generate_billing_pdf(*, kind: str, doc_no: str, payer_name: str, amount: float, currency: str, issued_on: date, reference_type: str) -> str:
+def _generate_billing_pdf(*, kind: str, doc_no: str, payer_name: str, amount: float, currency: str, issued_on: date, reference_type: str, student_name: str | None = None) -> str:
     """Shared layout for Invoice/Receipt PDFs -- same minimal-document pattern as
     `services/certificates.py`'s `generate_certificate_pdf`. Exact invoice/receipt format is an
     explicitly open item (`PRD_OPEN_ITEMS.md` item 12, currency/tax mapping); this renders the
@@ -31,6 +31,8 @@ def _generate_billing_pdf(*, kind: str, doc_no: str, payer_name: str, amount: fl
     pdf.setFont("Helvetica", 13)
     pdf.drawString(56, height - 190, f"Billed to: {payer_name}")
     pdf.drawString(56, height - 214, f"Reference: {reference_type}")
+    if student_name:  # AGN-011 AC5: an agent deposit names the student it was paid for (drawString: literal text, no markup)
+        pdf.drawString(56, height - 238, f"Student: {student_name}")
     pdf.setFont("Helvetica-Bold", 20)
     pdf.drawString(56, height - 260, f"{currency} {amount:,.2f}")
     pdf.setFont("Helvetica", 9)
@@ -52,5 +54,5 @@ def generate_invoice_pdf(*, invoice_no: str, payer_name: str, amount: float, cur
     return _generate_billing_pdf(kind="Invoice", doc_no=invoice_no, payer_name=payer_name, amount=amount, currency=currency, issued_on=issued_on, reference_type=reference_type)
 
 
-def generate_receipt_pdf(*, receipt_no: str, payer_name: str, amount: float, currency: str, issued_on: date, reference_type: str) -> str:
-    return _generate_billing_pdf(kind="Receipt", doc_no=receipt_no, payer_name=payer_name, amount=amount, currency=currency, issued_on=issued_on, reference_type=reference_type)
+def generate_receipt_pdf(*, receipt_no: str, payer_name: str, amount: float, currency: str, issued_on: date, reference_type: str, student_name: str | None = None) -> str:
+    return _generate_billing_pdf(kind="Receipt", doc_no=receipt_no, payer_name=payer_name, amount=amount, currency=currency, issued_on=issued_on, reference_type=reference_type, student_name=student_name)
