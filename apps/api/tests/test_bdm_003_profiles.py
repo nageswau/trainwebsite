@@ -189,3 +189,24 @@ async def test_profile_writes_keep_bdm002_authorization(client, db_session):
     await login(client, owner)
     assert (await client.post(f"{url}/archive")).status_code == 200
     assert (await client.patch(url, json={"profile": {"board": "ICSE"}})).status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_profile_filters_narrow_within_scope(client, db_session):
+    await login(client, await bdm_of(db_session, "school"))
+    tag = uuid.uuid4().hex[:8]
+    cbse = await create_org(client, org_type="school", name=f"School {tag} A", profile={"board": "CBSE"})
+    await create_org(client, org_type="school", name=f"School {tag} B", profile={"board": "ICSE"})
+    page = (await client.get(ORGS, params={"q": tag, "board": "CBSE"})).json()
+    assert [r["id"] for r in page["items"]] == [cbse["id"]] and page["total"] == 1
+    assert (await client.get(ORGS, params={"q": tag, "board": "cbse"})).status_code == 422
+    assert (await client.get(ORGS, params={"q": tag, "org_type": "college", "board": "CBSE"})).json()["total"] == 0  # impossible combination: empty, not 422
+    await login(client, await bdm_of(db_session, "agent"))
+    assert (await client.get(ORGS, params={"q": tag, "board": "CBSE"})).json()["total"] == 0  # another module's schools stay out of scope
+    south = await create_org(client, org_type="agent", name=f"Agency {tag}", profile={"territory": "South_100%"})
+    await create_org(client, org_type="agent", name=f"Agency {tag} 2", profile={"territory": "South 1000"})
+    assert [r["id"] for r in (await client.get(ORGS, params={"q": tag, "territory": "h_100%"})).json()["items"]] == [south["id"]]  # % and _ literal
+    await login(client, await bdm_of(db_session, "college"))
+    vtu = await create_org(client, org_type="college", name=f"College {tag}", profile={"affiliation": "VTU Belagavi"})
+    assert [r["id"] for r in (await client.get(ORGS, params={"q": tag, "affiliation": "vtu"})).json()["items"]] == [vtu["id"]]
+    assert (await client.get(ORGS, params={"territory": "x" * 121})).status_code == 422

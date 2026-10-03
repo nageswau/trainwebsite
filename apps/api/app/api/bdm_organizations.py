@@ -27,6 +27,7 @@ from app.schemas import (
     BdmOrganizationPage,
     BdmOrganizationUpdate,
     BdmOrgType,
+    BdmSchoolBoard,
 )
 from app.services import bdm_organizations as svc
 from app.services.bdm import bdm_context
@@ -54,6 +55,9 @@ async def list_organizations(
     q: str | None = SEARCH,
     org_type: BdmOrgType | None = None,
     city: str | None = Query(None, max_length=120),
+    board: BdmSchoolBoard | None = None,
+    affiliation: str | None = Query(None, max_length=200),
+    territory: str | None = Query(None, max_length=120),
     assigned: str | None = Query(None, max_length=36),
     include_archived: bool = False,
     limit: int = LIMIT,
@@ -69,6 +73,10 @@ async def list_organizations(
         filters.append(BdmOrganization.org_type == org_type)
     filters += _matching(like_pattern(q), BdmOrganization.name, BdmOrganization.code)
     filters += _matching(like_pattern(city), BdmOrganization.city)
+    if board:
+        filters.append(BdmOrganization.board == board)
+    filters += _matching(like_pattern(affiliation), BdmOrganization.affiliation)  # bdm-003: literal, case-insensitive substrings
+    filters += _matching(like_pattern(territory), BdmOrganization.territory)
     assignee = _assigned(user, assigned)
     if assignee is not None:
         filters.append(BdmOrganization.assigned_bdm_user_id == assignee)
