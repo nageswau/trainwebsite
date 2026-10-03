@@ -33,9 +33,9 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0067_and_is_the_single_head():
+def test_migration_chains_after_0067_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
-    assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
+    assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1  # later revisions (bdm-009) chain after this one
 
 
 def test_models_match_the_migration():
