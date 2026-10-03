@@ -19,6 +19,7 @@ from pydantic import (
     StringConstraints,
     ValidationError,
     ValidationInfo,
+    WrapValidator,
     field_validator,
     model_validator,
 )
@@ -3080,3 +3081,236 @@ class BdmManagerPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- bdm-002 (DEC-SCOPE-060): organization CRM core ------------------------------------------------------------------------
+BdmOrgType = Literal["college", "university", "agent", "school", "corporate", "training_institute", "other"]
+BdmContactRole = Literal["principal", "dean", "hod", "placement_officer", "counselor", "management", "owner", "other"]
+BDM_ORG_LABELS = {
+    "name": "Organization name",
+    "city": "City",
+    "state": "State",
+    "phone": "Phone",
+    "email": "Email",
+    "website": "Website",
+    "courses_interested": "Courses interested",
+    "designation": "Designation",
+}
+BDM_ORG_FIELDS = ("org_type", "name", "city", "state", "phone", "email", "website", "existing_partner", "courses_interested", "student_count")
+_BDM_PHONE = re.compile(r"[0-9+()\- ]+")
+_BDM_WEBSITE = re.compile(r"https?://\S+", re.IGNORECASE)
+_BDM_SCHEME = re.compile(r"[a-z][a-z0-9+.-]*:", re.IGNORECASE)  # "javascript:", "mailto:", "ftp:" ...
+_BDM_BARE_SITE = re.compile(r"[^\s/:]+\.[^\s/:]+(/\S*)?")  # "stjoseph.edu", "www.mary.ac.in/admissions"
+BDM_MAX_CONTACTS = 20
+
+
+def _bdm_org_text(value: str | None, info: ValidationInfo) -> str | None:
+    """bdm-001's text rule (no control characters, blank -> None) plus the per-field shape checks (spec §5.1, §12.3)."""
+    label = BDM_ORG_LABELS.get(info.field_name, info.field_name)
+    if value is not None and _BDM_CONTROL.search(value):
+        raise ValueError(f"{label} contains invalid characters")
+    if not value:
+        return None
+    if info.field_name == "email":
+        if not _EMAIL_SHAPE.fullmatch(value):
+            raise ValueError("Enter a valid email address")
+        return value.lower()
+    if info.field_name == "phone" and not _BDM_PHONE.fullmatch(value):
+        raise ValueError("Phone may contain only digits, spaces and + - ( )")
+    if info.field_name == "website" and not _BDM_WEBSITE.fullmatch(value):  # http(s) only: no javascript:/data: hrefs (spec §12.3)
+        raise ValueError("Website must start with http:// or https://" if _BDM_SCHEME.match(value) else "Enter a website such as stjoseph.edu")
+    return value
+
+
+def _bdm_website_prefix(value):
+    """Browser QA-05: a bare domain is what people type, so it becomes https://. This runs BEFORE the length check, so the 255 limit
+    counts the stored form."""
+    if isinstance(value, str) and _BDM_BARE_SITE.fullmatch(value.strip()):
+        return f"https://{value.strip()}"
+    return value
+
+
+def _bdm_org_required(value: str, info: ValidationInfo) -> str:
+    value = _bdm_org_text(value, info)
+    if value is None:
+        raise ValueError(f"{BDM_ORG_LABELS[info.field_name]} is required")
+    return value
+
+
+def _bdm_contact_name(value: str) -> str:
+    if _BDM_CONTROL.search(value):
+        raise ValueError("Contact name contains invalid characters")
+    if not value:
+        raise ValueError("Contact name is required")
+    return value
+
+
+def _bdm_org_optional(max_length: int):
+    return Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_bdm_org_text)]
+
+
+def _bdm_org_mandatory(max_length: int):
+    return Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length), AfterValidator(_bdm_org_required)]
+
+
+BdmOrgName = _bdm_org_mandatory(200)
+BdmOrgCity = _bdm_org_mandatory(120)
+BdmOrgShort = _bdm_org_optional(120)
+BdmOrgPhone = _bdm_org_optional(30)
+BdmOrgLong = _bdm_org_optional(255)
+BdmOrgCourses = _bdm_org_optional(1000)
+BdmOrgWebsite = Annotated[_bdm_org_optional(255), BeforeValidator(_bdm_website_prefix)]
+BdmContactName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200), AfterValidator(_bdm_contact_name)]
+
+
+def _bdm_student_count(value, handler):
+    """Browser QA-04: the strict whole-number rule stays; every way it fails reads as one plain sentence."""
+    try:
+        return handler(value)
+    except ValidationError:
+        raise ValueError("Number of students must be a whole number from 0 to 1,000,000") from None
+
+
+BdmStudentCount = Annotated[Annotated[StrictInt, Field(ge=0, le=1_000_000)] | None, WrapValidator(_bdm_student_count)]
+
+
+class BdmContactIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: BdmContactName
+    designation: BdmOrgShort = None
+    role: BdmContactRole | None = None
+    phone: BdmOrgPhone = None
+    email: BdmOrgLong = None
+    is_primary: StrictBool = False
+
+
+class BdmContactUpdate(BaseModel):
+    """Omitted = unchanged; a sent null on `name`/`is_primary` fails the non-nullable type (bdm-001's PATCH idiom)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: BdmContactName = None
+    designation: BdmOrgShort = None
+    role: BdmContactRole | None = None
+    phone: BdmOrgPhone = None
+    email: BdmOrgLong = None
+    is_primary: StrictBool = None
+
+
+def _bdm_contacts(contacts: list[BdmContactIn]) -> list[BdmContactIn]:
+    if not contacts:
+        raise ValueError("Add at least one contact")
+    if len(contacts) > BDM_MAX_CONTACTS:
+        raise ValueError(f"An organization can have at most {BDM_MAX_CONTACTS} contacts")
+    if sum(c.is_primary for c in contacts) > 1:
+        raise ValueError("Only one contact can be primary")
+    return contacts
+
+
+class BdmOrganizationCreate(BaseModel):
+    """spec §5.1 / C13: type, name, city and >=1 contact are required. Server-owned fields (code, bdm_type, assignee, archive) are
+    unknown fields here, so a client can never set them (§12.3 mass assignment)."""
+
+    model_config = ConfigDict(extra="forbid")
+    org_type: BdmOrgType
+    name: BdmOrgName
+    city: BdmOrgCity
+    state: BdmOrgShort = None
+    phone: BdmOrgPhone = None
+    email: BdmOrgLong = None
+    website: BdmOrgWebsite = None
+    existing_partner: StrictBool = False
+    courses_interested: BdmOrgCourses = None
+    student_count: BdmStudentCount = None
+    contacts: Annotated[list[BdmContactIn], AfterValidator(_bdm_contacts)]
+    confirm_duplicate: StrictBool = False
+
+
+class BdmOrganizationUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    org_type: BdmOrgType = None
+    name: BdmOrgName = None
+    city: BdmOrgCity = None
+    state: BdmOrgShort = None
+    phone: BdmOrgPhone = None
+    email: BdmOrgLong = None
+    website: BdmOrgWebsite = None
+    existing_partner: StrictBool = None
+    courses_interested: BdmOrgCourses = None
+    student_count: BdmStudentCount = None
+    confirm_duplicate: StrictBool = False
+
+
+class BdmOrganizationAssign(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    bdm_user_id: UUID
+
+
+class BdmOrgPerson(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
+class BdmContactOut(BaseModel):
+    id: UUID
+    name: str
+    designation: str | None
+    role: str | None
+    phone: str | None
+    email: str | None
+    is_primary: bool
+
+
+class BdmOrgPrimaryContact(BaseModel):
+    name: str
+    designation: str | None
+    phone: str | None
+    email: str | None
+
+
+class BdmOrgPermissions(BaseModel):
+    can_edit: bool
+    can_archive: bool
+    can_restore: bool
+    can_reassign: bool
+
+
+class BdmOrganizationRow(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    org_type: str
+    bdm_type: str
+    city: str
+    state: str | None
+    existing_partner: bool
+    assigned_bdm: BdmOrgPerson
+    primary_contact: BdmOrgPrimaryContact | None
+    archived: bool
+    last_meeting_at: datetime | None  # bdm-006 fills these; always null until then (AC6)
+    next_meeting_at: datetime | None
+    permissions: BdmOrgPermissions
+
+
+class BdmOrganizationOut(BdmOrganizationRow):
+    phone: str | None
+    email: str | None
+    website: str | None
+    courses_interested: str | None
+    student_count: int | None
+    contacts: list[BdmContactOut]
+    created_by_name: str
+    archived_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class BdmOrganizationPage(BaseModel):
+    items: list[BdmOrganizationRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmOrganizationEnvelope(BaseModel):
+    organization: BdmOrganizationOut

@@ -1,0 +1,112 @@
+"""bdm-002 -- request models (spec §5.1, §12.3 input validation)."""
+
+import pytest
+from pydantic import ValidationError
+
+from app.schemas import BdmContactIn, BdmContactUpdate, BdmOrganizationCreate, BdmOrganizationUpdate
+
+CONTACT = {"name": "Dr Rao", "designation": "Principal", "role": "principal"}
+
+
+def org(**overrides) -> dict:
+    return {"org_type": "college", "name": "  St  Mary's College ", "city": "Kochi", "contacts": [CONTACT], **overrides}
+
+
+def messages(exc: ValidationError) -> list[str]:
+    return [e["msg"].removeprefix("Value error, ") for e in exc.errors()]
+
+
+def test_create_trims_and_defaults():
+    parsed = BdmOrganizationCreate.model_validate(org(state="", email=" Info@Mary.EDU "))
+    assert parsed.name == "St  Mary's College" and parsed.state is None and parsed.email == "info@mary.edu"
+    assert parsed.existing_partner is False and parsed.confirm_duplicate is False
+
+
+@pytest.mark.parametrize(
+    ("overrides", "expected"),
+    [
+        ({"name": "   "}, "Organization name is required"),
+        ({"city": ""}, "City is required"),
+        ({"contacts": []}, "Add at least one contact"),
+        ({"contacts": [CONTACT] * 21}, "An organization can have at most 20 contacts"),
+        ({"contacts": [{**CONTACT, "is_primary": True}, {**CONTACT, "is_primary": True}]}, "Only one contact can be primary"),
+        ({"website": "javascript:alert(1)"}, "Website must start with http:// or https://"),
+        ({"website": "data:text/html,x"}, "Website must start with http:// or https://"),
+        ({"email": "not-an-email"}, "Enter a valid email address"),
+        ({"phone": "12<script>"}, "Phone may contain only digits, spaces and + - ( )"),
+        ({"name": "Bad\x00Name"}, "Organization name contains invalid characters"),
+    ],
+)
+def test_create_rejects_bad_input_with_a_readable_message(overrides, expected):
+    with pytest.raises(ValidationError) as exc:
+        BdmOrganizationCreate.model_validate(org(**overrides))
+    assert expected in messages(exc.value)
+
+
+@pytest.mark.parametrize("field", ["code", "bdm_type", "assigned_bdm_user_id", "archived_at", "created_by_user_id", "nope"])
+def test_server_owned_and_unknown_fields_are_rejected(field):
+    with pytest.raises(ValidationError) as exc:
+        BdmOrganizationCreate.model_validate(org(**{field: "x"}))
+    assert exc.value.errors()[0]["type"] == "extra_forbidden"
+
+
+def test_bounds_and_enums():
+    for bad in ({"student_count": -1}, {"student_count": 1_000_001}, {"org_type": "ngo"}, {"contacts": [{**CONTACT, "role": "ceo"}]}):
+        with pytest.raises(ValidationError):
+            BdmOrganizationCreate.model_validate(org(**bad))
+    assert BdmOrganizationCreate.model_validate(org(student_count=0, website="https://mary.edu")).student_count == 0
+
+
+def test_update_rejects_null_on_required_fields_and_contacts_key():
+    for bad in ({"name": None}, {"city": None}, {"org_type": None}, {"existing_partner": None}, {"contacts": []}):
+        with pytest.raises(ValidationError):
+            BdmOrganizationUpdate.model_validate(bad)
+    assert BdmOrganizationUpdate.model_validate({"state": ""}).model_dump(exclude_unset=True) == {"state": None}
+
+
+def test_contact_models():
+    with pytest.raises(ValidationError) as exc:
+        BdmContactIn.model_validate({"name": " "})
+    assert "Contact name is required" in messages(exc.value)
+    with pytest.raises(ValidationError):
+        BdmContactUpdate.model_validate({"name": None})
+    assert BdmContactUpdate.model_validate({"is_primary": True}).model_dump(exclude_unset=True) == {"is_primary": True}
+
+
+@pytest.mark.parametrize("bad", [-1, 1_000_001, 1.5])
+def test_student_count_errors_read_plainly(bad):
+    """Browser QA-04: not pydantic's "Input should be greater than or equal to 0"."""
+    with pytest.raises(ValidationError) as exc:
+        BdmOrganizationCreate.model_validate(org(student_count=bad))
+    assert "Number of students must be a whole number from 0 to 1,000,000" in messages(exc.value)
+
+
+@pytest.mark.parametrize(
+    ("typed", "stored"),
+    [("stjoseph.edu", "https://stjoseph.edu"), ("www.mary.ac.in/admissions", "https://www.mary.ac.in/admissions"), ("http://old.org", "http://old.org")],
+)
+def test_a_bare_domain_is_accepted_as_https(typed, stored):
+    """Browser QA-05: people type "stjoseph.edu"; it is stored as an https address."""
+    assert BdmOrganizationCreate.model_validate(org(website=typed)).website == stored
+
+
+@pytest.mark.parametrize("bad", ["javascript:alert(1)", "data:text/html,x", "ftp://files.org", "mailto:a@b.co", "stjoseph", "two words.org"])
+def test_other_schemes_and_non_addresses_are_still_rejected(bad):
+    with pytest.raises(ValidationError) as exc:
+        BdmOrganizationCreate.model_validate(org(website=bad))
+    assert {"Website must start with http:// or https://", "Enter a website such as stjoseph.edu"} & set(messages(exc.value))
+
+
+def test_a_long_bare_domain_is_checked_after_https_is_added():
+    """Simplify review A1: the https:// prefix must count toward the 255 limit (it overflowed the column, a 500)."""
+    with pytest.raises(ValidationError):
+        BdmOrganizationCreate.model_validate(org(website="a." + "b" * 250))
+    assert len(BdmOrganizationCreate.model_validate(org(website="a." + "b" * 243)).website) == 253
+
+
+@pytest.mark.parametrize("bad", [True, "5", "abc"])
+def test_student_count_stays_strict_with_the_plain_message(bad):
+    """Simplify review A2: no bool/str coercion, and every bad value gets the one sentence."""
+    with pytest.raises(ValidationError) as exc:
+        BdmOrganizationCreate.model_validate(org(student_count=bad))
+    assert messages(exc.value) == ["Number of students must be a whole number from 0 to 1,000,000"]

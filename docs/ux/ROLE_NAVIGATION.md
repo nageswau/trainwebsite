@@ -254,6 +254,7 @@ Signs in at `/it/login` (College BDM, division `it`) or `/overseas/login` (Agent
 
 - /bdm/my-day — My Day (minimal shell in bdm-001: welcome + profile summary; content arrives with bdm-014).
 - /bdm/profile — read-only §1 profile.
+- /bdm/organizations — Organization CRM (`bdm-002`): every organization of the BDM's module, filters (name/code, city, type, assigned to me, show archived); `/bdm/organizations/new` (add, ≥1 contact, duplicate warning); `/bdm/organizations/{id}` (details, contacts, edit/archive when assigned). Sidebar: My Day · Organizations · Profile.
 
 ## BDM Manager *(net-new, added 2026-10-02, `DEC-SCOPE-055`, `bdm-001`)*
 
@@ -261,6 +262,7 @@ Division `global`; signs in at `/admin/login` (heading "Administration sign-in")
 
 - /bdm/manager/dashboard — team counts (minimal shell; bdm-023 adds the management dashboard).
 - /bdm/manager/team — the BDMs who report to this manager (paged).
+- /bdm/manager/organizations — the team's organizations (`bdm-002`), read-only except reassign and restore; `/bdm/manager/organizations/{id}`. Sidebar: Dashboard · Team · Organizations.
 
 **Signed-out `/bdm/*`:** `/bdm/manager/*` → `/admin/login?next=…`; any other `/bdm/*` → the public chooser `/bdm/sign-in?next=…` (College BDM / Agent-School BDM / Administration links; `next` kept only when same-origin).
 

@@ -479,6 +479,19 @@ Authorization follows the inline pattern (`User.role` check → `services/bdm.py
 
 **Explicit denies:** a `bdm` or `bdm_manager` cannot write any profile (no route); `PATCH /admin/users` never writes `role` or `division`; a reporting manager must be an **active `bdm_manager`** (else `422`), so no one can assign themselves or another role a team; `bdm_type` cannot be changed (`422`, B7); `bdm` calling a manager route, or a manager calling `/bdm/me` → `403`; every other role on any BDM route → `403`. The picker returns a manager's email only to the three admin roles (B10, to tell same-name managers apart). Every create or edit writes one `AuditLog` row (profile before/after on edit).
 
+**BDM organizations (`bdm-002`, `DEC-SCOPE-060`).** Every `{id}` resolves through `services/bdm_organizations.load_scoped`; out of scope is
+the same `404` as a missing id.
+
+| Role | Can | Scope | Item |
+|---|---|---|---|
+| `bdm` | create (any of the 7 types, owned by their `bdm_type`, assigned to themselves); read/list every organization of their type; edit, archive and manage contacts of those **assigned to them** | Type scope (Q-02); other types `404`; not assignee `403` | `bdm-002` |
+| `bdm_manager` | read/list organizations assigned to **their team**; reassign among their own active BDMs of the same type; restore archived ones | Team scope (assignee reports to them); never create or edit (`403`) | `bdm-002` |
+| `super_admin` | read, edit, archive, restore, reassign any organization (any team, same type) | All; cannot create (no `bdm_type`) | `bdm-002` |
+| `it_admin`, `overseas_admin`, others | — | `403` "BDM role required" (C7) | `bdm-002` |
+
+Archived organizations are read-only (`409` "Restore this organization first"). Server-owned fields (`code`, `bdm_type`, assignee,
+`archived_at`) are unknown fields in every request body (`422`).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
