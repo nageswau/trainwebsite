@@ -3084,8 +3084,6 @@ class BdmManagerPage(BaseModel):
 
 # --- bdm-010: travel requests, approval, expenses (DEC-SCOPE-060; docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md §5.1) ---
 
-BDM_TRIP_MODES = ("flight", "train", "bus", "car", "cab", "local")
-BDM_EXPENSE_CATEGORIES = ("travel", "stay", "food", "local", "other")
 BdmTripMode = Literal["flight", "train", "bus", "car", "cab", "local"]
 BdmExpenseCategory = Literal["travel", "stay", "food", "local", "other"]
 BDM_TRIP_FIELD_LABELS = {
@@ -3132,9 +3130,6 @@ def _trimmed(max_length: int):
     return StringConstraints(strip_whitespace=True, max_length=max_length)
 
 
-_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
-
 def _trip_date(label: str):
     """QA10-08: a calendar date as YYYY-MM-DD with a 4-digit year; anything else (Chrome lets a year run to 6 digits) gets plain
     words instead of the parser's text."""
@@ -3142,7 +3137,7 @@ def _trip_date(label: str):
         if isinstance(value, date):
             return value
         try:
-            if isinstance(value, str) and _ISO_DATE.match(value.strip()):
+            if isinstance(value, str) and _ISO_DATE.fullmatch(value.strip()):  # the module's YYYY-MM-DD (ENH-027)
                 return date.fromisoformat(value.strip())
         except ValueError:
             pass
@@ -3155,7 +3150,7 @@ TripReturnDate = Annotated[date, BeforeValidator(_trip_date("return date"))]
 TripExpenseDate = Annotated[date, BeforeValidator(_trip_date("expense date"))]
 TripPlace = Annotated[Annotated[str, _trimmed(120)], AfterValidator(_trip_text(_BDM_CONTROL, True))]
 TripPurpose = Annotated[Annotated[str, _trimmed(1000)], AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True))]
-TripReason = Annotated[Annotated[str, _trimmed(1000)], AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True))]
+TripReason = TripPurpose  # the same rule: required, multi-line, at most 1000
 TripRemarks = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False))]
 TripNote = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False))]
 TripEstimatedCost = Annotated[Decimal, BeforeValidator(_trip_amount(positive=False))]

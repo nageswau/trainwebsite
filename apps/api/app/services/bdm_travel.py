@@ -25,11 +25,21 @@ MAX_EXPENSES = 100  # §12.1 A9: keeps the detail response bounded
 EDITABLE = ("draft", "rejected")
 UNDERWAY = ("planned", "in_progress")
 
+
+
+def _editable(t, today) -> bool:
+    return t.approval_status in EDITABLE and t.travel_status == "planned"
+
+
+def _pending(t, today) -> bool:
+    return t.approval_status == "submitted" and t.travel_status == "planned"
+
+
 RULES = {
-    "edit": lambda t, today: t.approval_status in EDITABLE and t.travel_status == "planned",
-    "submit": lambda t, today: t.approval_status in EDITABLE and t.travel_status == "planned",
-    "withdraw": lambda t, today: t.approval_status == "submitted" and t.travel_status == "planned",
-    "decide": lambda t, today: t.approval_status == "submitted" and t.travel_status == "planned",
+    "edit": _editable,
+    "submit": _editable,
+    "withdraw": _pending,
+    "decide": _pending,
     "start": lambda t, today: t.approval_status == "approved" and t.travel_status == "planned" and today >= t.travel_date,
     "complete": lambda t, today: t.approval_status == "approved" and t.travel_status in UNDERWAY and today >= t.travel_date,
     "cancel": lambda t, today: t.travel_status in UNDERWAY,
@@ -77,9 +87,8 @@ def refusal(trip, action: str, today: date) -> HTTPException:
     """The 409 for an action outside its row of the transition table, worded for the user."""
     if action == "expense":
         return HTTPException(409, "Expenses can be added once the trip is approved")
-    # Only when the date is the reason: start from planned, complete from planned/in progress, before the travel date.
-    date_is_why = trip.travel_status == "planned" or (action == "complete" and trip.travel_status == "in_progress")
-    if action in ("start", "complete") and trip.approval_status == "approved" and date_is_why and today < trip.travel_date:
+    # Only when the date is the reason: the action would be allowed on the travel date, which hasn't come yet.
+    if action in ("start", "complete") and today < trip.travel_date and allowed(trip, action, trip.travel_date):
         return HTTPException(409, f"This trip starts on {trip.travel_date:%d %b %Y}; it can be {VERBS[action]} from that day")
     return HTTPException(409, f"This trip {state_phrase(trip)} and can't be {VERBS[action]}")
 
@@ -211,20 +220,16 @@ def status_filters(approval_status: str | None, travel_status: str | None) -> li
         [BdmTrip.travel_status == travel_status] if travel_status else [])
 
 
-def _cost_subquery():
-    return select(BdmTripExpense.trip_id, func.sum(BdmTripExpense.amount).label("total")).group_by(BdmTripExpense.trip_id).subquery()
-
-
 def trip_rows(filters: list):
     """One query for a list page (§12.1 A13): trip + owner name + actual cost, joined to the owner's profile and manager so the
-    team and approval filters can be expressed on them."""
-    cost = _cost_subquery()
+    team and approval filters can be expressed on them. The cost is a correlated sum, so only the rows on the page are summed (by
+    `ix_bdm_trip_expenses_trip`), never the whole expenses table."""
+    actual_cost = select(func.coalesce(func.sum(BdmTripExpense.amount), 0)).where(BdmTripExpense.trip_id == BdmTrip.id).scalar_subquery()
     return (
-        select(BdmTrip, Owner.full_name, func.coalesce(cost.c.total, 0))
+        select(BdmTrip, Owner.full_name, actual_cost)
         .join(Owner, Owner.id == BdmTrip.bdm_user_id)
         .join(BdmProfile, BdmProfile.user_id == BdmTrip.bdm_user_id)
         .join(Manager, Manager.id == BdmProfile.reporting_manager_user_id)
-        .outerjoin(cost, cost.c.trip_id == BdmTrip.id)
         .where(*filters)
     )
 
@@ -276,14 +281,14 @@ async def decide(db: AsyncSession, user: User, trip_id, *, approve: bool, reason
     concurrent withdraw, cancel, reassignment or deactivation is serialised against this decision (§5.5)."""
     trip = await load_team_trip(db, user, trip_id, lock=True)
     manager = await reporting_manager(db, trip, lock=True)
-    if user.role == "bdm_manager" and user.id != manager.id:
-        raise _refuse(user, trip, "decide", HTTPException(404, "Trip not found"))
-    if user.role == "super_admin" and manager.active:
-        raise _refuse(user, trip, "decide", HTTPException(403, "The reporting manager is active and decides this trip"))
+    if not decider_may(user, manager):  # the same rule as the `can_decide` flag
+        error = HTTPException(404, "Trip not found") if user.role == "bdm_manager" else HTTPException(403, "The reporting manager is active and decides this trip")
+        raise _refuse(user, trip, "decide", error)
     if user.id == trip.bdm_user_id:
         raise _refuse(user, trip, "decide", HTTPException(403, "You can't decide your own trip"))
-    if not allowed(trip, "decide", india_today()):
-        raise _refuse(user, trip, "decide", refusal(trip, "decide", india_today()))
+    today = india_today()
+    if not allowed(trip, "decide", today):
+        raise _refuse(user, trip, "decide", refusal(trip, "decide", today))
     trip.approval_status = "approved" if approve else "rejected"
     trip.rejection_reason = None if approve else reason
     trip.decided_by_user_id, trip.decided_at = user.id, now()
@@ -304,7 +309,7 @@ def approvals_filter(user: User) -> list:
     return [*pending, BdmProfile.reporting_manager_user_id == user.id]
 
 
-async def _expense_trip(user: User, trip: BdmTrip, today: date) -> None:
+def _expense_trip(user: User, trip: BdmTrip, today: date) -> None:
     if not allowed(trip, "expense", today):
         raise _refuse(user, trip, "expense", refusal(trip, "expense", today))
 
@@ -321,7 +326,7 @@ def _line_meta(expense: BdmTripExpense) -> dict:
 
 
 async def add_expense(db: AsyncSession, user: User, trip: BdmTrip, body, today: date) -> None:
-    await _expense_trip(user, trip, today)
+    _expense_trip(user, trip, today)
     count = await db.scalar(select(func.count()).where(BdmTripExpense.trip_id == trip.id))
     if count >= MAX_EXPENSES:
         raise _refuse(user, trip, "expense", HTTPException(409, f"A trip can have at most {MAX_EXPENSES} expense lines"))
@@ -332,7 +337,7 @@ async def add_expense(db: AsyncSession, user: User, trip: BdmTrip, body, today: 
 
 
 async def update_expense(db: AsyncSession, user: User, trip: BdmTrip, expense_id, body, today: date) -> None:
-    await _expense_trip(user, trip, today)
+    _expense_trip(user, trip, today)
     expense = await load_expense(db, trip, expense_id)
     changes = body.model_dump(exclude_unset=True)
     if not changes:
@@ -345,7 +350,7 @@ async def update_expense(db: AsyncSession, user: User, trip: BdmTrip, expense_id
 
 
 async def delete_expense(db: AsyncSession, user: User, trip: BdmTrip, expense_id, today: date) -> None:
-    await _expense_trip(user, trip, today)
+    _expense_trip(user, trip, today)
     expense = await load_expense(db, trip, expense_id)
     meta = _line_meta(expense)
     await db.delete(expense)
