@@ -3336,3 +3336,22 @@ reconstructed; their uploads are (from the document row). Design: `docs/superpow
 - **G6 — Approach A:** a new read-only `GET /workflows/overseas/agent/crm/dashboard` with a typed schema and a dashboard panel on the existing page; the portal payload keeps its labels, order and strings.
 
 **Consequences:** no migration; a new router, service and schema; `portal._agent` dashboard values sourced from the shared service (Students now counts no-login students — a deliberate fix); a new `AgentDashboardPanel`; nav changes in `lib/navigation.ts`; `AgentStudentsPanel` honours `?new=1`. Unchanged: other roles' dashboards, the sidebar offer filter, commission values and the "Claimable commission" INR label (logged in `RAID.md`), models, existing routes. **New Feature ID authorized:** `AGN-018`. **Status:** implemented and verified on `feature/agn-018-master-dashboard-impl` (see `ENHANCEMENT_BACKLOG.md` §AGN-018).
+
+### DEC-SCOPE-063 — Overseas Admin agent network oversight (`AGN-022`)
+
+**ID note:** `DEC-SCOPE-063` was the next free number on `main` @ `3bde8796`. If another branch takes it first, renumber on merge as for `DEC-SCOPE-062`.
+
+**Question:** the owner's `AGN-022` statement (in-session, 2026-10-03): "Edusphere's central admin can see the overall agent network and student/application data according to the permissions you define" (Best approach; §9), with acceptance criteria: counts match fixtures; suspend blocks the org immediately (ang-001 AC4); non-admin → 403. How deep does the admin see, is that reading audited, what may super_admin do, which money figures count, and which API shape?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) "Best approach" and §9; `AGENT_CRM_BACKLOG.md` ang-022 and Q-13 "D17 — read-all; act only on org approve/suspend, commission, and deposit remit/refund recording" (`DERIVED_BLUEPRINT`; its `DEC-SCOPE-035` citation is the known mis-citation). Impact analysis, 2026-10-03 (the committed graphify graph predates AGN-001, so a fresh AST graph was built and findings were checked in source): AGN-001 (`DEC-SCOPE-038` D6/D7) already ships `GET /overseas-admin/agent-orgs` and `POST /overseas-admin/agent-orgs/{id}/approve|reject|suspend|reinstate`, per-request suspension (AC04 test) and the admin 403; AGN-018 holds the count definitions, scoped to the logged-in agent user only.
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions and three design-section reviews; design spec `docs/superpowers/specs/2026-10-03-agn-022-agent-network-design.md` §2):
+
+- **N1 — Counts + lists.** Org list with counts; org detail with read-only lists of the agency's students and applications. No per-student record pages; admin rows carry no email, phone or date of birth.
+- **N2 — Read audit.** One `AuditLog` row per drill-down list request, written before data is returned (fail closed).
+- **N3 — super_admin read-only in the UI.** Suspend/Reinstate shown to `overseas_admin` only; the backend action route is unchanged.
+- **N4 — Money = existing buckets.** Commissions per currency as AGN-018 (Claimable, Claims, Paid revenue), never summed across currencies; deposits (INR) collected / remitted / refunded, not netted. On the org detail only.
+- **N5 — Approach A.** Extend `GET /overseas-admin/agent-orgs` additively (`staff_count`, `counts`); add `GET /agent-orgs/{id}`, `/{id}/students`, `/{id}/applications`; reuse suspend/reinstate. The backlog's `/agent-organizations` + `reactivate` naming is `SUPERSEDED`.
+- **N6 — Limited admin powers (D17).** No admin edits to agent students, applications or staff; approve/reject stay on Agent Approvals.
+
+**Consequences:** no migration; a new read-only service `services/agent_network.py`; three new admin routes and schemas; additive keys on the org list; two new admin pages and components; one appended nav entry. Unchanged: `transition_org`, the suspension gate, the approval page and routes, agent-side routes, models. **New Feature ID authorized:** `AGN-022`. **Status:** design written; owner's spec review and implementation plan pending (GATE-09 not yet passed for this feature).
