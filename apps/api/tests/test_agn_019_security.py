@@ -93,6 +93,20 @@ async def test_dates_are_echoed(db_session):
 
 
 @pytest.mark.asyncio
+async def test_portal_section_is_a_header_for_both_roles(db_session):
+    """Review finding #1: the page's portal-payload gate needs a header-only section (the Tasks precedent), or PortalPage shows
+    "Workspace not found". Staff get the header too -- the page tells them it is for Masters; the API refuses them."""
+    ctx = await mk_active_org(db_session)
+    staff = await mk_staff(db_session, ctx["org"])
+    for email in (ctx["master"].email, staff["user"].email):
+        async with client_for(email) as c:
+            response = await c.get("/api/v1/portal/overseas/agent/performance")
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["title"] == "Staff performance" and body["metrics"] == []  # a header: no figures
+
+
+@pytest.mark.asyncio
 async def test_log_line_carries_ids_flags_and_timing_only(db_session, caplog):
     ctx = await mk_active_org(db_session)
     await mk_staff(db_session, ctx["org"], full_name="Logged Staff")

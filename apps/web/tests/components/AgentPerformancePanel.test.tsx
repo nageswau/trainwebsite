@@ -95,6 +95,14 @@ describe("AgentPerformancePanel (AGN-019)", () => {
     expect(screen.getByRole("region", { name: "By staff member" })).toBeInTheDocument(); // zeros are information
   });
 
+  it("keeps the table for an agency with no staff rows: Unassigned and the total still show (review finding #2)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ ...FULL, rows: [], total: FULL.unassigned })));
+    render(<AgentPerformancePanel />);
+    const table = await screen.findByRole("region", { name: "By staff member" });
+    const heads = within(table).getAllByRole("row").slice(1).map((r) => within(r).getByRole("rowheader").textContent);
+    expect(heads).toEqual(["Unassigned", "All staff and unassigned"]);
+  });
+
   it("offers to sign in again on 401", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ detail: "Not authenticated" }, 401)));
     render(<AgentPerformancePanel />);

@@ -7,7 +7,7 @@ import pytest_asyncio
 from sqlalchemy import select
 
 from app.models import AgentStudent
-from tests.agn001_helpers import client_for
+from tests.agn001_helpers import client_for, mk_active_org
 from tests.agn004_helpers import RECORDS, mk_record, mk_staff
 from tests.agn008_helpers import agency_world, mk_application
 from tests.agn017_helpers import deactivate
@@ -85,12 +85,34 @@ async def test_active_staff_with_nothing_is_listed_with_zeros(world, db_session)
 
 @pytest.mark.asyncio
 async def test_deactivated_member_with_only_archived_student_is_listed(db_session):
-    """Review Focus 3: table zeros, funnel 1 -- still listed, marked inactive."""
+    """Review Focus 3 (review finding #6): a deactivated member whose only student is archived has an all-zero table row and a
+    funnel of one -- still listed (P6), marked inactive."""
+    ctx = await mk_active_org(db_session)
+    member = (await mk_staff(db_session, ctx["org"], full_name="Archived Holder"))["member"]
+    await mk_record(db_session, agent=ctx["master"], full_name="Archived Only", assigned_member=member, status="archived")
+    await deactivate(db_session, member)
+    row = _rows(await _body(ctx["master"].email))["Archived Holder"]
+    assert row["active"] is False and _table(row) == dict.fromkeys(TABLE, 0)
+    assert row["funnel"] == funnel(1, 0, 0, 0, 0, 0)
+
+
+@pytest.mark.asyncio
+async def test_withdrawn_only_student_reaches_applications_in_the_funnel_only(db_session):
+    """Review Focus 2 (review finding #5): a student whose only application was withdrawn without an offer is at the Applications
+    stage of the funnel (they applied) but not in the table's Applications column (not withdrawn)."""
     w = await agency_world(db_session)
-    await mk_record(db_session, agent=w["master"], full_name="Archived Only", assigned_member=w["staff"]["member"], status="archived")
-    await deactivate(db_session, w["staff"]["member"])
-    row = next(r for r in (await _body(w["master"].email))["rows"] if r["code"] == w["staff"]["member"].code)
-    assert row["active"] is False and row["funnel"]["students"] >= 1
+
+    async def row():
+        return next(r for r in (await _body(w["master"].email))["rows"] if r["code"] == w["staff"]["member"].code)
+
+    before = await row()
+    record = await mk_record(db_session, agent=w["master"], full_name="Withdrawn Only", assigned_member=w["staff"]["member"])
+    await mk_application(db_session, agent=w["master"], university=w["university"], record=record, status="withdrawn")
+    after = await row()
+    assert after["funnel"]["students"] - before["funnel"]["students"] == 1
+    assert after["funnel"]["applications"] - before["funnel"]["applications"] == 1
+    assert after["funnel"]["submitted"] == before["funnel"]["submitted"]
+    assert after["applications"] == before["applications"] and after["students"] - before["students"] == 1
 
 
 @pytest.mark.asyncio

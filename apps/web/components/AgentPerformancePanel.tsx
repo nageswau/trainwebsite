@@ -241,7 +241,8 @@ export default function AgentPerformancePanel() {
           ) : (
             <Funnel data={data} selected={selected} onSelect={setSelected} />
           )}
-          {data.rows.length > 0 && <StaffTable data={data} />}
+          {/* Review #2: an agency with no staff rows still has Unassigned and total figures to show. */}
+          {(data.rows.length > 0 || data.unassigned) && <StaffTable data={data} />}
         </>
       )}
     </div>

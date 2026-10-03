@@ -3794,7 +3794,7 @@ a total of both. No branch filter (P2: no branch data exists). Spec:
 shows a Masters-only note without a request. Super Admin and other roles are refused (`403`).
 
 **Out of scope.** Branch filter (P2, `RAID.md`); owner-at-the-time attribution (P1); CSV export and the eight reports (ang-020);
-caching; changes to `AgentDashboardOut`, `services/portal.py`, models or migrations.
+caching; changes to `AgentDashboardOut`, `services/portal.py` (beyond a header-only `performance` section, the page gate), models or migrations.
 
 **Acceptance criteria.** Spec §7 AC1–AC11; mapped to tests in `RTM.md` AGN-019.
 

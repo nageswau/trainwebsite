@@ -191,7 +191,7 @@ meaning and no field is overloaded.
 ### 6.2 Page — `apps/web/components/PortalPage.tsx`
 
 `agentPerformance = key==="overseas/agent" && section==="performance"`, added to the portal-payload 404 tolerance and to `main`
-(renders `<AgentPerformanceSection user={user}/>`). `services/portal.py` gets no new section.
+(renders `<AgentPerformanceSection user={user}/>`). `services/portal.py` gets one header-only `performance` section (the Tasks precedent; see §12 — review finding #1).
 
 ### 6.2a `apps/web/components/AgentPerformanceSection.tsx` (new, server)
 
@@ -315,7 +315,7 @@ Trust boundary: the HTTP request (session cookie + two query strings). Assets: t
 ## 10. Out of scope
 
 Branch filter (P2); owner-at-the-time attribution (P1); CSV export and the eight reports (ang-020); caching; staff access to any
-performance data; changes to `AgentDashboardOut`, `services/portal.py`, models or migrations.
+performance data; changes to `AgentDashboardOut`, `services/portal.py` (beyond its header-only `performance` section), models or migrations.
 
 ## 11. Documentation
 
@@ -333,3 +333,11 @@ performance data; changes to `AgentDashboardOut`, `services/portal.py`, models o
 - §8: no axe check in the E2E spec (`@axe-core` is not a dependency; no new dependencies) — accessibility is asserted through roles,
   names and keyboard use; an axe pass belongs to browser validation.
 - Screen ID: `SCR-AGT-011`.
+- Final review fix pass (fresh-context reviewer, 2026-10-03):
+  - #1 (Critical) the page showed "Workspace not found": PortalPage treats a missing portal payload as 404 for non-Super-Admins, so
+    §6.2's "no new section" was wrong. Fixed with a header-only `performance` section in `services/portal.py` (no figures), the
+    Tasks/Notifications precedent; tests `test_agn_019_security.py::test_portal_section_is_a_header_for_both_roles`,
+    `PortalPage.agentPerformance.test.tsx`.
+  - #2 (Important) the staff table was hidden for an agency with no staff rows; it now shows whenever there are rows or an Unassigned row.
+  - #3 (re-graded Important) the visa summary is limited to the caller's agency applications (it grouped every agency's cases).
+  - #5/#6 (re-graded Important) Review Focus 2 and 3 now have their own tests, each proven by a deliberate mutation.

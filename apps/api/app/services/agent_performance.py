@@ -28,10 +28,12 @@ def cohort(user: User, start: date | None, end: date | None) -> list[ColumnEleme
     return where
 
 
-def _visa_by_application():
-    """One row per application with a visa case, `approved` when any case is: a second case is not a second visa application."""
+def _visa_by_application(user: User):
+    """One row per application with a visa case, `approved` when any case is: a second case is not a second visa application.
+    Limited to the caller's agency applications, so the grouping never reads other agencies' cases."""
     approved = func.bool_or(VisaCase.decision == "approved").label("approved")
-    return select(VisaCase.application_id, approved).group_by(VisaCase.application_id).subquery()
+    agency = select(OverseasApplication.id).where(*agency_applications(user))
+    return select(VisaCase.application_id, approved).where(VisaCase.application_id.in_(agency)).group_by(VisaCase.application_id).subquery()
 
 
 def _from_cohort(user: User, start: date | None, end: date | None, visa, *columns) -> Select:
@@ -49,7 +51,7 @@ def _from_cohort(user: User, start: date | None, end: date | None, visa, *column
 async def table_counts(db: AsyncSession, user: User, start: date | None, end: date | None) -> dict:
     """Per current owner (P1), AGN-018's G3 columns over the cohort (P5), each application once. Keyed by member id; None =
     unassigned."""
-    visa = _visa_by_application()
+    visa = _visa_by_application(user)
 
     def applications(condition):
         return func.count(distinct(case((condition, OverseasApplication.id))))
@@ -85,7 +87,7 @@ def _level(visa) -> ColumnElement[int]:
 async def funnel_counts(db: AsyncSession, user: User, start: date | None, end: date | None) -> dict:
     """P3: per current owner, the cohort's students (archived included) at each stage or a later one, from each student's furthest
     application -- non-increasing by construction. Keyed by member id; None = unassigned."""
-    visa = _visa_by_application()
+    visa = _visa_by_application(user)
     member = AgentStudent.assigned_member_id.label("member_id")
     per_student = _from_cohort(user, start, end, visa, member, func.max(_level(visa)).label("level")).group_by(AgentStudent.id, AgentStudent.assigned_member_id).subquery()
     reached = [func.sum(case((per_student.c.level >= k, 1), else_=0)) for k in range(1, 6)]
