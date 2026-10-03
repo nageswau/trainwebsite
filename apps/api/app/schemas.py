@@ -1208,6 +1208,45 @@ class AgentDashboardOut(BaseModel):
     as_of: datetime
 
 
+# AGN-022 (DEC-SCOPE-063): Overseas Admin's agent network. Field lists are allowlists -- the drill-down rows never carry email,
+# phone or date of birth (N1), and the detail carries a staff count, not a staff list (spec R-API-3).
+class AgentNetworkCounts(BaseModel):
+    students: int
+    applications: int
+    enrollments: int
+
+
+class AgentOrgMasterOut(BaseModel):
+    id: UUID
+    code: str
+    full_name: str
+    email: str
+    status: str
+
+
+class AgentNetworkDepositsOut(BaseModel):
+    currency: Literal["INR"]
+    count: int
+    collected: float
+    remitted: float
+    refunded: float
+
+
+class AgentOrgDetailOut(BaseModel):
+    id: UUID
+    name: str
+    prefix: str
+    status: str
+    created_at: datetime
+    status_changed_at: datetime | None
+    masters: list[AgentOrgMasterOut]
+    staff_count: int
+    counts: AgentNetworkCounts
+    commission: AgentCommissionSummaryOut
+    deposits: AgentNetworkDepositsOut
+    as_of: datetime
+
+
 class InboundUniversityEmailIn(BaseModel):
     external_message_id: str = Field(min_length=1, max_length=255)
     sender: EmailStr

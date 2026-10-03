@@ -8,8 +8,10 @@ so an agency's own dashboard and this screen cannot disagree."""
 from sqlalchemy import Select, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AgentOrgMember, AgentStudent, OverseasApplication
+from app.models import AgentOrgMember, AgentStudent, ApplicationDeposit, OverseasApplication
 from app.services.agent_applications import WITHDRAWN
+from app.services.agent_dashboard import commission_totals
+from app.services.agent_deposits import PAID_STATES
 
 # School-bridged applications are not agency applications (`with_owner`, A12).
 NETWORK_APPLICATION = OverseasApplication.school_student_id.is_(None)
@@ -48,3 +50,26 @@ async def org_counts(db: AsyncSession, org_ids) -> dict:
     for oid, open_apps, enrolled in (await db.execute(applications)).all():
         result[oid]["applications"], result[oid]["enrollments"] = open_apps, enrolled
     return result
+
+
+async def org_money(db: AsyncSession, org_id) -> dict:
+    """N4: commissions in AGN-018's buckets (per currency, never summed across currencies) and the org's deposits (INR only):
+    collected = paid + remitted + refunded, then remitted and refunded amounts, not netted; pending / not required excluded."""
+    paid = ApplicationDeposit.status.in_(PAID_STATES)
+    deposits = (
+        await db.execute(
+            select(
+                func.count(case((paid, 1))),
+                func.coalesce(func.sum(case((paid, ApplicationDeposit.amount))), 0),
+                func.coalesce(func.sum(case((ApplicationDeposit.status == "remitted", ApplicationDeposit.amount))), 0),
+                func.coalesce(func.sum(case((ApplicationDeposit.status == "refunded", ApplicationDeposit.refund_amount))), 0),
+            )
+            .join(OverseasApplication, OverseasApplication.id == ApplicationDeposit.application_id)
+            .where(OverseasApplication.agent_id.in_(members_of(org_id)), NETWORK_APPLICATION)
+        )
+    ).one()
+    count, collected, remitted, refunded = deposits
+    return {
+        "commission": await commission_totals(db, members_of(org_id)),
+        "deposits": {"currency": "INR", "count": count, "collected": float(collected), "remitted": float(remitted), "refunded": float(refunded)},
+    }
