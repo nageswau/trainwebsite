@@ -25,6 +25,8 @@ export const CATEGORY_LABEL: Record<ExpenseCategory, string> = { travel: "Travel
 export const TRIPS_URL = "/api/v1/bdm/trips";
 export const TEAM_TRIPS_URL = "/api/v1/bdm/manager/trips";
 export const APPROVALS_URL = "/api/v1/bdm/manager/approvals";
+/** QA10-04: a trip link is a UUID; anything else is "Trip not found" before the API is asked (it would answer 422). */
+export const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 export const tripUrl = (id: string) => `${TRIPS_URL}/${id}`;
 export const teamTripUrl = (id: string) => `${TEAM_TRIPS_URL}/${id}`;
 export const PAST_DAYS = 30;

@@ -17,3 +17,6 @@ export function travelUnavailable(error: unknown, loginHref: string, retryHref: 
     </div>
   );
 }
+
+/** QA10-04: a malformed trip link reads exactly like an unknown trip. */
+export const tripNotFound = (loginHref: string) => accessUnavailable(new ApiError("Trip not found", 404), loginHref);

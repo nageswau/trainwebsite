@@ -1,12 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import PortalShell from "@/components/PortalShell";
-import TripActions from "@/components/TripActions";
-import TripDecision from "@/components/TripDecision";
-import TripExpenses from "@/components/TripExpenses";
 import TripForm from "@/components/TripForm";
-import TripRemarks from "@/components/TripRemarks";
 import TripTable from "@/components/TripTable";
+import TripWorkspace from "@/components/TripWorkspace";
 import AdminApprovals from "@/app/admin/bdm-travel-approvals/page";
 import ManagerApprovals from "@/app/bdm/manager/approvals/page";
 import ManagerTrip from "@/app/bdm/manager/trips/[id]/page";
@@ -30,6 +27,8 @@ const allText = (tree: ReturnType<typeof elements>) => tree.map((el) => text(el)
 const hrefs = (tree: ReturnType<typeof elements>) => tree.map((el) => el.props.href).filter((h): h is string => typeof h === "string");
 const params = (p: Record<string, string> = {}) => ({ searchParams: Promise.resolve(p) });
 const route = (id: string) => ({ params: Promise.resolve({ id }) });
+const UUID = "9184f803-d155-4ec1-8008-8d65ff92412d";
+const UUID2 = "57520286-b155-4737-af41-79d81aa0d50b";
 
 function answer(byPath: Record<string, unknown>) {
   vi.mocked(serverApi).mockImplementation(async (path: string) => {
@@ -78,21 +77,28 @@ describe("bdm-010 BDM travel pages", () => {
     expect(tree.find((el) => el.type === TripForm)!.props.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it("the detail shows the editor only while the trip is editable, and the rejection reason", async () => {
-    answer({ "/api/v1/bdm/me": me, "/api/v1/bdm/trips/t1": trip({ can_edit: true, approval_status: "rejected", rejection_reason: "Too costly" }) });
-    const tree = elements(await TripDetail(route("t1")));
-    expect(tree.some((el) => el.type === TripForm)).toBe(true);
-    expect(tree.some((el) => el.type === TripActions)).toBe(true);
-    expect(tree.some((el) => el.type === TripExpenses)).toBe(true);
-    expect(tree.some((el) => el.type === TripRemarks)).toBe(true);
-    expect(allText(tree)).toContain("Too costly");
-    answer({ "/api/v1/bdm/me": me, "/api/v1/bdm/trips/t1": trip({ approval_status: "approved" }) });
-    expect(elements(await TripDetail(route("t1"))).some((el) => el.type === TripForm)).toBe(false);
+  it("the detail hands the trip to the owner workspace (QA10-16), with India's date", async () => {
+    const t = trip({ can_edit: true });
+    answer({ "/api/v1/bdm/me": me, [`/api/v1/bdm/trips/${UUID}`]: t });
+    const ws = elements(await TripDetail(route(UUID))).find((el) => el.type === TripWorkspace)!;
+    expect(ws.props.initialTrip).toEqual(t);
+    expect(ws.props.view).toBe("owner");
+    expect(ws.props.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(ws.props.backHref).toBe("/bdm/travel");
+  });
+
+  it("QA10-04: a malformed trip link is 'Trip not found', without asking the API", async () => {
+    answer({ "/api/v1/bdm/me": me });
+    for (const page of [await TripDetail(route("not-a-uuid")), await ManagerTrip(route("TRV-000001"))]) {
+      const card = elements(page).find((el) => typeof el.props.message === "string")!;
+      expect(card.props.message).toBe("Trip not found");
+    }
+    expect(vi.mocked(serverApi).mock.calls.map((c) => c[0]).some((p) => p.includes("/trips/"))).toBe(false);
   });
 
   it("a trip that is not yours shows the access card", async () => {
-    answer({ "/api/v1/bdm/me": me, "/api/v1/bdm/trips/zz": new ApiError("Trip not found", 404) });
-    const tree = elements(await TripDetail(route("zz")));
+    answer({ "/api/v1/bdm/me": me, [`/api/v1/bdm/trips/${UUID2}`]: new ApiError("Trip not found", 404) });
+    const tree = elements(await TripDetail(route(UUID2)));
     const card = tree.find((el) => typeof el.props.message === "string")!;
     expect(card.props.message).toBe("Trip not found");
   });
@@ -100,23 +106,14 @@ describe("bdm-010 BDM travel pages", () => {
 
 describe("bdm-010 review fixes", () => {
   it("I2: a server error offers Retry on the same page; a 404 still shows the access card", async () => {
-    answer({ "/api/v1/bdm/me": me, "/api/v1/bdm/trips/t1": new ApiError("Internal Server Error", 500) });
-    const tree = elements(await TripDetail(route("t1")));
-    expect(hrefs(tree)).toContain("/bdm/travel/t1");
+    answer({ "/api/v1/bdm/me": me, [`/api/v1/bdm/trips/${UUID}`]: new ApiError("Internal Server Error", 500) });
+    const tree = elements(await TripDetail(route(UUID)));
+    expect(hrefs(tree)).toContain(`/bdm/travel/${UUID}`);
     expect(allText(tree)).toContain("Retry");
     answer({ "/api/v1/auth/me": { full_name: "Meera", role: "bdm_manager" }, "/api/v1/bdm/manager/approvals": new TypeError("fetch failed") });
     expect(hrefs(elements(await ManagerApprovals(params())))).toContain("/bdm/manager/approvals");
   });
 
-  it("M4: a long unbroken place name wraps instead of widening the page", async () => {
-    const long = "X".repeat(120);
-    answer({ "/api/v1/bdm/me": me, "/api/v1/bdm/trips/t1": trip({ from_place: long }) });
-    const h2 = elements(await TripDetail(route("t1"))).find((el) => el.type === "h2")!;
-    expect((h2.props.style as { overflowWrap?: string }).overflowWrap).toBe("anywhere");
-    answer({ "/api/v1/auth/me": { full_name: "Meera", role: "bdm_manager" }, "/api/v1/bdm/manager/trips/t1": trip({ from_place: long }) });
-    const managerH2 = elements(await ManagerTrip(route("t1"))).find((el) => el.type === "h2")!;
-    expect((managerH2.props.style as { overflowWrap?: string }).overflowWrap).toBe("anywhere");
-  });
 });
 
 describe("bdm-010 approval pages", () => {
@@ -133,17 +130,19 @@ describe("bdm-010 approval pages", () => {
     expect((table.props.detailHref as (id: string) => string)("t1")).toBe("/bdm/manager/trips/t1");
   });
 
-  it("the manager's trip view is read-only with the decision panel", async () => {
-    answer({ "/api/v1/auth/me": { full_name: "Meera", role: "bdm_manager" }, "/api/v1/bdm/manager/trips/t1": trip({ can_decide: true }) });
-    const tree = elements(await ManagerTrip(route("t1")));
-    expect(tree.some((el) => el.type === TripDecision)).toBe(true);
-    expect(tree.some((el) => el.type === TripForm || el.type === TripActions || el.type === TripRemarks)).toBe(false);
+  it("the manager's trip view is the read-only workspace", async () => {
+    answer({ "/api/v1/auth/me": { full_name: "Meera", role: "bdm_manager" }, [`/api/v1/bdm/manager/trips/${UUID}`]: trip({ can_decide: true }) });
+    const ws = elements(await ManagerTrip(route(UUID))).find((el) => el.type === TripWorkspace)!;
+    expect([ws.props.view, ws.props.backHref, ws.props.note]).toEqual(["manager", "/bdm/manager/approvals", undefined]);
   });
 
-  it("a super_admin's trip view uses the admin navigation", async () => {
-    answer({ "/api/v1/auth/me": { full_name: "Root", role: "super_admin" }, "/api/v1/bdm/manager/trips/t1": trip() });
-    const shell = elements(await ManagerTrip(route("t1"))).find((el) => el.type === PortalShell)!;
-    expect(shell.props.nav).toBe(SUPER_ADMIN_NAV);
+  it("QA10-13: a super_admin keeps the admin navigation and is told why they can't decide while the manager is active", async () => {
+    answer({ "/api/v1/auth/me": { full_name: "Root", role: "super_admin" }, [`/api/v1/bdm/manager/trips/${UUID}`]: trip({ approval_status: "submitted" }) });
+    const tree = elements(await ManagerTrip(route(UUID)));
+    expect(tree.find((el) => el.type === PortalShell)!.props.nav).toBe(SUPER_ADMIN_NAV);
+    const ws = tree.find((el) => el.type === TripWorkspace)!;
+    expect(ws.props.backHref).toBe("/admin/bdm-travel-approvals");
+    expect(ws.props.note).toBe("This BDM's reporting manager is active and decides this trip. A Super Administrator can decide only while that manager is inactive.");
   });
 
   it("the admin fallback page is for super_admins only", async () => {

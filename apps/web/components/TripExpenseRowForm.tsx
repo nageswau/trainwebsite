@@ -9,7 +9,7 @@ import { jsonInit, useTripWrite } from "@/lib/useTripWrite";
 // bdm-010 (T7): one expense line -- category, INR amount, date, optional note. Adds a line, or edits `expense`.
 // Category takes focus when the form opens; Escape or Cancel closes it (the parent returns focus).
 export default function TripExpenseRowForm({ tripId, expense, defaultDate, onDone, onCancel }: {
-  tripId: string; expense?: TripExpense; defaultDate: string; onDone: () => void; onCancel: () => void;
+  tripId: string; expense?: TripExpense; defaultDate: string; onDone: (message: string) => void; onCancel: () => void;
 }) {
   const [category, setCategory] = useState<ExpenseCategory>(expense?.category ?? "travel");
   const [amount, setAmount] = useState(expense ? String(Number(expense.amount)) : "");
@@ -30,7 +30,7 @@ export default function TripExpenseRowForm({ tripId, expense, defaultDate, onDon
     const body = { category, amount: amount.trim(), expense_date: date, note: note.trim() || null };
     const url = expense ? `${tripUrl(tripId)}/expenses/${expense.id}` : `${tripUrl(tripId)}/expenses`;
     const outcome = await run(url, jsonInit(expense ? "PATCH" : "POST", body), expense ? "Expense updated." : "Expense added.");
-    if (outcome.ok) onDone();
+    if (outcome.ok) onDone(expense ? "Expense updated." : "Expense added.");
     else setErrors(fieldErrors(outcome.detail));
   }
 

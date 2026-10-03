@@ -22,14 +22,19 @@ const lineName = (e: TripExpense) => `${CATEGORY_LABEL[e.category]} expense of $
 
 // bdm-010 (T5/T7, D15): the cost summary and the itemized lines. Lines can be added once the trip is approved (the API's
 // `can_add_expense`); actual cost is always the API's sum. Delete is confirmed inline; focus returns to a stable control.
-export default function TripExpenses({ trip }: { trip: Trip }) {
+export default function TripExpenses({ trip, ownerView = true }: { trip: Trip; ownerView?: boolean }) {
   const [editing, setEditing] = useState<string | null>(null); // "new" or an expense id
   const [deleting, setDeleting] = useState<TripExpense | null>(null);
-  const { busy, message, run, resultProps } = useTripWrite();
+  const { busy, message, run, announce, resultProps } = useTripWrite();
   const editable = trip.can_add_expense;
   const closeForm = () => {
     setEditing(null);
     refocus(ADD_ID);
+  };
+  // QA10-02: the line form unmounts on save, so the list announces the result and takes focus.
+  const saved = (text: string) => {
+    setEditing(null);
+    announce(text);
   };
 
   async function remove(expense: TripExpense) {
@@ -42,7 +47,8 @@ export default function TripExpenses({ trip }: { trip: Trip }) {
       <dl role="group" aria-label="Costs" className="form-grid" style={{ margin: "0 0 16px" }}>
         <div><dt className="muted">Estimated</dt><dd style={{ margin: 0 }}>{formatInr(trip.estimated_cost)}</dd></div>
         <div><dt className="muted">Actual</dt><dd style={{ margin: 0 }}>{formatInr(trip.actual_cost)}</dd></div>
-        <div><dt className="muted">Difference</dt><dd style={{ margin: 0 }}>{difference(trip.estimated_cost, trip.actual_cost)}</dd></div>
+        {/* QA10-10: no "under the estimate" before anything has been spent */}
+        {trip.expenses.length > 0 && <div><dt className="muted">Difference</dt><dd style={{ margin: 0 }}>{difference(trip.estimated_cost, trip.actual_cost)}</dd></div>}
       </dl>
       {trip.expenses.length === 0 ? (
         <p className="muted" role="status">No expenses yet.</p>
@@ -74,7 +80,8 @@ export default function TripExpenses({ trip }: { trip: Trip }) {
           </table>
         </div>
       )}
-      {!editable && trip.approval_status !== "approved" && <p className="muted">Expenses can be added once the trip is approved.</p>}
+      {/* QA10-10: only the owner, and only while the trip can still be approved (not cancelled) */}
+      {ownerView && !editable && trip.approval_status !== "approved" && trip.travel_status === "planned" && <p className="muted">Expenses can be added once the trip is approved.</p>}
       {deleting && (
         <div className="form-warning" role="group" aria-labelledby="expense-delete-title" style={{ marginTop: 12 }}
           onKeyDown={(e) => { if (e.key === "Escape" && !busy) { setDeleting(null); refocus(ADD_ID); } }}>
@@ -87,7 +94,7 @@ export default function TripExpenses({ trip }: { trip: Trip }) {
       )}
       {editing ? (
         <TripExpenseRowForm tripId={trip.id} expense={trip.expenses.find((e) => e.id === editing)} defaultDate={trip.travel_date}
-          onDone={closeForm} onCancel={closeForm} />
+          onDone={saved} onCancel={closeForm} />
       ) : (
         editable && <div className="actions"><button id={ADD_ID} type="button" className="btn secondary" disabled={busy} onClick={() => setEditing("new")}>Add expense</button></div>
       )}
