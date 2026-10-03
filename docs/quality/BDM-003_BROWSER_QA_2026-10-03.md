@@ -73,6 +73,16 @@ Also observed: contact Role list puts the type's people first (School: Principal
 
 ---
 
+## Fix pass (owner: "Yes fix", 2026-10-03)
+
+QA3-01 and QA3-02 fixed test-first in `aa3e4af` (`BdmOrganizationsPanel.readFilters`): a profile filter is read only with the Type it belongs to, and an unknown Board is dropped instead of being sent.
+- **RED:** `BdmOrganizationsPanel.test.tsx` "ignores a profile filter that does not belong to the URL's Type (browser QA3-01)" and "ignores an unknown Board in the URL instead of failing to load (browser QA3-02)" failed (`board=…` was sent); **GREEN** after the change.
+- **Web BDM set:** 13 files, **129 passed**; `tsc` 0; `eslint --max-warnings=0` on the changed files 0.
+- **Re-checked in the isolated browser** after rebuilding the web container: `?board=CBSE` (All types) → full list (50 rows), no hidden filter, no "Clear filters"; `?org_type=school&board=bogus` → school list (44 rows), Board "All boards", no error; regression `?org_type=school&board=ICSE` → 6 rows, Board ICSE; no console errors or failed requests.
+- **Playwright** bdm-003 + bdm-002 + bdm-001 → **10 passed**.
+
+QA3-03…06 are Info items (by design or UX suggestions) and were left as they are.
+
 ## Evidence files (scratchpad, not committed)
 
 Screenshots `qa_02_school_filled.png`, `qa_03_school_detail.png`, `qa_10_{desktop,tablet,mobile,narrow}_form.png`, `qa_11_*_detail.png`, `qa_12_*_list.png`; scripts `qa_s07_tamper.py` (API tampering), `qa_s08_authz.py` (roles/scope), `qa_s09_filters.py`, `qa_s10_errors.py` (Fetch interception: busy state, 500, network drop, duplicate submit), `qa_s11_nav.py`, `qa_s12_layout.py`, `qa_s13_misc.py`.
