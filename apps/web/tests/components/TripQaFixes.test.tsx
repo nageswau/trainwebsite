@@ -107,6 +107,12 @@ describe("bdm-010 browser QA fixes (components)", () => {
     expect(screen.getByLabelText("From")).toBeEnabled();
   });
 
+  it("QA10-17 follow-up: the remarks box (also server-rendered) is disabled until interactive, too", () => {
+    expect(renderToString(<TripRemarks trip={trip({ remarks: "x" })} />)).toMatch(/<fieldset[^>]*disabled/);
+    render(<TripRemarks trip={trip()} />);
+    expect(screen.getByRole("textbox", { name: "Remarks" })).toBeEnabled();
+  });
+
   it("QA10-05: empty-state links look like links", async () => {
     vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/bdm/me"
       ? { full_name: "Asha", bdm_profile: { bdm_type: "college", reporting_manager: { full_name: "Meera" } } }

@@ -66,6 +66,20 @@ describe("TripWorkspace (bdm-010 QA10-16)", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("already approved");
   });
 
+  it("a 422 refusal also re-reads the trip: approved meanwhile, so the editor goes", async () => {
+    const mock = vi.fn()
+      .mockResolvedValueOnce(json({ detail: "An approved trip's details can't be changed" }, 422))
+      .mockResolvedValueOnce(json(trip({ approval_status: "approved", can_edit: false, can_start: true })));
+    vi.stubGlobal("fetch", mock);
+    owner({ approval_status: "draft", can_edit: true, can_submit: true });
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "Guntur" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Approval: Approved")).toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: "Edit trip" })).toBeNull();
+    expect(mock.mock.calls[1][0]).toBe("/api/v1/bdm/trips/t1");
+    expect(screen.getByRole("alert")).toHaveTextContent("An approved trip's details can't be changed");
+  });
+
   it("the manager view is read-only, with the decision panel and the reason it can't decide", () => {
     render(<TripWorkspace initialTrip={trip({ approval_status: "submitted", remarks: "Hotel near campus" })} view="manager" today="2026-10-03"
       backHref="/admin/bdm-travel-approvals" backLabel="Back to approvals" note="The reporting manager decides this trip." />);

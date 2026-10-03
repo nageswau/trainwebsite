@@ -12,12 +12,15 @@ export const jsonInit = (method: "POST" | "PATCH", body: unknown): RequestInit =
   method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
 });
 
-const WRITE_STARTED = "bdm-trip-write";
+export const WRITE_STARTED = "bdm-trip-write";
 
 // bdm-010 (§12.2 F4/F6): every trip write shares one contract. While it runs, `busy` disables the acting button.
 // - Success says so. Inside a trip page (TripLiveContext) the response -- the full updated trip -- is applied directly (QA10-16);
 //   elsewhere the server page is re-rendered. Statuses and `can_*` flags always come from the API, never a guess.
-// - A 409 means the trip moved on under us: say why and re-read it, so the new state shows.
+// - A refusal (409, or a 422 whose detail is a sentence -- a state rule, not a field) says why. On a trip page the trip is then re-read
+//   and the reason shown at the top of the page, so a change made meanwhile (e.g. approved while the editor was open, which answers
+//   422) shows at once even if the refused panel closes. A refused write changed nothing, so the re-read is always safe. A 422 field
+//   list stays next to its fields.
 // - A server error or a dropped connection says the request did not complete (QA10-06); anything else keeps the user's input.
 // - Focus moves to the result region (`resultProps`) after every outcome, so it never falls to <body> when the pressed button
 //   disappears or is disabled (review I1, QA10-06).
@@ -55,11 +58,13 @@ export function useTripWrite() {
       else router.refresh();
     } else {
       const unreachable = outcome.status === undefined || outcome.status >= 500;
-      setMessage({ text: unreachable ? NOT_COMPLETED : outcome.message, failed: true });
-      if (outcome.status === 409) {
-        if (live) await live.reload();
-        else router.refresh();
+      const refused = outcome.status === 409 || (outcome.status === 422 && typeof outcome.detail === "string");
+      if (live && refused) {
+        await live.reload(outcome.message); // the page shows it and takes focus
+        return outcome;
       }
+      setMessage({ text: unreachable ? NOT_COMPLETED : outcome.message, failed: true });
+      if (outcome.status === 409) router.refresh();
     }
     refocus(resultId);
     return outcome;

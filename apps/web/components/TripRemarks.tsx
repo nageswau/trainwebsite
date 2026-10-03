@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import FormMessage from "@/components/FormMessage";
 import { tripUrl, type Trip } from "@/lib/bdmTravel";
+import { useHydrated } from "@/lib/useHydrated";
 import { jsonInit, useTripWrite } from "@/lib/useTripWrite";
 
 const MAX = 2000;
@@ -13,8 +14,10 @@ const MAX = 2000;
 export default function TripRemarks({ trip }: { trip: Trip }) {
   const [value, setValue] = useState(trip.remarks ?? "");
   const { busy, message, run, resultProps } = useTripWrite();
+  const ready = useHydrated(); // QA10-17: this box is server-rendered too
   return (
     <form className="form" onSubmit={(e) => { e.preventDefault(); run(tripUrl(trip.id), jsonInit("PATCH", { remarks: value.trim() || null }), "Remarks saved."); }}>
+      <fieldset disabled={!ready} className="form" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <div className="field">
         {/* QA10-14: the section heading already says "Remarks" on screen; the field keeps the name for assistive tech */}
         <label htmlFor="trip-remarks-edit" className="visually-hidden">Remarks</label>
@@ -24,6 +27,7 @@ export default function TripRemarks({ trip }: { trip: Trip }) {
       <div className="actions">
         <button className="btn secondary" type="submit" disabled={busy}>{busy ? "Saving…" : "Save remarks"}</button>
       </div>
+      </fieldset>
       <div {...resultProps}>{message && <FormMessage message={message} />}</div>
     </form>
   );

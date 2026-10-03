@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import FormMessage from "@/components/FormMessage";
 import {
@@ -9,6 +9,7 @@ import {
   type TripMode,
 } from "@/lib/bdmTravel";
 import { refocus } from "@/lib/focus";
+import { useHydrated } from "@/lib/useHydrated";
 import { jsonInit, useTripWrite } from "@/lib/useTripWrite";
 
 type Values = {
@@ -58,9 +59,7 @@ export default function TripForm({ trip, today }: { trip?: Trip; today: string }
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { busy, message, setMessage, run, resultProps } = useTripWrite();
   const { min } = travelDateBounds(today);
-  // QA10-17: server-rendered disabled, enabled once React owns the inputs -- so nothing typed early is wiped by hydration.
-  const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
+  const ready = useHydrated(); // QA10-17: disabled until React owns the inputs, so nothing typed early is wiped
   const set = <K extends keyof Values>(key: K, value: Values[K]) => setValues((v) => ({ ...v, [key]: value }));
 
   const fieldProps = (key: keyof Values) => ({
