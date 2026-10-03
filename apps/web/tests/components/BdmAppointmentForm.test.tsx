@@ -221,13 +221,13 @@ describe("BdmAppointmentForm (bdm-006 §6.2, R-F6)", () => {
       expect(bodyOf(fetchMock as unknown as ReturnType<typeof vi.fn>, 0)).toMatchObject({ expected_leads: 12, expected_revenue: "1500.50" });
     });
     it("edit mode validates too", () => {
-      const fetchMock = vi.fn(() => Promise.resolve(res({ organization: org })));
+      const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(res({ organization: org })));
       vi.stubGlobal("fetch", fetchMock);
       render(<BdmAppointmentForm mode="edit" bdmType="college" appointment={appt()} onSaved={() => {}} onCancel={() => {}} />);
       fireEvent.change(screen.getByLabelText("Expected leads"), { target: { value: "2000000" } });
       fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
       expect(screen.getByLabelText("Expected leads")).toHaveAttribute("aria-invalid", "true");
-      expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === "PATCH")).toBe(false);
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(false);
     });
   });
 
