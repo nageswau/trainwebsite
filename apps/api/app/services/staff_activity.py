@@ -40,6 +40,9 @@ STAFF_ACTIVITY_ACTIONS = (
     "overseas.application.visa_update",
     "overseas.application.visa_advance",
     "overseas.application.visa_decision",
+    # AGN-011 (DEC-SCOPE-058): setting and paying a deposit; ids, field names and statuses only (never the amount).
+    "overseas.application.deposit",
+    "overseas.application.deposit_checkout",
     "document.upload",
     "document.verify",
 )

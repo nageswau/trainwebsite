@@ -81,6 +81,15 @@ dependent (`API_CONTRACT.md` §10).
   rather than inventing an automated reconciliation job that was never asked for.
 - **Ownership:** Engineering (adapter code), Finance/Admin (reconciliation process, provider account).
 
+- **Agent deposits (`AGN-011`, `DEC-SCOPE-058`, 2026-10-02):** the same order/Checkout.js/verify/webhook path collects a university
+  deposit an agency pays for its student. The order is opened by `POST …/agent/crm/applications/{id}/deposit/checkout` for the stored
+  deposit amount in INR (receipt `PAY-<payment id>`); the webhook maps the payment back through `reference_type="agent_deposit"`. The
+  provider call is made with no database row lock held; a provider error answers `502` and cancels the attempt (nothing charged on our
+  side). **Paid-guard (D2, every payment):** a payment already `paid`/`succeeded` is never moved by a later event (`payment.failed`, or
+  `order.paid` after `payment.captured` — distinct event ids), and the paid side effects run once under a row lock. Settlement to the
+  university and refunds happen outside the system and are recorded by Overseas Admin (D12) — no Razorpay refund API is called. A
+  captured payment that does not match the deposit's open checkout or amount is recorded as paid and flagged for a manual refund.
+
 ---
 
 ## 3. Live-class providers (Zoho Meeting default, Google Meet retained)

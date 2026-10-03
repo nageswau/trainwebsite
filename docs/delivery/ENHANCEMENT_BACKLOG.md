@@ -85,6 +85,9 @@ See §AGN-008.
 
 **Revision 13 (2026-10-02):** backlog item ang-010 "Offer details (Step 6)" (`EVID-015` §5 Step 6) is decided as `DEC-SCOPE-056`
 (O1–O7, owner in-session; `054` was the next free number on `main` @ `9adcbca`). See §AGN-010.
+**Revision 14 (2026-10-02):** the owner's `AGN-017` statement ("Notifications" §4; "Monitor deadlines" §2) is decided as `DEC-SCOPE-059`
+(N1–N11; drafted as `055` / Revision 13, renumbered `058` on merging `main` @ `ff27fa4` and `059` @ `3d9244f`, where bdm-001, AGN-010, AGN-012 and AGN-011 hold `055`–`058`).
+See §AGN-017.
 
 ## 0. Scope and exclusions (read this before the backlog)
 
@@ -176,6 +179,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-009 | Agent documents — upload, download, verify, reject (with a reason), request additional, history; §5 Step 4 types; Staff sidebar Pending/Uploaded/Additional (`DEC-SCOPE-052`) | Large | High | Yes | AGN-003, AGN-004, AGN-008, OVS-005, VISA-001 |
 | AGN-016 | Agent tasks and follow-ups — Master/Staff create, edit, complete and cancel tasks on agency students (task follows the student); "Pending actions" KPI (Rev. 12) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-021 |
 | AGN-010 | Agent offer details — conditional/unconditional, offer date, deadline, conditions, offer letter on an agency application; agent "Offers" count (Rev. 13) | Medium | Medium | Yes | AGN-008, AGN-009, AGN-021 |
+| AGN-017 | Agency notifications (in-app + email) on assignment, document request/rejection, status change, new task; daily deadline reminders and overdue digest; Notifications page + unread badge (Rev. 14) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-009, AGN-013, AGN-016, ENH-014 |
 
 ---
 
@@ -3749,6 +3753,54 @@ history; a reason required when an agent rejects or asks for changes; Pending / 
 
 **Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-009-agent-documents`. Lite test sets pass (see `RTM.md` AGN-009 row).
 Pending, owner-side: browser validation, the independent Codex review, the full backend/web/E2E suites, the merge.
+## AGN-017 — Agency Notifications and Deadline Reminders
+
+**Title.** Tell the right agency member, in-app and by email, when something about their student changes, and remind them daily of
+upcoming deadlines and overdue tasks.
+
+**Business requirement.** The owner's `AGN-017` statement (in-session, 2026-10-02): "Notifications" (§4); "Monitor deadlines" (§2).
+Acceptance: "each event produces exactly one notification to the right person; reminders are not sent twice for the same deadline/day; a
+failed email is recorded, never raised." Source: `EVID-015` (`DERIVED_BLUEPRINT`); channels `DEC-SCOPE-035` D19. Decision record:
+`DEC-SCOPE-059` (N1–N10, `EXPLICIT_APPROVAL` in-session 2026-10-02).
+
+**Existing behavior.** No agency member was notified of assignments, document requests/rejections, status changes or new tasks; no
+scheduled job besides the ENH-014 delivery sweeper.
+
+**Expected behavior.** Notices on assignment (new assignee only), document request, document rejected / changes required, status change
+(agency or EduSphere actor), enrollment (no double notice with "Commission estimated"), task created by someone else. Recipient: the active
+assignee, else the active Masters; never the actor. A daily 08:00 IST job: deadline reminders at 3/1/0 days and one overdue-task digest per
+recipient per day, idempotent by `notifications.dedupe_key`. A Notifications page (Master and Staff) and an unread badge. Spec:
+`docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md`; plan `docs/superpowers/plans/2026-10-02-agn-017-notifications.md`.
+
+**Roles.** Agency Master and Staff receive; students receive nothing new (D19).
+
+**Acceptance criteria.** Spec §10 AC1–AC10.
+
+**Regression risks.** Spec §12: shared `workflows.py` verify/PATCH/advance (additive hooks; students' notices unchanged), the enrollment
+commission notice, the first crontab beat entry, `PortalShell`/`NavItem` (optional `badge`), every agency page now also reads the unread
+count, the alembic head (`0065`).
+
+**Complexity:** Medium. **Risk:** Medium.
+
+**Status (2026-10-03): COMPLETE (AGN-017 scope; evidence below)** on `feature/agn-017-notifications`. Lite tests only, per the owner (the AGN-017 files
+plus the touched features' files). Browser QA done (`docs/quality/AGN-017_BROWSER_QA_2026-10-02.md`: QA17-01/03/04/05/06 fixed and
+re-verified; QA17-02 kept as designed, `DEC-SCOPE-059` N11); e2e `agn-017-notifications.spec.ts` 2/2. Codex review waived by the owner.
+
+**Verification before completion (2026-10-03, fresh runs; final code `2a49676`).** Backend: 90 files (`test_agn_*`, `test_agt_*`,
+`test_enh_014_*`, NOT-001, SCH-007, OVS-003/004/005, ENH-005 approve, ENH-023) 1229 passed / 1 failed — the failure,
+`test_enh_023_tier_change.py::test_failing_email_never_fails_or_undoes_the_tier_change`, is **pre-existing and order-dependent**: it
+fails after any migration test (alembic `env.py` `fileConfig` disables existing loggers, so its `caplog` sees nothing), reproduced on base
+`e0395d6` with `test_agn_013_migration.py`; it passes alone and in the 188-test run without the migration files. After the type-only fix,
+the 20 files that touch `agent_notifications.py` 209 passed; `alembic heads` = `0061_agent_notifications`; ruff clean on every changed
+Python file; mypy 283 errors = the base's 283, none in AGN-017 code; `alembic check` drift = two pre-existing indexes only. Web: 168/168
+test files (one AGN-017 omission fixed: `navigation.agent.test.ts` now lists Notifications), `tsc` 0, `npm run lint` 0 errors (31
+pre-existing warnings; `--max-warnings=0` on AGN-017 files), `npm run build` exit 0 (88/88). Playwright on stack `agn017qa`: AGN-017, 016,
+013, 009, 008, 004, ENH-005, ENH-023, SCH-007 — 22 passed (`--timeout=60000`, QA-grown demo agency); AGN-017 2/2 again on the final images.
+Browser Use on the final images: live event → badge 9→10, open → 9 on the destination, 0 px overflow at 1280/375, signed-out redirect,
+role refusal, Super Admin note without form, no console/network errors; daily job re-run 0 created / 2 duplicates; deliveries email-only.
+Diff: 42 files, all AGN-017; no skipped/focused tests, debug code or secrets. **Status: COMPLETE for AGN-017's scope**; the owner's full
+suite will show the pre-existing ENH-023 ordering failure above (not AGN-017's; recorded for its owner).
+
 ## AGN-016 — Agent Tasks and Follow-ups, "Pending Actions" KPI
 
 **Title.** Let an agency Master, and Staff for their assigned students, record follow-up tasks on agency students and see what is open

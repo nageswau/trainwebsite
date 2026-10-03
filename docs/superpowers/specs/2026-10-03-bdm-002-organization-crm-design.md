@@ -12,11 +12,13 @@
 
 **Scope authority:** `DEC-SCOPE-055` — D5 (a new `bdm_organizations` table), D11 / Q-02 (read every organization of your `bdm_type`, edit only those assigned to you), D12 / Q-03 (any BDM may create University / Corporate / Training Institute / Other; it belongs to the creator's module), D26 / Q-17 (managers own no work), D27 / Q-18 (duplicates: warn, never block, never merge, the BDM must acknowledge).
 
-**Decision record:** **`DEC-SCOPE-058`** (next free number on `main` at `ff27fa4`; recheck before merge), written in this change. It holds the C1–C16 answers in §3.
+**ID note (2026-10-03, merge of `main` @ `e1c2084`):** written as `DEC-SCOPE-058` and migration `0064_bdm_organizations`; AGN-011 (`DEC-SCOPE-058`, `0064_application_deposits`) and AGN-017 (`DEC-SCOPE-059`, `0065_agent_notifications`) reached `main` first, so bdm-002 is now **`DEC-SCOPE-060`** and **`0066_bdm_organizations`**. Commits from before the merge use the old numbers.
+
+**Decision record:** **`DEC-SCOPE-060`** (next free number on `main` at `ff27fa4`; recheck before merge), written in this change. It holds the C1–C16 answers in §3.
 
 **Gate:** `APPROVAL_GATES.md` GATE-09. Coding starts only after the implementation plan is approved.
 
-**Migration:** `0064_bdm_organizations` (next free on `main` at `ff27fa4`; the later-merging branch renumbers).
+**Migration:** `0066_bdm_organizations` (next free on `main` at `ff27fa4`; the later-merging branch renumbers).
 
 ---
 
@@ -80,7 +82,7 @@ Also approved with the design: `POST /{id}/restore` (follows from C5), `org_type
 
 ---
 
-## 4. Data model — migration `0064_bdm_organizations` (additive only)
+## 4. Data model — migration `0066_bdm_organizations` (additive only)
 
 ### 4.1 `bdm_organizations`
 
@@ -131,7 +133,7 @@ At most 20 contacts per organization (service rule).
 
 - `upgrade()` skips a table that already exists (the dev schema-autocreate guard), creates the sequence, both tables, constraints and indexes.
 - `downgrade()` raises `RuntimeError` while either table has rows, otherwise drops the contacts table, the organizations table, then the sequence.
-- No existing table, column or row changes. `down_revision = "0063_agent_visa_details"`.
+- No existing table, column or row changes. `down_revision = "0065_agent_notifications"`.
 
 ---
 
@@ -296,7 +298,7 @@ No horizontal page scroll at phone width (the table scrolls in its own labelled 
 
 ### 8.1 Backend (`apps/api/tests`, shared DB, uuid-unique data via `bdm001_helpers` + a new `bdm002_helpers.py`)
 
-- `test_bdm_002_migration.py` — chains after `0063_agent_visa_details` and is the single head; model matches migration (columns, CHECKs, indexes, partial unique); round trip on an isolated DB keeps existing rows identical; downgrade refuses while rows exist; the sequence exists and is dropped.
+- `test_bdm_002_migration.py` — chains after `0065_agent_notifications` and is the single head; model matches migration (columns, CHECKs, indexes, partial unique); round trip on an isolated DB keeps existing rows identical; downgrade refuses while rows exist; the sequence exists and is dropped.
 - `test_bdm_002_service.py` — `normalize_key`; `next_code` format incl. a value above 999999; `primary_for_create`; `permissions` table for each actor/state.
 - `test_bdm_002_organizations.py` — AC1, AC2, AC5a, AC6, AC7; validation messages; list filters (`q`, `org_type`, `city`, `assigned`, `include_archived`), paging bounds 422, stable ordering.
 - `test_bdm_002_scope.py` — every route × {assigned BDM, same-type other BDM, other-type BDM, team manager, other manager, super_admin, it_admin, student, BDM without profile} with the exact status code (AC3, IDOR).
@@ -328,7 +330,7 @@ All `test_bdm_001_*` + the new files + the lite backend set; Playwright bdm-001,
 | `app/main.py` router list | One line; merge conflicts only. |
 | `lib/navigation.ts` + its exact-list test | Deliberate update; bdm-001 page tests don't assert nav. |
 | `SearchableSelect` `Noun` union | Additive literal; existing nouns unchanged. |
-| Alembic chain | Single head after 0063; recheck `main` before merge and renumber if needed. |
+| Alembic chain | Single head after 0065; recheck `main` before merge and renumber if needed. |
 | Shared test DB | uuid-unique data; no truncation; counts asserted on filtered queries only. |
 
 No existing table, column, route contract, page or component behaviour changes.
@@ -337,7 +339,7 @@ No existing table, column, route contract, page or component behaviour changes.
 
 ## 10. Documentation (same change)
 
-`DEC-SCOPE-058` in `PRODUCT_DECISION_REGISTER.md`; `BDM_CRM_BACKLOG.md` bdm-002 status line, C1 note on the superseded edge case, and the AC5b rule added to bdm-006; traceability entries; `docs/architecture/DATA_MODEL.md` for the two tables; API notes for the new routes.
+`DEC-SCOPE-060` in `PRODUCT_DECISION_REGISTER.md`; `BDM_CRM_BACKLOG.md` bdm-002 status line, C1 note on the superseded edge case, and the AC5b rule added to bdm-006; traceability entries; `docs/architecture/DATA_MODEL.md` for the two tables; API notes for the new routes.
 
 ---
 

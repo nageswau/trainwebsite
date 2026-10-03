@@ -1,12 +1,17 @@
 """bdm-002 -- bdm_organizations + bdm_organization_contacts + bdm_organization_code_seq.
 
-Revision ID: 0064_bdm_organizations
-Revises: 0063_agent_visa_details
+Revision ID: 0066_bdm_organizations
+Revises: 0065_agent_notifications
 
-docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md §4 (DEC-SCOPE-058). Adds two tables and one sequence; no existing
+docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md §4 (DEC-SCOPE-060). Adds two tables and one sequence; no existing
 row is read or written. 0001 builds a fresh database from the current models (which carry both tables and the sequence), so creation
 is guarded (0061's idiom) and the sequence is created IF NOT EXISTS. downgrade() refuses while organizations exist: they are the only
 record of each institution, its contacts and its assignment.
+
+Re-chained 2026-10-03 on merging `main`: cut as `0064_bdm_organizations` after `0063_agent_visa_details`, but AGN-011's
+`0064_application_deposits` and AGN-017's `0065_agent_notifications` reached `main` first, so this revision is now
+`0066_bdm_organizations` after 0065 (one head). A database stamped at `0064_bdm_organizations` is re-stamped with
+`alembic stamp --purge 0063_agent_visa_details` then `upgrade head` (the guarded create makes the re-run harmless).
 """
 
 import sqlalchemy as sa
@@ -14,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0064_bdm_organizations"
-down_revision = "0063_agent_visa_details"
+revision = "0066_bdm_organizations"
+down_revision = "0065_agent_notifications"
 branch_labels = None
 depends_on = None
 
@@ -89,7 +94,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {ORGS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0064_bdm_organizations: BDM organizations exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0066_bdm_organizations: BDM organizations exist. Remove them deliberately first.")
     op.drop_table(CONTACTS)
     op.drop_table(ORGS)
     op.execute(f"DROP SEQUENCE IF EXISTS {SEQ}")

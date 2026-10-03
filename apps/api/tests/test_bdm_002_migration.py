@@ -1,4 +1,4 @@
-"""bdm-002 -- migration 0064_bdm_organizations (spec §4). Round trip and the downgrade refusal run in a throwaway database (the
+"""bdm-002 -- migration 0066_bdm_organizations (spec §4). Round trip and the downgrade refusal run in a throwaway database (the
 bdm-001 pattern); a downgrade never runs against the shared test database."""
 
 import asyncio
@@ -18,16 +18,16 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_bdm_002_migration_0064", VERSIONS / "0064_bdm_organizations.py")
+_spec = importlib.util.spec_from_file_location("_bdm_002_migration_0066", VERSIONS / "0066_bdm_organizations.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE = "0063_agent_visa_details"
-HEAD = "0064_bdm_organizations"
+BASE = "0065_agent_notifications"
+HEAD = "0066_bdm_organizations"
 USERS = "SELECT id, email, role, division FROM users ORDER BY id"
 
 
-def test_migration_chains_after_0063_and_is_the_single_head():
+def test_migration_chains_after_0065_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     parents = {}
@@ -117,7 +117,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0063 with one bdm user."""
+    """A fresh database at 0065 with one bdm user."""
     cfg = Config(str(API_ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
     original = settings.database_url
@@ -153,7 +153,7 @@ def test_round_trip_keeps_users_identical_and_drops_the_sequence(isolated_db):
 
 def test_constraints_hold_and_downgrade_refuses_while_organizations_exist(isolated_db):
     cfg, url, user = isolated_db["cfg"], isolated_db["url"], isolated_db["user"]
-    # 0001 builds a fresh database from the current models, so the tables already exist at BASE; drop them and let 0064's own DDL
+    # 0001 builds a fresh database from the current models, so the tables already exist at BASE; drop them and let 0066's own DDL
     # create them, so the constraints below are the migration's, not create_all's.
     command.upgrade(cfg, HEAD)
     command.downgrade(cfg, BASE)

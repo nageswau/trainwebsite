@@ -22,8 +22,10 @@ NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was wri
 > | `AGN-016` | ang-016 (tasks and follow-ups; "Pending actions" KPI only — the rest of ang-018 stays open) | `DEC-SCOPE-053` | branch `feature/agn-016-tasks-followups` (implemented; browser QA, full suites and Codex review pending) |
 > | `AGN-010` | ang-010 (offer details, Step 6: type, offer date, deadline, conditions, offer letter; agent Offers count) | `DEC-SCOPE-056` | branch `feature/agn-010-offer-details` (implemented; browser QA, full suites and Codex review pending) |
 > | `AGN-012` | ang-012 (visa for agent-managed applications: documents checklist, application date, appointment, interview, stage, decision) | `DEC-SCOPE-057` | branch `feature/agn-012-agent-visa` (verified; main merged as 0063 / DEC-SCOPE-057; Browser Use gate open) |
+> | `AGN-011` | ang-011 (deposit through EduSphere Razorpay, Step 7; Overseas Admin remittance/refund recording) | `DEC-SCOPE-058` | branch `feature/agn-011-deposit-payment` (implemented; browser QA, full suites and Codex review pending) |
+> | `AGN-017` | ang-017 (agency notifications, daily deadline reminders and overdue digest, Notifications page + unread badge) | `DEC-SCOPE-059` | branch `feature/agn-017-notifications` (verified 2026-10-03; re-verification after merging main @ 3d9244f pending; Codex review waived) |
 >
-> Not started: ang-011, ang-013 … ang-015, ang-017 … ang-020 and ang-022. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
+> Not started: ang-015, ang-018 … ang-020 and ang-022. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
 > student to a staff member; staff see assigned students only) — check its remaining acceptance criteria before planning it.
 > **Citation note:** the "`DEC-SCOPE-035`" this file cites as its scope decision was renumbered before merge;
 > `DEC-SCOPE-035` on `main` is `ENH-027` (psychometric). AGN-004 and AGN-007 recorded this mis-citation; each shipped
@@ -435,6 +437,11 @@ table and column names are placeholders for the design spec, not decisions.
 
 ### ang-011 — Deposit collection through Razorpay (Step 7)
 
+> **2026-10-02:** implemented as `AGN-011` (`DEC-SCOPE-058`, design `docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md`).
+> Differences from the text below, by owner decision: the Payment's `reference_id` is the **deposit** id (not the application id); routes
+> live under `/workflows/overseas/agent/crm/applications/{id}/deposit…` and `/overseas-admin/deposits…`; INR only (D1); one refund (D3);
+> remit/refund `overseas_admin` only (D5). The "`DEC-SCOPE-035`" citation below is a mis-citation (see `DEC-SCOPE-058`).
+
 - **Business requirement:** deposit required, amount, payment status, payment date and receipt (§5 Step 7). The money is **collected through EduSphere's Razorpay** integration. The agent (Master or Staff) pays at checkout on the student's behalf (D11). EduSphere finance remits it to the university outside the system, and Overseas Admin records remittance and refunds by hand (D12).
 - **Existing behavior:** `payments.py` has idempotency-key checkout (`POST /payments/{id}/checkout`), signature verification (`/verify`), a signed and deduplicated webhook (`/webhooks/razorpay`, `PaymentWebhookEvent`), and invoice/receipt PDFs (`_ensure_invoice`/`_ensure_receipt`). **The checkout is Self-only:** `Payment.user_id` must equal the caller (`payments.py:154`, STU-010-AC04). `Payment.user_id` is NOT NULL → `users`. No deposit concept exists.
 - **Expected behavior:**
@@ -629,6 +636,10 @@ table and column names are placeholders for the design spec, not decisions.
 - **Positive / Negative / Edge:** deadline in 3 days → reminder / deactivated staff not notified / time zone of the "day" boundary (IST, as for tiers: confirm).
 - **Regression risks:** introducing beat affects deployment (compose `beat` already exists but has been idle).
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-02):** implemented as `AGN-017` (`DEC-SCOPE-059`: assignee else Masters, never the actor; task event = created by
+  someone else; IST day; 3/1/0-day deadline reminders; one overdue digest per recipient per day; email only through the ENH-014 queue;
+  `notifications.dedupe_key`, migration `0065`); browser QA done and fixes re-verified, Codex review waived; verification before
+  completion done 2026-10-03 (complete for its scope). See `ENHANCEMENT_BACKLOG.md` §AGN-017.
 
 ---
 

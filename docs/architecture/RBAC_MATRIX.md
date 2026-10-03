@@ -194,6 +194,7 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | Edit Application | `PATCH /workflows/overseas/agent/crm/applications/{id}` (**AGN-008**, `DEC-SCOPE-050`; now enforced) | ✅ | ✅ assigned only |
 | View Applications | `GET /workflows/overseas/applications`, `GET /portal/overseas/agent/applications`, `GET /lookups/overseas-applications` | ✅ | ✅ |
 | Change Application Status | `POST /workflows/overseas/agent/crm/applications/{id}/status` (**AGN-008**; forward only up to `status_tracking`, withdraw; never `enrolled`); `PUT …/crm/applications/{id}/offer` (**AGN-010**, `DEC-SCOPE-056`; records the offer and may move a pre-offer stage to `offer`; `super_admin` and other roles `403`, out of scope `404`) | ✅ | ✅ assigned only |
+| Deposit (set, pay, receipt) | `PUT …/crm/applications/{id}/deposit`, `POST …/deposit/checkout`, `GET …/deposit/receipt` (**AGN-011**, `DEC-SCOPE-058` D7; the payer owns the `Payment`; `super_admin` and other roles `403`, out of scope `404`). Remittance and refunds: `POST /overseas-admin/deposits/{id}/remit\|refund` — **`overseas_admin` only** (D5; Master, Staff and `super_admin` `403`); `GET /overseas-admin/deposits` — `overseas_admin`, `super_admin` | ✅ | ✅ assigned only |
 | Confirm Enrollment | `PUT /workflows/overseas/agent/crm/applications/{id}/enrollment` (**AGN-013**, `DEC-SCOPE-054` E1; from `offer` onwards; triggers the commission) | ✅ | ❌ `403` (reads the details on the application) |
 | Upload Documents | `POST /workflows/overseas/documents`; `GET /portal/overseas/agent/documents`; **AGN-009:** `GET`/`POST /workflows/overseas/agent/crm/documents`, `PUT …/documents/{id}/file`, `GET …/documents/{id}/history`, `GET`/`POST …/crm/document-requests`, `POST …/document-requests/{id}/cancel` (`DEC-SCOPE-052` G4: requests are Master and Staff); **AGN-010:** upload type "Offer letter" (requires an application in scope; not requestable) | ✅ | ✅ assigned only |
 | Manage Visa Case | `POST`/`PATCH /workflows/overseas/agent/crm/applications/{id}/visa` (**AGN-012**, `DEC-SCOPE-057` V1; start from `offer` onwards, dates, checklist, forward moves through the checklist gate, final decision) | ✅ | ✅ assigned only |
@@ -478,7 +479,7 @@ Authorization follows the inline pattern (`User.role` check → `services/bdm.py
 
 **Explicit denies:** a `bdm` or `bdm_manager` cannot write any profile (no route); `PATCH /admin/users` never writes `role` or `division`; a reporting manager must be an **active `bdm_manager`** (else `422`), so no one can assign themselves or another role a team; `bdm_type` cannot be changed (`422`, B7); `bdm` calling a manager route, or a manager calling `/bdm/me` → `403`; every other role on any BDM route → `403`. The picker returns a manager's email only to the three admin roles (B10, to tell same-name managers apart). Every create or edit writes one `AuditLog` row (profile before/after on edit).
 
-**BDM organizations (`bdm-002`, `DEC-SCOPE-058`).** Every `{id}` resolves through `services/bdm_organizations.load_scoped`; out of scope is
+**BDM organizations (`bdm-002`, `DEC-SCOPE-060`).** Every `{id}` resolves through `services/bdm_organizations.load_scoped`; out of scope is
 the same `404` as a missing id.
 
 | Role | Can | Scope | Item |

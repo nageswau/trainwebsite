@@ -1,8 +1,8 @@
 # bdm-002 — Browser QA, first pass (2026-10-03)
 
-**Scope:** `bdm-002` Organization CRM (`DEC-SCOPE-058`), branch `feature/bdm-002-organization-crm` @ `d88a0d4`.
+**Scope:** `bdm-002` Organization CRM (`DEC-SCOPE-060`), branch `feature/bdm-002-organization-crm` @ `d88a0d4`.
 **Method:** Browser Use (CDP) driving an **isolated** Chrome 154 (throwaway profile, its own CDP port 9333) against the worktree
-stack `bdm002` (web `http://localhost:3102`, API `:8102`, migration head `0064_bdm_organizations`, seeded). Exploratory, no code
+stack `bdm002` (web `http://localhost:3102`, API `:8102`, migration head `0066_bdm_organizations`, seeded). Exploratory, no code
 changed. Console and network were captured through CDP (`Runtime`, `Log`, `Network`) for every step.
 **Accounts** (throwaway, created through `POST /admin/users` and activated with the development welcome token; stamp `995117`):
 College BDMs A and B and a School BDM (all reporting to Manager One), Manager Two (another team with one College BDM), and the seeded

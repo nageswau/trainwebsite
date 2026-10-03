@@ -1,4 +1,4 @@
-"""bdm-002 (DEC-SCOPE-058, spec §5.3): the BDM Organization CRM.
+"""bdm-002 (DEC-SCOPE-060, spec §5.3): the BDM Organization CRM.
 
 Every `{org_id}` resolves through `services.bdm_organizations.load_scoped` (out of scope = 404); every write is one transaction --
 scope, row lock, change, audit, one commit here. Lists are {items, total, limit, offset}, ordered by name then id."""

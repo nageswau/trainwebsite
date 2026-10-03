@@ -1,4 +1,4 @@
-"""bdm-002 (DEC-SCOPE-058, spec §5.2): organization scope, permissions, duplicates, codes and output.
+"""bdm-002 (DEC-SCOPE-060, spec §5.2): organization scope, permissions, duplicates, codes and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Every route resolves an organization through `load_scoped`,
 so an id outside the caller's scope is the same 404 as a missing one. Logs carry ids, route and counts, never names, phones or emails.

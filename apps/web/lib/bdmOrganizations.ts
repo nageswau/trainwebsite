@@ -1,7 +1,7 @@
 import type { BdmType } from "@/lib/bdm";
 import type { LookupPage } from "@/lib/lookups";
 
-// bdm-002 (DEC-SCOPE-058): types and helpers for the Organization CRM. The API decides scope and permissions; `permissions` on each
+// bdm-002 (DEC-SCOPE-060): types and helpers for the Organization CRM. The API decides scope and permissions; `permissions` on each
 // organization only tells the UI which actions to show.
 export const ORGS_URL = "/api/v1/bdm/organizations";
 export const TEAM_URL = "/api/v1/bdm/manager/team";

@@ -4,7 +4,7 @@
 
 **Goal:** BDMs keep an organization CRM (the §9 fields + named contacts), scoped by module and assignment, with a manager reassign, archive/restore and a duplicate warning — without changing any existing contract or row.
 
-**Architecture:** Two new tables (migration `0064_bdm_organizations`) behind a new flat router `app/api/bdm_organizations.py` and a new service `app/services/bdm_organizations.py`, which reuses bdm-001's `bdm_context` unchanged. `GET /bdm/manager/team` gains two optional filters. The web adds `lib/bdmOrganizations.ts`, six client components and five server pages under `/bdm/organizations` and `/bdm/manager/organizations`.
+**Architecture:** Two new tables (migration `0066_bdm_organizations`) behind a new flat router `app/api/bdm_organizations.py` and a new service `app/services/bdm_organizations.py`, which reuses bdm-001's `bdm_context` unchanged. `GET /bdm/manager/team` gains two optional filters. The web adds `lib/bdmOrganizations.ts`, six client components and five server pages under `/bdm/organizations` and `/bdm/manager/organizations`.
 
 **Tech Stack:** FastAPI, SQLAlchemy 2 async, Pydantic 2, Alembic, PostgreSQL; Next.js App Router, React, Vitest + Testing Library, Playwright.
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Migration `0064_bdm_organizations`, `down_revision = "0063_agent_visa_details"`; decision `DEC-SCOPE-058`. Re-run `git fetch origin && git log --oneline HEAD..origin/main` before Task 1 and before merge; renumber if `main` moved.
+- Migration `0066_bdm_organizations`, `down_revision = "0065_agent_notifications"`; decision `DEC-SCOPE-060`. Re-run `git fetch origin && git log --oneline HEAD..origin/main` before Task 1 and before merge; renumber if `main` moved.
 - No new dependency (Python or npm). No change to `services/bdm.py`, `rbac.py`, `middleware.ts`, auth, `admin.py`, `Appointment`, `School`, `AgentOrg`, `enquiries`.
 - Only additive API changes: `GET /bdm/manager/team` without the new params must return exactly what it returns today.
 - Every write: one transaction — scope → lock (`FOR UPDATE OF bdm_organizations`) → change → `AuditLog` → one `commit()` in the route. Services never commit.
@@ -59,10 +59,10 @@ Below, `API_TEST <paths>` and `WEB_TEST "<cmd>"` mean these two commands.
 - Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append after `DEC-SCOPE-057`)
 - Modify: `docs/delivery/BDM_CRM_BACKLOG.md` (bdm-002 status line; bdm-006 AC note)
 
-- [ ] **Step 1: Append `DEC-SCOPE-058`**
+- [ ] **Step 1: Append `DEC-SCOPE-060`**
 
 ```markdown
-### DEC-SCOPE-058 — BDM Organization CRM core (`bdm-002`)
+### DEC-SCOPE-060 — BDM Organization CRM core (`bdm-002`)
 
 **Question:** how are BDM organizations stored, scoped, assigned, archived and de-duplicated?
 
@@ -86,13 +86,13 @@ Below, `API_TEST <paths>` and `WEB_TEST "<cmd>"` mean these two commands.
 - **C15** archived organizations are read-only until restored.
 - **C16** Address is not in bdm-002 (bdm-003).
 
-**Consequences:** migration `0064_bdm_organizations` (two new tables + `bdm_organization_code_seq`; downgrade refuses while organizations exist); routes `GET/POST /bdm/organizations`, `GET/PATCH /bdm/organizations/{id}`, `POST /{id}/archive|restore|assign`, `POST /{id}/contacts`, `PATCH/DELETE /{id}/contacts/{cid}`; pages `/bdm/organizations[/new|/{id}]`, `/bdm/manager/organizations[/{id}]`. Unchanged: every existing route, table and page. Archived organizations must be refused by bdm-006 appointment creation (AC5b). A retention/erasure policy for BDM data stays **NEEDS_CONFIRMATION**. Design: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`; plan: `docs/superpowers/plans/2026-10-03-bdm-002-organization-crm.md`. **New Feature ID authorized:** `bdm-002`.
+**Consequences:** migration `0066_bdm_organizations` (two new tables + `bdm_organization_code_seq`; downgrade refuses while organizations exist); routes `GET/POST /bdm/organizations`, `GET/PATCH /bdm/organizations/{id}`, `POST /{id}/archive|restore|assign`, `POST /{id}/contacts`, `PATCH/DELETE /{id}/contacts/{cid}`; pages `/bdm/organizations[/new|/{id}]`, `/bdm/manager/organizations[/{id}]`. Unchanged: every existing route, table and page. Archived organizations must be refused by bdm-006 appointment creation (AC5b). A retention/erasure policy for BDM data stays **NEEDS_CONFIRMATION**. Design: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`; plan: `docs/superpowers/plans/2026-10-03-bdm-002-organization-crm.md`. **New Feature ID authorized:** `bdm-002`.
 ```
 
 - [ ] **Step 2: Backlog** — under `### bdm-002`, add a status blockquote:
 
 ```markdown
-> **Status (2026-10-03):** in implementation on `feature/bdm-002-organization-crm` (`DEC-SCOPE-058`, migration `0064_bdm_organizations`). C1 supersedes the edge case "an organization with no contacts yet (allowed, flagged)": create needs ≥1 contact and the last contact cannot be deleted. Spec: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`.
+> **Status (2026-10-03):** in implementation on `feature/bdm-002-organization-crm` (`DEC-SCOPE-060`, migration `0066_bdm_organizations`). C1 supersedes the edge case "an organization with no contacts yet (allowed, flagged)": create needs ≥1 contact and the last contact cannot be deleted. Spec: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`.
 ```
 
 Under `### bdm-006`, append to its acceptance criteria: `N. Creating an appointment for an archived organization → 409 (bdm-002 AC5b; resolve the organization with services/bdm_organizations.load_scoped(..., lock=True)).` (N = next number.)
@@ -101,16 +101,16 @@ Under `### bdm-006`, append to its acceptance criteria: `N. Creating an appointm
 
 ```bash
 git add docs/decisions/PRODUCT_DECISION_REGISTER.md docs/delivery/BDM_CRM_BACKLOG.md
-git commit -m "docs(bdm-002): record DEC-SCOPE-058 and backlog notes"
+git commit -m "docs(bdm-002): record DEC-SCOPE-060 and backlog notes"
 ```
 
 ---
 
-### Task 1: Models and migration `0064_bdm_organizations`
+### Task 1: Models and migration `0066_bdm_organizations`
 
 **Files:**
 - Modify: `apps/api/app/models.py` (import `Sequence`; add after `BdmProfile`)
-- Create: `apps/api/alembic/versions/0064_bdm_organizations.py`
+- Create: `apps/api/alembic/versions/0066_bdm_organizations.py`
 - Test: `apps/api/tests/test_bdm_002_migration.py`
 
 **Interfaces:**
@@ -119,7 +119,7 @@ git commit -m "docs(bdm-002): record DEC-SCOPE-058 and backlog notes"
 - [ ] **Step 1: Write the failing test** `apps/api/tests/test_bdm_002_migration.py`
 
 ```python
-"""bdm-002 -- migration 0064_bdm_organizations (spec §4). Round trip and the downgrade refusal run in a throwaway database (the
+"""bdm-002 -- migration 0066_bdm_organizations (spec §4). Round trip and the downgrade refusal run in a throwaway database (the
 bdm-001 pattern); a downgrade never runs against the shared test database."""
 
 import asyncio
@@ -139,12 +139,12 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_bdm_002_migration_0064", VERSIONS / "0064_bdm_organizations.py")
+_spec = importlib.util.spec_from_file_location("_bdm_002_migration_0064", VERSIONS / "0066_bdm_organizations.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
 BASE = "0063_agent_visa_details"
-HEAD = "0064_bdm_organizations"
+HEAD = "0066_bdm_organizations"
 USERS = "SELECT id, email, role, division FROM users ORDER BY id"
 
 
@@ -263,7 +263,7 @@ def test_constraints_hold_and_downgrade_refuses_while_organizations_exist(isolat
         command.downgrade(cfg, BASE)
 ```
 
-- [ ] **Step 2: Run to verify it fails** — `API_TEST tests/test_bdm_002_migration.py`. Expected: collection error / FileNotFoundError for `0064_bdm_organizations.py`.
+- [ ] **Step 2: Run to verify it fails** — `API_TEST tests/test_bdm_002_migration.py`. Expected: collection error / FileNotFoundError for `0066_bdm_organizations.py`.
 
 - [ ] **Step 3: Implement the models** — in `app/models.py` add `Sequence` to the `from sqlalchemy import ...` line, then after `class BdmProfile`:
 
@@ -279,7 +279,7 @@ def _in_list(column: str, values: tuple[str, ...]) -> str:
 
 
 class BdmOrganization(Base, TimestampMixin):
-    """bdm-002 (DEC-SCOPE-058): an institution a BDM meets (§9). `bdm_type` is the owning module (Q-03), copied from the creator and
+    """bdm-002 (DEC-SCOPE-060): an institution a BDM meets (§9). `bdm_type` is the owning module (Q-03), copied from the creator and
     never changed; `name_key`/`city_key` are the server-normalized duplicate key (Q-18). Never hard-deleted: archived instead (C5)."""
 
     __tablename__ = "bdm_organizations"
@@ -332,15 +332,15 @@ class BdmOrganizationContact(Base, TimestampMixin):
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 ```
 
-- [ ] **Step 4: Implement the migration** `apps/api/alembic/versions/0064_bdm_organizations.py`
+- [ ] **Step 4: Implement the migration** `apps/api/alembic/versions/0066_bdm_organizations.py`
 
 ```python
 """bdm-002 -- bdm_organizations + bdm_organization_contacts + bdm_organization_code_seq.
 
-Revision ID: 0064_bdm_organizations
+Revision ID: 0066_bdm_organizations
 Revises: 0063_agent_visa_details
 
-docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md §4 (DEC-SCOPE-058). Adds two tables and one sequence; no existing
+docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md §4 (DEC-SCOPE-060). Adds two tables and one sequence; no existing
 row is read or written. 0001 builds a fresh database from the current models (which carry both tables and the sequence), so creation
 is guarded (0061's idiom) and the sequence is created IF NOT EXISTS. downgrade() refuses while organizations exist: they are the only
 record of each institution, its contacts and its assignment.
@@ -351,7 +351,7 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0064_bdm_organizations"
+revision = "0066_bdm_organizations"
 down_revision = "0063_agent_visa_details"
 branch_labels = None
 depends_on = None
@@ -426,7 +426,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {ORGS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0064_bdm_organizations: BDM organizations exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0066_bdm_organizations: BDM organizations exist. Remove them deliberately first.")
     op.drop_table(CONTACTS)
     op.drop_table(ORGS)
     op.execute(f"DROP SEQUENCE IF EXISTS {SEQ}")
@@ -434,7 +434,7 @@ def downgrade() -> None:
 
 - [ ] **Step 5: Run to verify it passes** — `API_TEST "tests/test_bdm_002_migration.py tests/test_bdm_001_migration.py"`. Expected: all PASS (bdm-001's single-head test still holds).
 
-- [ ] **Step 6: Commit** — `git add apps/api/app/models.py apps/api/alembic/versions/0064_bdm_organizations.py apps/api/tests/test_bdm_002_migration.py && git commit -m "feat(bdm-002): bdm_organizations and contacts tables, migration 0064"`
+- [ ] **Step 6: Commit** — `git add apps/api/app/models.py apps/api/alembic/versions/0066_bdm_organizations.py apps/api/tests/test_bdm_002_migration.py && git commit -m "feat(bdm-002): bdm_organizations and contacts tables, migration 0064"`
 
 ---
 
@@ -530,7 +530,7 @@ def test_contact_models():
 - [ ] **Step 3: Implement** — append to `app/schemas.py`:
 
 ```python
-# --- bdm-002 (DEC-SCOPE-058): organization CRM core ------------------------------------------------------------------------
+# --- bdm-002 (DEC-SCOPE-060): organization CRM core ------------------------------------------------------------------------
 BdmOrgType = Literal["college", "university", "agent", "school", "corporate", "training_institute", "other"]
 BdmContactRole = Literal["principal", "dean", "hod", "placement_officer", "counselor", "management", "owner", "other"]
 BDM_ORG_LABELS = {
@@ -843,7 +843,7 @@ def test_duplicate_conflict_shape():
 - [ ] **Step 3: Implement** `apps/api/app/services/bdm_organizations.py`
 
 ```python
-"""bdm-002 (DEC-SCOPE-058, spec §5.2): organization scope, permissions, duplicates, codes and output.
+"""bdm-002 (DEC-SCOPE-060, spec §5.2): organization scope, permissions, duplicates, codes and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Every route resolves an organization through `load_scoped`,
 so an id outside the caller's scope is the same 404 as a missing one. Logs carry ids, route and counts, never names, phones or emails.
@@ -1263,7 +1263,7 @@ async def test_get_unknown_is_404(client, db_session):
 - [ ] **Step 4: Implement** `apps/api/app/api/bdm_organizations.py` (create/read/list now; Tasks 5–7 add the rest to this file)
 
 ```python
-"""bdm-002 (DEC-SCOPE-058, spec §5.3): the BDM Organization CRM.
+"""bdm-002 (DEC-SCOPE-060, spec §5.3): the BDM Organization CRM.
 
 Every `{org_id}` resolves through `services.bdm_organizations.load_scoped` (out of scope = 404); every write is one transaction --
 scope, row lock, change, audit, one commit here. Lists are {items, total, limit, offset}, ordered by name then id."""
@@ -2063,7 +2063,7 @@ Update `tests/lib/navigation.bdm.test.ts` lines 12–13:
 import type { BdmType } from "@/lib/bdm";
 import type { LookupPage } from "@/lib/lookups";
 
-// bdm-002 (DEC-SCOPE-058): types and helpers for the Organization CRM. The API decides scope and permissions; `permissions` on each
+// bdm-002 (DEC-SCOPE-060): types and helpers for the Organization CRM. The API decides scope and permissions; `permissions` on each
 // organization only tells the UI which actions to show.
 export const ORGS_URL = "/api/v1/bdm/organizations";
 export const TEAM_URL = "/api/v1/bdm/manager/team";

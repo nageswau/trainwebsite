@@ -202,6 +202,11 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .portal-nav a[aria-current="page"]{background:rgba(255,255,255,.14);color:#fff;font-weight:800;border-left:3px solid #7fb2ff;padding-left:9px}
 #portal-mobile-nav-panel a[aria-current="page"]{background:var(--soft);color:var(--blue);font-weight:800;border-left:3px solid var(--blue);padding-left:17px}
 .nav-loading{font-weight:500;opacity:.8;font-size:12px}
+/* AGN-017: the unread count on the agency's Notifications nav item (the existing .badge colours, compact in the sidebar). */
+.portal-nav .nav-badge{margin-left:8px;padding:1px 8px}
+/* AGN-017 QA17-05: the unread count in the portal top bar, only while the sidebar is collapsed into the menu (same 980 px breakpoint). */
+.topbar-unread{display:none}
+@media(max-width:980px){.topbar-unread{display:inline-flex}}
 /* bdm-001 browser QA-15: once .action-grid is one column, the BDM list comes before the long create form, so an admin
    looking for a BDM on a phone or tablet does not scroll past nine fields first. Desktop keeps the form first. */
 @media(max-width:980px){.action-grid > .bdm-list{order:-1}}
