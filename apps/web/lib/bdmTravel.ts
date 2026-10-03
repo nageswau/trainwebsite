@@ -71,4 +71,5 @@ export function fieldErrors(detail: unknown): Record<string, string> {
 }
 
 /** India's calendar date, for the T14 hints (the API decides). */
-export const indiaToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+export const indiaDate = (value: string | Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(value));
+export const indiaToday = () => indiaDate(new Date());

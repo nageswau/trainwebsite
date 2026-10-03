@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import BdmActivityForm from "@/components/BdmActivityForm";
 import BdmActivityItem from "@/components/BdmActivityItem";
@@ -20,6 +20,8 @@ export default function BdmActivityTimeline({
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const fetched = useRef(initial?.items.length ?? 0); // rows read from the server: Load more's offset (a local insert never moves it)
+  const local = useRef(new Set<string>()); // ids saved here and not read from the server
   const focus = useFocusAfterRender();
   const logId = `org-${organization.id}-log-activity`;
   const statusId = `org-${organization.id}-activity-status`;
@@ -31,6 +33,8 @@ export default function BdmActivityTimeline({
       const response = await fetch(orgActivitiesUrl(organization.id, offset));
       const data = response.ok ? await response.json() : null;
       if (!isPage<Activity>(data)) throw new Error("bad page");
+      fetched.current = offset + data.items.length;
+      data.items.forEach((a) => local.current.delete(a.id));
       setItems((current) => (offset === 0 ? data.items : [...current, ...data.items.filter((a) => !current.some((c) => c.id === a.id))]));
       setTotal(data.total);
       setLoaded(true);
@@ -52,7 +56,7 @@ export default function BdmActivityTimeline({
       <div id={statusId} tabIndex={-1} role="status" aria-live="polite" className={notice ? "form-message" : undefined}>{notice}</div>
       {logging && (
         <BdmActivityForm organizationId={organization.id} contacts={organization.contacts.map((c) => ({ id: c.id, name: c.name }))}
-          onSaved={(a) => { setItems((current) => placeNewest(current, a)); setTotal((t) => t + 1); setLogging(false); setNotice("Activity logged."); focus(statusId); }}
+          onSaved={(a) => { local.current.add(a.id); setItems((current) => placeNewest(current, a)); setTotal((t) => t + 1); setLogging(false); setNotice("Activity logged."); focus(statusId); }}
           onCancel={() => { setLogging(false); focus(logId); }} />
       )}
       {!loaded ? (
@@ -67,13 +71,17 @@ export default function BdmActivityTimeline({
           {items.map((a) => (
             <BdmActivityItem key={a.id} activity={a} orgBasePath={orgBasePath}
               onChanged={(next) => { setItems((current) => placeNewest(current, next)); setNotice("Activity saved."); }}
-              onDeleted={(id) => { setItems((current) => current.filter((x) => x.id !== id)); setTotal((t) => t - 1); setNotice("Activity deleted."); focus(statusId); }} />
+              onLocked={(id) => setItems((current) => current.map((x) => (x.id === id ? { ...x, permissions: { can_change: false } } : x)))}
+              onDeleted={(id) => {
+                if (!local.current.delete(id)) fetched.current -= 1; // a row the server gave us shifts the next offset; one saved here never counted
+                setItems((current) => current.filter((x) => x.id !== id)); setTotal((t) => t - 1); setNotice("Activity deleted."); focus(statusId);
+              }} />
           ))}
         </ol>
       )}
       {loaded && failure && <p className="form-error" role="alert">{failure}</p>}
       {loaded && items.length < total && (
-        <button type="button" className="btn secondary small" onClick={() => void load(items.length)} disabled={loading}>{loading ? "Loading…" : "Load more"}</button>
+        <button type="button" className="btn secondary small" onClick={() => void load(fetched.current)} disabled={loading}>{loading ? "Loading…" : "Load more"}</button>
       )}
     </section>
   );

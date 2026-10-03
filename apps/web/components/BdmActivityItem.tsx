@@ -13,13 +13,14 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 // bdm-009 (spec §6.3): one activity in a timeline or a day list. Edit / Delete only when the API says `can_change` (owner, today).
 // A 403 / 409 makes the item read-only with the reason; a 404 means it is already gone (there is no single-activity GET).
 export default function BdmActivityItem({
-  activity, showOrganization = false, orgBasePath = "/bdm/organizations", onChanged, onDeleted,
+  activity, showOrganization = false, orgBasePath = "/bdm/organizations", onChanged, onDeleted, onLocked,
 }: {
   activity: Activity;
   showOrganization?: boolean;
   orgBasePath?: string;
   onChanged: (a: Activity) => void;
   onDeleted: (id: string) => void;
+  onLocked: (id: string) => void; // the API refused a change (403 / 409): the parent marks the item read-only, with no success notice
 }) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -31,15 +32,21 @@ export default function BdmActivityItem({
   const contact = contactText(activity);
   const heading = `${CHANNEL_LABEL[activity.channel]}${activity.direction ? ` · ${DIRECTION_LABEL[activity.direction]}` : ""}`;
 
+  // One refusal path for delete and edit: 404 = already gone; 403 / 409 = show the reason and make the item read-only.
+  function refused(status: number | undefined, message: string) {
+    if (status === 404) return onDeleted(activity.id);
+    setFailure(message);
+    if (status === 403 || status === 409) onLocked(activity.id);
+  }
+
   async function remove() {
     setBusy(true);
     setFailure(null);
     const outcome = await sendRequest(activityUrl(activity.id), { method: "DELETE" });
     setBusy(false);
     setConfirming(false);
-    if (outcome.ok || outcome.status === 404) return onDeleted(activity.id);
-    setFailure(outcome.message);
-    if (outcome.status === 403 || outcome.status === 409) onChanged({ ...activity, permissions: { can_change: false } });
+    if (outcome.ok) return onDeleted(activity.id);
+    refused(outcome.status, outcome.message);
   }
 
   return (
@@ -61,6 +68,7 @@ export default function BdmActivityItem({
         {editing ? (
           <BdmActivityForm organizationId={activity.organization.id} activity={activity}
             onSaved={(a) => { setEditing(false); onChanged(a); focus(editId); }}
+            onRefused={(status, message) => { setEditing(false); refused(status, message); }}
             onCancel={() => { setEditing(false); focus(editId); }} />
         ) : (
           activity.permissions.can_change && (

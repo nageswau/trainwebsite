@@ -35,6 +35,7 @@ export default async function ManagerActivitiesPage({ searchParams }: { searchPa
       <div className="portal-content">
         <BdmActivityDay
           key={`${chosen}-${bdm ?? "all"}`}
+          pageDay={chosen}
           header={
             <>
               <div className="eyebrow">Activities</div>

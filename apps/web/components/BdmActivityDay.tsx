@@ -5,14 +5,15 @@ import BdmActivityCounts from "@/components/BdmActivityCounts";
 import BdmActivityForm from "@/components/BdmActivityForm";
 import BdmActivityItem from "@/components/BdmActivityItem";
 import { type ActivityDayPage, DAY_PAGE, isDayPage } from "@/lib/bdmActivities";
+import { indiaDate } from "@/lib/bdmTravel";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-009 (spec §6.2, §12.2 F3/F7/F8): one IST day of activities with its counts, under the page's own title (`header`), with Log
 // activity among the title's actions. After any write the day is re-read (first page) so the counts stay exact; while it re-reads,
 // the old list and counts stay visible and are marked busy. "Load more" appends the next page.
 export default function BdmActivityDay({
-  header, initial, url, canLog, orgBasePath, emptyText = "No activities on this day.",
-}: { header: ReactNode; initial: ActivityDayPage; url: string; canLog: boolean; orgBasePath: string; emptyText?: string }) {
+  header, initial, url, pageDay, canLog, orgBasePath, emptyText = "No activities on this day.",
+}: { header: ReactNode; initial: ActivityDayPage; url: string; pageDay: string; canLog: boolean; orgBasePath: string; emptyText?: string }) {
   const [day, setDay] = useState(initial);
   const [logging, setLogging] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -53,7 +54,12 @@ export default function BdmActivityDay({
       </div>
       {logging && (
         <section className="action-card wide" aria-label="Log activity">
-          <BdmActivityForm onSaved={() => { setLogging(false); void read(0, false, "Activity logged."); }} onCancel={() => { setLogging(false); focus("activity-day-log"); }} />
+          <BdmActivityForm onSaved={(a) => {
+            setLogging(false);
+            // A backdated entry lands on its own IST day; the page re-reads this one, so say where it went.
+            const went = indiaDate(a.occurred_at);
+            void read(0, false, went === pageDay ? "Activity logged." : `Activity logged for ${went}. Change the day to see it.`);
+          }} onCancel={() => { setLogging(false); focus("activity-day-log"); }} />
         </section>
       )}
       <BdmActivityCounts counts={day.counts} busy={busy} />
@@ -65,7 +71,8 @@ export default function BdmActivityDay({
         <ol className="jtl" aria-label="Activities" aria-busy={busy || undefined} style={{ listStyle: "none", padding: 0 }}>
           {day.items.map((a) => (
             <BdmActivityItem key={a.id} activity={a} showOrganization orgBasePath={orgBasePath}
-              onChanged={() => void read(0, false, "Activity saved.")} onDeleted={() => void read(0, false, "Activity deleted.")} />
+              onChanged={() => void read(0, false, "Activity saved.")}
+              onLocked={(id) => setDay((current) => ({ ...current, items: current.items.map((x) => (x.id === id ? { ...x, permissions: { can_change: false } } : x)) }))} onDeleted={() => void read(0, false, "Activity deleted.")} />
           ))}
         </ol>
       )}

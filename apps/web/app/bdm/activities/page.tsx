@@ -30,6 +30,7 @@ export default async function MyActivitiesPage({ searchParams }: { searchParams:
         {/* A BDM can log from any day's page: backdating is allowed, and the API applies the 7-day rule. */}
         <BdmActivityDay
           key={chosen}
+          pageDay={chosen}
           header={
             <>
               <div className="eyebrow">Activities</div>

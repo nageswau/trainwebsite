@@ -111,4 +111,28 @@ describe("BdmActivityForm (bdm-009 §6.3)", () => {
     fireEvent.click(await screen.findByRole("option", { name: /St Jude/ }));
     await waitFor(() => expect(screen.getByRole("option", { name: "Ms Iyer" })).toBeInTheDocument());
   });
+
+  it("clears the contact options as soon as the organization is cleared", async () => {
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(url.includes("?") ? res({ items: [{ id: "o9", code: "ORG-000009", name: "St Jude", city: "Kochi" }], total: 1 }) : res({ organization: { id: "o9", contacts } })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmActivityForm onSaved={vi.fn()} onCancel={vi.fn()} />);
+    const picker = screen.getByRole("combobox", { name: /Organization/ });
+    fireEvent.focus(picker);
+    fireEvent.change(picker, { target: { value: "Jude" } });
+    fireEvent.click(await screen.findByRole("option", { name: /St Jude/ }));
+    await waitFor(() => expect(screen.getByRole("option", { name: "Ms Iyer" })).toBeInTheDocument());
+    fireEvent.change(picker, { target: { value: "" } });
+    expect(screen.queryByRole("option", { name: "Ms Iyer" })).toBeNull();
+  });
+
+  it("hands a refusal on an edit to onRefused instead of keeping the form editable", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Only today's activities can be changed" }, 409))));
+    const onRefused = vi.fn();
+    render(<BdmActivityForm organizationId="o1" contacts={contacts} activity={saved()} onSaved={vi.fn()} onCancel={vi.fn()} onRefused={onRefused} />);
+    fireEvent.change(screen.getByLabelText("Note"), { target: { value: "x" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(onRefused).toHaveBeenCalledWith(409, "Only today's activities can be changed"));
+  });
 });

@@ -67,4 +67,29 @@ describe("BdmActivityTimeline (bdm-009 §6.3, AC6, AC11)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Load more" }));
     await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith("/api/v1/bdm/organizations/o1/activities?limit=20&offset=1"));
   });
+
+  it("a refused delete (409) makes the item read-only and announces no success", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Only today's activities can be changed" }, 409))));
+    render(<BdmActivityTimeline organization={org} initial={page([act("a1", "2026-10-03T04:00:00Z")])} canLog={false} orgBasePath="/bdm/organizations" />);
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
+    expect(await screen.findByText("Only today's activities can be changed")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Delete" })).toBeNull());
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  it("a backdated activity older than the loaded rows does not move the next Load more offset", async () => {
+    const loaded = Array.from({ length: 20 }, (_, i) => act(`i${String(i).padStart(2, "0")}`, `2026-10-03T${String(10 - Math.floor(i / 6)).padStart(2, "0")}:${String(59 - (i % 6) * 5).padStart(2, "0")}:00Z`));
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) =>
+      Promise.resolve(init?.method === "POST" ? res(act("old1", "2026-09-30T04:00:00Z"), 201) : res(page([act("z1", "2026-09-29T04:00:00Z")], 26, 20))));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmActivityTimeline organization={org} initial={page(loaded, 25)} canLog orgBasePath="/bdm/organizations" />);
+    fireEvent.click(screen.getByRole("button", { name: "Log activity" }));
+    fireEvent.click(screen.getByLabelText("Outgoing"));
+    fireEvent.click(screen.getByRole("button", { name: "Save activity" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Activity logged."));
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith("/api/v1/bdm/organizations/o1/activities?limit=20&offset=20"));
+  });
 });

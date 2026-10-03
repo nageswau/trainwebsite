@@ -24,13 +24,14 @@ const fresh = (): Draft => ({ channel: "call", direction: null, occurredLocal: t
 // bdm-009 (spec §6.3): log or edit one activity. The organization is fixed on the profile, or picked (the BDM's own assigned ones) on
 // the activities page; the contacts come with it. The API decides every rule; the client only hints (direction, max time).
 export default function BdmActivityForm({
-  organizationId, contacts, activity, onSaved, onCancel,
+  organizationId, contacts, activity, onSaved, onCancel, onRefused,
 }: {
   organizationId?: string;
   contacts?: ContactOption[];
   activity?: Activity;
   onSaved: (a: Activity, created: boolean) => void;
   onCancel: () => void;
+  onRefused?: (status: number, message: string) => void; // an edit the API refused (403 / 404 / 409): the caller closes the form
 }) {
   const idp = useId();
   const editing = !!activity;
@@ -107,6 +108,7 @@ export default function BdmActivityForm({
       setFailure("Unable to save this activity.");
       return focusFirst({});
     }
+    if (onRefused && outcome.status && [403, 404, 409].includes(outcome.status)) return onRefused(outcome.status, outcome.message);
     const mapped = { ...fieldErrors(outcome.detail), ...activityRuleField(outcome.detail) };
     setErrors(mapped);
     setFailure(Object.keys(mapped).length ? "Check the highlighted fields." : outcome.message);
@@ -119,7 +121,7 @@ export default function BdmActivityForm({
       {picking && (
         <div className="field">
           <SearchableSelect id={pickerId} label="Organization (required)" noun="organization" required search={assignedOrgSearch}
-            onChange={(o) => { setOrgId(o?.id ?? ""); set("contactId", ""); }} />
+            onChange={(o) => { setOrgId(o?.id ?? ""); setOptions([]); set("contactId", ""); }} />
           {err("organization_id")}
         </div>
       )}

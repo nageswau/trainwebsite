@@ -72,7 +72,7 @@ describe("bdm-009 activity pages", () => {
   });
 
   it("the day list shows the empty state and opens Log activity with the organization picker", () => {
-    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day()} url="/api/v1/bdm/activities?date=2026-10-03" canLog orgBasePath="/bdm/organizations" />);
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day()} url="/api/v1/bdm/activities?date=2026-10-03" pageDay="2026-10-03" canLog orgBasePath="/bdm/organizations" />);
     expect(screen.getByText("No activities on this day.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Log activity" }));
     expect(screen.getByRole("form", { name: "Log activity" })).toBeInTheDocument();
@@ -86,7 +86,7 @@ describe("bdm-009 activity pages", () => {
     const after = day({ counts: { ...counts, by_channel: { ...counts.by_channel, call: 2 }, calls_made: 1 } });
     const fetchMock = vi.fn((url: string) => Promise.resolve(url.includes("/activities/a1") ? new Response(null, { status: 204 }) : res(after)));
     vi.stubGlobal("fetch", fetchMock);
-    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [item], total: 1 })} url="/api/v1/bdm/activities?date=2026-10-03" canLog orgBasePath="/bdm/organizations" />);
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [item], total: 1 })} url="/api/v1/bdm/activities?date=2026-10-03" pageDay="2026-10-03" canLog orgBasePath="/bdm/organizations" />);
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
     await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith("/api/v1/bdm/activities?date=2026-10-03&limit=50&offset=0"));
@@ -101,7 +101,7 @@ describe("bdm-009 activity pages", () => {
   const withCalls = (n: number) => day({ counts: { ...counts, calls_made: n } });
 
   it("the Log activity form is absent before the click", () => {
-    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day()} url={URL_DAY} canLog orgBasePath="/bdm/organizations" />);
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day()} url={URL_DAY} pageDay="2026-10-03" canLog orgBasePath="/bdm/organizations" />);
     expect(screen.queryByRole("form", { name: "Log activity" })).toBeNull();
   });
 
@@ -109,7 +109,7 @@ describe("bdm-009 activity pages", () => {
     let release: (r: Response) => void = () => {};
     const pending = new Promise<Response>((r) => { release = r; });
     vi.stubGlobal("fetch", vi.fn((url: string) => (url.includes("/activities/a1") ? Promise.resolve(new Response(null, { status: 204 })) : pending)));
-    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [mk("a1"), mk("a2")], total: 2 })} url={URL_DAY} canLog orgBasePath="/bdm/organizations" />);
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [mk("a1"), mk("a2")], total: 2 })} url={URL_DAY} pageDay="2026-10-03" canLog orgBasePath="/bdm/organizations" />);
     fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
     await waitFor(() => expect(screen.getByLabelText("Day counts")).toHaveAttribute("aria-busy", "true"));
@@ -121,7 +121,7 @@ describe("bdm-009 activity pages", () => {
   it("Load more leaves focus where it is instead of jumping to the status region", async () => {
     const more = day({ items: [mk("a1"), mk("a2")], total: 2 });
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(more))));
-    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [mk("a1")], total: 2 })} url={URL_DAY} canLog orgBasePath="/bdm/organizations" />);
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [mk("a1")], total: 2 })} url={URL_DAY} pageDay="2026-10-03" canLog orgBasePath="/bdm/organizations" />);
     const button = screen.getByRole("button", { name: "Load more" });
     button.focus();
     fireEvent.click(button);
@@ -132,7 +132,7 @@ describe("bdm-009 activity pages", () => {
   it("an older response never overwrites a newer one", async () => {
     const resolvers: ((r: Response) => void)[] = [];
     vi.stubGlobal("fetch", vi.fn((url: string) => (url.includes("/activities/a") ? Promise.resolve(new Response(null, { status: 204 })) : new Promise<Response>((r) => resolvers.push(r)))));
-    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [mk("a1"), mk("a2")], total: 2 })} url={URL_DAY} canLog orgBasePath="/bdm/organizations" />);
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [mk("a1"), mk("a2")], total: 2 })} url={URL_DAY} pageDay="2026-10-03" canLog orgBasePath="/bdm/organizations" />);
     fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
     await waitFor(() => expect(resolvers).toHaveLength(1));
@@ -144,5 +144,45 @@ describe("bdm-009 activity pages", () => {
     resolvers[0](res(withCalls(9))); // the older one answers late
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.getByText("Calls made").nextElementSibling).toHaveTextContent("7");
+  });
+
+  it("a refused delete (409) locks the item locally: no re-read and no success notice", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(res({ detail: "Only today's activities can be changed" }, 409)));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [mk("a1")], total: 1 })} url={URL_DAY} pageDay="2026-10-03" canLog orgBasePath="/bdm/organizations" />);
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
+    expect(await screen.findByText("Only today's activities can be changed")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Delete" })).toBeNull());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  const logOnto = async (pageDay: string) => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return Promise.resolve(res({ ...mk("n1"), occurred_at: new Date().toISOString() }, 201));
+      if (url.includes("assigned=me")) return Promise.resolve(res({ items: [{ id: "o1", code: "ORG-1", name: "St Mary", city: "Kochi" }], total: 1 }));
+      if (url.includes("/organizations/o1")) return Promise.resolve(res({ organization: { id: "o1", contacts: [] } }));
+      return Promise.resolve(res(day({ counts: { ...counts, day: pageDay } })));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ counts: { ...counts, day: pageDay } })} url={`/api/v1/bdm/activities?date=${pageDay}`} pageDay={pageDay} canLog orgBasePath="/bdm/organizations" />);
+    fireEvent.click(screen.getByRole("button", { name: "Log activity" }));
+    const picker = screen.getByRole("combobox", { name: /Organization/ });
+    fireEvent.focus(picker);
+    fireEvent.change(picker, { target: { value: "Mary" } });
+    fireEvent.click(await screen.findByRole("option", { name: /St Mary/ }));
+    fireEvent.change(screen.getByLabelText("Channel (required)"), { target: { value: "visit" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save activity" }));
+  };
+
+  it("logging onto another day announces which day it went to", async () => {
+    await logOnto("2026-09-01");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(`Activity logged for ${new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date())}. Change the day to see it.`));
+  });
+
+  it("logging onto the page's own day keeps the plain notice", async () => {
+    await logOnto(new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date()));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/^Activity logged\.$/));
   });
 });
