@@ -95,3 +95,18 @@ def test_other_schemes_and_non_addresses_are_still_rejected(bad):
     with pytest.raises(ValidationError) as exc:
         BdmOrganizationCreate.model_validate(org(website=bad))
     assert {"Website must start with http:// or https://", "Enter a website such as stjoseph.edu"} & set(messages(exc.value))
+
+
+def test_a_long_bare_domain_is_checked_after_https_is_added():
+    """Simplify review A1: the https:// prefix must count toward the 255 limit (it overflowed the column, a 500)."""
+    with pytest.raises(ValidationError):
+        BdmOrganizationCreate.model_validate(org(website="a." + "b" * 250))
+    assert len(BdmOrganizationCreate.model_validate(org(website="a." + "b" * 243)).website) == 253
+
+
+@pytest.mark.parametrize("bad", [True, "5", "abc"])
+def test_student_count_stays_strict_with_the_plain_message(bad):
+    """Simplify review A2: no bool/str coercion, and every bad value gets the one sentence."""
+    with pytest.raises(ValidationError) as exc:
+        BdmOrganizationCreate.model_validate(org(student_count=bad))
+    assert messages(exc.value) == ["Number of students must be a whole number from 0 to 1,000,000"]

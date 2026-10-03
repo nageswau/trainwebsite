@@ -6,7 +6,23 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, StrictBool, StrictInt, StringConstraints, ValidationError, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    EmailStr,
+    Field,
+    StrictBool,
+    StrictInt,
+    StringConstraints,
+    ValidationError,
+    ValidationInfo,
+    WrapValidator,
+    field_validator,
+    model_validator,
+)
 from pydantic_core import PydanticCustomError
 
 from app.models import GENDERS
@@ -3003,21 +3019,17 @@ def _bdm_org_text(value: str | None, info: ValidationInfo) -> str | None:
         return value.lower()
     if info.field_name == "phone" and not _BDM_PHONE.fullmatch(value):
         raise ValueError("Phone may contain only digits, spaces and + - ( )")
-    if info.field_name == "website":
-        return _bdm_website(value)
+    if info.field_name == "website" and not _BDM_WEBSITE.fullmatch(value):  # http(s) only: no javascript:/data: hrefs (spec §12.3)
+        raise ValueError("Website must start with http:// or https://" if _BDM_SCHEME.match(value) else "Enter a website such as stjoseph.edu")
     return value
 
 
-def _bdm_website(value: str) -> str:
-    """http(s) only (spec §12.3: no javascript:/data: hrefs). A bare domain is what people type, so it is stored as https (browser
-    QA-05); any other scheme is refused."""
-    if _BDM_WEBSITE.fullmatch(value):
-        return value
-    if _BDM_SCHEME.match(value) and not _BDM_BARE_SITE.fullmatch(value):
-        raise ValueError("Website must start with http:// or https://")
-    if not _BDM_BARE_SITE.fullmatch(value):
-        raise ValueError("Enter a website such as stjoseph.edu")
-    return f"https://{value}"
+def _bdm_website_prefix(value):
+    """Browser QA-05: a bare domain is what people type, so it becomes https://. This runs BEFORE the length check, so the 255 limit
+    counts the stored form."""
+    if isinstance(value, str) and _BDM_BARE_SITE.fullmatch(value.strip()):
+        return f"https://{value.strip()}"
+    return value
 
 
 def _bdm_org_required(value: str, info: ValidationInfo) -> str:
@@ -3049,19 +3061,19 @@ BdmOrgShort = _bdm_org_optional(120)
 BdmOrgPhone = _bdm_org_optional(30)
 BdmOrgLong = _bdm_org_optional(255)
 BdmOrgCourses = _bdm_org_optional(1000)
+BdmOrgWebsite = Annotated[_bdm_org_optional(255), BeforeValidator(_bdm_website_prefix)]
 BdmContactName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200), AfterValidator(_bdm_contact_name)]
 
 
-def _bdm_student_count(value):
-    """Browser QA-04: one plain sentence for every bad value (negative, too large, not a whole number)."""
-    if value is None:
-        return None
-    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 1_000_000:
-        raise ValueError("Number of students must be a whole number from 0 to 1,000,000")
-    return value
+def _bdm_student_count(value, handler):
+    """Browser QA-04: the strict whole-number rule stays; every way it fails reads as one plain sentence."""
+    try:
+        return handler(value)
+    except ValidationError:
+        raise ValueError("Number of students must be a whole number from 0 to 1,000,000") from None
 
 
-BdmStudentCount = Annotated[int | float | None, AfterValidator(_bdm_student_count)]
+BdmStudentCount = Annotated[Annotated[StrictInt, Field(ge=0, le=1_000_000)] | None, WrapValidator(_bdm_student_count)]
 
 
 class BdmContactIn(BaseModel):
@@ -3107,7 +3119,7 @@ class BdmOrganizationCreate(BaseModel):
     state: BdmOrgShort = None
     phone: BdmOrgPhone = None
     email: BdmOrgLong = None
-    website: BdmOrgLong = None
+    website: BdmOrgWebsite = None
     existing_partner: StrictBool = False
     courses_interested: BdmOrgCourses = None
     student_count: BdmStudentCount = None
@@ -3123,7 +3135,7 @@ class BdmOrganizationUpdate(BaseModel):
     state: BdmOrgShort = None
     phone: BdmOrgPhone = None
     email: BdmOrgLong = None
-    website: BdmOrgLong = None
+    website: BdmOrgWebsite = None
     existing_partner: StrictBool = None
     courses_interested: BdmOrgCourses = None
     student_count: BdmStudentCount = None

@@ -11,7 +11,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.api.bdm import _matching
+from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
@@ -51,18 +51,18 @@ def _assigned(user: User, assigned: str | None) -> UUID | None:
 
 @router.get("", response_model=BdmOrganizationPage)
 async def list_organizations(
-    q: str | None = Query(None, max_length=200),
+    q: str | None = SEARCH,
     org_type: BdmOrgType | None = None,
     city: str | None = Query(None, max_length=120),
     assigned: str | None = Query(None, max_length=36),
     include_archived: bool = False,
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    limit: int = LIMIT,
+    offset: int = OFFSET,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Filters are ANDed with the caller's scope, so they can only narrow it. One query: assignee + primary contact (no N+1)."""
-    filters, _ = await svc.caller_scope(db, user)
+    filters = await svc.caller_scope(db, user)
     if not include_archived:
         filters.append(BdmOrganization.archived_at.is_(None))
     if org_type:
@@ -72,13 +72,14 @@ async def list_organizations(
     assignee = _assigned(user, assigned)
     if assignee is not None:
         filters.append(BdmOrganization.assigned_bdm_user_id == assignee)
+    # Both joins are at most 1:1 (NOT NULL assignee; one primary per organization), so the count needs neither.
+    total = await db.scalar(select(func.count()).select_from(BdmOrganization).where(*filters))
     stmt = (
         select(BdmOrganization, User, Primary)
         .join(User, User.id == BdmOrganization.assigned_bdm_user_id)
         .outerjoin(Primary, and_(Primary.organization_id == BdmOrganization.id, Primary.is_primary.is_(True)))
         .where(*filters)
     )
-    total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
     rows = (await db.execute(stmt.order_by(BdmOrganization.name, BdmOrganization.id).limit(limit).offset(offset))).all()
     return {"items": [svc.row_out(user, org, assignee_, primary) for org, assignee_, primary in rows], "total": total or 0, "limit": limit, "offset": offset}
 
@@ -131,7 +132,7 @@ async def create_organization(payload: BdmOrganizationCreate, user: User = Depen
 @router.get("/{org_id}", response_model=BdmOrganizationEnvelope)
 async def get_organization(org_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     org = await svc.load_scoped(db, user, org_id)
-    return {"organization": await svc.organization_out(db, user, org)}
+    return {"organization": await svc.organization_out(db, user, org, refresh=False)}  # nothing was written
 
 
 @router.patch("/{org_id}", response_model=BdmOrganizationEnvelope)
@@ -250,8 +251,10 @@ async def delete_contact(org_id: UUID, contact_id: UUID, user: User = Depends(ge
     """C1: never the last contact. Deleting the primary promotes the oldest remaining one (insertion order). A hard delete: real
     erasure of that person's details (§12.3 personal data)."""
     org = await _editable(org_id, user, db, "contact_delete")
-    contact = await svc.load_contact(db, org, contact_id)
     contacts = await svc.contacts_of(db, org.id)
+    contact = next((c for c in contacts if c.id == contact_id), None)
+    if contact is None:
+        raise HTTPException(404, svc.CONTACT_NOT_FOUND)
     if len(contacts) <= 1:
         raise HTTPException(409, "An organization needs at least one contact")
     was_primary = contact.is_primary

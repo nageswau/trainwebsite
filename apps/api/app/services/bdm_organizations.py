@@ -18,17 +18,23 @@ from app.services.bdm import bdm_context
 logger = logging.getLogger("app.bdm")
 
 NOT_FOUND = "Organization not found"
+CONTACT_NOT_FOUND = "Contact not found"
 REASSIGN_INVALID = "Choose an active BDM of this type from your team"
 MAX_DUPLICATE_MATCHES = 10
-NAME_KEY_LENGTH, CITY_KEY_LENGTH = 200, 120  # the name_key / city_key columns
-ACTIONS = ("can_edit", "can_archive", "can_restore", "can_reassign")
+NAME_KEY_LENGTH = BdmOrganization.__table__.c.name_key.type.length
+CITY_KEY_LENGTH = BdmOrganization.__table__.c.city_key.type.length
 REFUSALS = {
     "can_edit": "Only the assigned BDM can edit this organization",
     "can_archive": "Only the assigned BDM can archive this organization",
     "can_restore": "Only the BDM's manager can restore this organization",
     "can_reassign": "Only the BDM's manager can reassign this organization",
 }
-MANAGERS = ("bdm_manager", "super_admin")
+STATE_REFUSALS = {  # C15: the 409 when the role is right but the archived state is wrong
+    "can_edit": "Restore this organization first",
+    "can_archive": "Already archived",
+    "can_restore": "Already active",
+    "can_reassign": "Restore this organization first",
+}
 
 
 def normalize_key(value: str, limit: int) -> str:
@@ -51,23 +57,22 @@ async def next_code(db: AsyncSession) -> str:
     return format_code(await db.scalar(select(BDM_ORGANIZATION_CODE_SEQ.next_value())))
 
 
-async def caller_scope(db: AsyncSession, user: User) -> tuple[list, BdmProfile | None]:
-    """Read scope as SQL filters (Q-02, C2, C14), plus the caller's profile when they are a BDM. Any other role is 403 (C7).
-    The manager filter is a sub-select, not a join, so `FOR UPDATE` on an organization never locks a `bdm_profiles` row."""
+async def caller_scope(db: AsyncSession, user: User) -> list:
+    """Read scope as SQL filters (Q-02, C2, C14). Any other role is 403 (C7). The manager filter is a sub-select, not a join, so
+    `FOR UPDATE` on an organization never locks a `bdm_profiles` row."""
     if user.role == "bdm":
         profile = await bdm_context(db, user)
-        return [BdmOrganization.bdm_type == profile.bdm_type], profile
+        return [BdmOrganization.bdm_type == profile.bdm_type]
     if user.role == "bdm_manager":
         team = select(BdmProfile.user_id).where(BdmProfile.reporting_manager_user_id == user.id)
-        return [BdmOrganization.assigned_bdm_user_id.in_(team)], None
+        return [BdmOrganization.assigned_bdm_user_id.in_(team)]
     if user.role == "super_admin":
-        return [], None
+        return []
     raise HTTPException(403, "BDM role required")
 
 
 async def load_scoped(db: AsyncSession, user: User, org_id: UUID, *, lock: bool = False) -> BdmOrganization:
-    filters, _ = await caller_scope(db, user)
-    stmt = select(BdmOrganization).where(BdmOrganization.id == org_id, *filters)
+    stmt = select(BdmOrganization).where(BdmOrganization.id == org_id, *await caller_scope(db, user))
     if lock:
         stmt = stmt.with_for_update(of=BdmOrganization).execution_options(populate_existing=True)
     org = await db.scalar(stmt)
@@ -80,12 +85,12 @@ def _allowed(user: User, org: BdmOrganization, action: str) -> bool:
     """Role half of a permission, for an organization already in the caller's scope (load_scoped)."""
     if action in ("can_edit", "can_archive"):
         return user.role == "super_admin" or (user.role == "bdm" and org.assigned_bdm_user_id == user.id)
-    return user.role in MANAGERS
+    return user.role in ("bdm_manager", "super_admin")
 
 
 def permissions(user: User, org: BdmOrganization) -> dict[str, bool]:
     archived = org.archived_at is not None
-    return {a: _allowed(user, org, a) and (archived if a == "can_restore" else not archived) for a in ACTIONS}
+    return {a: _allowed(user, org, a) and (archived if a == "can_restore" else not archived) for a in REFUSALS}
 
 
 def require(user: User, org: BdmOrganization, action: str, route: str) -> None:
@@ -93,13 +98,8 @@ def require(user: User, org: BdmOrganization, action: str, route: str) -> None:
     if not _allowed(user, org, action):
         logger.warning("bdm_org_write_refused", extra={"extra_fields": {"actor_id": str(user.id), "org_id": str(org.id), "route": route, "action": action}})
         raise HTTPException(403, REFUSALS[action])
-    archived = org.archived_at is not None
-    if action == "can_restore" and not archived:
-        raise HTTPException(409, "Already active")
-    if action == "can_archive" and archived:
-        raise HTTPException(409, "Already archived")
-    if action in ("can_edit", "can_reassign") and archived:
-        raise HTTPException(409, "Restore this organization first")
+    if not permissions(user, org)[action]:
+        raise HTTPException(409, STATE_REFUSALS[action])
 
 
 async def find_duplicates(db: AsyncSession, bdm_type: str, name_key: str, city_key: str, exclude_id: UUID | None = None) -> tuple[list[dict], int]:
@@ -133,7 +133,7 @@ async def contacts_of(db: AsyncSession, org_id: UUID) -> list[BdmOrganizationCon
 async def load_contact(db: AsyncSession, org: BdmOrganization, contact_id: UUID) -> BdmOrganizationContact:
     contact = await db.scalar(select(BdmOrganizationContact).where(BdmOrganizationContact.id == contact_id, BdmOrganizationContact.organization_id == org.id))
     if contact is None:
-        raise HTTPException(404, "Contact not found")
+        raise HTTPException(404, CONTACT_NOT_FOUND)
     return contact
 
 
@@ -201,9 +201,10 @@ def row_out(user: User, org: BdmOrganization, assignee: User, primary: BdmOrgani
     }
 
 
-async def organization_out(db: AsyncSession, user: User, org: BdmOrganization) -> dict:
+async def organization_out(db: AsyncSession, user: User, org: BdmOrganization, *, refresh: bool = True) -> dict:
     """The detail every route returns (§12.1 A1). Refreshes first: server defaults (timestamps) are expired after a flush."""
-    await db.refresh(org)
+    if refresh:
+        await db.refresh(org)
     contacts = await contacts_of(db, org.id)
     people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_({org.assigned_bdm_user_id, org.created_by_user_id})))).all()}
     primary = next((c for c in contacts if c.is_primary), None)
