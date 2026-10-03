@@ -33,6 +33,7 @@ async function addOrganization(page: Page, name: string) {
 }
 
 test("BDM organization CRM: add, duplicate warning, read-only peer, reassign, archive and restore", async ({ page }) => {
+  test.setTimeout(120_000); // four sign-ins across three accounts (the AGN-003/004/008 journeys use the same)
   const stamp = Date.now();
   const name = `E2E College ${stamp}`;
   await superAdmin(page);
@@ -64,12 +65,12 @@ test("BDM organization CRM: add, duplicate warning, read-only peer, reassign, ar
   const firstUrl = page.url().split("?")[0];
   const details = page.getByRole("region", { name: "Details" });
   await expect(details.getByText("Dr Rao")).toBeVisible();
-  await expect(page.getByRole("list", { name: "Contacts" }).getByText("Ms Iyer")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Contacts" }).getByRole("listitem").filter({ hasText: "Ms Iyer" })).toHaveCount(1);
 
   // AC2: the same name again warns; Save anyway creates a second one.
   await addOrganization(page, name.toUpperCase());
   await page.getByRole("button", { name: "Save organization" }).click();
-  await expect(page.getByRole("alert")).toContainText("A similar organization already exists");
+  await expect(page.getByRole("alert").filter({ hasText: "A similar organization already exists" })).toBeVisible(); // Next adds its own empty route-announcer alert
   await page.getByRole("button", { name: "Save anyway" }).click();
   await page.waitForURL(/\?created=1/);
   const secondUrl = page.url().split("?")[0];
@@ -99,7 +100,8 @@ test("BDM organization CRM: add, duplicate warning, read-only peer, reassign, ar
   await expect(page.getByRole("status")).toContainText("Organization archived.");
   await page.goto(`/bdm/organizations?q=${encodeURIComponent(name)}`);
   await expect(page.getByRole("region", { name: "Organizations" }).getByRole("link")).toHaveCount(1);
-  await page.getByLabel("Show archived").check();
+  await page.getByLabel("Show archived").click(); // URL-driven: checked once the navigation lands
+  await expect(page.getByLabel("Show archived")).toBeChecked();
   await expect(page.getByRole("region", { name: "Organizations" }).getByText("Archived")).toBeVisible();
 
   // The manager restores it (BDM 1 still reports to them).
