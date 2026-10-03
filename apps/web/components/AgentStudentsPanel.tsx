@@ -66,13 +66,16 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
     setShowArchived(params.get("archived") === "1");
     const pageNumber = Number.parseInt(params.get("page") ?? "1", 10);
     if (Number.isFinite(pageNumber) && pageNumber > 1) setOffset((pageNumber - 1) * PAGE_SIZE);
+    // AGN-018 (DEC-SCOPE-060 G4): the staff sidebar's "Add" link opens the add form once (its Full name field takes focus); the
+    // effect below drops `new` from the URL, so Back and refresh do not reopen it.
+    if (params.get("new") === "1") setAdding(true);
     setReady(true);
   }, []);
 
   useEffect(() => {
     if (!ready) return;
     const params = new URLSearchParams(window.location.search);
-    ["q", "archived", "page"].forEach((key) => params.delete(key));
+    ["q", "archived", "page", "new"].forEach((key) => params.delete(key));
     if (query) params.set("q", query);
     if (showArchived) params.set("archived", "1");
     if (offset > 0) params.set("page", String(offset / PAGE_SIZE + 1));

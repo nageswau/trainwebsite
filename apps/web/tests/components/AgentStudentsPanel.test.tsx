@@ -446,6 +446,16 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     expect(within(row).getByText("Has login")).toBeInTheDocument();
     expect(within(row).getByText("ABC-S001 · Rahul (deactivated)")).toBeInTheDocument();
   });
+
+  it("opens the add form from the sidebar's Add link and drops new=1 from the URL (AGN-018 G4)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([])))));
+    window.history.replaceState(null, "", "/overseas/agent/students?new=1");
+    render(<AgentStudentsPanel memberRole="staff" />);
+    const form = await screen.findByRole("form", { name: "Add student" });
+    expect(within(form).getByLabelText(/Full name/)).toHaveFocus();
+    await waitFor(() => expect(window.location.search).toBe(""));
+    expect(screen.getByRole("button", { name: "Add student" })).toBeDisabled();
+  });
 });
 
 describe("AgentStudentsPanel with an unsaved counseling form (AGN-006 review #2)", () => {
