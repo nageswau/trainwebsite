@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { accessUnavailable } from "./AccessUnavailable";
+import { TableRegion, headingId, n } from "./AgentTableRegion";
 import { DASHBOARD_URL, formatMoney } from "@/lib/agentDashboard";
 import { ApiError, serverApi } from "@/lib/api";
 import type { AgentBreakdown, AgentDashboard, AgentStaffRow } from "@/lib/types";
@@ -9,7 +10,6 @@ import type { AgentBreakdown, AgentDashboard, AgentStaffRow } from "@/lib/types"
 // leaves the page's title, table and nav working. Reuses SchoolKpiBoard's tile markup and the .table-scroll region pattern
 // (GlobalEducationStudentTable), so a keyboard user can scroll each table. Staff get their own scope: no commission, no staff table.
 const NOTE = "Includes later stages and withdrawn applications";
-const n = (value: number) => value.toLocaleString("en-IN");
 
 type Tile = { label: string; value: string; link?: [text: string, href: string]; note?: string };
 
@@ -34,31 +34,6 @@ function Group({ title, tiles }: { title: string; tiles: Tile[] }) {
         ))}
       </dl>
     </section>
-  );
-}
-
-// Browser QA18-06: the visible heading names its scroll region (aria-labelledby), so the title is not repeated in a hidden caption.
-// QA18-04: `compact` drops the shared .table min-width, so a two-column table fits a phone instead of hiding its numbers.
-const headingId = (title: string) => `agent-dashboard-${title.toLowerCase().replaceAll(" ", "-")}`;
-
-// `stack`: on phones each row becomes a block and every number shows its column label (data-label) -- the staff table has too many
-// columns to fit 320 px (QA18-04).
-function TableRegion({ title, head, stack = false, children }: { title: string; head: string[]; stack?: boolean; children: React.ReactNode }) {
-  return (
-    <div className="table-scroll" tabIndex={0} role="region" aria-labelledby={headingId(title)}>
-      <table className={stack ? "table compact stack" : "table compact"}>
-        <thead>
-          <tr>
-            {head.map((h) => (
-              <th scope="col" key={h}>
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>{children}</tbody>
-      </table>
-    </div>
   );
 }
 
