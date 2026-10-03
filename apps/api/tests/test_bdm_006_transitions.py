@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from app.services.bdm_appointments import IST
 from tests.bdm001_helpers import login, make_manager
 from tests.bdm002_helpers import create_org, make_bdm
 from tests.bdm006_helpers import APPTS, audits, bdm_with_org, create_appt, future, move_to_past
@@ -22,7 +23,7 @@ async def test_book_confirm_complete_with_outcome(client, db_session):
     early = await client.post(url(a, "complete"), json={"outcome": "interested"})
     assert (early.status_code, early.json()["detail"]) == (422, "You can only complete an appointment after its start time")
     await move_to_past(db_session, a["id"])
-    done = await client.post(url(a, "complete"), json={"outcome": "student_leads_expected", "next_follow_up_on": datetime.now().date().isoformat()})
+    done = await client.post(url(a, "complete"), json={"outcome": "student_leads_expected", "next_follow_up_on": datetime.now(IST).date().isoformat()})
     assert done.status_code == 200, done.text
     d = done.json()["appointment"]
     assert (d["status"], d["outcome"]) == ("completed", "student_leads_expected") and d["next_follow_up_on"]
@@ -94,8 +95,8 @@ async def test_complete_validates_outcome_per_type_and_follow_up_date(client, db
     await move_to_past(db_session, a["id"])
     foreign = await client.post(url(a, "complete"), json={"outcome": "course_promotion_interested"})
     assert (foreign.status_code, foreign.json()["detail"]) == (422, "This outcome is not available for Agent BDMs")
-    yesterday = (datetime.now() - timedelta(days=2)).date().isoformat()
-    stale = await client.post(url(a, "complete"), json={"outcome": "agreement_required", "next_follow_up_on": yesterday})
+    two_days_ago = (datetime.now(IST) - timedelta(days=2)).date().isoformat()
+    stale = await client.post(url(a, "complete"), json={"outcome": "agreement_required", "next_follow_up_on": two_days_ago})
     assert (stale.status_code, stale.json()["detail"]) == (422, "Next follow-up can't be in the past")
     assert (await client.post(url(a, "complete"), json={"outcome": "agreement_required"})).status_code == 200
 
