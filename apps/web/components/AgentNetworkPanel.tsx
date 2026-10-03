@@ -156,6 +156,14 @@ export default function AgentNetworkPanel() {
           <p className="muted" role="status">
             Loading agencies…
           </p>
+        ) : data.items.length === 0 && data.total > 0 ? (
+          // A page past the end (an old link, or rows that moved meanwhile): there are agencies, just not here.
+          <p className="muted" aria-busy={loading}>
+            No agencies on this page.{" "}
+            <button type="button" className="btn secondary small" onClick={() => goTo(0)}>
+              Go to the first page
+            </button>
+          </p>
         ) : data.items.length === 0 ? (
           <p className="muted" aria-busy={loading}>
             {loaded.query ? `No agencies match “${loaded.query}”.` : shown.empty}

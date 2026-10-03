@@ -84,6 +84,24 @@ describe("AgentOrgDetailPanel (AGN-022)", () => {
     expect(await screen.findByText("Network error. Check your connection and try again.")).toBeInTheDocument();
   });
 
+  it("says so when the summary cannot refresh after an action, instead of showing the old status as current (final review)", async () => {
+    const mock = vi
+      .fn()
+      .mockResolvedValueOnce(json(detail()))
+      .mockResolvedValueOnce(json({ id: ID, status: "suspended" }))
+      .mockResolvedValueOnce(new Response("oops", { status: 500 }))
+      .mockResolvedValueOnce(json(detail({ status: "suspended" })));
+    vi.stubGlobal("fetch", mock);
+    render(<AgentOrgDetailPanel orgId={ID} canAct />);
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend Kappa Overseas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm suspend" }));
+    expect(await screen.findByText("Kappa Overseas suspended.")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load this agency.");
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByRole("button", { name: "Reinstate Kappa Overseas" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("gives Super Admin no actions and a pending agency a link to Agent Approvals (N3)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(detail())));
     render(<AgentOrgDetailPanel orgId={ID} canAct={false} />);

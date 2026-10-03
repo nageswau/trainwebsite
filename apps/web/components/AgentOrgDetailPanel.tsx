@@ -138,6 +138,17 @@ export default function AgentOrgDetailPanel({ orgId, canAct }: { orgId: string; 
       <div className={notice ? "form-message" : undefined} role="status" aria-live="polite">
         {notice}
       </div>
+      {/* A refresh that failed after the first load: the figures below may be out of date, so say so (final review). */}
+      {loadError && (
+        <div>
+          <p className="form-error" role="alert">
+            {loadError.text} The figures below may be out of date.
+          </p>
+          <button type="button" className="btn secondary small" onClick={() => setRetry((n) => n + 1)}>
+            Retry
+          </button>
+        </div>
+      )}
       {canAct && (
         <div>
           {org.status === "active" &&

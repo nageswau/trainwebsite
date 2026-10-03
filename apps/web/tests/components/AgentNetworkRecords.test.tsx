@@ -52,6 +52,22 @@ describe("AgentNetworkRecords (AGN-022)", () => {
     expect(screen.getByText("Showing 21–21 of 25")).toBeInTheDocument();
   });
 
+  it("on a page that emptied while browsing, offers the first page instead of claiming there are no records (final review)", async () => {
+    const twenty = Array.from({ length: 20 }, (_, i) => student(`s${i}`));
+    const mock = vi
+      .fn()
+      .mockResolvedValueOnce(page(twenty, 21))
+      .mockResolvedValueOnce(page([], 18, 20)) // rows were archived meanwhile
+      .mockResolvedValueOnce(page([student("x")], 18, 0));
+    vi.stubGlobal("fetch", mock);
+    render(<AgentNetworkRecords orgId={ID} kind="students" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Next page" }));
+    expect(await screen.findByText("No students on this page.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Go to the first page" }));
+    expect(await screen.findByText("Student x")).toBeInTheDocument();
+    expect(mock.mock.calls[2][0]).toBe(`${BASE}/students?status=active&limit=20&offset=0`);
+  });
+
   it("shows the empty text, and an error with a working Retry", async () => {
     const mock = vi.fn().mockResolvedValueOnce(new Response("{}", { status: 500 })).mockResolvedValueOnce(page([]));
     vi.stubGlobal("fetch", mock);

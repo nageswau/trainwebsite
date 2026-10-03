@@ -122,6 +122,14 @@ export default function AgentNetworkRecords({ orgId, kind }: { orgId: string; ki
         <p className="muted" role="status">
           Loading {noun}…
         </p>
+      ) : data.items.length === 0 && data.total > 0 ? (
+        // A page that emptied while browsing (rows archived or moved meanwhile): the records exist, just not on this page.
+        <p className="muted" aria-busy={loading}>
+          No {noun} on this page.{" "}
+          <button type="button" className="btn secondary small" onClick={() => goTo(0)}>
+            Go to the first page
+          </button>
+        </p>
       ) : data.items.length === 0 ? (
         <p className="muted" aria-busy={loading}>
           {empty}

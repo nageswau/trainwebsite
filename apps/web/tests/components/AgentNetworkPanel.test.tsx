@@ -105,6 +105,18 @@ describe("AgentNetworkPanel (AGN-022)", () => {
     expect(container.querySelector("img")).toBeNull();
   });
 
+  it("on a page past the end, says so and offers the first page instead of claiming there are no agencies (final review)", async () => {
+    window.history.replaceState(null, "", "/overseas/admin/agent-network?page=5");
+    const mock = vi.fn().mockResolvedValueOnce(page([], 3, 80)).mockResolvedValueOnce(page([org("o1")], 3, 0));
+    vi.stubGlobal("fetch", mock);
+    render(<AgentNetworkPanel />);
+    expect(await screen.findByText("No agencies on this page.")).toBeInTheDocument();
+    expect(screen.queryByText("No agencies yet.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Go to the first page" }));
+    expect(await screen.findByRole("link", { name: /Agency o1/ })).toBeInTheDocument();
+    expect(mock.mock.calls[1][0]).toBe(`${LIST}?limit=20&offset=0`);
+  });
+
   it("restores tab, page and search from the URL", async () => {
     window.history.replaceState(null, "", "/overseas/admin/agent-network?tab=pending&page=2&q=abc");
     const mock = vi.fn().mockResolvedValue(page([], 0, 20));
