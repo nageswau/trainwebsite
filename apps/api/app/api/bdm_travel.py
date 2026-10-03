@@ -110,6 +110,7 @@ async def team_trip(trip_id: UUID, user: User = Depends(get_current_user), db: A
 async def _decision(db: AsyncSession, user: User, trip_id: UUID, approve: bool, reason: str | None = None) -> dict:
     trip = await travel.decide(db, user, trip_id, approve=approve, reason=reason)
     owner = await db.get(User, trip.bdm_user_id)
+    assert owner is not None  # the trip's foreign key guarantees the row
     title = "Trip approved" if approve else "Trip not approved"
     await _notify_user(db, owner, title, _place_line(trip), f"/bdm/travel/{trip.id}", channels=[])  # T12
     await db.commit()

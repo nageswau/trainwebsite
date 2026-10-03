@@ -3151,7 +3151,8 @@ TRIP_AMOUNT_MAX = Decimal("10000000.00")
 
 def _trip_text(pattern: re.Pattern, required: bool):
     def check(value: str | None, info: ValidationInfo) -> str | None:
-        label = BDM_TRIP_FIELD_LABELS.get(info.field_name, info.field_name)
+        field = info.field_name or ""
+        label = BDM_TRIP_FIELD_LABELS.get(field, field)
         if value is not None and pattern.search(value):
             raise ValueError(f"{label} contains invalid characters")
         if required and not value:
@@ -3166,7 +3167,8 @@ def _trip_amount(positive: bool):
             amount = Decimal(str(value).strip())
         except (InvalidOperation, ValueError):
             raise PydanticCustomError("trip_amount_format", TRIP_AMOUNT_FORMAT) from None
-        if not amount.is_finite() or amount.as_tuple().exponent < -2:
+        exponent = amount.as_tuple().exponent  # an int once finite (NaN/Infinity carry 'n'/'N'/'F')
+        if not amount.is_finite() or (isinstance(exponent, int) and exponent < -2):
             raise PydanticCustomError("trip_amount_format", TRIP_AMOUNT_FORMAT)
         if positive and amount <= 0:
             raise PydanticCustomError("trip_amount_positive", "The amount must be more than ₹0")
@@ -3226,17 +3228,18 @@ class BdmTripCreate(BaseModel):
 
 
 class BdmTripUpdate(BaseModel):
-    """Omitted = unchanged. A sent null on a required field fails its non-nullable type (bdm-001's idiom); remarks accept null."""
+    """Omitted = unchanged. A sent null on a required field fails its non-nullable type (bdm-001's idiom); remarks accept null.
+    The `None` default is never validated, so it is deliberately typed as the non-nullable type (hence the type: ignore)."""
 
     model_config = ConfigDict(extra="forbid")
-    travel_date: TripTravelDate = None
-    return_date: TripReturnDate = None
-    from_place: TripPlace = None
-    to_place: TripPlace = None
-    purpose: TripPurpose = None
-    mode: BdmTripMode = None
-    accommodation_required: bool = None
-    estimated_cost: TripEstimatedCost = None
+    travel_date: TripTravelDate = None  # type: ignore[assignment]
+    return_date: TripReturnDate = None  # type: ignore[assignment]
+    from_place: TripPlace = None  # type: ignore[assignment]
+    to_place: TripPlace = None  # type: ignore[assignment]
+    purpose: TripPurpose = None  # type: ignore[assignment]
+    mode: BdmTripMode = None  # type: ignore[assignment]
+    accommodation_required: bool = None  # type: ignore[assignment]
+    estimated_cost: TripEstimatedCost = None  # type: ignore[assignment]
     remarks: TripRemarks = None
 
 
@@ -3255,9 +3258,9 @@ class BdmTripExpenseCreate(BaseModel):
 
 class BdmTripExpenseUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    category: BdmExpenseCategory = None
-    amount: TripExpenseAmount = None
-    expense_date: TripExpenseDate = None
+    category: BdmExpenseCategory = None  # type: ignore[assignment]
+    amount: TripExpenseAmount = None  # type: ignore[assignment]
+    expense_date: TripExpenseDate = None  # type: ignore[assignment]
     note: TripNote = None
 
 

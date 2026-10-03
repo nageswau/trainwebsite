@@ -200,10 +200,13 @@ async def transition(db: AsyncSession, user: User, trip: BdmTrip, action: str, t
 async def reporting_manager(db: AsyncSession, trip: BdmTrip, *, lock: bool = False) -> User:
     """The BDM's current reporting manager (T2: resolved now, never stored). `lock` takes FOR SHARE on the profile and the
     manager so a concurrent reassignment or deactivation waits for this transaction (bdm-001 §5.8)."""
-    stmt = select(BdmProfile).where(BdmProfile.user_id == trip.bdm_user_id)
-    profile = await db.scalar(stmt.with_for_update(read=True) if lock else stmt)
-    stmt = select(User).where(User.id == profile.reporting_manager_user_id)
-    return await db.scalar(stmt.with_for_update(read=True) if lock else stmt)
+    profile_stmt = select(BdmProfile).where(BdmProfile.user_id == trip.bdm_user_id)
+    profile = await db.scalar(profile_stmt.with_for_update(read=True) if lock else profile_stmt)
+    assert profile is not None  # every trip owner is a BDM with a profile (bdm_context gates trip creation)
+    manager_stmt = select(User).where(User.id == profile.reporting_manager_user_id)
+    manager = await db.scalar(manager_stmt.with_for_update(read=True) if lock else manager_stmt)
+    assert manager is not None  # the profile's foreign key guarantees the row
+    return manager
 
 
 async def submit_recipients(db: AsyncSession, trip: BdmTrip) -> tuple[list[User], str]:
@@ -251,7 +254,7 @@ def _row(trip: BdmTrip, owner_name: str, actual) -> dict:
 async def page(db: AsyncSession, stmt, limit: int, offset: int, order: tuple) -> dict:
     total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
     rows = (await db.execute(stmt.order_by(*order).limit(limit).offset(offset))).all()
-    return {"items": [_row(*row) for row in rows], "total": total or 0, "limit": limit, "offset": offset}
+    return {"items": [_row(row[0], row[1], row[2]) for row in rows], "total": total or 0, "limit": limit, "offset": offset}
 
 
 async def trip_out(db: AsyncSession, trip: BdmTrip, user: User, today: date) -> dict:
@@ -259,6 +262,7 @@ async def trip_out(db: AsyncSession, trip: BdmTrip, user: User, today: date) -> 
     expenses = list(await db.scalars(
         select(BdmTripExpense).where(BdmTripExpense.trip_id == trip.id).order_by(BdmTripExpense.expense_date, BdmTripExpense.created_at)))
     owner = await db.get(User, trip.bdm_user_id)
+    assert owner is not None  # the trip's foreign key guarantees the row
     decided_by = await db.get(User, trip.decided_by_user_id) if trip.decided_by_user_id else None
     if user.id == trip.bdm_user_id:
         flags = owner_flags(trip, today)
@@ -327,7 +331,7 @@ def _line_meta(expense: BdmTripExpense) -> dict:
 
 async def add_expense(db: AsyncSession, user: User, trip: BdmTrip, body, today: date) -> None:
     _expense_trip(user, trip, today)
-    count = await db.scalar(select(func.count()).where(BdmTripExpense.trip_id == trip.id))
+    count = await db.scalar(select(func.count()).where(BdmTripExpense.trip_id == trip.id)) or 0
     if count >= MAX_EXPENSES:
         raise _refuse(user, trip, "expense", HTTPException(409, f"A trip can have at most {MAX_EXPENSES} expense lines"))
     expense = BdmTripExpense(trip_id=trip.id, created_by_user_id=user.id, **body.model_dump())
