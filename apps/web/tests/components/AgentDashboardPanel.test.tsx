@@ -73,14 +73,37 @@ describe("AgentDashboardBoard (AGN-018)", () => {
 
   it("shows the breakdowns and the staff table with text badges", () => {
     render(<AgentDashboardBoard data={master} />);
-    const countries = screen.getByRole("table", { name: "Applications by country" });
+    const countries = screen.getByRole("region", { name: "Applications by country" });
     expect(within(countries).getByRole("rowheader", { name: "Aland" })).toBeInTheDocument();
-    const universities = screen.getByRole("table", { name: "Applications by university" });
+    const universities = screen.getByRole("region", { name: "Applications by university" });
     expect(within(universities).getByRole("rowheader", { name: "Other" }).closest("tr")).toHaveTextContent("3");
-    const team = screen.getByRole("table", { name: "Staff performance" });
+    const team = screen.getByRole("region", { name: "Staff performance" });
     expect(within(team).getByText("Deactivated")).toBeInTheDocument();
     expect(within(team).getByRole("rowheader", { name: "Unassigned" }).closest("tr")).toHaveTextContent("1");
-    expect(screen.getByRole("region", { name: "Staff performance" })).toHaveAttribute("tabindex", "0");
+    expect(team).toHaveAttribute("tabindex", "0");
+  });
+
+  it("names each table once -- the visible heading labels its scroll region; no hidden caption repeats it (QA18-06)", () => {
+    const { container } = render(<AgentDashboardBoard data={master} />);
+    for (const title of ["Applications by country", "Applications by university", "Staff performance"]) {
+      expect(screen.getAllByText(title)).toHaveLength(1);
+      const heading = screen.getByRole("heading", { level: 3, name: title });
+      expect(screen.getByRole("region", { name: title })).toHaveAttribute("aria-labelledby", heading.id);
+    }
+    expect(container.querySelector("caption")).toBeNull();
+  });
+
+  it("lets the tables shrink to a phone and marks the tile links as links (QA18-03, QA18-04)", () => {
+    const { container } = render(<AgentDashboardBoard data={master} />);
+    expect([...container.querySelectorAll("table")].every((t) => t.classList.contains("compact"))).toBe(true);
+    expect(screen.getByRole("link", { name: "View students" })).toHaveClass("kpi-link");
+  });
+
+  it("shows only the note when the agency has no staff, with the unassigned count in words (QA18-05)", () => {
+    render(<AgentDashboardBoard data={{ ...master, staff: [], unassigned_students: 2 }} />);
+    expect(screen.getByRole("link", { name: "add staff from Team" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Staff performance" })).toBeNull();
+    expect(screen.getByText("2 students are not assigned to anyone yet.")).toBeInTheDocument();
   });
 
   it("shows Staff their own scope with no commission, staff table or reports link", () => {

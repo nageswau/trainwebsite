@@ -32,7 +32,7 @@ test("a Master sees the agency board; staff see their own board and the §4 side
   await form.getByRole("button", { name: "Add staff" }).click();
   await expect(page.getByText(/-S001 created/)).toBeVisible();
   await page.goto("/overseas/agent/dashboard");
-  await expect(page.getByRole("table", { name: "Staff performance" })).toContainText("Omega Staff");
+  await expect(page.getByRole("region", { name: "Staff performance" })).toContainText("Omega Staff");
 
   const staff = await newPage(browser);
   await adminActivate(staff.request, staffEmail);
@@ -40,7 +40,7 @@ test("a Master sees the agency board; staff see their own board and the §4 side
   await staff.goto("/overseas/agent/dashboard");
   await expect(staff.getByText(/Your assigned students/)).toBeVisible();
   await expect(staff.getByText(/commission/i)).toHaveCount(0);
-  await expect(staff.getByRole("table", { name: "Staff performance" })).toHaveCount(0);
+  await expect(staff.getByRole("region", { name: "Staff performance" })).toHaveCount(0);
 
   const nav = staff.locator(".portal-nav");
   await expect(nav.getByRole("link", { name: "My Students", exact: true })).toBeVisible();
