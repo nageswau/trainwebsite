@@ -253,10 +253,14 @@ async def test_conflicting_grade_edits_race_leaves_a_valid_range(db_session, mon
 
 @pytest.mark.asyncio
 async def test_logs_carry_ids_and_field_names_never_profile_text(client, db_session, caplog):
+    logging.getLogger("app.bdm").disabled = False  # alembic's fileConfig (migration tests in the same run) disables loggers: AGN-004 precedent
     caplog.set_level(logging.INFO, logger="app.bdm")
     await login(client, await bdm_of(db_session, "school"))
     secret = f"Plot {uuid.uuid4().hex[:6]} Lane"
     org = await create_org(client, org_type="school", address=secret, profile={"board": "CBSE"})
     assert (await client.patch(f"{ORGS}/{org['id']}", json={"org_type": "agent"})).status_code == 409
-    assert "bdm_org_type_change_refused" in caplog.text
-    assert secret not in caplog.text and "CBSE" not in caplog.text
+    records = [r for r in caplog.records if r.name == "app.bdm"]
+    refused = [r for r in records if r.msg == "bdm_org_type_change_refused"]
+    assert refused and refused[0].extra_fields["fields"] == ["board"] and refused[0].extra_fields["from_group"] == "school"
+    logged = " ".join(f"{r.msg} {getattr(r, 'extra_fields', '')}" for r in records)
+    assert secret not in logged and "CBSE" not in logged
