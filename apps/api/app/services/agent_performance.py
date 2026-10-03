@@ -67,6 +67,33 @@ async def table_counts(db: AsyncSession, user: User, start: date | None, end: da
     return {member_id: tuple(counts) for member_id, *counts in (await db.execute(stmt)).all()}
 
 
+def _level(visa) -> ColumnElement[int]:
+    """An application's furthest stage (spec §4.2); the first true branch wins, highest first, so a later stage implies the earlier."""
+    return case(
+        (OverseasApplication.status == "enrolled", 5),
+        (visa.c.application_id.is_not(None), 4),
+        (offer_clause(), 3),
+        (OverseasApplication.submitted_on.is_not(None), 2),
+        (OverseasApplication.id.is_not(None), 1),
+        else_=0,
+    )
+
+
+async def funnel_counts(db: AsyncSession, user: User, start: date | None, end: date | None) -> dict:
+    """P3: per current owner, the cohort's students (archived included) at each stage or a later one, from each student's furthest
+    application -- non-increasing by construction. Keyed by member id; None = unassigned."""
+    visa = _visa_by_application()
+    member = AgentStudent.assigned_member_id.label("member_id")
+    per_student = (
+        _from_cohort(user, start, end, visa, member, func.max(_level(visa)).label("level"))
+        .group_by(AgentStudent.id, AgentStudent.assigned_member_id)
+        .subquery()
+    )
+    reached = [func.sum(case((per_student.c.level >= k, 1), else_=0)) for k in range(1, 6)]
+    stmt = select(per_student.c.member_id, func.count(), *reached).group_by(per_student.c.member_id)
+    return {member_id: tuple(int(n) for n in counts) for member_id, *counts in (await db.execute(stmt)).all()}
+
+
 def _counts(table: tuple, funnel: tuple) -> dict:
     return {**dict(zip(TABLE, table, strict=True)), "funnel": dict(zip(STAGES, funnel, strict=True))}
 
@@ -82,7 +109,7 @@ def _sum(parts: list[dict]) -> dict:
 async def performance(db: AsyncSession, user: User, start: date | None, end: date | None) -> dict:
     """The AGN-019 payload (spec §5.3). Rows (P6): every active staff member; a deactivated one only while they have counts."""
     table = await table_counts(db, user, start, end)
-    funnel: dict = {}
+    funnel = await funnel_counts(db, user, start, end)
 
     def counts(key) -> dict:
         return _counts(table.get(key, NONE), funnel.get(key, NONE))

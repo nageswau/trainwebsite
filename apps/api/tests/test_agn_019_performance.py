@@ -4,18 +4,26 @@ import pytest
 import pytest_asyncio
 
 from tests.agn001_helpers import client_for
-from tests.agn004_helpers import mk_record, mk_staff
+from tests.agn004_helpers import RECORDS, mk_record, mk_staff
 from tests.agn008_helpers import agency_world, mk_application
 from tests.agn017_helpers import deactivate
 from tests.agn019_helpers import (
+    FUNNEL_S1,
+    FUNNEL_S2,
+    FUNNEL_S3,
+    FUNNEL_TOTAL,
+    FUNNEL_UNASSIGNED,
     PERFORMANCE_API,
+    STAGES,
     TABLE,
     TABLE_S1,
     TABLE_S2,
     TABLE_S3,
     TABLE_TOTAL,
     TABLE_UNASSIGNED,
+    funnel,
     performance_world,
+    table,
 )
 
 
@@ -108,3 +116,38 @@ async def test_total_is_rows_plus_unassigned(world):
     body = await _body(world["master"].email)
     parts = [*body["rows"], body["unassigned"]]
     assert _table(body["total"]) == {k: sum(p[k] for p in parts) for k in TABLE}
+    assert body["total"]["funnel"] == {k: sum(p["funnel"][k] for p in parts) for k in STAGES}
+
+
+# --- funnel and reassignment (AC1, AC2) ----------------------------------------------------------------------------------------------
+
+
+def _non_increasing(f: dict) -> bool:
+    values = [f[k] for k in STAGES]
+    return all(a >= b for a, b in zip(values, values[1:], strict=False))
+
+
+@pytest.mark.asyncio
+async def test_funnel_equals_hand_counts_and_never_increases(world):
+    body = await _body(world["master"].email)
+    rows = _rows(body)
+    assert rows["Staff One"]["funnel"] == FUNNEL_S1
+    assert rows["Staff Two"]["funnel"] == FUNNEL_S2
+    assert rows["Staff Three"]["funnel"] == FUNNEL_S3
+    assert body["unassigned"]["funnel"] == FUNNEL_UNASSIGNED
+    assert body["total"]["funnel"] == FUNNEL_TOTAL
+    for f in [r["funnel"] for r in body["rows"]] + [body["unassigned"]["funnel"], body["total"]["funnel"]]:
+        assert _non_increasing(f), f
+
+
+@pytest.mark.asyncio
+async def test_reassigned_student_counts_for_the_current_owner(world):
+    """P1: r7 (enrolled, no visa case) moves s2 -> s1 through the real assign route; all of r7 moves with it."""
+    async with client_for(world["master"].email) as c:
+        moved = await c.post(f"{RECORDS}/{world['r7'].id}/assign", json={"member_id": str(world["s1"]["member"].id)})
+    assert moved.status_code == 200, moved.text
+    rows = _rows(await _body(world["master"].email))
+    assert rows["Staff One"]["funnel"] == funnel(4, 4, 3, 3, 2, 2)
+    assert rows["Staff Two"]["funnel"] == funnel(2, 2, 2, 1, 1, 0)
+    assert _table(rows["Staff One"]) == table(3, 6, 4, 1, 1, 2)
+    assert _table(rows["Staff Two"]) == table(2, 2, 2, 1, 0, 0)
