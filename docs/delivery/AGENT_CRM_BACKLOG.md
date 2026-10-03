@@ -24,8 +24,9 @@ NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was wri
 > | `AGN-012` | ang-012 (visa for agent-managed applications: documents checklist, application date, appointment, interview, stage, decision) | `DEC-SCOPE-057` | branch `feature/agn-012-agent-visa` (verified; main merged as 0063 / DEC-SCOPE-057; Browser Use gate open) |
 > | `AGN-011` | ang-011 (deposit through EduSphere Razorpay, Step 7; Overseas Admin remittance/refund recording) | `DEC-SCOPE-058` | branch `feature/agn-011-deposit-payment` (implemented; browser QA, full suites and Codex review pending) |
 > | `AGN-017` | ang-017 (agency notifications, daily deadline reminders and overdue digest, Notifications page + unread badge) | `DEC-SCOPE-059` | branch `feature/agn-017-notifications` (verified 2026-10-03; re-verification after merging main @ 3d9244f pending; Codex review waived) |
+> | `AGN-015` | ang-015 (student journey step tracker and complete history; adds an audit index, superseding "database impact: none") | `DEC-SCOPE-060` | branch `feature/agn-015-student-journey` (implemented, lite-tested; browser QA, full suites and review pending) |
 >
-> Not started: ang-015, ang-018 … ang-020 and ang-022. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
+> Not started: ang-018 … ang-020 and ang-022. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
 > student to a staff member; staff see assigned students only) — check its remaining acceptance criteria before planning it.
 > **Citation note:** the "`DEC-SCOPE-035`" this file cites as its scope decision was renumbered before merge;
 > `DEC-SCOPE-035` on `main` is `ENH-027` (psychometric). AGN-004 and AGN-007 recorded this mis-citation; each shipped

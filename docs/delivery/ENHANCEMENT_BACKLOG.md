@@ -88,6 +88,8 @@ See §AGN-008.
 **Revision 14 (2026-10-02):** the owner's `AGN-017` statement ("Notifications" §4; "Monitor deadlines" §2) is decided as `DEC-SCOPE-059`
 (N1–N11; drafted as `055` / Revision 13, renumbered `058` on merging `main` @ `ff27fa4` and `059` @ `3d9244f`, where bdm-001, AGN-010, AGN-012 and AGN-011 hold `055`–`058`).
 See §AGN-017.
+**Revision 15 (2026-10-03):** the owner's `AGN-015` statement ("Student Journey" §4; "View complete student history" §2) is decided as
+`DEC-SCOPE-060` (J1–J6; `060` was the next free number on `main` @ `e1c2084`). See §AGN-015.
 
 ## 0. Scope and exclusions (read this before the backlog)
 
@@ -180,6 +182,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-016 | Agent tasks and follow-ups — Master/Staff create, edit, complete and cancel tasks on agency students (task follows the student); "Pending actions" KPI (Rev. 12) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-021 |
 | AGN-010 | Agent offer details — conditional/unconditional, offer date, deadline, conditions, offer letter on an agency application; agent "Offers" count (Rev. 13) | Medium | Medium | Yes | AGN-008, AGN-009, AGN-021 |
 | AGN-017 | Agency notifications (in-app + email) on assignment, document request/rejection, status change, new task; daily deadline reminders and overdue digest; Notifications page + unread badge (Rev. 14) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-009, AGN-013, AGN-016, ENH-014 |
+| AGN-015 | Agent student journey — nine-step tracker (student steps once, application steps per application) and complete history (every event once, newest first, with its actor) on the student detail (Rev. 15) | Medium | Low | Yes | AGN-004, AGN-006–AGN-013, AGN-016, AGN-021 |
 
 ---
 
@@ -3800,6 +3803,27 @@ Browser Use on the final images: live event → badge 9→10, open → 9 on the 
 role refusal, Super Admin note without form, no console/network errors; daily job re-run 0 created / 2 duplicates; deliveries email-only.
 Diff: 42 files, all AGN-017; no skipped/focused tests, debug code or secrets. **Status: COMPLETE for AGN-017's scope**; the owner's full
 suite will show the pre-existing ENH-023 ordering failure above (not AGN-017's; recorded for its owner).
+
+## AGN-015 — Agent Student Journey and Complete History
+
+**Title.** Show an agency Master, and Staff for their assigned students, where one student is on the nine-step journey and everything
+that has happened to them, by whom.
+
+**Business requirement.** The owner's `AGN-015` statement (in-session, 2026-10-03): "Student Journey" (§4) and "View complete student
+history" (§2): Create → Counseling → Shortlist → Documents → Application → Offer → Deposit → Visa → Enrollment. Source: `EVID-015`
+(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`). Decision: `DEC-SCOPE-060` (J1–J6, `EXPLICIT_APPROVAL` in-session 2026-10-03).
+
+**Acceptance criteria.** Every event from the source items appears once, in order, with its actor; the step tracker matches the stored
+data. Out of scope → `404` (backlog ang-015).
+
+**Design and plan.** `docs/superpowers/specs/2026-10-03-agn-015-student-journey-design.md`; plan
+`docs/superpowers/plans/2026-10-03-agn-015-student-journey.md`. Two read-only routes; migration `0066_audit_entity_index` (one index).
+
+**Status (2026-10-03): IMPLEMENTED, NOT COMPLETE** on `feature/agn-015-student-journey`. Lite tests only (owner runs full suites
+separately): API `test_agn_015_{migration,journey,timeline,security}.py` + `test_agn_017_migration.py`; web `agentJourney.test.ts`,
+`AgentStudentJourney.test.tsx`, `AgentStudentTimeline.test.tsx`, `AgentStudentDetailPanel.journey.test.tsx` and the touched student
+panel tests; `tsc` and eslint on touched files. Pending: browser validation (e2e `agn-015-student-journey.spec.ts` written, not run
+here), full suites, independent review.
 
 ## AGN-016 — Agent Tasks and Follow-ups, "Pending Actions" KPI
 
