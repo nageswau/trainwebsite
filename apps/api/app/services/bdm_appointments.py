@@ -1,4 +1,4 @@
-"""bdm-006 (DEC-SCOPE-063, spec §5.2): appointment scope, transitions, catalogues, overlap and output.
+"""bdm-006 (DEC-SCOPE-064, spec §5.2): appointment scope, transitions, catalogues, overlap and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Every route resolves an appointment through `load_scoped`, so an
 id outside the caller's scope is the same 404 as a missing one. Logs carry ids, statuses and counts, never contact details or free text.

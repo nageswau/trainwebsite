@@ -3,7 +3,7 @@ import { ORGS_URL, TEAM_URL } from "@/lib/bdmOrganizations";
 import { formatSchoolDateTime, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import type { LookupPage } from "@/lib/lookups";
 
-// bdm-006 (DEC-SCOPE-063): types, catalogues and helpers for BDM appointments. The catalogues are display copies of the API's
+// bdm-006 (DEC-SCOPE-064): types, catalogues and helpers for BDM appointments. The catalogues are display copies of the API's
 // (models.BDM_APPOINTMENT_*); the API validates every value and `permissions` only tells the UI which actions to show.
 export const APPOINTMENTS_URL = "/api/v1/bdm/appointments";
 const PICKER_LIMIT = 20;

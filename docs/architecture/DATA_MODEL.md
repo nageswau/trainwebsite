@@ -412,6 +412,17 @@ covers the commission-specific piece).
   The timeline itself is derived at read time from `agent_students`, `audit_logs`, `application_status_history`, `document_events` and
   `student_documents` — nothing is stored.
 
+- **Addendum, 2026-10-03 (`bdm-010`, `DEC-SCOPE-063`; migration `0068_bdm_trips`, chained after `0067_audit_entity_index`) — BDM
+  travel.** `bdm_trips` (UUID PK; `code` unique `TRV-000123` from the sequence `bdm_trip_code_seq`; `bdm_user_id` FK users; travel/return
+  dates with `ck_bdm_trips_dates`; `from_place`/`to_place` ≤ 120; `purpose`; `mode` CHECK flight/train/bus/car/cab/local;
+  `accommodation_required`; `estimated_cost` NUMERIC(14,2) ≥ 0; `currency` = `INR`; `approval_status` draft/submitted/approved/rejected;
+  `travel_status` planned/in_progress/completed/cancelled with `ck_bdm_trips_status_pair` (in progress/completed need approved);
+  `rejection_reason`, `decided_by_user_id`, `submitted_at`, `decided_at`, `completed_at`, `cancelled_at`, `remarks`). Indexes
+  `(bdm_user_id, travel_date)` and partial `(bdm_user_id) WHERE approval_status = 'submitted'`. `bdm_trip_expenses` (UUID PK; `trip_id`
+  FK, indexed; `category` CHECK travel/stay/food/local/other; `amount` NUMERIC(14,2) > 0; `expense_date`; `note` ≤ 500;
+  `created_by_user_id`). Actual cost is never stored (sum of lines, D15). Nothing about the approver is stored (T2). Additive; the
+  downgrade refuses while trips exist.
+
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an
 `ApplicationStatusHistory` row is written with `to_status='enrolled'` **for an application that has
@@ -1152,7 +1163,7 @@ Additive only: two tables and one sequence; no existing table, column or row cha
   per organization). At least one contact (C1) and at most 20 are service rules.
 - Last Meeting / Next Meeting are **not stored**: computed from bdm-006 appointments (null until then).
 
-## BDM Appointments (`bdm-006`, `DEC-SCOPE-063`; migration `0068_bdm_appointments`, after `0067_audit_entity_index`)
+## BDM Appointments (`bdm-006`, `DEC-SCOPE-064`; migration `0069_bdm_appointments`, after `0068_bdm_trips`)
 
 Additive only: two tables and one sequence (`bdm_appointment_code_seq`, also on `Base.metadata`); no existing table, column or row changes. `downgrade()` refuses while any appointment exists. Spec §4.2–4.3.
 

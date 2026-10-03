@@ -1,15 +1,17 @@
 """bdm-006 -- bdm_appointments + bdm_appointment_events + bdm_appointment_code_seq.
 
-Revision ID: 0068_bdm_appointments
-Revises: 0067_audit_entity_index
+Revision ID: 0069_bdm_appointments
+Revises: 0068_bdm_trips
 
-docs/superpowers/specs/2026-10-03-bdm-006-appointments-design.md §4 (DEC-SCOPE-063). Adds two tables and one sequence; no existing
+docs/superpowers/specs/2026-10-03-bdm-006-appointments-design.md §4 (DEC-SCOPE-064). Adds two tables and one sequence; no existing
 row is read or written. 0001 builds a fresh database from the current models (which carry both tables and the sequence), so creation
 is guarded (0061/0066's idiom) and the sequence is created IF NOT EXISTS. downgrade() refuses while appointments exist: they are the
 only record of each meeting and its history.
 
-If another migration reaches `main` first, re-chain this revision after it (rename the file and revision, update down_revision) as
-0066 did; a database stamped at the old id is re-stamped with `alembic stamp --purge <previous head>` then `upgrade head`.
+Re-chained 2026-10-03 on merging `main`: cut as `0068_bdm_appointments` after `0067_audit_entity_index`, but bdm-010's
+`0068_bdm_trips` reached `main` first, so this revision is now `0069_bdm_appointments` after `0068_bdm_trips` (one head). A database
+stamped at `0068_bdm_appointments` is re-stamped with `alembic stamp --purge 0067_audit_entity_index` then `upgrade head` (the guarded
+create makes the re-run harmless). The decision was renumbered `DEC-SCOPE-063` -> `DEC-SCOPE-064` at the same time (bdm-010 is 063).
 """
 
 import sqlalchemy as sa
@@ -17,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0068_bdm_appointments"
-down_revision = "0067_audit_entity_index"
+revision = "0069_bdm_appointments"
+down_revision = "0068_bdm_trips"
 branch_labels = None
 depends_on = None
 
@@ -113,7 +115,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {APPTS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0068_bdm_appointments: BDM appointments exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0069_bdm_appointments: BDM appointments exist. Remove them deliberately first.")
     op.drop_table(EVENTS)
     op.drop_table(APPTS)
     op.execute(f"DROP SEQUENCE IF EXISTS {SEQ}")

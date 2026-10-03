@@ -1,5 +1,7 @@
 # bdm-006 Appointments — Implementation Plan
 
+> **Renumbered 2026-10-03 on merging `main`:** bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`) merged first, so bdm-006 is now `DEC-SCOPE-064` and its migration is `0069_bdm_appointments` (`down_revision = "0068_bdm_trips"`). The task text below is the execution record and keeps the original `DEC-SCOPE-063` / `0068_bdm_appointments` numbers.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** BDMs book and manage appointments with every §2 field, a per-type type list, an enforced and recorded status lifecycle (confirm / reschedule / cancel / no-show / complete with a minimal outcome), an overlap warning, and real Last / Next meeting dates on organizations — without changing any other contract or row.
