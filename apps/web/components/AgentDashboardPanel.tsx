@@ -51,13 +51,17 @@ function Group({ title, tiles }: { title: string; tiles: Tile[] }) {
 const headingId = (title: string) =>
   `agent-dashboard-${title.toLowerCase().replaceAll(" ", "-")}`;
 
+// `stack`: on phones each row becomes a block and every number shows its column label (data-label) -- the staff table has too many
+// columns to fit 320 px (QA18-04).
 function TableRegion({
   title,
   head,
+  stack = false,
   children,
 }: {
   title: string;
   head: string[];
+  stack?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -67,7 +71,7 @@ function TableRegion({
       role="region"
       aria-labelledby={headingId(title)}
     >
-      <table className="table compact">
+      <table className={stack ? "table compact stack" : "table compact"}>
         <thead>
           <tr>
             {head.map((h) => (
@@ -140,6 +144,7 @@ function StaffTable({
       ) : (
         <TableRegion
           title={title}
+          stack
           head={["Member", "Students", "Applications", "Offers", "Enrollments"]}
         >
           {rows.map((r) => (
@@ -153,16 +158,16 @@ function StaffTable({
                   </>
                 )}
               </th>
-              <td>{n(r.students)}</td>
-              <td>{n(r.applications)}</td>
-              <td>{n(r.offers)}</td>
-              <td>{n(r.enrollments)}</td>
+              <td data-label="Students">{n(r.students)}</td>
+              <td data-label="Applications">{n(r.applications)}</td>
+              <td data-label="Offers">{n(r.offers)}</td>
+              <td data-label="Enrollments">{n(r.enrollments)}</td>
             </tr>
           ))}
           <tr>
             <th scope="row">Unassigned</th>
-            <td>{n(unassigned)}</td>
-            <td colSpan={3} />
+            <td data-label="Students">{n(unassigned)}</td>
+            <td colSpan={3} className="stack-empty" />
           </tr>
         </TableRegion>
       )}

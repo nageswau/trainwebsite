@@ -163,6 +163,14 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .kpi-link { color: var(--blue); text-decoration: underline; text-underline-offset: 2px; font-size: 14px; font-weight: 600; }
 /* QA18-04: the shared .table min-width (650px) hid a two-column table's numbers on phones; compact tables size to their content. */
 .table.compact { min-width: 0; }
+/* QA18-04: the staff table has too many columns for a phone -- each member becomes a block, every number labelled. */
+@media (max-width: 640px) {
+  .table.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .table.stack tr { display: block; border-bottom: 1px solid #edf1f6; padding: 8px 0; }
+  .table.stack th[scope="row"], .table.stack td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 4px 12px; position: static; }
+  .table.stack td::before { content: attr(data-label); color: var(--muted); }
+  .table.stack td.stack-empty { display: none; }
+}
 /* position:relative makes the scroll box the containing block of the .sr-only captions inside it, so they are clipped
    instead of widening the page on phones (same fix as .table-wrap, FV-03). */
 .table-scroll { overflow-x: auto; max-width: 100%; position: relative; }

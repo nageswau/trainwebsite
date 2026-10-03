@@ -99,6 +99,14 @@ describe("AgentDashboardBoard (AGN-018)", () => {
     expect(screen.getByRole("link", { name: "View students" })).toHaveClass("kpi-link");
   });
 
+  it("labels every staff-table number so a phone can stack each member's row (QA18-04)", () => {
+    render(<AgentDashboardBoard data={master} />);
+    const team = within(screen.getByRole("region", { name: "Staff performance" })).getByRole("table");
+    expect(team).toHaveClass("stack");
+    const firstRow = within(team).getAllByRole("row")[1];
+    expect(within(firstRow).getAllByRole("cell").map((td) => td.getAttribute("data-label"))).toEqual(["Students", "Applications", "Offers", "Enrollments"]);
+  });
+
   it("shows only the note when the agency has no staff, with the unassigned count in words (QA18-05)", () => {
     render(<AgentDashboardBoard data={{ ...master, staff: [], unassigned_students: 2 }} />);
     expect(screen.getByRole("link", { name: "add staff from Team" })).toBeInTheDocument();
