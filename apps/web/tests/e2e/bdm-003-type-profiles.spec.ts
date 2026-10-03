@@ -14,9 +14,10 @@ async function superAdmin(page: Page) {
   await page.waitForURL("**/admin");
 }
 
-async function signIn(page: Page, email: string) {
+/** A BDM signs in on their division's portal (services/bdm.BDM_DIVISION: college → it; agent and school → overseas). */
+async function signIn(page: Page, portal: "it" | "overseas", email: string) {
   await page.request.post("/api/v1/auth/logout");
-  await page.goto("/it/login");
+  await page.goto(`/${portal}/login`);
   await page.fill("#login-email", email);
   await page.fill("#login-password", E2E_PASSWORD);
   await page.click("button:has-text('Sign in securely')");
@@ -56,7 +57,7 @@ test("bdm-003 type profiles: school details by keyboard, Board filter, 320 px, c
   for (const account of [manager, school, college]) await activateWithToken(page.request, account.development_welcome_token);
 
   // AC1 + AC10, keyboard only: no clicks from here to the saved detail page.
-  await signIn(page, school.email);
+  await signIn(page, "overseas", school.email);
   await page.goto("/bdm/organizations/new");
   const name = `E2E School ${stamp}`;
   await typeInto(page, "Type (required)", "School");
@@ -96,7 +97,7 @@ test("bdm-003 type profiles: school details by keyboard, Board filter, 320 px, c
 
   // AC1 / AC2 in the UI: a College BDM sees College details and no Board.
   await page.setViewportSize({ width: 1280, height: 800 });
-  await signIn(page, college.email);
+  await signIn(page, "it", college.email);
   await page.goto("/bdm/organizations/new");
   await page.getByLabel("Type (required)").selectOption("college");
   await expect(page.getByRole("group", { name: "College details" })).toBeVisible();
