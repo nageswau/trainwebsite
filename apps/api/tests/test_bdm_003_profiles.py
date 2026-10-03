@@ -122,3 +122,70 @@ async def test_create_refuses_live_metrics_bad_enums_and_a_bad_contact_email(cli
         assert (await client.post(ORGS, json=_new("agent", profile=profile))).status_code == 422, profile
     assert (await client.post(ORGS, json=_new("agent", commission=10))).status_code == 422
     assert (await client.post(ORGS, json=_new("agent", contacts=[{"name": "A", "email": "no"}]))).status_code == 422
+
+
+async def _latest_audit_id(db, org_id):
+    return await db.scalar(select(AuditLog.id).where(AuditLog.entity_id == str(org_id)).order_by(AuditLog.created_at.desc()).limit(1))
+
+
+@pytest.mark.asyncio
+async def test_patch_partial_clear_no_op_and_null_profile(client, db_session):
+    await login(client, await bdm_of(db_session, "school"))
+    org = await profile_org(client, "school", board="CBSE", grade_from=6, grade_to=12)
+    url = f"{ORGS}/{org['id']}"
+    cleared = await client.patch(url, json={"profile": {"board": None}, "address": "Kochi"})
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["organization"]["profile"] == {"kind": "school", "board": None, "school_type": None, "grade_from": 6, "grade_to": 12}
+    assert sorted((await _audit(db_session, org["id"], "update"))["fields"]) == ["address", "board"]
+    before = await _latest_audit_id(db_session, org["id"])
+    assert (await client.patch(url, json={"profile": {}})).status_code == 200
+    assert (await client.patch(url, json={"profile": {"grade_to": 12}})).status_code == 200  # equal to stored: not a change
+    assert await _latest_audit_id(db_session, org["id"]) == before
+    assert (await client.patch(url, json={"profile": None})).status_code == 422
+    order = await client.patch(url, json={"profile": {"grade_to": 5}})
+    assert order.status_code == 422 and order.json()["detail"][0]["loc"] == ["body", "profile", "grade_to"]
+
+
+@pytest.mark.asyncio
+async def test_type_change_is_409_until_cleared_and_college_university_is_free(client, db_session):
+    await login(client, await bdm_of(db_session, "school"))
+    org = await profile_org(client, "school", board="CBSE", grade_to=10)
+    url = f"{ORGS}/{org['id']}"
+    refused = await client.patch(url, json={"org_type": "college"})
+    assert refused.status_code == 409
+    assert refused.json()["detail"] == {"message": "Clear the School details before changing the type", "code": "profile_not_empty", "fields": ["board", "grade_to"]}
+    both = await client.patch(url, json={"org_type": "college", "profile": {"board": None}})  # the old group's keys belong to another type now
+    assert both.status_code == 422 and both.json()["detail"][0]["loc"] == ["body", "profile", "board"]
+    assert (await client.patch(url, json={"profile": {"board": None, "grade_to": None}})).status_code == 200
+    moved = await client.patch(url, json={"org_type": "college", "profile": {"affiliation": "VTU"}})
+    assert moved.status_code == 200 and moved.json()["organization"]["profile"] == {"kind": "college", "affiliation": "VTU", "college_type": None, "courses": None}
+    uni = await client.patch(url, json={"org_type": "university"})
+    assert uni.status_code == 200 and uni.json()["organization"]["profile"]["affiliation"] == "VTU"
+    assert sorted((await _audit(db_session, org["id"], "update"))["fields"]) == ["org_type"]
+
+
+@pytest.mark.asyncio
+async def test_pre_bdm003_organization_edits_cleanly(client, db_session):
+    """Review Focus 1: an organization saved before bdm-003 (every profile column NULL) edits its common fields with no profile check."""
+    await login(client, await bdm_of(db_session, "college"))
+    org = await create_org(client)
+    edited = await client.patch(f"{ORGS}/{org['id']}", json={"name": unique_name(), "org_type": "agent"})
+    assert edited.status_code == 200 and edited.json()["organization"]["profile"]["kind"] == "agent"
+
+
+@pytest.mark.asyncio
+async def test_profile_writes_keep_bdm002_authorization(client, db_session):
+    manager = await make_manager(db_session)
+    owner = await bdm_of(db_session, "school", manager)
+    await login(client, owner)
+    org = await profile_org(client, "school", board="CBSE")
+    url = f"{ORGS}/{org['id']}"
+    await login(client, await bdm_of(db_session, "school", manager))  # same type, not assigned
+    assert (await client.patch(url, json={"profile": {"board": "ICSE"}})).status_code == 403
+    await login(client, manager)
+    assert (await client.patch(url, json={"profile": {"board": "ICSE"}})).status_code == 403
+    await login(client, await bdm_of(db_session, "agent"))  # other module: out of scope
+    assert (await client.patch(url, json={"profile": {"board": "ICSE"}})).status_code == 404
+    await login(client, owner)
+    assert (await client.post(f"{url}/archive")).status_code == 200
+    assert (await client.patch(url, json={"profile": {"board": "ICSE"}})).status_code == 409

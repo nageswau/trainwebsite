@@ -142,10 +142,18 @@ async def get_organization(org_id: UUID, user: User = Depends(get_current_user),
 @router.patch("/{org_id}", response_model=BdmOrganizationEnvelope)
 async def update_organization(org_id: UUID, payload: BdmOrganizationUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """PATCH: only the fields sent; values equal to the stored ones are not changes (no audit, no updated_at bump, §12.1 A6). A
-    changed name or city re-runs the duplicate check (AC2)."""
+    changed name or city re-runs the duplicate check (AC2). bdm-003: the profile is checked against the effective type (the new one when
+    org_type changes) after the lock, so `org` is current; a type change into another profile group is a 409 while the old group has
+    data (P4). Profile keys are columns, so the diff, audit and no-op rules below apply to them as they are."""
     org = await svc.load_scoped(db, user, org_id, lock=True)
     svc.require(user, org, "can_edit", "update")
-    changes = payload.model_dump(exclude_unset=True, exclude={"confirm_duplicate"})
+    changes = payload.model_dump(exclude_unset=True, exclude={"confirm_duplicate", "profile"})
+    sent = payload.profile.model_dump(exclude_unset=True) if payload.profile else {}
+    new_type = changes.get("org_type", org.org_type)
+    svc.check_profile(new_type, sent, org)
+    if new_type != org.org_type:
+        svc.check_type_change(user, org, new_type)
+    changes |= sent
     changed = sorted(k for k, v in changes.items() if getattr(org, k) != v)
     total = 0
     if {"name", "city"} & set(changed):
