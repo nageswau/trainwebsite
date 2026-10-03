@@ -407,6 +407,8 @@ Conventions used below:
 
 ### bdm-006 — Appointments (types per BDM type, status lifecycle, reschedule)
 
+> **Status (2026-10-03):** in progress on `feature/bdm-006-appointments` (`DEC-SCOPE-063`, migration `0068_bdm_appointments`). Spec: `docs/superpowers/specs/2026-10-03-bdm-006-appointments-design.md`; plan: `docs/superpowers/plans/2026-10-03-bdm-006-appointments.md`. AC5 is satisfied by a minimal outcome on Complete (A1); "Next Follow-up" is captured there.
+
 - **Business requirement:** BDMs create and manage appointments with the §2 fields: Appointment ID, BDM, Organization, Contact Person, Designation, Mobile, Email, Date, Time, Type, Location, Purpose, Status, Remarks, Next Follow-up.
   - **Types, common list (§2):** College, Agent, School, MoU Discussion, Student/Institution, Seminar/Workshop, Corporate, Other.
   - **Types, per module:** Agent §C (9), School §C (11), College §C (12).

@@ -3336,3 +3336,26 @@ reconstructed; their uploads are (from the document row). Design: `docs/superpow
 - **G6 — Approach A:** a new read-only `GET /workflows/overseas/agent/crm/dashboard` with a typed schema and a dashboard panel on the existing page; the portal payload keeps its labels, order and strings.
 
 **Consequences:** no migration; a new router, service and schema; `portal._agent` dashboard values sourced from the shared service (Students now counts no-login students — a deliberate fix); a new `AgentDashboardPanel`; nav changes in `lib/navigation.ts`; `AgentStudentsPanel` honours `?new=1`. Unchanged: other roles' dashboards, the sidebar offer filter, commission values and the "Claimable commission" INR label (logged in `RAID.md`), models, existing routes. **New Feature ID authorized:** `AGN-018`. **Status:** implemented and verified on `feature/agn-018-master-dashboard-impl` (see `ENHANCEMENT_BACKLOG.md` §AGN-018).
+
+---
+
+### DEC-SCOPE-063 — BDM appointments (`bdm-006`)
+
+**Question:** how do BDMs book and manage appointments, which transitions are allowed, and what does Completed require before bdm-007 exists?
+
+**Evidence:** `EVID-016` §2 (lines 27–93), Agent §C (615–653), School §C (873–895), College §C (1110–1134), §8 outcomes (250–275) (`ORIGINAL_REQUIREMENT`); `DEC-SCOPE-055` D3, D11 (Q-02), D16 (Q-07), D20 (Q-11), D26 (Q-17), D29 (Q-20); bdm-002 `DEC-SCOPE-060` AC5b; bdm-006 impact analysis 2026-10-03 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL`, via questions; design approved section by section):
+- **A1** Completed takes a minimal outcome (validated per BDM type) and an optional next follow-up date on the appointment; bdm-007 adds the meeting report on top.
+- **A2** Transitions: scheduled / confirmed / rescheduled → confirmed (not from confirmed), rescheduled, cancelled, no show, completed; completed, cancelled and no show are terminal; completed and no show only after the start time; cancel and no show need a reason; reschedule keeps the old time in history.
+- **A3** Only the organization's assigned BDM books and manages; managers and super_admin read only.
+- **A4** An archived organization blocks new appointments (422); existing ones stay manageable.
+- **A5** Deleting an organization contact keeps the appointment's contact snapshot (`contact_id` → NULL). Consequence: a contact delete no longer erases every copy of that person's details.
+- **A6** Overlap for the same BDM warns with a 409 the BDM can confirm past.
+- **A7** Create and reschedule require a future start time.
+- **A8** Outcomes: Agent §C list for agent BDMs; §8 list for school and college BDMs.
+- Defaults approved with the design: type list = §2 common ∪ module list (deduplicated by key); contact picked from the organization's contacts; ownership fixed on organization reassignment (bdm-025 moves portfolios); location, purpose, remarks optional.
+
+**Open:** retention / erasure policy for BDM data — `NEEDS_CONFIRMATION` (as bdm-001/002).
+
+**Spec:** `docs/superpowers/specs/2026-10-03-bdm-006-appointments-design.md`.
