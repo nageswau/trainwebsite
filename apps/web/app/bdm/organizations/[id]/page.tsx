@@ -5,8 +5,11 @@ import BdmOrganizationDetail from "@/components/BdmOrganizationDetail";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { BDM_TYPE_LABEL, type BdmMe } from "@/lib/bdm";
+import type { Page } from "@/lib/apiErrors";
+import { type Activity, orgActivitiesUrl } from "@/lib/bdmActivities";
 import type { Organization } from "@/lib/bdmOrganizations";
 import { bdmNav } from "@/lib/bdmNav";
+import { isUuid } from "@/lib/bdmTravel";
 import { BDM_SIGN_IN } from "@/lib/navigation";
 
 // bdm-002: one organization. A 404 (unknown or outside the BDM's module) is a plain "not found" -- it never says which.
@@ -20,17 +23,23 @@ export default async function BdmOrganizationPage({ params, searchParams }: { pa
   } catch (e) {
     return accessUnavailable(e, BDM_SIGN_IN);
   }
+  // bdm-009 (spec §6.2, §12.2 F2): the first timeline page, read alongside the organization. It never rejects: a failure is null and
+  // the section offers "Try again"; a malformed id isn't sent (the organization read answers "not found" for it).
+  const timeline: Promise<Page<Activity> | null> = isUuid(id)
+    ? serverApi<Page<Activity>>(orgActivitiesUrl(id)).catch(() => null)
+    : Promise.resolve(null);
   let organization: Organization | null = null;
   try {
     organization = (await serverApi<{ organization: Organization }>(`/api/v1/bdm/organizations/${encodeURIComponent(id)}`)).organization;
   } catch (e) {
     if (!(e instanceof ApiError && (e.status === 404 || e.status === 422))) return accessUnavailable(e, BDM_SIGN_IN);
   }
+  const activities = organization ? await timeline : null;
   return (
     <PortalShell nav={await nav} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         {organization ? (
-          <BdmOrganizationDetail initial={organization} basePath="/bdm/organizations" created={created} />
+          <BdmOrganizationDetail initial={organization} basePath="/bdm/organizations" created={created} activities={activities} />
         ) : (
           <div className="action-card">
             <h2>Organization not found</h2>
