@@ -192,3 +192,15 @@ async def test_deleting_the_booked_contact_keeps_the_snapshot(client, db_session
     assert (await client.delete(f"{ORGS}/{org['id']}/contacts/{rao['id']}")).status_code == 200
     b = (await client.get(f"{APPTS}/{a['id']}")).json()["appointment"]
     assert (b["contact_id"], b["contact_name"], b["contact_designation"]) == (None, "Dr Rao", "Principal")
+
+
+@pytest.mark.asyncio
+async def test_patch_checks_overlap_only_when_the_duration_grows(client, db_session):
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await create_appt(client, org, starts_at=future(60))
+    start_b = (datetime.fromisoformat(future(60)) + timedelta(minutes=30)).isoformat()
+    assert (await client.post(APPTS, json=appt_payload(org, starts_at=start_b, confirm_overlap=True))).status_code == 201  # accepted override
+    shorter = await client.patch(f"{APPTS}/{a['id']}", json={"duration_minutes": 45})  # still overlaps b, but shrinking cannot add a clash
+    assert shorter.status_code == 200 and shorter.json()["appointment"]["duration_minutes"] == 45
+    longer = await client.patch(f"{APPTS}/{a['id']}", json={"duration_minutes": 60})
+    assert longer.status_code == 409 and longer.json()["detail"]["code"] == "possible_overlap"

@@ -174,7 +174,7 @@ async def update_appointment(appt_id: UUID, payload: BdmAppointmentUpdate, user:
     if "appointment_type" in changed:
         _type_allowed((await bdm_context(db, user)).bdm_type, changes["appointment_type"])
     overlaps = 0
-    if "duration_minutes" in changed:
+    if "duration_minutes" in changed and changes["duration_minutes"] > appt.duration_minutes:  # shrinking cannot create a new clash
         overlaps = await _check_overlap(db, user, appt.starts_at, changes["duration_minutes"], payload.confirm_overlap, exclude_id=appt.id)
     for key in changed:
         setattr(appt, key, changes[key])
