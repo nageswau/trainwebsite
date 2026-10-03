@@ -134,6 +134,15 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
   .staff-performance .field select { min-height: 44px; }
 }
 /* AGN-019: the student funnel -- label, count and share as text on one line, a decorative bar below (width = share of Students). */
+/* QA19-03: the 7-column staff table needs ~850px; with the sidebar, a 1024px desktop or a tablet gives it ~640px and hid two columns.
+   Stack by the card's own width (container query), not the viewport's -- the same stacked layout as phones (QA18-04 above). */
+.staff-performance { container-type: inline-size; }
+@container (max-width: 860px) {
+  .staff-performance .table.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .staff-performance .table.stack tr { display: block; border-bottom: 1px solid #edf1f6; padding: 8px 0; }
+  .staff-performance .table.stack th[scope="row"], .staff-performance .table.stack td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 4px 12px; position: static; }
+  .staff-performance .table.stack td::before { content: attr(data-label); color: var(--muted); }
+}
 .staff-performance .actions { align-items: flex-end; flex-wrap: wrap; }
 .staff-performance .actions .field { margin: 0; }
 .funnel { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
