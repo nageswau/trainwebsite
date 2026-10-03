@@ -456,6 +456,45 @@ async def _enrollments(db: AsyncSession, user: User, f: Filters, limit: int, off
 LISTS = {"students": _students, "applications": _applications, "enrollments": _enrollments}
 
 
+# --- Filter options (spec §5.2, §7.1): built from the caller's own scope, so they reveal nothing outside it ---
+
+
+async def _options(db: AsyncSession, user: User, kind: str) -> dict[str, list[dict[str, str]]]:
+    offered, options = REPORT_KINDS[kind].filters, {}
+    if "member" in offered and not is_agent_staff(user):
+        staff = await db.execute(
+            select(AgentOrgMember.code, User.full_name)
+            .join(User, User.id == AgentOrgMember.user_id)
+            .where(AgentOrgMember.org_id == user.agent_membership.org_id, AgentOrgMember.role == "staff")
+            .order_by(AgentOrgMember.seq)
+        )
+        options["members"] = [{"value": code, "label": f"{code} {name}"} for code, name in staff.all()] + [{"value": "unassigned", "label": "Unassigned"}]
+    if "country" in offered and kind == "students":
+        text = func.trim(AgentStudent.preferred_country)
+        found = await db.scalars(select(distinct(text)).where(*student_scope(user), AgentStudent.preferred_country.is_not(None), text != "").order_by(text))
+        options["countries"] = [{"value": value, "label": value} for value in found]
+    universities_in_scope = select(OverseasApplication.university_id).where(*agency_applications(user))
+    if "country" in offered and kind != "students":
+        found = await db.execute(
+            select(Country.slug, Country.name)
+            .where(Country.id.in_(select(University.country_id).where(University.id.in_(universities_in_scope))))
+            .order_by(Country.name, Country.slug)
+        )
+        options["countries"] = [{"value": slug, "label": name} for slug, name in found.all()]
+    if "university" in offered:
+        found = await db.execute(
+            select(University.slug, University.name).where(University.id.in_(universities_in_scope)).order_by(University.name, University.slug)
+        )
+        options["universities"] = [{"value": slug, "label": name} for slug, name in found.all()]
+    if "intake" in offered:
+        keys = dict(intake_key(text) for text in await db.scalars(select(distinct(OverseasApplication.intake)).where(*agency_applications(user))))
+        options["intakes"] = [{"value": key, "label": keys[key]} for key in sorted(keys, key=lambda key: (key == UNSTRUCTURED[0], key))]
+    if "status" in offered:
+        statuses = STUDENT_STATUSES if kind == "students" else APPLICATION_STATUSES
+        options["statuses"] = [{"value": status, "label": stage_label(status)} for status in statuses]
+    return options
+
+
 async def report(db: AsyncSession, user: User, kind: str, f: Filters, *, limit: int, offset: int) -> dict:
     """The `AgentReportOut` payload (spec §5.3). A summary is every group plus a Total row; a list is one page."""
     if REPORT_KINDS[kind].summary:
@@ -474,6 +513,6 @@ async def report(db: AsyncSession, user: User, kind: str, f: Filters, *, limit: 
         "total": total,
         "limit": limit,
         "offset": offset,
-        "options": {},
+        "options": await _options(db, user, kind),
         "as_of": datetime.now(UTC),
     }

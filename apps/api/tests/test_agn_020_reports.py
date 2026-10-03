@@ -312,3 +312,42 @@ async def test_no_ids_or_contact_details_leave_the_api(world, db_session, kind):
     async with client_for(world["master"].email) as c:
         text = (await c.get(f"{REPORTS}/{kind}")).text
     assert not UUID_TEXT.search(text) and "@example.local" not in text
+
+
+# --- Task 5: filter options from the caller's scope (spec §5.2, §7.1) ---
+
+
+def _values(options, key):
+    return [(o["value"], o["label"]) for o in options[key]]
+
+
+@pytest.mark.asyncio
+async def test_master_options_cover_the_agency_only(world, db_session):
+    body = await _report(world["master"].email, "applications")
+    options = body["options"]
+    assert set(options) == {"members", "countries", "universities", "intakes", "statuses"}
+    codes = [world[s]["member"].code for s in ("s1", "s2", "s3")]
+    assert _values(options, "members") == [(codes[0], f"{codes[0]} Staff One"), (codes[1], f"{codes[1]} Staff Two"), (codes[2], f"{codes[2]} Staff Three"), ("unassigned", "Unassigned")]
+    aland = (await db_session.get(Country, world["u1"].country_id)).slug
+    betaland = (await db_session.get(Country, world["u2"].country_id)).slug
+    assert _values(options, "countries") == [(aland, "Aland"), (betaland, "Betaland")]  # the noise agency's Gammaland is not offered
+    assert _values(options, "universities") == [(world["u1"].slug, "Alpha University"), (world["u2"].slug, "Beta University")]
+    assert _values(options, "intakes") == [("2027-09", "Sep 2027"), ("2028-01", "Jan 2028"), ("unstructured", "Unstructured")]
+    assert ("withdrawn", "Withdrawn") in _values(options, "statuses") and ("enquiry", "Enquiry") in _values(options, "statuses")
+
+
+@pytest.mark.asyncio
+async def test_options_follow_the_kinds_filters(world):
+    assert set((await _report(world["master"].email, "countries"))["options"]) == {"members"}
+    assert (await _report(world["master"].email, "staff"))["options"] == {}
+    students = (await _report(world["master"].email, "students"))["options"]
+    assert _values(students, "countries") == [("Aland", "Aland")]  # the records' own preferred-country text
+    assert _values(students, "statuses") == [("active", "Active"), ("archived", "Archived"), ("all", "All")]
+
+
+@pytest.mark.asyncio
+async def test_staff_options_reveal_only_their_scope(world):
+    options = (await _report(world["s2"]["user"].email, "applications"))["options"]
+    assert "members" not in options
+    assert [label for _, label in _values(options, "countries")] == ["Aland"]  # s2's students applied in Aland only
+    assert [label for _, label in _values(options, "intakes")] == ["Jan 2028", "Unstructured"]
