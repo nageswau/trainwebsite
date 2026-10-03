@@ -1157,7 +1157,7 @@ class CommissionReportOut(BaseModel):
     by_intake: list[CommissionReportIntakeRow]
 
 
-# --- AGN-018 agency dashboard (DEC-SCOPE-061; spec §5.3) ---
+# --- AGN-018 agency dashboard (DEC-SCOPE-062; spec §5.3) ---
 
 
 class AgentBreakdownItem(BaseModel):

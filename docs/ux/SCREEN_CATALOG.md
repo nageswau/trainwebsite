@@ -1724,7 +1724,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.  
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Cross-agent data isolation verified.  
-- **AGN-018 update (2026-10-03, `DEC-SCOPE-061`) — agency dashboard (`/overseas/agent/dashboard`):** for agency members the page
+- **AGN-018 update (2026-10-03, `DEC-SCOPE-062`) — agency dashboard (`/overseas/agent/dashboard`):** for agency members the page
   keeps its title and open-applications table and shows a KPI board (`AgentDashboardPanel`, a server component reading
   `GET /workflows/overseas/agent/crm/dashboard`) between them, in place of the portal's metric tiles (Super Admin's view unchanged).
   A scope line reads "Whole agency" (Master) or "Your assigned students" (Staff), plus "Your code …". KPI groups (`h3`, `kpi-tile`

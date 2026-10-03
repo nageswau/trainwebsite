@@ -1,5 +1,5 @@
 """AGN-018 AC08 -- the portal dashboard keeps its labels, order and commission strings, and its counts now equal the AGN-018
-endpoint (Students includes students with no login: the deliberate DEC-SCOPE-061 fix)."""
+endpoint (Students includes students with no login: the deliberate DEC-SCOPE-062 fix)."""
 
 import pytest
 import pytest_asyncio

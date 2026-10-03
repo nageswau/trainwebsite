@@ -716,7 +716,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
     if section == "dashboard":
         # AGN-008 browser QA8-10: a withdrawn application is closed, so it leaves the count and the table; status reads as a label.
         open_applications = [(a, u, s) for a, u, s in applications if a.status != WITHDRAWN]
-        # AGN-018 (DEC-SCOPE-061): the counts come from the dashboard endpoint's service, so the two never disagree. Students now
+        # AGN-018 (DEC-SCOPE-062): the counts come from the dashboard endpoint's service, so the two never disagree. Students now
         # includes students with no login (the inner join on users above dropped them); Pending actions is AGN-016's T5 count.
         counts = await headline_counts(db, user)
         metrics = [

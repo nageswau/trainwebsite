@@ -1,4 +1,4 @@
-"""AGN-018 -- the agency dashboard: one read-only aggregate (DEC-SCOPE-061; spec §5).
+"""AGN-018 -- the agency dashboard: one read-only aggregate (DEC-SCOPE-062; spec §5).
 
 AGN-004's gate (agency members of an active agency; super admin refused), no input, no write, no audit row (reads are not audited,
 DEC-SCOPE-051 R7). The body is per-user, so it is never cached. The log line carries ids and timing only."""

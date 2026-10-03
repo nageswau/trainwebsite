@@ -183,7 +183,7 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 
 | §6 row | Route(s) | Master | Staff |
 |---|---|---|---|
-| Dashboard | `GET /portal/overseas/agent/dashboard`; `GET /workflows/overseas/agent/crm/dashboard` (**new**, `AGN-018` / `DEC-SCOPE-061`; `super_admin` `403`) | ✅ full (agency KPIs, staff table, commission) | ✅ limited (own students; no commission, no staff metrics — those fields are `null` and never queried; AGN-002, AGN-018) |
+| Dashboard | `GET /portal/overseas/agent/dashboard`; `GET /workflows/overseas/agent/crm/dashboard` (**new**, `AGN-018` / `DEC-SCOPE-062`; `super_admin` `403`) | ✅ full (agency KPIs, staff table, commission) | ✅ limited (own students; no commission, no staff metrics — those fields are `null` and never queried; AGN-002, AGN-018) |
 | Create Student | `POST /workflows/overseas/agent/students` (links an existing student); `POST /workflows/overseas/agent/crm/students` (no login, AGN-004) | ✅ | ✅ (assigned to them) |
 | View Students | `GET /workflows/overseas/agent/students`, `GET /portal/overseas/agent/students`, `GET /lookups/overseas-students`, `GET /workflows/overseas/agent/crm/students`, `GET …/crm/students/{id}` | ✅ agency | ✅ assigned only (`DEC-SCOPE-042` G4) |
 | Edit Student | `PATCH /workflows/overseas/agent/crm/students/{id}` (students with no login) | ✅ | ✅ assigned only |
@@ -206,7 +206,7 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | Staff Management | `GET /workflows/overseas/agent/team/staff`, `PATCH …/staff/{id}`, `PUT …/staff/{id}/permissions` (**new**), `GET /workflows/overseas/agent/team`, `GET /portal/overseas/agent/team` | ✅ | ❌ |
 | Create Staff Login | `POST /workflows/overseas/agent/team/staff`, `POST …/staff/{id}/reset` | ✅ | ❌ |
 | Deactivate Staff | `POST …/staff/{id}/deactivate`, `POST …/staff/{id}/reactivate` | ✅ | ❌ |
-| Staff Performance | — (summary only: the Master dashboard's staff table, `AGN-018` / `DEC-SCOPE-061` G2; funnel and filters stay with ang-019) | N/A (summary ✅ on the dashboard) | N/A (never returned to Staff) |
+| Staff Performance | — (summary only: the Master dashboard's staff table, `AGN-018` / `DEC-SCOPE-062` G2; funnel and filters stay with ang-019) | N/A (summary ✅ on the dashboard) | N/A (never returned to Staff) |
 | View staff activity | `GET /workflows/overseas/agent/team/staff/{member_id}/activity` (**new**, `AGN-021` / `DEC-SCOPE-046`) | ✅ (own agency's staff; deactivated staff too) | ❌ `403` "Only an agency Master can manage the team"; another agency's user and any non-staff or unknown member id → `404` "Staff member not found" |
 | Reports | `GET /portal/overseas/agent/reports` | ✅ full | **T** (when on: today's staff report, no commission row) |
 | Commission | `GET /workflows/overseas/agent/commissions`, `POST …/commissions/{id}/claim`, `GET /portal/overseas/agent/commissions` | ✅ | ❌ |

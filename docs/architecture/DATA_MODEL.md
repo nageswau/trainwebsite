@@ -405,6 +405,12 @@ covers the commission-specific piece).
   `ix_overseas_applications_agent_application_deadline` and `ix_overseas_applications_agent_offer_deadline` (`WHERE agent_student_id IS
   NOT NULL`), `ix_agent_tasks_open_due` (`WHERE status = 'open'`). No row is read or written by the upgrade; existing notifications keep
   `dedupe_key` NULL; the downgrade drops exactly what it added (the keys are derived reminder markers, not user data).
+- **Addendum, 2026-10-03 (`AGN-015`, `DEC-SCOPE-061`; migration `0067_audit_entity_index`, chained after `0066_bdm_organizations`) —
+  student journey reads.** One index, `ix_audit_logs_entity` on `audit_logs (entity_type, entity_id, created_at)`, for reading one
+  entity's audit history (the student journey timeline reads its student's, applications', deposits' and visa cases' rows). No table or
+  column changes; no row is read or written by the upgrade (guarded add, as `0001` builds from the models); the downgrade drops the index.
+  The timeline itself is derived at read time from `agent_students`, `audit_logs`, `application_status_history`, `document_events` and
+  `student_documents` — nothing is stored.
 
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an

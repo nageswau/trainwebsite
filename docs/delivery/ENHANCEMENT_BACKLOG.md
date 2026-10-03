@@ -88,9 +88,13 @@ See §AGN-008.
 **Revision 14 (2026-10-02):** the owner's `AGN-017` statement ("Notifications" §4; "Monitor deadlines" §2) is decided as `DEC-SCOPE-059`
 (N1–N11; drafted as `055` / Revision 13, renumbered `058` on merging `main` @ `ff27fa4` and `059` @ `3d9244f`, where bdm-001, AGN-010, AGN-012 and AGN-011 hold `055`–`058`).
 See §AGN-017.
-**Revision 15 (2026-10-03):** backlog item ang-018 (Master dashboard KPIs `EVID-015` §2; Staff "Dashboard ✅ Limited" and sidebar
-§4, §6) is decided as `DEC-SCOPE-061` (G1–G6, owner in-session; drafted as `060`, renumbered on merging `main` @ `c5cdc8a`, where `060`
-is bdm-002). See §AGN-018.
+**Revision 15 (2026-10-03):** the owner's `AGN-015` statement ("Student Journey" §4; "View complete student history" §2) is decided as
+`DEC-SCOPE-061` (J1–J6; drafted as `060`, renumbered on merging `main` @ `c5cdc8a`, where bdm-002 holds `060` and `0066`; the
+migration is `0067_audit_entity_index`). See §AGN-015.
+
+**Revision 16 (2026-10-03):** backlog item ang-018 (Master dashboard KPIs `EVID-015` §2; Staff "Dashboard ✅ Limited" and sidebar
+§4, §6) is decided as `DEC-SCOPE-062` (G1–G6, owner in-session; drafted as `060`, renumbered on merging `main` @ `c5cdc8a`, where `060`
+is bdm-002, and @ `09bd5e7`, where `061` is AGN-015). See §AGN-018.
 
 ## 0. Scope and exclusions (read this before the backlog)
 
@@ -183,6 +187,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-016 | Agent tasks and follow-ups — Master/Staff create, edit, complete and cancel tasks on agency students (task follows the student); "Pending actions" KPI (Rev. 12) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-021 |
 | AGN-010 | Agent offer details — conditional/unconditional, offer date, deadline, conditions, offer letter on an agency application; agent "Offers" count (Rev. 13) | Medium | Medium | Yes | AGN-008, AGN-009, AGN-021 |
 | AGN-017 | Agency notifications (in-app + email) on assignment, document request/rejection, status change, new task; daily deadline reminders and overdue digest; Notifications page + unread badge (Rev. 14) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-009, AGN-013, AGN-016, ENH-014 |
+| AGN-015 | Agent student journey — nine-step tracker (student steps once, application steps per application) and complete history (every event once, newest first, with its actor) on the student detail (Rev. 15) | Medium | Low | Yes | AGN-004, AGN-006–AGN-013, AGN-016, AGN-021 |
 | AGN-018 | Agency Master / Staff dashboards — typed KPI endpoint and board (students, pipeline, documents, Master commission), breakdowns, Master staff table; Staff sidebar (My Students All / Add, All applications, Tasks & Follow-ups) (Rev. 15) | Medium | Medium | No | AGN-004, AGN-005, AGN-008 … AGN-014, AGN-016 |
 
 ---
@@ -3765,7 +3770,7 @@ and give staff the `EVID-015` §4 sidebar.
 
 **Business requirement.** Backlog item ang-018 (`AGENT_CRM_BACKLOG.md`, `DERIVED_BLUEPRINT`): `EVID-015` §2 Master dashboard KPIs;
 §4 Staff sidebar; §6 "Dashboard ✅ Limited". Owner acceptance: each KPI equals a hand-computed fixture count; Staff numbers include
-only their own students; offers are counted by stage and by offer record, consistently. Decision record: `DEC-SCOPE-061` (G1–G6,
+only their own students; offers are counted by stage and by offer record, consistently. Decision record: `DEC-SCOPE-062` (G1–G6,
 `EXPLICIT_APPROVAL` in-session 2026-10-03; number provisional).
 
 **Existing behavior.** The agency dashboard was the generic portal payload (`services/portal.py` `_agent()`): Students, Applications,
@@ -3851,6 +3856,38 @@ Browser Use on the final images: live event → badge 9→10, open → 9 on the 
 role refusal, Super Admin note without form, no console/network errors; daily job re-run 0 created / 2 duplicates; deliveries email-only.
 Diff: 42 files, all AGN-017; no skipped/focused tests, debug code or secrets. **Status: COMPLETE for AGN-017's scope**; the owner's full
 suite will show the pre-existing ENH-023 ordering failure above (not AGN-017's; recorded for its owner).
+
+## AGN-015 — Agent Student Journey and Complete History
+
+**Title.** Show an agency Master, and Staff for their assigned students, where one student is on the nine-step journey and everything
+that has happened to them, by whom.
+
+**Business requirement.** The owner's `AGN-015` statement (in-session, 2026-10-03): "Student Journey" (§4) and "View complete student
+history" (§2): Create → Counseling → Shortlist → Documents → Application → Offer → Deposit → Visa → Enrollment. Source: `EVID-015`
+(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`). Decision: `DEC-SCOPE-061` (J1–J6, `EXPLICIT_APPROVAL` in-session 2026-10-03).
+
+**Acceptance criteria.** Every event from the source items appears once, in order, with its actor; the step tracker matches the stored
+data. Out of scope → `404` (backlog ang-015).
+
+**Design and plan.** `docs/superpowers/specs/2026-10-03-agn-015-student-journey-design.md`; plan
+`docs/superpowers/plans/2026-10-03-agn-015-student-journey.md`. Two read-only routes; migration `0067_audit_entity_index` (one index; drafted as `0066`).
+
+**Status (2026-10-03): IMPLEMENTED, NOT COMPLETE** on `feature/agn-015-student-journey`. Lite tests only (owner runs full suites
+separately): API `test_agn_015_{migration,journey,timeline,security}.py` + `test_agn_017_migration.py`; web `agentJourney.test.ts`,
+`AgentStudentJourney.test.tsx`, `AgentStudentTimeline.test.tsx`, `AgentStudentDetailPanel.journey.test.tsx` and the touched student
+panel tests; `tsc` and eslint on touched files. Pending: browser validation (e2e `agn-015-student-journey.spec.ts` written, not run
+here), full suites, independent review.
+
+**Verification before completion (2026-10-03, HEAD `10c41fc`): NOT COMPLETE.** Evidence: API `tests/test_agn_*.py` +
+`test_sch_008_student_timeline.py` + `test_uuid_contracts.py` 1276 passed, 0 failed; web vitest 1985/1986 (the one failure moves between
+untouched files — `AgentApplicationEnrollment` QA13-04, then `AgentStaffRow` — and each passes 3/3 alone: load-timing flakes, not
+AGN-015); `tsc` 0; `npm run lint` 0 errors (30 pre-existing warnings; AGN-015 files `--max-warnings=0` clean); ruff/format clean;
+`next build` exit 0; Playwright `agn-015-student-journey.spec.ts` 2/2 and `agn-004/006/007/016` 11/11 on stack `agn015qa`; Browser Use
+happy path PASS; migration round trip (0066 → 0065 → 0066) drops/restores only the index. Blockers: (1) **QA15-01** reproduced on HEAD —
+removing the student's only shortlist entry leaves the open tracker at "Shortlist Done" while `/journey` returns `not_started`, so
+"the step tracker matches the stored data" fails in the UI; (2) `main` @ `c5cdc8a` (bdm-002, PR #50) took `DEC-SCOPE-060` and
+`0066_bdm_organizations` (also on `0065`): merging as is gives two Alembic heads and conflicts in `test_agn_017_migration.py` and the
+decision register — re-chain as `0067` and renumber `DEC-SCOPE-061` on merging `main`. QA15-02…08 (Low/Info) open.
 
 ## AGN-016 — Agent Tasks and Follow-ups, "Pending Actions" KPI
 
@@ -4232,7 +4269,7 @@ item, only for the progress-view question).
 | AGN-008 | `DEC-SCOPE-050` — statuses and withdrawn, Application ID, dates, agent status limits, link to the agency student, visibility, sidebar filters, throttle, archived read-only | **Resolved 2026-10-01/02** (A1–A15, `EXPLICIT_APPROVAL` in-session). `DEC-SCOPE-036` "submitted" stays `NEEDS_CONFIRMATION` |
 | AGN-016 | `DEC-SCOPE-053` — task owner on reassignment, delete, due time and overdue, linkage, KPI and nav, edit rules, cap, retry | **Resolved 2026-10-02** (T1–T8, `EXPLICIT_APPROVAL` in-session) |
 | AGN-010 | `DEC-SCOPE-056` — one offer per application, deadline column, offer document, `offer_letter_url`, Offers count, conditions, concurrent saves | **Resolved 2026-10-02** (O1–O7, `EXPLICIT_APPROVAL` in-session) |
-| AGN-018 | `DEC-SCOPE-061` — agency-only scope, staff performance summary, KPI definitions, navigation, one offer rule, endpoint approach | **Resolved 2026-10-03** (G1–G6, `EXPLICIT_APPROVAL` in-session; number provisional) |
+| AGN-018 | `DEC-SCOPE-062` — agency-only scope, staff performance summary, KPI definitions, navigation, one offer rule, endpoint approach | **Resolved 2026-10-03** (G1–G6, `EXPLICIT_APPROVAL` in-session; number provisional) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in

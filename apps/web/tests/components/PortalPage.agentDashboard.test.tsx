@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PortalPage from "@/components/PortalPage";
 import { serverApi } from "@/lib/api";
 
-// AGN-018 (DEC-SCOPE-061; spec §6.1): agents get the KPI board under the page title (the duplicate metric tiles go); the portal
+// AGN-018 (DEC-SCOPE-062; spec §6.1): agents get the KPI board under the page title (the duplicate metric tiles go); the portal
 // payload is still read as the page's gate; a Super Admin's dashboard is unchanged.
 vi.mock("@/lib/api", async () => ({ ...(await vi.importActual<typeof import("@/lib/api")>("@/lib/api")), serverApi: vi.fn() }));
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("notFound"); }, useSearchParams: () => new URLSearchParams("") }));

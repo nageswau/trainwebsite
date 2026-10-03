@@ -5,7 +5,7 @@ import { DASHBOARD_URL, formatMoney } from "@/lib/agentDashboard";
 import { ApiError, serverApi } from "@/lib/api";
 import type { AgentBreakdown, AgentDashboard, AgentStaffRow } from "@/lib/types";
 
-// AGN-018 (DEC-SCOPE-061; spec §6.2): the agency KPI board. A server component that reads its own endpoint, so a failure here
+// AGN-018 (DEC-SCOPE-062; spec §6.2): the agency KPI board. A server component that reads its own endpoint, so a failure here
 // leaves the page's title, table and nav working. Reuses SchoolKpiBoard's tile markup and the .table-scroll region pattern
 // (GlobalEducationStudentTable), so a keyboard user can scroll each table. Staff get their own scope: no commission, no staff table.
 const NOTE = "Includes later stages and withdrawn applications";

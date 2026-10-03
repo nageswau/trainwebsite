@@ -3,7 +3,7 @@ import { test, expect, type Browser } from "@playwright/test";
 import { E2E_PASSWORD } from "./helpers/welcome";
 import { adminActivate, registerApprovedAgency, signIn } from "./helpers/agency";
 
-// AGN-018 (DEC-SCOPE-061) -- the agency Master / Staff dashboards and the staff sidebar. Requires the stack running with
+// AGN-018 (DEC-SCOPE-062) -- the agency Master / Staff dashboards and the staff sidebar. Requires the stack running with
 // `python -m app.seed` applied (the AGN-002 flow creates the staff member). Run in the browser-validation phase.
 
 async function newPage(browser: Browser) {

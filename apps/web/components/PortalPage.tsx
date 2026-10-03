@@ -25,7 +25,7 @@ const main=agentApplications?<AgentApplicationsSection user={user}/>:agentDocume
 <AgentStudentsSection user={user}/>
 <PortalSection data={{...data,title:"Application status",subtitle:"Students who have a login, with each one's current application (AGT-002)."}}/>
 </>:agent&&section==="universities"?<AgentUniversitiesPanel memberRole={user.agent_member_role}/>
-// AGN-018 (DEC-SCOPE-061): agency members get the KPI board under the title (it reads its own endpoint and streams in, so the title
+// AGN-018 (DEC-SCOPE-062): agency members get the KPI board under the title (it reads its own endpoint and streams in, so the title
 // and table render at once); the payload stays the page's gate, and its metric tiles are dropped so nothing shows twice.
 :agent&&section==="dashboard"&&user.role==="agent"?<PortalSection data={{...data,metrics:[]}} lead={<Suspense fallback={<AgentDashboardSkeleton/>}><AgentDashboardPanel/></Suspense>}/>
 :<PortalSection data={data}/>;

@@ -225,3 +225,7 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 /* bdm-001 browser QA-15: once .action-grid is one column, the BDM list comes before the long create form, so an admin
    looking for a BDM on a phone or tablet does not scroll past nine fields first. Desktop keeps the form first. */
 @media(max-width:980px){.action-grid > .bdm-list{order:-1}}
+/* AGN-015: student journey step tracker -- wraps on desktop, one step per row on phones (no horizontal scroll at 320px); the state
+   is always text, the glyph and border are decoration. */
+.jny-steps{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px;padding:0}.jny-step{display:flex;align-items:center;gap:6px;min-width:0;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;background:#fff}.jny-step[aria-current="step"]{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue)}.jny-glyph{width:1em;text-align:center;font-weight:800;color:var(--muted)}.jny-done .jny-glyph,.jny-not_required .jny-glyph{color:var(--green)}.jny-refused .jny-glyph,.jny-withdrawn .jny-glyph{color:var(--red)}.jny-name{font-weight:700;color:var(--ink)}.jny-state{color:var(--muted)}.jny-caption{margin:8px 0 4px;font-size:13px;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+@media(max-width:640px){.jny-steps{flex-direction:column}.jny-step{width:100%}}

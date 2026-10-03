@@ -1,6 +1,6 @@
 import type { CurrencyTotal } from "./types";
 
-// AGN-018 (DEC-SCOPE-061): the agency dashboard endpoint.
+// AGN-018 (DEC-SCOPE-062): the agency dashboard endpoint.
 export const DASHBOARD_URL = "/api/v1/workflows/overseas/agent/crm/dashboard";
 
 // The portal's Revenue format (AGN-014 QA14-01): per currency, thousands separators like Python's `:,.0f`, a no-break space after
