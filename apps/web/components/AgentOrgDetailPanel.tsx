@@ -130,11 +130,11 @@ export default function AgentOrgDetailPanel({ orgId, canAct }: { orgId: string; 
             since {formatDate(org.status_changed_at ?? org.created_at)}
           </span>
         </p>
-      </div>
-
-      {/* Always mounted so screen readers announce the result when it arrives. */}
-      <div className={notice ? "form-message" : undefined} role="status" aria-live="polite">
-        {notice}
+        {/* Always mounted so screen readers announce the result when it arrives; inside the header so that, while empty, it adds
+            no gap of its own to the card's grid (QA22-10). */}
+        <div className={notice ? "form-message" : undefined} role="status" aria-live="polite">
+          {notice}
+        </div>
       </div>
       {/* A refresh that failed after the first load: the figures below may be out of date, so say so (final review). */}
       {loadError && (
@@ -151,7 +151,16 @@ export default function AgentOrgDetailPanel({ orgId, canAct }: { orgId: string; 
         <div>
           {org.status === "active" &&
             (confirming ? (
-              <div role="group" aria-label="Confirm suspension">
+              <div
+                role="group"
+                aria-label="Confirm suspension"
+                onKeyDown={(e) => {
+                  if (e.key === "Escape" && !busy) {
+                    setConfirming(false); // QA22-08: Escape cancels, like the Cancel button
+                    focus("agent-org-suspend");
+                  }
+                }}
+              >
                 <p style={{ fontSize: 13 }}>Suspend {org.name}? Every member loses access on their next request.</p>
                 <button type="button" className="btn small" autoFocus disabled={busy} onClick={() => act("suspend")} style={{ marginRight: 8 }}>
                   {busy ? "Working…" : "Confirm suspend"}
@@ -199,7 +208,8 @@ export default function AgentOrgDetailPanel({ orgId, canAct }: { orgId: string; 
       <section className="kpi-group">
         <h3 id="agent-org-commission">Commission</h3>
         <div className="table-scroll">
-          <table className="table compact" aria-labelledby="agent-org-commission">
+          {/* QA22-02: four columns do not fit a phone; `stack` turns each row into a labelled block there (data-label). */}
+          <table className="table compact stack" aria-labelledby="agent-org-commission">
             <thead>
               <tr>
                 <th scope="col">Figure</th>
@@ -212,9 +222,9 @@ export default function AgentOrgDetailPanel({ orgId, canAct }: { orgId: string; 
               <MoneyRows label="Claimable" rows={org.commission.claimable} />
               <tr>
                 <th scope="row">Claims</th>
-                <td>—</td>
-                <td>{org.commission.claims}</td>
-                <td>—</td>
+                <td data-label="Currency">—</td>
+                <td data-label="Count">{org.commission.claims}</td>
+                <td data-label="Amount">—</td>
               </tr>
               <MoneyRows label="Paid revenue" rows={org.commission.revenue} />
             </tbody>
@@ -272,9 +282,9 @@ function MoneyRows({ label, rows }: { label: string; rows: CommissionTotal[] }) 
     return (
       <tr>
         <th scope="row">{label}</th>
-        <td>—</td>
-        <td>0</td>
-        <td>—</td>
+        <td data-label="Currency">—</td>
+        <td data-label="Count">0</td>
+        <td data-label="Amount">—</td>
       </tr>
     );
   }
@@ -283,9 +293,9 @@ function MoneyRows({ label, rows }: { label: string; rows: CommissionTotal[] }) 
       {rows.map((r) => (
         <tr key={`${label}-${r.currency}`}>
           <th scope="row">{label}</th>
-          <td>{r.currency}</td>
-          <td>{r.count}</td>
-          <td>{money(r.amount, r.currency)}</td>
+          <td data-label="Currency">{r.currency}</td>
+          <td data-label="Count">{r.count}</td>
+          <td data-label="Amount">{money(r.amount, r.currency)}</td>
         </tr>
       ))}
     </>

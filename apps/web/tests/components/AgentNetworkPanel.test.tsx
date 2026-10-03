@@ -72,6 +72,34 @@ describe("AgentNetworkPanel (AGN-022)", () => {
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "All agencies" }));
   });
 
+  it("while another tab loads, the heading still names the rows on screen and a status names the tab being loaded (QA22-03)", async () => {
+    let release!: (r: Response) => void;
+    const mock = vi
+      .fn()
+      .mockResolvedValueOnce(page([org("a1")]))
+      .mockReturnValueOnce(new Promise<Response>((r) => (release = r)));
+    vi.stubGlobal("fetch", mock);
+    render(<AgentNetworkPanel />);
+    await screen.findByRole("link", { name: /Agency a1/ });
+    fireEvent.click(screen.getByRole("button", { name: "Suspended" }));
+    expect(screen.getByRole("heading", { name: "All agencies" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "All agencies" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText("Loading suspended agencies…")).toBeInTheDocument();
+    await act(async () => release(page([org("s1", { status: "suspended" })])));
+    expect(await screen.findByRole("heading", { name: "Suspended agencies" })).toBeInTheDocument();
+    expect(screen.queryByText("Loading suspended agencies…")).toBeNull();
+  });
+
+  it("keeps Master codes on one line, and offers suspending only to a role that can (QA22-07, QA22-09)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => page([org("o1")])));
+    render(<AgentNetworkPanel />);
+    expect(await screen.findByText("ABC-M001")).toHaveStyle({ whiteSpace: "nowrap" });
+    expect(screen.getByText(/Open an agency to see its students and applications\.$/)).toBeInTheDocument();
+    cleanup();
+    render(<AgentNetworkPanel canAct />);
+    expect(await screen.findByText(/or to suspend it\.$/)).toBeInTheDocument();
+  });
+
   it("drops a slow older response that arrives after a newer one", async () => {
     let releaseFirst!: (r: Response) => void;
     const mock = vi

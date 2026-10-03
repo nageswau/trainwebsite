@@ -56,3 +56,26 @@ test("the network pages fit a phone without sideways scrolling, and a crafted id
   const response = await page.goto("/overseas/admin/agent-network/not-a-uuid");
   expect(response?.status()).toBe(404);
 });
+
+// Browser QA22-01 / QA22-02: a table that fits its page can still hide columns inside its own scroll box; measure the boxes.
+const tableOverflow = () => [...document.querySelectorAll(".table-scroll")].map((e) => e.scrollWidth - e.clientWidth);
+
+test("on a tablet the agencies table shows every column without scrolling sideways (QA22-01)", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await signIn(page, ADMIN.email, ADMIN.password, "/overseas/admin/dashboard");
+  await page.goto("/overseas/admin/agent-network");
+  await expect(page.locator("tbody tr").first()).toBeVisible();
+  expect(await page.evaluate(tableOverflow)).toEqual([0]);
+  expect(await page.locator("tbody tr").first().locator('td[data-label="Enrollments"]').isVisible()).toBe(true);
+});
+
+test("on a phone the agency's commission table shows the amount column (QA22-02)", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await signIn(page, ADMIN.email, ADMIN.password, "/overseas/admin/dashboard");
+  await page.goto("/overseas/admin/agent-network");
+  await page.locator("tbody tr").first().getByRole("link").click();
+  const commission = page.getByRole("table", { name: "Commission" });
+  await expect(commission).toBeVisible();
+  for (const overflow of await page.evaluate(tableOverflow)) expect(overflow).toBe(0);
+  await expect(commission.locator('td[data-label="Amount"]').first()).toBeVisible();
+});

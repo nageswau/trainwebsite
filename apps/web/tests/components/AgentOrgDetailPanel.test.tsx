@@ -102,6 +102,26 @@ describe("AgentOrgDetailPanel (AGN-022)", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("Escape cancels the suspend confirmation and returns focus to Suspend (QA22-08)", async () => {
+    const mock = vi.fn().mockResolvedValue(json(detail()));
+    vi.stubGlobal("fetch", mock);
+    render(<AgentOrgDetailPanel orgId={ID} canAct />);
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend Kappa Overseas" }));
+    fireEvent.keyDown(screen.getByRole("button", { name: "Confirm suspend" }), { key: "Escape" });
+    expect(screen.queryByRole("group", { name: "Confirm suspension" })).toBeNull();
+    expect(document.activeElement).toBe(await screen.findByRole("button", { name: "Suspend Kappa Overseas" }));
+    expect(mock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+  });
+
+  it("labels every commission cell, so the table can stack on a phone instead of hiding the amount (QA22-02)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(detail())));
+    render(<AgentOrgDetailPanel orgId={ID} canAct />);
+    const commission = await screen.findByRole("table", { name: "Commission" });
+    expect(commission).toHaveClass("stack");
+    const claimable = within(commission).getAllByRole("row")[1];
+    expect(within(claimable).getAllByRole("cell").map((c) => c.getAttribute("data-label"))).toEqual(["Currency", "Count", "Amount"]);
+  });
+
   it("gives Super Admin no actions and a pending agency a link to Agent Approvals (N3)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(detail())));
     render(<AgentOrgDetailPanel orgId={ID} canAct={false} />);

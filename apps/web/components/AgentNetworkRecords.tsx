@@ -125,6 +125,12 @@ export default function AgentNetworkRecords({ orgId, kind }: { orgId: string; ki
         </p>
       ) : (
         <>
+          {kind === "applications" && (
+            // QA22-04: the list shows every application; the agency's Applications figure counts only those not withdrawn.
+            <p className="muted" style={{ fontSize: 13 }}>
+              Withdrawn applications are listed here; the Applications figure above leaves them out.
+            </p>
+          )}
           <div className="table-scroll" role="region" aria-labelledby={headingId} tabIndex={0} aria-busy={loading} style={{ opacity: loading ? 0.6 : 1 }}>
             {kind === "students" ? <StudentTable rows={data.items as NetworkStudent[]} /> : <ApplicationTable rows={data.items as NetworkApplication[]} />}
           </div>

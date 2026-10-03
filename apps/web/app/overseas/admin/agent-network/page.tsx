@@ -20,7 +20,7 @@ export default async function AgentNetworkPage() {
   return (
     <PortalShell nav={PORTAL_NAV["overseas/admin"]} roleLabel="Overseas Administrator" userName={user.full_name}>
       <div className="portal-content">
-        <AgentNetworkPanel />
+        <AgentNetworkPanel canAct={user.role === "overseas_admin"} />
       </div>
     </PortalShell>
   );

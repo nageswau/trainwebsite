@@ -52,6 +52,13 @@ describe("AgentNetworkRecords (AGN-022)", () => {
     expect(screen.getByText("Showing 21–21 of 25")).toBeInTheDocument();
   });
 
+  it("says that withdrawn applications are listed although the Applications figure leaves them out (QA22-04)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(page([application("w", { status: "withdrawn" })])));
+    render(<AgentNetworkRecords orgId={ID} kind="applications" />);
+    expect(await screen.findByText("Withdrawn")).toBeInTheDocument();
+    expect(screen.getByText("Withdrawn applications are listed here; the Applications figure above leaves them out.")).toBeInTheDocument();
+  });
+
   it("on a page that emptied while browsing, offers the first page instead of claiming there are no records (final review)", async () => {
     const twenty = Array.from({ length: 20 }, (_, i) => student(`s${i}`));
     const mock = vi

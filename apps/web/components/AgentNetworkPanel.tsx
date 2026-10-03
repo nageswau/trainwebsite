@@ -22,7 +22,7 @@ const TABS: { value: Tab; label: string; empty: string }[] = [
 const RESULTS_ID = "agent-network-results";
 type Loaded = { page: Page<NetworkOrg>; tab: Tab; query: string };
 
-export default function AgentNetworkPanel() {
+export default function AgentNetworkPanel({ canAct = false }: { canAct?: boolean }) {
   const [tab, setTab] = useState<Tab>("all");
   const [offset, setOffset] = useState(0);
   const [query, setQuery] = useState("");
@@ -107,12 +107,17 @@ export default function AgentNetworkPanel() {
   const current = TABS.find((t) => t.value === tab) ?? TABS[0];
   const shown = loaded ? (TABS.find((t) => t.value === loaded.tab) ?? TABS[0]) : current;
   const data = loaded?.page;
+  // QA22-03: while another tab loads, the previous rows stay on screen, so the heading (which also names the table region) keeps
+  // naming those rows; a status line says what is being loaded.
+  const heading = loading && data ? shown : current;
 
   return (
     <div className="action-card agent-network">
       <div>
         <h2>Agent network</h2>
-        <p className="muted">Every agency on EduSphere, with its people and pipeline. Open an agency to see its students and applications, or to suspend it.</p>
+        <p className="muted">
+          Every agency on EduSphere, with its people and pipeline. Open an agency to see its students and applications{canAct ? ", or to suspend it." : "."}
+        </p>
       </div>
       <div role="group" aria-label="Agency status" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {TABS.map((t) => (
@@ -133,8 +138,13 @@ export default function AgentNetworkPanel() {
       {/* The table's scroll region carries the heading's name, so the section stays unnamed (one landmark, not two -- QA18-06). */}
       <section>
         <h3 id={RESULTS_ID} tabIndex={-1}>
-          {current.label} agencies
+          {heading.label} agencies
         </h3>
+        {loading && data && (
+          <p className="muted" role="status" style={{ fontSize: 13 }}>
+            Loading {current.label.toLowerCase()} agencies…
+          </p>
+        )}
         {error ? (
           <>
             <p className="form-error" role="alert">
@@ -163,7 +173,7 @@ export default function AgentNetworkPanel() {
         ) : (
           <>
             <div className="table-scroll" role="region" aria-labelledby={RESULTS_ID} tabIndex={0} aria-busy={loading} style={{ opacity: loading ? 0.6 : 1 }}>
-              <table className="table compact stack">
+              <table className="table compact stack stack-wide">
                 <thead>
                   <tr>
                     {["Agency", "Status", "Masters", "Staff", "Students", "Applications", "Enrollments"].map((h) => (
@@ -186,7 +196,7 @@ export default function AgentNetworkPanel() {
                       </td>
                       <td data-label="Masters">
                         {org.masters.map((m) => (
-                          <span key={m.id} style={{ display: "block" }}>
+                          <span key={m.id} style={{ display: "block", whiteSpace: "nowrap" }}>
                             {m.code}
                           </span>
                         ))}
