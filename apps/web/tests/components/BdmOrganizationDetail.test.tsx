@@ -75,4 +75,22 @@ describe("BdmOrganizationDetail (bdm-002 AC3-AC6, §12.2)", () => {
     render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" created />);
     expect(screen.getByRole("status")).toHaveTextContent("Organization ORG-000001 created.");
   });
+
+  it("hides Archive while the edit form is open (browser QA-14)", () => {
+    render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_edit: true, can_archive: true }) })} basePath="/bdm/organizations" />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.queryByRole("button", { name: "Archive" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument();
+  });
+
+  it("returns focus to Edit when the edit form closes (browser QA-12)", async () => {
+    render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_edit: true }) })} basePath="/bdm/organizations" />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit" })).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" })); // no change: closes without a request
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit" })).toHaveFocus());
+  });
 });

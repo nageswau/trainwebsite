@@ -21,6 +21,11 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
   const [failure, setFailure] = useState<string | null>(null);
   const focus = useFocusAfterRender();
   const archiveId = `org-${org.id}-archive`;
+  const editId = `org-${org.id}-edit`;
+  const closeEditor = () => {
+    setEditing(false);
+    focus(editId); // browser QA-12: the form (and the focused control) is gone
+  };
   const p = org.permissions;
 
   const changed = (next: Organization, text: string) => {
@@ -87,11 +92,11 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
         </div>
         <div className="actions">
           {p.can_edit && !editing && (
-            <button type="button" className="btn secondary small" onClick={() => setEditing(true)}>
+            <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(true)}>
               Edit
             </button>
           )}
-          {p.can_archive && (
+          {p.can_archive && !editing && ( // browser QA-14: archiving under an open edit form left it stale
             <button id={archiveId} type="button" className="btn secondary small" onClick={() => setConfirming(true)} disabled={busy}>
               Archive
             </button>
@@ -132,9 +137,9 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
             organization={org}
             onSaved={(o) => {
               changed(o, "Changes saved.");
-              setEditing(false);
+              closeEditor();
             }}
-            onCancel={() => setEditing(false)}
+            onCancel={closeEditor}
           />
         </section>
       ) : (

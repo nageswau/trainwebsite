@@ -78,7 +78,7 @@ export default function BdmOrganizationForm({
 }) {
   const original = useRef(valuesOf(organization));
   const [values, setValues] = useState<OrgValues>(original.current);
-  const [contacts, setContacts] = useState<ContactValues[]>(() => [blankContact(true)]);
+  const [contacts, setContacts] = useState<ContactValues[]>(() => [blankContact("c1", true)]);
   const [errors, setErrors] = useState<Partial<Record<OrgField, string>>>({});
   const [contactErrors, setContactErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
@@ -178,7 +178,14 @@ export default function BdmOrganizationForm({
           <button type="button" className="btn small" onClick={() => void save(true)} disabled={busy}>
             Save anyway
           </button>{" "}
-          <button type="button" className="btn secondary small" onClick={() => setDuplicate(null)}>
+          <button
+            type="button"
+            className="btn secondary small"
+            onClick={() => {
+              setDuplicate(null);
+              focus(`${idPrefix}-save`); // browser QA-10: the warning (and the focused control) is gone
+            }}
+          >
             Go back
           </button>
         </div>
@@ -189,7 +196,7 @@ export default function BdmOrganizationForm({
         </p>
       )}
       <div className="actions">
-        <button type="submit" className="btn small" disabled={busy || duplicate !== null}>
+        <button id={`${idPrefix}-save`} type="submit" className="btn small" disabled={busy || duplicate !== null}>
           {busy ? "Saving…" : mode === "create" ? "Save organization" : "Save changes"}
         </button>
         <button type="button" className="btn secondary small" onClick={onCancel} disabled={busy}>

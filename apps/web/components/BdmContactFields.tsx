@@ -6,8 +6,10 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 // Focus follows add and remove, so a keyboard user never lands on a control that disappeared (spec §12.2 F6).
 export type ContactValues = { key: string; name: string; designation: string; role: string; phone: string; email: string; is_primary: boolean };
 export const MAX_CONTACTS = 20;
-let next = 0;
-export const blankContact = (primary = false): ContactValues => ({ key: `c${++next}`, name: "", designation: "", role: "", phone: "", email: "", is_primary: primary });
+// Keys are derived from the list, never from a module counter: a counter keeps counting on the server, so the server-rendered ids
+// differed from the browser's after a full page load (browser QA-09).
+export const blankContact = (key: string, primary = false): ContactValues => ({ key, name: "", designation: "", role: "", phone: "", email: "", is_primary: primary });
+const nextKey = (contacts: ContactValues[]) => `c${Math.max(0, ...contacts.map((c) => Number(c.key.slice(1)) || 0)) + 1}`;
 
 export default function BdmContactFields({
   idPrefix,
@@ -34,7 +36,7 @@ export default function BdmContactFields({
     ) : null;
   const set = (key: string, patch: Partial<ContactValues>) => onChange(contacts.map((c) => (c.key === key ? { ...c, ...patch } : c)));
   const add = () => {
-    const added = blankContact();
+    const added = blankContact(nextKey(contacts));
     onChange([...contacts, added]);
     focus(id(added, "name"));
   };

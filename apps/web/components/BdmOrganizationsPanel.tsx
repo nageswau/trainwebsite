@@ -54,6 +54,7 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
   const key = toUrl(filters).toString();
   const [data, setData] = useState<Page<OrgRow> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [version, setVersion] = useState(0);
   const [draftQ, setDraftQ] = useState(filters.q);
   const [draftCity, setDraftCity] = useState(filters.city);
@@ -67,6 +68,7 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
   useEffect(() => {
     let live = true;
     setLoadFailed(false);
+    setLoading(true);
     fetch(toApi(readFilters(new URLSearchParams(key))))
       .then(async (response) => {
         const body = await response.json().catch(() => null);
@@ -75,6 +77,9 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
       })
       .catch(() => {
         if (live) setLoadFailed(true);
+      })
+      .finally(() => {
+        if (live) setLoading(false);
       });
     return () => {
       live = false;
@@ -83,6 +88,8 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
 
   function go(next: Partial<Filters>) {
     const url = toUrl({ ...filters, offset: 0, ...next });
+    // browser QA-15: the router waits for a server round trip before the URL (and so the fetch) changes; show the wait from the click.
+    if (url.toString() !== key) setLoading(true);
     router.push(url.size ? `${pathname}?${url}` : pathname, { scroll: false });
   }
   const filtered = Boolean(filters.q || filters.orgType || filters.city || filters.mine || filters.archived);
@@ -92,7 +99,7 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
   };
 
   return (
-    <div className="action-card wide" aria-busy={data === null && !loadFailed}>
+    <div className="action-card wide" aria-busy={loading && !loadFailed}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
         <h3>Organizations</h3>
         {isBdm && (
@@ -135,7 +142,7 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
           Search
         </button>
         {filtered && (
-          <button type="button" className="btn secondary small" onClick={() => router.push(pathname, { scroll: false })}>
+          <button type="button" className="btn secondary small" onClick={() => go({ q: "", orgType: "", city: "", mine: false, archived: false })}>
             Clear filters
           </button>
         )}
@@ -179,8 +186,14 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
         </>
       ) : (
         <>
-          <div className="table-wrap" role="region" aria-label="Organizations" tabIndex={0}>
-            <table>
+          {loading && (
+            <p className="muted" role="status" style={{ margin: 0 }}>
+              Updating organizations…
+            </p>
+          )}
+          <div className="table-wrap" role="region" aria-label="Organizations" tabIndex={0} style={loading ? { opacity: 0.6 } : undefined}>
+            <table style={{ overflowWrap: "anywhere" }}>
+              {/* browser QA-01: one unbroken name or city must wrap, not push every other column out of view */}
               <thead>
                 <tr>
                   <th scope="col">Code</th>
@@ -196,8 +209,8 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
               <tbody>
                 {data.items.map((r) => (
                   <tr key={r.id}>
-                    <td>{r.code}</td>
-                    <td>
+                    <td style={{ whiteSpace: "nowrap" }}>{r.code}</td>
+                    <td style={{ minWidth: 160 }}>
                       <Link href={`${basePath}/${r.id}`}>{r.name}</Link>
                       {r.archived && (
                         <>

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import BdmOrganizationsPanel from "@/components/BdmOrganizationsPanel";
@@ -80,5 +80,50 @@ describe("BdmOrganizationsPanel (bdm-002 AC9)", () => {
     expect(await screen.findByText("Unable to load organizations.")).toHaveAttribute("role", "alert");
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByText("This page is past the end of the list.")).toBeInTheDocument();
+  });
+
+  it("signals a later load: the card is busy and says so while the old rows stay (browser QA-15)", async () => {
+    nav.search = "";
+    let release: (r: Response) => void = () => {};
+    const mock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>()
+      .mockResolvedValueOnce(res(pg([row(1)])))
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => { release = resolve; }));
+    vi.stubGlobal("fetch", mock);
+    const { rerender } = render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 1" });
+    nav.search = "q=College";
+    rerender(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await waitFor(() => expect(screen.getByText("Updating organizations…")).toBeInTheDocument());
+    expect(screen.getByRole("region", { name: "Organizations" }).closest("[aria-busy]")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("link", { name: "College 1" })).toBeInTheDocument();
+    release(res(pg([row(2)])));
+    await screen.findByRole("link", { name: "College 2" });
+    expect(screen.queryByText("Updating organizations…")).toBeNull();
+  });
+
+  it("lets long names and codes lay out: names wrap anywhere, codes never break (browser QA-01, QA-02)", async () => {
+    serve(res(pg([row(1)])));
+    render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    const link = await screen.findByRole("link", { name: "College 1" });
+    expect(link.closest("table")).toHaveStyle({ overflowWrap: "anywhere" }); // every column (a 120-character city did the same)
+    expect(screen.getByText("ORG-000001").closest("td")).toHaveStyle({ whiteSpace: "nowrap" });
+  });
+
+  it("is busy from the moment a filter changes, before the router has moved to the new URL (browser QA-15 re-check)", async () => {
+    serve(res(pg([row(1)])));
+    render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 1" });
+    fireEvent.change(screen.getByLabelText("Name or code"), { target: { value: "College" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" })); // push is mocked: the URL does not change yet
+    expect(screen.getByText("Updating organizations…")).toBeInTheDocument();
+    expect(nav.push).toHaveBeenCalledWith("/bdm/organizations?q=College", { scroll: false });
+  });
+
+  it("does not stay busy when a search changes nothing", async () => {
+    serve(res(pg([row(1)])));
+    render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 1" });
+    fireEvent.click(screen.getByRole("button", { name: "Search" })); // same (empty) filters
+    expect(screen.queryByText("Updating organizations…")).toBeNull();
   });
 });

@@ -110,4 +110,32 @@ describe("BdmOrganizationForm (bdm-002 AC1, AC2, §12.2 F5)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Only one contact can be primary");
   });
+
+  it("gives contact 1 the same ids on every render, so server and browser agree (browser QA-09)", () => {
+    const first = render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    const id = screen.getByLabelText("Contact name (required)").id;
+    first.unmount();
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByLabelText("Contact name (required)").id).toBe(id);
+  });
+
+  it("keeps contact ids unique after removing and adding contacts (browser QA-09)", () => {
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add contact" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add contact" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove contact 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add contact" }));
+    const ids = screen.getAllByLabelText("Contact name (required)").map((input) => input.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("returns focus to Save after Go back in the duplicate warning (browser QA-10)", async () => {
+    const dup = { code: "possible_duplicate", message: "A similar organization already exists in your module", total: 1, matches: [] };
+    serve(res({ detail: dup }, 409));
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fillRequired();
+    fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Go back" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save organization" })).toHaveFocus());
+  });
 });
