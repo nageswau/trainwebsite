@@ -1,5 +1,5 @@
 "use client";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 
 import BdmActivityCounts from "@/components/BdmActivityCounts";
 import BdmActivityForm from "@/components/BdmActivityForm";
@@ -19,22 +19,27 @@ export default function BdmActivityDay({
   const [notice, setNotice] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const focus = useFocusAfterRender();
+  const latest = useRef(0); // read sequence: only the newest request may change the page (older answers can arrive late)
   const sep = url.includes("?") ? "&" : "?";
 
   async function read(offset: number, append: boolean, text?: string) {
+    const mine = ++latest.current;
     setBusy(true);
     setFailure(null);
     try {
       const response = await fetch(`${url}${sep}limit=${DAY_PAGE}&offset=${offset}`);
       const data = response.ok ? await response.json() : null;
       if (!isDayPage(data)) throw new Error("bad page");
+      if (mine !== latest.current) return;
       setDay((current) => (append ? { ...data, items: [...current.items, ...data.items.filter((a) => !current.items.some((c) => c.id === a.id))] } : data));
       if (text) setNotice(text);
     } catch {
-      setFailure("The day couldn't be refreshed. Reload the page to see the latest counts.");
+      if (mine === latest.current) setFailure("The day couldn't be refreshed. Reload the page to see the latest counts.");
     } finally {
-      setBusy(false);
-      focus("activity-day-status");
+      if (mine === latest.current) {
+        setBusy(false);
+        if (text) focus("activity-day-status"); // after a write only; "Load more" leaves focus where it is
+      }
     }
   }
 

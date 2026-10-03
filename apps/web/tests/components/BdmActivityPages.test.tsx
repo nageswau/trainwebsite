@@ -93,4 +93,56 @@ describe("bdm-009 activity pages", () => {
     await waitFor(() => expect(screen.getByText("Calls made").nextElementSibling).toHaveTextContent("1"));
     expect(screen.getByText("No activities on this day.")).toBeInTheDocument();
   });
+
+  const mk = (id: string) => ({ id, organization: { id: "o1", code: "ORG-1", name: "St Mary", org_type: "college" }, bdm: { id: "b1", full_name: "Asha" },
+    contact_id: null, contact_name: null, contact_removed: false, channel: "call", direction: "outbound", occurred_at: "2026-10-03T05:00:00Z",
+    note: null, created_at: "2026-10-03T05:00:00Z", updated_at: "2026-10-03T05:00:00Z", permissions: { can_change: true } }) as const;
+  const URL_DAY = "/api/v1/bdm/activities?date=2026-10-03";
+  const withCalls = (n: number) => day({ counts: { ...counts, calls_made: n } });
+
+  it("the Log activity form is absent before the click", () => {
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day()} url={URL_DAY} canLog orgBasePath="/bdm/organizations" />);
+    expect(screen.queryByRole("form", { name: "Log activity" })).toBeNull();
+  });
+
+  it("the counts and the list are marked busy while a re-read is pending", async () => {
+    let release: (r: Response) => void = () => {};
+    const pending = new Promise<Response>((r) => { release = r; });
+    vi.stubGlobal("fetch", vi.fn((url: string) => (url.includes("/activities/a1") ? Promise.resolve(new Response(null, { status: 204 })) : pending)));
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [mk("a1"), mk("a2")], total: 2 })} url={URL_DAY} canLog orgBasePath="/bdm/organizations" />);
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
+    await waitFor(() => expect(screen.getByLabelText("Day counts")).toHaveAttribute("aria-busy", "true"));
+    expect(screen.getByRole("list", { name: "Activities" })).toHaveAttribute("aria-busy", "true");
+    release(res(day({ items: [mk("a2")], total: 1 })));
+    await waitFor(() => expect(screen.getByLabelText("Day counts")).not.toHaveAttribute("aria-busy"));
+  });
+
+  it("Load more leaves focus where it is instead of jumping to the status region", async () => {
+    const more = day({ items: [mk("a1"), mk("a2")], total: 2 });
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(more))));
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [mk("a1")], total: 2 })} url={URL_DAY} canLog orgBasePath="/bdm/organizations" />);
+    const button = screen.getByRole("button", { name: "Load more" });
+    button.focus();
+    fireEvent.click(button);
+    await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(2));
+    expect(document.activeElement?.id).not.toBe("activity-day-status");
+  });
+
+  it("an older response never overwrites a newer one", async () => {
+    const resolvers: ((r: Response) => void)[] = [];
+    vi.stubGlobal("fetch", vi.fn((url: string) => (url.includes("/activities/a") ? Promise.resolve(new Response(null, { status: 204 })) : new Promise<Response>((r) => resolvers.push(r)))));
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [mk("a1"), mk("a2")], total: 2 })} url={URL_DAY} canLog orgBasePath="/bdm/organizations" />);
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
+    await waitFor(() => expect(resolvers).toHaveLength(1));
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
+    await waitFor(() => expect(resolvers).toHaveLength(2));
+    resolvers[1](res(withCalls(7))); // the newer read answers first
+    await waitFor(() => expect(screen.getByText("Calls made").nextElementSibling).toHaveTextContent("7"));
+    resolvers[0](res(withCalls(9))); // the older one answers late
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByText("Calls made").nextElementSibling).toHaveTextContent("7");
+  });
 });
