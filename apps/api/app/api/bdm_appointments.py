@@ -23,6 +23,7 @@ from app.schemas import (
     BdmAppointmentPage,
     BdmAppointmentStatus,
     BdmAppointmentType,
+    BdmAppointmentUpdate,
 )
 from app.services import bdm_appointments as svc
 from app.services import bdm_organizations as org_svc
@@ -150,3 +151,39 @@ async def create_appointment(payload: BdmAppointmentCreate, user: User = Depends
 async def get_appointment(appt_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     appt = await svc.load_scoped(db, user, appt_id)
     return await _envelope(db, user, appt, refresh=False)  # nothing was written
+
+
+@router.patch("/{appt_id}", response_model=BdmAppointmentEnvelope)
+async def update_appointment(appt_id: UUID, payload: BdmAppointmentUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """PATCH: only the fields sent; values equal to the stored ones are not changes (no audit, no updated_at bump, R-A6). A contact change
+    locks the organization first (§5.7: organization -> appointment), so bdm-002's contact delete cannot remove it mid-write."""
+    changes = payload.model_dump(exclude_unset=True, exclude={"confirm_overlap"})
+    current = await svc.load_scoped(db, user, appt_id)  # scope (404) and owner (403) before taking any lock
+    svc.require_owner(user, current, "update")
+    contact = None
+    if "contact_id" in changes and changes["contact_id"] != current.contact_id:
+        org = await org_svc.load_scoped(db, user, current.organization_id, lock=True)
+        contact = await _contact_of(db, org, changes["contact_id"])
+    appt = await svc.load_scoped(db, user, appt_id, lock=True)
+    svc.require_open(appt)
+    changes.pop("contact_id", None)
+    changed = sorted(k for k, v in changes.items() if getattr(appt, k) != v)
+    if "appointment_type" in changed:
+        _type_allowed((await bdm_context(db, user)).bdm_type, changes["appointment_type"])
+    overlaps = 0
+    if "duration_minutes" in changed:
+        overlaps = await _check_overlap(db, user, appt.starts_at, changes["duration_minutes"], payload.confirm_overlap, exclude_id=appt.id)
+    for key in changed:
+        setattr(appt, key, changes[key])
+    if contact is not None:
+        for key, value in svc.snapshot(contact).items():
+            setattr(appt, key, value)
+        changed = sorted({*changed, "contact_id"})
+    if changed:
+        svc.audit(db, user, "update", appt.id, {"fields": changed})
+        if overlaps:
+            svc.audit(db, user, "overlap_override", appt.id, {"match_count": overlaps})
+    await db.commit()
+    if changed:
+        svc.log("bdm_appt_updated", user, appt.id, fields=changed)
+    return await _envelope(db, user, appt)

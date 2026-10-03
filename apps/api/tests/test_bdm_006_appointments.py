@@ -1,13 +1,15 @@
-"""bdm-006 -- create, read, list (AC1, AC8 retry; spec §5.3, §5.5). PATCH tests are appended in Task 5."""
+"""bdm-006 -- create, read, list (AC1, AC8 retry; spec §5.3, §5.5). PATCH tests follow (Task 5)."""
 
 import re
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
+from sqlalchemy import update as sa_update
 
+from app.models import BdmAppointment
 from tests.bdm001_helpers import login, make_manager
-from tests.bdm002_helpers import create_org, make_bdm
+from tests.bdm002_helpers import ORGS, create_org, make_bdm
 from tests.bdm006_helpers import APPTS, appt_payload, audits, bdm_with_org, create_appt, future
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -127,3 +129,66 @@ async def test_school_and_agent_bdms_get_their_own_lists(client, db_session):
         assert (await client.post(APPTS, json=appt_payload(org, appointment_type=module_type))).status_code == 201
         assert (await client.post(APPTS, json=appt_payload(org, appointment_type=foreign, starts_at=future(96)))).status_code == 422
         assert (await client.post(APPTS, json=appt_payload(org, appointment_type="seminar_workshop", starts_at=future(120)))).status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_patch_changes_only_sent_fields_and_audits_their_names(client, db_session):
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await create_appt(client, org, location="Gate 1")
+    response = await client.patch(f"{APPTS}/{a['id']}", json={"location": "Gate 2", "purpose": "Demo"})
+    assert response.status_code == 200, response.text
+    b = response.json()["appointment"]
+    assert (b["location"], b["purpose"], b["starts_at"], b["status"]) == ("Gate 2", "Demo", a["starts_at"], "scheduled")
+    assert await audits(db_session, a["id"]) == ["bdm_appointment.create", "bdm_appointment.update"]
+    assert len(b["events"]) == 1  # an edit is not a transition
+
+
+@pytest.mark.asyncio
+async def test_noop_patch_writes_nothing(client, db_session):
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await create_appt(client, org, location="Gate 1")
+    for body in ({}, {"location": "Gate 1", "duration_minutes": 60}):
+        b = (await client.patch(f"{APPTS}/{a['id']}", json=body)).json()["appointment"]
+        assert b["updated_at"] == a["updated_at"]
+    assert await audits(db_session, a["id"]) == ["bdm_appointment.create"]
+
+
+@pytest.mark.asyncio
+async def test_patch_contact_recopies_the_snapshot_and_refuses_another_orgs_contact(client, db_session):
+    _, _, org = await bdm_with_org(client, db_session)
+    org = (await client.post(f"{ORGS}/{org['id']}/contacts", json={"name": "Ms Iyer", "designation": "TPO", "phone": "+91 99999 00000"})).json()["organization"]
+    iyer = next(c for c in org["contacts"] if c["name"] == "Ms Iyer")
+    a = await create_appt(client, org)
+    b = (await client.patch(f"{APPTS}/{a['id']}", json={"contact_id": iyer["id"]})).json()["appointment"]
+    assert (b["contact_id"], b["contact_name"], b["contact_designation"], b["contact_phone"]) == (iyer["id"], "Ms Iyer", "TPO", "+91 99999 00000")
+    other = await create_org(client)
+    response = await client.patch(f"{APPTS}/{a['id']}", json={"contact_id": other["contacts"][0]["id"]})
+    assert (response.status_code, response.json()["detail"]) == (422, "Choose a contact of this organization")
+
+
+@pytest.mark.asyncio
+async def test_patch_rules(client, db_session):
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await create_appt(client, org, starts_at=future(50))
+    b = await create_appt(client, org, starts_at=future(51.5))
+    assert (await client.patch(f"{APPTS}/{a['id']}", json={"appointment_type": "agent_visit"})).status_code == 422
+    assert (await client.patch(f"{APPTS}/{a['id']}", json={"starts_at": future(80)})).status_code == 422  # unknown field
+    clash = await client.patch(f"{APPTS}/{a['id']}", json={"duration_minutes": 120})  # now runs into b
+    assert clash.status_code == 409 and clash.json()["detail"]["matches"][0]["code"] == b["code"]
+    assert (await client.patch(f"{APPTS}/{a['id']}", json={"duration_minutes": 120, "confirm_overlap": True})).status_code == 200
+    await db_session.execute(sa_update(BdmAppointment).where(BdmAppointment.id == a["id"]).values(status="cancelled"))
+    await db_session.commit()
+    closed = await client.patch(f"{APPTS}/{a['id']}", json={"remarks": "late"})
+    assert (closed.status_code, closed.json()["detail"]) == (409, "Appointment is already cancelled")
+
+
+@pytest.mark.asyncio
+async def test_deleting_the_booked_contact_keeps_the_snapshot(client, db_session):
+    """AC10 / A5 (Review Focus 3): bdm-002's delete route is unchanged and still succeeds."""
+    _, _, org = await bdm_with_org(client, db_session)
+    org = (await client.post(f"{ORGS}/{org['id']}/contacts", json={"name": "Ms Iyer"})).json()["organization"]
+    rao = next(c for c in org["contacts"] if c["name"] == "Dr Rao")
+    a = await create_appt(client, org, contact_id=rao["id"])
+    assert (await client.delete(f"{ORGS}/{org['id']}/contacts/{rao['id']}")).status_code == 200
+    b = (await client.get(f"{APPTS}/{a['id']}")).json()["appointment"]
+    assert (b["contact_id"], b["contact_name"], b["contact_designation"]) == (None, "Dr Rao", "Principal")
