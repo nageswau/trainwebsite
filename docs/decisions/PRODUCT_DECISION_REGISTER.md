@@ -3280,6 +3280,10 @@ the revision-2 skill reviews):
 - **T12** The BDM also gets an in-app notice on approve/reject.
 - **T13** Expense amount > 0.
 - **T14** Travel date at most 30 days back; a trip lasts at most 31 days; start/complete only from the travel date (India date).
+- **T15** (browser QA QA10-01, owner 2026-10-03) BDMs and BDM managers get a Notifications nav item with the unread badge (AGN-017's
+  count) on every BDM page, and a list page that marks a notice read on open.
+- **T16** (browser QA QA10-16, owner 2026-10-03) The trip pages are one client workspace that applies each write's returned trip
+  (spec §12.1 A7) instead of re-rendering the server page; a 409 re-reads the trip.
 
 **Deviations from the backlog text:** the router is `app/api/bdm_travel.py`, not `app/api/bdm/travel.py` (a `bdm/` package would
 shadow the existing `app/api/bdm.py`); the T14 date rules are checked in the service, because they need "today".
