@@ -6,7 +6,13 @@ import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 // it; a rejected trip is edited and resubmitted; the pages fit a phone; the form and the reject reason work by keyboard alone.
 // Throwaway accounts through the real admin API (the bdm-001 pattern).
 
-type People = { bdmEmail: string; managerEmail: string; stamp: number };
+type People = { bdmEmail: string; managerEmail: string; stamp: string };
+
+// Each test provisions its own manager and BDM and drives two portals, so the 15 s default is too tight (agn-0xx specs do the same).
+test.describe.configure({ timeout: 90_000 });
+
+// Saving a draft and opening a trip are client-side navigations (router.push): no `load` event fires, so wait for the URL commit.
+const TRIP_URL = /\/bdm\/travel\/[0-9a-f-]{36}$/;
 
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
 
@@ -19,7 +25,7 @@ async function superAdmin(page: Page) {
 }
 
 async function createPeople(browser: Browser): Promise<People> {
-  const stamp = Date.now();
+  const stamp = `${Date.now()}${Math.floor(Math.random() * 1e4)}`; // unique across parallel workers and --repeat-each
   const context = await browser.newContext();
   const page = await context.newPage();
   await superAdmin(page);
@@ -49,16 +55,18 @@ async function signIn(browser: Browser, portal: "it" | "admin", email: string, l
 }
 
 async function createTrip(page: Page, from = "Hyderabad", to = "Vijayawada"): Promise<string> {
-  await page.goto("/bdm/travel/new");
+  // Under parallel load a fill that lands before hydration is reset by React; wait for the page to settle, then check the dates held.
+  await page.goto("/bdm/travel/new", { waitUntil: "networkidle" });
   await page.getByLabel("Travel date").fill(today());
   await page.getByLabel("Return date").fill(today());
+  await expect(page.getByLabel("Travel date")).toHaveValue(today());
   await page.getByLabel("From").fill(from);
   await page.getByLabel("To").fill(to);
   await page.getByLabel("Purpose").fill("College visits");
   await page.getByLabel("Mode of travel").selectOption("train");
   await page.getByLabel("Estimated cost (₹)").fill("2500");
   await page.getByRole("button", { name: "Save draft" }).click();
-  await page.waitForURL(/\/bdm\/travel\/[0-9a-f-]{36}$/);
+  await page.waitForURL(TRIP_URL, { waitUntil: "commit" });
   return page.url().split("/").pop()!;
 }
 
@@ -90,7 +98,7 @@ test("AC12: create, submit, approve, add expenses, complete", async ({ browser }
   await bdm.getByLabel("Category").selectOption("food");
   await bdm.getByLabel("Amount (₹)").fill("450.50");
   await bdm.getByRole("button", { name: "Save expense" }).click();
-  await expect(bdm.getByRole("region", { name: "Expenses" })).toContainText("₹450.50");
+  await expect(bdm.getByRole("region", { name: "Expenses", exact: true })).toContainText("₹450.50"); // not "Costs and expenses"
   await bdm.getByRole("button", { name: "Add expense" }).click();
   await bdm.getByLabel("Category").selectOption("stay");
   await bdm.getByLabel("Amount (₹)").fill("1200");
@@ -98,7 +106,7 @@ test("AC12: create, submit, approve, add expenses, complete", async ({ browser }
   await expect(bdm.getByRole("group", { name: "Costs" })).toContainText("₹1,650.50");
   await bdm.getByRole("button", { name: "Mark completed" }).click();
   await expect(bdm.getByText("Travel: Completed").first()).toBeVisible();
-  await bdm.getByLabel("Remarks").fill("Two MoUs signed");
+  await bdm.getByRole("textbox", { name: "Remarks" }).fill("Two MoUs signed"); // the section is also named "Remarks"
   await bdm.getByRole("button", { name: "Save remarks" }).click();
   await expect(bdm.getByRole("status").filter({ hasText: "Remarks saved" })).toBeVisible();
 });
@@ -121,7 +129,9 @@ test("reject with a reason, then edit and resubmit", async ({ browser }) => {
   await expect(bdm.getByText("Combine with next week's Vijayawada trip")).toBeVisible();
   await bdm.getByLabel("To", { exact: true }).fill("Vijayawada");
   await bdm.getByRole("button", { name: "Save changes" }).click();
-  await expect(bdm.getByRole("heading", { name: "Hyderabad → Vijayawada" })).toBeVisible();
+  await expect(bdm.getByRole("status").filter({ hasText: "Trip saved." })).toBeVisible();
+  // the heading comes from the server render that router.refresh() fetches after the save
+  await expect(bdm.getByRole("heading", { name: "Hyderabad → Vijayawada" })).toBeVisible({ timeout: 15_000 });
   await bdm.getByRole("button", { name: "Submit for approval" }).click();
   await expect(bdm.getByText("Approval: Submitted").first()).toBeVisible();
 });
@@ -150,12 +160,12 @@ for (const width of [320, 375]) {
 test("AC11: keyboard only — create a trip, and the reject reason keeps focus", async ({ browser }) => {
   const people = await createPeople(browser);
   const bdm = await signIn(browser, "it", people.bdmEmail, "/bdm/my-day");
-  await bdm.goto("/bdm/travel/new");
+  await bdm.goto("/bdm/travel/new", { waitUntil: "networkidle" });
   // Date pickers are filled directly (their typed format depends on the browser locale); every other step is Tab and typing.
   await bdm.getByLabel("Travel date").fill(today());
   await bdm.getByLabel("Return date").fill(today());
-  await bdm.getByLabel("Return date").focus();
-  await bdm.keyboard.press("Tab");
+  await expect(bdm.getByLabel("Travel date")).toHaveValue(today());
+  await bdm.getByLabel("From").focus(); // a date input holds several Tab stops (day, month, year, picker)
   await bdm.keyboard.type("Hyderabad");
   await bdm.keyboard.press("Tab");
   await bdm.keyboard.type("Vijayawada");
@@ -166,7 +176,7 @@ test("AC11: keyboard only — create a trip, and the reject reason keeps focus",
   await bdm.keyboard.type("Keyboard-only trip");
   await bdm.getByRole("button", { name: "Save draft" }).focus();
   await bdm.keyboard.press("Enter");
-  await bdm.waitForURL(/\/bdm\/travel\/[0-9a-f-]{36}$/);
+  await bdm.waitForURL(TRIP_URL, { waitUntil: "commit" });
   const id = bdm.url().split("/").pop()!;
   await bdm.getByRole("button", { name: "Submit for approval" }).focus();
   await bdm.keyboard.press("Enter");
