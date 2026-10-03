@@ -40,7 +40,9 @@ Logger = aliased(User)
 
 async def db_now(db: AsyncSession) -> datetime:
     """The database clock, read once per request: every time rule compares against the same instant."""
-    return await db.scalar(select(func.now()))
+    now = await db.scalar(select(func.now()))
+    assert now is not None  # SELECT now() always returns one row
+    return now
 
 
 def india_date(moment: datetime) -> date:
@@ -143,7 +145,7 @@ def _out(activity: BdmActivity, org: BdmOrganization, logger_name: str, user: Us
 async def page(db: AsyncSession, filters: list, limit: int, offset: int, user: User, now: datetime) -> dict:
     stmt = _rows(filters)
     total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
-    result = (await db.execute(stmt.order_by(*NEWEST).limit(limit).offset(offset).execution_options(populate_existing=True))).all()
+    result = (await db.execute(stmt.order_by(*NEWEST).limit(limit).offset(offset).execution_options(populate_existing=True))).tuples().all()
     return {"items": [_out(a, o, n, user, now) for a, o, n in result], "total": total or 0, "limit": limit, "offset": offset}
 
 
