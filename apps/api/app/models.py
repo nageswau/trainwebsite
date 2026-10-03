@@ -903,6 +903,8 @@ class DataSubjectRequest(Base, TimestampMixin):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
+    # AGN-015 (DEC-SCOPE-060, migration 0066): one entity's history -- the student journey timeline reads audit rows by entity.
+    __table_args__ = (Index("ix_audit_logs_entity", "entity_type", "entity_id", "created_at"),)
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     action: Mapped[str] = mapped_column(String(120), index=True)

@@ -43,7 +43,7 @@ def _config() -> Config:
 def test_migration_chains_after_0064_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert len(HEAD) <= 32  # alembic_version.version_num is VARCHAR(32)
-    assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
+    assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1  # AGN-015's 0066 follows; still one head (the AGN-013 form)
 
 
 def test_model_declares_the_nullable_dedupe_key_and_the_partial_indexes():
