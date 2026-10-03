@@ -22,8 +22,16 @@ const FAILED = "Couldn't load staff performance.";
 const OFFLINE = "Staff performance could not load. Check your connection and try again.";
 const FIELD_LABEL: Record<Field, string> = { from: "'From'", to: "'To'" };
 const TABLE_TITLE = "By staff member";
-const HEAD = ["Staff", "Students", "Applications", "Offers", "Visa applications", "Visa approvals", "Enrollments"];
-const COLUMNS = ["students", "applications", "offers", "visa_applications", "visa_approvals", "enrollments"] as const;
+// Each count column once: its field and its header (also the phone layout's per-cell label).
+const COLUMNS = [
+  ["students", "Students"],
+  ["applications", "Applications"],
+  ["offers", "Offers"],
+  ["visa_applications", "Visa applications"],
+  ["visa_approvals", "Visa approvals"],
+  ["enrollments", "Enrollments"],
+] as const;
+const HEAD = ["Staff", ...COLUMNS.map(([, label]) => label)];
 
 type Choice = { value: string; label: string; counts: AgentPerformanceCounts };
 
@@ -70,8 +78,8 @@ function Funnel({ data, selected, onSelect }: { data: AgentPerformance; selected
 }
 
 function CountCells({ counts }: { counts: AgentPerformanceCounts }) {
-  return COLUMNS.map((key, i) => (
-    <td key={key} data-label={HEAD[i + 1]}>
+  return COLUMNS.map(([key, label]) => (
+    <td key={key} data-label={label}>
       {n(counts[key])}
     </td>
   ));
