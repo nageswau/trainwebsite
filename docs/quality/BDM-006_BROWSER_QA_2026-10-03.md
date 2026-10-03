@@ -78,7 +78,15 @@
 | QA6-06 | Not changed — shared `PortalShell` behaviour outside bdm-006. | — |
 | QA6-07 | Informational — nothing to change. | — |
 
-Verification: web vitest (appointment components, panel, lib) 48 passed in the fix wave and 43 passed on the follow-up subset; `tsc --noEmit`, eslint and `next build` exit 0. Independent review: all five ADDRESSED, no new breakage. **Browser re-check of these fixes is pending** — the running `web` container is a production build and must be rebuilt first.
+Verification: web vitest (appointment components, panel, lib) 48 passed in the fix wave and 43 passed on the follow-up subset; `tsc --noEmit`, eslint and `next build` exit 0. Independent review: all five ADDRESSED, no new breakage.
+
+**Browser re-check (after `docker compose -p bdm006 -f docker-compose.yml up -d --build web`):**
+- Playwright re-check script, 6 / 6 passed: QA6-01 (`?status=bogus&type=nope&date_from=2030-13-99` → list loads); QA6-02 (all four fieldsets `form-section`); QA6-05 (`-3` leads → inline "…whole number from 0 to 1,000,000.", `aria-invalid="true"`, focus on the field, no POST; error clears on edit); QA6-04 (simulated 500 → "We couldn't save the appointment. Please try again — your entry is kept.", entry kept); regression (valid booking with revenue 1500.5 → detail shows ₹1,500.50); QA6-03 (overlap alert `role="alert"` `form-error`, above Book, in the viewport, heading focused).
+- Edge (Browser Use): desktop Book appointment form shows styled sections; mobile 375 px has no horizontal scroll (mobile screenshot timed out in the background tab — width checked by script). Screenshots: re-edge-desktop-new.png, re-03-overlap.png, re-05-inline.png, re-01-bad-url.png.
+- Playwright e2e `bdm-006-appointments` + `bdm-002-organization-crm`: **3 / 3 passed** (3.8 min).
+- Console: only the browser's native "Failed to load resource" lines for the deliberately provoked 500 and 409.
+
+QA6-01 to QA6-05: **closed**. QA6-06 open as a separate, shared-shell item (not bdm-006).
 
 ## 7. Artefacts
 
