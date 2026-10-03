@@ -64,3 +64,61 @@ def test_profile_out_per_group():
     assert svc.profile_out(_org("agent", country="India", staff_count=4)) == {"kind": "agent", "country": "India", "territory": None, "source": None, "staff_count": 4}
     assert svc.profile_out(_org("university", courses="MBA"))["kind"] == "college"
     assert svc.profile_out(_org("training_institute")) is None
+
+
+async def _audit(db, org_id, action: str) -> dict | None:
+    row = await db.scalar(select(AuditLog).where(AuditLog.entity_id == str(org_id), AuditLog.action == f"bdm_organization.{action}").order_by(AuditLog.created_at.desc()))
+    return row.metadata_json if row else None
+
+
+def _new(org_type: str, **extra) -> dict:
+    return {"org_type": org_type, "name": unique_name(), "city": "Kochi", "contacts": [{"name": "Dr Rao"}], **extra}
+
+
+@pytest.mark.asyncio
+async def test_creates_each_type_with_its_profile_and_always_returns_both_keys(client, db_session):
+    await login(client, await bdm_of(db_session, "school"))
+    school = await create_org(client, org_type="school", address="1 Main Rd\nKochi", profile={"board": "CBSE", "school_type": "private", "grade_from": 6, "grade_to": 12})
+    assert school["profile"] == {"kind": "school", "board": "CBSE", "school_type": "private", "grade_from": 6, "grade_to": 12}
+    assert school["address"] == "1 Main Rd\nKochi"
+    assert (await client.get(f"{ORGS}/{school['id']}")).json()["organization"]["profile"] == school["profile"]
+    metadata = await _audit(db_session, school["id"], "create")
+    assert {"address", "board", "school_type", "grade_from", "grade_to"} <= set(metadata["fields"])
+    assert "Main Rd" not in str(metadata) and "CBSE" not in str(metadata)  # names only, never values
+    corporate = await create_org(client, org_type="corporate", profile={})
+    assert corporate["profile"] is None and corporate["address"] is None
+    await login(client, await bdm_of(db_session, "agent"))
+    agent = await create_org(client, org_type="agent", profile={"country": "India", "territory": "South", "source": "referral", "staff_count": 8})
+    assert agent["profile"] == {"kind": "agent", "country": "India", "territory": "South", "source": "referral", "staff_count": 8}
+    await login(client, await bdm_of(db_session, "college"))
+    uni = await create_org(client, org_type="university", profile={"affiliation": "VTU", "college_type": "engineering", "courses": "B.Tech CSE\nMBA"})
+    assert uni["profile"]["kind"] == "college" and uni["profile"]["courses"] == "B.Tech CSE\nMBA"
+    plain = await create_org(client)  # a bdm-002-style payload: unchanged behaviour (AC7)
+    assert plain["profile"] == {"kind": "college", "affiliation": None, "college_type": None, "courses": None}
+
+
+@pytest.mark.asyncio
+async def test_create_refuses_another_types_field_and_consumes_no_code(client, db_session):
+    await login(client, await bdm_of(db_session, "college"))
+    first = await create_org(client)
+    refused_body = _new("college", profile={"board": "CBSE", "grade_to": 3})
+    refused = await client.post(ORGS, json=refused_body)
+    assert refused.status_code == 422
+    assert [(e["loc"], e["msg"]) for e in refused.json()["detail"]] == [
+        (["body", "profile", "board"], "Board is not a field for College organizations"),
+        (["body", "profile", "grade_to"], "Highest grade is not a field for College organizations"),
+    ]
+    assert await db_session.scalar(select(BdmOrganization).where(BdmOrganization.name == refused_body["name"])) is None
+    second = await create_org(client)
+    assert int(second["code"][4:]) == int(first["code"][4:]) + 1  # the refused create took no ORG- number
+    order = await client.post(ORGS, json=_new("school", profile={"grade_from": 10, "grade_to": 6}))
+    assert order.status_code == 422 and order.json()["detail"][0]["msg"] == "Lowest grade can't be above the highest grade"
+
+
+@pytest.mark.asyncio
+async def test_create_refuses_live_metrics_bad_enums_and_a_bad_contact_email(client, db_session):
+    await login(client, await bdm_of(db_session, "agent"))
+    for profile in ({"commission": 10}, {"students": 1}, {"applications": 1}, {"enrollments": 1}, {"master_login": "x"}, {"source": "tv"}, {"staff_count": "8"}):
+        assert (await client.post(ORGS, json=_new("agent", profile=profile))).status_code == 422, profile
+    assert (await client.post(ORGS, json=_new("agent", commission=10))).status_code == 422
+    assert (await client.post(ORGS, json=_new("agent", contacts=[{"name": "A", "email": "no"}]))).status_code == 422

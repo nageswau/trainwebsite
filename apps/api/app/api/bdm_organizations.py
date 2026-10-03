@@ -87,21 +87,25 @@ async def list_organizations(
 @router.post("", status_code=201, response_model=BdmOrganizationEnvelope)
 async def create_organization(payload: BdmOrganizationCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """AC1/AC2: BDMs only (C9: the creator is the assignee; C3: the creator's module). A likely duplicate is a 409 the BDM must
-    acknowledge with confirm_duplicate; nothing is ever merged (Q-18). Concurrent identical creates both succeed (warn-only)."""
-    profile = await bdm_context(db, user)
+    acknowledge with confirm_duplicate; nothing is ever merged (Q-18). Concurrent identical creates both succeed (warn-only).
+    bdm-003: the profile is checked against org_type before anything is read or written, so a refusal takes no ORG- number."""
+    bdm_profile = await bdm_context(db, user)
+    sent = payload.profile.model_dump(exclude_unset=True) if payload.profile else {}
+    svc.check_profile(payload.org_type, sent, None)
     name_key, city_key = svc.org_keys(payload.name, payload.city)
-    matches, total = await svc.find_duplicates(db, profile.bdm_type, name_key, city_key)
+    matches, total = await svc.find_duplicates(db, bdm_profile.bdm_type, name_key, city_key)
     if total and not payload.confirm_duplicate:
         svc.log("bdm_org_duplicate_warned", user, "-", match_count=total)
         raise svc.duplicate_conflict(matches, total)
     org = BdmOrganization(
         code=await svc.next_code(db),
-        bdm_type=profile.bdm_type,
+        bdm_type=bdm_profile.bdm_type,
         name_key=name_key,
         city_key=city_key,
         assigned_bdm_user_id=user.id,
         created_by_user_id=user.id,
         **{k: getattr(payload, k) for k in BDM_ORG_FIELDS},
+        **sent,
     )
     db.add(org)
     await db.flush()
@@ -118,7 +122,7 @@ async def create_organization(payload: BdmOrganizationCreate, user: User = Depen
             "code": org.code,
             "org_type": org.org_type,
             "bdm_type": org.bdm_type,
-            "fields": sorted(k for k in BDM_ORG_FIELDS if getattr(payload, k) not in (None, False)),
+            "fields": sorted([k for k in BDM_ORG_FIELDS if getattr(payload, k) not in (None, False)] + [k for k, v in sent.items() if v is not None]),
             "contact_count": len(payload.contacts),
         },
     )
