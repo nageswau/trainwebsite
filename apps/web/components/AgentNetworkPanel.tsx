@@ -5,8 +5,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { NetworkPager } from "@/components/AgentNetworkRecords";
 import type { Page } from "@/lib/apiErrors";
-import { isPage } from "@/lib/apiErrors";
-import { NETWORK_PATH, ORG_STATUS_LABEL, ORGS_URL, PAGE_SIZE, statusClass, failureText, type NetworkOrg, type OrgStatus } from "@/lib/agentNetwork";
+import { fetchPage, NETWORK_PATH, ORG_STATUS_LABEL, ORGS_URL, PAGE_SIZE, statusClass, type NetworkOrg, type OrgStatus } from "@/lib/agentNetwork";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // AGN-022 (DEC-SCOPE-063): every agency on EduSphere with its people and pipeline, for Overseas and Super Admins. Read-only here:
@@ -69,24 +68,17 @@ export default function AgentNetworkPanel() {
     params.set("limit", String(PAGE_SIZE));
     params.set("offset", String(offset));
     if (query) params.set("q", query);
-    try {
-      const res = await fetch(`${ORGS_URL}?${params}`);
-      const failure = res.ok ? null : await failureText(res, "Unable to load agencies.");
-      const body = res.ok ? await res.json().catch(() => null) : null;
-      if (mine !== seq.current) return; // a newer request owns the screen
-      if (failure || !isPage<NetworkOrg>(body)) {
-        setError(failure ?? "Unable to load agencies.");
-        return;
-      }
-      setLoaded({ page: body, tab, query });
-      if (focusResults.current) {
-        focusResults.current = false;
-        focus(RESULTS_ID);
-      }
-    } catch {
-      if (mine === seq.current) setError("Network error. Check your connection and try again.");
-    } finally {
-      if (mine === seq.current) setLoading(false);
+    const result = await fetchPage<NetworkOrg>(`${ORGS_URL}?${params}`, "Unable to load agencies.");
+    if (mine !== seq.current) return; // a newer request owns the screen
+    setLoading(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setLoaded({ page: result.page, tab, query });
+    if (focusResults.current) {
+      focusResults.current = false;
+      focus(RESULTS_ID);
     }
   }, [tab, offset, query, focus]);
 

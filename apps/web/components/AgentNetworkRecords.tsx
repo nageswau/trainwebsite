@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Page } from "@/lib/apiErrors";
-import { isPage } from "@/lib/apiErrors";
 import { stageLabel } from "@/lib/agentApplications";
-import { failureText, orgUrl, PAGE_SIZE, type NetworkApplication, type NetworkStudent } from "@/lib/agentNetwork";
+import { fetchPage, orgUrl, PAGE_SIZE, type NetworkApplication, type NetworkStudent } from "@/lib/agentNetwork";
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -15,8 +14,6 @@ type Kind = "students" | "applications";
 type StudentStatus = "active" | "archived";
 type Row = NetworkStudent | NetworkApplication;
 type Loaded = { page: Page<Row>; status: StudentStatus };
-
-const NOUN: Record<Kind, string> = { students: "students", applications: "applications" };
 
 export function NetworkPager({ page, label, busy, onPage }: { page: Page<unknown>; label: string; busy: boolean; onPage: (offset: number) => void }) {
   return (
@@ -45,33 +42,25 @@ export default function AgentNetworkRecords({ orgId, kind }: { orgId: string; ki
   const focusHeading = useRef(false);
   const focus = useFocusAfterRender();
   const headingId = `agent-network-${kind}`;
-  const noun = NOUN[kind];
 
   const load = useCallback(async () => {
     const mine = ++seq.current;
     setLoading(true);
     setError(null);
     const query = `${kind === "students" ? `status=${status}&` : ""}limit=${PAGE_SIZE}&offset=${offset}`;
-    try {
-      const res = await fetch(`${orgUrl(orgId, kind)}?${query}`);
-      const failure = res.ok ? null : await failureText(res, `Unable to load ${noun}.`);
-      const body = res.ok ? await res.json().catch(() => null) : null;
-      if (mine !== seq.current) return;
-      if (failure || !isPage<Row>(body)) {
-        setError(failure ?? `Unable to load ${noun}.`);
-        return;
-      }
-      setLoaded({ page: body, status });
-      if (focusHeading.current) {
-        focusHeading.current = false;
-        focus(headingId);
-      }
-    } catch {
-      if (mine === seq.current) setError("Network error. Check your connection and try again.");
-    } finally {
-      if (mine === seq.current) setLoading(false);
+    const result = await fetchPage<Row>(`${orgUrl(orgId, kind)}?${query}`, `Unable to load ${kind}.`);
+    if (mine !== seq.current) return; // a newer request owns the screen
+    setLoading(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
     }
-  }, [orgId, kind, status, offset, noun, focus, headingId]);
+    setLoaded({ page: result.page, status });
+    if (focusHeading.current) {
+      focusHeading.current = false;
+      focus(headingId);
+    }
+  }, [orgId, kind, status, offset, focus, headingId]);
 
   useEffect(() => {
     void load();
@@ -120,12 +109,12 @@ export default function AgentNetworkRecords({ orgId, kind }: { orgId: string; ki
         </>
       ) : !data ? (
         <p className="muted" role="status">
-          Loading {noun}…
+          Loading {kind}…
         </p>
       ) : data.items.length === 0 && data.total > 0 ? (
         // A page that emptied while browsing (rows archived or moved meanwhile): the records exist, just not on this page.
         <p className="muted" aria-busy={loading}>
-          No {noun} on this page.{" "}
+          No {kind} on this page.{" "}
           <button type="button" className="btn secondary small" onClick={() => goTo(0)}>
             Go to the first page
           </button>

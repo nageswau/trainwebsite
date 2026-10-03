@@ -1,7 +1,7 @@
 // AGN-022 (DEC-SCOPE-063): Overseas Admin's agent network -- the shapes the list and detail panels share. The server is the
 // authority on access and on every figure; these only describe what it returns.
 
-import { detailMessage } from "@/lib/apiErrors";
+import { detailMessage, isPage, type Page } from "@/lib/apiErrors";
 
 export const ORGS_URL = "/api/v1/overseas-admin/agent-orgs";
 export const NETWORK_PATH = "/overseas/admin/agent-network";
@@ -21,8 +21,7 @@ export type NetworkOrg = {
   counts: NetworkCounts;
 };
 export type CommissionTotal = { currency: string; count: number; amount: number };
-export type OrgDetail = Omit<NetworkOrg, "created_at"> & {
-  created_at: string;
+export type OrgDetail = NetworkOrg & {
   status_changed_at: string | null;
   commission: { claimable: CommissionTotal[]; claims: number; revenue: CommissionTotal[] };
   deposits: { currency: "INR"; count: number; collected: number; remitted: number; refunded: number };
@@ -61,8 +60,23 @@ export function orgUrl(id: string, sub?: "students" | "applications"): string {
   return `${ORGS_URL}/${encodeURIComponent(id)}${sub ? `/${sub}` : ""}`;
 }
 
+export const NETWORK_ERROR = "Network error. Check your connection and try again.";
+
 // A failed response's message, worded by the shared detailMessage (a body that is not JSON gets the fallback).
 export async function failureText(res: Response, fallback: string): Promise<string> {
   const body = await res.json().catch(() => null);
   return detailMessage(body?.detail, fallback);
+}
+
+// One page from a list endpoint. Never throws: a failed response gives the server's message, a 200 that is not a page gives
+// `fallback`, and a dropped network gives NETWORK_ERROR.
+export async function fetchPage<T>(url: string, fallback: string): Promise<{ ok: true; page: Page<T> } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return { ok: false, error: await failureText(res, fallback) };
+    const body = await res.json().catch(() => null);
+    return isPage<T>(body) ? { ok: true, page: body } : { ok: false, error: fallback };
+  } catch {
+    return { ok: false, error: NETWORK_ERROR };
+  }
 }

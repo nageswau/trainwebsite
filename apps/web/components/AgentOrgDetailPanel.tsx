@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import AgentNetworkRecords from "@/components/AgentNetworkRecords";
 import { formatInr } from "@/lib/agentApplications";
-import { failureText, NETWORK_PATH, ORG_STATUS_LABEL, orgUrl, statusClass, type CommissionTotal, type OrgDetail } from "@/lib/agentNetwork";
+import { failureText, NETWORK_ERROR, NETWORK_PATH, ORG_STATUS_LABEL, orgUrl, statusClass, type CommissionTotal, type OrgDetail } from "@/lib/agentNetwork";
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -15,9 +15,7 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 type Action = "suspend" | "reinstate";
 type Records = "students" | "applications";
 const APPROVALS_PATH = "/overseas/admin/agents";
-const ACTION_LABEL: Record<Action, string> = { suspend: "Suspend", reinstate: "Reinstate" };
 const DONE: Record<Action, string> = { suspend: "suspended", reinstate: "reinstated" };
-const NETWORK_ERROR = "Network error. Check your connection and try again.";
 
 // Commission keeps its own currency on every row: amounts in different currencies are never added together (N4).
 function money(amount: number, currency: string): string {
@@ -171,13 +169,13 @@ export default function AgentOrgDetailPanel({ orgId, canAct }: { orgId: string; 
                 </button>
               </div>
             ) : (
-              <button id="agent-org-suspend" type="button" className="btn small" aria-label={`${ACTION_LABEL.suspend} ${org.name}`} onClick={() => setConfirming(true)}>
-                {ACTION_LABEL.suspend}
+              <button id="agent-org-suspend" type="button" className="btn small" aria-label={`Suspend ${org.name}`} onClick={() => setConfirming(true)}>
+                Suspend
               </button>
             ))}
           {org.status === "suspended" && (
-            <button id="agent-org-reinstate" type="button" className="btn small" aria-label={`${ACTION_LABEL.reinstate} ${org.name}`} disabled={busy} onClick={() => act("reinstate")}>
-              {busy ? "Working…" : ACTION_LABEL.reinstate}
+            <button id="agent-org-reinstate" type="button" className="btn small" aria-label={`Reinstate ${org.name}`} disabled={busy} onClick={() => act("reinstate")}>
+              {busy ? "Working…" : "Reinstate"}
             </button>
           )}
           {(org.status === "pending" || org.status === "rejected") && <Link href={APPROVALS_PATH}>Review in Agent Approvals</Link>}
