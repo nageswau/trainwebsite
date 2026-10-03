@@ -1,4 +1,4 @@
-"""bdm-009 -- migration 0069_bdm_activities (spec §4; AC10). Round trip and the downgrade refusal run in a throwaway database
+"""bdm-009 -- migration 0070_bdm_activities (spec §4; AC10). Round trip and the downgrade refusal run in a throwaway database
 (the bdm-001 pattern); a downgrade never runs against the shared test database."""
 
 import asyncio
@@ -18,11 +18,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_bdm_009_migration_0069", VERSIONS / "0069_bdm_activities.py")
+_spec = importlib.util.spec_from_file_location("_bdm_009_migration_0070", VERSIONS / "0070_bdm_activities.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0068_bdm_trips", "0069_bdm_activities"
+BASE, HEAD = "0069_bdm_org_profiles", "0070_bdm_activities"
 USERS = "SELECT id, email, role FROM users ORDER BY id"
 
 
@@ -32,7 +32,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0068_and_is_the_single_head():
+def test_migration_chains_after_0069_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
 
@@ -75,7 +75,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0068 with one BDM user and one organization."""
+    """A fresh database at 0069 with one BDM user and one organization."""
     cfg = _config()
     original = settings.database_url
     name = f"bdm009_migration_{uuid.uuid4().hex[:8]}"

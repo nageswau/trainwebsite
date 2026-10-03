@@ -48,7 +48,7 @@ test("a Master sees Revenue and the commission report; staff are refused (AGN-01
   await signIn(page, masterEmail, MASTER_PASSWORD);
   await expect(page.getByText("Revenue", { exact: true })).toBeVisible();
   await expect(page.getByText("INR 20,000", { exact: true })).toBeVisible();
-  await page.goto("/overseas/agent/reports");
+  await page.goto("/overseas/agent/reports?report=commission"); // AGN-020: the commission report is the Reports page's Commission tab
   await expect(page.getByRole("heading", { name: "Commission report" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "By status" })).toBeVisible();
   const today = new Date().toISOString().slice(0, 10); // UTC day, the report's date basis

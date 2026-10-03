@@ -1,7 +1,7 @@
 "use client";
 import { useRef } from "react";
 
-import { CHECKBOX_ROW, CONTACT_ROLE_LABEL, CONTACT_ROLES, MAX_CONTACTS } from "@/lib/bdmOrganizations";
+import { CHECKBOX_ROW, CONTACT_ROLE_LABEL, MAX_CONTACTS, rolesFor } from "@/lib/bdmOrganizations";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-002 C1: an organization is created with at least one contact (at most 20) and exactly one primary (a radio group).
@@ -11,18 +11,21 @@ export type ContactField = keyof ContactDraft;
 export type ContactValues = ContactDraft & { key: string; is_primary: boolean };
 export const blankContact = (key: string, primary = false): ContactValues => ({ key, name: "", designation: "", role: "", phone: "", email: "", is_primary: primary });
 
-/** One contact's five inputs, shared by the create form and the contact editor. Ids are `${idBase}-${field}`. */
+/** One contact's five inputs, shared by the create form and the contact editor. Ids are `${idBase}-${field}`. bdm-003 P8: the
+ * organization type's named people (Principal, Dean ... Owner) come first in Role; every role stays available. */
 export function ContactInputs({
   idBase,
   values,
   errors,
   onChange,
+  orgType,
   autoFocusName = false,
 }: {
   idBase: string;
   values: ContactDraft;
   errors: Partial<Record<ContactField, string>>;
   onChange: (field: ContactField, value: string) => void;
+  orgType?: string;
   autoFocusName?: boolean;
 }) {
   const id = (field: ContactField) => `${idBase}-${field}`;
@@ -52,7 +55,7 @@ export function ContactInputs({
         <label htmlFor={id("role")}>Role</label>
         <select id={id("role")} value={values.role} onChange={(e) => onChange("role", e.target.value)}>
           <option value="">Not set</option>
-          {CONTACT_ROLES.map((r) => (
+          {rolesFor(orgType).map((r) => (
             <option key={r} value={r}>
               {CONTACT_ROLE_LABEL[r]}
             </option>
@@ -70,11 +73,13 @@ export default function BdmContactFields({
   contacts,
   errors,
   onChange,
+  orgType,
 }: {
   idPrefix: string;
   contacts: ContactValues[];
   errors: Record<string, string>;
   onChange: (contacts: ContactValues[]) => void;
+  orgType?: string;
 }) {
   const focus = useFocusAfterRender();
   // A per-form counter: the same on the server and in the browser (browser QA-09) and never reused after a remove, so a new row
@@ -104,7 +109,7 @@ export default function BdmContactFields({
             Contact {i + 1}
             {c.is_primary ? " (primary)" : ""}
           </legend>
-          <ContactInputs idBase={`${idPrefix}-${c.key}`} values={c} errors={errorsOf(c)} onChange={(field, value) => set(c.key, { [field]: value })} />
+          <ContactInputs idBase={`${idPrefix}-${c.key}`} values={c} errors={errorsOf(c)} onChange={(field, value) => set(c.key, { [field]: value })} orgType={orgType} />
           <label style={CHECKBOX_ROW}>
             <input type="radio" name={`${idPrefix}-primary`} checked={c.is_primary} onChange={() => onChange(contacts.map((x) => ({ ...x, is_primary: x.key === c.key })))} />
             Primary contact

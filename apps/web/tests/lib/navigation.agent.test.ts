@@ -67,6 +67,15 @@ describe("agentNavFor", () => {
     expect(nav.find((i) => i.href === "/overseas/agent/applications")?.children?.[0].label).toBe("All applications");
   });
 
+  it("shows Staff Performance to Masters only, after Reports (AGN-019, DEC-SCOPE-066 P7)", () => {
+    const hrefs = nav.map((i) => i.href);
+    expect(hrefs.indexOf("/overseas/agent/performance")).toBe(hrefs.indexOf("/overseas/agent/reports") + 1);
+    expect(nav.find((i) => i.href === "/overseas/agent/performance")?.label).toBe("Staff Performance");
+    for (const permissions of [undefined, { can_verify_documents: true, can_view_reports: true }]) {
+      expect(agentNavFor(nav, "staff", permissions).map((i) => i.href)).not.toContain("/overseas/agent/performance");
+    }
+  });
+
   it("gives staff My Students with All and Add; a Master keeps Students (AGN-018 G4)", () => {
     const students = (items: ReturnType<typeof agentNavFor>) => items.find((i) => i.href === "/overseas/agent/students");
     expect(students(agentNavFor(nav, "staff"))?.label).toBe("My Students");

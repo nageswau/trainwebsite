@@ -288,6 +288,8 @@ Conventions used below:
 
 ### bdm-003 — Type-specific organization profiles (Agent / School / College)
 
+> **Status (2026-10-03):** **COMPLETE for its scope (2026-10-03)** on `feature/bdm-003-type-specific-profile-fields` @ `d711fc6` (`DEC-SCOPE-065`, migration `0069_bdm_org_profiles` after `0068_bdm_trips`; up to date with `main` @ `39c119b`). Verification before completion, all fresh on that commit (compose project `bdm003`, stack rebuilt from it, head `0069_bdm_org_profiles`): backend lite (all `test_bdm_001/002/003/010_*`, `test_agn_022_*`, `test_agn_015/017_migration`) **352 passed, 0 failed**; `alembic heads` single; offline SQL = 12 added nullable columns + 9 CHECKs up, the same dropped down, no row written; ruff clean on the bdm-003 Python; web BDM + navigation set (18 files) **162 passed**; `tsc` 0; `eslint .` 0 errors (30 pre-existing warnings, none in BDM files); `next build` ok; Playwright bdm-001/002/003/010 **15 passed** (one bdm-001 cold-stack timeout on the first run; that spec then passed 21/21 alone and the full set 15/15); Browser Use (isolated Chrome) AC1–AC8 and AC10 observed, AC9 by migration evidence, no sideways scroll at 1366/768/375/320 px, no unlabelled controls, RBAC (peer 403, other module 404, manager 403, signed out 401), no broken images, only deliberate 4xx in the console; diff hygiene: no skipped/focused tests, debug code, secrets or TODOs; `.env` untracked. **Not run, by the owner's standing choice:** full backend and web suites. **Independent Codex review:** waived by the owner (2026-10-03). Owner answers P1–P14 supersede the "spec decision" lines below: typed columns + a nested `profile` (P2); `university` uses the College profile (P1); a common `address` (P3, `DEC-SCOPE-060` C16); a type change over entered data is a 409 (P4); line breaks allowed in Address, Courses and Courses Interested (P14). **Follow-up:** Courses Interested as a `programs` multi-select was deferred twice (`DEC-SCOPE-060` C6, `DEC-SCOPE-063` P9) and needs its own item. Spec: `docs/superpowers/specs/2026-10-03-bdm-003-type-specific-profiles-design.md`.
+
 - **Business requirement:** each module has its own database fields.
   - Agent §B: Agency Name, Owner, Country, Address, Territory, Source, Number of Staff, Commission, Agreement, MoU.
   - School §B: Board, School Type, Principal, Management Contact, Counselor, Student Strength, Grades, Contract, Renewal Date.
@@ -519,7 +521,7 @@ Conventions used below:
 
 ### bdm-009 — Activity log (call / WhatsApp / email / visit / meeting)
 
-> **Status (2026-10-03):** implemented on `feature/bdm-009-activities` (`DEC-SCOPE-065`, migration `0069_bdm_activities`); **NOT complete** --
+> **Status (2026-10-03):** implemented on `feature/bdm-009-activities` (`DEC-SCOPE-068`, migration `0070_bdm_activities`); **NOT complete** --
 > Playwright run, browser validation and independent Codex review pending; owner full suites not run. Channels exclude "follow-up" (V2);
 > appointment / task links deferred to bdm-006 / bdm-008 (V3); backdate window 7 IST days and same-day edits (V4). AC4's "report
 > submitted" lock is completed by bdm-015 through `editable()`. Spec: `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md`.
@@ -915,6 +917,8 @@ Conventions used below:
 ---
 
 ### bdm-019 — Agent onboarding handover + Agent Organization link
+
+> **NEEDS_CONFIRMATION (from bdm-003, `DEC-SCOPE-065` P10):** who may see an agent's commission once the organization is linked (financial data). bdm-003 shows only the placeholder "Commission: Available after onboarding" and neither stores nor returns a value.
 
 - **Business requirement:** Agent §E: Agreement Signed → Agent Onboarding → Master Login Created → Staff Logins Created → Active Agent → Students → Applications → Enrollments. The agent database shows Master Login, Students, Applications, Enrollments and Commission.
 - **Existing behavior:** agents are single users (`AGT-001`). The multi-tenant Agent Organization is designed (`ang-001` spec) but not built.

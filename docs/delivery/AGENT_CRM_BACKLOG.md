@@ -27,8 +27,10 @@ NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was wri
 > | `AGN-015` | ang-015 (student journey step tracker and complete history; adds an audit index, superseding "database impact: none") | `DEC-SCOPE-061` | branch `feature/agn-015-student-journey` (implemented, lite-tested; browser QA, full suites and review pending) |
 > | `AGN-018` | ang-018 (Master dashboard KPIs, breakdowns and staff performance summary; Staff limited dashboard and §4 sidebar; funnel and filters stay with ang-019) | `DEC-SCOPE-062` | branch `feature/agn-018-master-dashboard-impl` (verified 2026-10-03 at `b20e901`: complete for its scope; Browser Use QA18-01…07 fixed and re-verified; Codex review waived; the owner's full suites still to run) |
 > | `AGN-022` | ang-022 (Overseas Admin agent network: org list counts, detail with money, audited read-only drill-down; suspend/reinstate reuses AGN-001) | `DEC-SCOPE-064` | branch `feature/agn-022-agent-network` (verified 2026-10-03: complete for its scope on lite evidence; Browser Use QA22-01…04/07…10 fixed and re-verified; Codex review waived; the owner's full suites still to run) |
+> | `AGN-019` | ang-019 (per-staff counts with visa columns and the student funnel; Master-only page; student-creation date range; no branch filter — no branch data, deferred) | `DEC-SCOPE-066` (drafted as `063`; renumbered `065` on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022, and `066` on merging `main` @ `cf356ca`, where `065` is bdm-003) | branch `feature/agn-019-staff-funnel` (implemented, lite-tested; Browser Use QA19-01/03 fixed and re-verified, QA19-02/04–07 Low open; full suites and Codex review pending) |
+> | `AGN-020` | ang-020 (seven agency reports + the AGN-014 commission report as tabs; filters; audited, throttled CSV; intake parsed to month + year — no structured intake column, superseding D16's assumption) | `DEC-SCOPE-067` | branch `feature/agn-020-reports` (implemented; browser QA + fix pass done, Codex review waived; full backend suite: owner) |
 >
-> Not started: ang-019 and ang-020. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
+> Every ang item now has a Feature ID. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
 > student to a staff member; staff see assigned students only) — check its remaining acceptance criteria before planning it.
 > **Citation note:** the "`DEC-SCOPE-035`" this file cites as its scope decision was renumbered before merge;
 > `DEC-SCOPE-035` on `main` is `ENH-027` (psychometric). AGN-004 and AGN-007 recorded this mis-citation; each shipped
@@ -691,6 +693,10 @@ table and column names are placeholders for the design spec, not decisions.
 - **Positive / Negative / Edge:** date-range filter / Staff calling it → 403 / deactivated staff still listed historically.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-03):** implemented as `AGN-019` (`DEC-SCOPE-066`: current owner; no branch filter — no branch data; "reached at
+  least" stages; student-creation date range; archived/withdrawn in the funnel; deactivated staff listed while they have counts;
+  Master-only page; `GET .../crm/performance`). Lite-tested; browser validation, full suites and Codex review pending. See
+  `ENHANCEMENT_BACKLOG.md` §AGN-019.
 
 ---
 

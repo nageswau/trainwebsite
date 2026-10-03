@@ -1022,6 +1022,20 @@ class BdmTripExpense(Base, TimestampMixin):
 
 BDM_ORG_TYPES = ("college", "university", "agent", "school", "corporate", "training_institute", "other")
 BDM_CONTACT_ROLES = ("principal", "dean", "hod", "placement_officer", "counselor", "management", "owner", "other")
+# bdm-003 (DEC-SCOPE-065, spec §4): the type-specific profile. `board` keeps ENH-009's exact values so bdm-018 can copy it onto
+# `schools.board`; the other enums are lower snake case like `org_type`. Grades: -2 Nursery, -1 LKG, 0 UKG, then 1-12.
+BDM_ORG_SOURCES = ("referral", "website", "event", "cold_call", "walk_in", "other")
+BDM_SCHOOL_BOARDS = ("CBSE", "ICSE", "State", "IB", "Other")
+BDM_SCHOOL_TYPES = ("private", "government", "aided", "international", "other")
+BDM_COLLEGE_TYPES = ("engineering", "arts_science", "management", "medical", "polytechnic", "other")
+BDM_GRADE_MIN, BDM_GRADE_MAX = -2, 12
+BDM_STAFF_MAX = 100_000
+BDM_PROFILE_GROUP = {"agent": "agent", "school": "school", "college": "college", "university": "college"}
+BDM_PROFILE_FIELDS = {
+    "agent": ("country", "territory", "source", "staff_count"),
+    "school": ("board", "school_type", "grade_from", "grade_to"),
+    "college": ("affiliation", "college_type", "courses"),
+}
 # bdm-002: on the metadata so 0001's create_all builds it for a fresh database; 0066 creates it IF NOT EXISTS.
 BDM_ORGANIZATION_CODE_SEQ = Sequence("bdm_organization_code_seq", metadata=Base.metadata)
 
@@ -1030,9 +1044,34 @@ def _in_list(column: str, values: tuple[str, ...]) -> str:
     return f"{column} IN ({', '.join(repr(v) for v in values)})"
 
 
+def _group_only(group: str) -> str:
+    """A group's columns stay NULL unless org_type belongs to the group (spec §4.2) -- the backstop under check_profile."""
+    types = tuple(t for t, g in BDM_PROFILE_GROUP.items() if g == group)
+    return f"{_in_list('org_type', types)} OR ({' AND '.join(f'{c} IS NULL' for c in BDM_PROFILE_FIELDS[group])})"
+
+
+def _grade(column: str) -> str:
+    return f"{column} IS NULL OR {column} BETWEEN {BDM_GRADE_MIN} AND {BDM_GRADE_MAX}"
+
+
+BDM_PROFILE_CHECKS = {  # migration 0069 repeats these strings; test_bdm_003_migration asserts they stay identical
+    "ck_bdm_organizations_source": f"source IS NULL OR {_in_list('source', BDM_ORG_SOURCES)}",
+    "ck_bdm_organizations_staff_count": f"staff_count IS NULL OR staff_count BETWEEN 0 AND {BDM_STAFF_MAX}",
+    "ck_bdm_organizations_board": f"board IS NULL OR {_in_list('board', BDM_SCHOOL_BOARDS)}",
+    "ck_bdm_organizations_school_type": f"school_type IS NULL OR {_in_list('school_type', BDM_SCHOOL_TYPES)}",
+    "ck_bdm_organizations_grades": f"({_grade('grade_from')}) AND ({_grade('grade_to')}) AND (grade_from IS NULL OR grade_to IS NULL OR grade_from <= grade_to)",
+    "ck_bdm_organizations_college_type": f"college_type IS NULL OR {_in_list('college_type', BDM_COLLEGE_TYPES)}",
+    "ck_bdm_organizations_agent_profile": _group_only("agent"),
+    "ck_bdm_organizations_school_profile": _group_only("school"),
+    "ck_bdm_organizations_college_profile": _group_only("college"),
+}
+
+
 class BdmOrganization(Base, TimestampMixin):
     """bdm-002 (DEC-SCOPE-060): an institution a BDM meets (§9). `bdm_type` is the owning module (Q-03), copied from the creator and
-    never changed; `name_key`/`city_key` are the server-normalized duplicate key (Q-18). Never hard-deleted: archived instead (C5)."""
+    never changed; `name_key`/`city_key` are the server-normalized duplicate key (Q-18). Never hard-deleted: archived instead (C5).
+    bdm-003 (DEC-SCOPE-065): a common address plus one typed profile group per org_type (BDM_PROFILE_FIELDS); a group's columns are
+    NULL for every other type."""
 
     __tablename__ = "bdm_organizations"
     __table_args__ = (
@@ -1040,6 +1079,7 @@ class BdmOrganization(Base, TimestampMixin):
         CheckConstraint(_in_list("org_type", BDM_ORG_TYPES), name="ck_bdm_organizations_org_type"),
         CheckConstraint("bdm_type IN ('agent', 'school', 'college')", name="ck_bdm_organizations_bdm_type"),
         CheckConstraint("student_count IS NULL OR student_count >= 0", name="ck_bdm_organizations_student_count"),
+        *(CheckConstraint(sql, name=name) for name, sql in BDM_PROFILE_CHECKS.items()),
         Index("ix_bdm_organizations_type_assignee", "bdm_type", "assigned_bdm_user_id"),
         Index("ix_bdm_organizations_duplicate_key", "bdm_type", "name_key", "city_key"),
     )
@@ -1058,6 +1098,18 @@ class BdmOrganization(Base, TimestampMixin):
     existing_partner: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     courses_interested: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     student_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    territory: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    staff_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    board: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    school_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    grade_from: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    grade_to: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    affiliation: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    college_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    courses: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     assigned_bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -1089,7 +1141,7 @@ BDM_ACTIVITY_DIRECTIONAL = ("call", "whatsapp", "email")  # V6: these need a dir
 
 
 class BdmActivity(Base, TimestampMixin):
-    """bdm-009 (DEC-SCOPE-065): one call, WhatsApp, email, visit, meeting or other contact a BDM logged by hand (D9; nothing is sent).
+    """bdm-009 (DEC-SCOPE-068): one call, WhatsApp, email, visit, meeting or other contact a BDM logged by hand (D9; nothing is sent).
     `contact_name` is the contact's name at save, kept when bdm-002 hard-deletes the contact (`contact_id` -> NULL)."""
 
     __tablename__ = "bdm_activities"

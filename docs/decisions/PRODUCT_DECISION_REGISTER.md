@@ -3404,11 +3404,79 @@ independent Codex review are pending.
 
 **Consequences:** no migration; a new read-only service `services/agent_network.py`; three new admin routes and schemas; additive keys on the org list; two new admin pages and components; one appended nav entry. Unchanged: `transition_org`, the suspension gate, the approval page and routes, agent-side routes, models. **New Feature ID authorized:** `AGN-022`. **Status:** owner approved the spec and told implementation to proceed (in-session 2026-10-03); implemented and verified on `feature/agn-022-agent-network` (complete for its scope on lite evidence; browser QA fixed and re-verified; Codex review waived by the owner); the owner's full suites still to run (see `ENHANCEMENT_BACKLOG.md` §AGN-022).
 
----
+### DEC-SCOPE-065 — Type-specific organization profiles (`bdm-003`)
 
-### DEC-SCOPE-065 — BDM activity log (`bdm-009`)
+**ID note:** drafted as `DEC-SCOPE-063` with migration `0068_bdm_org_profiles` (both free on `main` @ `3bde879`). bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`, PR #53) reached `main` first, so on merging `main` @ `65a8ece` this entry became `DEC-SCOPE-064` and the migration **`0069_bdm_org_profiles`** (after `0068_bdm_trips`); AGN-022 (`DEC-SCOPE-064`, no migration, PR #54) then reached `main`, so on merging `main` @ `39c119b` (2026-10-03) this entry is **`DEC-SCOPE-065`**. bdm-003 commits and docs from before those merges that say `DEC-SCOPE-063` / `064` or `0068_bdm_org_profiles` mean this decision / migration.
 
-**ID note:** drafted as `DEC-SCOPE-065` after AGN-022 took `064` on `main`; migration `0069_bdm_activities` chains after `0068_bdm_trips` (one head). bdm-006 and bdm-003 are in flight and also claim `0068` / `063`; whichever merges later renumbers.
+**Question:** how are the Agent / School / College type-specific organization fields (`EVID-016` Agent §B, School §B, College §B) stored, validated and shown, and which of the listed fields belong to other items?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) L561–613, L827–871, L1066–1108 (the source's lists are not an approval); `DEC-SCOPE-060` C6 and C16 (Courses Interested `programs` and Address handed to bdm-003); `BDM_CRM_BACKLOG.md` §4 bdm-003 and its traceability table; bdm-003 impact analysis 2026-10-03 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — questions put through structured prompts, the design approved section by section, the written spec and its revision 2 approved; spec `docs/superpowers/specs/2026-10-03-bdm-003-type-specific-profiles-design.md`):
+- **P1** the profile follows `org_type`: agent → Agent; school → School; college **and** university → College; corporate, training_institute, other → common fields only.
+- **P2** typed nullable columns on `bdm_organizations` with CHECKs; the API exposes them as a nested `profile` object validated per type (a field of another type → 422).
+- **P3** a common nullable `address` for every type (C16's hand-off).
+- **P4** an `org_type` change into another profile group is a 409 while the old group has data; the BDM clears it first (no clear flag; the type is not locked).
+- **P5** Board = ENH-009's `CBSE, ICSE, State, IB, Other`; School Type = Private, Government, Aided, International, Other; College Type = Engineering, Arts & Science, Management, Medical, Polytechnic, Other; Source = Referral, Website, Event, Cold call, Walk-in, Other.
+- **P6** Country and Territory are free text.
+- **P7** Grades are a from–to range: Nursery, LKG, UKG, 1–12 (stored −2…12); lowest ≤ highest.
+- **P8** contact roles are not restricted per type; the form lists the type's named people first.
+- **P9** Courses Interested as a `programs` multi-select is deferred again (stays free text) — a follow-up item.
+- **P10** Agent Commission is a read-only placeholder ("Available after onboarding") in no request schema; Number of Staff is a BDM-entered whole number (0–100 000).
+- **P11** Agreement, MoU, Contract and Renewal Date stay with bdm-005.
+- **P12** College Affiliation and Courses are free text.
+- **P13** approach A: one profile schema (`extra="forbid"`) + one service check run after the row lock in create and PATCH; one DB CHECK per type group as the backstop.
+- **P14** Address, Courses and bdm-002's Courses Interested accept line breaks (`\r\n` → `\n`); every other control character is still rejected (fixes Enter → 422 in the Courses Interested textarea).
+
+**Consequences:** migration `0069_bdm_org_profiles` (twelve nullable columns, nine CHECKs; no row read or written; downgrade refuses while profile values exist); `POST`/`PATCH /bdm/organizations` accept `address` and `profile`; every detail response gains `address` and `profile` (`null` for common-only types; list rows unchanged); a `profile_not_empty` 409; list filters `board`, `affiliation`, `territory`; web: a profile-fields component, a profile view on the detail page, type-dependent list filters, suggested contact roles. Unchanged: authorization and scope (`DEC-SCOPE-060`), every existing route, status code and field. **NEEDS_CONFIRMATION (bdm-019):** who may see an agent's commission once linked (financial data). **New Feature ID authorized:** `bdm-003`. **Status:** COMPLETE for its scope (2026-10-03) on `feature/bdm-003-type-specific-profile-fields` @ `d711fc6` (`DEC-SCOPE-065`, migration `0069_bdm_org_profiles` after `0068_bdm_trips`; up to date with `main` @ `39c119b`). Verification before completion, all fresh on that commit (compose project `bdm003`, stack rebuilt from it, head `0069_bdm_org_profiles`): backend lite (all `test_bdm_001/002/003/010_*`, `test_agn_022_*`, `test_agn_015/017_migration`) **352 passed, 0 failed**; `alembic heads` single; offline SQL = 12 added nullable columns + 9 CHECKs up, the same dropped down, no row written; ruff clean on the bdm-003 Python; web BDM + navigation set (18 files) **162 passed**; `tsc` 0; `eslint .` 0 errors (30 pre-existing warnings, none in BDM files); `next build` ok; Playwright bdm-001/002/003/010 **15 passed** (one bdm-001 cold-stack timeout on the first run; that spec then passed 21/21 alone and the full set 15/15); Browser Use (isolated Chrome) AC1–AC8 and AC10 observed, AC9 by migration evidence, no sideways scroll at 1366/768/375/320 px, no unlabelled controls, RBAC (peer 403, other module 404, manager 403, signed out 401), no broken images, only deliberate 4xx in the console; diff hygiene: no skipped/focused tests, debug code, secrets or TODOs; `.env` untracked. **Not run, by the owner's standing choice:** full backend and web suites. **Independent Codex review:** waived by the owner (2026-10-03).
+
+### DEC-SCOPE-066 — Staff performance and student funnel (`AGN-019`)
+
+**ID note:** drafted as `DEC-SCOPE-063` (free on `main` @ `3bde879`); renumbered `DEC-SCOPE-065` on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022 (PR #54). AGN-019 has no migration, so nothing re-chained. Renumbered again `DEC-SCOPE-066` on merging `main` @ `cf356ca`, where `065` is bdm-003 (PR #55). AGN-019 commits and docs from before these merges that say `DEC-SCOPE-063` or `DEC-SCOPE-065` mean this decision.
+
+**Question:** the owner's `AGN-019` statement (in-session, 2026-10-03): per-staff Students, Applications, Offers, Visa Applications, Visa Approvals, Enrollments, and the funnel Students → Applications → Submitted → Offers → Visa → Enrolled (§8), with acceptance criteria: funnel stages are monotonic non-increasing for a fixture; a reassigned student counts for the current owner (or the owner at the time: spec decision). Which owner, which filters, which stage rule, and where does the page live?
+
+**Evidence:** `EVID-015` §8 (`DERIVED_BLUEPRINT`) via `AGENT_CRM_BACKLOG.md` ang-019 (`DERIVED_BLUEPRINT`); `DEC-SCOPE-062` G2/G3 (AGN-018 staff table and KPI definitions); `DEC-SCOPE-040` S4 (Branch not taken); impact analysis 2026-10-03 (graphify rebuilt locally from `main` @ `3bde879`, findings checked in source): no branch data, no assignment history table (only `audit_logs` JSON), `staff_rows` counts by current owner, assignment targets active staff only.
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to seven structured questions and three design-section reviews; design spec `docs/superpowers/specs/2026-10-03-agn-019-staff-performance-funnel-design.md` §2):
+
+- **P1 — Current owner.** A reassigned student and all their stages count for the staff member assigned now.
+- **P2 — No branch filter.** Deferred (no branch data); logged in `RAID.md`; no schema change.
+- **P3 — "Reached at least" stages.** A student counts at a stage if any application reached it or a later one; non-increasing by construction.
+- **P4 — Student cohort date range.** `date_from`/`date_to` select students by agency-record creation day (inclusive UTC days, as AGN-014).
+- **P5 — History in the funnel.** Archived students and withdrawn applications count in the funnel; the per-staff table keeps `DEC-SCOPE-062` G3 definitions (equal to the dashboard staff table with no dates).
+- **P6 — Rows.** Active staff always; deactivated only when non-zero, marked; Unassigned only when non-zero; funnel per agency / row / Unassigned.
+- **P7 — Placement.** A new Master-only sidebar page "Staff Performance"; the dashboard staff table links to it.
+- **P8 — Approach A.** New `services/agent_performance.py` and `GET /workflows/overseas/agent/crm/performance`; `owner_join()` extracted from `staff_rows` and shared; a parity test pins AGN-019 to AGN-018.
+
+**Consequences:** no migration; a new router, service, schemas, panel and nav item (hidden from staff, refused by the server); `AgentDashboardOut`, models and other roles unchanged; `services/portal.py` gains only a header-only `performance` section (the page gate, Tasks precedent; review finding #1). **New Feature ID authorized:** `AGN-019`. **Status:** implemented on `feature/agn-019-staff-funnel`, lite-tested; Browser Use QA19-01/03 fixed and re-verified, QA19-02/04–07 Low open; full suites and Codex review pending (see `ENHANCEMENT_BACKLOG.md` §AGN-019). Implementation notes: AGN-014's date checks became a shared `report_range()`; AGN-018's table helpers moved to `components/AgentTableRegion.tsx`; the dashboard link sits below the staff table (a link inside the heading would rename its region).
+
+### DEC-SCOPE-067 — Agency reports (7 new + Commission) and CSV export (`AGN-020`)
+
+**ID note:** drafted as `DEC-SCOPE-063` (free on `main` @ `3bde879`); renumbered `DEC-SCOPE-066` on merging `main` @ `cf356ca`, where `063` is bdm-010, `064` AGN-022 and `065` bdm-003; renumbered again `DEC-SCOPE-067` on merging `main` @ `e0747e7`, where `066` is AGN-019. AGN-020 has no migration, so nothing re-chained. AGN-020 commits and docs from before these merges that say `DEC-SCOPE-063` or `DEC-SCOPE-066` mean this decision.
+
+**Question:** the owner's `AGN-020` statement (in-session, 2026-10-03): "Student, Application, University, Country, Intake, Staff performance, Enrollment and Commission reports (§2); Staff reports '❌/Limited'", with acceptance criteria: each report matches fixture data; the CSV opens with correct headers; Staff without the toggle → 403. The source names the reports only. What does each contain, who sees which, how are they filtered, exported and audited?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Reports (eight names, no content), §6 "Reports ✅ Full / ❌/Limited" (the source's wording is not the approval); `AGENT_CRM_BACKLOG.md` ang-020 (`DERIVED_BLUEPRINT`). Impact analysis, 2026-10-03 (graphify snapshot predates AGN-001…018; findings checked in source): no reports route exists; every intake column is free text (the backlog's "structured intake" D16 was never built); agency student records have no reference code, no passport field and agencies have no branch list; the portal Reports payload counts students by login (no-login students dropped) and includes withdrawn applications, unlike AGN-018; `DEC-SCOPE-051` R7 says reading or exporting a report writes no audit row, the backlog says exports are audited; no CSV in the codebase streams; university names are not unique (slugs are).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to eight structured questions, five design-section reviews, and three review passes on the written spec; design spec `docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md` §2):
+
+- **R1 — Mixed shape.** Student, Application and Enrollment are row lists; University, Country, Intake and Staff performance are summaries (Applications, Submitted, Offers, Visa apps, Visa approved, Enrolled + Total); Commission is the AGN-014 report, unchanged.
+- **R2 — Staff access.** Staff with `can_view_reports` see six reports, own scope (`DEC-SCOPE-042` G4); Staff performance and Commission `403` for all staff; without the toggle `403` on every report (`DEC-SCOPE-044` P1).
+- **R3 — Audit CSV exports only** (`agent_report.export`); on-screen reads unaudited; the commission CSV keeps `DEC-SCOPE-051` R7.
+- **R4 — Intake** parsed to month + year with AGN-013's parser; unreadable text → "Unstructured". No migration.
+- **R5 — Staff performance** is AGN-020's own summary from AGN-018's queries; AGN-019 keeps its funnel; whichever merges second reconciles.
+- **R6 — Per-report date basis**, inclusive UTC days: students by record created, applications and summaries by application created, enrollments by enrollment date.
+- **R7 — 10,000-row CSV cap** (422 above it, never truncated) and 50-row pages on screen.
+- **R8 — Old portal summary:** its API, 403 and tests unchanged; the page shows the tabbed reports instead.
+- **R9 — Approach A:** `GET /workflows/overseas/agent/crm/reports/{kind}` and `…/{kind}.csv`, one column-driven response.
+- **R10 — Export throttle** (from the security review): 30 CSV exports per user per 10 minutes → `429` + `Retry-After`.
+
+**Consequences:** no migration, no new dependency; a new router (`api/agent_reports.py`), service (`services/agent_reports.py`) and schema (`AgentReportOut`); `AgentReportsPanel` / `AgentReportFilters` / `AgentReportTable` on `/overseas/agent/reports` for agency members; the AGN-014 commission panel moves from `WorkflowPanel` to the Commission tab (component unchanged). Unchanged: the portal reports payload and `REPORTS_REFUSED`, the AGN-014 routes and R7, AGN-018's queries, navigation, models. **New Feature ID authorized:** `AGN-020`. **Status:** implemented and verified on `feature/agn-020-reports` (browser QA + fix pass, see `ENHANCEMENT_BACKLOG.md` §AGN-020); the full backend suite is run by the owner.
+
+### DEC-SCOPE-068 — BDM activity log (`bdm-009`)
+
+**ID note:** drafted as `DEC-SCOPE-064`, renumbered `DEC-SCOPE-065` on merging `main` @ `39c119b` (AGN-022 took `064`), with migration `0069_bdm_activities` after `0068_bdm_trips`. bdm-003 (PR #55) then took `DEC-SCOPE-065` and `0069_bdm_org_profiles`, and AGN-019 / AGN-020 (PRs #56 / #57) took `066` / `067`, so on merging `main` @ `e376c25` (2026-10-03) this entry is **`DEC-SCOPE-068`** and the migration **`0070_bdm_activities`** (after `0069_bdm_org_profiles`, one head). bdm-009 commits and docs from before this merge that say `DEC-SCOPE-065` or `0069_bdm_activities` mean this decision / migration.
 
 **Question:** how do BDMs log calls, WhatsApp messages, emails, visits and meetings, who may log, see and change them, and how are the day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
 
@@ -3428,4 +3496,4 @@ independent Codex review are pending.
 - **V10** (Revision 2) At most 200 activities per BDM per IST day (409); a soft abuse bound.
 - **Defaults:** super_admin reads only; the contact must belong to the organization and its name is kept after the contact is deleted (as bdm-006 A5); an edit cannot move an activity off today; no idempotency key (a duplicate is fixed by a same-day delete); no general rate limiter (as bdm-010). Refusal logging (`bdm_activity_write_refused`) covers the owner / assignee 403s only ("not the assigned BDM", "not the logger"); wrong-role 403s from the shared `bdm_context` / `caller_scope` are not logged as refusals (bdm-002's `bdm_org_write_refused` precedent). Notes are visible to every reader of the organization (the form says so). Retention / erasure of BDM data remains `NEEDS_CONFIRMATION` (as bdm-001 / 002 / 006).
 
-**Status:** `EXPLICIT_APPROVAL` for V1–V10; implemented on `feature/bdm-009-activities`; **not COMPLETE** — Playwright, browser validation and an independent Codex review are pending, and the owner's full suites have not been run. Migration `0069_bdm_activities`.
+**Status:** `EXPLICIT_APPROVAL` for V1–V10; implemented on `feature/bdm-009-activities`; **not COMPLETE** — Playwright, browser validation and an independent Codex review are pending, and the owner's full suites have not been run. Migration `0070_bdm_activities`.

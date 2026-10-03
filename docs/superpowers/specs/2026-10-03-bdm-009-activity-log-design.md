@@ -16,9 +16,7 @@ tolerance, V10 daily cap); no earlier decision changed.
 Decisions already in force: `DEC-SCOPE-055` D9 (derived report + manual activity log), Q-02/D11 (read own type, edit
 assigned), Q-13/D22 (submitting a daily report locks that day's activity edits), Q-20/D29 (nothing is sent to contacts).
 
-**Decision record:** **`DEC-SCOPE-065`**, written in this change (next free on `main` @ `39c119b4`; `063` is bdm-010, `064` AGN-022 -- renumbered from `064` on merging `main`).
-Migration **`0069_bdm_activities`** (single head on `main` is `0068_bdm_trips`). bdm-006 and bdm-003 are in flight and
-also claim `0068` / `063`; whichever merges after another renumbers. Recheck `origin/main` before building and before the PR.
+**Decision record:** **`DEC-SCOPE-068`**, written in this change. Migration **`0070_bdm_activities`** (after `0069_bdm_org_profiles`, one head). ID note (merge of `main` @ `e376c25`, 2026-10-03): drafted as `DEC-SCOPE-064`, renumbered `065` on merging `main` @ `39c119b4` (`063` bdm-010, `064` AGN-022), with migration `0069_bdm_activities` after `0068_bdm_trips`; bdm-003 (PR #55) then took `DEC-SCOPE-068` / `0069_bdm_org_profiles` and AGN-019 / AGN-020 took `066` / `067`, so this decision is `DEC-SCOPE-068` and the migration `0070_bdm_activities`. Earlier commits and docs saying `DEC-SCOPE-064` / `065` or `0069_bdm_activities` mean this decision / migration. bdm-006 is in flight; whichever merges later renumbers. Recheck `origin/main` before building and before the PR.
 
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 
@@ -49,7 +47,7 @@ Out of scope (owned elsewhere):
 | B | A per-day counter table updated on every write | Rejected: write races and drift between counters and rows; volume is tiny |
 | C | One generic "BDM timeline events" table shared by activities, appointment events and tasks | Rejected: fights bdm-006's `bdm_appointment_events`, redesigns other modules (YAGNI) |
 
-## 3. Decisions (owner answers 2026-10-03, `EXPLICIT_APPROVAL`, recorded in `DEC-SCOPE-065`)
+## 3. Decisions (owner answers 2026-10-03, `EXPLICIT_APPROVAL`, recorded in `DEC-SCOPE-068`)
 
 | # | Question | Answer |
 |---|---|---|
@@ -76,7 +74,7 @@ Design defaults (presented in the approved sections, not asked separately):
 - No idempotency key (as bdm-010): Save is disabled while busy; a double POST makes a duplicate the BDM can delete the
   same day. Recorded as accepted.
 
-## 4. Data model — migration `0069_bdm_activities`
+## 4. Data model — migration `0070_bdm_activities`
 
 ### 4.1 `bdm_activities` (model `BdmActivity`, appended to the BDM CRM section of `models.py` after `BdmOrganizationContact`)
 
@@ -238,7 +236,7 @@ delete confirm.
 | AC7 | A contact from another organization → 422; deleting the contact keeps the activity with `contact_id` NULL and its `contact_name` |
 | AC8 | `bdm_activity.created/updated/deleted` audit rows exist and carry no note or contact name |
 | AC9 | Log vs archive is serialized (no activity on an archived organization); two concurrent deletes → one 204 and one 404 |
-| AC10 | Migration: chains after `0068_bdm_trips`, single head, upgrade / downgrade round trip, downgrade refuses while rows exist |
+| AC10 | Migration: chains after `0069_bdm_org_profiles`, single head, upgrade / downgrade round trip, downgrade refuses while rows exist |
 | AC11 | UI: timeline, Log / Edit / Delete, counts strip, date and BDM filters, loading / empty / error states |
 | AC12 | End to end: a BDM logs, sees it on the timeline and in the counts; the manager sees it; keyboard-only; no overflow at 320 px and 375 px |
 | AC13 | Abuse cases (§12.3): another BDM's activity id → 403 when its organization is readable, 404 when not; a contact id from another organization → 422 and its name never appears; server-owned fields in a body (`bdm_user_id`, `contact_name`, `id`) → 422; `organization_id` in a PATCH → 422; a `bdm` calling the manager route → 403; `?bdm_user_id=` outside the team → an empty page and zero counts; a note with `<script>` is stored and shown as text |
@@ -279,7 +277,7 @@ No existing route, field or response changes. bdm-002 organization output is unc
 
 ## 10. Documentation (updated in the same change)
 
-`docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-065`), `docs/architecture/API_CONTRACT.md` (bdm-009 addendum: routes, status
+`docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-068`), `docs/architecture/API_CONTRACT.md` (bdm-009 addendum: routes, status
 table §12.1 A4, retry semantics A3), `docs/delivery/BDM_CRM_BACKLOG.md` (bdm-009 status line),
 `docs/architecture/DATA_MODEL.md` (`bdm_activities`), `docs/quality/RTM.md` (bdm-009 rows).
 

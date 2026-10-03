@@ -1,8 +1,53 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { display, isOrganizationBody, ORG_TYPE_LABEL, orgDuplicate, safeWebsite, teamSearch } from "@/lib/bdmOrganizations";
+import {
+  BOARD_LABEL,
+  display,
+  gradeRange,
+  isOrganizationBody,
+  labelOf,
+  ORG_TYPE_LABEL,
+  orgDuplicate,
+  profileGroup,
+  profileNotEmpty,
+  rolesFor,
+  safeWebsite,
+  teamSearch,
+  typeChangeMessage,
+} from "@/lib/bdmOrganizations";
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("bdm-003 profile helpers", () => {
+  it("maps org types to profile groups", () => {
+    expect(["agent", "school", "college", "university", "corporate", "training_institute", "other", ""].map(profileGroup)).toEqual(["agent", "school", "college", "college", null, null, null, null]);
+  });
+  it("writes grade ranges with pre-primary names", () => {
+    expect(gradeRange(-1, 12)).toBe("LKG–12");
+    expect(gradeRange(6, 12)).toBe("6–12");
+    expect(gradeRange(-2, null)).toBe("From Nursery");
+    expect(gradeRange(null, 0)).toBe("Up to UKG");
+    expect(gradeRange(null, null)).toBe("—");
+  });
+  it("labels known values and shows an unknown one as it is", () => {
+    expect(labelOf(BOARD_LABEL, "State")).toBe("State board");
+    expect(labelOf(BOARD_LABEL, "Cambridge")).toBe("Cambridge");
+    expect(labelOf(BOARD_LABEL, null)).toBe("—");
+  });
+  it("puts the type's suggested roles first and keeps every role", () => {
+    expect(rolesFor("college").slice(0, 4)).toEqual(["principal", "dean", "hod", "placement_officer"]);
+    expect(rolesFor("school").slice(0, 3)).toEqual(["principal", "management", "counselor"]);
+    expect(rolesFor("agent")[0]).toBe("owner");
+    expect(new Set(rolesFor("school")).size).toBe(8);
+    expect(rolesFor()).toEqual(rolesFor("corporate"));
+  });
+  it("reads the profile_not_empty conflict and words it", () => {
+    expect(profileNotEmpty({ code: "profile_not_empty", message: "x", fields: ["board", "grade_to"] })).toEqual(["board", "grade_to"]);
+    expect(profileNotEmpty({ code: "possible_duplicate", matches: [] })).toBeNull();
+    expect(profileNotEmpty(null)).toBeNull();
+    expect(typeChangeMessage("school", ["board", "grade_to"])).toBe("Clear the School details before changing the type: Board, Highest grade.");
+  });
+});
 
 describe("bdm-002 lib", () => {
   it("labels every organization type", () => {

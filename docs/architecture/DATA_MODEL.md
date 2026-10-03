@@ -423,7 +423,7 @@ covers the commission-specific piece).
   `created_by_user_id`). Actual cost is never stored (sum of lines, D15). Nothing about the approver is stored (T2). Additive; the
   downgrade refuses while trips exist.
 
-- **Addendum, 2026-10-03 (`bdm-009`, `DEC-SCOPE-065`; migration `0069_bdm_activities`, chained after `0068_bdm_trips`) — BDM
+- **Addendum, 2026-10-03 (`bdm-009`, `DEC-SCOPE-068`; migration `0070_bdm_activities`, chained after `0069_bdm_org_profiles`) — BDM
   activity log.** `bdm_activities` (UUID PK; `bdm_user_id` FK `users` `ON DELETE RESTRICT` NOT NULL — the logger; `organization_id` FK
   `bdm_organizations` `ON DELETE RESTRICT` NOT NULL; `contact_id` FK `bdm_organization_contacts` `ON DELETE SET NULL`, nullable;
   `contact_name` String(200) nullable, copied at save so it survives a contact delete; `channel` String(20) NOT NULL with
@@ -1174,3 +1174,13 @@ Additive only: two tables and one sequence; no existing table, column or row cha
   hod, placement_officer, counselor, management, owner, other), `phone`, `email`; `is_primary` with a partial unique index (one primary
   per organization). At least one contact (C1) and at most 20 are service rules.
 - Last Meeting / Next Meeting are **not stored**: computed from bdm-006 appointments (null until then).
+- **Addendum (`bdm-003`, `DEC-SCOPE-065`; migration `0069_bdm_org_profiles`, after `0068_bdm_trips`):** twelve nullable
+  columns on `bdm_organizations`, no row written; `downgrade()` refuses while any of them holds a value. Common: `address` VARCHAR(500)
+  (line breaks allowed, P14). Agent group: `country`, `territory` VARCHAR(120), `source` VARCHAR(20) (CHECK referral, website, event,
+  cold_call, walk_in, other), `staff_count` INTEGER (CHECK 0–100 000). School group: `board` VARCHAR(10) (CHECK `CBSE`, `ICSE`,
+  `State`, `IB`, `Other` — ENH-009's values), `school_type` VARCHAR(20) (CHECK private, government, aided, international, other),
+  `grade_from` / `grade_to` SMALLINT (CHECK each −2…12 — −2 Nursery, −1 LKG, 0 UKG — and `grade_from <= grade_to`). College group
+  (`college` and `university`): `affiliation` VARCHAR(200), `college_type` VARCHAR(20) (CHECK engineering, arts_science, management,
+  medical, polytechnic, other), `courses` VARCHAR(1000). Backstops `ck_bdm_organizations_{agent,school,college}_profile`: a group's
+  columns are NULL unless `org_type` belongs to it. Named people (Owner, Principal, Dean …) stay contacts with a role tag; Agreement /
+  MoU / Contract / Renewal Date are bdm-005; Commission and live agent counts are not stored (bdm-019 / bdm-022).

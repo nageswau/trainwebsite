@@ -134,3 +134,14 @@ describe("BdmOrganizationContacts", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Edit Ms Iyer" })).toHaveFocus());
   });
 });
+
+describe("BdmOrganizationContacts roles (bdm-003 P8)", () => {
+  it("lists the type's named people first and keeps every role", () => {
+    const school = { ...org([RAO]), org_type: "school" } as Organization;
+    render(<BdmOrganizationContacts organization={school} onChanged={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add contact" }));
+    const options = Array.from((screen.getByLabelText("Role") as HTMLSelectElement).options).map((o) => o.value);
+    expect(options.slice(0, 4)).toEqual(["", "principal", "management", "counselor"]);
+    expect(options).toHaveLength(9);
+  });
+});

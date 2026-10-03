@@ -25,7 +25,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from app.models import BDM_ACTIVITY_DIRECTIONAL, GENDERS
+from app.models import BDM_ACTIVITY_DIRECTIONAL, BDM_GRADE_MAX, BDM_GRADE_MIN, BDM_STAFF_MAX, GENDERS
 from app.services.agent_visa import VISA_CASE_STAGES
 
 
@@ -1205,6 +1205,77 @@ class AgentDashboardOut(BaseModel):
     unassigned_students: int | None
     commission: AgentCommissionSummaryOut | None
     reports_available: bool
+    as_of: datetime
+
+
+# --- AGN-020 (DEC-SCOPE-067; spec §5.3): one column-driven shape for every report. Codes, slugs and names only -- no ids. ---
+
+
+class AgentReportColumn(BaseModel):
+    key: str
+    label: str
+    numeric: bool = False
+
+
+class AgentReportOption(BaseModel):
+    value: str  # a slug, a member code, an intake key or a status -- never an id
+    label: str
+
+
+class AgentReportOut(BaseModel):
+    """`items/total/limit/offset` follow the codebase's `Page` convention; a summary returns every group (`limit = total`) and a
+    `totals` row. Every item's keys are exactly the column keys."""
+
+    kind: str
+    title: str
+    scope: Literal["agency", "own"]
+    columns: list[AgentReportColumn]
+    items: list[dict[str, str | int | None]]
+    totals: dict[str, str | int | None] | None
+    total: int
+    limit: int
+    offset: int
+    options: dict[str, list[AgentReportOption]]
+    as_of: datetime
+
+
+class AgentFunnelOut(BaseModel):
+    """AGN-019 (DEC-SCOPE-066 P3): distinct students who reached each stage or a later one, so the stages never increase."""
+
+    students: int
+    applications: int
+    submitted: int
+    offers: int
+    visa: int
+    enrolled: int
+
+
+class AgentPerformanceCountsOut(BaseModel):
+    """AGN-018's G3 column definitions over the date cohort (P5), plus that cohort's funnel."""
+
+    students: int
+    applications: int
+    offers: int
+    visa_applications: int
+    visa_approvals: int
+    enrollments: int
+    funnel: AgentFunnelOut
+
+
+class AgentPerformanceRowOut(AgentPerformanceCountsOut):
+    code: str
+    name: str
+    active: bool
+
+
+class AgentPerformanceOut(BaseModel):
+    """Master only. No ids, emails or phones: codes and names only (as AgentDashboardOut). `total` = rows + unassigned."""
+
+    date_from: date | None
+    date_to: date | None
+    rows: list[AgentPerformanceRowOut]
+    unassigned: AgentPerformanceCountsOut | None
+    total: AgentPerformanceCountsOut
     as_of: datetime
 
 
@@ -3407,19 +3478,35 @@ BDM_ORG_LABELS = {
     "website": "Website",
     "courses_interested": "Courses interested",
     "designation": "Designation",
+    "address": "Address",
+    "country": "Country",
+    "territory": "Territory",
+    "affiliation": "University / affiliation",
+    "courses": "Courses",
+    "source": "Source",
+    "staff_count": "Number of staff",
+    "board": "Board",
+    "school_type": "School type",
+    "grade_from": "Lowest grade",
+    "grade_to": "Highest grade",
+    "college_type": "College type",
 }
-BDM_ORG_FIELDS = ("org_type", "name", "city", "state", "phone", "email", "website", "existing_partner", "courses_interested", "student_count")
+BDM_MULTILINE_FIELDS = frozenset({"address", "courses", "courses_interested"})  # bdm-003 P14: line breaks kept
+BDM_ORG_FIELDS = ("org_type", "name", "city", "state", "address", "phone", "email", "website", "existing_partner", "courses_interested", "student_count")
 _BDM_PHONE = re.compile(r"[0-9+()\- ]+")
 _BDM_WEBSITE = re.compile(r"https?://\S+", re.IGNORECASE)
 _BDM_SCHEME = re.compile(r"[a-z][a-z0-9+.-]*:", re.IGNORECASE)  # "javascript:", "mailto:", "ftp:" ...
 _BDM_BARE_SITE = re.compile(r"[^\s/:]+\.[^\s/:]+(/\S*)?")  # "stjoseph.edu", "www.mary.ac.in/admissions"
+_BDM_CONTROL_MULTILINE = re.compile(r"[\x00-\x09\x0b-\x1f\x7f]")  # bdm-003 P14: like _BDM_CONTROL, but a line break (\n) is allowed
 BDM_MAX_CONTACTS = 20
 
 
 def _bdm_org_text(value: str | None, info: ValidationInfo) -> str | None:
-    """bdm-001's text rule (no control characters, blank -> None) plus the per-field shape checks (spec §5.1, §12.3)."""
+    """bdm-001's text rule (no control characters, blank -> None) plus the per-field shape checks (spec §5.1, §12.3). A multi-line field
+    (bdm-003 P14) also allows a line break."""
     label = BDM_ORG_LABELS.get(info.field_name, info.field_name)
-    if value is not None and _BDM_CONTROL.search(value):
+    control = _BDM_CONTROL_MULTILINE if info.field_name in BDM_MULTILINE_FIELDS else _BDM_CONTROL
+    if value is not None and control.search(value):
         raise ValueError(f"{label} contains invalid characters")
     if not value:
         return None
@@ -3432,6 +3519,11 @@ def _bdm_org_text(value: str | None, info: ValidationInfo) -> str | None:
     if info.field_name == "website" and not _BDM_WEBSITE.fullmatch(value):  # http(s) only: no javascript:/data: hrefs (spec §12.3)
         raise ValueError("Website must start with http:// or https://" if _BDM_SCHEME.match(value) else "Enter a website such as stjoseph.edu")
     return value
+
+
+def _bdm_newlines(value):
+    """Before the length check, so the limit counts the stored form (as _bdm_website_prefix)."""
+    return value.replace("\r\n", "\n").replace("\r", "\n") if isinstance(value, str) else value
 
 
 def _bdm_website_prefix(value):
@@ -3457,8 +3549,11 @@ def _bdm_contact_name(value: str) -> str:
     return value
 
 
-def _bdm_org_optional(max_length: int):
-    return Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_bdm_org_text)]
+def _bdm_org_optional(max_length: int, *, multiline: bool = False):
+    """`multiline` (bdm-003 P14): \\r\\n / \\r become \\n before the length check, so the limit counts the stored form. The field must
+    also be in BDM_MULTILINE_FIELDS for _bdm_org_text to accept the line break."""
+    text = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_bdm_org_text)]
+    return Annotated[text, BeforeValidator(_bdm_newlines)] if multiline else text
 
 
 def _bdm_org_mandatory(max_length: int):
@@ -3470,20 +3565,32 @@ BdmOrgCity = _bdm_org_mandatory(120)
 BdmOrgShort = _bdm_org_optional(120)
 BdmOrgPhone = _bdm_org_optional(30)
 BdmOrgLong = _bdm_org_optional(255)
-BdmOrgCourses = _bdm_org_optional(1000)
+BdmOrgMedium = _bdm_org_optional(200)
+BdmOrgCourses = _bdm_org_optional(1000, multiline=True)  # courses_interested and the College `courses`
+BdmOrgAddress = _bdm_org_optional(500, multiline=True)
 BdmOrgWebsite = Annotated[_bdm_org_optional(255), BeforeValidator(_bdm_website_prefix)]
 BdmContactName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200), AfterValidator(_bdm_contact_name)]
 
 
-def _bdm_student_count(value, handler):
-    """Browser QA-04: the strict whole-number rule stays; every way it fails reads as one plain sentence."""
-    try:
-        return handler(value)
-    except ValidationError:
-        raise ValueError("Number of students must be a whole number from 0 to 1,000,000") from None
+def _bdm_whole_number(message: str, low: int, high: int):
+    """Browser QA-04: strict whole numbers; every way one fails reads as one plain sentence."""
+
+    def wrap(value, handler):
+        try:
+            return handler(value)
+        except ValidationError:
+            raise ValueError(message) from None
+
+    return Annotated[Annotated[StrictInt, Field(ge=low, le=high)] | None, WrapValidator(wrap)]
 
 
-BdmStudentCount = Annotated[Annotated[StrictInt, Field(ge=0, le=1_000_000)] | None, WrapValidator(_bdm_student_count)]
+BdmStudentCount = _bdm_whole_number("Number of students must be a whole number from 0 to 1,000,000", 0, 1_000_000)
+BdmStaffCount = _bdm_whole_number(f"Number of staff must be a whole number from 0 to {BDM_STAFF_MAX:,}", 0, BDM_STAFF_MAX)
+BdmGrade = _bdm_whole_number("Grade must be Nursery, LKG, UKG or 1 to 12", BDM_GRADE_MIN, BDM_GRADE_MAX)
+BdmOrgSource = Literal["referral", "website", "event", "cold_call", "walk_in", "other"]
+BdmSchoolBoard = SchoolBoard  # ENH-009's values by construction: bdm-018 copies the board onto `schools.board`
+BdmSchoolType = Literal["private", "government", "aided", "international", "other"]
+BdmCollegeType = Literal["engineering", "arts_science", "management", "medical", "polytechnic", "other"]
 
 
 class BdmContactIn(BaseModel):
@@ -3518,6 +3625,25 @@ def _bdm_contacts(contacts: list[BdmContactIn]) -> list[BdmContactIn]:
     return contacts
 
 
+class BdmOrgProfileIn(BaseModel):
+    """bdm-003 (DEC-SCOPE-065, spec §5.1): the type-specific fields. Omitted = not sent; null = clear. Which keys an org_type accepts is
+    checked by services.bdm_organizations.check_profile (it needs the effective type); unknown keys -- the live agent figures commission,
+    students, applications, enrollments and master_login among them -- are refused here (AC4)."""
+
+    model_config = ConfigDict(extra="forbid")
+    country: BdmOrgShort = Field(None, description="Agent: country (free text).")
+    territory: BdmOrgShort = Field(None, description="Agent: territory (free text).")
+    source: BdmOrgSource | None = Field(None, description="Agent: how the agency was found.")
+    staff_count: BdmStaffCount = Field(None, description="Agent: number of staff, entered by the BDM (0-100000).")
+    board: BdmSchoolBoard | None = Field(None, description="School: board, ENH-009's values.")
+    school_type: BdmSchoolType | None = Field(None, description="School: school type.")
+    grade_from: BdmGrade = Field(None, description="School: lowest grade. -2 Nursery, -1 LKG, 0 UKG, then 1-12.")
+    grade_to: BdmGrade = Field(None, description="School: highest grade, same codes; not below grade_from.")
+    affiliation: BdmOrgMedium = Field(None, description="College/University: university or affiliation (free text).")
+    college_type: BdmCollegeType | None = Field(None, description="College/University: college type.")
+    courses: BdmOrgCourses = Field(None, description="College/University: courses the college teaches; line breaks allowed.")
+
+
 class BdmOrganizationCreate(BaseModel):
     """spec §5.1 / C13: type, name, city and >=1 contact are required. Server-owned fields (code, bdm_type, assignee, archive) are
     unknown fields here, so a client can never set them (§12.3 mass assignment)."""
@@ -3527,12 +3653,14 @@ class BdmOrganizationCreate(BaseModel):
     name: BdmOrgName
     city: BdmOrgCity
     state: BdmOrgShort = None
+    address: BdmOrgAddress = None
     phone: BdmOrgPhone = None
     email: BdmOrgLong = None
     website: BdmOrgWebsite = None
     existing_partner: StrictBool = False
     courses_interested: BdmOrgCourses = None
     student_count: BdmStudentCount = None
+    profile: BdmOrgProfileIn | None = None
     contacts: Annotated[list[BdmContactIn], AfterValidator(_bdm_contacts)]
     confirm_duplicate: StrictBool = False
 
@@ -3543,12 +3671,14 @@ class BdmOrganizationUpdate(BaseModel):
     name: BdmOrgName = None
     city: BdmOrgCity = None
     state: BdmOrgShort = None
+    address: BdmOrgAddress = None
     phone: BdmOrgPhone = None
     email: BdmOrgLong = None
     website: BdmOrgWebsite = None
     existing_partner: StrictBool = None
     courses_interested: BdmOrgCourses = None
     student_count: BdmStudentCount = None
+    profile: BdmOrgProfileIn = None  # omitted = unchanged; an explicit null is a 422 (bdm-001's PATCH idiom)
     confirm_duplicate: StrictBool = False
 
 
@@ -3587,6 +3717,32 @@ class BdmOrgPermissions(BaseModel):
     can_reassign: bool
 
 
+class BdmAgentProfileOut(BaseModel):
+    kind: Literal["agent"]
+    country: str | None
+    territory: str | None
+    source: str | None
+    staff_count: int | None
+
+
+class BdmSchoolProfileOut(BaseModel):
+    kind: Literal["school"]
+    board: str | None
+    school_type: str | None
+    grade_from: int | None
+    grade_to: int | None
+
+
+class BdmCollegeProfileOut(BaseModel):
+    kind: Literal["college"]
+    affiliation: str | None
+    college_type: str | None
+    courses: str | None
+
+
+BdmOrgProfileOut = Annotated[BdmAgentProfileOut | BdmSchoolProfileOut | BdmCollegeProfileOut, Field(discriminator="kind")]
+
+
 class BdmOrganizationRow(BaseModel):
     id: UUID
     code: str
@@ -3608,8 +3764,10 @@ class BdmOrganizationOut(BdmOrganizationRow):
     phone: str | None
     email: str | None
     website: str | None
+    address: str | None
     courses_interested: str | None
     student_count: int | None
+    profile: BdmOrgProfileOut | None  # null for corporate / training_institute / other (spec §5.1)
     contacts: list[BdmContactOut]
     created_by_name: str
     archived_at: datetime | None
@@ -3628,7 +3786,7 @@ class BdmOrganizationEnvelope(BaseModel):
     organization: BdmOrganizationOut
 
 
-# --- bdm-009: activity log (DEC-SCOPE-065; docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §5.1) ---
+# --- bdm-009: activity log (DEC-SCOPE-068; docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §5.1) ---
 
 BdmActivityChannel = Literal["call", "whatsapp", "email", "visit", "meeting", "other"]
 BdmActivityDirection = Literal["outbound", "inbound"]

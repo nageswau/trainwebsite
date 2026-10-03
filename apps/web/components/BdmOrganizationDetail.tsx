@@ -6,6 +6,7 @@ import BdmActivityTimeline from "@/components/BdmActivityTimeline";
 import BdmConfirm from "@/components/BdmConfirm";
 import BdmOrganizationContacts from "@/components/BdmOrganizationContacts";
 import BdmOrganizationForm from "@/components/BdmOrganizationForm";
+import BdmOrganizationProfileDetails, { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
 import { type Page, sendRequest } from "@/lib/apiErrors";
 import type { Activity } from "@/lib/bdmActivities";
@@ -64,6 +65,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
     ["Type", ORG_TYPE_LABEL[org.org_type]],
     ["City", org.city],
     ["State", display(org.state)],
+    ["Address", multiline(org.address)],
     ["Contact person", display(org.primary_contact?.name)],
     ["Designation", display(org.primary_contact?.designation)],
     ["Phone", display(org.phone)],
@@ -80,7 +82,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       ),
     ],
     ["Existing partner", org.existing_partner ? "Yes" : "No"],
-    ["Courses interested", display(org.courses_interested)],
+    ["Courses interested", multiline(org.courses_interested)],
     ["Number of students", display(org.student_count)],
     ["Last meeting", display(org.last_meeting_at)],
     ["Next meeting", display(org.next_meeting_at)],
@@ -151,16 +153,8 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       ) : (
         <section className="action-card wide" aria-label="Details">
           <h3>Details</h3>
-          <dl style={{ display: "grid", gridTemplateColumns: "minmax(120px, max-content) 1fr", gap: "8px 16px", margin: 0 }}>
-            {rows.map(([label, value]) => [
-              <dt key={`${label}-t`} className="muted">
-                {label}
-              </dt>,
-              <dd key={`${label}-d`} style={{ margin: 0, overflowWrap: "anywhere" }}>
-                {value}
-              </dd>,
-            ])}
-          </dl>
+          <DetailList rows={rows} />
+          <BdmOrganizationProfileDetails organization={org} />
         </section>
       )}
       <BdmOrganizationContacts organization={org} onChanged={changed} />

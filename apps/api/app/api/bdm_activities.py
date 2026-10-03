@@ -1,4 +1,4 @@
-"""bdm-009 (DEC-SCOPE-065, spec §5.3): the BDM activity log.
+"""bdm-009 (DEC-SCOPE-068, spec §5.3): the BDM activity log.
 
 Every `{activity_id}` resolves through `services.bdm_activities.load_readable` (unreadable = 404). Every write is one transaction --
 scope (404), owner / assignee (403), lock (organization, then activity), rules (422 / 409), change, audit, one commit here. Lists are
