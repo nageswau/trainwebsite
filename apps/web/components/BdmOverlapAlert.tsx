@@ -7,9 +7,12 @@ import { type Overlap, whenText } from "@/lib/bdmAppointments";
 // cannot lose the unsaved entry. Focus moves to the heading so a screen reader announces it.
 export default function BdmOverlapAlert({ overlap, busy, onConfirm, onCancel }: { overlap: Overlap; busy: boolean; onConfirm: () => void; onCancel: () => void }) {
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => heading.current?.focus(), []);
+  useEffect(() => {
+    heading.current?.focus();
+    heading.current?.scrollIntoView?.({ block: "center" }); // jsdom lacks scrollIntoView
+  }, []);
   return (
-    <div role="alert" className="action-card" onKeyDown={(e) => {
+    <div role="alert" className="form-error" onKeyDown={(e) => {
       if (e.key !== "Escape") return;
       e.stopPropagation(); // dismiss only the warning, never an enclosing form
       onCancel();

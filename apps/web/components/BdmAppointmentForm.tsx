@@ -157,8 +157,8 @@ export default function BdmAppointmentForm(props: Props) {
         </p>
       )}
       <BdmAppointmentFields values={values} set={set} bdmType={props.bdmType} contacts={contacts} contactsLoading={contactsLoading} showWhen={!editing} contactRequired={!(editing && editing.contact_id === null)} />
-      {warning && <BdmOverlapAlert overlap={warning.overlap} busy={busy} onConfirm={() => void send(warning.body, true)} onCancel={() => setWarning(null)} />}
       {message && <FormMessage message={message} />}
+      {warning && <BdmOverlapAlert overlap={warning.overlap} busy={busy} onConfirm={() => void send(warning.body, true)} onCancel={() => setWarning(null)} />}
       <div className="actions">
         <button type="submit" className="btn" disabled={busy || warning !== null || (!editing && (!orgId || !values.contactId))}>
           {busy ? "Saving…" : editing ? "Save changes" : "Book appointment"}

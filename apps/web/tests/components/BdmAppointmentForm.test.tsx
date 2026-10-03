@@ -162,4 +162,29 @@ describe("BdmAppointmentForm (bdm-006 §6.2, R-F6)", () => {
     render(<BdmAppointmentForm mode="edit" bdmType="college" appointment={appt({ contact_id: null })} onSaved={() => {}} onCancel={() => {}} />);
     expect(await screen.findByText(/The booked contact \(Dr Rao\) was removed/)).toBeInTheDocument();
   });
+
+  it("QA6-02: the four fieldsets use the form-section class and their labels still resolve", () => {
+    vi.stubGlobal("fetch", vi.fn());
+    render(<BdmAppointmentForm mode="create" bdmType="college" initialOrganization={org} />);
+    for (const name of ["Who", "When", "Details", "Estimates"]) expect(screen.getByRole("group", { name })).toHaveClass("form-section");
+    for (const label of ["Contact person (required)", "Date and time (IST) (required)", "Duration", "Type (required)", "Location", "Purpose", "Remarks", "Expected leads", "Expected revenue (INR)"]) {
+      expect(screen.getByLabelText(label)).toBeInTheDocument();
+    }
+  });
+
+  it("QA6-03: the overlap alert reuses the form-error warning style and scrolls into view with focus", async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res({ detail: clash }, 409)));
+    render(<BdmAppointmentForm mode="create" bdmType="college" initialOrganization={org} />);
+    fillWhen();
+    fireEvent.click(screen.getByRole("button", { name: "Book appointment" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveClass("form-error");
+    expect(alert).not.toHaveClass("action-card");
+    expect(scroll).toHaveBeenCalledWith({ block: "center" });
+    expect(screen.getByRole("heading", { name: /already have an appointment/ })).toHaveFocus();
+    expect(alert.nextElementSibling?.className).toContain("actions"); // adjacent to the submit actions
+    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+  });
 });
