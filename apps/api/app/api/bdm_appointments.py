@@ -93,9 +93,13 @@ async def list_appointments(
         filters.append(BdmAppointment.appointment_type == appointment_type)
     if organization_id:
         filters.append(BdmAppointment.organization_id == organization_id)
-    filters += _matching(like_pattern(q), BdmAppointment.code, BdmOrganization.name)
+    pattern = like_pattern(q)
+    filters += _matching(pattern, BdmAppointment.code, BdmOrganization.name)
     joined = BdmOrganization.id == BdmAppointment.organization_id
-    total = await db.scalar(select(func.count()).select_from(BdmAppointment).join(BdmOrganization, joined).where(*filters))
+    count = select(func.count()).select_from(BdmAppointment)
+    if pattern:  # only the search reads the organization
+        count = count.join(BdmOrganization, joined)
+    total = await db.scalar(count.where(*filters))
     stmt = (
         select(BdmAppointment, BdmOrganization, User)
         .join(BdmOrganization, joined)
@@ -161,13 +165,15 @@ async def update_appointment(appt_id: UUID, payload: BdmAppointmentUpdate, user:
     """PATCH: only the fields sent; values equal to the stored ones are not changes (no audit, no updated_at bump, R-A6). A contact change
     locks the organization first (§5.7: organization -> appointment), so bdm-002's contact delete cannot remove it mid-write."""
     changes = payload.model_dump(exclude_unset=True, exclude={"confirm_overlap"})
-    current = await svc.load_scoped(db, user, appt_id)  # scope (404) and owner (403) before taking any lock
-    svc.require_owner(user, current, "update")
     contact = None
-    if "contact_id" in changes and changes["contact_id"] != current.contact_id:
-        org = await org_svc.load_scoped(db, user, current.organization_id, lock=True)
-        contact = await _contact_of(db, org, changes["contact_id"])
+    if "contact_id" in changes:  # the organization lock must come first, so peek at the appointment unlocked
+        current = await svc.load_scoped(db, user, appt_id)
+        svc.require_owner(user, current, "update")
+        if changes["contact_id"] != current.contact_id:
+            org = await org_svc.load_scoped(db, user, current.organization_id, lock=True)
+            contact = await _contact_of(db, org, changes["contact_id"])
     appt = await svc.load_scoped(db, user, appt_id, lock=True)
+    svc.require_owner(user, appt, "update")
     svc.require_open(appt)
     changes.pop("contact_id", None)
     changed = sorted(k for k, v in changes.items() if getattr(appt, k) != v)
@@ -200,19 +206,20 @@ async def _transitioning(db: AsyncSession, user: User, appt_id: UUID, action: st
     return appt
 
 
-async def _finish(db: AsyncSession, user: User, appt: BdmAppointment, action: str, from_status: str, metadata: dict | None = None) -> dict:
-    svc.audit(db, user, action, appt.id, {"from": from_status, "to": appt.status, **(metadata or {})})
+async def _move(db: AsyncSession, user: User, appt: BdmAppointment, action: str, to_status: str, metadata: dict | None = None, **event) -> dict:
+    """The tail every action shares: new status, its history event, audit, one commit, log."""
+    before, appt.status = appt.status, to_status
+    svc.record(db, appt, user, before, to_status, **event)
+    svc.audit(db, user, action, appt.id, {"from": before, "to": to_status, **(metadata or {})})
     await db.commit()
-    svc.log(f"bdm_appt_{action}", user, appt.id, from_status=from_status, to_status=appt.status)
+    svc.log(f"bdm_appt_{action}", user, appt.id, from_status=before, to_status=to_status)
     return await _envelope(db, user, appt)
 
 
 @router.post("/{appt_id}/confirm", response_model=BdmAppointmentEnvelope)
 async def confirm_appointment(appt_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     appt = await _transitioning(db, user, appt_id, "confirm", "confirmed")
-    before, appt.status = appt.status, "confirmed"
-    svc.record(db, appt, user, before, "confirmed")
-    return await _finish(db, user, appt, "confirm", before)
+    return await _move(db, user, appt, "confirm", "confirmed")
 
 
 @router.post("/{appt_id}/reschedule", response_model=BdmAppointmentEnvelope)
@@ -224,29 +231,27 @@ async def reschedule_appointment(appt_id: UUID, payload: BdmAppointmentReschedul
         raise HTTPException(422, "Choose a different time")
     duration = payload.duration_minutes or appt.duration_minutes
     overlaps = await _check_overlap(db, user, payload.starts_at, duration, payload.confirm_overlap, exclude_id=appt.id)
-    before, old = appt.status, appt.starts_at
-    appt.status, appt.starts_at, appt.duration_minutes = "rescheduled", payload.starts_at, duration
-    svc.record(db, appt, user, before, "rescheduled", old_starts_at=old, new_starts_at=payload.starts_at, reason=payload.reason)
+    old = appt.starts_at
+    appt.starts_at, appt.duration_minutes = payload.starts_at, duration
     if overlaps:
         svc.audit(db, user, "overlap_override", appt.id, {"match_count": overlaps})
-    return await _finish(db, user, appt, "reschedule", before, {"old_starts_at": old.isoformat(), "new_starts_at": payload.starts_at.isoformat()})
+    return await _move(
+        db, user, appt, "reschedule", "rescheduled", {"old_starts_at": old.isoformat(), "new_starts_at": payload.starts_at.isoformat()},
+        old_starts_at=old, new_starts_at=payload.starts_at, reason=payload.reason,
+    )
 
 
 @router.post("/{appt_id}/cancel", response_model=BdmAppointmentEnvelope)
 async def cancel_appointment(appt_id: UUID, payload: BdmAppointmentReason, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     appt = await _transitioning(db, user, appt_id, "cancel", "cancelled")
-    before, appt.status = appt.status, "cancelled"
-    svc.record(db, appt, user, before, "cancelled", reason=payload.reason)
-    return await _finish(db, user, appt, "cancel", before)
+    return await _move(db, user, appt, "cancel", "cancelled", reason=payload.reason)
 
 
 @router.post("/{appt_id}/no-show", response_model=BdmAppointmentEnvelope)
 async def no_show_appointment(appt_id: UUID, payload: BdmAppointmentReason, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     appt = await _transitioning(db, user, appt_id, "no_show", "no_show")
     svc.require_started(appt, await svc.db_now(db), "no_show")
-    before, appt.status = appt.status, "no_show"
-    svc.record(db, appt, user, before, "no_show", reason=payload.reason)
-    return await _finish(db, user, appt, "no_show", before)
+    return await _move(db, user, appt, "no_show", "no_show", reason=payload.reason)
 
 
 @router.post("/{appt_id}/complete", response_model=BdmAppointmentEnvelope)
@@ -260,7 +265,5 @@ async def complete_appointment(appt_id: UUID, payload: BdmAppointmentComplete, u
         raise HTTPException(422, f"This outcome is not available for {bdm_type.capitalize()} BDMs")
     if payload.next_follow_up_on is not None and payload.next_follow_up_on < svc.today_ist(now):
         raise HTTPException(422, "Next follow-up can't be in the past")
-    before = appt.status
-    appt.status, appt.outcome, appt.next_follow_up_on = "completed", payload.outcome, payload.next_follow_up_on
-    svc.record(db, appt, user, before, "completed")
-    return await _finish(db, user, appt, "complete", before, {"outcome": payload.outcome})
+    appt.outcome, appt.next_follow_up_on = payload.outcome, payload.next_follow_up_on
+    return await _move(db, user, appt, "complete", "completed", {"outcome": payload.outcome})

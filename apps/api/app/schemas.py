@@ -3578,10 +3578,9 @@ def _bdm_appt_minute(value: datetime) -> datetime:
     return value.replace(second=0, microsecond=0).astimezone(UTC)
 
 
-def _bdm_appt_reason(value: str) -> str:
-    if _BDM_CONTROL.search(value):
-        raise ValueError("Reason contains invalid characters")
-    if not value:
+def _bdm_appt_reason(value: str, info: ValidationInfo) -> str:
+    """The text rule above, then required."""
+    if (value := _bdm_appt_text(value, info)) is None:
         raise ValueError("Reason is required")
     return value
 

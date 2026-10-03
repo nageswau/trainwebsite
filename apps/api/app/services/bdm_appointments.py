@@ -28,7 +28,7 @@ from app.models import (
     BdmProfile,
     User,
 )
-from app.services.bdm import bdm_context
+from app.services.bdm import bdm_context, person_ref
 
 logger = logging.getLogger("app.bdm")
 
@@ -205,16 +205,12 @@ def permissions(user: User, appt: BdmAppointment, now: datetime) -> dict[str, bo
     }
 
 
-def _person(user: User) -> dict:
-    return {"id": user.id, "full_name": user.full_name, "active": user.active}
-
-
 def row_out(appt: BdmAppointment, org: BdmOrganization, owner: User) -> dict:
     return {
         "id": appt.id, "code": appt.code, "starts_at": appt.starts_at, "duration_minutes": appt.duration_minutes,
         "appointment_type": appt.appointment_type, "status": appt.status,
         "organization": {"id": org.id, "code": org.code, "name": org.name, "archived": org.archived_at is not None},
-        "contact_name": appt.contact_name, "bdm": _person(owner),
+        "contact_name": appt.contact_name, "bdm": person_ref(owner),
     }
 
 
@@ -242,26 +238,6 @@ async def appointment_out(db: AsyncSession, user: User, appt: BdmAppointment, *,
         ],
         "permissions": permissions(user, appt, now),
     }
-
-
-def meeting_columns():
-    """bdm-002's Last / Next meeting (spec §5.6), as correlated scalar subqueries on ix_bdm_appointments_org_starts. Across every BDM's
-    appointments at the organization; dates only."""
-    last = (
-        select(func.max(BdmAppointment.starts_at))
-        .where(BdmAppointment.organization_id == BdmOrganization.id, BdmAppointment.status == "completed")
-        .correlate(BdmOrganization)
-        .scalar_subquery()
-        .label("last_meeting_at")
-    )
-    upcoming = (
-        select(func.min(BdmAppointment.starts_at))
-        .where(BdmAppointment.organization_id == BdmOrganization.id, BdmAppointment.status.in_(BDM_APPOINTMENT_OPEN), BdmAppointment.starts_at > func.now())
-        .correlate(BdmOrganization)
-        .scalar_subquery()
-        .label("next_meeting_at")
-    )
-    return last, upcoming
 
 
 def audit(db: AsyncSession, user: User, action: str, appt_id: UUID, metadata: dict | None = None) -> None:

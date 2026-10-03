@@ -12,9 +12,8 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import BDM_ORGANIZATION_CODE_SEQ, AuditLog, BdmOrganization, BdmOrganizationContact, BdmProfile, User
-from app.services.bdm import bdm_context
-from app.services.bdm_appointments import meeting_columns
+from app.models import BDM_APPOINTMENT_OPEN, BDM_ORGANIZATION_CODE_SEQ, AuditLog, BdmAppointment, BdmOrganization, BdmOrganizationContact, BdmProfile, User
+from app.services.bdm import bdm_context, person_ref
 
 logger = logging.getLogger("app.bdm")
 
@@ -169,8 +168,24 @@ async def locked_reassign_target(db: AsyncSession, user: User, org: BdmOrganizat
     return target
 
 
-def _person(user: User) -> dict:
-    return {"id": user.id, "full_name": user.full_name, "active": user.active}
+def meeting_columns():
+    """bdm-006's Last / Next meeting (spec §5.6) as correlated scalar subqueries on ix_bdm_appointments_org_starts -- across every BDM's
+    appointments at the organization, so readers see when, never who or what."""
+    last = (
+        select(func.max(BdmAppointment.starts_at))
+        .where(BdmAppointment.organization_id == BdmOrganization.id, BdmAppointment.status == "completed")
+        .correlate(BdmOrganization)
+        .scalar_subquery()
+        .label("last_meeting_at")
+    )
+    upcoming = (
+        select(func.min(BdmAppointment.starts_at))
+        .where(BdmAppointment.organization_id == BdmOrganization.id, BdmAppointment.status.in_(BDM_APPOINTMENT_OPEN), BdmAppointment.starts_at > func.now())
+        .correlate(BdmOrganization)
+        .scalar_subquery()
+        .label("next_meeting_at")
+    )
+    return last, upcoming
 
 
 def _primary(contact: BdmOrganizationContact | None) -> dict | None:
@@ -193,7 +208,7 @@ def row_out(user: User, org: BdmOrganization, assignee: User, primary: BdmOrgani
         "city": org.city,
         "state": org.state,
         "existing_partner": org.existing_partner,
-        "assigned_bdm": _person(assignee),
+        "assigned_bdm": person_ref(assignee),
         "primary_contact": _primary(primary),
         "archived": org.archived_at is not None,
         "last_meeting_at": last_meeting_at,

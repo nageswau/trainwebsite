@@ -30,7 +30,6 @@ from app.schemas import (
 )
 from app.services import bdm_organizations as svc
 from app.services.bdm import bdm_context
-from app.services.bdm_appointments import meeting_columns
 
 router = APIRouter(prefix="/bdm/organizations", tags=["bdm-organizations"])
 Primary = aliased(BdmOrganizationContact)
@@ -76,7 +75,7 @@ async def list_organizations(
     # Both joins are at most 1:1 (NOT NULL assignee; one primary per organization), so the count needs neither.
     total = await db.scalar(select(func.count()).select_from(BdmOrganization).where(*filters))
     stmt = (
-        select(BdmOrganization, User, Primary, *meeting_columns())
+        select(BdmOrganization, User, Primary, *svc.meeting_columns())
         .join(User, User.id == BdmOrganization.assigned_bdm_user_id)
         .outerjoin(Primary, and_(Primary.organization_id == BdmOrganization.id, Primary.is_primary.is_(True)))
         .where(*filters)
