@@ -70,3 +70,20 @@ Archived student (extra): the Journey and history stay readable; the history gai
 Screenshots: session scratchpad `shots/` (not committed).
 
 **Status:** first QA pass complete — 1 Medium, 6 Low, 1 Info. Nothing fixed yet.
+
+## Fix pass (2026-10-03, after merging `main` @ `c5cdc8a`)
+
+Each fix was test-first (seen failing for the expected reason, then passing). The stack `agn015qa` was rebuilt from the fixed tree
+(`alembic` head `0067_audit_entity_index`) and each fix re-checked with Browser Use on the same isolated Chromium; no console errors,
+HTTP ≥ 400 or failed requests outside the injected failure.
+
+| ID | Outcome | Fix | Evidence |
+|---|---|---|---|
+| QA15-01 | **Fixed** | `AgentShortlistPanel`, `AgentTasksBlock` and `AgentTasksPanel` take an optional `onChanged`, fired only on a successful save/remove/add/edit/complete/cancel; the detail panel counts changes into the Journey's and the history's reload key. | Vitest `AgentStudentDetailPanel.journey.test.tsx` (failed: tracker stayed "Shortlist Done"; history fetched once). Playwright `agn-015-student-journey.spec.ts` "follow shortlist changes…" passes. Browser Use: "Shortlist Not started" → add → "Shortlist Done" and history top "University shortlisted", no reopen. |
+| QA15-03 | **Fixed** | History pager buttons are "Previous history page" / "Next history page". | AX tree: one `Next page` (student list), one `Next history page`. |
+| QA15-05 | **Fixed** | `fieldLabel()` drops a trailing `_id` (`university_id` → "university"). | History row "University shortlisted — university". |
+| QA15-07 | **Fixed** | The journey error renders inside an always-present `aria-live="polite"` container (still not `role="alert"`). | Live region empty before, "Unable to load the journey. Try again" after a forced 500; 0 alerts in the Journey. |
+| QA15-02 | Open — product decision | The Application step follows the approved J3 rule (done only with a submission date). Changing it (e.g. done once the stage passes enquiry, or once any later step is done) changes `DEC-SCOPE-061` J3. | — |
+| QA15-04 | Kept as designed | One form at a time (AGN-006) hides the Journey and history while a form is open. | — |
+| QA15-06 | Kept | Stacked full-width steps are what keep 320 px free of overflow and each state readable; a denser phone layout is a design change, not a defect. | — |
+| QA15-08 | Kept | The app-wide `SIGN_IN_PATH` convention (as AGN-021). | — |
