@@ -5,16 +5,20 @@ of the agencies it reads. Students, applications and commissions belong to an or
 members, exactly as AGN-001 scopes them, and the definitions (active student, non-withdrawn application, enrolled) are AGN-018's,
 so an agency's own dashboard and this screen cannot disagree."""
 
-from sqlalchemy import Select, case, func, select
+from sqlalchemy import Select, and_, case, distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
-from app.models import AgentOrgMember, AgentStudent, ApplicationDeposit, OverseasApplication
-from app.services.agent_applications import WITHDRAWN
+from app.models import AgentOrgMember, AgentStudent, ApplicationDeposit, Country, OverseasApplication, University, User
+from app.services.agent_applications import OVERSEAS_APPLICATION_STAGES, WITHDRAWN, with_owner
 from app.services.agent_dashboard import commission_totals
 from app.services.agent_deposits import PAID_STATES
 
 # School-bridged applications are not agency applications (`with_owner`, A12).
 NETWORK_APPLICATION = OverseasApplication.school_student_id.is_(None)
+# The applications list filters on the confirmed stages and `withdrawn`; a legacy value is refused, not silently empty.
+APPLICATION_FILTERS = (*OVERSEAS_APPLICATION_STAGES, WITHDRAWN)
+Assignee = aliased(AgentOrgMember)
 
 
 def members_of(org_id) -> Select:
@@ -73,3 +77,59 @@ async def org_money(db: AsyncSession, org_id) -> dict:
         "commission": await commission_totals(db, members_of(org_id)),
         "deposits": {"currency": "INR", "count": count, "collected": float(collected), "remitted": float(remitted), "refunded": float(refunded)},
     }
+
+
+async def org_students(db: AsyncSession, org_id, *, status: str, limit: int, offset: int) -> tuple[list[dict], int]:
+    """N1: one page of the org's students, newest first -- name, status, assignee code, whether a login exists and the open
+    applications this agency made for them (by the agency record or the linked login, as AGN-018 `staff_rows`). No contact data."""
+    where = [AgentStudent.agent_id.in_(members_of(org_id)), AgentStudent.status == status]
+    total = await db.scalar(select(func.count()).select_from(AgentStudent).where(*where))
+    applications = (
+        select(func.count(distinct(OverseasApplication.id)))
+        .where(
+            OverseasApplication.agent_id.in_(members_of(org_id)),
+            NETWORK_APPLICATION,
+            OverseasApplication.status != WITHDRAWN,
+            or_(OverseasApplication.agent_student_id == AgentStudent.id, and_(AgentStudent.student_id.is_not(None), OverseasApplication.student_id == AgentStudent.student_id)),
+        )
+        .correlate(AgentStudent)
+        .scalar_subquery()
+    )
+    rows = await db.execute(
+        select(AgentStudent, func.coalesce(User.full_name, AgentStudent.full_name), Assignee.code, applications)
+        .outerjoin(User, User.id == AgentStudent.student_id)
+        .outerjoin(Assignee, Assignee.id == AgentStudent.assigned_member_id)
+        .where(*where)
+        .order_by(AgentStudent.created_at.desc(), AgentStudent.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    items = [
+        {"id": s.id, "full_name": name, "status": s.status, "assigned_code": code, "has_login": s.student_id is not None, "applications": n, "created_at": s.created_at}
+        for s, name, code, n in rows.all()
+    ]
+    return items, total or 0
+
+
+async def org_applications(db: AsyncSession, org_id, *, status: str | None, limit: int, offset: int) -> tuple[list[dict], int]:
+    """N1: one page of the org's applications, newest first, School-bridged rows left out (`with_owner`). The student is the
+    account's name, else the agency record's."""
+    where = [OverseasApplication.agent_id.in_(members_of(org_id)), NETWORK_APPLICATION]
+    if status:
+        where.append(OverseasApplication.status == status)
+    total = await db.scalar(select(func.count()).select_from(OverseasApplication).where(*where))
+    stmt = with_owner(
+        select(OverseasApplication, University.name, Country.name)
+        .join(University, University.id == OverseasApplication.university_id)
+        .join(Country, Country.id == University.country_id)
+        .where(*where)
+    )
+    rows = await db.execute(stmt.order_by(OverseasApplication.created_at.desc(), OverseasApplication.id.desc()).limit(limit).offset(offset))
+    items = [
+        {
+            "id": a.id, "student_name": name, "university": university, "country": country, "status": a.status,
+            "enrollment_date": a.enrollment_date, "created_at": a.created_at, "updated_at": a.updated_at,
+        }
+        for a, university, country, _account, name in rows.all()
+    ]
+    return items, total or 0

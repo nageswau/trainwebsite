@@ -1247,6 +1247,41 @@ class AgentOrgDetailOut(BaseModel):
     as_of: datetime
 
 
+class AgentNetworkStudentOut(BaseModel):
+    id: UUID
+    full_name: str | None
+    status: str
+    assigned_code: str | None
+    has_login: bool
+    applications: int
+    created_at: datetime
+
+
+class AgentNetworkStudentPage(BaseModel):
+    items: list[AgentNetworkStudentOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class AgentNetworkApplicationOut(BaseModel):
+    id: UUID
+    student_name: str | None
+    university: str
+    country: str
+    status: str
+    enrollment_date: date | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AgentNetworkApplicationPage(BaseModel):
+    items: list[AgentNetworkApplicationOut]
+    total: int
+    limit: int
+    offset: int
+
+
 class InboundUniversityEmailIn(BaseModel):
     external_message_id: str = Field(min_length=1, max_length=255)
     sender: EmailStr
