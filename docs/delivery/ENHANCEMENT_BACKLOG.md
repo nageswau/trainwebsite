@@ -88,6 +88,9 @@ See §AGN-008.
 **Revision 14 (2026-10-02):** the owner's `AGN-017` statement ("Notifications" §4; "Monitor deadlines" §2) is decided as `DEC-SCOPE-059`
 (N1–N11; drafted as `055` / Revision 13, renumbered `058` on merging `main` @ `ff27fa4` and `059` @ `3d9244f`, where bdm-001, AGN-010, AGN-012 and AGN-011 hold `055`–`058`).
 See §AGN-017.
+**Revision 15 (2026-10-03):** backlog item ang-018 (Master dashboard KPIs `EVID-015` §2; Staff "Dashboard ✅ Limited" and sidebar
+§4, §6) is decided as `DEC-SCOPE-060` (G1–G6, owner in-session; the next free number on `main` @ `e1c2084`, renumber on merge if
+taken). See §AGN-018.
 
 ## 0. Scope and exclusions (read this before the backlog)
 
@@ -180,6 +183,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-016 | Agent tasks and follow-ups — Master/Staff create, edit, complete and cancel tasks on agency students (task follows the student); "Pending actions" KPI (Rev. 12) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-021 |
 | AGN-010 | Agent offer details — conditional/unconditional, offer date, deadline, conditions, offer letter on an agency application; agent "Offers" count (Rev. 13) | Medium | Medium | Yes | AGN-008, AGN-009, AGN-021 |
 | AGN-017 | Agency notifications (in-app + email) on assignment, document request/rejection, status change, new task; daily deadline reminders and overdue digest; Notifications page + unread badge (Rev. 14) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-009, AGN-013, AGN-016, ENH-014 |
+| AGN-018 | Agency Master / Staff dashboards — typed KPI endpoint and board (students, pipeline, documents, Master commission), breakdowns, Master staff table; Staff sidebar (My Students All / Add, All applications, Tasks & Follow-ups) (Rev. 15) | Medium | Medium | No | AGN-004, AGN-005, AGN-008 … AGN-014, AGN-016 |
 
 ---
 
@@ -3753,6 +3757,50 @@ history; a reason required when an agent rejects or asks for changes; Pending / 
 
 **Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-009-agent-documents`. Lite test sets pass (see `RTM.md` AGN-009 row).
 Pending, owner-side: browser validation, the independent Codex review, the full backend/web/E2E suites, the merge.
+
+## AGN-018 — Agency Master / Staff Dashboards and Role-Specific Navigation
+
+**Title.** Give the agency Master a whole-agency KPI board and each staff member the same board limited to their assigned students,
+and give staff the `EVID-015` §4 sidebar.
+
+**Business requirement.** Backlog item ang-018 (`AGENT_CRM_BACKLOG.md`, `DERIVED_BLUEPRINT`): `EVID-015` §2 Master dashboard KPIs;
+§4 Staff sidebar; §6 "Dashboard ✅ Limited". Owner acceptance: each KPI equals a hand-computed fixture count; Staff numbers include
+only their own students; offers are counted by stage and by offer record, consistently. Decision record: `DEC-SCOPE-060` (G1–G6,
+`EXPLICIT_APPROVAL` in-session 2026-10-03; number provisional).
+
+**Existing behavior.** The agency dashboard was the generic portal payload (`services/portal.py` `_agent()`): Students, Applications,
+Pending actions, [Master: Claimable commission, Claims, Revenue], Offers, Your code — counted in Python. Defect: Students inner-joined
+`users`, so students with no login (AGN-004) were not counted. No visa, enrollment, pending-document or breakdown figures; no staff
+performance view; staff saw the Master's sidebar labels.
+
+**Expected behavior.** A new read-only endpoint `GET /api/v1/workflows/overseas/agent/crm/dashboard` (`API_CONTRACT.md` §8 AGN-018)
+and a board under the dashboard title: groups Students (Total students, Pending actions), Pipeline (Applications, Offers, Visa
+applications, Visa approvals, Enrollments), Documents (Pending documents), Commission (Master only, per currency); Applications by
+country / by university (top 10 + Other); Master-only Staff performance table (Students / Applications / Offers / Enrollments per
+staff member, plus Unassigned). Offers use one rule (O5) in SQL and Python, pinned by a parity test (G5). The portal dashboard keeps its
+labels, order and strings; its Students / Applications / Pending actions / Offers values come from the same service, and Students now
+counts no-login students. Navigation (G4, relabel and link only): "All applications" first under Applications; "Tasks & Follow-ups";
+staff get "My Students" → All / Add (Add opens the existing form via `?new=1`); no Journey link yet. Spec:
+`docs/superpowers/specs/2026-10-03-agn-018-agency-dashboards-design.md`; plan `docs/superpowers/plans/2026-10-03-agn-018-agency-dashboards.md`.
+
+**Roles.** Agency Master (whole agency, staff table, commission); Staff (own assigned students; no commission, no staff metrics).
+Super Admin is refused by the endpoint (`403`); its portal dashboard view is unchanged.
+
+**Out of scope.** `RAID.md` I-48 (non-agent offer counts, G1); the portal "Claimable commission" INR label (D4, `RAID.md`); the
+"Offer received" filter meaning; a Journey link; ang-019 funnel and filters; ang-020 reports; caching; migrations.
+
+**Acceptance criteria.** Spec §8 `AGN-018-AC01`…`AC09` (+ `AC07b`); mapped to tests in `RTM.md` AGN-018.
+
+**Regression risks.** Spec §9: the portal dashboard Students value (deliberate fix), the agent nav labels and Applications children
+(deliberate test updates in `navigation.agent.test.ts`), `PortalSection` (additive `lead` slot), `agent_tasks.pending_count` (now built
+on `pending_stmt`, unchanged result).
+
+**Complexity:** Medium. **Risk:** Medium. **Migration:** none.
+
+**Status (2026-10-03): IMPLEMENTED, NOT COMPLETE** on `feature/agn-018-master-dashboard-impl`. Lite tests pass (the AGN-018 API and
+web tests). **Pending:** browser validation (including the first run of `apps/web/tests/e2e/agn-018-dashboard.spec.ts`, written, not
+yet run), the owner's full suites, and an independent Codex review.
+
 ## AGN-017 — Agency Notifications and Deadline Reminders
 
 **Title.** Tell the right agency member, in-app and by email, when something about their student changes, and remind them daily of
@@ -4181,6 +4229,7 @@ item, only for the progress-view question).
 | AGN-008 | `DEC-SCOPE-050` — statuses and withdrawn, Application ID, dates, agent status limits, link to the agency student, visibility, sidebar filters, throttle, archived read-only | **Resolved 2026-10-01/02** (A1–A15, `EXPLICIT_APPROVAL` in-session). `DEC-SCOPE-036` "submitted" stays `NEEDS_CONFIRMATION` |
 | AGN-016 | `DEC-SCOPE-053` — task owner on reassignment, delete, due time and overdue, linkage, KPI and nav, edit rules, cap, retry | **Resolved 2026-10-02** (T1–T8, `EXPLICIT_APPROVAL` in-session) |
 | AGN-010 | `DEC-SCOPE-056` — one offer per application, deadline column, offer document, `offer_letter_url`, Offers count, conditions, concurrent saves | **Resolved 2026-10-02** (O1–O7, `EXPLICIT_APPROVAL` in-session) |
+| AGN-018 | `DEC-SCOPE-060` — agency-only scope, staff performance summary, KPI definitions, navigation, one offer rule, endpoint approach | **Resolved 2026-10-03** (G1–G6, `EXPLICIT_APPROVAL` in-session; number provisional) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in

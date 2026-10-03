@@ -100,8 +100,8 @@ Response header `Cache-Control: private, no-store` (the existing per-user-data p
 
 `AgentDashboardOut`: `scope: Literal["agency","own"]`, `member_code: str | None`, the eight integer counts,
 `by_country` / `by_university: AgentBreakdownOut {items: list[{label: str, count: int}], other: int}`,
-`staff: list[AgentStaffRowOut] | None` (`code`, `name`, `role`, `active`, `students`, `applications`, `offers`, `enrollments`;
-no member or user UUIDs — data minimisation, the code is unique per agency), `unassigned_students: int | None`,
+`staff: list[AgentStaffRowOut] | None` (`code`, `name`, `active`, `students`, `applications`, `offers`, `enrollments` — no
+`role` field: the rows are staff members only; no member or user UUIDs — data minimisation, the code is unique per agency), `unassigned_students: int | None`,
 `commission: AgentCommissionSummaryOut | None` (`claimable: list[CommissionReportTotal]`, `claims: int`,
 `revenue: list[CommissionReportTotal]` — reusing AGN-014's `{currency, count, amount}` type), `reports_available: bool`,
 `as_of: datetime` (UTC). snake_case and FastAPI's `{"detail": ...}` errors, as every existing route. The response has one shape for
@@ -151,7 +151,7 @@ Fetches `DASHBOARD_URL` (`lib/agentDashboard.ts`, new) with `serverApi`. Reuses 
   `kpi-note` ("Includes later stages and withdrawn applications").
 - Tables reuse `.table-scroll` (`tabIndex={0} role="region" aria-label=…`, the `GlobalEducationStudentTable` pattern, so a
   keyboard user can scroll them) with `<caption>` and `th scope="row"` for the label column: Applications by country;
-  Applications by university (+ "Other" row when `other > 0`); Master only: Staff performance (Member, Role, Students,
+  Applications by university (+ "Other" row when `other > 0`); Master only: Staff performance (Member, Students,
   Applications, Offers, Enrollments; deactivated members carry a text badge "Deactivated", never colour alone) + an "Unassigned"
   students row.
 - "View reports" link when `reports_available`.
