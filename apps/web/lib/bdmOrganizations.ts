@@ -32,8 +32,8 @@ export type OrgRow = {
   archived: boolean; last_meeting_at: string | null; next_meeting_at: string | null; permissions: OrgPermissions;
 };
 export type Organization = OrgRow & {
-  phone: string | null; email: string | null; website: string | null; courses_interested: string | null; student_count: number | null;
-  contacts: OrgContact[]; created_by_name: string; archived_at: string | null; created_at: string; updated_at: string;
+  phone: string | null; email: string | null; website: string | null; address: string | null; courses_interested: string | null; student_count: number | null;
+  profile: OrgProfile | null; contacts: OrgContact[]; created_by_name: string; archived_at: string | null; created_at: string; updated_at: string;
 };
 export type OrgDuplicateMatch = { id: string; code: string; name: string; city: string; archived: boolean; assigned_bdm_name: string };
 export type OrgDuplicate = { message: string; matches: OrgDuplicateMatch[]; total: number };
@@ -71,3 +71,65 @@ export function teamSearch(bdmType: BdmType, excludeId?: string) {
     return { items: active.map((b) => ({ id: b.id, label: b.full_name, detail: `${b.employee_id} · ${b.email}` })), truncated: page.total > page.items.length };
   };
 }
+
+// bdm-003 (DEC-SCOPE-063, spec §6.1): type-specific profiles. The API validates every value; these drive the form, labels and filters.
+export type ProfileGroup = "agent" | "school" | "college";
+const PROFILE_GROUP: Partial<Record<string, ProfileGroup>> = { agent: "agent", school: "school", college: "college", university: "college" };
+export const profileGroup = (orgType: string): ProfileGroup | null => PROFILE_GROUP[orgType] ?? null;
+export const PROFILE_GROUP_LABEL: Record<ProfileGroup, string> = { agent: "Agent", school: "School", college: "College" };
+export const PROFILE_FIELDS = {
+  agent: ["country", "territory", "source", "staff_count"],
+  school: ["board", "school_type", "grade_from", "grade_to"],
+  college: ["affiliation", "college_type", "courses"],
+} as const;
+export type ProfileField = (typeof PROFILE_FIELDS)[ProfileGroup][number];
+export const ALL_PROFILE_FIELDS: ProfileField[] = [...PROFILE_FIELDS.agent, ...PROFILE_FIELDS.school, ...PROFILE_FIELDS.college];
+export const PROFILE_LABEL: Record<ProfileField, string> = {
+  country: "Country", territory: "Territory", source: "Source", staff_count: "Number of staff", board: "Board", school_type: "School type",
+  grade_from: "Lowest grade", grade_to: "Highest grade", affiliation: "University / affiliation", college_type: "College type", courses: "Courses",
+};
+export const SOURCES = ["referral", "website", "event", "cold_call", "walk_in", "other"] as const;
+export const SOURCE_LABEL: Record<string, string> = { referral: "Referral", website: "Website", event: "Event", cold_call: "Cold call", walk_in: "Walk-in", other: "Other" };
+export const BOARDS = ["CBSE", "ICSE", "State", "IB", "Other"] as const;
+export const BOARD_LABEL: Record<string, string> = { CBSE: "CBSE", ICSE: "ICSE", State: "State board", IB: "IB", Other: "Other" };
+export const SCHOOL_TYPES = ["private", "government", "aided", "international", "other"] as const;
+export const SCHOOL_TYPE_LABEL: Record<string, string> = { private: "Private", government: "Government", aided: "Aided", international: "International", other: "Other" };
+export const COLLEGE_TYPES = ["engineering", "arts_science", "management", "medical", "polytechnic", "other"] as const;
+export const COLLEGE_TYPE_LABEL: Record<string, string> = {
+  engineering: "Engineering", arts_science: "Arts & Science", management: "Management", medical: "Medical", polytechnic: "Polytechnic", other: "Other",
+};
+export const GRADES = [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+const PRE_PRIMARY: Record<number, string> = { [-2]: "Nursery", [-1]: "LKG", 0: "UKG" };
+export const gradeLabel = (grade: number): string => PRE_PRIMARY[grade] ?? String(grade);
+
+export function gradeRange(from: number | null, to: number | null): string {
+  if (from !== null && to !== null) return `${gradeLabel(from)}–${gradeLabel(to)}`;
+  if (from !== null) return `From ${gradeLabel(from)}`;
+  if (to !== null) return `Up to ${gradeLabel(to)}`;
+  return "—";
+}
+
+/** A stored enum value as words; an unknown (newer) value is shown as it is instead of breaking the page (spec §12.2 F8). */
+export const labelOf = (labels: Record<string, string>, value: string | null): string => (value === null ? "—" : (labels[value] ?? value));
+
+const SUGGESTED_ROLES: Record<ProfileGroup, ContactRole[]> = { agent: ["owner"], school: ["principal", "management", "counselor"], college: ["principal", "dean", "hod", "placement_officer"] };
+/** P8: every role stays valid on every type; the type's named people come first in the Role list. */
+export function rolesFor(orgType?: string): ContactRole[] {
+  const group = orgType ? profileGroup(orgType) : null;
+  const first = group ? SUGGESTED_ROLES[group] : [];
+  return [...first, ...CONTACT_ROLES.filter((r) => !first.includes(r))];
+}
+
+/** The fields of a `profile_not_empty` 409 (spec §5.2), or null for any other body. */
+export function profileNotEmpty(detail: unknown): string[] | null {
+  const d = detail as { code?: string; fields?: unknown } | null;
+  return d && typeof d === "object" && d.code === "profile_not_empty" && Array.isArray(d.fields) ? d.fields.map(String) : null;
+}
+
+export const typeChangeMessage = (group: ProfileGroup, fields: string[]): string =>
+  `Clear the ${PROFILE_GROUP_LABEL[group]} details before changing the type: ${fields.map((f) => PROFILE_LABEL[f as ProfileField] ?? f).join(", ")}.`;
+
+export type OrgProfile =
+  | { kind: "agent"; country: string | null; territory: string | null; source: string | null; staff_count: number | null }
+  | { kind: "school"; board: string | null; school_type: string | null; grade_from: number | null; grade_to: number | null }
+  | { kind: "college"; affiliation: string | null; college_type: string | null; courses: string | null };
