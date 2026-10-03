@@ -14,10 +14,10 @@ from app.api.bdm import LIMIT, OFFSET
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import BdmActivity, User
-from app.schemas import BdmActivityChannel, BdmActivityCreate, BdmActivityDayPage, BdmActivityOut, BdmActivityUpdate
+from app.schemas import BdmActivityChannel, BdmActivityCreate, BdmActivityDayPage, BdmActivityOut, BdmActivityPage, BdmActivityUpdate
 from app.services import bdm_activities as svc
 from app.services import bdm_organizations as org_svc
-from app.services.bdm import bdm_context
+from app.services.bdm import bdm_context, require_manager, team_filter
 
 router = APIRouter(prefix="/bdm", tags=["bdm-activities"])
 DAY = Query(None, alias="date", description="IST calendar date, YYYY-MM-DD; default today")
@@ -117,3 +117,26 @@ async def delete_activity(activity_id: UUID, user: User = Depends(get_current_us
     await db.commit()
     svc.log("bdm_activity_deleted", user, activity_id)
     return Response(status_code=204)
+
+
+@router.get("/organizations/{org_id}/activities", response_model=BdmActivityPage)
+async def organization_activities(org_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user),
+                                  db: AsyncSession = Depends(get_db)):
+    """V5: every BDM's activities on the organization, for anyone who can read it (out of scope -> 404)."""
+    org = await org_svc.load_scoped(db, user, org_id)
+    now = await svc.db_now(db)
+    return await svc.page(db, [BdmActivity.organization_id == org.id], limit, offset, user, now)
+
+
+@router.get("/manager/activities", response_model=BdmActivityDayPage)
+async def team_activities(day: date | None = DAY, bdm_user_id: UUID | None = None, channel: BdmActivityChannel | None = None,
+                          limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Team scope (D4); `bdm_user_id` is ANDed with it, so it can only narrow."""
+    require_manager(user)
+    now = await svc.db_now(db)
+    chosen = _day(day, now)
+    filters = [*team_filter(user), *svc.optional_filters(channel, None)]
+    if bdm_user_id:
+        filters.append(BdmActivity.bdm_user_id == bdm_user_id)
+    listed = await svc.page(db, [*filters, *svc.day_filters(chosen)], limit, offset, user, now)
+    return {**listed, "counts": await svc.day_counts(db, filters, chosen)}
