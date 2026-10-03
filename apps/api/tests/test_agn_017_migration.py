@@ -40,10 +40,10 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0064_and_is_the_single_head():
+def test_migration_chains_after_0064_with_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert len(HEAD) <= 32  # alembic_version.version_num is VARCHAR(32)
-    assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
+    assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1  # one head; later migrations chain after 0065
 
 
 def test_model_declares_the_nullable_dedupe_key_and_the_partial_indexes():

@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Identity, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint, Uuid, false, text
+from sqlalchemy import JSON, BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Identity, Index, Integer, Numeric, Sequence, SmallInteger, String, Text, UniqueConstraint, Uuid, false, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -933,6 +933,69 @@ class BdmProfile(Base, TimestampMixin):
     territory: Mapped[str | None] = mapped_column(String(120), nullable=True)
     reporting_manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
+
+
+# bdm-010 (DEC-SCOPE-060, T6): TRV-000123 codes. On the metadata so 0001's create_all makes it on a fresh database; 0066 makes it
+# on an upgraded one. A rolled-back create skips a number; codes stay unique and increasing.
+BDM_TRIP_CODE_SEQ = Sequence("bdm_trip_code_seq", metadata=Base.metadata)
+
+
+class BdmTrip(Base, TimestampMixin):
+    """bdm-010 (DEC-SCOPE-060): one BDM trip (§3). Organization and appointment time are not stored -- bdm-011 links appointments.
+    Actual cost is never stored: it is the sum of `bdm_trip_expenses` (D15). Rules live in `services/bdm_travel.py`."""
+
+    __tablename__ = "bdm_trips"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_bdm_trips_code"),
+        CheckConstraint("return_date >= travel_date", name="ck_bdm_trips_dates"),
+        CheckConstraint("mode IN ('flight', 'train', 'bus', 'car', 'cab', 'local')", name="ck_bdm_trips_mode"),
+        CheckConstraint("estimated_cost >= 0", name="ck_bdm_trips_estimated_cost"),
+        CheckConstraint("currency = 'INR'", name="ck_bdm_trips_currency"),
+        CheckConstraint("approval_status IN ('draft', 'submitted', 'approved', 'rejected')", name="ck_bdm_trips_approval_status"),
+        CheckConstraint("travel_status IN ('planned', 'in_progress', 'completed', 'cancelled')", name="ck_bdm_trips_travel_status"),
+        CheckConstraint("travel_status IN ('planned', 'cancelled') OR approval_status = 'approved'", name="ck_bdm_trips_status_pair"),
+        Index("ix_bdm_trips_bdm_travel_date", "bdm_user_id", "travel_date"),
+        Index("ix_bdm_trips_submitted", "bdm_user_id", postgresql_where=text("approval_status = 'submitted'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    travel_date: Mapped[date] = mapped_column(Date)
+    return_date: Mapped[date] = mapped_column(Date)
+    from_place: Mapped[str] = mapped_column(String(120))
+    to_place: Mapped[str] = mapped_column(String(120))
+    purpose: Mapped[str] = mapped_column(Text)
+    mode: Mapped[str] = mapped_column(String(10))
+    accommodation_required: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    estimated_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    currency: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR")
+    approval_status: Mapped[str] = mapped_column(String(12), default="draft", server_default="draft")
+    travel_status: Mapped[str] = mapped_column(String(12), default="planned", server_default="planned")
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class BdmTripExpense(Base, TimestampMixin):
+    """bdm-010 (T7): one itemized INR expense line on an approved trip. No receipt (owner, 2026-10-03)."""
+
+    __tablename__ = "bdm_trip_expenses"
+    __table_args__ = (
+        CheckConstraint("category IN ('travel', 'stay', 'food', 'local', 'other')", name="ck_bdm_trip_expenses_category"),
+        CheckConstraint("amount > 0", name="ck_bdm_trip_expenses_amount"),
+        Index("ix_bdm_trip_expenses_trip", "trip_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    trip_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_trips.id"))
+    category: Mapped[str] = mapped_column(String(10))
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    expense_date: Mapped[date] = mapped_column(Date)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 class LiveSession(Base, TimestampMixin):
     __tablename__ = "live_sessions"
