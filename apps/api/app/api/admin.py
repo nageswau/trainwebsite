@@ -46,6 +46,7 @@ from app.models import (
 from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
 from app.services import bdm as bdm_rules
 from app.services.agent_applications import owned, with_owner
+from app.services.agent_network import org_counts
 from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
 from app.services.provisioning import (
     IssuedWelcome,
@@ -1165,8 +1166,16 @@ async def list_agent_orgs(
     if orgs:
         for member, member_user in (await db.execute(org_masters(*(o.id for o in orgs)))).all():  # AGN-002: Masters only, never staff
             masters.setdefault(member.org_id, []).append({"id": member.id, "code": member.code, "full_name": member_user.full_name, "email": member_user.email, "status": member.status})
-    items = [{"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, [])} for o in orgs]
+    counts = await org_counts(db, [o.id for o in orgs])  # AGN-022: additive keys only (DEC-SCOPE-063 N5)
+    items = [
+        {"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, []), **_network_counts(counts[o.id])}
+        for o in orgs
+    ]
     return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
+
+
+def _network_counts(c: dict) -> dict:
+    return {"staff_count": c["staff_count"], "counts": {"students": c["students"], "applications": c["applications"], "enrollments": c["enrollments"]}}
 
 
 @agents_router.post("/agent-orgs/{org_id}/{action}")
