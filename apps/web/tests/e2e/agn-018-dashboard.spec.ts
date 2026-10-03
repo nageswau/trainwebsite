@@ -52,14 +52,24 @@ test("a Master sees the agency board; staff see their own board and the §4 side
   await expect.poll(() => new URL(staff.url()).search).toBe("");
 });
 
-test("the board fits a 320 px screen and its tables scroll by keyboard (AGN-018)", async ({ page }) => {
+test("the board fits a 320 px screen: empty agency notes, and the seeded agency's tables show every number (AGN-018)", async ({ page }) => {
   const masterEmail = await registerApprovedAgency(page, Date.now());
   await page.setViewportSize({ width: 320, height: 800 });
   await signIn(page, masterEmail, "Sup3r-Secret-Pass!");
   await page.goto("/overseas/agent/dashboard");
   await expect(page.getByRole("heading", { name: "Pipeline", exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
-  const region = page.getByRole("region", { name: "Staff performance" });
+  // QA18-05: an agency with no staff gets the note, not a header-only table.
+  await expect(page.getByText("No staff yet — add staff from Team")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Staff performance" })).toHaveCount(0);
+
+  // The seeded agency (python -m app.seed) has applications: its tables are keyboard regions and no number is cut off (QA18-04).
+  await signIn(page, "agent@edusphere.local", "Demo@123");
+  const region = page.getByRole("region", { name: "Applications by country" });
   await region.focus();
   await expect(region).toBeFocused();
+  const hidden = await page.evaluate(() =>
+    [...document.querySelectorAll(".table-scroll td")].filter((td) => td.getBoundingClientRect().right > document.documentElement.clientWidth).length,
+  );
+  expect(hidden).toBe(0);
 });
