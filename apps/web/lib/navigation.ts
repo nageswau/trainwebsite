@@ -42,16 +42,17 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
 };
 
 // bdm-001: BDM and BDM-manager sidebars, and the signed-out chooser (College BDMs sign in at /it, Agent/School BDMs at /overseas;
-// managers at /admin).
+// managers at /admin). bdm-002 adds Organizations to both.
 // bdm-010: Travel (BDM), Approvals (manager), and each role's Notifications (QA10-01; the unread badge comes from lib/bdmNav).
 export const BDM_NOTIFICATIONS_HREF = "/bdm/notifications";
 export const BDM_MANAGER_NOTIFICATIONS_HREF = "/bdm/manager/notifications";
 export const BDM_NAV: NavItem[] = [
-  { label: "My Day", href: "/bdm/my-day" }, { label: "Travel", href: "/bdm/travel" }, { label: "Notifications", href: BDM_NOTIFICATIONS_HREF },
-  { label: "Profile", href: "/bdm/profile" },
+  { label: "My Day", href: "/bdm/my-day" }, { label: "Organizations", href: "/bdm/organizations" }, { label: "Travel", href: "/bdm/travel" },
+  { label: "Notifications", href: BDM_NOTIFICATIONS_HREF }, { label: "Profile", href: "/bdm/profile" },
 ];
 export const BDM_MANAGER_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" }, { label: "Approvals", href: "/bdm/manager/approvals" },
+  { label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" },
+  { label: "Organizations", href: "/bdm/manager/organizations" }, { label: "Approvals", href: "/bdm/manager/approvals" },
   { label: "Notifications", href: BDM_MANAGER_NOTIFICATIONS_HREF },
 ];
 export const BDM_SIGN_IN = "/bdm/sign-in";
@@ -91,7 +92,11 @@ export const OVERSEAS_PUBLIC:NavItem[] = [
   {label:"Scholarships",href:"/overseas/scholarships"},{label:"Events",href:"/overseas/events"},{label:"Contact",href:"/overseas/contact"}
 ];
 
-const AGENT_APPLICATION_FILTERS: NavItem[] = STATUS_GROUPS.filter((g) => g !== "all").map((g) => ({ label: GROUP_LABELS[g], href: `/overseas/agent/applications?status=${g}` }));
+// AGN-018 (DEC-SCOPE-062 G4): "All applications" first (EVID-015 §4 "All"), then the AGN-008 filters. All is the bare path -- the
+// list's own default view (spec §6.3) -- so it is the current link wherever no filter is set (browser QA18-07).
+const AGENT_APPLICATION_FILTERS: NavItem[] = STATUS_GROUPS.map((g) => ({ label: GROUP_LABELS[g], href: g === "all" ? "/overseas/agent/applications" : `/overseas/agent/applications?status=${g}` }));
+// AGN-018 (G4): EVID-015 §4 wording where the generated title-case label differs.
+const AGENT_NAV_LABELS: Record<string, string> = { tasks: "Tasks & Follow-ups" };
 // AGN-009 (DEC-SCOPE-052 G9): EVID-015 §4 Documents -> Pending / Uploaded / Additional Documents, for Masters and staff.
 const AGENT_DOCUMENT_VIEWS: NavItem[] = VIEWS.map((v) => ({ label: VIEW_NAV_LABELS[v], href: `/overseas/agent/documents?view=${v}` }));
 
@@ -109,7 +114,7 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   // AGN-007 (DEC-SCOPE-049): Universities is the agency's own university list. AGN-008 (DEC-SCOPE-050 A7): Applications carries
   // the EVID-015 §4 sidebar filters as sub-links (same page, ?status=). AGN-016 (DEC-SCOPE-053 T5): Tasks, for Masters and staff,
   // after Documents (the EVID-015 §4 sidebar order). AGN-017 (DEC-SCOPE-059 N8): Notifications, for Masters and staff, after Tasks.
-  "overseas/agent": ["dashboard","students","universities","applications","documents","tasks","notifications","commissions","reports","team"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/agent/${x}`,...(x==="applications"?{children:AGENT_APPLICATION_FILTERS}:x==="documents"?{children:AGENT_DOCUMENT_VIEWS}:{})})),
+  "overseas/agent": ["dashboard","students","universities","applications","documents","tasks","notifications","commissions","reports","team"].map(x=>({label:AGENT_NAV_LABELS[x]??x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/agent/${x}`,...(x==="applications"?{children:AGENT_APPLICATION_FILTERS}:x==="documents"?{children:AGENT_DOCUMENT_VIEWS}:{})})),
 };
 // AGN-002 (DEC-SCOPE-040 S1): an agency's staff work on students and applications; Team and Commissions stay Master-only (the
 // server refuses them regardless -- this only keeps dead links out of the sidebar).
@@ -117,9 +122,21 @@ const STAFF_HIDDEN = new Set(["/overseas/agent/team", "/overseas/agent/commissio
 const STAFF_REPORTS = "/overseas/agent/reports";
 // AGN-003 (DEC-SCOPE-044 P1): Reports is optional for staff -- shown only once their Master switches it on (the server refuses it
 // regardless; this keeps a dead link out of the sidebar). Masters are never limited.
+// AGN-018 (DEC-SCOPE-062 G4): the EVID-015 §4 staff sidebar -- "My Students" with All and Add (Add opens the existing form). No
+// Journey link until a route exists. Nothing is removed, so no access changes.
+const STAFF_STUDENTS: NavItem = {
+  label: "My Students",
+  href: "/overseas/agent/students",
+  children: [
+    { label: "All", href: "/overseas/agent/students" },
+    { label: "Add", href: "/overseas/agent/students?new=1" },
+  ],
+};
 export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissions?: AgentPermissions | null): NavItem[] {
   if (memberRole !== "staff") return nav;
-  return nav.filter((item) => !STAFF_HIDDEN.has(item.href) && (item.href !== STAFF_REPORTS || permissions?.can_view_reports === true));
+  return nav
+    .filter((item) => !STAFF_HIDDEN.has(item.href) && (item.href !== STAFF_REPORTS || permissions?.can_view_reports === true))
+    .map((item) => (item.href === STAFF_STUDENTS.href ? STAFF_STUDENTS : item));
 }
 // ENH-016: the cross-school School Analytics page lives under /overseas/admin (D1: Overseas and Super Admins).
 export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];

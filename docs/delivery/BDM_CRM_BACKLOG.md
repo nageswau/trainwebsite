@@ -250,6 +250,8 @@ Conventions used below:
 
 ### bdm-002 — Organization CRM core (common fields, contacts, assignment, scope)
 
+> **Status (2026-10-03):** **COMPLETE for its scope** on `feature/bdm-002-organization-crm` @ `6eb9e02` (`DEC-SCOPE-060`, migration `0066_bdm_organizations`, after merging `main` with AGN-011/AGN-017). Fresh evidence on the merged HEAD: backend lite 212 passed, web BDM set 165 passed, `tsc`/`eslint`/`next build` clean, Playwright 16 passed, Browser Use AC1–AC6 observed; browser QA `BDM-002_BROWSER_QA_2026-10-03.md` (15 findings, all fixed). AC5b is enforced by bdm-006. Full suites are run by the owner; Codex review waived. **C1** supersedes the edge case below "an organization with no contacts yet (allowed, flagged)": create needs at least one contact and the last contact cannot be deleted. Spec: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`.
+
 - **Business requirement:** an Organization CRM for the institutions BDMs meet: Organization Name, Type, City, State, Contact Person, Designation, Phone, Email, Website, Existing Partner?, Courses Interested, Number of Students, Last Meeting, Next Meeting, Assigned BDM (§9). The types are College, University, Agent, School, Corporate, Training Institute and Other.
 - **Existing behavior:** there is no prospect or organization store. `schools` holds onboarded partner schools only, and `universities` is the global catalogue.
 - **Expected behavior:**
@@ -435,7 +437,7 @@ Conventions used below:
   3. Every status transition is recorded; the allowed transitions are documented and enforced.
   4. Reschedule keeps the old time in history and sets the status to Rescheduled.
   5. Completed requires an outcome and a past start time.
-  6. Appointments on archived organizations → 422.
+  6. Appointments on archived organizations → 422 (bdm-002 AC5b: resolve the organization with `services/bdm_organizations.load_scoped(..., lock=True)` and refuse when `archived_at` is set).
 - **Positive scenarios:** book → confirm → complete with outcome; reschedule twice.
 - **Negative scenarios:** Completed before the start time → 422; a type from another module → 422; editing another BDM's appointment → 403/404.
 - **Edge cases:** two appointments overlapping for the same BDM (warn, not block); an appointment spanning midnight; changing the timezone display (stored in UTC, shown in IST); cancelling an appointment that belongs to an approved trip (the trip's counts update).
@@ -547,7 +549,7 @@ Conventions used below:
 
 ### bdm-010 — Travel requests, approval, modes, costs, expenses
 
-> **Status (2026-10-03):** implemented on branch `worktree-bdm-010` (`DEC-SCOPE-060`, migration `0066_bdm_trips`; spec
+> **Status (2026-10-03):** implemented on branch `worktree-bdm-010` (`DEC-SCOPE-063`, migration `0068_bdm_trips` -- drafted as 060/0066, renumbered on merging `main` @ `3bde879`; spec
 > `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md`). Owner answers T1–T14 settle the open spec decisions: one From/To
 > per trip; approver resolved at decision time, super_admin only while the manager is inactive; in-app notices only; expenses
 > (category + INR amount + date + note, **no receipts**) once approved; `TRV-000123` codes; withdraw/resubmit; date guards.

@@ -157,6 +157,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - **Staff activity (`AGN-021`, `DEC-SCOPE-046`):** an **Activity** button on each staff row of the Team page (`SCR-AGT-007`), visible to Masters only. No new navigation item; staff never reach the Team page.
 - **Commission Revenue and report (`AGN-014`, `DEC-SCOPE-051`):** no navigation change. Masters see a **Revenue** metric on the Dashboard and a **Commission report** panel (filters, CSV) on their existing **Reports** page (`SCR-AGT-005` AGN-014 update). Staff never see either; staff with Reports switched on keep the commission-free staff report.
 - `SCR-AGT-009` — /overseas/agent/universities — The agency's own university list (Master: add/edit/delete; Staff: view) *(net-new, 2026-10-01, `AGN-007`, `DEC-SCOPE-049`)*. **The Agent nav gains "Universities", visible to both Master and Staff** (it is not in the staff-hidden list in `lib/navigation.ts`; `navigation.agent.test.ts`). The student shortlist is a panel inside `SCR-AGT-008`'s detail view, not a nav item.
+- **Master / Staff dashboard and the staff sidebar (`AGN-018`, `DEC-SCOPE-062` G4; relabel and link existing pages only — no access is removed):** `/overseas/agent/dashboard` (`SCR-AGT-003`) shows the agency KPI board to both roles — a Master the whole agency (with the Commission group and the Staff performance table), Staff their assigned students only. Navigation, both roles: **Applications** children now start with **All applications** (`/overseas/agent/applications`, the list's default — browser QA18-07), then the AGN-008 status filters; **Tasks** is labelled **Tasks & Follow-ups**. Staff only: **Students** becomes **My Students** with children **All** (`/overseas/agent/students`) and **Add** (`/overseas/agent/students?new=1`, which opens the existing add form once and then drops `new=1` from the URL); Masters keep **Students** without children. Unchanged: Universities, the Withdrawn filter, Reports gating, Team/Commissions hidden from staff, the unread badge; mobile shows children as "Parent: Child" (e.g. "My Students: Add"). **No Journey link** until a route exists.
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Overseas Admin
@@ -254,6 +255,7 @@ Signs in at `/it/login` (College BDM, division `it`) or `/overseas/login` (Agent
 
 - /bdm/my-day — My Day (minimal shell in bdm-001: welcome + profile summary; content arrives with bdm-014).
 - /bdm/profile — read-only §1 profile.
+- /bdm/organizations — Organization CRM (`bdm-002`): every organization of the BDM's module, filters (name/code, city, type, assigned to me, show archived); `/bdm/organizations/new` (add, ≥1 contact, duplicate warning); `/bdm/organizations/{id}` (details, contacts, edit/archive when assigned). Sidebar: My Day · Organizations · Profile.
 - /bdm/travel — My trips (bdm-010): list with an approval-status filter; /bdm/travel/new (draft); /bdm/travel/[id] (actions, details, edit while draft/rejected, costs and expenses, remarks). Nav item "Travel".
 
 ## BDM Manager *(net-new, added 2026-10-02, `DEC-SCOPE-055`, `bdm-001`)*
@@ -262,6 +264,7 @@ Division `global`; signs in at `/admin/login` (heading "Administration sign-in")
 
 - /bdm/manager/dashboard — team counts (minimal shell; bdm-023 adds the management dashboard).
 - /bdm/manager/team — the BDMs who report to this manager (paged).
+- /bdm/manager/organizations — the team's organizations (`bdm-002`), read-only except reassign and restore; `/bdm/manager/organizations/{id}`. Sidebar: Dashboard · Team · Organizations.
 - /bdm/manager/approvals — trips waiting for this manager's approval (bdm-010; nav item "Approvals"); /bdm/manager/trips/[id] — read-only trip with Approve / Reject (reason required).
 
 **Signed-out `/bdm/*`:** `/bdm/manager/*` → `/admin/login?next=…`; any other `/bdm/*` → the public chooser `/bdm/sign-in?next=…` (College BDM / Agent-School BDM / Administration links; `next` kept only when same-origin).

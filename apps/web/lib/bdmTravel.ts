@@ -1,6 +1,6 @@
 import { detailMessage } from "@/lib/apiErrors";
 
-// bdm-010 (DEC-SCOPE-060): trip types, labels and endpoints shared by the BDM, manager and admin travel screens.
+// bdm-010 (DEC-SCOPE-063): trip types, labels and endpoints shared by the BDM, manager and admin travel screens.
 export type TripMode = "flight" | "train" | "bus" | "car" | "cab" | "local";
 export type ApprovalStatus = "draft" | "submitted" | "approved" | "rejected";
 export type TravelStatus = "planned" | "in_progress" | "completed" | "cancelled";

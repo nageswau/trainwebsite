@@ -3250,10 +3250,96 @@ validation, the owner's full suites and an independent Codex review are pending.
 
 **Consequences:** migration `0065_agent_notifications` (one nullable column, four partial indexes); a new `services/agent_notifications.py`; additive hooks in `agent_students`, `agent_documents`, `agent_applications`, `agent_tasks` and three `workflows.py` routes; the first crontab beat entry; one new read endpoint; an agent nav item and optional `NavItem.badge`. Unchanged: ENH-014 dispatch/delivery, existing list/read contracts, students' and counselors' notices, `_maybe_trigger_agent_commission`. Design: `docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md`. **New Feature ID authorized:** `AGN-017`.
 
-### DEC-SCOPE-060 — BDM travel requests, approval, modes, costs, expenses (`bdm-010`)
+### DEC-SCOPE-060 — BDM Organization CRM core (`bdm-002`)
 
-**ID note:** the next free number on `main` @ `e1c2084` (`059` is AGN-017). bdm-002 (in flight) also claims a number and migration
-`0064`; whichever of bdm-002 and bdm-010 merges second re-chains (this item would become `DEC-SCOPE-061` / `0067_bdm_trips`).
+**ID note:** recorded on the branch as `DEC-SCOPE-058` with migration `0066_bdm_organizations`; AGN-011 (`DEC-SCOPE-058`, `0064_application_deposits`) and AGN-017 (`DEC-SCOPE-059`, `0065_agent_notifications`) reached `main` first, so this entry became `DEC-SCOPE-060` and the migration `0066_bdm_organizations` when `main` was merged into `feature/bdm-002-organization-crm` (2026-10-03). bdm-002 commits and docs from before that merge that say `DEC-SCOPE-058` / `0064` mean this decision / migration.
+
+**Question:** how are BDM organizations stored, scoped, assigned, archived and de-duplicated?
+
+**Evidence:** `EVID-016` §9 (`DERIVED_BLUEPRINT`); `DEC-SCOPE-055` D5, D11 (Q-02), D12 (Q-03), D26 (Q-17), D27 (Q-18); bdm-002 impact analysis 2026-10-03 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — questions put one at a time, the design approved section by section, then the spec; not the source document's own wording):
+- **C1** at least one contact on create; the last contact cannot be deleted (supersedes the backlog edge case "an organization with no contacts yet (allowed, flagged)").
+- **C2** a `bdm_manager` reads the organizations assigned to their team and reassigns them among their own BDMs of the same type; no create or edit.
+- **C3** a BDM may create any of the seven organization types; ownership (`bdm_type`) is the creator's type.
+- **C4** codes are sequential `ORG-000123` (a Postgres sequence).
+- **C5** the assigned BDM (or super_admin) archives; the team manager or super_admin restores; both audited.
+- **C6** Courses Interested is free text (the `programs` catalogue is bdm-003).
+- **C7** no access for `it_admin` / `overseas_admin`.
+- **C8** the duplicate check includes archived organizations, labelled archived.
+- **C9** the assignee on create is always the creator.
+- **C10** Contact Person / Designation come from the primary contact; the organization keeps its own phone, email and website.
+- **C11** Existing Partner is a manual yes/no.
+- **C12** approach A: a flat `bdm_organizations` router + service; additive `bdm_type` / `q` filters on `GET /bdm/manager/team`.
+- **C13** Name and City are required.
+- **C14** super_admin reads, edits, archives, restores and reassigns everything; cannot create.
+- **C15** archived organizations are read-only until restored.
+- **C16** Address is not in bdm-002 (bdm-003).
+
+**Consequences:** migration `0066_bdm_organizations` (two new tables + `bdm_organization_code_seq`; downgrade refuses while organizations exist); routes `GET/POST /bdm/organizations`, `GET/PATCH /bdm/organizations/{id}`, `POST /{id}/archive|restore|assign`, `POST /{id}/contacts`, `PATCH/DELETE /{id}/contacts/{cid}`; pages `/bdm/organizations[/new|/{id}]` and `/bdm/manager/organizations[/{id}]`. Unchanged: every existing route, table and page (the team route only gains optional filters). bdm-006 refuses appointments on archived organizations (its own AC6). A retention/erasure policy for BDM data stays **NEEDS_CONFIRMATION**. Design: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`; plan: `docs/superpowers/plans/2026-10-03-bdm-002-organization-crm.md`. **New Feature ID authorized:** `bdm-002`.
+
+### DEC-SCOPE-061 — Agent student journey and complete history (`AGN-015`)
+
+**ID note:** drafted as `DEC-SCOPE-060` with migration `0066_audit_entity_index` (both free on `main` @ `e1c2084`); renumbered
+`DEC-SCOPE-061` on merging `main` @ `c5cdc8a`, where `060` is bdm-002 (PR #50) with `0066_bdm_organizations`; the migration is now
+`0067_audit_entity_index` after it (one head). AGN-015 commits from before this merge that say `060` / `0066` mean this decision /
+migration.
+
+**Question:** the owner's `AGN-015` statement (in-session, 2026-10-03): requirement **"Student Journey" (§4) and "View complete student
+history" (§2): Create → Counseling → Shortlist → Documents → Application → Offer → Deposit → Visa → Enrollment**; acceptance: **every
+event from the source items appears once, in order, with its actor; the step tracker matches the stored data.** Several steps keep only
+their current state (counseling, assignment, shortlist removals, deposit terms, visa stages): where do their events come from, how does
+a tracker show several applications, what does each step's completion mean, how are actors outside the agency shown, which events
+count, and in which order?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2, §4 and §5 Steps 1–9 (the source's wording is not the
+approval; its §4 path omits Counseling, Shortlist and Deposit, which the owner's nine-step list includes). `AGENT_CRM_BACKLOG.md`
+ang-015 (`DERIVED_BLUEPRINT`; its "database impact: none" is superseded by J1). Graphify/codebase survey in the design spec §3.
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — the owner's answers, not the source document's wording):
+
+- **J1 — Event sources.** Steps with no history table are read from `audit_logs`; an index on `(entity_type, entity_id, created_at)`
+  is added for per-entity reads. Each event has exactly one source; audit rows that duplicate a status-history row, a document event or
+  the record itself are not events.
+- **J2 — Tracker.** Steps 1–4 (Create, Counseling, Shortlist, Documents) once for the student; steps 5–9 (Application, Offer, Deposit,
+  Visa, Enrollment) one row per in-scope application.
+- **J3 — Completion rules.** As the design spec §4 (states `not_started`, `in_progress`, `done`, `not_required`, `refunded`,
+  `refused`, `withdrawn`; a withdrawn application's unsettled steps read withdrawn).
+- **J4 — Actors.** Members of the viewer's agency by name; everyone else by a fixed role label (EduSphere counsellor / admin, Student,
+  Parent, University, System). No outside name or email leaves the server.
+- **J5 — Event kinds.** All journey changes, plus assignment and archive, tasks and follow-ups, and document downloads; not deposit
+  checkout starts; never commission events (Master-only, `DEC-SCOPE-051`).
+- **J6 — Order.** Newest first, paginated (20 per page; `limit` ≤ 100, `offset` ≤ 10 000).
+
+**Consequences:** migration `0067_audit_entity_index` (one index; no row read or written); a new read-only `services/agent_journey.py`;
+two GET routes (`…/crm/students/{id}/journey`, `…/crm/students/{id}/timeline`) with the student detail's scope and `404`; a Journey
+tracker and a Show-history list in the student detail panel. Unchanged: every existing response, write route, audit action and the
+Staff Activity allow-list. Limitation recorded: document reviews made before AGN-009 (2026-10-02) have no event row and are not
+reconstructed; their uploads are (from the document row). Design: `docs/superpowers/specs/2026-10-03-agn-015-student-journey-design.md`.
+**New Feature ID authorized:** `AGN-015`.
+
+### DEC-SCOPE-062 — Agency Master / Staff dashboards and role-specific navigation (`AGN-018`)
+
+**ID note:** drafted as `DEC-SCOPE-060` (free on `main` @ `e1c2084`); renumbered `DEC-SCOPE-061` on merging `main` @ `c5cdc8a`, where `060` is bdm-002 (PR #50); renumbered again `DEC-SCOPE-062` on merging `main` @ `09bd5e7`, where `061` is AGN-015 (PR #51). AGN-018 has no migration, so nothing re-chained. AGN-018 commits and docs from before these merges that say `DEC-SCOPE-060` or `DEC-SCOPE-061` mean this decision.
+
+**Question:** the owner's `AGN-018` statement (in-session, 2026-10-03): "Master dashboard with 14 KPIs (§2); Staff 'Dashboard ✅ Limited' and the Staff sidebar (§4, §6)", with acceptance criteria: each KPI equals a hand-computed fixture count; Staff numbers include only their own students; offers are counted by stage and by offer record, consistently. Which KPIs mean what, how is the Staff variant limited, what happens to the stale offer counts carried here (`RAID.md` I-48), and how far does the sidebar change?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Dashboard, §4 Staff sidebar, §6 "Dashboard ✅ / ✅ Limited" (the source's wording is not the approval); `AGENT_CRM_BACKLOG.md` ang-018 (`DERIVED_BLUEPRINT`); Q-10 "Revenue = commission only" (the answers table cites `DEC-SCOPE-035`, a known mis-citation — see that file's citation note). Impact analysis, 2026-10-03 (the graphify snapshot predates AGN-001…017, so findings were checked in source): the agency dashboard is `services/portal.py` `_agent()` computing rows in Python; its Students metric inner-joins `users`, so students with no login are not counted; offers are counted by `counts_as_offer` (O5) while the sidebar "Offer received" filter is `status = 'offer'`; there is no dashboard endpoint and no `SchoolDashboardPanel` (the component is `SchoolKpiBoard`); one shared agency nav is filtered by `agentNavFor`.
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions and three design-section reviews; design spec `docs/superpowers/specs/2026-10-03-agn-018-agency-dashboards-design.md` §2):
+
+- **G1 — Agency only.** `RAID.md` I-48 (non-agent offer counts) stays out of scope and open.
+- **G2 — Staff performance** = a compact Master-only per-member table (Students / Applications / Offers / Enrollments, all-time). Funnel and filters stay with ang-019.
+- **G3 — KPI definitions** (spec §4): Total students = active agency records, login or not; Applications = non-withdrawn; Offers = O5; Visa applications / approvals = distinct applications with a visa case / an approved decision; Enrollments = stage `enrolled`; Pending documents = pending verification in document scope; Pending actions = open tasks (AGN-016, unchanged); by country / by university; Students by staff with an Unassigned row (Master only); Commission = the existing Master values, unchanged.
+- **G4 — Navigation:** relabel and link existing pages only — an "All applications" child and "Tasks & Follow-ups" for both roles; Staff "My Students" with All / Add. No access removed; no Journey link until a route exists.
+- **G5 — One offer rule:** O5 in SQL beside `counts_as_offer`, pinned by a parity test; the Offers tile is not linked to the "Offer received" filter, which keeps its AGN-008 meaning.
+- **G6 — Approach A:** a new read-only `GET /workflows/overseas/agent/crm/dashboard` with a typed schema and a dashboard panel on the existing page; the portal payload keeps its labels, order and strings.
+
+**Consequences:** no migration; a new router, service and schema; `portal._agent` dashboard values sourced from the shared service (Students now counts no-login students — a deliberate fix); a new `AgentDashboardPanel`; nav changes in `lib/navigation.ts`; `AgentStudentsPanel` honours `?new=1`. Unchanged: other roles' dashboards, the sidebar offer filter, commission values and the "Claimable commission" INR label (logged in `RAID.md`), models, existing routes. **New Feature ID authorized:** `AGN-018`. **Status:** implemented and verified on `feature/agn-018-master-dashboard-impl` (see `ENHANCEMENT_BACKLOG.md` §AGN-018).
+
+### DEC-SCOPE-063 — BDM travel requests, approval, modes, costs, expenses (`bdm-010`)
+
+**ID note:** drafted as `DEC-SCOPE-060` with migration `0066_bdm_trips` (both free on `main` @ `e1c2084`); renumbered `DEC-SCOPE-063` on merging `main` @ `3bde879`, where `060` is bdm-002 (`0066_bdm_organizations`), `061` AGN-015 (`0067_audit_entity_index`) and `062` AGN-018; the migration is now `0068_bdm_trips` after `0067_audit_entity_index` (one head).
 
 **Question:** the owner's bdm-010 statement (`BDM_CRM_BACKLOG.md` §4 bdm-010): track travel with the §3 fields and six modes, the
 reporting manager's approval, costs and itemized expenses. The owner confirmed on 2026-10-03 that bdm-010 is travel (the calendar
@@ -3292,7 +3378,7 @@ shadow the existing `app/api/bdm.py`); the T14 date rules are checked in the ser
 trip, text caps). Create and the status commands carry no idempotency key: a retried command gets 409 and the page refreshes; a
 retried create can leave a duplicate draft, which the BDM can cancel.
 
-**Consequences:** migration `0066_bdm_trips` (two tables, one sequence; additive; downgrade refuses while trips exist); 17 new routes
+**Consequences:** migration `0068_bdm_trips` (two tables, one sequence; additive; downgrade refuses while trips exist); 17 new routes
 under `/api/v1/bdm/trips` and `/api/v1/bdm/manager/{trips,approvals}`; no existing route or response changes. Web: `/bdm/travel`,
 `/bdm/travel/new`, `/bdm/travel/[id]`, `/bdm/manager/approvals`, `/bdm/manager/trips/[id]`, `/admin/bdm-travel-approvals`; nav entries
 Travel (BDM), Approvals (manager), BDM Travel Approvals (Super Admin). Spec: `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md`.

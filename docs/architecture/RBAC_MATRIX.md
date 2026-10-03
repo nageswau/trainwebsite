@@ -183,7 +183,7 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 
 | §6 row | Route(s) | Master | Staff |
 |---|---|---|---|
-| Dashboard | `GET /portal/overseas/agent/dashboard` | ✅ full | ✅ limited (no commission figures, AGN-002) |
+| Dashboard | `GET /portal/overseas/agent/dashboard`; `GET /workflows/overseas/agent/crm/dashboard` (**new**, `AGN-018` / `DEC-SCOPE-062`; `super_admin` `403`) | ✅ full (agency KPIs, staff table, commission) | ✅ limited (own students; no commission, no staff metrics — those fields are `null` and never queried; AGN-002, AGN-018) |
 | Create Student | `POST /workflows/overseas/agent/students` (links an existing student); `POST /workflows/overseas/agent/crm/students` (no login, AGN-004) | ✅ | ✅ (assigned to them) |
 | View Students | `GET /workflows/overseas/agent/students`, `GET /portal/overseas/agent/students`, `GET /lookups/overseas-students`, `GET /workflows/overseas/agent/crm/students`, `GET …/crm/students/{id}` | ✅ agency | ✅ assigned only (`DEC-SCOPE-042` G4) |
 | Edit Student | `PATCH /workflows/overseas/agent/crm/students/{id}` (students with no login) | ✅ | ✅ assigned only |
@@ -206,7 +206,7 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | Staff Management | `GET /workflows/overseas/agent/team/staff`, `PATCH …/staff/{id}`, `PUT …/staff/{id}/permissions` (**new**), `GET /workflows/overseas/agent/team`, `GET /portal/overseas/agent/team` | ✅ | ❌ |
 | Create Staff Login | `POST /workflows/overseas/agent/team/staff`, `POST …/staff/{id}/reset` | ✅ | ❌ |
 | Deactivate Staff | `POST …/staff/{id}/deactivate`, `POST …/staff/{id}/reactivate` | ✅ | ❌ |
-| Staff Performance | — | N/A | N/A |
+| Staff Performance | — (summary only: the Master dashboard's staff table, `AGN-018` / `DEC-SCOPE-062` G2; funnel and filters stay with ang-019) | N/A (summary ✅ on the dashboard) | N/A (never returned to Staff) |
 | View staff activity | `GET /workflows/overseas/agent/team/staff/{member_id}/activity` (**new**, `AGN-021` / `DEC-SCOPE-046`) | ✅ (own agency's staff; deactivated staff too) | ❌ `403` "Only an agency Master can manage the team"; another agency's user and any non-staff or unknown member id → `404` "Staff member not found" |
 | Reports | `GET /portal/overseas/agent/reports` | ✅ full | **T** (when on: today's staff report, no commission row) |
 | Commission | `GET /workflows/overseas/agent/commissions`, `POST …/commissions/{id}/claim`, `GET /portal/overseas/agent/commissions` | ✅ | ❌ |
@@ -479,7 +479,20 @@ Authorization follows the inline pattern (`User.role` check → `services/bdm.py
 
 **Explicit denies:** a `bdm` or `bdm_manager` cannot write any profile (no route); `PATCH /admin/users` never writes `role` or `division`; a reporting manager must be an **active `bdm_manager`** (else `422`), so no one can assign themselves or another role a team; `bdm_type` cannot be changed (`422`, B7); `bdm` calling a manager route, or a manager calling `/bdm/me` → `403`; every other role on any BDM route → `403`. The picker returns a manager's email only to the three admin roles (B10, to tell same-name managers apart). Every create or edit writes one `AuditLog` row (profile before/after on edit).
 
-**bdm-010 travel (`DEC-SCOPE-060`, added 2026-10-03).** Same inline pattern; scope is in the SQL `WHERE`, so an out-of-scope trip or expense id is `404` (never `403`).
+**BDM organizations (`bdm-002`, `DEC-SCOPE-060`).** Every `{id}` resolves through `services/bdm_organizations.load_scoped`; out of scope is
+the same `404` as a missing id.
+
+| Role | Can | Scope | Item |
+|---|---|---|---|
+| `bdm` | create (any of the 7 types, owned by their `bdm_type`, assigned to themselves); read/list every organization of their type; edit, archive and manage contacts of those **assigned to them** | Type scope (Q-02); other types `404`; not assignee `403` | `bdm-002` |
+| `bdm_manager` | read/list organizations assigned to **their team**; reassign among their own active BDMs of the same type; restore archived ones | Team scope (assignee reports to them); never create or edit (`403`) | `bdm-002` |
+| `super_admin` | read, edit, archive, restore, reassign any organization (any team, same type) | All; cannot create (no `bdm_type`) | `bdm-002` |
+| `it_admin`, `overseas_admin`, others | — | `403` "BDM role required" (C7) | `bdm-002` |
+
+Archived organizations are read-only (`409` "Restore this organization first"). Server-owned fields (`code`, `bdm_type`, assignee,
+`archived_at`) are unknown fields in every request body (`422`).
+
+**bdm-010 travel (`DEC-SCOPE-063`, added 2026-10-03).** Same inline pattern; scope is in the SQL `WHERE`, so an out-of-scope trip or expense id is `404` (never `403`).
 
 | Role | Allowed | Scope / rule | Feature |
 |---|---|---|---|

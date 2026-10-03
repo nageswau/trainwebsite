@@ -1,4 +1,4 @@
-"""bdm-010 (DEC-SCOPE-060, spec §5.2): trip rules, scope, decisions, expenses and audit.
+"""bdm-010 (DEC-SCOPE-063, spec §5.2): trip rules, scope, decisions, expenses and audit.
 
 Functions only; nothing here commits -- the route owns the transaction. One transition table (`RULES`) drives both enforcement
 and the UI's `can_*` flags. Logs carry ids, route, action and state -- never places, purpose, remarks, reason or amounts (S11)."""

@@ -1,4 +1,4 @@
-"""bdm-010 (DEC-SCOPE-060, spec §5.3): BDM trips, the manager's team view and approval queue, and expenses.
+"""bdm-010 (DEC-SCOPE-063, spec §5.3): BDM trips, the manager's team view and approval queue, and expenses.
 
 Scope always comes from the session; the only ids in a path are trip and expense ids, both scope-checked in SQL (404).
 Each write is one transaction: the service flushes, this module sends the in-app notices (`channels=[]`, T4) and commits once,

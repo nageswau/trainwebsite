@@ -1,11 +1,17 @@
 """bdm-010 -- bdm_trips, bdm_trip_expenses and the bdm_trip_code_seq sequence.
 
-Revision ID: 0066_bdm_trips
-Revises: 0065_agent_notifications
+Revision ID: 0068_bdm_trips
+Revises: 0067_audit_entity_index
 
-docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md §4 (DEC-SCOPE-060). Additive: two tables and one sequence; no existing
+docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md §4 (DEC-SCOPE-063). Additive: two tables and one sequence; no existing
 row is read or written. 0001 builds a fresh database from the current models, which already carry all three, so creation is
 guarded (0061's idiom). downgrade() refuses while trips exist: they are the only record of each trip's approval and costs.
+
+Re-chained 2026-10-03 on merging `main` @ `3bde879`: cut as `0066_bdm_trips` on `0065_agent_notifications` (DEC-SCOPE-060), but
+bdm-002's `0066_bdm_organizations` (DEC-SCOPE-060) and AGN-015's `0067_audit_entity_index` (DEC-SCOPE-061) reached `main` first, and
+AGN-018 took DEC-SCOPE-062; this revision is now `0068_bdm_trips` after 0067 (one head) and the decision is DEC-SCOPE-063. A database
+stamped at `0066_bdm_trips` is re-stamped with `alembic stamp --purge 0065_agent_notifications` then `upgrade head` (every create
+here is guarded, so the re-run is harmless).
 """
 
 import sqlalchemy as sa
@@ -13,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0066_bdm_trips"
-down_revision = "0065_agent_notifications"
+revision = "0068_bdm_trips"
+down_revision = "0067_audit_entity_index"
 branch_labels = None
 depends_on = None
 
@@ -86,7 +92,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TRIPS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0066_bdm_trips: BDM trips exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0068_bdm_trips: BDM trips exist. Remove them deliberately first.")
     op.drop_table(EXPENSES)
     op.drop_table(TRIPS)
     op.execute(f"DROP SEQUENCE IF EXISTS {SEQUENCE}")

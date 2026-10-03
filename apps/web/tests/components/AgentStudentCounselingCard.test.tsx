@@ -18,10 +18,14 @@ const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), 
 const counselingRegion = () => screen.getByRole("region", { name: "Counseling" });
 // AGN-007 merge (2026-10-02): the detail panel also mounts the university shortlist, which loads on its own; answer its URL with an
 // empty page so the queued counseling responses below stay in order (test-only, the AgentStudentsPanel.test.tsx precedent). AGN-016
-// adds the student's task list, answered the same way.
+// adds the student's task list, answered the same way; AGN-015 the student's journey (answered with an empty journey).
 const withShortlist = (inner: (url: string, init?: RequestInit) => Promise<Response>) =>
   vi.fn((url: string, init?: RequestInit) =>
-    String(url).includes("/shortlist") || String(url).includes("/crm/tasks") ? Promise.resolve(res({ items: [], total: 0, limit: 20, offset: 0 })) : inner(url, init),
+    String(url).endsWith("/journey")
+      ? Promise.resolve(res({ student: { id: "s1" }, steps: [], applications: [] }))
+      : String(url).includes("/shortlist") || String(url).includes("/crm/tasks")
+        ? Promise.resolve(res({ items: [], total: 0, limit: 20, offset: 0 }))
+        : inner(url, init),
   );
 
 afterEach(() => {

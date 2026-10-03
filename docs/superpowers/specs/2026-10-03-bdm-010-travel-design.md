@@ -14,6 +14,8 @@ guards); no earlier decision changed.
 **Source:** `functionalities/edusphere_markdown/BDM Functionalities.md` (`EVID-016`, `DERIVED_BLUEPRINT`) §3 (95–147),
 §4 Common "Travel" (1270–1286), Agent §D (655–683).
 
+**ID note (merge of `main` @ `3bde879`):** drafted as `DEC-SCOPE-060` / migration `0066_bdm_trips`; bdm-002 (060, `0066_bdm_organizations`), AGN-015 (061, `0067_audit_entity_index`) and AGN-018 (062) merged first, so this item is **`DEC-SCOPE-063`** with migration **`0068_bdm_trips`**. The text below keeps the drafted numbers.
+
 **Decision record:** **`DEC-SCOPE-060`**, written in this change (next free on `main` @ `e1c2084`; `059` is AGN-017).
 If bdm-002 (in flight, also claiming `0064`/`058`) merges first, this becomes `DEC-SCOPE-061` / `0067_bdm_trips`.
 Recheck `origin/main` before building and before the PR.

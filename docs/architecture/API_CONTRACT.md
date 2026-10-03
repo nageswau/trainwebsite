@@ -361,7 +361,34 @@ days) and one overdue-task digest per recipient per India day, idempotent throug
 | `GET /workflows/notifications/unread-count` | Authenticated | Self | `200 NotificationUnreadCount {"unread": n}` — the caller's unread notifications (may exceed the 100-row list). Any signed-in role; `401` without a session. |
 | `GET /portal/overseas/agent/notifications` | Authenticated | Agent (Master or staff), approved | Header-only payload ("Notifications"): the page's role/approval gate, as Tasks. |
 
-**`bdm-010` / `DEC-SCOPE-060` (built 2026-10-03; migration `0066_bdm_trips`) — BDM travel requests, approval, costs and expenses.**
+**`AGN-015` / `DEC-SCOPE-061` (built 2026-10-03; migration `0067_audit_entity_index`) — agent student journey and complete
+history.** Design spec `docs/superpowers/specs/2026-10-03-agn-015-student-journey-design.md` §3–§6. Two read-only routes; no existing
+response changes. Gate as the student routes (agent of an active organisation, else `403`); the student is loaded with the detail's
+scope, so an unknown id, another agency's student and a staff member's unassigned student are the same `404 "Student not found"`.
+Applications, documents, requests, deposits and visa cases are narrowed by the AGN-008/AGN-009 scopes before any row is read; audit rows
+are read only by ids from those sets. No lock, no write, no cache, no audit row; one info log each (`agent_student_journey_viewed`,
+`agent_student_timeline_viewed`, ids and offset only).
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /workflows/overseas/agent/crm/students/{id}/journey` (**new**) | Authenticated | Agent (Master or staff), AGN-004 G4 scope | `200 {"student": {id, full_name, status}, "steps": [{key, state}] ×4, "applications": [{id, university, intake, status, steps: [{key, state}] ×5}]}`, applications oldest first. Keys `create, counseling, shortlist, documents` / `application, offer, deposit, visa, enrollment`; states `not_started, in_progress, done, not_required, refunded, refused, withdrawn` (spec §4). |
+| `GET /workflows/overseas/agent/crm/students/{id}/timeline?limit=20&offset=0` (**new**) | Authenticated | Same | `limit` 1–100, `offset` 0–10 000 (else `422`). `200 {"items": [...], "total", "limit", "offset"}`, newest first (`at`, then source rank). Item keys always present: `id` (`"<source>:<row id>"`), `at`, `kind` (fixed vocabulary, spec §3), `actor` (agency member's name, else a role label), `application` (`{id, university}` or null), `document` (`{id, type}` or null), `from_status`, `to_status`, `fields` (names only), `notes` (status-history and document-event notes only). Never values, amounts, the visa decision, emails, phones or file keys. |
+
+**`AGN-018` / `DEC-SCOPE-062` (built 2026-10-03; no migration) — agency Master / Staff dashboard.** Design spec
+`docs/superpowers/specs/2026-10-03-agn-018-agency-dashboards-design.md` §4–§5, §7. One new read-only endpoint: no write, no lock, no
+commit, no audit row (reads are not audited, `DEC-SCOPE-051` R7). Gate `_gate` (AGN-004): role `agent`, division `overseas`, active
+agency, active membership — other roles and **`super_admin` → `403`** (`"This role cannot perform this operation"`), pending/suspended
+agency or deactivated member → `403` (the `agent_denial_reason` message); `401` without a session. No ids, no body, no query parameters:
+unknown parameters are ignored, never interpreted — the variant (`agency` for a Master, `own` for Staff) comes only from the caller's
+membership. Errors are FastAPI `{"detail": ...}`; no `404`/`422` surface. Response header `Cache-Control: private, no-store`. One log
+line per read, `agent_dashboard.read` (`org_id`, `actor_id`, `scope`, `duration_ms` — ids and timing only).
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /api/v1/workflows/overseas/agent/crm/dashboard` (**new**) | Authenticated | Agent (Master or staff) of an active organisation; **not** `super_admin` (`403`). Master: the agency (`org_member_ids`); Staff: their assigned students (`student_scope` / `application_scope` / `document_scope` / `task_scope` in the `WHERE` clause) | `200 AgentDashboardOut`: `scope` (`agency`\|`own`), `member_code`, eight counts — `students` (active; **no join to `users`**, so students with no login count), `applications` (not withdrawn), `offers` (O5 `offer_clause()`: stage in `OFFER_COUNTED_STATUSES` or an offer recorded; withdrawn included), `visa_applications` / `visa_approvals` (distinct applications with a visa case / with an `approved` decision; withdrawn included), `enrollments` (`enrolled`), `pending_documents` (`verification_status='pending'`), `pending_actions` (AGN-016 T5); every application count excludes School-bridged rows. `by_country` / `by_university`: `{items: [{label, count}], other}` over non-withdrawn applications, ordered count desc then label, top 10, the rest summed into `other` (bounded, not paginated — a §0.1 exception). `staff`: `[{code, name, active, students, applications, offers, enrollments}]` — staff members only (active ones, plus deactivated ones still holding active students), ordered by member sequence; each row equals that member's own dashboard. `unassigned_students` (active, no assignee). `commission`: `{claimable, claims, revenue}` — `claimable` (`eligible`/`estimated`) and `revenue` (`paid`) as per-currency `CommissionReportTotal` `{currency, count, amount}` lists (never summed across currencies), `claims` a count of `claimed` rows. `reports_available` (Master `true`; Staff their `can_view_reports`). `as_of` (UTC). One shape for both roles: `staff`, `unassigned_students` and `commission` are present and **`null` for Staff** (never queried for them). No member, user or application UUIDs. **Consistency:** the eight headline counts are scalar subqueries of **one** statement (one snapshot); the two breakdowns, the staff table and the commission summary are separate statements and may differ from the headline counts by an in-flight write under concurrency (accepted for a dashboard; no locks, no caching). |
+| `GET /portal/overseas/agent/dashboard` — **changed (values only)** | Unchanged | Unchanged | Labels, order and strings unchanged (incl. the "Claimable commission" INR string, `RAID.md`). "Students", "Applications", "Pending actions" and "Offers" now come from the same service as the endpoint above (`agent_dashboard.headline_counts`), so the two never disagree; **"Students" now includes students with no login** (the earlier inner join on `users` dropped them — a recorded defect fix, `DEC-SCOPE-062`). |
+
+**`bdm-010` / `DEC-SCOPE-063` (built 2026-10-03; migration `0068_bdm_trips`) — BDM travel requests, approval, costs and expenses.**
 Design spec `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md` §5 and §12.1. All routes are new; **no existing route or
 response changes**. Errors are `{"detail": ...}` (string for 403/404/409, FastAPI's list for 422). Lists are `{items,total,limit,offset}`,
 `limit` 1–100 (default 50). Money is a 2-dp string, `currency` always `INR`. Every write returns `200`/`201` with the full updated trip

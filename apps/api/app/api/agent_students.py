@@ -17,6 +17,7 @@ from app.core.rbac import agent_denial_reason, is_agent_staff
 from app.models import AgentOrgMember, AuditLog, User
 from app.schemas import AgentStudentAssign, AgentStudentCounselingSave, AgentStudentRecordCreate, AgentStudentRecordUpdate
 from app.services import agent_notifications as notices
+from app.services.agent_journey import MAX_TIMELINE_OFFSET, journey, timeline_page
 from app.services.agent_orgs import lock_active_org
 from app.services.agent_students import (
     active_staff_member,
@@ -110,6 +111,32 @@ async def create_student(payload: AgentStudentRecordCreate, user: User = Depends
 async def get_student(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _gate(user)
     return {"student": await record_detail(db, await load_scoped(db, user, student_id))}
+
+
+@router.get("/{student_id}/journey")
+async def get_student_journey(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-015 (DEC-SCOPE-061 §4): the step tracker. Read-only; out of scope is the same 404 as the detail."""
+    membership = _gate(user)
+    row = await load_scoped(db, user, student_id)
+    result = await journey(db, user, row)
+    _log("agent_student_journey_viewed", membership, user, row.id)
+    return result
+
+
+@router.get("/{student_id}/timeline")
+async def get_student_timeline(
+    student_id: UUID,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0, le=MAX_TIMELINE_OFFSET),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """AGN-015 (DEC-SCOPE-061 §3/§5): the student's complete history, newest first. Read-only; out of scope is the same 404."""
+    membership = _gate(user)
+    row = await load_scoped(db, user, student_id)
+    page = await timeline_page(db, user, row, limit=limit, offset=offset)
+    _log("agent_student_timeline_viewed", membership, user, row.id, offset=offset)
+    return page
 
 
 def _require_master_action(user: User, message: str) -> None:

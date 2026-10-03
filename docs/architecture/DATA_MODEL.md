@@ -405,7 +405,14 @@ covers the commission-specific piece).
   `ix_overseas_applications_agent_application_deadline` and `ix_overseas_applications_agent_offer_deadline` (`WHERE agent_student_id IS
   NOT NULL`), `ix_agent_tasks_open_due` (`WHERE status = 'open'`). No row is read or written by the upgrade; existing notifications keep
   `dedupe_key` NULL; the downgrade drops exactly what it added (the keys are derived reminder markers, not user data).
-- **Addendum, 2026-10-03 (`bdm-010`, `DEC-SCOPE-060`; migration `0066_bdm_trips`, chained after `0065_agent_notifications`) — BDM
+- **Addendum, 2026-10-03 (`AGN-015`, `DEC-SCOPE-061`; migration `0067_audit_entity_index`, chained after `0066_bdm_organizations`) —
+  student journey reads.** One index, `ix_audit_logs_entity` on `audit_logs (entity_type, entity_id, created_at)`, for reading one
+  entity's audit history (the student journey timeline reads its student's, applications', deposits' and visa cases' rows). No table or
+  column changes; no row is read or written by the upgrade (guarded add, as `0001` builds from the models); the downgrade drops the index.
+  The timeline itself is derived at read time from `agent_students`, `audit_logs`, `application_status_history`, `document_events` and
+  `student_documents` — nothing is stored.
+
+- **Addendum, 2026-10-03 (`bdm-010`, `DEC-SCOPE-063`; migration `0068_bdm_trips`, chained after `0067_audit_entity_index`) — BDM
   travel.** `bdm_trips` (UUID PK; `code` unique `TRV-000123` from the sequence `bdm_trip_code_seq`; `bdm_user_id` FK users; travel/return
   dates with `ck_bdm_trips_dates`; `from_place`/`to_place` ≤ 120; `purpose`; `mode` CHECK flight/train/bus/car/cab/local;
   `accommodation_required`; `estimated_cost` NUMERIC(14,2) ≥ 0; `currency` = `INR`; `approval_status` draft/submitted/approved/rejected;
@@ -1138,3 +1145,20 @@ together with `API_CONTRACT.md`, `RBAC_MATRIX.md`, `INTEGRATION_CONTRACTS.md`, a
 `SECURITY_CONTROLS.md`. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now proceed. The open
 items listed throughout this document remain open — approval of the contract does not resolve them,
 it only clears the gate to design against them as documented.
+
+## BDM Organization CRM (`bdm-002`, `DEC-SCOPE-060`; migration `0066_bdm_organizations`, after `0065_agent_notifications`)
+
+Additive only: two tables and one sequence; no existing table, column or row changes. `downgrade()` refuses while organizations exist.
+
+- **`bdm_organizations`** — an institution a BDM meets (`EVID-016` §9). `code` VARCHAR(20) unique (`ORG-%06d` from
+  `bdm_organization_code_seq`, server-generated); `org_type` CHECK (college, university, agent, school, corporate,
+  training_institute, other); `bdm_type` CHECK (agent, school, college) = the owning module, copied from the creator (Q-03); `name`,
+  `city` NOT NULL with server-normalized `name_key` / `city_key` (NFKC, whitespace collapsed, casefold) for the Q-18 duplicate warning;
+  `state`, `phone`, `email`, `website`, `courses_interested` (free text, C6), `student_count` (CHECK `>= 0`); `existing_partner`
+  BOOLEAN NOT NULL; `assigned_bdm_user_id`, `created_by_user_id` FK `users` `ON DELETE RESTRICT`; `archived_at` (archive, never hard
+  delete). Indexes `(bdm_type, assigned_bdm_user_id)` and `(bdm_type, name_key, city_key)`.
+- **`bdm_organization_contacts`** — named people (C10: the primary contact is §9's Contact Person / Designation). `organization_id` FK
+  `ON DELETE RESTRICT`; `position` BIGINT identity (insertion order); `name` NOT NULL; `designation`, `role` (CHECK: principal, dean,
+  hod, placement_officer, counselor, management, owner, other), `phone`, `email`; `is_primary` with a partial unique index (one primary
+  per organization). At least one contact (C1) and at most 20 are service rules.
+- Last Meeting / Next Meeting are **not stored**: computed from bdm-006 appointments (null until then).

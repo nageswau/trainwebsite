@@ -1661,7 +1661,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 |---|---|---|---|
 | `SCR-AGT-001` | `/overseas/agent/register` | Agent | `AGT-001` |
 | `SCR-AGT-002` | `/overseas/admin/agents` | Overseas Admin | `AGT-001` |
-| `SCR-AGT-003` | `/overseas/agent (Dashboard: referred students)` | Agent | `AGT-002` |
+| `SCR-AGT-003` | `/overseas/agent (Dashboard: referred students)` | Agent | `AGT-002`, `AGN-018` (KPI board) |
 | `SCR-AGT-004` | `/overseas/agent/commissions` | Agent | `AGT-003` |
 | `SCR-AGT-005` | `/overseas/agent/commissions/[id]/claim` | Agent | `AGT-004` |
 | `SCR-AGT-006` | `/overseas/admin/commissions` | Overseas Admin | `AGT-004` |
@@ -1724,6 +1724,23 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Desktop/tablet/mobile behavior:** Desktop: full layout. Tablet: condensed nav, stacked secondary content. Mobile: single column, primary action always reachable without horizontal scroll.  
 - **Visual-reference mapping:** None — not inspected. Only 1 of 160+ screens in the confirmed UX reference (`DAHRCNYnu6g`) has ever been seen; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.  
 - **Acceptance evidence needed:** Cross-agent data isolation verified.  
+- **AGN-018 update (2026-10-03, `DEC-SCOPE-062`) — agency dashboard (`/overseas/agent/dashboard`):** for agency members the page
+  keeps its title and open-applications table and shows a KPI board (`AgentDashboardPanel`, a server component reading
+  `GET /workflows/overseas/agent/crm/dashboard`) between them, in place of the portal's metric tiles (Super Admin's view unchanged).
+  A scope line reads "Whole agency" (Master) or "Your assigned students" (Staff), plus "Your code …". KPI groups (`h3`, `kpi-tile`
+  `<dl>` markup): **Students** — Total students ("View students"), Pending actions ("Open tasks"); **Pipeline** — Applications ("View
+  applications"), Offers, Visa applications, Visa approvals (each noted "Includes later stages and withdrawn applications", no link),
+  Enrollments ("View enrolled"); **Documents** — Pending documents ("Review pending"); **Commission** (Master only) — Claimable
+  commission, Claims, Revenue, money shown per currency ("INR 12,000 · USD 500"). Breakdown tables: Applications by country and by
+  university (top 10 + an "Other" row). Master only: **Staff performance** table (Member with code, Students, Applications, Offers,
+  Enrollments; a "Deactivated" text badge, never colour alone) with an **Unassigned** students row; "View reports" when reports are
+  available. Tables are keyboard-scrollable `.table-scroll` regions with captions and row headers. Staff see no commission group, staff
+  table or the word "commission". States: **loading** — a skeleton with the same footprint, `aria-busy="true"` and a hidden "Loading
+  dashboard figures"; **empty** — zeros (never blank), "No applications yet" per breakdown, "No staff yet — add staff from Team"
+  (Master); **error** — inline `role="alert"` "Dashboard figures are unavailable right now." with a "Try again" link, no error detail,
+  title / table / nav keep working; **401** — the access-unavailable card. Responsive: the existing 1/2/4-column `kpi-grid`; tables
+  scroll inside their region at 320 px. Evidence: AGN-018-AC09 (`AgentDashboardPanel.test.tsx`, `PortalPage.agentDashboard.test.tsx`;
+  e2e `agn-018-dashboard.spec.ts`, written, not yet run); browser validation pending.  
 
 ### `SCR-AGT-004`
 - **Route:** `/overseas/agent/commissions`  
