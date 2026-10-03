@@ -1661,7 +1661,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 |---|---|---|---|
 | `SCR-AGT-001` | `/overseas/agent/register` | Agent | `AGT-001` |
 | `SCR-AGT-002` | `/overseas/admin/agents` | Overseas Admin | `AGT-001` |
-| `SCR-AGT-003` | `/overseas/agent (Dashboard: referred students)` | Agent | `AGT-002`, `AGN-018` (KPI board) |
+| `SCR-AGT-003` | `/overseas/agent (Dashboard: referred students)` | Agent | `AGT-002`, `AGN-018` (KPI board), `AGN-020` (Reports page) |
 | `SCR-AGT-004` | `/overseas/agent/commissions` | Agent | `AGT-003` |
 | `SCR-AGT-005` | `/overseas/agent/commissions/[id]/claim` | Agent | `AGT-004` |
 | `SCR-AGT-006` | `/overseas/admin/commissions` | Overseas Admin | `AGT-004` |
@@ -1796,6 +1796,19 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
   the applied range ("Preparing CSV…", "Report downloaded."). Staff never see the metric or the panel (their Reports page, when their
   Master switches it on, is unchanged). Evidence: AGN-014-AC04, AC09–AC11 (`test_agn_014_commission_reports.py`,
   `AgentCommissionReportPanel.test.tsx`, `WorkflowPanel.agentCommissionReport.test.tsx`, e2e `agn-014-commission-master.spec.ts`).
+- **AGN-020 update (2026-10-03, `DEC-SCOPE-067`) — agency Reports page (`/overseas/agent/reports`):** for agency members the page is
+  one **Reports** card (`AgentReportsPanel`) in place of the old summary table (Super Admin's view unchanged; staff without Reports still
+  get the server's refusal card). A horizontal tab strip — Master: Students · Applications · Universities · Countries · Intakes · Staff
+  performance · Enrollments · Commission; Staff with Reports: the first five and Enrollments — with Left/Right/Home/End moving and
+  opening tabs. Each report: an `h3`, a one-line "what is counted", a filter form (From / To, then Staff member (Master only) / Country /
+  University / Intake / Status where offered; Apply, Clear filters; To before From → inline error at To), the result line "N rows · As
+  of hh:mm" with **Download CSV** ("Up to 10,000 rows."), and a table region (row headers, right-aligned numbers, Total row in the
+  footer, labelled blocks on phones) with Previous / Next and "Showing a–b of N" on lists. States: first load skeleton + "Loading
+  report…"; refetch dims the current table; empty "No students yet." (per report) or "No records match these filters." + Clear
+  filters; expired session alert + "Sign in again"; refusals verbatim; field errors at their control; "Couldn't load this report." +
+  Try again. The view (report, dates, filters, page) is kept in the address. The Commission tab is the AGN-014 panel, unchanged.
+  Evidence: AGN-020-AC08 (`AgentReportsPanel.test.tsx`, `AgentReportFilters.test.tsx`, `AgentReportTable.test.tsx`,
+  `PortalPage.agentReports.test.tsx`; e2e `agn-020-reports.spec.ts`, written, not yet run).
 
 ### `SCR-AGT-006`
 - **Route:** `/overseas/admin/commissions`  

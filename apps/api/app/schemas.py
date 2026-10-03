@@ -1208,6 +1208,37 @@ class AgentDashboardOut(BaseModel):
     as_of: datetime
 
 
+# --- AGN-020 (DEC-SCOPE-067; spec §5.3): one column-driven shape for every report. Codes, slugs and names only -- no ids. ---
+
+
+class AgentReportColumn(BaseModel):
+    key: str
+    label: str
+    numeric: bool = False
+
+
+class AgentReportOption(BaseModel):
+    value: str  # a slug, a member code, an intake key or a status -- never an id
+    label: str
+
+
+class AgentReportOut(BaseModel):
+    """`items/total/limit/offset` follow the codebase's `Page` convention; a summary returns every group (`limit = total`) and a
+    `totals` row. Every item's keys are exactly the column keys."""
+
+    kind: str
+    title: str
+    scope: Literal["agency", "own"]
+    columns: list[AgentReportColumn]
+    items: list[dict[str, str | int | None]]
+    totals: dict[str, str | int | None] | None
+    total: int
+    limit: int
+    offset: int
+    options: dict[str, list[AgentReportOption]]
+    as_of: datetime
+
+
 class AgentFunnelOut(BaseModel):
     """AGN-019 (DEC-SCOPE-066 P3): distinct students who reached each stage or a later one, so the stages never increase."""
 
