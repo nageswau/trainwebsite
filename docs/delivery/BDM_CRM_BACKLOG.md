@@ -288,6 +288,8 @@ Conventions used below:
 
 ### bdm-003 — Type-specific organization profiles (Agent / School / College)
 
+> **Status (2026-10-03):** implemented on `feature/bdm-003-type-specific-profile-fields` (`DEC-SCOPE-063`, migration `0068_bdm_org_profiles`, after `0067`); lite backend and web sets green; **browser validation and independent review pending — not complete.** Owner answers P1–P14 supersede the "spec decision" lines below: typed columns + a nested `profile` (P2); `university` uses the College profile (P1); a common `address` (P3, `DEC-SCOPE-060` C16); a type change over entered data is a 409 (P4); line breaks allowed in Address, Courses and Courses Interested (P14). **Follow-up:** Courses Interested as a `programs` multi-select was deferred twice (`DEC-SCOPE-060` C6, `DEC-SCOPE-063` P9) and needs its own item. Spec: `docs/superpowers/specs/2026-10-03-bdm-003-type-specific-profiles-design.md`.
+
 - **Business requirement:** each module has its own database fields.
   - Agent §B: Agency Name, Owner, Country, Address, Territory, Source, Number of Staff, Commission, Agreement, MoU.
   - School §B: Board, School Type, Principal, Management Contact, Counselor, Student Strength, Grades, Contract, Renewal Date.
@@ -902,6 +904,8 @@ Conventions used below:
 ---
 
 ### bdm-019 — Agent onboarding handover + Agent Organization link
+
+> **NEEDS_CONFIRMATION (from bdm-003, `DEC-SCOPE-063` P10):** who may see an agent's commission once the organization is linked (financial data). bdm-003 shows only the placeholder "Commission: Available after onboarding" and neither stores nor returns a value.
 
 - **Business requirement:** Agent §E: Agreement Signed → Agent Onboarding → Master Login Created → Staff Logins Created → Active Agent → Students → Applications → Enrollments. The agent database shows Master Login, Students, Applications, Enrollments and Commission.
 - **Existing behavior:** agents are single users (`AGT-001`). The multi-tenant Agent Organization is designed (`ang-001` spec) but not built.

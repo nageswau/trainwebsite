@@ -3336,3 +3336,29 @@ reconstructed; their uploads are (from the document row). Design: `docs/superpow
 - **G6 — Approach A:** a new read-only `GET /workflows/overseas/agent/crm/dashboard` with a typed schema and a dashboard panel on the existing page; the portal payload keeps its labels, order and strings.
 
 **Consequences:** no migration; a new router, service and schema; `portal._agent` dashboard values sourced from the shared service (Students now counts no-login students — a deliberate fix); a new `AgentDashboardPanel`; nav changes in `lib/navigation.ts`; `AgentStudentsPanel` honours `?new=1`. Unchanged: other roles' dashboards, the sidebar offer filter, commission values and the "Claimable commission" INR label (logged in `RAID.md`), models, existing routes. **New Feature ID authorized:** `AGN-018`. **Status:** implemented and verified on `feature/agn-018-master-dashboard-impl` (see `ENHANCEMENT_BACKLOG.md` §AGN-018).
+
+### DEC-SCOPE-063 — Type-specific organization profiles (`bdm-003`)
+
+**ID note:** next free on `main` @ `3bde879` (after `DEC-SCOPE-062`, AGN-018 #52), with migration `0068_bdm_org_profiles` after `0067_audit_entity_index`. Recheck before merge; the later-merging branch renumbers.
+
+**Question:** how are the Agent / School / College type-specific organization fields (`EVID-016` Agent §B, School §B, College §B) stored, validated and shown, and which of the listed fields belong to other items?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) L561–613, L827–871, L1066–1108 (the source's lists are not an approval); `DEC-SCOPE-060` C6 and C16 (Courses Interested `programs` and Address handed to bdm-003); `BDM_CRM_BACKLOG.md` §4 bdm-003 and its traceability table; bdm-003 impact analysis 2026-10-03 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — questions put through structured prompts, the design approved section by section, the written spec and its revision 2 approved; spec `docs/superpowers/specs/2026-10-03-bdm-003-type-specific-profiles-design.md`):
+- **P1** the profile follows `org_type`: agent → Agent; school → School; college **and** university → College; corporate, training_institute, other → common fields only.
+- **P2** typed nullable columns on `bdm_organizations` with CHECKs; the API exposes them as a nested `profile` object validated per type (a field of another type → 422).
+- **P3** a common nullable `address` for every type (C16's hand-off).
+- **P4** an `org_type` change into another profile group is a 409 while the old group has data; the BDM clears it first (no clear flag; the type is not locked).
+- **P5** Board = ENH-009's `CBSE, ICSE, State, IB, Other`; School Type = Private, Government, Aided, International, Other; College Type = Engineering, Arts & Science, Management, Medical, Polytechnic, Other; Source = Referral, Website, Event, Cold call, Walk-in, Other.
+- **P6** Country and Territory are free text.
+- **P7** Grades are a from–to range: Nursery, LKG, UKG, 1–12 (stored −2…12); lowest ≤ highest.
+- **P8** contact roles are not restricted per type; the form lists the type's named people first.
+- **P9** Courses Interested as a `programs` multi-select is deferred again (stays free text) — a follow-up item.
+- **P10** Agent Commission is a read-only placeholder ("Available after onboarding") in no request schema; Number of Staff is a BDM-entered whole number (0–100 000).
+- **P11** Agreement, MoU, Contract and Renewal Date stay with bdm-005.
+- **P12** College Affiliation and Courses are free text.
+- **P13** approach A: one profile schema (`extra="forbid"`) + one service check run after the row lock in create and PATCH; one DB CHECK per type group as the backstop.
+- **P14** Address, Courses and bdm-002's Courses Interested accept line breaks (`\r\n` → `\n`); every other control character is still rejected (fixes Enter → 422 in the Courses Interested textarea).
+
+**Consequences:** migration `0068_bdm_org_profiles` (twelve nullable columns, nine CHECKs; no row read or written; downgrade refuses while profile values exist); `POST`/`PATCH /bdm/organizations` accept `address` and `profile`; every detail response gains `address` and `profile` (`null` for common-only types; list rows unchanged); a `profile_not_empty` 409; list filters `board`, `affiliation`, `territory`; web: a profile-fields component, a profile view on the detail page, type-dependent list filters, suggested contact roles. Unchanged: authorization and scope (`DEC-SCOPE-060`), every existing route, status code and field. **NEEDS_CONFIRMATION (bdm-019):** who may see an agent's commission once linked (financial data). **New Feature ID authorized:** `bdm-003`. **Status:** implemented on `feature/bdm-003-type-specific-profile-fields`; browser validation and independent review pending.
