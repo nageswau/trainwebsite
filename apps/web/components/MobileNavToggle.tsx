@@ -61,7 +61,8 @@ export default function MobileNavToggle({
       <nav id={panelId} className={panelClassName} aria-label="Primary" hidden={!open}>
         {nav.map((item) => (
           <div key={item.href} className="mobile-nav-group">
-            <Link href={item.href} onClick={() => setOpen(false)} aria-current={current === item.href ? "page" : undefined}>
+            {/* AGN-018: a child that repeats the parent's href (the staff "My Students" -> "All") is the current link, as in NavGroup. */}
+            <Link href={item.href} onClick={() => setOpen(false)} aria-current={current === item.href && !item.children?.some((c) => c.href === current) ? "page" : undefined}>
               {item.label}
             </Link>
             {item.children?.length ? (
