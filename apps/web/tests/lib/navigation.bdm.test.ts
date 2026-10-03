@@ -9,13 +9,16 @@ describe("bdm-001 navigation", () => {
   });
 
   it("has a BDM nav, a manager nav and the sign-in chooser path", () => {
-    expect(BDM_NAV.map((x) => x.href)).toEqual(["/bdm/my-day", "/bdm/organizations", "/bdm/profile"]);
-    expect(BDM_MANAGER_NAV.map((x) => x.href)).toEqual(["/bdm/manager/dashboard", "/bdm/manager/team", "/bdm/manager/organizations"]);
+    expect(BDM_NAV.map((x) => x.href)).toEqual(["/bdm/my-day", "/bdm/organizations", "/bdm/travel", "/bdm/notifications", "/bdm/profile"]);
+    expect(BDM_MANAGER_NAV.map((x) => x.href)).toEqual([
+      "/bdm/manager/dashboard", "/bdm/manager/team", "/bdm/manager/organizations", "/bdm/manager/approvals", "/bdm/manager/notifications",
+    ]);
     expect(BDM_SIGN_IN).toBe("/bdm/sign-in");
   });
 
   it("gives each admin a BDMs entry, spelled BDMs", () => {
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "BDMs", href: "/admin/bdms" });
+    expect(SUPER_ADMIN_NAV).toContainEqual({ label: "BDM Travel Approvals", href: "/admin/bdm-travel-approvals" }); // bdm-010 T8
     expect(PORTAL_NAV["it/admin"]).toContainEqual({ label: "BDMs", href: "/it/admin/bdms" });
     expect(PORTAL_NAV["overseas/admin"]).toContainEqual({ label: "BDMs", href: "/overseas/admin/bdms" });
   });

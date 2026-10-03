@@ -12,7 +12,7 @@ const agentTasks=key==="overseas/agent"&&section==="tasks";
 // trip); every agency page carries the unread count on the Notifications nav item. A failed count only drops the badge; a failed list
 // shows the section-unavailable state; a 401 from it is an expired session, so the access-unavailable card.
 const agentNotifications=key==="overseas/agent"&&section==="notifications";
-// AGN-019 (DEC-SCOPE-063 P7): Staff Performance reads its own API (AgentPerformanceSection), behind the same portal-payload gate.
+// AGN-019 (DEC-SCOPE-065 P7): Staff Performance reads its own API (AgentPerformanceSection), behind the same portal-payload gate.
 const agentPerformance=key==="overseas/agent"&&section==="performance";
 let user:User;let data:PortalPayload|null;let unread:number|null;let notices:NotificationItem[]|null;try{[user,data,unread,notices]=await Promise.all([serverApi<User>("/api/v1/auth/me"),serverApi<PortalPayload>(`/api/v1/portal/${division}/${role}/${section}`).catch((e)=>{if((agentApplications||agentDocuments||agentTasks||agentNotifications||agentPerformance)&&e instanceof ApiError&&e.status===404)return null;throw e}),key==="overseas/agent"?serverApi<{unread:number}>("/api/v1/workflows/notifications/unread-count").then((r)=>r.unread,()=>null):null,agentNotifications?serverApi<NotificationItem[]>("/api/v1/workflows/notifications").catch((e)=>{if(e instanceof ApiError&&e.status===401)throw e;return null}):null])}catch(e){return accessUnavailable(e, `/${division}/login`)}
 if(!data&&user.role!=="super_admin")return accessUnavailable(new ApiError("Workspace not found",404), `/${division}/login`);const teacherWorkspace=division==="it"&&role==="trainer";

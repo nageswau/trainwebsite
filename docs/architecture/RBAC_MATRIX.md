@@ -143,6 +143,14 @@ members. Staff roles are not decided (D13). Enforcement: `core/rbac.agent_denial
 `workflows._require`, `portal()` and `api/agent_team.py`) and `services/agent_orgs.org_member_ids` (scope). Proved by
 `tests/test_agn_001_tenancy.py` (cross-organisation matrix) and `test_agn_001_team.py`.
 
+**`AGN-022` / `DEC-SCOPE-064` (2026-10-03) — agent network oversight, BUILT 2026-10-03.** `overseas_admin` and `super_admin`
+read every organisation's counts, money, Masters and (on request) its students and applications, read-only (N6: no admin edits
+to agency students, applications or staff). Drill-down rows carry no email, phone or date of birth (N1), and every drill-down
+page is an audited, fail-closed read (`agent_network.students_read` / `applications_read`, N2). Suspend / reinstate stays the
+AGN-001 D7 action; the UI offers it to `overseas_admin` only (N3 — `super_admin` keeps the backend permission it already had).
+Every other role, including agency Masters and staff, gets `403` before any lookup. Enforcement: `api/admin._require_overseas_admin`;
+scope `services/agent_network.members_of`. Proved by `tests/test_agn_022_network.py`.
+
 **`AGN-002` / `DEC-SCOPE-040` (2026-09-30) — agency staff, BUILT 2026-09-30.** A staff member (`role='agent'`, member
 role `staff`, code `<prefix>-S###`) of an `active` organisation works on the organisation's students, applications and
 documents with the same organisation-wide scope as a Master (S1; narrowed to assigned students by `AGN-004`, below). Staff are
@@ -206,7 +214,7 @@ T = follows the staff member's toggle, N/A = no route for any agent, so parked u
 | Staff Management | `GET /workflows/overseas/agent/team/staff`, `PATCH …/staff/{id}`, `PUT …/staff/{id}/permissions` (**new**), `GET /workflows/overseas/agent/team`, `GET /portal/overseas/agent/team` | ✅ | ❌ |
 | Create Staff Login | `POST /workflows/overseas/agent/team/staff`, `POST …/staff/{id}/reset` | ✅ | ❌ |
 | Deactivate Staff | `POST …/staff/{id}/deactivate`, `POST …/staff/{id}/reactivate` | ✅ | ❌ |
-| Staff Performance | `GET /workflows/overseas/agent/crm/performance` (**new**, `AGN-019` / `DEC-SCOPE-063`: per-staff counts + funnel, student-creation date range); the dashboard's summary table (`AGN-018` G2) | ✅ own agency only | ❌ `403` "Only an agency Master can view staff performance" (with or without the reports toggle); no nav item |
+| Staff Performance | `GET /workflows/overseas/agent/crm/performance` (**new**, `AGN-019` / `DEC-SCOPE-065`: per-staff counts + funnel, student-creation date range); the dashboard's summary table (`AGN-018` G2) | ✅ own agency only | ❌ `403` "Only an agency Master can view staff performance" (with or without the reports toggle); no nav item |
 | View staff activity | `GET /workflows/overseas/agent/team/staff/{member_id}/activity` (**new**, `AGN-021` / `DEC-SCOPE-046`) | ✅ (own agency's staff; deactivated staff too) | ❌ `403` "Only an agency Master can manage the team"; another agency's user and any non-staff or unknown member id → `404` "Staff member not found" |
 | Reports | `GET /portal/overseas/agent/reports` | ✅ full | **T** (when on: today's staff report, no commission row) |
 | Commission | `GET /workflows/overseas/agent/commissions`, `POST …/commissions/{id}/claim`, `GET /portal/overseas/agent/commissions` | ✅ | ❌ |
@@ -491,6 +499,16 @@ the same `404` as a missing id.
 
 Archived organizations are read-only (`409` "Restore this organization first"). Server-owned fields (`code`, `bdm_type`, assignee,
 `archived_at`) are unknown fields in every request body (`422`).
+
+**bdm-010 travel (`DEC-SCOPE-063`, added 2026-10-03).** Same inline pattern; scope is in the SQL `WHERE`, so an out-of-scope trip or expense id is `404` (never `403`).
+
+| Role | Allowed | Scope / rule | Feature |
+|---|---|---|---|
+| `bdm` | `GET/POST /bdm/trips`; `GET/PATCH /bdm/trips/{id}`; `POST /bdm/trips/{id}/{submit,withdraw,start,complete,cancel}`; `POST /bdm/trips/{id}/expenses`; `PATCH/DELETE /bdm/trips/{id}/expenses/{eid}` | **Own trips only** (`bdm_user_id` = caller); an expense must belong to the path's trip. Fields editable only in draft/rejected; remarks in every state; expenses only once approved (T5) | `bdm-010` |
+| `bdm_manager` | `GET /bdm/manager/trips[/{id}]`; `GET /bdm/manager/approvals`; `POST /bdm/manager/trips/{id}/{approve,reject}` | **Team scope** (D4); `?bdm_user_id=` is ANDed with it. Decides only trips of BDMs who report to them **now** (T2); a reassigned BDM's pending trip moves with them | `bdm-010` |
+| `super_admin` | the manager routes above | Reads every trip; **decides only while the BDM's reporting manager is inactive** (T3, else `403`); its queue lists only those trips | `bdm-010` |
+
+**Explicit denies (bdm-010):** nobody decides their own trip (`403`); a manager never edits a trip or its expenses (no route); server-owned fields (`code`, `bdm_user_id`, statuses, `currency`, `decided_*`) in a body → `422`; a `bdm` on a manager route or a manager on a BDM route → `403`. Every change writes one `AuditLog` row (`bdm.trip_*`) in the same transaction.
 
 ## 3. Support / admin audit controls
 

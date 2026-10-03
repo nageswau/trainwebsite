@@ -203,6 +203,20 @@ never a frontend-only gate (`FND-002`, `NFR-SEC-001`).
 | `POST /workflows/overseas/agent/team/masters/{member_id}/deactivate` | Authenticated | Same | `404` if not in the caller's organisation; `409 "Already deactivated"`; `422 "An agency must keep at least one active Master"`; `422 "At least one other Master must have accepted their invite first"` unless another active Master has login enabled and a password set (review decision R3, 2026-09-29 — prevents self-lockout by unaccepted invites); disables the user's login and revokes open welcome links; audit `agent_org.master_deactivate`. `200 {member}`. No reactivation route. |
 | Every agent route in this section, `/workflows/overseas/applications`, `/workflows/overseas/documents*`, `/portal/overseas/agent/*` | Authenticated | Own **organisation** | Replaces "Self (Agent)" (D1). `403 "Agent registration is pending approval"` (pending/rejected), `403 "Your agency's account is suspended"`, `403 "Your Master account is deactivated"`. Linking a student already linked by the organisation → `409 "Student is already linked to this agency"`. Claim locks the commission row. New portal section `team`; dashboard adds "Your code". |
 
+**`AGN-022` / `DEC-SCOPE-064` (built 2026-10-03) — Overseas Admin agent network.** Design spec
+`docs/superpowers/specs/2026-10-03-agn-022-agent-network-design.md` §5. All routes: Overseas Admin / Super Admin, checked
+**before** the organisation lookup (others `403 "Overseas Admin role required"`, no existence leak); unknown organisation
+`404 "Organisation not found"`; malformed id `422`. The three new routes send `Cache-Control: private, no-store`. An
+organisation's students, applications and commissions are those whose `agent_id` is any member of it; School-bridged
+applications are excluded. Suspend / reinstate is the AGN-001 route above, unchanged.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /overseas-admin/agent-orgs` | Authenticated | Overseas Admin / Super Admin | **Additive only:** each item also carries `staff_count` (active staff) and `counts: {students (active), applications (not withdrawn), enrollments (stage enrolled)}`. Every other field, parameter, order and error unchanged. |
+| `GET /overseas-admin/agent-orgs/{org_id}` (**new**) | Authenticated | Overseas Admin / Super Admin | `200 AgentOrgDetailOut {id, name, prefix, status, created_at, status_changed_at, masters, staff_count, counts, commission: {claimable[{currency,count,amount}], claims, revenue[...]}, deposits: {currency: "INR", count, collected, remitted, refunded}, as_of}` — commission per currency, never summed across currencies; deposits collected = paid + remitted + refunded, not netted. No staff list. Read-only, no audit row. |
+| `GET /overseas-admin/agent-orgs/{org_id}/students?status=active\|archived&limit=25&offset=0` (**new**) | Authenticated | Overseas Admin / Super Admin | `{items: [{id, full_name, status, assigned_code, has_login, applications, created_at}], total, limit, offset}`, newest first; no email, phone or date of birth. `limit` 1–100, `offset` ≥ 0, bad `status` → `422`. **Each request writes `AuditLog(action="agent_network.students_read", entity_type="agent_org", outcome="read", metadata {status, limit, offset, returned})` and commits it before responding; if that write fails the request fails and returns no data.** |
+| `GET /overseas-admin/agent-orgs/{org_id}/applications?status=&limit=25&offset=0` (**new**) | Authenticated | Overseas Admin / Super Admin | `{items: [{id, student_name, university, country, status, enrollment_date, created_at, updated_at}], total, limit, offset}`, newest first. `status` one of the confirmed stages or `withdrawn`, else `422 "Unknown application status"`. Audited as `agent_network.applications_read`, same rule as students. |
+
 **`AGN-002` / `DEC-SCOPE-040` (built 2026-09-30).** Design spec §5–§8. All staff routes: active Master of an active
 organisation only (staff → `403 "Only an agency Master can manage the team"`); every change locks the organisation row and
 writes an `agent_org.staff_*` audit row in the same transaction; set-password links go out after the commit and the raw token
@@ -374,7 +388,7 @@ are read only by ids from those sets. No lock, no write, no cache, no audit row;
 | `GET /workflows/overseas/agent/crm/students/{id}/journey` (**new**) | Authenticated | Agent (Master or staff), AGN-004 G4 scope | `200 {"student": {id, full_name, status}, "steps": [{key, state}] ×4, "applications": [{id, university, intake, status, steps: [{key, state}] ×5}]}`, applications oldest first. Keys `create, counseling, shortlist, documents` / `application, offer, deposit, visa, enrollment`; states `not_started, in_progress, done, not_required, refunded, refused, withdrawn` (spec §4). |
 | `GET /workflows/overseas/agent/crm/students/{id}/timeline?limit=20&offset=0` (**new**) | Authenticated | Same | `limit` 1–100, `offset` 0–10 000 (else `422`). `200 {"items": [...], "total", "limit", "offset"}`, newest first (`at`, then source rank). Item keys always present: `id` (`"<source>:<row id>"`), `at`, `kind` (fixed vocabulary, spec §3), `actor` (agency member's name, else a role label), `application` (`{id, university}` or null), `document` (`{id, type}` or null), `from_status`, `to_status`, `fields` (names only), `notes` (status-history and document-event notes only). Never values, amounts, the visa decision, emails, phones or file keys. |
 
-**`AGN-019` / `DEC-SCOPE-063` (built 2026-10-03; no migration) — agency staff performance and student funnel.** Design spec
+**`AGN-019` / `DEC-SCOPE-065` (built 2026-10-03; no migration) — agency staff performance and student funnel.** Design spec
 `docs/superpowers/specs/2026-10-03-agn-019-staff-performance-funnel-design.md` §4–§5. `GET /api/v1/workflows/overseas/agent/crm/performance`
 → `AgentPerformanceOut`. Read-only (no write, lock, commit or audit row). Order: session (`401`), then `_gate` (`403` for non-agents,
 `super_admin`, pending/suspended agencies, deactivated members), then Master-only (`403` `"Only an agency Master can view staff
@@ -402,6 +416,28 @@ line per read, `agent_dashboard.read` (`org_id`, `actor_id`, `scope`, `duration_
 |---|---|---|---|
 | `GET /api/v1/workflows/overseas/agent/crm/dashboard` (**new**) | Authenticated | Agent (Master or staff) of an active organisation; **not** `super_admin` (`403`). Master: the agency (`org_member_ids`); Staff: their assigned students (`student_scope` / `application_scope` / `document_scope` / `task_scope` in the `WHERE` clause) | `200 AgentDashboardOut`: `scope` (`agency`\|`own`), `member_code`, eight counts — `students` (active; **no join to `users`**, so students with no login count), `applications` (not withdrawn), `offers` (O5 `offer_clause()`: stage in `OFFER_COUNTED_STATUSES` or an offer recorded; withdrawn included), `visa_applications` / `visa_approvals` (distinct applications with a visa case / with an `approved` decision; withdrawn included), `enrollments` (`enrolled`), `pending_documents` (`verification_status='pending'`), `pending_actions` (AGN-016 T5); every application count excludes School-bridged rows. `by_country` / `by_university`: `{items: [{label, count}], other}` over non-withdrawn applications, ordered count desc then label, top 10, the rest summed into `other` (bounded, not paginated — a §0.1 exception). `staff`: `[{code, name, active, students, applications, offers, enrollments}]` — staff members only (active ones, plus deactivated ones still holding active students), ordered by member sequence; each row equals that member's own dashboard. `unassigned_students` (active, no assignee). `commission`: `{claimable, claims, revenue}` — `claimable` (`eligible`/`estimated`) and `revenue` (`paid`) as per-currency `CommissionReportTotal` `{currency, count, amount}` lists (never summed across currencies), `claims` a count of `claimed` rows. `reports_available` (Master `true`; Staff their `can_view_reports`). `as_of` (UTC). One shape for both roles: `staff`, `unassigned_students` and `commission` are present and **`null` for Staff** (never queried for them). No member, user or application UUIDs. **Consistency:** the eight headline counts are scalar subqueries of **one** statement (one snapshot); the two breakdowns, the staff table and the commission summary are separate statements and may differ from the headline counts by an in-flight write under concurrency (accepted for a dashboard; no locks, no caching). |
 | `GET /portal/overseas/agent/dashboard` — **changed (values only)** | Unchanged | Unchanged | Labels, order and strings unchanged (incl. the "Claimable commission" INR string, `RAID.md`). "Students", "Applications", "Pending actions" and "Offers" now come from the same service as the endpoint above (`agent_dashboard.headline_counts`), so the two never disagree; **"Students" now includes students with no login** (the earlier inner join on `users` dropped them — a recorded defect fix, `DEC-SCOPE-062`). |
+
+**`bdm-010` / `DEC-SCOPE-063` (built 2026-10-03; migration `0068_bdm_trips`) — BDM travel requests, approval, costs and expenses.**
+Design spec `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md` §5 and §12.1. All routes are new; **no existing route or
+response changes**. Errors are `{"detail": ...}` (string for 403/404/409, FastAPI's list for 422). Lists are `{items,total,limit,offset}`,
+`limit` 1–100 (default 50). Money is a 2-dp string, `currency` always `INR`. Every write returns `200`/`201` with the full updated trip
+(`BdmTripOut`: the trip, `expenses[]`, `actual_cost` = sum of lines, and `can_edit|can_submit|can_withdraw|can_start|can_complete|
+can_cancel|can_add_expense|can_decide`). **Retry semantics (§12.1 A4):** no idempotency key; a command retried after success answers
+`409` naming the current state; a retried create can leave a duplicate draft; a second `DELETE` of an expense answers `404`. In-app
+notices only (`channels=[]`): submit → the active reporting manager, or every active `super_admin` when that manager is inactive;
+approve/reject → the BDM.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /bdm/trips` | `bdm` | own | `approval_status`, `travel_status` filters; newest travel date first |
+| `POST /bdm/trips` | `bdm` | own | `201`; draft; T14 date rules → `422` |
+| `GET /bdm/trips/{id}` | `bdm` | own | `404` otherwise |
+| `PATCH /bdm/trips/{id}` | `bdm` | own | fields only in draft/rejected (`409` while submitted, `422` once approved); `remarks` in every state; `{}` → `422` |
+| `POST /bdm/trips/{id}/submit\|withdraw\|start\|complete\|cancel` | `bdm` | own | transition table (spec §5.2); otherwise `409`; start/complete from the travel date |
+| `POST /bdm/trips/{id}/expenses`, `PATCH\|DELETE …/expenses/{eid}` | `bdm` | own; line on this trip | approved trips only (`409`); amount > 0; ≤ 100 lines |
+| `GET /bdm/manager/trips`, `GET /bdm/manager/trips/{id}` | `bdm_manager`, `super_admin` | team (D4) / all | `bdm_user_id` filter ANDed with scope |
+| `GET /bdm/manager/approvals` | `bdm_manager`, `super_admin` | decidable | submitted + planned; manager: own team; super_admin: inactive-manager trips only |
+| `POST /bdm/manager/trips/{id}/approve`, `…/reject {reason}` | approver | T2/T3 | `404` other team; `403` super_admin while the manager is active; `403` own trip; `409` not pending |
 
 **`AGN-011` / `DEC-SCOPE-058` (built 2026-10-02/03) — agent deposit through Razorpay.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md` §4. Errors are FastAPI `{"detail": ...}`. INR only (D1). Every

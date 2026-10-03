@@ -2160,7 +2160,7 @@
       "Agent (Master)"
     ],
     "route": "/overseas/agent/performance (Staff performance: date filter, Funnel, By staff member)",
-    "purpose": "Per-staff Students / Applications / Offers / Visa applications / Visa approvals / Enrollments and the student funnel for students added in a chosen period (AGN-019 / DEC-SCOPE-063, added 2026-10-03; next free ID on main, renumber on merge if taken).",
+    "purpose": "Per-staff Students / Applications / Offers / Visa applications / Visa approvals / Enrollments and the student funnel for students added in a chosen period (AGN-019 / DEC-SCOPE-065, added 2026-10-03; next free ID on main; still free after merging main @ 39c119b).",
     "features": [
       "AGN-019"
     ],

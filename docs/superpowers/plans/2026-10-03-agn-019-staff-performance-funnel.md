@@ -13,7 +13,7 @@ AGN-014 report panel's data flow).
 **Tech Stack:** FastAPI, Pydantic v2, async SQLAlchemy 2, PostgreSQL 16, pytest-asyncio; Next.js 15 / React, vitest + Testing Library,
 Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-10-03-agn-019-staff-performance-funnel-design.md` (`DEC-SCOPE-063`).
+**Spec:** `docs/superpowers/specs/2026-10-03-agn-019-staff-performance-funnel-design.md` (`DEC-SCOPE-065`).
 
 ## Global Constraints
 
@@ -198,7 +198,7 @@ funnel switch, 320 px no horizontal scroll, axe; staff: no nav item, the Masters
 **Files:** `docs/delivery/ENHANCEMENT_BACKLOG.md` (§AGN-019), `docs/delivery/AGENT_CRM_BACKLOG.md` (status table + ang-019
 status), `docs/quality/RTM.md`, `docs/architecture/RBAC_MATRIX.md` (Staff Performance row), `docs/architecture/API_CONTRACT.md`,
 `docs/ux/SCREEN_CATALOG.md` + `screen_catalog.json`, `docs/ux/ROLE_NAVIGATION.md`, `docs/delivery/RAID.md` (branch filter deferred;
-R-14 measured), `docs/decisions/PRODUCT_DECISION_REGISTER.md` (DEC-SCOPE-063 status).
+R-14 measured), `docs/decisions/PRODUCT_DECISION_REGISTER.md` (DEC-SCOPE-065 status).
 
 - [ ] Seeded timing check: 1 org, 20 staff, 2,000 students, 4,000 applications → record the endpoint time in RAID R-14.
 - [ ] Lite run: all AGN-019 files + AGN-018 + AGN-014 + matrix (backend); new + touched web tests; ruff on changed Python; `tsc`.

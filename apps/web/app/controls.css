@@ -65,3 +65,6 @@ main:focus{outline:none}
 .badge.badge-done{background:#e7f6ec;color:#166534}
 .badge.badge-pending{background:#fff4e0;color:#7a4a00}
 @media(max-width:640px){.feedback-details{grid-template-columns:minmax(0,1fr)}.feedback-details dd{margin-bottom:6px}}
+
+/* bdm-010 QA10-05: an in-text link that looks like one (the global `a` rule inherits colour and drops the underline). */
+.text-link{color:var(--blue);text-decoration:underline;text-underline-offset:2px;font-weight:700}

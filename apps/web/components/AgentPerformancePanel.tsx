@@ -9,7 +9,7 @@ import { detailMessage } from "@/lib/apiErrors";
 import { type DateRange, readRange, reportQuery, writeRange } from "@/lib/agentCommissionReport";
 import { type AgentPerformance, type AgentPerformanceCounts, PERFORMANCE_URL, funnelStages, isPerformance } from "@/lib/agentPerformance";
 
-// AGN-019 (DEC-SCOPE-063; spec §6.4): a Master's per-staff counts and student funnel for a cohort of students. The data flow is
+// AGN-019 (DEC-SCOPE-065; spec §6.4): a Master's per-staff counts and student funnel for a cohort of students. The data flow is
 // AgentCommissionReportPanel's (range in the address, older responses dropped, field errors, sign-in on 401); the server refuses
 // staff (403) regardless of what renders here.
 type Field = "from" | "to";

@@ -97,7 +97,7 @@ migration is `0067_audit_entity_index`). See §AGN-015.
 is bdm-002, and @ `09bd5e7`, where `061` is AGN-015). See §AGN-018.
 
 **Revision 17 (2026-10-03):** backlog item ang-019 (per-staff counts and the student funnel, `EVID-015` §8) is decided as
-`DEC-SCOPE-063` (P1–P8, owner in-session; next free on `main` @ `3bde879`, renumber on merge if taken). See §AGN-019.
+`DEC-SCOPE-065` (P1–P8, owner in-session; drafted as `063`, renumbered on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022). See §AGN-019.
 
 ## 0. Scope and exclusions (read this before the backlog)
 
@@ -3767,6 +3767,26 @@ history; a reason required when an agent rejects or asks for changes; Pending / 
 **Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-009-agent-documents`. Lite test sets pass (see `RTM.md` AGN-009 row).
 Pending, owner-side: browser validation, the independent Codex review, the full backend/web/E2E suites, the merge.
 
+## AGN-022 — Overseas Admin Agent Network Oversight
+
+**Status (2026-10-03): COMPLETE for the AGN-022 scope (verified on lite evidence)** on `feature/agn-022-agent-network`: lite
+backend and web tests, `tsc`, eslint, `next build`, Playwright (`agn-022-agent-network` 4/4 + neighbour specs) and Browser Use
+(pass 1 + fix pass, `docs/quality/AGN-022_BROWSER_QA_2026-10-03.md`; QA22-01…04/07…10 fixed, QA22-05/06/11 Low and open). Codex review
+waived by the owner. **Still to run: the owner's full suites.**
+
+**Business requirement.** "Edusphere's central admin can see the overall agent network and student/application data according to
+the permissions you define" (`EVID-015` "Best approach" / §9; backlog ang-022, `DERIVED_BLUEPRINT`). Owner acceptance: counts match
+fixtures; suspend blocks the org immediately (ang-001 AC4); non-admin → 403. Decision: `DEC-SCOPE-064` (N1–N6).
+
+**Delivered.** `GET /overseas-admin/agent-orgs` gains `staff_count` and `counts` (additive); new `GET /agent-orgs/{id}` (counts,
+commission per currency, deposits, Masters), `/{id}/students` and `/{id}/applications` (read-only, no contact fields, each page an
+audited fail-closed read); suspend / reinstate reuses the AGN-001 action. Web: "Agent network" list and agency detail pages
+(Overseas Admin acts, Super Admin reads). No migration, no new dependency. Spec
+`docs/superpowers/specs/2026-10-03-agn-022-agent-network-design.md`; plan `docs/superpowers/plans/2026-10-03-agn-022-agent-network.md`.
+
+**Out of scope.** Approve/reject on the network page; per-student record pages; admin edits; offers/visa on the list; money on the
+list; CSV export; a `SUPER_ADMIN_NAV` entry; caching; ang-019/020.
+
 ## AGN-019 — Agency Staff Performance and Student Funnel
 
 **Title.** Give the agency Master per-staff performance figures and a student funnel, for students added in a chosen period.
@@ -3774,8 +3794,8 @@ Pending, owner-side: browser validation, the independent Codex review, the full 
 **Business requirement.** Backlog item ang-019 (`AGENT_CRM_BACKLOG.md`, `DERIVED_BLUEPRINT`; `EVID-015` §8): per-staff Students,
 Applications, Offers, Visa Applications, Visa Approvals, Enrollments, and the funnel Students → Applications → Submitted → Offers →
 Visa → Enrolled. Owner acceptance: funnel stages are monotonic non-increasing for a fixture; a reassigned student counts for the current
-owner (or the owner at the time: spec decision). Decision record: `DEC-SCOPE-063` (P1–P8, `EXPLICIT_APPROVAL` in-session 2026-10-03;
-number provisional).
+owner (or the owner at the time: spec decision). Decision record: `DEC-SCOPE-065` (P1–P8, `EXPLICIT_APPROVAL` in-session 2026-10-03;
+drafted as `063`, renumbered on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022).
 
 **Existing behavior.** AGN-018's dashboard has an all-time, Master-only staff table (Students / Applications / Offers / Enrollments) and
 no funnel, no visa columns and no filters.
@@ -3807,8 +3827,9 @@ moved into a shared `report_range()` (AGN-014 tests unchanged); AGN-018's table 
 **Status (2026-10-03): implemented, lite-tested — NOT complete.** On `feature/agn-019-staff-funnel`. Lite runs only (owner's
 instruction): AGN-019 backend files + `test_agn_018_dashboard.py`/`offer_parity`/`portal_compat` + `test_agn_003_matrix.py` +
 `test_agn_014_commission_reports.py`; the new and touched web tests; `tsc --noEmit`, eslint and ruff on changed files. Seeded timing:
-2,000 students / 4,000 applications / 20 staff → median 48 ms (`RAID.md` R-14). **Pending:** browser validation (incl.
-`agn-019-performance.spec.ts`), the owner's full suites, independent Codex review.
+2,000 students / 4,000 applications / 20 staff → median 48 ms (`RAID.md` R-14). Browser Use QA
+(`docs/quality/AGN-019_BROWSER_QA_2026-10-03.md`): QA19-01 and QA19-03 fixed and re-verified, QA19-02/04–07 Low and open; Playwright
+`agn-019-performance.spec.ts` passes. **Pending:** the owner's decision on the Low findings, the owner's full suites, Codex review.
 
 ## AGN-018 — Agency Master / Staff Dashboards and Role-Specific Navigation
 
@@ -4317,7 +4338,7 @@ item, only for the progress-view question).
 | AGN-016 | `DEC-SCOPE-053` — task owner on reassignment, delete, due time and overdue, linkage, KPI and nav, edit rules, cap, retry | **Resolved 2026-10-02** (T1–T8, `EXPLICIT_APPROVAL` in-session) |
 | AGN-010 | `DEC-SCOPE-056` — one offer per application, deadline column, offer document, `offer_letter_url`, Offers count, conditions, concurrent saves | **Resolved 2026-10-02** (O1–O7, `EXPLICIT_APPROVAL` in-session) |
 | AGN-018 | `DEC-SCOPE-062` — agency-only scope, staff performance summary, KPI definitions, navigation, one offer rule, endpoint approach | **Resolved 2026-10-03** (G1–G6, `EXPLICIT_APPROVAL` in-session; number provisional) |
-| AGN-019 | `DEC-SCOPE-063` — owner on reassignment, branch filter, stage rule, date range, archived/withdrawn, rows, placement, approach | **Resolved 2026-10-03** (P1–P8, `EXPLICIT_APPROVAL` in-session; number provisional) |
+| AGN-019 | `DEC-SCOPE-065` — owner on reassignment, branch filter, stage rule, date range, archived/withdrawn, rows, placement, approach | **Resolved 2026-10-03** (P1–P8, `EXPLICIT_APPROVAL` in-session; number provisional) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in

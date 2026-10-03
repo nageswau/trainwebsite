@@ -67,7 +67,7 @@ describe("agentNavFor", () => {
     expect(nav.find((i) => i.href === "/overseas/agent/applications")?.children?.[0].label).toBe("All applications");
   });
 
-  it("shows Staff Performance to Masters only, after Reports (AGN-019, DEC-SCOPE-063 P7)", () => {
+  it("shows Staff Performance to Masters only, after Reports (AGN-019, DEC-SCOPE-065 P7)", () => {
     const hrefs = nav.map((i) => i.href);
     expect(hrefs.indexOf("/overseas/agent/performance")).toBe(hrefs.indexOf("/overseas/agent/reports") + 1);
     expect(nav.find((i) => i.href === "/overseas/agent/performance")?.label).toBe("Staff Performance");

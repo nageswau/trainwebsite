@@ -71,3 +71,14 @@ describe("PortalShell unread badge (AGN-017)", () => {
     expect(within(mobile).getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
   });
 });
+
+describe("PortalShell top bar on a phone (bdm-010 browser re-test)", () => {
+  it("a long user name shrinks with an ellipsis instead of pushing the badge and menu past the screen edge", () => {
+    const nav: NavItem[] = [{ href: "/bdm/notifications", label: "Notifications", badge: 5 }];
+    const { container } = render(<PortalShell nav={nav} roleLabel="BDM Manager" userName="E2E Manager 1791004004733410"><p>page</p></PortalShell>);
+    const name = within(container.querySelector(".portal-topbar") as HTMLElement).getByText("E2E Manager 1791004004733410");
+    expect(name).toHaveStyle({ minWidth: "0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" });
+    expect(name).toHaveAttribute("title", "E2E Manager 1791004004733410");
+    expect(name.parentElement).toHaveStyle({ minWidth: "0" });
+  });
+});

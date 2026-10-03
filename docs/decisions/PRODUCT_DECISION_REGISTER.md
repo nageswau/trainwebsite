@@ -3337,7 +3337,76 @@ reconstructed; their uploads are (from the document row). Design: `docs/superpow
 
 **Consequences:** no migration; a new router, service and schema; `portal._agent` dashboard values sourced from the shared service (Students now counts no-login students — a deliberate fix); a new `AgentDashboardPanel`; nav changes in `lib/navigation.ts`; `AgentStudentsPanel` honours `?new=1`. Unchanged: other roles' dashboards, the sidebar offer filter, commission values and the "Claimable commission" INR label (logged in `RAID.md`), models, existing routes. **New Feature ID authorized:** `AGN-018`. **Status:** implemented and verified on `feature/agn-018-master-dashboard-impl` (see `ENHANCEMENT_BACKLOG.md` §AGN-018).
 
-### DEC-SCOPE-063 — Staff performance and student funnel (`AGN-019`)
+### DEC-SCOPE-063 — BDM travel requests, approval, modes, costs, expenses (`bdm-010`)
+
+**ID note:** drafted as `DEC-SCOPE-060` with migration `0066_bdm_trips` (both free on `main` @ `e1c2084`); renumbered `DEC-SCOPE-063` on merging `main` @ `3bde879`, where `060` is bdm-002 (`0066_bdm_organizations`), `061` AGN-015 (`0067_audit_entity_index`) and `062` AGN-018; the migration is now `0068_bdm_trips` after `0067_audit_entity_index` (one head).
+
+**Question:** the owner's bdm-010 statement (`BDM_CRM_BACKLOG.md` §4 bdm-010): track travel with the §3 fields and six modes, the
+reporting manager's approval, costs and itemized expenses. The owner confirmed on 2026-10-03 that bdm-010 is travel (the calendar
+text once pasted under that label is bdm-013).
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §3 (95–147), §4 Common "Travel" (1270–1286), Agent §D
+(655–683); backlog decisions D4, D15, Q-05, Q-06 (`DERIVED_BLUEPRINT`).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions, five design-section reviews and
+the revision-2 skill reviews):
+
+- **T1** One From/To per trip; a tour is several trips.
+- **T2** Nothing about the approver is stored; the BDM's reporting manager is resolved at decision time.
+- **T3** Any `super_admin` may decide only while that manager is inactive.
+- **T4** The submit notice is in-app only (`channels=[]`).
+- **T5** Expenses once approved (planned, in progress, completed, or cancelled after approval); none on draft/submitted/rejected.
+- **T6** Codes `TRV-000123` from the `bdm_trip_code_seq` sequence (gaps possible on a rolled-back create).
+- **T7** Expense line = category (travel/stay/food/local/other) + INR amount + date + optional note. **No receipt upload** (Q-06's
+  optional receipt is dropped), so no file storage.
+- **T8** Fallback UI: `/admin/bdm-travel-approvals` with a Super Admin nav entry, listing only trips whose manager is inactive.
+- **T9** Withdraw a submitted trip to draft; edit and resubmit a rejected one (the reason stays in the audit).
+- **T10** Flat module (`api/bdm_travel.py`, `services/bdm_travel.py`); two status columns (approval + travel) with a consistency CHECK.
+- **T11** Submit while the manager is inactive → the notice goes to every active `super_admin`.
+- **T12** The BDM also gets an in-app notice on approve/reject.
+- **T13** Expense amount > 0.
+- **T14** Travel date at most 30 days back; a trip lasts at most 31 days; start/complete only from the travel date (India date).
+- **T15** (browser QA QA10-01, owner 2026-10-03) BDMs and BDM managers get a Notifications nav item with the unread badge (AGN-017's
+  count) on every BDM page, and a list page that marks a notice read on open.
+- **T16** (browser QA QA10-16, owner 2026-10-03) The trip pages are one client workspace that applies each write's returned trip
+  (spec §12.1 A7) instead of re-rendering the server page; a 409 re-reads the trip.
+
+**Deviations from the backlog text:** the router is `app/api/bdm_travel.py`, not `app/api/bdm/travel.py` (a `bdm/` package would
+shadow the existing `app/api/bdm.py`); the T14 date rules are checked in the service, because they need "today".
+
+**Accepted risk:** the API has no general rate limiter; bdm-010 bounds its own surface instead (`limit` ≤ 100, ≤ 100 expense lines per
+trip, text caps). Create and the status commands carry no idempotency key: a retried command gets 409 and the page refreshes; a
+retried create can leave a duplicate draft, which the BDM can cancel.
+
+**Consequences:** migration `0068_bdm_trips` (two tables, one sequence; additive; downgrade refuses while trips exist); 17 new routes
+under `/api/v1/bdm/trips` and `/api/v1/bdm/manager/{trips,approvals}`; no existing route or response changes. Web: `/bdm/travel`,
+`/bdm/travel/new`, `/bdm/travel/[id]`, `/bdm/manager/approvals`, `/bdm/manager/trips/[id]`, `/admin/bdm-travel-approvals`; nav entries
+Travel (BDM), Approvals (manager), BDM Travel Approvals (Super Admin). Spec: `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md`.
+**Status:** implemented on `worktree-bdm-010`; **not COMPLETE** — Playwright, browser validation, the owner's full suites and an
+independent Codex review are pending.
+
+### DEC-SCOPE-064 — Overseas Admin agent network oversight (`AGN-022`)
+
+**ID note:** drafted as `DEC-SCOPE-063` (the next free number on `main` @ `3bde8796`); renumbered `DEC-SCOPE-064` on merging `main` @ `65a8ece`, where `063` is bdm-010 (PR #53). AGN-022 has no migration, so nothing re-chained. AGN-022 commits and docs from before this merge that say `DEC-SCOPE-063` mean this decision.
+
+**Question:** the owner's `AGN-022` statement (in-session, 2026-10-03): "Edusphere's central admin can see the overall agent network and student/application data according to the permissions you define" (Best approach; §9), with acceptance criteria: counts match fixtures; suspend blocks the org immediately (ang-001 AC4); non-admin → 403. How deep does the admin see, is that reading audited, what may super_admin do, which money figures count, and which API shape?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) "Best approach" and §9; `AGENT_CRM_BACKLOG.md` ang-022 and Q-13 "D17 — read-all; act only on org approve/suspend, commission, and deposit remit/refund recording" (`DERIVED_BLUEPRINT`; its `DEC-SCOPE-035` citation is the known mis-citation). Impact analysis, 2026-10-03 (the committed graphify graph predates AGN-001, so a fresh AST graph was built and findings were checked in source): AGN-001 (`DEC-SCOPE-038` D6/D7) already ships `GET /overseas-admin/agent-orgs` and `POST /overseas-admin/agent-orgs/{id}/approve|reject|suspend|reinstate`, per-request suspension (AC04 test) and the admin 403; AGN-018 holds the count definitions, scoped to the logged-in agent user only.
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions and three design-section reviews; design spec `docs/superpowers/specs/2026-10-03-agn-022-agent-network-design.md` §2):
+
+- **N1 — Counts + lists.** Org list with counts; org detail with read-only lists of the agency's students and applications. No per-student record pages; admin rows carry no email, phone or date of birth.
+- **N2 — Read audit.** One `AuditLog` row per drill-down list request, written before data is returned (fail closed).
+- **N3 — super_admin read-only in the UI.** Suspend/Reinstate shown to `overseas_admin` only; the backend action route is unchanged.
+- **N4 — Money = existing buckets.** Commissions per currency as AGN-018 (Claimable, Claims, Paid revenue), never summed across currencies; deposits (INR) collected / remitted / refunded, not netted. On the org detail only.
+- **N5 — Approach A.** Extend `GET /overseas-admin/agent-orgs` additively (`staff_count`, `counts`); add `GET /agent-orgs/{id}`, `/{id}/students`, `/{id}/applications`; reuse suspend/reinstate. The backlog's `/agent-organizations` + `reactivate` naming is `SUPERSEDED`.
+- **N6 — Limited admin powers (D17).** No admin edits to agent students, applications or staff; approve/reject stay on Agent Approvals.
+
+**Consequences:** no migration; a new read-only service `services/agent_network.py`; three new admin routes and schemas; additive keys on the org list; two new admin pages and components; one appended nav entry. Unchanged: `transition_org`, the suspension gate, the approval page and routes, agent-side routes, models. **New Feature ID authorized:** `AGN-022`. **Status:** owner approved the spec and told implementation to proceed (in-session 2026-10-03); implemented and verified on `feature/agn-022-agent-network` (complete for its scope on lite evidence; browser QA fixed and re-verified; Codex review waived by the owner); the owner's full suites still to run (see `ENHANCEMENT_BACKLOG.md` §AGN-022).
+
+### DEC-SCOPE-065 — Staff performance and student funnel (`AGN-019`)
+
+**ID note:** drafted as `DEC-SCOPE-063` (free on `main` @ `3bde879`); renumbered `DEC-SCOPE-065` on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022 (PR #54). AGN-019 has no migration, so nothing re-chained. AGN-019 commits and docs from before this merge that say `DEC-SCOPE-063` mean this decision.
 
 **Question:** the owner's `AGN-019` statement (in-session, 2026-10-03): per-staff Students, Applications, Offers, Visa Applications, Visa Approvals, Enrollments, and the funnel Students → Applications → Submitted → Offers → Visa → Enrolled (§8), with acceptance criteria: funnel stages are monotonic non-increasing for a fixture; a reassigned student counts for the current owner (or the owner at the time: spec decision). Which owner, which filters, which stage rule, and where does the page live?
 
@@ -3354,4 +3423,4 @@ reconstructed; their uploads are (from the document row). Design: `docs/superpow
 - **P7 — Placement.** A new Master-only sidebar page "Staff Performance"; the dashboard staff table links to it.
 - **P8 — Approach A.** New `services/agent_performance.py` and `GET /workflows/overseas/agent/crm/performance`; `owner_join()` extracted from `staff_rows` and shared; a parity test pins AGN-019 to AGN-018.
 
-**Consequences:** no migration; a new router, service, schemas, panel and nav item (hidden from staff, refused by the server); `AgentDashboardOut`, models and other roles unchanged; `services/portal.py` gains only a header-only `performance` section (the page gate, Tasks precedent; review finding #1). **New Feature ID authorized:** `AGN-019`. **Status:** implemented on `feature/agn-019-staff-funnel`, lite-tested; browser validation, full suites and Codex review pending (see `ENHANCEMENT_BACKLOG.md` §AGN-019). Implementation notes: AGN-014's date checks became a shared `report_range()`; AGN-018's table helpers moved to `components/AgentTableRegion.tsx`; the dashboard link sits below the staff table (a link inside the heading would rename its region).
+**Consequences:** no migration; a new router, service, schemas, panel and nav item (hidden from staff, refused by the server); `AgentDashboardOut`, models and other roles unchanged; `services/portal.py` gains only a header-only `performance` section (the page gate, Tasks precedent; review finding #1). **New Feature ID authorized:** `AGN-019`. **Status:** implemented on `feature/agn-019-staff-funnel`, lite-tested; Browser Use QA19-01/03 fixed and re-verified, QA19-02/04–07 Low open; full suites and Codex review pending (see `ENHANCEMENT_BACKLOG.md` §AGN-019). Implementation notes: AGN-014's date checks became a shared `report_range()`; AGN-018's table helpers moved to `components/AgentTableRegion.tsx`; the dashboard link sits below the staff table (a link inside the heading would rename its region).

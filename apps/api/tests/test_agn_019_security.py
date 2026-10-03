@@ -1,4 +1,4 @@
-"""AGN-019 (DEC-SCOPE-063) -- the staff performance endpoint's gate, date validation and contract (spec §5.1, §6a; AC4, AC6-AC8)."""
+"""AGN-019 (DEC-SCOPE-065) -- the staff performance endpoint's gate, date validation and contract (spec §5.1, §6a; AC4, AC6-AC8)."""
 
 import logging
 

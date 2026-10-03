@@ -27,6 +27,11 @@ export const BDMS_URL = "/api/v1/admin/bdms";
 export const MANAGERS_URL = "/api/v1/admin/bdm-managers";
 export const USERS_URL = "/api/v1/admin/users";
 export const PAGE_SIZE = 50;
+/** A list page's `?offset=`: a positive whole number, anything else (missing, junk, negative) is the first page. */
+export function pageOffset(raw: string | undefined): number {
+  const n = Number.parseInt(raw ?? "0", 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
 const PICKER_LIMIT = 20;
 
 /** QA-02: the reporting-manager picker searches the server (SearchableSelect server mode), so every manager is reachable. */

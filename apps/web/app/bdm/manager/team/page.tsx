@@ -5,14 +5,14 @@ import BdmTeamTable from "@/components/BdmTeamTable";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
-import { PAGE_SIZE, type BdmTeamRow } from "@/lib/bdm";
-import { BDM_MANAGER_NAV } from "@/lib/navigation";
+import { PAGE_SIZE, type BdmTeamRow, pageOffset } from "@/lib/bdm";
+import { bdmManagerNav } from "@/lib/bdmNav";
 import type { User } from "@/lib/types";
 
 // bdm-001 (AC06): exactly the BDMs who report to this manager (the API scopes it). The offset lives in the URL.
 export default async function BdmManagerTeamPage({ searchParams }: { searchParams: Promise<{ offset?: string }> }) {
-  const raw = Number.parseInt((await searchParams).offset ?? "0", 10);
-  const offset = Number.isFinite(raw) && raw > 0 ? raw : 0;
+  const nav = bdmManagerNav(); // the unread badge, read alongside the page's own data (never rejects)
+  const offset = pageOffset((await searchParams).offset);
   let user: User, team: Page<BdmTeamRow>;
   try {
     [user, team] = await Promise.all([
@@ -23,7 +23,7 @@ export default async function BdmManagerTeamPage({ searchParams }: { searchParam
     return accessUnavailable(e, "/admin/login");
   }
   return (
-    <PortalShell nav={BDM_MANAGER_NAV} roleLabel="BDM Manager" userName={user.full_name}>
+    <PortalShell nav={await nav} roleLabel="BDM Manager" userName={user.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

@@ -24,6 +24,14 @@ beforeEach(() => {
   vi.mocked(serverApi).mockReset();
 });
 
+// The pages also read the unread badge (bdm-010 QA10-01), so call order is not fixed: refusals are answered by path. `first` is the
+// page's own refusal; every other call (the badge read, the session look-up) gets `rest`.
+function refuse(path: string, first: ApiError, rest = new ApiError("x", 401)) {
+  vi.mocked(serverApi).mockImplementation(async (p: string) => {
+    throw p === path ? first : rest;
+  });
+}
+
 describe("bdm-002 organization list pages", () => {
   it("the BDM page is gated by /bdm/me and lists the module's organizations", async () => {
     vi.mocked(serverApi).mockResolvedValue(me);
@@ -36,7 +44,7 @@ describe("bdm-002 organization list pages", () => {
   });
 
   it("a refused BDM page links to the BDM sign-in chooser", async () => {
-    vi.mocked(serverApi).mockRejectedValueOnce(new ApiError("BDM profile not set up — contact your administrator", 403)).mockRejectedValueOnce(new ApiError("x", 401));
+    refuse("/api/v1/bdm/me", new ApiError("BDM profile not set up — contact your administrator", 403));
     const tree = elements(await BdmOrganizations());
     expect(card(tree)!.props.message).toBe("BDM profile not set up — contact your administrator");
     expect(card(tree)!.props.loginHref).toBe("/bdm/sign-in");
@@ -56,7 +64,7 @@ describe("bdm-002 organization list pages", () => {
     expect(card(tree)!.props.message).toBe("This page is for BDM managers.");
     expect(tree.some((el) => el.type === BdmOrganizationsPanel)).toBe(false);
     vi.mocked(serverApi).mockReset();
-    vi.mocked(serverApi).mockRejectedValueOnce(new ApiError("Not authenticated", 401));
+    refuse("/api/v1/auth/me", new ApiError("Not authenticated", 401));
     tree = elements(await ManagerOrganizations());
     expect(card(tree)!.props.loginHref).toBe("/admin/login");
   });
@@ -86,7 +94,7 @@ describe("bdm-002 organization detail pages", () => {
   });
 
   it("a refused BDM detail page goes to the chooser; the manager detail page uses the manager list and /admin/login", async () => {
-    vi.mocked(serverApi).mockRejectedValueOnce(new ApiError("BDM role required", 403)).mockRejectedValueOnce(new ApiError("x", 401));
+    refuse("/api/v1/bdm/me", new ApiError("BDM role required", 403));
     let tree = elements(await BdmOrganization({ params: params(), searchParams: noQuery }));
     expect(card(tree)!.props.loginHref).toBe("/bdm/sign-in");
     vi.mocked(serverApi).mockReset();
@@ -94,7 +102,7 @@ describe("bdm-002 organization detail pages", () => {
     tree = elements(await ManagerOrganization({ params: params() }));
     expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/manager/organizations" });
     vi.mocked(serverApi).mockReset();
-    vi.mocked(serverApi).mockRejectedValueOnce(new ApiError("Not authenticated", 401));
+    refuse("/api/v1/auth/me", new ApiError("Not authenticated", 401));
     tree = elements(await ManagerOrganization({ params: params() }));
     expect(card(tree)!.props.loginHref).toBe("/admin/login");
   });

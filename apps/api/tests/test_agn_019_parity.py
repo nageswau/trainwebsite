@@ -1,4 +1,4 @@
-"""AGN-019 AC5 (DEC-SCOPE-063 P5/P8): with no dates, each staff row's AGN-018 columns equal the dashboard's staff table, so the two
+"""AGN-019 AC5 (DEC-SCOPE-065 P5/P8): with no dates, each staff row's AGN-018 columns equal the dashboard's staff table, so the two
 pages never disagree about the same figures."""
 
 import pytest
