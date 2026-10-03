@@ -159,7 +159,8 @@ Index `ix_bdm_appointment_events_appointment (appointment_id, position)`. Rows a
 - `BdmAppointmentReason` (cancel, no-show): `reason` required, 1–500 after strip.
 - `BdmAppointmentComplete`: `outcome` (Literal of all outcome keys), `next_follow_up_on: date | None`.
 - Output: `BdmAppointmentRow` (id, code, starts_at, duration_minutes, appointment_type, status, organization {id, code, name,
-  archived}, contact_name, bdm {id, full_name, active}), `BdmAppointmentOut` (row + all §2 fields, outcome, next_follow_up_on,
+  archived}, contact_name, bdm {id, full_name, active}), `BdmAppointmentOut` (row + all §2 fields, `contact_id` (nullable — NULL
+  once the contact was deleted), outcome, next_follow_up_on,
   expected_*, events[], permissions, created_at, updated_at), `BdmAppointmentEventOut` (from/to, old/new starts_at, reason,
   actor_name, created_at), `BdmAppointmentPermissions` (`can_edit`, `can_confirm`, `can_reschedule`, `can_cancel`, `can_no_show`,
   `can_complete`), `BdmAppointmentPage` ({items, total, limit, offset}), `BdmAppointmentEnvelope` ({appointment}).
@@ -182,7 +183,9 @@ request), not in the schema, so tests can control time by editing `starts_at`.
   | mark no-show> after the start time".
 - `snapshot(contact)` → the four contact columns.
 - `find_overlaps(db, bdm_user_id, starts_at, duration, exclude_id)` — the owner's open appointments whose
-  `[starts_at, starts_at + duration)` intersects; max 10 returned + total. `overlap_conflict(...)` → 409 `{message, code:
+  `[starts_at, starts_at + duration)` intersects; max 10 returned + total. The query bounds `starts_at` to
+  `(new_start − 720 min, new_end)` (720 = the maximum duration) so it stays on `ix_bdm_appointments_bdm_starts`, then applies the
+  exact interval test. `overlap_conflict(...)` → 409 `{message, code:
   "possible_overlap", matches, total}`.
 - `record(db, appt, actor, from_status, to_status, **extra)` — adds the event row.
 - `permissions(user, appt, now)` — owner and state based; all-false for managers / super_admin.
@@ -194,17 +197,19 @@ request), not in the schema, so tests can control time by editing `starts_at`.
 
 | Method / path | Who | Behaviour |
 |---|---|---|
-| `GET ""` | bdm, bdm_manager, super_admin | Filters (ANDed with scope): `from`, `to` (IST dates → UTC half-open range; `from > to` → 422), `status` (repeatable), `appointment_type`, `organization_id`, `bdm_user_id` (manager / super_admin only; a `bdm` sending it → 422), `q` (code or organization name, literal substring via `lookups._pattern`), `limit` (1–100, default 50), `offset`. Order `starts_at, id`. One query joining organization + owner (no N+1) |
+| `GET ""` | bdm, bdm_manager, super_admin | Filters (ANDed with scope): `date_from`, `date_to` (IST dates, inclusive → UTC half-open range `[date_from 00:00 IST, date_to+1 00:00 IST)`; `date_from > date_to` → 422; the repo's `date_from`/`date_to` naming), `status` (repeatable), `appointment_type`, `organization_id`, `bdm_user_id` (manager / super_admin only; a `bdm` sending it → 422), `q` (code or organization name, literal substring via `lookups._pattern`), `limit` (1–100, default 50), `offset`. Order `starts_at, id`. One query joining organization + owner (no N+1) |
 | `POST ""` → 201 | bdm | §5.5 create flow |
 | `GET /{id}` | in scope | Detail + events + permissions |
 | `PATCH /{id}` | owner | Open statuses only (else 409). Values equal to stored ones are not changes. A changed `contact_id` must belong to the appointment's organization (else 422) and re-copies the snapshot. A changed `duration_minutes` re-runs the overlap check. Audit lists changed field names; no event (not a transition) |
 | `POST /{id}/confirm` | owner | `scheduled`/`rescheduled` → `confirmed` |
-| `POST /{id}/reschedule` | owner | Open → `rescheduled`; `starts_at` future (A7); overlap check; event carries old/new time and optional reason |
+| `POST /{id}/reschedule` | owner | Open → `rescheduled`; `starts_at` future (A7) and different from the current time (else 422 "Choose a different time"); overlap check; event carries old/new time and optional reason |
 | `POST /{id}/cancel` | owner | Open → `cancelled`; reason required |
 | `POST /{id}/no-show` | owner | Open → `no_show`; start passed; reason required |
-| `POST /{id}/complete` | owner | Open → `completed`; start passed; `outcome` in the owner's list (else 422); stores `outcome`, `next_follow_up_on` |
+| `POST /{id}/complete` | owner | Open → `completed`; start passed; `outcome` in the owner's list (else 422); `next_follow_up_on`, when sent, on or after today in IST (else 422 "Next follow-up can't be in the past"); stores both |
 
-Every write returns `{appointment}` (the full detail), like bdm-002.
+Every write returns `{appointment}` (the full detail), like bdm-002. There is **no DELETE**: an appointment is never removed;
+it is cancelled (the history is the record). `starts_at` is normalized to the minute (seconds and microseconds dropped) before any
+comparison, so "different time", overlap and "after the start" are judged on what the UI shows.
 
 ### 5.4 Transition matrix (A2)
 
@@ -288,7 +293,7 @@ Validation order is fixed so each negative test hits exactly one rule.
 
 ### 6.2 Components (client)
 
-- **`BdmAppointmentsPanel`** — the `BdmOrganizationsPanel` pattern: URL state (`from` default today IST, `to`, `status`, `type`,
+- **`BdmAppointmentsPanel`** — the `BdmOrganizationsPanel` pattern: URL state (`date_from` default today IST, `date_to`, `status`, `type`,
   `organization`, `bdm` for managers, `offset`), Back/Forward sync, `isPage` guard. States: loading (`role="status"`); error +
   Retry; empty ("No appointments yet" + "Add appointment" for a BDM); no matches + "Clear filters"; past the end + "Go to the first
   page"; table (Code link, Date & time IST, Organization, Contact, Type, Status badge, and BDM for managers) in a labelled scroll
@@ -304,7 +309,9 @@ Validation order is fixed so each negative test hits exactly one rule.
 - **`BdmAppointmentDetail`** — `<dl>` of every §2 field ("—" for blanks; times via `formatSchoolDateTime(v, true)`), outcome and
   next follow-up when completed, organization link (`archived` badge), Edit toggle when `can_edit`; hosts actions and history.
   Re-renders from each returned appointment (no refetch).
-- **`BdmAppointmentActions`** — rendered from `permissions` only. Confirm (single button); Reschedule (inline group: new time,
+- **`BdmAppointmentActions`** — rendered from `permissions` only; the three inline groups are their own small components
+  (`BdmAppointmentRescheduleForm`, `BdmAppointmentReasonForm` shared by Cancel and No show, `BdmAppointmentCompleteForm`) to stay
+  under ~200 lines each. Confirm (single button); Reschedule (inline group: new time,
   duration, optional reason, overlap flow); Cancel / No show (inline group, reason required, client-side empty check mirrors the
   422); Complete (outcome select for the BDM type, optional follow-up date). One group open at a time; focus returns to the trigger
   on Cancel and moves to the message on error; buttons have visible text.
@@ -351,7 +358,7 @@ success `role="status"`; status shown as text, not colour alone; focus managemen
 - `test_bdm_006_schemas.py` — limits, control characters, naive datetime, unknown fields, reason required, money precision.
 - `test_bdm_006_service.py` — `appointment_types` / `appointment_outcomes` per type (counts and dedupe), `TRANSITIONS` table,
   `permissions` per role and state, overlap interval maths.
-- `test_bdm_006_appointments.py` — create (AC1, code format, snapshot, event), detail, list filters (`from`/`to` IST edges incl. an
+- `test_bdm_006_appointments.py` — create (AC1, code format, snapshot, event), detail, list filters (`date_from`/`date_to` IST edges incl. an
   appointment at 23:30 IST, status multi, type, organization, `q`, paging bounds, ordering), PATCH (no-op = no audit, contact
   re-snapshot, contact of another organization 422, closed → 409), AC10.
 - `test_bdm_006_transitions.py` — every action happy path; matrix over all pairs (AC3); terminal 409s; complete / no-show before
@@ -410,3 +417,79 @@ Playwright bdm-001/002/006. The owner runs the full suites on the usual cadence.
 Acceptance (AC1–AC10), security / RBAC / resource scope, backend lite + web tests, `tsc` / `eslint` / `next build`, migration
 up / down on a fresh and an existing database, responsive (375 px) and accessibility checks, browser QA, documentation — per the
 constitution's completion rule.
+
+---
+
+## 12. Revision 2 — skill reviews (2026-10-03)
+
+Reviewed against `api-and-interface-design`, `frontend-ui-engineering` and `security-and-hardening`, in the same form as bdm-002
+§12. Findings that change the design are applied inline above and listed here. No owner decision (A1–A8) changed; nothing outside
+bdm-006 is touched.
+
+### 12.1 API and interface design
+
+| # | Finding | Resolution |
+|---|---|---|
+| R-A1 | One response shape | Every write (create, PATCH, five actions) returns `{appointment}` with the full detail; lists return `{items, total, limit, offset}` (the AGN-008 / bdm-002 convention). |
+| R-A2 | Error format | Kept the existing contract: string `detail` for 403/404/409, FastAPI's list for 422, and a structured `{message, code: "possible_overlap", matches, total}` only for the overlap 409 (the bdm-002 `possible_duplicate` precedent, which the web's `detailMessage` already reads). No new error envelope. |
+| R-A3 | Naming | snake_case fields and params as every route. List date filters renamed `from`/`to` → **`date_from`/`date_to`** (applied in §5.3 / §6.2) to match `portfolio` and the commission report, and to avoid the Python keyword. Booleans: `confirm_overlap`, `can_*`. |
+| R-A4 | HTTP semantics | `POST` 201 for create; `POST /{id}/<action>` for state changes, matching bdm-002's `/archive`, `/restore`, `/assign` (actions are not idempotent field writes, so not `PATCH status`). No `DELETE` — cancel is the end state (applied in §5.3). No `GET` changes state. |
+| R-A5 | Retry safety (no idempotency key) | **Not idempotent, documented; no `Idempotency-Key`** — none is contracted anywhere, and CLAUDE.md forbids uncontracted idempotency assumptions. A create retried after a lost response hits the overlap check (same BDM, same time) and returns `possible_overlap` naming the appointment just created, so the BDM sees it instead of silently getting two. A repeated action returns 409 "Appointment is already confirmed"; the UI treats a 409 as "state changed" and refetches (R-F4). |
+| R-A6 | No-op writes | PATCH with no changed values (or an empty body) → 200, no audit row, no `updated_at` bump (bdm-002 A6). Reschedule to the same minute → 422 "Choose a different time" (applied in §5.3) — otherwise a no-op would record a fake transition. |
+| R-A7 | Ambiguous time input | `starts_at` must carry an offset (naive → 422); normalized to the minute before every comparison (applied in §5.3); returned as ISO-8601 UTC. `next_follow_up_on` is a date, on or after today in IST (applied in §5.3). |
+| R-A8 | Response allowlist | `response_model` on every route. `contact_id` is returned (nullable) so the edit form can preselect the contact (applied in §5.1). The owner is returned as `{id, full_name, active}` only. |
+| R-A9 | Backward compatibility | Only one existing contract changes: bdm-002's `last_meeting_at` / `next_meeting_at` go from always-null to real values — same names, same `string \| null` type, which bdm-002 published for this purpose. No route, param or field is removed or retyped. bdm-002's null assertions stay valid for organizations without appointments. |
+| R-A10 | Filters can only narrow | Every filter is ANDed with the caller's scope. `bdm_user_id` is accepted only from a manager / super_admin and, for a manager, stays inside the team sub-select; from a `bdm` → 422. `status` is a repeatable `Literal` list (unknown value → 422). |
+| R-A11 | Database usage | List: one count (no joins) + one page query joining organization and owner. Detail: appointment + one events query (joined to actor names, ordered by `position`). Overlap: index-bounded window (applied in §5.2). Organization outputs: two correlated subqueries on `ix_bdm_appointments_org_starts`. Every filter maps to an index. |
+| R-A12 | Transactions | One transaction per write, one `commit()` in the route, services never commit; event + audit in the same transaction (fail closed). Lock order organization → appointment everywhere (§5.7). |
+| R-A13 | Typed web contract | `lib/bdmAppointments.ts` types mirror the response models; `isPage` / an appointment id guard reject non-JSON success bodies (bdm-002 browser QA N2). |
+
+### 12.2 Frontend UI engineering
+
+Design language preserved: `PortalShell`, `portal-title` / `eyebrow`, `action-card`, `btn` / `btn secondary small`, `table-wrap`,
+`FormMessage`, `empty`, `muted`, `visually-hidden`, `SearchableSelect`, the inline confirm-group pattern with `useFocusAfterRender`,
+the existing `.status` / `.status.pending` / `.status.error` text pills, and the `.jtl` timeline styles for history. No new CSS
+framework, token or dependency; a new rule goes in `globals.css` only if no existing class expresses it.
+
+| # | Area | Resolution |
+|---|---|---|
+| R-F1 | Visual hierarchy | One `h1` per page ("Appointments", "Book appointment", the appointment code). Detail header: code, organization name (link), status pill; then `h2` sections "Details", "Outcome" (completed only), "History". The time is the most prominent detail line: "Tue 07 Oct 2026, 10:00 IST · 60 min". |
+| R-F2 | Status display | Always text in a pill — `.status` for confirmed / completed, `.status.pending` for scheduled / rescheduled, `.status.error` for cancelled / no show — never colour alone. An open appointment whose start has passed shows "The start time has passed — complete it or mark it as a no-show" (text, `role="note"`) on the detail page. |
+| R-F3 | Loading | List: `aria-busy` + "Loading appointments…" status (the bdm-002 panel pattern). Pages are server-rendered (no client waterfall). The contact select shows "Loading contacts…" and is disabled until contacts arrive. Action buttons show "Confirming…", "Saving…", "Cancelling…" and are disabled while busy (no double submit). |
+| R-F4 | Errors | List failure: alert + Retry. Form / action failure: `FormMessage` alert, focus moved to it; a dropped network uses `NOT_COMPLETED` and keeps the entry. **409 on an action** (changed elsewhere): refetch, re-render, and show "This appointment changed — it is now Cancelled" (`role="status"`). Detail 404: "Appointment not found" + back link. Archived organization on create (422): the API message above the form, with a link to the organization. |
+| R-F5 | Empty states | BDM, none: "No appointments yet" + "Book appointment". BDM with no assigned organizations: the picker says "You have no assigned organizations" with a link to Organizations; Save stays disabled. Manager: "Your team has no appointments in this period". Filters: "No appointments match these filters" + "Clear filters"; past the end + "Go to the first page". |
+| R-F6 | Forms | `<fieldset>`/`<legend>` groups "Who" (organization, contact), "When" (date & time, duration), "Details" (type, location, purpose, remarks), "Estimates" (leads, revenue). Visible labels, "(required)" in label text + `aria-required`. Date & time label says "(IST)"; `datetime-local` with `min` = now in IST. Duration `<select>`: 15, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720 min (the API accepts any 15–720). Revenue `type="number" inputMode="decimal" min=0 step=0.01`, "Expected revenue (INR)"; leads `inputMode="numeric" min=0`. Reasons: `<textarea maxLength=500>` with an "n/500" hint. Client checks set `aria-invalid` + `aria-describedby`; the entry is never cleared on error. |
+| R-F7 | Keyboard | Every action is a `<button>` / `<a>`. Opening an inline group focuses its first field; Escape closes it and returns focus to the trigger; one group open at a time. The overlap alert takes focus on its heading. Table rows link via the code cell (a real link), not a clickable row. |
+| R-F8 | Mobile (320 px) | Filters wrap; the table scrolls inside its labelled `table-wrap` (no page scroll); the detail `<dl>` is single-column when narrow; action buttons wrap under the header; inline groups stack; native mobile pickers for `datetime-local` / `<select>`. |
+| R-F9 | Perceived performance | Writes re-render from the returned appointment (refetch only after a 409). Filters push URL state with `scroll:false`; search submits on Enter / button. The organization picker uses `SearchableSelect`'s debounce / `minChars`. After create: detail page with a `role="status"` notice "Appointment APT-000123 booked". |
+| R-F10 | Hydration-safe times | Every time formatted with `SCHOOL_TIME_ZONE` via `formatSchoolDateTime(v, true)` so server and browser match (QA-022-06 precedent). |
+| R-F11 | Component size | Actions split into three inline-group components (applied in §6.2); the form moves fieldsets into sub-components if it passes ~200 lines. |
+| R-F12 | Untrusted text | Location, purpose, remarks, reasons and contact details render as plain text — no links (D29; no map links). |
+
+### 12.3 Security and hardening — threat model
+
+**Trust boundaries:** JSON bodies of the 7 write routes; the `{id}` path parameter; query params (`date_from`, `date_to`, `status`,
+`appointment_type`, `organization_id`, `bdm_user_id`, `q`, `limit`, `offset`); the session cookie; free text written by one user and
+rendered to another (purpose, remarks, location, reasons → the BDM's manager and super_admin).
+
+**Assets:** contact PII snapshots, the BDM's schedule (where and when they will be), outcomes and revenue estimates, the status
+history and audit trail.
+
+| Threat | Check | Result |
+|---|---|---|
+| Authentication / spoofing | Session handling | Unchanged: `get_current_user` (httpOnly cookie, `secure` from settings, `samesite=lax`), `active` re-checked per request. No new auth flow. |
+| Token / session | New tokens? | None. |
+| Authorization | Every route | Role gate (`bdm` → `bdm_context`; `bdm_manager` / `super_admin`) → scope (`load_scoped`) → owner check for writes. Server-side only; `permissions` flags are UI hints. super_admin is read-only (A3), tested. |
+| IDOR | Path and body ids | `{id}` only via `load_scoped` (out of scope = the same 404 as nonexistent). Body `organization_id` resolves through bdm-002's type scope (other type → 404), then the assignee check (403 — that BDM can already read the organization, so nothing new is revealed). `contact_id` must belong to that organization (422). Filters ANDed with scope (R-A10). |
+| Role escalation / mass assignment | Can a caller widen rights? | `extra="forbid"` rejects `bdm_user_id`, `code`, `status`, `outcome` (outside complete), `organization_id` on PATCH, and the `contact_*` snapshot fields (always copied server-side). The owner is always the session user; managers cannot create or write (403). |
+| Information disclosure | Cross-user leaks | Overlap matches are the caller's own appointments only. Organization `last_meeting_at` / `next_meeting_at` are dates only, visible to readers of the organization (Q-02) — no BDM name, contact or purpose. Error messages carry no other users' data. |
+| Input validation | Every field | Typed models; enums; lengths equal to columns; control characters rejected (bdm-002 validators); reasons 1–500; duration 15–720; money ≥ 0, 2 dp, bounded; leads StrictInt ≥ 0; aware datetimes; `q` ≤ 200; `limit` ≤ 100; per-type lists in the service. Client checks are convenience only. |
+| SQL injection | Query construction | SQLAlchemy ORM, bound parameters; `ILIKE` via `lookups._pattern`; constant sequence name; no raw SQL with input. |
+| XSS | Stored text | React text nodes only; no `dangerouslySetInnerHTML`; no field rendered as a link (R-F12). |
+| CSRF | State-changing calls | JSON `POST` / `PATCH` under the SameSite=Lax cookie with CORS limited to `frontend_url` — the existing posture (bdm-001/002 §12.3). No `GET` changes state. |
+| SSRF | Server fetches? | None (no calendar sync, Q-11; no contact messaging, Q-20). |
+| Secrets | Code / config | No new secret or setting; `git diff --cached` checked before each commit. |
+| Sensitive logs | Logs and audit | Logs: actor, appointment and organization ids, route, action, from/to status, counts. **Never** contact snapshot values, purpose, remarks, location or reasons. Audit metadata: ids, changed field names, from/to status, old/new `starts_at` — no PII or free text (reasons live in the events table, the domain record). 403 refusals logged at WARNING. |
+| Rate limiting / DoS | Authenticated abuse | **No new limiter** (throttling changes need approval; bdm-006 doesn't ask for one). Bounded by authentication, payload caps, `limit ≤ 100`, indexed and window-bounded queries. Events grow by one row per accepted write. |
+| Audit / repudiation | Who did what | Every write: one `AuditLog` row (`bdm_appointment.<action>`) and, for transitions, one event row with the actor, in the same transaction. `overlap_override` records an acknowledged warning. Events are append-only. |
+| Personal data | Purpose, retention, deletion | The snapshot is exactly §2's contact fields for the meeting record. **Consequence of A5, recorded in the DEC:** deleting a contact in bdm-002 no longer erases every copy — the snapshot stays on its appointments. A retention / erasure policy for BDM data remains **NEEDS_CONFIRMATION** (as bdm-001/002); bdm-006 adds no export or deletion path. |
