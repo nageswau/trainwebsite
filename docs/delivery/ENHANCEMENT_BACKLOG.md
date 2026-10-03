@@ -3825,6 +3825,17 @@ separately): API `test_agn_015_{migration,journey,timeline,security}.py` + `test
 panel tests; `tsc` and eslint on touched files. Pending: browser validation (e2e `agn-015-student-journey.spec.ts` written, not run
 here), full suites, independent review.
 
+**Verification before completion (2026-10-03, HEAD `10c41fc`): NOT COMPLETE.** Evidence: API `tests/test_agn_*.py` +
+`test_sch_008_student_timeline.py` + `test_uuid_contracts.py` 1276 passed, 0 failed; web vitest 1985/1986 (the one failure moves between
+untouched files — `AgentApplicationEnrollment` QA13-04, then `AgentStaffRow` — and each passes 3/3 alone: load-timing flakes, not
+AGN-015); `tsc` 0; `npm run lint` 0 errors (30 pre-existing warnings; AGN-015 files `--max-warnings=0` clean); ruff/format clean;
+`next build` exit 0; Playwright `agn-015-student-journey.spec.ts` 2/2 and `agn-004/006/007/016` 11/11 on stack `agn015qa`; Browser Use
+happy path PASS; migration round trip (0066 → 0065 → 0066) drops/restores only the index. Blockers: (1) **QA15-01** reproduced on HEAD —
+removing the student's only shortlist entry leaves the open tracker at "Shortlist Done" while `/journey` returns `not_started`, so
+"the step tracker matches the stored data" fails in the UI; (2) `main` @ `c5cdc8a` (bdm-002, PR #50) took `DEC-SCOPE-060` and
+`0066_bdm_organizations` (also on `0065`): merging as is gives two Alembic heads and conflicts in `test_agn_017_migration.py` and the
+decision register — re-chain as `0067` and renumber `DEC-SCOPE-061` on merging `main`. QA15-02…08 (Low/Info) open.
+
 ## AGN-016 — Agent Tasks and Follow-ups, "Pending Actions" KPI
 
 **Title.** Let an agency Master, and Staff for their assigned students, record follow-up tasks on agency students and see what is open
