@@ -25,9 +25,13 @@ Library, Playwright.
 - No new dependency (backend or web).
 - Channels: `call, whatsapp, email, visit, meeting, other`. Directions: `outbound, inbound` — required for `call, whatsapp, email`,
   NULL for the rest. UI labels: Outgoing / Incoming.
-- Time: `occurred_at` is timezone-aware; not after `now`; IST date ≥ IST today − 7; edit / delete only when the activity's IST date
-  is IST today; a PATCH cannot move `occurred_at` off IST today. IST = `Asia/Kolkata`; `now` = the database clock read once per
-  request.
+- Time: `occurred_at` is timezone-aware; more than 5 minutes after `now` → 422, up to 5 minutes after → saved as `now` (V9); IST date
+  ≥ IST today − 7; edit / delete only when the activity's IST date is IST today; a PATCH cannot move `occurred_at` off IST today.
+  IST = `Asia/Kolkata`; `now` = the database clock read once per request.
+- Daily cap (V10): at most 200 activities per BDM per IST day; the 201st create → 409 "You've logged 200 activities for this day".
+- People in responses are `{id, full_name}` (bdm-010's `PersonRef`): the logger is `bdm: {id, full_name}`.
+- Every 403 on a write logs a `bdm_activity_write_refused` warning (actor, ids, route, status) — never text fields.
+- Spec §12 (Revision 2) lists every API / UI / security finding; the tasks below already include the applied ones.
 - Note: optional, trimmed, ≤ 500 characters, `\n \r \t` allowed, other control characters refused (reuse `TripNote`).
 - Errors are `{"detail": ...}`: a string for 403 / 404 / 409 and service 422s; FastAPI's list for schema 422s.
   Out-of-scope ids → 404 "Activity not found" / "Organization not found".
@@ -50,6 +54,10 @@ Library, Playwright.
 4. **A whitespace-only note** → stored as no note (NULL), not as spaces. Task 2 test `test_blank_note_becomes_null`.
 5. **Deleting an item from a timeline after "Load more"** → the item leaves, the total drops by one and "Load more" still asks
    for the right offset. Task 7 test `delete drops the total and keeps the next offset`.
+6. **A laptop clock a minute fast** → "now" saves (as the server's now) instead of 422 (V9). Task 4 test
+   `test_a_time_slightly_ahead_is_saved_as_now`.
+7. **An unchanged contact sent with another change** → the stored contact name is not rewritten (§12.1 A2). Task 4 test
+   `test_resending_the_same_contact_keeps_the_snapshot`.
 
 ## How to run tests (worktree)
 
@@ -526,7 +534,9 @@ class BdmActivityOrganization(BaseModel):
 
 
 class BdmActivityLogger(BaseModel):
-    user_id: UUID
+    """bdm-010's `PersonRef` shape (§12.1 A1)."""
+
+    id: UUID
     full_name: str
 
 
@@ -601,12 +611,15 @@ git commit -m "feat(bdm-009): activity request and response schemas"
 - Consumes: `BdmActivity`, `BDM_ACTIVITY_CHANNELS`, `BDM_ACTIVITY_DIRECTIONAL` (Task 1); `activity_direction_error` (Task 2);
   `services.bdm_organizations.caller_scope`; `services.bdm_travel.INDIA`.
 - Produces (all in `app.services.bdm_activities`):
-  - constants `NOT_FOUND, OWNER_ONLY, NOT_ASSIGNED, ARCHIVED, CONTACT_INVALID, FUTURE, TOO_OLD, NOT_TODAY, MOVE_TODAY, FUTURE_DAY, BACKDATE_DAYS`
+  - constants `NOT_FOUND, OWNER_ONLY, NOT_ASSIGNED, ARCHIVED, CONTACT_INVALID, FUTURE, TOO_OLD, NOT_TODAY, MOVE_TODAY, FUTURE_DAY,
+    CAP_REACHED, BACKDATE_DAYS, CLOCK_TOLERANCE, DAILY_CAP`
   - `async db_now(db) -> datetime`
   - `india_date(moment: datetime) -> date`
   - `day_range(day: date) -> tuple[datetime, datetime]`
   - `day_filters(day: date) -> list`
-  - `check_time(occurred_at: datetime, now: datetime) -> None` (422)
+  - `check_time(occurred_at: datetime, now: datetime) -> datetime` (422; returns the instant to store, clamped to `now`)
+  - `async check_daily_cap(db, bdm_user_id: UUID, day: date) -> None` (409)
+  - `refused(user: User, route: str, status: int, detail: str, **ids) -> HTTPException` (logs, returns the exception)
   - `editable(activity: BdmActivity, now: datetime) -> bool`
   - `check_direction(channel: str, direction: str | None) -> None` (422)
   - `async contact_for(db, org_id: UUID, contact_id: UUID) -> BdmOrganizationContact` (422)
@@ -692,13 +705,14 @@ def test_day_range_is_the_ist_calendar_day():
     assert end == datetime(2026, 10, 3, 18, 30, tzinfo=UTC)
 
 
-def test_check_time_refuses_future_and_more_than_seven_ist_days_back():
-    svc.check_time(NOW, NOW)
+def test_check_time_clamps_small_skew_refuses_future_and_more_than_seven_ist_days_back():
+    assert svc.check_time(NOW, NOW) == NOW
+    assert svc.check_time(NOW + timedelta(minutes=5), NOW) == NOW  # V9: within tolerance -> saved as now
     with pytest.raises(HTTPException) as exc:
-        svc.check_time(NOW + timedelta(seconds=1), NOW)
+        svc.check_time(NOW + timedelta(minutes=5, seconds=1), NOW)
     assert (exc.value.status_code, exc.value.detail) == (422, svc.FUTURE)
     seven_back = datetime(2026, 9, 26, 0, 0, tzinfo=INDIA)  # first instant of IST today - 7
-    svc.check_time(seven_back, NOW)
+    assert svc.check_time(seven_back, NOW) == seven_back
     with pytest.raises(HTTPException) as exc:
         svc.check_time(seven_back - timedelta(seconds=1), NOW)
     assert (exc.value.status_code, exc.value.detail) == (422, svc.TOO_OLD)
@@ -768,12 +782,30 @@ async def test_page_is_newest_first_with_logger_and_contact_flags(client, db_ses
     assert [i["id"] for i in result["items"]] == [newer.id, older.id]
     assert result["total"] == 2
     first, second = result["items"]
-    assert first["bdm"] == {"user_id": bdm.id, "full_name": bdm.full_name}
+    assert first["bdm"] == {"id": bdm.id, "full_name": bdm.full_name}
     assert first["organization"]["code"] == org["code"]
     assert second["contact_removed"] is True  # a name with no contact row: bdm-002 deleted the contact
     assert first["contact_removed"] is False
     assert first["permissions"] == {"can_change": False}  # not today
+
+
+@pytest.mark.asyncio
+async def test_daily_cap_counts_only_that_bdms_ist_day(client, db_session, monkeypatch):
+    _, bdm, org = await bdm_with_org(client, db_session)
+    monkeypatch.setattr(svc, "DAILY_CAP", 2)  # the rule, not the number, is under test
+    day = date(2026, 9, 18)
+    start, _ = svc.day_range(day)
+    await svc.check_daily_cap(db_session, bdm.id, day)
+    for minutes in (1, 2):
+        await add_activity(db_session, bdm.id, uuid.UUID(org["id"]), start + timedelta(minutes=minutes))
+    with pytest.raises(HTTPException) as exc:
+        await svc.check_daily_cap(db_session, bdm.id, day)
+    assert exc.value.status_code == 409
+    await svc.check_daily_cap(db_session, bdm.id, day + timedelta(days=1))  # another day is free
 ```
+
+`check_daily_cap` reads `DAILY_CAP` at call time (module global), so the monkeypatch works; the message constant `CAP_REACHED`
+keeps the real number.
 
 - [ ] **Step 3: Run it to verify it fails**
 
@@ -805,7 +837,10 @@ from app.services.bdm_travel import INDIA
 logger = logging.getLogger("app.bdm")
 
 BACKDATE_DAYS = 7  # V4
+CLOCK_TOLERANCE = timedelta(minutes=5)  # V9: a browser clock slightly ahead of the server
+DAILY_CAP = 200  # V10: an abuse bound, far above real use
 NOT_FOUND = "Activity not found"
+CAP_REACHED = f"You've logged {DAILY_CAP} activities for this day"
 OWNER_ONLY = "Only the BDM who logged this activity can change it"
 NOT_ASSIGNED = "Only the organization's assigned BDM can log activity"
 ARCHIVED = "This organization is archived"
@@ -839,11 +874,28 @@ def day_filters(day: date) -> list:
     return [BdmActivity.occurred_at >= start, BdmActivity.occurred_at < end]
 
 
-def check_time(occurred_at: datetime, now: datetime) -> None:
-    if occurred_at > now:
+def check_time(occurred_at: datetime, now: datetime) -> datetime:
+    """V4 + V9. Returns the instant to store: up to CLOCK_TOLERANCE ahead is saved as `now`, so no future row is ever stored."""
+    if occurred_at > now + CLOCK_TOLERANCE:
         raise HTTPException(422, FUTURE)
     if india_date(occurred_at) < india_date(now) - timedelta(days=BACKDATE_DAYS):
         raise HTTPException(422, TOO_OLD)
+    return min(occurred_at, now)
+
+
+async def check_daily_cap(db: AsyncSession, bdm_user_id: UUID, day: date) -> None:
+    """V10, create only. A soft bound: two concurrent saves on different organizations may pass it by one or two."""
+    count = await db.scalar(select(func.count()).select_from(BdmActivity).where(BdmActivity.bdm_user_id == bdm_user_id, *day_filters(day)))
+    if (count or 0) >= DAILY_CAP:
+        raise HTTPException(409, CAP_REACHED)
+
+
+def refused(user: User, route: str, status: int, detail: str, **ids) -> HTTPException:
+    """§12.3 S10: every refused write is visible in the logs (ids, route, status -- never text fields), as bdm-002's
+    `bdm_org_write_refused`. Returns the exception for the caller to raise."""
+    logger.warning("bdm_activity_write_refused", extra={"extra_fields": {
+        "actor_id": str(user.id), "route": route, "status": status, **{k: str(v) for k, v in ids.items()}}})
+    return HTTPException(status, detail)
 
 
 def editable(activity: BdmActivity, now: datetime) -> bool:
@@ -890,7 +942,7 @@ def _out(activity: BdmActivity, org: BdmOrganization, logger_name: str, user: Us
     return {
         "id": activity.id,
         "organization": {"id": org.id, "code": org.code, "name": org.name, "org_type": org.org_type},
-        "bdm": {"user_id": activity.bdm_user_id, "full_name": logger_name},
+        "bdm": {"id": activity.bdm_user_id, "full_name": logger_name},
         "contact_id": activity.contact_id,
         "contact_name": activity.contact_name,
         "contact_removed": activity.contact_name is not None and activity.contact_id is None,
@@ -1013,14 +1065,33 @@ async def test_each_channel_is_loggable_against_an_organization(client, db_sessi
     data = response.json()
     assert (data["channel"], data["direction"], data["note"]) == (channel, direction, "Discussed intake")
     assert data["organization"]["id"] == org["id"]
-    assert data["bdm"]["user_id"] == str(bdm.id)
+    assert data["bdm"] == {"id": str(bdm.id), "full_name": bdm.full_name}
     assert data["permissions"] == {"can_change": True}
+
+
+@pytest.mark.asyncio
+async def test_a_time_slightly_ahead_is_saved_as_now(client, db_session):
+    _, _, org = await bdm_with_org(client, db_session)
+    ahead = datetime.now(UTC) + timedelta(minutes=2)
+    response = await client.post(ACTIVITIES, json=activity_body(org["id"], occurred_at=ahead.isoformat()))
+    assert response.status_code == 201, response.text
+    saved = datetime.fromisoformat(response.json()["occurred_at"].replace("Z", "+00:00"))
+    assert saved < ahead  # clamped to the server's now (V9)
+
+
+@pytest.mark.asyncio
+async def test_the_daily_cap_refuses_the_next_log(client, db_session, monkeypatch):
+    _, _, org = await bdm_with_org(client, db_session)
+    monkeypatch.setattr(svc, "DAILY_CAP", 1)
+    assert (await client.post(ACTIVITIES, json=activity_body(org["id"]))).status_code == 201
+    response = await client.post(ACTIVITIES, json=activity_body(org["id"]))
+    assert (response.status_code, response.json()["detail"]) == (409, svc.CAP_REACHED)
 
 
 @pytest.mark.asyncio
 async def test_future_and_too_old_occurred_at_are_422(client, db_session):
     _, _, org = await bdm_with_org(client, db_session)
-    future = (datetime.now(UTC) + timedelta(minutes=5)).isoformat()
+    future = (datetime.now(UTC) + timedelta(minutes=10)).isoformat()
     response = await client.post(ACTIVITIES, json=activity_body(org["id"], occurred_at=future))
     assert (response.status_code, response.json()["detail"]) == (422, svc.FUTURE)
     old = (datetime.now(UTC) - timedelta(days=9)).isoformat()
@@ -1074,6 +1145,33 @@ async def test_patch_today_changes_fields_and_audits_names_only(client, db_sessi
     flat = str([r.metadata_json for r in rows])
     for secret in ("secret note", "call back Tuesday", "Ms Iyer"):
         assert secret not in flat
+
+
+@pytest.mark.asyncio
+async def test_resending_the_same_contact_keeps_the_snapshot(client, db_session):
+    _, _, org = await bdm_with_org(client, db_session, contacts=[{"name": "Dr Rao"}])
+    rao = org["contacts"][0]["id"]
+    created = (await client.post(ACTIVITIES, json=activity_body(org["id"], contact_id=rao))).json()
+    renamed = await client.patch(f"/api/v1/bdm/organizations/{org['id']}/contacts/{rao}", json={"name": "Dr K Rao"})  # bdm-002 route
+    assert renamed.status_code == 200, renamed.text
+    response = await client.patch(f"{ACTIVITIES}/{created['id']}", json={"contact_id": rao, "note": "follow-up"})
+    assert response.status_code == 200
+    assert response.json()["contact_name"] == "Dr Rao"  # the name at save, not the renamed one
+    row = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == created["id"], AuditLog.action == "bdm_activity.updated"))
+    assert row.metadata_json["fields"] == ["note"]
+
+
+@pytest.mark.asyncio
+async def test_abuse_cases_server_owned_fields_and_markup(client, db_session):
+    """AC13: mass assignment is refused; markup is stored and returned as plain text (React renders it as text)."""
+    _, bdm, org = await bdm_with_org(client, db_session)
+    for field, value in (("bdm_user_id", str(uuid.uuid4())), ("contact_name", "Forged"), ("id", str(uuid.uuid4()))):
+        assert (await client.post(ACTIVITIES, json=activity_body(org["id"], **{field: value}))).status_code == 422
+    created = (await client.post(ACTIVITIES, json=activity_body(org["id"], note="<script>alert(1)</script>"))).json()
+    assert created["note"] == "<script>alert(1)</script>"
+    assert created["bdm"]["id"] == str(bdm.id)
+    response = await client.patch(f"{ACTIVITIES}/{created['id']}", json={"organization_id": str(uuid.uuid4())})
+    assert response.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -1196,16 +1294,17 @@ async def log_activity(payload: BdmActivityCreate, user: User = Depends(get_curr
     await bdm_context(db, user)
     org = await org_svc.load_scoped(db, user, payload.organization_id, lock=True)  # out of type -> 404; serializes with archive/assign
     if org.assigned_bdm_user_id != user.id:
-        raise HTTPException(403, svc.NOT_ASSIGNED)
+        raise svc.refused(user, "activity_create", 403, svc.NOT_ASSIGNED, organization_id=org.id)
     if org.archived_at is not None:
         raise HTTPException(422, svc.ARCHIVED)
     contact = await svc.contact_for(db, org.id, payload.contact_id) if payload.contact_id else None
     now = await svc.db_now(db)
-    svc.check_time(payload.occurred_at, now)
+    occurred_at = svc.check_time(payload.occurred_at, now)  # V9: clamped to now when slightly ahead
+    await svc.check_daily_cap(db, user.id, svc.india_date(occurred_at))
     activity = BdmActivity(
         bdm_user_id=user.id, organization_id=org.id, contact_id=contact.id if contact else None,
         contact_name=contact.name if contact else None, channel=payload.channel, direction=payload.direction,
-        occurred_at=payload.occurred_at, note=payload.note,
+        occurred_at=occurred_at, note=payload.note,
     )
     db.add(activity)
     await db.flush()
@@ -1215,11 +1314,11 @@ async def log_activity(payload: BdmActivityCreate, user: User = Depends(get_curr
     return await svc.one(db, user, activity.id, now)
 
 
-async def _owned(db: AsyncSession, user: User, activity_id: UUID):
+async def _owned(db: AsyncSession, user: User, activity_id: UUID, route: str):
     """Scope (404) and owner (403) before any lock; then organization, then activity (spec §5.5); then the day gate (409)."""
     current = await svc.load_readable(db, user, activity_id)
     if current.bdm_user_id != user.id:
-        raise HTTPException(403, svc.OWNER_ONLY)
+        raise svc.refused(user, route, 403, svc.OWNER_ONLY, activity_id=activity_id)
     org = await org_svc.load_scoped(db, user, current.organization_id, lock=True)
     activity = await svc.load_readable(db, user, activity_id, lock=True)  # a concurrent delete -> 404 here
     now = await svc.db_now(db)
@@ -1231,15 +1330,18 @@ async def _owned(db: AsyncSession, user: User, activity_id: UUID):
 @router.patch("/activities/{activity_id}", response_model=BdmActivityOut)
 async def update_activity(activity_id: UUID, payload: BdmActivityUpdate, user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db)):
-    org, activity, now = await _owned(db, user, activity_id)
+    org, activity, now = await _owned(db, user, activity_id, "activity_update")
     changes = payload.model_dump(exclude_unset=True)
     if "occurred_at" in changes:
-        svc.check_time(changes["occurred_at"], now)
+        changes["occurred_at"] = svc.check_time(changes["occurred_at"], now)
         if svc.india_date(changes["occurred_at"]) != svc.india_date(now):
             raise HTTPException(422, svc.MOVE_TODAY)
     if "contact_id" in changes:
-        contact = await svc.contact_for(db, org.id, changes["contact_id"]) if changes["contact_id"] else None
-        changes["contact_name"] = contact.name if contact else None
+        if changes["contact_id"] == activity.contact_id:
+            del changes["contact_id"]  # §12.1 A2: the same contact again never rewrites the stored name
+        else:
+            contact = await svc.contact_for(db, org.id, changes["contact_id"]) if changes["contact_id"] else None
+            changes["contact_name"] = contact.name if contact else None
     svc.check_direction(changes.get("channel", activity.channel), changes.get("direction", activity.direction))
     changed = sorted(k for k, v in changes.items() if k != "contact_name" and getattr(activity, k) != v)
     if not changed:
@@ -1256,7 +1358,7 @@ async def update_activity(activity_id: UUID, payload: BdmActivityUpdate, user: U
 @router.delete("/activities/{activity_id}", status_code=204)
 async def delete_activity(activity_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """V8: a hard delete; the audit row keeps the id, organization and channel (never the note)."""
-    _, activity, _ = await _owned(db, user, activity_id)
+    _, activity, _ = await _owned(db, user, activity_id, "activity_delete")
     svc.audit(db, user, "deleted", activity)
     await db.delete(activity)
     await db.commit()
@@ -1346,7 +1448,7 @@ async def test_timeline_is_visible_to_every_reader_of_the_organization(client, d
     for user in (await make_bdm(db_session, manager, "college"), manager, await make_user(db_session, "super_admin", "global")):
         await as_user(client, user)
         data = (await client.get(org_activities(org["id"]))).json()
-        assert data["total"] == 1 and data["items"][0]["bdm"]["user_id"] == str(bdm.id)
+        assert data["total"] == 1 and data["items"][0]["bdm"]["id"] == str(bdm.id)
         assert data["items"][0]["permissions"]["can_change"] is False
     await as_user(client, await make_bdm(db_session, manager, "school"))
     assert (await client.get(org_activities(org["id"]))).status_code == 404
@@ -1362,13 +1464,28 @@ async def test_manager_reads_the_team_only_and_bdm_filter_only_narrows(client, d
     await client.post(ACTIVITIES, json=activity_body(outsider_org["id"]))
     await as_user(client, manager)
     team = (await client.get(TEAM_ACTIVITIES)).json()
-    assert {i["bdm"]["user_id"] for i in team["items"]} == {str(bdm.id)}
+    assert {i["bdm"]["id"] for i in team["items"]} == {str(bdm.id)}
     assert team["counts"]["by_channel"]["call"] == 1
     narrowed = (await client.get(TEAM_ACTIVITIES, params={"bdm_user_id": str(outsider.id)})).json()
     assert narrowed["total"] == 0 and narrowed["counts"]["by_channel"]["call"] == 0
     assert (await client.post(ACTIVITIES, json=activity_body(org["id"]))).status_code == 403
     await as_user(client, bdm)
     assert (await client.get(TEAM_ACTIVITIES)).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_refused_writes_are_logged_with_ids_only(client, db_session, caplog):
+    """§12.3 S10: a 403 on a write leaves a warning with ids, route and status -- never the note."""
+    manager, _, org = await bdm_with_org(client, db_session)
+    created = (await client.post(ACTIVITIES, json=activity_body(org["id"], note="private words"))).json()
+    await as_user(client, await make_bdm(db_session, manager, "college"))
+    with caplog.at_level("WARNING", logger="app.bdm"):
+        assert (await client.delete(f"{ACTIVITIES}/{created['id']}")).status_code == 403
+        assert (await client.post(ACTIVITIES, json=activity_body(org["id"], note="more words"))).status_code == 403
+    refusals = [r for r in caplog.records if r.getMessage() == "bdm_activity_write_refused"]
+    assert [r.extra_fields["route"] for r in refusals] == ["activity_delete", "activity_create"]
+    assert all(r.extra_fields["status"] == 403 for r in refusals)
+    assert "words" not in str([r.extra_fields for r in refusals])
 
 
 @pytest.mark.asyncio
@@ -1504,7 +1621,7 @@ import { describe, expect, it } from "vitest";
 import { activityRuleField, contactText, isDayPage, needsDirection, placeNewest, type Activity } from "@/lib/bdmActivities";
 
 const a = (over: Partial<Activity> = {}): Activity => ({
-  id: "a1", organization: { id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college" }, bdm: { user_id: "b1", full_name: "Asha" },
+  id: "a1", organization: { id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college" }, bdm: { id: "b1", full_name: "Asha" },
   contact_id: null, contact_name: null, contact_removed: false, channel: "call", direction: "outbound", occurred_at: "2026-10-03T05:00:00Z",
   note: null, created_at: "2026-10-03T05:00:00Z", updated_at: "2026-10-03T05:00:00Z", permissions: { can_change: true }, ...over,
 });
@@ -1563,6 +1680,7 @@ export const CHANNEL_LABEL: Record<Channel, string> = { call: "Call", whatsapp: 
 export const DIRECTION_LABEL: Record<Direction, string> = { outbound: "Outgoing", inbound: "Incoming" };
 export const needsDirection = (channel: Channel) => channel === "call" || channel === "whatsapp" || channel === "email";
 export const NOTE_MAX = 500;
+export const BACKDATE_DAYS = 7; // V4 (the API decides; used in the When hint)
 export const TIMELINE_PAGE = 20;
 export const DAY_PAGE = 50;
 const PICKER_LIMIT = 20;
@@ -1570,7 +1688,7 @@ const PICKER_LIMIT = 20;
 export type Activity = {
   id: string;
   organization: { id: string; code: string; name: string; org_type: OrgType };
-  bdm: { user_id: string; full_name: string };
+  bdm: { id: string; full_name: string }; // bdm-010's PersonRef shape (spec §12.1 A1)
   contact_id: string | null; contact_name: string | null; contact_removed: boolean;
   channel: Channel; direction: Direction | null; occurred_at: string; note: string | null;
   created_at: string; updated_at: string; permissions: { can_change: boolean };
@@ -1635,7 +1753,7 @@ import type { Activity } from "@/lib/bdmActivities";
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const saved = (over: Partial<Activity> = {}): Activity => ({
-  id: "a1", organization: { id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college" }, bdm: { user_id: "b1", full_name: "Asha" },
+  id: "a1", organization: { id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college" }, bdm: { id: "b1", full_name: "Asha" },
   contact_id: null, contact_name: null, contact_removed: false, channel: "call", direction: "outbound", occurred_at: "2026-10-03T05:00:00Z",
   note: null, created_at: "2026-10-03T05:00:00Z", updated_at: "2026-10-03T05:00:00Z", permissions: { can_change: true }, ...over,
 });
@@ -1670,13 +1788,22 @@ describe("BdmActivityForm (bdm-009 §6.3)", () => {
     expect(body.occurred_at).toMatch(/Z$/);
   });
 
-  it("asks for a direction before sending", () => {
+  it("asks for a direction before sending and focuses it", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     render(<BdmActivityForm organizationId="o1" contacts={contacts} onSaved={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Save activity" }));
     expect(screen.getByText("Choose outgoing or incoming.")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Check the highlighted fields.");
+    await waitFor(() => expect(screen.getByLabelText("Outgoing")).toHaveFocus());
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("focuses Channel on open and shows the time and privacy hints", async () => {
+    render(<BdmActivityForm organizationId="o1" contacts={contacts} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    await waitFor(() => expect(screen.getByLabelText("Channel (required)")).toHaveFocus());
+    expect(screen.getByLabelText("When (required)")).toHaveAccessibleDescription(/Your local time\. Up to 7 days back\./);
+    expect(screen.getByLabelText("Note")).toHaveAccessibleDescription(/Everyone who can see this organization can read this note\./);
   });
 
   it("puts a time-rule 422 on the When field", async () => {
@@ -1738,11 +1865,12 @@ import SearchableSelect from "@/components/SearchableSelect";
 import { localToIso, toLocalInput } from "@/lib/agentTasks";
 import { sendJson } from "@/lib/apiErrors";
 import {
-  ACTIVITIES_URL, type Activity, activityRuleField, activityUrl, assignedOrgSearch, type Channel, CHANNEL_LABEL, CHANNELS, type Direction,
-  DIRECTION_LABEL, isActivity, needsDirection, NOTE_MAX,
+  ACTIVITIES_URL, type Activity, activityRuleField, activityUrl, assignedOrgSearch, BACKDATE_DAYS, type Channel, CHANNEL_LABEL, CHANNELS,
+  type Direction, DIRECTION_LABEL, isActivity, needsDirection, NOTE_MAX,
 } from "@/lib/bdmActivities";
 import { fieldErrors } from "@/lib/bdmTravel";
 import { ORGS_URL } from "@/lib/bdmOrganizations";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 
 type ContactOption = { id: string; name: string };
@@ -1786,8 +1914,19 @@ export default function BdmActivityForm({
     return () => controller.abort();
   }, [contacts, orgId]);
 
-  const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const fieldId = (name: string) => `${idp}-${name}`;
+  const focus = useFocusAfterRender();
+  const pickerId = fieldId("organization_id");
+  const picking = !organizationId && !editing;
+  useEffect(() => focus(picking ? pickerId : fieldId("channel")), []); // eslint-disable-line react-hooks/exhaustive-deps -- once, on open (§12.2 F4)
+
+  const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
+  // §12.2 F4: after a refused save, focus the first field that carries an error, else the top message (the TripForm pattern).
+  const FIELD_ORDER = ["organization_id", "direction", "occurred_at", "contact_id", "note"];
+  const focusFirst = (found: Record<string, string>) => {
+    const first = FIELD_ORDER.find((name) => found[name]);
+    focus(first === "direction" ? `${fieldId("direction")}-outbound` : first ? fieldId(first) : fieldId("message"));
+  };
   const errorId = (name: string) => `${idp}-${name}-error`;
   const err = (name: string) => // the TripForm convention: a .form-error paragraph the input points at
     errors[name] ? <p id={errorId(name)} className="form-error">{errors[name]}</p> : null;
@@ -1816,23 +1955,30 @@ export default function BdmActivityForm({
     if (!localToIso(draft.occurredLocal)) local.occurred_at = "Enter when it happened.";
     setErrors(local);
     setFailure(null);
-    if (Object.keys(local).length) return;
+    if (Object.keys(local).length) {
+      setFailure("Check the highlighted fields.");
+      return focusFirst(local);
+    }
     setBusy(true);
     const outcome = editing ? await sendJson(activityUrl(activity!.id), "PATCH", body()) : await sendJson(ACTIVITIES_URL, "POST", body());
     setBusy(false);
     if (outcome.ok && isActivity(outcome.data)) return onSaved(outcome.data, !editing);
-    if (outcome.ok) return setFailure("Unable to save this activity.");
+    if (outcome.ok) {
+      setFailure("Unable to save this activity.");
+      return focusFirst({});
+    }
     const mapped = { ...fieldErrors(outcome.detail), ...activityRuleField(outcome.detail) };
     setErrors(mapped);
-    if (!Object.keys(mapped).length) setFailure(outcome.message);
+    setFailure(Object.keys(mapped).length ? "Check the highlighted fields." : outcome.message);
+    focusFirst(mapped);
   }
 
   return (
     <form onSubmit={submit} noValidate aria-label={editing ? "Edit activity" : "Log activity"} className="form-grid">
-      {failure && <p className="form-error" role="alert">{failure}</p>}
-      {!organizationId && !editing && (
+      {failure && <p id={fieldId("message")} tabIndex={-1} className="form-error" role="alert">{failure}</p>}
+      {picking && (
         <div className="field">
-          <SearchableSelect label="Organization (required)" noun="organization" required search={assignedOrgSearch}
+          <SearchableSelect id={pickerId} label="Organization (required)" noun="organization" required search={assignedOrgSearch}
             onChange={(o) => { setOrgId(o?.id ?? ""); set("contactId", ""); }} />
           {err("organization_id")}
         </div>
@@ -1849,7 +1995,8 @@ export default function BdmActivityForm({
           <legend>Direction (required)</legend>
           {(Object.keys(DIRECTION_LABEL) as Direction[]).map((d) => (
             <label key={d} style={{ display: "flex", gap: 6, alignItems: "center", minHeight: 44 }}>
-              <input type="radio" name={fieldId("direction")} value={d} checked={draft.direction === d} onChange={() => set("direction", d)} />
+              <input id={`${fieldId("direction")}-${d}`} type="radio" name={fieldId("direction")} value={d} checked={draft.direction === d}
+                onChange={() => set("direction", d)} />
               {DIRECTION_LABEL[d]}
             </label>
           ))}
@@ -1859,7 +2006,9 @@ export default function BdmActivityForm({
       <div className="field">
         <label htmlFor={fieldId("occurred_at")}>When (required)</label>
         <input id={fieldId("occurred_at")} type="datetime-local" value={draft.occurredLocal} max={toLocalInput(new Date().toISOString())}
-          {...described("occurred_at")} onChange={(e) => set("occurredLocal", e.target.value)} />
+          aria-invalid={errors.occurred_at ? true : undefined} aria-describedby={`${fieldId("occurred_at")}-hint${errors.occurred_at ? ` ${errorId("occurred_at")}` : ""}`}
+          onChange={(e) => set("occurredLocal", e.target.value)} />
+        <p id={`${fieldId("occurred_at")}-hint`} className="field-hint">Your local time. Up to {BACKDATE_DAYS} days back.</p>
         {err("occurred_at")}
       </div>
       <div className="field">
@@ -1873,7 +2022,8 @@ export default function BdmActivityForm({
       <div className="field">
         <label htmlFor={fieldId("note")}>Note</label>
         <textarea id={fieldId("note")} value={draft.note} maxLength={NOTE_MAX} rows={3} onChange={(e) => set("note", e.target.value)}
-          aria-describedby={`${fieldId("note")}-count`} />
+          aria-invalid={errors.note ? true : undefined} aria-describedby={`${fieldId("note")}-hint ${fieldId("note")}-count${errors.note ? ` ${errorId("note")}` : ""}`} />
+        <p id={`${fieldId("note")}-hint`} className="field-hint">Everyone who can see this organization can read this note.</p>
         <p id={`${fieldId("note")}-count`} className="muted">{draft.note.length} / {NOTE_MAX}</p>
         {err("note")}
       </div>
@@ -1908,7 +2058,7 @@ import type { Activity } from "@/lib/bdmActivities";
 
 const res = (body: unknown, status = 200) => new Response(body === null ? null : JSON.stringify(body), { status });
 const item = (over: Partial<Activity> = {}): Activity => ({
-  id: "a1", organization: { id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college" }, bdm: { user_id: "b1", full_name: "Asha" },
+  id: "a1", organization: { id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college" }, bdm: { id: "b1", full_name: "Asha" },
   contact_id: null, contact_name: "Dr Rao", contact_removed: true, channel: "whatsapp", direction: "inbound", occurred_at: "2026-10-03T05:00:00Z",
   note: "Sent brochure", created_at: "2026-10-03T05:00:00Z", updated_at: "2026-10-03T05:00:00Z", permissions: { can_change: true }, ...over,
 });
@@ -1927,6 +2077,12 @@ describe("BdmActivityItem (bdm-009 §6.3)", () => {
     expect(screen.queryByRole("link", { name: "St Mary" })).toBeNull();
     rerender(<BdmActivityItem activity={item()} showOrganization orgBasePath="/bdm/organizations" onChanged={vi.fn()} onDeleted={vi.fn()} />);
     expect(screen.getByRole("link", { name: "St Mary" })).toHaveAttribute("href", "/bdm/organizations/o1");
+  });
+
+  it("shows markup in a note as text (AC13, §12.3 S5)", () => {
+    const { container } = render(<BdmActivityItem activity={item({ note: "<script>alert(1)</script><b>x</b>" })} onChanged={vi.fn()} onDeleted={vi.fn()} />);
+    expect(screen.getByText("<script>alert(1)</script><b>x</b>")).toBeInTheDocument();
+    expect(container.querySelector("script, b")).toBeNull();
   });
 
   it("hides Edit and Delete without can_change", () => {
@@ -2089,7 +2245,7 @@ import type { Organization } from "@/lib/bdmOrganizations";
 
 const res = (body: unknown, status = 200) => new Response(body === null ? null : JSON.stringify(body), { status });
 const act = (id: string, at: string, over: Partial<Activity> = {}): Activity => ({
-  id, organization: { id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college" }, bdm: { user_id: "b1", full_name: "Asha" },
+  id, organization: { id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college" }, bdm: { id: "b1", full_name: "Asha" },
   contact_id: null, contact_name: null, contact_removed: false, channel: "call", direction: "outbound", occurred_at: at, note: null,
   created_at: at, updated_at: at, permissions: { can_change: true }, ...over,
 });
@@ -2101,11 +2257,19 @@ afterEach(() => {
 });
 
 describe("BdmActivityTimeline (bdm-009 §6.3, AC6, AC11)", () => {
-  it("shows the empty state and the load error", () => {
-    const { rerender } = render(<BdmActivityTimeline organization={org} initial={page([])} canLog={false} orgBasePath="/bdm/organizations" />);
+  it("shows the empty state", () => {
+    render(<BdmActivityTimeline organization={org} initial={page([])} canLog={false} orgBasePath="/bdm/organizations" />);
     expect(screen.getByText("No activity logged yet.")).toBeInTheDocument();
-    rerender(<BdmActivityTimeline organization={org} initial={null} canLog={false} orgBasePath="/bdm/organizations" />);
-    expect(screen.getByText("Activity couldn't be loaded. Reload the page to try again.")).toBeInTheDocument();
+  });
+
+  it("a failed first load offers Try again, which reads the first page", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(res(page([act("a1", "2026-10-03T04:00:00Z")]))));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmActivityTimeline organization={org} initial={null} canLog={false} orgBasePath="/bdm/organizations" />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Activity couldn't be loaded.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(1));
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/bdm/organizations/o1/activities?limit=20&offset=0");
   });
 
   it("offers Log activity only when allowed and inserts the saved one in time order", async () => {
@@ -2166,6 +2330,7 @@ export default function BdmActivityTimeline({
 }: { organization: Organization; initial: Page<Activity> | null; canLog: boolean; orgBasePath: string }) {
   const [items, setItems] = useState(initial?.items ?? []);
   const [total, setTotal] = useState(initial?.total ?? 0);
+  const [loaded, setLoaded] = useState(initial !== null); // false: the server page couldn't read the first page (§12.2 F6)
   const [logging, setLogging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -2174,17 +2339,18 @@ export default function BdmActivityTimeline({
   const logId = `org-${organization.id}-log-activity`;
   const statusId = `org-${organization.id}-activity-status`;
 
-  async function loadMore() {
+  async function load(offset: number) {
     setLoading(true);
     setFailure(null);
     try {
-      const response = await fetch(orgActivitiesUrl(organization.id, items.length));
+      const response = await fetch(orgActivitiesUrl(organization.id, offset));
       const data = response.ok ? await response.json() : null;
       if (!isPage<Activity>(data)) throw new Error("bad page");
-      setItems((current) => [...current, ...data.items.filter((a) => !current.some((c) => c.id === a.id))]);
+      setItems((current) => (offset === 0 ? data.items : [...current, ...data.items.filter((a) => !current.some((c) => c.id === a.id))]));
       setTotal(data.total);
+      setLoaded(true);
     } catch {
-      setFailure("More activity couldn't be loaded. Try again.");
+      setFailure(offset === 0 ? "Activity couldn't be loaded." : "More activity couldn't be loaded. Try again.");
     } finally {
       setLoading(false);
     }
@@ -2204,8 +2370,11 @@ export default function BdmActivityTimeline({
           onSaved={(a) => { setItems((current) => placeNewest(current, a)); setTotal((t) => t + 1); setLogging(false); setNotice("Activity logged."); focus(statusId); }}
           onCancel={() => { setLogging(false); focus(logId); }} />
       )}
-      {initial === null ? (
-        <p className="form-error" role="alert">Activity couldn&apos;t be loaded. Reload the page to try again.</p>
+      {!loaded ? (
+        <div role="alert">
+          <p className="form-error">Activity couldn&apos;t be loaded.</p>
+          <button type="button" className="btn secondary small" onClick={() => void load(0)} disabled={loading}>{loading ? "Loading…" : "Try again"}</button>
+        </div>
       ) : items.length === 0 ? (
         <p className="muted">No activity logged yet.</p>
       ) : (
@@ -2217,9 +2386,9 @@ export default function BdmActivityTimeline({
           ))}
         </ol>
       )}
-      {failure && <p className="form-error" role="alert">{failure}</p>}
-      {initial !== null && items.length < total && (
-        <button type="button" className="btn secondary small" onClick={() => void loadMore()} disabled={loading}>{loading ? "Loading…" : "Load more"}</button>
+      {loaded && failure && <p className="form-error" role="alert">{failure}</p>}
+      {loaded && items.length < total && (
+        <button type="button" className="btn secondary small" onClick={() => void load(items.length)} disabled={loading}>{loading ? "Loading…" : "Load more"}</button>
       )}
     </section>
   );
@@ -2239,46 +2408,45 @@ export default function BdmActivityTimeline({
       )}
 ```
 
-- [ ] **Step 5: Fetch the first page in both organization pages.** In `apps/web/app/bdm/organizations/[id]/page.tsx`, after the
-  organization `try/catch`, add (and import `type Page` from `@/lib/apiErrors`, `type Activity, orgActivitiesUrl` from
-  `@/lib/bdmActivities`):
+- [ ] **Step 5: Fetch the first page in both organization pages, alongside the organization** (§12.2 F2). In
+  `apps/web/app/bdm/organizations/[id]/page.tsx` (import `type Page` from `@/lib/apiErrors`, `type Activity, orgActivitiesUrl` from
+  `@/lib/bdmActivities`, `isUuid` from `@/lib/bdmTravel`), start the timeline read **before** the organization `try` — it needs only
+  the route id — and await it after:
 
 ```tsx
-  // bdm-009 (spec §6.2): the first timeline page. A failure here leaves the profile usable; the section says it couldn't load.
-  let activities: Page<Activity> | null = null;
-  if (organization) {
-    try {
-      activities = await serverApi<Page<Activity>>(orgActivitiesUrl(organization.id));
-    } catch {
-      activities = null;
-    }
-  }
+  // bdm-009 (spec §6.2, §12.2 F2): the first timeline page, read alongside the organization. It never rejects: a failure is null and
+  // the section offers "Try again"; a malformed id isn't sent (the organization read answers "not found" for it).
+  const timeline: Promise<Page<Activity> | null> = isUuid(id)
+    ? serverApi<Page<Activity>>(orgActivitiesUrl(id)).catch(() => null)
+    : Promise.resolve(null);
 ```
 
-  and pass `activities={activities}` to `<BdmOrganizationDetail ...>`. Make the same two changes in
-  `apps/web/app/bdm/manager/organizations/[id]/page.tsx`.
+  then, after the organization `try/catch`: `const activities = organization ? await timeline : null;` and pass
+  `activities={activities}` to `<BdmOrganizationDetail ...>`. Make the same changes in
+  `apps/web/app/bdm/manager/organizations/[id]/page.tsx` (start `timeline` right after `const { id } = await params;`).
 
 - [ ] **Step 6: Extend the page test** — in `apps/web/tests/components/BdmOrganizationPages.test.tsx`, add inside the existing
   organization-detail `describe` (reuse its `me` fixture and add a minimal org fixture if one isn't there):
 
 ```tsx
   it("bdm-009: passes the first activity page, or null when only that call fails", async () => {
-    const organization = { id: "o1", code: "ORG-000001", name: "St Mary" };
+    const id = "00000000-0000-4000-8000-000000000001";
+    const organization = { id, code: "ORG-000001", name: "St Mary" };
     const activities = { items: [], total: 0, limit: 20, offset: 0 };
     vi.mocked(serverApi).mockImplementation(async (p: string) => {
       if (p === "/api/v1/bdm/me") return me;
-      if (p === "/api/v1/bdm/organizations/o1") return { organization };
-      if (p.startsWith("/api/v1/bdm/organizations/o1/activities")) return activities;
+      if (p === `/api/v1/bdm/organizations/${id}`) return { organization };
+      if (p.startsWith(`/api/v1/bdm/organizations/${id}/activities`)) return activities;
       throw new ApiError("x", 401);
     });
-    let tree = elements(await BdmOrganization({ params: Promise.resolve({ id: "o1" }), searchParams: Promise.resolve({}) }));
+    let tree = elements(await BdmOrganization({ params: Promise.resolve({ id }), searchParams: Promise.resolve({}) }));
     expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.activities).toEqual(activities);
     vi.mocked(serverApi).mockImplementation(async (p: string) => {
       if (p === "/api/v1/bdm/me") return me;
-      if (p === "/api/v1/bdm/organizations/o1") return { organization };
+      if (p === `/api/v1/bdm/organizations/${id}`) return { organization };
       throw new ApiError("boom", 500);
     });
-    tree = elements(await BdmOrganization({ params: Promise.resolve({ id: "o1" }), searchParams: Promise.resolve({}) }));
+    tree = elements(await BdmOrganization({ params: Promise.resolve({ id }), searchParams: Promise.resolve({}) }));
     expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.activities).toBeNull();
   });
 ```
@@ -2332,6 +2500,7 @@ const me = {
   id: "b1", full_name: "Asha", email: "a@x.local", phone: null, active: true, division: "it",
   bdm_profile: { bdm_type: "college", employee_id: "E-1", designation: null, department: null, territory: null, reporting_manager: { id: "m1", full_name: "Meera", active: true } },
 };
+const B1 = "00000000-0000-4000-8000-0000000000b1"; // the manager page only sends a UUID as ?bdm
 const counts = { day: "2026-10-03", by_channel: { call: 3, whatsapp: 1, email: 0, visit: 1, meeting: 0, other: 0 }, calls_made: 2, organizations_contacted: 2 };
 const day = (over: Partial<ActivityDayPage> = {}): ActivityDayPage => ({ items: [], total: 0, limit: 50, offset: 0, counts, ...over });
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
@@ -2357,13 +2526,15 @@ describe("bdm-009 activity pages", () => {
   it("the team page passes the BDM filter and never logs", async () => {
     vi.mocked(serverApi).mockImplementation(async (p: string) => {
       if (p === "/api/v1/auth/me") return { id: "m1", full_name: "Meera", role: "bdm_manager" };
-      if (p.startsWith("/api/v1/bdm/manager/team")) return { items: [{ id: "b1", full_name: "Asha" }], total: 1, limit: 100, offset: 0 };
+      if (p.startsWith("/api/v1/bdm/manager/team")) return { items: [{ id: B1, full_name: "Asha" }], total: 1, limit: 100, offset: 0 };
       if (p.includes("unread")) return { unread: 0 };
       return day();
     });
-    const tree = elements(await ManagerActivities({ searchParams: Promise.resolve({ date: "2026-10-01", bdm: "b1" }) }));
-    expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/manager/activities?date=2026-10-01&bdm_user_id=b1&limit=50&offset=0");
-    expect(tree.find((el) => el.type === BdmActivityDay)!.props.canLog).toBe(false);
+    const tree = elements(await ManagerActivities({ searchParams: Promise.resolve({ date: "2026-10-01", bdm: B1 }) }));
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/bdm/manager/activities?date=2026-10-01&bdm_user_id=${B1}&limit=50&offset=0`);
+    const dayList = tree.find((el) => el.type === BdmActivityDay)!;
+    expect(dayList.props.canLog).toBe(false);
+    expect(dayList.props.emptyText).toBe("No activities from Asha on this day.");
   });
 
   it("a refused page shows the access card", async () => {
@@ -2382,7 +2553,7 @@ describe("bdm-009 activity pages", () => {
   });
 
   it("the day list shows the empty state and opens Log activity with the organization picker", () => {
-    render(<BdmActivityDay initial={day()} url="/api/v1/bdm/activities?date=2026-10-03" canLog orgBasePath="/bdm/organizations" />);
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day()} url="/api/v1/bdm/activities?date=2026-10-03" canLog orgBasePath="/bdm/organizations" />);
     expect(screen.getByText("No activities on this day.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Log activity" }));
     expect(screen.getByRole("form", { name: "Log activity" })).toBeInTheDocument();
@@ -2390,13 +2561,13 @@ describe("bdm-009 activity pages", () => {
   });
 
   it("the day list re-reads the day after a delete so the counts stay exact", async () => {
-    const item = { id: "a1", organization: { id: "o1", code: "ORG-1", name: "St Mary", org_type: "college" }, bdm: { user_id: "b1", full_name: "Asha" },
+    const item = { id: "a1", organization: { id: "o1", code: "ORG-1", name: "St Mary", org_type: "college" }, bdm: { id: "b1", full_name: "Asha" },
       contact_id: null, contact_name: null, contact_removed: false, channel: "call", direction: "outbound", occurred_at: "2026-10-03T05:00:00Z",
       note: null, created_at: "2026-10-03T05:00:00Z", updated_at: "2026-10-03T05:00:00Z", permissions: { can_change: true } } as const;
     const after = day({ counts: { ...counts, by_channel: { ...counts.by_channel, call: 2 }, calls_made: 1 } });
     const fetchMock = vi.fn((url: string) => Promise.resolve(url.includes("/activities/a1") ? new Response(null, { status: 204 }) : res(after)));
     vi.stubGlobal("fetch", fetchMock);
-    render(<BdmActivityDay initial={day({ items: [item], total: 1 })} url="/api/v1/bdm/activities?date=2026-10-03" canLog orgBasePath="/bdm/organizations" />);
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [item], total: 1 })} url="/api/v1/bdm/activities?date=2026-10-03" canLog orgBasePath="/bdm/organizations" />);
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
     await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith("/api/v1/bdm/activities?date=2026-10-03&limit=50&offset=0"));
@@ -2413,19 +2584,20 @@ describe("bdm-009 activity pages", () => {
 ```tsx
 import { CHANNEL_LABEL, CHANNELS, type DayCounts } from "@/lib/bdmActivities";
 
-// bdm-009 (AC3): the whole day's counts from the API (never summed from the visible page). Wraps on a phone.
-export default function BdmActivityCounts({ counts }: { counts: DayCounts }) {
+// bdm-009 (AC3): the whole day's counts from the API (never summed from the visible page), on AGN-018's KPI tiles (§12.2 F1:
+// one column on phones, two from 768 px, four from 1024 px). `busy` marks a re-read in progress; the old numbers stay visible.
+export default function BdmActivityCounts({ counts, busy = false }: { counts: DayCounts; busy?: boolean }) {
   const tiles: [string, number][] = [
-    ...CHANNELS.map((c): [string, number] => [CHANNEL_LABEL[c], counts.by_channel[c] ?? 0]),
     ["Calls made", counts.calls_made],
     ["Organizations contacted", counts.organizations_contacted],
+    ...CHANNELS.map((c): [string, number] => [CHANNEL_LABEL[c], counts.by_channel[c] ?? 0]),
   ];
   return (
-    <dl aria-label="Day counts" style={{ display: "flex", flexWrap: "wrap", gap: 12, margin: 0 }}>
+    <dl className="kpi-grid" aria-label="Day counts" aria-busy={busy || undefined}>
       {tiles.map(([label, value]) => (
-        <div key={label} className="action-card" style={{ minWidth: 120, flex: "1 1 120px", margin: 0 }}>
-          <dt className="muted">{label}</dt>
-          <dd style={{ margin: 0, fontSize: "1.5rem", fontWeight: 600 }}>{value}</dd>
+        <div className="kpi-tile" key={label}>
+          <dt>{label}</dt>
+          <dd className="kpi-value">{value}</dd>
         </div>
       ))}
     </dl>
@@ -2437,7 +2609,7 @@ export default function BdmActivityCounts({ counts }: { counts: DayCounts }) {
 
 ```tsx
 "use client";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import BdmActivityCounts from "@/components/BdmActivityCounts";
 import BdmActivityForm from "@/components/BdmActivityForm";
@@ -2445,9 +2617,12 @@ import BdmActivityItem from "@/components/BdmActivityItem";
 import { type ActivityDayPage, DAY_PAGE, isDayPage } from "@/lib/bdmActivities";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-// bdm-009 (spec §6.2): one IST day of activities with its counts. After any write the day is re-read from the API (first page), so the
-// counts stay exact; "Load more" appends the next page.
-export default function BdmActivityDay({ initial, url, canLog, orgBasePath }: { initial: ActivityDayPage; url: string; canLog: boolean; orgBasePath: string }) {
+// bdm-009 (spec §6.2, §12.2 F3/F7/F8): one IST day of activities with its counts, under the page's own title (`header`), with Log
+// activity among the title's actions. After any write the day is re-read (first page) so the counts stay exact; while it re-reads,
+// the old list and counts stay visible and are marked busy. "Load more" appends the next page.
+export default function BdmActivityDay({
+  header, initial, url, canLog, orgBasePath, emptyText = "No activities on this day.",
+}: { header: ReactNode; initial: ActivityDayPage; url: string; canLog: boolean; orgBasePath: string; emptyText?: string }) {
   const [day, setDay] = useState(initial);
   const [logging, setLogging] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -2475,21 +2650,24 @@ export default function BdmActivityDay({ initial, url, canLog, orgBasePath }: { 
 
   return (
     <>
-      <BdmActivityCounts counts={day.counts} />
-      <div id="activity-day-status" tabIndex={-1} role="status" aria-live="polite" className={notice ? "form-message" : undefined}>{notice}</div>
-      {failure && <p className="form-error" role="alert">{failure}</p>}
-      {canLog && !logging && (
-        <button id="activity-day-log" type="button" className="btn small" onClick={() => setLogging(true)}>Log activity</button>
-      )}
+      <div className="portal-title">
+        <div>{header}</div>
+        {canLog && !logging && (
+          <button id="activity-day-log" type="button" className="btn" onClick={() => setLogging(true)}>Log activity</button>
+        )}
+      </div>
       {logging && (
         <section className="action-card wide" aria-label="Log activity">
           <BdmActivityForm onSaved={() => { setLogging(false); void read(0, false, "Activity logged."); }} onCancel={() => { setLogging(false); focus("activity-day-log"); }} />
         </section>
       )}
+      <BdmActivityCounts counts={day.counts} busy={busy} />
+      <div id="activity-day-status" tabIndex={-1} role="status" aria-live="polite" className={notice ? "form-message" : undefined}>{notice}</div>
+      {failure && <p className="form-error" role="alert">{failure}</p>}
       {day.items.length === 0 ? (
-        <p className="empty" role="status">No activities on this day.</p>
+        <p className="empty">{emptyText}</p>
       ) : (
-        <ol className="jtl" aria-label="Activities" style={{ listStyle: "none", padding: 0 }}>
+        <ol className="jtl" aria-label="Activities" aria-busy={busy || undefined} style={{ listStyle: "none", padding: 0 }}>
           {day.items.map((a) => (
             <BdmActivityItem key={a.id} activity={a} showOrganization orgBasePath={orgBasePath}
               onChanged={() => void read(0, false, "Activity saved.")} onDeleted={() => void read(0, false, "Activity deleted.")} />
@@ -2539,22 +2717,28 @@ export default async function MyActivitiesPage({ searchParams }: { searchParams:
   return (
     <PortalShell nav={await nav} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
-        <div className="portal-title">
-          <div>
-            <div className="eyebrow">Activities</div>
-            <h2>My activities</h2>
-            <p className="muted">Calls, WhatsApp messages, emails, visits and meetings you logged. You can change an entry on the day it happened.</p>
-          </div>
-        </div>
-        <form className="analytics-form" method="get" action={PATH} aria-label="Choose a day">
-          <div className="field">
-            <label htmlFor="activity-date">Day</label>
-            <input id="activity-date" type="date" name="date" defaultValue={chosen} max={today} />
-          </div>
-          <button className="btn secondary" type="submit">Show</button>
-        </form>
         {/* A BDM can log from any day's page: backdating is allowed, and the API applies the 7-day rule. */}
-        <BdmActivityDay key={chosen} initial={day} url={url} canLog orgBasePath="/bdm/organizations" />
+        <BdmActivityDay
+          key={chosen}
+          header={
+            <>
+              <div className="eyebrow">Activities</div>
+              <h2>My activities</h2>
+              <p className="muted">Calls, WhatsApp messages, emails, visits and meetings you logged. You can change an entry on the day it happened.</p>
+              <form className="analytics-form" method="get" action={PATH} aria-label="Choose a day">
+                <div className="field">
+                  <label htmlFor="activity-date">Day</label>
+                  <input id="activity-date" type="date" name="date" defaultValue={chosen} max={today} />
+                </div>
+                <button className="btn secondary" type="submit">Show</button>
+              </form>
+            </>
+          }
+          initial={day}
+          url={url}
+          canLog
+          orgBasePath="/bdm/organizations"
+        />
       </div>
     </PortalShell>
   );
@@ -2595,31 +2779,39 @@ export default async function ManagerActivitiesPage({ searchParams }: { searchPa
   } catch (e) {
     return accessUnavailable(e, "/admin/login");
   }
+  const chosenName = bdm ? team.items.find((b) => b.id === bdm)?.full_name ?? null : null; // §12.2 F7
   return (
     <PortalShell nav={await nav} roleLabel={user.role === "super_admin" ? "Super Admin" : "BDM Manager"} userName={user.full_name}>
       <div className="portal-content">
-        <div className="portal-title">
-          <div>
-            <div className="eyebrow">Activities</div>
-            <h2>Team activities</h2>
-            <p className="muted">What your BDMs logged on the chosen day, with that day&apos;s counts.</p>
-          </div>
-        </div>
-        <form className="analytics-form" method="get" action={PATH} aria-label="Filter activities">
-          <div className="field">
-            <label htmlFor="team-activity-date">Day</label>
-            <input id="team-activity-date" type="date" name="date" defaultValue={chosen} max={today} />
-          </div>
-          <div className="field">
-            <label htmlFor="team-activity-bdm">BDM</label>
-            <select id="team-activity-bdm" name="bdm" defaultValue={bdm ?? ""}>
-              <option value="">Everyone</option>
-              {team.items.map((b) => <option key={b.id} value={b.id}>{b.full_name}</option>)}
-            </select>
-          </div>
-          <button className="btn secondary" type="submit">Show</button>
-        </form>
-        <BdmActivityDay key={`${chosen}-${bdm ?? "all"}`} initial={day} url={url} canLog={false} orgBasePath="/bdm/manager/organizations" />
+        <BdmActivityDay
+          key={`${chosen}-${bdm ?? "all"}`}
+          header={
+            <>
+              <div className="eyebrow">Activities</div>
+              <h2>Team activities</h2>
+              <p className="muted">What your BDMs logged on the chosen day, with that day&apos;s counts.</p>
+              <form className="analytics-form" method="get" action={PATH} aria-label="Filter activities">
+                <div className="field">
+                  <label htmlFor="team-activity-date">Day</label>
+                  <input id="team-activity-date" type="date" name="date" defaultValue={chosen} max={today} />
+                </div>
+                <div className="field">
+                  <label htmlFor="team-activity-bdm">BDM</label>
+                  <select id="team-activity-bdm" name="bdm" defaultValue={bdm ?? ""}>
+                    <option value="">Everyone</option>
+                    {team.items.map((b) => <option key={b.id} value={b.id}>{b.full_name}</option>)}
+                  </select>
+                </div>
+                <button className="btn secondary" type="submit">Show</button>
+              </form>
+            </>
+          }
+          initial={day}
+          url={url}
+          canLog={false}
+          orgBasePath="/bdm/manager/organizations"
+          emptyText={chosenName ? `No activities from ${chosenName} on this day.` : "No activities on this day."}
+        />
       </div>
     </PortalShell>
   );
@@ -2708,7 +2900,11 @@ async function signIn(page: Page, portal: "it" | "admin", email: string, passwor
 }
 
 async function noOverflow(page: Page) {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  for (const width of [320, 375]) { // §12.2 F9
+    await page.setViewportSize({ width, height: 800 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `overflow at ${width}px`).toBe(true);
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
 }
 
 test("BDM activity log: log, timeline, counts, edit, delete, manager view", async ({ page }) => {
@@ -2769,16 +2965,15 @@ test("BDM activity log: log, timeline, counts, edit, delete, manager view", asyn
   await page.getByRole("button", { name: "Yes, delete" }).click();
   await expect(counts.getByText("Visit", { exact: true }).locator("xpath=following-sibling::dd")).toHaveText("0");
 
-  await page.setViewportSize({ width: 375, height: 800 });
+  await noOverflow(page);
+  await page.goto(`/bdm/organizations/${org.id}`);
   await noOverflow(page);
 
   // the manager sees the team's day
-  await page.setViewportSize({ width: 1280, height: 800 });
   await signIn(page, "admin", manager.email, E2E_PASSWORD, "/bdm/manager/dashboard");
   await page.goto("/bdm/manager/activities");
   await expect(page.getByRole("list", { name: "Activities" }).getByText("MoU draft next week")).toBeVisible();
   await expect(page.getByRole("button", { name: /Edit|Delete|Log activity/ })).toHaveCount(0);
-  await page.setViewportSize({ width: 375, height: 800 });
   await noOverflow(page);
 });
 ```
@@ -2831,8 +3026,12 @@ day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
 - **V6** Direction (outbound / inbound) required for call, WhatsApp, email; empty otherwise. Calls made = outbound calls.
 - **V7** Pages: org timeline + Log activity, `/bdm/activities`, `/bdm/manager/activities`.
 - **V8** Delete is hard, with an audit row (ids and channel only).
-- Defaults: super_admin reads only; the contact must belong to the organization and its name is kept after the contact is deleted;
-  an edit cannot move an activity off today; no idempotency key (duplicate fixed by a same-day delete).
+- **V9** (Revision 2) A time up to 5 minutes after the server clock is saved as the server's now; more than 5 minutes ahead → 422.
+- **V10** (Revision 2) At most 200 activities per BDM per IST day (409); a soft abuse bound.
+- Defaults: super_admin reads only; the contact must belong to the organization and its name is kept after the contact is deleted
+  (as bdm-006 A5); an edit cannot move an activity off today; no idempotency key (duplicate fixed by a same-day delete); no general
+  rate limiter (as bdm-010). Notes are visible to every reader of the organization (the form says so). Retention / erasure of BDM data
+  remains `NEEDS_CONFIRMATION` (as bdm-001 / 002 / 006).
 
 **Status:** `EXPLICIT_APPROVAL`. Spec `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md`; migration
 `0069_bdm_activities`.
@@ -2847,14 +3046,18 @@ day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
 > `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md`.
 ```
 
-- [ ] **Step 3: DATA_MODEL and RTM** — open both files, find the bdm-010 entries, and add the same shape for bdm-009: the
-  `bdm_activities` table (columns, checks, indexes, FKs from spec §4.1) in `DATA_MODEL.md`; in `RTM.md` one row per AC1–AC12 mapping
-  to the test files listed in spec §8.
+- [ ] **Step 3: DATA_MODEL, RTM and API_CONTRACT** — open each file, find the bdm-010 entry, and add the same shape for bdm-009:
+  - `DATA_MODEL.md`: the `bdm_activities` table (columns, checks, indexes, FKs from spec §4.1).
+  - `RTM.md`: one row per AC1–AC13 mapping to the test files listed in spec §8 (AC13 → `test_bdm_009_activities.py`
+    `test_abuse_cases_server_owned_fields_and_markup`, `test_bdm_009_scope.py`, `BdmActivityItem.test.tsx`).
+  - `API_CONTRACT.md` (after the bdm-010 addendum, `API_CONTRACT.md:391`): "**`bdm-009` / `DEC-SCOPE-064`** — BDM activity log." List
+    the six routes (spec §5.3), the status table (spec §12.1 A4), the retry semantics (A3: POST not retry-safe, PATCH idempotent,
+    second DELETE → 404), V9 and V10, and "no existing route or field changes" (A10).
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/decisions/PRODUCT_DECISION_REGISTER.md docs/delivery/BDM_CRM_BACKLOG.md docs/architecture/DATA_MODEL.md docs/quality/RTM.md
+git add docs/decisions/PRODUCT_DECISION_REGISTER.md docs/delivery/BDM_CRM_BACKLOG.md docs/architecture/DATA_MODEL.md docs/architecture/API_CONTRACT.md docs/quality/RTM.md
 git commit -m "docs(bdm-009): DEC-SCOPE-064, backlog status, data model and RTM"
 ```
 

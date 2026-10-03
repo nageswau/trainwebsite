@@ -3,6 +3,10 @@
 **Status:** design approved in-session on 2026-10-03 in five sections: (1) data model and rules, (2) API, authorization,
 transactions and races, (3) frontend, (4) acceptance criteria and tests, (5) regression risks. No code has been written.
 
+**Revision 2 (2026-10-03):** reviewed against the `api-and-interface-design`, `frontend-ui-engineering` and
+`security-and-hardening` skills. Findings are applied inline below and listed in §12. Two new owner decisions (V9 clock
+tolerance, V10 daily cap); no earlier decision changed.
+
 **Branch:** `feature/bdm-009-activities`, created from `origin/main` @ `65a8ece0` (after bdm-010 #53).
 
 **Backlog:** `docs/delivery/BDM_CRM_BACKLOG.md` §4 bdm-009 (line 520). Depends only on bdm-002 (merged, PR #50).
@@ -57,6 +61,8 @@ Out of scope (owned elsewhere):
 | V6 | Direction | **Required (`outbound` / `inbound`) for call, WhatsApp and email; must be empty for visit, meeting, other.** "Calls made" = outbound calls |
 | V7 | Screens | Org timeline + Log activity on the org profile, **`/bdm/activities`** (my day + counts) and **`/bdm/manager/activities`** (team, BDM filter) |
 | V8 | Delete | **Hard delete + audit row** (ids and channel, no note) |
+| V9 | Clock skew (Revision 2) | **5 minutes of tolerance:** an `occurred_at` up to 5 minutes after the server clock is accepted and **saved as the server's now** (no future row is ever stored); more than 5 minutes ahead → 422 |
+| V10 | Abuse bound (Revision 2) | **At most 200 activities per BDM per IST day:** the 201st → 409 "You've logged 200 activities for this day". A soft bound — concurrent saves on different organizations may pass it by one or two |
 
 Design defaults (presented in the approved sections, not asked separately):
 - `super_admin` reads everything and cannot write (an activity is a BDM's own record); `it_admin` / `overseas_admin` have
@@ -96,7 +102,8 @@ Migration style follows `0068_bdm_trips.py`: CHECK constraints (no PG enums), "t
 
 ### 4.2 Time rules (service, against `db_now()` read once per request)
 
-- `occurred_at > now` → 422 "When can't be in the future".
+- `occurred_at > now + 5 minutes` → 422 "When can't be in the future"; `now < occurred_at ≤ now + 5 minutes` → saved as `now` (V9).
+- The BDM already has 200 activities on that IST day → 409 "You've logged 200 activities for this day" (V10, create only).
 - IST date of `occurred_at` < IST today − 7 days → 422 "Activities can be logged up to 7 days back".
 - Day boundaries are IST: a day `D` is `[D 00:00 IST, D+1 00:00 IST)`, queried as a UTC range (index-friendly).
 - `editable(activity, now)` = IST date of `activity.occurred_at` == IST date of `now`. False → 409 "Only today's activities
@@ -113,7 +120,7 @@ Migration style follows `0068_bdm_trips.py`: CHECK constraints (no PG enums), "t
   control characters refused). A model validator enforces V6.
 - `BdmActivityUpdate` (`extra="forbid"`, all optional, no `organization_id`): the same fields; the V6 rule is checked in the
   service on the merged result (a channel change can make the stored direction invalid).
-- `BdmActivityOut`: `id`, `organization {id, code, name, org_type}`, `bdm {user_id, full_name}`, `contact_id`,
+- `BdmActivityOut`: `id`, `organization {id, code, name, org_type}`, `bdm {id, full_name}` (bdm-010's `PersonRef` shape), `contact_id`,
   `contact_name`, `contact_removed` (snapshot present, FK NULL), `channel`, `direction`, `occurred_at`, `note`,
   `created_at`, `updated_at`, `permissions {can_change}`.
 - `BdmActivityDayCounts`: `day` (the IST date; not `date`, which would shadow the type in Pydantic), `by_channel` (all six keys, 0 when none), `calls_made`, `organizations_contacted`.
@@ -199,7 +206,8 @@ Functions only; nothing commits. Reuses `services.bdm.bdm_context` / `require_ma
 - `BdmActivityTimeline` (org profile section "Activity", `SchoolStudentTimeline` markup pattern): Log activity when
   `org.permissions.can_edit` (already means assigned and not archived — no contract change) and the BDM base path; "Load
   more" by offset.
-- `BdmActivityCounts`: six channel tiles + "Calls made" + "Organizations contacted".
+- `BdmActivityCounts`: six channel tiles + "Calls made" + "Organizations contacted", on the existing AGN-018 `.kpi-grid` /
+  `.kpi-tile` / `.kpi-value` styles (F1).
 - A write applies the returned activity locally (no `router.refresh`, avoiding bdm-010 QA10-16). On the activities pages a
   write re-reads that day's page so the counts stay exact. A 403 / 409 on edit or delete shows the reason and makes that item read-only (Edit / Delete hidden); a 404 removes it from the
   list. There is no single-activity GET, so nothing is re-read.
@@ -222,7 +230,7 @@ delete confirm.
 | AC | Criterion |
 |---|---|
 | AC1 | Each of the six channels is loggable against an organization by its assigned BDM; direction required for call / WhatsApp / email and refused for the others (422) |
-| AC2 | Future `occurred_at` → 422; older than 7 IST days → 422; exactly 7 days back accepted; naive datetime → 422 |
+| AC2 | `occurred_at` more than 5 minutes in the future → 422, up to 5 minutes ahead → saved as now (V9); older than 7 IST days → 422; exactly 7 days back accepted; naive datetime → 422; the 201st activity of an IST day → 409 (V10) |
 | AC3 | The day's counts are exact: per channel, outbound calls, distinct organizations; IST boundaries (18:29:59Z vs 18:30:00Z); independent of pagination and of other BDMs / days |
 | AC4 | Edit / delete only on the activity's IST day (409 otherwise); a PATCH cannot move it off today (422); `editable()` is the single gate (bdm-015 extends it) |
 | AC5 | Authorization: out-of-type org → 404; not assigned → 403; archived → 422 on create; non-owner patch / delete → 403; activity on an unreadable org → 404; manager reads team only (`bdm_user_id` outside team → empty), manager / super_admin writes → 403; it_admin / overseas_admin → 403 |
@@ -232,7 +240,8 @@ delete confirm.
 | AC9 | Log vs archive is serialized (no activity on an archived organization); two concurrent deletes → one 204 and one 404 |
 | AC10 | Migration: chains after `0068_bdm_trips`, single head, upgrade / downgrade round trip, downgrade refuses while rows exist |
 | AC11 | UI: timeline, Log / Edit / Delete, counts strip, date and BDM filters, loading / empty / error states |
-| AC12 | End to end: a BDM logs, sees it on the timeline and in the counts; the manager sees it; keyboard-only; no overflow at 375 px |
+| AC12 | End to end: a BDM logs, sees it on the timeline and in the counts; the manager sees it; keyboard-only; no overflow at 320 px and 375 px |
+| AC13 | Abuse cases (§12.3): another BDM's activity id → 403 when its organization is readable, 404 when not; a contact id from another organization → 422 and its name never appears; server-owned fields in a body (`bdm_user_id`, `contact_name`, `id`) → 422; `organization_id` in a PATCH → 422; a `bdm` calling the manager route → 403; `?bdm_user_id=` outside the team → an empty page and zero counts; a note with `<script>` is stored and shown as text |
 
 ## 8. Tests (written before the code, per task)
 
@@ -270,10 +279,68 @@ No existing route, field or response changes. bdm-002 organization output is unc
 
 ## 10. Documentation (updated in the same change)
 
-`docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-064`), `docs/delivery/BDM_CRM_BACKLOG.md` (bdm-009 status line),
+`docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-064`), `docs/architecture/API_CONTRACT.md` (bdm-009 addendum: routes, status
+table §12.1 A4, retry semantics A3), `docs/delivery/BDM_CRM_BACKLOG.md` (bdm-009 status line),
 `docs/architecture/DATA_MODEL.md` (`bdm_activities`), `docs/quality/RTM.md` (bdm-009 rows).
 
 ## 11. Completion gates
 
 bdm-009 is complete only when AC1–AC12 pass with the §8 tests, the build and type checks are clean, the migration round
 trip passes, responsive and accessibility checks pass in the browser, and the documentation above is updated.
+
+## 12. Revision 2 — skill reviews (2026-10-03)
+
+Scope: bdm-009 only. Each row is either **applied** (spec and plan updated) or **recorded** (deliberately unchanged, with the reason).
+
+### 12.1 API and interface design
+
+| # | Topic | Finding | Outcome |
+|---|---|---|---|
+| A1 | Naming consistency | The logger was `bdm {user_id, full_name}`; bdm-010 returns people as `{id, full_name}` (`PersonRef`) | **Applied:** `bdm {id, full_name}` |
+| A2 | PATCH semantics | Sending an unchanged `contact_id` alongside another change re-copied the contact's *current* name, silently rewriting the snapshot | **Applied:** contact fields change only when `contact_id` differs from the stored value |
+| A3 | Retry semantics | POST is not retry-safe (no `Idempotency-Key`, as bdm-010 A4): the UI disables Save while busy; a duplicate is fixed by a same-day delete. PATCH is idempotent (same body → same row, no second audit). A second DELETE → 404, the bdm-002 / bdm-010 convention | **Recorded** in the API_CONTRACT addendum |
+| A4 | Error semantics | One status table for every route: 401 no session; 403 wrong role / not the assignee / not the logger; 404 activity or organization outside the caller's scope; 409 the day gate (`NOT_TODAY`) and the daily cap (V10); 422 schema, time rules, contact, archived organization, future `?date=`. `detail` is a string except schema 422s (FastAPI list). Archived → 422 follows bdm-006's owner AC, not bdm-002's 409 | **Applied** (§5.4, contract addendum) |
+| A5 | Clock between client and server | A browser clock slightly ahead made "now" a 422 | **Applied:** V9 (5-minute tolerance, saved as now) |
+| A6 | Unbounded writes | No limit on rows per day | **Applied:** V10 (200 per BDM per IST day → 409) |
+| A7 | Implicit defaults | `GET` without `?date=` uses IST today; the response's `counts.day` states which day was used, so the default is observable | **Recorded** |
+| A8 | Pagination | Every list is paginated (`limit` ≤ 100), ordered `occurred_at desc, id desc` (stable under ties); `total` and `counts` use the same filters | **Recorded** |
+| A9 | Database usage | `(bdm_user_id, occurred_at)` serves my day, the counts and the cap; `(organization_id, occurred_at)` the timeline; the team filter uses `ix_bdm_profiles_reporting_manager`. Day ranges are instant ranges (no cast on the column). `now()` is the transaction start; V9's tolerance also covers a request that waited on a lock | **Recorded** |
+| A10 | Backward compatibility | Additive only: one table, new routes, a new optional prop on `BdmOrganizationDetail`, one added member of `SearchableSelect`'s `Noun` union. No existing route, field, status or message changes | **Recorded** |
+
+### 12.2 Frontend UI engineering
+
+| # | Topic | Finding | Outcome |
+|---|---|---|---|
+| F1 | Design language | The counts strip used inline card styles | **Applied:** reuse AGN-018's `.kpi-grid` / `.kpi-tile` / `.kpi-value` (already 1 → 2 → 4 columns) |
+| F2 | Perceived performance | The org page fetched the timeline after the organization (two round trips in series) | **Applied:** both requests start together from the route id; the timeline result is used only if the organization loaded |
+| F3 | Refresh state | Re-reading the day after a write gave no cue | **Applied:** the list and counts carry `aria-busy="true"` while re-reading; the old content stays visible |
+| F4 | Forms — focus | The form opened without focus and errors did not move focus | **Applied:** focus Channel on open (Organization on the activities page); after a refused save, focus the first field with an error, otherwise the top message, with "Check the highlighted fields." (the TripForm pattern) |
+| F5 | Forms — hints | No guidance on time zone or window, or on who reads the note | **Applied:** `.field-hint` under When: "Your local time. Up to 7 days back."; under Note: "Everyone who can see this organization can read this note." (S13) |
+| F6 | Error state | The timeline load error only said "reload the page" | **Applied:** a "Try again" button that re-reads the first page |
+| F7 | Empty states | The team view had one generic empty text | **Applied:** "No activities from {name} on this day." when a BDM is chosen; otherwise "No activities on this day." |
+| F8 | Hierarchy | Log activity sat below the counts on My Activities | **Applied:** in the page title's actions, like "New trip" |
+| F9 | Mobile | Breakpoints | **Applied:** Playwright also checks 320 px; the form uses the existing `.form-grid`, actions wrap, radio rows keep 44 px |
+| F10 | Keyboard | Every control is a native button / select / input / radio; the delete confirm keeps BdmConfirm's autofocus and Escape | **Recorded** |
+| F11 | Not adopted | Previous / next day links; optimistic inserts on the day page | **Recorded:** not required by bdm-009; the re-read keeps the counts exact (AC3) |
+
+### 12.3 Security and hardening — threat model
+
+Trust boundaries: the JSON body and query string of the six routes; the session cookie. Assets: other BDMs' notes and contacts, the
+integrity of the day counts (bdm-015 will snapshot them), the audit trail.
+
+| # | Area | Finding | Outcome |
+|---|---|---|---|
+| S1 | Authentication | Every route depends on `get_current_user` (cookie `edusphere_access`); no anonymous route | **Recorded** |
+| S2 | Authorization / IDOR | Activity ids resolve through `load_readable` (unreadable → 404); organization ids through `load_scoped`; a contact id must belong to the locked organization (`contact_for` filters by organization, so another organization's contact name is never read); `bdm_user_id` and `organization_id` filters are ANDed with the caller's scope | **Applied** as AC13 tests |
+| S3 | Role escalation / mass assignment | The owner is always the session user; `extra="forbid"` refuses `bdm_user_id`, `contact_name`, `id`, and `organization_id` on PATCH; the PATCH loop sets only schema fields plus the server-computed contact name | **Applied** (AC13) |
+| S4 | Input validation | Channel / direction `Literal`s; aware datetimes; note ≤ 500 with control characters other than `\n\r\t` refused; UUID path and query params; `limit` ≤ 100 | **Recorded** |
+| S5 | XSS | The note and names render as React text (`white-space: pre-wrap`), never `dangerouslySetInnerHTML`; the organization link is built from the API's UUID | **Applied** as a test (AC13) |
+| S6 | CSRF | `SameSite=Lax` (`auth.py:92`) withholds the session cookie on cross-site POST / PATCH / DELETE and CORS allows only `frontend_url` (`main.py:72`) — bdm-010 S7's reasoning. No new mechanism | **Recorded** |
+| S7 | SQL injection | SQLAlchemy expressions only; no raw SQL, no `LIKE`, no string-built filters | **Recorded** |
+| S8 | Tokens, session, secrets | Unchanged; bdm-009 adds no token, cookie, secret or external call | **Recorded** |
+| S9 | Sensitive logs | Logs and audit rows carry ids, channel, route and field names only — never the note, contact name or phone | **Recorded** |
+| S10 | Refusal visibility | Refused writes were silent in logs | **Applied:** a `bdm_activity_write_refused` warning (actor, activity / organization id, route, status) on every 403, as bdm-002's `bdm_org_write_refused` |
+| S11 | Rate limiting / DoS | No general limiter in the API (adding one is outside bdm-009, as bdm-010 S12). Bounds: V10 daily cap, `limit` ≤ 100, note ≤ 500 | **Applied** (V10) / **recorded** (no limiter) |
+| S12 | Audit | created / updated / deleted in the write's transaction (fail closed); the delete row keeps the ids and channel; refusals go to logs, not the audit table (as bdm-002) | **Recorded** |
+| S13 | Privacy | Notes and contact names are visible to every reader of the organization (V5) — the form says so (F5). The contact's name stays on activities after the contact is deleted (as bdm-006 A5), recorded in the DEC. Retention / erasure for BDM data remains **NEEDS_CONFIRMATION** (as bdm-001 / 002 / 006); bdm-009 adds no export or deletion path | **Applied** (hint) / **recorded** |
+| S14 | Error disclosure | Messages name no other user's data. A non-assignee learns the organization exists — it is already readable to them (Q-02) | **Recorded** |
