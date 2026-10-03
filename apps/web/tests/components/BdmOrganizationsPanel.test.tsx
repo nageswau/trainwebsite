@@ -126,4 +126,10 @@ describe("BdmOrganizationsPanel (bdm-002 AC9)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search" })); // same (empty) filters
     expect(screen.queryByText("Updating organizations…")).toBeNull();
   });
+
+  it("styles organization names as links (browser QA-03)", async () => {
+    serve(res(pg([row(1)])));
+    render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    expect(await screen.findByRole("link", { name: "College 1" })).toHaveStyle({ textDecoration: "underline" });
+  });
 });

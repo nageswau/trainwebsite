@@ -6,6 +6,8 @@ import type { LookupPage } from "@/lib/lookups";
 export const ORGS_URL = "/api/v1/bdm/organizations";
 export const TEAM_URL = "/api/v1/bdm/manager/team";
 export const ORG_PAGE_SIZE = 50;
+// Browser QA-03: the global reset makes links look like text; these are links (the AgentUniversitiesPanel convention).
+export const LINK_STYLE = { color: "var(--blue)", textDecoration: "underline" } as const;
 const PICKER_LIMIT = 20;
 
 export const ORG_TYPES = ["college", "university", "agent", "school", "corporate", "training_institute", "other"] as const;

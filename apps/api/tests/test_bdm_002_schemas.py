@@ -71,3 +71,27 @@ def test_contact_models():
     with pytest.raises(ValidationError):
         BdmContactUpdate.model_validate({"name": None})
     assert BdmContactUpdate.model_validate({"is_primary": True}).model_dump(exclude_unset=True) == {"is_primary": True}
+
+
+@pytest.mark.parametrize("bad", [-1, 1_000_001, 1.5])
+def test_student_count_errors_read_plainly(bad):
+    """Browser QA-04: not pydantic's "Input should be greater than or equal to 0"."""
+    with pytest.raises(ValidationError) as exc:
+        BdmOrganizationCreate.model_validate(org(student_count=bad))
+    assert "Number of students must be a whole number from 0 to 1,000,000" in messages(exc.value)
+
+
+@pytest.mark.parametrize(
+    ("typed", "stored"),
+    [("stjoseph.edu", "https://stjoseph.edu"), ("www.mary.ac.in/admissions", "https://www.mary.ac.in/admissions"), ("http://old.org", "http://old.org")],
+)
+def test_a_bare_domain_is_accepted_as_https(typed, stored):
+    """Browser QA-05: people type "stjoseph.edu"; it is stored as an https address."""
+    assert BdmOrganizationCreate.model_validate(org(website=typed)).website == stored
+
+
+@pytest.mark.parametrize("bad", ["javascript:alert(1)", "data:text/html,x", "ftp://files.org", "mailto:a@b.co", "stjoseph", "two words.org"])
+def test_other_schemes_and_non_addresses_are_still_rejected(bad):
+    with pytest.raises(ValidationError) as exc:
+        BdmOrganizationCreate.model_validate(org(website=bad))
+    assert {"Website must start with http:// or https://", "Enter a website such as stjoseph.edu"} & set(messages(exc.value))

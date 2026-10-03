@@ -157,5 +157,25 @@ Fixed test-first: each test was seen failing for the reported reason, then passi
 
 **Verification:** web BDM set (18 files) 138 passed; `tsc --noEmit` 0; `eslint` 0. Playwright `bdm-002` 2 + `bdm-001` 8 + `auth-001` 6 → 16 passed.
 
-**Not fixed (Low/Info, left for the owner to decide):** QA-03, QA-04, QA-05, QA-06, QA-07, QA-08, QA-11, QA-13.
+**Not fixed in this pass:** QA-03, QA-04, QA-05, QA-06, QA-07, QA-08, QA-11, QA-13 — fixed in the second pass below.
+
+## Second fix pass (2026-10-03, owner: "Fix them")
+
+The remaining eight items, fixed test-first (each test seen failing first), then re-checked in the isolated browser against
+rebuilt `api` + `web` containers.
+
+| ID | Fix | Test (RED → GREEN) | Browser re-check |
+|---|---|---|---|
+| QA-03 | Organization names and "Back to organizations" use the project's link style (`var(--blue)`, underline; the AgentUniversitiesPanel convention) | Panel "styles organization names as links"; Detail "styles Back to organizations as a link" | `rgb(7, 85, 185) underline` on both |
+| QA-04 | One plain message for any bad student count: "Number of students must be a whole number from 0 to 1,000,000" (negative, too large, fractional) | `test_bdm_002_schemas.py::test_student_count_errors_read_plainly` ×3 | — (API message) |
+| QA-05 | A bare domain ("stjoseph.edu", "www.mary.ac.in/admissions") is stored as `https://…`; any other scheme (`javascript:`, `data:`, `ftp:`, `mailto:`) and non-addresses are still refused. Hint: "For example stjoseph.edu or https://stjoseph.edu" | `test_a_bare_domain_is_accepted_as_https` ×3, `test_other_schemes_and_non_addresses_are_still_rejected` ×6 (guard), Form hint test | "infosys.com" saved as `https://infosys.com` |
+| QA-06 | Contact details are labelled ("Designation: … · Role: … · Phone: … · Email: …"), blanks left out, "No other details" when there are none | Contacts read-only test (updated assertions), "says so when a contact has no other details" | "No other details" for a name-only contact |
+| QA-07 | "Make primary" is spaced once; the contact name moves to `aria-label` ("Make Ms Iyer primary") | "reads Make primary with single spacing" | Visible text `Make primary` |
+| QA-08 | `?created=1` is removed from the address (`router.replace`) once the message is shown | Detail "drops ?created=1…", "does not touch the address when nothing was just created" | URL without the flag after create; refresh shows no message |
+| QA-11 | Unsaved input asks before it is thrown away: Cancel, in-app links (capture phase) and reload/close (beforeunload) — the AgentStudentForm guard | Form "asks before Cancel discards unsaved input", "cancels without asking when nothing was entered" | Native confirm on Cancel (dismiss keeps the entry) and on the sidebar link (accept navigates) |
+| QA-13 | A save with nothing to change says "No changes to save." (`onSaved(org, saved)`) | Detail "says when a save had nothing to change" | "No changes to save." |
+
+**Verification:** backend lite set (all `test_bdm_002_*` + `test_bdm_001_*`) 194 passed; ruff clean on the changed code; web BDM
+set (18 files) 148 passed; `tsc --noEmit` 0; `eslint` 0. Playwright `bdm-002` 2 + `bdm-001` 8 + `auth-001` 6 → 16 passed.
+**All 15 browser-QA findings are now fixed.**
 

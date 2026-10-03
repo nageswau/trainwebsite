@@ -41,7 +41,7 @@ describe("BdmOrganizationForm (bdm-002 AC1, AC2, §12.2 F5)", () => {
     expect(screen.getAllByLabelText("Contact name (required)")[1]).toHaveFocus();
     fireEvent.change(screen.getAllByLabelText("Contact name (required)")[1], { target: { value: "Ms Iyer" } });
     fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
-    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(ORG));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(ORG, true));
     const sent = body(mock);
     expect(sent).toMatchObject({ org_type: "college", name: "St Mary", city: "Kochi", existing_partner: false });
     expect(sent.contacts.map((c: { name: string; is_primary: boolean }) => [c.name, c.is_primary])).toEqual([["Dr Rao", true], ["Ms Iyer", false]]);
@@ -137,5 +137,33 @@ describe("BdmOrganizationForm (bdm-002 AC1, AC2, §12.2 F5)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
     fireEvent.click(await screen.findByRole("button", { name: "Go back" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Save organization" })).toHaveFocus());
+  });
+
+  it("asks before Cancel discards unsaved input (browser QA-11)", () => {
+    const onCancel = vi.fn();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={onCancel} />);
+    fireEvent.change(screen.getByLabelText("Organization name (required)"), { target: { value: "St Mary" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    confirm.mockRestore();
+  });
+
+  it("cancels without asking when nothing was entered", () => {
+    const onCancel = vi.fn();
+    const confirm = vi.spyOn(window, "confirm");
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={onCancel} />);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    confirm.mockRestore();
+  });
+
+  it("tells people a plain domain is fine for the website (browser QA-05)", () => {
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByText("For example stjoseph.edu or https://stjoseph.edu")).toBeInTheDocument();
   });
 });

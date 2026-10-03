@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 
 import { isPage, type Page } from "@/lib/apiErrors";
-import { display, ORG_PAGE_SIZE, ORG_TYPE_LABEL, ORG_TYPES, ORGS_URL, type OrgRow } from "@/lib/bdmOrganizations";
+import { display, LINK_STYLE, ORG_PAGE_SIZE, ORG_TYPE_LABEL, ORG_TYPES, ORGS_URL, type OrgRow } from "@/lib/bdmOrganizations";
 
 // bdm-002 (spec §6.2, §12.2): the organization list for a BDM (their whole module, Q-02) or a manager (their team, C2). The API
 // scopes the rows; nothing here filters for security. Filters and the page live in the URL (AdminBdmPanel's pattern), so refresh
@@ -211,7 +211,9 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
                   <tr key={r.id}>
                     <td style={{ whiteSpace: "nowrap" }}>{r.code}</td>
                     <td style={{ minWidth: 160 }}>
-                      <Link href={`${basePath}/${r.id}`}>{r.name}</Link>
+                      <Link href={`${basePath}/${r.id}`} style={LINK_STYLE}>
+                        {r.name}
+                      </Link>
                       {r.archived && (
                         <>
                           {" "}

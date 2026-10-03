@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
-import { type KeyboardEvent, type ReactNode, useState } from "react";
+import { useRouter } from "next/navigation";
+import { type KeyboardEvent, type ReactNode, useEffect, useState } from "react";
 
 import BdmOrganizationContacts from "@/components/BdmOrganizationContacts";
 import BdmOrganizationForm from "@/components/BdmOrganizationForm";
 import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
 import { sendRequest } from "@/lib/apiErrors";
-import { display, isOrganizationBody, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
+import { display, isOrganizationBody, LINK_STYLE, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -20,6 +21,11 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
   const [notice, setNotice] = useState<string | null>(created ? `Organization ${initial.code} created.` : null);
   const [failure, setFailure] = useState<string | null>(null);
   const focus = useFocusAfterRender();
+  const router = useRouter();
+  // Browser QA-08: "created" is said once -- the flag leaves the address, so a refresh or a shared link doesn't repeat it.
+  useEffect(() => {
+    if (created) router.replace(`${basePath}/${initial.id}`, { scroll: false });
+  }, [created, basePath, initial.id, router]);
   const archiveId = `org-${org.id}-archive`;
   const editId = `org-${org.id}-edit`;
   const closeEditor = () => {
@@ -87,7 +93,9 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
             {org.name} {org.archived && <span className="badge">Archived</span>}
           </h2>
           <p style={{ margin: 0 }}>
-            <Link href={basePath}>Back to organizations</Link>
+            <Link href={basePath} style={LINK_STYLE}>
+              Back to organizations
+            </Link>
           </p>
         </div>
         <div className="actions">
@@ -135,8 +143,8 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
           <BdmOrganizationForm
             mode="edit"
             organization={org}
-            onSaved={(o) => {
-              changed(o, "Changes saved.");
+            onSaved={(o, saved) => {
+              changed(o, saved ? "Changes saved." : "No changes to save."); // browser QA-13
               closeEditor();
             }}
             onCancel={closeEditor}

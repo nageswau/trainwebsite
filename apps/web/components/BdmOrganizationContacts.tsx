@@ -2,7 +2,7 @@
 import { type KeyboardEvent, useState } from "react";
 
 import { sendJson, sendRequest, type SendOutcome } from "@/lib/apiErrors";
-import { CONTACT_ROLE_LABEL, CONTACT_ROLES, type ContactRole, display, isOrganizationBody, type OrgContact, type Organization, ORGS_URL } from "@/lib/bdmOrganizations";
+import { CONTACT_ROLE_LABEL, CONTACT_ROLES, type ContactRole, isOrganizationBody, type OrgContact, type Organization, ORGS_URL } from "@/lib/bdmOrganizations";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-002 (C1, C10; spec §6.2): an organization's contacts as blocks (not a table, so they read well on a phone). With edit rights a
@@ -10,6 +10,18 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 // organization the API returns. Contacts are data only: phones and emails are plain text (D29).
 type Draft = { name: string; designation: string; role: string; phone: string; email: string };
 const FIELDS = ["name", "designation", "role", "phone", "email"] as const;
+/** Browser QA-06: each value labelled, blanks left out (an unlabelled "— · — · — · email" line didn't say which was which). */
+function details(c: OrgContact): string {
+  const parts: [string, string | null][] = [
+    ["Designation", c.designation],
+    ["Role", c.role ? CONTACT_ROLE_LABEL[c.role as ContactRole] : null],
+    ["Phone", c.phone],
+    ["Email", c.email],
+  ];
+  const shown = parts.filter(([, value]) => value).map(([label, value]) => `${label}: ${value}`);
+  return shown.length ? shown.join(" · ") : "No other details";
+}
+
 const draftOf = (c?: OrgContact): Draft => ({ name: c?.name ?? "", designation: c?.designation ?? "", role: c?.role ?? "", phone: c?.phone ?? "", email: c?.email ?? "" });
 
 function ContactEditor({ initial, busy, onSave, onCancel }: { initial?: OrgContact; busy: boolean; onSave: (body: Record<string, unknown>) => void; onCancel: () => void }) {
@@ -99,14 +111,20 @@ export default function BdmOrganizationContacts({ organization, onChanged }: { o
                   {c.name} {c.is_primary && <span className="badge">Primary</span>}
                 </p>
                 <p className="muted" style={{ margin: 0, overflowWrap: "anywhere" }}>
-                  {display(c.designation)} · {c.role ? CONTACT_ROLE_LABEL[c.role as ContactRole] : "—"} · {display(c.phone)} · {display(c.email)}
+                  {details(c)}
                 </p>
                 {canEdit && (
                   <div className="actions" style={{ marginTop: 8 }}>
                     <button type="button" className="btn secondary small" onClick={() => setEditing(c.id)} disabled={busy}>Edit<span className="visually-hidden"> {c.name}</span></button>
                     {!c.is_primary && (
-                      <button type="button" className="btn secondary small" onClick={() => void run(sendJson(`${url}/${c.id}`, "PATCH", { is_primary: true }), "Primary contact changed.")} disabled={busy}>
-                        Make<span className="visually-hidden"> {c.name}</span> primary
+                      <button
+                        type="button"
+                        className="btn secondary small"
+                        aria-label={`Make ${c.name} primary`}
+                        onClick={() => void run(sendJson(`${url}/${c.id}`, "PATCH", { is_primary: true }), "Primary contact changed.")}
+                        disabled={busy}
+                      >
+                        Make primary
                       </button>
                     )}
                     <button id={`contact-${c.id}-delete`} type="button" className="btn secondary small" onClick={() => setDeleting(c.id)} disabled={busy || last}>

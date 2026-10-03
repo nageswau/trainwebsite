@@ -1,5 +1,5 @@
 "use client";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import BdmContactFields, { blankContact, type ContactValues } from "@/components/BdmContactFields";
 import BdmOrganizationFields, { type OrgField, type OrgValues } from "@/components/BdmOrganizationFields";
@@ -11,6 +11,7 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 // anyway" resends the same entry with confirm_duplicate (AC2, the AgentStudentForm pattern). The matches are plain text, so
 // following one can't lose the unsaved entry. The entry is never cleared on an error.
 const ORG_FIELDS: OrgField[] = ["org_type", "name", "city", "state", "phone", "email", "website", "existing_partner", "courses_interested", "student_count"];
+const LEAVE_PROMPT = "You have unsaved changes to this organization. Leave without saving?";
 const REQUIRED: [OrgField, string][] = [
   ["org_type", "Choose a type"],
   ["name", "Organization name is required"],
@@ -73,7 +74,8 @@ export default function BdmOrganizationForm({
 }: {
   mode: "create" | "edit";
   organization?: Organization;
-  onSaved: (o: Organization) => void;
+  /** `saved` is false when there was nothing to change (browser QA-13). */
+  onSaved: (o: Organization, saved: boolean) => void;
   onCancel: () => void;
 }) {
   const original = useRef(valuesOf(organization));
@@ -86,6 +88,39 @@ export default function BdmOrganizationForm({
   const [busy, setBusy] = useState(false);
   const focus = useFocusAfterRender();
   const idPrefix = mode === "create" ? "org-new" : `org-${organization?.id}`;
+  const dirty =
+    ORG_FIELDS.some((k) => values[k] !== original.current[k]) ||
+    (mode === "create" && contacts.some((c) => [c.name, c.designation, c.role, c.phone, c.email].some((v) => v.trim())));
+
+  // Browser QA-11: unsaved input is not thrown away silently -- the AgentStudentForm guard: Cancel and in-app links ask first
+  // (capture phase, before Next's Link handler); beforeunload covers reload and close.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const guardLinks = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = (event.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!link || link.target === "_blank" || link.hasAttribute("download") || link.origin !== window.location.origin) return;
+      if (!window.confirm(LEAVE_PROMPT)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", warn);
+    document.addEventListener("click", guardLinks, true);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      document.removeEventListener("click", guardLinks, true);
+    };
+  }, [dirty]);
+
+  function cancel() {
+    if (dirty && !window.confirm(LEAVE_PROMPT)) return;
+    onCancel();
+  }
 
   function payload(): Record<string, unknown> {
     if (mode === "edit") {
@@ -112,7 +147,7 @@ export default function BdmOrganizationForm({
   async function save(confirm = false) {
     if (busy || !check()) return;
     const body = payload();
-    if (mode === "edit" && Object.keys(body).length === 0) return onSaved(organization!);
+    if (mode === "edit" && Object.keys(body).length === 0) return onSaved(organization!, false);
     setBusy(true);
     setFailure(null);
     try {
@@ -124,7 +159,8 @@ export default function BdmOrganizationForm({
       const data = await response.json().catch(() => null);
       if (response.ok && isOrganizationBody(data)) {
         setDuplicate(null);
-        onSaved(data.organization);
+        original.current = values; // saved: no longer "unsaved", so the leave guard lets the navigation through
+        onSaved(data.organization, true);
         return;
       }
       const dup = response.status === 409 ? orgDuplicate(data?.detail) : null;
@@ -199,7 +235,7 @@ export default function BdmOrganizationForm({
         <button id={`${idPrefix}-save`} type="submit" className="btn small" disabled={busy || duplicate !== null}>
           {busy ? "Saving…" : mode === "create" ? "Save organization" : "Save changes"}
         </button>
-        <button type="button" className="btn secondary small" onClick={onCancel} disabled={busy}>
+        <button type="button" className="btn secondary small" onClick={cancel} disabled={busy}>
           Cancel
         </button>
       </div>

@@ -2,14 +2,14 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import BdmOrganizationContacts from "@/components/BdmOrganizationContacts";
-import type { Organization } from "@/lib/bdmOrganizations";
+import type { OrgContact, Organization } from "@/lib/bdmOrganizations";
 
 // bdm-002 (C1, C10; spec §6.2): contacts are added, edited, made primary and deleted inline; every success re-renders from the
 // organization the API returns.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const RAO = { id: "c1", name: "Dr Rao", designation: "Principal", role: "principal" as const, phone: null, email: null, is_primary: true };
 const IYER = { id: "c2", name: "Ms Iyer", designation: null, role: null, phone: "+91 98", email: null, is_primary: false };
-const org = (contacts = [RAO, IYER], canEdit = true) =>
+const org = (contacts: OrgContact[] = [RAO, IYER], canEdit = true) =>
   ({ id: "o1", code: "ORG-000001", contacts, permissions: { can_edit: canEdit, can_archive: canEdit, can_restore: false, can_reassign: false } }) as unknown as Organization;
 function serve(...responses: Response[]) {
   const mock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() => Promise.resolve(responses.shift()!));
@@ -31,7 +31,11 @@ describe("BdmOrganizationContacts", () => {
     const list = screen.getByRole("list", { name: "Contacts" });
     expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent("Dr Rao");
     expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent("Primary");
-    expect(within(list).getAllByRole("listitem")[1]).toHaveTextContent("—");
+    expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent("Designation: Principal");
+    expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent("Role: Principal");
+    expect(within(list).getAllByRole("listitem")[1]).toHaveTextContent("Phone: +91 98"); // browser QA-06: labelled, blanks left out
+    expect(within(list).getAllByRole("listitem")[1]).not.toHaveTextContent("Email");
+    expect(within(list).getAllByRole("listitem")[1]).not.toHaveTextContent("—");
     expect(screen.queryByRole("button")).toBeNull();
   });
 
@@ -110,5 +114,16 @@ describe("BdmOrganizationContacts", () => {
     fireEvent.change(screen.getByLabelText("Contact name (required)"), { target: { value: "Ms Iyer" } });
     fireEvent.click(screen.getByRole("button", { name: "Save contact" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Add contact" })).toHaveFocus());
+  });
+
+  it("says so when a contact has no other details (browser QA-06)", () => {
+    const bare = { ...IYER, phone: null };
+    render(<BdmOrganizationContacts organization={org([RAO, bare], false)} onChanged={vi.fn()} />);
+    expect(within(screen.getByRole("list", { name: "Contacts" })).getAllByRole("listitem")[1]).toHaveTextContent("No other details");
+  });
+
+  it("reads Make primary with single spacing, and names the contact for screen readers (browser QA-07)", () => {
+    render(<BdmOrganizationContacts organization={org()} onChanged={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Make Ms Iyer primary" }).textContent).toBe("Make primary");
   });
 });

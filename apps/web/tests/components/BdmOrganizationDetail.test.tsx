@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import BdmOrganizationDetail from "@/components/BdmOrganizationDetail";
 import type { Organization } from "@/lib/bdmOrganizations";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }) }));
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const perms = (p: Partial<Organization["permissions"]> = {}) => ({ can_edit: false, can_archive: false, can_restore: false, can_reassign: false, ...p });
 const org = (over: Partial<Organization> = {}): Organization => ({
@@ -18,6 +19,7 @@ const org = (over: Partial<Organization> = {}): Organization => ({
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  router.replace.mockClear();
 });
 
 describe("BdmOrganizationDetail (bdm-002 AC3-AC6, §12.2)", () => {
@@ -92,5 +94,28 @@ describe("BdmOrganizationDetail (bdm-002 AC3-AC6, §12.2)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.click(screen.getByRole("button", { name: "Save changes" })); // no change: closes without a request
     await waitFor(() => expect(screen.getByRole("button", { name: "Edit" })).toHaveFocus());
+  });
+
+  it("drops ?created=1 from the address once the message is shown, so a refresh does not repeat it (browser QA-08)", () => {
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" created />);
+    expect(screen.getByRole("status")).toHaveTextContent("Organization ORG-000001 created.");
+    expect(router.replace).toHaveBeenCalledWith("/bdm/organizations/o1", { scroll: false });
+  });
+
+  it("does not touch the address when nothing was just created", () => {
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" />);
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it("says when a save had nothing to change (browser QA-13)", async () => {
+    render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_edit: true }) })} basePath="/bdm/organizations" />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("No changes to save.")).toBeInTheDocument();
+  });
+
+  it("styles Back to organizations as a link (browser QA-03)", () => {
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" />);
+    expect(screen.getByRole("link", { name: "Back to organizations" })).toHaveStyle({ textDecoration: "underline" });
   });
 });

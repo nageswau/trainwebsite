@@ -97,7 +97,7 @@ export default function BdmOrganizationFields({
             />
             {hint && (
               <p className="muted field-help" id={hint}>
-                Start with http:// or https://
+                For example stjoseph.edu or https://stjoseph.edu
               </p>
             )}
             {error(f.key)}
