@@ -1,0 +1,120 @@
+"""AGN-020 -- the agency reports and their CSV export (DEC-SCOPE-063; docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md §5).
+
+AGN-004's gate (agency members of an active agency; super admin refused), then the AGN-003 Reports toggle, then the Master-only
+kind, then the kind, then the inputs -- in that order, so a refused caller never learns which kinds exist or sees a 422 (§5.1).
+Every query parameter is a plain string, validated in the handler after authorization (the AGN-014 precedent). Reads write nothing
+and are not audited (DEC-SCOPE-051 R7); only a CSV export is (R3)."""
+
+import csv
+import io
+import logging
+import time
+
+from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.agent_students import _gate
+from app.api.deps import get_current_user
+from app.api.school_bulk import _safe_cell
+from app.core.database import get_db
+from app.core.rbac import REPORTS_REFUSED, agent_may, is_agent_staff
+from app.models import AgentOrgMember, User
+from app.schemas import AgentReportOut
+from app.services import agent_reports as reports
+
+logger = logging.getLogger("app.agent_reports")
+
+router = APIRouter(prefix="/workflows/overseas/agent/crm/reports", tags=["agent-reports"])
+
+STAFF_REPORT_REFUSED = "Only an agency Master can view staff performance"
+NOT_FOUND = "Report not found"
+NO_STORE = {"Cache-Control": "private, no-store"}
+
+
+def _authorize(user: User, kind: str) -> AgentOrgMember:
+    """Spec §5.1 steps 1-4."""
+    membership = _gate(user)
+    if not agent_may(user, "can_view_reports"):
+        raise HTTPException(403, REPORTS_REFUSED)
+    spec = reports.REPORT_KINDS.get(kind)
+    if spec is not None and spec.master_only and is_agent_staff(user):
+        raise HTTPException(403, STAFF_REPORT_REFUSED)
+    if spec is None:
+        raise HTTPException(404, NOT_FOUND)
+    return membership
+
+
+def _invalid(error: reports.ReportInputError) -> HTTPException:
+    """FastAPI's own 422 list shape, so the panel (and `detailMessage`) find the field by `loc`."""
+    return HTTPException(422, [{"loc": ["query", error.param], "msg": error.message, "type": "value_error"}])
+
+
+def _log(event: str, membership: AgentOrgMember, user: User, kind: str, filters: reports.Filters, rows: int, started: float, level: int = logging.INFO, **extra) -> None:
+    """Ids, the kind, which filters were set (never their values), counts and timing -- no names (spec §5.1)."""
+    logger.log(level, event, extra={"extra_fields": {
+        "org_id": str(membership.org_id), "actor_id": str(user.id), "kind": kind, "scope": "own" if is_agent_staff(user) else "agency",
+        "filters": sorted(filters.echo), "rows": rows, "duration_ms": round((time.perf_counter() - started) * 1000), **extra,
+    }})
+
+
+def _cell(value: str | int | None) -> str:
+    """Text through `_safe_cell` (formula-looking cells neutralised; it rejects None, so None becomes ""); integers as written."""
+    if isinstance(value, int):
+        return str(value)
+    return _safe_cell("" if value is None else str(value))
+
+
+def to_csv(payload: dict) -> str:
+    """Spec §5.4: UTF-8 with a BOM (Excel shows non-ASCII names), the on-screen labels as the header, a summary's Total row last."""
+    columns = payload["columns"]
+    buffer = io.StringIO()
+    buffer.write("﻿")
+    writer = csv.writer(buffer)
+    writer.writerow([column["label"] for column in columns])
+    for item in [*payload["items"], *([payload["totals"]] if payload["totals"] else [])]:
+        writer.writerow([_cell(item[column["key"]]) for column in columns])
+    return buffer.getvalue()
+
+
+def _raw(date_from, date_to, member, country, university, intake, status) -> dict[str, str | None]:
+    return {"date_from": date_from, "date_to": date_to, "member": member, "country": country, "university": university, "intake": intake, "status": status}
+
+
+# Registered before `/{kind}`, whose path parameter would otherwise also match "students.csv".
+@router.get("/{kind}.csv")
+async def export_report(
+    kind: str, date_from: str | None = None, date_to: str | None = None, member: str | None = None, country: str | None = None,
+    university: str | None = None, intake: str | None = None, status: str | None = None,
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    membership = _authorize(user, kind)
+    started = time.perf_counter()
+    try:
+        filters = await reports.parse_filters(db, user, kind, _raw(date_from, date_to, member, country, university, intake, status))
+    except reports.ReportInputError as error:
+        raise _invalid(error) from None
+    payload = await reports.report(db, user, kind, filters, limit=reports.CSV_ROW_CAP, offset=0)
+    _log("agent_report.export", membership, user, kind, filters, len(payload["items"]), started)
+    start, end = filters.start, filters.end
+    filename = f"agency-{kind}-{start.isoformat() if start else 'all'}-to-{end.isoformat() if end else 'all'}.csv"
+    return Response(content=to_csv(payload), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{filename}"', **NO_STORE})
+
+
+@router.get("/{kind}", response_model=AgentReportOut)
+async def read_report(
+    kind: str, response: Response, date_from: str | None = None, date_to: str | None = None, member: str | None = None,
+    country: str | None = None, university: str | None = None, intake: str | None = None, status: str | None = None,
+    limit: str | None = None, offset: str | None = None,
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    membership = _authorize(user, kind)
+    started = time.perf_counter()
+    try:
+        filters = await reports.parse_filters(db, user, kind, _raw(date_from, date_to, member, country, university, intake, status))
+        page_limit, page_offset = reports.parse_page(limit, offset)
+    except reports.ReportInputError as error:
+        raise _invalid(error) from None
+    payload = await reports.report(db, user, kind, filters, limit=page_limit, offset=page_offset)
+    response.headers.update(NO_STORE)
+    _log("agent_report.read", membership, user, kind, filters, len(payload["items"]), started)
+    return payload

@@ -6,16 +6,17 @@ column list, so a CSV header cannot drift from the screen. Nothing here writes, 
 
 import re
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
-from sqlalchemy import distinct, select
+from sqlalchemy import ColumnElement, case, distinct, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac import is_agent_staff
-from app.models import AgentOrgMember, Country, OverseasApplication, University, User
+from app.models import AgentOrgMember, AgentStudent, Country, OverseasApplication, University, User, VisaCase
 from app.services.agent_applications import OVERSEAS_APPLICATION_STAGES, WITHDRAWN, intake_end
-from app.services.agent_dashboard import agency_applications
+from app.services.agent_dashboard import agency_applications, offer_clause
+from app.services.agent_orgs import org_member_ids
 
 PAGE_SIZE = 50  # R7: the on-screen lists
 MAX_LIMIT = 100
@@ -155,3 +156,133 @@ async def parse_filters(db: AsyncSession, user: User, kind: str, raw: dict[str, 
             raise ReportInputError("status", "Unknown status")
         f.status = status
     return f
+
+
+# --- Report building (spec §4) ---
+
+
+@dataclass(frozen=True)
+class Column:
+    key: str
+    label: str
+    numeric: bool = False
+
+
+# Spec §4.1/§4.3: the six stage counts every summary shows -- AGN-018's G3 definitions on the milestone base (D1: offers, visa and
+# submitted count a withdrawn application; "Applications" does not).
+STAGE_COLUMNS = (
+    Column("applications", "Applications", True),
+    Column("submitted", "Submitted", True),
+    Column("offers", "Offers", True),
+    Column("visa_applications", "Visa apps", True),
+    Column("visa_approvals", "Visa approved", True),
+    Column("enrollments", "Enrolled", True),
+)
+
+
+def _created_between(column, f: Filters) -> list[ColumnElement[bool]]:
+    """Inclusive UTC calendar days on a timestamp (DEC-SCOPE-051 R7 semantics): [start 00:00, end + 1 day 00:00)."""
+    clauses = []
+    if f.start:
+        clauses.append(column >= datetime.combine(f.start, time.min, tzinfo=UTC))
+    if f.end:
+        clauses.append(column < datetime.combine(f.end + timedelta(days=1), time.min, tzinfo=UTC))
+    return clauses
+
+
+def _assignee(user: User):
+    """The staff member an application counts for: its agency record's assignee; for a row made before AGN-008 (login only), the
+    assignee of the agency's record for that login. The current assignee, as AGN-018 (spec §4.3)."""
+    by_record = select(AgentStudent.assigned_member_id).where(AgentStudent.id == OverseasApplication.agent_student_id).scalar_subquery()
+    by_login = (
+        select(AgentStudent.assigned_member_id)
+        .where(AgentStudent.student_id == OverseasApplication.student_id, AgentStudent.agent_id.in_(org_member_ids(user)))
+        .order_by(AgentStudent.created_at)
+        .limit(1)
+        .scalar_subquery()
+    )
+    return case((OverseasApplication.agent_student_id.is_not(None), by_record), else_=by_login)
+
+
+def _member_is(expression, f: Filters) -> list[ColumnElement[bool]]:
+    if f.member is None:
+        return []
+    return [expression.is_(None) if f.member == "unassigned" else expression == f.member]
+
+
+def _application_where(user: User, f: Filters) -> list[ColumnElement[bool]]:
+    """The caller's applications (scope + School-bridged rows out, A12) narrowed by the shared filters. Needs University joined."""
+    where = [*agency_applications(user), *_created_between(OverseasApplication.created_at, f), *_member_is(_assignee(user), f)]
+    if f.country_id:
+        where.append(University.country_id == f.country_id)
+    if f.university_id:
+        where.append(OverseasApplication.university_id == f.university_id)
+    if f.intake_texts is not None:
+        where.append(OverseasApplication.intake.in_(f.intake_texts))
+    if f.status:
+        where.append(OverseasApplication.status == f.status)
+    return where
+
+
+def _stage_counts() -> list:
+    """One FILTER aggregate per stage column, so a whole summary is one statement (one snapshot)."""
+    has_visa = exists().where(VisaCase.application_id == OverseasApplication.id)
+    approved = exists().where(VisaCase.application_id == OverseasApplication.id, VisaCase.decision == "approved")
+    conditions = (
+        OverseasApplication.status != WITHDRAWN,
+        OverseasApplication.submitted_on.is_not(None),
+        offer_clause(),
+        has_visa,
+        approved,
+        OverseasApplication.status == "enrolled",
+    )
+    return [func.count().filter(condition).label(column.key) for column, condition in zip(STAGE_COLUMNS, conditions, strict=True)]
+
+
+def _counted(row) -> dict[str, int]:
+    return {column.key: int(getattr(row, column.key)) for column in STAGE_COLUMNS}
+
+
+def _totals(columns: tuple[Column, ...], items: list[dict]) -> dict:
+    """The Total row: the groups are disjoint (each application is in exactly one), so the sum is exact."""
+    totals: dict[str, str | int | None] = {column.key: (sum(item[column.key] for item in items) if column.numeric else "") for column in columns}
+    totals[columns[0].key] = "Total"
+    return totals
+
+
+def _summary_stmt(user: User, f: Filters, *group):
+    return (
+        select(*group, *_stage_counts())
+        .select_from(OverseasApplication)
+        .join(University, University.id == OverseasApplication.university_id)
+        .join(Country, Country.id == University.country_id)
+        .where(*_application_where(user, f))
+    )
+
+
+async def _countries(db: AsyncSession, user: User, f: Filters) -> tuple[tuple[Column, ...], list[dict]]:
+    stmt = _summary_stmt(user, f, Country.name).group_by(Country.id, Country.name)
+    items = [{"country": row.name, **_counted(row)} for row in (await db.execute(stmt)).all()]
+    items.sort(key=lambda item: (-item["applications"], item["country"]))
+    return (Column("country", "Country"), *STAGE_COLUMNS), items
+
+
+SUMMARIES = {"countries": _countries}
+
+
+async def report(db: AsyncSession, user: User, kind: str, f: Filters, *, limit: int, offset: int) -> dict:
+    """The `AgentReportOut` payload (spec §5.3)."""
+    columns, items = await SUMMARIES[kind](db, user, f)
+    return {
+        "kind": kind,
+        "title": REPORT_KINDS[kind].title,
+        "scope": "own" if is_agent_staff(user) else "agency",
+        "columns": [vars(column) for column in columns],
+        "items": items,
+        "totals": _totals(columns, items),
+        "total": len(items),
+        "limit": len(items),
+        "offset": 0,
+        "options": {},
+        "as_of": datetime.now(UTC),
+    }
