@@ -25,7 +25,10 @@ const allText = (tree: ReturnType<typeof elements>) => tree.map((el) => text(el)
 
 function answerByPath(team: unknown | unknown[]) {
   const queue = Array.isArray(team) ? [...team] : null;
-  vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/auth/me" ? { full_name: "Meera" } : queue ? queue.shift() : team) as never);
+  vi.mocked(serverApi).mockImplementation(async (path: string) => {
+    if (path === "/api/v1/workflows/notifications/unread-count") return { unread: 0 } as never; // bdm-010 QA10-01 sidebar badge
+    return (path === "/api/v1/auth/me" ? { full_name: "Meera" } : queue ? queue.shift() : team) as never;
+  });
 }
 
 beforeEach(() => {

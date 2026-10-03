@@ -6,7 +6,8 @@ import TripForm from "@/components/TripForm";
 import { serverApi } from "@/lib/api";
 import { BDM_TYPE_LABEL, type BdmMe } from "@/lib/bdm";
 import { indiaToday } from "@/lib/bdmTravel";
-import { BDM_NAV, BDM_SIGN_IN } from "@/lib/navigation";
+import { bdmNav } from "@/lib/bdmNav";
+import { BDM_SIGN_IN } from "@/lib/navigation";
 
 // bdm-010: a new trip starts as a draft; the BDM submits it for approval from its page.
 export default async function NewTripPage() {
@@ -17,7 +18,7 @@ export default async function NewTripPage() {
     return travelUnavailable(e, BDM_SIGN_IN, "/bdm/travel/new");
   }
   return (
-    <PortalShell nav={BDM_NAV} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
+    <PortalShell nav={await bdmNav()} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

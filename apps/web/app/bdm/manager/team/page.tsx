@@ -6,7 +6,7 @@ import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import { PAGE_SIZE, type BdmTeamRow } from "@/lib/bdm";
-import { BDM_MANAGER_NAV } from "@/lib/navigation";
+import { bdmManagerNav } from "@/lib/bdmNav";
 import type { User } from "@/lib/types";
 
 // bdm-001 (AC06): exactly the BDMs who report to this manager (the API scopes it). The offset lives in the URL.
@@ -23,7 +23,7 @@ export default async function BdmManagerTeamPage({ searchParams }: { searchParam
     return accessUnavailable(e, "/admin/login");
   }
   return (
-    <PortalShell nav={BDM_MANAGER_NAV} roleLabel="BDM Manager" userName={user.full_name}>
+    <PortalShell nav={await bdmManagerNav()} roleLabel="BDM Manager" userName={user.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

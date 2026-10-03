@@ -60,8 +60,9 @@ describe("bdm-010 BDM travel pages", () => {
     expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/trips?limit=50&offset=0&approval_status=submitted");
     const table = tree.find((el) => el.type === TripTable)!;
     expect(table.props.query).toBe("approval_status=submitted");
+    vi.mocked(serverApi).mockClear();
     await MyTrips(params({ approval_status: "nope" }));
-    expect(serverApi).toHaveBeenLastCalledWith("/api/v1/bdm/trips?limit=50&offset=0");
+    expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/trips?limit=50&offset=0");
   });
 
   it("a filter with no match offers to clear it", async () => {

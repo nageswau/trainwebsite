@@ -3,7 +3,8 @@ import PortalShell from "@/components/PortalShell";
 import TripWorkspace from "@/components/TripWorkspace";
 import { serverApi } from "@/lib/api";
 import { indiaToday, isUuid, type Trip } from "@/lib/bdmTravel";
-import { BDM_MANAGER_NAV, SUPER_ADMIN_NAV } from "@/lib/navigation";
+import { bdmManagerNav } from "@/lib/bdmNav";
+import { SUPER_ADMIN_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
 const FALLBACK_NOTE = "This BDM's reporting manager is active and decides this trip. A Super Administrator can decide only while that manager is inactive.";
@@ -23,7 +24,7 @@ export default async function ManagerTripPage({ params }: { params: Promise<{ id
   const superAdmin = user.role === "super_admin";
   const pending = trip.approval_status === "submitted" && trip.travel_status === "planned";
   return (
-    <PortalShell nav={superAdmin ? SUPER_ADMIN_NAV : BDM_MANAGER_NAV} roleLabel={superAdmin ? "Super Administrator" : "BDM Manager"} userName={user.full_name}>
+    <PortalShell nav={superAdmin ? SUPER_ADMIN_NAV : await bdmManagerNav()} roleLabel={superAdmin ? "Super Administrator" : "BDM Manager"} userName={user.full_name}>
       <div className="portal-content">
         <TripWorkspace initialTrip={trip} view="manager" today={indiaToday()}
           backHref={superAdmin ? "/admin/bdm-travel-approvals" : "/bdm/manager/approvals"} backLabel="Back to approvals"

@@ -7,7 +7,8 @@ import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import { BDM_TYPE_LABEL, PAGE_SIZE, type BdmMe } from "@/lib/bdm";
 import { APPROVAL_LABEL, type ApprovalStatus, type TripRow } from "@/lib/bdmTravel";
-import { BDM_NAV, BDM_SIGN_IN } from "@/lib/navigation";
+import { bdmNav } from "@/lib/bdmNav";
+import { BDM_SIGN_IN } from "@/lib/navigation";
 
 const PATH = "/bdm/travel";
 
@@ -29,7 +30,7 @@ export default async function MyTripsPage({ searchParams }: { searchParams: Prom
     return travelUnavailable(e, BDM_SIGN_IN, `${PATH}${query ? `?${query}` : ""}`);
   }
   return (
-    <PortalShell nav={BDM_NAV} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
+    <PortalShell nav={await bdmNav()} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

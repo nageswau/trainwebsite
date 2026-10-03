@@ -43,10 +43,16 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
 
 // bdm-001: BDM and BDM-manager sidebars, and the signed-out chooser (College BDMs sign in at /it, Agent/School BDMs at /overseas;
 // managers at /admin).
-// bdm-010: Travel (BDM) and Approvals (manager).
-export const BDM_NAV: NavItem[] = [{ label: "My Day", href: "/bdm/my-day" }, { label: "Travel", href: "/bdm/travel" }, { label: "Profile", href: "/bdm/profile" }];
+// bdm-010: Travel (BDM), Approvals (manager), and each role's Notifications (QA10-01; the unread badge comes from lib/bdmNav).
+export const BDM_NOTIFICATIONS_HREF = "/bdm/notifications";
+export const BDM_MANAGER_NOTIFICATIONS_HREF = "/bdm/manager/notifications";
+export const BDM_NAV: NavItem[] = [
+  { label: "My Day", href: "/bdm/my-day" }, { label: "Travel", href: "/bdm/travel" }, { label: "Notifications", href: BDM_NOTIFICATIONS_HREF },
+  { label: "Profile", href: "/bdm/profile" },
+];
 export const BDM_MANAGER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" }, { label: "Approvals", href: "/bdm/manager/approvals" },
+  { label: "Notifications", href: BDM_MANAGER_NOTIFICATIONS_HREF },
 ];
 export const BDM_SIGN_IN = "/bdm/sign-in";
 

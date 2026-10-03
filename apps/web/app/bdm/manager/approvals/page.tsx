@@ -7,7 +7,7 @@ import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import { PAGE_SIZE } from "@/lib/bdm";
 import type { TripRow } from "@/lib/bdmTravel";
-import { BDM_MANAGER_NAV } from "@/lib/navigation";
+import { bdmManagerNav } from "@/lib/bdmNav";
 import type { User } from "@/lib/types";
 
 const PATH = "/bdm/manager/approvals";
@@ -26,7 +26,7 @@ export default async function ManagerApprovalsPage({ searchParams }: { searchPar
     return travelUnavailable(e, "/admin/login", PATH);
   }
   return (
-    <PortalShell nav={BDM_MANAGER_NAV} roleLabel="BDM Manager" userName={user.full_name}>
+    <PortalShell nav={await bdmManagerNav()} roleLabel="BDM Manager" userName={user.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

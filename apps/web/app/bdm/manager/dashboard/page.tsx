@@ -5,7 +5,7 @@ import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import type { BdmTeamRow } from "@/lib/bdm";
-import { BDM_MANAGER_NAV } from "@/lib/navigation";
+import { bdmManagerNav } from "@/lib/bdmNav";
 import type { User } from "@/lib/types";
 
 // bdm-001 (AC05, B2): the manager landing page -- team counts; bdm-023 adds the management dashboard. Counts beyond the first page
@@ -23,7 +23,7 @@ export default async function BdmManagerDashboardPage() {
     ? "No BDMs report to you yet."
     : `${team.total} BDM${team.total === 1 ? " reports" : "s report"} to you: ${active} active, ${inactive} inactive${team.total > team.items.length ? " on the first page" : ""}.`;
   return (
-    <PortalShell nav={BDM_MANAGER_NAV} roleLabel="BDM Manager" userName={user.full_name}>
+    <PortalShell nav={await bdmManagerNav()} roleLabel="BDM Manager" userName={user.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>
