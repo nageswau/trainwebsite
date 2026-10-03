@@ -7,7 +7,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.models import AgentStudent, AuditLog, User
-from tests.agn001_helpers import login, mk_user
+from tests.agn001_helpers import client_for, login, mk_user
+from tests.agn004_helpers import RECORDS
 from tests.agn008_helpers import mk_application
 from tests.agn022_helpers import APPLICATIONS, COMMISSION, DEPOSITS, DETAIL, NETWORK, ORGS, STUDENTS, ZERO, network_world
 
@@ -163,3 +164,19 @@ async def test_drill_down_paging_and_filters_are_validated(client, db_session):
         assert (await client.get(STUDENTS.format(oid=w["org"].id), params=params)).status_code == 422
     assert (await client.get(STUDENTS.format(oid=uuid.uuid4()))).status_code == 404
     assert await _reads(db_session, w["org"].id, "agent_network.students_read") == 0
+
+
+@pytest.mark.asyncio
+async def test_suspend_blocks_master_and_staff_on_their_next_request_and_reinstate_restores(client, db_session):  # AC4
+    """Characterisation: AGN-022 reuses AGN-001's suspend/reinstate unchanged; this pins it from the network's side."""
+    w = await network_world(db_session)
+    await _admin(client, db_session)
+    async with client_for(w["master"].email) as master, client_for(w["s1"]["user"].email) as staff:
+        assert (await master.get(RECORDS)).status_code == 200 and (await staff.get(RECORDS)).status_code == 200
+        assert (await client.post(f"{ORGS}/{w['org'].id}/suspend")).json()["status"] == "suspended"
+        for agent in (master, staff):
+            r = await agent.get(RECORDS)
+            assert r.status_code == 403 and r.json()["detail"] == "Your agency's account is suspended"
+        assert (await client.get(DETAIL.format(oid=w["org"].id))).json()["status"] == "suspended"  # admins still read it
+        assert (await client.post(f"{ORGS}/{w['org'].id}/reinstate")).json()["status"] == "active"
+        assert (await master.get(RECORDS)).status_code == 200 and (await staff.get(RECORDS)).status_code == 200
