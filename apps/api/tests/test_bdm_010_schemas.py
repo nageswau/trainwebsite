@@ -65,3 +65,14 @@ def test_reject_needs_a_reason():
         BdmTripReject.model_validate({"reason": "   "})
     assert "Reason is required" in _msg(exc.value)
     assert BdmTripReject.model_validate({"reason": " Too costly "}).reason == "Too costly"
+
+
+@pytest.mark.parametrize("value", ["61008-02-20", "2026-13-01", "10/10/2026", "2026-10-1"])
+def test_bad_dates_get_a_plain_message(value):
+    """QA10-08: a mistyped year (Chrome accepts up to 6 digits) or any non-ISO date reads as plain words, not pydantic's parser text."""
+    with pytest.raises(ValidationError) as exc:
+        BdmTripCreate.model_validate({**BASE, "travel_date": value})
+    assert _msg(exc.value) == "Enter a valid travel date"
+    with pytest.raises(ValidationError) as exc:
+        BdmTripExpenseCreate.model_validate({"category": "food", "amount": "1", "expense_date": value})
+    assert _msg(exc.value) == "Enter a valid expense date"

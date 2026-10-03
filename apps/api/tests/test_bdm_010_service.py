@@ -48,6 +48,18 @@ def test_refusal_names_the_state():
     assert travel.refusal(trip("draft"), "expense", TODAY).detail == "Expenses can be added once the trip is approved"
 
 
+@pytest.mark.parametrize("approval,status,action,detail", [
+    # QA10-03: the state reads as words a person would say, not a raw status ("is draft").
+    ("draft", "planned", "decide", "This trip is still a draft and can't be decided"),
+    ("submitted", "planned", "submit", "This trip is waiting for approval and can't be submitted"),
+    ("approved", "planned", "withdraw", "This trip is already approved and can't be withdrawn"),
+    ("rejected", "planned", "decide", "This trip was not approved and can't be decided"),
+    ("approved", "in_progress", "start", "This trip is in progress and can't be started"),
+])
+def test_refusal_wording(approval, status, action, detail):
+    assert travel.refusal(trip(approval, status), action, TODAY).detail == detail
+
+
 @pytest.mark.parametrize("travel_date,ret,message", [
     (TODAY, TODAY - timedelta(days=1), "Return date must be on or after the travel date"),
     (TODAY - timedelta(days=31), TODAY, "Travel date can be at most 30 days in the past"),

@@ -106,7 +106,7 @@ async def test_disallowed_transition_is_409_and_changes_nothing(client, db_sessi
     await bdm_pair(client, db_session)
     trip = await make_trip(client)
     response = await act(client, trip["id"], "start")
-    assert (response.status_code, response.json()["detail"]) == (409, "This trip is draft and can't be started")
+    assert (response.status_code, response.json()["detail"]) == (409, "This trip is still a draft and can't be started")
     assert (await client.get(f"{TRIPS}/{trip['id']}")).json()["travel_status"] == "planned"
 
 

@@ -3132,6 +3132,27 @@ def _trimmed(max_length: int):
     return StringConstraints(strip_whitespace=True, max_length=max_length)
 
 
+_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _trip_date(label: str):
+    """QA10-08: a calendar date as YYYY-MM-DD with a 4-digit year; anything else (Chrome lets a year run to 6 digits) gets plain
+    words instead of the parser's text."""
+    def parse(value):
+        if isinstance(value, date):
+            return value
+        try:
+            if isinstance(value, str) and _ISO_DATE.match(value.strip()):
+                return date.fromisoformat(value.strip())
+        except ValueError:
+            pass
+        raise PydanticCustomError("trip_date", f"Enter a valid {label}")
+    return parse
+
+
+TripTravelDate = Annotated[date, BeforeValidator(_trip_date("travel date"))]
+TripReturnDate = Annotated[date, BeforeValidator(_trip_date("return date"))]
+TripExpenseDate = Annotated[date, BeforeValidator(_trip_date("expense date"))]
 TripPlace = Annotated[Annotated[str, _trimmed(120)], AfterValidator(_trip_text(_BDM_CONTROL, True))]
 TripPurpose = Annotated[Annotated[str, _trimmed(1000)], AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True))]
 TripReason = Annotated[Annotated[str, _trimmed(1000)], AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True))]
@@ -3146,8 +3167,8 @@ class BdmTripCreate(BaseModel):
     "today", so `services/bdm_travel.check_dates` applies them."""
 
     model_config = ConfigDict(extra="forbid")
-    travel_date: date
-    return_date: date
+    travel_date: TripTravelDate
+    return_date: TripReturnDate
     from_place: TripPlace
     to_place: TripPlace
     purpose: TripPurpose
@@ -3161,8 +3182,8 @@ class BdmTripUpdate(BaseModel):
     """Omitted = unchanged. A sent null on a required field fails its non-nullable type (bdm-001's idiom); remarks accept null."""
 
     model_config = ConfigDict(extra="forbid")
-    travel_date: date = None
-    return_date: date = None
+    travel_date: TripTravelDate = None
+    return_date: TripReturnDate = None
     from_place: TripPlace = None
     to_place: TripPlace = None
     purpose: TripPurpose = None
@@ -3181,7 +3202,7 @@ class BdmTripExpenseCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     category: BdmExpenseCategory
     amount: TripExpenseAmount
-    expense_date: date
+    expense_date: TripExpenseDate
     note: TripNote = None
 
 
@@ -3189,7 +3210,7 @@ class BdmTripExpenseUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     category: BdmExpenseCategory = None
     amount: TripExpenseAmount = None
-    expense_date: date = None
+    expense_date: TripExpenseDate = None
     note: TripNote = None
 
 

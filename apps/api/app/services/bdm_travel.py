@@ -62,18 +62,26 @@ def allowed(trip, action: str, today: date) -> bool:
     return RULES[action](trip, today)
 
 
-def state_label(trip) -> str:
-    status = trip.travel_status if trip.travel_status != "planned" else trip.approval_status
-    return status.replace("_", " ")
+# QA10-03: how a person would describe the trip's state ("is still a draft", not "is draft").
+STATE_PHRASES = {
+    "draft": "is still a draft", "submitted": "is waiting for approval", "approved": "is already approved",
+    "rejected": "was not approved", "in_progress": "is in progress", "completed": "is completed", "cancelled": "is cancelled",
+}
+
+
+def state_phrase(trip) -> str:
+    return STATE_PHRASES[trip.travel_status if trip.travel_status != "planned" else trip.approval_status]
 
 
 def refusal(trip, action: str, today: date) -> HTTPException:
     """The 409 for an action outside its row of the transition table, worded for the user."""
     if action == "expense":
         return HTTPException(409, "Expenses can be added once the trip is approved")
-    if action in ("start", "complete") and trip.approval_status == "approved" and trip.travel_status in UNDERWAY:
+    # Only when the date is the reason: start from planned, complete from planned/in progress, before the travel date.
+    date_is_why = trip.travel_status == "planned" or (action == "complete" and trip.travel_status == "in_progress")
+    if action in ("start", "complete") and trip.approval_status == "approved" and date_is_why and today < trip.travel_date:
         return HTTPException(409, f"This trip starts on {trip.travel_date:%d %b %Y}; it can be {VERBS[action]} from that day")
-    return HTTPException(409, f"This trip is {state_label(trip)} and can't be {VERBS[action]}")
+    return HTTPException(409, f"This trip {state_phrase(trip)} and can't be {VERBS[action]}")
 
 
 def owner_flags(trip, today: date) -> dict[str, bool]:
