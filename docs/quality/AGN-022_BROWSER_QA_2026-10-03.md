@@ -64,7 +64,29 @@ Master's own AGN-018 dashboard: students 12, applications 4, enrollments 1, clai
 "EduSphere | Empowering Careers…"; a full page load while the API is down shows "Access unavailable — fetch failed" after ~5 s; the web
 proxy answers 500 (not 502/503) when the API is unreachable.
 
-No Critical or High issues. Acceptance criteria observed in the running app: counts match the Master's own figures (AC1/AC2),
+## Fix pass (2026-10-03, after pass 1)
+
+Each fix was written test-first: a failing vitest case, or a failing Playwright measurement for the layout issues, then GREEN.
+Re-verified in Browser Use against the stack rebuilt from the fix commit.
+
+| ID | Fix | Test (RED → GREEN) | Browser re-check | Status |
+|---|---|---|---|---|
+| QA22-01 | Agencies table stacks into labelled blocks at ≤980 px (`.table.stack-wide`) | e2e "on a tablet the agencies table shows every column…" (overflow 35 → 0) | 768: page and table overflow 0; every number labelled (`v-01-list-768.png`) | FIXED |
+| QA22-02 | Commission table uses `.table.stack` with `data-label` on every cell | vitest "labels every commission cell…"; e2e "on a phone … shows the amount column" (overflow 112 → 0) | 375: Commission and Deposits overflow 0, Amount visible (`v-02-detail-375.png`) | FIXED |
+| QA22-03 | While another tab loads, the heading names the rows on screen; a status line says "Loading <tab> agencies…" | vitest "while another tab loads…" | 2.5 s latency: heading "All agencies" + "Loading suspended agencies…", then "Suspended agencies" | FIXED |
+| QA22-04 | Note above the applications list: withdrawn rows are listed, the figure leaves them out | vitest "says that withdrawn applications are listed…" | — | FIXED |
+| QA22-07 | Intro offers "or to suspend it" only to Overseas Admin (`canAct`) | vitest "…offers suspending only to a role that can" | — | FIXED |
+| QA22-08 | Escape cancels the suspend confirmation, focus back on Suspend | vitest "Escape cancels the suspend confirmation…" | Escape → confirmation closed, focus `agent-org-suspend` | FIXED |
+| QA22-09 | Master codes `white-space: nowrap` | vitest (same test as QA22-07) | — | FIXED |
+| QA22-10 | Status region moved inside the header (no empty grid gap); two figure tiles per row on phones | — (layout) | 375: 2 tiles per row | FIXED |
+| QA22-05 | Back link drops list filters | — | — | OPEN (Low; browser Back keeps them; needs cross-page list state) |
+| QA22-06 | Bare Next.js 404 for a malformed id | — | — | OPEN (Low; portal-wide not-found page, outside AGN-022) |
+| QA22-11 | Raw 409 wording | — | — | OPEN (Low; server wording shared with Agent Approvals) |
+
+After the fixes: AGN-022 + neighbour vitest 85/85; `tsc` 0; eslint 0 on changed files; `next build` compiled; Playwright
+`agn-022-agent-network` 4/4 and AGN-001 / AGT-001 / AGN-011 / AGN-018 specs 9/9; no console errors in the re-check.
+
+No Critical or High issues. Acceptance criteria observed in the running app (pass 1; AC9 and AC10 re-checked after the fix pass): counts match the Master's own figures (AC1/AC2),
 empty agency all zeros (AC3), suspend blocks the Master's next request (AC4), non-admins 403 / signed-out 401 (AC5), audited reads
 (AC6), no contact fields in drill-down rows (AC7), approvals page unchanged (AC8), UI states (AC9 — QA22-03), layout (AC10 — QA22-01,
 QA22-02 fail), crafted id and markup (AC11).

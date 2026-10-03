@@ -3765,9 +3765,10 @@ Pending, owner-side: browser validation, the independent Codex review, the full 
 
 ## AGN-022 — Overseas Admin Agent Network Oversight
 
-**Status (2026-10-03): IMPLEMENTED, NOT COMPLETE** on `feature/agn-022-agent-network`. Lite tests pass (see `RTM.md` AGN-022).
-Pending: browser validation (the Playwright spec `agn-022-agent-network.spec.ts` is written, not run), independent Codex review,
-and the owner's full suites.
+**Status (2026-10-03): COMPLETE for the AGN-022 scope (verified on lite evidence)** on `feature/agn-022-agent-network`: lite
+backend and web tests, `tsc`, eslint, `next build`, Playwright (`agn-022-agent-network` 4/4 + neighbour specs) and Browser Use
+(pass 1 + fix pass, `docs/quality/AGN-022_BROWSER_QA_2026-10-03.md`; QA22-01…04/07…10 fixed, QA22-05/06/11 Low and open). Codex review
+waived by the owner. **Still to run: the owner's full suites.**
 
 **Business requirement.** "Edusphere's central admin can see the overall agent network and student/application data according to
 the permissions you define" (`EVID-015` "Best approach" / §9; backlog ang-022, `DERIVED_BLUEPRINT`). Owner acceptance: counts match
