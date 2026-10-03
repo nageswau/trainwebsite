@@ -87,10 +87,14 @@ All call `_require_overseas_admin(user)` before any lookup.
 | Route | Behaviour |
 |---|---|
 | `GET /overseas-admin/agent-orgs` | **Additive only:** each item gains `staff_count` and `counts: {students, applications, enrollments}` from `org_counts` for the page's org ids. Existing fields, params, ordering, paging, errors unchanged. |
-| `GET /overseas-admin/agent-orgs/{org_id}` | 404 "Organisation not found" if absent. Returns `{id, name, prefix, status, created_at, status_changed_at, masters, staff: [{id, code, full_name, status}], staff_count, counts, commission, deposits, as_of}`. `masters` uses `org_masters` (same shape as the list). No member email for staff. |
+| `GET /overseas-admin/agent-orgs/{org_id}` | 404 "Organisation not found" if absent. Returns `{id, name, prefix, status, created_at, status_changed_at, masters, staff_count, counts, commission, deposits, as_of}`. `masters` uses `org_masters` (same shape as the list). **No staff list** (review R-API-3: the requirement asks for a staff count; an unbounded, unpaginated name list adds PII for no stated purpose). |
 | `GET /overseas-admin/agent-orgs/{org_id}/students` | `status: Literal["active","archived"] = "active"`, `limit` 25 (1–100), `offset ≥ 0`. 404 if org absent. `{items, total, limit, offset}`. Audits (5.3). |
 | `GET /overseas-admin/agent-orgs/{org_id}/applications` | optional `status` (one of `OVERSEAS_APPLICATION_STAGES` + `withdrawn`, else 422), same paging, 404 if absent. Audits (5.3). |
 | `POST /overseas-admin/agent-orgs/{org_id}/{action}` | **Unchanged.** |
+
+All three new routes set `Cache-Control: private, no-store` (as `agent_dashboard.py:29`). Errors use the app's existing
+FastAPI `{"detail": ...}` shape, like every neighbouring route (the `API_CONTRACT.md` §0.3 `error_code` shape is not what the
+code returns; not changed here). Field names stay snake_case like the rest of the API.
 
 Response models: the three new routes get Pydantic models in `schemas.py` (as AGN-018 G6). The existing list keeps returning a
 dict (unchanged style); the two new keys are documented in `API_CONTRACT.md`.
@@ -103,6 +107,10 @@ After the rows and total are fetched: `db.add(AuditLog(user_id=user.id, action="
 "agent_network.applications_read", entity_type="agent_org", entity_id=str(org_id), outcome="read", metadata_json={"status":
 status, "limit": limit, "offset": offset, "returned": len(rows)}))`, then `await db.commit()`, then return. A failed audit
 write raises → 500, no data returned (SEC-001 fail-closed; pattern `lookups.py:120`). A 403/404/422 writes no audit row.
+The response is built into plain dicts/models **before** the commit (the session uses `expire_on_commit=False`, but the order
+keeps the route independent of that setting). The audit metadata carries no names or other PII. A GET that writes an audit row
+is an access record, not a state change: a client retry writes a second row, which is correct (two reads happened). No
+idempotency key (`API_CONTRACT.md` §0.2: reads need none).
 
 ### 5.4 Transactions, races, errors, performance
 
@@ -131,20 +139,43 @@ write raises → 500, no data returned (SEC-001 fail-closed; pattern `lookups.py
 
 ### 6.2 `components/AgentNetworkPanel.tsx` (new, client)
 
-Pattern of `AgentApprovalPanel` (URL-held tab/page/q, 20 per page, Previous/Next), but heading **"Agent network"** and no
-`.action-card` class (keeps the e2e "Agent Approvals" locators unambiguous). Status tabs All (default) / Active / Suspended /
-Pending / Rejected; search by agency, prefix, Master code/email (the existing `q`). Each row: name + prefix, status, Master
-codes, staff, students, applications, enrollments, link "View" → `/overseas/admin/agent-network/{id}`. States: loading
-(`role="status"` "Loading agencies…"), empty ("No agencies match."), error (server `detail` + Retry).
+Pattern of `AgentApprovalPanel` (URL-held tab/page/q, 20 per page, Previous/Next, `aria-pressed` status buttons in a
+`role="group"`, `role="search"` form with a visible label), but heading **"Agent network"** (`h2`, as the deposits page) and no
+`.action-card` class (keeps the e2e "Agent Approvals" locators unambiguous). Status buttons All (default) / Active / Suspended /
+Pending / Rejected; search by agency, prefix, Master code/email (the existing `q`, `maxLength=100`).
+
+- **Layout:** a table (counts scan better in columns than in cards) using the existing `.table compact stack` classes inside a
+  focusable `.table-scroll` region named by the heading (AGN-018 `TableRegion` pattern): on phones each row becomes a labelled
+  block via `data-label`, so nothing scrolls sideways at 320–375 px. Columns: Agency (name + prefix; the name is the link to the
+  detail, with no separate "View" button), Status (text in a `.status` pill — never colour alone), Masters (codes), Staff,
+  Students, Applications, Enrollments. Numbers right-aligned.
+- **Loading:** first load shows "Loading agencies…" (`role="status"`); paging/searching keeps the current rows visible, dimmed
+  with `aria-busy="true"` (the `AgentStudentsPanel` pattern), and a stale response is dropped by request sequence so a slow
+  older page never overwrites a newer one.
+- **Empty:** "No agencies match “q”." for a search, otherwise per-status text ("No suspended agencies.").
+- **Error:** `role="alert"` with the server `detail` (or "Unable to load agencies.") and a Retry button.
+- **Keyboard/focus:** after Previous/Next or a status change, focus moves to the results heading (`tabIndex={-1}`) so keyboard
+  and screen-reader users land on the new page; "Showing a–b of n" text beside the pager.
 
 ### 6.3 `components/AgentOrgDetailPanel.tsx` (new, client)
 
-- Summary: status + last change date, counts, commission buckets per currency, deposit figures (`formatInr`), Masters, staff.
-- Actions (only when `canAct`): Suspend (active) with inline confirm, Reinstate (suspended); focus returns to the button; 409 →
-  show message and refetch; pending/rejected → link "Review in Agent Approvals" (`/overseas/admin/agents`).
-- Tabs Students / Applications: each fetched only when opened (so audit rows reflect actual views), paged 20, own
-  loading/empty ("No students yet" / "No applications yet")/error states; read-only, no edit controls.
-- 404 → "Organisation not found" + link back to the network list.
+- Header: plain back link "← Agent network", `h2` agency name + prefix, status pill + "since <date>".
+- Summary: counts in the existing `.metric-grid` / `.metric` tiles (4 per row → 2 at ≤980 px → 1 at ≤640 px, already in
+  `globals.css`); commission buckets per currency and deposit figures (`formatInr`) as small `.table compact` tables with
+  `scope="row"` headers; Masters (code, name, email, status — the fields the list already exposes). Zero values render as "0",
+  never blank.
+- Actions (only when `canAct`): Suspend (active) with inline confirm ("Every member loses access on their next request."),
+  Reinstate (suspended). Buttons disable while in flight and an in-flight guard blocks double submits; focus returns to the
+  action button; result announced in an always-mounted `role="status"` region; 409 → show the server message and refetch the
+  summary; network error → "Network error. Check your connection and try again." Pending/rejected → link "Review in Agent
+  Approvals" (`/overseas/admin/agents`). super_admin: no buttons, no link.
+- Students / Applications: two `aria-pressed` buttons (the same toggle pattern as the status buttons; no new ARIA tablist widget),
+  nothing selected on first view; each list is fetched only when chosen (so audit rows reflect actual views), paged 20 with the
+  same loading/dimming/stale-drop/focus rules as 6.2, `.table compact stack` layout; empty "No students yet" / "No applications
+  yet"; error + Retry; read-only, no edit controls. Students filter Active/Archived; applications show the stage label.
+- Summary loading: "Loading agency…" status text; error + Retry; 404 → "Organisation not found" + link back to the list.
+- The page validates `orgId` as a UUID before rendering the panel (`notFound()` otherwise), and the panel builds request URLs
+  with `encodeURIComponent`, so a crafted path segment can never address a different API route.
 - Types local to the components (as `AgentApprovalPanel`); reuse `lib/apiErrors` (`Page`, `isPage`, `detailMessage`,
   `sendJson`), `lib/formatDate`, `formatInr`, `useFocusAfterRender`.
 
@@ -172,10 +203,11 @@ deposits". Not added to `SUPER_ADMIN_NAV`. No existing entry moves.
 | AC4 | Suspend from the network flow denies every member on their next request; reinstate restores. | existing `test_agn_001_registration_and_gate.py:117` kept green + new backend test calling the action then a Master and a staff agent route + Playwright |
 | AC5 | Each new route: Master, staff, counselor, overseas_student → 403; unauthenticated → 401; overseas_admin and super_admin → 200. | backend (parametrized) |
 | AC6 | Each drill-down request writes exactly one audit row with the §5.3 metadata; list/summary/403/404/422 write none; audit failure → 500 with no body data. | backend |
-| AC7 | Drill-down rows contain no email/phone/date of birth and only `O`'s rows. | backend |
+| AC7 | Drill-down rows contain no email/phone/date of birth and only `O`'s rows; the detail has no staff list; all three new routes send `Cache-Control: private, no-store`. | backend |
 | AC8 | Existing `/agent-orgs` behaviour unchanged (existing suite green); new keys present and correct. | `test_agn_001_org_admin.py` + new test |
-| AC9 | UI loading/empty/error states; super_admin sees no Suspend/Reinstate; pending org links to Approvals; 409 refetches. | vitest `AgentNetworkPanel.test.tsx`, `AgentOrgDetailPanel.test.tsx` |
-| AC10 | Nav entry present; pages usable at 375px; headings, status regions, focus return. | `navigation.test.ts`, Playwright `agn-022-agent-network.spec.ts`, browser QA |
+| AC9 | UI loading/empty/error states; paging keeps rows dimmed and drops stale responses; super_admin sees no Suspend/Reinstate; pending org links to Approvals; 409 shows the message and refetches; a double click sends one request; drill-down lists are not fetched until chosen. | vitest `AgentNetworkPanel.test.tsx`, `AgentOrgDetailPanel.test.tsx` |
+| AC10 | Nav entry present; pages usable at 320 and 375 px with no sideways scroll; one `h2` per page, focus moves to the results heading after paging and back to the action button after suspend/reinstate; status shown as text. | `navigation.test.ts`, Playwright `agn-022-agent-network.spec.ts`, browser QA |
+| AC11 | A non-UUID `orgId` in the page URL renders not-found without calling the API; agency names containing markup render as text. | vitest + Playwright |
 
 Tests are written before implementation (TDD).
 
@@ -195,7 +227,51 @@ Tests are written before implementation (TDD).
 Approve/reject on the network page; per-student detail pages; admin edits; offers/visa counts on the network; money on the
 list; CSV export; `SUPER_ADMIN_NAV` entry; caching; migrations; ang-019/020.
 
-## 11. Documentation
+## 11. Engineering reviews (2026-10-03, at the owner's request)
+
+### 11.1 API and interface design
+
+| ID | Check | Result |
+|---|---|---|
+| R-API-1 | Backward compatibility | `/agent-orgs`: two **added** keys only; no field, param, order, status code or message changes. Suspend/reinstate untouched. |
+| R-API-2 | Contract style | Follows the shipped neighbours, not a new style: limit/offset `{items,total,limit,offset}` (as `/agent-orgs`), snake_case, FastAPI `detail` errors, sub-resources `/{id}/students`, `/{id}/applications`, no verbs in new paths. |
+| R-API-3 | Data exposure | Staff name list removed from the detail (count only). Drill-down fields are an allowlist (§5.1). |
+| R-API-4 | Validation at the boundary | `org_id: UUID`; `status` as `Literal`; `limit` 1–100; `offset ≥ 0` → 422, all before the service. Internal service code trusts the typed values. |
+| R-API-5 | HTTP semantics | GETs change no domain state; the audit row is an access record (retry = second row, intended). No idempotency key (reads, §0.2). 403 before lookup, 404 only to admins. |
+| R-API-6 | Transactions / DB | One commit per drill-down request, after the reads; list/summary never commit. Grouped queries bounded by ≤100 ids; existing indexes suffice; no N+1 (no per-org loop). |
+| R-API-7 | Typed outputs | Pydantic models for the three new routes; the existing list's new keys documented in `API_CONTRACT.md`. |
+
+### 11.2 Frontend UI engineering
+
+Reuses `PortalShell`, the agent-deposits page shell, `AgentApprovalPanel`'s URL-state/search/pager pattern,
+`AgentStudentsPanel`'s dim-and-drop-stale paging, AGN-018's `.table compact stack` + `.table-scroll` region, `.metric-grid`,
+`.status` pills, `lib/apiErrors`, `formatDate`, `formatInr`, `useFocusAfterRender`. No new CSS framework, component library or
+dependency; new CSS only if browser QA finds a gap. Hierarchy: page `h2`, section `h3`; status always as text; every control a
+native `button`/`a`/`input` with a visible or `aria-label` name; controls keep the existing `.btn.small` size used by every
+admin panel (target size is checked in browser QA, not changed speculatively).
+
+### 11.3 Security and hardening
+
+| Area | Finding | Design response |
+|---|---|---|
+| Authentication | Unchanged: cookie JWT via `get_current_user` (per-request user reload). | None needed. |
+| Authorization | `_require_overseas_admin` on every new route, before lookup. | AC5. |
+| IDOR | Admins are global by design; agents cannot reach the routes. Every query is bound to `M(O)` of the path org, so one org's id never returns another org's rows. | AC1/AC7 seed a second agency. |
+| Role escalation | No new writes; suspend/reinstate reuse `transition_org` (lock + audit). super_admin buttons hidden (N3). | — |
+| Input validation | All params typed (R-API-4); `q` already escaped for LIKE in the shipped list. | AC8. |
+| SQL injection | SQLAlchemy expressions only; no string-built SQL. | Code review. |
+| XSS | React escaping; agency/student names are user-entered and rendered as text; no `dangerouslySetInnerHTML` (none exists in `components/` today). | AC11. |
+| Path injection (client) | `orgId` validated as UUID in the page; URLs built with `encodeURIComponent`. | AC11. |
+| CSRF | The only state change is the existing suspend/reinstate POST; protection is today's `SameSite=Lax` httpOnly cookie (`auth.py:92`). No CSRF token exists app-wide — **residual, already recorded in the register (ENH-005 security findings); not changed here.** | — |
+| Token/session handling | Unchanged; no tokens in URLs, responses or logs. | — |
+| Secret exposure | No new config or secrets. | — |
+| Sensitive logs | No new log lines with names; audit metadata = status/limit/offset/count only. | AC6. |
+| Caching of PII | `Cache-Control: private, no-store` on new routes. | AC7. |
+| Rate limiting | None app-wide (recorded residual). Admin-only reads, `limit ≤ 100`, every drill-down audited. No new limiter (would be a speculative cross-cutting change). | — |
+| Audit | Drill-down reads audited fail-closed (N2); suspend/reinstate already audited. | AC6. |
+| Residual (recorded, not changed) | Admin routes gate on `users.role`, not active role assignments (register ENH-005 security findings). | — |
+
+## 12. Documentation
 
 `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-063`; `API_CONTRACT.md` (new keys + three routes); `RBAC_MATRIX.md` (admin
 read-only drill-down, audit); `RTM.md` AGN-022 row with AC1–AC10; `ENHANCEMENT_BACKLOG.md` and the `AGENT_CRM_BACKLOG.md`
