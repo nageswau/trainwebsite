@@ -100,6 +100,21 @@ describe("BdmAppointmentActions (bdm-006 §6.2, R-F4, R-F7)", () => {
     expect(screen.getByRole("button", { name: "Save new time" })).toBeEnabled();
   });
 
+  it("Save anyway resends the checked time even if it was edited while the request was pending", async () => {
+    let settle!: (r: Response) => void;
+    const fetchMock = vi.fn().mockReturnValueOnce(new Promise<Response>((r) => { settle = r; })).mockResolvedValueOnce(res({ appointment: appt({ status: "rescheduled" }) }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmAppointmentActions appointment={appt({ permissions: { ...none, can_reschedule: true } })} bdmType="college" onChanged={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reschedule" }));
+    fireEvent.change(screen.getByLabelText("New date and time (IST) (required)"), { target: { value: "2030-01-08T10:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save new time" }));
+    fireEvent.change(screen.getByLabelText("New date and time (IST) (required)"), { target: { value: "2030-01-09T15:00" } });
+    settle(res({ detail: overlapDetail }, 409));
+    fireEvent.click(await screen.findByRole("button", { name: "Save anyway" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(String(((fetchMock.mock.calls[1] as unknown[])[1] as RequestInit).body))).toMatchObject({ starts_at: "2030-01-08T10:00:00+05:30", confirm_overlap: true });
+  });
+
   it("dismisses only the warning on its Cancel or Escape and keeps the entered time", async () => {
     await openOverlap();
     fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Cancel" }));

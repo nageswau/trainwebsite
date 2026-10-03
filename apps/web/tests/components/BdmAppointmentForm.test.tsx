@@ -77,6 +77,46 @@ describe("BdmAppointmentForm (bdm-006 §6.2, R-F6)", () => {
     expect(screen.getByRole("button", { name: "Book appointment" })).toBeEnabled();
   });
 
+  const clash = { code: "possible_overlap", message: "You already have an appointment at this time", total: 1, matches: [{ id: "x", code: "APT-000009", starts_at: "2030-01-07T04:30:00Z", duration_minutes: 60, organization_name: "Holy Cross" }] };
+  const bodyOf = (mock: ReturnType<typeof vi.fn>, call: number) => JSON.parse(String(((mock.mock.calls[call] as unknown[])[1] as RequestInit).body));
+
+  it("Save anyway resends the exact body that was checked, even if the time was edited while the request was pending", async () => {
+    let settle!: (r: Response) => void;
+    const fetchMock = vi.fn().mockReturnValueOnce(new Promise<Response>((r) => { settle = r; })).mockResolvedValueOnce(res({ appointment: appt() }, 201));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmAppointmentForm mode="create" bdmType="college" initialOrganization={org} />);
+    fillWhen("2030-01-07T10:00");
+    fireEvent.click(screen.getByRole("button", { name: "Book appointment" }));
+    fireEvent.change(screen.getByLabelText("Date and time (IST) (required)"), { target: { value: "2030-01-09T15:00" } });
+    settle(res({ detail: clash }, 409));
+    await screen.findByRole("button", { name: "Save anyway" });
+    fireEvent.click(screen.getByRole("button", { name: "Save anyway" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(bodyOf(fetchMock, 1)).toMatchObject({ starts_at: "2030-01-07T10:00:00+05:30", confirm_overlap: true });
+  });
+
+  it("edit mode: Save anyway PATCHes the checked body with confirm_overlap, not later edits", async () => {
+    let settle!: (r: Response) => void;
+    let patchCalls = 0;
+    const onSaved = vi.fn();
+    const fetchMock = vi.fn((...args: [string, RequestInit?]) => {
+      if (args[0].includes("/organizations/")) return Promise.resolve(res({ organization: org }));
+      return patchCalls++ === 0 ? new Promise<Response>((r) => { settle = r; }) : Promise.resolve(res({ appointment: appt({ duration_minutes: 90 }) }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmAppointmentForm mode="edit" bdmType="college" appointment={appt()} onSaved={onSaved} onCancel={() => {}} />);
+    await waitFor(() => expect(screen.getByLabelText("Contact person (required)")).toHaveValue("c2"));
+    fireEvent.change(screen.getByLabelText("Duration"), { target: { value: "90" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.change(screen.getByLabelText("Location"), { target: { value: "Gate 7" } });
+    settle(res({ detail: clash }, 409));
+    fireEvent.click(await screen.findByRole("button", { name: "Save anyway" }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    const patches = fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH");
+    expect(patches).toHaveLength(2);
+    expect(JSON.parse(String(patches[1][1]?.body))).toEqual({ duration_minutes: 90, confirm_overlap: true });
+  });
+
   it("lets a booking whose contact was deleted be edited without choosing a contact", async () => {
     const onSaved = vi.fn();
     const fetchMock = vi.fn((...args: [string, RequestInit?]) => Promise.resolve(args[0].includes("/organizations/") ? res({ organization: org }) : res({ appointment: appt({ contact_id: null, location: "Gate 9" }) })));

@@ -18,7 +18,8 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
   const [open, setOpen] = useState<Group | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  const [warning, setWarning] = useState<Overlap | null>(null);
+  // The warning keeps the body that was checked: "Save anyway" resends it, never the form's current values.
+  const [warning, setWarning] = useState<{ overlap: Overlap; path: string; body: Record<string, unknown> } | null>(null);
   const focus = useFocusAfterRender();
   const p = appointment.permissions;
   const buttonId = (g: string) => `appt-${appointment.id}-${g}`;
@@ -34,10 +35,10 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
     const body = response?.ok ? await response.json().catch(() => null) : null;
     return isAppointmentBody(body) ? body.appointment : null;
   }
-  async function act(path: string, body: Record<string, unknown> = {}) {
+  async function act(path: string, body: Record<string, unknown> = {}, confirmOverlap = false) {
     setBusy(true);
     setFailure(null);
-    const outcome = await sendJson(`${APPOINTMENTS_URL}/${appointment.id}/${path}`, "POST", body);
+    const outcome = await sendJson(`${APPOINTMENTS_URL}/${appointment.id}/${path}`, "POST", path === "reschedule" ? { ...body, confirm_overlap: confirmOverlap } : body);
     setBusy(false);
     if (outcome.ok && isAppointmentBody(outcome.data)) {
       setOpen(null);
@@ -46,7 +47,7 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
     }
     if (!outcome.ok && outcome.status === 409) {
       const clash = readOverlap(outcome.detail);
-      if (clash) return setWarning(clash);
+      if (clash) return setWarning({ overlap: clash, path, body });
       const fresh = await refetch();
       if (fresh) {
         setOpen(null);
@@ -91,7 +92,7 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
         )}
       </div>
       {open === "reschedule" && (
-        <BdmAppointmentRescheduleForm appointment={appointment} busy={busy} warning={warning} onEdit={() => setWarning(null)} onDismissWarning={() => setWarning(null)} onSubmit={(body, confirm) => void act("reschedule", { ...body, confirm_overlap: confirm })} onCancel={() => close("reschedule")} />
+        <BdmAppointmentRescheduleForm appointment={appointment} busy={busy} warning={warning?.overlap ?? null} onEdit={() => setWarning(null)} onDismissWarning={() => setWarning(null)} onSubmit={(body) => void act("reschedule", body)} onConfirm={() => warning && void act(warning.path, warning.body, true)} onCancel={() => close("reschedule")} />
       )}
       {open === "complete" && bdmType && <BdmAppointmentCompleteForm bdmType={bdmType} busy={busy} onSubmit={(body) => void act("complete", body)} onCancel={() => close("complete")} />}
       {open === "cancel" && <BdmAppointmentReasonForm label="Cancel appointment" submitText="Yes, cancel it" busyText="Cancelling…" busy={busy} onSubmit={(reason) => void act("cancel", { reason })} onCancel={() => close("cancel")} />}

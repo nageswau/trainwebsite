@@ -1,4 +1,6 @@
 "use client";
+import { useEffect, useState } from "react";
+
 import type { BdmType } from "@/lib/bdm";
 import { appointmentTypes, DURATIONS, formatMinutes, nowIstInput, TYPE_LABEL } from "@/lib/bdmAppointments";
 import type { OrgContact } from "@/lib/bdmOrganizations";
@@ -23,6 +25,9 @@ export default function BdmAppointmentFields({
   showWhen: boolean;
   contactRequired?: boolean;
 }) {
+  // `min` is read after mount: a server-rendered value can differ from the browser's across a minute boundary (hydration warning).
+  const [min, setMin] = useState<string | undefined>(undefined);
+  useEffect(() => setMin(nowIstInput()), []);
   return (
     <>
       <fieldset className="field">
@@ -43,7 +48,7 @@ export default function BdmAppointmentFields({
         {showWhen && (
           <>
             <label htmlFor="appt-when">Date and time (IST) (required)</label>
-            <input id="appt-when" type="datetime-local" required aria-required="true" min={nowIstInput()} value={values.when} onChange={(e) => set("when", e.target.value)} />
+            <input id="appt-when" type="datetime-local" required aria-required="true" min={min} value={values.when} onChange={(e) => set("when", e.target.value)} />
           </>
         )}
         <label htmlFor="appt-duration">Duration</label>

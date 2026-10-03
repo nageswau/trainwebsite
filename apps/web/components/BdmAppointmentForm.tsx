@@ -14,7 +14,8 @@ import { isOrganizationBody, LINK_STYLE, type OrgContact, type Organization, ORG
 
 // bdm-006 (spec §6.2, R-F3-R-F6): book an appointment (create) or edit an open one (edit: no time -- that is Reschedule). The API
 // decides every rule; this form keeps the entry on any failure and shows the message. Any
-// field change clears the overlap warning, so "Save anyway" can only confirm the exact time that was checked.
+// field change clears the overlap warning, and the warning keeps the exact body that was checked: "Save anyway" resends that body, never
+// the current fields (an edit made while the request was pending cannot be confirmed unchecked).
 type Props =
   | { mode: "create"; bdmType: BdmType; initialOrganization: Organization | null }
   | { mode: "edit"; bdmType: BdmType; appointment: Appointment; onSaved: (a: Appointment, saved: boolean) => void; onCancel: () => void };
@@ -43,7 +44,7 @@ export default function BdmAppointmentForm(props: Props) {
   const [values, setValues] = useState<FieldValues>(() => initialValues(props));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
-  const [warning, setWarning] = useState<Overlap | null>(null);
+  const [warning, setWarning] = useState<{ overlap: Overlap; body: Record<string, unknown> } | null>(null);
   const set = <K extends keyof FieldValues>(key: K, value: FieldValues[K]) => {
     setWarning(null);
     setValues((v) => ({ ...v, [key]: value }));
@@ -77,34 +78,43 @@ export default function BdmAppointmentForm(props: Props) {
     return Object.fromEntries(Object.entries(next).filter(([k, v]) => v !== before[k]));
   }
 
-  async function submit(confirmOverlap = false) {
+  async function send(body: Record<string, unknown>, confirmOverlap: boolean) {
     setMessage(null);
+    setBusy(true);
+    if (editing) {
+      const outcome = await sendJson(`${APPOINTMENTS_URL}/${editing.id}`, "PATCH", confirmOverlap ? { ...body, confirm_overlap: true } : body);
+      setBusy(false);
+      return handle(outcome, body, (a) => props.mode === "edit" && props.onSaved(a, true));
+    }
+    const outcome = await sendJson(APPOINTMENTS_URL, "POST", { ...body, confirm_overlap: confirmOverlap });
+    setBusy(false);
+    handle(outcome, body, (a) => router.push(`/bdm/appointments/${a.id}?created=1`));
+  }
+
+  function submit() {
     if (editing) {
       const body = changedFields(editing);
       if (!Object.keys(body).length) return props.mode === "edit" && props.onSaved(editing, false);
-      setBusy(true);
-      const outcome = await sendJson(`${APPOINTMENTS_URL}/${editing.id}`, "PATCH", confirmOverlap ? { ...body, confirm_overlap: true } : body);
-      setBusy(false);
-      return handle(outcome, (a) => props.mode === "edit" && props.onSaved(a, true));
+      return void send(body, false);
     }
-    setBusy(true);
-    const outcome = await sendJson(APPOINTMENTS_URL, "POST", {
-      organization_id: orgId, contact_id: values.contactId, starts_at: istInputToIso(values.when), duration_minutes: values.duration, appointment_type: values.type,
-      location: orNull(values.location), purpose: orNull(values.purpose), remarks: orNull(values.remarks),
-      expected_leads: values.leads === "" ? null : Number(values.leads), expected_revenue: orNull(values.revenue), confirm_overlap: confirmOverlap,
-    });
-    setBusy(false);
-    handle(outcome, (a) => router.push(`/bdm/appointments/${a.id}?created=1`));
+    void send(
+      {
+        organization_id: orgId, contact_id: values.contactId, starts_at: istInputToIso(values.when), duration_minutes: values.duration, appointment_type: values.type,
+        location: orNull(values.location), purpose: orNull(values.purpose), remarks: orNull(values.remarks),
+        expected_leads: values.leads === "" ? null : Number(values.leads), expected_revenue: orNull(values.revenue),
+      },
+      false,
+    );
   }
 
-  function handle(outcome: Awaited<ReturnType<typeof sendJson>>, onOk: (a: Appointment) => void) {
+  function handle(outcome: Awaited<ReturnType<typeof sendJson>>, body: Record<string, unknown>, onOk: (a: Appointment) => void) {
     if (outcome.ok && isAppointmentBody(outcome.data)) {
       setWarning(null);
       return onOk(outcome.data.appointment);
     }
     if (!outcome.ok && outcome.status === 409) {
       const clash = readOverlap(outcome.detail);
-      if (clash) return setWarning(clash);
+      if (clash) return setWarning({ overlap: clash, body });
     }
     setWarning(null);
     setMessage({ text: outcome.ok ? "Unable to save this appointment." : outcome.message, failed: true });
@@ -112,7 +122,7 @@ export default function BdmAppointmentForm(props: Props) {
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
-    void submit(false);
+    submit();
   };
   const deletedContact = editing && editing.contact_id === null && !values.contactId;
 
@@ -147,7 +157,7 @@ export default function BdmAppointmentForm(props: Props) {
         </p>
       )}
       <BdmAppointmentFields values={values} set={set} bdmType={props.bdmType} contacts={contacts} contactsLoading={contactsLoading} showWhen={!editing} contactRequired={!(editing && editing.contact_id === null)} />
-      {warning && <BdmOverlapAlert overlap={warning} busy={busy} onConfirm={() => void submit(true)} onCancel={() => setWarning(null)} />}
+      {warning && <BdmOverlapAlert overlap={warning.overlap} busy={busy} onConfirm={() => void send(warning.body, true)} onCancel={() => setWarning(null)} />}
       {message && <FormMessage message={message} />}
       <div className="actions">
         <button type="submit" className="btn" disabled={busy || warning !== null || (!editing && (!orgId || !values.contactId))}>
