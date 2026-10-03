@@ -66,6 +66,20 @@ describe("AgentStudentJourney (AGN-015)", () => {
     expect(await screen.findByRole("list", { name: "Student steps" })).toBeInTheDocument();
   });
 
+  it("announces a failure through a live region that exists before it (QA15-07), and never as an alert", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res({}, 500)).mockResolvedValueOnce(res(journey)));
+    const { container } = render(<AgentStudentJourney studentId="s1" />);
+    const live = container.querySelector(".jny [aria-live='polite']");
+    expect(live).not.toBeNull();
+    expect(live).toHaveTextContent("");
+    await screen.findByText("Try again");
+    expect(live).toHaveTextContent("Unable to load the journey.");
+    expect(screen.queryByRole("alert")).toBeNull(); // the detail panel's own alerts stay unique
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await screen.findByRole("list", { name: "Student steps" });
+    expect(live).toHaveTextContent("");
+  });
+
   it("offers sign-in on an expired session", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({}, 401)));
     render(<AgentStudentJourney studentId="s1" />);

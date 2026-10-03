@@ -94,6 +94,11 @@ export function kindLabel(kind: string): string {
   return KIND_LABELS[kind] ?? humanise(kind);
 }
 
+// QA15-05: an edited field as people say it -- `university_id` is "university", `tuition_fee` is "tuition fee".
+export function fieldLabel(field: string): string {
+  return field.replace(/_id$/, "").replaceAll("_", " ");
+}
+
 export function isJourney(body: unknown): body is Journey {
   const b = body as Partial<Journey> | null;
   return !!b && typeof b === "object" && !!b.student && Array.isArray(b.steps) && Array.isArray(b.applications);

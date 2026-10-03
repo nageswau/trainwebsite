@@ -80,11 +80,21 @@ describe("AgentStudentTimeline (AGN-015)", () => {
     render(<AgentStudentTimeline studentId="s1" />);
     fireEvent.click(screen.getByRole("button", { name: "Show history" }));
     expect(await screen.findByText("Showing 1–20 of 25")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    // QA15-03: names distinct from the student list's own "Previous page" / "Next page" on the same screen.
+    expect(screen.getByRole("button", { name: "Previous history page" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Next history page" }));
     expect(await screen.findByText("Showing 21–21 of 25")).toBeInTheDocument();
     expect(mock).toHaveBeenLastCalledWith(`${URL}?limit=20&offset=20`);
-    expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next history page" })).toBeDisabled();
+  });
+
+  it("shows id fields by what they name, not as column names (QA15-05)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res(page([item(1, { kind: "shortlist_added", fields: ["intake", "tuition_fee", "university_id"] })]))));
+    render(<AgentStudentTimeline studentId="s1" />);
+    fireEvent.click(screen.getByRole("button", { name: "Show history" }));
+    const row = within(await screen.findByRole("list", { name: "Student history" })).getByRole("listitem");
+    expect(row).toHaveTextContent("— intake, tuition fee, university ·");
+    expect(row).not.toHaveTextContent("university id");
   });
 
   it("shows a retryable error, then a sign-in link on 401", async () => {

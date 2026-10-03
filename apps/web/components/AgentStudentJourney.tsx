@@ -67,16 +67,19 @@ export default function AgentStudentJourney({ studentId, refreshKey }: { student
   return (
     <section aria-labelledby={headingId} className="jny" style={{ marginTop: 16 }}>
       <h5 id={headingId} style={{ fontSize: "18px", margin: "0 0 8px" }}>Journey</h5>
-      {failure ? (
-        failure.expired ? (
-          <p className="form-error">{failure.text} <Link href={SIGN_IN_PATH}>Sign in again</Link></p>
-        ) : (
-          <p className="form-error">
-            {failure.text}{" "}
-            <button type="button" className="btn secondary small" onClick={load}>Try again</button>
-          </p>
-        )
-      ) : data === null ? (
+      {/* QA15-07: the live region is always rendered, so a failure written into it is announced (one added with its text often is not). */}
+      <div aria-live="polite">
+        {failure &&
+          (failure.expired ? (
+            <p className="form-error">{failure.text} <Link href={SIGN_IN_PATH}>Sign in again</Link></p>
+          ) : (
+            <p className="form-error">
+              {failure.text}{" "}
+              <button type="button" className="btn secondary small" onClick={load}>Try again</button>
+            </p>
+          ))}
+      </div>
+      {failure ? null : data === null ? (
         <p className="muted" role="status">Loading journey…</p>
       ) : (
         <>
