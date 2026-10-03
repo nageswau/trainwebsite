@@ -1,4 +1,4 @@
-"""AGN-022 -- Overseas Admin's agent network figures (DEC-SCOPE-063; spec §4, §5.1).
+"""AGN-022 -- Overseas Admin's agent network figures (DEC-SCOPE-064; spec §4, §5.1).
 
 Read-only: nothing here writes, locks or commits. Every function takes organisation ids, never a user -- the admin is not a member
 of the agencies it reads. Students, applications and commissions belong to an organisation through the `agent_id` of one of its

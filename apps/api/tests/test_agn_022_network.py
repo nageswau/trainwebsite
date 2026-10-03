@@ -1,4 +1,4 @@
-"""AGN-022 -- Overseas Admin agent network oversight (DEC-SCOPE-063; spec §8)."""
+"""AGN-022 -- Overseas Admin agent network oversight (DEC-SCOPE-064; spec §8)."""
 
 import uuid
 

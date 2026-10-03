@@ -1177,7 +1177,7 @@ async def list_agent_orgs(
     if orgs:
         for member, member_user in (await db.execute(org_masters(*(o.id for o in orgs)))).all():  # AGN-002: Masters only, never staff
             masters.setdefault(member.org_id, []).append(_master_row(member, member_user))
-    counts = await org_counts(db, [o.id for o in orgs])  # AGN-022: additive keys only (DEC-SCOPE-063 N5)
+    counts = await org_counts(db, [o.id for o in orgs])  # AGN-022: additive keys only (DEC-SCOPE-064 N5)
     items = [
         {"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, []), **_network_counts(counts[o.id])}
         for o in orgs
@@ -1193,7 +1193,7 @@ def _network_counts(c: dict) -> dict:
     return {"staff_count": c["staff_count"], "counts": {"students": c["students"], "applications": c["applications"], "enrollments": c["enrollments"]}}
 
 
-# AGN-022 (DEC-SCOPE-063): the agent network -- read-only views of one organisation for Overseas Admin and Super Admin. The gate runs
+# AGN-022 (DEC-SCOPE-064): the agent network -- read-only views of one organisation for Overseas Admin and Super Admin. The gate runs
 # before the lookup, so a non-admin never learns whether an id exists. Responses carry agency data, so they are never cached.
 NETWORK_CACHE = "private, no-store"
 

@@ -1,7 +1,7 @@
 # AGN-022 — Overseas Admin agent network oversight — design
 
 NO-ASSUMPTION MODE. Status: **design, awaiting the owner's written-spec review.** No code written. Branch
-`feature/agn-022-agent-network` (from `main` @ `3bde8796`). Decision: `DEC-SCOPE-063` (this spec §2).
+`feature/agn-022-agent-network` (from `main` @ `3bde8796`). Decision: `DEC-SCOPE-064` (this spec §2).
 
 ---
 
@@ -15,7 +15,7 @@ NO-ASSUMPTION MODE. Status: **design, awaiting the owner's written-spec review.*
   (`AGENT_CRM_BACKLOG.md:164`) is cited there as `DEC-SCOPE-035`, which on `main` is ENH-027 (known mis-citation). The owner's
   answers in §2 are the authority for this feature.
 
-## 2. Decisions (`DEC-SCOPE-063`, answered by the owner 2026-10-03)
+## 2. Decisions (`DEC-SCOPE-064`, answered by the owner 2026-10-03)
 
 | ID | Decision |
 |---|---|
@@ -273,6 +273,6 @@ admin panel (target size is checked in browser QA, not changed speculatively).
 
 ## 12. Documentation
 
-`PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-063`; `API_CONTRACT.md` (new keys + three routes); `RBAC_MATRIX.md` (admin
+`PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-064`; `API_CONTRACT.md` (new keys + three routes); `RBAC_MATRIX.md` (admin
 read-only drill-down, audit); `RTM.md` AGN-022 row with AC1–AC10; `ENHANCEMENT_BACKLOG.md` and the `AGENT_CRM_BACKLOG.md`
 status table (AGN-022 in progress).

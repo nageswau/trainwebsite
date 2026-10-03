@@ -8,7 +8,7 @@ import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 
-// AGN-022 (DEC-SCOPE-063): one agency in the agent network. A path segment that is not a UUID is not-found before anything is
+// AGN-022 (DEC-SCOPE-064): one agency in the agent network. A path segment that is not a UUID is not-found before anything is
 // fetched (AC11). Readable by Overseas and Super Admins; only Overseas Admin may suspend / reinstate (N3), so `canAct` follows the role.
 const ADMIN_ROLES = ["overseas_admin", "super_admin"];
 

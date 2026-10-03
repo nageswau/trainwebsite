@@ -9,7 +9,7 @@ import { failureText, NETWORK_ERROR, NETWORK_PATH, ORG_STATUS_LABEL, orgUrl, sta
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-// AGN-022 (DEC-SCOPE-063): one agency for Overseas and Super Admins -- its figures, money and Masters; its students and
+// AGN-022 (DEC-SCOPE-064): one agency for Overseas and Super Admins -- its figures, money and Masters; its students and
 // applications on request (each page is an audited read, N2); and, for Overseas Admin only (N3), suspend / reinstate through the
 // AGN-001 action, which denies every member on their next request. Approve / reject stay on Agent Approvals (N6).
 type Action = "suspend" | "reinstate";

@@ -1,4 +1,4 @@
-// AGN-022 (DEC-SCOPE-063): Overseas Admin's agent network -- the shapes the list and detail panels share. The server is the
+// AGN-022 (DEC-SCOPE-064): Overseas Admin's agent network -- the shapes the list and detail panels share. The server is the
 // authority on access and on every figure; these only describe what it returns.
 
 import { detailMessage, isPage, type Page } from "@/lib/apiErrors";

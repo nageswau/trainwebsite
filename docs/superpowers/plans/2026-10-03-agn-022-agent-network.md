@@ -12,7 +12,7 @@ AGN-001 route. Two new standalone admin pages with two client panels and one sha
 **Tech Stack:** FastAPI, Pydantic v2, async SQLAlchemy, PostgreSQL, pytest-asyncio; Next.js (app router), React, vitest +
 Testing Library, Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-10-03-agn-022-agent-network-design.md` (decision `DEC-SCOPE-063`).
+**Spec:** `docs/superpowers/specs/2026-10-03-agn-022-agent-network-design.md` (decision `DEC-SCOPE-064`).
 
 ## Global Constraints
 
@@ -97,7 +97,7 @@ DEPOSITS = {"currency": "INR", "count": 2, "collected": 50000.0, "remitted": 300
 - [ ] **Step 2: Failing tests** in `tests/test_agn_022_network.py`:
 
 ```python
-"""AGN-022 -- Overseas Admin agent network (DEC-SCOPE-063; spec §8)."""
+"""AGN-022 -- Overseas Admin agent network (DEC-SCOPE-064; spec §8)."""
 
 import pytest
 
@@ -411,7 +411,7 @@ suspended message; reinstate restores. Viewport 375 px: no horizontal scroll (`d
 **Files:** `docs/architecture/API_CONTRACT.md` (AGN-022 block), `docs/architecture/RBAC_MATRIX.md` (admin read-only drill-down,
 audit), `docs/quality/RTM.md` (AGN-022 row, AC1–AC11 → tests), `docs/delivery/ENHANCEMENT_BACKLOG.md` (AGN-022 status
 IMPLEMENTED, NOT COMPLETE — browser validation and Codex review pending), `docs/delivery/AGENT_CRM_BACKLOG.md` status table row,
-`docs/decisions/PRODUCT_DECISION_REGISTER.md` DEC-SCOPE-063 status line.
+`docs/decisions/PRODUCT_DECISION_REGISTER.md` DEC-SCOPE-064 status line.
 
 - [ ] Update, run the lite set once more, commit `docs(agn-022): contract, RBAC, RTM and backlog status`.
 

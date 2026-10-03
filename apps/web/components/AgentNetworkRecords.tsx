@@ -8,7 +8,7 @@ import { fetchPage, orgUrl, PAGE_SIZE, type NetworkApplication, type NetworkStud
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-// AGN-022 (DEC-SCOPE-063 N1/N2): one agency's students or applications for Overseas Admin -- read-only, no contact details, and
+// AGN-022 (DEC-SCOPE-064 N1/N2): one agency's students or applications for Overseas Admin -- read-only, no contact details, and
 // every page the server returns is an audited read, so this list is only mounted when the admin asks for it.
 type Kind = "students" | "applications";
 type StudentStatus = "active" | "archived";

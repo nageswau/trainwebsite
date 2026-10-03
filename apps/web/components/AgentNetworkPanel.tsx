@@ -8,7 +8,7 @@ import type { Page } from "@/lib/apiErrors";
 import { fetchPage, NETWORK_PATH, ORG_STATUS_LABEL, ORGS_URL, PAGE_SIZE, statusClass, type NetworkOrg, type OrgStatus } from "@/lib/agentNetwork";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-// AGN-022 (DEC-SCOPE-063): every agency on EduSphere with its people and pipeline, for Overseas and Super Admins. Read-only here:
+// AGN-022 (DEC-SCOPE-064): every agency on EduSphere with its people and pipeline, for Overseas and Super Admins. Read-only here:
 // suspend/reinstate live on the agency's detail page, approve/reject on Agent Approvals. Tab, page and search live in the URL (as
 // AgentApprovalPanel). While a page loads the previous one stays on screen, dimmed; a slower older response is dropped.
 type Tab = "all" | OrgStatus;

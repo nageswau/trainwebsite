@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { registerApprovedAgency, signIn } from "./helpers/agency";
 
-// AGN-022 (DEC-SCOPE-063) -- Overseas Admin opens the agent network from the sidebar, finds a fresh agency, reads its figures and
+// AGN-022 (DEC-SCOPE-064) -- Overseas Admin opens the agent network from the sidebar, finds a fresh agency, reads its figures and
 // students, suspends it (the Master is denied on the next request), then reinstates it. Requires the stack running with
 // `python -m app.seed` applied (seeds the overseas admin).
 

@@ -5,7 +5,7 @@ import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 
-// AGN-022 (DEC-SCOPE-063): the agent network for Overseas and Super Admins, readable by both like the API. The panel owns the page
+// AGN-022 (DEC-SCOPE-064): the agent network for Overseas and Super Admins, readable by both like the API. The panel owns the page
 // heading; it is full width (not in .action-grid) because its table needs the room. The unauthenticated redirect is the middleware's.
 const ADMIN_ROLES = ["overseas_admin", "super_admin"];
 

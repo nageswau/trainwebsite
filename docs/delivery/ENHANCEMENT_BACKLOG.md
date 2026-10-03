@@ -3772,7 +3772,7 @@ waived by the owner. **Still to run: the owner's full suites.**
 
 **Business requirement.** "Edusphere's central admin can see the overall agent network and student/application data according to
 the permissions you define" (`EVID-015` "Best approach" / §9; backlog ang-022, `DERIVED_BLUEPRINT`). Owner acceptance: counts match
-fixtures; suspend blocks the org immediately (ang-001 AC4); non-admin → 403. Decision: `DEC-SCOPE-063` (N1–N6).
+fixtures; suspend blocks the org immediately (ang-001 AC4); non-admin → 403. Decision: `DEC-SCOPE-064` (N1–N6).
 
 **Delivered.** `GET /overseas-admin/agent-orgs` gains `staff_count` and `counts` (additive); new `GET /agent-orgs/{id}` (counts,
 commission per currency, deposits, Masters), `/{id}/students` and `/{id}/applications` (read-only, no contact fields, each page an
