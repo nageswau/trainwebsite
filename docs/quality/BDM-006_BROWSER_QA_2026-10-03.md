@@ -66,6 +66,20 @@
 - Screen-reader announcement wording (only ARIA roles/attributes were inspected).
 - The independent Codex review (owner).
 
-## 6. Artefacts
+## 6. Fix pass (2026-10-03) — test-first, independently reviewed
+
+| ID | Fix | Commit |
+|---|---|---|
+| QA6-01 | The list sanitizes URL filters before calling the API: unknown status/type dropped, invalid or calendar-impossible dates fall back (From → today, To → none), To earlier than From dropped. A stale URL can no longer wedge the list. | 38368e4d |
+| QA6-02 | Booking-form groups use the existing `fieldset.form-section` style. | 0d97c130 |
+| QA6-03 | The overlap warning reuses bdm-002's duplicate-warning style (`role="alert"` `form-error`), sits directly above the submit button, and its heading is focused and scrolled into view. | 0d97c130 |
+| QA6-04 | Server errors (5xx) read "We couldn't save the appointment. Please try again — your entry is kept." (form) / "We couldn't update the appointment. Please try again." (actions); 4xx keep the server's message; a network drop keeps "did not complete". | 8752356a |
+| QA6-05 | Expected leads / revenue validated inline before sending: `aria-invalid` + `aria-describedby` message ("…whole number from 0 to 1,000,000." / "…from 0 to 9,999,999,999.99, with up to 2 decimals."), focus to the first invalid field, error clears on edit; native `min` removed so the message isn't pre-empted. | 8752356a, ffb096aa, 6f333652 |
+| QA6-06 | Not changed — shared `PortalShell` behaviour outside bdm-006. | — |
+| QA6-07 | Informational — nothing to change. | — |
+
+Verification: web vitest (appointment components, panel, lib) 48 passed in the fix wave and 43 passed on the follow-up subset; `tsc --noEmit`, eslint and `next build` exit 0. Independent review: all five ADDRESSED, no new breakage. **Browser re-check of these fixes is pending** — the running `web` container is a production build and must be rebuilt first.
+
+## 7. Artefacts
 
 Screenshots, scripts and raw JSON evidence are in the session scratchpad: `scratchpad/qa/*.png`, `scratchpad/qa_full.py`, `qa_full.json`, `qa_bdm006.py`, `qa_results.json`, `qa_probe*.py`, `e2e-bdm006-qa.log`.
