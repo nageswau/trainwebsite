@@ -1208,6 +1208,46 @@ class AgentDashboardOut(BaseModel):
     as_of: datetime
 
 
+class AgentFunnelOut(BaseModel):
+    """AGN-019 (DEC-SCOPE-066 P3): distinct students who reached each stage or a later one, so the stages never increase."""
+
+    students: int
+    applications: int
+    submitted: int
+    offers: int
+    visa: int
+    enrolled: int
+
+
+class AgentPerformanceCountsOut(BaseModel):
+    """AGN-018's G3 column definitions over the date cohort (P5), plus that cohort's funnel."""
+
+    students: int
+    applications: int
+    offers: int
+    visa_applications: int
+    visa_approvals: int
+    enrollments: int
+    funnel: AgentFunnelOut
+
+
+class AgentPerformanceRowOut(AgentPerformanceCountsOut):
+    code: str
+    name: str
+    active: bool
+
+
+class AgentPerformanceOut(BaseModel):
+    """Master only. No ids, emails or phones: codes and names only (as AgentDashboardOut). `total` = rows + unassigned."""
+
+    date_from: date | None
+    date_to: date | None
+    rows: list[AgentPerformanceRowOut]
+    unassigned: AgentPerformanceCountsOut | None
+    total: AgentPerformanceCountsOut
+    as_of: datetime
+
+
 # AGN-022 (DEC-SCOPE-064): Overseas Admin's agent network. Field lists are allowlists -- the drill-down rows never carry email,
 # phone or date of birth (N1), and the detail carries a staff count, not a staff list (spec R-API-3).
 class AgentNetworkCounts(BaseModel):

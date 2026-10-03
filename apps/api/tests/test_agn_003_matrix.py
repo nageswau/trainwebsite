@@ -1,8 +1,8 @@
 """AGN-003-AC01/AC02 and AGN-005-AC01..AC03 -- the EVID-015 §6 matrix as built (AGN-003 spec §3, AGN-005 spec §3). Staff have both
 optional toggles OFF here; the toggles' ON side is tested in test_agn_003_permissions.py and test_agn_003_verify.py. The student rows
 (Create/View/Edit/Delete/Assign Student) use AGN-004's /crm/students routes on a student assigned to the caller, so a refusal comes
-from the Master-only check and not from the 404 existence mask. Rows with no route for any agent (Staff Performance, CRM
-Settings) are N/A and have nothing to call; Edit Application and Change Application Status became enforced rows with AGN-008 (DEC-SCOPE-050).
+from the Master-only check and not from the 404 existence mask. Rows with no route for any agent (CRM Settings) are N/A and have
+nothing to call; Staff Performance became an enforced Master-only row with AGN-019 (DEC-SCOPE-066); Edit Application and Change Application Status became enforced rows with AGN-008 (DEC-SCOPE-050).
 Two Master cells are proven elsewhere: a Master deactivating another Master (tests/test_agn_001_team.py::
 test_a_pending_invitee_can_still_be_deactivated_by_an_accepted_master, plus test_a_master_may_deactivate_themselves_once_another_master_has_accepted)
 and a Master claiming a commission (tests/test_agn_001_tenancy.py::test_a_second_master_sees_and_claims_what_the_first_created).
@@ -52,6 +52,8 @@ STAFF_REFUSED = [
     ("Delete Student", "post", RECORDS + "/{archived_record}/unarchive", None, "Only an agency Master can archive students"),
     ("Assign Student", "post", RECORDS + "/{record}/assign", {"member_id": "{other_staff}"}, "Only an agency Master can assign students"),
     ("Add University", "post", AGENCY_UNIS, {"name": "Matrix Uni", "country": "Testland"}, "Only an agency Master can add universities"),
+    # AGN-019 (DEC-SCOPE-066): Staff Performance is Master-only, with or without the reports toggle.
+    ("Staff Performance", "get", "/api/v1/workflows/overseas/agent/crm/performance", None, "Only an agency Master can view staff performance"),
 ]
 
 # (§6 row, method, path, json body, expected status) -- succeeds for staff AND for a Master.
@@ -113,6 +115,7 @@ MASTER_ALLOWED = [
     ("Delete Student", "post", RECORDS + "/{archived_record}/unarchive", None, 200),
     ("Assign Student", "post", RECORDS + "/{record}/assign", {"member_id": "{other_staff}"}, 200),
     ("Add University", "post", AGENCY_UNIS, {"name": "{fresh_email}", "country": "Testland"}, 201),
+    ("Staff Performance", "get", "/api/v1/workflows/overseas/agent/crm/performance", None, 200),  # AGN-019
 ]
 
 

@@ -1921,6 +1921,26 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **AGN-010 update (2026-10-02, `DEC-SCOPE-056`) — Offer block in the application detail.** Under the detail, an "Offer" heading: empty state "No offer recorded yet." with **Record offer**; a recorded offer shows the type in words, offer date, deadline, conditions (line breaks kept) and the offer letter (name, status, Download via the AGN-009 route, else "Not attached") with **Edit offer**; no buttons when read-only. The form: a radio group Conditional/Unconditional, offer date (`max` today), deadline (`min` the offer date), a conditions textarea only for conditional (required, ≤ 2000, hint by `aria-describedby`), an offer-letter select from the application's "Offer letter" documents with an empty-state link to Documents; "Saving…", a 422 keeps the input and focuses the notice, success "Offer saved". One form of the detail is open at a time. The Documents upload form offers "Offer letter" and then requires the application. Evidence: AGN-010-AC01–AC09 (`test_agn_010_*.py`; `AgentApplicationOffer.test.tsx`, `AgentDocumentTypes.offer.test.tsx`; e2e `agn-010-offer-details.spec.ts`, not yet run); browser validation pending.
 
 
+### `SCR-AGT-011`
+- **ID note:** next free on `main` @ `3bde879`; still free after merging `main` @ `39c119b` (AGN-022 added no agency screen ID).
+- **Route:** `/overseas/agent/performance` — "Staff performance" title, date filter, Funnel, By staff member *(net-new, added 2026-10-03, `AGN-019`)*
+- **Role(s):** Agent — an agency Master of an active agency. Staff (and any other role the portal admits) see "Staff performance is available to agency Masters." with no request; the API refuses them (`403`).
+- **Purpose:** Per-staff Students / Applications / Offers / Visa applications / Visa approvals / Enrollments and the student funnel Students → Applications → Submitted → Offers → Visa → Enrolled, for students added in a chosen period (`DEC-SCOPE-066`).
+- **Linked Feature ID(s):** `AGN-019` (builds on `AGN-018`)
+- **Entry points:** Agent portal navigation "Staff Performance" (Masters only, after Reports); the dashboard staff table's "View staff performance" link.
+- **Required data:** `GET /workflows/overseas/agent/crm/performance?date_from=&date_to=` — rows (code, name, active, six counts, funnel), `unassigned`, `total`, `as_of`.
+- **Key actions:** From / To dates + Apply (Enter submits; the range is kept in the address); "Show funnel for" select (agency total, each staff member, Unassigned) — no request.
+- **Empty state:** "Your agency has no students yet." / "No students were added in this period." in place of the funnel; the staff table still lists active staff with zeros.
+- **Loading state:** "Loading staff performance…" (`role="status"`, card `aria-busy`); later loads keep the figures with "Updating staff performance…".
+- **Error state:** `role="alert"`: 401 "Your session has expired." + Sign in again; 403 the server's message; 5xx/unreadable "Couldn't load staff performance." + Try again; offline text + Try again; 422 and To-before-From on the named field (`aria-invalid`, focus moved).
+- **Permissions/resource scope:** Own agency only; Master only; counts follow each student's current owner.
+- **Responsive behavior:** Form wraps; inputs and select full width and 44 px targets below 640 px; the staff table stacks into labelled rows; funnel rows are text with a bar below; no horizontal scroll at 320 px (E2E, browser validation pending).
+- **Accessibility requirements:** One `h2`, `h3` Funnel / By staff member; labelled inputs and select; the funnel is an ordered list whose text carries every number and share (bars `aria-hidden`); "Deactivated" as text; the table's focusable scroll region is named by its heading.
+- **Desktop/tablet/mobile behavior:** Same order at every width: filter, as-of line, funnel, table.
+- **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.
+- **Acceptance evidence needed:** AGN-019-AC9/AC10 (`AgentPerformancePanel.test.tsx`, `AgentPerformanceSection.test.tsx`, `agentPerformance.test.ts`, `navigation.agent.test.ts`; `agn-019-performance.spec.ts`); browser validation pending.
+
+
 ## CNS
 
 | Screen ID | Route | Roles | Feature ID(s) |
