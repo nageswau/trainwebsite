@@ -166,4 +166,25 @@ describe("BdmOrganizationForm (bdm-002 AC1, AC2, §12.2 F5)", () => {
     render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByText("For example stjoseph.edu or https://stjoseph.edu")).toBeInTheDocument();
   });
+
+  it("never reuses a removed contact's key, so its old error does not reappear (simplify review A4)", () => {
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fillRequired();
+    fireEvent.click(screen.getByRole("button", { name: "Add contact" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save organization" })); // contact 2 is blank
+    expect(screen.getByText("Contact name is required")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remove contact 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add contact" }));
+    expect(screen.queryByText("Contact name is required")).toBeNull();
+    expect(screen.getAllByLabelText("Contact name (required)")[1]).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("says '1 more similar organization' in the singular", async () => {
+    const dup = { code: "possible_duplicate", message: "A similar organization already exists in your module", total: 11, matches: Array.from({ length: 10 }, (_, i) => ({ id: `m${i}`, code: `ORG-00000${i}`, name: "St Mary", city: "Kochi", archived: false, assigned_bdm_name: "Asha" })) };
+    serve(res({ detail: dup }, 409));
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fillRequired();
+    fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
+    expect(await screen.findByText("1 more similar organization.")).toBeInTheDocument();
+  });
 });

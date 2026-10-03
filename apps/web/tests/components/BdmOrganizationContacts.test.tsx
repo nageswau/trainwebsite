@@ -126,4 +126,11 @@ describe("BdmOrganizationContacts", () => {
     render(<BdmOrganizationContacts organization={org()} onChanged={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Make Ms Iyer primary" }).textContent).toBe("Make primary");
   });
+
+  it("returns focus to the contact's Edit button when its editor is cancelled (simplify review A5)", async () => {
+    render(<BdmOrganizationContacts organization={org()} onChanged={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Ms Iyer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Ms Iyer" })).toHaveFocus());
+  });
 });

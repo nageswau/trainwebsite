@@ -70,4 +70,15 @@ describe("BdmOrganizationReassign", () => {
     rerender(<BdmOrganizationReassign organization={updated as unknown as Organization} onChanged={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Reassign" })).toBeDisabled();
   });
+
+  it("asks the page to focus its message after a reassignment (simplify review A5)", async () => {
+    const updated = { ...ORG, assigned_bdm: { id: "b2", full_name: "Ravi", active: true } };
+    serve(() => res({ organization: updated }));
+    const onChanged = vi.fn();
+    render(<BdmOrganizationReassign organization={ORG} onChanged={onChanged} />);
+    await pickRavi();
+    fireEvent.click(screen.getByRole("button", { name: "Reassign" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, reassign" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith(updated, "Reassigned to Ravi."));
+  });
 });

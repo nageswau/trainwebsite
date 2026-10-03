@@ -132,4 +132,26 @@ describe("BdmOrganizationsPanel (bdm-002 AC9)", () => {
     render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
     expect(await screen.findByRole("link", { name: "College 1" })).toHaveStyle({ textDecoration: "underline" });
   });
+
+  it("is not left busy when a filter change is undone before the router moves (simplify review A6)", async () => {
+    serve(res(pg([row(1)])));
+    render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 1" });
+    fireEvent.change(screen.getByLabelText("Type"), { target: { value: "school" } });
+    expect(screen.getByText("Updating organizations…")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Type"), { target: { value: "" } }); // back to the current URL: no navigation will land
+    expect(screen.queryByText("Updating organizations…")).toBeNull();
+  });
+
+  it("settles when the URL lands somewhere else than the requested filter (Back/Forward)", async () => {
+    serve(res(pg([row(1)])), res(pg([row(2)])));
+    const { rerender } = render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 1" });
+    fireEvent.change(screen.getByLabelText("Name or code"), { target: { value: "College" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" })); // requests ?q=College
+    nav.search = "org_type=school"; // ...but Back lands on another URL
+    rerender(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 2" });
+    expect(screen.queryByText("Updating organizations…")).toBeNull();
+  });
 });

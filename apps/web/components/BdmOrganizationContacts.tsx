@@ -1,15 +1,17 @@
 "use client";
-import { type KeyboardEvent, useState } from "react";
+import { useState } from "react";
 
+import { ContactInputs, type ContactDraft, type ContactField } from "@/components/BdmContactFields";
+import BdmConfirm from "@/components/BdmConfirm";
 import { sendJson, sendRequest, type SendOutcome } from "@/lib/apiErrors";
-import { CONTACT_ROLE_LABEL, CONTACT_ROLES, type ContactRole, isOrganizationBody, type OrgContact, type Organization, ORGS_URL } from "@/lib/bdmOrganizations";
+import { CONTACT_ROLE_LABEL, type ContactRole, isOrganizationBody, MAX_CONTACTS, type OrgContact, type Organization, ORGS_URL } from "@/lib/bdmOrganizations";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-002 (C1, C10; spec §6.2): an organization's contacts as blocks (not a table, so they read well on a phone). With edit rights a
 // contact can be added, edited, made primary or deleted inline; the last one can't be deleted (C1). Every success re-renders from the
 // organization the API returns. Contacts are data only: phones and emails are plain text (D29).
-type Draft = { name: string; designation: string; role: string; phone: string; email: string };
-const FIELDS = ["name", "designation", "role", "phone", "email"] as const;
+const FIELDS: ContactField[] = ["name", "designation", "role", "phone", "email"];
+
 /** Browser QA-06: each value labelled, blanks left out (an unlabelled "— · — · — · email" line didn't say which was which). */
 function details(c: OrgContact): string {
   const parts: [string, string | null][] = [
@@ -22,15 +24,15 @@ function details(c: OrgContact): string {
   return shown.length ? shown.join(" · ") : "No other details";
 }
 
-const draftOf = (c?: OrgContact): Draft => ({ name: c?.name ?? "", designation: c?.designation ?? "", role: c?.role ?? "", phone: c?.phone ?? "", email: c?.email ?? "" });
+const draftOf = (c?: OrgContact): ContactDraft => ({ name: c?.name ?? "", designation: c?.designation ?? "", role: c?.role ?? "", phone: c?.phone ?? "", email: c?.email ?? "" });
 
+/** Add (no `initial`) or edit one contact. Sends only what changed on edit; blank values clear. */
 function ContactEditor({ initial, busy, onSave, onCancel }: { initial?: OrgContact; busy: boolean; onSave: (body: Record<string, unknown>) => void; onCancel: () => void }) {
   const [draft, setDraft] = useState(draftOf(initial));
   const [nameError, setNameError] = useState<string | null>(null);
-  const base = draftOf(initial);
-  const id = (field: string) => `contact-${initial?.id ?? "new"}-${field}`;
   const save = () => {
     if (!draft.name.trim()) return setNameError("Contact name is required");
+    const base = draftOf(initial);
     const body: Record<string, unknown> = {};
     for (const key of FIELDS) {
       const value = draft[key].trim();
@@ -38,32 +40,22 @@ function ContactEditor({ initial, busy, onSave, onCancel }: { initial?: OrgConta
     }
     onSave(body);
   };
-  const input = (field: "designation" | "phone" | "email", label: string, type = "text", max = 120) => (
-    <div className="field">
-      <label htmlFor={id(field)}>{label}</label>
-      <input id={id(field)} type={type} maxLength={max} value={draft[field]} onChange={(e) => setDraft({ ...draft, [field]: e.target.value })} />
-    </div>
-  );
   return (
     <div className="form" role="group" aria-label={initial ? `Edit ${initial.name}` : "New contact"}>
-      <div className="field">
-        <label htmlFor={id("name")}>Contact name (required)</label>
-        <input id={id("name")} autoFocus maxLength={200} value={draft.name} aria-required="true" aria-invalid={nameError ? true : undefined} aria-describedby={nameError ? id("name-error") : undefined} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-        {nameError && <p className="form-error" id={id("name-error")}>{nameError}</p>}
-      </div>
-      {input("designation", "Designation")}
-      <div className="field">
-        <label htmlFor={id("role")}>Role</label>
-        <select id={id("role")} value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value })}>
-          <option value="">Not set</option>
-          {CONTACT_ROLES.map((r) => <option key={r} value={r}>{CONTACT_ROLE_LABEL[r]}</option>)}
-        </select>
-      </div>
-      {input("phone", "Phone", "tel", 30)}
-      {input("email", "Email", "email", 255)}
+      <ContactInputs
+        idBase={`contact-${initial?.id ?? "new"}`}
+        values={draft}
+        errors={nameError ? { name: nameError } : {}}
+        onChange={(field, value) => setDraft({ ...draft, [field]: value })}
+        autoFocusName
+      />
       <div className="actions">
-        <button type="button" className="btn small" onClick={save} disabled={busy}>{busy ? "Saving…" : "Save contact"}</button>
-        <button type="button" className="btn secondary small" onClick={onCancel} disabled={busy}>Cancel</button>
+        <button type="button" className="btn small" onClick={save} disabled={busy}>
+          {busy ? "Saving…" : "Save contact"}
+        </button>
+        <button type="button" className="btn secondary small" onClick={onCancel} disabled={busy}>
+          Cancel
+        </button>
       </div>
     </div>
   );
@@ -79,6 +71,8 @@ export default function BdmOrganizationContacts({ organization, onChanged }: { o
   const url = `${ORGS_URL}/${organization.id}/contacts`;
   const last = organization.contacts.length <= 1;
   const addId = `org-${organization.id}-add-contact`;
+  const editId = (contactId: string) => `contact-${contactId}-edit`;
+  const deleteId = (contactId: string) => `contact-${contactId}-delete`;
 
   async function run(request: Promise<SendOutcome>, notice: string) {
     setBusy(true);
@@ -92,9 +86,14 @@ export default function BdmOrganizationContacts({ organization, onChanged }: { o
       onChanged(outcome.data.organization, notice);
     } else setFailure(outcome.ok ? "Unable to update the contacts." : outcome.message);
   }
+  // Every cancel returns focus to the control that opened the editor or the confirm (simplify review A5).
+  const closeEditor = (returnTo: string) => {
+    setEditing(null);
+    focus(returnTo);
+  };
   const cancelDelete = (contactId: string) => {
     setDeleting(null);
-    focus(`contact-${contactId}-delete`);
+    focus(deleteId(contactId));
   };
 
   return (
@@ -104,7 +103,7 @@ export default function BdmOrganizationContacts({ organization, onChanged }: { o
         {organization.contacts.map((c) => (
           <li key={c.id} className="card" style={{ padding: 14 }}>
             {editing === c.id ? (
-              <ContactEditor initial={c} busy={busy} onSave={(body) => void run(sendJson(`${url}/${c.id}`, "PATCH", body), "Contact updated.")} onCancel={() => setEditing(null)} />
+              <ContactEditor initial={c} busy={busy} onSave={(body) => void run(sendJson(`${url}/${c.id}`, "PATCH", body), "Contact updated.")} onCancel={() => closeEditor(editId(c.id))} />
             ) : (
               <>
                 <p style={{ margin: 0, fontWeight: 800 }}>
@@ -115,7 +114,9 @@ export default function BdmOrganizationContacts({ organization, onChanged }: { o
                 </p>
                 {canEdit && (
                   <div className="actions" style={{ marginTop: 8 }}>
-                    <button type="button" className="btn secondary small" onClick={() => setEditing(c.id)} disabled={busy}>Edit<span className="visually-hidden"> {c.name}</span></button>
+                    <button id={editId(c.id)} type="button" className="btn secondary small" onClick={() => setEditing(c.id)} disabled={busy}>
+                      Edit<span className="visually-hidden"> {c.name}</span>
+                    </button>
                     {!c.is_primary && (
                       <button
                         type="button"
@@ -127,17 +128,23 @@ export default function BdmOrganizationContacts({ organization, onChanged }: { o
                         Make primary
                       </button>
                     )}
-                    <button id={`contact-${c.id}-delete`} type="button" className="btn secondary small" onClick={() => setDeleting(c.id)} disabled={busy || last}>
+                    <button id={deleteId(c.id)} type="button" className="btn secondary small" onClick={() => setDeleting(c.id)} disabled={busy || last}>
                       Delete<span className="visually-hidden"> {c.name}</span>
                     </button>
                   </div>
                 )}
                 {deleting === c.id && (
-                  <div role="group" aria-label="Confirm delete" onKeyDown={(e: KeyboardEvent) => e.key === "Escape" && cancelDelete(c.id)}>
-                    <p>Delete {c.name}? This removes their details.</p>
-                    <button type="button" className="btn small" autoFocus onClick={() => void run(sendRequest(`${url}/${c.id}`, { method: "DELETE" }), "Contact deleted.")} disabled={busy}>{busy ? "Deleting…" : "Yes, delete"}</button>{" "}
-                    <button type="button" className="btn secondary small" onClick={() => cancelDelete(c.id)}>Keep</button>
-                  </div>
+                  <BdmConfirm
+                    label="Confirm delete"
+                    confirmText="Yes, delete"
+                    busyText="Deleting…"
+                    cancelText="Keep"
+                    busy={busy}
+                    onConfirm={() => void run(sendRequest(`${url}/${c.id}`, { method: "DELETE" }), "Contact deleted.")}
+                    onCancel={() => cancelDelete(c.id)}
+                  >
+                    Delete {c.name}? This removes their details.
+                  </BdmConfirm>
                 )}
               </>
             )}
@@ -147,13 +154,19 @@ export default function BdmOrganizationContacts({ organization, onChanged }: { o
       {canEdit && last && <p className="muted">An organization needs at least one contact.</p>}
       {canEdit &&
         (editing === "new" ? (
-          <ContactEditor busy={busy} onSave={(body) => void run(sendJson(url, "POST", body), "Contact added.")} onCancel={() => setEditing(null)} />
+          <ContactEditor busy={busy} onSave={(body) => void run(sendJson(url, "POST", body), "Contact added.")} onCancel={() => closeEditor(addId)} />
         ) : (
           <div>
-            <button id={addId} type="button" className="btn secondary small" onClick={() => setEditing("new")} disabled={busy || organization.contacts.length >= 20}>Add contact</button>
+            <button id={addId} type="button" className="btn secondary small" onClick={() => setEditing("new")} disabled={busy || organization.contacts.length >= MAX_CONTACTS}>
+              Add contact
+            </button>
           </div>
         ))}
-      {failure && <p className="form-error" role="alert">{failure}</p>}
+      {failure && (
+        <p className="form-error" role="alert">
+          {failure}
+        </p>
+      )}
     </section>
   );
 }

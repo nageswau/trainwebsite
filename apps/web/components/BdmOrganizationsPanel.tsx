@@ -4,7 +4,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 
 import { isPage, type Page } from "@/lib/apiErrors";
-import { display, LINK_STYLE, ORG_PAGE_SIZE, ORG_TYPE_LABEL, ORG_TYPES, ORGS_URL, type OrgRow } from "@/lib/bdmOrganizations";
+import { PAGE_SIZE } from "@/lib/bdm";
+import { CHECKBOX_ROW, display, LINK_STYLE, ORG_TYPE_LABEL, ORG_TYPES, ORGS_URL, type OrgRow } from "@/lib/bdmOrganizations";
 
 // bdm-002 (spec §6.2, §12.2): the organization list for a BDM (their whole module, Q-02) or a manager (their team, C2). The API
 // scopes the rows; nothing here filters for security. Filters and the page live in the URL (AdminBdmPanel's pattern), so refresh
@@ -34,17 +35,15 @@ function toUrl(f: Filters): URLSearchParams {
   return next;
 }
 
+/** The API query for the same filters: the page params first, the URL's filters as they are, `archived=1` spelled as the API's flag. */
 function toApi(f: Filters): string {
-  const query = new URLSearchParams({ limit: String(ORG_PAGE_SIZE), offset: String(f.offset) });
-  if (f.q) query.set("q", f.q);
-  if (f.orgType) query.set("org_type", f.orgType);
-  if (f.city) query.set("city", f.city);
-  if (f.mine) query.set("assigned", "me");
-  if (f.archived) query.set("include_archived", "true");
+  const query = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(f.offset) });
+  for (const [name, value] of toUrl({ ...f, offset: 0 })) {
+    if (name === "archived") query.set("include_archived", "true");
+    else query.set(name, value);
+  }
   return `${ORGS_URL}?${query}`;
 }
-
-const CHECKBOX = { display: "flex", gap: 6, alignItems: "center", minHeight: 44 } as const;
 
 export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: string; isBdm: boolean }) {
   const router = useRouter();
@@ -54,7 +53,11 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
   const key = toUrl(filters).toString();
   const [data, setData] = useState<Page<OrgRow> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [fetching, setFetching] = useState(true);
+  // Browser QA-15: the router waits for a server round trip before the URL (and so the fetch) changes, so the wait is shown from the
+  // click: busy while a requested URL hasn't landed. Derived, so undoing a change before it lands can't leave it stuck (simplify A6).
+  const [target, setTarget] = useState<string | null>(null);
+  const loading = fetching || (target !== null && target !== key);
   const [version, setVersion] = useState(0);
   const [draftQ, setDraftQ] = useState(filters.q);
   const [draftCity, setDraftCity] = useState(filters.city);
@@ -68,7 +71,8 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
   useEffect(() => {
     let live = true;
     setLoadFailed(false);
-    setLoading(true);
+    setFetching(true);
+    setTarget(null); // the URL has moved (a filter landed, or Back/Forward): any earlier target is settled
     fetch(toApi(readFilters(new URLSearchParams(key))))
       .then(async (response) => {
         const body = await response.json().catch(() => null);
@@ -79,7 +83,7 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
         if (live) setLoadFailed(true);
       })
       .finally(() => {
-        if (live) setLoading(false);
+        if (live) setFetching(false);
       });
     return () => {
       live = false;
@@ -88,8 +92,7 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
 
   function go(next: Partial<Filters>) {
     const url = toUrl({ ...filters, offset: 0, ...next });
-    // browser QA-15: the router waits for a server round trip before the URL (and so the fetch) changes; show the wait from the click.
-    if (url.toString() !== key) setLoading(true);
+    setTarget(url.toString());
     router.push(url.size ? `${pathname}?${url}` : pathname, { scroll: false });
   }
   const filtered = Boolean(filters.q || filters.orgType || filters.city || filters.mine || filters.archived);
@@ -129,12 +132,12 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
           </select>
         </div>
         {isBdm && (
-          <label style={CHECKBOX}>
+          <label style={CHECKBOX_ROW}>
             <input type="checkbox" checked={filters.mine} onChange={(e) => go({ mine: e.target.checked })} />
             Assigned to me
           </label>
         )}
-        <label style={CHECKBOX}>
+        <label style={CHECKBOX_ROW}>
           <input type="checkbox" checked={filters.archived} onChange={(e) => go({ archived: e.target.checked })} />
           Show archived
         </label>
@@ -235,15 +238,15 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
               </tbody>
             </table>
           </div>
-          {data.total > ORG_PAGE_SIZE && (
+          {data.total > PAGE_SIZE && (
             <nav aria-label="Organization pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
               <span className="muted" style={{ fontSize: 13 }}>
                 Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}
               </span>
-              <button type="button" className="btn secondary small" disabled={data.offset === 0} onClick={() => go({ offset: Math.max(0, filters.offset - ORG_PAGE_SIZE) })}>
+              <button type="button" className="btn secondary small" disabled={data.offset === 0} onClick={() => go({ offset: Math.max(0, filters.offset - PAGE_SIZE) })}>
                 Previous
               </button>
-              <button type="button" className="btn secondary small" disabled={data.offset + data.items.length >= data.total} onClick={() => go({ offset: filters.offset + ORG_PAGE_SIZE })}>
+              <button type="button" className="btn secondary small" disabled={data.offset + data.items.length >= data.total} onClick={() => go({ offset: filters.offset + PAGE_SIZE })}>
                 Next
               </button>
             </nav>

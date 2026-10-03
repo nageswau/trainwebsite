@@ -96,10 +96,13 @@ describe("BdmOrganizationDetail (bdm-002 AC3-AC6, §12.2)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Edit" })).toHaveFocus());
   });
 
-  it("drops ?created=1 from the address once the message is shown, so a refresh does not repeat it (browser QA-08)", () => {
+  it("drops ?created=1 from the address once the message is shown, without a server round trip (browser QA-08, simplify A8)", () => {
+    const replaceState = vi.spyOn(window.history, "replaceState");
     render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" created />);
     expect(screen.getByRole("status")).toHaveTextContent("Organization ORG-000001 created.");
-    expect(router.replace).toHaveBeenCalledWith("/bdm/organizations/o1", { scroll: false });
+    expect(replaceState).toHaveBeenCalledWith(null, "", "/bdm/organizations/o1");
+    expect(router.replace).not.toHaveBeenCalled();
+    replaceState.mockRestore();
   });
 
   it("does not touch the address when nothing was just created", () => {
@@ -117,5 +120,14 @@ describe("BdmOrganizationDetail (bdm-002 AC3-AC6, §12.2)", () => {
   it("styles Back to organizations as a link (browser QA-03)", () => {
     render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" />);
     expect(screen.getByRole("link", { name: "Back to organizations" })).toHaveStyle({ textDecoration: "underline" });
+  });
+
+  it("moves focus to the message when the control that was used disappears (simplify review A5)", async () => {
+    const archived = org({ archived: true, archived_at: "2026-10-03T01:00:00Z", permissions: perms({ can_restore: true }) });
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ organization: archived }))));
+    render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_edit: true, can_archive: true }) })} basePath="/bdm/organizations" />);
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, archive" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveFocus());
   });
 });

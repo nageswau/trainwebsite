@@ -1,16 +1,17 @@
 "use client";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 
 import BdmContactFields, { blankContact, type ContactValues } from "@/components/BdmContactFields";
-import BdmOrganizationFields, { type OrgField, type OrgValues } from "@/components/BdmOrganizationFields";
+import BdmOrganizationFields, { ORG_FIELDS, type OrgField, type OrgValues } from "@/components/BdmOrganizationFields";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { isOrganizationBody, type Organization, orgDuplicate, type OrgDuplicate, ORGS_URL } from "@/lib/bdmOrganizations";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
+import { useLeaveGuard } from "@/lib/useLeaveGuard";
+import { plural } from "@/lib/plural";
 
 // bdm-002 (spec §6.2, §12.2): add or edit an organization. A likely duplicate is the server's 409; the BDM decides, and "Save
 // anyway" resends the same entry with confirm_duplicate (AC2, the AgentStudentForm pattern). The matches are plain text, so
 // following one can't lose the unsaved entry. The entry is never cleared on an error.
-const ORG_FIELDS: OrgField[] = ["org_type", "name", "city", "state", "phone", "email", "website", "existing_partner", "courses_interested", "student_count"];
 const LEAVE_PROMPT = "You have unsaved changes to this organization. Leave without saving?";
 const REQUIRED: [OrgField, string][] = [
   ["org_type", "Choose a type"],
@@ -92,30 +93,8 @@ export default function BdmOrganizationForm({
     ORG_FIELDS.some((k) => values[k] !== original.current[k]) ||
     (mode === "create" && contacts.some((c) => [c.name, c.designation, c.role, c.phone, c.email].some((v) => v.trim())));
 
-  // Browser QA-11: unsaved input is not thrown away silently -- the AgentStudentForm guard: Cancel and in-app links ask first
-  // (capture phase, before Next's Link handler); beforeunload covers reload and close.
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    const guardLinks = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const link = (event.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
-      if (!link || link.target === "_blank" || link.hasAttribute("download") || link.origin !== window.location.origin) return;
-      if (!window.confirm(LEAVE_PROMPT)) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    };
-    window.addEventListener("beforeunload", warn);
-    document.addEventListener("click", guardLinks, true);
-    return () => {
-      window.removeEventListener("beforeunload", warn);
-      document.removeEventListener("click", guardLinks, true);
-    };
-  }, [dirty]);
+  // Browser QA-11: unsaved input is not thrown away silently: Cancel, in-app links, reload and close ask first.
+  useLeaveGuard(dirty, LEAVE_PROMPT);
 
   function cancel() {
     if (dirty && !window.confirm(LEAVE_PROMPT)) return;
@@ -159,7 +138,6 @@ export default function BdmOrganizationForm({
       const data = await response.json().catch(() => null);
       if (response.ok && isOrganizationBody(data)) {
         setDuplicate(null);
-        original.current = values; // saved: no longer "unsaved", so the leave guard lets the navigation through
         onSaved(data.organization, true);
         return;
       }
@@ -210,7 +188,7 @@ export default function BdmOrganizationForm({
               </li>
             ))}
           </ul>
-          {duplicate.total > duplicate.matches.length && <p>{duplicate.total - duplicate.matches.length} more similar organizations.</p>}
+          {duplicate.total > duplicate.matches.length && <p>{plural(duplicate.total - duplicate.matches.length, "more similar organization", "more similar organizations")}.</p>}
           <button type="button" className="btn small" onClick={() => void save(true)} disabled={busy}>
             Save anyway
           </button>{" "}

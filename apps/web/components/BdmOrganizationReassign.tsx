@@ -1,10 +1,11 @@
 "use client";
-import { type KeyboardEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
+import BdmConfirm from "@/components/BdmConfirm";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
 import { isOrganizationBody, type Organization, ORGS_URL, teamSearch } from "@/lib/bdmOrganizations";
-import type { LookupPage, PickOption } from "@/lib/lookups";
+import type { PickOption } from "@/lib/lookups";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-002 AC4: a manager (or super_admin) moves the organization to another active BDM of the same type in their team. The picker
@@ -16,13 +17,7 @@ export default function BdmOrganizationReassign({ organization, onChanged }: { o
   const [failure, setFailure] = useState<string | null>(null);
   const focus = useFocusAfterRender();
   const assignee = organization.assigned_bdm.id;
-  const search = useMemo(() => {
-    const team = teamSearch(organization.bdm_type);
-    return async (q: string, signal: AbortSignal): Promise<LookupPage> => {
-      const page = await team(q, signal);
-      return { ...page, items: page.items.filter((item) => item.id !== assignee) };
-    };
-  }, [organization.bdm_type, assignee]);
+  const search = useMemo(() => teamSearch(organization.bdm_type, assignee), [organization.bdm_type, assignee]);
   const triggerId = `org-${organization.id}-reassign`;
 
   async function reassign() {
@@ -65,17 +60,9 @@ export default function BdmOrganizationReassign({ organization, onChanged }: { o
         </button>
       </div>
       {confirming && picked && (
-        <div role="group" aria-label="Confirm reassign" onKeyDown={(e: KeyboardEvent) => e.key === "Escape" && cancel()}>
-          <p>
-            Reassign {organization.code} to {picked.label}?
-          </p>
-          <button type="button" className="btn small" autoFocus onClick={() => void reassign()} disabled={busy}>
-            {busy ? "Reassigning…" : "Yes, reassign"}
-          </button>{" "}
-          <button type="button" className="btn secondary small" onClick={cancel}>
-            Cancel
-          </button>
-        </div>
+        <BdmConfirm label="Confirm reassign" confirmText="Yes, reassign" busyText="Reassigning…" busy={busy} onConfirm={() => void reassign()} onCancel={cancel}>
+          Reassign {organization.code} to {picked.label}?
+        </BdmConfirm>
       )}
       {failure && (
         <p className="form-error" role="alert">

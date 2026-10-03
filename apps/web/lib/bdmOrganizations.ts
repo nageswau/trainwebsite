@@ -5,10 +5,12 @@ import type { LookupPage } from "@/lib/lookups";
 // organization only tells the UI which actions to show.
 export const ORGS_URL = "/api/v1/bdm/organizations";
 export const TEAM_URL = "/api/v1/bdm/manager/team";
-export const ORG_PAGE_SIZE = 50;
 // Browser QA-03: the global reset makes links look like text; these are links (the AgentUniversitiesPanel convention).
 export const LINK_STYLE = { color: "var(--blue)", textDecoration: "underline" } as const;
 const PICKER_LIMIT = 20;
+export const MAX_CONTACTS = 20; // the API's BDM_MAX_CONTACTS
+// A checkbox or radio with its label: one row, a 44 px touch target (the AgentStudentsPanel "Show archived" style).
+export const CHECKBOX_ROW = { display: "flex", gap: 6, alignItems: "center", minHeight: 44 } as const;
 
 export const ORG_TYPES = ["college", "university", "agent", "school", "corporate", "training_institute", "other"] as const;
 export type OrgType = (typeof ORG_TYPES)[number];
@@ -56,15 +58,16 @@ export function display(value: string | number | null | undefined): string {
   return value === null || value === undefined || value === "" ? "—" : String(value);
 }
 
-// The reassign picker: active BDMs of the organization's type in the manager's team (the server re-checks every rule).
-export function teamSearch(bdmType: BdmType) {
+// The reassign picker: active BDMs of the organization's type in the manager's team, minus the current assignee (the server
+// re-checks every rule).
+export function teamSearch(bdmType: BdmType, excludeId?: string) {
   return async (q: string, signal: AbortSignal): Promise<LookupPage> => {
     const query = new URLSearchParams({ limit: String(PICKER_LIMIT), bdm_type: bdmType });
     if (q) query.set("q", q);
     const response = await fetch(`${TEAM_URL}?${query}`, { signal });
     if (!response.ok) throw new Error(`Team search failed (${response.status})`);
     const page = (await response.json()) as { items: { id: string; full_name: string; email: string; active: boolean; employee_id: string }[]; total: number };
-    const active = page.items.filter((b) => b.active);
+    const active = page.items.filter((b) => b.active && b.id !== excludeId);
     return { items: active.map((b) => ({ id: b.id, label: b.full_name, detail: `${b.employee_id} · ${b.email}` })), truncated: page.total > page.items.length };
   };
 }

@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { type KeyboardEvent, type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
+import BdmConfirm from "@/components/BdmConfirm";
 import BdmOrganizationContacts from "@/components/BdmOrganizationContacts";
 import BdmOrganizationForm from "@/components/BdmOrganizationForm";
 import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
@@ -21,18 +21,20 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
   const [notice, setNotice] = useState<string | null>(created ? `Organization ${initial.code} created.` : null);
   const [failure, setFailure] = useState<string | null>(null);
   const focus = useFocusAfterRender();
-  const router = useRouter();
-  // Browser QA-08: "created" is said once -- the flag leaves the address, so a refresh or a shared link doesn't repeat it.
+  // Browser QA-08: "created" is said once -- the flag leaves the address, so a refresh or a shared link doesn't repeat it. History
+  // only: a router navigation would re-run the server page for nothing (simplify review A8).
   useEffect(() => {
-    if (created) router.replace(`${basePath}/${initial.id}`, { scroll: false });
-  }, [created, basePath, initial.id, router]);
+    if (created) window.history.replaceState(null, "", `${basePath}/${initial.id}`);
+  }, [created, basePath, initial.id]);
   const archiveId = `org-${org.id}-archive`;
   const editId = `org-${org.id}-edit`;
+  const statusId = `org-${org.id}-status`;
   const closeEditor = () => {
     setEditing(false);
     focus(editId); // browser QA-12: the form (and the focused control) is gone
   };
   const p = org.permissions;
+  const showEditor = editing && p.can_edit; // a write that removes edit rights also closes the form (simplify review A9)
 
   const changed = (next: Organization, text: string) => {
     setOrg(next);
@@ -45,8 +47,10 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
     const outcome = await sendRequest(`${ORGS_URL}/${org.id}/${path}`, { method: "POST" });
     setBusy(false);
     setConfirming(false);
-    if (outcome.ok && isOrganizationBody(outcome.data)) changed(outcome.data.organization, path === "archive" ? "Organization archived." : "Organization restored.");
-    else setFailure(outcome.ok ? "Unable to update this organization." : outcome.message);
+    if (outcome.ok && isOrganizationBody(outcome.data)) {
+      changed(outcome.data.organization, path === "archive" ? "Organization archived." : "Organization restored.");
+      focus(statusId); // the button that was used is gone (simplify review A5)
+    } else setFailure(outcome.ok ? "Unable to update this organization." : outcome.message);
   }
   const cancel = () => {
     setConfirming(false);
@@ -99,12 +103,12 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
           </p>
         </div>
         <div className="actions">
-          {p.can_edit && !editing && (
+          {p.can_edit && !showEditor && (
             <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(true)}>
               Edit
             </button>
           )}
-          {p.can_archive && !editing && ( // browser QA-14: archiving under an open edit form left it stale
+          {p.can_archive && !showEditor && ( // browser QA-14: archiving under an open edit form left it stale
             <button id={archiveId} type="button" className="btn secondary small" onClick={() => setConfirming(true)} disabled={busy}>
               Archive
             </button>
@@ -116,7 +120,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
           )}
         </div>
       </div>
-      <div role="status" aria-live="polite" className={notice ? "form-message" : undefined}>
+      <div id={statusId} tabIndex={-1} role="status" aria-live="polite" className={notice ? "form-message" : undefined}>
         {notice}
       </div>
       {failure && (
@@ -125,19 +129,11 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
         </p>
       )}
       {confirming && (
-        <div role="group" aria-label="Confirm archive" className="action-card" onKeyDown={(e: KeyboardEvent) => e.key === "Escape" && cancel()}>
-          <p style={{ margin: 0 }}>Archive {org.name}? It will be hidden from the list and read-only until a manager restores it.</p>
-          <div className="actions">
-            <button type="button" className="btn small" autoFocus onClick={() => void act("archive")} disabled={busy}>
-              {busy ? "Archiving…" : "Yes, archive"}
-            </button>
-            <button type="button" className="btn secondary small" onClick={cancel}>
-              Keep it
-            </button>
-          </div>
-        </div>
+        <BdmConfirm label="Confirm archive" className="action-card" confirmText="Yes, archive" busyText="Archiving…" cancelText="Keep it" busy={busy} onConfirm={() => void act("archive")} onCancel={cancel}>
+          Archive {org.name}? It will be hidden from the list and read-only until a manager restores it.
+        </BdmConfirm>
       )}
-      {editing ? (
+      {showEditor ? (
         <section className="action-card wide" aria-label="Edit details">
           <h3>Edit details</h3>
           <BdmOrganizationForm
@@ -166,7 +162,15 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
         </section>
       )}
       <BdmOrganizationContacts organization={org} onChanged={changed} />
-      {p.can_reassign && <BdmOrganizationReassign organization={org} onChanged={changed} />}
+      {p.can_reassign && (
+        <BdmOrganizationReassign
+          organization={org}
+          onChanged={(o, text) => {
+            changed(o, text);
+            focus(statusId); // the confirm group is gone (simplify review A5)
+          }}
+        />
+      )}
     </>
   );
 }
