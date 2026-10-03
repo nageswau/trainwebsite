@@ -3338,7 +3338,7 @@ class BdmOrganizationRow(BaseModel):
     assigned_bdm: BdmOrgPerson
     primary_contact: BdmOrgPrimaryContact | None
     archived: bool
-    last_meeting_at: datetime | None  # bdm-006 fills these; always null until then (AC6)
+    last_meeting_at: datetime | None  # bdm-006: computed from appointments (spec §5.6); null when none
     next_meeting_at: datetime | None
     permissions: BdmOrgPermissions
 

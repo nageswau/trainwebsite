@@ -7,12 +7,12 @@ import BdmOrganizationContacts from "@/components/BdmOrganizationContacts";
 import BdmOrganizationForm from "@/components/BdmOrganizationForm";
 import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
 import { sendRequest } from "@/lib/apiErrors";
-import { display, isOrganizationBody, LINK_STYLE, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
+import { display, isOrganizationBody, LINK_STYLE, meetingText, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-002 (spec §6.2, §12.2): one organization. Actions render from `permissions` only -- the server enforces every rule (AC3-AC5).
-// Every write re-renders from the organization the API returns (no refetch). Last/Next meeting stay "—" until bdm-006 (AC6).
+// Every write re-renders from the organization the API returns (no refetch). Last/Next meeting come from bdm-006 appointments ("—" when none).
 export default function BdmOrganizationDetail({ initial, basePath, created = false }: { initial: Organization; basePath: string; created?: boolean }) {
   const [org, setOrg] = useState(initial);
   const [editing, setEditing] = useState(false);
@@ -80,8 +80,8 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
     ["Existing partner", org.existing_partner ? "Yes" : "No"],
     ["Courses interested", display(org.courses_interested)],
     ["Number of students", display(org.student_count)],
-    ["Last meeting", display(org.last_meeting_at)],
-    ["Next meeting", display(org.next_meeting_at)],
+    ["Last meeting", meetingText(org.last_meeting_at)],
+    ["Next meeting", meetingText(org.next_meeting_at)],
     ["Assigned BDM", `${org.assigned_bdm.full_name}${org.assigned_bdm.active ? "" : " (inactive)"}`],
     ["Created by", `${org.created_by_name} on ${formatDate(org.created_at)}`],
   ];

@@ -1,4 +1,5 @@
 import type { BdmType } from "@/lib/bdm";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 import type { LookupPage } from "@/lib/lookups";
 
 // bdm-002 (DEC-SCOPE-060): types and helpers for the Organization CRM. The API decides scope and permissions; `permissions` on each
@@ -70,4 +71,9 @@ export function teamSearch(bdmType: BdmType, excludeId?: string) {
     const active = page.items.filter((b) => b.active && b.id !== excludeId);
     return { items: active.map((b) => ({ id: b.id, label: b.full_name, detail: `${b.employee_id} · ${b.email}` })), truncated: page.total > page.items.length };
   };
+}
+
+// bdm-006: Last / Next meeting are real timestamps now -- India time, labelled, the same on server and browser (R-F10).
+export function meetingText(value: string | null): string {
+  return value ? formatSchoolDateTime(value, true) : "—";
 }

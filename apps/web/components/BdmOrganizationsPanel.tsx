@@ -5,7 +5,7 @@ import { type FormEvent, useEffect, useState } from "react";
 
 import { isPage, type Page } from "@/lib/apiErrors";
 import { PAGE_SIZE } from "@/lib/bdm";
-import { CHECKBOX_ROW, display, LINK_STYLE, ORG_TYPE_LABEL, ORG_TYPES, ORGS_URL, type OrgRow } from "@/lib/bdmOrganizations";
+import { CHECKBOX_ROW, display, LINK_STYLE, meetingText, ORG_TYPE_LABEL, ORG_TYPES, ORGS_URL, type OrgRow } from "@/lib/bdmOrganizations";
 
 // bdm-002 (spec §6.2, §12.2): the organization list for a BDM (their whole module, Q-02) or a manager (their team, C2). The API
 // scopes the rows; nothing here filters for security. Filters and the page live in the URL (AdminBdmPanel's pattern), so refresh
@@ -231,8 +231,8 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
                       {r.assigned_bdm.full_name}
                       {!r.assigned_bdm.active && <span className="muted"> (inactive)</span>}
                     </td>
-                    <td>{display(r.last_meeting_at)}</td>
-                    <td>{display(r.next_meeting_at)}</td>
+                    <td>{meetingText(r.last_meeting_at)}</td>
+                    <td>{meetingText(r.next_meeting_at)}</td>
                   </tr>
                 ))}
               </tbody>

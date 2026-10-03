@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import BDM_ORGANIZATION_CODE_SEQ, AuditLog, BdmOrganization, BdmOrganizationContact, BdmProfile, User
 from app.services.bdm import bdm_context
+from app.services.bdm_appointments import meeting_columns
 
 logger = logging.getLogger("app.bdm")
 
@@ -182,7 +183,7 @@ def _contact(contact: BdmOrganizationContact) -> dict:
     return {k: getattr(contact, k) for k in ("id", "name", "designation", "role", "phone", "email", "is_primary")}
 
 
-def row_out(user: User, org: BdmOrganization, assignee: User, primary: BdmOrganizationContact | None) -> dict:
+def row_out(user: User, org: BdmOrganization, assignee: User, primary: BdmOrganizationContact | None, last_meeting_at=None, next_meeting_at=None) -> dict:
     return {
         "id": org.id,
         "code": org.code,
@@ -195,8 +196,8 @@ def row_out(user: User, org: BdmOrganization, assignee: User, primary: BdmOrgani
         "assigned_bdm": _person(assignee),
         "primary_contact": _primary(primary),
         "archived": org.archived_at is not None,
-        "last_meeting_at": None,
-        "next_meeting_at": None,
+        "last_meeting_at": last_meeting_at,
+        "next_meeting_at": next_meeting_at,
         "permissions": permissions(user, org),
     }
 
@@ -209,8 +210,9 @@ async def organization_out(db: AsyncSession, user: User, org: BdmOrganization, *
     people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_({org.assigned_bdm_user_id, org.created_by_user_id})))).all()}
     primary = next((c for c in contacts if c.is_primary), None)
     ordered = ([primary] if primary else []) + [c for c in contacts if c is not primary]
+    last_meeting_at, next_meeting_at = (await db.execute(select(*meeting_columns()).select_from(BdmOrganization).where(BdmOrganization.id == org.id))).one()
     return {
-        **row_out(user, org, people[org.assigned_bdm_user_id], primary),
+        **row_out(user, org, people[org.assigned_bdm_user_id], primary, last_meeting_at, next_meeting_at),
         "phone": org.phone,
         "email": org.email,
         "website": org.website,
