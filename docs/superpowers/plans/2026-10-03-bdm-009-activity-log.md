@@ -30,7 +30,7 @@ Library, Playwright.
   IST = `Asia/Kolkata`; `now` = the database clock read once per request.
 - Daily cap (V10): at most 200 activities per BDM per IST day; the 201st create → 409 "You've logged 200 activities for this day".
 - People in responses are `{id, full_name}` (bdm-010's `PersonRef`): the logger is `bdm: {id, full_name}`.
-- Every 403 on a write logs a `bdm_activity_write_refused` warning (actor, ids, route, status) — never text fields.
+- Owner / assignee 403s on a write ("not the assigned BDM", "not the logger") log a `bdm_activity_write_refused` warning (actor, ids, route, status) — never text fields. Wrong-role 403s from the shared `bdm_context` / `caller_scope` are not logged as refusals (bdm-002's `bdm_org_write_refused` precedent).
 - Spec §12 (Revision 2) lists every API / UI / security finding; the tasks below already include the applied ones.
 - Note: optional, trimmed, ≤ 500 characters, `\n \r \t` allowed, other control characters refused (reuse `TripNote`).
 - Errors are `{"detail": ...}`: a string for 403 / 404 / 409 and service 422s; FastAPI's list for schema 422s.

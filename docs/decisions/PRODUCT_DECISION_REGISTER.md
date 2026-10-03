@@ -3403,3 +3403,29 @@ independent Codex review are pending.
 - **N6 — Limited admin powers (D17).** No admin edits to agent students, applications or staff; approve/reject stay on Agent Approvals.
 
 **Consequences:** no migration; a new read-only service `services/agent_network.py`; three new admin routes and schemas; additive keys on the org list; two new admin pages and components; one appended nav entry. Unchanged: `transition_org`, the suspension gate, the approval page and routes, agent-side routes, models. **New Feature ID authorized:** `AGN-022`. **Status:** owner approved the spec and told implementation to proceed (in-session 2026-10-03); implemented and verified on `feature/agn-022-agent-network` (complete for its scope on lite evidence; browser QA fixed and re-verified; Codex review waived by the owner); the owner's full suites still to run (see `ENHANCEMENT_BACKLOG.md` §AGN-022).
+
+---
+
+### DEC-SCOPE-065 — BDM activity log (`bdm-009`)
+
+**ID note:** drafted as `DEC-SCOPE-065` after AGN-022 took `064` on `main`; migration `0069_bdm_activities` chains after `0068_bdm_trips` (one head). bdm-006 and bdm-003 are in flight and also claim `0068` / `063`; whichever merges later renumbers.
+
+**Question:** how do BDMs log calls, WhatsApp messages, emails, visits and meetings, who may log, see and change them, and how are the day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §4 Common "Activity" (1288–1298), §11 (371–397), Agent §G (759–781), School §G (1000–1022); backlog decisions D9, Q-02, Q-13, Q-20 (`DERIVED_BLUEPRINT`).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions and five design-section reviews; design spec `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md` §3):
+
+- **V1** Only the organization's assigned BDM logs (out of type → 404, not assigned → 403, archived → 422).
+- **V2** Channels: call, whatsapp, email, visit, meeting, other. No follow-up channel (bdm-008 tasks). Meetings in the daily report come from completed appointments (bdm-015); meeting / visit activities count only under their own channel.
+- **V3** Appointment and task links are deferred to bdm-006 / bdm-008 (their own migrations and FKs).
+- **V4** `occurred_at` not in the future, at most 7 IST days back; edit / delete only on the activity's IST day (`editable()`, which bdm-015 extends with the report lock).
+- **V5** The organization timeline is visible to everyone who can read the organization.
+- **V6** Direction (outbound / inbound) required for call, WhatsApp, email; empty otherwise. Calls made = outbound calls.
+- **V7** Pages: org timeline + Log activity, `/bdm/activities`, `/bdm/manager/activities`.
+- **V8** Delete is hard, with an audit row (ids and channel only).
+- **V9** (Revision 2) A time up to 5 minutes after the server clock is saved as the server's now; more than 5 minutes ahead → 422.
+- **V10** (Revision 2) At most 200 activities per BDM per IST day (409); a soft abuse bound.
+- **Defaults:** super_admin reads only; the contact must belong to the organization and its name is kept after the contact is deleted (as bdm-006 A5); an edit cannot move an activity off today; no idempotency key (a duplicate is fixed by a same-day delete); no general rate limiter (as bdm-010). Refusal logging (`bdm_activity_write_refused`) covers the owner / assignee 403s only ("not the assigned BDM", "not the logger"); wrong-role 403s from the shared `bdm_context` / `caller_scope` are not logged as refusals (bdm-002's `bdm_org_write_refused` precedent). Notes are visible to every reader of the organization (the form says so). Retention / erasure of BDM data remains `NEEDS_CONFIRMATION` (as bdm-001 / 002 / 006).
+
+**Status:** `EXPLICIT_APPROVAL` for V1–V10; implemented on `feature/bdm-009-activities`; **not COMPLETE** — Playwright, browser validation and an independent Codex review are pending, and the owner's full suites have not been run. Migration `0069_bdm_activities`.
