@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
+import { NetworkPager } from "@/components/AgentNetworkRecords";
 import type { Page } from "@/lib/apiErrors";
 import { isPage } from "@/lib/apiErrors";
 import { NETWORK_PATH, ORG_STATUS_LABEL, ORGS_URL, PAGE_SIZE, statusClass, failureText, type NetworkOrg, type OrgStatus } from "@/lib/agentNetwork";
@@ -199,17 +200,7 @@ export default function AgentNetworkPanel() {
                 </tbody>
               </table>
             </div>
-            <nav aria-label="Agency pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
-              <span className="muted" style={{ fontSize: 13 }}>
-                Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}
-              </span>
-              <button type="button" className="btn secondary small" aria-label="Previous page" disabled={loading || data.offset === 0} onClick={() => goTo(Math.max(0, offset - PAGE_SIZE))}>
-                Previous
-              </button>
-              <button type="button" className="btn secondary small" aria-label="Next page" disabled={loading || data.offset + data.items.length >= data.total} onClick={() => goTo(offset + PAGE_SIZE)}>
-                Next
-              </button>
-            </nav>
+            <NetworkPager page={data} label="Agency pages" busy={loading} onPage={goTo} />
           </>
         )}
       </section>
