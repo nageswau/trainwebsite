@@ -110,4 +110,37 @@ describe("BdmAppointmentsPanel (bdm-006 §6.2, §12.2)", () => {
     await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).includes("bdm_user_id=b9"))).toBe(true));
     expect((screen.getByRole("combobox", { name: "BDM" }) as HTMLInputElement).value).toContain("Ravi Kumar");
   });
+
+  describe("sanitizes URL filters before the API call (QA6-01)", () => {
+    async function firstApiUrl(query: string): Promise<URL> {
+      search.value = query;
+      const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(res(page([row()]))));
+      vi.stubGlobal("fetch", fetchMock);
+      render(<BdmAppointmentsPanel basePath="/bdm/appointments" isBdm types={ALL_TYPES} />);
+      expect(await screen.findByRole("link", { name: "APT-000001" })).toBeInTheDocument();
+      const url = new URL(String(fetchMock.mock.calls[0][0]), "http://x");
+      cleanup();
+      return url;
+    }
+    it("drops an unknown status", async () => {
+      expect((await firstApiUrl("status=bogus")).searchParams.has("status")).toBe(false);
+    });
+    it("drops a type outside the offered types", async () => {
+      expect((await firstApiUrl("type=nope")).searchParams.has("appointment_type")).toBe(false);
+    });
+    it("falls back to today for a malformed date_from", async () => {
+      expect((await firstApiUrl("date_from=2030-13-99")).searchParams.get("date_from")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect((await firstApiUrl("date_from=junk")).searchParams.get("date_from")).not.toBe("junk");
+    });
+    it("drops a malformed date_to and a date_to before date_from", async () => {
+      expect((await firstApiUrl("date_to=soon")).searchParams.has("date_to")).toBe(false);
+      expect((await firstApiUrl("date_from=2030-02-02&date_to=2030-02-01")).searchParams.has("date_to")).toBe(false);
+    });
+    it("keeps valid values", async () => {
+      const url = await firstApiUrl("status=confirmed&type=college_meeting&date_from=2030-02-01&date_to=2030-02-02");
+      expect(url.searchParams.get("status")).toBe("confirmed");
+      expect(url.searchParams.get("appointment_type")).toBe("college_meeting");
+      expect(url.searchParams.get("date_to")).toBe("2030-02-02");
+    });
+  });
 });

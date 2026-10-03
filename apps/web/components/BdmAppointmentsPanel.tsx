@@ -15,15 +15,27 @@ import type { PickOption } from "@/lib/lookups";
 // empty "From" in the URL (date_from=) means every date.
 type Filters = { offset: number; q: string; dateFrom: string; dateTo: string; status: string; type: string; organization: string; bdm: string };
 
-function readFilters(params: URLSearchParams, today: string): Filters {
+// A stale or hand-edited URL must not wedge the list on an API 422: every value is checked here, before it reaches the API.
+function validDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const d = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
+}
+
+function readFilters(params: URLSearchParams, today: string, types: readonly string[]): Filters {
   const n = Number.parseInt(params.get("offset") ?? "", 10);
+  const from = params.get("date_from");
+  const dateFrom = from === null ? today : from === "" || validDate(from) ? from : today;
+  const to = params.get("date_to") ?? "";
+  const status = params.get("status") ?? "";
+  const type = params.get("type") ?? "";
   return {
     offset: Number.isFinite(n) && n > 0 ? n : 0,
     q: (params.get("q") ?? "").trim(),
-    dateFrom: params.has("date_from") ? params.get("date_from") ?? "" : today,
-    dateTo: params.get("date_to") ?? "",
-    status: params.get("status") ?? "",
-    type: params.get("type") ?? "",
+    dateFrom,
+    dateTo: validDate(to) && !(dateFrom && dateFrom > to) ? to : "",
+    status: (STATUSES as readonly string[]).includes(status) ? status : "",
+    type: types.includes(type) ? type : "",
     organization: params.get("organization") ?? "",
     bdm: params.get("bdm") ?? "",
   };
@@ -59,7 +71,7 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
   const pathname = usePathname();
   const params = useSearchParams();
   const [today] = useState(todayIst);
-  const filters = readFilters(params, today);
+  const filters = readFilters(params, today, types);
   const key = toUrl(filters, today).toString();
   const [data, setData] = useState<Page<AppointmentRow> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -78,7 +90,7 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
     setLoadFailed(false);
     setFetching(true);
     setTarget(null);
-    fetch(toApi(readFilters(new URLSearchParams(key), today)))
+    fetch(toApi(readFilters(new URLSearchParams(key), today, types)))
       .then(async (response) => {
         const body = await response.json().catch(() => null);
         if (!response.ok || !isPage<AppointmentRow>(body)) throw new Error("not a page");
@@ -89,7 +101,7 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
     return () => {
       live = false;
     };
-  }, [key, version, today]);
+  }, [key, version, today, types]);
 
   function go(next: Partial<Filters>) {
     const url = toUrl({ ...filters, offset: 0, ...next }, today);
