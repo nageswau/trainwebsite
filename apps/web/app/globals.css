@@ -156,6 +156,9 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .kpi-tile dd { margin: 4px 0 0; }
 .kpi-value { font-size: 24px; font-weight: 800; color: #0b1f3a; }
 .kpi-note { display: block; font-size: 12px; margin-top: 4px; }
+/* AGN-018: the agency board under the page title, and its loading placeholder (same tile footprint, so nothing shifts). */
+.agent-dashboard { margin-bottom: 24px; }
+.kpi-skeleton { min-height: 72px; background: #f4f7fb; }
 /* position:relative makes the scroll box the containing block of the .sr-only captions inside it, so they are clipped
    instead of widening the page on phones (same fix as .table-wrap, FV-03). */
 .table-scroll { overflow-x: auto; max-width: 100%; position: relative; }
