@@ -261,3 +261,36 @@ async def trip_out(db: AsyncSession, trip: BdmTrip, user: User, today: date) -> 
                      for e in expenses],
         **flags,
     }
+
+
+async def decide(db: AsyncSession, user: User, trip_id, *, approve: bool, reason: str | None = None) -> BdmTrip:
+    """T2/T3 + separation of duties, under locks: the trip FOR UPDATE, then the owner's profile and manager FOR SHARE, so a
+    concurrent withdraw, cancel, reassignment or deactivation is serialised against this decision (§5.5)."""
+    trip = await load_team_trip(db, user, trip_id, lock=True)
+    manager = await reporting_manager(db, trip, lock=True)
+    if user.role == "bdm_manager" and user.id != manager.id:
+        raise _refuse(user, trip, "decide", HTTPException(404, "Trip not found"))
+    if user.role == "super_admin" and manager.active:
+        raise _refuse(user, trip, "decide", HTTPException(403, "The reporting manager is active and decides this trip"))
+    if user.id == trip.bdm_user_id:
+        raise _refuse(user, trip, "decide", HTTPException(403, "You can't decide your own trip"))
+    if not allowed(trip, "decide", india_today()):
+        raise _refuse(user, trip, "decide", refusal(trip, "decide", india_today()))
+    trip.approval_status = "approved" if approve else "rejected"
+    trip.rejection_reason = None if approve else reason
+    trip.decided_by_user_id, trip.decided_at = user.id, now()
+    await db.flush()
+    meta = {"fallback": user.role == "super_admin"} | ({} if approve else {"reason": reason})
+    audit(db, user, "approve" if approve else "reject", trip, outcome=trip.approval_status, **meta)
+    logger.info("bdm_trip_decided", extra={"extra_fields": {"actor_id": str(user.id), "trip_id": str(trip.id),
+                                                            "outcome": trip.approval_status, "fallback": meta["fallback"]}})
+    return trip
+
+
+def approvals_filter(user: User) -> list:
+    """The queue: submitted, still-planned trips the caller may decide (T3, §5.2)."""
+    require_manager(user)
+    pending = [BdmTrip.approval_status == "submitted", BdmTrip.travel_status == "planned"]
+    if user.role == "super_admin":
+        return [*pending, Manager.active.is_(False)]
+    return [*pending, BdmProfile.reporting_manager_user_id == user.id]

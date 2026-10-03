@@ -15,9 +15,9 @@ from app.api.deps import get_current_user
 from app.api.workflows import _notify_user
 from app.core.database import get_db
 from app.models import BdmTrip, User
-from app.schemas import BdmTripCreate, BdmTripOut, BdmTripPage, BdmTripUpdate
+from app.schemas import BdmTripCreate, BdmTripOut, BdmTripPage, BdmTripReject, BdmTripUpdate
 from app.services import bdm_travel as travel
-from app.services.bdm import bdm_context
+from app.services.bdm import bdm_context, require_manager, team_filter
 
 router = APIRouter(prefix="/bdm", tags=["bdm-travel"])
 ApprovalStatus = Literal["draft", "submitted", "approved", "rejected"]
@@ -82,3 +82,45 @@ def _command_route(action: str) -> None:
 
 for _action in ("submit", "withdraw", "start", "complete", "cancel"):
     _command_route(_action)
+
+
+@router.get("/manager/trips", response_model=BdmTripPage)
+async def team_trips(bdm_user_id: UUID | None = None, approval_status: ApprovalStatus | None = None, travel_status: TravelStatus | None = None,
+                     limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Team scope (D4); `bdm_user_id` is ANDed with it, so it can only narrow (S3)."""
+    require_manager(user)
+    filters = [*team_filter(user), *travel.status_filters(approval_status, travel_status)]
+    if bdm_user_id:
+        filters.append(BdmTrip.bdm_user_id == bdm_user_id)
+    return await travel.page(db, travel.trip_rows(filters), limit, offset, NEWEST)
+
+
+@router.get("/manager/approvals", response_model=BdmTripPage)
+async def approvals(limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    filters = travel.approvals_filter(user)
+    return await travel.page(db, travel.trip_rows(filters), limit, offset, (BdmTrip.submitted_at, BdmTrip.code))
+
+
+@router.get("/manager/trips/{trip_id}", response_model=BdmTripOut)
+async def team_trip(trip_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    trip = await travel.load_team_trip(db, user, trip_id)
+    return await travel.trip_out(db, trip, user, travel.india_today())
+
+
+async def _decision(db: AsyncSession, user: User, trip_id: UUID, approve: bool, reason: str | None = None) -> dict:
+    trip = await travel.decide(db, user, trip_id, approve=approve, reason=reason)
+    owner = await db.get(User, trip.bdm_user_id)
+    title = "Trip approved" if approve else "Trip not approved"
+    await _notify_user(db, owner, title, _place_line(trip), f"/bdm/travel/{trip.id}", channels=[])  # T12
+    await db.commit()
+    return await travel.trip_out(db, trip, user, travel.india_today())
+
+
+@router.post("/manager/trips/{trip_id}/approve", response_model=BdmTripOut)
+async def approve(trip_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _decision(db, user, trip_id, True)
+
+
+@router.post("/manager/trips/{trip_id}/reject", response_model=BdmTripOut)
+async def reject(trip_id: UUID, body: BdmTripReject, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _decision(db, user, trip_id, False, body.reason)
