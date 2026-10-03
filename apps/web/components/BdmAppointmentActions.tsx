@@ -35,10 +35,10 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
     const body = response?.ok ? await response.json().catch(() => null) : null;
     return isAppointmentBody(body) ? body.appointment : null;
   }
-  async function act(path: string, body: Record<string, unknown> = {}, confirmOverlap = false) {
+  async function act(path: string, body: Record<string, unknown> = {}) {
     setBusy(true);
     setFailure(null);
-    const outcome = await sendJson(`${APPOINTMENTS_URL}/${appointment.id}/${path}`, "POST", path === "reschedule" ? { ...body, confirm_overlap: confirmOverlap } : body);
+    const outcome = await sendJson(`${APPOINTMENTS_URL}/${appointment.id}/${path}`, "POST", body);
     setBusy(false);
     if (outcome.ok && isAppointmentBody(outcome.data)) {
       setOpen(null);
@@ -93,7 +93,7 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
         )}
       </div>
       {open === "reschedule" && (
-        <BdmAppointmentRescheduleForm appointment={appointment} busy={busy} warning={warning?.overlap ?? null} onEdit={() => setWarning(null)} onDismissWarning={() => setWarning(null)} onSubmit={(body) => void act("reschedule", body)} onConfirm={() => warning && void act(warning.path, warning.body, true)} onCancel={() => close("reschedule")} />
+        <BdmAppointmentRescheduleForm appointment={appointment} busy={busy} warning={warning?.overlap ?? null} onEdit={() => setWarning(null)} onDismissWarning={() => setWarning(null)} onSubmit={(body) => void act("reschedule", { ...body, confirm_overlap: false })} onConfirm={() => warning && void act(warning.path, { ...warning.body, confirm_overlap: true })} onCancel={() => close("reschedule")} />
       )}
       {open === "complete" && bdmType && <BdmAppointmentCompleteForm bdmType={bdmType} busy={busy} onSubmit={(body) => void act("complete", body)} onCancel={() => close("complete")} />}
       {open === "cancel" && <BdmAppointmentReasonForm label="Cancel appointment" submitText="Yes, cancel it" busyText="Cancelling…" busy={busy} onSubmit={(reason) => void act("cancel", { reason })} onCancel={() => close("cancel")} />}

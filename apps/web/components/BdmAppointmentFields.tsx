@@ -1,9 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
-
 import type { BdmType } from "@/lib/bdm";
-import { appointmentTypes, DURATIONS, formatMinutes, nowIstInput, TYPE_LABEL } from "@/lib/bdmAppointments";
+import { appointmentTypes, durationOptions, formatMinutes, TYPE_LABEL } from "@/lib/bdmAppointments";
 import type { OrgContact } from "@/lib/bdmOrganizations";
+import { useNowIstMin } from "@/lib/useNowIstMin";
 
 // bdm-006 (R-F6): the booking fields in four fieldsets. Presentational: the form owns the state and the submit.
 export type FieldValues = { contactId: string; when: string; duration: number; type: string; location: string; purpose: string; remarks: string; leads: string; revenue: string };
@@ -27,9 +26,7 @@ export default function BdmAppointmentFields({
   contactRequired?: boolean;
   errors?: { leads?: string; revenue?: string };
 }) {
-  // `min` is read after mount: a server-rendered value can differ from the browser's across a minute boundary (hydration warning).
-  const [min, setMin] = useState<string | undefined>(undefined);
-  useEffect(() => setMin(nowIstInput()), []);
+  const min = useNowIstMin();
   return (
     <>
       <fieldset className="form-section">
@@ -58,7 +55,7 @@ export default function BdmAppointmentFields({
         <div className="field">
           <label htmlFor="appt-duration">Duration</label>
           <select id="appt-duration" value={values.duration} onChange={(e) => set("duration", Number(e.target.value))}>
-            {(DURATIONS.includes(values.duration) ? DURATIONS : [...DURATIONS, values.duration].sort((a, b) => a - b)).map((d) => (
+            {durationOptions(values.duration).map((d) => (
               <option key={d} value={d}>
                 {formatMinutes(d)}
               </option>

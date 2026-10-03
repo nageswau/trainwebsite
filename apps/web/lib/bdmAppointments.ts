@@ -50,6 +50,8 @@ export const OUTCOME_LABEL: Record<string, string> = {
 };
 export const appointmentOutcomes = (t: BdmType): string[] => (t === "agent" ? AGENT_OUTCOMES : COMMON_OUTCOMES);
 export const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720]; // R-F6; the API accepts any 15-720
+// The duration choices, plus an off-list value an appointment already has (so a select never hides it).
+export const durationOptions = (current: number): number[] => (DURATIONS.includes(current) ? DURATIONS : [...DURATIONS, current].sort((a, b) => a - b));
 
 export type AppointmentPermissions = { can_edit: boolean; can_confirm: boolean; can_reschedule: boolean; can_cancel: boolean; can_no_show: boolean; can_complete: boolean };
 export type AppointmentRow = {
@@ -66,10 +68,10 @@ export type Appointment = AppointmentRow & {
 export type OverlapMatch = { id: string; code: string; starts_at: string; duration_minutes: number; organization_name: string };
 export type Overlap = { message: string; matches: OverlapMatch[]; total: number };
 
+// The API's possible_overlap 409 body ({message, code, matches, total} -- services/bdm_appointments.overlap_conflict); anything else is null.
 export function overlap(detail: unknown): Overlap | null {
-  const d = detail as (Partial<Overlap> & { code?: string }) | null;
-  if (!d || typeof d !== "object" || d.code !== "possible_overlap" || !Array.isArray(d.matches)) return null;
-  return { message: String(d.message ?? ""), matches: d.matches, total: Number(d.total ?? d.matches.length) };
+  const d = detail as (Overlap & { code?: string }) | null;
+  return d && typeof d === "object" && d.code === "possible_overlap" && Array.isArray(d.matches) ? d : null;
 }
 
 export function isAppointmentBody(data: unknown): data is { appointment: Appointment } {

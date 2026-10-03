@@ -38,6 +38,12 @@ function estimateErrors(values: FieldValues): EstimateErrors {
   return errors;
 }
 
+// The request fields create and edit share (create adds organization_id and starts_at; edit sends only what changed).
+const fieldBody = (v: FieldValues): Record<string, unknown> => ({
+  contact_id: v.contactId, duration_minutes: v.duration, appointment_type: v.type, location: orNull(v.location), purpose: orNull(v.purpose),
+  remarks: orNull(v.remarks), expected_leads: v.leads === "" ? null : Number(v.leads), expected_revenue: orNull(v.revenue),
+});
+
 function initialValues(props: Props): FieldValues {
   if (props.mode === "edit") {
     const a = props.appointment;
@@ -51,7 +57,8 @@ function initialValues(props: Props): FieldValues {
 
 export default function BdmAppointmentForm(props: Props) {
   const router = useRouter();
-  const editing = props.mode === "edit" ? props.appointment : null;
+  const edit = props.mode === "edit" ? props : null;
+  const editing = edit?.appointment ?? null;
   const [orgId, setOrgId] = useState(editing?.organization.id ?? (props.mode === "create" ? props.initialOrganization?.id ?? "" : ""));
   const [contacts, setContacts] = useState<OrgContact[] | null>(props.mode === "create" ? props.initialOrganization?.contacts ?? null : null);
   const [contactsLoading, setContactsLoading] = useState(props.mode === "edit");
@@ -81,11 +88,7 @@ export default function BdmAppointmentForm(props: Props) {
   }, []);
 
   function changedFields(a: Appointment): Record<string, unknown> {
-    const next: Record<string, unknown> = {
-      contact_id: values.contactId || a.contact_id, duration_minutes: values.duration, appointment_type: values.type,
-      location: orNull(values.location), purpose: orNull(values.purpose), remarks: orNull(values.remarks),
-      expected_leads: values.leads === "" ? null : Number(values.leads), expected_revenue: orNull(values.revenue),
-    };
+    const next: Record<string, unknown> = { ...fieldBody(values), contact_id: values.contactId || a.contact_id };
     const before: Record<string, unknown> = {
       contact_id: a.contact_id, duration_minutes: a.duration_minutes, appointment_type: a.appointment_type, location: a.location, purpose: a.purpose,
       remarks: a.remarks, expected_leads: a.expected_leads, expected_revenue: a.expected_revenue === null ? null : String(Number(a.expected_revenue)),
@@ -97,10 +100,10 @@ export default function BdmAppointmentForm(props: Props) {
   async function send(body: Record<string, unknown>, confirmOverlap: boolean) {
     setMessage(null);
     setBusy(true);
-    if (editing) {
-      const outcome = await sendJson(`${APPOINTMENTS_URL}/${editing.id}`, "PATCH", confirmOverlap ? { ...body, confirm_overlap: true } : body);
+    if (edit) {
+      const outcome = await sendJson(`${APPOINTMENTS_URL}/${edit.appointment.id}`, "PATCH", confirmOverlap ? { ...body, confirm_overlap: true } : body);
       setBusy(false);
-      return handle(outcome, body, (a) => props.mode === "edit" && props.onSaved(a, true));
+      return handle(outcome, body, (a) => edit.onSaved(a, true));
     }
     const outcome = await sendJson(APPOINTMENTS_URL, "POST", { ...body, confirm_overlap: confirmOverlap });
     setBusy(false);
@@ -111,19 +114,12 @@ export default function BdmAppointmentForm(props: Props) {
     const invalid = estimateErrors(values);
     setErrors(invalid);
     if (invalid.leads || invalid.revenue) return document.getElementById(invalid.leads ? "appt-leads" : "appt-revenue")?.focus();
-    if (editing) {
-      const body = changedFields(editing);
-      if (!Object.keys(body).length) return props.mode === "edit" && props.onSaved(editing, false);
+    if (edit) {
+      const body = changedFields(edit.appointment);
+      if (!Object.keys(body).length) return edit.onSaved(edit.appointment, false);
       return void send(body, false);
     }
-    void send(
-      {
-        organization_id: orgId, contact_id: values.contactId, starts_at: istInputToIso(values.when), duration_minutes: values.duration, appointment_type: values.type,
-        location: orNull(values.location), purpose: orNull(values.purpose), remarks: orNull(values.remarks),
-        expected_leads: values.leads === "" ? null : Number(values.leads), expected_revenue: orNull(values.revenue),
-      },
-      false,
-    );
+    void send({ organization_id: orgId, starts_at: istInputToIso(values.when), ...fieldBody(values) }, false);
   }
 
   function handle(outcome: Awaited<ReturnType<typeof sendJson>>, body: Record<string, unknown>, onOk: (a: Appointment) => void) {
@@ -183,8 +179,8 @@ export default function BdmAppointmentForm(props: Props) {
         <button type="submit" className="btn" disabled={busy || warning !== null || (!editing && (!orgId || !values.contactId))}>
           {busy ? "Saving…" : editing ? "Save changes" : "Book appointment"}
         </button>
-        {editing && props.mode === "edit" && (
-          <button type="button" className="btn secondary" onClick={props.onCancel}>
+        {edit && (
+          <button type="button" className="btn secondary" onClick={edit.onCancel}>
             Cancel
           </button>
         )}

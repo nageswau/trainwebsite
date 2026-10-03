@@ -1,8 +1,9 @@
 "use client";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useState } from "react";
 
 import BdmOverlapAlert from "@/components/BdmOverlapAlert";
-import { type Appointment, DURATIONS, formatMinutes, isoToIstInput, istInputToIso, nowIstInput, type Overlap } from "@/lib/bdmAppointments";
+import { type Appointment, durationOptions, formatMinutes, isoToIstInput, istInputToIso, type Overlap } from "@/lib/bdmAppointments";
+import { useNowIstMin } from "@/lib/useNowIstMin";
 
 type Body = { starts_at: string; duration_minutes: number; reason: string | null };
 
@@ -11,15 +12,12 @@ export default function BdmAppointmentRescheduleForm({ appointment, busy, warnin
   const [when, setWhen] = useState(isoToIstInput(appointment.starts_at));
   const [duration, setDuration] = useState(appointment.duration_minutes);
   const [reason, setReason] = useState("");
-  // `min` is read after mount: a server-rendered value can differ from the browser's across a minute boundary (hydration warning).
-  const [min, setMin] = useState<string | undefined>(undefined);
-  useEffect(() => setMin(nowIstInput()), []);
+  const min = useNowIstMin();
   const body = (): Body => ({ starts_at: istInputToIso(when), duration_minutes: duration, reason: reason.trim() || null });
   const submit = (event: FormEvent) => {
     event.preventDefault();
     onSubmit(body());
   };
-  const durations = DURATIONS.includes(duration) ? DURATIONS : [...DURATIONS, duration].sort((a, b) => a - b);
   return (
     <form aria-label="Reschedule appointment" className="action-card" onSubmit={submit} onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <div className="field">
@@ -29,7 +27,7 @@ export default function BdmAppointmentRescheduleForm({ appointment, busy, warnin
       <div className="field">
         <label htmlFor={`resched-dur-${appointment.id}`}>Duration</label>
         <select id={`resched-dur-${appointment.id}`} value={duration} onChange={(e) => { setDuration(Number(e.target.value)); onEdit(); }}>
-          {durations.map((d) => (
+          {durationOptions(duration).map((d) => (
             <option key={d} value={d}>
               {formatMinutes(d)}
             </option>

@@ -73,6 +73,7 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
   const [today] = useState(todayIst);
   const filters = readFilters(params, today, types);
   const key = toUrl(filters, today).toString();
+  const apiUrl = toApi(filters); // a string, so the fetch effect re-runs only when the request itself changes
   const [data, setData] = useState<Page<AppointmentRow> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -90,7 +91,7 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
     setLoadFailed(false);
     setFetching(true);
     setTarget(null);
-    fetch(toApi(readFilters(new URLSearchParams(key), today, types)))
+    fetch(apiUrl)
       .then(async (response) => {
         const body = await response.json().catch(() => null);
         if (!response.ok || !isPage<AppointmentRow>(body)) throw new Error("not a page");
@@ -101,7 +102,7 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
     return () => {
       live = false;
     };
-  }, [key, version, today, types]);
+  }, [apiUrl, version]);
 
   function go(next: Partial<Filters>) {
     const url = toUrl({ ...filters, offset: 0, ...next }, today);
