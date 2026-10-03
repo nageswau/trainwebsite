@@ -493,3 +493,16 @@ history and audit trail.
 | Rate limiting / DoS | Authenticated abuse | **No new limiter** (throttling changes need approval; bdm-006 doesn't ask for one). Bounded by authentication, payload caps, `limit ≤ 100`, indexed and window-bounded queries. Events grow by one row per accepted write. |
 | Audit / repudiation | Who did what | Every write: one `AuditLog` row (`bdm_appointment.<action>`) and, for transitions, one event row with the actor, in the same transaction. `overlap_override` records an acknowledged warning. Events are append-only. |
 | Personal data | Purpose, retention, deletion | The snapshot is exactly §2's contact fields for the meeting record. **Consequence of A5, recorded in the DEC:** deleting a contact in bdm-002 no longer erases every copy — the snapshot stays on its appointments. A retention / erasure policy for BDM data remains **NEEDS_CONFIRMATION** (as bdm-001/002); bdm-006 adds no export or deletion path. |
+
+## 13. Revision 3 — plan refinements (2026-10-03)
+
+Refinements made while implementing; no owner decision (A1–A8) changed.
+
+1. `starts_at` minute normalization happens in the schema (`AfterValidator`), not the service — it is boundary input shaping.
+2. `expected_revenue` is returned as a JSON string (Pydantic's `Decimal` serialization, as other money fields); the web type is `string | null`.
+3. bdm-002's list and detail rendered `last_meeting_at` / `next_meeting_at` through `display()`, which would print a raw ISO string once values are real. Both switch to `formatSchoolDateTime(v, true)`.
+4. The e2e books ~2 minutes ahead and waits instead of moving `starts_at` (the e2e container has no database access; the backend tests move it).
+5. **R5** — audit rows written in the same transaction (one `AuditLog` row and one event row) are asserted order-insensitively in tests; they share a transaction timestamp, so their relative order is not a contract.
+6. **R6** — tests that compute "today" for an IST rule (`next_follow_up_on` on or after today in IST, list day edges) compute it in IST, not in UTC or the host's local zone.
+7. **R7** — any change to a booking-form field clears the overlap warning, so "Save anyway" can never confirm an overlap that was computed for different values.
+8. **Deleted-contact edit** — the contact select is not required when editing an appointment whose contact was deleted (`contact_id` is NULL, A5); the snapshot stays and the BDM may keep it or choose a new contact.
