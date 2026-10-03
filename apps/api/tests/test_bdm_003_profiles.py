@@ -210,3 +210,53 @@ async def test_profile_filters_narrow_within_scope(client, db_session):
     vtu = await create_org(client, org_type="college", name=f"College {tag}", profile={"affiliation": "VTU Belagavi"})
     assert [r["id"] for r in (await client.get(ORGS, params={"q": tag, "affiliation": "vtu"})).json()["items"]] == [vtu["id"]]
     assert (await client.get(ORGS, params={"territory": "x" * 121})).status_code == 422
+
+
+async def _race(db, monkeypatch, first: dict, second: dict):
+    """Two sessions of the assigned School BDM PATCH one fresh school (no profile) at the same moment. In-process requests barely overlap,
+    so each request pauses right after reading the row: without the row lock both would read the same stale state (the mutation check
+    this test was proven against: lock=False makes it fail). Returns (responses, stored row)."""
+    owner = await bdm_of(db, "school")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as one, AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as two:
+        await login(one, owner)
+        await login(two, owner)
+        org = await profile_org(one, "school")
+        url = f"{ORGS}/{org['id']}"
+        load_scoped = svc.load_scoped
+
+        async def slow_load(*args, **kwargs):
+            loaded = await load_scoped(*args, **kwargs)
+            await asyncio.sleep(0.3)
+            return loaded
+
+        monkeypatch.setattr(svc, "load_scoped", slow_load)
+        results = await asyncio.gather(one.patch(url, json=first), two.patch(url, json=second))
+    stored = await db.scalar(select(BdmOrganization).where(BdmOrganization.id == uuid.UUID(org["id"])).execution_options(populate_existing=True))
+    return results, stored
+
+
+@pytest.mark.asyncio
+async def test_type_change_and_profile_edit_race_has_one_consistent_outcome(db_session, monkeypatch):
+    """§5.4: both lock the row; the second re-checks against the committed type. Either the board lands and the type change is 409, or
+    the type change lands and the board is 422 -- never a School board on a College (the group CHECK would make that a 500)."""
+    results, stored = await _race(db_session, monkeypatch, {"org_type": "college"}, {"profile": {"board": "CBSE"}})
+    assert sorted(r.status_code for r in results) in ([200, 409], [200, 422]), [r.text for r in results]
+    assert (stored.org_type, stored.board) in (("college", None), ("school", "CBSE"))
+
+
+@pytest.mark.asyncio
+async def test_conflicting_grade_edits_race_leaves_a_valid_range(db_session, monkeypatch):
+    results, stored = await _race(db_session, monkeypatch, {"profile": {"grade_from": 8}}, {"profile": {"grade_to": 6}})
+    assert sorted(r.status_code for r in results) == [200, 422], [r.text for r in results]
+    assert stored.grade_from is None or stored.grade_to is None
+
+
+@pytest.mark.asyncio
+async def test_logs_carry_ids_and_field_names_never_profile_text(client, db_session, caplog):
+    caplog.set_level(logging.INFO, logger="app.bdm")
+    await login(client, await bdm_of(db_session, "school"))
+    secret = f"Plot {uuid.uuid4().hex[:6]} Lane"
+    org = await create_org(client, org_type="school", address=secret, profile={"board": "CBSE"})
+    assert (await client.patch(f"{ORGS}/{org['id']}", json={"org_type": "agent"})).status_code == 409
+    assert "bdm_org_type_change_refused" in caplog.text
+    assert secret not in caplog.text and "CBSE" not in caplog.text
