@@ -155,3 +155,48 @@ describe("BdmOrganizationsPanel (bdm-002 AC9)", () => {
     expect(screen.queryByText("Updating organizations…")).toBeNull();
   });
 });
+
+describe("BdmOrganizationsPanel profile filters (bdm-003 AC8, §12.2 F7)", () => {
+  it("shows Board only for schools; it applies on change and reaches the API", async () => {
+    nav.search = "org_type=school&board=CBSE";
+    const mock = serve(res(pg([row(1)])));
+    render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 1" });
+    expect(mock.mock.calls[0][0]).toContain("board=CBSE");
+    expect(screen.getByLabelText("Board")).toHaveValue("CBSE");
+    expect(screen.queryByLabelText("Territory")).toBeNull();
+    expect(screen.queryByLabelText("University / affiliation")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Board"), { target: { value: "ICSE" } });
+    expect(nav.push).toHaveBeenCalledWith("/bdm/organizations?org_type=school&board=ICSE", { scroll: false });
+  });
+
+  it("drops a filter that no longer applies when Type changes", async () => {
+    nav.search = "org_type=school&board=CBSE";
+    serve(res(pg([row(1)])));
+    render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 1" });
+    fireEvent.change(screen.getByLabelText("Type"), { target: { value: "agent" } });
+    expect(nav.push).toHaveBeenCalledWith("/bdm/organizations?org_type=agent", { scroll: false });
+  });
+
+  it("applies Territory with Search, and Clear filters resets it", async () => {
+    nav.search = "org_type=agent";
+    serve(res(pg([row(1)])));
+    render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 1" });
+    fireEvent.change(screen.getByLabelText("Territory"), { target: { value: " South " } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(nav.push).toHaveBeenLastCalledWith("/bdm/organizations?org_type=agent&territory=South", { scroll: false });
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(nav.push).toHaveBeenLastCalledWith("/bdm/organizations", { scroll: false });
+  });
+
+  it("shows Affiliation for universities, read from the URL", async () => {
+    nav.search = "org_type=university&affiliation=VTU";
+    const mock = serve(res(pg([row(1)])));
+    render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 1" });
+    expect(screen.getByLabelText("University / affiliation")).toHaveValue("VTU");
+    expect(mock.mock.calls[0][0]).toContain("affiliation=VTU");
+  });
+});
