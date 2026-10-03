@@ -395,6 +395,26 @@ role-specific navigation.
 | `AGN-018-AC08` | Portal dashboard keeps labels, order and commission strings; Students counts no-login students | `test_agn_018_portal_compat.py::test_master_portal_metrics`, `::test_staff_portal_metrics` |
 | `AGN-018-AC09` | UI: Master / Staff variants, links, empty, error, loading; nav (§6.3); keyboard; 320 px | `apps/web/tests/components/AgentDashboardPanel.test.tsx` (9), `PortalPage.agentDashboard.test.tsx` (2), `tests/lib/navigation.agent.test.ts` (My Students All / Add; deliberate label/children updates), `AgentStudentsPanel.test.tsx` (+1, `?new=1`); e2e `apps/web/tests/e2e/agn-018-dashboard.spec.ts` (2 tests; **written, not yet run** — runs at browser validation) |
 
+**Addendum, 2026-10-03 (`AGN-022`)** — one enhancement row and its acceptance-criteria map. Overseas Admin agent network oversight.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `AGN-022` | Requirement: owner's `AGN-022` statement (in-session 2026-10-03) quoting `EVID-015` "Best approach" / §9 and backlog ang-022 (`DERIVED_BLUEPRINT`); owner answers N1–N6 (`EXPLICIT_APPROVAL`) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-063` → design `docs/superpowers/specs/2026-10-03-agn-022-agent-network-design.md` (AC1–AC11) → plan `docs/superpowers/plans/2026-10-03-agn-022-agent-network.md`; `API_CONTRACT.md` §8 AGN-022; `RBAC_MATRIX.md` AGN-022; no migration → code `app/services/agent_network.py`, `app/services/agent_dashboard.py` (`commission_totals` extracted), `app/api/admin.py`, `schemas.py`; web `AgentNetworkPanel`, `AgentOrgDetailPanel`, `AgentNetworkRecords`, `app/overseas/admin/agent-network/{page,[orgId]/page}.tsx`, `lib/agentNetwork.ts`, `lib/navigation.ts` → tests below | None (new feature) | **IMPLEMENTED, NOT COMPLETE:** lite tests only (owner instruction) — `test_agn_022_network.py` 14 passed; AGN-018 commission test 1 passed; AGN-022 vitest 22 passed; neighbours `AgentApprovalPanel` + `navigation.bdm` 20 passed; `tsc` 0; eslint 0 on changed files. **Pending:** browser validation (Playwright spec written, not run), independent Codex review, owner's full suites. |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `AGN-022-AC1` | List and detail counts equal the fixture (archived, withdrawn, bridged, deactivated staff, other agency excluded) | `apps/api/tests/test_agn_022_network.py::test_the_list_adds_counts_that_match_the_fixture`, `::test_other_agencies_and_empty_orgs_count_on_their_own`, `::test_the_detail_matches_the_fixture`, `::test_applications_exclude_bridged_and_other_agencies_and_filter_by_stage` (fixture `tests/agn022_helpers.py`) |
+| `AGN-022-AC2` | Commission per currency and deposit figures equal the fixture | `::test_the_detail_matches_the_fixture` |
+| `AGN-022-AC3` | Zero-student org → zeros, empty lists | `::test_an_empty_org_is_all_zeros`, `::test_other_agencies_and_empty_orgs_count_on_their_own` |
+| `AGN-022-AC4` | Suspend denies Master and staff on the next request; reinstate restores | `::test_suspend_blocks_master_and_staff_on_their_next_request_and_reinstate_restores`; existing `test_agn_001_registration_and_gate.py::test_suspension_applies_on_the_next_request_and_reinstatement_restores`; e2e `agn-022-agent-network.spec.ts` (written, not run) |
+| `AGN-022-AC5` | New routes: Master, staff, counselor, student → 403; unauthenticated → 401 | `::test_every_new_route_is_admin_only` (×3 routes) |
+| `AGN-022-AC6` | One audit row per drill-down read; none on 403/404/422; audit failure → no data | `::test_students_are_listed_read_only_and_each_read_is_audited`, `::test_a_failed_audit_write_returns_no_data`, `::test_drill_down_paging_and_filters_are_validated` |
+| `AGN-022-AC7` | No contact fields; no staff list; `no-store` | `::test_students_are_listed_read_only_and_each_read_is_audited`, `::test_the_detail_matches_the_fixture`, `::test_student_application_count_ignores_other_agencies` |
+| `AGN-022-AC8` | `/agent-orgs` unchanged apart from the two added keys | `::test_the_list_adds_counts_that_match_the_fixture`; existing `test_agn_001_org_admin.py` (owner's full run) |
+| `AGN-022-AC9` | UI loading / empty / error, stale-drop, super_admin read-only, pending → Approvals, 409 refetch, one request per double click, drill-down fetched only on demand | `apps/web/tests/components/AgentNetworkPanel.test.tsx` (7), `AgentOrgDetailPanel.test.tsx` (6), `AgentNetworkRecords.test.tsx` (3) |
+| `AGN-022-AC10` | Nav entry; 320/375 px; heading focus after paging; focus on the new action button | `tests/lib/agentNetwork.test.ts`, `AgentNetworkPanel.test.tsx`, `AgentOrgDetailPanel.test.tsx`; e2e (written, not run) |
+| `AGN-022-AC11` | Non-UUID page id → not-found without an API call; markup in names renders as text | `tests/components/AgentOrgPage.test.tsx`, `tests/lib/agentNetwork.test.ts`, `AgentNetworkPanel.test.tsx` |
+
 **Addendum, 2026-10-02 (`AGN-011`)** — one enhancement row. Agent deposit collection through Razorpay (Step 7).
 
 | Feature ID | Contract documents | Old workbook cases | Status |

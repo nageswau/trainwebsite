@@ -3763,6 +3763,25 @@ history; a reason required when an agent rejects or asks for changes; Pending / 
 **Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-009-agent-documents`. Lite test sets pass (see `RTM.md` AGN-009 row).
 Pending, owner-side: browser validation, the independent Codex review, the full backend/web/E2E suites, the merge.
 
+## AGN-022 — Overseas Admin Agent Network Oversight
+
+**Status (2026-10-03): IMPLEMENTED, NOT COMPLETE** on `feature/agn-022-agent-network`. Lite tests pass (see `RTM.md` AGN-022).
+Pending: browser validation (the Playwright spec `agn-022-agent-network.spec.ts` is written, not run), independent Codex review,
+and the owner's full suites.
+
+**Business requirement.** "Edusphere's central admin can see the overall agent network and student/application data according to
+the permissions you define" (`EVID-015` "Best approach" / §9; backlog ang-022, `DERIVED_BLUEPRINT`). Owner acceptance: counts match
+fixtures; suspend blocks the org immediately (ang-001 AC4); non-admin → 403. Decision: `DEC-SCOPE-063` (N1–N6).
+
+**Delivered.** `GET /overseas-admin/agent-orgs` gains `staff_count` and `counts` (additive); new `GET /agent-orgs/{id}` (counts,
+commission per currency, deposits, Masters), `/{id}/students` and `/{id}/applications` (read-only, no contact fields, each page an
+audited fail-closed read); suspend / reinstate reuses the AGN-001 action. Web: "Agent network" list and agency detail pages
+(Overseas Admin acts, Super Admin reads). No migration, no new dependency. Spec
+`docs/superpowers/specs/2026-10-03-agn-022-agent-network-design.md`; plan `docs/superpowers/plans/2026-10-03-agn-022-agent-network.md`.
+
+**Out of scope.** Approve/reject on the network page; per-student record pages; admin edits; offers/visa on the list; money on the
+list; CSV export; a `SUPER_ADMIN_NAV` entry; caching; ang-019/020.
+
 ## AGN-018 — Agency Master / Staff Dashboards and Role-Specific Navigation
 
 **Title.** Give the agency Master a whole-agency KPI board and each staff member the same board limited to their assigned students,
