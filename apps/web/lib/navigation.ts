@@ -42,9 +42,9 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
 };
 
 // bdm-001: BDM and BDM-manager sidebars, and the signed-out chooser (College BDMs sign in at /it, Agent/School BDMs at /overseas;
-// managers at /admin). bdm-002 adds Organizations to both.
-export const BDM_NAV: NavItem[] = [{ label: "My Day", href: "/bdm/my-day" }, { label: "Organizations", href: "/bdm/organizations" }, { label: "Profile", href: "/bdm/profile" }];
-export const BDM_MANAGER_NAV: NavItem[] = [{ label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" }, { label: "Organizations", href: "/bdm/manager/organizations" }];
+// managers at /admin). bdm-002 adds Organizations to both; bdm-006 adds Appointments.
+export const BDM_NAV: NavItem[] = [{ label: "My Day", href: "/bdm/my-day" }, { label: "Organizations", href: "/bdm/organizations" }, { label: "Appointments", href: "/bdm/appointments" }, { label: "Profile", href: "/bdm/profile" }];
+export const BDM_MANAGER_NAV: NavItem[] = [{ label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" }, { label: "Organizations", href: "/bdm/manager/organizations" }, { label: "Appointments", href: "/bdm/manager/appointments" }];
 export const BDM_SIGN_IN = "/bdm/sign-in";
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
