@@ -31,7 +31,7 @@ describe("agentNavFor", () => {
   it("shows Tasks to both roles, after Documents (AGN-016, EVID-015 §4 sidebar order)", () => {
     const hrefs = nav.map((i) => i.href);
     expect(hrefs.indexOf("/overseas/agent/tasks")).toBe(hrefs.indexOf("/overseas/agent/documents") + 1);
-    // AGN-018 (DEC-SCOPE-060 G4): the EVID-015 §4 wording.
+    // AGN-018 (DEC-SCOPE-061 G4): the EVID-015 §4 wording.
     expect(nav.find((i) => i.href === "/overseas/agent/tasks")?.label).toBe("Tasks & Follow-ups");
     expect(agentNavFor(nav, "staff").map((i) => i.href)).toContain("/overseas/agent/tasks");
   });
@@ -60,7 +60,7 @@ describe("agentNavFor", () => {
 
   it("gives Applications the status filters for Masters and staff (AGN-008)", () => {
     const children = (items: ReturnType<typeof agentNavFor>) => items.find((i) => i.href === "/overseas/agent/applications")?.children?.map((c) => c.href.split("=")[1] ?? "(bare)");
-    // AGN-018 (DEC-SCOPE-060 G4): "All applications" first (EVID-015 §4 "All") -- the bare path, the list's default (QA18-07).
+    // AGN-018 (DEC-SCOPE-061 G4): "All applications" first (EVID-015 §4 "All") -- the bare path, the list's default (QA18-07).
     const expected = ["(bare)", "draft", "submitted", "offer", "visa", "enrolled", "withdrawn"];
     expect(children(agentNavFor(nav, "master"))).toEqual(expected);
     expect(children(agentNavFor(nav, "staff"))).toEqual(expected);

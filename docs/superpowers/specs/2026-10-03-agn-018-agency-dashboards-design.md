@@ -1,7 +1,7 @@
 # AGN-018 — Agency Master / Staff dashboards and role-specific navigation — design
 
 **Status:** design approved in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions and three design-section
-reviews), recorded as `DEC-SCOPE-060` (the next free number on `main` @ `e1c2084`; renumber on merge if another branch takes it first).
+reviews), recorded as `DEC-SCOPE-061` (drafted as `060`; renumbered on merging `main` @ `c5cdc8a`, where `060` is bdm-002).
 Source item: `docs/delivery/AGENT_CRM_BACKLOG.md` ang-018 (`DERIVED_BLUEPRINT`). Depends on AGN-004/005, AGN-008 … AGN-014 and AGN-016,
 all on `main`. Branch: `feature/agn-018-master-dashboard-impl`. **GATE-09:** no code until this spec and its plan are approved.
 
@@ -13,7 +13,7 @@ Business requirement (`EVID-015` §2, §4, §6): Master dashboard with 14 KPIs (
 Owner acceptance: each KPI equals a hand-computed fixture count; Staff numbers include only their own students; offers are counted by
 stage and by offer record, consistently.
 
-## 2. Decisions (`DEC-SCOPE-060`, answered by the owner 2026-10-03)
+## 2. Decisions (`DEC-SCOPE-061`, answered by the owner 2026-10-03)
 
 | ID | Decision |
 |---|---|
@@ -249,7 +249,7 @@ link; ang-019 funnel and filters; ang-020 reports; ang-022 network oversight; ca
 
 ## 11. Documentation
 
-`PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-060`; `API_CONTRACT.md` §8 (new route, snapshot note); `RBAC_MATRIX.md` Dashboard row;
+`PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-061`; `API_CONTRACT.md` §8 (new route, snapshot note); `RBAC_MATRIX.md` Dashboard row;
 `RTM.md`; `ENHANCEMENT_BACKLOG.md` §AGN-018; `AGENT_CRM_BACKLOG.md` status table; `ROLE_NAVIGATION.md` Agent; `SCREEN_CATALOG.md`
 SCR-AGT-003; `RAID.md` (I-48 carried on as its own item; new: INR label, `student_documents.application_id` index).
 
@@ -265,7 +265,7 @@ Applied to this spec before planning; each change is folded into the sections ab
   keeps its strings (Hyrum's law: existing consumers and e2e tests read them).
 - A4 Breakdowns are bounded (top 10 + `other`) instead of paginated — they are aggregates with a fixed maximum size.
 - A5 Backward compatibility: no existing route, field or label changes; the one observable change (portal Students counts no-login
-  students) is a recorded defect fix (`DEC-SCOPE-060`), with the tests that pinned it updated deliberately.
+  students) is a recorded defect fix (`DEC-SCOPE-061`), with the tests that pinned it updated deliberately.
 - A6 Database: about six statements per read, all aggregate (`COUNT`, `COUNT(DISTINCT)`, `GROUP BY`), no N+1, no row loading; one
   snapshot for the headline counts; read-only session, no commit.
 

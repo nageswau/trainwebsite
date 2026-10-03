@@ -3250,9 +3250,37 @@ validation, the owner's full suites and an independent Codex review are pending.
 
 **Consequences:** migration `0065_agent_notifications` (one nullable column, four partial indexes); a new `services/agent_notifications.py`; additive hooks in `agent_students`, `agent_documents`, `agent_applications`, `agent_tasks` and three `workflows.py` routes; the first crontab beat entry; one new read endpoint; an agent nav item and optional `NavItem.badge`. Unchanged: ENH-014 dispatch/delivery, existing list/read contracts, students' and counselors' notices, `_maybe_trigger_agent_commission`. Design: `docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md`. **New Feature ID authorized:** `AGN-017`.
 
-### DEC-SCOPE-060 — Agency Master / Staff dashboards and role-specific navigation (`AGN-018`)
+### DEC-SCOPE-060 — BDM Organization CRM core (`bdm-002`)
 
-**ID note:** drafted as `DEC-SCOPE-060`, the next free number on `main` @ `e1c2084`. Renumber on merge if another branch reaches `main` with `060` first.
+**ID note:** recorded on the branch as `DEC-SCOPE-058` with migration `0066_bdm_organizations`; AGN-011 (`DEC-SCOPE-058`, `0064_application_deposits`) and AGN-017 (`DEC-SCOPE-059`, `0065_agent_notifications`) reached `main` first, so this entry became `DEC-SCOPE-060` and the migration `0066_bdm_organizations` when `main` was merged into `feature/bdm-002-organization-crm` (2026-10-03). bdm-002 commits and docs from before that merge that say `DEC-SCOPE-058` / `0064` mean this decision / migration.
+
+**Question:** how are BDM organizations stored, scoped, assigned, archived and de-duplicated?
+
+**Evidence:** `EVID-016` §9 (`DERIVED_BLUEPRINT`); `DEC-SCOPE-055` D5, D11 (Q-02), D12 (Q-03), D26 (Q-17), D27 (Q-18); bdm-002 impact analysis 2026-10-03 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — questions put one at a time, the design approved section by section, then the spec; not the source document's own wording):
+- **C1** at least one contact on create; the last contact cannot be deleted (supersedes the backlog edge case "an organization with no contacts yet (allowed, flagged)").
+- **C2** a `bdm_manager` reads the organizations assigned to their team and reassigns them among their own BDMs of the same type; no create or edit.
+- **C3** a BDM may create any of the seven organization types; ownership (`bdm_type`) is the creator's type.
+- **C4** codes are sequential `ORG-000123` (a Postgres sequence).
+- **C5** the assigned BDM (or super_admin) archives; the team manager or super_admin restores; both audited.
+- **C6** Courses Interested is free text (the `programs` catalogue is bdm-003).
+- **C7** no access for `it_admin` / `overseas_admin`.
+- **C8** the duplicate check includes archived organizations, labelled archived.
+- **C9** the assignee on create is always the creator.
+- **C10** Contact Person / Designation come from the primary contact; the organization keeps its own phone, email and website.
+- **C11** Existing Partner is a manual yes/no.
+- **C12** approach A: a flat `bdm_organizations` router + service; additive `bdm_type` / `q` filters on `GET /bdm/manager/team`.
+- **C13** Name and City are required.
+- **C14** super_admin reads, edits, archives, restores and reassigns everything; cannot create.
+- **C15** archived organizations are read-only until restored.
+- **C16** Address is not in bdm-002 (bdm-003).
+
+**Consequences:** migration `0066_bdm_organizations` (two new tables + `bdm_organization_code_seq`; downgrade refuses while organizations exist); routes `GET/POST /bdm/organizations`, `GET/PATCH /bdm/organizations/{id}`, `POST /{id}/archive|restore|assign`, `POST /{id}/contacts`, `PATCH/DELETE /{id}/contacts/{cid}`; pages `/bdm/organizations[/new|/{id}]` and `/bdm/manager/organizations[/{id}]`. Unchanged: every existing route, table and page (the team route only gains optional filters). bdm-006 refuses appointments on archived organizations (its own AC6). A retention/erasure policy for BDM data stays **NEEDS_CONFIRMATION**. Design: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`; plan: `docs/superpowers/plans/2026-10-03-bdm-002-organization-crm.md`. **New Feature ID authorized:** `bdm-002`.
+
+### DEC-SCOPE-061 — Agency Master / Staff dashboards and role-specific navigation (`AGN-018`)
+
+**ID note:** drafted as `DEC-SCOPE-060` (free on `main` @ `e1c2084`); renumbered `DEC-SCOPE-061` on merging `main` @ `c5cdc8a`, where `060` is bdm-002 (PR #50). AGN-018 has no migration, so nothing re-chained. AGN-018 commits and docs from before this merge that say `DEC-SCOPE-060` mean this decision.
 
 **Question:** the owner's `AGN-018` statement (in-session, 2026-10-03): "Master dashboard with 14 KPIs (§2); Staff 'Dashboard ✅ Limited' and the Staff sidebar (§4, §6)", with acceptance criteria: each KPI equals a hand-computed fixture count; Staff numbers include only their own students; offers are counted by stage and by offer record, consistently. Which KPIs mean what, how is the Staff variant limited, what happens to the stale offer counts carried here (`RAID.md` I-48), and how far does the sidebar change?
 
@@ -3267,4 +3295,4 @@ validation, the owner's full suites and an independent Codex review are pending.
 - **G5 — One offer rule:** O5 in SQL beside `counts_as_offer`, pinned by a parity test; the Offers tile is not linked to the "Offer received" filter, which keeps its AGN-008 meaning.
 - **G6 — Approach A:** a new read-only `GET /workflows/overseas/agent/crm/dashboard` with a typed schema and a dashboard panel on the existing page; the portal payload keeps its labels, order and strings.
 
-**Consequences:** no migration; a new router, service and schema; `portal._agent` dashboard values sourced from the shared service (Students now counts no-login students — a deliberate fix); a new `AgentDashboardPanel`; nav changes in `lib/navigation.ts`; `AgentStudentsPanel` honours `?new=1`. Unchanged: other roles' dashboards, the sidebar offer filter, commission values and the "Claimable commission" INR label (logged in `RAID.md`), models, existing routes. **New Feature ID authorized:** `AGN-018`. **Status:** design approved; spec under owner review; no code (GATE-09).
+**Consequences:** no migration; a new router, service and schema; `portal._agent` dashboard values sourced from the shared service (Students now counts no-login students — a deliberate fix); a new `AgentDashboardPanel`; nav changes in `lib/navigation.ts`; `AgentStudentsPanel` honours `?new=1`. Unchanged: other roles' dashboards, the sidebar offer filter, commission values and the "Claimable commission" INR label (logged in `RAID.md`), models, existing routes. **New Feature ID authorized:** `AGN-018`. **Status:** implemented and verified on `feature/agn-018-master-dashboard-impl` (see `ENHANCEMENT_BACKLOG.md` §AGN-018).

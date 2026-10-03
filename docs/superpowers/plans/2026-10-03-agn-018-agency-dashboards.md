@@ -13,7 +13,7 @@ existing `PortalSection` through an additive `lead` slot; nav edits in `lib/navi
 **Tech Stack:** FastAPI, SQLAlchemy 2 async, Pydantic v2, PostgreSQL; Next.js App Router (server components), React, vitest,
 Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-10-03-agn-018-agency-dashboards-design.md` (decision `DEC-SCOPE-060`).
+**Spec:** `docs/superpowers/specs/2026-10-03-agn-018-agency-dashboards-design.md` (decision `DEC-SCOPE-061`).
 
 ## Global Constraints
 
@@ -108,7 +108,7 @@ Run: API command with `tests/test_agn_018_offer_parity.py`
 `apps/api/app/services/agent_dashboard.py`:
 
 ```python
-"""AGN-018 -- the agency dashboard aggregates (DEC-SCOPE-060; spec §4-§5).
+"""AGN-018 -- the agency dashboard aggregates (DEC-SCOPE-061; spec §4-§5).
 
 Every count is SQL over the existing scope helpers, so a Master counts the agency and a staff member only their assigned students
 (G4) with no new scope logic. Read-only: nothing here writes, locks or commits."""
@@ -284,7 +284,7 @@ S3 = dict.fromkeys(MASTER, 0)
 - [ ] **Step 2: Write the failing tests** `apps/api/tests/test_agn_018_dashboard.py` (headline part)
 
 ```python
-"""AGN-018 (DEC-SCOPE-060) -- the agency dashboard endpoint: hand-counted KPIs, staff scope, gate, header (spec §8)."""
+"""AGN-018 (DEC-SCOPE-061) -- the agency dashboard endpoint: hand-counted KPIs, staff scope, gate, header (spec §8)."""
 
 import pytest
 import pytest_asyncio
@@ -424,7 +424,7 @@ class AgentCommissionSummaryOut(BaseModel):
 
 
 class AgentDashboardOut(BaseModel):
-    """AGN-018 (DEC-SCOPE-060): one shape for Masters and staff; the Master-only fields are null for staff."""
+    """AGN-018 (DEC-SCOPE-061): one shape for Masters and staff; the Master-only fields are null for staff."""
 
     scope: Literal["agency", "own"]
     member_code: str | None
@@ -507,7 +507,7 @@ async def dashboard(db: AsyncSession, user: User) -> dict:
 Router `apps/api/app/api/agent_dashboard.py`:
 
 ```python
-"""AGN-018 -- the agency dashboard: one read-only aggregate (DEC-SCOPE-060; spec §5).
+"""AGN-018 -- the agency dashboard: one read-only aggregate (DEC-SCOPE-061; spec §5).
 
 AGN-004's gate (agency members of an active agency; super admin refused), no input, no write, no audit row (reads are not
 audited, DEC-SCOPE-051 R7). The body is per-user, so it is never cached. The log line carries ids and timing only."""
@@ -776,7 +776,7 @@ async def dashboard(db: AsyncSession, user: User) -> dict:
 
 ```python
 """AGN-018 AC08 -- the portal dashboard keeps its labels, order and commission strings, and its counts now equal the AGN-018
-endpoint (Students includes students with no login: the deliberate DEC-SCOPE-060 fix)."""
+endpoint (Students includes students with no login: the deliberate DEC-SCOPE-061 fix)."""
 
 import pytest
 import pytest_asyncio
@@ -821,7 +821,7 @@ from that function when writing the assertion.)
 
 ```python
     if section == "dashboard":
-        # AGN-018 (DEC-SCOPE-060): the counts come from the dashboard endpoint's service, so the two never disagree; Students now
+        # AGN-018 (DEC-SCOPE-061): the counts come from the dashboard endpoint's service, so the two never disagree; Students now
         # includes students with no login (the inner join on users above dropped them).
         counts = await headline_counts(db, user)
         open_applications = [(a, u, s) for a, u, s in applications if a.status != WITHDRAWN]
@@ -840,7 +840,7 @@ Import `headline_counts` from `app.services.agent_dashboard`. The table rows, su
   `test_agn_008_dashboard.py`, `test_agn_010_counts.py`, `test_agn_014_commission_reports.py`, `test_agn_016_dashboard.py`,
   `test_agn_002_staff_access.py`, `test_agn_001_tenancy.py`. If `test_agn_004_staff_scope.py:93` fails only because its staff
   member also has a student with no login in scope, update the expected `Students` value to the hand count and add the comment
-  `# AGN-018 (DEC-SCOPE-060): Students now includes students with no login`. Any other failure is a regression — fix the code.
+  `# AGN-018 (DEC-SCOPE-061): Students now includes students with no login`. Any other failure is a regression — fix the code.
 - [ ] **Step 5: Commit** — `fix(agn-018): portal dashboard counts from the shared service; Students counts no-login students`
 
 ---
@@ -862,7 +862,7 @@ Import `headline_counts` from `app.services.agent_dashboard`. The table rows, su
 `lib/types.ts`:
 
 ```ts
-// --- AGN-018 agency dashboard (DEC-SCOPE-060; spec §5.3) ---
+// --- AGN-018 agency dashboard (DEC-SCOPE-061; spec §5.3) ---
 export type CurrencyTotal = { currency: string; count: number; amount: number };
 export type AgentBreakdown = { items: { label: string; count: number }[]; other: number };
 export type AgentStaffRow = { code: string; name: string; active: boolean; students: number; applications: number; offers: number; enrollments: number };
@@ -998,7 +998,7 @@ import { ApiError, serverApi } from "@/lib/api";
 import { DASHBOARD_URL, formatMoney } from "@/lib/agentDashboard";
 import type { AgentBreakdown, AgentDashboard } from "@/lib/types";
 
-// AGN-018 (DEC-SCOPE-060; spec §6.2): the agency KPI board. A server component: it reads its own endpoint, so a failure here
+// AGN-018 (DEC-SCOPE-061; spec §6.2): the agency KPI board. A server component: it reads its own endpoint, so a failure here
 // leaves the page's title, table and nav working. Reuses SchoolKpiBoard's tile markup and the .table-scroll region pattern.
 const NOTE = "Includes later stages and withdrawn applications";
 const n = (value: number) => value.toLocaleString("en-IN");
@@ -1205,7 +1205,7 @@ describe("PortalPage agency dashboard (AGN-018)", () => {
 ```
 
 with `import {Suspense} from "react";` and `import AgentDashboardPanel,{AgentDashboardSkeleton} from "./AgentDashboardPanel";`,
-plus a one-line comment: `// AGN-018 (DEC-SCOPE-060): agents get the KPI board under the title; its own fetch, so the payload stays the gate.`
+plus a one-line comment: `// AGN-018 (DEC-SCOPE-061): agents get the KPI board under the title; its own fetch, so the payload stays the gate.`
 
 - [ ] **Step 4: Run — expect PASS**: the new test, `PortalPage.agentApplications.test.tsx` (its call list is unchanged because
   PortalSection is mocked there), `PortalPage.agentTasks.test.tsx`, `PortalPage.agentNotifications.test.tsx`; `tsc`; lint.
@@ -1262,7 +1262,7 @@ plus a one-line comment: `// AGN-018 (DEC-SCOPE-060): agents get the KPI board u
 `navigation.ts`:
 
 ```ts
-// AGN-018 (DEC-SCOPE-060 G4): "All applications" first, then the AGN-008 filters (?status=all is the list's own default view).
+// AGN-018 (DEC-SCOPE-061 G4): "All applications" first, then the AGN-008 filters (?status=all is the list's own default view).
 const AGENT_APPLICATION_FILTERS: NavItem[] = STATUS_GROUPS.map((g) => ({ label: GROUP_LABELS[g], href: `/overseas/agent/applications?status=${g}` }));
 const NAV_LABELS: Record<string, string> = { tasks: "Tasks & Follow-ups" }; // EVID-015 §4 wording (AGN-018)
 ```
@@ -1272,7 +1272,7 @@ and in `"overseas/agent"` use `label: NAV_LABELS[x] ?? <existing title-case expr
 In `agentNavFor`, staff get the students item replaced:
 
 ```ts
-// AGN-018 (DEC-SCOPE-060 G4): the EVID-015 §4 staff sidebar -- "My Students" with All and Add (Add opens the existing form). No
+// AGN-018 (DEC-SCOPE-061 G4): the EVID-015 §4 staff sidebar -- "My Students" with All and Add (Add opens the existing form). No
 // Journey link until a route exists. Nothing is removed, so no access changes.
 const STAFF_STUDENTS: NavItem = { label: "My Students", href: "/overseas/agent/students", children: [
   { label: "All", href: "/overseas/agent/students" },

@@ -1,4 +1,4 @@
-"""AGN-018 (DEC-SCOPE-060) -- the agency dashboard endpoint: hand-counted KPIs, staff scope, gate, header (spec §8)."""
+"""AGN-018 (DEC-SCOPE-061) -- the agency dashboard endpoint: hand-counted KPIs, staff scope, gate, header (spec §8)."""
 
 import pytest
 import pytest_asyncio

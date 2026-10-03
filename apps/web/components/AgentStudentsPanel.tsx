@@ -70,7 +70,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
     setReady(true);
   }, []);
 
-  // AGN-018 (DEC-SCOPE-060 G4): the staff sidebar's "Add" link (?new=1) opens the add form -- on first load and when the link is
+  // AGN-018 (DEC-SCOPE-061 G4): the staff sidebar's "Add" link (?new=1) opens the add form -- on first load and when the link is
   // clicked while this panel is already on screen (a client navigation changes only the query). Its Full name field takes focus;
   // `new` is dropped through the router (browser QA18-01: a raw history.replaceState left the router's search params at new=1, so the
   // next Add changed nothing), so Back and refresh do not reopen it and every later Add is a real change.

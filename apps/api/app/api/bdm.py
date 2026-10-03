@@ -70,9 +70,22 @@ async def me(user: User = Depends(get_current_user), db: AsyncSession = Depends(
 
 
 @router.get("/manager/team", response_model=BdmTeamPage)
-async def team(limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def team(
+    bdm_type: Literal["agent", "school", "college"] | None = None,
+    q: str | None = SEARCH,
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """bdm-002 (AC8): optional `bdm_type` and `q` (name, email or Employee ID) for the reassign picker; ANDed with team scope, so
+    they only narrow it. Without them the response is unchanged."""
     require_manager(user)
-    return await _paged(db, _profiles(team_filter(user)), limit, offset, lambda profile, member, _manager: _team_row(profile, member))
+    filters = team_filter(user)
+    if bdm_type is not None:
+        filters.append(BdmProfile.bdm_type == bdm_type)
+    filters += _matching(like_pattern(q), User.full_name, User.email, BdmProfile.employee_id)
+    return await _paged(db, _profiles(filters), limit, offset, lambda profile, member, _manager: _team_row(profile, member))
 
 
 @admin_router.get("/bdms", response_model=BdmAdminPage)

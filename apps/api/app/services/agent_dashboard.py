@@ -1,4 +1,4 @@
-"""AGN-018 -- the agency dashboard aggregates (DEC-SCOPE-060; spec §4-§5).
+"""AGN-018 -- the agency dashboard aggregates (DEC-SCOPE-061; spec §4-§5).
 
 Every count is SQL over the existing scope helpers, so a Master counts the agency and a staff member only their assigned students
 (G4) with no new scope logic. Read-only: nothing here writes, locks or commits."""

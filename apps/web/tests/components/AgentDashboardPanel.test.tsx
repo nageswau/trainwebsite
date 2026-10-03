@@ -5,7 +5,7 @@ import AgentDashboardPanel, { AgentDashboardBoard, AgentDashboardSkeleton } from
 import { ApiError, serverApi } from "@/lib/api";
 import type { AgentDashboard } from "@/lib/types";
 
-// AGN-018 (DEC-SCOPE-060; spec §6.2): the agency KPI board -- Master and Staff variants, links, empty, error and loading states.
+// AGN-018 (DEC-SCOPE-061; spec §6.2): the agency KPI board -- Master and Staff variants, links, empty, error and loading states.
 vi.mock("@/lib/api", async () => ({ ...(await vi.importActual<typeof import("@/lib/api")>("@/lib/api")), serverApi: vi.fn() }));
 const api = vi.mocked(serverApi);
 afterEach(() => {

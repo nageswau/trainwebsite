@@ -29,7 +29,7 @@ export type Scholarship = {id:string; title:string; eligibility:string; amount:s
 // --- ENH-016 analytics dashboards (docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md §7) ---
 export type SchoolKpi = { key: string; label: string; value: number | null; tracked: boolean; note: string | null };
 
-// --- AGN-018 agency dashboard (DEC-SCOPE-060; spec §5.3): one shape for Masters and staff, Master-only fields null for staff ---
+// --- AGN-018 agency dashboard (DEC-SCOPE-061; spec §5.3): one shape for Masters and staff, Master-only fields null for staff ---
 export type CurrencyTotal = { currency: string; count: number; amount: number };
 export type AgentBreakdown = { items: { label: string; count: number }[]; other: number };
 export type AgentStaffRow = { code: string; name: string; active: boolean; students: number; applications: number; offers: number; enrollments: number };

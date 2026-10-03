@@ -89,8 +89,8 @@ See §AGN-008.
 (N1–N11; drafted as `055` / Revision 13, renumbered `058` on merging `main` @ `ff27fa4` and `059` @ `3d9244f`, where bdm-001, AGN-010, AGN-012 and AGN-011 hold `055`–`058`).
 See §AGN-017.
 **Revision 15 (2026-10-03):** backlog item ang-018 (Master dashboard KPIs `EVID-015` §2; Staff "Dashboard ✅ Limited" and sidebar
-§4, §6) is decided as `DEC-SCOPE-060` (G1–G6, owner in-session; the next free number on `main` @ `e1c2084`, renumber on merge if
-taken). See §AGN-018.
+§4, §6) is decided as `DEC-SCOPE-061` (G1–G6, owner in-session; drafted as `060`, renumbered on merging `main` @ `c5cdc8a`, where `060`
+is bdm-002). See §AGN-018.
 
 ## 0. Scope and exclusions (read this before the backlog)
 
@@ -3765,7 +3765,7 @@ and give staff the `EVID-015` §4 sidebar.
 
 **Business requirement.** Backlog item ang-018 (`AGENT_CRM_BACKLOG.md`, `DERIVED_BLUEPRINT`): `EVID-015` §2 Master dashboard KPIs;
 §4 Staff sidebar; §6 "Dashboard ✅ Limited". Owner acceptance: each KPI equals a hand-computed fixture count; Staff numbers include
-only their own students; offers are counted by stage and by offer record, consistently. Decision record: `DEC-SCOPE-060` (G1–G6,
+only their own students; offers are counted by stage and by offer record, consistently. Decision record: `DEC-SCOPE-061` (G1–G6,
 `EXPLICIT_APPROVAL` in-session 2026-10-03; number provisional).
 
 **Existing behavior.** The agency dashboard was the generic portal payload (`services/portal.py` `_agent()`): Students, Applications,
@@ -4232,7 +4232,7 @@ item, only for the progress-view question).
 | AGN-008 | `DEC-SCOPE-050` — statuses and withdrawn, Application ID, dates, agent status limits, link to the agency student, visibility, sidebar filters, throttle, archived read-only | **Resolved 2026-10-01/02** (A1–A15, `EXPLICIT_APPROVAL` in-session). `DEC-SCOPE-036` "submitted" stays `NEEDS_CONFIRMATION` |
 | AGN-016 | `DEC-SCOPE-053` — task owner on reassignment, delete, due time and overdue, linkage, KPI and nav, edit rules, cap, retry | **Resolved 2026-10-02** (T1–T8, `EXPLICIT_APPROVAL` in-session) |
 | AGN-010 | `DEC-SCOPE-056` — one offer per application, deadline column, offer document, `offer_letter_url`, Offers count, conditions, concurrent saves | **Resolved 2026-10-02** (O1–O7, `EXPLICIT_APPROVAL` in-session) |
-| AGN-018 | `DEC-SCOPE-060` — agency-only scope, staff performance summary, KPI definitions, navigation, one offer rule, endpoint approach | **Resolved 2026-10-03** (G1–G6, `EXPLICIT_APPROVAL` in-session; number provisional) |
+| AGN-018 | `DEC-SCOPE-061` — agency-only scope, staff performance summary, KPI definitions, navigation, one offer rule, endpoint approach | **Resolved 2026-10-03** (G1–G6, `EXPLICIT_APPROVAL` in-session; number provisional) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in

@@ -42,9 +42,9 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
 };
 
 // bdm-001: BDM and BDM-manager sidebars, and the signed-out chooser (College BDMs sign in at /it, Agent/School BDMs at /overseas;
-// managers at /admin).
-export const BDM_NAV: NavItem[] = [{ label: "My Day", href: "/bdm/my-day" }, { label: "Profile", href: "/bdm/profile" }];
-export const BDM_MANAGER_NAV: NavItem[] = [{ label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" }];
+// managers at /admin). bdm-002 adds Organizations to both.
+export const BDM_NAV: NavItem[] = [{ label: "My Day", href: "/bdm/my-day" }, { label: "Organizations", href: "/bdm/organizations" }, { label: "Profile", href: "/bdm/profile" }];
+export const BDM_MANAGER_NAV: NavItem[] = [{ label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" }, { label: "Organizations", href: "/bdm/manager/organizations" }];
 export const BDM_SIGN_IN = "/bdm/sign-in";
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
@@ -82,7 +82,7 @@ export const OVERSEAS_PUBLIC:NavItem[] = [
   {label:"Scholarships",href:"/overseas/scholarships"},{label:"Events",href:"/overseas/events"},{label:"Contact",href:"/overseas/contact"}
 ];
 
-// AGN-018 (DEC-SCOPE-060 G4): "All applications" first (EVID-015 §4 "All"), then the AGN-008 filters. All is the bare path -- the
+// AGN-018 (DEC-SCOPE-061 G4): "All applications" first (EVID-015 §4 "All"), then the AGN-008 filters. All is the bare path -- the
 // list's own default view (spec §6.3) -- so it is the current link wherever no filter is set (browser QA18-07).
 const AGENT_APPLICATION_FILTERS: NavItem[] = STATUS_GROUPS.map((g) => ({ label: GROUP_LABELS[g], href: g === "all" ? "/overseas/agent/applications" : `/overseas/agent/applications?status=${g}` }));
 // AGN-018 (G4): EVID-015 §4 wording where the generated title-case label differs.
@@ -112,7 +112,7 @@ const STAFF_HIDDEN = new Set(["/overseas/agent/team", "/overseas/agent/commissio
 const STAFF_REPORTS = "/overseas/agent/reports";
 // AGN-003 (DEC-SCOPE-044 P1): Reports is optional for staff -- shown only once their Master switches it on (the server refuses it
 // regardless; this keeps a dead link out of the sidebar). Masters are never limited.
-// AGN-018 (DEC-SCOPE-060 G4): the EVID-015 §4 staff sidebar -- "My Students" with All and Add (Add opens the existing form). No
+// AGN-018 (DEC-SCOPE-061 G4): the EVID-015 §4 staff sidebar -- "My Students" with All and Add (Add opens the existing form). No
 // Journey link until a route exists. Nothing is removed, so no access changes.
 const STAFF_STUDENTS: NavItem = {
   label: "My Students",
