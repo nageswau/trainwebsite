@@ -1,5 +1,7 @@
 # bdm-003 Type-specific Organization Profiles Implementation Plan
 
+**ID note (merge of `main` @ `65a8ece`, 2026-10-03):** written as `DEC-SCOPE-063` and migration `0068_bdm_org_profiles`; bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`, PR #53) reached `main` first, so bdm-003 is now **`DEC-SCOPE-064`** and **`0069_bdm_org_profiles`** (after `0068_bdm_trips`). Mentions of `063` / `0068_bdm_org_profiles` below mean this decision / migration.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Agent, School and College/University organizations get their own typed profile fields (plus a common Address) on `bdm_organizations`, exposed as a nested `profile` object validated per `org_type`, with the form, detail page and list filters to match.

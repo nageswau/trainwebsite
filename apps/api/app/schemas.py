@@ -3134,6 +3134,193 @@ class BdmManagerPage(BaseModel):
     offset: int
 
 
+# --- bdm-010: travel requests, approval, expenses (DEC-SCOPE-063; docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md §5.1) ---
+
+BdmTripMode = Literal["flight", "train", "bus", "car", "cab", "local"]
+BdmExpenseCategory = Literal["travel", "stay", "food", "local", "other"]
+BDM_TRIP_FIELD_LABELS = {
+    "travel_date": "Travel date", "return_date": "Return date", "from_place": "From", "to_place": "To", "purpose": "Purpose",
+    "mode": "Mode of travel", "estimated_cost": "Estimated cost", "remarks": "Remarks", "reason": "Reason", "category": "Category",
+    "amount": "Amount", "expense_date": "Expense date", "note": "Note",
+}
+# S5: multi-line text keeps \t \n \r; every other control character is refused (the single-line fields use _BDM_CONTROL).
+_BDM_MULTILINE_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+TRIP_AMOUNT_FORMAT = "Enter an amount in rupees with up to 2 decimals, for example 2500.50"
+TRIP_AMOUNT_MAX = Decimal("10000000.00")
+
+
+def _trip_text(pattern: re.Pattern, required: bool):
+    def check(value: str | None, info: ValidationInfo) -> str | None:
+        field = info.field_name or ""
+        label = BDM_TRIP_FIELD_LABELS.get(field, field)
+        if value is not None and pattern.search(value):
+            raise ValueError(f"{label} contains invalid characters")
+        if required and not value:
+            raise ValueError(f"{label} is required")
+        return value or None
+    return check
+
+
+def _trip_amount(positive: bool):
+    def parse(value):
+        try:
+            amount = Decimal(str(value).strip())
+        except (InvalidOperation, ValueError):
+            raise PydanticCustomError("trip_amount_format", TRIP_AMOUNT_FORMAT) from None
+        exponent = amount.as_tuple().exponent  # an int once finite (NaN/Infinity carry 'n'/'N'/'F')
+        if not amount.is_finite() or (isinstance(exponent, int) and exponent < -2):
+            raise PydanticCustomError("trip_amount_format", TRIP_AMOUNT_FORMAT)
+        if positive and amount <= 0:
+            raise PydanticCustomError("trip_amount_positive", "The amount must be more than ₹0")
+        if amount < 0:
+            raise PydanticCustomError("trip_amount_negative", "The estimated cost can't be negative")
+        if amount > TRIP_AMOUNT_MAX:
+            raise PydanticCustomError("trip_amount_max", "The amount can be at most ₹1,00,00,000")
+        return amount
+    return parse
+
+
+def _trimmed(max_length: int):
+    return StringConstraints(strip_whitespace=True, max_length=max_length)
+
+
+def _trip_date(label: str):
+    """QA10-08: a calendar date as YYYY-MM-DD with a 4-digit year; anything else (Chrome lets a year run to 6 digits) gets plain
+    words instead of the parser's text."""
+    def parse(value):
+        if isinstance(value, date):
+            return value
+        try:
+            if isinstance(value, str) and _ISO_DATE.fullmatch(value.strip()):  # the module's YYYY-MM-DD (ENH-027)
+                return date.fromisoformat(value.strip())
+        except ValueError:
+            pass
+        raise PydanticCustomError("trip_date", f"Enter a valid {label}")
+    return parse
+
+
+TripTravelDate = Annotated[date, BeforeValidator(_trip_date("travel date"))]
+TripReturnDate = Annotated[date, BeforeValidator(_trip_date("return date"))]
+TripExpenseDate = Annotated[date, BeforeValidator(_trip_date("expense date"))]
+TripPlace = Annotated[Annotated[str, _trimmed(120)], AfterValidator(_trip_text(_BDM_CONTROL, True))]
+TripPurpose = Annotated[Annotated[str, _trimmed(1000)], AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True))]
+TripReason = TripPurpose  # the same rule: required, multi-line, at most 1000
+TripRemarks = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False))]
+TripNote = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False))]
+TripEstimatedCost = Annotated[Decimal, BeforeValidator(_trip_amount(positive=False))]
+TripExpenseAmount = Annotated[Decimal, BeforeValidator(_trip_amount(positive=True))]
+
+
+class BdmTripCreate(BaseModel):
+    """§3 fields. Code, owner, statuses and currency are server-owned (`extra="forbid"` → 422, AC13). Date rules (T14) need
+    "today", so `services/bdm_travel.check_dates` applies them."""
+
+    model_config = ConfigDict(extra="forbid")
+    travel_date: TripTravelDate
+    return_date: TripReturnDate
+    from_place: TripPlace
+    to_place: TripPlace
+    purpose: TripPurpose
+    mode: BdmTripMode
+    accommodation_required: bool = False
+    estimated_cost: TripEstimatedCost
+    remarks: TripRemarks = None
+
+
+class BdmTripUpdate(BaseModel):
+    """Omitted = unchanged. A sent null on a required field fails its non-nullable type (bdm-001's idiom); remarks accept null.
+    The `None` default is never validated, so it is deliberately typed as the non-nullable type (hence the type: ignore)."""
+
+    model_config = ConfigDict(extra="forbid")
+    travel_date: TripTravelDate = None  # type: ignore[assignment]
+    return_date: TripReturnDate = None  # type: ignore[assignment]
+    from_place: TripPlace = None  # type: ignore[assignment]
+    to_place: TripPlace = None  # type: ignore[assignment]
+    purpose: TripPurpose = None  # type: ignore[assignment]
+    mode: BdmTripMode = None  # type: ignore[assignment]
+    accommodation_required: bool = None  # type: ignore[assignment]
+    estimated_cost: TripEstimatedCost = None  # type: ignore[assignment]
+    remarks: TripRemarks = None
+
+
+class BdmTripReject(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: TripReason
+
+
+class BdmTripExpenseCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    category: BdmExpenseCategory
+    amount: TripExpenseAmount
+    expense_date: TripExpenseDate
+    note: TripNote = None
+
+
+class BdmTripExpenseUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    category: BdmExpenseCategory = None  # type: ignore[assignment]
+    amount: TripExpenseAmount = None  # type: ignore[assignment]
+    expense_date: TripExpenseDate = None  # type: ignore[assignment]
+    note: TripNote = None
+
+
+class BdmPersonRef(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class BdmTripExpenseOut(BaseModel):
+    id: UUID
+    category: str
+    amount: Decimal
+    expense_date: date
+    note: str | None
+
+
+class BdmTripRow(BaseModel):
+    id: UUID
+    code: str
+    bdm: BdmPersonRef
+    travel_date: date
+    return_date: date
+    from_place: str
+    to_place: str
+    mode: str
+    accommodation_required: bool
+    estimated_cost: Decimal
+    actual_cost: Decimal
+    currency: str
+    approval_status: str
+    travel_status: str
+    submitted_at: datetime | None
+
+
+class BdmTripOut(BdmTripRow):
+    purpose: str
+    remarks: str | None
+    rejection_reason: str | None
+    decided_by: BdmPersonRef | None
+    decided_at: datetime | None
+    completed_at: datetime | None
+    cancelled_at: datetime | None
+    expenses: list[BdmTripExpenseOut]
+    can_edit: bool
+    can_submit: bool
+    can_withdraw: bool
+    can_start: bool
+    can_complete: bool
+    can_cancel: bool
+    can_add_expense: bool
+    can_decide: bool
+
+
+class BdmTripPage(BaseModel):
+    items: list[BdmTripRow]
+    total: int
+    limit: int
+    offset: int
+
+
 # --- bdm-002 (DEC-SCOPE-060): organization CRM core ------------------------------------------------------------------------
 BdmOrgType = Literal["college", "university", "agent", "school", "corporate", "training_institute", "other"]
 BdmContactRole = Literal["principal", "dean", "hod", "placement_officer", "counselor", "management", "owner", "other"]
@@ -3294,7 +3481,7 @@ def _bdm_contacts(contacts: list[BdmContactIn]) -> list[BdmContactIn]:
 
 
 class BdmOrgProfileIn(BaseModel):
-    """bdm-003 (DEC-SCOPE-063, spec §5.1): the type-specific fields. Omitted = not sent; null = clear. Which keys an org_type accepts is
+    """bdm-003 (DEC-SCOPE-064, spec §5.1): the type-specific fields. Omitted = not sent; null = clear. Which keys an org_type accepts is
     checked by services.bdm_organizations.check_profile (it needs the effective type); unknown keys -- the live agent figures commission,
     students, applications, enrollments and master_login among them -- are refused here (AC4)."""
 

@@ -1,5 +1,5 @@
-"""bdm-003 -- migration 0068_bdm_org_profiles (spec §4). Round trip and the downgrade refusal run in a throwaway database (the
-bdm-002 pattern); a downgrade never runs against the shared test database."""
+"""bdm-003 -- migration 0069_bdm_org_profiles (spec §4; cut as 0068, re-chained after bdm-010's 0068_bdm_trips). Round trip and the
+downgrade refusal run in a throwaway database (the bdm-002 pattern); a downgrade never runs against the shared test database."""
 
 import asyncio
 import importlib.util
@@ -19,13 +19,13 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-BASE = "0067_audit_entity_index"
-HEAD = "0068_bdm_org_profiles"
+BASE = "0068_bdm_trips"
+HEAD = "0069_bdm_org_profiles"
 NEW_COLUMNS = {"address", "country", "territory", "source", "staff_count", "board", "school_type", "grade_from", "grade_to", "affiliation", "college_type", "courses"}
 
 
 def _migration():
-    spec = importlib.util.spec_from_file_location("_bdm_003_migration_0068", VERSIONS / f"{HEAD}.py")
+    spec = importlib.util.spec_from_file_location("_bdm_003_migration_0069", VERSIONS / f"{HEAD}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -63,7 +63,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
     return asyncio.run(_inner())
 
 
-def test_chains_after_0067_and_is_the_single_head():
+def test_chains_after_0068_bdm_trips_and_is_the_single_head():
     migration = _migration()
     assert (migration.revision, migration.down_revision) == (HEAD, BASE)
     cfg = Config(str(API_ROOT / "alembic.ini"))
@@ -93,7 +93,7 @@ async def test_columns_and_checks_exist_in_the_shared_database(db_session):
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0067 with one bdm user."""
+    """A fresh database at 0068_bdm_trips with one bdm user."""
     cfg = Config(str(API_ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
     original = settings.database_url
@@ -127,8 +127,8 @@ def _insert(db, org_type: str, **values):
 
 
 def test_round_trip_runs_the_real_ddl_keeps_rows_and_enforces_every_check(isolated_db):
-    """0001 builds BASE from the current models (columns already there), so go up, down to 0067 (the migration drops them), and up again:
-    the CHECKs below are 0068's own DDL, not create_all's."""
+    """0001 builds BASE from the current models (columns already there), so go up, down to 0068_bdm_trips (the migration drops them), and up again:
+    the CHECKs below are 0069's own DDL, not create_all's."""
     cfg, url = isolated_db["cfg"], isolated_db["url"]
     command.upgrade(cfg, HEAD)
     command.downgrade(cfg, BASE)

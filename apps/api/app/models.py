@@ -956,9 +956,73 @@ class BdmProfile(Base, TimestampMixin):
     reporting_manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+
+# bdm-010 (DEC-SCOPE-063, T6): TRV-000123 codes. On the metadata so 0001's create_all makes it on a fresh database; 0068 makes it
+# on an upgraded one. A rolled-back create skips a number; codes stay unique and increasing.
+BDM_TRIP_CODE_SEQ = Sequence("bdm_trip_code_seq", metadata=Base.metadata)
+
+
+class BdmTrip(Base, TimestampMixin):
+    """bdm-010 (DEC-SCOPE-063): one BDM trip (§3). Organization and appointment time are not stored -- bdm-011 links appointments.
+    Actual cost is never stored: it is the sum of `bdm_trip_expenses` (D15). Rules live in `services/bdm_travel.py`."""
+
+    __tablename__ = "bdm_trips"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_bdm_trips_code"),
+        CheckConstraint("return_date >= travel_date", name="ck_bdm_trips_dates"),
+        CheckConstraint("mode IN ('flight', 'train', 'bus', 'car', 'cab', 'local')", name="ck_bdm_trips_mode"),
+        CheckConstraint("estimated_cost >= 0", name="ck_bdm_trips_estimated_cost"),
+        CheckConstraint("currency = 'INR'", name="ck_bdm_trips_currency"),
+        CheckConstraint("approval_status IN ('draft', 'submitted', 'approved', 'rejected')", name="ck_bdm_trips_approval_status"),
+        CheckConstraint("travel_status IN ('planned', 'in_progress', 'completed', 'cancelled')", name="ck_bdm_trips_travel_status"),
+        CheckConstraint("travel_status IN ('planned', 'cancelled') OR approval_status = 'approved'", name="ck_bdm_trips_status_pair"),
+        Index("ix_bdm_trips_bdm_travel_date", "bdm_user_id", "travel_date"),
+        Index("ix_bdm_trips_submitted", "bdm_user_id", postgresql_where=text("approval_status = 'submitted'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    travel_date: Mapped[date] = mapped_column(Date)
+    return_date: Mapped[date] = mapped_column(Date)
+    from_place: Mapped[str] = mapped_column(String(120))
+    to_place: Mapped[str] = mapped_column(String(120))
+    purpose: Mapped[str] = mapped_column(Text)
+    mode: Mapped[str] = mapped_column(String(10))
+    accommodation_required: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    estimated_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    currency: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR")
+    approval_status: Mapped[str] = mapped_column(String(12), default="draft", server_default="draft")
+    travel_status: Mapped[str] = mapped_column(String(12), default="planned", server_default="planned")
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class BdmTripExpense(Base, TimestampMixin):
+    """bdm-010 (T7): one itemized INR expense line on an approved trip. No receipt (owner, 2026-10-03)."""
+
+    __tablename__ = "bdm_trip_expenses"
+    __table_args__ = (
+        CheckConstraint("category IN ('travel', 'stay', 'food', 'local', 'other')", name="ck_bdm_trip_expenses_category"),
+        CheckConstraint("amount > 0", name="ck_bdm_trip_expenses_amount"),
+        Index("ix_bdm_trip_expenses_trip", "trip_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    trip_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_trips.id"))
+    category: Mapped[str] = mapped_column(String(10))
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    expense_date: Mapped[date] = mapped_column(Date)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
 BDM_ORG_TYPES = ("college", "university", "agent", "school", "corporate", "training_institute", "other")
 BDM_CONTACT_ROLES = ("principal", "dean", "hod", "placement_officer", "counselor", "management", "owner", "other")
-# bdm-003 (DEC-SCOPE-063, spec §4): the type-specific profile. `board` keeps ENH-009's exact values so bdm-018 can copy it onto
+# bdm-003 (DEC-SCOPE-064, spec §4): the type-specific profile. `board` keeps ENH-009's exact values so bdm-018 can copy it onto
 # `schools.board`; the other enums are lower snake case like `org_type`. Grades: -2 Nursery, -1 LKG, 0 UKG, then 1-12.
 BDM_ORG_SOURCES = ("referral", "website", "event", "cold_call", "walk_in", "other")
 BDM_SCHOOL_BOARDS = ("CBSE", "ICSE", "State", "IB", "Other")
@@ -990,7 +1054,7 @@ def _grade(column: str) -> str:
     return f"{column} IS NULL OR {column} BETWEEN {BDM_GRADE_MIN} AND {BDM_GRADE_MAX}"
 
 
-BDM_PROFILE_CHECKS = {  # migration 0068 repeats these strings; test_bdm_003_migration asserts they stay identical
+BDM_PROFILE_CHECKS = {  # migration 0069 repeats these strings; test_bdm_003_migration asserts they stay identical
     "ck_bdm_organizations_source": f"source IS NULL OR {_in_list('source', BDM_ORG_SOURCES)}",
     "ck_bdm_organizations_staff_count": f"staff_count IS NULL OR staff_count BETWEEN 0 AND {BDM_STAFF_MAX}",
     "ck_bdm_organizations_board": f"board IS NULL OR {_in_list('board', BDM_SCHOOL_BOARDS)}",
@@ -1006,7 +1070,7 @@ BDM_PROFILE_CHECKS = {  # migration 0068 repeats these strings; test_bdm_003_mig
 class BdmOrganization(Base, TimestampMixin):
     """bdm-002 (DEC-SCOPE-060): an institution a BDM meets (§9). `bdm_type` is the owning module (Q-03), copied from the creator and
     never changed; `name_key`/`city_key` are the server-normalized duplicate key (Q-18). Never hard-deleted: archived instead (C5).
-    bdm-003 (DEC-SCOPE-063): a common address plus one typed profile group per org_type (BDM_PROFILE_FIELDS); a group's columns are
+    bdm-003 (DEC-SCOPE-064): a common address plus one typed profile group per org_type (BDM_PROFILE_FIELDS); a group's columns are
     NULL for every other type."""
 
     __tablename__ = "bdm_organizations"

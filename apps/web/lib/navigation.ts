@@ -43,8 +43,18 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
 
 // bdm-001: BDM and BDM-manager sidebars, and the signed-out chooser (College BDMs sign in at /it, Agent/School BDMs at /overseas;
 // managers at /admin). bdm-002 adds Organizations to both.
-export const BDM_NAV: NavItem[] = [{ label: "My Day", href: "/bdm/my-day" }, { label: "Organizations", href: "/bdm/organizations" }, { label: "Profile", href: "/bdm/profile" }];
-export const BDM_MANAGER_NAV: NavItem[] = [{ label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" }, { label: "Organizations", href: "/bdm/manager/organizations" }];
+// bdm-010: Travel (BDM), Approvals (manager), and each role's Notifications (QA10-01; the unread badge comes from lib/bdmNav).
+export const BDM_NOTIFICATIONS_HREF = "/bdm/notifications";
+export const BDM_MANAGER_NOTIFICATIONS_HREF = "/bdm/manager/notifications";
+export const BDM_NAV: NavItem[] = [
+  { label: "My Day", href: "/bdm/my-day" }, { label: "Organizations", href: "/bdm/organizations" }, { label: "Travel", href: "/bdm/travel" },
+  { label: "Notifications", href: BDM_NOTIFICATIONS_HREF }, { label: "Profile", href: "/bdm/profile" },
+];
+export const BDM_MANAGER_NAV: NavItem[] = [
+  { label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" },
+  { label: "Organizations", href: "/bdm/manager/organizations" }, { label: "Approvals", href: "/bdm/manager/approvals" },
+  { label: "Notifications", href: BDM_MANAGER_NOTIFICATIONS_HREF },
+];
 export const BDM_SIGN_IN = "/bdm/sign-in";
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
@@ -129,4 +139,4 @@ export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissi
     .map((item) => (item.href === STAFF_STUDENTS.href ? STAFF_STUDENTS : item));
 }
 // ENH-016: the cross-school School Analytics page lives under /overseas/admin (D1: Overseas and Super Admins).
-export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];
+export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];

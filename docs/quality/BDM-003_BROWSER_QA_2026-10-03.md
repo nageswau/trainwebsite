@@ -1,5 +1,7 @@
 # bdm-003 — Exploratory browser QA (first pass, no code changed)
 
+**ID note (merge of `main` @ `65a8ece`, 2026-10-03):** written as `DEC-SCOPE-063` and migration `0068_bdm_org_profiles`; bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`, PR #53) reached `main` first, so bdm-003 is now **`DEC-SCOPE-064`** and **`0069_bdm_org_profiles`** (after `0068_bdm_trips`). Mentions of `063` / `0068_bdm_org_profiles` below mean this decision / migration.
+
 **Date:** 2026-10-03 · **Branch:** `feature/bdm-003-type-specific-profile-fields` @ `51e12c9`+docs · **Feature:** type-specific organization profiles (`DEC-SCOPE-063`)
 
 **Environment:** isolated compose project `bdm003` (web `http://localhost:3003`, API `8003`, Postgres/Redis private to the project), migration head `0068_bdm_org_profiles`, seeded. The test database is shared with the `api-test` runner, so the lists also hold API-test fixtures.
