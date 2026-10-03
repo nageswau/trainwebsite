@@ -380,7 +380,7 @@ CSV export.
 
 | Feature ID | Contract documents | Old workbook cases | Status |
 |---|---|---|---|
-| `AGN-020` | Requirement: backlog ang-020 (`AGENT_CRM_BACKLOG.md`, `DERIVED_BLUEPRINT`) and owner answers R1–R10 (in-session 2026-10-03, `EXPLICIT_APPROVAL`) referring to `EVID-015` (`Agent CRM Functionalities.md` §2 Reports, §6 Reports); decision `DEC-SCOPE-063` (provisional); spec `docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md`; `API_CONTRACT.md`, `RBAC_MATRIX.md`, `SCREEN_CATALOG.md` (`SCR-AGT-003` notes) | None (no workbook case covers agency reports) | Implemented, lite-tested; browser validation, full suites and Codex review pending |
+| `AGN-020` | Requirement: backlog ang-020 (`AGENT_CRM_BACKLOG.md`, `DERIVED_BLUEPRINT`) and owner answers R1–R10 (in-session 2026-10-03, `EXPLICIT_APPROVAL`) referring to `EVID-015` (`Agent CRM Functionalities.md` §2 Reports, §6 Reports); decision `DEC-SCOPE-063` (provisional); spec `docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md`; `API_CONTRACT.md`, `RBAC_MATRIX.md`, `SCREEN_CATALOG.md` (`SCR-AGT-003` notes) | None (no workbook case covers agency reports) | Implemented and verified (browser QA + fix pass, `AGN-020_BROWSER_QA_2026-10-03.md`); full backend suite: owner |
 
 | Criterion | Summary (spec §8) | Test(s) |
 |---|---|---|

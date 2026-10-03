@@ -3834,8 +3834,13 @@ Staff with Reports see six reports of their own students; without it, `403` ever
 longer mounts the commission panel. Lite tests (owner instruction): `test_agn_020_reports.py`, `test_agn_020_reports_access.py`,
 `test_agn_020_reports_csv.py` (122 together) and `test_agn_014_commission_reports.py` (40) pass on an isolated database; vitest for the
 seven new / rewritten files plus PortalPage dashboard/applications and the commission panel pass; `tsc` and eslint clean.
-**Pending:** browser validation (incl. `agn-020-reports.spec.ts` and the updated `agn-014-commission-master.spec.ts`), full suites (owner),
-independent Codex review.
+**Verification (2026-10-03, `feature/agn-020-reports`):** Browser Use QA pass 1 (QA20-01…06) and a fix pass, each fix test-first and
+re-checked in the browser — `docs/quality/AGN-020_BROWSER_QA_2026-10-03.md`; the date-zone sweep finding in `AgentReportsPanel` fixed
+(`LocalTime`). Backend: the AGN-020 files and every affected agency/report file (16 files) 377 passed; vitest 2157 passed — the two
+failures are outside AGN-020 (`dateZoneSweep` lists only `BdmOrganizationDetail.tsx:86` from bdm-002; `SchoolSkillEnrolments` failed once
+under full-suite load and passes alone 9/9); eslint 0 errors; `tsc` and `next build` pass; Playwright agn-020 / agn-014 / agn-003 /
+agn-018 6/6 on a stack built from the branch. Codex review waived by the owner (2026-10-03). **Not run here:** the full backend suite
+(the owner runs it).
 
 ## AGN-017 — Agency Notifications and Deadline Reminders
 

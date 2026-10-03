@@ -118,7 +118,7 @@ async def parse_filters(db: AsyncSession, user: User, kind: str, raw: dict[str, 
     """Spec §5.1 step 6. `kind` is already known to be valid. Member codes resolve inside the caller's own organisation only, so
     another agency's real code gets the same answer as a made-up one (no cross-tenant oracle)."""
     offered = REPORT_KINDS[kind].filters
-    given = {param: value for param, value in raw.items() if value not in (None, "")}
+    given: dict[str, str] = {param: value for param, value in raw.items() if value}
     for param, value in given.items():
         if param not in offered or (param == "member" and is_agent_staff(user)):
             raise ReportInputError(param, "This filter is not available for this report")
@@ -347,11 +347,11 @@ def _day_of(value: datetime | None) -> str | None:
 async def _page(db: AsyncSession, stmt, limit: int, offset: int) -> tuple[list, int]:
     """The page and its total from ONE statement (`count(*) OVER ()`), so they cannot disagree. Only a page past the end, which has
     no row to carry the total, costs a second count."""
-    rows = (await db.execute(stmt.add_columns(func.count().over()).limit(limit).offset(offset))).all()
+    rows = list((await db.execute(stmt.add_columns(func.count().over()).limit(limit).offset(offset))).all())
     if rows:
         return rows, int(rows[0][-1])
     total = await db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) if offset else 0
-    return [], int(total)
+    return [], int(total or 0)
 
 
 STUDENT_COLUMNS = (
@@ -482,21 +482,21 @@ async def _options(db: AsyncSession, user: User, kind: str) -> dict[str, list[di
         options["members"] = [{"value": code, "label": f"{code} {name}"} for code, name in staff.all()] + [{"value": "unassigned", "label": "Unassigned"}]
     if "country" in offered and kind == "students":
         text = func.trim(AgentStudent.preferred_country)
-        found = await db.scalars(select(distinct(text)).where(*student_scope(user), AgentStudent.preferred_country.is_not(None), text != "").order_by(text))
-        options["countries"] = [{"value": value, "label": value} for value in found]
+        texts: list[str] = list(await db.scalars(select(distinct(text)).where(*student_scope(user), AgentStudent.preferred_country.is_not(None), text != "").order_by(text)))
+        options["countries"] = [{"value": value, "label": value} for value in texts]
     universities_in_scope = select(OverseasApplication.university_id).where(*agency_applications(user))
     if "country" in offered and kind != "students":
-        found = await db.execute(
+        countries = await db.execute(
             select(Country.slug, Country.name)
             .where(Country.id.in_(select(University.country_id).where(University.id.in_(universities_in_scope))))
             .order_by(Country.name, Country.slug)
         )
-        options["countries"] = [{"value": slug, "label": name} for slug, name in found.all()]
+        options["countries"] = [{"value": slug, "label": name} for slug, name in countries.all()]
     if "university" in offered:
-        found = await db.execute(
+        universities = await db.execute(
             select(University.slug, University.name).where(University.id.in_(universities_in_scope)).order_by(University.name, University.slug)
         )
-        options["universities"] = [{"value": slug, "label": name} for slug, name in found.all()]
+        options["universities"] = [{"value": slug, "label": name} for slug, name in universities.all()]
     if "intake" in offered:
         labels = dict(intake_key(text) for text in await _intake_texts(db, user))
         options["intakes"] = [{"value": key, "label": labels[key]} for key in _intake_order(labels)]
