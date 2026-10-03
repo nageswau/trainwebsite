@@ -128,9 +128,30 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 /* AGN-014 browser QA14-09: the breakdowns are three short columns; without the data-table 650px minimum they fit a phone. */
 .commission-report .table { min-width: 0; }
 @media (max-width: 640px) {
-  .agent-students .btn, .funding-panel .btn, .commission-report .btn { min-height: 44px; }
+  .agent-students .btn, .funding-panel .btn, .commission-report .btn, .staff-performance .btn { min-height: 44px; }
   .commission-report .table th, .commission-report .table td { padding: 10px 8px; }
+  .staff-performance .field, .staff-performance .field input, .staff-performance .field select { width: 100%; }
+  .staff-performance .field select { min-height: 44px; }
 }
+/* AGN-019: the student funnel -- label, count and share as text on one line, a decorative bar below (width = share of Students). */
+/* QA19-03: the 7-column staff table needs ~850px; with the sidebar, a 1024px desktop or a tablet gives it ~640px and hid two columns.
+   Stack by the card's own width (container query), not the viewport's -- the same stacked layout as phones (QA18-04 above). */
+.staff-performance { container-type: inline-size; }
+@container (max-width: 860px) {
+  .staff-performance .table.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .staff-performance .table.stack tr { display: block; border-bottom: 1px solid #edf1f6; padding: 8px 0; }
+  .staff-performance .table.stack th[scope="row"], .staff-performance .table.stack td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 4px 12px; position: static; }
+  .staff-performance .table.stack td::before { content: attr(data-label); color: var(--muted); }
+}
+.staff-performance .actions { align-items: flex-end; flex-wrap: wrap; }
+.staff-performance .actions .field { margin: 0; }
+.funnel { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.funnel-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: baseline; }
+.funnel-label { font-weight: 600; }
+.funnel-count { font-weight: 800; color: #0b1f3a; text-align: right; }
+.funnel-percent { grid-column: 1 / -1; font-size: 13px; }
+.funnel-track { grid-column: 1 / -1; display: block; height: 8px; border-radius: 4px; background: #e7edf6; overflow: hidden; }
+.funnel-fill { display: block; height: 100%; background: var(--blue); }
 /* ENH-020: Closed is an outcome, not an error -- a neutral pill that carries its word; finished cases sit under a disclosure. */
 .status.closed { background: var(--soft); color: var(--muted); }
 .funding-finished { margin-top: 16px; }

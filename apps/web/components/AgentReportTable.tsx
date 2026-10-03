@@ -2,7 +2,7 @@ import type { Ref } from "react";
 
 import type { AgentReport, AgentReportCell } from "@/lib/types";
 
-// AGN-020 (DEC-SCOPE-066; spec §6.2): one report as a table -- presentation only. The columns come from the server, so the screen and
+// AGN-020 (DEC-SCOPE-067; spec §6.2): one report as a table -- presentation only. The columns come from the server, so the screen and
 // the CSV share their labels. On a phone the table stacks into labelled blocks (QA18-04 `stack`); the first column is the row header.
 // Values are text nodes only. A summary's Total row is the footer; a list gets a pager (Previous/Next, `aria-disabled` at the ends).
 

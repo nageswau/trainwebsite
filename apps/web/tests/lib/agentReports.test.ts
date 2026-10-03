@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { csvFilename, csvUrl, isAgentReport, readState, reportQuery, tabsFor } from "@/lib/agentReports";
 
-// AGN-020 (DEC-SCOPE-066; spec §6.2-§6.3): the Reports page's tabs, URL state and requests.
+// AGN-020 (DEC-SCOPE-067; spec §6.2-§6.3): the Reports page's tabs, URL state and requests.
 
 describe("tabsFor", () => {
   it("gives a Master all eight reports, Commission last", () => {

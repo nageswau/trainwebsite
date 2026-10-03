@@ -26,6 +26,12 @@ def offer_clause() -> ColumnElement[bool]:
     return or_(OverseasApplication.status.in_(OFFER_COUNTED_STATUSES), OverseasApplication.offer_type.is_not(None))
 
 
+def owner_join() -> ColumnElement[bool]:
+    """An application belongs to an agency student by the agency record, or by the student's login (AGN-008 A6). Shared by the
+    AGN-018 staff table and AGN-019 performance, so both attribute an application to the same student."""
+    return or_(OverseasApplication.agent_student_id == AgentStudent.id, and_(AgentStudent.student_id.is_not(None), OverseasApplication.student_id == AgentStudent.student_id))
+
+
 def agency_applications(user) -> list[ColumnElement]:
     """The applications the caller may see, School-bridged rows left out exactly as `with_owner` leaves them out (A12)."""
     return [*application_scope(user), OverseasApplication.school_student_id.is_(None)]
@@ -92,7 +98,7 @@ async def staff_rows(db: AsyncSession, user: User) -> tuple[list[dict], int]:
     per_member = (
         select(AgentStudent.assigned_member_id, distinct_apps(OverseasApplication.status != WITHDRAWN), distinct_apps(offer_clause()), distinct_apps(OverseasApplication.status == "enrolled"))
         .select_from(OverseasApplication)
-        .join(AgentStudent, or_(OverseasApplication.agent_student_id == AgentStudent.id, and_(AgentStudent.student_id.is_not(None), OverseasApplication.student_id == AgentStudent.student_id)))
+        .join(AgentStudent, owner_join())
         .where(*agency_applications(user), AgentStudent.agent_id.in_(agency), AgentStudent.assigned_member_id.is_not(None))
         .group_by(AgentStudent.assigned_member_id)
     )

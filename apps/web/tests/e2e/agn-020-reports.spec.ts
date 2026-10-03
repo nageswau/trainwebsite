@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 import { E2E_PASSWORD } from "./helpers/welcome";
 import { adminActivate, registerApprovedAgency, signIn } from "./helpers/agency";
 
-// AGN-020 (DEC-SCOPE-066) -- the agency Reports page: a Master's eight tabs and a CSV with the on-screen headers; staff with Reports
+// AGN-020 (DEC-SCOPE-067) -- the agency Reports page: a Master's eight tabs and a CSV with the on-screen headers; staff with Reports
 // see six tabs of their own students; staff without it get the server's refusal; the page fits a phone. Requires the stack running
 // with `python -m app.seed` applied. Run in the browser-validation phase.
 

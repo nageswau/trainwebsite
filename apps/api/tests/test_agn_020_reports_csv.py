@@ -1,4 +1,4 @@
-"""AGN-020 (DEC-SCOPE-066) -- the CSV export: headers, BOM, escaping, the row cap, the audit row and the export throttle (spec §5.4,
+"""AGN-020 (DEC-SCOPE-067) -- the CSV export: headers, BOM, escaping, the row cap, the audit row and the export throttle (spec §5.4,
 §5.5; AC3, AC6, AC7, AC10, AC11)."""
 
 import csv

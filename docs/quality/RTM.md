@@ -380,7 +380,7 @@ CSV export.
 
 | Feature ID | Contract documents | Old workbook cases | Status |
 |---|---|---|---|
-| `AGN-020` | Requirement: backlog ang-020 (`AGENT_CRM_BACKLOG.md`, `DERIVED_BLUEPRINT`) and owner answers R1–R10 (in-session 2026-10-03, `EXPLICIT_APPROVAL`) referring to `EVID-015` (`Agent CRM Functionalities.md` §2 Reports, §6 Reports); decision `DEC-SCOPE-066` (provisional); spec `docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md`; `API_CONTRACT.md`, `RBAC_MATRIX.md`, `SCREEN_CATALOG.md` (`SCR-AGT-003` notes) | None (no workbook case covers agency reports) | Implemented and verified (browser QA + fix pass, `AGN-020_BROWSER_QA_2026-10-03.md`); full backend suite: owner |
+| `AGN-020` | Requirement: backlog ang-020 (`AGENT_CRM_BACKLOG.md`, `DERIVED_BLUEPRINT`) and owner answers R1–R10 (in-session 2026-10-03, `EXPLICIT_APPROVAL`) referring to `EVID-015` (`Agent CRM Functionalities.md` §2 Reports, §6 Reports); decision `DEC-SCOPE-067` (provisional); spec `docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md`; `API_CONTRACT.md`, `RBAC_MATRIX.md`, `SCREEN_CATALOG.md` (`SCR-AGT-003` notes) | None (no workbook case covers agency reports) | Implemented and verified (browser QA + fix pass, `AGN-020_BROWSER_QA_2026-10-03.md`); full backend suite: owner |
 
 | Criterion | Summary (spec §8) | Test(s) |
 |---|---|---|
@@ -395,6 +395,26 @@ CSV export.
 | `AGN-020-AC9` | AGN-014 unchanged; the commission panel moves to the Commission tab | `test_agn_014_commission_reports.py` (40), `AgentCommissionReportPanel.test.tsx`, `WorkflowPanel.agentCommissionReport.test.tsx` (rewritten); e2e `agn-014-commission-master.spec.ts` (opens `?report=commission`) |
 | `AGN-020-AC10` | 31st export in 10 minutes → `429` + `Retry-After`; per user | `test_agn_020_reports_csv.py::test_the_31st_export_in_ten_minutes_is_throttled` |
 | `AGN-020-AC11` | No UUIDs, emails or phones in reports; logs carry no names | `test_agn_020_reports.py::test_no_ids_or_contact_details_leave_the_api` (×4) |
+**Addendum, 2026-10-03 (`AGN-019`)** — one enhancement row and its acceptance-criteria map. Agency staff performance and student
+funnel (Master only).
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `AGN-019` | Requirement: backlog ang-019 (`AGENT_CRM_BACKLOG.md`, `DERIVED_BLUEPRINT`; `EVID-015` §8) and owner answers P1–P8 (in-session 2026-10-03, `EXPLICIT_APPROVAL`, `DEC-SCOPE-066`). Spec `docs/superpowers/specs/2026-10-03-agn-019-staff-performance-funnel-design.md`; plan `docs/superpowers/plans/2026-10-03-agn-019-staff-performance-funnel.md`; `API_CONTRACT.md` §8 AGN-019; `RBAC_MATRIX.md` Staff Performance; `SCREEN_CATALOG.md` `SCR-AGT-011`; `ROLE_NAVIGATION.md`. | None (new scope) | Implemented, lite-tested; browser validation, full suites and Codex review pending — **not complete** |
+
+| Criterion | Summary (spec §7) | Test(s) |
+|---|---|---|
+| `AGN-019-AC1` | Funnel non-increasing for every row, Unassigned and total; equals hand counts on a fixture with an offer without a submitted date, enrolled without a visa case, withdrawn after offer, archived and no-login students | `test_agn_019_performance.py::test_funnel_equals_hand_counts_and_never_increases` |
+| `AGN-019-AC2` | A reassigned student (through the real assign route) counts, with all stages, for the current owner only | `test_agn_019_performance.py::test_reassigned_student_counts_for_the_current_owner` |
+| `AGN-019-AC3` | Six columns equal hand counts; a second visa case is not double-counted; a refused decision is an application, not an approval; an application reachable two ways counts once | `test_agn_019_performance.py::test_table_counts_equal_hand_counts`, `::test_application_reachable_two_ways_counts_once` |
+| `AGN-019-AC4` | Cohort by inclusive UTC creation days; boundary seconds; open bounds; 422s with AGN-014's messages (incl. `9999-12-31`) | `test_agn_019_performance.py::test_january_cohort_includes_both_boundary_seconds`, `::test_next_day_starts_at_midnight`, `::test_open_bounds`; `test_agn_019_security.py::test_bad_dates_are_422`, `::test_dates_are_echoed` |
+| `AGN-019-AC5` | With no dates, staff rows equal the AGN-018 dashboard staff table | `test_agn_019_parity.py::test_no_date_rows_equal_the_dashboard_staff_table` |
+| `AGN-019-AC6` | Master 200; staff 403 with/without reports; non-agent, super admin, suspended agency, deactivated Master refused; 401 without session; refused caller with a bad date gets 403; second agency invisible | `test_agn_019_security.py` (refusal tests); `test_agn_003_matrix.py` Staff Performance rows; `test_agn_019_performance.py::test_no_ids_and_no_other_agency` |
+| `AGN-019-AC7` | Active zero staff listed; deactivated with counts listed and marked; deactivated all-zero absent; `unassigned` null when zero; total = rows + unassigned; empty agency → zeros | `test_agn_019_performance.py::test_active_staff_with_nothing_is_listed_with_zeros`, `::test_deactivated_member_with_only_archived_student_is_listed`, `::test_deactivated_member_with_nothing_is_dropped`, `::test_total_is_rows_plus_unassigned`; `test_agn_019_security.py::test_empty_agency_is_zeros_and_not_cached` |
+| `AGN-019-AC8` | No ids/emails; `Cache-Control: private, no-store`; log line ids, flag, rows and timing only | `test_agn_019_performance.py::test_no_ids_and_no_other_agency`; `test_agn_019_security.py::test_empty_agency_is_zeros_and_not_cached`, `::test_log_line_carries_ids_flags_and_timing_only` |
+| `AGN-019-AC9` | Nav item for Masters only; staff opening the address get the Masters-only note with no request; dashboard link | `tests/lib/navigation.agent.test.ts` (Staff Performance), `AgentPerformanceSection.test.tsx` (3), `AgentDashboardPanel.test.tsx` (link) |
+| `AGN-019-AC10` | UI states, range in the address, funnel switch without a request and reset, "—" with no students, field errors with focus, stale responses dropped; 320 px | `AgentPerformancePanel.test.tsx` (11), `tests/lib/agentPerformance.test.ts` (3); `tests/e2e/agn-019-performance.spec.ts` (browser-validation phase, not yet run) |
+| `AGN-019-AC11` | No regressions | Lite runs: AGN-018 (3 files), AGN-014, AGN-003 matrix, touched web tests — passing; full suites pending (owner) |
 
 **Addendum, 2026-10-03 (`AGN-018`)** — one enhancement row and its acceptance-criteria map. Agency Master / Staff dashboards and
 role-specific navigation.

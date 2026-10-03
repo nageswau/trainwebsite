@@ -12,7 +12,7 @@ import { PAGE_SIZE, REPORTS_URL, type ReportKey, type ReportState, csvFilename, 
 import { detailMessage } from "@/lib/apiErrors";
 import type { AgentReport } from "@/lib/types";
 
-// AGN-020 (DEC-SCOPE-066; spec §6.2, §6.4): the agency Reports page -- one tab per report (Student360Tabs' keyboard pattern, laid out
+// AGN-020 (DEC-SCOPE-067; spec §6.2, §6.4): the agency Reports page -- one tab per report (Student360Tabs' keyboard pattern, laid out
 // as a strip), the view held in the address, and the AGN-014 commission panel, unchanged, as the Commission tab. The server is the
 // authority: hidden tabs are a convenience, a refused report shows the server's reason. A response for an older request is
 // dropped, so quick tab or filter changes never show the wrong report. A refetch keeps the current table (dimmed); only a first

@@ -1,4 +1,4 @@
-"""AGN-020 -- the agency reports (DEC-SCOPE-066; docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md §4-§5).
+"""AGN-020 -- the agency reports (DEC-SCOPE-067; docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md §4-§5).
 
 Read-only SQL over AGN-018's scope helpers, so a Master reads the agency and a staff member only their assigned students (G4) with
 no new scope logic. Every report is `columns` + `items` (+ `totals` for the summaries): the JSON table and the CSV come from one
