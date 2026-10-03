@@ -549,13 +549,12 @@ Conventions used below:
 
 ### bdm-010 — Travel requests, approval, modes, costs, expenses
 
-> **Status (2026-10-03):** implemented on branch `worktree-bdm-010` (`DEC-SCOPE-063`, migration `0068_bdm_trips` -- drafted as 060/0066, renumbered on merging `main` @ `3bde879`; spec
-> `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md`). Owner answers T1–T14 settle the open spec decisions: one From/To
-> per trip; approver resolved at decision time, super_admin only while the manager is inactive; in-app notices only; expenses
-> (category + INR amount + date + note, **no receipts**) once approved; `TRV-000123` codes; withdraw/resubmit; date guards.
-> **Verified so far:** backend lite set 190/190; web unit tests for the touched areas 115/115 (after the review fixes); `tsc`, `eslint`, `ruff check` clean.
-> **Not COMPLETE:** Playwright `bdm-010-travel.spec.ts` (written, not run), browser validation, independent Codex review and the
-> owner's full suites are pending.
+> **Status (2026-10-03):** **COMPLETE for bdm-010 scope** on branch `worktree-bdm-010` (`DEC-SCOPE-063`, migration `0068_bdm_trips` -- drafted
+> as 060/0066, renumbered on merging `main` @ `3bde879`; spec `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md`). Owner answers
+> T1–T16 (T15 notifications UI, T16 trip workspace from browser QA). Browser QA: `docs/quality/BDM-010_BROWSER_QA_2026-10-03.md` (17 issues,
+> all fixed). **Verification before completion (fresh):** backend lite 313/313 (bdm-010, bdm-001, bdm-002, AGN-017/AGN-015 migration, UUID contracts, ENH-027 schemas); web lite 278/278; `tsc`, `eslint` (59 changed files), `ruff` clean; mypy = main's 342, none in bdm-010 code; `next build` exit 0; Playwright bdm-010 10/10 (`--repeat-each=2`) + bdm-001/bdm-002/AGN-018 11/11; Browser Use end to end on `bdm010qa` (AC1–AC13, T3/T8 fallback, T9, T12, T15, phone 375 px, no console errors); migration 0068 additive, one head.
+> **Not run by the owner's standing choice:** the full backend and web suites. **Known, not blocking:** editing a trip that was approved in
+> the meantime answers 422 (spec) and the open editor stays until reload; the pre-hydration guard covers the trip form only.
 
 - **Business requirement:** track travel with the §3 fields: Travel ID, BDM, Travel Date, Return Date, From, To, Purpose, Organization, Appointment date and time, Mode, Accommodation Required, Estimated Cost, Actual Cost, Approval Status, Travel Status, Remarks. The modes are Flight, Train, Bus, Car, Cab and Local. Also the common Travel list (§4): request, approval, expenses, actual cost and travel report.
 - **Existing behavior:** none.
