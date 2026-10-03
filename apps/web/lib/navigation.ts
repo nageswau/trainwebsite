@@ -44,15 +44,18 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
 // bdm-001: BDM and BDM-manager sidebars, and the signed-out chooser (College BDMs sign in at /it, Agent/School BDMs at /overseas;
 // managers at /admin). bdm-002 adds Organizations to both.
 // bdm-010: Travel (BDM), Approvals (manager), and each role's Notifications (QA10-01; the unread badge comes from lib/bdmNav).
+// bdm-009: Activities in both.
 export const BDM_NOTIFICATIONS_HREF = "/bdm/notifications";
 export const BDM_MANAGER_NOTIFICATIONS_HREF = "/bdm/manager/notifications";
 export const BDM_NAV: NavItem[] = [
-  { label: "My Day", href: "/bdm/my-day" }, { label: "Organizations", href: "/bdm/organizations" }, { label: "Travel", href: "/bdm/travel" },
+  { label: "My Day", href: "/bdm/my-day" }, { label: "Organizations", href: "/bdm/organizations" },
+  { label: "Activities", href: "/bdm/activities" }, { label: "Travel", href: "/bdm/travel" },
   { label: "Notifications", href: BDM_NOTIFICATIONS_HREF }, { label: "Profile", href: "/bdm/profile" },
 ];
 export const BDM_MANAGER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" },
-  { label: "Organizations", href: "/bdm/manager/organizations" }, { label: "Approvals", href: "/bdm/manager/approvals" },
+  { label: "Organizations", href: "/bdm/manager/organizations" }, { label: "Activities", href: "/bdm/manager/activities" },
+  { label: "Approvals", href: "/bdm/manager/approvals" },
   { label: "Notifications", href: BDM_MANAGER_NOTIFICATIONS_HREF },
 ];
 export const BDM_SIGN_IN = "/bdm/sign-in";

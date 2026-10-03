@@ -1,0 +1,96 @@
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import BdmActivityCounts from "@/components/BdmActivityCounts";
+import BdmActivityDay from "@/components/BdmActivityDay";
+import PortalShell from "@/components/PortalShell";
+import { ApiError, serverApi } from "@/lib/api";
+import type { ActivityDayPage } from "@/lib/bdmActivities";
+import ManagerActivities from "@/app/bdm/manager/activities/page";
+import MyActivities from "@/app/bdm/activities/page";
+import { elements } from "@/tests/helpers/elementTree";
+
+vi.mock("@/lib/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api")>()), serverApi: vi.fn() }));
+
+const me = {
+  id: "b1", full_name: "Asha", email: "a@x.local", phone: null, active: true, division: "it",
+  bdm_profile: { bdm_type: "college", employee_id: "E-1", designation: null, department: null, territory: null, reporting_manager: { id: "m1", full_name: "Meera", active: true } },
+};
+const B1 = "00000000-0000-4000-8000-0000000000b1"; // the manager page only sends a UUID as ?bdm
+const counts = { day: "2026-10-03", by_channel: { call: 3, whatsapp: 1, email: 0, visit: 1, meeting: 0, other: 0 }, calls_made: 2, organizations_contacted: 2 };
+const day = (over: Partial<ActivityDayPage> = {}): ActivityDayPage => ({ items: [], total: 0, limit: 50, offset: 0, counts, ...over });
+const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+
+// A block body: mockReset() returns the mock, and vitest would call a returned function as a cleanup hook.
+beforeEach(() => {
+  vi.mocked(serverApi).mockReset();
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+describe("bdm-009 activity pages", () => {
+  it("My Activities reads the chosen IST date and ignores a malformed one", async () => {
+    vi.mocked(serverApi).mockImplementation(async (p: string) => (p === "/api/v1/bdm/me" ? me : p.includes("unread") ? { unread: 0 } : day()));
+    const tree = elements(await MyActivities({ searchParams: Promise.resolve({ date: "2026-10-01" }) }));
+    expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/activities?date=2026-10-01&limit=50&offset=0");
+    expect(tree.find((el) => el.type === PortalShell)!.props.roleLabel).toBe("College BDM");
+    expect(tree.find((el) => el.type === BdmActivityDay)!.props.canLog).toBe(true);
+    vi.mocked(serverApi).mockClear();
+    await MyActivities({ searchParams: Promise.resolve({ date: "20261-10-01" }) });
+    expect(vi.mocked(serverApi).mock.calls.some(([p]) => String(p).includes("20261"))).toBe(false);
+  });
+
+  it("the team page passes the BDM filter and never logs", async () => {
+    vi.mocked(serverApi).mockImplementation(async (p: string) => {
+      if (p === "/api/v1/auth/me") return { id: "m1", full_name: "Meera", role: "bdm_manager" };
+      if (p.startsWith("/api/v1/bdm/manager/team")) return { items: [{ id: B1, full_name: "Asha" }], total: 1, limit: 100, offset: 0 };
+      if (p.includes("unread")) return { unread: 0 };
+      return day();
+    });
+    const tree = elements(await ManagerActivities({ searchParams: Promise.resolve({ date: "2026-10-01", bdm: B1 }) }));
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/bdm/manager/activities?date=2026-10-01&bdm_user_id=${B1}&limit=50&offset=0`);
+    const dayList = tree.find((el) => el.type === BdmActivityDay)!;
+    expect(dayList.props.canLog).toBe(false);
+    expect(dayList.props.emptyText).toBe("No activities from Asha on this day.");
+  });
+
+  it("a refused page shows the access card", async () => {
+    vi.mocked(serverApi).mockImplementation(async () => {
+      throw new ApiError("BDM role required", 403);
+    });
+    const tree = elements(await MyActivities({ searchParams: Promise.resolve({}) }));
+    expect(tree.some((el) => el.props && el.props.message === "BDM role required")).toBe(true);
+  });
+
+  it("the counts strip shows every channel, calls made and organizations contacted", () => {
+    render(<BdmActivityCounts counts={counts} />);
+    for (const [label, value] of [["Call", "3"], ["WhatsApp", "1"], ["Email", "0"], ["Calls made", "2"], ["Organizations contacted", "2"]]) {
+      expect(screen.getByText(label).nextElementSibling).toHaveTextContent(value);
+    }
+  });
+
+  it("the day list shows the empty state and opens Log activity with the organization picker", () => {
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day()} url="/api/v1/bdm/activities?date=2026-10-03" canLog orgBasePath="/bdm/organizations" />);
+    expect(screen.getByText("No activities on this day.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Log activity" }));
+    expect(screen.getByRole("form", { name: "Log activity" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /Organization/ })).toBeInTheDocument();
+  });
+
+  it("the day list re-reads the day after a delete so the counts stay exact", async () => {
+    const item = { id: "a1", organization: { id: "o1", code: "ORG-1", name: "St Mary", org_type: "college" }, bdm: { id: "b1", full_name: "Asha" },
+      contact_id: null, contact_name: null, contact_removed: false, channel: "call", direction: "outbound", occurred_at: "2026-10-03T05:00:00Z",
+      note: null, created_at: "2026-10-03T05:00:00Z", updated_at: "2026-10-03T05:00:00Z", permissions: { can_change: true } } as const;
+    const after = day({ counts: { ...counts, by_channel: { ...counts.by_channel, call: 2 }, calls_made: 1 } });
+    const fetchMock = vi.fn((url: string) => Promise.resolve(url.includes("/activities/a1") ? new Response(null, { status: 204 }) : res(after)));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day({ items: [item], total: 1 })} url="/api/v1/bdm/activities?date=2026-10-03" canLog orgBasePath="/bdm/organizations" />);
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith("/api/v1/bdm/activities?date=2026-10-03&limit=50&offset=0"));
+    await waitFor(() => expect(screen.getByText("Calls made").nextElementSibling).toHaveTextContent("1"));
+    expect(screen.getByText("No activities on this day.")).toBeInTheDocument();
+  });
+});
