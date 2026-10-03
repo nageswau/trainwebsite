@@ -4,6 +4,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import AgentStudentsSection from "@/components/AgentStudentsSection";
 import type { User } from "@/lib/types";
 
+// AGN-018 (QA18-01): the students panel reads ?new=1 and drops it through the App Router, which a page always mounts.
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(window.location.search),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }),
+}));
+
 const user = (over: Partial<User>): User => ({ id: "u1", email: "u@x.com", full_name: "U", role: "agent", division: "overseas", profile: {}, ...over });
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
