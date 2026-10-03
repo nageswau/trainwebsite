@@ -26,7 +26,9 @@ export default function NavGroup({ item, pathname }: { item: NavItem; pathname: 
   const [pending, startTransition] = useTransition();
   const [clicked, setClicked] = useState<string | null>(null);
   const children = item.children ?? [];
-  const active = children.find((child) => matches(child.href, pathname, params));
+  // AGN-018 QA18-07: an "All" child (the bare path) matches every query, so the most specific match wins: ?status=draft is Draft, not All.
+  const specificity = (href: string) => [...new URL(href, "http://nav.local").searchParams].length;
+  const active = children.filter((child) => matches(child.href, pathname, params)).sort((a, b) => specificity(b.href) - specificity(a.href))[0];
 
   // QA8-05: a plain left-click navigates in a transition so the link can show it is loading; the real href stays for new-tab clicks.
   function go(event: MouseEvent<HTMLAnchorElement>, href: string) {

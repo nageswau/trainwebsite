@@ -59,9 +59,9 @@ describe("agentNavFor", () => {
   });
 
   it("gives Applications the status filters for Masters and staff (AGN-008)", () => {
-    const children = (items: ReturnType<typeof agentNavFor>) => items.find((i) => i.href === "/overseas/agent/applications")?.children?.map((c) => c.href.split("=")[1]);
-    // AGN-018 (DEC-SCOPE-060 G4): "All applications" first (EVID-015 §4 "All").
-    const expected = ["all", "draft", "submitted", "offer", "visa", "enrolled", "withdrawn"];
+    const children = (items: ReturnType<typeof agentNavFor>) => items.find((i) => i.href === "/overseas/agent/applications")?.children?.map((c) => c.href.split("=")[1] ?? "(bare)");
+    // AGN-018 (DEC-SCOPE-060 G4): "All applications" first (EVID-015 §4 "All") -- the bare path, the list's default (QA18-07).
+    const expected = ["(bare)", "draft", "submitted", "offer", "visa", "enrolled", "withdrawn"];
     expect(children(agentNavFor(nav, "master"))).toEqual(expected);
     expect(children(agentNavFor(nav, "staff"))).toEqual(expected);
     expect(nav.find((i) => i.href === "/overseas/agent/applications")?.children?.[0].label).toBe("All applications");
