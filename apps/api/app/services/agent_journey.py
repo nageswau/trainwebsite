@@ -124,7 +124,7 @@ async def journey(db: AsyncSession, user: User, record: AgentStudent) -> dict:
     visa_of = {v.application_id: v for v in src.visas.values()}
     return {
         "student": {"id": record.id, "full_name": await _full_name(db, record), "status": record.status},
-        "steps": student_steps(counseling, shortlisted or 0, list(src.documents.values()), open_requests),
+        "steps": student_steps(counseling, shortlisted, list(src.documents.values()), open_requests),
         "applications": [{"id": a.id, "university": name, "intake": a.intake, "status": a.status, "steps": application_steps(a, deposit_of.get(a.id), visa_of.get(a.id))} for a, name in src.apps],
     }
 
@@ -187,8 +187,9 @@ def _const(value: str):
     return literal_column(f"'{value}'", _STR)  # module constants only -- never request input
 
 
-def _typed_null(type_):
-    return cast(null(), type_)
+def _optional(column, type_):
+    """`column` as `type_`, or a NULL of that type when this source has no such column."""
+    return cast(null() if column is None else column, type_)
 
 
 def _branch(src: str, rank: int, row_id, at, raw, actor, *, ref=None, ref2=None, seq=None, from_status=None, to_status=None, notes=None, meta=None):
@@ -200,13 +201,13 @@ def _branch(src: str, rank: int, row_id, at, raw, actor, *, ref=None, ref2=None,
         at.label("at"),
         (seq if seq is not None else cast(literal_column("0"), BigInteger)).label("seq"),
         raw.label("raw"),
-        (actor if actor is not None else _typed_null(_UUID)).label("actor"),
-        (cast(ref, _STR) if ref is not None else _typed_null(_STR)).label("ref"),
-        (cast(ref2, _STR) if ref2 is not None else _typed_null(_STR)).label("ref2"),
-        (from_status if from_status is not None else _typed_null(_STR)).label("from_status"),
-        (to_status if to_status is not None else _typed_null(_STR)).label("to_status"),
-        (notes if notes is not None else _typed_null(Text())).label("notes"),
-        (meta if meta is not None else _typed_null(JSON())).label("meta"),
+        _optional(actor, _UUID).label("actor"),
+        _optional(ref, _STR).label("ref"),
+        _optional(ref2, _STR).label("ref2"),
+        _optional(from_status, _STR).label("from_status"),
+        _optional(to_status, _STR).label("to_status"),
+        _optional(notes, Text()).label("notes"),
+        _optional(meta, JSON()).label("meta"),
     )
 
 
@@ -274,11 +275,9 @@ def _branches(record: AgentStudent, src: Sources) -> list:
     return branches
 
 
-def _as_uuid(value) -> uuid.UUID | None:
-    try:
-        return uuid.UUID(str(value))
-    except (TypeError, ValueError):
-        return None
+def _as_uuid(value: str | None) -> uuid.UUID | None:
+    """`ref`/`ref2` are UUID columns cast to text, or audit entity ids matched against our own UUID strings -- never free text."""
+    return None if value is None else uuid.UUID(value)
 
 
 def _history_kind(from_status: str | None, to_status: str) -> str:
@@ -365,4 +364,4 @@ async def timeline_page(db: AsyncSession, user: User, record: AgentStudent, *, l
     total = rows[0].total if rows else await db.scalar(select(func.count()).select_from(events))
     universities = {a.id: name for a, name in src.apps}
     actors = await _actors(db, user, {r.actor for r in rows if r.actor is not None})
-    return {"items": [_item(r, src, universities, actors) for r in rows], "total": total or 0, "limit": limit, "offset": offset}
+    return {"items": [_item(r, src, universities, actors) for r in rows], "total": total, "limit": limit, "offset": offset}
