@@ -28,6 +28,11 @@ describe("readState", () => {
     expect(state).toEqual({ report: "countries", from: "", to: "", filters: { member: "ABC-S001" }, offset: 0 });
   });
 
+  it("drops an offset beyond the last page an export could reach (final review I4)", () => {
+    expect(readState("?report=students&offset=99999", master).offset).toBe(0);
+    expect(readState("?report=students&offset=9950", master).offset).toBe(9950);
+  });
+
   it("falls back to the first tab for an unknown or forbidden report", () => {
     expect(readState("?report=nope", master).report).toBe("students");
     expect(readState("?report=staff&member=ABC-S001", tabsFor("staff"))).toEqual({ report: "students", from: "", to: "", filters: {}, offset: 0 });

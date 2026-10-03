@@ -5,6 +5,7 @@ import type { AgentReport, AgentReportOptions } from "@/lib/types";
 
 export const REPORTS_URL = "/api/v1/workflows/overseas/agent/crm/reports";
 export const PAGE_SIZE = 50;
+const MAX_OFFSET = 9_950; // the server's bound: paging stops where a 10,000-row export would
 
 export type FilterKey = "member" | "country" | "university" | "intake" | "status";
 export type ReportKey = "students" | "applications" | "universities" | "countries" | "intakes" | "staff" | "enrollments" | "commission";
@@ -47,7 +48,8 @@ export function readState(search: string, tabs: ReportTab[]): ReportState {
     if (value) filters[key] = value;
   }
   const offset = Number(params.get("offset"));
-  return { report: tab.key, from: date("from"), to: date("to"), filters, offset: tab.list && Number.isInteger(offset) && offset > 0 ? offset : 0 };
+  const usable = tab.list && Number.isInteger(offset) && offset > 0 && offset <= MAX_OFFSET; // the server refuses beyond it (422)
+  return { report: tab.key, from: date("from"), to: date("to"), filters, offset: usable ? offset : 0 };
 }
 
 /** replaceState: no history entry, no navigation; refresh, Back and a shared link keep the view. */

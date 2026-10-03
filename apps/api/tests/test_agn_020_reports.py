@@ -10,6 +10,7 @@ import pytest_asyncio
 from app.models import Country
 from app.services.agent_reports import PAGE_SIZE, REPORT_KINDS, ReportInputError, intake_key, parse_filters, parse_page
 from tests.agn001_helpers import client_for
+from tests.agn008_helpers import mk_application
 from tests.agn018_helpers import DASHBOARD_API
 from tests.agn020_helpers import (
     MASTER_COUNTRIES,
@@ -293,6 +294,29 @@ async def test_enrollments_by_enrollment_date(world):
     assert [(i["student"], i["enrollment_date"], i["university_student_id"]) for i in body["items"]] == [(_names(world, "r2")[0], "2027-09-15", "UNI-4"), (_names(world, "r5")[0], None, None)]
     dated = await _report(world["master"].email, "enrollments", date_from="2027-09-01", date_to="2027-09-30")
     assert dated["total"] == 1  # the undated legacy enrollment only shows without a date filter
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("kind", "who", "total"), [("applications", "s1", 6), ("applications", "unassigned", 2), ("enrollments", "s1", 1), ("enrollments", "unassigned", 1)])
+async def test_member_filter_on_the_lists(world, kind, who, total):
+    """Final review C1: the lists join agency records (with_owner), so the assignee subqueries must not be correlated away.
+    s1: a1 a2 a3 a4 a7 a10 (enrolled a4); unassigned: a8 a9 (enrolled a9)."""
+    member = "unassigned" if who == "unassigned" else world[who]["member"].code
+    assert (await _report(world["master"].email, kind, member=member))["total"] == total
+    async with client_for(world["master"].email) as c:
+        response = await c.get(f"{REPORTS}/{kind}.csv", params={"member": member})
+    assert response.status_code == 200 and len(response.text.strip().splitlines()) == total + 1
+
+
+@pytest.mark.asyncio
+async def test_a_login_only_application_counts_for_the_logins_assignee(world, db_session):
+    """Review Focus 2: an application made before AGN-008 (login only, no agency record) counts for the assignee of the agency's
+    record for that login -- r2's, so s1 -- on the lists and the staff summary alike."""
+    await mk_application(db_session, agent=world["master"], university=world["u2"], student=world["login"], status="enquiry", intake="Sep 2027")
+    listed = await _report(world["master"].email, "applications", member=world["s1"]["member"].code)
+    assert listed["total"] == 7
+    staff = await _report(world["master"].email, "staff")
+    assert staff["items"][0]["applications"] == MASTER_STAFF[0][2]["applications"] + 1
 
 
 @pytest.mark.asyncio

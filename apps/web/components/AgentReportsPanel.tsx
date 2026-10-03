@@ -7,7 +7,7 @@ import AgentReportFilters, { type FieldError, type ReportField } from "@/compone
 import AgentReportTable from "@/components/AgentReportTable";
 import ReportDownloadButton from "@/components/ReportDownloadButton";
 import { SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
-import { REPORTS_URL, type ReportKey, type ReportState, csvFilename, csvUrl, isAgentReport, readState, reportQuery, tabsFor, writeState } from "@/lib/agentReports";
+import { PAGE_SIZE, REPORTS_URL, type ReportKey, type ReportState, csvFilename, csvUrl, isAgentReport, readState, reportQuery, tabsFor, writeState } from "@/lib/agentReports";
 import { detailMessage } from "@/lib/apiErrors";
 import type { AgentReport } from "@/lib/types";
 
@@ -36,6 +36,7 @@ export default function AgentReportsPanel({ memberRole }: { memberRole: "master"
   const tabs = useMemo(() => tabsFor(memberRole), [memberRole]);
   const [state, setState] = useState<ReportState>({ report: tabs[0].key, from: "", to: "", filters: {}, offset: 0 });
   const [report, setReport] = useState<AgentReport | null>(null);
+  const [applied, setApplied] = useState<ReportState>(state); // the request behind `report`
   const [loading, setLoading] = useState(true);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [fieldError, setFieldError] = useState<FieldError | null>(null);
@@ -49,6 +50,7 @@ export default function AgentReportsPanel({ memberRole }: { memberRole: "master"
   const active = tabs.find((t) => t.key === state.report) ?? tabs[0];
 
   useEffect(() => {
+    setResets((n) => n + 1); // the form re-reads the address's values, even when the first tab stays the active one
     void open(readState(window.location.search, tabs));
     // Mount only: the address is read once; afterwards this panel writes it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,8 +89,15 @@ export default function AgentReportsPanel({ memberRole }: { memberRole: "master"
       if (call !== latest.current) return;
       const detail = (body as { detail?: unknown } | null)?.detail;
       const field = response.status === 422 ? fieldOf(detail) : null;
-      if (response.ok && isAgentReport(body)) setReport(body);
-      else if (field) setFieldError({ field, text: detailMessage(detail, FAILED) }); // the table on screen stays
+      if (response.ok && isAgentReport(body) && body.items.length === 0 && body.total > 0 && next.offset > 0) {
+        // A page past the end (an old link, or rows removed since): go to the last page instead of an empty table.
+        void open({ ...next, offset: Math.floor((body.total - 1) / PAGE_SIZE) * PAGE_SIZE });
+        return;
+      }
+      if (response.ok && isAgentReport(body)) {
+        setReport(body);
+        setApplied(next); // the caption and the CSV describe the table on screen, not a refused or failed request
+      } else if (field) setFieldError({ field, text: detailMessage(detail, FAILED) }); // the table on screen stays
       else if (response.status === 401) {
         setReport(null);
         setFailure({ text: SESSION_EXPIRED, expired: true });
@@ -131,7 +140,7 @@ export default function AgentReportsPanel({ memberRole }: { memberRole: "master"
   const signIn = () => `${SIGN_IN_PATH}?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
   const tabId = (key: string) => `${id}-tab-${key}`;
   const headingId = `${id}-heading`;
-  const caption = [state.from && `from ${state.from}`, state.to && `to ${state.to}`, ...Object.values(state.filters)].filter(Boolean).join(", ") || "All dates";
+  const caption = [applied.from && `from ${applied.from}`, applied.to && `to ${applied.to}`, ...Object.values(applied.filters)].filter(Boolean).join(", ") || "All dates";
 
   return (
     <div className="action-card agent-reports">
@@ -190,11 +199,11 @@ export default function AgentReportsPanel({ memberRole }: { memberRole: "master"
               <>
                 <div className="report-toolbar">
                   <p className="muted">{`${report.total} row${report.total === 1 ? "" : "s"} · As of ${new Date(report.as_of).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`}</p>
-                  <ReportDownloadButton url={csvUrl(state)} label="Download CSV" filename={csvFilename(state.report, state.from, state.to)} hint="Up to 10,000 rows." contentType="text/csv" busyLabel="Preparing CSV…" />
+                  <ReportDownloadButton url={csvUrl(applied)} label="Download CSV" filename={csvFilename(applied.report, applied.from, applied.to)} hint="Up to 10,000 rows." contentType="text/csv" busyLabel="Preparing CSV…" />
                 </div>
                 <AgentReportTable
                   report={report} headingId={headingId} caption={caption} busy={loading} regionRef={region}
-                  onPage={(offset) => { focusTable.current = true; void open({ ...state, offset }); }}
+                  onPage={(offset) => { focusTable.current = true; void open({ ...applied, offset }); }}
                 />
               </>
             )}

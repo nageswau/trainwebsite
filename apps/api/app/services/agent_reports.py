@@ -194,12 +194,14 @@ def _created_between(column, f: Filters) -> list[ColumnElement[bool]]:
 
 def _assignee(user: User):
     """The staff member an application counts for: its agency record's assignee; for a row made before AGN-008 (login only), the
-    assignee of the agency's record for that login. The current assignee, as AGN-018 (spec §4.3)."""
-    by_record = select(AgentStudent.assigned_member_id).where(AgentStudent.id == OverseasApplication.agent_student_id).scalar_subquery()
+    assignee of the agency's record for that login. The current assignee, as AGN-018 (spec §4.3). The record table is aliased: the
+    list queries outer-join `agent_students` themselves (`with_owner`), and an unaliased subquery would be correlated away."""
+    record = aliased(AgentStudent)
+    by_record = select(record.assigned_member_id).where(record.id == OverseasApplication.agent_student_id).scalar_subquery()
     by_login = (
-        select(AgentStudent.assigned_member_id)
-        .where(AgentStudent.student_id == OverseasApplication.student_id, AgentStudent.agent_id.in_(org_member_ids(user)))
-        .order_by(AgentStudent.created_at)
+        select(record.assigned_member_id)
+        .where(record.student_id == OverseasApplication.student_id, record.agent_id.in_(org_member_ids(user)))
+        .order_by(record.created_at)
         .limit(1)
         .scalar_subquery()
     )

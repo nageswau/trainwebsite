@@ -3832,7 +3832,7 @@ Staff with Reports see six reports of their own students; without it, `403` ever
 **Delivery (2026-10-03).** No migration, no dependency. New `api/agent_reports.py`, `services/agent_reports.py`, `AgentReportOut`;
 `AgentReportsPanel`, `AgentReportFilters`, `AgentReportTable`, `lib/agentReports.ts`; `PortalPage` reports branch; `WorkflowPanel` no
 longer mounts the commission panel. Lite tests (owner instruction): `test_agn_020_reports.py`, `test_agn_020_reports_access.py`,
-`test_agn_020_reports_csv.py` (117 together) and `test_agn_014_commission_reports.py` (40) pass on an isolated database; vitest for the
+`test_agn_020_reports_csv.py` (122 together) and `test_agn_014_commission_reports.py` (40) pass on an isolated database; vitest for the
 seven new / rewritten files plus PortalPage dashboard/applications and the commission panel pass; `tsc` and eslint clean.
 **Pending:** browser validation (incl. `agn-020-reports.spec.ts` and the updated `agn-014-commission-master.spec.ts`), full suites (owner),
 independent Codex review.

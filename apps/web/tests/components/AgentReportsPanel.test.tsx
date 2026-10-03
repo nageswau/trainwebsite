@@ -142,6 +142,34 @@ describe("AgentReportsPanel states", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("restores the first tab's filters from the address into the form (final review I2)", async () => {
+    window.history.replaceState(null, "", "/overseas/agent/reports?report=students&from=2026-01-01");
+    render(<AgentReportsPanel memberRole="master" />);
+    await screen.findByRole("rowheader", { name: "Zoë" });
+    expect(screen.getByLabelText("From")).toHaveValue("2026-01-01");
+  });
+
+  it("keeps the caption and the CSV on the filters of the table shown when a new filter is refused (final review I3)", async () => {
+    fetchMock.mockImplementationOnce(() => reply(200, report({ options: { statuses: [{ value: "archived", label: "Archived" }] } })));
+    fetchMock.mockImplementationOnce(() => reply(422, { detail: [{ loc: ["query", "status"], msg: "Unknown status", type: "value_error" }] }));
+    const { container } = render(<AgentReportsPanel memberRole="master" />);
+    await screen.findByRole("rowheader", { name: "Zoë" });
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "archived" } });
+    fireEvent.submit(screen.getByRole("form", { name: "Report filters" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unknown status");
+    expect(container.querySelector("caption")).toHaveTextContent("All dates");
+    fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
+    await waitFor(() => expect(urls().at(-1)).toBe(`${REPORTS}/students.csv`));
+  });
+
+  it("goes to the last page when the page asked for is past the end (final review I4)", async () => {
+    window.history.replaceState(null, "", "/overseas/agent/reports?report=students&offset=500");
+    fetchMock.mockImplementationOnce(() => reply(200, report({ items: [], total: 4, offset: 500 })));
+    render(<AgentReportsPanel memberRole="master" />);
+    expect(await screen.findByRole("rowheader", { name: "Zoë" })).toBeInTheDocument();
+    expect(urls()).toEqual([`${REPORTS}/students?limit=50&offset=500`, `${REPORTS}/students?limit=50&offset=0`]);
+  });
+
   it("moves focus to the table after a page change", async () => {
     fetchMock.mockImplementation((url: string) => reply(200, report({ total: 120, items: Array.from({ length: 50 }, (_, i) => ({ name: `S${i}` })), offset: url.includes("offset=50") ? 50 : 0 })));
     render(<AgentReportsPanel memberRole="master" />);
