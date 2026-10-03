@@ -183,6 +183,15 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .state-badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .analytics-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 12px 0; }
 .pager { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }
+/* AGN-020 -- agency Reports: a horizontal tab strip (the .s360-tab look; scrolls sideways, never widens the page), a result line with
+   the CSV beside it (wraps on phones), right-aligned tabular numbers, and a dimmed table while a newer report loads. */
+.report-tablist { display: flex; gap: 4px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; padding-bottom: 4px; margin: 8px 0 12px; border-bottom: 1px solid var(--line); }
+.report-tablist .s360-tab { flex: 0 0 auto; scroll-snap-align: start; white-space: nowrap; }
+.report-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin: 12px 0 8px; }
+.report-skeleton { min-height: 36px; margin-top: 8px; border-radius: 8px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.report-busy { opacity: .55; transition: opacity .15s; }
+@media (prefers-reduced-motion: reduce) { .report-busy { transition: none; } .report-tablist { scroll-behavior: auto; } }
 
 /* ENH-031 -- SearchableSelect: the list opens under its input, scrolls inside itself, and never widens the page. */
 .combo-control { position: relative; }

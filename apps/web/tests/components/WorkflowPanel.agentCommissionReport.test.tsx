@@ -4,6 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import WorkflowPanel from "@/components/WorkflowPanel";
 import type { User } from "@/lib/types";
 
+// AGN-014's commission report is now the Commission tab of the AGN-020 Reports panel (DEC-SCOPE-063 R1; spec §6.2), so the actions area
+// under the page no longer mounts a second copy. Its own behaviour is covered by AgentCommissionReportPanel.test.tsx and the
+// Master-only tab by AgentReportsPanel.test.tsx / agentReports.test.ts.
+
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 
 const agent = (memberRole: "master" | "staff" | null) =>
@@ -23,17 +27,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("WorkflowPanel agent Reports (AGN-014)", () => {
-  it.each(["master", null] as const)("shows the commission report to a %s agent", (memberRole) => {
-    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
-    render(<WorkflowPanel user={agent(memberRole)} section="reports" />);
-    expect(screen.getByRole("heading", { name: "Commission report" })).toBeInTheDocument();
-  });
-
-  it("never shows staff the commission report, even with Reports on", () => {
+describe("WorkflowPanel agent Reports (AGN-014 → AGN-020)", () => {
+  it.each(["master", null, "staff"] as const)("no longer mounts the commission report under a %s agent's Reports page", (memberRole) => {
     const fetchMock = vi.fn(() => new Promise(() => {}));
     vi.stubGlobal("fetch", fetchMock);
-    render(<WorkflowPanel user={agent("staff")} section="reports" />);
+    render(<WorkflowPanel user={agent(memberRole)} section="reports" />);
     expect(screen.queryByRole("heading", { name: "Commission report" })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining("/commissions/report"), expect.anything());
   });
