@@ -106,3 +106,30 @@ tasks; a second **empty** approved agency; a **pending** (unapproved) agency. Ha
 
 ## Evidence files (session scratchpad, not committed)
 `qa/shots/t-desktop.png`, `qa/shots/05-master-375-tables.png`; probe outputs above; data script `qa/seed_qa.py`, cross-check `qa/totals.py`.
+
+---
+
+## Re-test after the QA18 fixes (pass 2, 2026-10-03)
+
+**Build:** web and API rebuilt from `5d6d452` (QA18 fixes `759d44e`, `677b182`, `b4dc314`, `9a97ffa`, then the simplification
+`5d6d452`; only test files changed after it: `917a0ed`, `b20e901`). Same stack, data and browser setup as pass 1. Harness note: in this headless setup input delivery stops in a tab after
+several navigations; each check below ran in a fresh tab (cookies are browser-wide), and a check was counted only when a trusted
+event reached the page.
+
+| Issue | Fix | Re-test result |
+|---|---|---|
+| QA18-01 | `?new=1` is dropped through the App Router (`router.replace`) | **PASS** — Staff: Add → form (focus Full name), Cancel → focus "Add student", Add #2 → form, Cancel, Add #3 → form; URL `/overseas/agent/students` each time; Back/Forward/refresh do not reopen it. |
+| QA18-02 | `PortalShell` drops a child that repeats its parent's href when flattening the mobile menu | **PASS** — 375 px, Staff: one `aria-current` on My Students ("My Students"), on bare Applications ("Applications"), on `?status=draft` ("Applications: Draft"); duplicate hrefs 0. |
+| QA18-03 | `.kpi-link` (blue, underlined) | **PASS** — computed `rgb(7, 85, 185)`, `underline`. |
+| QA18-04 | `.table.compact` (no 650 px min-width); staff table `stack` layout on phones | **PASS** — numbers cut off: 0 at 320 / 375 / 768 (Staff) and 0 at 320 (Master, staff table rows `display: block`); page width ≤ viewport. |
+| QA18-05 | Note alone (plus the unassigned count in words when > 0) | **PASS** — empty agency: "No staff yet — add staff from Team", no staff table; tiles all 0 / "INR 0". |
+| QA18-06 | Heading `id` labels the scroll region; no caption | **PASS** — 0 captions; regions `aria-labelledby` = the `h3` ids. |
+| QA18-07 | Sidebar picks the most specific matching child; All applications is the bare path | **PASS** — Master: "View applications" → current "All applications"; `?status=enrolled` → "Enrolled"; `?view=pending` → "Pending"; Staff `?status=draft` → "Draft". |
+
+**Regression sweep:** Master and Staff One numbers equal every list total (Master 19 / 12 / 1 / 4 / 3; Staff 4 / 4 / 0 / 1 / 1;
+offers 6 / 2, visa 2 / 1 by hand count); all five tile links land on the right list; Staff board own-scope with no commission,
+staff table or reports link; counselor → "Access unavailable — Role/division mismatch", API 403; signed out → login with `next=`,
+API 401. Console errors, page errors, failed calls and broken images: none.
+
+**Playwright (same stack):** `agn-018-dashboard.spec.ts` 2/2; related agency specs `agn-002`, `agn-003`, `agn-008`, `agn-010`,
+`agn-014`, `agn-016`, `agn-017` 15/15.

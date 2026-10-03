@@ -149,11 +149,14 @@ Fetches `DASHBOARD_URL` (`lib/agentDashboard.ts`, new) with `serverApi`. Reuses 
   Applications → `/overseas/agent/applications`; Enrollments → `?status=enrolled`; Pending documents →
   `/overseas/agent/documents?view=pending`; Pending actions → `/overseas/agent/tasks?view=open`. Offers / Visa tiles: no link, a
   `kpi-note` ("Includes later stages and withdrawn applications").
-- Tables reuse `.table-scroll` (`tabIndex={0} role="region" aria-label=…`, the `GlobalEducationStudentTable` pattern, so a
-  keyboard user can scroll them) with `<caption>` and `th scope="row"` for the label column: Applications by country;
-  Applications by university (+ "Other" row when `other > 0`); Master only: Staff performance (Member, Students,
-  Applications, Offers, Enrollments; deactivated members carry a text badge "Deactivated", never colour alone) + an "Unassigned"
-  students row.
+- Tables reuse `.table-scroll` (`tabIndex={0} role="region"`, the `GlobalEducationStudentTable` pattern, so a keyboard user can
+  scroll them), each region `aria-labelledby` its visible `h3` (no caption — browser QA18-06), `th scope="row"` for the label
+  column, and `table compact` (no 650 px minimum — QA18-04): Applications by country; Applications by university (+ "Other" row when
+  `other > 0`); Master only: Staff performance (Member, Students, Applications, Offers, Enrollments; deactivated members carry a
+  text badge "Deactivated", never colour alone) + an "Unassigned" students row. On phones (≤ 640 px) the staff table stacks
+  (`table … stack`): each member is a block and every number shows its `data-label` (QA18-04). With no staff rows, the section
+  shows only the "No staff yet" note plus "N students are not assigned to anyone yet." when N > 0 (QA18-05).
+- Tile links carry `kpi-link` (blue, underlined — QA18-03).
 - "View reports" link when `reports_available`.
 - States:
   - loading: `AgentDashboardSkeleton` — the same `kpi-group`/`kpi-tile` footprint with placeholder blocks, `aria-busy="true"` and
@@ -273,7 +276,7 @@ Applied to this spec before planning; each change is folded into the sections ab
   `visually-hidden`, `PortalMobileNav` child labels. New: one panel component and its skeleton.
 - F3 States: streamed skeleton with the same footprint (no layout shift), zeros not blanks, inline non-blocking error with "Try
   again", 401 → existing card.
-- F4 Accessibility: visible, uniquely named links; captions and row headers; keyboard-scrollable table regions; text badges, not
+- F4 Accessibility: visible, uniquely named links; heading-labelled table regions and row headers; keyboard-scrollable table regions; text badges, not
   colour alone; focus moved only for the Add link's form.
 - F5 Mobile: existing 1/2/4-column grid; tables scroll inside their region at 320 px.
 

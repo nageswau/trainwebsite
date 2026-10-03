@@ -3797,9 +3797,12 @@ on `pending_stmt`, unchanged result).
 
 **Complexity:** Medium. **Risk:** Medium. **Migration:** none.
 
-**Status (2026-10-03): IMPLEMENTED, NOT COMPLETE** on `feature/agn-018-master-dashboard-impl`. Lite tests pass (the AGN-018 API and
-web tests). **Pending:** browser validation (including the first run of `apps/web/tests/e2e/agn-018-dashboard.spec.ts`, written, not
-yet run), the owner's full suites, and an independent Codex review.
+**Status (2026-10-03): COMPLETE (AGN-018 scope; evidence below)** on `feature/agn-018-master-dashboard-impl` @ `b20e901`. Verified
+2026-10-03 from fresh runs: API — every agent test file (`tests/test_agn_*.py`, `tests/test_agt_*.py`) 1285 passed, 0 failed; web —
+full vitest 1986/1986, `tsc --noEmit` 0, `eslint .` 0 errors (30 pre-existing warnings, none in AGN-018 files), production `next build`
+compiled; Playwright `agn-018-dashboard.spec.ts` 2/2 and the related agency specs (agn-002/003/008/010/014/016/017) 15/15; Browser Use
+QA pass 1 (7 findings QA18-01…07, all fixed test-first) and pass 2 (all PASS) — `docs/quality/AGN-018_BROWSER_QA_2026-10-03.md`.
+Codex review waived by the owner (2026-10-03). **Not run here:** the non-agent backend test files (the owner runs the full suites).
 
 ## AGN-017 — Agency Notifications and Deadline Reminders
 
