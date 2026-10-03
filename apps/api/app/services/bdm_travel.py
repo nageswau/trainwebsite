@@ -294,3 +294,52 @@ def approvals_filter(user: User) -> list:
     if user.role == "super_admin":
         return [*pending, Manager.active.is_(False)]
     return [*pending, BdmProfile.reporting_manager_user_id == user.id]
+
+
+async def _expense_trip(user: User, trip: BdmTrip, today: date) -> None:
+    if not allowed(trip, "expense", today):
+        raise _refuse(user, trip, "expense", refusal(trip, "expense", today))
+
+
+async def load_expense(db: AsyncSession, trip: BdmTrip, expense_id) -> BdmTripExpense:
+    expense = await db.scalar(select(BdmTripExpense).where(BdmTripExpense.id == expense_id, BdmTripExpense.trip_id == trip.id))
+    if not expense:
+        raise HTTPException(404, "Expense not found")
+    return expense
+
+
+def _line_meta(expense: BdmTripExpense) -> dict:
+    return {"expense_id": expense.id, "category": expense.category, "amount": expense.amount, "expense_date": expense.expense_date}
+
+
+async def add_expense(db: AsyncSession, user: User, trip: BdmTrip, body, today: date) -> None:
+    await _expense_trip(user, trip, today)
+    count = await db.scalar(select(func.count()).where(BdmTripExpense.trip_id == trip.id))
+    if count >= MAX_EXPENSES:
+        raise _refuse(user, trip, "expense", HTTPException(409, f"A trip can have at most {MAX_EXPENSES} expense lines"))
+    expense = BdmTripExpense(trip_id=trip.id, created_by_user_id=user.id, **body.model_dump())
+    db.add(expense)
+    await db.flush()
+    audit(db, user, "expense_add", trip, **_line_meta(expense))
+
+
+async def update_expense(db: AsyncSession, user: User, trip: BdmTrip, expense_id, body, today: date) -> None:
+    await _expense_trip(user, trip, today)
+    expense = await load_expense(db, trip, expense_id)
+    changes = body.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(422, "Nothing to change")
+    before = _line_meta(expense)
+    for key, value in changes.items():
+        setattr(expense, key, value)
+    await db.flush()
+    audit(db, user, "expense_update", trip, before=before, after=_line_meta(expense))
+
+
+async def delete_expense(db: AsyncSession, user: User, trip: BdmTrip, expense_id, today: date) -> None:
+    await _expense_trip(user, trip, today)
+    expense = await load_expense(db, trip, expense_id)
+    meta = _line_meta(expense)
+    await db.delete(expense)
+    await db.flush()
+    audit(db, user, "expense_delete", trip, **meta)

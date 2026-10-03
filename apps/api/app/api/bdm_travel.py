@@ -15,7 +15,7 @@ from app.api.deps import get_current_user
 from app.api.workflows import _notify_user
 from app.core.database import get_db
 from app.models import BdmTrip, User
-from app.schemas import BdmTripCreate, BdmTripOut, BdmTripPage, BdmTripReject, BdmTripUpdate
+from app.schemas import BdmTripCreate, BdmTripExpenseCreate, BdmTripExpenseUpdate, BdmTripOut, BdmTripPage, BdmTripReject, BdmTripUpdate
 from app.services import bdm_travel as travel
 from app.services.bdm import bdm_context, require_manager, team_filter
 
@@ -124,3 +124,28 @@ async def approve(trip_id: UUID, user: User = Depends(get_current_user), db: Asy
 @router.post("/manager/trips/{trip_id}/reject", response_model=BdmTripOut)
 async def reject(trip_id: UUID, body: BdmTripReject, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await _decision(db, user, trip_id, False, body.reason)
+
+
+async def _expense_write(db: AsyncSession, user: User, trip_id: UUID, write) -> dict:
+    """Locks the trip first, so an expense write and a cancel or a second write serialise (§5.5)."""
+    today = travel.india_today()
+    trip = await travel.load_own_trip(db, user, trip_id, lock=True)
+    await write(trip, today)
+    await db.commit()
+    return await travel.trip_out(db, trip, user, today)
+
+
+@router.post("/trips/{trip_id}/expenses", status_code=201, response_model=BdmTripOut)
+async def add_expense(trip_id: UUID, body: BdmTripExpenseCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _expense_write(db, user, trip_id, lambda trip, today: travel.add_expense(db, user, trip, body, today))
+
+
+@router.patch("/trips/{trip_id}/expenses/{expense_id}", response_model=BdmTripOut)
+async def update_expense(trip_id: UUID, expense_id: UUID, body: BdmTripExpenseUpdate, user: User = Depends(get_current_user),
+                         db: AsyncSession = Depends(get_db)):
+    return await _expense_write(db, user, trip_id, lambda trip, today: travel.update_expense(db, user, trip, expense_id, body, today))
+
+
+@router.delete("/trips/{trip_id}/expenses/{expense_id}", response_model=BdmTripOut)
+async def delete_expense(trip_id: UUID, expense_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _expense_write(db, user, trip_id, lambda trip, today: travel.delete_expense(db, user, trip, expense_id, today))
