@@ -3,6 +3,10 @@
 **Status:** design approved in-session on 2026-10-03, in five sections: (1) data model, (2) lifecycle, authorization and
 concurrency, (3) API, (4) frontend, (5) acceptance criteria, tests and regression. No code has been written.
 
+**Revision 2 (2026-10-03):** reviewed against the `api-and-interface-design`, `frontend-ui-engineering` and
+`security-and-hardening` skills. The findings are applied inline below and listed in §12. One new owner decision (T14, date
+guards); no earlier decision changed.
+
 **Branch:** `worktree-bdm-010`, fast-forwarded to `origin/main` @ `e1c2084` (after AGN-017 #49).
 
 **Backlog:** `docs/delivery/BDM_CRM_BACKLOG.md` §4 bdm-010 (line 548). Depends only on bdm-001 (merged, PR #45).
@@ -74,6 +78,7 @@ Owner answers (2026-10-03):
 | T11 | Submit when the manager is already inactive → the in-app notice goes to every active `super_admin`. |
 | T12 | On approve/reject the BDM also gets an in-app notice (an addition to the backlog). |
 | T13 | Expense amount must be > 0 (zero is refused as well as negative). |
+| T14 | Date guards (owner, revision 2). On create and edit: the travel date is at most 30 days before today, and the trip lasts at most 31 days (`return_date - travel_date <= 30`). Start and complete are allowed only from the travel date onward. "Today" is the India calendar date (Asia/Kolkata). |
 
 Backlog decisions applied: D4 (manager = reporting manager, team scope), D15 (actual cost = sum of lines),
 Q-05 (every trip needs approval before it starts; reject needs a reason; edit and resubmit), Q-06 (itemized lines, INR).
@@ -134,8 +139,9 @@ database; 0066 creates it guarded (`CREATE SEQUENCE IF NOT EXISTS`). The downgra
 
 ### 5.1 Schemas — appended to `schemas.py`
 
-- `BdmTripCreate` / `BdmTripUpdate` (`extra="forbid"`; update = omitted means unchanged). Text through a `BdmText`-style
-  annotated type (trimmed, control characters refused). `mode` and statuses are `Literal`s. A model validator enforces
+- `BdmTripCreate` / `BdmTripUpdate` (`extra="forbid"`; update = omitted means unchanged). Single-line text (places) is
+  trimmed and refuses all control characters; multi-line text (purpose, remarks, reason, note) allows `\n`, `\r` and `\t`
+  but refuses other control characters (§12.3 S5). T14 date guards are checked here, against today in Asia/Kolkata. `mode` and statuses are `Literal`s. A model validator enforces
   `return_date >= travel_date` with the message "Return date must be on or after the travel date".
 - `BdmTripAmount`: a Decimal with ≤ 2 decimal places, ≥ 0 for estimated cost, > 0 for expenses, ≤ 1,00,00,000; plain-word
   messages in the `DepositAmount` style.
@@ -158,8 +164,8 @@ Functions only; nothing commits (the route owns the transaction). Logs carry ids
 | withdraw | submitted / planned | draft |
 | approve | submitted / planned | approved; `decided_by_user_id`, `decided_at` |
 | reject | submitted / planned | rejected; reason; decided by/at |
-| start | approved / planned | in_progress |
-| complete | approved / planned or in_progress | completed; `completed_at` |
+| start | approved / planned, and today ≥ travel date (T14) | in_progress |
+| complete | approved / planned or in_progress, and today ≥ travel date (T14) | completed; `completed_at` |
 | cancel | any / planned or in_progress | cancelled; `cancelled_at` |
 | expense add/edit/delete | approved / any | — |
 
@@ -283,12 +289,13 @@ Metadata carries ids, code, statuses and amounts; the rejection reason and remar
 | AC4 | Self-approval is impossible; another team's manager → 404; `super_admin` while the manager is active → 403; `super_admin` when the manager is inactive → allowed. |
 | AC5 | Actual cost = the sum of expense lines (0.00 with none); expenses only on approved trips (else 409); amount ≤ 0 → 422. |
 | AC6 | Currency is INR (stored, CHECKed, returned). |
-| AC7 | Return date before travel date → 422; editing an approved trip's dates → 422; remarks stay editable in every state and each edit is audited. |
+| AC7 | Return date before travel date → 422; travel date more than 30 days ago or a trip longer than 31 days → 422; start or complete before the travel date → 409; editing an approved trip's dates → 422; remarks stay editable in every state and each edit is audited. |
 | AC8 | The transition table holds for every action and state; a disallowed transition → 409; withdraw and resubmit work. |
 | AC9 | Concurrent approve and withdraw on one trip: exactly one succeeds, the other gets 409. |
 | AC10 | Migration 0066 is additive, leaves one head, creates the sequence, and its downgrade refuses while trips exist. |
 | AC11 | Pages show loading, empty and error states; no page-level horizontal scroll at 375 px; keyboard-only flow works. |
 | AC12 | E2E: a BDM creates and submits Hyderabad → Vijayawada; the manager approves; the BDM adds expenses and completes the trip; actual cost shows the sum. |
+| AC13 | Abuse cases (§12.3): another BDM's trip or expense id → 404 on every route; an expense id from a different trip → 404; server-owned fields in a body (`code`, `bdm_user_id`, statuses, `currency`, `decided_*`) → 422; a `bdm` calling manager routes → 403; a `bdm_manager` calling BDM routes → 403; `?bdm_user_id=` outside the team → an empty page, never another team's trips; the 101st expense line → 409. |
 
 ## 8. Tests (written before the code, per task)
 
@@ -301,6 +308,7 @@ Backend (`apps/api/tests/`), unique values on the shared, never-truncated databa
 - `test_bdm_010_approvals.py` — decide rules, fallback, notices without email rows, audit (AC2–AC4).
 - `test_bdm_010_expenses.py` — expense CRUD and state rules (AC5).
 - `test_bdm_010_concurrency.py` — two sessions, approve vs withdraw (AC9).
+- `test_bdm_010_security.py` — the AC13 abuse cases, route by route.
 
 Web (`apps/web/tests/`): `lib/bdmTravel.test.ts`; components `TripForm`, `TripExpenses`, `TripActions`,
 `TripApprovalQueue`, `TripTable`; `BdmTravelPages.test.tsx` (empty, error, 404 states).
@@ -335,6 +343,68 @@ Existing tests updated:
 
 ## 11. Completion gates
 
-Complete only when: AC1–AC12 pass; the lite backend set and the web unit tests are green; build and type check pass;
-migration up/down verified; Playwright `bdm-010-travel.spec.ts` passes; responsive (375 px) and keyboard checks pass;
+Complete only when: AC1–AC13 pass; the lite backend set and the web unit tests are green; build and type check pass;
+migration up/down verified; Playwright `bdm-010-travel.spec.ts` passes; responsive (320/375 px) and keyboard checks pass;
 the documentation in §10 is updated; the owner's full backend run is green.
+
+## 12. Revision 2 — skill reviews (2026-10-03)
+
+Each finding is checked against the existing architecture. Changes that would reach outside bdm-010 (a global error
+envelope, a rate limiter, a dialog library, a refactor of shared helpers) are listed as **not adopted**, with the reason.
+
+### 12.1 API and interface design
+
+| # | Finding | Resolution |
+|---|---|---|
+| A1 | Error shape | Keep the API-wide `{"detail": ...}`: a string for 403/404/409, FastAPI's list for 422. The web's `detailMessage` (`lib/apiErrors.ts:4`) already reads both. Validators raise `PydanticCustomError` with plain words that name the field (the `DepositAmount` style), so the 422 list reads as sentences. **Not adopted:** the skill's `{error:{code,message}}` envelope would make this API differ from every other route. |
+| A2 | Naming | snake_case fields and query params, as the whole API uses (not the skill's camelCase). Booleans read as predicates: `accommodation_required`, `can_edit`, `can_submit`, `can_withdraw`, `can_start`, `can_complete`, `can_cancel`, `can_add_expense`, `can_decide`. |
+| A3 | Verbs in URLs | `/submit`, `/approve` and the rest are commands on a state machine, each with its own authorization and audit row. Precedent: school results verify/publish and the commission payout approve. A `PATCH {approval_status}` would fold four authorization rules into one handler. |
+| A4 | Retry semantics | Transitions carry no idempotency key. A command retried after success gets 409 naming the current state, and the UI refreshes on 409, so a retry is harmless. Create is not retry-safe: a duplicate is a visible draft the BDM can cancel, and no money moves. The `Idempotency-Key` pattern (`account.py:119`, `agent_deposits.py:68`) is deliberately not used. A second `DELETE` of an expense → 404. All of this goes in the API_CONTRACT addendum. |
+| A5 | PATCH | Omitted = unchanged; an explicit `null` on a required field → 422; an empty body → 422 "Nothing to change". Server-owned fields are refused by `extra="forbid"` (AC13). |
+| A6 | Lost updates | Only the owner edits, and the last write wins. No ETag: CLAUDE.md forbids uncontracted ETag assumptions. Field and remarks edits are audited with before/after, so an overwrite can be traced. |
+| A7 | Response bodies | Create → 201 with `BdmTripOut`. Every PATCH, transition and expense write (including `DELETE`) → 200 with the updated `BdmTripOut`, because `actual_cost`, the flags and the statuses change; the client never needs a second GET. |
+| A8 | Lists | Paged `{items,total,limit,offset}`, `limit` 1–100 (default 50), with a stable order and a tiebreaker (`travel_date DESC, code DESC`; the queue uses `submitted_at, code`). Filters are `Literal`s, so an unknown value → 422. `bdm_user_id` is ANDed with the team scope, so it can only narrow. |
+| A9 | Bounded detail | At most 100 expense lines per trip (the 101st → 409), so the detail stays bounded without paging the sub-list. |
+| A10 | Money | Requests accept a JSON string or number with ≤ 2 dp. Responses are 2-dp strings (`"1250.00"`, Pydantic's Decimal form), and `currency` is always `"INR"`. |
+| A11 | Dates | `YYYY-MM-DD` calendar dates with no time zone. "Today" for T14 is `datetime.now(ZoneInfo("Asia/Kolkata")).date()`, a local constant as at `schools.py:1023`. |
+| A12 | Transactions | One transaction per request: the service flushes, the route commits once. Audit and notification rows go in the same commit; deliveries go after commit (existing mechanism). Validated input can't violate a CHECK; if it did, the result would be a 500 with no detail. |
+| A13 | Database use | The list is one query (trip + BDM name + the `actual_cost` grouped subquery; no N+1). The detail is two queries (trip, expenses). Indexes as in §4.1. The only raw SQL is `nextval('bdm_trip_code_seq')`, which is constant text. |
+
+### 12.2 Frontend UI engineering
+
+| # | Finding | Resolution |
+|---|---|---|
+| F1 | Reuse first | `PortalShell`; `FormMessage`; the `.table-wrap` region from `BdmTeamTable` (`role="region"`, a label, `tabIndex=0`); `.pager`; `.badge` / `.state-badge`; `loading.tsx` with `skeleton-line` inside `PortalShell` (the ENH-020 pattern); an inline confirm block for cancel and delete-expense (the `TierDowngradeConfirm` pattern, no dialog library); `detailMessage`, `isRequestBody` and `NOT_COMPLETED` from `lib/apiErrors.ts`; `formatCalendarDate`; `refocus`. No new dependency. |
+| F2 | Visual hierarchy | Detail page: one `h1` (the code plus From → To), the two statuses as labelled badges, and the primary next action first. Then `h2` sections: Trip details (a `<dl>`), Costs (estimated vs actual, with the difference), Expenses, Remarks. When the trip is rejected, the reason sits in a `form-warning` block above the form. |
+| F3 | Forms | Native controls: `type="date"` with `min`/`max` from T14; a `<select>` for mode; the cost fields are `inputMode="decimal"` text inputs (not `type="number"`, which changes value on scroll and depends on locale); a checkbox for accommodation. Client-side checks mirror the server (required fields, return ≥ travel, T14) for quick feedback; the server stays authoritative. A 422's `loc` maps to its field (`aria-invalid` plus `aria-describedby` pointing at the inline message), and a summary goes in `FormMessage`, which takes focus. Input is kept on any error; a dropped network shows `NOT_COMPLETED`. |
+| F4 | Loading and perceived speed | `loading.tsx` skeletons for the list, the detail and both queues; the acting button is disabled and reads "Saving…"; `useTransition` wraps `router.refresh()`. No optimistic updates: the server owns the state machine, so a guessed state could be wrong. |
+| F5 | Empty states | Each says what to do next: "No trips yet" + New trip; "Nothing waiting for approval"; "No expenses yet" + Add expense (only when `can_add_expense`); a filtered list with no match + Clear filter. |
+| F6 | Error states | A page 404/403 → the existing `accessUnavailable` state; a 409 → its message, then a refresh; a failed list read → an error panel with a Retry link, not a blank table. |
+| F7 | Mobile | Forms are single-column at ≤ 640 px; action buttons wrap; tables scroll inside `.table-wrap`; no page-level horizontal scroll at 320 and 375 px (Playwright checks `scrollWidth <= clientWidth`); the existing `.btn` keeps touch targets. |
+| F8 | Keyboard | DOM order is the visual order. Reject opens an inline labelled textarea that takes focus; Escape or Cancel closes it and returns focus to Reject. After any action, focus moves to the result message. The confirm block's primary button takes focus. |
+| F9 | Not colour alone | Statuses are text ("Approval: Submitted", "Travel: Planned"); the badge colour only repeats it. |
+| F10 | Component size | Each component stays under 200 lines; `TripExpenses` splits out `TripExpenseRowForm`. |
+
+### 12.3 Security and hardening — threat model
+
+Trust boundaries: browser → Next proxy (`app/api/[...path]`) → API, carrying the session cookie; manager and admin
+decisions; free text that reaches other users (purpose, remarks, reason, and places in notifications and the manager's
+views). Assets: the approval decision (separation of duties), cost figures, employees' travel plans.
+
+| # | Area | Finding and resolution |
+|---|---|---|
+| S1 | Authentication | Unchanged: `get_current_user` on the `httpOnly`, `SameSite=Lax` session cookie (`auth.py:92`); inactive users → 401. No new auth flow. |
+| S2 | Authorization | Enforced server-side on every route (the §5.3 table). The `can_*` flags are hints for the UI and are never trusted. `RBAC_MATRIX.md` §2.13 lists each route. |
+| S3 | IDOR | Trip and expense ids are scoped in the SQL WHERE (404, never 403, so there is no existence oracle); an expense must belong to the trip in the path; `bdm_user_id` is ANDed with the team scope. Ids are random UUIDs. AC13 tests every route with another BDM's and another team's ids. |
+| S4 | Role escalation / mass assignment | No route changes a role. `extra="forbid"` refuses `bdm_user_id`, `code`, the statuses, `currency`, `decided_*` and the timestamps. Separation of duties: the decider is never the owner, a manager can't edit trips, and `super_admin` decides only when the manager is inactive (T3). |
+| S5 | Input validation | Length caps on every text field. Single-line fields (`from_place`, `to_place`) refuse all control characters (`_BDM_CONTROL`). **New:** the multi-line fields (purpose, remarks, reason, note) need a variant that allows `\n`, `\r` and `\t` but refuses other control characters, because `_BDM_CONTROL` (`schemas.py:2956`) also rejects newlines. Decimal bounds, `Literal` enums and the T14 date bounds. |
+| S6 | XSS | React escapes all text; the web has no `dangerouslySetInnerHTML` (checked). Notification titles and bodies are plain text; `action_url` is a constant path plus a UUID, never user input. Multi-line text is rendered with CSS `white-space: pre-wrap`, never converted to HTML. |
+| S7 | CSRF | `SameSite=Lax` withholds the session cookie on every cross-site POST, PATCH and DELETE, including the body-less transition POSTs, and CORS allows only `frontend_url` (`main.py:69`). The same reasoning is already recorded at `account.py:75`. No new mechanism. |
+| S8 | SQL injection | ORM with bound parameters only; filters are `Literal`s; the only raw SQL is constant text. |
+| S9 | Tokens / sessions | Untouched. No token in a URL; query strings carry only UUIDs and filters. |
+| S10 | Secrets | None added. |
+| S11 | Logs | Refusals (403/404 on decide, 409 transitions) log at warning with ids, route, action and state only — never places, purpose, remarks, reason or amounts — in the `bdm_creator_type_refused` style. |
+| S12 | Rate limiting | The API has no general limiter, and adding one is outside bdm-010. Bounds instead: `limit` ≤ 100, ≤ 100 expense lines per trip, text caps. Recorded as an accepted risk in DEC-SCOPE-060. |
+| S13 | Audit / repudiation | Every state change, every field and remarks edit and every expense write gets an `AuditLog` row in the same transaction; `decided_by_user_id` is also on the trip row. |
+| S14 | Data and privacy | No new PII category. Employees' travel plans are visible only to the owner, their reporting manager and `super_admin`. Audit metadata keeps the reason and remarks because AC3 and AC7 need them. |
+| S15 | Error disclosure | Plain-word details only; a 500 carries no internals (FastAPI default, unchanged). |
