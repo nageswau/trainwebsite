@@ -68,6 +68,31 @@ test("a new student's Journey and history match what was recorded (AGN-015)", as
   await expect(events.first()).toContainText("career interest");
 });
 
+test("the Journey and an open history follow shortlist changes made in the panel, without reopening (QA15-01)", async ({ page }) => {
+  const name = `E2E Journey Shortlist ${stamp()}`;
+  await signInAsDemoAgent(page);
+  const detail = await addAndOpenStudent(page, name);
+  const shortlistStep = detail.getByRole("list", { name: "Student steps" }).getByRole("listitem").nth(2);
+  await expect(shortlistStep).toContainText("Not started");
+  await detail.getByRole("button", { name: "Show history" }).click();
+  const events = detail.getByRole("list", { name: "Student history" }).getByRole("listitem");
+  await expect(events).toHaveCount(1);
+
+  await detail.getByRole("button", { name: "Add university to shortlist" }).click();
+  await detail.getByLabel("University (required)").selectOption({ index: 1 });
+  await detail.getByRole("button", { name: "Save to shortlist" }).click();
+  await expect(detail.getByText("Saved to shortlist.")).toBeVisible();
+  await expect(shortlistStep).toContainText("Done");
+  await expect(events).toHaveCount(2);
+  await expect(events.first()).toContainText("University shortlisted");
+
+  await detail.getByRole("button", { name: /^Remove / }).click();
+  await detail.getByRole("button", { name: "Confirm remove" }).click();
+  await expect(shortlistStep).toContainText("Not started");
+  await expect(events).toHaveCount(3);
+  await expect(events.first()).toContainText("University removed from shortlist");
+});
+
 test("the Journey fits a 320 px phone with no horizontal scroll", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 720 });
   const name = `E2E Journey Phone ${stamp()}`;
