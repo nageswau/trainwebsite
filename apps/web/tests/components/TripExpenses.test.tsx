@@ -10,7 +10,9 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 const line = { id: "e1", category: "food" as const, amount: "450.50", expense_date: "2026-10-10", note: "Lunch" };
 
-beforeEach(() => refresh.mockReset());
+beforeEach(() => {
+  refresh.mockReset();
+});
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();

@@ -8,7 +8,9 @@ import { json, trip } from "./tripFixtures";
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
-beforeEach(() => refresh.mockReset());
+beforeEach(() => {
+  refresh.mockReset();
+});
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
