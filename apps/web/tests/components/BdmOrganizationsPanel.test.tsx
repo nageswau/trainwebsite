@@ -191,6 +191,25 @@ describe("BdmOrganizationsPanel profile filters (bdm-003 AC8, §12.2 F7)", () =>
     expect(nav.push).toHaveBeenLastCalledWith("/bdm/organizations", { scroll: false });
   });
 
+  it("ignores a profile filter that does not belong to the URL's Type (browser QA3-01)", async () => {
+    nav.search = "board=CBSE&territory=South";
+    const mock = serve(res(pg([row(1)])));
+    render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 1" });
+    expect(mock.mock.calls[0][0]).not.toMatch(/board=|territory=/);
+    expect(screen.queryByRole("button", { name: "Clear filters" })).toBeNull();
+  });
+
+  it("ignores an unknown Board in the URL instead of failing to load (browser QA3-02)", async () => {
+    nav.search = "org_type=school&board=bogus";
+    const mock = serve(res(pg([row(1)])));
+    render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 1" });
+    expect(mock.mock.calls[0][0]).toContain("org_type=school");
+    expect(mock.mock.calls[0][0]).not.toContain("board=");
+    expect(screen.getByLabelText("Board")).toHaveValue("");
+  });
+
   it("shows Affiliation for universities, read from the URL", async () => {
     nav.search = "org_type=university&affiliation=VTU";
     const mock = serve(res(pg([row(1)])));

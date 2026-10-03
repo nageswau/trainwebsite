@@ -15,14 +15,19 @@ type Filters = { offset: number; q: string; orgType: string; city: string; board
 
 function readFilters(params: URLSearchParams): Filters {
   const n = Number.parseInt(params.get("offset") ?? "", 10);
+  const orgType = params.get("org_type") ?? "";
+  const group = profileGroup(orgType);
+  // Browser QA3-01/02: a profile filter is read only with the Type it belongs to (so it always has a visible control), and an
+  // unknown Board is dropped rather than sent (the API would 422 and the list could never load).
+  const board = params.get("board") ?? "";
   return {
     offset: Number.isFinite(n) && n > 0 ? n : 0,
     q: (params.get("q") ?? "").trim(),
-    orgType: params.get("org_type") ?? "",
+    orgType,
     city: (params.get("city") ?? "").trim(),
-    board: params.get("board") ?? "",
-    affiliation: (params.get("affiliation") ?? "").trim(),
-    territory: (params.get("territory") ?? "").trim(),
+    board: group === "school" && (BOARDS as readonly string[]).includes(board) ? board : "",
+    affiliation: group === "college" ? (params.get("affiliation") ?? "").trim() : "",
+    territory: group === "agent" ? (params.get("territory") ?? "").trim() : "",
     mine: params.get("assigned") === "me",
     archived: params.get("archived") === "1",
   };
