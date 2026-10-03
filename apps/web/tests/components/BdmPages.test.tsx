@@ -25,7 +25,10 @@ const allText = (tree: ReturnType<typeof elements>) => tree.map((el) => text(el)
 
 function answerByPath(team: unknown | unknown[]) {
   const queue = Array.isArray(team) ? [...team] : null;
-  vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/auth/me" ? { full_name: "Meera" } : queue ? queue.shift() : team) as never);
+  vi.mocked(serverApi).mockImplementation(async (path: string) => {
+    if (path === "/api/v1/workflows/notifications/unread-count") return { unread: 0 } as never; // bdm-010 QA10-01 sidebar badge
+    return (path === "/api/v1/auth/me" ? { full_name: "Meera" } : queue ? queue.shift() : team) as never;
+  });
 }
 
 beforeEach(() => {
@@ -43,7 +46,11 @@ describe("bdm-001 BDM pages", () => {
   });
 
   it("My Day shows the API's no-profile message with a link to the chooser", async () => {
-    vi.mocked(serverApi).mockRejectedValueOnce(new ApiError("BDM profile not set up — contact your administrator", 403)).mockRejectedValueOnce(new ApiError("x", 401));
+    // Answered by path: the page also reads the unread badge (bdm-010), so call order is not fixed.
+    vi.mocked(serverApi).mockImplementation(async (path: string) => {
+      if (path === "/api/v1/bdm/me") throw new ApiError("BDM profile not set up — contact your administrator", 403);
+      throw new ApiError("x", 401);
+    });
     const tree = elements(await MyDay());
     const card = tree.find((el) => typeof el.props.message === "string");
     expect(card!.props.message).toBe("BDM profile not set up — contact your administrator");
