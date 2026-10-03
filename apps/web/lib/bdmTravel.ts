@@ -1,0 +1,56 @@
+// bdm-010 (DEC-SCOPE-060): trip types, labels and endpoints shared by the BDM, manager and admin travel screens.
+export type TripMode = "flight" | "train" | "bus" | "car" | "cab" | "local";
+export type ApprovalStatus = "draft" | "submitted" | "approved" | "rejected";
+export type TravelStatus = "planned" | "in_progress" | "completed" | "cancelled";
+export type ExpenseCategory = "travel" | "stay" | "food" | "local" | "other";
+export type PersonRef = { id: string; full_name: string };
+export type TripExpense = { id: string; category: ExpenseCategory; amount: string; expense_date: string; note: string | null };
+export type TripRow = {
+  id: string; code: string; bdm: PersonRef; travel_date: string; return_date: string; from_place: string; to_place: string; mode: TripMode;
+  accommodation_required: boolean; estimated_cost: string; actual_cost: string; currency: "INR"; approval_status: ApprovalStatus;
+  travel_status: TravelStatus; submitted_at: string | null;
+};
+export type Trip = TripRow & {
+  purpose: string; remarks: string | null; rejection_reason: string | null; decided_by: PersonRef | null; decided_at: string | null;
+  completed_at: string | null; cancelled_at: string | null; expenses: TripExpense[];
+  can_edit: boolean; can_submit: boolean; can_withdraw: boolean; can_start: boolean; can_complete: boolean; can_cancel: boolean;
+  can_add_expense: boolean; can_decide: boolean;
+};
+
+export const MODE_LABEL: Record<TripMode, string> = { flight: "Flight", train: "Train", bus: "Bus", car: "Car", cab: "Cab", local: "Local travel" };
+export const APPROVAL_LABEL: Record<ApprovalStatus, string> = { draft: "Draft", submitted: "Submitted", approved: "Approved", rejected: "Rejected" };
+export const TRAVEL_LABEL: Record<TravelStatus, string> = { planned: "Planned", in_progress: "In progress", completed: "Completed", cancelled: "Cancelled" };
+export const CATEGORY_LABEL: Record<ExpenseCategory, string> = { travel: "Travel", stay: "Stay", food: "Food", local: "Local", other: "Other" };
+
+export const TRIPS_URL = "/api/v1/bdm/trips";
+export const TEAM_TRIPS_URL = "/api/v1/bdm/manager/trips";
+export const APPROVALS_URL = "/api/v1/bdm/manager/approvals";
+export const tripUrl = (id: string) => `${TRIPS_URL}/${id}`;
+export const teamTripUrl = (id: string) => `${TEAM_TRIPS_URL}/${id}`;
+export const PAST_DAYS = 30;
+
+const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 });
+export const formatInr = (value: string) => INR.format(Number(value));
+
+/** T14: the earliest travel date the API accepts, from today's India date (YYYY-MM-DD). */
+export function travelDateBounds(today: string): { min: string } {
+  const d = new Date(`${today}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - PAST_DAYS);
+  return { min: d.toISOString().slice(0, 10) };
+}
+
+/** §12.2 F3: a FastAPI 422 list mapped to its fields, so each message sits next to its input. */
+export function fieldErrors(detail: unknown): Record<string, string> {
+  if (!Array.isArray(detail)) return {};
+  const out: Record<string, string> = {};
+  for (const item of detail as { loc?: unknown[]; msg?: string }[]) {
+    const field = item.loc && item.loc.length > 1 ? String(item.loc[item.loc.length - 1]) : "";
+    if (field && !out[field]) out[field] = (item.msg ?? "").replace(/^Value error,\s*/, "");
+  }
+  return out;
+}
+
+export const tripSummary = (t: Pick<TripRow, "code" | "from_place" | "to_place">) => `${t.code}, ${t.from_place} to ${t.to_place}`;
+
+/** India's calendar date, for the T14 hints (the API decides). */
+export const indiaToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
