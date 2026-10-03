@@ -5,20 +5,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
 import { stageLabel } from "@/lib/agentApplications";
-import { kindLabel, timelineUrl, type TimelineItem } from "@/lib/agentJourney";
+import { failureOf, kindLabel, LoadFailed, timelineUrl, type Failure, type TimelineItem } from "@/lib/agentJourney";
 import { isPage, type Page } from "@/lib/apiErrors";
 import { formatDate, viewerTimeZone } from "@/lib/formatDate";
 
 const PAGE_SIZE = 20;
 const UNABLE = "Unable to load history.";
-
-type Failure = { text: string; expired: boolean };
-
-class LoadFailed extends Error {
-  constructor(text: string, readonly expired = false) {
-    super(text);
-  }
-}
 
 function summary(item: TimelineItem): string {
   const parts = [kindLabel(item.kind), item.application?.university, item.document?.type].filter(Boolean);
@@ -51,9 +43,7 @@ export default function AgentStudentTimeline({ studentId }: { studentId: string 
           if (request === latest.current) setData(body);
         })
         .catch((caught: unknown) => {
-          if (request !== latest.current) return;
-          // A dropped connection (TypeError) or anything unexpected reads as the generic message.
-          setFailure(caught instanceof LoadFailed ? { text: caught.message, expired: caught.expired } : { text: UNABLE, expired: false });
+          if (request === latest.current) setFailure(failureOf(caught, UNABLE));
         })
         .finally(() => {
           if (request === latest.current) setLoading(false);

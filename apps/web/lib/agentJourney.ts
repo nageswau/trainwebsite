@@ -102,3 +102,17 @@ export function isJourney(body: unknown): body is Journey {
 export function currentStep(steps: JourneyStep[]): string | null {
   return steps.find((s) => !SETTLED.includes(s.state))?.key ?? null;
 }
+
+// Why the journey or history could not be shown; an expired session (401) offers sign-in instead of a retry (the AGN-021 pattern).
+export type Failure = { text: string; expired: boolean };
+
+export class LoadFailed extends Error {
+  constructor(text: string, readonly expired = false) {
+    super(text);
+  }
+}
+
+export function failureOf(caught: unknown, fallback: string): Failure {
+  // A dropped connection (TypeError) or anything unexpected reads as the generic message.
+  return caught instanceof LoadFailed ? { text: caught.message, expired: caught.expired } : { text: fallback, expired: false };
+}

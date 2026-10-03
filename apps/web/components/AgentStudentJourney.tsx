@@ -5,12 +5,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
 import { stageLabel } from "@/lib/agentApplications";
-import { currentStep, isJourney, journeyUrl, STATE_LABELS, STEP_LABELS, type Journey, type JourneyStep } from "@/lib/agentJourney";
+import {
+  currentStep,
+  failureOf,
+  isJourney,
+  journeyUrl,
+  LoadFailed,
+  STATE_LABELS,
+  STEP_LABELS,
+  type Failure,
+  type Journey,
+  type JourneyStep,
+} from "@/lib/agentJourney";
 
 const UNABLE = "Unable to load the journey.";
 const GLYPH: Record<string, string> = { done: "✓", in_progress: "•", not_started: "–", not_required: "✓", refunded: "↺", refused: "✕", withdrawn: "✕" };
-
-type Failure = { text: string; expired: boolean };
 
 function Steps({ label, steps }: { label: string; steps: JourneyStep[] }) {
   const current = currentStep(steps);
@@ -40,16 +49,14 @@ export default function AgentStudentJourney({ studentId, refreshKey }: { student
     const request = ++latest.current;
     setFailure(null);
     fetch(journeyUrl(studentId))
-      .then(async (response): Promise<Failure | null> => {
-        if (response.status === 401) return { text: SESSION_EXPIRED, expired: true };
+      .then(async (response) => {
+        if (response.status === 401) throw new LoadFailed(SESSION_EXPIRED, true);
         const body: unknown = await response.json().catch(() => null);
-        if (!response.ok || !isJourney(body)) return { text: UNABLE, expired: false };
+        if (!response.ok || !isJourney(body)) throw new LoadFailed(UNABLE);
         if (request === latest.current) setData(body);
-        return null;
       })
-      .catch((): Failure => ({ text: UNABLE, expired: false })) // a dropped connection (TypeError)
-      .then((failed) => {
-        if (failed && request === latest.current) setFailure(failed);
+      .catch((caught: unknown) => {
+        if (request === latest.current) setFailure(failureOf(caught, UNABLE));
       });
   }, [studentId]);
 
