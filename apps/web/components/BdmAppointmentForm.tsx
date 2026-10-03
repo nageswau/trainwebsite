@@ -13,7 +13,8 @@ import { type Appointment, APPOINTMENTS_URL, isAppointmentBody, isoToIstInput, i
 import { isOrganizationBody, LINK_STYLE, type OrgContact, type Organization, ORGS_URL } from "@/lib/bdmOrganizations";
 
 // bdm-006 (spec §6.2, R-F3-R-F6): book an appointment (create) or edit an open one (edit: no time -- that is Reschedule). The API
-// decides every rule; this form keeps the entry on any failure and moves focus to the message.
+// decides every rule; this form keeps the entry on any failure and shows the message. Any
+// field change clears the overlap warning, so "Save anyway" can only confirm the exact time that was checked.
 type Props =
   | { mode: "create"; bdmType: BdmType; initialOrganization: Organization | null }
   | { mode: "edit"; bdmType: BdmType; appointment: Appointment; onSaved: (a: Appointment, saved: boolean) => void; onCancel: () => void };
@@ -43,7 +44,10 @@ export default function BdmAppointmentForm(props: Props) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
   const [warning, setWarning] = useState<Overlap | null>(null);
-  const set = <K extends keyof FieldValues>(key: K, value: FieldValues[K]) => setValues((v) => ({ ...v, [key]: value }));
+  const set = <K extends keyof FieldValues>(key: K, value: FieldValues[K]) => {
+    setWarning(null);
+    setValues((v) => ({ ...v, [key]: value }));
+  };
 
   async function loadContacts(id: string, keepChoice: boolean) {
     setContactsLoading(true);
@@ -142,7 +146,7 @@ export default function BdmAppointmentForm(props: Props) {
           The booked contact ({editing.contact_name}) was removed from the organization. Choose another contact to change it, or leave it as recorded.
         </p>
       )}
-      <BdmAppointmentFields values={values} set={set} bdmType={props.bdmType} contacts={contacts} contactsLoading={contactsLoading} showWhen={!editing} />
+      <BdmAppointmentFields values={values} set={set} bdmType={props.bdmType} contacts={contacts} contactsLoading={contactsLoading} showWhen={!editing} contactRequired={!(editing && editing.contact_id === null)} />
       {warning && <BdmOverlapAlert overlap={warning} busy={busy} onConfirm={() => void submit(true)} onCancel={() => setWarning(null)} />}
       {message && <FormMessage message={message} />}
       <div className="actions">

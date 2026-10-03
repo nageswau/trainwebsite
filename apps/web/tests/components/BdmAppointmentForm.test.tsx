@@ -65,6 +65,33 @@ describe("BdmAppointmentForm (bdm-006 §6.2, R-F6)", () => {
     expect(JSON.parse(String(((fetchMock.mock.calls[1] as unknown[])[1] as RequestInit).body)).confirm_overlap).toBe(true);
   });
 
+  it("clears the overlap warning when a field changes, so Save anyway cannot confirm unchecked values", async () => {
+    const detail = { code: "possible_overlap", message: "You already have an appointment at this time", total: 1, matches: [{ id: "x", code: "APT-000009", starts_at: "2030-01-07T04:30:00Z", duration_minutes: 60, organization_name: "Holy Cross" }] };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail }, 409))));
+    render(<BdmAppointmentForm mode="create" bdmType="college" initialOrganization={org} />);
+    fillWhen();
+    fireEvent.click(screen.getByRole("button", { name: "Book appointment" }));
+    await screen.findByRole("alert");
+    fireEvent.change(screen.getByLabelText("Duration"), { target: { value: "30" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("button", { name: "Book appointment" })).toBeEnabled();
+  });
+
+  it("lets a booking whose contact was deleted be edited without choosing a contact", async () => {
+    const onSaved = vi.fn();
+    const fetchMock = vi.fn((...args: [string, RequestInit?]) => Promise.resolve(args[0].includes("/organizations/") ? res({ organization: org }) : res({ appointment: appt({ contact_id: null, location: "Gate 9" }) })));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmAppointmentForm mode="edit" bdmType="college" appointment={appt({ contact_id: null })} onSaved={onSaved} onCancel={() => {}} />);
+    await screen.findByText(/was removed/);
+    expect(screen.getByLabelText("Contact person")).not.toBeRequired();
+    fireEvent.change(screen.getByLabelText("Location"), { target: { value: "Gate 9" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ location: "Gate 9" }), true));
+    const patches = fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH");
+    expect(patches).toHaveLength(1);
+    expect(JSON.parse(String(patches[0][1]?.body))).toEqual({ location: "Gate 9" });
+  });
+
   it("keeps the entry and shows the API message on failure", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "This organization is archived — restore it before booking" }, 422))));
     render(<BdmAppointmentForm mode="create" bdmType="college" initialOrganization={org} />);

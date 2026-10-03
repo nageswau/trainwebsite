@@ -13,6 +13,7 @@ export default function BdmAppointmentFields({
   contacts,
   contactsLoading,
   showWhen,
+  contactRequired = true,
 }: {
   values: FieldValues;
   set: <K extends keyof FieldValues>(key: K, value: FieldValues[K]) => void;
@@ -20,13 +21,14 @@ export default function BdmAppointmentFields({
   contacts: OrgContact[] | null;
   contactsLoading: boolean;
   showWhen: boolean;
+  contactRequired?: boolean;
 }) {
   return (
     <>
       <fieldset className="field">
         <legend>Who</legend>
-        <label htmlFor="appt-contact">Contact person (required)</label>
-        <select id="appt-contact" required aria-required="true" value={values.contactId} disabled={contactsLoading || !contacts} onChange={(e) => set("contactId", e.target.value)}>
+        <label htmlFor="appt-contact">Contact person{contactRequired ? " (required)" : ""}</label>
+        <select id="appt-contact" required={contactRequired} aria-required={contactRequired} value={values.contactId} disabled={contactsLoading || !contacts} onChange={(e) => set("contactId", e.target.value)}>
           {contactsLoading ? <option value="">Loading contacts…</option> : <option value="">Choose a contact</option>}
           {(contacts ?? []).map((c) => (
             <option key={c.id} value={c.id}>
