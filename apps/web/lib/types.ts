@@ -10,7 +10,7 @@ export type PortalPayload = {
 export type AgentPermissions = { can_verify_documents: boolean; can_view_reports: boolean };
 export type User = {id:string; email:string; full_name:string; role:string; division:string; phone?:string; student_code?:string|null; profile:Record<string,unknown>; agent_member_role?:"master"|"staff"|null; agent_permissions?:AgentPermissions|null};
 
-// AGN-020 (DEC-SCOPE-063; spec §5.3): GET /api/v1/workflows/overseas/agent/crm/reports/{kind} -- one column-driven shape for every report.
+// AGN-020 (DEC-SCOPE-066; spec §5.3): GET /api/v1/workflows/overseas/agent/crm/reports/{kind} -- one column-driven shape for every report.
 export type AgentReportCell = string | number | null;
 export type AgentReportColumn = { key: string; label: string; numeric: boolean };
 export type AgentReportOption = { value: string; label: string };

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AgentReportsPanel from "@/components/AgentReportsPanel";
 import type { AgentReport } from "@/lib/types";
 
-// AGN-020 (DEC-SCOPE-063; spec §6.2, §6.4): tabs per role, the address as state, and every loading / empty / error state.
+// AGN-020 (DEC-SCOPE-066; spec §6.2, §6.4): tabs per role, the address as state, and every loading / empty / error state.
 
 vi.mock("@/components/AgentCommissionReportPanel", () => ({ default: () => <h3>Commission report</h3> }));
 

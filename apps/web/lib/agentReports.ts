@@ -1,7 +1,7 @@
 import { isPage } from "@/lib/apiErrors";
 import type { AgentReport, AgentReportOptions } from "@/lib/types";
 
-// AGN-020 (DEC-SCOPE-063; spec §6.2-§6.3): the agency Reports page -- its tabs, the URL that holds the view, and the requests.
+// AGN-020 (DEC-SCOPE-066; spec §6.2-§6.3): the agency Reports page -- its tabs, the URL that holds the view, and the requests.
 
 export const REPORTS_URL = "/api/v1/workflows/overseas/agent/crm/reports";
 export const PAGE_SIZE = 50;

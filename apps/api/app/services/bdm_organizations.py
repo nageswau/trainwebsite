@@ -9,10 +9,12 @@ import unicodedata
 from uuid import UUID
 
 from fastapi import HTTPException
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import BDM_ORGANIZATION_CODE_SEQ, AuditLog, BdmOrganization, BdmOrganizationContact, BdmProfile, User
+from app.models import BDM_ORGANIZATION_CODE_SEQ, BDM_PROFILE_FIELDS, BDM_PROFILE_GROUP, AuditLog, BdmOrganization, BdmOrganizationContact, BdmProfile, User
+from app.schemas import BDM_ORG_LABELS
 from app.services.bdm import bdm_context
 
 logger = logging.getLogger("app.bdm")
@@ -35,6 +37,13 @@ STATE_REFUSALS = {  # C15: the 409 when the role is right but the archived state
     "can_restore": "Already active",
     "can_reassign": "Restore this organization first",
 }
+# bdm-003 (spec §5.2): the type words in the profile 422s and the type-change 409 (a profile group is named like its org type); field
+# names come from schemas.BDM_ORG_LABELS, the same words as the field's own 422s.
+ORG_TYPE_LABELS = {
+    "college": "College", "university": "University", "agent": "Agent", "school": "School", "corporate": "Corporate",
+    "training_institute": "Training Institute", "other": "Other",
+}
+GRADE_ORDER = "Lowest grade can't be above the highest grade"
 
 
 def normalize_key(value: str, limit: int) -> str:
@@ -168,6 +177,45 @@ async def locked_reassign_target(db: AsyncSession, user: User, org: BdmOrganizat
     return target
 
 
+def profile_group(org_type: str) -> str | None:
+    return BDM_PROFILE_GROUP.get(org_type)
+
+
+def _profile_error(key: str, msg: str, value) -> dict:
+    return {"type": "value_error", "loc": ("body", "profile", key), "msg": msg, "input": value}
+
+
+def check_profile(org_type: str, sent: dict, stored: BdmOrganization | None) -> None:
+    """spec §5.2 (AC2, AC6): the keys the effective org_type accepts -- by presence, so {"board": null} on a College is refused too -- and
+    the grade order on the stored values overlaid by the sent ones. One 422 in FastAPI's own shape, each error at its field (the
+    agent_visa precedent), so the form can mark the field. Runs after the row lock on PATCH, so `stored` is current."""
+    allowed = BDM_PROFILE_FIELDS.get(profile_group(org_type), ())
+    errors = [_profile_error(k, f"{BDM_ORG_LABELS[k]} is not a field for {ORG_TYPE_LABELS[org_type]} organizations", v) for k, v in sent.items() if k not in allowed]
+    if not errors and "grade_from" in allowed:
+        low, high = (sent[k] if k in sent else getattr(stored, k, None) for k in ("grade_from", "grade_to"))
+        if low is not None and high is not None and low > high:
+            errors.append(_profile_error("grade_to", GRADE_ORDER, sent.get("grade_to", high)))
+    if errors:
+        raise RequestValidationError(errors)
+
+
+def check_type_change(user: User, org: BdmOrganization, new_type: str) -> None:
+    """P4 / AC5: a type change into another profile group is a 409 while the old group has data; the BDM clears it first. College <->
+    University share a group. Structured like possible_duplicate, so the form names the fields without parsing text (§12.1 A1)."""
+    old = profile_group(org.org_type)
+    if old is None or old == profile_group(new_type):
+        return
+    filled = [k for k in BDM_PROFILE_FIELDS[old] if getattr(org, k) is not None]
+    if filled:
+        log("bdm_org_type_change_refused", user, org.id, from_group=old, fields=filled)
+        raise HTTPException(409, {"message": f"Clear the {ORG_TYPE_LABELS[old]} details before changing the type", "code": "profile_not_empty", "fields": filled})
+
+
+def profile_out(org: BdmOrganization) -> dict | None:
+    group = profile_group(org.org_type)
+    return None if group is None else {"kind": group, **{k: getattr(org, k) for k in BDM_PROFILE_FIELDS[group]}}
+
+
 def _person(user: User) -> dict:
     return {"id": user.id, "full_name": user.full_name, "active": user.active}
 
@@ -214,8 +262,10 @@ async def organization_out(db: AsyncSession, user: User, org: BdmOrganization, *
         "phone": org.phone,
         "email": org.email,
         "website": org.website,
+        "address": org.address,
         "courses_interested": org.courses_interested,
         "student_count": org.student_count,
+        "profile": profile_out(org),
         "contacts": [_contact(c) for c in ordered],
         "created_by_name": people[org.created_by_user_id].full_name,
         "archived_at": org.archived_at,

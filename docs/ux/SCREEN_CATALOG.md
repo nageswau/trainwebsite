@@ -1796,7 +1796,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
   the applied range ("Preparing CSV…", "Report downloaded."). Staff never see the metric or the panel (their Reports page, when their
   Master switches it on, is unchanged). Evidence: AGN-014-AC04, AC09–AC11 (`test_agn_014_commission_reports.py`,
   `AgentCommissionReportPanel.test.tsx`, `WorkflowPanel.agentCommissionReport.test.tsx`, e2e `agn-014-commission-master.spec.ts`).
-- **AGN-020 update (2026-10-03, `DEC-SCOPE-063`) — agency Reports page (`/overseas/agent/reports`):** for agency members the page is
+- **AGN-020 update (2026-10-03, `DEC-SCOPE-066`) — agency Reports page (`/overseas/agent/reports`):** for agency members the page is
   one **Reports** card (`AgentReportsPanel`) in place of the old summary table (Super Admin's view unchanged; staff without Reports still
   get the server's refusal card). A horizontal tab strip — Master: Students · Applications · Universities · Countries · Intakes · Staff
   performance · Enrollments · Commission; Staff with Reports: the first five and Enrollments — with Left/Right/Home/End moving and

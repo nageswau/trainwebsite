@@ -956,8 +956,86 @@ class BdmProfile(Base, TimestampMixin):
     reporting_manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+
+# bdm-010 (DEC-SCOPE-063, T6): TRV-000123 codes. On the metadata so 0001's create_all makes it on a fresh database; 0068 makes it
+# on an upgraded one. A rolled-back create skips a number; codes stay unique and increasing.
+BDM_TRIP_CODE_SEQ = Sequence("bdm_trip_code_seq", metadata=Base.metadata)
+
+
+class BdmTrip(Base, TimestampMixin):
+    """bdm-010 (DEC-SCOPE-063): one BDM trip (§3). Organization and appointment time are not stored -- bdm-011 links appointments.
+    Actual cost is never stored: it is the sum of `bdm_trip_expenses` (D15). Rules live in `services/bdm_travel.py`."""
+
+    __tablename__ = "bdm_trips"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_bdm_trips_code"),
+        CheckConstraint("return_date >= travel_date", name="ck_bdm_trips_dates"),
+        CheckConstraint("mode IN ('flight', 'train', 'bus', 'car', 'cab', 'local')", name="ck_bdm_trips_mode"),
+        CheckConstraint("estimated_cost >= 0", name="ck_bdm_trips_estimated_cost"),
+        CheckConstraint("currency = 'INR'", name="ck_bdm_trips_currency"),
+        CheckConstraint("approval_status IN ('draft', 'submitted', 'approved', 'rejected')", name="ck_bdm_trips_approval_status"),
+        CheckConstraint("travel_status IN ('planned', 'in_progress', 'completed', 'cancelled')", name="ck_bdm_trips_travel_status"),
+        CheckConstraint("travel_status IN ('planned', 'cancelled') OR approval_status = 'approved'", name="ck_bdm_trips_status_pair"),
+        Index("ix_bdm_trips_bdm_travel_date", "bdm_user_id", "travel_date"),
+        Index("ix_bdm_trips_submitted", "bdm_user_id", postgresql_where=text("approval_status = 'submitted'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    travel_date: Mapped[date] = mapped_column(Date)
+    return_date: Mapped[date] = mapped_column(Date)
+    from_place: Mapped[str] = mapped_column(String(120))
+    to_place: Mapped[str] = mapped_column(String(120))
+    purpose: Mapped[str] = mapped_column(Text)
+    mode: Mapped[str] = mapped_column(String(10))
+    accommodation_required: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    estimated_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    currency: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR")
+    approval_status: Mapped[str] = mapped_column(String(12), default="draft", server_default="draft")
+    travel_status: Mapped[str] = mapped_column(String(12), default="planned", server_default="planned")
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class BdmTripExpense(Base, TimestampMixin):
+    """bdm-010 (T7): one itemized INR expense line on an approved trip. No receipt (owner, 2026-10-03)."""
+
+    __tablename__ = "bdm_trip_expenses"
+    __table_args__ = (
+        CheckConstraint("category IN ('travel', 'stay', 'food', 'local', 'other')", name="ck_bdm_trip_expenses_category"),
+        CheckConstraint("amount > 0", name="ck_bdm_trip_expenses_amount"),
+        Index("ix_bdm_trip_expenses_trip", "trip_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    trip_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_trips.id"))
+    category: Mapped[str] = mapped_column(String(10))
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    expense_date: Mapped[date] = mapped_column(Date)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
 BDM_ORG_TYPES = ("college", "university", "agent", "school", "corporate", "training_institute", "other")
 BDM_CONTACT_ROLES = ("principal", "dean", "hod", "placement_officer", "counselor", "management", "owner", "other")
+# bdm-003 (DEC-SCOPE-065, spec §4): the type-specific profile. `board` keeps ENH-009's exact values so bdm-018 can copy it onto
+# `schools.board`; the other enums are lower snake case like `org_type`. Grades: -2 Nursery, -1 LKG, 0 UKG, then 1-12.
+BDM_ORG_SOURCES = ("referral", "website", "event", "cold_call", "walk_in", "other")
+BDM_SCHOOL_BOARDS = ("CBSE", "ICSE", "State", "IB", "Other")
+BDM_SCHOOL_TYPES = ("private", "government", "aided", "international", "other")
+BDM_COLLEGE_TYPES = ("engineering", "arts_science", "management", "medical", "polytechnic", "other")
+BDM_GRADE_MIN, BDM_GRADE_MAX = -2, 12
+BDM_STAFF_MAX = 100_000
+BDM_PROFILE_GROUP = {"agent": "agent", "school": "school", "college": "college", "university": "college"}
+BDM_PROFILE_FIELDS = {
+    "agent": ("country", "territory", "source", "staff_count"),
+    "school": ("board", "school_type", "grade_from", "grade_to"),
+    "college": ("affiliation", "college_type", "courses"),
+}
 # bdm-002: on the metadata so 0001's create_all builds it for a fresh database; 0066 creates it IF NOT EXISTS.
 BDM_ORGANIZATION_CODE_SEQ = Sequence("bdm_organization_code_seq", metadata=Base.metadata)
 
@@ -966,9 +1044,34 @@ def _in_list(column: str, values: tuple[str, ...]) -> str:
     return f"{column} IN ({', '.join(repr(v) for v in values)})"
 
 
+def _group_only(group: str) -> str:
+    """A group's columns stay NULL unless org_type belongs to the group (spec §4.2) -- the backstop under check_profile."""
+    types = tuple(t for t, g in BDM_PROFILE_GROUP.items() if g == group)
+    return f"{_in_list('org_type', types)} OR ({' AND '.join(f'{c} IS NULL' for c in BDM_PROFILE_FIELDS[group])})"
+
+
+def _grade(column: str) -> str:
+    return f"{column} IS NULL OR {column} BETWEEN {BDM_GRADE_MIN} AND {BDM_GRADE_MAX}"
+
+
+BDM_PROFILE_CHECKS = {  # migration 0069 repeats these strings; test_bdm_003_migration asserts they stay identical
+    "ck_bdm_organizations_source": f"source IS NULL OR {_in_list('source', BDM_ORG_SOURCES)}",
+    "ck_bdm_organizations_staff_count": f"staff_count IS NULL OR staff_count BETWEEN 0 AND {BDM_STAFF_MAX}",
+    "ck_bdm_organizations_board": f"board IS NULL OR {_in_list('board', BDM_SCHOOL_BOARDS)}",
+    "ck_bdm_organizations_school_type": f"school_type IS NULL OR {_in_list('school_type', BDM_SCHOOL_TYPES)}",
+    "ck_bdm_organizations_grades": f"({_grade('grade_from')}) AND ({_grade('grade_to')}) AND (grade_from IS NULL OR grade_to IS NULL OR grade_from <= grade_to)",
+    "ck_bdm_organizations_college_type": f"college_type IS NULL OR {_in_list('college_type', BDM_COLLEGE_TYPES)}",
+    "ck_bdm_organizations_agent_profile": _group_only("agent"),
+    "ck_bdm_organizations_school_profile": _group_only("school"),
+    "ck_bdm_organizations_college_profile": _group_only("college"),
+}
+
+
 class BdmOrganization(Base, TimestampMixin):
     """bdm-002 (DEC-SCOPE-060): an institution a BDM meets (§9). `bdm_type` is the owning module (Q-03), copied from the creator and
-    never changed; `name_key`/`city_key` are the server-normalized duplicate key (Q-18). Never hard-deleted: archived instead (C5)."""
+    never changed; `name_key`/`city_key` are the server-normalized duplicate key (Q-18). Never hard-deleted: archived instead (C5).
+    bdm-003 (DEC-SCOPE-065): a common address plus one typed profile group per org_type (BDM_PROFILE_FIELDS); a group's columns are
+    NULL for every other type."""
 
     __tablename__ = "bdm_organizations"
     __table_args__ = (
@@ -976,6 +1079,7 @@ class BdmOrganization(Base, TimestampMixin):
         CheckConstraint(_in_list("org_type", BDM_ORG_TYPES), name="ck_bdm_organizations_org_type"),
         CheckConstraint("bdm_type IN ('agent', 'school', 'college')", name="ck_bdm_organizations_bdm_type"),
         CheckConstraint("student_count IS NULL OR student_count >= 0", name="ck_bdm_organizations_student_count"),
+        *(CheckConstraint(sql, name=name) for name, sql in BDM_PROFILE_CHECKS.items()),
         Index("ix_bdm_organizations_type_assignee", "bdm_type", "assigned_bdm_user_id"),
         Index("ix_bdm_organizations_duplicate_key", "bdm_type", "name_key", "city_key"),
     )
@@ -994,6 +1098,18 @@ class BdmOrganization(Base, TimestampMixin):
     existing_partner: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     courses_interested: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     student_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    territory: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    staff_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    board: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    school_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    grade_from: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    grade_to: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    affiliation: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    college_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    courses: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     assigned_bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

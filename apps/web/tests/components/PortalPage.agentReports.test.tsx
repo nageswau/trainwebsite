@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PortalPage from "@/components/PortalPage";
 import { serverApi } from "@/lib/api";
 
-// AGN-020 (DEC-SCOPE-063 R8; spec §6.1): agency members get the tabbed Reports panel in place of the generic summary table; the portal
+// AGN-020 (DEC-SCOPE-066 R8; spec §6.1): agency members get the tabbed Reports panel in place of the generic summary table; the portal
 // payload is still read as the page's gate (its 403 card for staff without Reports is unchanged); a Super Admin's page is unchanged.
 vi.mock("@/lib/api", async () => ({ ...(await vi.importActual<typeof import("@/lib/api")>("@/lib/api")), serverApi: vi.fn() }));
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("notFound"); }, useSearchParams: () => new URLSearchParams("") }));

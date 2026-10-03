@@ -27,7 +27,19 @@ function details(c: OrgContact): string {
 const draftOf = (c?: OrgContact): ContactDraft => ({ name: c?.name ?? "", designation: c?.designation ?? "", role: c?.role ?? "", phone: c?.phone ?? "", email: c?.email ?? "" });
 
 /** Add (no `initial`) or edit one contact. Sends only what changed on edit; blank values clear. */
-function ContactEditor({ initial, busy, onSave, onCancel }: { initial?: OrgContact; busy: boolean; onSave: (body: Record<string, unknown>) => void; onCancel: () => void }) {
+function ContactEditor({
+  initial,
+  orgType,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  initial?: OrgContact;
+  orgType: string;
+  busy: boolean;
+  onSave: (body: Record<string, unknown>) => void;
+  onCancel: () => void;
+}) {
   const [draft, setDraft] = useState(draftOf(initial));
   const [nameError, setNameError] = useState<string | null>(null);
   const save = () => {
@@ -47,6 +59,7 @@ function ContactEditor({ initial, busy, onSave, onCancel }: { initial?: OrgConta
         values={draft}
         errors={nameError ? { name: nameError } : {}}
         onChange={(field, value) => setDraft({ ...draft, [field]: value })}
+        orgType={orgType}
         autoFocusName
       />
       <div className="actions">
@@ -103,7 +116,7 @@ export default function BdmOrganizationContacts({ organization, onChanged }: { o
         {organization.contacts.map((c) => (
           <li key={c.id} className="card" style={{ padding: 14 }}>
             {editing === c.id ? (
-              <ContactEditor initial={c} busy={busy} onSave={(body) => void run(sendJson(`${url}/${c.id}`, "PATCH", body), "Contact updated.")} onCancel={() => closeEditor(editId(c.id))} />
+              <ContactEditor initial={c} orgType={organization.org_type} busy={busy} onSave={(body) => void run(sendJson(`${url}/${c.id}`, "PATCH", body), "Contact updated.")} onCancel={() => closeEditor(editId(c.id))} />
             ) : (
               <>
                 <p style={{ margin: 0, fontWeight: 800 }}>
@@ -154,7 +167,7 @@ export default function BdmOrganizationContacts({ organization, onChanged }: { o
       {canEdit && last && <p className="muted">An organization needs at least one contact.</p>}
       {canEdit &&
         (editing === "new" ? (
-          <ContactEditor busy={busy} onSave={(body) => void run(sendJson(url, "POST", body), "Contact added.")} onCancel={() => closeEditor(addId)} />
+          <ContactEditor orgType={organization.org_type} busy={busy} onSave={(body) => void run(sendJson(url, "POST", body), "Contact added.")} onCancel={() => closeEditor(addId)} />
         ) : (
           <div>
             <button id={addId} type="button" className="btn secondary small" onClick={() => setEditing("new")} disabled={busy || organization.contacts.length >= MAX_CONTACTS}>

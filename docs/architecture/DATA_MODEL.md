@@ -412,6 +412,17 @@ covers the commission-specific piece).
   The timeline itself is derived at read time from `agent_students`, `audit_logs`, `application_status_history`, `document_events` and
   `student_documents` — nothing is stored.
 
+- **Addendum, 2026-10-03 (`bdm-010`, `DEC-SCOPE-063`; migration `0068_bdm_trips`, chained after `0067_audit_entity_index`) — BDM
+  travel.** `bdm_trips` (UUID PK; `code` unique `TRV-000123` from the sequence `bdm_trip_code_seq`; `bdm_user_id` FK users; travel/return
+  dates with `ck_bdm_trips_dates`; `from_place`/`to_place` ≤ 120; `purpose`; `mode` CHECK flight/train/bus/car/cab/local;
+  `accommodation_required`; `estimated_cost` NUMERIC(14,2) ≥ 0; `currency` = `INR`; `approval_status` draft/submitted/approved/rejected;
+  `travel_status` planned/in_progress/completed/cancelled with `ck_bdm_trips_status_pair` (in progress/completed need approved);
+  `rejection_reason`, `decided_by_user_id`, `submitted_at`, `decided_at`, `completed_at`, `cancelled_at`, `remarks`). Indexes
+  `(bdm_user_id, travel_date)` and partial `(bdm_user_id) WHERE approval_status = 'submitted'`. `bdm_trip_expenses` (UUID PK; `trip_id`
+  FK, indexed; `category` CHECK travel/stay/food/local/other; `amount` NUMERIC(14,2) > 0; `expense_date`; `note` ≤ 500;
+  `created_by_user_id`). Actual cost is never stored (sum of lines, D15). Nothing about the approver is stored (T2). Additive; the
+  downgrade refuses while trips exist.
+
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an
 `ApplicationStatusHistory` row is written with `to_status='enrolled'` **for an application that has
@@ -1151,3 +1162,13 @@ Additive only: two tables and one sequence; no existing table, column or row cha
   hod, placement_officer, counselor, management, owner, other), `phone`, `email`; `is_primary` with a partial unique index (one primary
   per organization). At least one contact (C1) and at most 20 are service rules.
 - Last Meeting / Next Meeting are **not stored**: computed from bdm-006 appointments (null until then).
+- **Addendum (`bdm-003`, `DEC-SCOPE-065`; migration `0069_bdm_org_profiles`, after `0068_bdm_trips`):** twelve nullable
+  columns on `bdm_organizations`, no row written; `downgrade()` refuses while any of them holds a value. Common: `address` VARCHAR(500)
+  (line breaks allowed, P14). Agent group: `country`, `territory` VARCHAR(120), `source` VARCHAR(20) (CHECK referral, website, event,
+  cold_call, walk_in, other), `staff_count` INTEGER (CHECK 0–100 000). School group: `board` VARCHAR(10) (CHECK `CBSE`, `ICSE`,
+  `State`, `IB`, `Other` — ENH-009's values), `school_type` VARCHAR(20) (CHECK private, government, aided, international, other),
+  `grade_from` / `grade_to` SMALLINT (CHECK each −2…12 — −2 Nursery, −1 LKG, 0 UKG — and `grade_from <= grade_to`). College group
+  (`college` and `university`): `affiliation` VARCHAR(200), `college_type` VARCHAR(20) (CHECK engineering, arts_science, management,
+  medical, polytechnic, other), `courses` VARCHAR(1000). Backstops `ck_bdm_organizations_{agent,school,college}_profile`: a group's
+  columns are NULL unless `org_type` belongs to it. Named people (Owner, Principal, Dean …) stay contacts with a role tag; Agreement /
+  MoU / Contract / Renewal Date are bdm-005; Commission and live agent counts are not stored (bdm-019 / bdm-022).

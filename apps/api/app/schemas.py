@@ -25,7 +25,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from app.models import GENDERS
+from app.models import BDM_GRADE_MAX, BDM_GRADE_MIN, BDM_STAFF_MAX, GENDERS
 from app.services.agent_visa import VISA_CASE_STAGES
 
 
@@ -1208,7 +1208,7 @@ class AgentDashboardOut(BaseModel):
     as_of: datetime
 
 
-# --- AGN-020 (DEC-SCOPE-063; spec §5.3): one column-driven shape for every report. Codes, slugs and names only -- no ids. ---
+# --- AGN-020 (DEC-SCOPE-066; spec §5.3): one column-driven shape for every report. Codes, slugs and names only -- no ids. ---
 
 
 class AgentReportColumn(BaseModel):
@@ -1237,6 +1237,80 @@ class AgentReportOut(BaseModel):
     offset: int
     options: dict[str, list[AgentReportOption]]
     as_of: datetime
+
+
+# AGN-022 (DEC-SCOPE-064): Overseas Admin's agent network. Field lists are allowlists -- the drill-down rows never carry email,
+# phone or date of birth (N1), and the detail carries a staff count, not a staff list (spec R-API-3).
+class AgentNetworkCounts(BaseModel):
+    students: int
+    applications: int
+    enrollments: int
+
+
+class AgentOrgMasterOut(BaseModel):
+    id: UUID
+    code: str
+    full_name: str
+    email: str
+    status: str
+
+
+class AgentNetworkDepositsOut(BaseModel):
+    currency: Literal["INR"]
+    count: int
+    collected: float
+    remitted: float
+    refunded: float
+
+
+class AgentOrgDetailOut(BaseModel):
+    id: UUID
+    name: str
+    prefix: str
+    status: str
+    created_at: datetime
+    status_changed_at: datetime | None
+    masters: list[AgentOrgMasterOut]
+    staff_count: int
+    counts: AgentNetworkCounts
+    commission: AgentCommissionSummaryOut
+    deposits: AgentNetworkDepositsOut
+    as_of: datetime
+
+
+class AgentNetworkStudentOut(BaseModel):
+    id: UUID
+    full_name: str | None
+    status: str
+    assigned_code: str | None
+    has_login: bool
+    applications: int
+    created_at: datetime
+
+
+class AgentNetworkStudentPage(BaseModel):
+    items: list[AgentNetworkStudentOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class AgentNetworkApplicationOut(BaseModel):
+    id: UUID
+    student_name: str | None
+    university: str
+    country: str
+    status: str
+    enrollment_date: date | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AgentNetworkApplicationPage(BaseModel):
+    items: list[AgentNetworkApplicationOut]
+    total: int
+    limit: int
+    offset: int
 
 
 class InboundUniversityEmailIn(BaseModel):
@@ -3165,6 +3239,193 @@ class BdmManagerPage(BaseModel):
     offset: int
 
 
+# --- bdm-010: travel requests, approval, expenses (DEC-SCOPE-063; docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md §5.1) ---
+
+BdmTripMode = Literal["flight", "train", "bus", "car", "cab", "local"]
+BdmExpenseCategory = Literal["travel", "stay", "food", "local", "other"]
+BDM_TRIP_FIELD_LABELS = {
+    "travel_date": "Travel date", "return_date": "Return date", "from_place": "From", "to_place": "To", "purpose": "Purpose",
+    "mode": "Mode of travel", "estimated_cost": "Estimated cost", "remarks": "Remarks", "reason": "Reason", "category": "Category",
+    "amount": "Amount", "expense_date": "Expense date", "note": "Note",
+}
+# S5: multi-line text keeps \t \n \r; every other control character is refused (the single-line fields use _BDM_CONTROL).
+_BDM_MULTILINE_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+TRIP_AMOUNT_FORMAT = "Enter an amount in rupees with up to 2 decimals, for example 2500.50"
+TRIP_AMOUNT_MAX = Decimal("10000000.00")
+
+
+def _trip_text(pattern: re.Pattern, required: bool):
+    def check(value: str | None, info: ValidationInfo) -> str | None:
+        field = info.field_name or ""
+        label = BDM_TRIP_FIELD_LABELS.get(field, field)
+        if value is not None and pattern.search(value):
+            raise ValueError(f"{label} contains invalid characters")
+        if required and not value:
+            raise ValueError(f"{label} is required")
+        return value or None
+    return check
+
+
+def _trip_amount(positive: bool):
+    def parse(value):
+        try:
+            amount = Decimal(str(value).strip())
+        except (InvalidOperation, ValueError):
+            raise PydanticCustomError("trip_amount_format", TRIP_AMOUNT_FORMAT) from None
+        exponent = amount.as_tuple().exponent  # an int once finite (NaN/Infinity carry 'n'/'N'/'F')
+        if not amount.is_finite() or (isinstance(exponent, int) and exponent < -2):
+            raise PydanticCustomError("trip_amount_format", TRIP_AMOUNT_FORMAT)
+        if positive and amount <= 0:
+            raise PydanticCustomError("trip_amount_positive", "The amount must be more than ₹0")
+        if amount < 0:
+            raise PydanticCustomError("trip_amount_negative", "The estimated cost can't be negative")
+        if amount > TRIP_AMOUNT_MAX:
+            raise PydanticCustomError("trip_amount_max", "The amount can be at most ₹1,00,00,000")
+        return amount
+    return parse
+
+
+def _trimmed(max_length: int):
+    return StringConstraints(strip_whitespace=True, max_length=max_length)
+
+
+def _trip_date(label: str):
+    """QA10-08: a calendar date as YYYY-MM-DD with a 4-digit year; anything else (Chrome lets a year run to 6 digits) gets plain
+    words instead of the parser's text."""
+    def parse(value):
+        if isinstance(value, date):
+            return value
+        try:
+            if isinstance(value, str) and _ISO_DATE.fullmatch(value.strip()):  # the module's YYYY-MM-DD (ENH-027)
+                return date.fromisoformat(value.strip())
+        except ValueError:
+            pass
+        raise PydanticCustomError("trip_date", f"Enter a valid {label}")
+    return parse
+
+
+TripTravelDate = Annotated[date, BeforeValidator(_trip_date("travel date"))]
+TripReturnDate = Annotated[date, BeforeValidator(_trip_date("return date"))]
+TripExpenseDate = Annotated[date, BeforeValidator(_trip_date("expense date"))]
+TripPlace = Annotated[Annotated[str, _trimmed(120)], AfterValidator(_trip_text(_BDM_CONTROL, True))]
+TripPurpose = Annotated[Annotated[str, _trimmed(1000)], AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True))]
+TripReason = TripPurpose  # the same rule: required, multi-line, at most 1000
+TripRemarks = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False))]
+TripNote = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False))]
+TripEstimatedCost = Annotated[Decimal, BeforeValidator(_trip_amount(positive=False))]
+TripExpenseAmount = Annotated[Decimal, BeforeValidator(_trip_amount(positive=True))]
+
+
+class BdmTripCreate(BaseModel):
+    """§3 fields. Code, owner, statuses and currency are server-owned (`extra="forbid"` → 422, AC13). Date rules (T14) need
+    "today", so `services/bdm_travel.check_dates` applies them."""
+
+    model_config = ConfigDict(extra="forbid")
+    travel_date: TripTravelDate
+    return_date: TripReturnDate
+    from_place: TripPlace
+    to_place: TripPlace
+    purpose: TripPurpose
+    mode: BdmTripMode
+    accommodation_required: bool = False
+    estimated_cost: TripEstimatedCost
+    remarks: TripRemarks = None
+
+
+class BdmTripUpdate(BaseModel):
+    """Omitted = unchanged. A sent null on a required field fails its non-nullable type (bdm-001's idiom); remarks accept null.
+    The `None` default is never validated, so it is deliberately typed as the non-nullable type (hence the type: ignore)."""
+
+    model_config = ConfigDict(extra="forbid")
+    travel_date: TripTravelDate = None  # type: ignore[assignment]
+    return_date: TripReturnDate = None  # type: ignore[assignment]
+    from_place: TripPlace = None  # type: ignore[assignment]
+    to_place: TripPlace = None  # type: ignore[assignment]
+    purpose: TripPurpose = None  # type: ignore[assignment]
+    mode: BdmTripMode = None  # type: ignore[assignment]
+    accommodation_required: bool = None  # type: ignore[assignment]
+    estimated_cost: TripEstimatedCost = None  # type: ignore[assignment]
+    remarks: TripRemarks = None
+
+
+class BdmTripReject(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: TripReason
+
+
+class BdmTripExpenseCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    category: BdmExpenseCategory
+    amount: TripExpenseAmount
+    expense_date: TripExpenseDate
+    note: TripNote = None
+
+
+class BdmTripExpenseUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    category: BdmExpenseCategory = None  # type: ignore[assignment]
+    amount: TripExpenseAmount = None  # type: ignore[assignment]
+    expense_date: TripExpenseDate = None  # type: ignore[assignment]
+    note: TripNote = None
+
+
+class BdmPersonRef(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class BdmTripExpenseOut(BaseModel):
+    id: UUID
+    category: str
+    amount: Decimal
+    expense_date: date
+    note: str | None
+
+
+class BdmTripRow(BaseModel):
+    id: UUID
+    code: str
+    bdm: BdmPersonRef
+    travel_date: date
+    return_date: date
+    from_place: str
+    to_place: str
+    mode: str
+    accommodation_required: bool
+    estimated_cost: Decimal
+    actual_cost: Decimal
+    currency: str
+    approval_status: str
+    travel_status: str
+    submitted_at: datetime | None
+
+
+class BdmTripOut(BdmTripRow):
+    purpose: str
+    remarks: str | None
+    rejection_reason: str | None
+    decided_by: BdmPersonRef | None
+    decided_at: datetime | None
+    completed_at: datetime | None
+    cancelled_at: datetime | None
+    expenses: list[BdmTripExpenseOut]
+    can_edit: bool
+    can_submit: bool
+    can_withdraw: bool
+    can_start: bool
+    can_complete: bool
+    can_cancel: bool
+    can_add_expense: bool
+    can_decide: bool
+
+
+class BdmTripPage(BaseModel):
+    items: list[BdmTripRow]
+    total: int
+    limit: int
+    offset: int
+
+
 # --- bdm-002 (DEC-SCOPE-060): organization CRM core ------------------------------------------------------------------------
 BdmOrgType = Literal["college", "university", "agent", "school", "corporate", "training_institute", "other"]
 BdmContactRole = Literal["principal", "dean", "hod", "placement_officer", "counselor", "management", "owner", "other"]
@@ -3177,19 +3438,35 @@ BDM_ORG_LABELS = {
     "website": "Website",
     "courses_interested": "Courses interested",
     "designation": "Designation",
+    "address": "Address",
+    "country": "Country",
+    "territory": "Territory",
+    "affiliation": "University / affiliation",
+    "courses": "Courses",
+    "source": "Source",
+    "staff_count": "Number of staff",
+    "board": "Board",
+    "school_type": "School type",
+    "grade_from": "Lowest grade",
+    "grade_to": "Highest grade",
+    "college_type": "College type",
 }
-BDM_ORG_FIELDS = ("org_type", "name", "city", "state", "phone", "email", "website", "existing_partner", "courses_interested", "student_count")
+BDM_MULTILINE_FIELDS = frozenset({"address", "courses", "courses_interested"})  # bdm-003 P14: line breaks kept
+BDM_ORG_FIELDS = ("org_type", "name", "city", "state", "address", "phone", "email", "website", "existing_partner", "courses_interested", "student_count")
 _BDM_PHONE = re.compile(r"[0-9+()\- ]+")
 _BDM_WEBSITE = re.compile(r"https?://\S+", re.IGNORECASE)
 _BDM_SCHEME = re.compile(r"[a-z][a-z0-9+.-]*:", re.IGNORECASE)  # "javascript:", "mailto:", "ftp:" ...
 _BDM_BARE_SITE = re.compile(r"[^\s/:]+\.[^\s/:]+(/\S*)?")  # "stjoseph.edu", "www.mary.ac.in/admissions"
+_BDM_CONTROL_MULTILINE = re.compile(r"[\x00-\x09\x0b-\x1f\x7f]")  # bdm-003 P14: like _BDM_CONTROL, but a line break (\n) is allowed
 BDM_MAX_CONTACTS = 20
 
 
 def _bdm_org_text(value: str | None, info: ValidationInfo) -> str | None:
-    """bdm-001's text rule (no control characters, blank -> None) plus the per-field shape checks (spec §5.1, §12.3)."""
+    """bdm-001's text rule (no control characters, blank -> None) plus the per-field shape checks (spec §5.1, §12.3). A multi-line field
+    (bdm-003 P14) also allows a line break."""
     label = BDM_ORG_LABELS.get(info.field_name, info.field_name)
-    if value is not None and _BDM_CONTROL.search(value):
+    control = _BDM_CONTROL_MULTILINE if info.field_name in BDM_MULTILINE_FIELDS else _BDM_CONTROL
+    if value is not None and control.search(value):
         raise ValueError(f"{label} contains invalid characters")
     if not value:
         return None
@@ -3202,6 +3479,11 @@ def _bdm_org_text(value: str | None, info: ValidationInfo) -> str | None:
     if info.field_name == "website" and not _BDM_WEBSITE.fullmatch(value):  # http(s) only: no javascript:/data: hrefs (spec §12.3)
         raise ValueError("Website must start with http:// or https://" if _BDM_SCHEME.match(value) else "Enter a website such as stjoseph.edu")
     return value
+
+
+def _bdm_newlines(value):
+    """Before the length check, so the limit counts the stored form (as _bdm_website_prefix)."""
+    return value.replace("\r\n", "\n").replace("\r", "\n") if isinstance(value, str) else value
 
 
 def _bdm_website_prefix(value):
@@ -3227,8 +3509,11 @@ def _bdm_contact_name(value: str) -> str:
     return value
 
 
-def _bdm_org_optional(max_length: int):
-    return Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_bdm_org_text)]
+def _bdm_org_optional(max_length: int, *, multiline: bool = False):
+    """`multiline` (bdm-003 P14): \\r\\n / \\r become \\n before the length check, so the limit counts the stored form. The field must
+    also be in BDM_MULTILINE_FIELDS for _bdm_org_text to accept the line break."""
+    text = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_bdm_org_text)]
+    return Annotated[text, BeforeValidator(_bdm_newlines)] if multiline else text
 
 
 def _bdm_org_mandatory(max_length: int):
@@ -3240,20 +3525,32 @@ BdmOrgCity = _bdm_org_mandatory(120)
 BdmOrgShort = _bdm_org_optional(120)
 BdmOrgPhone = _bdm_org_optional(30)
 BdmOrgLong = _bdm_org_optional(255)
-BdmOrgCourses = _bdm_org_optional(1000)
+BdmOrgMedium = _bdm_org_optional(200)
+BdmOrgCourses = _bdm_org_optional(1000, multiline=True)  # courses_interested and the College `courses`
+BdmOrgAddress = _bdm_org_optional(500, multiline=True)
 BdmOrgWebsite = Annotated[_bdm_org_optional(255), BeforeValidator(_bdm_website_prefix)]
 BdmContactName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200), AfterValidator(_bdm_contact_name)]
 
 
-def _bdm_student_count(value, handler):
-    """Browser QA-04: the strict whole-number rule stays; every way it fails reads as one plain sentence."""
-    try:
-        return handler(value)
-    except ValidationError:
-        raise ValueError("Number of students must be a whole number from 0 to 1,000,000") from None
+def _bdm_whole_number(message: str, low: int, high: int):
+    """Browser QA-04: strict whole numbers; every way one fails reads as one plain sentence."""
+
+    def wrap(value, handler):
+        try:
+            return handler(value)
+        except ValidationError:
+            raise ValueError(message) from None
+
+    return Annotated[Annotated[StrictInt, Field(ge=low, le=high)] | None, WrapValidator(wrap)]
 
 
-BdmStudentCount = Annotated[Annotated[StrictInt, Field(ge=0, le=1_000_000)] | None, WrapValidator(_bdm_student_count)]
+BdmStudentCount = _bdm_whole_number("Number of students must be a whole number from 0 to 1,000,000", 0, 1_000_000)
+BdmStaffCount = _bdm_whole_number(f"Number of staff must be a whole number from 0 to {BDM_STAFF_MAX:,}", 0, BDM_STAFF_MAX)
+BdmGrade = _bdm_whole_number("Grade must be Nursery, LKG, UKG or 1 to 12", BDM_GRADE_MIN, BDM_GRADE_MAX)
+BdmOrgSource = Literal["referral", "website", "event", "cold_call", "walk_in", "other"]
+BdmSchoolBoard = SchoolBoard  # ENH-009's values by construction: bdm-018 copies the board onto `schools.board`
+BdmSchoolType = Literal["private", "government", "aided", "international", "other"]
+BdmCollegeType = Literal["engineering", "arts_science", "management", "medical", "polytechnic", "other"]
 
 
 class BdmContactIn(BaseModel):
@@ -3288,6 +3585,25 @@ def _bdm_contacts(contacts: list[BdmContactIn]) -> list[BdmContactIn]:
     return contacts
 
 
+class BdmOrgProfileIn(BaseModel):
+    """bdm-003 (DEC-SCOPE-065, spec §5.1): the type-specific fields. Omitted = not sent; null = clear. Which keys an org_type accepts is
+    checked by services.bdm_organizations.check_profile (it needs the effective type); unknown keys -- the live agent figures commission,
+    students, applications, enrollments and master_login among them -- are refused here (AC4)."""
+
+    model_config = ConfigDict(extra="forbid")
+    country: BdmOrgShort = Field(None, description="Agent: country (free text).")
+    territory: BdmOrgShort = Field(None, description="Agent: territory (free text).")
+    source: BdmOrgSource | None = Field(None, description="Agent: how the agency was found.")
+    staff_count: BdmStaffCount = Field(None, description="Agent: number of staff, entered by the BDM (0-100000).")
+    board: BdmSchoolBoard | None = Field(None, description="School: board, ENH-009's values.")
+    school_type: BdmSchoolType | None = Field(None, description="School: school type.")
+    grade_from: BdmGrade = Field(None, description="School: lowest grade. -2 Nursery, -1 LKG, 0 UKG, then 1-12.")
+    grade_to: BdmGrade = Field(None, description="School: highest grade, same codes; not below grade_from.")
+    affiliation: BdmOrgMedium = Field(None, description="College/University: university or affiliation (free text).")
+    college_type: BdmCollegeType | None = Field(None, description="College/University: college type.")
+    courses: BdmOrgCourses = Field(None, description="College/University: courses the college teaches; line breaks allowed.")
+
+
 class BdmOrganizationCreate(BaseModel):
     """spec §5.1 / C13: type, name, city and >=1 contact are required. Server-owned fields (code, bdm_type, assignee, archive) are
     unknown fields here, so a client can never set them (§12.3 mass assignment)."""
@@ -3297,12 +3613,14 @@ class BdmOrganizationCreate(BaseModel):
     name: BdmOrgName
     city: BdmOrgCity
     state: BdmOrgShort = None
+    address: BdmOrgAddress = None
     phone: BdmOrgPhone = None
     email: BdmOrgLong = None
     website: BdmOrgWebsite = None
     existing_partner: StrictBool = False
     courses_interested: BdmOrgCourses = None
     student_count: BdmStudentCount = None
+    profile: BdmOrgProfileIn | None = None
     contacts: Annotated[list[BdmContactIn], AfterValidator(_bdm_contacts)]
     confirm_duplicate: StrictBool = False
 
@@ -3313,12 +3631,14 @@ class BdmOrganizationUpdate(BaseModel):
     name: BdmOrgName = None
     city: BdmOrgCity = None
     state: BdmOrgShort = None
+    address: BdmOrgAddress = None
     phone: BdmOrgPhone = None
     email: BdmOrgLong = None
     website: BdmOrgWebsite = None
     existing_partner: StrictBool = None
     courses_interested: BdmOrgCourses = None
     student_count: BdmStudentCount = None
+    profile: BdmOrgProfileIn = None  # omitted = unchanged; an explicit null is a 422 (bdm-001's PATCH idiom)
     confirm_duplicate: StrictBool = False
 
 
@@ -3357,6 +3677,32 @@ class BdmOrgPermissions(BaseModel):
     can_reassign: bool
 
 
+class BdmAgentProfileOut(BaseModel):
+    kind: Literal["agent"]
+    country: str | None
+    territory: str | None
+    source: str | None
+    staff_count: int | None
+
+
+class BdmSchoolProfileOut(BaseModel):
+    kind: Literal["school"]
+    board: str | None
+    school_type: str | None
+    grade_from: int | None
+    grade_to: int | None
+
+
+class BdmCollegeProfileOut(BaseModel):
+    kind: Literal["college"]
+    affiliation: str | None
+    college_type: str | None
+    courses: str | None
+
+
+BdmOrgProfileOut = Annotated[BdmAgentProfileOut | BdmSchoolProfileOut | BdmCollegeProfileOut, Field(discriminator="kind")]
+
+
 class BdmOrganizationRow(BaseModel):
     id: UUID
     code: str
@@ -3378,8 +3724,10 @@ class BdmOrganizationOut(BdmOrganizationRow):
     phone: str | None
     email: str | None
     website: str | None
+    address: str | None
     courses_interested: str | None
     student_count: int | None
+    profile: BdmOrgProfileOut | None  # null for corporate / training_institute / other (spec §5.1)
     contacts: list[BdmContactOut]
     created_by_name: str
     archived_at: datetime | None

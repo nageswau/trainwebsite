@@ -26,7 +26,7 @@ Playwright.
 - `CSV_ROW_CAP = 10_000`; export throttle 30 per user per 10 minutes; audit action `agent_report.export`.
 - Dates: strict `YYYY-MM-DD`, inclusive UTC days; messages as AGN-014.
 - No ids, email, phone, DOB, passport in JSON or CSV. Logs: ids, kind, filter keys, counts, timing.
-- Comments cite AGN-020 / DEC-SCOPE-063 and spec sections, in the surrounding style.
+- Comments cite AGN-020 / DEC-SCOPE-066 and spec sections, in the surrounding style.
 - **Lite testing (owner instruction 2026-10-03):** run only the new test files and the directly affected existing files named in
   each task; the owner runs full suites separately.
 
@@ -63,7 +63,7 @@ Playwright.
 | `apps/web/components/WorkflowPanel.tsx` (modify) | stop mounting the commission panel on reports |
 | `apps/web/app/globals.css` (modify) | `.num`, `.report-busy` rules |
 | web tests (new/rewritten) | see Tasks 7–10 |
-| docs | DEC-SCOPE-063 and the §11 list (Task 11) |
+| docs | DEC-SCOPE-066 and the §11 list (Task 11) |
 
 Commands (from `apps/api`, isolated DB on port 5440):
 `$env:DATABASE_URL="postgresql+asyncpg://edusphere:edusphere@localhost:5440/edusphere"` then `.venv/Scripts/python -m pytest -q <file>`.
@@ -236,8 +236,8 @@ create `tests/components/PortalPage.agentReports.test.tsx`.
 ### Task 11: Playwright spec and documentation
 
 **Files:** Create `apps/web/tests/e2e/agn-020-reports.spec.ts`; modify `apps/web/tests/e2e/agn-014-commission-master.spec.ts`
-(open `?report=commission`); docs per spec §11 with `DEC-SCOPE-063`.
+(open `?report=commission`); docs per spec §11 with `DEC-SCOPE-066`.
 
 - [ ] **Step 1:** write the spec (Master tabs + CSV headers; staff toggle on: 6 tabs; toggle off: refusal text; 375 px no
   horizontal overflow). It runs in the owner's browser-validation session (full stack required).
-- [ ] **Step 2:** docs. **Step 3: Commit** `docs(agn-020): DEC-SCOPE-063, contracts, RBAC, screens, RTM; e2e spec`.
+- [ ] **Step 2:** docs. **Step 3: Commit** `docs(agn-020): DEC-SCOPE-066, contracts, RBAC, screens, RTM; e2e spec`.

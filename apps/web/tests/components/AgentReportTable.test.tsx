@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import AgentReportTable from "@/components/AgentReportTable";
 import type { AgentReport } from "@/lib/types";
 
-// AGN-020 (DEC-SCOPE-063; spec §6.2): the report table -- presentation only.
+// AGN-020 (DEC-SCOPE-066; spec §6.2): the report table -- presentation only.
 
 const summary: AgentReport = {
   kind: "countries", title: "Applications by country", scope: "agency",

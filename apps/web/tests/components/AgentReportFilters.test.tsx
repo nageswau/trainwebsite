@@ -5,7 +5,7 @@ import AgentReportFilters from "@/components/AgentReportFilters";
 import { tabsFor } from "@/lib/agentReports";
 import type { AgentReportOptions } from "@/lib/types";
 
-// AGN-020 (DEC-SCOPE-063; spec §6.2): the filter form of one report.
+// AGN-020 (DEC-SCOPE-066; spec §6.2): the filter form of one report.
 
 const master = tabsFor("master");
 const tab = (key: string, tabs = master) => tabs.find((t) => t.key === key)!;

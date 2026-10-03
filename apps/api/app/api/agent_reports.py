@@ -1,4 +1,4 @@
-"""AGN-020 -- the agency reports and their CSV export (DEC-SCOPE-063; docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md §5).
+"""AGN-020 -- the agency reports and their CSV export (DEC-SCOPE-066; docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md §5).
 
 AGN-004's gate (agency members of an active agency; super admin refused), then the AGN-003 Reports toggle, then the Master-only
 kind, then the kind, then the inputs -- in that order, so a refused caller never learns which kinds exist or sees a 422 (§5.1).

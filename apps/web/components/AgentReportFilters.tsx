@@ -5,7 +5,7 @@ import FormMessage from "@/components/FormMessage";
 import { FILTER_LABEL, type FilterKey, OPTION_LIST, type ReportState, type ReportTab } from "@/lib/agentReports";
 import type { AgentReportOptions } from "@/lib/types";
 
-// AGN-020 (DEC-SCOPE-063; spec §6.2): the filters of one report -- dates, then a select per filter the report offers, each option
+// AGN-020 (DEC-SCOPE-066; spec §6.2): the filters of one report -- dates, then a select per filter the report offers, each option
 // from the server's `options` (the caller's own scope). A field error (client or server 422) sits under the form, is tied to its
 // control (`aria-describedby`, `aria-invalid`) and takes focus. Apply stays focusable while a report loads (`aria-disabled`).
 

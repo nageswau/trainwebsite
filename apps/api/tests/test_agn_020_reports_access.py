@@ -1,4 +1,4 @@
-"""AGN-020 (DEC-SCOPE-063) -- who may read which report, in the fixed check order of spec §5.1 (AC4)."""
+"""AGN-020 (DEC-SCOPE-066) -- who may read which report, in the fixed check order of spec §5.1 (AC4)."""
 
 import pytest
 import pytest_asyncio

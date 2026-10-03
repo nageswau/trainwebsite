@@ -1,4 +1,4 @@
-"""AGN-020 (DEC-SCOPE-063) -- agency reports: filters, intake folding, report values against hand counts, parity with the AGN-018
+"""AGN-020 (DEC-SCOPE-066) -- agency reports: filters, intake folding, report values against hand counts, parity with the AGN-018
 dashboard, paging and options (spec §4, §5, §8)."""
 
 import re

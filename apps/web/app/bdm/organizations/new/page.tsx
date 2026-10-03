@@ -3,9 +3,11 @@ import BdmOrganizationCreate from "@/components/BdmOrganizationCreate";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import { BDM_TYPE_LABEL, type BdmMe } from "@/lib/bdm";
-import { BDM_NAV, BDM_SIGN_IN } from "@/lib/navigation";
+import { bdmNav } from "@/lib/bdmNav";
+import { BDM_SIGN_IN } from "@/lib/navigation";
 
 export default async function BdmOrganizationNewPage() {
+  const nav = bdmNav(); // bdm-010 QA10-01: the unread badge, read alongside the page's own data (never rejects)
   let me: BdmMe;
   try {
     me = await serverApi<BdmMe>("/api/v1/bdm/me");
@@ -13,7 +15,7 @@ export default async function BdmOrganizationNewPage() {
     return accessUnavailable(e, BDM_SIGN_IN);
   }
   return (
-    <PortalShell nav={BDM_NAV} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
+    <PortalShell nav={await nav} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

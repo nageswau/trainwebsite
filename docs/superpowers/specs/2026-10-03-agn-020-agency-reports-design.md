@@ -1,8 +1,8 @@
 # AGN-020 — Agency reports (7 new + Commission) and CSV export — design
 
 **Status:** design approved in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to eight structured questions and five design-section
-reviews), to be recorded as `DEC-SCOPE-063` (provisional: free on `main` @ `3bde879`; renumber on merge if a parallel branch, e.g.
-AGN-019, reaches `main` with `063` first).
+reviews), recorded as `DEC-SCOPE-066` (drafted as `063`; renumbered on merging `main` @ `cf356ca`, where `063`–`065` are bdm-010,
+AGN-022 and bdm-003).
 Source item: `docs/delivery/AGENT_CRM_BACKLOG.md` ang-020 (`DERIVED_BLUEPRINT`). Depends on AGN-003/004/005, AGN-008 … AGN-014 and AGN-018,
 all on `main`. Branch: `feature/agn-020-reports`. **GATE-09:** no code until this spec and its plan are approved.
 
@@ -14,7 +14,7 @@ decided here (R1).
 
 Owner acceptance: each report matches fixture data; the CSV opens with correct headers; Staff without the toggle → 403.
 
-## 2. Decisions (`DEC-SCOPE-063`, answered by the owner 2026-10-03)
+## 2. Decisions (`DEC-SCOPE-066`, answered by the owner 2026-10-03)
 
 | ID | Decision |
 |---|---|
@@ -323,7 +323,7 @@ Unit: `fold_intakes`, `parse_filters`. Gates: full pytest, vitest, `tsc`, lint, 
 | AGN-014 panel re-parented | component untouched; its unit tests unchanged |
 | `{kind}` route swallowing `.csv` | `.csv` registered first; test `students.csv` |
 | page vs dashboard numbers | AC2 parity |
-| Decision ID collision | `DEC-SCOPE-063` provisional |
+| Decision ID collision | drafted as `063`, renumbered `066` on merging `main` @ `cf356ca` |
 
 Deliberate updates (structure, not behaviour): `WorkflowPanel.agentCommissionReport.test.tsx` (panel now under the Commission tab);
 `agn-014-commission-master.spec.ts` (opens `?report=commission`).
@@ -335,7 +335,7 @@ reports; charts; changing the portal `reports` payload; a structured intake colu
 
 ## 11. Documentation
 
-`PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-063`; `RBAC_MATRIX.md`; `API_CONTRACT.md`; `SCREEN_CATALOG.md` / `screen_catalog.json`;
+`PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-066`; `RBAC_MATRIX.md`; `API_CONTRACT.md`; `SCREEN_CATALOG.md` / `screen_catalog.json`;
 `RTM.md`; `ENHANCEMENT_BACKLOG.md` §AGN-020; `CONFLICT_MATRIX.md` C-10 update (these reports lifted out of "parked").
 
 ## 12. Design reviews (2026-10-03, at the owner's request)

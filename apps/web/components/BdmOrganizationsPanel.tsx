@@ -5,31 +5,53 @@ import { type FormEvent, useEffect, useState } from "react";
 
 import { isPage, type Page } from "@/lib/apiErrors";
 import { PAGE_SIZE } from "@/lib/bdm";
-import { CHECKBOX_ROW, display, LINK_STYLE, ORG_TYPE_LABEL, ORG_TYPES, ORGS_URL, type OrgRow } from "@/lib/bdmOrganizations";
+import { BOARD_LABEL, BOARDS, CHECKBOX_ROW, display, LINK_STYLE, ORG_TYPE_LABEL, ORG_TYPES, ORGS_URL, type OrgRow, profileGroup } from "@/lib/bdmOrganizations";
 
 // bdm-002 (spec §6.2, §12.2): the organization list for a BDM (their whole module, Q-02) or a manager (their team, C2). The API
 // scopes the rows; nothing here filters for security. Filters and the page live in the URL (AdminBdmPanel's pattern), so refresh
 // keeps the place and Back returns to the previous view. The current rows stay on screen while the next page loads.
-type Filters = { offset: number; q: string; orgType: string; city: string; mine: boolean; archived: boolean };
+// bdm-003 (spec §6.3): Board / Affiliation / Territory appear with the Type they belong to and are dropped when it changes.
+type Filters = { offset: number; q: string; orgType: string; city: string; board: string; affiliation: string; territory: string; mine: boolean; archived: boolean };
+
+// bdm-003: the one profile filter each Type group has (spec §6.3).
+const PROFILE_FILTER = { school: "board", college: "affiliation", agent: "territory" } as const;
+type ProfileFilter = (typeof PROFILE_FILTER)[keyof typeof PROFILE_FILTER];
+
+/** The single place that decides which profile filter applies: only the one that belongs to the Type, so every applied filter has a
+ * visible control (browser QA3-01), and only a known Board, so the API never 422s on a hand-edited URL (QA3-02). Used when reading and
+ * when writing the URL, so a Type change or Search can pass every draft and the stale ones simply drop out. */
+function forType(f: Filters): Filters {
+  const group = profileGroup(f.orgType);
+  const own: ProfileFilter | null = group ? PROFILE_FILTER[group] : null;
+  const keep = (key: ProfileFilter) => (key === own ? f[key] : "");
+  return { ...f, board: (BOARDS as readonly string[]).includes(f.board) ? keep("board") : "", affiliation: keep("affiliation"), territory: keep("territory") };
+}
 
 function readFilters(params: URLSearchParams): Filters {
   const n = Number.parseInt(params.get("offset") ?? "", 10);
-  return {
+  return forType({
     offset: Number.isFinite(n) && n > 0 ? n : 0,
     q: (params.get("q") ?? "").trim(),
     orgType: params.get("org_type") ?? "",
     city: (params.get("city") ?? "").trim(),
+    board: params.get("board") ?? "",
+    affiliation: (params.get("affiliation") ?? "").trim(),
+    territory: (params.get("territory") ?? "").trim(),
     mine: params.get("assigned") === "me",
     archived: params.get("archived") === "1",
-  };
+  });
 }
 
-function toUrl(f: Filters): URLSearchParams {
+function toUrl(filters: Filters): URLSearchParams {
+  const f = forType(filters);
   const next = new URLSearchParams();
   if (f.offset > 0) next.set("offset", String(f.offset));
   if (f.q) next.set("q", f.q);
   if (f.orgType) next.set("org_type", f.orgType);
   if (f.city) next.set("city", f.city);
+  if (f.board) next.set("board", f.board);
+  if (f.affiliation) next.set("affiliation", f.affiliation);
+  if (f.territory) next.set("territory", f.territory);
   if (f.mine) next.set("assigned", "me");
   if (f.archived) next.set("archived", "1");
   return next;
@@ -61,12 +83,17 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
   const [version, setVersion] = useState(0);
   const [draftQ, setDraftQ] = useState(filters.q);
   const [draftCity, setDraftCity] = useState(filters.city);
+  const [draftAffiliation, setDraftAffiliation] = useState(filters.affiliation);
+  const [draftTerritory, setDraftTerritory] = useState(filters.territory);
+  const group = profileGroup(filters.orgType);
 
   // Back/Forward change the URL without remounting: follow it.
   useEffect(() => {
     setDraftQ(filters.q);
     setDraftCity(filters.city);
-  }, [filters.q, filters.city]);
+    setDraftAffiliation(filters.affiliation);
+    setDraftTerritory(filters.territory);
+  }, [filters.q, filters.city, filters.affiliation, filters.territory]);
 
   useEffect(() => {
     let live = true;
@@ -95,10 +122,10 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
     setTarget(url.toString());
     router.push(url.size ? `${pathname}?${url}` : pathname, { scroll: false });
   }
-  const filtered = Boolean(filters.q || filters.orgType || filters.city || filters.mine || filters.archived);
+  const filtered = Boolean(filters.q || filters.orgType || filters.city || filters.board || filters.affiliation || filters.territory || filters.mine || filters.archived);
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    go({ q: draftQ.trim(), city: draftCity.trim() });
+    go({ q: draftQ.trim(), city: draftCity.trim(), affiliation: draftAffiliation.trim(), territory: draftTerritory.trim() }); // forType drops the other type's
   };
 
   return (
@@ -131,6 +158,31 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
             ))}
           </select>
         </div>
+        {group === "school" && (
+          <div className="field" style={{ flex: "0 1 160px", margin: 0 }}>
+            <label htmlFor="org-filter-board">Board</label>
+            <select id="org-filter-board" value={filters.board} onChange={(e) => go({ board: e.target.value })}>
+              <option value="">All boards</option>
+              {BOARDS.map((b) => (
+                <option key={b} value={b}>
+                  {BOARD_LABEL[b]}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {group === "college" && (
+          <div className="field" style={{ flex: "1 1 160px", margin: 0 }}>
+            <label htmlFor="org-filter-affiliation">University / affiliation</label>
+            <input id="org-filter-affiliation" type="search" value={draftAffiliation} maxLength={200} onChange={(e) => setDraftAffiliation(e.target.value)} />
+          </div>
+        )}
+        {group === "agent" && (
+          <div className="field" style={{ flex: "1 1 160px", margin: 0 }}>
+            <label htmlFor="org-filter-territory">Territory</label>
+            <input id="org-filter-territory" type="search" value={draftTerritory} maxLength={120} onChange={(e) => setDraftTerritory(e.target.value)} />
+          </div>
+        )}
         {isBdm && (
           <label style={CHECKBOX_ROW}>
             <input type="checkbox" checked={filters.mine} onChange={(e) => go({ mine: e.target.checked })} />
@@ -145,7 +197,7 @@ export default function BdmOrganizationsPanel({ basePath, isBdm }: { basePath: s
           Search
         </button>
         {filtered && (
-          <button type="button" className="btn secondary small" onClick={() => go({ q: "", orgType: "", city: "", mine: false, archived: false })}>
+          <button type="button" className="btn secondary small" onClick={() => go({ q: "", orgType: "", city: "", board: "", affiliation: "", territory: "", mine: false, archived: false })}>
             Clear filters
           </button>
         )}

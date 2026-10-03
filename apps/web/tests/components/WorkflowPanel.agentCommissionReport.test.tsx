@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import WorkflowPanel from "@/components/WorkflowPanel";
 import type { User } from "@/lib/types";
 
-// AGN-014's commission report is now the Commission tab of the AGN-020 Reports panel (DEC-SCOPE-063 R1; spec §6.2), so the actions area
+// AGN-014's commission report is now the Commission tab of the AGN-020 Reports panel (DEC-SCOPE-066 R1; spec §6.2), so the actions area
 // under the page no longer mounts a second copy. Its own behaviour is covered by AgentCommissionReportPanel.test.tsx and the
 // Master-only tab by AgentReportsPanel.test.tsx / agentReports.test.ts.
 

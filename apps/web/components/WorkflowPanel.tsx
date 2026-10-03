@@ -463,7 +463,7 @@ export default function WorkflowPanel({ user, section }: { user: User; section: 
   const showUniversityCreate = ["overseas_admin", "super_admin"].includes(user.role) && section === "universities";
   // AGN-001/AGN-002: the agency's Masters (list, invite, deactivate) and staff (add, edit, activate, reset).
   const showAgentTeam = user.role === "agent" && section === "team";
-  // AGN-014's commission report (Master-only) is the Commission tab of AGN-020's AgentReportsPanel (DEC-SCOPE-063), mounted by PortalPage.
+  // AGN-014's commission report (Master-only) is the Commission tab of AGN-020's AgentReportsPanel (DEC-SCOPE-066), mounted by PortalPage.
   const showSchoolCreate = ["overseas_admin", "super_admin"].includes(user.role) && section === "schools";
   const showSchoolStaffCreate = ["overseas_admin", "super_admin"].includes(user.role) && section === "school-staff";
   // DEC-SCOPE-018 -- Overseas Admin/Counselor (never school_coordinator) links a School

@@ -28,7 +28,7 @@ const main=agentApplications?<AgentApplicationsSection user={user}/>:agentDocume
 // AGN-018 (DEC-SCOPE-062): agency members get the KPI board under the title (it reads its own endpoint and streams in, so the title
 // and table render at once); the payload stays the page's gate, and its metric tiles are dropped so nothing shows twice.
 :agent&&section==="dashboard"&&user.role==="agent"?<PortalSection data={{...data,metrics:[]}} lead={<Suspense fallback={<AgentDashboardSkeleton/>}><AgentDashboardPanel/></Suspense>}/>
-// AGN-020 (DEC-SCOPE-063 R8): agency members get the tabbed reports (the Universities precedent: the panel is the page). The payload
+// AGN-020 (DEC-SCOPE-066 R8): agency members get the tabbed reports (the Universities precedent: the panel is the page). The payload
 // is still the page's gate -- staff without Reports get its 403 card above -- and its old summary table is no longer shown.
 :agent&&section==="reports"&&user.role==="agent"?<AgentReportsPanel memberRole={user.agent_member_role}/>
 :<PortalSection data={data}/>;

@@ -288,6 +288,8 @@ Conventions used below:
 
 ### bdm-003 — Type-specific organization profiles (Agent / School / College)
 
+> **Status (2026-10-03):** **COMPLETE for its scope (2026-10-03)** on `feature/bdm-003-type-specific-profile-fields` @ `d711fc6` (`DEC-SCOPE-065`, migration `0069_bdm_org_profiles` after `0068_bdm_trips`; up to date with `main` @ `39c119b`). Verification before completion, all fresh on that commit (compose project `bdm003`, stack rebuilt from it, head `0069_bdm_org_profiles`): backend lite (all `test_bdm_001/002/003/010_*`, `test_agn_022_*`, `test_agn_015/017_migration`) **352 passed, 0 failed**; `alembic heads` single; offline SQL = 12 added nullable columns + 9 CHECKs up, the same dropped down, no row written; ruff clean on the bdm-003 Python; web BDM + navigation set (18 files) **162 passed**; `tsc` 0; `eslint .` 0 errors (30 pre-existing warnings, none in BDM files); `next build` ok; Playwright bdm-001/002/003/010 **15 passed** (one bdm-001 cold-stack timeout on the first run; that spec then passed 21/21 alone and the full set 15/15); Browser Use (isolated Chrome) AC1–AC8 and AC10 observed, AC9 by migration evidence, no sideways scroll at 1366/768/375/320 px, no unlabelled controls, RBAC (peer 403, other module 404, manager 403, signed out 401), no broken images, only deliberate 4xx in the console; diff hygiene: no skipped/focused tests, debug code, secrets or TODOs; `.env` untracked. **Not run, by the owner's standing choice:** full backend and web suites. **Independent Codex review:** waived by the owner (2026-10-03). Owner answers P1–P14 supersede the "spec decision" lines below: typed columns + a nested `profile` (P2); `university` uses the College profile (P1); a common `address` (P3, `DEC-SCOPE-060` C16); a type change over entered data is a 409 (P4); line breaks allowed in Address, Courses and Courses Interested (P14). **Follow-up:** Courses Interested as a `programs` multi-select was deferred twice (`DEC-SCOPE-060` C6, `DEC-SCOPE-063` P9) and needs its own item. Spec: `docs/superpowers/specs/2026-10-03-bdm-003-type-specific-profiles-design.md`.
+
 - **Business requirement:** each module has its own database fields.
   - Agent §B: Agency Name, Owner, Country, Address, Territory, Source, Number of Staff, Commission, Agreement, MoU.
   - School §B: Board, School Type, Principal, Management Contact, Counselor, Student Strength, Grades, Contract, Renewal Date.
@@ -548,6 +550,14 @@ Conventions used below:
 ---
 
 ### bdm-010 — Travel requests, approval, modes, costs, expenses
+
+> **Status (2026-10-03):** **COMPLETE for bdm-010 scope** on branch `worktree-bdm-010` (`DEC-SCOPE-063`, migration `0068_bdm_trips` -- drafted
+> as 060/0066, renumbered on merging `main` @ `3bde879`; spec `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md`). Owner answers
+> T1–T16 (T15 notifications UI, T16 trip workspace from browser QA). Browser QA: `docs/quality/BDM-010_BROWSER_QA_2026-10-03.md` (17 issues,
+> all fixed). **Verification before completion (fresh):** backend lite 313/313 (bdm-010, bdm-001, bdm-002, AGN-017/AGN-015 migration, UUID contracts, ENH-027 schemas); web lite 278/278; `tsc`, `eslint` (59 changed files), `ruff` clean; mypy = main's 342, none in bdm-010 code; `next build` exit 0; Playwright bdm-010 10/10 (`--repeat-each=2`) + bdm-001/bdm-002/AGN-018 11/11; Browser Use end to end on `bdm010qa` (AC1–AC13, T3/T8 fallback, T9, T12, T15, phone 375 px, no console errors); migration 0068 additive, one head.
+> **Not run by the owner's standing choice:** the full backend and web suites. Follow-ups fixed after verification (`f86b8dbc`): a refused
+> edit re-reads the trip and says why at the top (approved meanwhile -> the editor closes); the remarks box also waits for hydration --
+> re-verified: web lite 280/280, backend lite 313/313, Playwright 10/10 + 11/11, `next build` exit 0, Browser Use stale-editor check.
 
 - **Business requirement:** track travel with the §3 fields: Travel ID, BDM, Travel Date, Return Date, From, To, Purpose, Organization, Appointment date and time, Mode, Accommodation Required, Estimated Cost, Actual Cost, Approval Status, Travel Status, Remarks. The modes are Flight, Train, Bus, Car, Cab and Local. Also the common Travel list (§4): request, approval, expenses, actual cost and travel report.
 - **Existing behavior:** none.
@@ -902,6 +912,8 @@ Conventions used below:
 ---
 
 ### bdm-019 — Agent onboarding handover + Agent Organization link
+
+> **NEEDS_CONFIRMATION (from bdm-003, `DEC-SCOPE-065` P10):** who may see an agent's commission once the organization is linked (financial data). bdm-003 shows only the placeholder "Commission: Available after onboarding" and neither stores nor returns a value.
 
 - **Business requirement:** Agent §E: Agreement Signed → Agent Onboarding → Master Login Created → Staff Logins Created → Active Agent → Students → Applications → Enrollments. The agent database shows Master Login, Students, Applications, Enrollments and Commission.
 - **Existing behavior:** agents are single users (`AGT-001`). The multi-tenant Agent Organization is designed (`ang-001` spec) but not built.

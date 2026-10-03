@@ -3,11 +3,13 @@ import BdmProfileCard from "@/components/BdmProfileCard";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import { BDM_TYPE_LABEL, type BdmMe } from "@/lib/bdm";
-import { BDM_NAV, BDM_SIGN_IN } from "@/lib/navigation";
+import { bdmNav } from "@/lib/bdmNav";
+import { BDM_SIGN_IN } from "@/lib/navigation";
 
 // bdm-001 (AC05, B2): the BDM landing page -- a minimal shell; bdm-014 fills My Day. The API is the gate: any other role, or a BDM
 // without a profile, gets its 403 message here with a link home.
 export default async function BdmMyDayPage() {
+  const nav = bdmNav(); // the unread badge, read alongside the page's own data (never rejects)
   let me: BdmMe;
   try {
     me = await serverApi<BdmMe>("/api/v1/bdm/me");
@@ -15,7 +17,7 @@ export default async function BdmMyDayPage() {
     return accessUnavailable(e, BDM_SIGN_IN);
   }
   return (
-    <PortalShell nav={BDM_NAV} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
+    <PortalShell nav={await nav} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>
