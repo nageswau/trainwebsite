@@ -216,7 +216,7 @@ export default function BdmOrganizationForm({
     >
       <BdmOrganizationFields idPrefix={idPrefix} values={values} errors={errors} onChange={(k, v) => setValues((prev) => ({ ...prev, [k]: v }))} />
       <BdmOrganizationProfileFields idPrefix={idPrefix} group={group} values={profile} errors={profileErrs} onChange={(k, v) => setProfile((prev) => ({ ...prev, [k]: v }))} />
-      {mode === "create" && <BdmContactFields idPrefix={idPrefix} contacts={contacts} errors={contactErrors} onChange={setContacts} />}
+      {mode === "create" && <BdmContactFields idPrefix={idPrefix} contacts={contacts} errors={contactErrors} onChange={setContacts} orgType={values.org_type} />}
       {duplicate && (
         <div role="alert" className="form-error">
           <h4 id={`${idPrefix}-duplicate`} tabIndex={-1} style={{ margin: "0 0 8px" }}>
