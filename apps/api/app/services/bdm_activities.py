@@ -159,6 +159,7 @@ async def day_counts(db: AsyncSession, filters: list, day: date) -> dict:
     stmt = (
         select(*per_channel, calls_made, func.count(distinct(BdmActivity.organization_id)))
         .select_from(BdmActivity)
+        .join(BdmOrganization, BdmOrganization.id == BdmActivity.organization_id)
         .join(BdmProfile, BdmProfile.user_id == BdmActivity.bdm_user_id)
         .where(*filters, *day_filters(day))
     )

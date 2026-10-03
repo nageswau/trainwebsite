@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 from app.models import BdmActivity
 from app.services import bdm_activities as svc
+from app.services.bdm_organizations import caller_scope
 from app.services.bdm_travel import INDIA
 from tests.bdm009_helpers import add_activity, bdm_with_org
 
@@ -117,3 +118,20 @@ async def test_daily_cap_counts_only_that_bdms_ist_day(client, db_session, monke
         await svc.check_daily_cap(db_session, bdm.id, day)
     assert exc.value.status_code == 409
     await svc.check_daily_cap(db_session, bdm.id, day + timedelta(days=1))  # another day is free
+
+
+@pytest.mark.asyncio
+async def test_day_counts_accept_organization_scope_filters(client, db_session):
+    _, bdm, org = await bdm_with_org(client, db_session)
+    _, _, other_org = await bdm_with_org(client, db_session)  # another organization the filter must not multiply
+    org_id = uuid.UUID(org["id"])
+    day = date(2026, 9, 19)
+    start, _ = svc.day_range(day)
+    await add_activity(db_session, bdm.id, org_id, start + timedelta(hours=1), "call", "outbound")
+    await add_activity(db_session, bdm.id, org_id, start + timedelta(hours=2), "email", "outbound")
+    scope = await caller_scope(db_session, bdm)
+    counts = await svc.day_counts(db_session, [BdmActivity.bdm_user_id == bdm.id, *scope], day)
+    assert counts["by_channel"]["call"] == 1
+    assert counts["by_channel"]["email"] == 1
+    assert counts["calls_made"] == 1
+    assert counts["organizations_contacted"] == 1
