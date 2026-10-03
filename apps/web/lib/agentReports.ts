@@ -88,6 +88,7 @@ export function csvFilename(kind: string, from: string, to: string): string {
 
 // A 200 is only trusted if it has the report's shape: a proxy login page or an empty body must not crash the panel.
 export function isAgentReport(data: unknown): data is AgentReport {
-  const d = data as Partial<AgentReport> | null;
-  return isPage(data) && !!d && Array.isArray(d.columns) && typeof d.options === "object" && d.options !== null && typeof d.kind === "string";
+  if (!isPage(data)) return false; // also rules out null and non-objects
+  const d = data as Partial<AgentReport>;
+  return Array.isArray(d.columns) && typeof d.options === "object" && d.options !== null && typeof d.kind === "string";
 }

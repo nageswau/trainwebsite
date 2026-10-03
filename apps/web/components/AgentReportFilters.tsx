@@ -14,7 +14,7 @@ export type FieldError = { field: ReportField; text: string };
 type Draft = Pick<ReportState, "from" | "to" | "filters">;
 
 const ALL: Record<FilterKey, string> = { member: "All staff", country: "All countries", university: "All universities", intake: "All intakes", status: "Any status" };
-export const RANGE_ORDER = "'To' must be on or after 'From'";
+const RANGE_ORDER = "'To' must be on or after 'From'";
 
 export default function AgentReportFilters({ tab, value, options, busy, fieldError, onApply, onClear }: {
   tab: ReportTab;

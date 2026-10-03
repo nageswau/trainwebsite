@@ -70,8 +70,7 @@ class Filters:
     country_id: UUID | None = None
     student_country: str | None = None  # students: the free-text preferred country, trimmed and lower-cased
     university_id: UUID | None = None
-    intake: str | None = None
-    intake_texts: list[str] | None = None  # the raw intake texts in scope that fold to `intake`
+    intake_texts: list[str] | None = None  # the raw intake texts in scope that fold to the requested intake key
     status: str | None = None
     echo: dict[str, str] = field(default_factory=dict)  # the validated values as sent: audit metadata (§5.5) and nothing else
 
@@ -80,6 +79,16 @@ def intake_key(text: str | None) -> tuple[str, str]:
     """R4: `YYYY-MM` and its label ("Sep 2027") via the AGN-013 parser, else the one Unstructured group."""
     end = intake_end(text)
     return (f"{end.year:04d}-{end.month:02d}", end.strftime("%b %Y")) if end else UNSTRUCTURED
+
+
+def _intake_order(keys) -> list[str]:
+    """Months ascending, Unstructured last."""
+    return sorted(keys, key=lambda key: (key == UNSTRUCTURED[0], key))
+
+
+async def _intake_texts(db: AsyncSession, user: User) -> list[str]:
+    """The distinct raw intake texts of the caller's applications (few per agency)."""
+    return list(await db.scalars(select(distinct(OverseasApplication.intake)).where(*agency_applications(user))))
 
 
 def parse_page(limit: str | None, offset: str | None) -> tuple[int, int]:
@@ -150,8 +159,7 @@ async def parse_filters(db: AsyncSession, user: User, kind: str, raw: dict[str, 
     if intake := given.get("intake"):
         if intake != UNSTRUCTURED[0] and not _YYYY_MM.fullmatch(intake):
             raise ReportInputError("intake", "Intake must be YYYY-MM or unstructured")
-        texts = await db.scalars(select(distinct(OverseasApplication.intake)).where(*agency_applications(user)))
-        f.intake, f.intake_texts = intake, [text for text in texts if intake_key(text)[0] == intake]
+        f.intake_texts = [text for text in await _intake_texts(db, user) if intake_key(text)[0] == intake]
 
     if status := given.get("status"):
         if status not in (STUDENT_STATUSES if kind == "students" else APPLICATION_STATUSES):
@@ -180,6 +188,7 @@ STAGE_COLUMNS = (
     Column("visa_approvals", "Visa approved", True),
     Column("enrollments", "Enrolled", True),
 )
+ZERO_COUNTS = {column.key: 0 for column in STAGE_COLUMNS}
 
 
 def _created_between(column, f: Filters) -> list[ColumnElement[bool]]:
@@ -287,11 +296,10 @@ async def _intakes(db: AsyncSession, user: User, f: Filters) -> tuple[tuple[Colu
     folded: dict[str, dict] = {}
     for row in (await db.execute(stmt)).all():
         key, label = intake_key(row.intake)
-        group = folded.setdefault(key, {"intake": label, **dict.fromkeys((c.key for c in STAGE_COLUMNS), 0)})
+        group = folded.setdefault(key, {"intake": label, **ZERO_COUNTS})
         for name, value in _counted(row).items():
             group[name] += value
-    order = sorted(folded, key=lambda key: (key == UNSTRUCTURED[0], key))  # months ascending, Unstructured last
-    return (Column("intake", "Intake"), *STAGE_COLUMNS), [folded[key] for key in order]
+    return (Column("intake", "Intake"), *STAGE_COLUMNS), [folded[key] for key in _intake_order(folded)]
 
 
 async def _staff(db: AsyncSession, user: User, f: Filters) -> tuple[tuple[Column, ...], list[dict]]:
@@ -311,15 +319,14 @@ async def _staff(db: AsyncSession, user: User, f: Filters) -> tuple[tuple[Column
         .where(AgentOrgMember.org_id == user.agent_membership.org_id)
         .order_by(AgentOrgMember.role.desc(), AgentOrgMember.seq)  # staff first, then any Master holding students
     )
-    zero = dict.fromkeys((c.key for c in STAGE_COLUMNS), 0)
     items = []
     for member, name in members.all():
-        row = {"students": students.get(member.id, 0), **counted.get(member.id, zero)}
+        row = {"students": students.get(member.id, 0), **counted.get(member.id, ZERO_COUNTS)}
         listed = member.role == "staff" and member.status == "active"
         if listed or any(row.values()):
             label = f"{member.code} {name}" + ("" if member.status == "active" else " (deactivated)")
             items.append({"member": label, **row})
-    items.append({"member": "Unassigned", "students": students.get(None, 0), **counted.get(None, zero)})
+    items.append({"member": "Unassigned", "students": students.get(None, 0), **counted.get(None, ZERO_COUNTS)})
     return (Column("member", "Staff member"), Column("students", "Students", True), *STAGE_COLUMNS), items
 
 
@@ -489,8 +496,8 @@ async def _options(db: AsyncSession, user: User, kind: str) -> dict[str, list[di
         )
         options["universities"] = [{"value": slug, "label": name} for slug, name in found.all()]
     if "intake" in offered:
-        keys = dict(intake_key(text) for text in await db.scalars(select(distinct(OverseasApplication.intake)).where(*agency_applications(user))))
-        options["intakes"] = [{"value": key, "label": keys[key]} for key in sorted(keys, key=lambda key: (key == UNSTRUCTURED[0], key))]
+        labels = dict(intake_key(text) for text in await _intake_texts(db, user))
+        options["intakes"] = [{"value": key, "label": labels[key]} for key in _intake_order(labels)]
     if "status" in offered:
         statuses = STUDENT_STATUSES if kind == "students" else APPLICATION_STATUSES
         options["statuses"] = [{"value": status, "label": stage_label(status)} for status in statuses]

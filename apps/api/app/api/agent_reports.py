@@ -134,8 +134,7 @@ async def export_report(
         _log("agent_report.export_too_large", membership, user, kind, filters, rows, started, level=logging.WARNING)
         raise HTTPException(422, f"This report has more than {cap:,} rows; narrow the filters")
     body = to_csv(payload)
-    scope = "own" if is_agent_staff(user) else "agency"
-    db.add(AuditLog(user_id=user.id, action=EXPORT_ACTION, entity_type="agent_report", entity_id=kind, metadata_json={"scope": scope, "filters": filters.echo, "rows": rows}))
+    db.add(AuditLog(user_id=user.id, action=EXPORT_ACTION, entity_type="agent_report", entity_id=kind, metadata_json={"scope": payload["scope"], "filters": filters.echo, "rows": rows}))
     await db.commit()
     _log("agent_report.export", membership, user, kind, filters, rows, started)
     start, end = filters.start, filters.end

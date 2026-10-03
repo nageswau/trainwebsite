@@ -89,12 +89,12 @@ export default function AgentReportsPanel({ memberRole }: { memberRole: "master"
       if (call !== latest.current) return;
       const detail = (body as { detail?: unknown } | null)?.detail;
       const field = response.status === 422 ? fieldOf(detail) : null;
-      if (response.ok && isAgentReport(body) && body.items.length === 0 && body.total > 0 && next.offset > 0) {
-        // A page past the end (an old link, or rows removed since): go to the last page instead of an empty table.
-        void open({ ...next, offset: Math.floor((body.total - 1) / PAGE_SIZE) * PAGE_SIZE });
-        return;
-      }
       if (response.ok && isAgentReport(body)) {
+        if (body.items.length === 0 && body.total > 0 && next.offset > 0) {
+          // A page past the end (an old link, or rows removed since): go to the last page instead of an empty table.
+          void open({ ...next, offset: Math.floor((body.total - 1) / PAGE_SIZE) * PAGE_SIZE });
+          return;
+        }
         setReport(body);
         setApplied(next); // the caption and the CSV describe the table on screen, not a refused or failed request
       } else if (field) setFieldError({ field, text: detailMessage(detail, FAILED) }); // the table on screen stays
