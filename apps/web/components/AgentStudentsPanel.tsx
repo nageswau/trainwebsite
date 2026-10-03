@@ -75,7 +75,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
   // `new` is dropped through the router (browser QA18-01: a raw history.replaceState left the router's search params at new=1, so the
   // next Add changed nothing), so Back and refresh do not reopen it and every later Add is a real change.
   const router = useRouter();
-  const wantsNew = useSearchParams()?.get("new") === "1";
+  const wantsNew = useSearchParams().get("new") === "1";
   useEffect(() => {
     if (!wantsNew) return;
     setAdding(true);

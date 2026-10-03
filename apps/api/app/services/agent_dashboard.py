@@ -55,7 +55,7 @@ async def headline_counts(db: AsyncSession, user: User) -> dict[str, int]:
         "pending_actions": pending_stmt(user).scalar_subquery(),
     }
     row = (await db.execute(select(*(column.label(key) for key, column in columns.items())))).one()
-    return {key: int(value or 0) for key, value in row._mapping.items()}
+    return dict(row._mapping)
 
 
 async def breakdown(db: AsyncSession, user: User, label, key) -> dict:
@@ -89,13 +89,12 @@ async def staff_rows(db: AsyncSession, user: User) -> tuple[list[dict], int]:
     def distinct_apps(condition):
         return func.count(distinct(case((condition, OverseasApplication.id))))
 
-    link = AgentStudent
     per_member = (
-        select(link.assigned_member_id, distinct_apps(OverseasApplication.status != WITHDRAWN), distinct_apps(offer_clause()), distinct_apps(OverseasApplication.status == "enrolled"))
+        select(AgentStudent.assigned_member_id, distinct_apps(OverseasApplication.status != WITHDRAWN), distinct_apps(offer_clause()), distinct_apps(OverseasApplication.status == "enrolled"))
         .select_from(OverseasApplication)
-        .join(link, or_(OverseasApplication.agent_student_id == link.id, and_(link.student_id.is_not(None), OverseasApplication.student_id == link.student_id)))
-        .where(*agency_applications(user), link.agent_id.in_(agency), link.assigned_member_id.is_not(None))
-        .group_by(link.assigned_member_id)
+        .join(AgentStudent, or_(OverseasApplication.agent_student_id == AgentStudent.id, and_(AgentStudent.student_id.is_not(None), OverseasApplication.student_id == AgentStudent.student_id)))
+        .where(*agency_applications(user), AgentStudent.agent_id.in_(agency), AgentStudent.assigned_member_id.is_not(None))
+        .group_by(AgentStudent.assigned_member_id)
     )
     apps = {member_id: counts for member_id, *counts in (await db.execute(per_member)).all()}
     members = await db.execute(
@@ -116,27 +115,20 @@ async def staff_rows(db: AsyncSession, user: User) -> tuple[list[dict], int]:
 
 async def commission_summary(db: AsyncSession, user: User) -> dict:
     """Master only (DEC-SCOPE-040 S1): the portal's three commission figures, per currency and never summed across currencies."""
+    figure = case((AgentCommission.status.in_(CLAIMABLE), "claimable"), (AgentCommission.status == "paid", "revenue"), (AgentCommission.status == "claimed", "claims"))
     stmt = (
-        select(AgentCommission.status, AgentCommission.currency, func.count(), func.sum(AgentCommission.amount))
-        .where(AgentCommission.agent_id.in_(org_member_ids(user)))
-        .group_by(AgentCommission.status, AgentCommission.currency)
+        select(figure, AgentCommission.currency, func.count(), func.sum(AgentCommission.amount))
+        .where(AgentCommission.agent_id.in_(org_member_ids(user)), figure.is_not(None))
+        .group_by(figure, AgentCommission.currency)
+        .order_by(AgentCommission.currency)
     )
-    claimable: dict[str, list] = {}
-    revenue: dict[str, list] = {}
-    claims = 0
-    for status, currency, count, amount in (await db.execute(stmt)).all():
-        if status == "claimed":
-            claims += count
-        bucket = claimable if status in CLAIMABLE else revenue if status == "paid" else None
-        if bucket is not None:
-            totals = bucket.setdefault(currency, [0, 0.0])
-            totals[0] += count
-            totals[1] += float(amount or 0)
-
-    def per_currency(bucket):
-        return [{"currency": currency, "count": count, "amount": amount} for currency, (count, amount) in sorted(bucket.items())]
-
-    return {"claimable": per_currency(claimable), "claims": claims, "revenue": per_currency(revenue)}
+    summary = {"claimable": [], "claims": 0, "revenue": []}
+    for name, currency, count, amount in (await db.execute(stmt)).all():
+        if name == "claims":
+            summary["claims"] += count
+        else:
+            summary[name].append({"currency": currency, "count": count, "amount": float(amount)})
+    return summary
 
 
 async def dashboard(db: AsyncSession, user: User) -> dict:
@@ -144,7 +136,7 @@ async def dashboard(db: AsyncSession, user: User) -> dict:
     staff = is_agent_staff(user)
     result = {
         "scope": "own" if staff else "agency",
-        "member_code": user.agent_membership.code if user.agent_membership else None,
+        "member_code": user.agent_membership.code,  # the route's gate admits members only
         **await headline_counts(db, user),
         "by_country": await breakdown(db, user, Country.name, Country.id),
         "by_university": await breakdown(db, user, University.name, University.id),
