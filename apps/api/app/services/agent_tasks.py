@@ -118,10 +118,16 @@ async def list_page(db: AsyncSession, user: User, *, view: str, student, limit: 
     return {"items": [item(r, now) for r in rows], "total": total or 0, "limit": limit, "offset": offset}
 
 
-async def pending_count(db: AsyncSession, user: User) -> int:
-    """T5 "Pending actions": open tasks of active students in the caller's scope -- one SQL COUNT, no rows loaded."""
+def pending_stmt(user: User) -> Select:
+    """T5 "Pending actions": open tasks of active students in the caller's scope, as one COUNT statement (AGN-018 embeds it in the
+    dashboard's single snapshot)."""
     stmt = select(func.count()).select_from(AgentTask).join(AgentStudent, AgentStudent.id == AgentTask.agent_student_id)
-    return await db.scalar(stmt.where(*task_scope(user), AgentTask.status == "open", AgentStudent.status == "active")) or 0
+    return stmt.where(*task_scope(user), AgentTask.status == "open", AgentStudent.status == "active")
+
+
+async def pending_count(db: AsyncSession, user: User) -> int:
+    """T5 "Pending actions" -- one SQL COUNT, no rows loaded."""
+    return await db.scalar(pending_stmt(user)) or 0
 
 
 # --- write checks (no commit) -------------------------------------------------------------------------------------------------------

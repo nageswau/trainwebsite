@@ -31,7 +31,8 @@ describe("agentNavFor", () => {
   it("shows Tasks to both roles, after Documents (AGN-016, EVID-015 §4 sidebar order)", () => {
     const hrefs = nav.map((i) => i.href);
     expect(hrefs.indexOf("/overseas/agent/tasks")).toBe(hrefs.indexOf("/overseas/agent/documents") + 1);
-    expect(nav.find((i) => i.href === "/overseas/agent/tasks")?.label).toBe("Tasks");
+    // AGN-018 (DEC-SCOPE-062 G4): the EVID-015 §4 wording.
+    expect(nav.find((i) => i.href === "/overseas/agent/tasks")?.label).toBe("Tasks & Follow-ups");
     expect(agentNavFor(nav, "staff").map((i) => i.href)).toContain("/overseas/agent/tasks");
   });
 
@@ -58,9 +59,21 @@ describe("agentNavFor", () => {
   });
 
   it("gives Applications the status filters for Masters and staff (AGN-008)", () => {
-    const children = (items: ReturnType<typeof agentNavFor>) => items.find((i) => i.href === "/overseas/agent/applications")?.children?.map((c) => c.href.split("=")[1]);
-    const expected = ["draft", "submitted", "offer", "visa", "enrolled", "withdrawn"];
+    const children = (items: ReturnType<typeof agentNavFor>) => items.find((i) => i.href === "/overseas/agent/applications")?.children?.map((c) => c.href.split("=")[1] ?? "(bare)");
+    // AGN-018 (DEC-SCOPE-062 G4): "All applications" first (EVID-015 §4 "All") -- the bare path, the list's default (QA18-07).
+    const expected = ["(bare)", "draft", "submitted", "offer", "visa", "enrolled", "withdrawn"];
     expect(children(agentNavFor(nav, "master"))).toEqual(expected);
     expect(children(agentNavFor(nav, "staff"))).toEqual(expected);
+    expect(nav.find((i) => i.href === "/overseas/agent/applications")?.children?.[0].label).toBe("All applications");
+  });
+
+  it("gives staff My Students with All and Add; a Master keeps Students (AGN-018 G4)", () => {
+    const students = (items: ReturnType<typeof agentNavFor>) => items.find((i) => i.href === "/overseas/agent/students");
+    expect(students(agentNavFor(nav, "staff"))?.label).toBe("My Students");
+    expect(students(agentNavFor(nav, "staff"))?.children?.map((c) => [c.label, c.href])).toEqual([
+      ["All", "/overseas/agent/students"],
+      ["Add", "/overseas/agent/students?new=1"],
+    ]);
+    expect(students(agentNavFor(nav, "master"))).toEqual({ label: "Students", href: "/overseas/agent/students" });
   });
 });

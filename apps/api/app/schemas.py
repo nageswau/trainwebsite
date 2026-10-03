@@ -1157,6 +1157,57 @@ class CommissionReportOut(BaseModel):
     by_intake: list[CommissionReportIntakeRow]
 
 
+# --- AGN-018 agency dashboard (DEC-SCOPE-062; spec §5.3) ---
+
+
+class AgentBreakdownItem(BaseModel):
+    label: str
+    count: int
+
+
+class AgentBreakdownOut(BaseModel):
+    items: list[AgentBreakdownItem]
+    other: int
+
+
+class AgentStaffRowOut(BaseModel):
+    code: str
+    name: str
+    active: bool
+    students: int
+    applications: int
+    offers: int
+    enrollments: int
+
+
+class AgentCommissionSummaryOut(BaseModel):
+    claimable: list[CommissionReportTotal]
+    claims: int
+    revenue: list[CommissionReportTotal]
+
+
+class AgentDashboardOut(BaseModel):
+    """One shape for Masters and staff; the Master-only fields are null for staff. No ids: codes and names only."""
+
+    scope: Literal["agency", "own"]
+    member_code: str | None
+    students: int
+    applications: int
+    offers: int
+    visa_applications: int
+    visa_approvals: int
+    enrollments: int
+    pending_documents: int
+    pending_actions: int
+    by_country: AgentBreakdownOut
+    by_university: AgentBreakdownOut
+    staff: list[AgentStaffRowOut] | None
+    unassigned_students: int | None
+    commission: AgentCommissionSummaryOut | None
+    reports_available: bool
+    as_of: datetime
+
+
 class InboundUniversityEmailIn(BaseModel):
     external_message_id: str = Field(min_length=1, max_length=255)
     sender: EmailStr

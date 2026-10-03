@@ -54,7 +54,7 @@ describe("PortalPage agent notifications (AGN-017)", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Notifications" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open: Student assigned to you" })).toBeInTheDocument();
     expect(screen.getByText("Notifications:2")).toBeInTheDocument();
-    expect(screen.getByText("Tasks:0")).toBeInTheDocument();
+    expect(screen.getByText("Tasks & Follow-ups:0")).toBeInTheDocument(); // AGN-018 (DEC-SCOPE-062 G4): the EVID-015 §4 label
   });
 
   it("carries the badge on other agency pages too", async () => {

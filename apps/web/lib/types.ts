@@ -28,6 +28,30 @@ export type Scholarship = {id:string; title:string; eligibility:string; amount:s
 
 // --- ENH-016 analytics dashboards (docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md §7) ---
 export type SchoolKpi = { key: string; label: string; value: number | null; tracked: boolean; note: string | null };
+
+// --- AGN-018 agency dashboard (DEC-SCOPE-062; spec §5.3): one shape for Masters and staff, Master-only fields null for staff ---
+export type CurrencyTotal = { currency: string; count: number; amount: number };
+export type AgentBreakdown = { items: { label: string; count: number }[]; other: number };
+export type AgentStaffRow = { code: string; name: string; active: boolean; students: number; applications: number; offers: number; enrollments: number };
+export type AgentDashboard = {
+  scope: "agency" | "own";
+  member_code: string | null;
+  students: number;
+  applications: number;
+  offers: number;
+  visa_applications: number;
+  visa_approvals: number;
+  enrollments: number;
+  pending_documents: number;
+  pending_actions: number;
+  by_country: AgentBreakdown;
+  by_university: AgentBreakdown;
+  staff: AgentStaffRow[] | null;
+  unassigned_students: number | null;
+  commission: { claimable: CurrencyTotal[]; claims: number; revenue: CurrencyTotal[] } | null;
+  reports_available: boolean;
+  as_of: string;
+};
 export type MetricCell = { count: number; pct: number | null };
 export type GradeMetricRow = { key: string; label: string; is_proxy: boolean; definition: string | null; cells: Record<string, MetricCell> };
 export type GradePerformance = { grades: string[]; students: Record<string, number>; metrics: GradeMetricRow[] };

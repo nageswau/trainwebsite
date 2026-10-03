@@ -3,6 +3,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentStudentsPanel from "@/components/AgentStudentsPanel";
 
+// AGN-018: the panel reads ?new=1 through useSearchParams (here: the jsdom URL the tests set) and drops it through the router.
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(window.location.search),
+  useRouter: () => ({ replace: (url: string) => window.history.replaceState(null, "", url), push: vi.fn(), refresh: vi.fn() }),
+}));
+
 const item = (over: Record<string, unknown> = {}) => ({
   id: "s1", has_login: false, full_name: "Asha Rao", email: "a@x.com", phone: null, preferred_country: "Canada", preferred_intake: "Sep 2027",
   status: "active", assigned_to: null, created_at: "", ...over,
@@ -445,6 +451,16 @@ describe("AgentStudentsPanel (AGN-004)", () => {
     const row = (await screen.findByText("Asha Rao")).closest("li")!;
     expect(within(row).getByText("Has login")).toBeInTheDocument();
     expect(within(row).getByText("ABC-S001 · Rahul (deactivated)")).toBeInTheDocument();
+  });
+
+  it("opens the add form from the sidebar's Add link and drops new=1 from the URL (AGN-018 G4)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([])))));
+    window.history.replaceState(null, "", "/overseas/agent/students?new=1");
+    render(<AgentStudentsPanel memberRole="staff" />);
+    const form = await screen.findByRole("form", { name: "Add student" });
+    expect(within(form).getByLabelText(/Full name/)).toHaveFocus();
+    await waitFor(() => expect(window.location.search).toBe(""));
+    expect(screen.getByRole("button", { name: "Add student" })).toBeDisabled();
   });
 });
 
