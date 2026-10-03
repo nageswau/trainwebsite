@@ -477,8 +477,7 @@ and the same filters, not the page. `GET` without `?date=` uses IST today; `coun
 `422`s (FastAPI's list). **Retry semantics (A3):** `POST` is not retry-safe (no idempotency key; a duplicate is fixed by a same-day delete);
 `PATCH` is idempotent (same body → same row, no second audit); `DELETE` answers `204`, a second `DELETE` answers `404`. **V9:**
 `occurred_at` up to 5 minutes after the server clock is saved as the server's now; more than 5 minutes ahead → `422`; older than 7 IST
-days → `422`. **V10:** the 201st activity of a BDM's IST day → `409`. Refusal logging (`bdm_activity_write_refused`) covers the owner /
-assignee 403s only; wrong-role 403s are not logged as refusals.
+days → `422`. **V10:** the 201st activity of a BDM's IST day → `409`. Refusal logging: `bdm_activity_write_refused` is logged for "not the organization's assigned BDM" (create) and "not the BDM who logged it" (patch / delete, which also covers a manager or `super_admin` touching a readable team activity); 403s from the role gate (`bdm_context` on create, `caller_scope` for other roles) are not logged.
 
 **`AGN-011` / `DEC-SCOPE-058` (built 2026-10-02/03) — agent deposit through Razorpay.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md` §4. Errors are FastAPI `{"detail": ...}`. INR only (D1). Every

@@ -459,7 +459,7 @@ role-specific navigation.
 | `bdm-009-AC7` | Contact from another organization → 422; contact delete keeps the activity with `contact_id` NULL and its `contact_name` | `test_bdm_009_activities.py`, `BdmActivityItem.test.tsx` |
 | `bdm-009-AC8` | `bdm_activity.created/updated/deleted` audit rows without note or contact name | `test_bdm_009_activities.py` |
 | `bdm-009-AC9` | Log vs archive serialized; two concurrent deletes → one 204, one 404 | `test_bdm_009_concurrency.py` |
-| `bdm-009-AC10` | Migration chains after `0068_bdm_trips`, single head, round trip, downgrade refuses while rows exist | `test_bdm_009_migration.py`, `test_bdm_010_migration.py` (single-head assertion) |
+| `bdm-009-AC10` | Migration chains after `0069_bdm_org_profiles`, single head, round trip, downgrade refuses while rows exist | `test_bdm_009_migration.py`, `test_bdm_010_migration.py` (single-head assertion) |
 | `bdm-009-AC11` | UI: timeline, Log / Edit / Delete, counts strip, date and BDM filters, loading / empty / error states | `BdmActivityForm.test.tsx`, `BdmActivityItem.test.tsx`, `BdmActivityTimeline.test.tsx`, `BdmActivityPages.test.tsx`, `lib/bdmActivities.test.ts` |
 | `bdm-009-AC12` | End to end: log, timeline, counts, manager view, keyboard-only, no overflow at 320 / 375 px | `tests/e2e/bdm-009-activities.spec.ts` (written; **PENDING** — Playwright not run yet); browser validation **PENDING** |
 | `bdm-009-AC13` | Abuse cases: IDOR 403 / 404, foreign contact 422, server-owned fields 422, `organization_id` in PATCH 422, manager route 403, out-of-team filter empty, markup shown as text | `test_bdm_009_activities.py::test_abuse_cases_server_owned_fields_and_markup`, `test_bdm_009_scope.py`, `BdmActivityItem.test.tsx` |

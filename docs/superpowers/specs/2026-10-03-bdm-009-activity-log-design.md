@@ -16,7 +16,7 @@ tolerance, V10 daily cap); no earlier decision changed.
 Decisions already in force: `DEC-SCOPE-055` D9 (derived report + manual activity log), Q-02/D11 (read own type, edit
 assigned), Q-13/D22 (submitting a daily report locks that day's activity edits), Q-20/D29 (nothing is sent to contacts).
 
-**Decision record:** **`DEC-SCOPE-068`**, written in this change. Migration **`0070_bdm_activities`** (after `0069_bdm_org_profiles`, one head). ID note (merge of `main` @ `e376c25`, 2026-10-03): drafted as `DEC-SCOPE-064`, renumbered `065` on merging `main` @ `39c119b4` (`063` bdm-010, `064` AGN-022), with migration `0069_bdm_activities` after `0068_bdm_trips`; bdm-003 (PR #55) then took `DEC-SCOPE-068` / `0069_bdm_org_profiles` and AGN-019 / AGN-020 took `066` / `067`, so this decision is `DEC-SCOPE-068` and the migration `0070_bdm_activities`. Earlier commits and docs saying `DEC-SCOPE-064` / `065` or `0069_bdm_activities` mean this decision / migration. bdm-006 is in flight; whichever merges later renumbers. Recheck `origin/main` before building and before the PR.
+**Decision record:** **`DEC-SCOPE-068`**, written in this change. Migration **`0070_bdm_activities`** (after `0069_bdm_org_profiles`, one head). ID note (merge of `main` @ `e376c25`, 2026-10-03): drafted as `DEC-SCOPE-064`, renumbered `065` on merging `main` @ `39c119b4` (`063` bdm-010, `064` AGN-022), with migration `0069_bdm_activities` after `0068_bdm_trips`; bdm-003 (PR #55) then took `DEC-SCOPE-065` / `0069_bdm_org_profiles` and AGN-019 / AGN-020 took `066` / `067`, so this decision is `DEC-SCOPE-068` and the migration `0070_bdm_activities`. Earlier commits and docs saying `DEC-SCOPE-064` / `065` or `0069_bdm_activities` mean this decision / migration. bdm-006 is in flight; whichever merges later renumbers. Recheck `origin/main` before building and before the PR.
 
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 
@@ -259,7 +259,7 @@ Web (`apps/web/tests/`): `components/BdmActivityForm.test.tsx`, `BdmActivityTime
 E2E: `tests/e2e/bdm-009-activities.spec.ts` (AC12), then a Browser Use check of AC1–AC12.
 
 Gates: lite backend set (bdm-001 / 002 / 010 / 009 + ENH-027 schemas), web BDM set, `tsc`, `eslint`, `ruff`, `mypy` (no
-new errors over `main`'s 342), `next build`, Playwright. The owner runs the full suites.
+new errors over `main`, 372 at e376c25c), `next build`, Playwright. The owner runs the full suites.
 
 ## 9. Regression risks
 
@@ -337,7 +337,7 @@ integrity of the day counts (bdm-015 will snapshot them), the audit trail.
 | S7 | SQL injection | SQLAlchemy expressions only; no raw SQL, no `LIKE`, no string-built filters | **Recorded** |
 | S8 | Tokens, session, secrets | Unchanged; bdm-009 adds no token, cookie, secret or external call | **Recorded** |
 | S9 | Sensitive logs | Logs and audit rows carry ids, channel, route and field names only — never the note, contact name or phone | **Recorded** |
-| S10 | Refusal visibility | Refused writes were silent in logs | **Applied:** a `bdm_activity_write_refused` warning (actor, activity / organization id, route, status) on the owner / assignee 403s only ("not the assigned BDM", "not the logger"); wrong-role 403s from the shared `bdm_context` / `caller_scope` are not logged as refusals, as bdm-002's `bdm_org_write_refused` |
+| S10 | Refusal visibility | Refused writes were silent in logs | **Applied:** a `bdm_activity_write_refused` warning (actor, activity / organization id, route, status) for "not the organization's assigned BDM" (create) and "not the BDM who logged it" (patch / delete, which also covers a manager or `super_admin` touching a readable team activity); 403s from the role gate (`bdm_context` on create, `caller_scope` for other roles) are not logged, as bdm-002's `bdm_org_write_refused` |
 | S11 | Rate limiting / DoS | No general limiter in the API (adding one is outside bdm-009, as bdm-010 S12). Bounds: V10 daily cap, `limit` ≤ 100, note ≤ 500 | **Applied** (V10) / **recorded** (no limiter) |
 | S12 | Audit | created / updated / deleted in the write's transaction (fail closed); the delete row keeps the ids and channel; refusals go to logs, not the audit table (as bdm-002) | **Recorded** |
 | S13 | Privacy | Notes and contact names are visible to every reader of the organization (V5) — the form says so (F5). The contact's name stays on activities after the contact is deleted (as bdm-006 A5), recorded in the DEC. Retention / erasure for BDM data remains **NEEDS_CONFIRMATION** (as bdm-001 / 002 / 006); bdm-009 adds no export or deletion path | **Applied** (hint) / **recorded** |

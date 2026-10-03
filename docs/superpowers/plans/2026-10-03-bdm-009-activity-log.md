@@ -32,7 +32,7 @@ Library, Playwright.
   IST = `Asia/Kolkata`; `now` = the database clock read once per request.
 - Daily cap (V10): at most 200 activities per BDM per IST day; the 201st create → 409 "You've logged 200 activities for this day".
 - People in responses are `{id, full_name}` (bdm-010's `PersonRef`): the logger is `bdm: {id, full_name}`.
-- Owner / assignee 403s on a write ("not the assigned BDM", "not the logger") log a `bdm_activity_write_refused` warning (actor, ids, route, status) — never text fields. Wrong-role 403s from the shared `bdm_context` / `caller_scope` are not logged as refusals (bdm-002's `bdm_org_write_refused` precedent).
+- `bdm_activity_write_refused` (warning: actor, ids, route, status; never text fields) is logged for "not the organization's assigned BDM" (create) and "not the BDM who logged it" (patch / delete, which also covers a manager or `super_admin` touching a readable team activity). 403s from the role gate (`bdm_context` on create, `caller_scope` for other roles) are not logged (bdm-002's `bdm_org_write_refused` precedent).
 - Spec §12 (Revision 2) lists every API / UI / security finding; the tasks below already include the applied ones.
 - Note: optional, trimmed, ≤ 500 characters, `\n \r \t` allowed, other control characters refused (reuse `TripNote`).
 - Errors are `{"detail": ...}`: a string for 403 / 404 / 409 and service 422s; FastAPI's list for schema 422s.
@@ -3073,7 +3073,7 @@ git commit -m "docs(bdm-009): DEC-SCOPE-068, backlog status, data model and RTM"
   `DEC-SCOPE-065` landed, merge `main`, renumber this branch's migration / DEC (file name, `revision`, test `BASE`/`HEAD`, docs),
   and confirm `alembic heads` prints one line.
 - [ ] **Step 2: Backend lite set** — `<P>` = LITE (see "How to run tests"). Expected: all pass. Record the count.
-- [ ] **Step 3: Backend static** — api-test container: `ruff check app tests && mypy app` — no new mypy errors over main's 342.
+- [ ] **Step 3: Backend static** — api-test container: `ruff check app tests && mypy app` — no new mypy errors over main (372 at e376c25c).
 - [ ] **Step 4: Web set + static + build** — Task 8 Step 9 and Step 10 commands. Expected: pass / clean.
 - [ ] **Step 5: Playwright** — Task 9 Step 2 (bdm-009 with `--repeat-each=2`, plus bdm-002 and bdm-010 specs).
 - [ ] **Step 6: Browser check** — on the running stack, walk AC1–AC12 in a real browser at 1280 px and 375 px (keyboard-only for one
