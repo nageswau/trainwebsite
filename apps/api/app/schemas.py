@@ -25,7 +25,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from app.models import GENDERS
+from app.models import BDM_APPOINTMENT_ALL_OUTCOMES, BDM_APPOINTMENT_ALL_TYPES, BDM_APPOINTMENT_STATUSES, GENDERS
 from app.services.agent_visa import VISA_CASE_STAGES
 
 
@@ -3365,3 +3365,164 @@ class BdmOrganizationPage(BaseModel):
 
 class BdmOrganizationEnvelope(BaseModel):
     organization: BdmOrganizationOut
+
+
+# --- bdm-006 (DEC-SCOPE-063, spec §5.1): appointments ----------------------------------------------------------------------------
+BdmAppointmentType = Literal[BDM_APPOINTMENT_ALL_TYPES]
+BdmAppointmentOutcome = Literal[BDM_APPOINTMENT_ALL_OUTCOMES]
+BdmAppointmentStatus = Literal[BDM_APPOINTMENT_STATUSES]
+BDM_APPOINTMENT_LABELS = {"location": "Location", "purpose": "Purpose", "remarks": "Remarks", "reason": "Reason"}
+BDM_APPOINTMENT_OPTIONAL_FIELDS = ("location", "purpose", "remarks", "expected_leads", "expected_revenue")
+
+
+def _bdm_appt_text(value: str | None, info: ValidationInfo) -> str | None:
+    """bdm-001's text rule: no control characters; blank -> None."""
+    if value is not None and _BDM_CONTROL.search(value):
+        raise ValueError(f"{BDM_APPOINTMENT_LABELS.get(info.field_name, info.field_name)} contains invalid characters")
+    return value or None
+
+
+def _bdm_appt_optional(max_length: int):
+    return Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_bdm_appt_text)]
+
+
+def _bdm_appt_minute(value: datetime) -> datetime:
+    """R-A7: compare what the UI shows -- seconds and microseconds are dropped; stored in UTC."""
+    return value.replace(second=0, microsecond=0).astimezone(UTC)
+
+
+def _bdm_appt_reason(value: str) -> str:
+    if _BDM_CONTROL.search(value):
+        raise ValueError("Reason contains invalid characters")
+    if not value:
+        raise ValueError("Reason is required")
+    return value
+
+
+BdmApptStart = Annotated[AwareDatetime, AfterValidator(_bdm_appt_minute)]
+BdmApptDuration = Annotated[StrictInt, Field(ge=15, le=720)]
+BdmApptLeads = Annotated[StrictInt, Field(ge=0, le=1_000_000)] | None
+BdmApptRevenue = Annotated[Decimal, Field(ge=0, le=Decimal("9999999999.99"), max_digits=12, decimal_places=2)] | None
+BdmApptLocation = _bdm_appt_optional(255)
+BdmApptPurpose = _bdm_appt_optional(1000)
+BdmApptRemarks = _bdm_appt_optional(2000)
+BdmApptReason = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500), AfterValidator(_bdm_appt_reason)]
+
+
+class BdmAppointmentCreate(BaseModel):
+    """spec §5.1: server-owned fields (code, owner, status, outcome, the contact snapshot) are unknown fields here (§12.3)."""
+
+    model_config = ConfigDict(extra="forbid")
+    organization_id: UUID
+    contact_id: UUID
+    starts_at: BdmApptStart
+    duration_minutes: BdmApptDuration = 60
+    appointment_type: BdmAppointmentType
+    location: BdmApptLocation = None
+    purpose: BdmApptPurpose = None
+    remarks: BdmApptRemarks = None
+    expected_leads: BdmApptLeads = None
+    expected_revenue: BdmApptRevenue = None
+    confirm_overlap: StrictBool = False
+
+
+class BdmAppointmentUpdate(BaseModel):
+    """Omitted = unchanged; a sent null on `contact_id` / `duration_minutes` / `appointment_type` fails the non-nullable type. The time
+    changes only through reschedule and the status only through the actions."""
+
+    model_config = ConfigDict(extra="forbid")
+    contact_id: UUID = None
+    duration_minutes: BdmApptDuration = None
+    appointment_type: BdmAppointmentType = None
+    location: BdmApptLocation = None
+    purpose: BdmApptPurpose = None
+    remarks: BdmApptRemarks = None
+    expected_leads: BdmApptLeads = None
+    expected_revenue: BdmApptRevenue = None
+    confirm_overlap: StrictBool = False
+
+
+class BdmAppointmentReschedule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    starts_at: BdmApptStart
+    duration_minutes: BdmApptDuration | None = None
+    reason: _bdm_appt_optional(500) = None
+    confirm_overlap: StrictBool = False
+
+
+class BdmAppointmentReason(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmApptReason
+
+
+class BdmAppointmentComplete(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    outcome: BdmAppointmentOutcome
+    next_follow_up_on: date | None = None
+
+
+class BdmAppointmentPermissions(BaseModel):
+    can_edit: bool
+    can_confirm: bool
+    can_reschedule: bool
+    can_cancel: bool
+    can_no_show: bool
+    can_complete: bool
+
+
+class BdmAppointmentOrgRef(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    archived: bool
+
+
+class BdmAppointmentRow(BaseModel):
+    id: UUID
+    code: str
+    starts_at: datetime
+    duration_minutes: int
+    appointment_type: str
+    status: str
+    organization: BdmAppointmentOrgRef
+    contact_name: str
+    bdm: BdmOrgPerson
+
+
+class BdmAppointmentEventOut(BaseModel):
+    from_status: str | None
+    to_status: str
+    old_starts_at: datetime | None
+    new_starts_at: datetime | None
+    reason: str | None
+    actor_name: str
+    created_at: datetime
+
+
+class BdmAppointmentOut(BdmAppointmentRow):
+    contact_id: UUID | None
+    contact_designation: str | None
+    contact_phone: str | None
+    contact_email: str | None
+    location: str | None
+    purpose: str | None
+    remarks: str | None
+    outcome: str | None
+    next_follow_up_on: date | None
+    expected_leads: int | None
+    expected_revenue: Decimal | None
+    events: list[BdmAppointmentEventOut]
+    permissions: BdmAppointmentPermissions
+    created_at: datetime
+    updated_at: datetime
+
+
+class BdmAppointmentPage(BaseModel):
+    items: list[BdmAppointmentRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmAppointmentEnvelope(BaseModel):
+    appointment: BdmAppointmentOut
