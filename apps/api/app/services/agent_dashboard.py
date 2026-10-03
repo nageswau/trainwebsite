@@ -5,15 +5,19 @@ Every count is SQL over the existing scope helpers, so a Master counts the agenc
 
 from datetime import UTC, datetime
 
-from sqlalchemy import ColumnElement, distinct, func, or_, select
+from sqlalchemy import ColumnElement, and_, case, distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac import agent_may, is_agent_staff
-from app.models import AgentStudent, OverseasApplication, StudentDocument, User, VisaCase
+from app.models import AgentCommission, AgentOrgMember, AgentStudent, Country, OverseasApplication, StudentDocument, University, User, VisaCase
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN
 from app.services.agent_documents import document_scope
+from app.services.agent_orgs import org_member_ids
 from app.services.agent_students import application_scope, student_scope
 from app.services.agent_tasks import pending_stmt
+
+BREAKDOWN_SIZE = 10  # D2: the top ten, the rest summed into `other`
+CLAIMABLE = ("eligible", "estimated")  # the portal's "Claimable commission" statuses
 
 
 def offer_clause() -> ColumnElement[bool]:
@@ -54,18 +58,103 @@ async def headline_counts(db: AsyncSession, user: User) -> dict[str, int]:
     return {key: int(value or 0) for key, value in row._mapping.items()}
 
 
+async def breakdown(db: AsyncSession, user: User, label, key) -> dict:
+    """Open applications grouped by `key` (shown as `label`), the top ten (D2). The window total comes from the same statement, so
+    `other` can never disagree with the items."""
+    count = func.count()
+    stmt = (
+        select(label, count, func.sum(count).over())
+        .select_from(OverseasApplication)
+        .join(University, University.id == OverseasApplication.university_id)
+        .join(Country, Country.id == University.country_id)
+        .where(*agency_applications(user), OverseasApplication.status != WITHDRAWN)
+        .group_by(key, label)
+        .order_by(count.desc(), label)
+        .limit(BREAKDOWN_SIZE)
+    )
+    rows = (await db.execute(stmt)).all()
+    items = [{"label": name, "count": n} for name, n, _ in rows]
+    total = int(rows[0][2]) if rows else 0
+    return {"items": items, "other": total - sum(i["count"] for i in items)}
+
+
+async def staff_rows(db: AsyncSession, user: User) -> tuple[list[dict], int]:
+    """Master only (G2): per staff member, exactly what that member's own dashboard shows -- students by assignment (active),
+    applications by `application_scope`'s two paths (the agency record, or the linked login), each application once. Plus the
+    agency's unassigned active students."""
+    agency = org_member_ids(user)
+    by_assignee = select(AgentStudent.assigned_member_id, func.count()).where(AgentStudent.agent_id.in_(agency), AgentStudent.status == "active")
+    students = dict((await db.execute(by_assignee.group_by(AgentStudent.assigned_member_id))).all())
+
+    def distinct_apps(condition):
+        return func.count(distinct(case((condition, OverseasApplication.id))))
+
+    link = AgentStudent
+    per_member = (
+        select(link.assigned_member_id, distinct_apps(OverseasApplication.status != WITHDRAWN), distinct_apps(offer_clause()), distinct_apps(OverseasApplication.status == "enrolled"))
+        .select_from(OverseasApplication)
+        .join(link, or_(OverseasApplication.agent_student_id == link.id, and_(link.student_id.is_not(None), OverseasApplication.student_id == link.student_id)))
+        .where(*agency_applications(user), link.agent_id.in_(agency), link.assigned_member_id.is_not(None))
+        .group_by(link.assigned_member_id)
+    )
+    apps = {member_id: counts for member_id, *counts in (await db.execute(per_member)).all()}
+    members = await db.execute(
+        select(AgentOrgMember, User.full_name)
+        .join(User, User.id == AgentOrgMember.user_id)
+        .where(AgentOrgMember.org_id == user.agent_membership.org_id, AgentOrgMember.role == "staff")
+        .order_by(AgentOrgMember.seq)
+    )
+    rows = []
+    for member, name in members.all():
+        active = member.status == "active"
+        if not active and not students.get(member.id):
+            continue  # D3: a deactivated member drops out once they hold no active students
+        applications, offers, enrollments = apps.get(member.id, (0, 0, 0))
+        rows.append({"code": member.code, "name": name, "active": active, "students": students.get(member.id, 0), "applications": applications, "offers": offers, "enrollments": enrollments})
+    return rows, students.get(None, 0)
+
+
+async def commission_summary(db: AsyncSession, user: User) -> dict:
+    """Master only (DEC-SCOPE-040 S1): the portal's three commission figures, per currency and never summed across currencies."""
+    stmt = (
+        select(AgentCommission.status, AgentCommission.currency, func.count(), func.sum(AgentCommission.amount))
+        .where(AgentCommission.agent_id.in_(org_member_ids(user)))
+        .group_by(AgentCommission.status, AgentCommission.currency)
+    )
+    claimable: dict[str, list] = {}
+    revenue: dict[str, list] = {}
+    claims = 0
+    for status, currency, count, amount in (await db.execute(stmt)).all():
+        if status == "claimed":
+            claims += count
+        bucket = claimable if status in CLAIMABLE else revenue if status == "paid" else None
+        if bucket is not None:
+            totals = bucket.setdefault(currency, [0, 0.0])
+            totals[0] += count
+            totals[1] += float(amount or 0)
+
+    def per_currency(bucket):
+        return [{"currency": currency, "count": count, "amount": amount} for currency, (count, amount) in sorted(bucket.items())]
+
+    return {"claimable": per_currency(claimable), "claims": claims, "revenue": per_currency(revenue)}
+
+
 async def dashboard(db: AsyncSession, user: User) -> dict:
-    """The AGN-018 payload (spec §5.3)."""
+    """The AGN-018 payload (spec §5.3). Staff get the Master-only fields as null; they are never queried for staff."""
     staff = is_agent_staff(user)
-    return {
+    result = {
         "scope": "own" if staff else "agency",
         "member_code": user.agent_membership.code if user.agent_membership else None,
         **await headline_counts(db, user),
-        "by_country": {"items": [], "other": 0},
-        "by_university": {"items": [], "other": 0},
+        "by_country": await breakdown(db, user, Country.name, Country.id),
+        "by_university": await breakdown(db, user, University.name, University.id),
         "staff": None,
         "unassigned_students": None,
         "commission": None,
         "reports_available": agent_may(user, "can_view_reports"),
         "as_of": datetime.now(UTC),
     }
+    if not staff:
+        result["staff"], result["unassigned_students"] = await staff_rows(db, user)
+        result["commission"] = await commission_summary(db, user)
+    return result

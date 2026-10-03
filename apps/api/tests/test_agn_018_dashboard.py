@@ -4,8 +4,10 @@ import pytest
 import pytest_asyncio
 
 from tests.agn001_helpers import client_for, mk_active_org, mk_user
+from tests.agn004_helpers import mk_record
+from tests.agn008_helpers import agency_world, mk_application
 from tests.agn017_helpers import deactivate, set_org_status
-from tests.agn018_helpers import DASHBOARD_API, MASTER, S1, S2, S3, dashboard_world
+from tests.agn018_helpers import DASHBOARD_API, MASTER, S1, S2, S3, dashboard_world, mk_place
 
 KEYS = list(MASTER)
 CRM = "/api/v1/workflows/overseas/agent/crm"
@@ -109,3 +111,72 @@ async def test_linked_kpis_equal_their_list_totals(world, who):
     assert await total("applications", status="enrolled") == body["enrollments"]
     assert await total("documents", view="pending") == body["pending_documents"]
     assert await total("tasks", view="open") == body["pending_actions"]
+
+
+# --- breakdowns, staff table, commission ------------------------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_breakdowns_by_country_and_university(world):
+    body = (await _get(world["master"].email)).json()
+    assert body["by_country"] == {"items": [{"label": "Aland", "count": 4}, {"label": "Betaland", "count": 3}], "other": 0}
+    assert body["by_university"] == {"items": [{"label": "Alpha University", "count": 4}, {"label": "Beta University", "count": 3}], "other": 0}
+    s2 = (await _get(world["s2"]["user"].email)).json()
+    assert s2["by_country"] == {"items": [{"label": "Aland", "count": 1}], "other": 0}
+
+
+@pytest.mark.asyncio
+async def test_breakdown_keeps_ten_and_sums_the_rest(db_session):
+    ctx = await mk_active_org(db_session)
+    record = await mk_record(db_session, agent=ctx["master"], full_name="Many")
+    for i in range(12):
+        place = await mk_place(db_session, university=f"Uni {i:02d}", country=f"Country {i:02d}")
+        for _ in range(2 if i < 3 else 1):
+            await mk_application(db_session, agent=ctx["master"], university=place, record=record)
+    body = (await _get(ctx["master"].email)).json()
+    items = body["by_university"]["items"]
+    assert len(items) == 10 and [i["label"] for i in items[:4]] == ["Uni 00", "Uni 01", "Uni 02", "Uni 03"]
+    assert body["by_university"]["other"] == 2 and sum(i["count"] for i in items) + 2 == body["applications"] == 15
+
+
+@pytest.mark.asyncio
+async def test_staff_rows_equal_each_members_own_dashboard(world):
+    body = (await _get(world["master"].email)).json()
+    rows = {r["name"]: r for r in body["staff"]}
+    assert list(rows) == ["Staff One", "Staff Two", "Staff Three"] and body["unassigned_students"] == 1
+    fields = ("students", "applications", "offers", "enrollments")
+    for key in ("s1", "s2", "s3"):
+        own = (await _get(world[key]["user"].email)).json()
+        row = rows[world[key]["user"].full_name]
+        assert row["code"] == world[key]["member"].code and row["active"] is True
+        assert {k: row[k] for k in fields} == {k: own[k] for k in fields}
+
+
+@pytest.mark.asyncio
+async def test_staff_row_counts_an_application_once(db_session):
+    """Review Focus 1: an application reachable through the agency record AND the linked login counts once."""
+    w = await agency_world(db_session)
+    await mk_application(db_session, agent=w["master"], university=w["university"], record=w["linked_record"], status="offer")
+    body = (await _get(w["master"].email)).json()
+    row = next(r for r in body["staff"] if r["code"] == w["staff"]["member"].code)
+    assert row["applications"] == 1 and row["offers"] == 1
+
+
+@pytest.mark.asyncio
+async def test_deactivated_staff_row(world, db_session):
+    """Review Focus 2: shown (inactive) while they still hold active students; gone once they hold none."""
+    await deactivate(db_session, world["s1"]["member"])
+    await deactivate(db_session, world["s3"]["member"])
+    rows = {r["name"]: r for r in (await _get(world["master"].email)).json()["staff"]}
+    assert rows["Staff One"]["active"] is False and "Staff Three" not in rows
+
+
+@pytest.mark.asyncio
+async def test_commission_is_per_currency(world):
+    """Review Focus 4: never summed across currencies; the noise agency's paid commission is not here."""
+    commission = (await _get(world["master"].email)).json()["commission"]
+    assert commission == {
+        "claimable": [{"currency": "INR", "count": 1, "amount": 1000.0}, {"currency": "USD", "count": 1, "amount": 200.0}],
+        "claims": 1,
+        "revenue": [{"currency": "INR", "count": 1, "amount": 12000.0}, {"currency": "USD", "count": 1, "amount": 500.0}],
+    }
