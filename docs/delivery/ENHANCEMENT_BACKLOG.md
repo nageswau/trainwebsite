@@ -96,6 +96,9 @@ migration is `0067_audit_entity_index`). See §AGN-015.
 §4, §6) is decided as `DEC-SCOPE-062` (G1–G6, owner in-session; drafted as `060`, renumbered on merging `main` @ `c5cdc8a`, where `060`
 is bdm-002, and @ `09bd5e7`, where `061` is AGN-015). See §AGN-018.
 
+**Revision 17 (2026-10-03):** backlog item ang-020 (`EVID-015` §2 Reports, §6 "Reports ✅ Full / ❌/Limited") is decided as
+`DEC-SCOPE-063` (R1–R10, owner in-session; provisional number, free on `main` @ `3bde879`). See §AGN-020.
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -188,6 +191,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-010 | Agent offer details — conditional/unconditional, offer date, deadline, conditions, offer letter on an agency application; agent "Offers" count (Rev. 13) | Medium | Medium | Yes | AGN-008, AGN-009, AGN-021 |
 | AGN-017 | Agency notifications (in-app + email) on assignment, document request/rejection, status change, new task; daily deadline reminders and overdue digest; Notifications page + unread badge (Rev. 14) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-009, AGN-013, AGN-016, ENH-014 |
 | AGN-015 | Agent student journey — nine-step tracker (student steps once, application steps per application) and complete history (every event once, newest first, with its actor) on the student detail (Rev. 15) | Medium | Low | Yes | AGN-004, AGN-006–AGN-013, AGN-016, AGN-021 |
+| AGN-020 | Agency reports — Students, Applications, Enrollments lists; University, Country, Intake, Staff performance summaries; the AGN-014 commission report as a tab; filters; audited, throttled CSV (Rev. 17) | Medium | Medium | No | AGN-003, AGN-004, AGN-008, AGN-013, AGN-014, AGN-018 |
 | AGN-018 | Agency Master / Staff dashboards — typed KPI endpoint and board (students, pipeline, documents, Master commission), breakdowns, Master staff table; Staff sidebar (My Students All / Add, All applications, Tasks & Follow-ups) (Rev. 15) | Medium | Medium | No | AGN-004, AGN-005, AGN-008 … AGN-014, AGN-016 |
 
 ---
@@ -3808,6 +3812,30 @@ full vitest 1986/1986, `tsc --noEmit` 0, `eslint .` 0 errors (30 pre-existing wa
 compiled; Playwright `agn-018-dashboard.spec.ts` 2/2 and the related agency specs (agn-002/003/008/010/014/016/017) 15/15; Browser Use
 QA pass 1 (7 findings QA18-01…07, all fixed test-first) and pass 2 (all PASS) — `docs/quality/AGN-018_BROWSER_QA_2026-10-03.md`.
 Codex review waived by the owner (2026-10-03). **Not run here:** the non-agent backend test files (the owner runs the full suites).
+
+## AGN-020 — Agency Reports (7 new + Commission) and CSV Export
+
+**Business requirement.** The owner's `AGN-020` statement (in-session, 2026-10-03): "Student, Application, University, Country,
+Intake, Staff performance, Enrollment and Commission reports (§2); Staff reports '❌/Limited'." Evidence `EVID-015` (`DERIVED_BLUEPRINT`)
+names the reports only; content decided by `DEC-SCOPE-063` (R1–R10). Spec `docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md`;
+plan `docs/superpowers/plans/2026-10-03-agn-020-agency-reports.md`.
+
+**Expected behavior.** `/overseas/agent/reports` shows agency members a tabbed Reports card. Lists: Students (default active), Applications
+(withdrawn included), Enrollments (by enrollment date). Summaries with a Total row: by university, by country, by intake (parsed month +
+year; "Unstructured" last), Staff performance (Master only: per member + Unassigned). Commission: the AGN-014 panel, unchanged. Filters
+per report (dates as inclusive UTC days; Staff member for Masters; country / university by slug; intake; status). CSV of the applied
+filters (header = screen labels, BOM, formula-escaped, ≤ 10,000 rows, one `agent_report.export` audit row, 30 per user per 10 minutes).
+Staff with Reports see six reports of their own students; without it, `403` everywhere.
+
+**Acceptance criteria.** AGN-020-AC1 … AC11 (`RTM.md`, spec §8).
+
+**Delivery (2026-10-03).** No migration, no dependency. New `api/agent_reports.py`, `services/agent_reports.py`, `AgentReportOut`;
+`AgentReportsPanel`, `AgentReportFilters`, `AgentReportTable`, `lib/agentReports.ts`; `PortalPage` reports branch; `WorkflowPanel` no
+longer mounts the commission panel. Lite tests (owner instruction): `test_agn_020_reports.py`, `test_agn_020_reports_access.py`,
+`test_agn_020_reports_csv.py` (117 together) and `test_agn_014_commission_reports.py` (40) pass on an isolated database; vitest for the
+seven new / rewritten files plus PortalPage dashboard/applications and the commission panel pass; `tsc` and eslint clean.
+**Pending:** browser validation (incl. `agn-020-reports.spec.ts` and the updated `agn-014-commission-master.spec.ts`), full suites (owner),
+independent Codex review.
 
 ## AGN-017 — Agency Notifications and Deadline Reminders
 
