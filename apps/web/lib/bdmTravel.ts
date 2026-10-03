@@ -28,6 +28,8 @@ export const APPROVALS_URL = "/api/v1/bdm/manager/approvals";
 export const tripUrl = (id: string) => `${TRIPS_URL}/${id}`;
 export const teamTripUrl = (id: string) => `${TEAM_TRIPS_URL}/${id}`;
 export const PAST_DAYS = 30;
+/** Rupees with up to 2 decimals (the API's TRIP_AMOUNT_FORMAT); the API decides. */
+export const AMOUNT_PATTERN = /^\d+(\.\d{1,2})?$/;
 
 const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 });
 export const formatInr = (value: string) => INR.format(Number(value));
