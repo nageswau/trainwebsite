@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import AgentShortlistPanel from "./AgentShortlistPanel";
 import AgentStudentCounselingCard from "./AgentStudentCounselingCard";
 import AgentStudentForm from "./AgentStudentForm";
+import AgentStudentJourney from "./AgentStudentJourney";
+import AgentStudentTimeline from "./AgentStudentTimeline";
 import AgentTasksBlock from "./AgentTasksBlock";
 import { AgentStudentDetail, assignedText } from "@/lib/agentStudents";
 
@@ -87,6 +89,8 @@ export default function AgentStudentDetailPanel({
               Edit
             </button>
           )}
+          {/* AGN-015 (DEC-SCOPE-060): where the student is on the nine steps; reloads when the record changes. */}
+          {editing === "none" && <AgentStudentJourney studentId={detail.id} refreshKey={detail.updated_at} />}
           <AgentStudentCounselingCard
             detail={detail}
             editing={editing === "counseling"}
@@ -106,6 +110,8 @@ export default function AgentStudentDetailPanel({
               <AgentTasksBlock view="all" studentId={detail.id} archived={detail.status === "archived"} Heading="h6" />
             </section>
           )}
+          {/* AGN-015 (DEC-SCOPE-060): the complete history, loaded only when asked for. */}
+          {editing === "none" && <AgentStudentTimeline studentId={detail.id} />}
           {editing === "none" && (
             <button type="button" className="btn secondary small" onClick={onClose} style={{ marginTop: 16 }}>
               Close
