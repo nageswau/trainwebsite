@@ -36,6 +36,24 @@ export const AMOUNT_PATTERN = /^\d+(\.\d{1,2})?$/;
 const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 });
 export const formatInr = (value: string) => INR.format(Number(value));
 
+export const MAX_SPAN_DAYS = 30; // return - travel <= 30, i.e. at most 31 days (T14)
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** QA10-08: YYYY-MM-DD with a 4-digit year (Chrome lets a year run to 6 digits) and a real calendar day. */
+export const isIsoDate = (value: string) => ISO_DATE.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+export function addDays(day: string, days: number): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** QA10-07: the API answers its T14 date rules as a sentence; put each on the field it is about. */
+export function dateRuleField(detail: unknown): Record<string, string> {
+  if (typeof detail !== "string") return {};
+  if (detail.startsWith("Travel date")) return { travel_date: detail };
+  if (detail.startsWith("Return date") || detail.startsWith("A trip can last")) return { return_date: detail };
+  return {};
+}
+
 /** T14: the earliest travel date the API accepts, from today's India date (YYYY-MM-DD). */
 export function travelDateBounds(today: string): { min: string } {
   const d = new Date(`${today}T00:00:00Z`);

@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import FormMessage from "@/components/FormMessage";
-import { AMOUNT_PATTERN, CATEGORY_LABEL, fieldErrors, tripUrl, type ExpenseCategory, type TripExpense } from "@/lib/bdmTravel";
+import { AMOUNT_PATTERN, CATEGORY_LABEL, fieldErrors, isIsoDate, tripUrl, type ExpenseCategory, type TripExpense } from "@/lib/bdmTravel";
 import { jsonInit, useTripWrite } from "@/lib/useTripWrite";
 
 // bdm-010 (T7): one expense line -- category, INR amount, date, optional note. Adds a line, or edits `expense`.
@@ -25,6 +25,7 @@ export default function TripExpenseRowForm({ tripId, expense, defaultDate, onDon
     if (!AMOUNT_PATTERN.test(amount.trim())) found.amount = "Enter an amount in rupees with up to 2 decimals";
     else if (Number(amount) <= 0) found.amount = "The amount must be more than ₹0";
     if (!date) found.expense_date = "Date is required";
+    else if (!isIsoDate(date)) found.expense_date = "Enter a valid expense date";
     setErrors(found);
     if (Object.keys(found).length) return;
     const body = { category, amount: amount.trim(), expense_date: date, note: note.trim() || null };

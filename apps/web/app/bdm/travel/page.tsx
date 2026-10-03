@@ -52,12 +52,12 @@ export default async function MyTripsPage({ searchParams }: { searchParams: Prom
         </form>
         {trips.total === 0 ? (
           status ? (
-            <p className="empty" role="status">No trips match this filter. <Link href={PATH}>Clear filter</Link></p>
+            <p className="empty" role="status">No trips match this filter. <Link className="text-link" href={PATH}>Clear filter</Link></p>
           ) : (
-            <p className="empty" role="status">No trips yet — <Link href={`${PATH}/new`}>create your first trip</Link>.</p>
+            <p className="empty" role="status">No trips yet — <Link className="text-link" href={`${PATH}/new`}>create your first trip</Link>.</p>
           )
         ) : trips.items.length === 0 ? (
-          <p className="empty" role="status">This page is past the end of your trips. <Link href={PATH}>Go to the first page</Link></p>
+          <p className="empty" role="status">This page is past the end of your trips. <Link className="text-link" href={PATH}>Go to the first page</Link></p>
         ) : (
           <TripTable page={trips} label="My trips" basePath={PATH} query={query} detailHref={(id) => `${PATH}/${id}`} />
         )}

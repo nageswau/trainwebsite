@@ -21,10 +21,15 @@ const CANCEL_ID = "trip-cancel";
 export default function TripActions({ trip }: { trip: Trip }) {
   const { busy, message, run, resultProps } = useTripWrite();
   const [confirming, setConfirming] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
   const shown = ACTIONS.filter((a) => trip[a.flag]);
   if (!shown.length && !trip.can_cancel && !message) return null;
 
-  const post = (action: string, done: string) => run(`${tripUrl(trip.id)}/${action}`, { method: "POST" }, done);
+  const post = async (action: string, done: string) => {
+    setPending(action);
+    await run(`${tripUrl(trip.id)}/${action}`, { method: "POST" }, done);
+    setPending(null);
+  };
   const closeConfirm = () => {
     setConfirming(false);
     refocus(CANCEL_ID);
@@ -35,7 +40,7 @@ export default function TripActions({ trip }: { trip: Trip }) {
       <div className="actions">
         {shown.map((a) => (
           <button key={a.action} type="button" className={a.action === "withdraw" ? "btn secondary" : "btn"} disabled={busy} onClick={() => post(a.action, a.done)}>
-            {a.label}
+            {busy && pending === a.action ? "Saving…" : a.label}
           </button>
         ))}
         {trip.can_cancel && !confirming && (

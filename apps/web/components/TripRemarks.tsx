@@ -16,7 +16,8 @@ export default function TripRemarks({ trip }: { trip: Trip }) {
   return (
     <form className="form" onSubmit={(e) => { e.preventDefault(); run(tripUrl(trip.id), jsonInit("PATCH", { remarks: value.trim() || null }), "Remarks saved."); }}>
       <div className="field">
-        <label htmlFor="trip-remarks-edit">Remarks</label>
+        {/* QA10-14: the section heading already says "Remarks" on screen; the field keeps the name for assistive tech */}
+        <label htmlFor="trip-remarks-edit" className="visually-hidden">Remarks</label>
         <textarea id="trip-remarks-edit" rows={3} maxLength={MAX} value={value} onChange={(e) => setValue(e.target.value)} aria-describedby="trip-remarks-count" />
         <p className="muted" id="trip-remarks-count" style={{ fontSize: 12, margin: 0 }}>{value.length} / {MAX}</p>
       </div>

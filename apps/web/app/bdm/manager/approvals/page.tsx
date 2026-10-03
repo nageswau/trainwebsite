@@ -38,7 +38,7 @@ export default async function ManagerApprovalsPage({ searchParams }: { searchPar
         {queue.total === 0 ? (
           <p className="empty" role="status">Nothing waiting for approval.</p>
         ) : queue.items.length === 0 ? (
-          <p className="empty" role="status">This page is past the end of the queue. <Link href={PATH}>Go to the first page</Link></p>
+          <p className="empty" role="status">This page is past the end of the queue. <Link className="text-link" href={PATH}>Go to the first page</Link></p>
         ) : (
           <TripTable page={queue} label="Trips waiting for approval" basePath={PATH} showBdm detailHref={(id) => `/bdm/manager/trips/${id}`} />
         )}

@@ -44,7 +44,7 @@ export default async function AdminTravelApprovalsPage({ searchParams }: { searc
         {queue.total === 0 ? (
           <p className="empty" role="status">No trips are waiting on an inactive manager.</p>
         ) : queue.items.length === 0 ? (
-          <p className="empty" role="status">This page is past the end of the queue. <Link href={PATH}>Go to the first page</Link></p>
+          <p className="empty" role="status">This page is past the end of the queue. <Link className="text-link" href={PATH}>Go to the first page</Link></p>
         ) : (
           <TripTable page={queue} label="Trips waiting on an inactive manager" basePath={PATH} showBdm detailHref={(id) => `/bdm/manager/trips/${id}`} />
         )}

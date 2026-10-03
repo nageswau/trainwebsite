@@ -41,7 +41,8 @@ export default function TripDecision({ trip }: { trip: Trip }) {
           <button id={REJECT_ID} type="button" className="btn secondary" disabled={busy} onClick={() => setRejecting(true)}>Reject</button>
         </div>
       )}
-      {rejecting && (
+      {/* QA10-03: once the trip can't be decided (e.g. withdrawn meanwhile), the reason form goes; the 409 message stays */}
+      {rejecting && trip.can_decide && (
         <form className="form form-warning" onSubmit={reject} onKeyDown={(e) => { if (e.key === "Escape" && !busy) close(); }} noValidate>
           <div className="field">
             <label htmlFor="trip-reject-reason">Reason for rejecting</label>

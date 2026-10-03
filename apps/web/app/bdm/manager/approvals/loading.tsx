@@ -5,7 +5,7 @@ import { BDM_MANAGER_NAV } from "@/lib/navigation";
 // (the ENH-020 pattern).
 export default function Loading() {
   return (
-    <PortalShell nav={BDM_MANAGER_NAV} roleLabel="BDM Manager" userName="">
+    <PortalShell nav={BDM_MANAGER_NAV} roleLabel="Loading…" userName="">
       <div className="portal-content" aria-busy="true" aria-label="Loading trips waiting for approval">
         <div className="card">
           {[0, 1, 2, 3].map((i) => <div key={i} className="skeleton-line" style={{ width: "100%", marginBottom: 12 }} aria-hidden="true" />)}

@@ -1,10 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import FormMessage from "@/components/FormMessage";
-import { AMOUNT_PATTERN, MODE_LABEL, TRIPS_URL, fieldErrors, travelDateBounds, tripUrl, type Trip, type TripMode } from "@/lib/bdmTravel";
+import {
+  AMOUNT_PATTERN, MAX_SPAN_DAYS, MODE_LABEL, TRIPS_URL, addDays, dateRuleField, fieldErrors, isIsoDate, travelDateBounds, tripUrl, type Trip,
+  type TripMode,
+} from "@/lib/bdmTravel";
 import { refocus } from "@/lib/focus";
 import { jsonInit, useTripWrite } from "@/lib/useTripWrite";
 
@@ -36,8 +39,12 @@ function payload(v: Values, create: boolean): Record<string, unknown> {
 function validate(v: Values, min: string): Record<string, string> {
   const errors: Record<string, string> = {};
   for (const [key, label] of REQUIRED) if (!String(v[key]).trim()) errors[key] = `${label} is required`;
-  if (v.travel_date && v.travel_date < min) errors.travel_date = "Travel date can be at most 30 days in the past";
-  if (v.travel_date && v.return_date && v.return_date < v.travel_date) errors.return_date = "Return date must be on or after the travel date";
+  if (v.travel_date && !isIsoDate(v.travel_date)) errors.travel_date = "Enter a valid travel date"; // QA10-08
+  if (v.return_date && !isIsoDate(v.return_date)) errors.return_date = "Enter a valid return date";
+  const datesOk = isIsoDate(v.travel_date) && isIsoDate(v.return_date);
+  if (isIsoDate(v.travel_date) && v.travel_date < min) errors.travel_date = "Travel date can be at most 30 days in the past";
+  if (datesOk && v.return_date < v.travel_date) errors.return_date = "Return date must be on or after the travel date";
+  else if (datesOk && v.return_date > addDays(v.travel_date, MAX_SPAN_DAYS)) errors.return_date = "A trip can last at most 31 days"; // QA10-07
   if (v.estimated_cost.trim() && !AMOUNT_PATTERN.test(v.estimated_cost.trim())) errors.estimated_cost = "Enter an amount in rupees with up to 2 decimals";
   return errors;
 }
@@ -51,6 +58,9 @@ export default function TripForm({ trip, today }: { trip?: Trip; today: string }
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { busy, message, setMessage, run, resultProps } = useTripWrite();
   const { min } = travelDateBounds(today);
+  // QA10-17: server-rendered disabled, enabled once React owns the inputs -- so nothing typed early is wiped by hydration.
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
   const set = <K extends keyof Values>(key: K, value: Values[K]) => setValues((v) => ({ ...v, [key]: value }));
 
   const fieldProps = (key: keyof Values) => ({
@@ -70,18 +80,19 @@ export default function TripForm({ trip, today }: { trip?: Trip; today: string }
     const body = payload(values, create);
     if (create) {
       const outcome = await run(TRIPS_URL, jsonInit("POST", body), "Trip saved as a draft.", (data) => router.push(`/bdm/travel/${data.id}`));
-      if (!outcome.ok) setErrors(fieldErrors(outcome.detail));
+      if (!outcome.ok) setErrors({ ...fieldErrors(outcome.detail), ...dateRuleField(outcome.detail) });
       return;
     }
     const before = payload(initial(trip), false);
     const changes = Object.fromEntries(Object.entries(body).filter(([k, v]) => v !== before[k]));
     if (!Object.keys(changes).length) return setMessage({ text: "Nothing to change.", failed: false });
     const outcome = await run(tripUrl(trip.id), jsonInit("PATCH", changes), "Trip saved.");
-    if (!outcome.ok) setErrors(fieldErrors(outcome.detail));
+    if (!outcome.ok) setErrors({ ...fieldErrors(outcome.detail), ...dateRuleField(outcome.detail) });
   }
 
   return (
     <form className="form" onSubmit={submit} noValidate aria-label={create ? "New trip" : "Edit trip"}>
+      <fieldset disabled={!ready} className="form" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <div className="form-grid">
         <div className="field">
           <label htmlFor="trip-travel_date">Travel date</label>
@@ -90,7 +101,7 @@ export default function TripForm({ trip, today }: { trip?: Trip; today: string }
         </div>
         <div className="field">
           <label htmlFor="trip-return_date">Return date</label>
-          <input type="date" min={values.travel_date || min} value={values.return_date} onChange={(e) => set("return_date", e.target.value)} {...fieldProps("return_date")} />
+          <input type="date" min={values.travel_date || min} max={isIsoDate(values.travel_date) ? addDays(values.travel_date, MAX_SPAN_DAYS) : undefined} value={values.return_date} onChange={(e) => set("return_date", e.target.value)} {...fieldProps("return_date")} />
           {error("return_date")}
         </div>
         {TEXT.map(([key, label]) => (
@@ -102,7 +113,8 @@ export default function TripForm({ trip, today }: { trip?: Trip; today: string }
         ))}
         <div className="field">
           <label htmlFor="trip-mode">Mode of travel</label>
-          <select value={values.mode} onChange={(e) => set("mode", e.target.value as TripMode)} {...fieldProps("mode")}>
+          {/* QA10-11: keep its own height when a neighbour in the row shows an error */}
+          <select value={values.mode} onChange={(e) => set("mode", e.target.value as TripMode)} style={{ alignSelf: "start" }} {...fieldProps("mode")}>
             {Object.entries(MODE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </div>
@@ -133,6 +145,7 @@ export default function TripForm({ trip, today }: { trip?: Trip; today: string }
       <div className="actions">
         <button className="btn" type="submit" disabled={busy}>{busy ? "Saving…" : create ? "Save draft" : "Save changes"}</button>
       </div>
+      </fieldset>
       <div {...resultProps}>{message && <FormMessage message={message} />}</div>
     </form>
   );
