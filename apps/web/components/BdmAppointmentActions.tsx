@@ -70,28 +70,28 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
           </button>
         )}
         {p.can_reschedule && (
-          <button id={buttonId("reschedule")} type="button" className="btn secondary small" aria-expanded={open === "reschedule"} onClick={() => toggle("reschedule")}>
+          <button id={buttonId("reschedule")} type="button" className="btn secondary small" disabled={busy} aria-expanded={open === "reschedule"} onClick={() => toggle("reschedule")}>
             Reschedule
           </button>
         )}
         {p.can_complete && bdmType && (
-          <button id={buttonId("complete")} type="button" className="btn secondary small" aria-expanded={open === "complete"} onClick={() => toggle("complete")}>
+          <button id={buttonId("complete")} type="button" className="btn secondary small" disabled={busy} aria-expanded={open === "complete"} onClick={() => toggle("complete")}>
             Complete
           </button>
         )}
         {p.can_no_show && (
-          <button id={buttonId("no_show")} type="button" className="btn secondary small" aria-expanded={open === "no_show"} onClick={() => toggle("no_show")}>
+          <button id={buttonId("no_show")} type="button" className="btn secondary small" disabled={busy} aria-expanded={open === "no_show"} onClick={() => toggle("no_show")}>
             Mark no-show
           </button>
         )}
         {p.can_cancel && (
-          <button id={buttonId("cancel")} type="button" className="btn secondary small" aria-expanded={open === "cancel"} onClick={() => toggle("cancel")}>
+          <button id={buttonId("cancel")} type="button" className="btn secondary small" disabled={busy} aria-expanded={open === "cancel"} onClick={() => toggle("cancel")}>
             Cancel appointment
           </button>
         )}
       </div>
       {open === "reschedule" && (
-        <BdmAppointmentRescheduleForm appointment={appointment} busy={busy} warning={warning} onSubmit={(body, confirm) => void act("reschedule", { ...body, confirm_overlap: confirm })} onCancel={() => close("reschedule")} />
+        <BdmAppointmentRescheduleForm appointment={appointment} busy={busy} warning={warning} onEdit={() => setWarning(null)} onDismissWarning={() => setWarning(null)} onSubmit={(body, confirm) => void act("reschedule", { ...body, confirm_overlap: confirm })} onCancel={() => close("reschedule")} />
       )}
       {open === "complete" && bdmType && <BdmAppointmentCompleteForm bdmType={bdmType} busy={busy} onSubmit={(body) => void act("complete", body)} onCancel={() => close("complete")} />}
       {open === "cancel" && <BdmAppointmentReasonForm label="Cancel appointment" submitText="Yes, cancel it" busyText="Cancelling…" busy={busy} onSubmit={(reason) => void act("cancel", { reason })} onCancel={() => close("cancel")} />}

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import BdmAppointmentActions from "@/components/BdmAppointmentActions";
@@ -79,5 +79,36 @@ describe("BdmAppointmentActions (bdm-006 §6.2, R-F4, R-F7)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save anyway" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(JSON.parse(String(((fetchMock.mock.calls[1] as unknown[])[1] as RequestInit).body))).toMatchObject({ starts_at: "2030-01-08T10:00:00+05:30", confirm_overlap: true });
+  });
+
+  const overlapDetail = { code: "possible_overlap", message: "You already have an appointment at this time", total: 1, matches: [{ id: "x", code: "APT-000009", starts_at: "2030-01-08T04:30:00Z", duration_minutes: 60, organization_name: "Holy Cross" }] };
+  const openOverlap = async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res({ detail: overlapDetail }, 409)));
+    render(<BdmAppointmentActions appointment={appt({ permissions: { ...none, can_reschedule: true } })} bdmType="college" onChanged={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reschedule" }));
+    fireEvent.change(screen.getByLabelText("New date and time (IST) (required)"), { target: { value: "2030-01-08T10:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save new time" }));
+    await screen.findByText(/APT-000009/);
+  };
+
+  it("clears the overlap warning when the time changes, so Save anyway cannot confirm an unchecked time", async () => {
+    await openOverlap();
+    expect(screen.getByRole("button", { name: "Save new time" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("New date and time (IST) (required)"), { target: { value: "2030-01-09T10:00" } });
+    expect(screen.queryByText(/APT-000009/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save anyway" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Save new time" })).toBeEnabled();
+  });
+
+  it("dismisses only the warning on its Cancel or Escape and keeps the entered time", async () => {
+    await openOverlap();
+    fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByText(/APT-000009/)).toBeNull();
+    expect((screen.getByLabelText("New date and time (IST) (required)") as HTMLInputElement).value).toBe("2030-01-08T10:00");
+    cleanup();
+    await openOverlap();
+    fireEvent.keyDown(screen.getByRole("alert"), { key: "Escape" });
+    expect(screen.queryByText(/APT-000009/)).toBeNull();
+    expect((screen.getByLabelText("New date and time (IST) (required)") as HTMLInputElement).value).toBe("2030-01-08T10:00");
   });
 });

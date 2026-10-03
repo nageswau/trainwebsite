@@ -9,7 +9,11 @@ export default function BdmOverlapAlert({ overlap, busy, onConfirm, onCancel }: 
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
   return (
-    <div role="alert" className="action-card" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
+    <div role="alert" className="action-card" onKeyDown={(e) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation(); // dismiss only the warning, never an enclosing form
+      onCancel();
+    }}>
       <h4 ref={heading} tabIndex={-1} style={{ margin: "0 0 8px" }}>
         {overlap.message}
       </h4>
