@@ -7,6 +7,7 @@ import {
   BOARDS,
   COLLEGE_TYPE_LABEL,
   COLLEGE_TYPES,
+  COMMISSION_NOTE,
   gradeLabel,
   GRADES,
   type OrgProfile,
@@ -141,7 +142,7 @@ export default function BdmOrganizationProfileFields({
       {SPECS[group].map(field)}
       {group === "agent" && (
         <p className="muted" style={{ margin: 0 }}>
-          Commission: Available after onboarding
+          {COMMISSION_NOTE}
         </p>
       )}
     </fieldset>

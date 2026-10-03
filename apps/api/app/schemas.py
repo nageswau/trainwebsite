@@ -25,7 +25,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from app.models import GENDERS
+from app.models import BDM_GRADE_MAX, BDM_GRADE_MIN, BDM_STAFF_MAX, GENDERS
 from app.services.agent_visa import VISA_CASE_STAGES
 
 
@@ -3151,7 +3151,15 @@ BDM_ORG_LABELS = {
     "territory": "Territory",
     "affiliation": "University / affiliation",
     "courses": "Courses",
+    "source": "Source",
+    "staff_count": "Number of staff",
+    "board": "Board",
+    "school_type": "School type",
+    "grade_from": "Lowest grade",
+    "grade_to": "Highest grade",
+    "college_type": "College type",
 }
+BDM_MULTILINE_FIELDS = frozenset({"address", "courses", "courses_interested"})  # bdm-003 P14: line breaks kept
 BDM_ORG_FIELDS = ("org_type", "name", "city", "state", "address", "phone", "email", "website", "existing_partner", "courses_interested", "student_count")
 _BDM_PHONE = re.compile(r"[0-9+()\- ]+")
 _BDM_WEBSITE = re.compile(r"https?://\S+", re.IGNORECASE)
@@ -3162,9 +3170,11 @@ BDM_MAX_CONTACTS = 20
 
 
 def _bdm_org_text(value: str | None, info: ValidationInfo) -> str | None:
-    """bdm-001's text rule (no control characters, blank -> None) plus the per-field shape checks (spec §5.1, §12.3)."""
+    """bdm-001's text rule (no control characters, blank -> None) plus the per-field shape checks (spec §5.1, §12.3). A multi-line field
+    (bdm-003 P14) also allows a line break."""
     label = BDM_ORG_LABELS.get(info.field_name, info.field_name)
-    if value is not None and _BDM_CONTROL.search(value):
+    control = _BDM_CONTROL_MULTILINE if info.field_name in BDM_MULTILINE_FIELDS else _BDM_CONTROL
+    if value is not None and control.search(value):
         raise ValueError(f"{label} contains invalid characters")
     if not value:
         return None
@@ -3177,13 +3187,6 @@ def _bdm_org_text(value: str | None, info: ValidationInfo) -> str | None:
     if info.field_name == "website" and not _BDM_WEBSITE.fullmatch(value):  # http(s) only: no javascript:/data: hrefs (spec §12.3)
         raise ValueError("Website must start with http:// or https://" if _BDM_SCHEME.match(value) else "Enter a website such as stjoseph.edu")
     return value
-
-
-def _bdm_org_multiline_text(value: str | None, info: ValidationInfo) -> str | None:
-    """bdm-003 P14: multi-line fields (address, courses, courses_interested) keep line breaks; every other control character is refused."""
-    if value is not None and _BDM_CONTROL_MULTILINE.search(value):
-        raise ValueError(f"{BDM_ORG_LABELS.get(info.field_name, info.field_name)} contains invalid characters")
-    return value or None
 
 
 def _bdm_newlines(value):
@@ -3214,17 +3217,15 @@ def _bdm_contact_name(value: str) -> str:
     return value
 
 
-def _bdm_org_optional(max_length: int):
-    return Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_bdm_org_text)]
+def _bdm_org_optional(max_length: int, *, multiline: bool = False):
+    """`multiline` (bdm-003 P14): \\r\\n / \\r become \\n before the length check, so the limit counts the stored form. The field must
+    also be in BDM_MULTILINE_FIELDS for _bdm_org_text to accept the line break."""
+    text = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_bdm_org_text)]
+    return Annotated[text, BeforeValidator(_bdm_newlines)] if multiline else text
 
 
 def _bdm_org_mandatory(max_length: int):
     return Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length), AfterValidator(_bdm_org_required)]
-
-
-def _bdm_org_multiline(max_length: int):
-    inner = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_bdm_org_multiline_text)]
-    return Annotated[inner, BeforeValidator(_bdm_newlines)]
 
 
 BdmOrgName = _bdm_org_mandatory(200)
@@ -3233,8 +3234,8 @@ BdmOrgShort = _bdm_org_optional(120)
 BdmOrgPhone = _bdm_org_optional(30)
 BdmOrgLong = _bdm_org_optional(255)
 BdmOrgMedium = _bdm_org_optional(200)
-BdmOrgCourses = _bdm_org_multiline(1000)  # P14: courses_interested and the College `courses`
-BdmOrgAddress = _bdm_org_multiline(500)
+BdmOrgCourses = _bdm_org_optional(1000, multiline=True)  # courses_interested and the College `courses`
+BdmOrgAddress = _bdm_org_optional(500, multiline=True)
 BdmOrgWebsite = Annotated[_bdm_org_optional(255), BeforeValidator(_bdm_website_prefix)]
 BdmContactName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200), AfterValidator(_bdm_contact_name)]
 
@@ -3252,10 +3253,10 @@ def _bdm_whole_number(message: str, low: int, high: int):
 
 
 BdmStudentCount = _bdm_whole_number("Number of students must be a whole number from 0 to 1,000,000", 0, 1_000_000)
-BdmStaffCount = _bdm_whole_number("Number of staff must be a whole number from 0 to 100,000", 0, 100_000)
-BdmGrade = _bdm_whole_number("Grade must be Nursery, LKG, UKG or 1 to 12", -2, 12)
+BdmStaffCount = _bdm_whole_number(f"Number of staff must be a whole number from 0 to {BDM_STAFF_MAX:,}", 0, BDM_STAFF_MAX)
+BdmGrade = _bdm_whole_number("Grade must be Nursery, LKG, UKG or 1 to 12", BDM_GRADE_MIN, BDM_GRADE_MAX)
 BdmOrgSource = Literal["referral", "website", "event", "cold_call", "walk_in", "other"]
-BdmSchoolBoard = Literal["CBSE", "ICSE", "State", "IB", "Other"]  # ENH-009's SchoolBoard values exactly (bdm-018 copies them)
+BdmSchoolBoard = SchoolBoard  # ENH-009's values by construction: bdm-018 copies the board onto `schools.board`
 BdmSchoolType = Literal["private", "government", "aided", "international", "other"]
 BdmCollegeType = Literal["engineering", "arts_science", "management", "medical", "polytechnic", "other"]
 

@@ -88,6 +88,8 @@ export const PROFILE_LABEL: Record<ProfileField, string> = {
   country: "Country", territory: "Territory", source: "Source", staff_count: "Number of staff", board: "Board", school_type: "School type",
   grade_from: "Lowest grade", grade_to: "Highest grade", affiliation: "University / affiliation", college_type: "College type", courses: "Courses",
 };
+/** P10: the agent's commission is never entered here; it comes from the Agent CRM once linked (bdm-019). */
+export const COMMISSION_NOTE = "Commission: Available after onboarding";
 export const SOURCES = ["referral", "website", "event", "cold_call", "walk_in", "other"] as const;
 export const SOURCE_LABEL: Record<string, string> = { referral: "Referral", website: "Website", event: "Event", cold_call: "Cold call", walk_in: "Walk-in", other: "Other" };
 export const BOARDS = ["CBSE", "ICSE", "State", "IB", "Other"] as const;

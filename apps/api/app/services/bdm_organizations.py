@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import BDM_ORGANIZATION_CODE_SEQ, BDM_PROFILE_FIELDS, BDM_PROFILE_GROUP, AuditLog, BdmOrganization, BdmOrganizationContact, BdmProfile, User
+from app.schemas import BDM_ORG_LABELS
 from app.services.bdm import bdm_context
 
 logger = logging.getLogger("app.bdm")
@@ -36,15 +37,11 @@ STATE_REFUSALS = {  # C15: the 409 when the role is right but the archived state
     "can_restore": "Already active",
     "can_reassign": "Restore this organization first",
 }
-# bdm-003 (spec §5.2): the words in the profile 422s and the type-change 409.
+# bdm-003 (spec §5.2): the type words in the profile 422s and the type-change 409 (a profile group is named like its org type); field
+# names come from schemas.BDM_ORG_LABELS, the same words as the field's own 422s.
 ORG_TYPE_LABELS = {
     "college": "College", "university": "University", "agent": "Agent", "school": "School", "corporate": "Corporate",
     "training_institute": "Training Institute", "other": "Other",
-}
-GROUP_LABELS = {"agent": "Agent", "school": "School", "college": "College"}
-PROFILE_LABELS = {
-    "country": "Country", "territory": "Territory", "source": "Source", "staff_count": "Number of staff", "board": "Board", "school_type": "School type",
-    "grade_from": "Lowest grade", "grade_to": "Highest grade", "affiliation": "University / affiliation", "college_type": "College type", "courses": "Courses",
 }
 GRADE_ORDER = "Lowest grade can't be above the highest grade"
 
@@ -193,7 +190,7 @@ def check_profile(org_type: str, sent: dict, stored: BdmOrganization | None) -> 
     the grade order on the stored values overlaid by the sent ones. One 422 in FastAPI's own shape, each error at its field (the
     agent_visa precedent), so the form can mark the field. Runs after the row lock on PATCH, so `stored` is current."""
     allowed = BDM_PROFILE_FIELDS.get(profile_group(org_type), ())
-    errors = [_profile_error(k, f"{PROFILE_LABELS[k]} is not a field for {ORG_TYPE_LABELS[org_type]} organizations", v) for k, v in sent.items() if k not in allowed]
+    errors = [_profile_error(k, f"{BDM_ORG_LABELS[k]} is not a field for {ORG_TYPE_LABELS[org_type]} organizations", v) for k, v in sent.items() if k not in allowed]
     if not errors and "grade_from" in allowed:
         low, high = (sent[k] if k in sent else getattr(stored, k, None) for k in ("grade_from", "grade_to"))
         if low is not None and high is not None and low > high:
@@ -211,7 +208,7 @@ def check_type_change(user: User, org: BdmOrganization, new_type: str) -> None:
     filled = [k for k in BDM_PROFILE_FIELDS[old] if getattr(org, k) is not None]
     if filled:
         log("bdm_org_type_change_refused", user, org.id, from_group=old, fields=filled)
-        raise HTTPException(409, {"message": f"Clear the {GROUP_LABELS[old]} details before changing the type", "code": "profile_not_empty", "fields": filled})
+        raise HTTPException(409, {"message": f"Clear the {ORG_TYPE_LABELS[old]} details before changing the type", "code": "profile_not_empty", "fields": filled})
 
 
 def profile_out(org: BdmOrganization) -> dict | None:

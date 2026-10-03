@@ -3,12 +3,14 @@ import type { ReactNode } from "react";
 import {
   BOARD_LABEL,
   COLLEGE_TYPE_LABEL,
+  COMMISSION_NOTE,
   display,
   gradeRange,
   labelOf,
   type OrgProfile,
   type Organization,
   PROFILE_GROUP_LABEL,
+  PROFILE_LABEL,
   profileGroup,
   SCHOOL_TYPE_LABEL,
   SOURCE_LABEL,
@@ -39,22 +41,22 @@ function rowsOf(profile: OrgProfile): [string, ReactNode][] {
   switch (profile.kind) {
     case "agent":
       return [
-        ["Country", display(profile.country)],
-        ["Territory", display(profile.territory)],
-        ["Source", labelOf(SOURCE_LABEL, profile.source)],
-        ["Number of staff", display(profile.staff_count)],
+        [PROFILE_LABEL.country, display(profile.country)],
+        [PROFILE_LABEL.territory, display(profile.territory)],
+        [PROFILE_LABEL.source, labelOf(SOURCE_LABEL, profile.source)],
+        [PROFILE_LABEL.staff_count, display(profile.staff_count)],
       ];
     case "school":
       return [
-        ["Board", labelOf(BOARD_LABEL, profile.board)],
-        ["School type", labelOf(SCHOOL_TYPE_LABEL, profile.school_type)],
-        ["Grades", gradeRange(profile.grade_from, profile.grade_to)],
+        [PROFILE_LABEL.board, labelOf(BOARD_LABEL, profile.board)],
+        [PROFILE_LABEL.school_type, labelOf(SCHOOL_TYPE_LABEL, profile.school_type)],
+        ["Grades", gradeRange(profile.grade_from, profile.grade_to)], // one row for the form's Lowest / Highest grade
       ];
     case "college":
       return [
-        ["University / affiliation", display(profile.affiliation)],
-        ["College type", labelOf(COLLEGE_TYPE_LABEL, profile.college_type)],
-        ["Courses", multiline(profile.courses)],
+        [PROFILE_LABEL.affiliation, display(profile.affiliation)],
+        [PROFILE_LABEL.college_type, labelOf(COLLEGE_TYPE_LABEL, profile.college_type)],
+        [PROFILE_LABEL.courses, multiline(profile.courses)],
       ];
   }
 }
@@ -76,7 +78,7 @@ export default function BdmOrganizationProfileDetails({ organization: org }: { o
       )}
       {group === "agent" && (
         <p className="muted" style={{ margin: "8px 0 0" }}>
-          Commission: Available after onboarding
+          {COMMISSION_NOTE}
         </p>
       )}
     </>
