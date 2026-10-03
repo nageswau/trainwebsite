@@ -20,8 +20,8 @@ function summary(item: TimelineItem): string {
 
 // AGN-015 (DEC-SCOPE-061 §3, §7): the student's complete history, newest first -- the AGN-021 activity pattern. Hidden until asked
 // for, so opening a student costs one request (the journey), not two. Read on every open / page / Refresh (no cache); only the
-// newest request may update the screen.
-export default function AgentStudentTimeline({ studentId }: { studentId: string }) {
+// newest request may update the screen. An open history also reloads when `refreshKey` changes (QA15-01: a change made in the panel).
+export default function AgentStudentTimeline({ studentId, refreshKey }: { studentId: string; refreshKey?: string }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<Page<TimelineItem> | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -54,7 +54,7 @@ export default function AgentStudentTimeline({ studentId }: { studentId: string 
 
   useEffect(() => {
     if (open) load(offset);
-  }, [open, load, offset]);
+  }, [open, load, offset, refreshKey]);
 
   return (
     <div style={{ marginTop: 16 }}>

@@ -14,7 +14,20 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 type Editing = { mode: "add" } | { mode: "edit"; entry: ShortlistEntry } | null;
 const ADD_ID = "shortlist-add";
 
-export default function AgentShortlistPanel({ studentId, archived, onStudentGone, onStudentChanged }: { studentId: string; archived: boolean; onStudentGone: () => void; onStudentChanged: () => void }) {
+// `onChanged` (AGN-015 QA15-01): told after this panel saves or removes an entry, so the student's journey can reload.
+export default function AgentShortlistPanel({
+  studentId,
+  archived,
+  onStudentGone,
+  onStudentChanged,
+  onChanged,
+}: {
+  studentId: string;
+  archived: boolean;
+  onStudentGone: () => void;
+  onStudentChanged: () => void;
+  onChanged?: () => void;
+}) {
   const [data, setData] = useState<Page<ShortlistEntry> | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -86,6 +99,7 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
         setConfirmId(null);
         setNotice(`${e.university.name} removed from the shortlist.`);
         focusLater(ADD_ID);
+        onChanged?.();
         return load();
       }
       setActionError(failureText(response.status, body?.detail, "Unable to remove the entry."));
@@ -129,6 +143,7 @@ export default function AgentShortlistPanel({ studentId, archived, onStudentGone
               setNotice("Saved to shortlist.");
               closeForm();
               load();
+              onChanged?.();
             }}
           />
         ) : (

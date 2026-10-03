@@ -12,12 +12,14 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 // AGN-016 (DEC-SCOPE-053): a page of tasks -- the Tasks page (a view) or one student's card (`studentId`, view "all"). Masters and
 // the student's assigned staff complete, edit and cancel open tasks; the server refuses everything else (409/404), and the list
 // reloads so the screen shows what is true. Loading, paging, Retry and the inline confirm follow AgentShortlistPanel.
-export default function AgentTasksPanel({ view, studentId, readOnly = false, reloadKey = 0, Heading = "h3" }: {
+// `onChanged` (AGN-015 QA15-01): told after a task here is completed, cancelled or edited, so a student's history can reload.
+export default function AgentTasksPanel({ view, studentId, readOnly = false, reloadKey = 0, Heading = "h3", onChanged }: {
   view: TaskView;
   studentId?: string;
   readOnly?: boolean;
   reloadKey?: number;
   Heading?: "h3" | "h6";
+  onChanged?: () => void;
 }) {
   const [data, setData] = useState<Page<AgentTask> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,6 +71,7 @@ export default function AgentTasksPanel({ view, studentId, readOnly = false, rel
     setConfirmId(null);
     if (outcome.ok) {
       setNotice(status === "done" ? `“${t.title}” marked done.` : `“${t.title}” cancelled.`);
+      onChanged?.();
     } else if (outcome.status === 404 || outcome.status === 409) {
       // Someone else closed it, the student was archived or reassigned: say so, then show what is true now.
       setNotice(outcome.status === 404 ? "This task is no longer available to you." : outcome.message);
@@ -109,7 +112,10 @@ export default function AgentTasksPanel({ view, studentId, readOnly = false, rel
               {data.items.map((t) =>
                 editingId === t.id ? (
                   <li key={t.id} className="card" style={{ padding: 16 }} aria-label={`Editing “${t.title}”`}>
-                    <AgentTaskForm mode="edit" task={t} onCancel={() => stopEditing(t)} onSaved={(saved) => stopEditing(t, `“${saved.title}” saved.`)} onGone={() => stopEditing(t, "This task is no longer available to you.")} />
+                    <AgentTaskForm mode="edit" task={t} onCancel={() => stopEditing(t)} onSaved={(saved) => {
+                      stopEditing(t, `“${saved.title}” saved.`);
+                      onChanged?.();
+                    }} onGone={() => stopEditing(t, "This task is no longer available to you.")} />
                   </li>
                 ) : (
                   <AgentTaskCard
