@@ -547,6 +547,14 @@ Conventions used below:
 
 ### bdm-010 — Travel requests, approval, modes, costs, expenses
 
+> **Status (2026-10-03):** implemented on branch `worktree-bdm-010` (`DEC-SCOPE-060`, migration `0066_bdm_trips`; spec
+> `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md`). Owner answers T1–T14 settle the open spec decisions: one From/To
+> per trip; approver resolved at decision time, super_admin only while the manager is inactive; in-app notices only; expenses
+> (category + INR amount + date + note, **no receipts**) once approved; `TRV-000123` codes; withdraw/resubmit; date guards.
+> **Verified so far:** backend lite set 190/190; web unit tests for the touched areas 113/113; `tsc`, `eslint`, `ruff check` clean.
+> **Not COMPLETE:** Playwright `bdm-010-travel.spec.ts` (written, not run), browser validation, independent Codex review and the
+> owner's full suites are pending.
+
 - **Business requirement:** track travel with the §3 fields: Travel ID, BDM, Travel Date, Return Date, From, To, Purpose, Organization, Appointment date and time, Mode, Accommodation Required, Estimated Cost, Actual Cost, Approval Status, Travel Status, Remarks. The modes are Flight, Train, Bus, Car, Cab and Local. Also the common Travel list (§4): request, approval, expenses, actual cost and travel report.
 - **Existing behavior:** none.
 - **Expected behavior:**

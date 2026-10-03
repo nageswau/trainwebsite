@@ -405,6 +405,16 @@ covers the commission-specific piece).
   `ix_overseas_applications_agent_application_deadline` and `ix_overseas_applications_agent_offer_deadline` (`WHERE agent_student_id IS
   NOT NULL`), `ix_agent_tasks_open_due` (`WHERE status = 'open'`). No row is read or written by the upgrade; existing notifications keep
   `dedupe_key` NULL; the downgrade drops exactly what it added (the keys are derived reminder markers, not user data).
+- **Addendum, 2026-10-03 (`bdm-010`, `DEC-SCOPE-060`; migration `0066_bdm_trips`, chained after `0065_agent_notifications`) — BDM
+  travel.** `bdm_trips` (UUID PK; `code` unique `TRV-000123` from the sequence `bdm_trip_code_seq`; `bdm_user_id` FK users; travel/return
+  dates with `ck_bdm_trips_dates`; `from_place`/`to_place` ≤ 120; `purpose`; `mode` CHECK flight/train/bus/car/cab/local;
+  `accommodation_required`; `estimated_cost` NUMERIC(14,2) ≥ 0; `currency` = `INR`; `approval_status` draft/submitted/approved/rejected;
+  `travel_status` planned/in_progress/completed/cancelled with `ck_bdm_trips_status_pair` (in progress/completed need approved);
+  `rejection_reason`, `decided_by_user_id`, `submitted_at`, `decided_at`, `completed_at`, `cancelled_at`, `remarks`). Indexes
+  `(bdm_user_id, travel_date)` and partial `(bdm_user_id) WHERE approval_status = 'submitted'`. `bdm_trip_expenses` (UUID PK; `trip_id`
+  FK, indexed; `category` CHECK travel/stay/food/local/other; `amount` NUMERIC(14,2) > 0; `expense_date`; `note` ≤ 500;
+  `created_by_user_id`). Actual cost is never stored (sum of lines, D15). Nothing about the approver is stored (T2). Additive; the
+  downgrade refuses while trips exist.
 
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an

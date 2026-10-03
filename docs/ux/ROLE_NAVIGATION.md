@@ -254,6 +254,7 @@ Signs in at `/it/login` (College BDM, division `it`) or `/overseas/login` (Agent
 
 - /bdm/my-day — My Day (minimal shell in bdm-001: welcome + profile summary; content arrives with bdm-014).
 - /bdm/profile — read-only §1 profile.
+- /bdm/travel — My trips (bdm-010): list with an approval-status filter; /bdm/travel/new (draft); /bdm/travel/[id] (actions, details, edit while draft/rejected, costs and expenses, remarks). Nav item "Travel".
 
 ## BDM Manager *(net-new, added 2026-10-02, `DEC-SCOPE-055`, `bdm-001`)*
 
@@ -261,10 +262,11 @@ Division `global`; signs in at `/admin/login` (heading "Administration sign-in")
 
 - /bdm/manager/dashboard — team counts (minimal shell; bdm-023 adds the management dashboard).
 - /bdm/manager/team — the BDMs who report to this manager (paged).
+- /bdm/manager/approvals — trips waiting for this manager's approval (bdm-010; nav item "Approvals"); /bdm/manager/trips/[id] — read-only trip with Approve / Reject (reason required).
 
 **Signed-out `/bdm/*`:** `/bdm/manager/*` → `/admin/login?next=…`; any other `/bdm/*` → the public chooser `/bdm/sign-in?next=…` (College BDM / Agent-School BDM / Administration links; `next` kept only when same-origin).
 
-**Admin entry points:** a "BDMs" nav item for Super Admin (`/admin/bdms`), IT Admin (`/it/admin/bdms`, College) and Overseas Admin (`/overseas/admin/bdms`, Agent + School). BDM Managers are created by a Super Admin from Users (division Global).
+**Admin entry points:** a "BDMs" nav item for Super Admin (`/admin/bdms`), IT Admin (`/it/admin/bdms`, College) and Overseas Admin (`/overseas/admin/bdms`, Agent + School). BDM Managers are created by a Super Admin from Users (division Global). bdm-010 adds "BDM Travel Approvals" for Super Admin (`/admin/bdm-travel-approvals`): trips whose reporting manager is inactive.
 
 ## Division isolation (confirmed, `DEC-ARCH-001`)
 

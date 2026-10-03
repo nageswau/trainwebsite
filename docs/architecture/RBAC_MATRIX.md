@@ -479,6 +479,16 @@ Authorization follows the inline pattern (`User.role` check → `services/bdm.py
 
 **Explicit denies:** a `bdm` or `bdm_manager` cannot write any profile (no route); `PATCH /admin/users` never writes `role` or `division`; a reporting manager must be an **active `bdm_manager`** (else `422`), so no one can assign themselves or another role a team; `bdm_type` cannot be changed (`422`, B7); `bdm` calling a manager route, or a manager calling `/bdm/me` → `403`; every other role on any BDM route → `403`. The picker returns a manager's email only to the three admin roles (B10, to tell same-name managers apart). Every create or edit writes one `AuditLog` row (profile before/after on edit).
 
+**bdm-010 travel (`DEC-SCOPE-060`, added 2026-10-03).** Same inline pattern; scope is in the SQL `WHERE`, so an out-of-scope trip or expense id is `404` (never `403`).
+
+| Role | Allowed | Scope / rule | Feature |
+|---|---|---|---|
+| `bdm` | `GET/POST /bdm/trips`; `GET/PATCH /bdm/trips/{id}`; `POST /bdm/trips/{id}/{submit,withdraw,start,complete,cancel}`; `POST /bdm/trips/{id}/expenses`; `PATCH/DELETE /bdm/trips/{id}/expenses/{eid}` | **Own trips only** (`bdm_user_id` = caller); an expense must belong to the path's trip. Fields editable only in draft/rejected; remarks in every state; expenses only once approved (T5) | `bdm-010` |
+| `bdm_manager` | `GET /bdm/manager/trips[/{id}]`; `GET /bdm/manager/approvals`; `POST /bdm/manager/trips/{id}/{approve,reject}` | **Team scope** (D4); `?bdm_user_id=` is ANDed with it. Decides only trips of BDMs who report to them **now** (T2); a reassigned BDM's pending trip moves with them | `bdm-010` |
+| `super_admin` | the manager routes above | Reads every trip; **decides only while the BDM's reporting manager is inactive** (T3, else `403`); its queue lists only those trips | `bdm-010` |
+
+**Explicit denies (bdm-010):** nobody decides their own trip (`403`); a manager never edits a trip or its expenses (no route); server-owned fields (`code`, `bdm_user_id`, statuses, `currency`, `decided_*`) in a body → `422`; a `bdm` on a manager route or a manager on a BDM route → `403`. Every change writes one `AuditLog` row (`bdm.trip_*`) in the same transaction.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

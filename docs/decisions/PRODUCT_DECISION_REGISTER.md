@@ -3249,3 +3249,48 @@ validation, the owner's full suites and an independent Codex review are pending.
 - **N11 — Record context (browser QA QA17-02, owner 2026-10-03).** Kept as designed: notices name no student and Open goes to the section list; revisit with ang-018 dashboards.
 
 **Consequences:** migration `0065_agent_notifications` (one nullable column, four partial indexes); a new `services/agent_notifications.py`; additive hooks in `agent_students`, `agent_documents`, `agent_applications`, `agent_tasks` and three `workflows.py` routes; the first crontab beat entry; one new read endpoint; an agent nav item and optional `NavItem.badge`. Unchanged: ENH-014 dispatch/delivery, existing list/read contracts, students' and counselors' notices, `_maybe_trigger_agent_commission`. Design: `docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md`. **New Feature ID authorized:** `AGN-017`.
+
+### DEC-SCOPE-060 — BDM travel requests, approval, modes, costs, expenses (`bdm-010`)
+
+**ID note:** the next free number on `main` @ `e1c2084` (`059` is AGN-017). bdm-002 (in flight) also claims a number and migration
+`0064`; whichever of bdm-002 and bdm-010 merges second re-chains (this item would become `DEC-SCOPE-061` / `0067_bdm_trips`).
+
+**Question:** the owner's bdm-010 statement (`BDM_CRM_BACKLOG.md` §4 bdm-010): track travel with the §3 fields and six modes, the
+reporting manager's approval, costs and itemized expenses. The owner confirmed on 2026-10-03 that bdm-010 is travel (the calendar
+text once pasted under that label is bdm-013).
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §3 (95–147), §4 Common "Travel" (1270–1286), Agent §D
+(655–683); backlog decisions D4, D15, Q-05, Q-06 (`DERIVED_BLUEPRINT`).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions, five design-section reviews and
+the revision-2 skill reviews):
+
+- **T1** One From/To per trip; a tour is several trips.
+- **T2** Nothing about the approver is stored; the BDM's reporting manager is resolved at decision time.
+- **T3** Any `super_admin` may decide only while that manager is inactive.
+- **T4** The submit notice is in-app only (`channels=[]`).
+- **T5** Expenses once approved (planned, in progress, completed, or cancelled after approval); none on draft/submitted/rejected.
+- **T6** Codes `TRV-000123` from the `bdm_trip_code_seq` sequence (gaps possible on a rolled-back create).
+- **T7** Expense line = category (travel/stay/food/local/other) + INR amount + date + optional note. **No receipt upload** (Q-06's
+  optional receipt is dropped), so no file storage.
+- **T8** Fallback UI: `/admin/bdm-travel-approvals` with a Super Admin nav entry, listing only trips whose manager is inactive.
+- **T9** Withdraw a submitted trip to draft; edit and resubmit a rejected one (the reason stays in the audit).
+- **T10** Flat module (`api/bdm_travel.py`, `services/bdm_travel.py`); two status columns (approval + travel) with a consistency CHECK.
+- **T11** Submit while the manager is inactive → the notice goes to every active `super_admin`.
+- **T12** The BDM also gets an in-app notice on approve/reject.
+- **T13** Expense amount > 0.
+- **T14** Travel date at most 30 days back; a trip lasts at most 31 days; start/complete only from the travel date (India date).
+
+**Deviations from the backlog text:** the router is `app/api/bdm_travel.py`, not `app/api/bdm/travel.py` (a `bdm/` package would
+shadow the existing `app/api/bdm.py`); the T14 date rules are checked in the service, because they need "today".
+
+**Accepted risk:** the API has no general rate limiter; bdm-010 bounds its own surface instead (`limit` ≤ 100, ≤ 100 expense lines per
+trip, text caps). Create and the status commands carry no idempotency key: a retried command gets 409 and the page refreshes; a
+retried create can leave a duplicate draft, which the BDM can cancel.
+
+**Consequences:** migration `0066_bdm_trips` (two tables, one sequence; additive; downgrade refuses while trips exist); 17 new routes
+under `/api/v1/bdm/trips` and `/api/v1/bdm/manager/{trips,approvals}`; no existing route or response changes. Web: `/bdm/travel`,
+`/bdm/travel/new`, `/bdm/travel/[id]`, `/bdm/manager/approvals`, `/bdm/manager/trips/[id]`, `/admin/bdm-travel-approvals`; nav entries
+Travel (BDM), Approvals (manager), BDM Travel Approvals (Super Admin). Spec: `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md`.
+**Status:** implemented on `worktree-bdm-010`; **not COMPLETE** — Playwright, browser validation, the owner's full suites and an
+independent Codex review are pending.
