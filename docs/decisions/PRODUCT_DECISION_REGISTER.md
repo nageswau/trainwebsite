@@ -3336,3 +3336,22 @@ reconstructed; their uploads are (from the document row). Design: `docs/superpow
 - **G6 — Approach A:** a new read-only `GET /workflows/overseas/agent/crm/dashboard` with a typed schema and a dashboard panel on the existing page; the portal payload keeps its labels, order and strings.
 
 **Consequences:** no migration; a new router, service and schema; `portal._agent` dashboard values sourced from the shared service (Students now counts no-login students — a deliberate fix); a new `AgentDashboardPanel`; nav changes in `lib/navigation.ts`; `AgentStudentsPanel` honours `?new=1`. Unchanged: other roles' dashboards, the sidebar offer filter, commission values and the "Claimable commission" INR label (logged in `RAID.md`), models, existing routes. **New Feature ID authorized:** `AGN-018`. **Status:** implemented and verified on `feature/agn-018-master-dashboard-impl` (see `ENHANCEMENT_BACKLOG.md` §AGN-018).
+
+### DEC-SCOPE-063 — Staff performance and student funnel (`AGN-019`)
+
+**Question:** the owner's `AGN-019` statement (in-session, 2026-10-03): per-staff Students, Applications, Offers, Visa Applications, Visa Approvals, Enrollments, and the funnel Students → Applications → Submitted → Offers → Visa → Enrolled (§8), with acceptance criteria: funnel stages are monotonic non-increasing for a fixture; a reassigned student counts for the current owner (or the owner at the time: spec decision). Which owner, which filters, which stage rule, and where does the page live?
+
+**Evidence:** `EVID-015` §8 (`DERIVED_BLUEPRINT`) via `AGENT_CRM_BACKLOG.md` ang-019 (`DERIVED_BLUEPRINT`); `DEC-SCOPE-062` G2/G3 (AGN-018 staff table and KPI definitions); `DEC-SCOPE-040` S4 (Branch not taken); impact analysis 2026-10-03 (graphify rebuilt locally from `main` @ `3bde879`, findings checked in source): no branch data, no assignment history table (only `audit_logs` JSON), `staff_rows` counts by current owner, assignment targets active staff only.
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to seven structured questions and three design-section reviews; design spec `docs/superpowers/specs/2026-10-03-agn-019-staff-performance-funnel-design.md` §2):
+
+- **P1 — Current owner.** A reassigned student and all their stages count for the staff member assigned now.
+- **P2 — No branch filter.** Deferred (no branch data); logged in `RAID.md`; no schema change.
+- **P3 — "Reached at least" stages.** A student counts at a stage if any application reached it or a later one; non-increasing by construction.
+- **P4 — Student cohort date range.** `date_from`/`date_to` select students by agency-record creation day (inclusive UTC days, as AGN-014).
+- **P5 — History in the funnel.** Archived students and withdrawn applications count in the funnel; the per-staff table keeps `DEC-SCOPE-062` G3 definitions (equal to the dashboard staff table with no dates).
+- **P6 — Rows.** Active staff always; deactivated only when non-zero, marked; Unassigned only when non-zero; funnel per agency / row / Unassigned.
+- **P7 — Placement.** A new Master-only sidebar page "Staff Performance"; the dashboard staff table links to it.
+- **P8 — Approach A.** New `services/agent_performance.py` and `GET /workflows/overseas/agent/crm/performance`; `owner_join()` extracted from `staff_rows` and shared; a parity test pins AGN-019 to AGN-018.
+
+**Consequences:** no migration; a new router, service, schemas, panel and nav item (hidden from staff, refused by the server); `AgentDashboardOut`, `services/portal.py`, models and other roles unchanged. **New Feature ID authorized:** `AGN-019`. **Status:** design approved; implementation plan pending (GATE-09).
