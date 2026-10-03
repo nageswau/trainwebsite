@@ -157,7 +157,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - **Staff activity (`AGN-021`, `DEC-SCOPE-046`):** an **Activity** button on each staff row of the Team page (`SCR-AGT-007`), visible to Masters only. No new navigation item; staff never reach the Team page.
 - **Commission Revenue and report (`AGN-014`, `DEC-SCOPE-051`):** no navigation change. Masters see a **Revenue** metric on the Dashboard and a **Commission report** panel (filters, CSV) on their existing **Reports** page (`SCR-AGT-005` AGN-014 update). Staff never see either; staff with Reports switched on keep the commission-free staff report.
 - `SCR-AGT-009` — /overseas/agent/universities — The agency's own university list (Master: add/edit/delete; Staff: view) *(net-new, 2026-10-01, `AGN-007`, `DEC-SCOPE-049`)*. **The Agent nav gains "Universities", visible to both Master and Staff** (it is not in the staff-hidden list in `lib/navigation.ts`; `navigation.agent.test.ts`). The student shortlist is a panel inside `SCR-AGT-008`'s detail view, not a nav item.
-- **Staff Performance (`AGN-019`, `DEC-SCOPE-065` P7):** a Master-only sidebar item "Staff Performance" after Reports →
+- **Staff Performance (`AGN-019`, `DEC-SCOPE-066` P7):** a Master-only sidebar item "Staff Performance" after Reports →
   `/overseas/agent/performance` (`SCR-AGT-011`); also linked from the dashboard staff table ("View staff performance"). Hidden from staff
   (`STAFF_HIDDEN`), with or without the reports toggle; a staff member who opens the address sees a Masters-only note and the API
   refuses them (`403`).

@@ -1,4 +1,4 @@
-"""AGN-019 (DEC-SCOPE-065) -- per-staff counts, rows, the funnel and the cohort range against hand counts (spec §4, §7)."""
+"""AGN-019 (DEC-SCOPE-066) -- per-staff counts, rows, the funnel and the cohort range against hand counts (spec §4, §7)."""
 
 from datetime import UTC, datetime
 

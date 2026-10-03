@@ -97,7 +97,7 @@ migration is `0067_audit_entity_index`). See §AGN-015.
 is bdm-002, and @ `09bd5e7`, where `061` is AGN-015). See §AGN-018.
 
 **Revision 17 (2026-10-03):** backlog item ang-019 (per-staff counts and the student funnel, `EVID-015` §8) is decided as
-`DEC-SCOPE-065` (P1–P8, owner in-session; drafted as `063`, renumbered on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022). See §AGN-019.
+`DEC-SCOPE-066` (P1–P8, owner in-session; drafted as `063`; renumbered `065` on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022, and `066` on merging `main` @ `cf356ca`, where `065` is bdm-003). See §AGN-019.
 
 ## 0. Scope and exclusions (read this before the backlog)
 
@@ -3794,8 +3794,8 @@ list; CSV export; a `SUPER_ADMIN_NAV` entry; caching; ang-019/020.
 **Business requirement.** Backlog item ang-019 (`AGENT_CRM_BACKLOG.md`, `DERIVED_BLUEPRINT`; `EVID-015` §8): per-staff Students,
 Applications, Offers, Visa Applications, Visa Approvals, Enrollments, and the funnel Students → Applications → Submitted → Offers →
 Visa → Enrolled. Owner acceptance: funnel stages are monotonic non-increasing for a fixture; a reassigned student counts for the current
-owner (or the owner at the time: spec decision). Decision record: `DEC-SCOPE-065` (P1–P8, `EXPLICIT_APPROVAL` in-session 2026-10-03;
-drafted as `063`, renumbered on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022).
+owner (or the owner at the time: spec decision). Decision record: `DEC-SCOPE-066` (P1–P8, `EXPLICIT_APPROVAL` in-session 2026-10-03;
+drafted as `063`; renumbered `065` on merging `main` @ `39c119b` and `066` on merging `main` @ `cf356ca`, where `063` is bdm-010, `064` AGN-022 and `065` bdm-003).
 
 **Existing behavior.** AGN-018's dashboard has an all-time, Master-only staff table (Students / Applications / Offers / Enrollments) and
 no funnel, no visa columns and no filters.
@@ -4338,7 +4338,7 @@ item, only for the progress-view question).
 | AGN-016 | `DEC-SCOPE-053` — task owner on reassignment, delete, due time and overdue, linkage, KPI and nav, edit rules, cap, retry | **Resolved 2026-10-02** (T1–T8, `EXPLICIT_APPROVAL` in-session) |
 | AGN-010 | `DEC-SCOPE-056` — one offer per application, deadline column, offer document, `offer_letter_url`, Offers count, conditions, concurrent saves | **Resolved 2026-10-02** (O1–O7, `EXPLICIT_APPROVAL` in-session) |
 | AGN-018 | `DEC-SCOPE-062` — agency-only scope, staff performance summary, KPI definitions, navigation, one offer rule, endpoint approach | **Resolved 2026-10-03** (G1–G6, `EXPLICIT_APPROVAL` in-session; number provisional) |
-| AGN-019 | `DEC-SCOPE-065` — owner on reassignment, branch filter, stage rule, date range, archived/withdrawn, rows, placement, approach | **Resolved 2026-10-03** (P1–P8, `EXPLICIT_APPROVAL` in-session; number provisional) |
+| AGN-019 | `DEC-SCOPE-066` — owner on reassignment, branch filter, stage rule, date range, archived/withdrawn, rows, placement, approach | **Resolved 2026-10-03** (P1–P8, `EXPLICIT_APPROVAL` in-session; number provisional) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in

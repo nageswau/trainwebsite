@@ -105,7 +105,7 @@ function StaffTable({ rows, unassigned }: { rows: AgentStaffRow[]; unassigned: n
           </tr>
         </TableRegion>
       )}
-      {/* AGN-019 (DEC-SCOPE-065 P7): below the table, so the heading keeps naming the table's region. */}
+      {/* AGN-019 (DEC-SCOPE-066 P7): below the table, so the heading keeps naming the table's region. */}
       <p>
         <Link className="kpi-link" href="/overseas/agent/performance">
           View staff performance

@@ -43,7 +43,8 @@ def test_models_match_the_migration():
     from app.models import BdmOrganization, BdmOrganizationContact
 
     org = BdmOrganization.__table__
-    assert {c.name for c in org.columns} == {
+    # bdm-003 adds profile columns (test_bdm_003_migration); bdm-002's own columns must all still be here.
+    assert {c.name for c in org.columns} >= {
         "id",
         "code",
         "org_type",

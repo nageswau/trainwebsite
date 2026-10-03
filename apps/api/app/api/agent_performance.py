@@ -1,4 +1,4 @@
-"""AGN-019 -- staff performance and the student funnel: one read-only Master-only aggregate (DEC-SCOPE-065; spec §5.1).
+"""AGN-019 -- staff performance and the student funnel: one read-only Master-only aggregate (DEC-SCOPE-066; spec §5.1).
 
 Guards first, then the dates (AGN-014's order), so a refused caller never sees a 422. No write, no audit row (reads are not audited,
 DEC-SCOPE-051 R7). The body is per-agency, so it is never cached. The log line carries ids, a flag and timing only."""

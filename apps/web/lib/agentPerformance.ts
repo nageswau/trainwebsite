@@ -1,4 +1,4 @@
-// AGN-019 (DEC-SCOPE-065): the staff performance payload's shape and URL, shared by the panel and its tests. Mirrors
+// AGN-019 (DEC-SCOPE-066): the staff performance payload's shape and URL, shared by the panel and its tests. Mirrors
 // AgentPerformanceOut (apps/api/app/schemas.py); the server remains the authority.
 
 export const PERFORMANCE_URL = "/api/v1/workflows/overseas/agent/crm/performance";

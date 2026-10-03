@@ -117,7 +117,7 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   "overseas/agent": ["dashboard","students","universities","applications","documents","tasks","notifications","commissions","reports","performance","team"].map(x=>({label:AGENT_NAV_LABELS[x]??x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/agent/${x}`,...(x==="applications"?{children:AGENT_APPLICATION_FILTERS}:x==="documents"?{children:AGENT_DOCUMENT_VIEWS}:{})})),
 };
 // AGN-002 (DEC-SCOPE-040 S1): an agency's staff work on students and applications; Team and Commissions stay Master-only (the
-// server refuses them regardless -- this only keeps dead links out of the sidebar). AGN-019 (DEC-SCOPE-065 P7): Staff Performance too.
+// server refuses them regardless -- this only keeps dead links out of the sidebar). AGN-019 (DEC-SCOPE-066 P7): Staff Performance too.
 const STAFF_HIDDEN = new Set(["/overseas/agent/team", "/overseas/agent/commissions", "/overseas/agent/performance"]);
 const STAFF_REPORTS = "/overseas/agent/reports";
 // AGN-003 (DEC-SCOPE-044 P1): Reports is optional for staff -- shown only once their Master switches it on (the server refuses it

@@ -1,4 +1,4 @@
-"""AGN-019 -- staff performance and the student funnel (DEC-SCOPE-065; spec §4-§5).
+"""AGN-019 -- staff performance and the student funnel (DEC-SCOPE-066; spec §4-§5).
 
 Master only (the route refuses staff). Students count for their current owner (P1), selected by the day their agency record was
 created (P4). Read-only: nothing here writes, locks or commits."""

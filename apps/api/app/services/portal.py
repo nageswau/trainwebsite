@@ -763,7 +763,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
         # AGN-017 (DEC-SCOPE-059 N8): header only -- the page's role/approval gate; PortalPage mounts AgentNotificationsSection.
         return _payload("Notifications", "Your own notifications.")
     if section == "performance":
-        # AGN-019 (DEC-SCOPE-065 P7): header only -- the page's role/approval gate; PortalPage mounts AgentPerformanceSection, which
+        # AGN-019 (DEC-SCOPE-066 P7): header only -- the page's role/approval gate; PortalPage mounts AgentPerformanceSection, which
         # reads GET .../crm/performance (Master only). No figures here, so staff learn nothing from this payload.
         return _payload("Staff performance", "Students added in a period, and how far they got.")
     if section == "universities":

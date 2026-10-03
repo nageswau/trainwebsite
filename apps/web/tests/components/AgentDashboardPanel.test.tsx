@@ -81,7 +81,7 @@ describe("AgentDashboardBoard (AGN-018)", () => {
     expect(within(team).getByText("Deactivated")).toBeInTheDocument();
     expect(within(team).getByRole("rowheader", { name: "Unassigned" }).closest("tr")).toHaveTextContent("1");
     expect(team).toHaveAttribute("tabindex", "0");
-    // AGN-019 (DEC-SCOPE-065 P7): the summary links to the full page.
+    // AGN-019 (DEC-SCOPE-066 P7): the summary links to the full page.
     expect(screen.getByRole("link", { name: "View staff performance" })).toHaveAttribute("href", "/overseas/agent/performance");
   });
 

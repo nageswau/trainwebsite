@@ -3,7 +3,7 @@ import { test, expect, type Browser } from "@playwright/test";
 import { E2E_PASSWORD } from "./helpers/welcome";
 import { adminActivate, registerApprovedAgency, signIn } from "./helpers/agency";
 
-// AGN-019 (DEC-SCOPE-065) -- the Master-only Staff Performance page. Requires the stack running with `python -m app.seed` applied
+// AGN-019 (DEC-SCOPE-066) -- the Master-only Staff Performance page. Requires the stack running with `python -m app.seed` applied
 // (the AGN-002 flow creates the staff member). Run in the browser-validation phase.
 
 async function newPage(browser: Browser) {

@@ -1,7 +1,7 @@
 # AGN-019 — Staff performance and student funnel — design
 
 **Status:** design approved in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to seven structured questions and three
-design-section reviews), recorded as `DEC-SCOPE-065` (drafted as `DEC-SCOPE-063`; renumbered on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022).
+design-section reviews), recorded as `DEC-SCOPE-066` (drafted as `DEC-SCOPE-063`; renumbered `065` on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022, and `066` on merging `main` @ `cf356ca`, where `065` is bdm-003).
 Source item: `docs/delivery/AGENT_CRM_BACKLOG.md` ang-019 (`DERIVED_BLUEPRINT`). Depends on AGN-018 (`DEC-SCOPE-062`), on `main`.
 Branch: `feature/agn-019-staff-funnel`. **GATE-09:** no code until this spec and its plan are approved.
 
@@ -13,7 +13,7 @@ Enrollments, and the funnel Students → Applications → Submitted → Offers �
 Owner acceptance: funnel stages are monotonic non-increasing for a fixture; a reassigned student counts for the current owner (or the
 owner at the time: spec decision — resolved as P1 below).
 
-## 2. Decisions (`DEC-SCOPE-065`, answered by the owner 2026-10-03)
+## 2. Decisions (`DEC-SCOPE-066`, answered by the owner 2026-10-03)
 
 | ID | Decision |
 |---|---|
@@ -319,7 +319,7 @@ performance data; changes to `AgentDashboardOut`, `services/portal.py` (beyond i
 
 ## 11. Documentation
 
-`PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-065`; `ENHANCEMENT_BACKLOG.md` §AGN-019; `AGENT_CRM_BACKLOG.md` status table; `RTM.md`;
+`PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-066`; `ENHANCEMENT_BACKLOG.md` §AGN-019; `AGENT_CRM_BACKLOG.md` status table; `RTM.md`;
 `RBAC_MATRIX.md` (Staff Performance row); `API_CONTRACT.md`; `SCREEN_CATALOG.md` / `screen_catalog.json`; `ROLE_NAVIGATION.md`;
 `RAID.md` (branch filter deferred; R-14 measurement).
 

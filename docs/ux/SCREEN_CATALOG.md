@@ -1925,7 +1925,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **ID note:** next free on `main` @ `3bde879`; still free after merging `main` @ `39c119b` (AGN-022 added no agency screen ID).
 - **Route:** `/overseas/agent/performance` — "Staff performance" title, date filter, Funnel, By staff member *(net-new, added 2026-10-03, `AGN-019`)*
 - **Role(s):** Agent — an agency Master of an active agency. Staff (and any other role the portal admits) see "Staff performance is available to agency Masters." with no request; the API refuses them (`403`).
-- **Purpose:** Per-staff Students / Applications / Offers / Visa applications / Visa approvals / Enrollments and the student funnel Students → Applications → Submitted → Offers → Visa → Enrolled, for students added in a chosen period (`DEC-SCOPE-065`).
+- **Purpose:** Per-staff Students / Applications / Offers / Visa applications / Visa approvals / Enrollments and the student funnel Students → Applications → Submitted → Offers → Visa → Enrolled, for students added in a chosen period (`DEC-SCOPE-066`).
 - **Linked Feature ID(s):** `AGN-019` (builds on `AGN-018`)
 - **Entry points:** Agent portal navigation "Staff Performance" (Masters only, after Reports); the dashboard staff table's "View staff performance" link.
 - **Required data:** `GET /workflows/overseas/agent/crm/performance?date_from=&date_to=` — rows (code, name, active, six counts, funnel), `unassigned`, `total`, `as_of`.

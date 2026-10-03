@@ -12,7 +12,7 @@ const org = (over: Partial<Organization> = {}): Organization => ({
   id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college", bdm_type: "college", city: "Kochi", state: null, existing_partner: false,
   assigned_bdm: { id: "b1", full_name: "Asha", active: true }, primary_contact: { name: "Dr Rao", designation: "Principal", phone: null, email: null },
   archived: false, last_meeting_at: null, next_meeting_at: null, permissions: perms(), phone: null, email: null, website: "javascript:alert(1)",
-  courses_interested: null, student_count: null, created_by_name: "Asha", archived_at: null, created_at: "2026-10-03T00:00:00Z", updated_at: "2026-10-03T00:00:00Z",
+  courses_interested: null, student_count: null, address: null, profile: null, created_by_name: "Asha", archived_at: null, created_at: "2026-10-03T00:00:00Z", updated_at: "2026-10-03T00:00:00Z",
   contacts: [{ id: "c1", name: "Dr Rao", designation: "Principal", role: "principal", phone: null, email: null, is_primary: true }, { id: "c2", name: "Ms Iyer", designation: null, role: null, phone: null, email: null, is_primary: false }],
   ...over,
 });
@@ -129,5 +129,44 @@ describe("BdmOrganizationDetail (bdm-002 AC3-AC6, §12.2)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
     fireEvent.click(screen.getByRole("button", { name: "Yes, archive" }));
     await waitFor(() => expect(screen.getByRole("status")).toHaveFocus());
+  });
+});
+
+describe("BdmOrganizationDetail profile (bdm-003 AC1, AC10, §12.2 F3-F5, F8)", () => {
+  it("shows the type's section under its own heading, with grades in words and line breaks kept", () => {
+    render(
+      <BdmOrganizationDetail
+        initial={org({ org_type: "school", address: "1 Main Rd\nKochi", profile: { kind: "school", board: "State", school_type: null, grade_from: -1, grade_to: 12 } })}
+        basePath="/bdm/organizations"
+      />,
+    );
+    const details = screen.getByRole("region", { name: "Details" });
+    expect(within(details).getByRole("heading", { level: 4, name: "School details" })).toBeInTheDocument();
+    expect(within(details).getByText("Board").nextElementSibling).toHaveTextContent("State board");
+    expect(within(details).getByText("School type").nextElementSibling).toHaveTextContent("—");
+    expect(within(details).getByText("Grades").nextElementSibling).toHaveTextContent("LKG–12");
+    const address = within(details).getByText("Address").nextElementSibling!;
+    expect(address.textContent).toBe("1 Main Rd\nKochi");
+    expect(address.firstElementChild).toHaveStyle({ whiteSpace: "pre-line" });
+  });
+
+  it("shows the empty line, with the Edit hint only when allowed (Review Focus 1)", () => {
+    const empty = { kind: "college" as const, affiliation: null, college_type: null, courses: null };
+    const { unmount } = render(<BdmOrganizationDetail initial={org({ profile: empty })} basePath="/bdm/organizations" />);
+    expect(screen.getByText("No college details yet.")).toBeInTheDocument();
+    unmount();
+    render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_edit: true }), profile: empty })} basePath="/bdm/organizations" />);
+    expect(screen.getByText("No college details yet. Use Edit to add them.")).toBeInTheDocument();
+  });
+
+  it("shows Commission as text for agents, an unknown value as it is, and nothing for common-only types", () => {
+    const { unmount } = render(
+      <BdmOrganizationDetail initial={org({ org_type: "agent", profile: { kind: "agent", country: "India", territory: null, source: "tv_ad", staff_count: 4 } })} basePath="/bdm/organizations" />,
+    );
+    expect(screen.getByText("Commission: Available after onboarding")).toBeInTheDocument();
+    expect(screen.getByText("Source").nextElementSibling).toHaveTextContent("tv_ad");
+    unmount();
+    render(<BdmOrganizationDetail initial={org({ org_type: "corporate", profile: null })} basePath="/bdm/organizations" />);
+    expect(screen.queryByRole("heading", { level: 4 })).toBeNull();
   });
 });
