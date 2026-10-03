@@ -24,6 +24,15 @@ describe("BdmActivityForm (bdm-009 §6.3)", () => {
     expect(screen.queryByRole("group", { name: /Direction/ })).toBeNull();
   });
 
+  it("clears the direction when the channel changes", () => {
+    render(<BdmActivityForm organizationId="o1" contacts={contacts} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText("Outgoing"));
+    fireEvent.change(screen.getByLabelText("Channel (required)"), { target: { value: "visit" } });
+    fireEvent.change(screen.getByLabelText("Channel (required)"), { target: { value: "call" } });
+    expect(screen.getByLabelText("Outgoing")).not.toBeChecked();
+    expect(screen.getByLabelText("Incoming")).not.toBeChecked();
+  });
+
   it("logs a call with the picked contact and a UTC time", async () => {
     const fetchMock = vi.fn(() => Promise.resolve(res(saved({ contact_id: "c2", contact_name: "Ms Iyer" }), 201)));
     vi.stubGlobal("fetch", fetchMock);
