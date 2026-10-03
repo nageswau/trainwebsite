@@ -8,7 +8,7 @@ import BdmAppointmentHistory from "@/components/BdmAppointmentHistory";
 import type { BdmType } from "@/lib/bdm";
 import { type Appointment, formatInr, OUTCOME_LABEL, STATUS_CLASS, STATUS_LABEL, TYPE_LABEL, whenText } from "@/lib/bdmAppointments";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
-import { formatDate } from "@/lib/formatDate";
+import { formatCalendarDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 function Rows({ rows }: { rows: [string, ReactNode][] }) {
@@ -122,7 +122,7 @@ export default function BdmAppointmentDetail({ initial, basePath, bdmType, creat
       {appt.status === "completed" && (
         <section className="action-card wide" aria-label="Outcome">
           <h3>Outcome</h3>
-          <Rows rows={[["Outcome", OUTCOME_LABEL[appt.outcome ?? ""] ?? display(appt.outcome)], ["Next follow-up", appt.next_follow_up_on ? formatDate(appt.next_follow_up_on) : "—"]]} />
+          <Rows rows={[["Outcome", OUTCOME_LABEL[appt.outcome ?? ""] ?? display(appt.outcome)], ["Next follow-up", appt.next_follow_up_on ? formatCalendarDate(appt.next_follow_up_on) : "—"]]} />
         </section>
       )}
       {!showEditor && <BdmAppointmentActions appointment={appt} bdmType={bdmType} onChanged={changed} />}

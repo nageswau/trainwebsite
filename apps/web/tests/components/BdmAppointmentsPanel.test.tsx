@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import BdmAppointmentsPanel from "@/components/BdmAppointmentsPanel";
@@ -95,5 +95,19 @@ describe("BdmAppointmentsPanel (bdm-006 §6.2, §12.2)", () => {
     expect(await screen.findByText("This page is past the end of the list.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Go to the first page" }));
     expect(router.push).toHaveBeenCalledWith("/bdm/appointments", { scroll: false });
+  });
+
+  it("keeps the picked BDM's name in the select after the filter applies", async () => {
+    const fetchMock = vi.fn<typeof fetch>((input) => Promise.resolve(String(input).includes("/team") ? res({ items: [{ id: "b9", full_name: "Ravi Kumar", employee_id: "E9", bdm_type: "college" }], total: 1 }) : res(page([row()]))));
+    vi.stubGlobal("fetch", fetchMock);
+    const view = render(<BdmAppointmentsPanel basePath="/bdm/manager/appointments" isBdm={false} types={ALL_TYPES} />);
+    await screen.findByRole("link", { name: "APT-000001" });
+    fireEvent.focus(screen.getByRole("combobox", { name: "BDM" }));
+    fireEvent.click(await screen.findByRole("option", { name: /Ravi Kumar/ }));
+    expect(router.push).toHaveBeenLastCalledWith("/bdm/appointments?bdm=b9", { scroll: false });
+    search.value = "bdm=b9";
+    view.rerender(<BdmAppointmentsPanel basePath="/bdm/manager/appointments" isBdm={false} types={ALL_TYPES} />);
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).includes("bdm_user_id=b9"))).toBe(true));
+    expect((screen.getByRole("combobox", { name: "BDM" }) as HTMLInputElement).value).toContain("Ravi Kumar");
   });
 });

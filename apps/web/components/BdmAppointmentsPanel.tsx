@@ -8,6 +8,7 @@ import { isPage, type Page } from "@/lib/apiErrors";
 import { PAGE_SIZE } from "@/lib/bdm";
 import { APPOINTMENTS_URL, type AppointmentRow, STATUS_CLASS, STATUS_LABEL, STATUSES, teamMemberSearch, todayIst, TYPE_LABEL, whenText } from "@/lib/bdmAppointments";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
+import type { PickOption } from "@/lib/lookups";
 
 // bdm-006 (spec §6.2, §12.2): a BDM's own appointments or a manager's team's. The API scopes the rows; nothing here filters for
 // security. Filters and the page live in the URL (BdmOrganizationsPanel's pattern); "From" defaults to today in India time, and an
@@ -67,6 +68,8 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
   const loading = fetching || (target !== null && target !== key);
   const [version, setVersion] = useState(0);
   const [draftQ, setDraftQ] = useState(filters.q);
+  // The select remounts when the BDM filter changes (key); the option picked here seeds it so the name stays. A deep link has no label.
+  const [picked, setPicked] = useState<PickOption | null>(null);
 
   useEffect(() => setDraftQ(filters.q), [filters.q]);
 
@@ -148,7 +151,17 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
         </div>
         {!isBdm && (
           <div style={{ flex: "1 1 220px" }}>
-            <SearchableSelect key={filters.bdm || "all"} label="BDM" noun="BDM" search={teamMemberSearch()} onChange={(option) => go({ bdm: option?.id ?? "" })} />
+            <SearchableSelect
+              key={filters.bdm || "all"}
+              label="BDM"
+              noun="BDM"
+              search={teamMemberSearch()}
+              initial={picked && picked.id === filters.bdm ? picked : null}
+              onChange={(option) => {
+                setPicked(option);
+                go({ bdm: option?.id ?? "" });
+              }}
+            />
           </div>
         )}
         <button type="submit" className="btn secondary small">
