@@ -30,8 +30,9 @@ export default function TripExpenseRowForm({ tripId, expense, defaultDate, onDon
     if (Object.keys(found).length) return;
     const body = { category, amount: amount.trim(), expense_date: date, note: note.trim() || null };
     const url = expense ? `${tripUrl(tripId)}/expenses/${expense.id}` : `${tripUrl(tripId)}/expenses`;
-    const outcome = await run(url, jsonInit(expense ? "PATCH" : "POST", body), expense ? "Expense updated." : "Expense added.");
-    if (outcome.ok) onDone(expense ? "Expense updated." : "Expense added.");
+    const done = expense ? "Expense updated." : "Expense added.";
+    const outcome = await run(url, jsonInit(expense ? "PATCH" : "POST", body), done);
+    if (outcome.ok) onDone(done); // the list announces it: this form unmounts on success
     else setErrors(fieldErrors(outcome.detail));
   }
 

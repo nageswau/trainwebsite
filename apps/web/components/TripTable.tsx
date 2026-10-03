@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import type { Page } from "@/lib/apiErrors";
-import { APPROVAL_LABEL, MODE_LABEL, TRAVEL_LABEL, formatInr, type TripRow } from "@/lib/bdmTravel";
+import TripStatusBadges from "@/components/TripStatusBadges";
+import { MODE_LABEL, formatInr, type TripRow } from "@/lib/bdmTravel";
 import { formatCalendarDate } from "@/lib/formatDate";
 
 // bdm-010: a page of trips (the BDM's own, a manager's team, or an approval queue). Server-rendered like BdmTeamTable: paging is a
@@ -28,10 +29,7 @@ export default function TripTable({ page, label, basePath, detailHref, query = "
             {page.items.map((t) => (
               <tr key={t.id}>
                 <td><Link href={detailHref(t.id)}>{t.code}</Link></td>
-                <td>
-                  <span className="badge state-badge">Approval: {APPROVAL_LABEL[t.approval_status]}</span>{" "}
-                  <span className="badge state-badge">Travel: {TRAVEL_LABEL[t.travel_status]}</span>
-                </td>
+                <td><TripStatusBadges trip={t} /></td>
                 {showBdm && <td>{t.bdm.full_name}</td>}
                 <td>{formatCalendarDate(t.travel_date)}{t.return_date !== t.travel_date && <> – {formatCalendarDate(t.return_date)}</>}</td>
                 <td>{t.from_place} → {t.to_place}</td>

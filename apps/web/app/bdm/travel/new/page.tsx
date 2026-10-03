@@ -11,6 +11,7 @@ import { BDM_SIGN_IN } from "@/lib/navigation";
 
 // bdm-010: a new trip starts as a draft; the BDM submits it for approval from its page.
 export default async function NewTripPage() {
+  const nav = bdmNav(); // the unread badge, read alongside the page's own data (never rejects)
   let me: BdmMe;
   try {
     me = await serverApi<BdmMe>("/api/v1/bdm/me");
@@ -18,7 +19,7 @@ export default async function NewTripPage() {
     return travelUnavailable(e, BDM_SIGN_IN, "/bdm/travel/new");
   }
   return (
-    <PortalShell nav={await bdmNav()} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
+    <PortalShell nav={await nav} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

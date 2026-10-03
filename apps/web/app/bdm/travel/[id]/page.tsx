@@ -11,6 +11,7 @@ import { BDM_SIGN_IN } from "@/lib/navigation";
 // the editor while draft/rejected, costs and expenses, remarks. A trip that is not yours is the API's 404 on the access card; a
 // malformed link is the same card without asking the API (QA10-04).
 export default async function TripPage({ params }: { params: Promise<{ id: string }> }) {
+  const nav = bdmNav(); // the unread badge, read alongside the page's own data (never rejects)
   const { id } = await params;
   if (!isUuid(id)) return tripNotFound(BDM_SIGN_IN);
   let me: BdmMe, trip: Trip;
@@ -20,7 +21,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
     return travelUnavailable(e, BDM_SIGN_IN, `/bdm/travel/${id}`);
   }
   return (
-    <PortalShell nav={await bdmNav()} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
+    <PortalShell nav={await nav} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         <TripWorkspace initialTrip={trip} view="owner" today={indiaToday()} backHref="/bdm/travel" backLabel="Back to my trips" />
       </div>

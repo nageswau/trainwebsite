@@ -11,6 +11,7 @@ import type { User } from "@/lib/types";
 // bdm-001 (AC05, B2): the manager landing page -- team counts; bdm-023 adds the management dashboard. Counts beyond the first page
 // say so rather than guess.
 export default async function BdmManagerDashboardPage() {
+  const nav = bdmManagerNav(); // the unread badge, read alongside the page's own data (never rejects)
   let user: User, team: Page<BdmTeamRow>;
   try {
     [user, team] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<Page<BdmTeamRow>>("/api/v1/bdm/manager/team?limit=50")]);
@@ -23,7 +24,7 @@ export default async function BdmManagerDashboardPage() {
     ? "No BDMs report to you yet."
     : `${team.total} BDM${team.total === 1 ? " reports" : "s report"} to you: ${active} active, ${inactive} inactive${team.total > team.items.length ? " on the first page" : ""}.`;
   return (
-    <PortalShell nav={await bdmManagerNav()} roleLabel="BDM Manager" userName={user.full_name}>
+    <PortalShell nav={await nav} roleLabel="BDM Manager" userName={user.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

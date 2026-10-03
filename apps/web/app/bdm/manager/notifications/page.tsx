@@ -8,6 +8,7 @@ import type { User } from "@/lib/types";
 // bdm-010 (QA10-01): the BDM manager's own in-app notices -- "Travel approval needed" when a BDM submits a trip. Opening a notice
 // marks it read and goes to the approvals queue.
 export default async function ManagerNotificationsPage() {
+  const nav = bdmManagerNav(); // the unread badge, read alongside the page's own data (never rejects)
   let user: User;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
@@ -22,7 +23,7 @@ export default async function ManagerNotificationsPage() {
     return accessUnavailable(e, "/admin/login");
   }
   return (
-    <PortalShell nav={await bdmManagerNav()} roleLabel="BDM Manager" userName={user.full_name}>
+    <PortalShell nav={await nav} roleLabel="BDM Manager" userName={user.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

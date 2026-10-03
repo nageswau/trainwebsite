@@ -1,16 +1,6 @@
-import PortalShell from "@/components/PortalShell";
+import PortalLoading from "@/components/PortalLoading";
 import { BDM_NAV } from "@/lib/navigation";
 
-// bdm-010 (§12.2 F4): shown while the server reads your trips, inside the portal shell so the sidebar never flashes away
-// (the ENH-020 pattern).
 export default function Loading() {
-  return (
-    <PortalShell nav={BDM_NAV} roleLabel="Loading…" userName="">
-      <div className="portal-content" aria-busy="true" aria-label="Loading your trips">
-        <div className="card">
-          {[0, 1, 2, 3].map((i) => <div key={i} className="skeleton-line" style={{ width: "100%", marginBottom: 12 }} aria-hidden="true" />)}
-        </div>
-      </div>
-    </PortalShell>
-  );
+  return <PortalLoading nav={BDM_NAV} label="your trips" />;
 }

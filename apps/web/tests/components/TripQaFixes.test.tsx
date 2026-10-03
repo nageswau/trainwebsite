@@ -13,6 +13,7 @@ import TripLoading from "@/app/bdm/travel/[id]/loading";
 import QueueLoading from "@/app/bdm/manager/approvals/loading";
 import ManagerTripLoading from "@/app/bdm/manager/trips/[id]/loading";
 import AdminQueueLoading from "@/app/admin/bdm-travel-approvals/loading";
+import PortalLoading from "@/components/PortalLoading";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import { elements } from "@/tests/helpers/elementTree";
@@ -116,7 +117,9 @@ describe("bdm-010 browser QA fixes (components)", () => {
 
   it("QA10-15: loading skeletons show a neutral label, not a guessed role", () => {
     for (const Loading of [TravelListLoading, TripLoading, QueueLoading, ManagerTripLoading, AdminQueueLoading]) {
-      const shell = elements(Loading()).find((el) => el.type === PortalShell)!;
+      const loading = Loading();
+      expect(loading.type).toBe(PortalLoading);
+      const shell = elements(PortalLoading(loading.props)).find((el) => el.type === PortalShell)!;
       expect(shell.props.roleLabel).toBe("Loading…");
     }
   });

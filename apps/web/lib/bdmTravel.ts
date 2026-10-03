@@ -1,3 +1,5 @@
+import { detailMessage } from "@/lib/apiErrors";
+
 // bdm-010 (DEC-SCOPE-060): trip types, labels and endpoints shared by the BDM, manager and admin travel screens.
 export type TripMode = "flight" | "train" | "bus" | "car" | "cab" | "local";
 export type ApprovalStatus = "draft" | "submitted" | "approved" | "rejected";
@@ -24,7 +26,6 @@ export const CATEGORY_LABEL: Record<ExpenseCategory, string> = { travel: "Travel
 
 export const TRIPS_URL = "/api/v1/bdm/trips";
 export const TEAM_TRIPS_URL = "/api/v1/bdm/manager/trips";
-export const APPROVALS_URL = "/api/v1/bdm/manager/approvals";
 /** QA10-04: a trip link is a UUID; anything else is "Trip not found" before the API is asked (it would answer 422). */
 export const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 export const tripUrl = (id: string) => `${TRIPS_URL}/${id}`;
@@ -33,8 +34,7 @@ export const PAST_DAYS = 30;
 /** Rupees with up to 2 decimals (the API's TRIP_AMOUNT_FORMAT); the API decides. */
 export const AMOUNT_PATTERN = /^\d+(\.\d{1,2})?$/;
 
-const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 });
-export const formatInr = (value: string) => INR.format(Number(value));
+export { formatInr } from "@/lib/agentApplications"; // one rupee formatter (AGN-011)
 
 export const MAX_SPAN_DAYS = 30; // return - travel <= 30, i.e. at most 31 days (T14)
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -56,9 +56,7 @@ export function dateRuleField(detail: unknown): Record<string, string> {
 
 /** T14: the earliest travel date the API accepts, from today's India date (YYYY-MM-DD). */
 export function travelDateBounds(today: string): { min: string } {
-  const d = new Date(`${today}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - PAST_DAYS);
-  return { min: d.toISOString().slice(0, 10) };
+  return { min: addDays(today, -PAST_DAYS) };
 }
 
 /** §12.2 F3: a FastAPI 422 list mapped to its fields, so each message sits next to its input. */
@@ -67,12 +65,10 @@ export function fieldErrors(detail: unknown): Record<string, string> {
   const out: Record<string, string> = {};
   for (const item of detail as { loc?: unknown[]; msg?: string }[]) {
     const field = item.loc && item.loc.length > 1 ? String(item.loc[item.loc.length - 1]) : "";
-    if (field && !out[field]) out[field] = (item.msg ?? "").replace(/^Value error,\s*/, "");
+    if (field && !out[field]) out[field] = detailMessage([item]); // the shared 422 wording (drops "Value error, ")
   }
   return out;
 }
-
-export const tripSummary = (t: Pick<TripRow, "code" | "from_place" | "to_place">) => `${t.code}, ${t.from_place} to ${t.to_place}`;
 
 /** India's calendar date, for the T14 hints (the API decides). */
 export const indiaToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());

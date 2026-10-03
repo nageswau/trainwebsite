@@ -9,6 +9,7 @@ import { BDM_SIGN_IN } from "@/lib/navigation";
 // bdm-010 (QA10-01): the BDM's own in-app notices -- a trip approved or not approved. Same feed and list as the other portals; opening
 // an unread notice marks it read before it navigates, so the sidebar badge is already right on the next page (AGN-017 QA17-01).
 export default async function BdmNotificationsPage() {
+  const nav = bdmNav(); // the unread badge, read alongside the page's own data (never rejects)
   let me: BdmMe, notifications: NotificationItem[];
   try {
     [me, notifications] = await Promise.all([
@@ -19,7 +20,7 @@ export default async function BdmNotificationsPage() {
     return accessUnavailable(e, BDM_SIGN_IN);
   }
   return (
-    <PortalShell nav={await bdmNav()} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
+    <PortalShell nav={await nav} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

@@ -9,7 +9,8 @@ import TripDetails from "@/components/TripDetails";
 import TripExpenses from "@/components/TripExpenses";
 import TripForm from "@/components/TripForm";
 import TripRemarks from "@/components/TripRemarks";
-import { APPROVAL_LABEL, TRAVEL_LABEL, teamTripUrl, tripUrl, type Trip } from "@/lib/bdmTravel";
+import TripStatusBadges from "@/components/TripStatusBadges";
+import { teamTripUrl, tripUrl, type Trip } from "@/lib/bdmTravel";
 import { TripLiveContext, isTrip, type TripLive } from "@/lib/tripLive";
 
 // bdm-010 (QA10-16): one trip page as one client workspace. The server page reads the trip once; every write below applies the
@@ -40,10 +41,7 @@ export default function TripWorkspace({ initialTrip, view, today, backHref, back
         <div>
           <div className="eyebrow">Travel · {trip.code}{owner ? "" : ` · ${trip.bdm.full_name}`}</div>
           <h2 style={{ overflowWrap: "anywhere" }}>{trip.from_place} → {trip.to_place}</h2>
-          <p>
-            <span className="badge state-badge">Approval: {APPROVAL_LABEL[trip.approval_status]}</span>{" "}
-            <span className="badge state-badge">Travel: {TRAVEL_LABEL[trip.travel_status]}</span>
-          </p>
+          <p><TripStatusBadges trip={trip} /></p>
         </div>
         <Link className="btn secondary" href={backHref}>{backLabel}</Link>
       </div>
@@ -73,15 +71,10 @@ export default function TripWorkspace({ initialTrip, view, today, backHref, back
         <h3 id="trip-costs-heading">Costs and expenses</h3>
         <TripExpenses trip={trip} ownerView={owner} />
       </section>
-      {owner ? (
+      {(owner || trip.remarks) && (
         <section className="card" aria-labelledby="trip-remarks-heading" style={{ marginTop: 20 }}>
           <h3 id="trip-remarks-heading">Remarks</h3>
-          <TripRemarks trip={trip} />
-        </section>
-      ) : trip.remarks && (
-        <section className="card" aria-labelledby="trip-remarks-heading" style={{ marginTop: 20 }}>
-          <h3 id="trip-remarks-heading">Remarks</h3>
-          <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{trip.remarks}</p>
+          {owner ? <TripRemarks trip={trip} /> : <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{trip.remarks}</p>}
         </section>
       )}
     </TripLiveContext.Provider>

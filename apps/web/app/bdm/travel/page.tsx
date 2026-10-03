@@ -5,7 +5,7 @@ import PortalShell from "@/components/PortalShell";
 import TripTable from "@/components/TripTable";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
-import { BDM_TYPE_LABEL, PAGE_SIZE, type BdmMe } from "@/lib/bdm";
+import { BDM_TYPE_LABEL, PAGE_SIZE, type BdmMe, pageOffset } from "@/lib/bdm";
 import { APPROVAL_LABEL, type ApprovalStatus, type TripRow } from "@/lib/bdmTravel";
 import { bdmNav } from "@/lib/bdmNav";
 import { BDM_SIGN_IN } from "@/lib/navigation";
@@ -15,9 +15,9 @@ const PATH = "/bdm/travel";
 // bdm-010: the BDM's own trips, newest travel date first. The filter and the offset live in the URL (a plain GET form, no JS),
 // as bdm-001's team page does; an unknown filter value is ignored rather than sent.
 export default async function MyTripsPage({ searchParams }: { searchParams: Promise<{ offset?: string; approval_status?: string }> }) {
+  const nav = bdmNav(); // the unread badge, read alongside the page's own data (never rejects)
   const sp = await searchParams;
-  const raw = Number.parseInt(sp.offset ?? "0", 10);
-  const offset = Number.isFinite(raw) && raw > 0 ? raw : 0;
+  const offset = pageOffset(sp.offset);
   const status = sp.approval_status && sp.approval_status in APPROVAL_LABEL ? (sp.approval_status as ApprovalStatus) : null;
   const query = status ? `approval_status=${status}` : "";
   let me: BdmMe, trips: Page<TripRow>;
@@ -30,7 +30,7 @@ export default async function MyTripsPage({ searchParams }: { searchParams: Prom
     return travelUnavailable(e, BDM_SIGN_IN, `${PATH}${query ? `?${query}` : ""}`);
   }
   return (
-    <PortalShell nav={await bdmNav()} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
+    <PortalShell nav={await nav} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

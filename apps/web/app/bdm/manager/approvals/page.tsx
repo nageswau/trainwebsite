@@ -5,7 +5,7 @@ import PortalShell from "@/components/PortalShell";
 import TripTable from "@/components/TripTable";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
-import { PAGE_SIZE } from "@/lib/bdm";
+import { PAGE_SIZE, pageOffset } from "@/lib/bdm";
 import type { TripRow } from "@/lib/bdmTravel";
 import { bdmManagerNav } from "@/lib/bdmNav";
 import type { User } from "@/lib/types";
@@ -14,8 +14,8 @@ const PATH = "/bdm/manager/approvals";
 
 // bdm-010 (Q-05): trips your BDMs submitted, oldest first. Open one to approve or reject it.
 export default async function ManagerApprovalsPage({ searchParams }: { searchParams: Promise<{ offset?: string }> }) {
-  const raw = Number.parseInt((await searchParams).offset ?? "0", 10);
-  const offset = Number.isFinite(raw) && raw > 0 ? raw : 0;
+  const nav = bdmManagerNav(); // the unread badge, read alongside the page's own data (never rejects)
+  const offset = pageOffset((await searchParams).offset);
   let user: User, queue: Page<TripRow>;
   try {
     [user, queue] = await Promise.all([
@@ -26,7 +26,7 @@ export default async function ManagerApprovalsPage({ searchParams }: { searchPar
     return travelUnavailable(e, "/admin/login", PATH);
   }
   return (
-    <PortalShell nav={await bdmManagerNav()} roleLabel="BDM Manager" userName={user.full_name}>
+    <PortalShell nav={await nav} roleLabel="BDM Manager" userName={user.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

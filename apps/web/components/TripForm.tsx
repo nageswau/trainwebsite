@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import FormMessage from "@/components/FormMessage";
 import {
-  AMOUNT_PATTERN, MAX_SPAN_DAYS, MODE_LABEL, TRIPS_URL, addDays, dateRuleField, fieldErrors, isIsoDate, travelDateBounds, tripUrl, type Trip,
+  AMOUNT_PATTERN, MAX_SPAN_DAYS, MODE_LABEL, PAST_DAYS, TRIPS_URL, addDays, dateRuleField, fieldErrors, isIsoDate, travelDateBounds, tripUrl, type Trip,
   type TripMode,
 } from "@/lib/bdmTravel";
 import { refocus } from "@/lib/focus";
@@ -42,9 +42,9 @@ function validate(v: Values, min: string): Record<string, string> {
   if (v.travel_date && !isIsoDate(v.travel_date)) errors.travel_date = "Enter a valid travel date"; // QA10-08
   if (v.return_date && !isIsoDate(v.return_date)) errors.return_date = "Enter a valid return date";
   const datesOk = isIsoDate(v.travel_date) && isIsoDate(v.return_date);
-  if (isIsoDate(v.travel_date) && v.travel_date < min) errors.travel_date = "Travel date can be at most 30 days in the past";
+  if (isIsoDate(v.travel_date) && v.travel_date < min) errors.travel_date = `Travel date can be at most ${PAST_DAYS} days in the past`;
   if (datesOk && v.return_date < v.travel_date) errors.return_date = "Return date must be on or after the travel date";
-  else if (datesOk && v.return_date > addDays(v.travel_date, MAX_SPAN_DAYS)) errors.return_date = "A trip can last at most 31 days"; // QA10-07
+  else if (datesOk && v.return_date > addDays(v.travel_date, MAX_SPAN_DAYS)) errors.return_date = `A trip can last at most ${MAX_SPAN_DAYS + 1} days`; // QA10-07
   if (v.estimated_cost.trim() && !AMOUNT_PATTERN.test(v.estimated_cost.trim())) errors.estimated_cost = "Enter an amount in rupees with up to 2 decimals";
   return errors;
 }

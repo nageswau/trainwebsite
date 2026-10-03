@@ -6,7 +6,7 @@ import PortalShell from "@/components/PortalShell";
 import TripTable from "@/components/TripTable";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
-import { PAGE_SIZE } from "@/lib/bdm";
+import { PAGE_SIZE, pageOffset } from "@/lib/bdm";
 import type { TripRow } from "@/lib/bdmTravel";
 import { SUPER_ADMIN_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
@@ -16,8 +16,7 @@ const PATH = "/admin/bdm-travel-approvals";
 // bdm-010 (T3, T8): the fallback approver's queue -- submitted trips whose reporting manager is inactive. The API returns only
 // those to a super_admin, and refuses a decision while the manager is active.
 export default async function AdminTravelApprovalsPage({ searchParams }: { searchParams: Promise<{ offset?: string }> }) {
-  const raw = Number.parseInt((await searchParams).offset ?? "0", 10);
-  const offset = Number.isFinite(raw) && raw > 0 ? raw : 0;
+  const offset = pageOffset((await searchParams).offset);
   let user: User;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
