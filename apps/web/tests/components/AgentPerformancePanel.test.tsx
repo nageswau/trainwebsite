@@ -65,6 +65,16 @@ describe("AgentPerformancePanel (AGN-019)", () => {
     expect(screen.getByLabelText("From")).toHaveValue("2026-01-01");
   });
 
+  it("ignores an impossible date in the address instead of getting stuck on it (QA19-01)", async () => {
+    window.history.replaceState(null, "", "/overseas/agent/performance?from=2026-13-01");
+    const fetchMock = vi.fn().mockImplementation(async () => json(FULL));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentPerformancePanel />);
+    await screen.findByRole("heading", { name: "Funnel" });
+    expect(fetchMock).toHaveBeenCalledWith(PERFORMANCE_URL, { credentials: "same-origin" });
+    expect(screen.queryByText(/must be a date/)).toBeNull();
+  });
+
   it("switches the funnel without a request, and resets it when a new range loads", async () => {
     const fetchMock = vi.fn().mockImplementation(async () => json(FULL)); // a fresh Response per call: a body reads once
     vi.stubGlobal("fetch", fetchMock);
