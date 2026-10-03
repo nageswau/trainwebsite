@@ -3,8 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentStudentsPanel from "@/components/AgentStudentsPanel";
 
-// AGN-018: the panel reads ?new=1 through useSearchParams; here it follows the jsdom URL the tests set.
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(window.location.search) }));
+// AGN-018: the panel reads ?new=1 through useSearchParams (here: the jsdom URL the tests set) and drops it through the router.
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(window.location.search),
+  useRouter: () => ({ replace: (url: string) => window.history.replaceState(null, "", url), push: vi.fn(), refresh: vi.fn() }),
+}));
 
 const item = (over: Record<string, unknown> = {}) => ({
   id: "s1", has_login: false, full_name: "Asha Rao", email: "a@x.com", phone: null, preferred_country: "Canada", preferred_intake: "Sep 2027",

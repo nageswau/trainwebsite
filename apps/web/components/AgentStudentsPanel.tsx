@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import AgentStudentAssign from "./AgentStudentAssign";
@@ -72,7 +72,9 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
 
   // AGN-018 (DEC-SCOPE-060 G4): the staff sidebar's "Add" link (?new=1) opens the add form -- on first load and when the link is
   // clicked while this panel is already on screen (a client navigation changes only the query). Its Full name field takes focus;
-  // `new` is dropped from the URL at once, so Back and refresh do not reopen it.
+  // `new` is dropped through the router (browser QA18-01: a raw history.replaceState left the router's search params at new=1, so the
+  // next Add changed nothing), so Back and refresh do not reopen it and every later Add is a real change.
+  const router = useRouter();
   const wantsNew = useSearchParams()?.get("new") === "1";
   useEffect(() => {
     if (!wantsNew) return;
@@ -80,8 +82,8 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
     const params = new URLSearchParams(window.location.search);
     params.delete("new");
     const rest = params.toString();
-    window.history.replaceState(window.history.state, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
-  }, [wantsNew]);
+    router.replace(`${window.location.pathname}${rest ? `?${rest}` : ""}`, { scroll: false });
+  }, [wantsNew, router]);
 
   useEffect(() => {
     if (!ready) return;
