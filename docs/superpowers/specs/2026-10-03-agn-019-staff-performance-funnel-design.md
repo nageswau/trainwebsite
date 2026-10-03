@@ -322,3 +322,14 @@ performance data; changes to `AgentDashboardOut`, `services/portal.py`, models o
 `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-063`; `ENHANCEMENT_BACKLOG.md` §AGN-019; `AGENT_CRM_BACKLOG.md` status table; `RTM.md`;
 `RBAC_MATRIX.md` (Staff Performance row); `API_CONTRACT.md`; `SCREEN_CATALOG.md` / `screen_catalog.json`; `ROLE_NAVIGATION.md`;
 `RAID.md` (branch filter deferred; R-14 measurement).
+
+## 12. Implementation notes (2026-10-03, rulings during execution)
+
+- §6.4 "markup copied": `AgentDashboardPanel.tsx` imports server-only code (`lib/api` → `next/headers`), so a client component cannot
+  import from it. Its `TableRegion`, `headingId` and `n` moved unchanged to `components/AgentTableRegion.tsx`, used by both panels.
+- §6.5: the "View staff performance" link sits below the dashboard's staff table, not inside its heading — a link in the `h3` would
+  change the heading's accessible name, which names the table's region (AGN-018 QA18-06).
+- §5.1: the three date checks became `report_range()` in `api/workflows.py`, shared with AGN-014's commission report.
+- §8: no axe check in the E2E spec (`@axe-core` is not a dependency; no new dependencies) — accessibility is asserted through roles,
+  names and keyboard use; an axe pass belongs to browser validation.
+- Screen ID: `SCR-AGT-011`.

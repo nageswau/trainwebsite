@@ -2155,6 +2155,29 @@
     "evidence": "AGN-008-AC01–AC18: test_agn_008_*.py; test_agn_003_matrix.py; test_agn_021_activity.py; agentApplications.test.ts; AgentApplicationCreatePanel.test.tsx; AgentApplicationDetail.test.tsx; AgentApplicationsPanel.test.tsx; PortalShell.children.test.tsx; agn-008-agent-applications.spec.ts; browser validation pending.; added 2026-10-02: test_agn_008_dashboard.py; test_agn_008_concurrency.py; safeNext.test.ts; LoginForm.next.test.tsx; AccessUnavailable.test.tsx; PortalPage.agentApplications.test.tsx; NavGroup.test.tsx; browser QA pass 1 fixed, re-check pending."
   },
   {
+    "id": "SCR-AGT-011",
+    "roles": [
+      "Agent (Master)"
+    ],
+    "route": "/overseas/agent/performance (Staff performance: date filter, Funnel, By staff member)",
+    "purpose": "Per-staff Students / Applications / Offers / Visa applications / Visa approvals / Enrollments and the student funnel for students added in a chosen period (AGN-019 / DEC-SCOPE-063, added 2026-10-03; next free ID on main, renumber on merge if taken).",
+    "features": [
+      "AGN-019"
+    ],
+    "entry": "Agent portal navigation \"Staff Performance\" (Masters only, after Reports); the dashboard staff table's \"View staff performance\" link.",
+    "data": "GET /workflows/overseas/agent/crm/performance?date_from=&date_to= -- rows (code, name, active, six counts, funnel), unassigned, total, as_of.",
+    "actions": "From / To dates + Apply (range kept in the address); \"Show funnel for\" select (agency, each staff member, Unassigned) without a request.",
+    "empty": "\"Your agency has no students yet.\" / \"No students were added in this period.\" in place of the funnel; active staff still listed with zeros.",
+    "loading": "\"Loading staff performance…\" (role=status, aria-busy); later loads keep the figures with \"Updating staff performance…\".",
+    "error": "role=alert: 401 session expired + Sign in again; 403 server message; 5xx/offline + Try again; 422 and To-before-From on the named field with focus.",
+    "perms": "Own agency; Master only (staff 403, no nav item, a Masters-only note on the page); counts follow the current owner.",
+    "responsive": "Form wraps; full-width inputs and 44px targets below 640px; stacked table rows; no horizontal scroll at 320px (E2E pending).",
+    "a11y": "One h2, h3 Funnel / By staff member; labelled inputs and select; funnel as an ordered list with every number in text (bars aria-hidden); Deactivated as text; named, focusable table region.",
+    "dtm": "Same order at every width: filter, as-of line, funnel, table.",
+    "visual": "None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.",
+    "evidence": "AGN-019-AC9/AC10: AgentPerformancePanel.test.tsx; AgentPerformanceSection.test.tsx; agentPerformance.test.ts; navigation.agent.test.ts; agn-019-performance.spec.ts; browser validation pending."
+  },
+  {
     "id": "SCR-CNS-001",
     "roles": [
       "Counselor"

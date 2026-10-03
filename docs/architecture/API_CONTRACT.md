@@ -374,6 +374,21 @@ are read only by ids from those sets. No lock, no write, no cache, no audit row;
 | `GET /workflows/overseas/agent/crm/students/{id}/journey` (**new**) | Authenticated | Agent (Master or staff), AGN-004 G4 scope | `200 {"student": {id, full_name, status}, "steps": [{key, state}] ×4, "applications": [{id, university, intake, status, steps: [{key, state}] ×5}]}`, applications oldest first. Keys `create, counseling, shortlist, documents` / `application, offer, deposit, visa, enrollment`; states `not_started, in_progress, done, not_required, refunded, refused, withdrawn` (spec §4). |
 | `GET /workflows/overseas/agent/crm/students/{id}/timeline?limit=20&offset=0` (**new**) | Authenticated | Same | `limit` 1–100, `offset` 0–10 000 (else `422`). `200 {"items": [...], "total", "limit", "offset"}`, newest first (`at`, then source rank). Item keys always present: `id` (`"<source>:<row id>"`), `at`, `kind` (fixed vocabulary, spec §3), `actor` (agency member's name, else a role label), `application` (`{id, university}` or null), `document` (`{id, type}` or null), `from_status`, `to_status`, `fields` (names only), `notes` (status-history and document-event notes only). Never values, amounts, the visa decision, emails, phones or file keys. |
 
+**`AGN-019` / `DEC-SCOPE-063` (built 2026-10-03; no migration) — agency staff performance and student funnel.** Design spec
+`docs/superpowers/specs/2026-10-03-agn-019-staff-performance-funnel-design.md` §4–§5. `GET /api/v1/workflows/overseas/agent/crm/performance`
+→ `AgentPerformanceOut`. Read-only (no write, lock, commit or audit row). Order: session (`401`), then `_gate` (`403` for non-agents,
+`super_admin`, pending/suspended agencies, deactivated members), then Master-only (`403` `"Only an agency Master can view staff
+performance"` for staff, with or without `can_view_reports`), then the dates — so a refused caller never sees a `422`. Query (both
+optional, strict `YYYY-MM-DD`, inclusive UTC days on `agent_students.created_at`): `date_from`, `date_to`; `422` `"<name> must be a date
+(YYYY-MM-DD)"`, `"date_to must be on or after date_from"`, `"date_to must be before 9999-12-31"` (shared `report_range` with AGN-014).
+Unknown parameters are ignored. Body: `date_from`, `date_to` (echoed or null); `rows[]` — `code`, `name`, `active` and the counts;
+`unassigned` (counts or null when all zero); `total` (= rows + unassigned; can differ from the dashboard headline KPIs); `as_of`.
+Counts: `students` (active), `applications` (not withdrawn), `offers` (O5), `visa_applications`, `visa_approvals`, `enrollments` —
+distinct applications — and `funnel` {`students`, `applications`, `submitted`, `offers`, `visa`, `enrolled`}: distinct students at that
+stage or later (archived students, withdrawn applications included). Students count for their current owner. Rows: active staff always;
+deactivated staff while they have counts. No ids, emails or phones; `Cache-Control: private, no-store`; not paginated (one document,
+bounded by the agency's staff). Log `agent_performance.read` {`org_id`, `actor_id`, `filtered`, `rows`, `duration_ms`}.
+
 **`AGN-018` / `DEC-SCOPE-062` (built 2026-10-03; no migration) — agency Master / Staff dashboard.** Design spec
 `docs/superpowers/specs/2026-10-03-agn-018-agency-dashboards-design.md` §4–§5, §7. One new read-only endpoint: no write, no lock, no
 commit, no audit row (reads are not audited, `DEC-SCOPE-051` R7). Gate `_gate` (AGN-004): role `agent`, division `overseas`, active
