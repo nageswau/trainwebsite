@@ -5,9 +5,16 @@ and the UI's `can_*` flags. Logs carry ids, route, action and state -- never pla
 
 import logging
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
+
+from app.models import BDM_TRIP_CODE_SEQ, AuditLog, BdmProfile, BdmTrip, BdmTripExpense, User
+from app.services.bdm import bdm_context, require_manager, team_filter
 
 logger = logging.getLogger("app.bdm")
 
@@ -78,3 +85,179 @@ def decider_may(user, manager) -> bool:
     if user.role == "bdm_manager":
         return user.id == manager.id
     return user.role == "super_admin" and not manager.active
+
+
+Owner = aliased(User)
+Manager = aliased(User)
+CENTS = Decimal("0.01")
+
+
+def audit(db: AsyncSession, user: User, action: str, trip: BdmTrip, outcome: str = "recorded", **meta) -> None:
+    """S13: one row per change, in the caller's transaction (the fields `workflows._audit` writes). Dates, decimals and UUIDs in
+    the metadata are serialized by the engine (`core.database._json_default`)."""
+    db.add(AuditLog(user_id=user.id, action=f"bdm.trip_{action}", entity_type="bdm_trip", entity_id=str(trip.id), outcome=outcome,
+                    metadata_json={"code": trip.code, **meta}))
+
+
+async def next_code(db: AsyncSession) -> str:
+    return f"TRV-{await db.scalar(select(BDM_TRIP_CODE_SEQ.next_value())):06d}"
+
+
+async def create_trip(db: AsyncSession, user: User, body, today: date) -> BdmTrip:
+    check_dates(body.travel_date, body.return_date, today)
+    trip = BdmTrip(code=await next_code(db), bdm_user_id=user.id, approval_status="draft", travel_status="planned", currency="INR",
+                   **body.model_dump())
+    db.add(trip)
+    await db.flush()
+    audit(db, user, "create", trip, mode=trip.mode, estimated_cost=trip.estimated_cost)
+    return trip
+
+
+def _refuse(user: User, trip: BdmTrip, action: str, error: HTTPException) -> HTTPException:
+    logger.warning("bdm_trip_refused", extra={"extra_fields": {
+        "actor_id": str(user.id), "trip_id": str(trip.id), "action": action, "status": error.status_code,
+        "approval_status": trip.approval_status, "travel_status": trip.travel_status}})
+    return error
+
+
+async def load_own_trip(db: AsyncSession, user: User, trip_id, *, lock: bool = False) -> BdmTrip:
+    """S3: scope in the WHERE; another BDM's trip is indistinguishable from a missing one (404)."""
+    await bdm_context(db, user)
+    stmt = select(BdmTrip).where(BdmTrip.id == trip_id, BdmTrip.bdm_user_id == user.id)
+    trip = await db.scalar(stmt.with_for_update() if lock else stmt)
+    if not trip:
+        raise HTTPException(404, "Trip not found")
+    return trip
+
+
+async def load_team_trip(db: AsyncSession, user: User, trip_id, *, lock: bool = False) -> BdmTrip:
+    require_manager(user)
+    stmt = select(BdmTrip).join(BdmProfile, BdmProfile.user_id == BdmTrip.bdm_user_id).where(BdmTrip.id == trip_id, *team_filter(user))
+    trip = await db.scalar(stmt.with_for_update(of=BdmTrip) if lock else stmt)
+    if not trip:
+        raise HTTPException(404, "Trip not found")
+    return trip
+
+
+async def update_trip(db: AsyncSession, user: User, trip: BdmTrip, body, today: date) -> None:
+    """PATCH: remarks are editable in every state (backlog, the reminder's Add Remarks); every other field only while the trip
+    is a draft or rejected. Audited with before/after of the changed fields."""
+    changes = body.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(422, "Nothing to change")
+    if set(changes) - {"remarks"}:
+        if trip.approval_status == "submitted" and trip.travel_status == "planned":
+            raise _refuse(user, trip, "edit", HTTPException(409, "Withdraw the trip to edit it"))
+        if trip.approval_status == "approved":
+            raise _refuse(user, trip, "edit", HTTPException(422, "An approved trip's details can't be changed"))
+        if not allowed(trip, "edit", today):
+            raise _refuse(user, trip, "edit", refusal(trip, "edit", today))
+        check_dates(changes.get("travel_date", trip.travel_date), changes.get("return_date", trip.return_date), today)
+    before = {k: getattr(trip, k) for k in changes}
+    for key, value in changes.items():
+        setattr(trip, key, value)
+    await db.flush()
+    audit(db, user, "update", trip, before=before, after=changes)
+
+
+async def transition(db: AsyncSession, user: User, trip: BdmTrip, action: str, today: date) -> None:
+    """The owner's commands (submit, withdraw, start, complete, cancel) on a trip the caller has locked."""
+    if not allowed(trip, action, today):
+        raise _refuse(user, trip, action, refusal(trip, action, today))
+    before = (trip.approval_status, trip.travel_status)
+    if action == "submit":
+        trip.approval_status, trip.submitted_at = "submitted", now()
+        trip.rejection_reason = trip.decided_by_user_id = trip.decided_at = None
+    elif action == "withdraw":
+        trip.approval_status, trip.submitted_at = "draft", None
+    elif action == "start":
+        trip.travel_status = "in_progress"
+    elif action == "complete":
+        trip.travel_status, trip.completed_at = "completed", now()
+    elif action == "cancel":
+        trip.travel_status, trip.cancelled_at = "cancelled", now()
+    await db.flush()
+    audit(db, user, action, trip, before=list(before), after=[trip.approval_status, trip.travel_status])
+
+
+async def reporting_manager(db: AsyncSession, trip: BdmTrip, *, lock: bool = False) -> User:
+    """The BDM's current reporting manager (T2: resolved now, never stored). `lock` takes FOR SHARE on the profile and the
+    manager so a concurrent reassignment or deactivation waits for this transaction (bdm-001 §5.8)."""
+    stmt = select(BdmProfile).where(BdmProfile.user_id == trip.bdm_user_id)
+    profile = await db.scalar(stmt.with_for_update(read=True) if lock else stmt)
+    stmt = select(User).where(User.id == profile.reporting_manager_user_id)
+    return await db.scalar(stmt.with_for_update(read=True) if lock else stmt)
+
+
+async def submit_recipients(db: AsyncSession, trip: BdmTrip) -> tuple[list[User], str]:
+    """T11: the active manager, or every active super_admin when the manager is inactive."""
+    manager = await reporting_manager(db, trip)
+    if manager.active:
+        return [manager], "/bdm/manager/approvals"
+    admins = await db.scalars(select(User).where(User.role == "super_admin", User.active.is_(True)).order_by(User.id))
+    return list(admins), "/admin/bdm-travel-approvals"
+
+
+def status_filters(approval_status: str | None, travel_status: str | None) -> list:
+    return ([BdmTrip.approval_status == approval_status] if approval_status else []) + (
+        [BdmTrip.travel_status == travel_status] if travel_status else [])
+
+
+def _cost_subquery():
+    return select(BdmTripExpense.trip_id, func.sum(BdmTripExpense.amount).label("total")).group_by(BdmTripExpense.trip_id).subquery()
+
+
+def trip_rows(filters: list):
+    """One query for a list page (§12.1 A13): trip + owner name + actual cost, joined to the owner's profile and manager so the
+    team and approval filters can be expressed on them."""
+    cost = _cost_subquery()
+    return (
+        select(BdmTrip, Owner.full_name, func.coalesce(cost.c.total, 0))
+        .join(Owner, Owner.id == BdmTrip.bdm_user_id)
+        .join(BdmProfile, BdmProfile.user_id == BdmTrip.bdm_user_id)
+        .join(Manager, Manager.id == BdmProfile.reporting_manager_user_id)
+        .outerjoin(cost, cost.c.trip_id == BdmTrip.id)
+        .where(*filters)
+    )
+
+
+def _money(value) -> Decimal:
+    return Decimal(value or 0).quantize(CENTS)
+
+
+def _row(trip: BdmTrip, owner_name: str, actual) -> dict:
+    return {
+        "id": trip.id, "code": trip.code, "bdm": {"id": trip.bdm_user_id, "full_name": owner_name}, "travel_date": trip.travel_date,
+        "return_date": trip.return_date, "from_place": trip.from_place, "to_place": trip.to_place, "mode": trip.mode,
+        "accommodation_required": trip.accommodation_required, "estimated_cost": _money(trip.estimated_cost),
+        "actual_cost": _money(actual), "currency": trip.currency, "approval_status": trip.approval_status,
+        "travel_status": trip.travel_status, "submitted_at": trip.submitted_at,
+    }
+
+
+async def page(db: AsyncSession, stmt, limit: int, offset: int, order: tuple) -> dict:
+    total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
+    rows = (await db.execute(stmt.order_by(*order).limit(limit).offset(offset))).all()
+    return {"items": [_row(*row) for row in rows], "total": total or 0, "limit": limit, "offset": offset}
+
+
+async def trip_out(db: AsyncSession, trip: BdmTrip, user: User, today: date) -> dict:
+    """The detail (§5.1 `BdmTripOut`). The owner gets the transition flags; a manager or super_admin gets only `can_decide`."""
+    expenses = list(await db.scalars(
+        select(BdmTripExpense).where(BdmTripExpense.trip_id == trip.id).order_by(BdmTripExpense.expense_date, BdmTripExpense.created_at)))
+    owner = await db.get(User, trip.bdm_user_id)
+    decided_by = await db.get(User, trip.decided_by_user_id) if trip.decided_by_user_id else None
+    if user.id == trip.bdm_user_id:
+        flags = owner_flags(trip, today)
+    else:
+        flags = dict.fromkeys(FLAG_ACTIONS, False) | {
+            "can_decide": allowed(trip, "decide", today) and decider_may(user, await reporting_manager(db, trip))}
+    return {
+        **_row(trip, owner.full_name, sum((e.amount for e in expenses), Decimal(0))),
+        "purpose": trip.purpose, "remarks": trip.remarks, "rejection_reason": trip.rejection_reason,
+        "decided_by": {"id": decided_by.id, "full_name": decided_by.full_name} if decided_by else None,
+        "decided_at": trip.decided_at, "completed_at": trip.completed_at, "cancelled_at": trip.cancelled_at,
+        "expenses": [{"id": e.id, "category": e.category, "amount": _money(e.amount), "expense_date": e.expense_date, "note": e.note}
+                     for e in expenses],
+        **flags,
+    }

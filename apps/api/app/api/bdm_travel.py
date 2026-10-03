@@ -1,0 +1,84 @@
+"""bdm-010 (DEC-SCOPE-060, spec §5.3): BDM trips, the manager's team view and approval queue, and expenses.
+
+Scope always comes from the session; the only ids in a path are trip and expense ids, both scope-checked in SQL (404).
+Each write is one transaction: the service flushes, this module sends the in-app notices (`channels=[]`, T4) and commits once,
+so a failed commit leaves no trip change, audit row or notice behind. Lists are {items, total, limit, offset}."""
+
+from typing import Literal
+from uuid import UUID
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.bdm import LIMIT, OFFSET
+from app.api.deps import get_current_user
+from app.api.workflows import _notify_user
+from app.core.database import get_db
+from app.models import BdmTrip, User
+from app.schemas import BdmTripCreate, BdmTripOut, BdmTripPage, BdmTripUpdate
+from app.services import bdm_travel as travel
+from app.services.bdm import bdm_context
+
+router = APIRouter(prefix="/bdm", tags=["bdm-travel"])
+ApprovalStatus = Literal["draft", "submitted", "approved", "rejected"]
+TravelStatus = Literal["planned", "in_progress", "completed", "cancelled"]
+NEWEST = (BdmTrip.travel_date.desc(), BdmTrip.code.desc())
+
+
+def _place_line(trip: BdmTrip) -> str:
+    return f"{trip.code}: {trip.from_place} → {trip.to_place}, {trip.travel_date:%d %b %Y}"
+
+
+@router.get("/trips", response_model=BdmTripPage)
+async def my_trips(approval_status: ApprovalStatus | None = None, travel_status: TravelStatus | None = None, limit: int = LIMIT,
+                   offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await bdm_context(db, user)
+    filters = [BdmTrip.bdm_user_id == user.id, *travel.status_filters(approval_status, travel_status)]
+    return await travel.page(db, travel.trip_rows(filters), limit, offset, NEWEST)
+
+
+@router.post("/trips", status_code=201, response_model=BdmTripOut)
+async def create_trip(body: BdmTripCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await bdm_context(db, user)
+    today = travel.india_today()
+    trip = await travel.create_trip(db, user, body, today)
+    await db.commit()
+    return await travel.trip_out(db, trip, user, today)
+
+
+@router.get("/trips/{trip_id}", response_model=BdmTripOut)
+async def get_trip(trip_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    trip = await travel.load_own_trip(db, user, trip_id)
+    return await travel.trip_out(db, trip, user, travel.india_today())
+
+
+@router.patch("/trips/{trip_id}", response_model=BdmTripOut)
+async def update_trip(trip_id: UUID, body: BdmTripUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    today = travel.india_today()
+    trip = await travel.load_own_trip(db, user, trip_id, lock=True)
+    await travel.update_trip(db, user, trip, body, today)
+    await db.commit()
+    return await travel.trip_out(db, trip, user, today)
+
+
+async def _owner_command(db: AsyncSession, user: User, trip_id: UUID, action: str) -> dict:
+    today = travel.india_today()
+    trip = await travel.load_own_trip(db, user, trip_id, lock=True)
+    await travel.transition(db, user, trip, action, today)
+    if action == "submit":
+        recipients, url = await travel.submit_recipients(db, trip)
+        for recipient in recipients:
+            await _notify_user(db, recipient, "Travel approval needed", _place_line(trip), url, channels=[])
+    await db.commit()
+    return await travel.trip_out(db, trip, user, today)
+
+
+def _command_route(action: str) -> None:
+    async def command(trip_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+        return await _owner_command(db, user, trip_id, action)
+
+    router.post(f"/trips/{{trip_id}}/{action}", response_model=BdmTripOut, name=f"bdm_trip_{action}")(command)
+
+
+for _action in ("submit", "withdraw", "start", "complete", "cancel"):
+    _command_route(_action)
