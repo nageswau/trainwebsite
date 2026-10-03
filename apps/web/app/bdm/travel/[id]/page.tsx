@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { accessUnavailable } from "@/components/AccessUnavailable";
+import { travelUnavailable } from "@/components/TravelUnavailable";
 import PortalShell from "@/components/PortalShell";
 import TripActions from "@/components/TripActions";
 import TripDetails from "@/components/TripDetails";
@@ -20,7 +20,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
   try {
     [me, trip] = await Promise.all([serverApi<BdmMe>("/api/v1/bdm/me"), serverApi<Trip>(`/api/v1/bdm/trips/${encodeURIComponent(id)}`)]);
   } catch (e) {
-    return accessUnavailable(e, BDM_SIGN_IN);
+    return travelUnavailable(e, BDM_SIGN_IN, `/bdm/travel/${encodeURIComponent(id)}`);
   }
   return (
     <PortalShell nav={BDM_NAV} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
@@ -28,7 +28,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
         <div className="portal-title">
           <div>
             <div className="eyebrow">Travel · {trip.code}</div>
-            <h2>{trip.from_place} → {trip.to_place}</h2>
+            <h2 style={{ overflowWrap: "anywhere" }}>{trip.from_place} → {trip.to_place}</h2>
             <p>
               <span className="badge state-badge">Approval: {APPROVAL_LABEL[trip.approval_status]}</span>{" "}
               <span className="badge state-badge">Travel: {TRAVEL_LABEL[trip.travel_status]}</span>

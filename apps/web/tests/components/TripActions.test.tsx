@@ -39,6 +39,8 @@ describe("TripActions (bdm-010)", () => {
     expect(mock.mock.calls[0][0]).toBe("/api/v1/bdm/trips/t1/submit");
     expect(mock.mock.calls[0][1].method).toBe("POST");
     expect(screen.getByRole("status")).toHaveTextContent("Submitted for approval");
+    // F8 (review I1): the pressed button disappears on refresh, so focus moves to the result instead of falling to <body>.
+    await waitFor(() => expect(screen.getByRole("status").parentElement).toHaveFocus());
   });
 
   it("confirms a cancel inline; Escape backs out and returns focus", async () => {

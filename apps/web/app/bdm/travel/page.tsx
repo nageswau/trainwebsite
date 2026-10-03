@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { accessUnavailable } from "@/components/AccessUnavailable";
+import { travelUnavailable } from "@/components/TravelUnavailable";
 import PortalShell from "@/components/PortalShell";
 import TripTable from "@/components/TripTable";
 import { serverApi } from "@/lib/api";
@@ -26,7 +26,7 @@ export default async function MyTripsPage({ searchParams }: { searchParams: Prom
       serverApi<Page<TripRow>>(`/api/v1/bdm/trips?limit=${PAGE_SIZE}&offset=${offset}${query ? `&${query}` : ""}`),
     ]);
   } catch (e) {
-    return accessUnavailable(e, BDM_SIGN_IN);
+    return travelUnavailable(e, BDM_SIGN_IN, `${PATH}${query ? `?${query}` : ""}`);
   }
   return (
     <PortalShell nav={BDM_NAV} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>

@@ -49,7 +49,7 @@ export default function TripForm({ trip, today }: { trip?: Trip; today: string }
   const create = !trip;
   const [values, setValues] = useState<Values>(() => initial(trip));
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { busy, message, setMessage, run } = useTripWrite();
+  const { busy, message, setMessage, run, resultProps } = useTripWrite();
   const { min } = travelDateBounds(today);
   const set = <K extends keyof Values>(key: K, value: Values[K]) => setValues((v) => ({ ...v, [key]: value }));
 
@@ -133,7 +133,7 @@ export default function TripForm({ trip, today }: { trip?: Trip; today: string }
       <div className="actions">
         <button className="btn" type="submit" disabled={busy}>{busy ? "Saving…" : create ? "Save draft" : "Save changes"}</button>
       </div>
-      {message && <FormMessage message={message} />}
+      <div {...resultProps}>{message && <FormMessage message={message} />}</div>
     </form>
   );
 }

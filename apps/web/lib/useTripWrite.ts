@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import type { FormMessageState } from "@/components/FormMessage";
 import { sendRequest, type SendOutcome } from "@/lib/apiErrors";
+import { refocus } from "@/lib/focus";
 
 export const jsonInit = (method: "POST" | "PATCH", body: unknown): RequestInit => ({
   method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -13,8 +14,11 @@ export const jsonInit = (method: "POST" | "PATCH", body: unknown): RequestInit =
 // bdm-010 (§12.2 F4/F6): every trip write shares one contract. While it runs, `busy` disables the acting button. A success
 // says so and reloads the server page, so statuses and `can_*` flags come from the API, not a guess (no optimistic update).
 // A 409 means the trip moved on under us: say why and reload, so the new state shows. Anything else keeps the user's input.
+// Review I1 (F8): a refresh usually removes the button just pressed, so focus moves to the result region (`resultProps`, a
+// focusable wrapper around the message) instead of falling to <body>.
 export function useTripWrite() {
   const router = useRouter();
+  const resultId = useId();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
 
@@ -31,8 +35,9 @@ export function useTripWrite() {
       setMessage({ text: outcome.message, failed: true });
       if (outcome.status === 409) router.refresh();
     }
+    if (outcome.ok || outcome.status === 409) refocus(resultId);
     return outcome;
   }
 
-  return { busy, message, setMessage, run };
+  return { busy, message, setMessage, run, resultProps: { id: resultId, tabIndex: -1 } };
 }

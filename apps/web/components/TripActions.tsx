@@ -19,7 +19,7 @@ const CANCEL_ID = "trip-cancel";
 // bdm-010: the owner's commands. Only the actions the API's `can_*` flags allow are shown; the API still decides (S2).
 // Cancel is confirmed inline (the TierDowngradeConfirm idiom, no dialog library); Escape backs out and returns focus.
 export default function TripActions({ trip }: { trip: Trip }) {
-  const { busy, message, run } = useTripWrite();
+  const { busy, message, run, resultProps } = useTripWrite();
   const [confirming, setConfirming] = useState(false);
   const shown = ACTIONS.filter((a) => trip[a.flag]);
   if (!shown.length && !trip.can_cancel && !message) return null;
@@ -54,7 +54,7 @@ export default function TripActions({ trip }: { trip: Trip }) {
           </div>
         </div>
       )}
-      {message && <FormMessage message={message} style={{ marginTop: 12 }} />}
+      <div {...resultProps}>{message && <FormMessage message={message} style={{ marginTop: 12 }} />}</div>
     </div>
   );
 }

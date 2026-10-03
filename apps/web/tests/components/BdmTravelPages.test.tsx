@@ -98,6 +98,27 @@ describe("bdm-010 BDM travel pages", () => {
   });
 });
 
+describe("bdm-010 review fixes", () => {
+  it("I2: a server error offers Retry on the same page; a 404 still shows the access card", async () => {
+    answer({ "/api/v1/bdm/me": me, "/api/v1/bdm/trips/t1": new ApiError("Internal Server Error", 500) });
+    const tree = elements(await TripDetail(route("t1")));
+    expect(hrefs(tree)).toContain("/bdm/travel/t1");
+    expect(allText(tree)).toContain("Retry");
+    answer({ "/api/v1/auth/me": { full_name: "Meera", role: "bdm_manager" }, "/api/v1/bdm/manager/approvals": new TypeError("fetch failed") });
+    expect(hrefs(elements(await ManagerApprovals(params())))).toContain("/bdm/manager/approvals");
+  });
+
+  it("M4: a long unbroken place name wraps instead of widening the page", async () => {
+    const long = "X".repeat(120);
+    answer({ "/api/v1/bdm/me": me, "/api/v1/bdm/trips/t1": trip({ from_place: long }) });
+    const h2 = elements(await TripDetail(route("t1"))).find((el) => el.type === "h2")!;
+    expect((h2.props.style as { overflowWrap?: string }).overflowWrap).toBe("anywhere");
+    answer({ "/api/v1/auth/me": { full_name: "Meera", role: "bdm_manager" }, "/api/v1/bdm/manager/trips/t1": trip({ from_place: long }) });
+    const managerH2 = elements(await ManagerTrip(route("t1"))).find((el) => el.type === "h2")!;
+    expect((managerH2.props.style as { overflowWrap?: string }).overflowWrap).toBe("anywhere");
+  });
+});
+
 describe("bdm-010 approval pages", () => {
   it("the manager queue has an empty state", async () => {
     answer({ "/api/v1/auth/me": { full_name: "Meera", role: "bdm_manager" }, "/api/v1/bdm/manager/approvals": page([]) });

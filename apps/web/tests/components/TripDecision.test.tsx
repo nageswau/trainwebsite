@@ -29,6 +29,7 @@ describe("TripDecision (bdm-010)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     expect(mock.mock.calls[0][0]).toBe("/api/v1/bdm/manager/trips/t1/approve");
+    await waitFor(() => expect(screen.getByRole("status").parentElement).toHaveFocus()); // review I1
   });
 
   it("asks for a reason before rejecting; Escape closes and returns focus", async () => {

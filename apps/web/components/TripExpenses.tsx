@@ -25,7 +25,7 @@ const lineName = (e: TripExpense) => `${CATEGORY_LABEL[e.category]} expense of $
 export default function TripExpenses({ trip }: { trip: Trip }) {
   const [editing, setEditing] = useState<string | null>(null); // "new" or an expense id
   const [deleting, setDeleting] = useState<TripExpense | null>(null);
-  const { busy, message, run } = useTripWrite();
+  const { busy, message, run, resultProps } = useTripWrite();
   const editable = trip.can_add_expense;
   const closeForm = () => {
     setEditing(null);
@@ -34,10 +34,7 @@ export default function TripExpenses({ trip }: { trip: Trip }) {
 
   async function remove(expense: TripExpense) {
     const outcome = await run(`${tripUrl(trip.id)}/expenses/${expense.id}`, { method: "DELETE" }, "Expense deleted.");
-    if (outcome.ok) {
-      setDeleting(null);
-      refocus(ADD_ID);
-    }
+    if (outcome.ok) setDeleting(null); // the hook moves focus to the result
   }
 
   return (
@@ -94,7 +91,7 @@ export default function TripExpenses({ trip }: { trip: Trip }) {
       ) : (
         editable && <div className="actions"><button id={ADD_ID} type="button" className="btn secondary" disabled={busy} onClick={() => setEditing("new")}>Add expense</button></div>
       )}
-      {message && <FormMessage message={message} style={{ marginTop: 12 }} />}
+      <div {...resultProps}>{message && <FormMessage message={message} style={{ marginTop: 12 }} />}</div>
     </div>
   );
 }

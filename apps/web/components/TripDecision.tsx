@@ -12,7 +12,7 @@ const REJECT_ID = "trip-reject";
 // bdm-010: approve, or reject with a required reason (Q-05). Shown only when the API says this caller may decide (T2/T3);
 // the API checks again under a lock. The reason opens inline and takes focus; Escape backs out and returns focus to Reject.
 export default function TripDecision({ trip }: { trip: Trip }) {
-  const { busy, message, run } = useTripWrite();
+  const { busy, message, run, resultProps } = useTripWrite();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [invalid, setInvalid] = useState(false);
@@ -55,7 +55,7 @@ export default function TripDecision({ trip }: { trip: Trip }) {
           </div>
         </form>
       )}
-      {message && <FormMessage message={message} style={{ marginTop: 12 }} />}
+      <div {...resultProps}>{message && <FormMessage message={message} style={{ marginTop: 12 }} />}</div>
     </div>
   );
 }

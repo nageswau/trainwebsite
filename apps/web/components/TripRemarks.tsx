@@ -12,7 +12,7 @@ const MAX = 2000;
 // is audited by the API. A blank box clears them.
 export default function TripRemarks({ trip }: { trip: Trip }) {
   const [value, setValue] = useState(trip.remarks ?? "");
-  const { busy, message, run } = useTripWrite();
+  const { busy, message, run, resultProps } = useTripWrite();
   return (
     <form className="form" onSubmit={(e) => { e.preventDefault(); run(tripUrl(trip.id), jsonInit("PATCH", { remarks: value.trim() || null }), "Remarks saved."); }}>
       <div className="field">
@@ -23,7 +23,7 @@ export default function TripRemarks({ trip }: { trip: Trip }) {
       <div className="actions">
         <button className="btn secondary" type="submit" disabled={busy}>{busy ? "Saving…" : "Save remarks"}</button>
       </div>
-      {message && <FormMessage message={message} />}
+      <div {...resultProps}>{message && <FormMessage message={message} />}</div>
     </form>
   );
 }

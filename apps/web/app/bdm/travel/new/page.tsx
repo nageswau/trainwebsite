@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { accessUnavailable } from "@/components/AccessUnavailable";
+import { travelUnavailable } from "@/components/TravelUnavailable";
 import PortalShell from "@/components/PortalShell";
 import TripForm from "@/components/TripForm";
 import { serverApi } from "@/lib/api";
@@ -14,7 +14,7 @@ export default async function NewTripPage() {
   try {
     me = await serverApi<BdmMe>("/api/v1/bdm/me");
   } catch (e) {
-    return accessUnavailable(e, BDM_SIGN_IN);
+    return travelUnavailable(e, BDM_SIGN_IN, "/bdm/travel/new");
   }
   return (
     <PortalShell nav={BDM_NAV} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>

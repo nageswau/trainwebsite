@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { accessUnavailable } from "@/components/AccessUnavailable";
+import { travelUnavailable } from "@/components/TravelUnavailable";
 import PortalShell from "@/components/PortalShell";
 import TripDecision from "@/components/TripDecision";
 import TripDetails from "@/components/TripDetails";
@@ -18,7 +18,7 @@ export default async function ManagerTripPage({ params }: { params: Promise<{ id
   try {
     [user, trip] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<Trip>(`/api/v1/bdm/manager/trips/${encodeURIComponent(id)}`)]);
   } catch (e) {
-    return accessUnavailable(e, "/admin/login");
+    return travelUnavailable(e, "/admin/login", `/bdm/manager/trips/${encodeURIComponent(id)}`);
   }
   const superAdmin = user.role === "super_admin";
   const back = superAdmin ? "/admin/bdm-travel-approvals" : "/bdm/manager/approvals";
@@ -28,7 +28,7 @@ export default async function ManagerTripPage({ params }: { params: Promise<{ id
         <div className="portal-title">
           <div>
             <div className="eyebrow">Travel · {trip.code} · {trip.bdm.full_name}</div>
-            <h2>{trip.from_place} → {trip.to_place}</h2>
+            <h2 style={{ overflowWrap: "anywhere" }}>{trip.from_place} → {trip.to_place}</h2>
             <p>
               <span className="badge state-badge">Approval: {APPROVAL_LABEL[trip.approval_status]}</span>{" "}
               <span className="badge state-badge">Travel: {TRAVEL_LABEL[trip.travel_status]}</span>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
+import { travelUnavailable } from "@/components/TravelUnavailable";
 import PortalShell from "@/components/PortalShell";
 import TripTable from "@/components/TripTable";
 import { serverApi } from "@/lib/api";
@@ -28,7 +29,7 @@ export default async function AdminTravelApprovalsPage({ searchParams }: { searc
   try {
     queue = await serverApi<Page<TripRow>>(`/api/v1/bdm/manager/approvals?limit=${PAGE_SIZE}&offset=${offset}`);
   } catch (e) {
-    return accessUnavailable(e, "/admin/login");
+    return travelUnavailable(e, "/admin/login", PATH);
   }
   return (
     <PortalShell nav={SUPER_ADMIN_NAV} roleLabel="Super Administrator" userName={user.full_name}>

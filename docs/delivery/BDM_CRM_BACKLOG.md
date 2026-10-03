@@ -551,7 +551,7 @@ Conventions used below:
 > `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md`). Owner answers T1–T14 settle the open spec decisions: one From/To
 > per trip; approver resolved at decision time, super_admin only while the manager is inactive; in-app notices only; expenses
 > (category + INR amount + date + note, **no receipts**) once approved; `TRV-000123` codes; withdraw/resubmit; date guards.
-> **Verified so far:** backend lite set 190/190; web unit tests for the touched areas 113/113; `tsc`, `eslint`, `ruff check` clean.
+> **Verified so far:** backend lite set 190/190; web unit tests for the touched areas 115/115 (after the review fixes); `tsc`, `eslint`, `ruff check` clean.
 > **Not COMPLETE:** Playwright `bdm-010-travel.spec.ts` (written, not run), browser validation, independent Codex review and the
 > owner's full suites are pending.
 
