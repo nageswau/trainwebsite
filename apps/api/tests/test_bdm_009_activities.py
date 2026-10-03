@@ -192,3 +192,15 @@ async def test_contact_must_belong_to_the_organization_and_survives_contact_dele
     listed = (await client.get(ACTIVITIES)).json()["items"]
     mine = next(i for i in listed if i["id"] == created["id"])
     assert (mine["contact_id"], mine["contact_name"], mine["contact_removed"]) == (None, "Ms Iyer", True)
+
+
+@pytest.mark.asyncio
+async def test_patch_to_another_organizations_contact_is_422(client, db_session):
+    # Coverage gap, not a behaviour change: PATCH already validates through svc.contact_for, so this passes immediately.
+    _, _, other = await bdm_with_org(client, db_session)
+    foreign = other["contacts"][0]["id"]
+    _, _, org = await bdm_with_org(client, db_session, contacts=[{"name": "Dr Rao"}])
+    created = (await client.post(ACTIVITIES, json=activity_body(org["id"]))).json()
+    response = await client.patch(f"{ACTIVITIES}/{created['id']}", json={"contact_id": foreign})
+    assert (response.status_code, response.json()["detail"]) == (422, "Choose a contact of this organization")
+    assert (await client.get(ACTIVITIES)).json()["items"][0]["contact_id"] is None
