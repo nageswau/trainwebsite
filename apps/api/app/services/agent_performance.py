@@ -15,7 +15,7 @@ from app.services.agent_students import student_scope
 
 TABLE = ("students", "applications", "offers", "visa_applications", "visa_approvals", "enrollments")
 STAGES = ("students", "applications", "submitted", "offers", "visa", "enrolled")
-NONE = (0,) * 6
+ZEROS = (0,) * 6  # an owner with no row in a GROUP BY result
 
 
 def cohort(user: User, start: date | None, end: date | None) -> list[ColumnElement]:
@@ -95,10 +95,6 @@ async def funnel_counts(db: AsyncSession, user: User, start: date | None, end: d
     return {member_id: tuple(int(n) for n in counts) for member_id, *counts in (await db.execute(stmt)).all()}
 
 
-def _counts(table: tuple, funnel: tuple) -> dict:
-    return {**dict(zip(TABLE, table, strict=True)), "funnel": dict(zip(STAGES, funnel, strict=True))}
-
-
 def _any(counts: dict) -> bool:
     return any(counts[k] for k in TABLE) or any(counts["funnel"].values())
 
@@ -113,7 +109,7 @@ async def performance(db: AsyncSession, user: User, start: date | None, end: dat
     funnel = await funnel_counts(db, user, start, end)
 
     def counts(key) -> dict:
-        return _counts(table.get(key, NONE), funnel.get(key, NONE))
+        return {**dict(zip(TABLE, table.get(key, ZEROS), strict=True)), "funnel": dict(zip(STAGES, funnel.get(key, ZEROS), strict=True))}
 
     members = await db.execute(
         select(AgentOrgMember, User.full_name)
@@ -135,6 +131,6 @@ async def performance(db: AsyncSession, user: User, start: date | None, end: dat
         "date_to": end,
         "rows": rows,
         "unassigned": unassigned,
-        "total": _sum(parts) if parts else _counts(NONE, NONE),
+        "total": _sum(parts),  # an empty list sums to zeros
         "as_of": datetime.now(UTC),
     }
