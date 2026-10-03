@@ -277,6 +277,27 @@ describe("BdmOrganizationForm profile (bdm-003 AC1, AC2, AC5, AC10, §12.2)", ()
     expect(screen.getByLabelText("Type (required)")).toHaveAttribute("aria-invalid", "true");
   });
 
+  it("never wipes Number of staff when the typed value is not a number (final review I1)", async () => {
+    const agent = { ...(SCHOOL as object), org_type: "agent", profile: { kind: "agent", country: null, territory: null, source: null, staff_count: 25 } } as never;
+    const mock = serve(res({ detail: [{ loc: ["body", "profile", "staff_count"], msg: "Value error, Number of staff must be a whole number from 0 to 100,000" }] }, 422));
+    render(<BdmOrganizationForm mode="edit" organization={agent} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Number of staff"), { target: { value: "abc" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(mock).toHaveBeenCalled());
+    expect(body(mock)).toEqual({ profile: { staff_count: "abc" } }); // sent as typed: the server names the field, nothing is cleared
+    expect(await screen.findByText("Number of staff must be a whole number from 0 to 100,000")).toBeInTheDocument();
+  });
+
+  it("explains the two saves when the old details were cleared in this form (final review I2)", async () => {
+    const mock = serve();
+    render(<BdmOrganizationForm mode="edit" organization={SCHOOL} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    for (const label of ["Board", "Lowest grade", "Highest grade"]) fireEvent.change(screen.getByLabelText(label), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Type (required)"), { target: { value: "college" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Save the cleared School details first: change the type back to School and save, then change the type.")).toBeInTheDocument();
+    expect(mock).not.toHaveBeenCalled();
+  });
+
   it("counts profile and address edits as unsaved changes", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const onCancel = vi.fn();

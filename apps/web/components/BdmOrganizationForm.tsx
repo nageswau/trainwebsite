@@ -15,6 +15,7 @@ import {
   profileGroup,
   profileNotEmpty,
   type ProfileField,
+  saveClearedFirst,
   typeChangeMessage,
 } from "@/lib/bdmOrganizations";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -145,7 +146,9 @@ export default function BdmOrganizationForm({
     for (const [key, message] of REQUIRED) if (!String(values[key]).trim()) found[key] = message;
     if (mode === "edit" && originalGroup && group !== originalGroup) {
       const filled = filledFields(originalGroup, originalProfile.current);
-      if (filled.length) found.org_type = typeChangeMessage(originalGroup, filled); // P4: the server's 409 is the authority
+      // P4: the server's 409 is the authority. Details cleared in this form are not saved yet (only the new type's group is sent), so
+      // say how to get there in two saves rather than repeat "clear them" (final review I2).
+      if (filled.length) found.org_type = filledFields(originalGroup, profile).length ? typeChangeMessage(originalGroup, filled) : saveClearedFirst(originalGroup);
     }
     const foundProfile = profileErrors(group, profile);
     const foundContacts: Record<string, string> = {};

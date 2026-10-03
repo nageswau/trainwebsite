@@ -129,6 +129,10 @@ export function profileNotEmpty(detail: unknown): string[] | null {
 export const typeChangeMessage = (group: ProfileGroup, fields: string[]): string =>
   `Clear the ${PROFILE_GROUP_LABEL[group]} details before changing the type: ${fields.map((f) => PROFILE_LABEL[f as ProfileField] ?? f).join(", ")}.`;
 
+/** The old type's details are cleared in the form but not saved yet: a type change is two saves (P4). */
+export const saveClearedFirst = (group: ProfileGroup): string =>
+  `Save the cleared ${PROFILE_GROUP_LABEL[group]} details first: change the type back to ${PROFILE_GROUP_LABEL[group]} and save, then change the type.`;
+
 export type OrgProfile =
   | { kind: "agent"; country: string | null; territory: string | null; source: string | null; staff_count: number | null }
   | { kind: "school"; board: string | null; school_type: string | null; grade_from: number | null; grade_to: number | null }

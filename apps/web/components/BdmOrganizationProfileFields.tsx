@@ -121,7 +121,9 @@ export default function BdmOrganizationProfileFields({
         ) : spec.kind === "textarea" ? (
           <textarea {...control} rows={3} maxLength={spec.max} />
         ) : spec.kind === "number" ? (
-          <input {...control} type="number" inputMode="numeric" min={0} max={spec.max} />
+          // Text with a numeric keyboard, not type="number": a browser reports an unparseable number input as "", which would clear the
+          // stored value silently; as text it reaches the API as typed and its 422 names the field (final review I1).
+          <input {...control} type="text" inputMode="numeric" autoComplete="off" maxLength={String(spec.max).length + 2} />
         ) : (
           <input {...control} type="text" maxLength={spec.max} />
         )}
