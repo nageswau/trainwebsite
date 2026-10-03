@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import AgentOrgMember, AgentStudent, OverseasApplication, User, VisaCase
 from app.services.agent_applications import WITHDRAWN
 from app.services.agent_dashboard import agency_applications, offer_clause, owner_join
+from app.services.agent_orgs import org_member_ids
 from app.services.agent_students import student_scope
 
 TABLE = ("students", "applications", "offers", "visa_applications", "visa_approvals", "enrollments")
@@ -92,7 +93,7 @@ async def funnel_counts(db: AsyncSession, user: User, start: date | None, end: d
     per_student = _from_cohort(user, start, end, visa, member, func.max(_level(visa)).label("level")).group_by(AgentStudent.id, AgentStudent.assigned_member_id).subquery()
     reached = [func.sum(case((per_student.c.level >= k, 1), else_=0)) for k in range(1, 6)]
     stmt = select(per_student.c.member_id, func.count(), *reached).group_by(per_student.c.member_id)
-    return {member_id: tuple(int(n) for n in counts) for member_id, *counts in (await db.execute(stmt)).all()}
+    return {member_id: tuple(counts) for member_id, *counts in (await db.execute(stmt)).all()}
 
 
 def _any(counts: dict) -> bool:
@@ -114,7 +115,7 @@ async def performance(db: AsyncSession, user: User, start: date | None, end: dat
     members = await db.execute(
         select(AgentOrgMember, User.full_name)
         .join(User, User.id == AgentOrgMember.user_id)
-        .where(AgentOrgMember.org_id == user.agent_membership.org_id, AgentOrgMember.role == "staff")
+        .where(AgentOrgMember.user_id.in_(org_member_ids(user)), AgentOrgMember.role == "staff")
         .order_by(AgentOrgMember.seq)
     )
     rows = []
@@ -123,8 +124,8 @@ async def performance(db: AsyncSession, user: User, start: date | None, end: dat
         active = member.status == "active"
         if active or _any(row):
             rows.append({"code": member.code, "name": name, "active": active, **row})
-    unassigned = counts(None)
-    unassigned = unassigned if _any(unassigned) else None
+    unassigned_counts = counts(None)
+    unassigned = unassigned_counts if _any(unassigned_counts) else None
     parts = [*rows, *([unassigned] if unassigned else [])]
     return {
         "date_from": start,
