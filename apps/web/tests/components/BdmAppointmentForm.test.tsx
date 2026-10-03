@@ -22,6 +22,7 @@ const appt = (over: Partial<Appointment> = {}) => ({
 
 afterEach(() => {
   cleanup();
+  delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
   vi.unstubAllGlobals();
   router.push.mockClear();
 });
@@ -190,11 +191,11 @@ describe("BdmAppointmentForm (bdm-006 §6.2, R-F6)", () => {
       expect(leads).toHaveAttribute("aria-invalid", "true");
       expect(leads).toHaveValue(-3);
       expect(leads).toHaveFocus();
-      expect(screen.getByText("Expected leads must be a whole number from 0.")).toHaveAttribute("id", leads.getAttribute("aria-describedby"));
+      expect(screen.getByText("Expected leads must be a whole number from 0 to 1,000,000.")).toHaveAttribute("id", leads.getAttribute("aria-describedby"));
       expect(leads).not.toHaveAttribute("min");
       fireEvent.change(leads, { target: { value: "3" } });
       expect(leads).not.toHaveAttribute("aria-invalid", "true");
-      expect(screen.queryByText("Expected leads must be a whole number from 0.")).toBeNull();
+      expect(screen.queryByText("Expected leads must be a whole number from 0 to 1,000,000.")).toBeNull();
     });
     it("rejects revenue with more than two decimals and focuses the first invalid field", () => {
       const fetchMock = vi.fn();
@@ -207,7 +208,7 @@ describe("BdmAppointmentForm (bdm-006 §6.2, R-F6)", () => {
       expect(fetchMock).not.toHaveBeenCalled();
       expect(revenue).toHaveAttribute("aria-invalid", "true");
       expect(revenue).toHaveFocus();
-      expect(screen.getByText("Expected revenue must be 0 or more, with up to 2 decimals.")).toBeInTheDocument();
+      expect(screen.getByText("Expected revenue must be from 0 to 9,999,999,999.99, with up to 2 decimals.")).toBeInTheDocument();
     });
     it("sends valid values", async () => {
       const fetchMock = vi.fn(() => Promise.resolve(res({ appointment: appt() }, 201)));
@@ -227,6 +228,7 @@ describe("BdmAppointmentForm (bdm-006 §6.2, R-F6)", () => {
       fireEvent.change(screen.getByLabelText("Expected leads"), { target: { value: "2000000" } });
       fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
       expect(screen.getByLabelText("Expected leads")).toHaveAttribute("aria-invalid", "true");
+      expect(screen.getByText("Expected leads must be a whole number from 0 to 1,000,000.")).toBeInTheDocument();
       expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(false);
     });
   });
@@ -253,6 +255,5 @@ describe("BdmAppointmentForm (bdm-006 §6.2, R-F6)", () => {
     expect(scroll).toHaveBeenCalledWith({ block: "center" });
     expect(screen.getByRole("heading", { name: /already have an appointment/ })).toHaveFocus();
     expect(alert.nextElementSibling?.className).toContain("actions"); // adjacent to the submit actions
-    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
   });
 });

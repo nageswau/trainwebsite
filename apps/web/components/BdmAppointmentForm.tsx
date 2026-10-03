@@ -25,8 +25,8 @@ const text = (v: string | null) => v ?? "";
 const orNull = (v: string) => (v.trim() === "" ? null : v.trim());
 
 type EstimateErrors = { leads?: string; revenue?: string };
-const LEADS_ERROR = "Expected leads must be a whole number from 0.";
-const REVENUE_ERROR = "Expected revenue must be 0 or more, with up to 2 decimals.";
+const LEADS_ERROR = "Expected leads must be a whole number from 0 to 1,000,000.";
+const REVENUE_ERROR = "Expected revenue must be from 0 to 9,999,999,999.99, with up to 2 decimals.";
 
 // Client checks (spec §12.2 R-F6); the API stays the authority. The entry is never cleared.
 function estimateErrors(values: FieldValues): EstimateErrors {

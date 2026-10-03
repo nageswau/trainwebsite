@@ -50,12 +50,10 @@ export default function BdmAppointmentFields({
       <fieldset className="form-section">
         <legend>When</legend>
         {showWhen && (
-          <>
-            <div className="field">
-              <label htmlFor="appt-when">Date and time (IST) (required)</label>
-              <input id="appt-when" type="datetime-local" required aria-required="true" min={min} value={values.when} onChange={(e) => set("when", e.target.value)} />
-            </div>
-          </>
+          <div className="field">
+            <label htmlFor="appt-when">Date and time (IST) (required)</label>
+            <input id="appt-when" type="datetime-local" required aria-required="true" min={min} value={values.when} onChange={(e) => set("when", e.target.value)} />
+          </div>
         )}
         <div className="field">
           <label htmlFor="appt-duration">Duration</label>
