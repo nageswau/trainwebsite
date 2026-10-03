@@ -137,4 +137,12 @@ describe("BdmOrganizationDetail (bdm-002 AC3-AC6, §12.2)", () => {
     expect(within(details).getByText("Last meeting").nextElementSibling).toHaveTextContent(/07 Jan 2030, 10:00 IST/);
     expect(within(details).getByText("Next meeting").nextElementSibling).toHaveTextContent("—");
   });
+
+  it("offers Add appointment only to the assigned BDM on the BDM portal", () => {
+    const { unmount } = render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_edit: true }) })} basePath="/bdm/organizations" />);
+    expect(screen.getByRole("link", { name: "Add appointment" })).toHaveAttribute("href", "/bdm/appointments/new?organization=o1");
+    unmount();
+    render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_edit: true }) })} basePath="/bdm/manager/organizations" />);
+    expect(screen.queryByRole("link", { name: "Add appointment" })).toBeNull();
+  });
 });

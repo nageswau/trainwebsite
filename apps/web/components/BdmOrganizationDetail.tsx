@@ -103,6 +103,11 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
           </p>
         </div>
         <div className="actions">
+          {basePath === "/bdm/organizations" && p.can_edit && !showEditor && ( // bdm-006: the assigned BDM, not archived (A3, A4)
+            <Link className="btn small" href={`/bdm/appointments/new?organization=${org.id}`}>
+              Add appointment
+            </Link>
+          )}
           {p.can_edit && !showEditor && (
             <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(true)}>
               Edit
