@@ -23,6 +23,16 @@ describe("BdmAppointmentActions (bdm-006 §6.2, R-F4, R-F7)", () => {
     expect(container.querySelectorAll("button")).toHaveLength(0);
   });
 
+  it("QA6-04: a 5xx shows an actionable sentence; a 422 still shows the server's detail", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response("boom", { status: 500 })).mockResolvedValueOnce(res({ detail: "Only a scheduled appointment can be confirmed" }, 422));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmAppointmentActions appointment={appt({ permissions: { ...none, can_confirm: true } })} bdmType="college" onChanged={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    expect(await screen.findByText("We couldn't update the appointment. Please try again.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    expect(await screen.findByText("Only a scheduled appointment can be confirmed")).toBeInTheDocument();
+  });
+
   it("confirms in one click and re-renders from the response", async () => {
     const onChanged = vi.fn();
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ appointment: appt({ status: "confirmed" }) }))));

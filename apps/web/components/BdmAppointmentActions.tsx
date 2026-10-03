@@ -54,7 +54,8 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
         return onChanged(fresh, `This appointment changed — it is now ${STATUS_LABEL[fresh.status]}.`);
       }
     }
-    setFailure(outcome.ok ? "Unable to update this appointment." : outcome.message);
+    const server = !outcome.ok && (outcome.status ?? 0) >= 500;
+    setFailure(outcome.ok ? "Unable to update this appointment." : server ? "We couldn't update the appointment. Please try again." : outcome.message);
   }
   const toggle = (g: Group) => {
     setFailure(null);

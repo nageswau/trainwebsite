@@ -16,6 +16,7 @@ export default function BdmAppointmentFields({
   contactsLoading,
   showWhen,
   contactRequired = true,
+  errors = {},
 }: {
   values: FieldValues;
   set: <K extends keyof FieldValues>(key: K, value: FieldValues[K]) => void;
@@ -24,6 +25,7 @@ export default function BdmAppointmentFields({
   contactsLoading: boolean;
   showWhen: boolean;
   contactRequired?: boolean;
+  errors?: { leads?: string; revenue?: string };
 }) {
   // `min` is read after mount: a server-rendered value can differ from the browser's across a minute boundary (hydration warning).
   const [min, setMin] = useState<string | undefined>(undefined);
@@ -96,11 +98,13 @@ export default function BdmAppointmentFields({
         <legend>Estimates</legend>
         <div className="field">
           <label htmlFor="appt-leads">Expected leads</label>
-          <input id="appt-leads" type="number" inputMode="numeric" min={0} step={1} value={values.leads} onChange={(e) => set("leads", e.target.value)} />
+          <input id="appt-leads" type="number" inputMode="numeric" step="any" value={values.leads} aria-invalid={errors.leads ? "true" : undefined} aria-describedby={errors.leads ? "appt-leads-error" : undefined} onChange={(e) => set("leads", e.target.value)} />
+          {errors.leads && <p id="appt-leads-error" className="form-error" style={{ margin: 0 }}>{errors.leads}</p>}
         </div>
         <div className="field">
           <label htmlFor="appt-revenue">Expected revenue (INR)</label>
-          <input id="appt-revenue" type="number" inputMode="decimal" min={0} step={0.01} value={values.revenue} onChange={(e) => set("revenue", e.target.value)} />
+          <input id="appt-revenue" type="number" inputMode="decimal" step="any" value={values.revenue} aria-invalid={errors.revenue ? "true" : undefined} aria-describedby={errors.revenue ? "appt-revenue-error" : undefined} onChange={(e) => set("revenue", e.target.value)} />
+          {errors.revenue && <p id="appt-revenue-error" className="form-error" style={{ margin: 0 }}>{errors.revenue}</p>}
         </div>
       </fieldset>
     </>

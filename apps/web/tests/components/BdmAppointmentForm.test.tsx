@@ -163,6 +163,74 @@ describe("BdmAppointmentForm (bdm-006 §6.2, R-F6)", () => {
     expect(await screen.findByText(/The booked contact \(Dr Rao\) was removed/)).toBeInTheDocument();
   });
 
+  it("QA6-04: a 5xx (non-JSON body) shows an actionable sentence and keeps the entry; a 422 still shows the server's detail", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response("<html>oops</html>", { status: 500 })).mockResolvedValueOnce(res({ detail: "Appointment time must be in the future" }, 422));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmAppointmentForm mode="create" bdmType="college" initialOrganization={org} />);
+    fillWhen();
+    fireEvent.change(screen.getByLabelText("Location"), { target: { value: "Gate 1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Book appointment" }));
+    expect(await screen.findByText("We couldn't save the appointment. Please try again — your entry is kept.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Location")).toHaveValue("Gate 1");
+    fireEvent.click(screen.getByRole("button", { name: "Book appointment" }));
+    expect(await screen.findByText("Appointment time must be in the future")).toBeInTheDocument();
+  });
+
+  describe("QA6-05 inline validation of the estimates", () => {
+    const submitForm = () => fireEvent.click(screen.getByRole("button", { name: "Book appointment" }));
+    it("rejects a negative lead count without sending, with aria-invalid, a described message and focus", () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      render(<BdmAppointmentForm mode="create" bdmType="college" initialOrganization={org} />);
+      fillWhen();
+      fireEvent.change(screen.getByLabelText("Expected leads"), { target: { value: "-3" } });
+      submitForm();
+      const leads = screen.getByLabelText("Expected leads");
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(leads).toHaveAttribute("aria-invalid", "true");
+      expect(leads).toHaveValue(-3);
+      expect(leads).toHaveFocus();
+      expect(screen.getByText("Expected leads must be a whole number from 0.")).toHaveAttribute("id", leads.getAttribute("aria-describedby"));
+      expect(leads).not.toHaveAttribute("min");
+      fireEvent.change(leads, { target: { value: "3" } });
+      expect(leads).not.toHaveAttribute("aria-invalid", "true");
+      expect(screen.queryByText("Expected leads must be a whole number from 0.")).toBeNull();
+    });
+    it("rejects revenue with more than two decimals and focuses the first invalid field", () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      render(<BdmAppointmentForm mode="create" bdmType="college" initialOrganization={org} />);
+      fillWhen();
+      fireEvent.change(screen.getByLabelText("Expected revenue (INR)"), { target: { value: "12.345" } });
+      submitForm();
+      const revenue = screen.getByLabelText("Expected revenue (INR)");
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(revenue).toHaveAttribute("aria-invalid", "true");
+      expect(revenue).toHaveFocus();
+      expect(screen.getByText("Expected revenue must be 0 or more, with up to 2 decimals.")).toBeInTheDocument();
+    });
+    it("sends valid values", async () => {
+      const fetchMock = vi.fn(() => Promise.resolve(res({ appointment: appt() }, 201)));
+      vi.stubGlobal("fetch", fetchMock);
+      render(<BdmAppointmentForm mode="create" bdmType="college" initialOrganization={org} />);
+      fillWhen();
+      fireEvent.change(screen.getByLabelText("Expected leads"), { target: { value: "12" } });
+      fireEvent.change(screen.getByLabelText("Expected revenue (INR)"), { target: { value: "1500.50" } });
+      submitForm();
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      expect(bodyOf(fetchMock as unknown as ReturnType<typeof vi.fn>, 0)).toMatchObject({ expected_leads: 12, expected_revenue: "1500.50" });
+    });
+    it("edit mode validates too", () => {
+      const fetchMock = vi.fn(() => Promise.resolve(res({ organization: org })));
+      vi.stubGlobal("fetch", fetchMock);
+      render(<BdmAppointmentForm mode="edit" bdmType="college" appointment={appt()} onSaved={() => {}} onCancel={() => {}} />);
+      fireEvent.change(screen.getByLabelText("Expected leads"), { target: { value: "2000000" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      expect(screen.getByLabelText("Expected leads")).toHaveAttribute("aria-invalid", "true");
+      expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === "PATCH")).toBe(false);
+    });
+  });
+
   it("QA6-02: the four fieldsets use the form-section class and their labels still resolve", () => {
     vi.stubGlobal("fetch", vi.fn());
     render(<BdmAppointmentForm mode="create" bdmType="college" initialOrganization={org} />);

@@ -24,6 +24,20 @@ const primaryOf = (contacts: OrgContact[]) => (contacts.find((c) => c.is_primary
 const text = (v: string | null) => v ?? "";
 const orNull = (v: string) => (v.trim() === "" ? null : v.trim());
 
+type EstimateErrors = { leads?: string; revenue?: string };
+const LEADS_ERROR = "Expected leads must be a whole number from 0.";
+const REVENUE_ERROR = "Expected revenue must be 0 or more, with up to 2 decimals.";
+
+// Client checks (spec §12.2 R-F6); the API stays the authority. The entry is never cleared.
+function estimateErrors(values: FieldValues): EstimateErrors {
+  const errors: EstimateErrors = {};
+  const leads = values.leads.trim();
+  if (leads !== "" && !(/^\d+$/.test(leads) && Number(leads) <= 1_000_000)) errors.leads = LEADS_ERROR;
+  const revenue = values.revenue.trim();
+  if (revenue !== "" && !(/^(\d+(\.\d{0,2})?|\.\d{1,2})$/.test(revenue) && Number(revenue) <= 9_999_999_999.99)) errors.revenue = REVENUE_ERROR;
+  return errors;
+}
+
 function initialValues(props: Props): FieldValues {
   if (props.mode === "edit") {
     const a = props.appointment;
@@ -45,8 +59,10 @@ export default function BdmAppointmentForm(props: Props) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
   const [warning, setWarning] = useState<{ overlap: Overlap; body: Record<string, unknown> } | null>(null);
+  const [errors, setErrors] = useState<EstimateErrors>({});
   const set = <K extends keyof FieldValues>(key: K, value: FieldValues[K]) => {
     setWarning(null);
+    if (key === "leads" || key === "revenue") setErrors((e) => ({ ...e, [key]: undefined }));
     setValues((v) => ({ ...v, [key]: value }));
   };
 
@@ -92,6 +108,9 @@ export default function BdmAppointmentForm(props: Props) {
   }
 
   function submit() {
+    const invalid = estimateErrors(values);
+    setErrors(invalid);
+    if (invalid.leads || invalid.revenue) return document.getElementById(invalid.leads ? "appt-leads" : "appt-revenue")?.focus();
     if (editing) {
       const body = changedFields(editing);
       if (!Object.keys(body).length) return props.mode === "edit" && props.onSaved(editing, false);
@@ -117,7 +136,8 @@ export default function BdmAppointmentForm(props: Props) {
       if (clash) return setWarning({ overlap: clash, body });
     }
     setWarning(null);
-    setMessage({ text: outcome.ok ? "Unable to save this appointment." : outcome.message, failed: true });
+    const server = !outcome.ok && (outcome.status ?? 0) >= 500;
+    setMessage({ text: outcome.ok ? "Unable to save this appointment." : server ? "We couldn't save the appointment. Please try again — your entry is kept." : outcome.message, failed: true });
   }
 
   const onSubmit = (event: FormEvent) => {
@@ -156,7 +176,7 @@ export default function BdmAppointmentForm(props: Props) {
           The booked contact ({editing.contact_name}) was removed from the organization. Choose another contact to change it, or leave it as recorded.
         </p>
       )}
-      <BdmAppointmentFields values={values} set={set} bdmType={props.bdmType} contacts={contacts} contactsLoading={contactsLoading} showWhen={!editing} contactRequired={!(editing && editing.contact_id === null)} />
+      <BdmAppointmentFields values={values} set={set} bdmType={props.bdmType} contacts={contacts} contactsLoading={contactsLoading} showWhen={!editing} contactRequired={!(editing && editing.contact_id === null)} errors={errors} />
       {message && <FormMessage message={message} />}
       {warning && <BdmOverlapAlert overlap={warning.overlap} busy={busy} onConfirm={() => void send(warning.body, true)} onCancel={() => setWarning(null)} />}
       <div className="actions">
