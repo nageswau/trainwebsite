@@ -89,7 +89,8 @@ See §AGN-008.
 (N1–N11; drafted as `055` / Revision 13, renumbered `058` on merging `main` @ `ff27fa4` and `059` @ `3d9244f`, where bdm-001, AGN-010, AGN-012 and AGN-011 hold `055`–`058`).
 See §AGN-017.
 **Revision 15 (2026-10-03):** the owner's `AGN-015` statement ("Student Journey" §4; "View complete student history" §2) is decided as
-`DEC-SCOPE-060` (J1–J6; `060` was the next free number on `main` @ `e1c2084`). See §AGN-015.
+`DEC-SCOPE-061` (J1–J6; drafted as `060`, renumbered on merging `main` @ `c5cdc8a`, where bdm-002 holds `060` and `0066`; the
+migration is `0067_audit_entity_index`). See §AGN-015.
 
 ## 0. Scope and exclusions (read this before the backlog)
 
@@ -3811,13 +3812,13 @@ that has happened to them, by whom.
 
 **Business requirement.** The owner's `AGN-015` statement (in-session, 2026-10-03): "Student Journey" (§4) and "View complete student
 history" (§2): Create → Counseling → Shortlist → Documents → Application → Offer → Deposit → Visa → Enrollment. Source: `EVID-015`
-(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`). Decision: `DEC-SCOPE-060` (J1–J6, `EXPLICIT_APPROVAL` in-session 2026-10-03).
+(`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`). Decision: `DEC-SCOPE-061` (J1–J6, `EXPLICIT_APPROVAL` in-session 2026-10-03).
 
 **Acceptance criteria.** Every event from the source items appears once, in order, with its actor; the step tracker matches the stored
 data. Out of scope → `404` (backlog ang-015).
 
 **Design and plan.** `docs/superpowers/specs/2026-10-03-agn-015-student-journey-design.md`; plan
-`docs/superpowers/plans/2026-10-03-agn-015-student-journey.md`. Two read-only routes; migration `0066_audit_entity_index` (one index).
+`docs/superpowers/plans/2026-10-03-agn-015-student-journey.md`. Two read-only routes; migration `0067_audit_entity_index` (one index; drafted as `0066`).
 
 **Status (2026-10-03): IMPLEMENTED, NOT COMPLETE** on `feature/agn-015-student-journey`. Lite tests only (owner runs full suites
 separately): API `test_agn_015_{migration,journey,timeline,security}.py` + `test_agn_017_migration.py`; web `agentJourney.test.ts`,

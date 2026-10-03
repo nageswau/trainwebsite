@@ -1,4 +1,4 @@
-"""AGN-015 / DEC-SCOPE-060 -- one agency student's journey (step tracker) and complete history (timeline).
+"""AGN-015 / DEC-SCOPE-061 -- one agency student's journey (step tracker) and complete history (timeline).
 
 Spec: docs/superpowers/specs/2026-10-03-agn-015-student-journey-design.md. Read-only: no lock, no write, no cache. Every source is
 narrowed by the existing scopes (AGN-004 G4, AGN-008, AGN-009) before a row is read, and audit rows are selected only by entity ids

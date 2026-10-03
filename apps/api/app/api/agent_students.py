@@ -115,7 +115,7 @@ async def get_student(student_id: UUID, user: User = Depends(get_current_user), 
 
 @router.get("/{student_id}/journey")
 async def get_student_journey(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AGN-015 (DEC-SCOPE-060 §4): the step tracker. Read-only; out of scope is the same 404 as the detail."""
+    """AGN-015 (DEC-SCOPE-061 §4): the step tracker. Read-only; out of scope is the same 404 as the detail."""
     membership = _gate(user)
     row = await load_scoped(db, user, student_id)
     result = await journey(db, user, row)
@@ -131,7 +131,7 @@ async def get_student_timeline(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """AGN-015 (DEC-SCOPE-060 §3/§5): the student's complete history, newest first. Read-only; out of scope is the same 404."""
+    """AGN-015 (DEC-SCOPE-061 §3/§5): the student's complete history, newest first. Read-only; out of scope is the same 404."""
     membership = _gate(user)
     row = await load_scoped(db, user, student_id)
     page = await timeline_page(db, user, row, limit=limit, offset=offset)

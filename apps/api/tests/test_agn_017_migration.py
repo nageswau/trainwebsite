@@ -43,7 +43,10 @@ def _config() -> Config:
 def test_migration_chains_after_0064_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert len(HEAD) <= 32  # alembic_version.version_num is VARCHAR(32)
-    assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1  # AGN-015's 0066 follows; still one head (the AGN-013 form)
+    # bdm-002 (2026-10-03): 0066_bdm_organizations now sits on 0065, so assert one head with 0065 in its history, not 0065 as the head.
+    script = ScriptDirectory.from_config(_config())
+    assert len(script.get_heads()) == 1
+    assert HEAD in {revision.revision for revision in script.walk_revisions()}
 
 
 def test_model_declares_the_nullable_dedupe_key_and_the_partial_indexes():

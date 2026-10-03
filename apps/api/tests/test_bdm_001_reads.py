@@ -173,3 +173,14 @@ async def test_list_bounds_are_422(client, db_session, params):
     await login(client, await make_user(db_session, "super_admin", "global"))
     for url in (TEAM, BDMS, MANAGERS):
         assert (await client.get(url, params=params)).status_code == 422, url
+
+
+@pytest.mark.asyncio
+async def test_team_filters_by_type_and_search_and_defaults_are_unchanged(client, db_session):
+    """bdm-002 (AC8): optional bdm_type / q on the team route, ANDed with team scope."""
+    m1, _, a, b, _ = await _team_of_two(client, db_session)
+    await login(client, m1)
+    assert (await client.get(TEAM)).json()["total"] == 2
+    assert [r["id"] for r in (await client.get(TEAM, params={"bdm_type": "agent"})).json()["items"]] == [b["id"]]
+    assert [r["id"] for r in (await client.get(TEAM, params={"q": a["bdm_profile"]["employee_id"]})).json()["items"]] == [a["id"]]
+    assert (await client.get(TEAM, params={"bdm_type": "it"})).status_code == 422

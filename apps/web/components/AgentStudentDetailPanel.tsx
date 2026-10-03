@@ -89,7 +89,7 @@ export default function AgentStudentDetailPanel({
               Edit
             </button>
           )}
-          {/* AGN-015 (DEC-SCOPE-060): where the student is on the nine steps; reloads when the record changes. */}
+          {/* AGN-015 (DEC-SCOPE-061): where the student is on the nine steps; reloads when the record changes. */}
           {editing === "none" && <AgentStudentJourney studentId={detail.id} refreshKey={detail.updated_at} />}
           <AgentStudentCounselingCard
             detail={detail}
@@ -110,7 +110,7 @@ export default function AgentStudentDetailPanel({
               <AgentTasksBlock view="all" studentId={detail.id} archived={detail.status === "archived"} Heading="h6" />
             </section>
           )}
-          {/* AGN-015 (DEC-SCOPE-060): the complete history, loaded only when asked for. */}
+          {/* AGN-015 (DEC-SCOPE-061): the complete history, loaded only when asked for. */}
           {editing === "none" && <AgentStudentTimeline studentId={detail.id} />}
           {editing === "none" && (
             <button type="button" className="btn secondary small" onClick={onClose} style={{ marginTop: 16 }}>

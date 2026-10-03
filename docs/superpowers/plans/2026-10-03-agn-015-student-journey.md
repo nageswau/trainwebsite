@@ -1,5 +1,9 @@
 # AGN-015 — Agent Student Journey + Complete History Implementation Plan
 
+> **Renumbered after this plan was executed:** on merging `main` @ `c5cdc8a` (bdm-002, PR #50, which holds `DEC-SCOPE-060` and
+> `0066_bdm_organizations`) the decision became `DEC-SCOPE-061` and the migration `0067_audit_entity_index` (after `0066_bdm_organizations`).
+> The `060` / `0066` numbers below are the plan as written.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** An agency Master or assigned Staff member opening one student sees a step tracker (steps 1–4 for the student, steps 5–9 per

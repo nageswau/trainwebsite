@@ -1,4 +1,4 @@
-"""AGN-015 (DEC-SCOPE-060 §4) -- the step tracker: pure state rules per step, then the endpoint against stored rows."""
+"""AGN-015 (DEC-SCOPE-061 §4) -- the step tracker: pure state rules per step, then the endpoint against stored rows."""
 
 import datetime as dt
 from types import SimpleNamespace as NS

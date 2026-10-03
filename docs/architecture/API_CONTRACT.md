@@ -361,7 +361,7 @@ days) and one overdue-task digest per recipient per India day, idempotent throug
 | `GET /workflows/notifications/unread-count` | Authenticated | Self | `200 NotificationUnreadCount {"unread": n}` — the caller's unread notifications (may exceed the 100-row list). Any signed-in role; `401` without a session. |
 | `GET /portal/overseas/agent/notifications` | Authenticated | Agent (Master or staff), approved | Header-only payload ("Notifications"): the page's role/approval gate, as Tasks. |
 
-**`AGN-015` / `DEC-SCOPE-060` (built 2026-10-03; migration `0066_audit_entity_index`) — agent student journey and complete
+**`AGN-015` / `DEC-SCOPE-061` (built 2026-10-03; migration `0067_audit_entity_index`) — agent student journey and complete
 history.** Design spec `docs/superpowers/specs/2026-10-03-agn-015-student-journey-design.md` §3–§6. Two read-only routes; no existing
 response changes. Gate as the student routes (agent of an active organisation, else `403`); the student is loaded with the detail's
 scope, so an unknown id, another agency's student and a staff member's unassigned student are the same `404 "Student not found"`.

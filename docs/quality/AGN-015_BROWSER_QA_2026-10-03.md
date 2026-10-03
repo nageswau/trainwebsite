@@ -1,5 +1,8 @@
 # AGN-015 — Exploratory browser QA (first pass, 2026-10-03)
 
+> **Renumbered after this pass:** on merging `main` @ `c5cdc8a` the migration became `0067_audit_entity_index` (after bdm-002's
+> `0066_bdm_organizations`) and the decision `DEC-SCOPE-061`. The `0066` below is the build as tested.
+
 **Build:** `feature/agn-015-student-journey` @ `1f34a2a` (the stack was built from this worktree). **Stack:** isolated compose project
 `agn015qa` — web http://localhost:13015, API 18015, `alembic` head `0066_audit_entity_index`, `python -m app.seed` applied.
 **Browser:** Browser Use (`uvx browser-use`), attached over CDP (port 9315) to an isolated headless Chromium 153 with a fresh profile.

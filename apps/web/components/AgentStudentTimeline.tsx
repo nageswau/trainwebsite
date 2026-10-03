@@ -18,7 +18,7 @@ function summary(item: TimelineItem): string {
   return parts.join(" · ");
 }
 
-// AGN-015 (DEC-SCOPE-060 §3, §7): the student's complete history, newest first -- the AGN-021 activity pattern. Hidden until asked
+// AGN-015 (DEC-SCOPE-061 §3, §7): the student's complete history, newest first -- the AGN-021 activity pattern. Hidden until asked
 // for, so opening a student costs one request (the journey), not two. Read on every open / page / Refresh (no cache); only the
 // newest request may update the screen.
 export default function AgentStudentTimeline({ studentId }: { studentId: string }) {

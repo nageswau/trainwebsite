@@ -1,6 +1,6 @@
 # AGN-015 — Agent student journey and complete history (design)
 
-**Decision:** `DEC-SCOPE-060` (owner, in-session 2026-10-03). **Branch:** `feature/agn-015-student-journey` from `main` @ `e1c2084`.
+**Decision:** `DEC-SCOPE-061` (owner, in-session 2026-10-03). **Branch:** `feature/agn-015-student-journey` from `main` @ `e1c2084`.
 **Status:** design approved in-session (parts 1–2 explicitly; parts 3–4 accepted by the owner's instruction to proceed).
 
 ## 1. Requirement and evidence
@@ -127,7 +127,7 @@ offset. Archived students are readable.
 - **SQL:** SQLAlchemy Core `union_all`, bound parameters only. Audit `entity_id` is a string column: compared with `str(uuid)`.
 - **Transactions:** no locks, no writes, no commit. The timeline page and `total` are one statement (`count(*) OVER ()`), so they
   agree. The journey is ~5 reads under READ COMMITTED; a write between them can show a mixed state the next load corrects (accepted).
-- **Migration `0066_audit_entity_index`:** `CREATE INDEX ix_audit_logs_entity ON audit_logs (entity_type, entity_id, created_at)`;
+- **Migration `0067_audit_entity_index`:** `CREATE INDEX ix_audit_logs_entity ON audit_logs (entity_type, entity_id, created_at)`;
   no rows read or written; downgrade drops it. Built non-concurrently (repo convention) — a brief write lock on `audit_logs`.
 - **XSS/CSRF:** text rendered as React text nodes; GET-only under the existing SameSite=Lax httpOnly cookie.
 - **Logs:** `agent_student_journey_viewed` / `agent_student_timeline_viewed` with org, actor, student ids and offset only.

@@ -1,4 +1,4 @@
-"""AGN-015 (DEC-SCOPE-060 §3, §5) -- the complete history: every source event once, in order, with its actor."""
+"""AGN-015 (DEC-SCOPE-061 §3, §5) -- the complete history: every source event once, in order, with its actor."""
 
 import pytest
 from sqlalchemy import update

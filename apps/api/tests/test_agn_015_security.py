@@ -1,4 +1,4 @@
-"""AGN-015 (DEC-SCOPE-060 §6) -- authentication, role, scope and cross-agency isolation for both read routes."""
+"""AGN-015 (DEC-SCOPE-061 §6) -- authentication, role, scope and cross-agency isolation for both read routes."""
 
 import pytest
 

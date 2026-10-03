@@ -1,6 +1,6 @@
 import { RECORDS_URL } from "./agentStudents";
 
-// AGN-015 (DEC-SCOPE-060): one student's step tracker and complete history (spec §4-§5).
+// AGN-015 (DEC-SCOPE-061): one student's step tracker and complete history (spec §4-§5).
 export const journeyUrl = (id: string) => `${RECORDS_URL}/${id}/journey`;
 export const timelineUrl = (id: string, limit: number, offset: number) => `${RECORDS_URL}/${id}/timeline?limit=${limit}&offset=${offset}`;
 

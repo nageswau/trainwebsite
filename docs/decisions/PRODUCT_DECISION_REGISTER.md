@@ -3250,10 +3250,40 @@ validation, the owner's full suites and an independent Codex review are pending.
 
 **Consequences:** migration `0065_agent_notifications` (one nullable column, four partial indexes); a new `services/agent_notifications.py`; additive hooks in `agent_students`, `agent_documents`, `agent_applications`, `agent_tasks` and three `workflows.py` routes; the first crontab beat entry; one new read endpoint; an agent nav item and optional `NavItem.badge`. Unchanged: ENH-014 dispatch/delivery, existing list/read contracts, students' and counselors' notices, `_maybe_trigger_agent_commission`. Design: `docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md`. **New Feature ID authorized:** `AGN-017`.
 
-### DEC-SCOPE-060 — Agent student journey and complete history (`AGN-015`)
+### DEC-SCOPE-060 — BDM Organization CRM core (`bdm-002`)
 
-**ID note:** `060` and migration `0066_audit_entity_index` were the next free numbers on `main` @ `e1c2084` (2026-10-03). Provisional
-if another branch reaches `main` first (precedent: `DEC-SCOPE-048`–`059`).
+**ID note:** recorded on the branch as `DEC-SCOPE-058` with migration `0066_bdm_organizations`; AGN-011 (`DEC-SCOPE-058`, `0064_application_deposits`) and AGN-017 (`DEC-SCOPE-059`, `0065_agent_notifications`) reached `main` first, so this entry became `DEC-SCOPE-060` and the migration `0066_bdm_organizations` when `main` was merged into `feature/bdm-002-organization-crm` (2026-10-03). bdm-002 commits and docs from before that merge that say `DEC-SCOPE-058` / `0064` mean this decision / migration.
+
+**Question:** how are BDM organizations stored, scoped, assigned, archived and de-duplicated?
+
+**Evidence:** `EVID-016` §9 (`DERIVED_BLUEPRINT`); `DEC-SCOPE-055` D5, D11 (Q-02), D12 (Q-03), D26 (Q-17), D27 (Q-18); bdm-002 impact analysis 2026-10-03 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — questions put one at a time, the design approved section by section, then the spec; not the source document's own wording):
+- **C1** at least one contact on create; the last contact cannot be deleted (supersedes the backlog edge case "an organization with no contacts yet (allowed, flagged)").
+- **C2** a `bdm_manager` reads the organizations assigned to their team and reassigns them among their own BDMs of the same type; no create or edit.
+- **C3** a BDM may create any of the seven organization types; ownership (`bdm_type`) is the creator's type.
+- **C4** codes are sequential `ORG-000123` (a Postgres sequence).
+- **C5** the assigned BDM (or super_admin) archives; the team manager or super_admin restores; both audited.
+- **C6** Courses Interested is free text (the `programs` catalogue is bdm-003).
+- **C7** no access for `it_admin` / `overseas_admin`.
+- **C8** the duplicate check includes archived organizations, labelled archived.
+- **C9** the assignee on create is always the creator.
+- **C10** Contact Person / Designation come from the primary contact; the organization keeps its own phone, email and website.
+- **C11** Existing Partner is a manual yes/no.
+- **C12** approach A: a flat `bdm_organizations` router + service; additive `bdm_type` / `q` filters on `GET /bdm/manager/team`.
+- **C13** Name and City are required.
+- **C14** super_admin reads, edits, archives, restores and reassigns everything; cannot create.
+- **C15** archived organizations are read-only until restored.
+- **C16** Address is not in bdm-002 (bdm-003).
+
+**Consequences:** migration `0066_bdm_organizations` (two new tables + `bdm_organization_code_seq`; downgrade refuses while organizations exist); routes `GET/POST /bdm/organizations`, `GET/PATCH /bdm/organizations/{id}`, `POST /{id}/archive|restore|assign`, `POST /{id}/contacts`, `PATCH/DELETE /{id}/contacts/{cid}`; pages `/bdm/organizations[/new|/{id}]` and `/bdm/manager/organizations[/{id}]`. Unchanged: every existing route, table and page (the team route only gains optional filters). bdm-006 refuses appointments on archived organizations (its own AC6). A retention/erasure policy for BDM data stays **NEEDS_CONFIRMATION**. Design: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`; plan: `docs/superpowers/plans/2026-10-03-bdm-002-organization-crm.md`. **New Feature ID authorized:** `bdm-002`.
+
+### DEC-SCOPE-061 — Agent student journey and complete history (`AGN-015`)
+
+**ID note:** drafted as `DEC-SCOPE-060` with migration `0066_audit_entity_index` (both free on `main` @ `e1c2084`); renumbered
+`DEC-SCOPE-061` on merging `main` @ `c5cdc8a`, where `060` is bdm-002 (PR #50) with `0066_bdm_organizations`; the migration is now
+`0067_audit_entity_index` after it (one head). AGN-015 commits from before this merge that say `060` / `0066` mean this decision /
+migration.
 
 **Question:** the owner's `AGN-015` statement (in-session, 2026-10-03): requirement **"Student Journey" (§4) and "View complete student
 history" (§2): Create → Counseling → Shortlist → Documents → Application → Offer → Deposit → Visa → Enrollment**; acceptance: **every
@@ -3281,7 +3311,7 @@ ang-015 (`DERIVED_BLUEPRINT`; its "database impact: none" is superseded by J1). 
   checkout starts; never commission events (Master-only, `DEC-SCOPE-051`).
 - **J6 — Order.** Newest first, paginated (20 per page; `limit` ≤ 100, `offset` ≤ 10 000).
 
-**Consequences:** migration `0066_audit_entity_index` (one index; no row read or written); a new read-only `services/agent_journey.py`;
+**Consequences:** migration `0067_audit_entity_index` (one index; no row read or written); a new read-only `services/agent_journey.py`;
 two GET routes (`…/crm/students/{id}/journey`, `…/crm/students/{id}/timeline`) with the student detail's scope and `404`; a Journey
 tracker and a Show-history list in the student detail panel. Unchanged: every existing response, write route, audit action and the
 Staff Activity allow-list. Limitation recorded: document reviews made before AGN-009 (2026-10-02) have no event row and are not

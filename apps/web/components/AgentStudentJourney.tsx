@@ -36,7 +36,7 @@ function Steps({ label, steps }: { label: string; steps: JourneyStep[] }) {
   );
 }
 
-// AGN-015 (DEC-SCOPE-060 §4, §7): steps 1-4 once for the student, steps 5-9 per application -- state as text, never colour alone.
+// AGN-015 (DEC-SCOPE-061 §4, §7): steps 1-4 once for the student, steps 5-9 per application -- state as text, never colour alone.
 // Read on open and whenever the student changes (refreshKey); only the newest request may update the screen. A failure is inline
 // text with its own retry, not role="alert", so the detail panel's alerts stay the only ones on screen.
 export default function AgentStudentJourney({ studentId, refreshKey }: { studentId: string; refreshKey?: string }) {
