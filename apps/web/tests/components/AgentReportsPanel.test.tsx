@@ -101,7 +101,7 @@ describe("AgentReportsPanel states", () => {
     fetchMock.mockImplementation(() => reply(200, report({ items: [], total: 0 })));
     render(<AgentReportsPanel memberRole="master" />);
     expect(await screen.findByText("No records match these filters.")).toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole("button", { name: "Clear filters" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     await waitFor(() => expect(urls().at(-1)).toBe(`${REPORTS}/students?limit=50&offset=0`));
   });
 
@@ -168,6 +168,34 @@ describe("AgentReportsPanel states", () => {
     render(<AgentReportsPanel memberRole="master" />);
     expect(await screen.findByRole("rowheader", { name: "Zoë" })).toBeInTheDocument();
     expect(urls()).toEqual([`${REPORTS}/students?limit=50&offset=500`, `${REPORTS}/students?limit=50&offset=0`]);
+  });
+
+  it("names the form's fields, not the API's, in a date error (browser QA20-02)", async () => {
+    window.history.replaceState(null, "", "/overseas/agent/reports?report=students&from=2026-02-30");
+    fetchMock.mockImplementation(() => reply(422, { detail: [{ loc: ["query", "date_from"], msg: "date_from must be a date (YYYY-MM-DD)", type: "value_error" }] }));
+    render(<AgentReportsPanel memberRole="master" />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("'From' must be a date (YYYY-MM-DD)");
+  });
+
+  it("offers one Clear filters when filters match nothing (browser QA20-05)", async () => {
+    window.history.replaceState(null, "", "/overseas/agent/reports?report=students&from=2000-01-01");
+    fetchMock.mockImplementation(() => reply(200, report({ items: [], total: 0 })));
+    render(<AgentReportsPanel memberRole="master" />);
+    await screen.findByText(/No records match these filters/);
+    expect(screen.getAllByRole("button", { name: "Clear filters" })).toHaveLength(1);
+  });
+
+  it("says there are no staff yet on an empty Staff performance report (browser QA20-04)", async () => {
+    window.history.replaceState(null, "", "/overseas/agent/reports?report=staff");
+    fetchMock.mockImplementation(() => reply(200, report({ kind: "staff", items: [], total: 0, totals: { member: "Total" } })));
+    render(<AgentReportsPanel memberRole="master" />);
+    expect(await screen.findByText("No staff yet — add staff from Team.")).toBeInTheDocument();
+  });
+
+  it("shows the report time with its zone, through LocalTime (date-zone sweep)", async () => {
+    const { container } = render(<AgentReportsPanel memberRole="master" />);
+    await screen.findByRole("rowheader", { name: "Zoë" });
+    expect(container.querySelector(".report-toolbar time")).toHaveAttribute("dateTime", "2026-10-03T08:05:00Z");
   });
 
   it("moves focus to the table after a page change", async () => {

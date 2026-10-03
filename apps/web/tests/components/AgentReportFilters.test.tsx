@@ -72,6 +72,13 @@ describe("AgentReportFilters", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Unknown country");
   });
 
+  it("shows a refused value from the address in its control, not 'All …' (browser QA20-03)", () => {
+    renderFilters({ value: { ...empty, filters: { member: "EDU-S999" } }, fieldError: { field: "member", text: "Unknown staff member" } });
+    const select = screen.getByLabelText("Staff member") as HTMLSelectElement;
+    expect(select.value).toBe("EDU-S999");
+    expect(select.options[select.selectedIndex].text).toBe("EDU-S999");
+  });
+
   it("clears every filter", () => {
     const { onClear } = renderFilters({ value: { ...empty, from: "2026-01-01", filters: { country: "aland" } } });
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));

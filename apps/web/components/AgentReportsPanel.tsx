@@ -5,6 +5,7 @@ import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 
 import AgentCommissionReportPanel from "@/components/AgentCommissionReportPanel";
 import AgentReportFilters, { type FieldError, type ReportField } from "@/components/AgentReportFilters";
 import AgentReportTable from "@/components/AgentReportTable";
+import LocalTime from "@/components/LocalTime";
 import ReportDownloadButton from "@/components/ReportDownloadButton";
 import { SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
 import { PAGE_SIZE, REPORTS_URL, type ReportKey, type ReportState, csvFilename, csvUrl, isAgentReport, readState, reportQuery, tabsFor, writeState } from "@/lib/agentReports";
@@ -20,11 +21,16 @@ import type { AgentReport } from "@/lib/types";
 type Failure = { text: string; retry?: boolean; expired?: boolean };
 const FAILED = "Couldn't load this report.";
 const OFFLINE = "The report could not load. Check your connection and try again.";
-const EMPTY: Partial<Record<ReportKey, string>> = { students: "No students yet.", enrollments: "No enrollments yet." };
+const EMPTY: Partial<Record<ReportKey, string>> = { students: "No students yet.", enrollments: "No enrollments yet.", staff: "No staff yet — add staff from Team." };
 const FIELDS: Record<string, ReportField> = { date_from: "from", date_to: "to", member: "member", country: "country", university: "university", intake: "intake", status: "status" };
 const MOVES: Record<string, (i: number, last: number) => number> = {
   ArrowRight: (i, last) => (i === last ? 0 : i + 1), ArrowLeft: (i, last) => (i === 0 ? last : i - 1), Home: () => 0, End: (_, last) => last,
 };
+
+/** The server's message with the form's field names in place of the API's (QA20-02; the AGN-014 panel does the same). */
+function messageOf(detail: unknown): string {
+  return detailMessage(detail, FAILED).replace(/date_from/gi, "'From'").replace(/date_to/gi, "'To'");
+}
 
 /** The field a 422 names (FastAPI's list shape, `loc: ["query", param]`), if it is one of the form's. */
 function fieldOf(detail: unknown): ReportField | null {
@@ -97,14 +103,14 @@ export default function AgentReportsPanel({ memberRole }: { memberRole: "master"
         }
         setReport(body);
         setApplied(next); // the caption and the CSV describe the table on screen, not a refused or failed request
-      } else if (field) setFieldError({ field, text: detailMessage(detail, FAILED) }); // the table on screen stays
+      } else if (field) setFieldError({ field, text: messageOf(detail) }); // the table on screen stays
       else if (response.status === 401) {
         setReport(null);
         setFailure({ text: SESSION_EXPIRED, expired: true });
       } else if (response.ok || response.status >= 500) setFailure({ text: FAILED, retry: true });
       else {
         setReport(null); // e.g. 403: the Reports permission was switched off since the page loaded
-        setFailure({ text: detailMessage(detail, FAILED) });
+        setFailure({ text: messageOf(detail) });
       }
     } catch {
       if (call === latest.current) setFailure({ text: OFFLINE, retry: true });
@@ -188,17 +194,14 @@ export default function AgentReportsPanel({ memberRole }: { memberRole: "master"
             )}
             {report && report.total === 0 && (
               <div role="status">
-                {filtered ? (
-                  <p>No records match these filters. <button type="button" className="btn small secondary" onClick={clear}>Clear filters</button></p>
-                ) : (
-                  <p>{EMPTY[active.key] ?? "No applications yet."}</p>
-                )}
+                {/* QA20-05: the form's own Clear filters is the one way back; a second button here repeated it. */}
+                <p>{filtered ? "No records match these filters." : EMPTY[active.key] ?? "No applications yet."}</p>
               </div>
             )}
             {report && report.total > 0 && (
               <>
                 <div className="report-toolbar">
-                  <p className="muted">{`${report.total} row${report.total === 1 ? "" : "s"} · As of ${new Date(report.as_of).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`}</p>
+                  <p className="muted">{`${report.total} row${report.total === 1 ? "" : "s"} · As of `}<LocalTime value={report.as_of} time /></p>
                   <ReportDownloadButton url={csvUrl(applied)} label="Download CSV" filename={csvFilename(applied.report, applied.from, applied.to)} hint="Up to 10,000 rows." contentType="text/csv" busyLabel="Preparing CSV…" />
                 </div>
                 <AgentReportTable

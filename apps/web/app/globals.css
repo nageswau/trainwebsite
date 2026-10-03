@@ -192,6 +192,16 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .report-busy { opacity: .55; transition: opacity .15s; }
 @media (prefers-reduced-motion: reduce) { .report-busy { transition: none; } .report-tablist { scroll-behavior: auto; } }
+/* QA20-06: a date stays on one line; the "scroll sideways" hint shows only where a wide report can overflow (not on a wide screen, and
+   not on a phone, where rows stack). */
+.nowrap { white-space: nowrap; }
+@media (min-width: 1600px), (max-width: 640px) { .wide-hint { display: none; } }
+/* QA20-01: overflow does not apply to a table row group, so the visually hidden header row of a stacked table still widened it past
+   the screen and pushed the values off the right edge. As a block it is clipped; long unbroken values may wrap. */
+@media (max-width: 640px) {
+  .table.stack thead { display: block; }
+  .table.stack th[scope="row"], .table.stack td { overflow-wrap: anywhere; }
+}
 
 /* ENH-031 -- SearchableSelect: the list opens under its input, scrolls inside itself, and never widens the page. */
 .combo-control { position: relative; }

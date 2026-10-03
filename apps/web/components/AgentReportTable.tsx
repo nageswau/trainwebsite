@@ -10,6 +10,15 @@ function show(value: AgentReportCell | undefined): string {
   return value === null || value === undefined || value === "" ? "—" : String(value);
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const WIDE = 8; // QA20-06: more columns than this do not fit a laptop-width card (Applications has 11)
+
+/** Numbers right-aligned; a date never breaks across lines ("2026-10-" / "03", QA20-06). */
+function cellClass(numeric: boolean, value: AgentReportCell | undefined): string | undefined {
+  if (numeric) return "num";
+  return typeof value === "string" && ISO_DATE.test(value) ? "nowrap" : undefined;
+}
+
 export default function AgentReportTable({ report, headingId, caption, busy, onPage, regionRef }: {
   report: AgentReport;
   headingId: string;
@@ -23,7 +32,7 @@ export default function AgentReportTable({ report, headingId, caption, busy, onP
     <>
       <th scope="row">{show(item[first.key])}</th>
       {rest.map((c) => (
-        <td key={c.key} data-label={c.label} className={c.numeric ? "num" : undefined}>{show(item[c.key])}</td>
+        <td key={c.key} data-label={c.label} className={cellClass(c.numeric, item[c.key])}>{show(item[c.key])}</td>
       ))}
     </>
   );
@@ -35,6 +44,7 @@ export default function AgentReportTable({ report, headingId, caption, busy, onP
 
   return (
     <>
+      {report.columns.length > WIDE && <p className="muted wide-hint">Scroll sideways to see every column.</p>}
       <div ref={regionRef} className={`table-scroll${busy ? " report-busy" : ""}`} tabIndex={0} role="region" aria-labelledby={headingId} aria-busy={busy}>
         <table className="table compact stack">
           <caption className="visually-hidden">{caption}</caption>

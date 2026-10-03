@@ -77,6 +77,17 @@ describe("AgentReportTable", () => {
     expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
   });
 
+  it("keeps a date on one line (browser QA20-06)", () => {
+    renderTable({ ...summary, items: [{ country: "Aland", applications: 4, created: "2026-10-03" }], columns: [...summary.columns, { key: "created", label: "Created", numeric: false }] });
+    expect(screen.getByText("2026-10-03")).toHaveClass("nowrap");
+  });
+
+  it("tells the reader a wide report scrolls sideways (browser QA20-06)", () => {
+    const columns = Array.from({ length: 11 }, (_, i) => ({ key: `c${i}`, label: `C${i}`, numeric: false }));
+    renderTable({ ...list(0, 1), columns, items: [Object.fromEntries(columns.map((c) => [c.key, "x"]))] });
+    expect(screen.getByText("Scroll sideways to see every column.")).toBeInTheDocument();
+  });
+
   it("marks the region busy while a newer report loads", () => {
     renderTable(summary, vi.fn(), true);
     expect(screen.getByRole("region", { name: "Report" })).toHaveAttribute("aria-busy", "true");

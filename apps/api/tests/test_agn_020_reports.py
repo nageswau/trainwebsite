@@ -9,7 +9,7 @@ import pytest_asyncio
 
 from app.models import Country
 from app.services.agent_reports import PAGE_SIZE, REPORT_KINDS, ReportInputError, intake_key, parse_filters, parse_page
-from tests.agn001_helpers import client_for
+from tests.agn001_helpers import client_for, mk_active_org, uniq
 from tests.agn008_helpers import mk_application
 from tests.agn018_helpers import DASHBOARD_API
 from tests.agn020_helpers import (
@@ -88,7 +88,7 @@ def test_parse_page_rejects_out_of_range(limit, offset, param):
         ("applications", {"date_from": "2026-02-30"}, "date_from", "date_from must be a date (YYYY-MM-DD)"),
         ("applications", {"date_from": "2026-02-02", "date_to": "2026-02-01"}, "date_to", "date_to must be on or after date_from"),
         ("applications", {"date_to": "9999-12-31"}, "date_to", "date_to must be before 9999-12-31"),
-        ("applications", {"member": "x" * 121}, "member", "Too long"),
+        ("applications", {"member": "x" * 121}, "member", "member is too long (at most 120 characters)"),
     ],
 )
 async def test_bad_filters_name_their_param(world, db_session, kind, raw, param, message):
@@ -203,6 +203,14 @@ async def test_staff_performance_per_member_and_unassigned(world):
     assert rows == MASTER_STAFF
     assert body["items"][0]["member"] == f"{world['s1']['member'].code} Staff One"
     assert body["totals"]["students"] == 4 and _total(body) == MASTER_TOTAL
+
+
+@pytest.mark.asyncio
+async def test_staff_performance_of_an_agency_with_no_staff_is_empty(db_session):
+    """Browser QA20-04: no staff and nothing unassigned -> no rows (the panel shows its empty state), not a lone zero row."""
+    ctx = await mk_active_org(db_session, name=f"Empty {uniq()}")
+    body = await _report(ctx["master"].email, "staff")
+    assert (body["items"], body["total"]) == ([], 0)
 
 
 @pytest.mark.asyncio

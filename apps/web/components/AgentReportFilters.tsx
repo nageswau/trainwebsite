@@ -70,18 +70,24 @@ export default function AgentReportFilters({ tab, value, options, busy, fieldErr
             />
           </div>
         ))}
-        {tab.filters.map((key) => (
-          <div className="field" style={{ margin: 0 }} key={key}>
-            <label htmlFor={fieldId(key)}>{FILTER_LABEL[key]}</label>
-            <select
-              id={fieldId(key)} value={draft.filters[key] ?? ""} ref={(el) => { controls.current[key] = el; }}
-              onChange={(e) => edit({ filters: { ...draft.filters, [key]: e.target.value } })} {...described(key)}
-            >
-              <option value="">{ALL[key]}</option>
-              {(options[OPTION_LIST[key]] ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </div>
-        ))}
+        {tab.filters.map((key) => {
+          const choices = options[OPTION_LIST[key]] ?? [];
+          const current = draft.filters[key] ?? "";
+          return (
+            <div className="field" style={{ margin: 0 }} key={key}>
+              <label htmlFor={fieldId(key)}>{FILTER_LABEL[key]}</label>
+              <select
+                id={fieldId(key)} value={current} ref={(el) => { controls.current[key] = el; }}
+                onChange={(e) => edit({ filters: { ...draft.filters, [key]: e.target.value } })} {...described(key)}
+              >
+                <option value="">{ALL[key]}</option>
+                {/* QA20-03: a value from the address that is not offered (e.g. refused with a 422) stays visible beside its error. */}
+                {current && !choices.some((o) => o.value === current) && <option value={current}>{current}</option>}
+                {choices.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+          );
+        })}
         <button className="btn" type="submit" aria-disabled={busy}>Apply</button>
         {hasFilters && <button className="btn secondary" type="button" onClick={onClear}>Clear filters</button>}
       </form>

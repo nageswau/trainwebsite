@@ -123,7 +123,7 @@ async def parse_filters(db: AsyncSession, user: User, kind: str, raw: dict[str, 
         if param not in offered or (param == "member" and is_agent_staff(user)):
             raise ReportInputError(param, "This filter is not available for this report")
         if len(value) > MAX_VALUE:
-            raise ReportInputError(param, "Too long")
+            raise ReportInputError(param, f"{param} is too long (at most {MAX_VALUE} characters)")
 
     f = Filters(echo=dict(given))
     if "date_from" in given:
@@ -326,7 +326,9 @@ async def _staff(db: AsyncSession, user: User, f: Filters) -> tuple[tuple[Column
         if listed or any(row.values()):
             label = f"{member.code} {name}" + ("" if member.status == "active" else " (deactivated)")
             items.append({"member": label, **row})
-    items.append({"member": "Unassigned", "students": students.get(None, 0), **counted.get(None, ZERO_COUNTS)})
+    unassigned = {"students": students.get(None, 0), **counted.get(None, ZERO_COUNTS)}
+    if items or any(unassigned.values()):  # QA20-04: an agency with no staff and nothing unassigned has no rows (the empty state)
+        items.append({"member": "Unassigned", **unassigned})
     return (Column("member", "Staff member"), Column("students", "Students", True), *STAGE_COLUMNS), items
 
 
